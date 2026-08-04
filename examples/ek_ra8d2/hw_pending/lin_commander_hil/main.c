@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/lin_commander_hil/main.c
  * @brief LIN commander frame-driver HIL demo for EK-RA8D2 (SCI2 on Pmod1)
@@ -42,6 +38,8 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-07-09
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_icu.c
  * @brief Interrupt Control Unit driver implementation
@@ -12,6 +8,9 @@
  * @details
  * Adds IRQCRi + NMI programming for the RA8D2 ICU. The low-level
  * IELSR event allocator lives in ``ra8_isr``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_icu.h"

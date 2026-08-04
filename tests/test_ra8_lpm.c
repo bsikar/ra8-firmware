@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_lpm.c
  * @brief Unit tests for ra8_lpm.c (Low Power Mode HAL driver)
@@ -15,6 +11,9 @@
  * timeout-wait, all six sleep modes (including the SCR.SLEEPDEEP
  * read-modify-write against the RAM-backed SCS window), and
  * packed-status diagnostics.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

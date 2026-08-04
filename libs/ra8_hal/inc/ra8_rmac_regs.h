@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rmac_regs.h
  * @brief Ethernet MAC (RMAC) per-port register layout for the RA8D2
@@ -42,6 +38,9 @@
  * the per-frame TX-capture filter table (MPFCt) so RMAC can flag
  * PTP frames to the GPTP block, but the timestamp counters are owned
  * by the GPTP driver.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

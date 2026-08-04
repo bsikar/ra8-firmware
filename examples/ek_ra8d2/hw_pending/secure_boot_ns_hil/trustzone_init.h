@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/trustzone_init.h
  * @brief Secure TrustZone bring-up contract for the BLXNS RoT proof (#172).
@@ -15,6 +11,9 @@
  * ``trustzone_init.c`` (which copies the NS image MRAM->SRAM) and ``main.c``
  * (which authenticates it and BLXNS-es to it). The values MUST match
  * ``ns_image.ld``'s ``NS_LOAD`` / ``NS_SRAM_RUN`` origins.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

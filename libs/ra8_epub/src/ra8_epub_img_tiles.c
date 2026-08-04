@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_epub_img_tiles.c
  * @brief Tile-cache paging of JOF atlases + a real reflow img loader (#231).
@@ -19,6 +15,8 @@
  * Guarded on `__has_include`: the pure `ra8_epub` core (and epub-only apps
  * that never pull in `ra8_mem`/`ra8_jof`) still link with this TU empty.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}

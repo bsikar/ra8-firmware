@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_threadx_canfd_demo.c
  * @brief Integration test: CANFD heartbeat + RX poll flow
@@ -25,6 +21,8 @@
  *   - ra8_canfd          (full TX/RX surface)
  *   - ra8_board_ek_ra8d2 (LED2 visual beacon)
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

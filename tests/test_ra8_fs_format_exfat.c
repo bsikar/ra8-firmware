@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs_format_exfat.c
  * @brief exFAT formatter tests: format, partition table, up-case, mount.
@@ -18,6 +14,9 @@
  * exFAT file creation / rename / unlink is covered separately by
  * ``tests/host/exfat_fs_test.c`` and the ``fs_format_mount`` HIL. The produced
  * image is independently validated fsck.exfat-clean.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "test_ra8_fs_format_fixture.h"

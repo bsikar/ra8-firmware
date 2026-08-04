@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_hash.h
  * @brief Content-identity hashing (FNV-1a 64) for the media downloader's
@@ -22,6 +18,8 @@
  * identity hash: it defends against accidental corruption and duplication, not
  * against an adversary crafting a collision, which is not part of this threat
  * model (the bytes are already trusted enough to store on disk and read back).
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

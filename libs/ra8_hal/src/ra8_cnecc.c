@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_cnecc.c
  * @brief CANFD ECC (CNECC) driver implementation
@@ -58,6 +54,9 @@
  *   Active -> Uninit [label="ra8_cnecc_deinit"];
  * }
  * @enddot
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_cnecc.h"

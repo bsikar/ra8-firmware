@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_c6_model.c
  * @brief Implementation of the modelled ESP32-C6 (#490).
@@ -10,6 +6,9 @@
  * See `ra8_c6_model.h` for what the model is and why it decodes rather than
  * replays. This file is the co-processor's side of every exchange the
  * `ra8_c6link` tests drive.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_c6_model.h"

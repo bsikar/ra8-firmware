@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file rabook_parity_fixture.h
  * @brief Byte-identity parity fixture for ra8_rabook_compile (#151).
@@ -13,6 +9,8 @@
  *            one with images (the default) and one with --no-images (the
  *            skip-images path: text/CSS-only, no image table or cover).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

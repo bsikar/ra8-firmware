@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_c6link_arena.c
  * @brief The fixed decode arena that lets a protobuf codec run with no heap.
@@ -28,6 +24,8 @@
  * rolling the bump offset back when the freed block is the newest one reclaims
  * exactly the space a failed decode would otherwise strand.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_riic_peripheral.c
  * @brief Unit tests for the RIIC (I2C) target/peripheral role in ra8_i2c_peripheral.c
@@ -17,6 +13,9 @@
  * transfer test pre-loads the RIIC status registers (RDRF / STOP / TDRE /
  * TEND / NACKF) in the fake MMIO window and checks the resulting data
  * path and flag clears.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

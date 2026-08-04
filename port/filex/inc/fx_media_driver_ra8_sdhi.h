@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/filex/inc/fx_media_driver_ra8_sdhi.h
  * @brief FileX media driver shim that bridges FileX onto the RA8 SDHI HAL
@@ -23,6 +19,9 @@
  * primitives operate on). FileX does not need to know which SDHI
  * instance is in use -- the driver hard-wires instance 0, which is the
  * channel routed to the EK-RA8D2 micro-SD slot.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

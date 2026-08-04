@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_phy_internal.h
  * @brief Module-private link seam shared between the MIPI D-PHY driver
@@ -34,6 +30,8 @@
  * state are intentionally NOT shared: each is confined to the single TU
  * that uses it.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

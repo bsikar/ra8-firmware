@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fs_fat.c
  * @brief FAT12/FAT16/FAT32 low-level primitives for the `ra8_fs` adapter.
@@ -25,6 +21,8 @@
  *   - Rule 5: every public entry checks pre/post-conditions.
  *   - Rule 7: every backend call is checked.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

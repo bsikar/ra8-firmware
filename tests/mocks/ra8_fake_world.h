@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fake_world.h
  * @brief Host-side mock of the TrustZone NS / S boundary
@@ -26,6 +22,9 @@
  *
  * The mock is ring-buffer backed (16 entries by default) so a
  * test can mark several regions at once and reset between cases.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

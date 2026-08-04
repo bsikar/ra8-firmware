@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/ereader_ui_screens.c
  * @brief E-reader UI chrome -- Library + Reading rendering and in-content nav.
@@ -18,6 +14,8 @@
  * `<a href>` links and page turns across the mock spine. The composited chrome
  * is byte-identical to the pre-split monolith.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

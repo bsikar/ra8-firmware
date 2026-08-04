@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_ra8_io_swap_demo.c
  * @brief Host unit + integration test for the ra8_io_swap_demo capstone (#264).
@@ -25,6 +21,8 @@
  * vectors: ::swap_verdict (the read-back verdict, an OR of length + content
  * mismatch) and ::swap_capture_ok (main's capture-PASS gate, an AND).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

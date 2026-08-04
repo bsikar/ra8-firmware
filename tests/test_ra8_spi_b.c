@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_spi_b.c
  * @brief MC/DC unit tests for ra8_spi_b.c (SPI_B controller driver).
@@ -25,6 +21,9 @@
  * (ra8_spi_init reaches both internal_spbr and internal_spcmd; the
  * xfer wrappers reach internal_xfer_common; ra8_spi_attach_transfer
  * + ra8_spi_dispatch_spei reach the SPEI compound).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

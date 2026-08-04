@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_epub_xml_shim_cov2.cpp
  * @brief Complementary line-coverage tests for libs/ra8_epub/src/ra8_epub_xml_shim.cpp.
@@ -37,6 +33,8 @@
  * The prototypes below mirror the internal cross-TU declarations in
  * `ra8_epub_open.c` (the shim entry points are not exposed in a public header).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

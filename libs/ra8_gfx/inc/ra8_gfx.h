@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_gfx.h
  * @brief Software 2D graphics primitives layered on top of a caller-owned
@@ -20,6 +16,8 @@
  * the GLCDC display plane, an off-screen scratch buffer, or a host-side
  * test buffer.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

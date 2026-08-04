@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mipi_dsi_test_util.h
  * @brief Shared fixture helpers for the test_ra8_mipi_dsi_* sibling suites
@@ -14,6 +10,8 @@
  * they live here once (header-only, ``static inline``) instead of being
  * copied three times.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

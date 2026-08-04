@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file library.h
  * @generated tools/bake_library.py -- do not edit by hand.
@@ -12,6 +8,8 @@
  *          thumbnail bytes are architecture-dependent to regenerate; see
  *          scripts/builders/books.sh -- re-pin the fb golden when re-baking).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since Version 0.1.0
  */

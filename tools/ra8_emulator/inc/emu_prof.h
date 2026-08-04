@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_prof.h
  * @brief Firmware profiler (RA8_EMU_PROFILE): sampling, hooks, reports
@@ -23,6 +19,8 @@
  *
  * Split out of the ra8_emulator main translation unit; behaviour unchanged.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

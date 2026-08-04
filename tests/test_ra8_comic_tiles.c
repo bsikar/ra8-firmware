@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_comic_tiles.c
  * @brief #344 -- an oversized CBZ page that overruns the whole-decode arena
@@ -26,6 +22,9 @@
  * vector set, and a page turn proves the epoch key namespacing never surfaces a
  * stale tile of the previous page. Both the raw and DEFLATE tile codecs are
  * covered, plus the reader's fail-closed guards.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

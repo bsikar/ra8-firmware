@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs_fat.c
  * @brief MC/DC unit tests for the FAT filesystem adapter (ra8_fs_fat.c).
@@ -19,6 +15,9 @@
  * reference template): for an N-condition decision we exercise N+1
  * input vectors so every condition is observed both true and false
  * AND independently flips the decision outcome.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

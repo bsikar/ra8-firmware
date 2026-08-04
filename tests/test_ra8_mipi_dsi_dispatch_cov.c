@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_mipi_dsi_dispatch_cov.c
  * @brief Coverage-focused host unit tests for ra8_mipi_dsi_dispatch.c
@@ -24,6 +20,9 @@
  * Every register the driver reads is ordinary host RAM here, so there
  * is no hardware-only path among the targeted lines and no coverage
  * exclusion is required.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

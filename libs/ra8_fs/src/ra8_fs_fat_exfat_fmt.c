@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fs_fat_exfat_fmt.c
  * @brief exFAT formatter (mkfs) for the `ra8_fs` adapter.
@@ -10,6 +6,8 @@
  * VBR + checksum construction, FAT/bitmap/up-case seeding, and the root
  * directory writer for a freshly-formatted exFAT volume.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

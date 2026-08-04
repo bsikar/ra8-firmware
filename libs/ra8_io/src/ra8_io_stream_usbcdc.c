@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_stream_usbcdc.c
  * @brief USB-CDC byte-stream sink -- bulk-IN writes through ra8_usb_pal.
@@ -13,6 +9,9 @@
  * Binds ::ra8_io_stream_iface to `ra8_usb_pal_ep_send`. The PAL takes a 16-bit
  * length, so a larger write is split into 65535-byte chunks. Touches no raw
  * MMIO -- the PAL owns the USB controller access.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_stream_usbcdc.h"

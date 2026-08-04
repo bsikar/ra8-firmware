@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file bench_ra8_crc.c
  * @brief Microbenchmark: CRC-32 (IEEE 802.3) over 1 KiB / 16 KiB / 1 MiB.
@@ -16,6 +12,8 @@
  * regression-tracking the off-target path and for sanity-checking the
  * driver-call overhead.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

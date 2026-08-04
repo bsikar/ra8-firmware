@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ereader_shelf_geometry.c
  * @brief Regression guard for the ereader_shelf layout + fill render (#233).
@@ -38,6 +34,9 @@
  * test stays hermetic (no app-generated `library.h`). ra8_box_layout() and
  * ra8_gfx_rect() carry their own MC/DC vectors in test_ra8_box.c / the ra8_gfx
  * tests; this file adds no new compound decision, so it needs no MC/DC block.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

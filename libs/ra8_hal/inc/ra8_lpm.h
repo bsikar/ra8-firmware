@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_lpm.h
  * @brief Low Power Mode (LPM) HAL driver -- public API
@@ -61,6 +57,9 @@
  *
  *  - **Diagnostics**: ``ra8_lpm_get_status`` packs SBYCR/DPSBYCR/
  *    LPSCR/SSCR1; ``ra8_lpm_get_exit_cause`` snapshots WUPEN0/1.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

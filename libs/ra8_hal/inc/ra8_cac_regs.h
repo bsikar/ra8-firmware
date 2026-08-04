@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_cac_regs.h
  * @brief Clock Accuracy Check (CAC) register layout for the Renesas RA8D2
@@ -13,6 +9,9 @@
  * interrupt if the two drift apart by more than a programmed
  * tolerance. Used by the CGC driver to validate that the PLL output
  * is really at the target frequency after bring-up.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

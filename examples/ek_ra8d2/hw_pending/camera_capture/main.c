@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/camera_capture/main.c
  * @brief OV5640 parallel (CEU) camera capture + plausibility self-test
@@ -69,6 +65,8 @@
  *       real HREF-active duration and the PCLK/HREF phase; it cannot be
  *       fixed by register config alone. See the README.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

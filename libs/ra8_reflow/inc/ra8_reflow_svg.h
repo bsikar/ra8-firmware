@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_svg.h
  * @brief Minimal SVG handling for the ra8_reflow ereader (#112).
@@ -34,6 +30,8 @@
  * The parser is pure string scanning over the caller's byte buffer (no DOM, no
  * heap); ::ra8_svg_render's only side effect is drawing through ra8_gfx.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

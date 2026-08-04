@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/port_esp_hosted_host_spi.h
  * @brief esp-hosted port header: full-duplex SPI transport buffer size.
@@ -33,6 +29,8 @@
  * Deriving it from the vendored constant rather than restating 1600 keeps
  * those three in lockstep: a future upstream bump changes one place.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

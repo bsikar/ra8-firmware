@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/fs_format_mount/main.c
  * @brief Format + mount + file-ops HIL demo across every FAT type ra8_fs writes.
@@ -45,6 +41,8 @@
  * Required external hardware (on-bench): Digilent PMOD MicroSD (part 410-380)
  * in Pmod2 (J25) with any microSD card inserted. THIS APP ERASES THE CARD.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

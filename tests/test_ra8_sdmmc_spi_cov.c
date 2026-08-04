@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_sdmmc_spi_cov.c
  * @brief Coverage-completion unit tests for the SPI-mode SD driver core TU.
@@ -22,6 +18,9 @@
  * and drive either the exposed low-level helpers or
  * ``ra8_sdmmc_spi_run_init_sequence()``. Every fault is injected
  * deterministically by a call-index counter -- no timers, no SIGALRM.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file ra8_wifi_backend.h
  * @brief The radio-operation seam ::ra8_wifi dispatches through.
@@ -33,8 +27,9 @@
  * @see ra8_wifi.h
  * @see ra8_wifi_c6link.h
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

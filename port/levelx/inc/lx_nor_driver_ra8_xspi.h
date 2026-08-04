@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/levelx/inc/lx_nor_driver_ra8_xspi.h
  * @brief LevelX NOR-flash driver shim that bridges LevelX onto the RA8
@@ -40,6 +36,9 @@
  * cookie when computing flash addresses for the read / write / erase
  * callbacks below, where we re-derive the byte offset by subtracting
  * this base.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

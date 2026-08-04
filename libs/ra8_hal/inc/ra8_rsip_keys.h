@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rsip_keys.h
  * @brief Renesas Secure IP (RSIP-E50D) HAL -- key install + cipher / hash API
@@ -24,6 +20,8 @@
  * p 3302-3307; cross-references to the broader security feature set
  * live in HUM Ch 51 "Security Features" p 3263-3301.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_gfx_font_8x16.c
  * @brief 8x16 monochrome bitmap font, ASCII 0x20..0x7E.
@@ -19,6 +15,8 @@
  * Each glyph is 8 pixels wide, 16 pixels tall, stored as 16 bytes with
  * one byte per row, MSB on the left.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

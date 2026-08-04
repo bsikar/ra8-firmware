@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_jof_png_internal.h
  * @brief Module-private declarations shared by the two PNG decoder units.
@@ -24,6 +20,8 @@
  * This header carries the shared decode-state type, the structural
  * constants, and the chunk-layer prototypes the pixel layer drives.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/gpio_input_demo/main.c
  * @brief SW1 -> LED1 mirror demo for the EK-RA8D2
@@ -16,6 +12,8 @@
  * state to LED1 (LED1 lit while SW1 held). Bare EVM only --
  * no expansion board, no console.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

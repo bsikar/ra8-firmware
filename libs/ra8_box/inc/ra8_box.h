@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_box.h
  * @brief Bounded, allocation-free box-model layout for e-reader chrome.
@@ -28,6 +24,8 @@
  * node for the renderer to consume; the engine itself only computes
  * geometry.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

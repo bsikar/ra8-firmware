@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rsip_ecc.c
  * @brief RSIP-E50D elliptic-curve asymmetric path (ECDSA / ECDH / Ed25519)
@@ -34,6 +30,8 @@
  * register interface (HUM Ch 52 is a feature overview, p 3302-3307), so the fake
  * command path here is a modelled fiction, not a real hardware sequence.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

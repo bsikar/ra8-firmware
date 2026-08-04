@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_reflow_align.c
  * @brief Host unit tests + MC/DC for text alignment / justification (#108).
@@ -15,6 +11,9 @@
  *  - justify-> wrapped lines reach the right margin, the last line stays left.
  * Plus MC/DC mirror vectors for the justify-vs-last-line gate and the
  * centre/right offset decision in priv_finish_line().
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

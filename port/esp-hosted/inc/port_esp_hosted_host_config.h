@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/port_esp_hosted_host_config.h
  * @brief esp-hosted port header: transport selection, side-band pin map, link polarity.
@@ -80,6 +76,8 @@
  *     ``H_IRAM_ATTR`` and ``H_WEAK_REF`` belong to
  *     ``port_esp_hosted_host_os.h``.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

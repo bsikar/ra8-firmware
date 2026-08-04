@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/app_launch_demo/main.c
  * @brief Minimal chrome stub: register apps + launch + back-stack (#146).
@@ -41,6 +37,8 @@
  * so the app doubles as a `ra8_emulator` regression gate; any failure logs a
  * `FAIL ...` line and parks in WFI.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / APP] {World: S}
  *

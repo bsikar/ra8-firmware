@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_flash_irq_cov.c
  * @brief Coverage booster for ra8_flash_irq.c.
@@ -27,6 +23,9 @@
  * GCOVR_EXCL_LINE markers in the source because the src >= k_ra8_flash_irq_count
  * guard at the top of that function rejects every value that could reach
  * the arm, making it genuinely unreachable from any valid call site.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

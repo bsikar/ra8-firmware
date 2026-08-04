@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_unarch_xz.c
  * @brief Bounded XZ/LZMA2 decode wrapper over the vendored xz-embedded.
@@ -26,6 +22,9 @@
  * tested independently (and carries no compound-decision MC/DC burden).
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "ra8_unarch_xz.h"
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_ota_parse_cov.c
  * @brief Coverage-gap tests for libs/ra8_ota/src/ra8_ota_parse.c.
@@ -37,6 +33,9 @@
  * ra8_ota_internal_validate_cfg and ra8_ota_internal_manifest_decode are pure
  * with respect to module state (documented in ra8_ota_parse.c). No
  * ra8_ota_init call is required.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

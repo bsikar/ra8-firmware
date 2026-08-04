@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_ip.c
  * @brief The NetX Duo DHCP provider the ra8_wifi facade calls for an address.
@@ -23,8 +17,9 @@
  * every consumer, so it lives with the application by design. The heavy NetX
  * objects are file-scope statics because this image has no heap (NASA Rule 3).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

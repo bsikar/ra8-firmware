@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_vreg.c
  * @brief Internal Voltage Regulator (DCDC / LDO) driver implementation
@@ -54,6 +50,9 @@
  *   DCDC -> __end [label="ra8_vreg_deinit()"];
  * }
  * @enddot
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_vreg.h"

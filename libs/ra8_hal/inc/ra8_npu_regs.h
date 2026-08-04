@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_npu_regs.h
  * @brief Arm Ethos-U55 NPU register window on the Renesas RA8P1 (RA8P1-only)
@@ -44,6 +40,8 @@
  *       include on an RA8D2 build fails loudly rather than pretending the NPU
  *       exists.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

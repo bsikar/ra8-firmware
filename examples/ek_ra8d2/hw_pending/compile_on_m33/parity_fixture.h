@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file parity_fixture.h
  * @brief Baked parity .epub + golden blob for the M33 compile (#149).
@@ -12,6 +8,8 @@
  *            emitted blob to s_m33_parity_golden (byte-identity on the
  *            secondary core). Same fixture + golden as the M85 parity gate.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

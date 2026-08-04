@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_tsn.c
  * @brief On-chip Temperature Sensor (TSN) driver implementation
@@ -14,6 +10,9 @@
  * math (HUM Ch 55.3.1 p 3499-3500). Does not touch the ADC --
  * callers must drive the ADC themselves; ``adc.c`` exposes the
  * channel-select path (HUM Ch 53 "16-bit A/D Converter").
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_tsn.h"

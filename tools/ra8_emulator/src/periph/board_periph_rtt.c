@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_rtt.c
  * @brief SEGGER RTT up-buffer drain model for ra8_emulator
@@ -41,6 +37,8 @@
  * protocol, so only the tick / reset / report hooks do work and the required
  * read / write handlers are never-dispatched stubs.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

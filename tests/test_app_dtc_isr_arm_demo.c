@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT */
-/* Copyright (c) 2026 Brighton Sikarskie */
 
 /**
  * @file test_app_dtc_isr_arm_demo.c
@@ -22,6 +16,8 @@
  *  - The ra8_isr_set_dtc() primitive the app calls really arms (DTCE = 1)
  *    and disarms (DTCE = 0) an allocated IELSR slot, preserving IELS.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

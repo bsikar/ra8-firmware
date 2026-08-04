@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file rabook_gray8_fixture.h
  * @brief Baked, INFLATED .rabook flat blob carrying one full-resolution
@@ -17,6 +13,8 @@
  * survival proves no quantisation occurred. Do not edit by hand; see the
  * generator.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since Version 0.1.0
  */

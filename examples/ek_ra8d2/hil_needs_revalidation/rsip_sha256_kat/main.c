@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/rsip_sha256_kat/main.c
  * @brief On-silicon FIPS 180-4 known-answer test for the RSIP HASH engine
@@ -29,6 +25,8 @@
  *   - "rsip sha256: KAT OK" / "rsip sha256: KAT FAIL" over SCI8 (115200 8N1,
  *     J-Link OB CDC), scraped by the HIL rig (hil.conf).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

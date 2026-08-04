@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_engine.c
  * @brief Shared engine-access table definition (see emu_engine.h)
@@ -11,6 +7,8 @@
  * mapping the instruction seams share; the inline accessors live entirely in
  * emu_engine.h.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

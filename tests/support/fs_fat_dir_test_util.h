@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file fs_fat_dir_test_util.h
  * @brief Shared fixture for the test_ra8_fs_fat_dir_*_cov.c split siblings.
@@ -14,6 +10,9 @@
  * test_ra8_fs_fat_dir_mutate_cov.c. Each including test executable gets its
  * own private copy of the backend state (everything here has internal
  * linkage), so the two binaries stay fully independent.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_pdm_regs.h
  * @brief Pulse Density Modulation Interface (PDM-IF) register layout
@@ -19,6 +15,9 @@
  * Density Modulation Interface (PDM-IF)" (p 3190-3256) field-for-field;
  * ``static_assert`` guards below pin the offsets so a stray padding
  * change cannot silently shift a register.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

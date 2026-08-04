@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_pwr.h
  * @brief Low Power Mode + clock-domain wrapper
@@ -41,6 +37,9 @@
  * ## Threading
  *
  * Single-threaded init context only.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

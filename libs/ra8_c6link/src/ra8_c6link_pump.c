@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_c6link_pump.c
  * @brief The transaction loop: handshake, clock, classify, route.
@@ -27,6 +23,8 @@
  * turns "the harness is unplugged" into a minutes-long hang, so the loop stops
  * and the caller gets a timeout it can report.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file sec_cmac.c
  * @brief Secure-side AES-CMAC seam implementation
@@ -26,6 +22,9 @@
  *
  * Both backends compute the identical standard tag, so the seam is Liskov-
  * substitutable and the wrapped-key blob format is backend-independent.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

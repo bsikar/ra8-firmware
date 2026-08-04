@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_vreg.c
  * @brief Unit tests for ra8_vreg.c (Internal Voltage Regulator driver)
@@ -23,6 +19,9 @@
  *   - exit_standby with and without prior init.
  *   - Legacy enter_stop / exit_stop wrappers.
  *   - attach_handler / dispatch including detach via nullptr.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

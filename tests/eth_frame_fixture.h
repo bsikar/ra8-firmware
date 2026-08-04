@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file eth_frame_fixture.h
  * @brief Shared test fixture: parse an Ethernet II header out of raw bytes.
@@ -21,6 +17,9 @@
  * API surface the firmware never ships. It touches no MMIO and no driver
  * state, so issue #238 moved it here and the driver TU now compiles
  * identically on every build.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

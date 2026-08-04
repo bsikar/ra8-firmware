@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_display_pal.c
  * @brief Display PAL dispatcher -- forwards every public call into
@@ -15,6 +11,9 @@
  * ``s_initialized`` flag. The dispatcher does no hardware work
  * itself; its only job is to validate arguments, dispatch through
  * the iface, and refuse re-init while a handle is live.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_display_pal.h"

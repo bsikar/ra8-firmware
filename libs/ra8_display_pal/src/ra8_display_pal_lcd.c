@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_display_pal_lcd.c
  * @brief LCD backend (ra8_glcdc) implementation for the display PAL
@@ -16,6 +12,9 @@
  * The 6-step bring-up that used to be duplicated in every LCD-using
  * app's ``lcd_bringup_panel`` collapses into a single
  * ``display_init`` call.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_display_pal_lcd.h"

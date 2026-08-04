@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_usb.h
  * @brief USBFS controller model + a virtual USB host for the board emulator
@@ -43,6 +39,8 @@
  * owns the ICU IELSR table and the IRQ ring) through ::board_usb_set_irq_raiser
  * so all exception delivery stays in one place.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

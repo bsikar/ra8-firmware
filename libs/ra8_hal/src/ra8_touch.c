@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_touch.c
  * @brief Multi-touch input driver -- GoodIX GT911 backend (implementation)
@@ -16,6 +12,9 @@
  * revision) using the standard "write 16-bit register pointer, RESTART,
  * read N bytes" pattern. The driver carries no per-frame state -- all
  * touch decoding happens against caller-provided buffers.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_touch.h"

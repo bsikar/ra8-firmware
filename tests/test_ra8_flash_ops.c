@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_flash_ops.c
  * @brief Unit tests for the ra8_flash operational surface: IRQ enable +
@@ -11,6 +7,9 @@
  *
  * @details Split from test_ra8_flash.c along the test-group seam.
  * Shared fixture constants live in support/flash_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

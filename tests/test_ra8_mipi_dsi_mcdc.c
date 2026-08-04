@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_mipi_dsi_mcdc.c
  * @brief MC/DC vectors for the ra8_mipi_dsi.c compound decisions
@@ -18,6 +14,9 @@
  * Sibling suites: test_ra8_mipi_dsi_cmd.c (init + command packets)
  * and test_ra8_mipi_dsi_video.c (video mode + sweep-6 shorthands).
  * Shared fixtures live in support/mipi_dsi_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/wifi_hal_join.h
  * @brief Constants, console formatters and the DHCP provider for the HAL join.
@@ -20,8 +14,9 @@
  * Wi-Fi lives behind ``ra8_wifi.h`` -- this header adds only what a bench
  * application needs around it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

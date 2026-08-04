@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_wdt_supervisor_cov.c
  * @brief Coverage-lift tests for libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c
@@ -35,6 +31,9 @@
  * ``static inline`` stubs that unconditionally return ``TX_SUCCESS``; no
  * host input can cause them to fail.  Those lines carry ``GCOVR_EXCL_LINE``
  * or ``GCOVR_EXCL_START/STOP`` annotations in the source file.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

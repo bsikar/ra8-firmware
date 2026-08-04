@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/mem_ecc_fault_demo/main.c
  * @brief SRAM ECC fault-injection + detection demo (EK-RA8D2, issue #130)
@@ -50,6 +46,8 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

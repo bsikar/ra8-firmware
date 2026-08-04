@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_epub.h
  * @brief EPUB (.epub) reader and chapter iterator for ra8-firmware.
@@ -51,6 +47,8 @@
  * allocation under this driver is internal to `tinyxml2`'s parser
  * (vendored), which is documented as a deviation.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}

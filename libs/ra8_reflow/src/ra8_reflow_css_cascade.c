@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_css_cascade.c
  * @brief Content-CSS stylesheet scanner, cascade, and face lookup (#111).
@@ -15,6 +11,8 @@
  * sources into a single ::ra8_css_style_t. No MMIO, no heap; all state lives in
  * the caller-owned ::ra8_css_sheet_t.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

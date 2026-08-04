@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/psa_crypto_hil/src/psa_kat_shim.c
  * @brief TEST-ONLY platform shims for the tf-psa-crypto software backend.
@@ -21,6 +17,8 @@
  *          in a real image; a production build needs a real entropy source
  *          (see libs/ra8_hal/src/ra8_rsip.c -- the RSIP TRNG needs an FSP port).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

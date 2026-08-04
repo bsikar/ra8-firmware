@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/elc_event_demo/main.c
  * @brief Event Link Controller (ELC) software-event demo for the EK-RA8D2
@@ -37,6 +33,8 @@
  * Bare EK-RA8D2 only -- no external pins required because the
  * software trigger replaces a real edge.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

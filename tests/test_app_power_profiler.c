@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_power_profiler.c
  * @brief Integration test: ra8_power_profile init + cycle through 4 modes
@@ -13,6 +9,8 @@
  * snapshotting the accumulator. Host WFI is a no-op so the cycle
  * completes immediately under RA8_OFF_TARGET.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

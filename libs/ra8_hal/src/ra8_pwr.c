@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_pwr.c
  * @brief Low Power Mode + clock-domain wrapper implementation
@@ -22,6 +18,9 @@
  * - ``ra8_pwr_enter_software_standby()`` validates that at least
  * one wake source is armed, then sets LPMD and SLEEPDEEP and
  * issues WFI. The WFI is host-no-op so unit tests do not stall.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_pwr.h"

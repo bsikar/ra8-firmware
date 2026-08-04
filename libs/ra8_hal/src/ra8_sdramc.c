@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sdramc.c
  * @brief SDRAM controller driver implementation
@@ -20,6 +16,9 @@
  * `R_BSP_SdramInit`: route the parallel-bus pins, enable the SDCLK
  * output, run the hardware init sequencer, issue the LMR command,
  * program the timing/refresh registers, then enable SDRAM access.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_sdramc.h"

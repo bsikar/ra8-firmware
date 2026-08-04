@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_hhub.c
  * @brief Native USB host-side HUB class layer implementation
@@ -23,6 +19,9 @@
  * Reference: USB 2.0 specification chapter 11 "Hub Specification"
  * (sec 11.23 descriptors, sec 11.24 class requests). Class request
  * envelope encoding follows USB 2.0 Table 11-15.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb_hhub.h"

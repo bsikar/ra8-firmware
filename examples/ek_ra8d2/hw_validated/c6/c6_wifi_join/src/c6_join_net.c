@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/c6_join_net.c
  * @brief NetX Duo IP bring-up over the C6 link: DHCP lease + ICMP reachability.
@@ -21,6 +17,8 @@
  * (NASA Power of 10 Rule 3). ::c6_join_net_up runs exactly once, on the
  * application worker thread.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_spi_regs.h
  * @brief SPI_B register layout for the Renesas RA8D2
@@ -46,6 +42,9 @@
  *  | 0x60   | SPPSR   | 32    | 2905 | Polling status.               |
  *  | 0x68   | SPSRC   | 32    | 2905 | Status clear (write-1).      |
  *  | 0x6C   | SPFCR   | 32    | 2906 | FIFO clear (SPFRST).         |
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

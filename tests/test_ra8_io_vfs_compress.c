@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_vfs_compress.c
  * @brief Unit tests for the ra8_io transparent VFS compression seam plus the
@@ -29,6 +25,9 @@
  *   `ra8_sci_write_polling` / `ra8_sci_flush` when the bound channel index is out
  *   of range (the host build has no live SCI, so the invalid-channel leg is the
  *   clean, spin-free way to drive the sink's error branch).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

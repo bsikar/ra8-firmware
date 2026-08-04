@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_bkup.c
  * @brief Unit tests for ra8_bkup.c (Battery Backup Function driver)
@@ -11,6 +7,9 @@
  * and status contract tests. The VBTBKR access, tamper, voltage monitor,
  * security, IRQ, VDET sweep, and MC/DC vector tests live in
  * test_ra8_bkup_tamper.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_bkup.h"

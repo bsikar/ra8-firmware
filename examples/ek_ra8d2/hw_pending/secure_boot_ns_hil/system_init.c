@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
@@ -50,6 +46,9 @@
  * cache in `ra8_cgc`; if the `.data` copy ran after `SystemInit()` it would
  * clobber that cache back to the MOCO boot default and the SCI8 console
  * would then read a stale ~8 MHz PCLKA and refuse to initialise.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

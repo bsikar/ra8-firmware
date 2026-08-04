@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/main.c
  * @brief Bring the ESP32-C6's Wi-Fi station up through the `ra8_c6link` facade.
@@ -45,6 +41,8 @@
  * it wrong the board and the co-processor both look healthy and the link simply
  * does not exist.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

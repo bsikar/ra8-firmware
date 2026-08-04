@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mstp_internal.h
  * @brief Cross-TU surface for the ra8_mstp module-stop driver (test access).
@@ -16,6 +12,9 @@
  * the mask logic is tested here against a pre-set register value instead of
  * through a live write. See CLAUDE.md "Test access to internal symbols (MC/DC
  * scope)".
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_internal.h
  * @brief Cross-TU surface for the ra8_usb driver split.
@@ -36,6 +32,8 @@
  * implementation detail of the driver split only. See CLAUDE.md
  * "Test access to internal symbols (MC/DC scope)".
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/ra8_io_swap_demo/main.c
  * @brief ra8_io fabric capstone: two block-dev backends swapped behind one
@@ -47,6 +43,9 @@
  * non-volatile on-board NOR and has not yet been captured on the bench; the RAM,
  * VFS, and stdio legs are fully exercised in ra8_emulator and in the host unit test
  * `tests/test_app_ra8_io_swap_demo.c`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

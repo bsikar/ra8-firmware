@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_dsi_cmd.c
  * @brief MIPI DSI-2 sequence-channel command path (HUM Ch 65)
@@ -31,6 +27,9 @@
  * required by `scripts/checks/cite_check.py`:
  *
  *   /\* HUM Ch 65.X "name", p NNNN *\/
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

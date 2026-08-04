@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_bkup_tamper.c
  * @brief Backup-register and tamper tests for ra8_bkup.c
@@ -12,6 +8,9 @@
  * tamper init / disable / input, voltage monitor, security partitioning,
  * IRQ path, VDET-level sweep, and MC/DC vector tests; the init / cold-start /
  * warm-start / status contract tests stay in test_ra8_bkup.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_bkup.h"

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_eth_gwca_queue.c
  * @brief Ethernet CPU Agent driver -- per-queue descriptor + ring primitives
@@ -17,6 +13,8 @@
  * address-encoding helpers shared with the default-state TU. Every
  * register access carries a HUM Ch 34 citation.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

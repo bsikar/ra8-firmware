@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_exc.h
  * @brief Cortex-M exception model constants and interfaces for ra8_emulator
@@ -15,6 +11,8 @@
  *
  * Split out of the ra8_emulator main translation unit; behaviour unchanged.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

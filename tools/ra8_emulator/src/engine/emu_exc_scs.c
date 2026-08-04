@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_exc_scs.c
  * @brief SCS write watchers + DWT time base (see emu_exc.h)
@@ -14,6 +10,8 @@
  * that keeps a masked-context ra8_delay_ms advancing. Moved verbatim out of
  * the ra8_emulator main translation unit.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

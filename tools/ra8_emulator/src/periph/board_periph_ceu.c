@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_ceu.c
  * @brief Capture Engine Unit (CEU) peripheral-block model for ra8_emulator
@@ -34,6 +30,8 @@
  * with the board_periph core from a file-scope constructor -- see
  * board_periph_block.h.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

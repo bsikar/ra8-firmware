@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_media_dl_net.c
  * @brief Host unit tests for the mdl_net vtable seam and the politeness clock.
@@ -14,6 +10,8 @@
  * the libcurl backend's pure transfer classifier and bounded write callback, and
  * the seeded jitter + injectable-clock politeness behaviour. Uses the repo's
  * `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <curl/curl.h>
 #include <dirent.h>

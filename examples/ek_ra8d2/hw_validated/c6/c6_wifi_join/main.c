@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/main.c
  * @brief Join the bench Wi-Fi over the ESP32-C6 and get an IP by DHCP (#492).
@@ -27,6 +23,8 @@
  * builds but prints a FAIL and stops, so no credential is committed and the
  * aggregate cross-build stays green.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

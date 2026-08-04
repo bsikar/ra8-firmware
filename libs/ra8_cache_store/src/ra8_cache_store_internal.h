@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_cache_store_internal.h
  * @brief Internal on-media format + cross-TU helpers for ra8_cache_store (#201).
@@ -32,6 +28,9 @@
  *
  * @par Tag
  * [Ring 4 / Storage] {World: NS}
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rmac_mgmt_cov.c
  * @brief Coverage-focused unit tests for ra8_rmac_mgmt.c host-reachable legs
@@ -27,6 +23,9 @@
  * every read, so host MDIO reads always deliver 0 -- read DATA the
  * wait seam cannot synthesize. Those lines carry GCOVR exclusion
  * markers in the source with a per-group rationale.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

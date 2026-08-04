@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_jpeg/main.c
  * @brief Headless on-silicon HIL gate for the raster image decode pipeline (#143).
@@ -26,6 +22,8 @@
  * produces. Any drift in the decoder, the scale math, or the toolchain output
  * changes the hash and trips the `uart_scrape` gate.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

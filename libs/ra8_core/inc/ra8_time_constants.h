@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_time_constants.h
  * @brief Named Time Unit Constants for Delay / Timeout / Tick Math
@@ -20,6 +16,9 @@
  * // GOOD: the intent is in the constant names
  * for (uint32_t i = 0; i < k_ra8_cpu_mhz * k_ra8_us_per_ms; i++) { ... }
  * @endcode
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

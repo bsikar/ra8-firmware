@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_esp_hosted_osi.c
  * @brief Unit tests for the esp-hosted OS-abstraction vtable and its slots.
@@ -41,6 +37,9 @@
  * the two together whatever the formatter does with the assertions.
  *
  * No hardware registers are touched; no ``ra8_fake_mmap`` window is required.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

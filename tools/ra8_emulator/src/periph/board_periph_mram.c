@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_mram.c
  * @brief Extra-MRAM (data-flash) MACI program/erase model for ra8_emulator.
@@ -56,6 +52,8 @@
  * Two register windows are intercepted (the controller block at 0x4013C000 and
  * the MACI command area at 0x40120000); both share one module-static state.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

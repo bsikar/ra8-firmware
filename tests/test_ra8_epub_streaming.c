@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_epub_streaming.c
  * @brief #151 bounded-RAM invariant gate: open + parse a large EPUB by STREAMING
@@ -31,6 +27,9 @@
  * The RAM-budget assertion is concrete: the page pool is `k_frames * k_frame_bytes`
  * bytes, held fixed regardless of archive size, and asserted to be several times
  * smaller than the archive; the count of resident frames never exceeds it.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

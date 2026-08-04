@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_cover.c
  * @brief Cover / title page for the open book.
@@ -12,6 +8,8 @@
  * book" and "Table of Contents" -- on the right. Tapping the cover or the read
  * button starts the reader; the contents button opens the TOC.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *

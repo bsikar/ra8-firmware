@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/idf_compat/esp_heap_caps.h
  * @brief ESP-IDF capability-flag compatibility for the esp-hosted port.
@@ -29,6 +25,8 @@
  * ESP-IDF reader would expect, and the port's allocator documents that it
  * ignores them.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dotf_regs.h
  * @brief Decryption On The Fly (DOTF) register layout for the Renesas RA8D2
@@ -78,6 +74,9 @@
  * top 100 bits of the IV are programmable. The driver still accepts
  * a full 128-bit IV and forwards every word to REG03; the hardware
  * silently drops the low bits at AES counter generation time.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

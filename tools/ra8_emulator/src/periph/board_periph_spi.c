@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_spi.c
  * @brief SPI_B (Type-B SPI) controller peripheral-block model for ra8_emulator
@@ -33,6 +29,8 @@
  * Self-registers its descriptor (address range + read / write / reset /
  * report) with the board_periph core from a file-scope constructor.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

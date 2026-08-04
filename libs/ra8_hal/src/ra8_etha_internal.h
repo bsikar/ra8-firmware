@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_etha_internal.h
  * @brief Cross-TU shared surface for the ra8_etha driver split.
@@ -18,6 +14,9 @@
  * header carries the handful of symbols both TUs share: the logger tag,
  * the per-port runtime slot table and its element type, and the shared
  * port range-check predicate. It is NOT part of the public ABI.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

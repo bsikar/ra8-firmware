@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sram_regs.h
  * @brief SRAM (with ECC) control / status / security register layout
@@ -60,6 +56,9 @@
  * Per CLAUDE.md the driver never writes these registers via macros --
  * use the ``ra8_sram_regs()`` and ``ra8_sram_cpscu_regs()`` accessors so
  * the host-side fake can intercept the writes.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

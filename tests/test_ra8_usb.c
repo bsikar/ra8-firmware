@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_usb.c
  * @brief Unit tests for the native USB device-mode driver (ra8_usb.c)
@@ -11,6 +7,9 @@
  * (init, attach, status, endpoints, FIFO queue paths). The MC/DC vector
  * tests for the compound boolean decisions in ra8_usb.c live in
  * test_ra8_usb_mcdc.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file key_vault.h
  * @brief Secure-only symmetric key store
@@ -38,6 +34,9 @@
  * inaccessible from NS. The veneer is the only NS->S path.
  * - **Denies:** raw key reads from any code path. Only the
  * SHA-256-of-XOR digest crosses the boundary.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

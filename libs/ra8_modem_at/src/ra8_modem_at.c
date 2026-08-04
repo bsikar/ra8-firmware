@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_modem_at.c
  * @brief Cellular modem AT command/response driver implementation
@@ -19,6 +15,9 @@
  * replacements for ``strlen``/``strncmp`` to keep the build free
  * of ``string.h`` per the existing convention in
  * ``libs/ra8_net_pal/src/ra8_net_pal.c``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_modem_at.h"

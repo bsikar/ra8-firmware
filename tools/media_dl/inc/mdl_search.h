@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_search.h
  * @brief Pure search/discovery policy: query encoding, URL templating, and the
@@ -25,6 +21,8 @@
  *
  * Keeping these pure makes the whole discovery parse path unit-testable against
  * a captured fixture with no network, which is exactly what #304 requires.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

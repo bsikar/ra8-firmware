@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_cache_demo/main.c
  * @brief ra8_io caching block device demo (Phase 5, #160).
@@ -30,6 +26,9 @@
  * The ra8_emulator captures the SCI8 console, so the PASS line and the
  * hit/miss counts are observable headlessly: a successful run prints
  * `ra8_io_cache_demo: re-read x8 hits=H misses=M ram:/HELLO.TXT PASS`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

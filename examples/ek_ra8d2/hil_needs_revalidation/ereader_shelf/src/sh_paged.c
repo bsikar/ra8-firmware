@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_paged.c
  * @brief Demand-paged .rabook backing: chunk reader + page cache + source bind.
@@ -25,6 +21,8 @@
  * `frame_bytes` (one chunk == one frame == one inflate; the contract
  * ra8_book_chunked_read relies on).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_log_cov.c
  * @brief Coverage top-up for the ra8_log -> ra8_io stream adapter (ra8_io_log.c).
@@ -20,6 +16,9 @@
  * linked public API (the adapter only ever installs the sink with the non-NULL
  * stream validated by ::ra8_io_log_attach), so it carries a GCOVR_EXCL_LINE
  * marker at its source rather than a fabricated test.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

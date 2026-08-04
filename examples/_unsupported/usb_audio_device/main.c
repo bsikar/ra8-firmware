@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/_unsupported/usb_audio_device/main.c
  * @brief USB Audio Class 1.0 device-mode smoke test for EK-RA8D2
@@ -64,6 +60,8 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-04-29
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

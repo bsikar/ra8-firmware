@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ulpt_demo/main.c
  * @brief ULPT 1 Hz wake-from-software-standby demo for EK-RA8D2
@@ -24,6 +20,8 @@
  * host unit-test path (no NVIC needed) and exercises the same
  * register sequence on the EK-RA8D2 silicon.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

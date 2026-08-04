@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_usbh_seam.h
  * @brief Virtual USB host-mode devices behind the ra8_usb_host_* / hmsc seams
@@ -20,6 +16,8 @@
  *
  * Split out of the ra8_emulator main translation unit; behaviour unchanged.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

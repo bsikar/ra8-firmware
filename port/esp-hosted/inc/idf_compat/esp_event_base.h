@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/idf_compat/esp_event_base.h
  * @brief ESP-IDF-compatible event-base identity: the type and its two declarators.
@@ -50,6 +46,8 @@
  * not this header. Those two are separate compatibility headers owned
  * elsewhere in this port; this file supplies what they are expected to expose.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

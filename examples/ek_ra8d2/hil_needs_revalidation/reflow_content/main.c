@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/reflow_content/main.c
  * @brief Headless on-silicon HIL gate for reflow content render + pagination (#115).
@@ -21,6 +17,8 @@
  * identical every boot (stable across resets) and matches the host / ra8_emulator
  * run, so any drift in the layout, pagination, or render changes the hash.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

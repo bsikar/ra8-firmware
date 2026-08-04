@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_gptp.c
  * @brief Ethernet Generic PTP Timer (GPTP) model for ra8_emulator -- HUM Ch 35
@@ -58,6 +54,8 @@
  * "gPTP Register List" Table 35.3 p 1926). The ESWM media-mux at @c 0x403E_1400
  * sits above it and stays in the sparse fallback.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_i2c_internal.h
  * @brief Module-private interfaces shared by the board_periph_i2c TUs
@@ -13,6 +9,8 @@
  * devices (board_periph_i2c_devices.c). The bus-side device registry and the
  * device-side reset/register/telemetry entry points cross here.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

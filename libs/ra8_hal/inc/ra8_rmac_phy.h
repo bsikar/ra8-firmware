@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rmac_phy.h
  * @brief Reduced-MAC (RMAC) PHY driver -- off-chip PHY for the GMAC-FPI
@@ -24,6 +20,9 @@
  *
  * Reference: FSP `r_rmac_phy` driver shape, IEEE 802.3 Clause 22 /
  *            Clause 28A (auto-neg), IEEE 802.3-2018 Annex 28B.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

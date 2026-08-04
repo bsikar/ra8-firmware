@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file usb_selftest_device.c
  * @brief Device side of the soak self-test: USBX MSC over a FAT16 MRAM volume
@@ -14,6 +10,8 @@
  * thread entry (selftest_device_worker, spawned by tx_application_define in
  * main.c). Split out of main.c (see usb_selftest_common.h).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

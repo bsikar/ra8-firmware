@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_unarch_tar_internal.h
  * @brief Module-private tar field/record parsers shared across the tar TUs.
@@ -18,6 +14,9 @@
  * and `tests/` may include this header.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

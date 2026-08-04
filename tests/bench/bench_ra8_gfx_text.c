@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file bench_ra8_gfx_text.c
  * @brief Microbenchmark: text rendering through the bundled bitmap-font
@@ -18,6 +14,8 @@
  * Bytes-per-iteration is the rendered pixel area (width * height * bpp)
  * so MB/s is directly comparable to a memcpy throughput baseline.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

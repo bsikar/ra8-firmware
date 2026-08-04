@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_cache_store.c
  * @brief Unit tests for ra8_cache_store over LevelX standalone + a RAM NOR fake (#201).
@@ -13,6 +9,9 @@
  * checkpoint reload and an unclean-shutdown log replay that discards a torn
  * (payload-written, header-missing) tail. LevelX runs standalone
  * (`LX_STANDALONE_ENABLE`) backed by ::lx_nor_fake_ram_init.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

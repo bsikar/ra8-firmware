@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file libs/ra8_board_ra8p1/boot/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
@@ -38,6 +34,9 @@
  * anonymous HardFault. The handler runs in the Secure world; NS code
  * cannot reach the SFSR register at 0xE000EDE4 because it lives in
  * the Secure-only system control region (RAZ from NS).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

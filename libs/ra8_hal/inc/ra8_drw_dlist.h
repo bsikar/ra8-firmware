@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_drw_dlist.h
  * @brief 2D Drawing Engine (DRW / D/AVE 2D) display-list builder -- public API
@@ -24,6 +20,9 @@
  * @note Not thread-safe; one builder per thread.
  * @see ra8_drw.h
  * @since 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

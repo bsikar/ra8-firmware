@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/i2c_loopback/main.c
  * @brief RIIC (ra8_i2c) controller self-test against the on-board U15
@@ -32,6 +28,8 @@
  *
  * Hardware: bare EK-RA8D2 v1 only -- U15 is on-board, no jumpers needed.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

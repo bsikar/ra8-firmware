@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_i3c_i2c.h
  * @brief IIC_B (I3C unified IP, I2C-only mode) controller driver
@@ -36,6 +32,9 @@
  * - ``internal_i3c_i2c_scan``           probe a 7-bit target without payload
  * - ``internal_i3c_i2c_attach_handler`` register completion / error callback
  * - ``internal_i3c_i2c_get_errors`` / ``internal_i3c_i2c_clear_errors``
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_sdramc_selfrefresh.c
  * @brief Unit tests for SDRAMC self-refresh entry and exit.
@@ -19,6 +15,9 @@
  * exercised by a dedicated test. No compound decisions exist in the
  * production code under test, so no multi-vector MC/DC tables are
  * required.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ceu.c
  * @brief Capture Engine Unit (CEU) driver implementation
@@ -23,6 +19,9 @@
  * the TrustZone-style firewall, every CDOCR byte-swap permutation,
  * scale-down + low-pass filter, the CAPCR frame-drop / burst-mode
  * controls, and dispatch + acknowledgement of every CETCR event.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_ceu.h"

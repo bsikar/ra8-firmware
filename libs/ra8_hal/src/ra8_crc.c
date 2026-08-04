@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_crc.c
  * @brief Cyclic Redundancy Check driver implementation
@@ -24,6 +20,9 @@
  * in `R_CRC_Open`) and uses byte-access `CRCDIR_BY` for 8/16/CCITT
  * polynomials and 32-bit `CRCDIR` for 32-bit polynomials. Every
  * register access carries a HUM Ch 48 citation (p 3180-3189).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_crc.h"

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file adc_selfdiag.c
  * @brief ADC_B self-diagnosis + internal extended-analog channel reads
@@ -22,6 +18,9 @@
  *
  * The ADSR.ADACT0 conversion busy-poll budget is shared with ``adc.c``
  * via ``adc_internal.h``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

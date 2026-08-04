@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/ra8_esp_hosted_c6link.h
  * @brief Binds the `ra8_c6link` transport seam to this port's OS vtable.
@@ -27,6 +23,8 @@
  * bound, because ``g_h.funcs`` is unpopulated until it does and the first
  * transaction would dereference it.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

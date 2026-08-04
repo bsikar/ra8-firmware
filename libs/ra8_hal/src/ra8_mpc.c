@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mpc.c
  * @brief Multi-function Pin Controller facade implementation
@@ -13,6 +9,9 @@
  * Ring 3 / HAL substrate. Owns every write to ``PmnPFS`` and the
  * accompanying PWPR unlock/lock sequence. See ``ra8_mpc.h`` for
  * the API contract.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_mpc.h"

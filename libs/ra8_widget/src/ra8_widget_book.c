@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_widget_book.c
  * @brief Book-card + book-grid leaf widget for the ra8_widget tree (#145 Phase 2).
@@ -16,6 +12,8 @@
  * the whole grid is host-testable with a recording mock paint. The card progress
  * bar reuses the shared ::ra8_widget_priv_fill_frac helper.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

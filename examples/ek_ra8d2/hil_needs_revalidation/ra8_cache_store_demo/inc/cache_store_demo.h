@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file cache_store_demo.h
  * @brief Hardware-free driver for the ra8_cache_store on-media cache demo (#257).
@@ -23,6 +19,9 @@
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

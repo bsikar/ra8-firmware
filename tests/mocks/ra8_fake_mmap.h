@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fake_mmap.h
  * @brief Host-test helper to reset RA8D2 MMIO backing memory
@@ -11,6 +7,9 @@
  * register windows wired up to ordinary host RAM via a constructor.
  * Individual tests call `ra8_fake_mmap_reset()` from their `setUp()`
  * routine to scrub the backing memory between cases.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

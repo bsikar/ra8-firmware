@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs_fat_fileio_cov.c
  * @brief Coverage booster for libs/ra8_fs/src/ra8_fs_fat_fileio.c.
@@ -32,6 +28,9 @@
  * An "inject" backend wraps the same byte array and can fail a specific LBA
  * read or write, fail all writes, or count reads down to a deterministic
  * point -- allowing precise I/O-error injection without SIGALRM or setitimer.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

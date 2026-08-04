@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_flash_edge_cases.c
  * @brief Edge-case + stress unit tests for the RA8D2 MRAM flash driver.
@@ -22,6 +18,9 @@
  *   - extra-MRAM erase argument validation (address out of window);
  *   - clear-status accepts the full 8-bit MSEINT mask without
  *     rejecting reserved bits as invalid.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

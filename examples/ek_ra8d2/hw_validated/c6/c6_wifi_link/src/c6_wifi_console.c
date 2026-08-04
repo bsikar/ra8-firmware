@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/src/c6_wifi_console.c
  * @brief Bounded console formatters for the `ra8_c6link` bring-up application.
@@ -21,6 +17,8 @@
  * for more than that: the bytes it prints come off the wire from the
  * co-processor, so it sanitises rather than trusts.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

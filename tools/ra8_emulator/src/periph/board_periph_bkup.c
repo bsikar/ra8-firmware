@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_bkup.c
  * @brief VBATT backup-register (VBTBKRn) reset-retained domain model
@@ -57,6 +53,8 @@
  * switch is stopped -- the backup registers read and write correctly with the
  * default @c OFS1 once PRC1 is unlocked. Bench-proven: @c rw=ok survived=Y.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

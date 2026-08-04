@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_book.c
  * @brief Format-agnostic book backend: ra8_book (.rabook) + ra8_epub (.epub).
@@ -22,6 +18,8 @@
  *     plain text the reader word-wraps; the cover is a compressed JPEG/PNG
  *     decoded via ra8_img_decode_blit.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *

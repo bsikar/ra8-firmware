@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_drw.h
  * @brief 2D Drawing Engine (DRW / D/AVE 2D) HAL driver -- public API
@@ -33,6 +29,9 @@
  * CLUT load, RLE source, ACLUT44 / I8 / etc.
  * - Performance: both PERFCOUNTk + PERFTRIGGER selector.
  * - Cache: explicit FB and texture flush hooks.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

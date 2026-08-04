@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_nsc_periph_init_cov.c
  * @brief Coverage-focused unit tests for libs/ra8_nsc/src/ra8_nsc_periph_init.c
@@ -30,6 +26,9 @@
  * - Vector 1: s_initialized == false -> takes init path (first call)
  * - Vector 2: s_initialized == true  -> takes fast path (subsequent calls)
  * Single-condition decisions require only 2 vectors for full MC/DC.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file usb_selftest_host.h
  * @brief Host-side entry point of the soak self-test
@@ -12,6 +8,8 @@
  * the RO write rejection, and print the aggregate throughput + SOAK PASS banner.
  * Driven by the host worker thread in main.c. Defined in usb_selftest_host.c.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

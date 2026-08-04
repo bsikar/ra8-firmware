@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_xfer.c
  * @brief USB device-mode data path: pipe queue, DCP control data, SETUP
@@ -21,6 +17,8 @@
  * ``ra8_usb_internal.h``). Modelled on FSP ``r_usb_preg_abs.c`` /
  * ``r_usb_plibusbip.c``; no FSP source ships in this tree.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_wdt_supervisor.h
  * @brief ThreadX-aware watchdog supervisor (per-thread check-in registry)
@@ -59,6 +55,9 @@
  *   Stalled -> __end [label="WDT underflow / chip reset"];
  * }
  * @enddot
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

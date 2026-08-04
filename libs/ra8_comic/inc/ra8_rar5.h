@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rar5.h
  * @brief Clean-room RAR 5.0 ("method 50") decompressor -- LZ + Huffman + filters.
@@ -51,6 +47,9 @@
  * @see ra8_comic.h The comic facade that turns a decoded page into pixels.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

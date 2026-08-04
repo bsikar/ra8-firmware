@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file fuzz_ra8_unarch_gzip.c
  * @brief libFuzzer harness for the clean-room gzip member decoder.
@@ -16,6 +12,9 @@
  * or looping unboundedly; ASan / UBSan diagnose any out-of-bounds access or
  * integer UB inside the first-party container parser and the vendored miniz
  * DEFLATE core.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

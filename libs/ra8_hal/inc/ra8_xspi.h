@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_xspi.h
  * @brief xSPI / Octo-SPI driver (flash read/program/erase + ID/status)
@@ -12,6 +8,9 @@
  * mode. Supports initialisation at a given link-layer IO width, raw
  * command-buffer writes, and a minimal set of SPI NOR flash
  * operations (read, page program, sector erase, status/ID read).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

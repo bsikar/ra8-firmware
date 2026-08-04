@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_display_pal_policy.h
  * @brief Pluggable page-turn refresh-cadence policy for bistable (e-ink) panels.
@@ -25,6 +21,8 @@
  * Pure logic: no MMIO, no heap, no I/O. Continuous-refresh (LCD) backends do not
  * need it -- it is inert there (every hint behaves the same on a scan-out panel).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Display] {World: NS}
  *

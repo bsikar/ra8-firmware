@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_widget_keyboard.c
  * @brief On-screen-keyboard leaf widget for the ra8_widget tree (#145 Phase 2).
@@ -15,6 +11,8 @@
  * goes through the injected ::ra8_widget_paint_t backend, so the render + route
  * logic is host-testable with a recording mock seam + paint.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

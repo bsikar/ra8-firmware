@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/rng_demo/main.c
  * @brief ra8_psa_crypto_random() dump over SCI8 for the bare EK-RA8D2 EVM
@@ -33,6 +29,8 @@
  *
  * No external transceiver, board, or harness is required.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

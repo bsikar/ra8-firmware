@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_gpt.c
  * @brief Unit tests for ra8_gpt.c (General PWM Timer)
@@ -10,6 +6,9 @@
  * This sibling owns the basic start / stop / read / init / dispatch contract
  * tests. The DMA streaming, runtime-PWM, dead-time, three-phase, and MC/DC
  * vector tests live in test_ra8_gpt_pwm_dma.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dma.h"

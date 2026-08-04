@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_modem.h
  * @brief Cellular AT-modem device model for ra8_emulator (attached to SCI7 UART).
@@ -31,6 +27,8 @@
  * command is rejected with ``+CME ERROR: 4`` exactly as a modem with
  * ``AT+CMEE=1`` active would, so the demo's error branch is faithful too.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

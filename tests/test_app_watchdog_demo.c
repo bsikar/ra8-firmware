@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_watchdog_demo.c
  * @brief Integration test: IWDT refresh + reset-cause introspection
@@ -14,6 +10,8 @@
  * The reset-cause banner picker is replicated here so we can MC/DC
  * the three-way decision (power_on, iwdt, default).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

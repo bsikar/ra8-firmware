@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/main.c
  * @brief ThreadX + USBX Mass-Storage view of the onboard MRAM (USB-HS)
@@ -47,6 +43,8 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-05-02
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

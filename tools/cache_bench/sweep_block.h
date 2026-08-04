@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file sweep_block.h
  * @brief #208 block/frame-size sweep: the byte-size axis the capacity sweep
@@ -37,6 +33,8 @@
  * ::cbs_backend_t whose `read` issues real card reads; nothing in the sweep
  * core changes.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

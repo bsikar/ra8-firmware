@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_threadx_mpu_partition_demo.c
  * @brief Integration test: ThreadX + Armv8-M MPU partition table bring-up
@@ -19,6 +15,8 @@
  *   - ra8_mpu             (region table programming)
  *   - ra8_board_ek_ra8d2  (LED1 init + toggle)
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

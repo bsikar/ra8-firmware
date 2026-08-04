@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_threadx_levelx_demo.c
  * @brief Integration test: ThreadX + LevelX wear-levelling demo bring-up
@@ -21,6 +17,8 @@
  *   - ra8_time                 (SysTick at CPUCLK0)
  *   - ra8_board_ek_ra8d2       (J-Link OB VCOM console)
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

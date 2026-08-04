@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_i3c_i2c_peripheral.c
  * @brief IIC_B peripheral driver implementation
@@ -26,6 +22,9 @@
  *
  * Citations: HUM Ch 40.2 "I3C / IIC_B Register Reference",
  * pages 2452..2491 (chapter map row 40).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_i3c_i2c_peripheral.h"

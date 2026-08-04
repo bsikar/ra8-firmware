@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb.c
  * @brief Native USB controller driver implementation (device + host)
@@ -50,6 +46,9 @@
  *    and device modes are independently selected at init time.
  *  - USB hubs -- the host-side starter targets a single attached
  *    device. Hub class enumeration is out of scope.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb.h"

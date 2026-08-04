@@ -1,8 +1,4 @@
 /*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/*
  * GNU ld linker script for the CPU1 (Cortex-M33) image of compile_on_m33.
  *
  * MRAM_CPU1 0x020C0000 256 KiB  Code + rodata + vectors
@@ -13,6 +9,9 @@
  * whose 96 KiB first-fit arena (ra8_epub_miniz_alloc / operator new) does not fit
  * the 64 KiB SRAM_CPU1; it is parked in external SDRAM via .sdram_bss below. The
  * M85 brings up the SDRAM controller before ra8_cpu1_release.
+ *
+ * Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 ENTRY(cpu1_reset_handler)

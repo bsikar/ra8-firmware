@@ -547,17 +547,29 @@ gate_ascii() (
 )
 
 # --- copyright ------------------------------------------------------------
-# ONE canonical copyright + SPDX preamble, in the SAME order and position in
-# every first-party file: an `SPDX-License-Identifier` line immediately
-# followed by a `Copyright` line, right after the shebang if any and ahead of
-# the descriptive comment block. The check used to ask only whether the two
-# strings appeared SOMEWHERE, which let three different conventions coexist
-# (scripts SPDX-first-after-shebang, C `@copyright`+SPDX buried at the end of
-# the @file block, and one gate with the pair stranded sixty lines deep); this
-# now fixes the ORDER, POSITION and exact TEXT. --selftest FIRST proves the
-# rules fire and stay quiet (and that the fixer canonicalises) before the scan;
-# --all judges the DERIVED first-party scope (lint_targets) so a new top-level
-# directory is covered the day it lands rather than via a hand-maintained glob.
+# ONE canonical attribution per file, in the place each comment convention
+# already keeps its metadata -- two forms, because this tree has two
+# conventions and forcing one on both made the C headers worse:
+#
+#   C family -- INSIDE the @file Doxygen block, as its closing tag group:
+#       * @copyright Copyright (c) 2026 Brighton Sikarskie
+#       * SPDX-License-Identifier: MIT
+#     never in a separate comment above the block. @author / @date / @since
+#     are PRESERVED where a file has them and are never invented: 2190 of the
+#     2297 C-family files have never carried @author or @date, and
+#     manufacturing those would be fabricated provenance, not a standard.
+#
+#   Hash-comment files (shell, python, cmake, make, yaml) -- no doc-comment
+#   convention to live inside, so the pair leads the file after any shebang:
+#       # SPDX-License-Identifier: MIT
+#       # Copyright (c) 2026 Brighton Sikarskie
+#
+# The check used to ask only whether the two strings appeared SOMEWHERE, which
+# let several conventions coexist; it now fixes the ORDER, POSITION and exact
+# TEXT for both forms. --selftest FIRST proves the rules fire and stay quiet
+# (and that the fixer merges, preserves provenance and is idempotent) before
+# the scan; --all judges the DERIVED first-party scope (lint_targets) so a new
+# top-level directory is covered the day it lands, not via a hand-kept glob.
 gate_copyright() (
   set -e
   python3 scripts/checks/check-copyright.py --selftest

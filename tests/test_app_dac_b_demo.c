@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_dac_b_demo.c
  * @brief Integration test: DAC_B 12-bit DC sweep demo
@@ -11,6 +7,8 @@
  * ``ra8_dac_b_init_configured`` -> ``ra8_dac_b_set_output_enable`` ->
  * ``ra8_dac_b_write``. Backed by the host MMIO shim.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

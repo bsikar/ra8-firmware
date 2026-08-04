@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_widget_reflow_view.c
  * @brief Reflowed-reading-body leaf widget for the ra8_widget tree (#145 Phase 2).
@@ -15,6 +11,8 @@
  * are host-testable with a mock seam; the pixel work lives in the app-bound
  * callbacks.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

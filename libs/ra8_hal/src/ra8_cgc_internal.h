@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_cgc_internal.h
  * @brief Cross-TU sharing for the split Clock Generation Circuit driver.
@@ -32,6 +28,8 @@
  * Ring 1 (HAL), World S (secure-callable). Same ring/world as the parent
  * `ra8_cgc.c`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

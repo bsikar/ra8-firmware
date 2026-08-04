@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_smbus.c
  * @brief SMBus 3.2 protocol layer over an injected I2C bus seam --
@@ -19,6 +15,9 @@
  *
  * Section references in the comment headers below are to the SMBus 3.2
  * specification (SBS-IF, December 2018).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_smbus.h"

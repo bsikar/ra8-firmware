@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_book_paged.c
  * @brief Equivalence tests for the paged ra8_book accessor mode (#163).
@@ -23,6 +19,9 @@
  * This sibling owns the resident-vs-paged equivalence, guard, long-run,
  * and read-fault tests; the chunked-container backing and hostile-blob
  * edge tests live in test_ra8_book_paged_edge.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

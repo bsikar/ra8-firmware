@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mpc.h
  * @brief Multi-function Pin Controller (MPC) facade
@@ -30,6 +26,9 @@
  * ## Threading
  *
  * Single-threaded init context only.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

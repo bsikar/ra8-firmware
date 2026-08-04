@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/port_esp_hosted_host_os.h
  * @brief esp-hosted port header: RTOS handle types, return codes and budgets.
@@ -34,6 +30,8 @@
  * is 1000 in ``port/threadx/inc/tx_user.h``), so the millisecond-to-tick
  * conversion in the port is the identity.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

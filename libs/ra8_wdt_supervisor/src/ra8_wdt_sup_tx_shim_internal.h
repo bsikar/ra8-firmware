@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_wdt_sup_tx_shim_internal.h
  * @brief ThreadX shim for ra8_wdt_supervisor (host unit-test build only)
@@ -17,6 +13,9 @@
  * for the handful of TX symbols the supervisor uses. The stubs let
  * the implementation file compile and link unchanged; tests drive the
  * supervisor synchronously through ``ra8_wdt_supervisor_tick``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

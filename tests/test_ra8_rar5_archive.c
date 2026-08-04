@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rar5_archive.c
  * @brief CBR facade tests: RAR5 compressed-page parity + RAR4 unsupported.
@@ -15,6 +11,9 @@
  * stays unsupported, and the ra8_rar_extract dispatch guards. The shared
  * RAR5 writer fixture is tests/support/rar5_enc_fixture.h. Tests are
  * magic-number exempt, so byte offsets and bit widths appear as literals.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

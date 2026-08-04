@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_pfs_regs.h
  * @brief Pin Function Select (PFS) register layout for the Renesas RA8D2
@@ -45,6 +41,9 @@
  * @endcode
  *
  * Skipping the unlock makes the write silently go nowhere.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

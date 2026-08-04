@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/nimble/inc/ble_hci_ra8_ble.h
  * @brief Apache NimBLE HCI transport adapter against the ra8_ble HCI ring
@@ -42,6 +38,9 @@
  * symbol here as a link-only stub, not a working BLE stack. Consumers stay
  * under ``examples/_unsupported/`` until a NimBLE app is driven to real
  * hardware validation and promoted out of that tier.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

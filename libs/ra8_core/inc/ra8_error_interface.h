@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_error_interface.h
  * @brief Abstract error-reporter interface for DI
@@ -14,6 +10,9 @@
  * `internal_ra8_fatal_error()`. Production code points the sink at
  * the log backend; tests point it at a ring buffer they can assert
  * over.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_vreg.h
  * @brief Internal Voltage Regulator (DCDC / LDO) driver -- full HUM Ch 68 surface
@@ -120,6 +116,9 @@
  *              exclusion.
  *
  * @see HUM Ch 68 "Internal Voltage Regulator" p 4032-4034.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

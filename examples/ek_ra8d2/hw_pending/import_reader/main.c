@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/import_reader/main.c
  * @brief End-to-end on-import EPUB -> .rabook compile + cache + read (#151).
@@ -51,6 +47,8 @@
  * ra8_emulator attach an image with `--sd <image>` (build one with
  * `tools/mkfontimg <book.epub> card.img BOOK.EPB`).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

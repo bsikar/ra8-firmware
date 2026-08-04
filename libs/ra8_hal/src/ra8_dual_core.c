@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dual_core.c
  * @brief CPU1 (Cortex-M33) lifecycle helper -- implementation
@@ -21,6 +17,8 @@
  * Host (RA8_OFF_TARGET) builds back the registers with a small
  * static state struct so unit tests can drive the API without a chip.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

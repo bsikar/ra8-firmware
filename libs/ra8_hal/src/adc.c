@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file adc.c
  * @brief ADC16H (16-bit SAR) converter driver implementation
@@ -35,6 +31,9 @@
  * driver modelled non-existent ADCSR / ADCER / RESSEL / CVEN bits and
  * folded "resolution" into the ADMD0 mode code; both were wrong and
  * have been deleted.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

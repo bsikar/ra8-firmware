@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_cache.c
  * @brief Cortex-M85 L1 cache maintenance, enable/disable, and I-cache invalidate.
@@ -27,6 +23,8 @@
  * RA8D2 Hardware User's Manual. On a host build the SCB window is backed by the
  * fake MMIO map, so the writes are observable to unit tests.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

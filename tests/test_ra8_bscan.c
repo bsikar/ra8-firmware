@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_bscan.c
  * @brief Unit tests for ra8_bscan.c (boundary-scan TAP bookkeeping)
@@ -12,6 +8,9 @@
  * register I/O. The tests therefore exercise the firmware-side
  * bookkeeping object only: lifecycle, idcode constant, status
  * snapshot, instruction validation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

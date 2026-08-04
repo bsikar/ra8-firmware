@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_log.h
  * @brief Lightweight Logging Interface for ra8-firmware
@@ -53,6 +49,9 @@
  *   gating. The actual logging functions are real `extern` entry points
  *   so they stay in one compilation unit.
  * - **Rule 10**: compiles clean under `-Wall -Wextra -Werror`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

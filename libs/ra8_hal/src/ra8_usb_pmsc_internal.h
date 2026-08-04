@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_pmsc_internal.h
  * @brief Cross-TU surface shared between the device-MSC BOT state
@@ -19,6 +15,9 @@
  * shared serialisation helpers, and the SCSI handler declarations
  * that the BOT dispatcher invokes. It is NOT part of the public API:
  * the public contract lives in `ra8_usb_pmsc.h`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

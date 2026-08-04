@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_ereader_zoom.c
  * @brief Host twin of the `ereader_zoom` tap-to-zoom demo: its golden (#478).
@@ -26,6 +22,9 @@
  *     tiles than the page holds, and evicts none (#338);
  *   - **partial update** -- a loupe-only change asks for a flush of the lens box
  *     rather than the content area.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

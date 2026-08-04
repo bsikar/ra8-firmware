@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_threadx_ipc_demo.c
  * @brief Surface test: M85 IPC HAL primitives used as a reference
@@ -20,6 +16,8 @@
  * Exercised modules:
  *   - ra8_ipc            (channel resolution, init, send/recv, retry)
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

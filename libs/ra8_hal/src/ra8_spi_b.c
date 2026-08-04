@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_spi_b.c
  * @brief SPI_B controller driver (polling + IRQ dispatch + DMA pipes)
@@ -33,6 +29,9 @@
  * The legacy 8-bit SPI block ``SPCR/SPPCR/SPBR/SSLND/SPND/SPCKD``
  * register set has been removed -- those registers do not exist on
  * RA8D2.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

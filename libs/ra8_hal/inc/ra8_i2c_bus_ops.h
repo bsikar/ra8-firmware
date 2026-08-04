@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_i2c_bus_ops.h
  * @brief Injected I2C-bus seam consumed by Ring-3 I2C device drivers.
@@ -33,6 +29,8 @@
  * app knows which peripheral the board wires to the device and which
  * other devices share that bus.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

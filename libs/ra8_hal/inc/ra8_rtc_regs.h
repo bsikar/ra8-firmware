@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rtc_regs.h
  * @brief Real-Time Clock (RTC) register layout for the Renesas RA8D2
@@ -29,6 +25,9 @@
  * All time/date count and alarm registers are BCD-encoded. The RTC
  * clock source is selected in CGC (sub-clock or LOCO) before this
  * driver is brought up.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

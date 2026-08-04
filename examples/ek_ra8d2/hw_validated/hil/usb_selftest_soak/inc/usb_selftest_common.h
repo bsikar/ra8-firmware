@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file usb_selftest_common.h
  * @brief Shared constants for the usb_selftest_soak translation units
@@ -13,6 +9,8 @@
  * MRAM window, the SCSI sense triples, and the synthesized FAT16 layout. Plain
  * compile-time constants only (no state), so every TU can include it freely.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

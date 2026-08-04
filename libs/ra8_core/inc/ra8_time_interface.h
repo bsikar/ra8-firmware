@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_time_interface.h
  * @brief Abstract time-source interface for DI and unit testing
@@ -15,6 +11,9 @@
  *
  * Production code points the interface at
  * `g_ra8_time_interface_systick` (wraps `ra8_time_ms` + `ra8_delay_ms`).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

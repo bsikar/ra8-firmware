@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_emulator_mstp_gate.c
  * @brief Unit tests for the ra8_emulator module-stop gate table (#405)
@@ -29,6 +25,8 @@
  * decoded independently of the model, so a wrong bit in the model's table
  * fails a vector rather than agreeing with a matching mistake.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

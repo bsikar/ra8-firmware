@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_vfs_compress.h
  * @brief Transparent VFS-level whole-file compression (compress-on-write,
@@ -46,6 +42,8 @@
  *                                 restored, sizeof(restored), &out_len);
  * @endcode
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

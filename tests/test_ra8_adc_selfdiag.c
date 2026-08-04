@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_adc_selfdiag.c
  * @brief Unit tests for the ADC_B self-diagnosis + die-temperature path
@@ -23,6 +19,9 @@
  * The fake MMIO window is plain RAM, so the tests inject ADEXDRn
  * results and calibration words by writing directly to the backing
  * store.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

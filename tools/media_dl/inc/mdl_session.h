@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_session.h
  * @brief Session identity (honest User-Agent) and robots.txt gating.
@@ -13,6 +9,8 @@
  * impersonating a browser -- a lying UA is what gets a well-behaved bot
  * hard-banned instead of soft-throttled. Robots gating is on by default and
  * fetches `/robots.txt` per host on first contact.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

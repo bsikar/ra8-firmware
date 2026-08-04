@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rand_stub.c
  * @brief Deterministic xorshift32 rand()/srand() override
@@ -28,6 +24,9 @@
  * ld-evaluation order matters. As long as ra8_core/ is on the link
  * line BEFORE -lc, our strong symbols win and newlib's heap path is
  * never reached.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

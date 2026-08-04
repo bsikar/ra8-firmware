@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_xspi_demo/main.c
  * @brief ra8_io fabric over OSPI NOR flash (epic #155, #156) on the EK-RA8D2.
@@ -28,6 +24,9 @@
  * budget. ra8_emulator models the 2 MiB OSPI NOR array internally, so the run is
  * headless and observable: a successful run prints
  * `ra8_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

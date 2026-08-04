@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/keyboard/main.c
  * @brief On-silicon HIL for the on-screen keyboard widget `ra8_keyboard` (#105).
@@ -22,6 +18,8 @@
  * hit-test + text-buffer logic, so the banner is identical on host, ra8_emulator,
  * and silicon. A mismatch halts on a BKPT before the PASS line.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

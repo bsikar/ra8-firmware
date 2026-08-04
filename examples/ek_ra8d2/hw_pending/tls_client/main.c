@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/tls_client/main.c
  * @brief TLS client over ``ra8_tls`` + ``ra8_net_pal`` (NetX Duo transport)
@@ -45,6 +41,8 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-07-15
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

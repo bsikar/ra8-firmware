@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_composite.h
  * @brief Native USB device-side composite-class layer
@@ -53,6 +49,9 @@
  * Reference: USB 2.0 spec sec 9.6 "Standard USB Descriptor
  * Definitions"; Interface Association Descriptor ECN ("USB Engineering
  * Change Notice: Interface Association Descriptors", 2003-07-23).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

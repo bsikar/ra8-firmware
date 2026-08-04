@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_decomp_limits.h
  * @brief Unified decompression-limits policy: one bound set for every decoder.
@@ -62,6 +58,9 @@
  * @see ra8_comic.h        Comic facade whose CBZ/CBR/CBT backends charge it.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

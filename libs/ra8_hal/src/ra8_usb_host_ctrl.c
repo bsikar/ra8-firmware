@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_usb_host_ctrl.c
  * @brief USB host-mode control-transfer engine (polled, synchronous)
@@ -22,6 +18,8 @@
  * ``ra8_usb_internal.h``. Modelled on FSP ``r_usb_hreg_abs.c``; no FSP
  * source ships in this tree.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/epub_parse/main.c
  * @brief On-silicon HIL: ra8_epub parse layer runs on the target (#139).
@@ -23,6 +19,8 @@
  * identical on host, ra8_emulator, and silicon. Any failure on any path prints a
  * FAIL banner and halts on a BKPT before the PASS line, so the gate is exact.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

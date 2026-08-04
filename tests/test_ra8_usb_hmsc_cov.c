@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_usb_hmsc_cov.c
  * @brief Coverage-focused unit tests for the native USB host-side MSC
@@ -34,6 +30,9 @@
  * decode) lives strictly downstream of a successful CBW push and is
  * therefore not reachable on the bare-metal host -- those lines are marked
  * `GCOVR_EXCL_*` in the source with a per-region justification.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

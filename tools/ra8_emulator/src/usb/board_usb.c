@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_usb.c
  * @brief USBFS controller model + virtual USB host (chapter-9 enumeration)
@@ -18,6 +14,8 @@
  * (DVSQ powered -> default -> address -> configured) until USBX activates its
  * CDC-ACM class.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

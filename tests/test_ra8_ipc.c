@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_ipc.c
  * @brief Unit tests for ra8_ipc.c (Inter-Processor Communication driver)
@@ -12,6 +8,9 @@
  * test_ra8_ipc_sem.c (hardware semaphores), test_ra8_ipc_ring.c (ring
  * buffer + channel-helper sweeps + MC/DC). Shared fixture state lives
  * in support/ipc_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

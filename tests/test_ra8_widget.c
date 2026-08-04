@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_widget.c
  * @brief Unit tests for the ra8_widget composable-UI layer (#145).
@@ -14,6 +10,8 @@
  * concrete leaf-widget (label / button / kit) tests live in
  * test_ra8_widget_leaf.c.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

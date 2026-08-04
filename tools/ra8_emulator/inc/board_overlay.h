@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_overlay.h
  * @brief Composite board-view renderer: panel framebuffer + a status sidebar
@@ -22,6 +18,8 @@
  * and calls ::board_overlay_compose; board_view.m only blits the result. Plain
  * C so it builds and tests on any host.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

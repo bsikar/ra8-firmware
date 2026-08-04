@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_spi_bus.c
  * @brief Unit tests for the ra8_io SPI-bus facade
@@ -26,6 +22,9 @@
  * Determinism mirrors the sibling driver tests: status flags (SPI_B SPSR,
  * SCI CSR) are pre-seeded so the drivers' bounded polls fall through on
  * the first read; no timers and no signal injection are used.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

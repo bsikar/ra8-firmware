@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_canfd_frame.c
  * @brief CANFD frame transmit / receive data path (split from ra8_canfd.c)
@@ -32,6 +28,8 @@
  * or an FSP ``r_canfd.c`` line citation when the bit semantics come
  * from the reference driver.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

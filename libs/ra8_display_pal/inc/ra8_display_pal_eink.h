@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_display_pal_eink.h
  * @brief E-ink backend (IT8951) for the display PAL
@@ -28,6 +24,8 @@
  * bench; the vtable + conversion are host-verified against the
  * fake-backed ``ra8_epaper`` driver.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

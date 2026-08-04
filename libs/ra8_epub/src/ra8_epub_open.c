@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_epub_open.c
  * @brief `ra8_epub_open()` / `ra8_epub_close()` lifecycle plumbing.
@@ -11,6 +7,8 @@
  * to read the ZIP central directory, locates the OPF document via the
  * tinyxml2-backed shim, and populates `ra8_epub_book_t`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}

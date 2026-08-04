@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/trustzone_init.c
  * @brief Per-app secure-boot wiring for cpu1_pingpong_ipc
@@ -29,6 +25,9 @@
  * Bench validation is NOT performed by this commit -- a human operator
  * with ``scripts/hil/recover.sh`` warm is the only safe path to flash
  * the resulting image (see ``project_sau_sgstubs_brick``).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "trustzone_init.h"

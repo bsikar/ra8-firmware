@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/bkup_survival_demo/main.c
  * @brief VBATT backup-register read/write + reset-survival demo (EK-RA8D2)
@@ -52,6 +48,8 @@
  * vector with the retained domain, so the second boot finds the sentinel and
  * reports ``survived=Y`` (the ``ra8_emulator_smoke.sh`` gate exercises this).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

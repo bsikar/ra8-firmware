@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_etha_regs.h
  * @brief Ethernet Agent (ETHA) per-port register layout for the RA8D2
@@ -36,6 +32,9 @@
  * EACAIVC, EACAULC, EACOIVM, EACOULM, EATASENC, EATASENM) follow the
  * 802.1Q/802.1Qbv (TAS) traffic-class convention used by the chip --
  * index 0 = best-effort, index 7 = highest priority.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
