@@ -49,7 +49,7 @@ project's marketing.
 | `stat` | Yes -- `ra8_fs_stat()` reads the directory entry without opening it, so a directory reports as one and no file slot is spent on a metadata query | Yes (`fx_directory_information_get`) |
 | Backends in tree | Any object with the three callbacks: SD-over-SPI, native SDHI, OSPI NOR, MRAM, SDRAM, in-RAM scratch, USB MSC, plus the host-test mock | One media driver, `port/filex/src/fx_media_driver_ra8_sdhi.c`, plus the LevelX NOR adapter used by `threadx_filex_levelx_demo` |
 | Verification | First-party. Held to the 90% per-file line-coverage floor with **no allowlist** (`scripts/checks/check_coverage_floor.py`; `ra8_fs` has no row in `.github/coverage-baseline.txt` or `.github/mcdc-baseline.txt`), MC/DC vectors on its compound decisions, MISRA via `scripts/checks/misra_check.sh` (ratcheted in `.github/misra-baseline.txt`), clang-tidy, the ASCII / Doxygen / annotation gates | SOUP. Explicitly out of scope for the coverage floor (`OUT_OF_SCOPE_PREFIXES`), for MISRA (`-ilibs/third_party`), and for the first-party style rules; compiled with `-w`. Accepted on service history, Eclipse Foundation process and pre-Eclipse SGS-TUV Saar pre-certifications -- see [`docs/SOUP/filex.md`](../../docs/SOUP/filex.md). Byte-identity against the upstream pin is re-verified every CI run |
-| Host tests | 32 test binaries (`tests/test_ra8_fs*.c`) plus a libFuzzer harness (`tests/fuzz/fuzz_ra8_fs_fat.c`) | None. SOUP is not re-tested here |
+| Host tests | 34 test binaries (`tests/test_ra8_fs*.c`) plus a libFuzzer harness (`tests/fuzz/fuzz_ra8_fs_fat.c`) | None. SOUP is not re-tested here |
 | Size | 18 `.c` files | 212 `.c` files in `common/src` |
 | Apps using it | 29 example `CMakeLists.txt` reference it | 2 enable `RA8_USE_FILEX`: `threadx_filex_demo` and `threadx_filex_levelx_demo` |
 
@@ -78,9 +78,9 @@ symbol: fx_media_format
 symbol: fx_directory_delete
 users: ra8_fs = 29
 users: RA8_USE_FILEX = 2
-files: libs/ra8_fs/src/*.c = 16
+files: libs/ra8_fs/src/*.c = 18
 files: libs/third_party/filex/common/src/*.c = 212
-files: tests/test_ra8_fs*.c = 29
+files: tests/test_ra8_fs*.c = 34
 files: libs/third_party/filex/common/src/fx_fault_tolerant_*.c = 19
 files: libs/third_party/filex/common/src/fx_unicode_*.c = 13
 -->
