@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_mpu_partition_simple.c
  * @brief Integration test: single-region MPU RO partition demo
@@ -10,8 +14,6 @@
  * exercises the configuration acceptance path and the rejection
  * path for malformed descriptors.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

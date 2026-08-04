@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_port.c
  * @brief Bring-up and teardown of the esp-hosted RA8D2 + ThreadX port.
@@ -26,8 +30,6 @@
  * reports a problem -- a teardown that stops at the first error leaves
  * exactly the stranded pin it was supposed to release.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

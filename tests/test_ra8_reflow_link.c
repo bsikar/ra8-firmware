@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_reflow_link.c
  * @brief Host unit tests + MC/DC for the #110 link/anchor query API.
@@ -9,9 +13,6 @@
  *    same-chapter-vs-cross-chapter and fragment-present decisions.
  *  - ra8_reflow_hit_test_link() and ra8_reflow_find_anchor() against a
  *    hand-populated engine (no font / layout needed for the query logic).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

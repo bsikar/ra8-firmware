@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file fuzz_ra8_canfd.c
  * @brief libFuzzer harness for ra8_canfd RX frame parser
@@ -9,9 +13,6 @@
  * FD-status decoder. Any out-of-bounds read, integer UB, or
  * descriptor overflow triggered by the decode path will be reported
  * by ASan / UBSan.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_comic/cm_tiled_check.c
  * @brief Oversized-page tile self-check for ereader_comic (#344).
@@ -15,8 +19,6 @@
  * the panel framebuffer is never touched, so the reader's page-1 render is
  * undisturbed.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

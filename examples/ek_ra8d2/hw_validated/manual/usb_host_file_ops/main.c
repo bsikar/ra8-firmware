@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/main.c
  * @brief USB host MSC + ra8_fs file-operations exerciser for EK-RA8D2 (USB-HS)
@@ -35,8 +39,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-06-12
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

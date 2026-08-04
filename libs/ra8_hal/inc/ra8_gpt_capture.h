@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_gpt_capture.h
  * @brief GPT input-capture + external event / pulse-count extension
@@ -22,9 +26,6 @@
  * - ``ra8_gpt_capture_configure`` -- arm GTCCRA / GTCCRB for input capture
  * - ``ra8_gpt_capture_read`` -- read the latched GTCNT value
  * - ``ra8_gpt_event_count_configure`` -- external up / down edge counting
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

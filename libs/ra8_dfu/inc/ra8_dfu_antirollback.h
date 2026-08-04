@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dfu_antirollback.h
  * @brief DFU anti-rollback (downgrade protection) policy + storage seam.
@@ -62,9 +66,6 @@
  *          anti-rollback begins enforcing only once the counter is provisioned
  *          (see ``internal_default_store_commit`` in ``ra8_dfu_antirollback.c``).
  *          Provisioning that initial counter word is bench-gated.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

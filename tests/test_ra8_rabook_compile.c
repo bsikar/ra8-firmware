@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_rabook_compile.c
  * @brief Emitter + error-arm tests for the RABOOK1 builder (#149 back-end).
@@ -25,8 +29,6 @@
  * This is the EMITTER (back-end) test; the XHTML -> DOM front-end and the
  * raster -> gray4 transcode are exercised by their own test files.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

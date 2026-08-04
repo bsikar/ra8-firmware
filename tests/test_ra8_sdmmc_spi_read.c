@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_sdmmc_spi_read.c
  * @brief Unit tests for the ra8_sdmmc_spi read path: single-block reads
@@ -8,9 +12,6 @@
  * the sibling test_ra8_sdmmc_spi.c owns CRC/init/fs-backend/factory and
  * test_ra8_sdmmc_spi_write.c the write + erase paths. The shared mock
  * SPI transport lives in support/sdmmc_spi_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

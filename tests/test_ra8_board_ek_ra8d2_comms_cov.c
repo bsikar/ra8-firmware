@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_board_ek_ra8d2_comms_cov.c
  * @brief Coverage-boosting unit tests for the EK-RA8D2 comms BSP layer
@@ -50,8 +54,6 @@
  *   254: return after ra8_sci_init -- sci_init(8, valid_cfg) always returns
  *        k_ra8_ok in RA8_OFF_TARGET (MSTP timeout excluded on host).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

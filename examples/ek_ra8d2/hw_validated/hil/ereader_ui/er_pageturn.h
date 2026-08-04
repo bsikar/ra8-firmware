@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file er_pageturn.h
  * @brief Pure page-turn + input-region decisions for the e-reader (#78).
@@ -14,8 +18,6 @@
  * Header-only `static inline` (no TU to link): both the app and the test include
  * it and get their own copies. Pure logic -- no MMIO, no heap, no globals.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

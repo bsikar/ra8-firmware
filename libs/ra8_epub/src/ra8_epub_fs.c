@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epub_fs.c
  * @brief `ra8_fs` -> `ra8_epub` bridge implementation (Phase 4.2 file adapter).
@@ -12,9 +16,6 @@
  * `__has_include("ra8_fs.h")` so the pure `ra8_epub` core still links into
  * apps/hosts that do not pull in `ra8_fs` (this TU is then empty -- only the
  * in-memory `ra8_epub_open()` path is used).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 /* Bridge only when the ra8_fs storage layer is on the include path (firmware that

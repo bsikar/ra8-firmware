@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_i3c_i2c_edge_cases.c
  * @brief Edge-case + stress unit tests for the IIC_B (I3C in I2C-mode) controller.
@@ -14,9 +18,6 @@
  *     peripheral never ACKs (TDBEF0 stays low for the duration) returns the
  *     hardware-timeout error rather than spinning forever;
  *   - ``set_clock`` rejects out-of-range bus_hz / pclka_hz.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file reflow_v1_test_util.h
  * @brief Shared Literata fixture for the v1 test_ra8_reflow* siblings.
@@ -15,8 +19,6 @@
  * excluded from the build under RA8_REFLOW_USE_LITEHTML (see
  * tests/CMakeLists.txt).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

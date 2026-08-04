@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_touch_cal.c
  * @brief Integration test: touch_cal demo logic + end-to-end calibration solve.
@@ -24,8 +28,6 @@
  *
  * No MMIO is required, so this test runs in-process.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

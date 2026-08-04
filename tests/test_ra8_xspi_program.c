@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_xspi_program.c
  * @brief Unit tests for the xSPI flash program/erase path: page
@@ -9,9 +13,6 @@
  * test_ra8_xspi_ctrl.c the controller lifecycle + XIP/DTR/DQS + MC/DC
  * suites. Shared fixture constants and prep_flash() live in
  * support/xspi_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

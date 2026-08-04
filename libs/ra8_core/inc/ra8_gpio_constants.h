@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_gpio_constants.h
  * @brief PSEL codes for peripheral pin routing on the RA8D2
@@ -21,9 +25,6 @@
  *        ((uint32_t)k_ra8_psel_sci0_txd << k_ra8_pfs_bit_psel0);
  * ra8_pfs_pwpr_lock();
  * @endcode
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

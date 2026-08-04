@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_memmap.c
  * @brief Emulated memory map implementation (see emu_memmap.h)
@@ -7,8 +11,6 @@
  * factory-trim seed, and the region + MMIO-window mapping -- moved verbatim
  * out of the ra8_emulator main translation unit.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

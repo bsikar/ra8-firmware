@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_dtc.c
  * @brief DTC (Data Transfer Controller) transfer-engine model for ra8_emulator
@@ -43,8 +47,6 @@
  * The transfer is synchronous (performed inside the ELSEGR trigger write), so a
  * firmware poll on the destination settling falls straight through.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

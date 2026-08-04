@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_epub_xml_shim.cpp
  * @brief MC/DC vector tests for libs/ra8_epub/src/ra8_epub_xml_shim.cpp.
@@ -18,8 +22,6 @@
  * public APIs) are documented as deactivated under DO-178C 6.4.4.3 in
  * ``docs/MCDC_DEACTIVATIONS.md``; they are not re-tested here.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

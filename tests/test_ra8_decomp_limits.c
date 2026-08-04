@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_decomp_limits.c
  * @brief Tests for the unified decompression-limits policy engine.
@@ -15,9 +19,6 @@
  *      (output-counter wrap, ratio-product wrap, grace-sum wrap),
  *   5. the header-level declared-size check rejects lying headers with the
  *      same bounds at O(1) cost.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

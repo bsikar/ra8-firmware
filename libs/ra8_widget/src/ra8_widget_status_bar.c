@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_widget_status_bar.c
  * @brief Status-bar leaf widget for the ra8_widget tree model (#145 Phase 2).
@@ -10,8 +14,6 @@
  * ::ra8_widget_priv_text_pos helper (left / right alignment, vertical centring
  * when the backend can measure). Display-only: the vtable leaves `on_input` NULL.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

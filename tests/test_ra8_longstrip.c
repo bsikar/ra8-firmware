@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_longstrip.c
  * @brief Host unit tests for the continuous vertical-scroll longstrip engine (#289).
@@ -22,9 +26,6 @@
  * The atlas is built with the raw codec (codec 0), so `ra8_jof_read_tile`
  * needs no deflate scratch and the decode path is exercised end to end without
  * pulling the compressor -- the same reader the deflate path uses.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

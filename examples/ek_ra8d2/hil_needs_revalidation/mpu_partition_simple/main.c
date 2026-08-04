@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/main.c
  * @brief Single-region MPU read-only partition demo with fault recovery
@@ -38,8 +42,6 @@
  *
  * Bare EK-RA8D2; no expansion board.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

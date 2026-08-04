@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c
  * @brief Tap-to-zoom demo scene: page sampler, viewports, chrome, self-check.
@@ -11,8 +15,6 @@
  * filled rectangles for the chrome -- so the framebuffer hash it reports is the
  * same number on the unit-test host, in ra8_emulator, and on silicon.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_bench.h
  * @brief Minimal hand-written microbenchmark harness for the
@@ -22,8 +26,6 @@
  * trivial to grep / pipe into a spreadsheet later when we have EVM
  * hardware measurements to compare against.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

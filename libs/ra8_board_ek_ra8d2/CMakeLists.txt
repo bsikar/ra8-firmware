@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # ra8_board_ek_ra8d2 -- board-support layer for the Renesas EK-RA8D2 v1
 #
@@ -12,8 +14,6 @@
 # below and link in the source file. See examples/blink/CMakeLists.txt
 # for the canonical wiring.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

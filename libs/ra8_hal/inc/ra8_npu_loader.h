@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_npu_loader.h
  * @brief On-target loader: `.npub` Vela blob -> `ra8_npu_job_t` (RA8P1-only)
@@ -31,8 +35,6 @@
  * Re-entrant: the loader keeps no state and only reads the blob and writes the
  * caller's ::ra8_npu_job_t. The NPU serialisation contract is owned by `ra8_npu`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

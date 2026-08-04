@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/signed_payload.h
  * @brief GENERATED: copy-to-run payload signed by tools/rot_sign.py -- do not edit.
@@ -5,8 +9,6 @@
  *          dfu_copy_to_run's 32-byte run-base image (payload.c); the trailer is signed
  *          with the project RoT key (img_version 7). Regenerate via build_payload.sh +
  *          rot_sign.py if payload.c changes.
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

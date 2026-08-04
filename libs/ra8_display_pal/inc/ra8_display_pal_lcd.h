@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_display_pal_lcd.h
  * @brief LCD backend (ra8_glcdc) for the display PAL
@@ -14,8 +18,6 @@
  * rest of the PAL API is identical regardless of which backend is
  * bound.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

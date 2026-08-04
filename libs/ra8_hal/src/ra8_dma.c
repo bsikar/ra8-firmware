@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dma.c
  * @brief Generic DMA transfer substrate implementation
@@ -11,9 +15,6 @@
  * Per-channel register writes go through ``ra8_dmac_start`` /
  * ``ra8_dmac_stop``. Callers that need the DTC's vector-table
  * transfer model use ``ra8_dtc_*`` directly.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dma.h"

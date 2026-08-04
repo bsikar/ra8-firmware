@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_sd.h
  * @brief SD-card-over-SPI device model for ra8_emulator (attached to SPI_B).
@@ -15,8 +19,6 @@
  * and CRC16-CCITT data CRCs. Commands self-frame off the @c 01xxxxxx lead
  * bits, so no chip-select wiring is required.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

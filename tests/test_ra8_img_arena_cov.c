@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_img_arena_cov.c
  * @brief Coverage supplement for libs/ra8_reflow/src/ra8_img_arena.c
@@ -20,9 +24,6 @@
  * Level B MC/DC is achieved by driving both outcomes of each guard: the
  * true outcomes appear here; the false outcomes are already covered by
  * test_ra8_reflow_image.c or by earlier tests within this file.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

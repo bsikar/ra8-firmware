@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_rabook_import_streamed.c
  * @brief #230 gate: the production import compile adapter STREAMS its source
@@ -36,8 +40,6 @@
  * `if (err != k_ra8_ok)` / `RA8_CHECK_NULL_PTR` early return, each driven both
  * ways across the happy-path and guard cases below.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB Import] {World: NS}
  *

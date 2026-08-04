@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_comic -- comic-book-archive reader (CBZ = ZIP of images, CBR = RAR of images).
 #
@@ -27,8 +29,6 @@
 # Like the other domain libs in this tree, consumers reach into inc/ + src/
 # directly; app builds glob libs/ra8_comic/src/*.c via ra8_add_app(LIBS ra8_comic ...).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

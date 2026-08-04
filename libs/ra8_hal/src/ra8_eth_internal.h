@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_eth_internal.h
  * @brief Cross-TU shared surface for the ra8_eth driver split.
@@ -16,9 +20,6 @@
  * carries the handful of symbols both TUs share: the singleton NIC
  * runtime state, the one-shot MAC-resync latch, and the
  * channel-to-port mapping predicate. It is NOT part of the public ABI.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

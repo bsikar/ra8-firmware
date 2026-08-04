@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mipi_dsi_regs.h
  * @brief MIPI DSI Host (DSI-2) register layout for the RA8D2
@@ -71,9 +75,6 @@
  * pages 3839-3934. The struct member offsets and total window size
  * (0x880 bytes) match the FSP `R_MIPI_DSI_Type` declaration in
  * `R7KA8D2KF_core0.h` line 54968-61047.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

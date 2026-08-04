@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/i3c_i2c_peripheral_demo/main.c
  * @brief IIC_B peripheral-mode demo on EK-RA8D2
@@ -19,8 +23,6 @@
  * controller is attached the peripheral simply idles. There is no
  * internal IIC loopback path on the RA8D2.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

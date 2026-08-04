@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file secure_trng_internal.h
  * @brief Secure-side TRNG read API (RSIP-backed entropy)
@@ -15,9 +19,6 @@
  * xorshift64* PRNG. On the real chip the call drops through to
  * ``ra8_rsip_trng_read``. The split keeps the veneer code
  * unaware of which entropy source is wired in.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

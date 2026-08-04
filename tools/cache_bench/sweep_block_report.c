@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file sweep_block_report.c
  * @brief Reporting for the #208 sweep: machine-parseable rows, per-leg
@@ -11,8 +15,6 @@
  * against the 64 KiB `.rabook` chunk default from #204) is printed once the
  * sweep completes. Pure readers: nothing here mutates row data.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

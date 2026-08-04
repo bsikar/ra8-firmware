@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_infrastructure.h
  * @brief Bring-up Helpers Called Before Any Driver Init
@@ -24,9 +28,6 @@
  *     //    ...
  * }
  * @endcode
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

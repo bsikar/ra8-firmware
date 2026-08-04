@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_sdhi_width.c
  * @brief Unit tests for the SDHI bus-width setter + ACMD6 negotiation
@@ -14,9 +18,6 @@
  * ACMD6 tests pre-seed SD_RSP10 with a synthetic R1 card-status word
  * and use the ra8_fake_mmio poll-hook to keep SD_INFO1.RSPEND asserted
  * while the polled command path spins (no wall-clock timer).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

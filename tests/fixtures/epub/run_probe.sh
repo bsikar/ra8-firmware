@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # Build + run the host EPUB probe against a real .epub.
 #   ./tests/fixtures/epub/run_probe.sh <file.epub>
 # Host-only diagnostic (RA8_OFF_TARGET, malloc-backed); reports what
 # ra8_epub_open() extracts (parse result, spine, TOC, cover, chapter 0).
 #
-# @copyright Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 set -euo pipefail
 
 ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"

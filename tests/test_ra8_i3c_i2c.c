@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_i3c_i2c.c
  * @brief Unit tests for the IIC_B (I3C in I2C-only mode) controller driver.
@@ -11,9 +15,6 @@
  * BCST.BFREF is also pre-armed (= bus free) ahead of every transfer
  * test so the new bus-busy gate (mirrors the upstream Renesas FSP
  * IIC controller BFREF check) does not falsely reject the transaction.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

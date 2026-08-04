@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_exception.c
  * @brief Unit tests for ra8_exception.c fault diagnostic helpers
@@ -9,9 +13,6 @@
  * `__builtin_trap()`. To keep the test runnable we override it here
  * with a weak-symbol-clobbering definition that simply records the
  * call and returns via `longjmp()` so the test process survives.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <setjmp.h>

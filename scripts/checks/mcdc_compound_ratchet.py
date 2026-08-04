@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """mcdc_compound_ratchet.py -- MC/DC compound-decision ratchet (vs baseline).
 
 WHY THIS EXISTS

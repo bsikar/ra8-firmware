@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mpu.h
  * @brief Cortex-M85 Memory Protection Unit (MPU) configuration helper
@@ -11,9 +15,6 @@
  * fields documented in `ra8_mpu_regs.h`; this layer adds
  * power-of-two size validation, AP[1:0] encoding from human-readable
  * RO/RW/None pairs, and bounds checking against `MPU_TYPE.DREGION`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

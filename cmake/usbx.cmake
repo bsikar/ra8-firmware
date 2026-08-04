@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/usbx.cmake
 #
@@ -33,8 +35,6 @@
 # Requires `RA8_USE_THREADX=ON` because USBX's tx_api.h dependency
 # (memory pools, semaphores, threads) cannot be satisfied otherwise.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 if(DEFINED _RA8_USBX_INCLUDED)

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_batt -- bounded, allocation-free low-battery nag policy.
 #
@@ -14,8 +16,6 @@
 # in ra8_add_app(LIBS ...); the host test build folds libs/ra8_batt/src/*.c
 # into the ra8_core_hal object library (see tests/CMakeLists.txt).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Header-and-source library; no standalone build target. See the note above.

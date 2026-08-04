@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_board_ra8p1.c
  * @brief Board-support implementation for the RA8P1 foundation board
@@ -18,8 +22,6 @@
  * ``TODO(EK-RA8P1 UM / ra8p1_kicad)`` rationale; every pin is a valid GPIO / SCI
  * alternate on the RA8P1 (chip HUM R01UH1064EJ Ch 20 "I/O Ports").
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

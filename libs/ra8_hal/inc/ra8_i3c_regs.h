@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_i3c_regs.h
  * @brief I3C Bus Interface register layout for the Renesas RA8D2
@@ -25,9 +29,6 @@
  * BCST, SVST, DATBASn ...) are intentionally omitted because no
  * driver code touches them yet -- they land with the first
  * HDR-DDR / peripheral-mode / sync-timing consumer.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

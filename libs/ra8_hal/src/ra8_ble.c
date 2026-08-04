@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ble.c
  * @brief HCI transport seam (host-side) -- in-memory loopback backend
@@ -25,9 +29,6 @@
  *       carrying HCI packets over the companion link (see esp-hosted). The
  *       send / dispatch bodies below are where that link's I/O attaches; the
  *       host stack above the seam is unchanged.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_ble.h"

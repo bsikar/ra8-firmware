@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/c6_fwver_rpc.c
  * @brief The ESP_SERIAL_IF RPC channel: request, response, verdict.
@@ -39,8 +43,6 @@
  * init, which is what keeps the whole path inside NASA Power of 10 Rule 3.
  * Every unpacked message is freed on every path.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

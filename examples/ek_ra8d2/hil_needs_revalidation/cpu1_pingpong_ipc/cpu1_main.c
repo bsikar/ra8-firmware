@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/cpu1_main.c
  * @brief CPU1 (Cortex-M33) ping-pong responder
@@ -8,8 +12,6 @@
  * @details Built as a separate ELF (-mcpu=cortex-m33). Receives 0x1234
  *          on the CPU0 -> CPU1 channel and replies with 0x4321 in a loop.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

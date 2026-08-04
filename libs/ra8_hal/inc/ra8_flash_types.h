@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_flash_types.h
  * @brief Code MRAM driver -- shared types (enums, structs, callback typedef)
@@ -15,8 +19,6 @@
  * ``ra8_flash_fsp.h``) and, transitively, by the ``ra8_flash.h`` umbrella
  * that consumers continue to include unchanged.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

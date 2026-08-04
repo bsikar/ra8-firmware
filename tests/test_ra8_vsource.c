@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_vsource.c
  * @brief Unit tests for the ra8_mem object-source registry (Layer 1, #147).
@@ -8,9 +12,6 @@
  * validation guards, and -- the headline -- the Layer 1 + Layer 2 integration: a
  * page cache wired to ra8_vsource_loader pages a file-like object in from a
  * fake backing and reads back the exact bytes.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

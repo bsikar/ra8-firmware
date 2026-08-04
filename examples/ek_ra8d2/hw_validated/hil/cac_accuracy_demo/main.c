@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/cac_accuracy_demo/main.c
  * @brief Clock Frequency Accuracy Measurement (CAC) demo for the EK-RA8D2
@@ -41,8 +45,6 @@
  * start / poll / read-back sequence, silicon proves the real edge count. See
  * ``README.md`` for details.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

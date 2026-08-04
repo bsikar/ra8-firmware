@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file rabook_downscale_parity_fixture.h
  * @brief Downscale-kernel byte-identity fixture for ra8_rabook_gray4 (#213).
@@ -12,8 +16,6 @@
  *            s_ds_src and asserts byte-identity to s_ds_golden, so the opt-in
  *            downscale path is one deterministic kernel host-vs-device.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

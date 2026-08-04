@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epaper_devinfo.c
  * @brief IT8951 ``GET_DEV_INFO`` response decoder
@@ -25,9 +29,6 @@
  * are logged, and a controller that has not finished loading its waveform
  * answers early reads with garbage that must not reach a log as control
  * characters.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

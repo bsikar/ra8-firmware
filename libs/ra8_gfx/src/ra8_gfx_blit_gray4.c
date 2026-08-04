@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_gfx_blit_gray4.c
  * @brief Sub-rectangle nearest-neighbour integer-zoom blit for packed gray4 images.
@@ -15,8 +19,6 @@
  * index in the low nibble -- the same packing ra8_gfx_blit_gray8() consumers unpack
  * a row at a time out of the demand-paged image pool.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

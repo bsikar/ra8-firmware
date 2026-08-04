@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_lsm6dso.h
  * @brief ST LSM6DSO 6-DoF IMU driver (accel + gyro + temperature)
@@ -45,8 +49,6 @@
  * ``ra8_lsm6dso_t`` -- multiple LSM6DSO parts on different buses can
  * coexist with one descriptor each.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

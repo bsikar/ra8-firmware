@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_pdm.c
  * @brief Unit tests for ra8_pdm.c (PDM-IF capture driver)
@@ -9,9 +13,6 @@
  * argument-validation contract. The receive FIFO is emulated by
  * pre-loading the channel's PDDSR (fill count) and PDDRR (sample word)
  * in mapped memory.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

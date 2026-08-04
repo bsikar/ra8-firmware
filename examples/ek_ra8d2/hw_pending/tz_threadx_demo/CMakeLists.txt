@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # CMakeLists.txt for tz_threadx_demo.
 #
@@ -5,8 +7,6 @@
 # 1. tz_threadx_demo.elf (Secure Boot + NSC Veneers)
 # 2. tz_threadx_demo_ns.elf (Non-Secure ThreadX multitasking demo)
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

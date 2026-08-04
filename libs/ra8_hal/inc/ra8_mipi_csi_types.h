@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mipi_csi_types.h
  * @brief MIPI CSI-2 receiver HAL driver -- public types
@@ -12,8 +16,6 @@
  * Split out of ``ra8_mipi_csi.h`` so the umbrella header stays under the
  * per-file line budget; consumers continue to include ``ra8_mipi_csi.h``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

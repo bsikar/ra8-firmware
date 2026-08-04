@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/nimble/src/nimble_npl_threadx.c
  * @brief NimBLE Native Porting Layer mapping onto Eclipse ThreadX
@@ -27,8 +31,6 @@
  * under ``examples/_unsupported/`` until a NimBLE app is driven to real
  * hardware validation and promoted out of that tier.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

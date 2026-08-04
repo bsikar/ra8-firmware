@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/threadx/CMakeLists.txt
 #
@@ -9,8 +11,6 @@
 # include in cmake/threadx.cmake produces. Both routes call the same
 # helper file so the two paths stay in lock-step.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

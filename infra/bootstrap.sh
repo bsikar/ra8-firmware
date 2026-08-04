@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # infra/bootstrap.sh -- one-command setup for a fresh clone.
 #
@@ -8,8 +10,6 @@
 #
 #   bash infra/bootstrap.sh            # or:  make infra-setup
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

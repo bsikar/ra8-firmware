@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/iic_b_facade_demo/main.c
  * @brief IIC_B (I3C block in I2C-compat mode) facade controller + peripheral demo
@@ -41,8 +45,6 @@
  * external I2C controller wired to the bus (the stock rig has none), so
  * ``periph=0`` there -- informational, never gated. See ``README.md``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

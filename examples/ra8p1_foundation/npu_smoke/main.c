@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ra8p1_foundation/npu_smoke/main.c
  * @brief RA8P1 Arm Ethos-U55 NPU foundation smoke -- runs a checkable stand-in job
@@ -40,8 +44,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-07-10
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

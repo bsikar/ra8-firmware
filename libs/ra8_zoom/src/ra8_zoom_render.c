@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_zoom_render.c
  * @brief Strip composite for the tap-to-zoom viewer: magnify, re-dither, blit (#478).
@@ -32,8 +36,6 @@
  * a framebuffer hash of the result is identical on the unit-test host, in
  * ra8_emulator and on silicon.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

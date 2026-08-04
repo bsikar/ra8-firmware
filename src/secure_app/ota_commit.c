@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ota_commit.c
  * @brief Secure-side OTA commit + flash-bank-config implementation
@@ -16,9 +20,6 @@
  * drive the masking + single-shot state-machine logic host-safely. The real
  * ``ra8_flash_*`` + PRCR-unlock call sites are marked ``TODO`` at each fail-closed
  * branch.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ota_commit.h"

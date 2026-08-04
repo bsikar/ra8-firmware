@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_eth_media.c
  * @brief ESWM media mux: select a port's MII/RGMII mode and release its block.
@@ -12,9 +16,6 @@
  * in common with opening a NIC or moving frames -- and ra8_eth.c had grown to
  * the 1000-line cap, which the file-size policy answers by splitting a
  * responsibility rather than by granting a waiver.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_check.h"

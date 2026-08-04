@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_mstp_model.c
  * @brief Module-stop (MSTP) shadow + address->bit gate table (engine-free half)
@@ -30,8 +34,6 @@
  * is taken from ``ra8_mstp_regs.h`` (``k_ra8_mstp_*``), whose per-bit HUM
  * citations are the source of truth.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

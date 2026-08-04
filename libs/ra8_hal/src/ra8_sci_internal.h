@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sci_internal.h
  * @brief src/-local shared surface for the ra8_sci driver TUs.
@@ -17,8 +21,6 @@
  *
  * Not a public API: only the ``ra8_sci`` source files include this.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

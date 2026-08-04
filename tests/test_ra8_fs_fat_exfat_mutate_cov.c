@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file tests/test_ra8_fs_fat_exfat_mutate_cov.c
  * @brief Coverage-boost tests for `ra8_fs_fat_exfat_mutate.c`.
@@ -18,8 +22,6 @@
  * 314-315, 317-318, 332, 420, 423, 429, 442, 445, 489, 530.
  * (Remaining uncovered lines are GCOVR_EXCL in the source file.)
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

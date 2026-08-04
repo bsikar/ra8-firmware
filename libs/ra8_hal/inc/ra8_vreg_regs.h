@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_vreg_regs.h
  * @brief Internal Voltage Regulator (VREG / DCDC / LDO) register layout for RA8D2
@@ -37,9 +41,6 @@
  * `R_SYSTEM_VCCSEL_*` / `R_SYSTEM_LVOCR_*` defines. They are
  * re-derived here as typed enums per CLAUDE.md so no FSP source is
  * copied verbatim.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

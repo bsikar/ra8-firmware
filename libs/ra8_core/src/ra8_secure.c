@@ -1,12 +1,13 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_secure.c
  * @brief Secure-comparison primitives implementation
  *
  * @par Tag
  * [Ring 1 / Core] {World: S}
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_secure.h"

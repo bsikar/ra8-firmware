@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ethosu_shim.c
  * @brief Arm ethos-u-core-driver C API shim over the `ra8_npu` driver (RA8P1-only)
@@ -16,8 +20,6 @@
  * TFLite-micro's Ethos-U operator kernel links against; see the header for how
  * they map onto `ra8_npu_init` / `ra8_npu_submit` / `ra8_npu_run` / `ra8_npu_wait`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Emit a C source file embedding a binary font blob as a byte array.
 
 Dependency-free (stdlib only) so it runs at build time on any host without a

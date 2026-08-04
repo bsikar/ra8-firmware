@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_i2c.c
  * @brief I3C-in-I2C-mode (IIC_B) controller + GT911 touch + LSM6DSO IMU models
@@ -28,8 +32,6 @@
  * Self-registers its descriptor (address range + read / write / reset / report)
  * with the board_periph core from a file-scope constructor.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

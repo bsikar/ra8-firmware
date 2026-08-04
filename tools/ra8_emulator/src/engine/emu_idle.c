@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_idle.c
  * @brief Wait-for-interrupt idle-spin detector (see emu_exc.h)
@@ -15,8 +19,6 @@
  * Split out of emu_exc.c: the detector shares none of the exception engine's
  * state, and both translation units are clearer for the separation.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_i2c_bus.h
  * @brief ra8_io I2C-bus facade -- one controller-transfer vtable over the
@@ -48,8 +52,6 @@
  * (void)ra8_io_i2c_bus_transfer(&bus, 0x5DU, reg_ptr, 2U, &status, 1U);
  * @endcode
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

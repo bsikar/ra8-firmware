@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/inc/idf_compat/esp_log.h
  * @brief ESP-IDF-compatible logging surface, implemented by this port.
@@ -37,8 +41,6 @@
  * ``-Wformat=2`` keeps checking every vendored call site even at levels this
  * build never emits. A discarded ``#if`` would take that checking with it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

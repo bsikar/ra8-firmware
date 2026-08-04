@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_esp_hosted_rtos.c
  * @brief Host tests for the esp-hosted RTOS abstraction slice.
@@ -19,9 +23,6 @@
  * and a refused delete are exercised as first-class outcomes rather than
  * being assumed unreachable. Everything else is driven through the bound
  * vtable, which is how the vendored core will reach these functions.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

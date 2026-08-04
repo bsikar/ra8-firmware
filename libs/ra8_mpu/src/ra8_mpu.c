@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mpu.c
  * @brief Cortex-M85 Memory Protection Unit configuration helper
@@ -15,9 +19,6 @@
  * (`ra8_mpu_apply_boot_map()`), the single source of truth the reset path
  * routes through instead of hand-rolling MAIR/RBAR/RLAR/CTRL pokes in each
  * app's `system_init.c` (issue #576).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_mpu.h"

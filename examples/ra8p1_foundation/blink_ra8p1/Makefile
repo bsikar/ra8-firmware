@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app Makefile for the RA8P1 build-foundation `blink_ra8p1`.
 #
@@ -11,8 +13,6 @@
 # cmake/toolchain-ra8p1.cmake selects the RA8P1 (adds -DRA8_DEVICE_RA8P1). The
 # CPU flags, compiler, and linker flags are shared with the RA8D2 toolchain.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL     := /bin/bash

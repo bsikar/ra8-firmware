@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_xfer.c
  * @brief One full esp-hosted SPI full-duplex transaction against the C6
@@ -13,8 +17,6 @@
  * the pin. Both halves go out inside one chip-select assertion, which is
  * what the esp-hosted peripheral expects.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

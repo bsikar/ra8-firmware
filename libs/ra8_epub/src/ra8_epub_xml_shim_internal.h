@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epub_xml_shim_internal.h
  * @brief Library-private contract for the tinyxml2 EPUB parse shim
@@ -17,9 +21,6 @@
  *
  * Everything declared here is library-private: production callers outside
  * ``libs/ra8_epub`` go through ``ra8_epub_open()``.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

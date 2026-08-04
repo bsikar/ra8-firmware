@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rsip_asym.c
  * @brief RSIP-E50D hash / HMAC + key-management (fail-closed)
@@ -42,8 +46,6 @@
  * stub-crypto guard, they too live inside the guard here and are absent from a
  * production image.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

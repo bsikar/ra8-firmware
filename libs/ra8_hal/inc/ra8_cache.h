@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_cache.h
  * @brief Cortex-M85 L1 cache maintenance, enable/disable, and I-cache invalidate.
@@ -45,9 +49,6 @@
  *       fake MMIO map, so the maintenance writes are observable to tests but
  *       have no real cache effect; the loop and line-size logic are exercised
  *       exactly as on silicon.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file comic_fixture.h
  * @brief Shared test fixture: build a tiny, real, stb-decodable PNG in memory.
@@ -10,9 +14,6 @@
  * miniz's `mz_crc32`), so `stbi_load_from_memory` / `stbi_info_from_memory`
  * decode it exactly. The image bytes are deterministic in the seed, so the two
  * halves of a round-trip (source vs. extracted) compare byte-for-byte.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

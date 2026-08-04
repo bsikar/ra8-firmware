@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_widget_nav_bar.c
  * @brief Navigation-strip leaf widget for the ra8_widget tree model (#145 Phase 2).
@@ -10,8 +14,6 @@
  * in the cell it looks like it lands in. Painting goes through the injected
  * ::ra8_widget_paint_t backend, so the file carries no `ra8_gfx` dependency.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

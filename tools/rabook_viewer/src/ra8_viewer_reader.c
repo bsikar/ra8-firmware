@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_viewer_reader.c
  * @brief Host-side reader core: format dispatch, buffer ownership, public API.
@@ -25,8 +29,6 @@
  * Objective-C window backend consumes the tiles; the reader stays testable and
  * dumpable headless.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

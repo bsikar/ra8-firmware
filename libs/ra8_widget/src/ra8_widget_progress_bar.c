@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_widget_progress_bar.c
  * @brief Progress-bar leaf widget for the ra8_widget tree model (#145 Phase 2).
@@ -11,8 +15,6 @@
  * never divides by zero and never overflows its rect. Display-only: the vtable
  * leaves `on_input` NULL.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

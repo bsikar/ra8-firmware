@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_blockdev_sdram.h
  * @brief ra8_io block-device backend over the external 64 MiB SDRAM window.
@@ -14,8 +18,6 @@
  * array of 512-byte logical blocks, erases to zero, and needs no
  * erase-before-write. Contents do not survive a power cycle.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

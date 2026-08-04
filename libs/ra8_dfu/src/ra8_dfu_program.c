@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dfu_program.c
  * @brief MRAM slot program / verify for the USB-DFU bootloader core.
@@ -13,9 +17,6 @@
  * this TU and `ra8_flash` in SRAM. Under `RA8_OFF_TARGET` the code-MRAM
  * window is backed by fake memory, so the program -> read-back -> verify
  * round-trip is exercised directly by the host unit tests.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <string.h>

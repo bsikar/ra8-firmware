@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file fuzz_ra8_fs_fat.c
  * @brief libFuzzer harness for the ra8_fs FAT directory-entry parser
@@ -7,9 +11,6 @@
  * input as the bytes of every read sector. ``ra8_fs_mount`` then walks
  * the BPB / FAT / directory-entry layout against arbitrary content,
  * surfacing any out-of-bounds read or integer UB in the parser.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

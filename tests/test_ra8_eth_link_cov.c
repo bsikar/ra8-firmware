@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_eth_link_cov.c
  * @brief White-box coverage tests for ra8_eth_link.c (PHY link poll + MAC resync)
@@ -25,9 +29,6 @@
  * translation unit so its static helpers become reachable. Nothing
  * about the code under test is altered; only the values presented by
  * the mocked bus are controlled.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

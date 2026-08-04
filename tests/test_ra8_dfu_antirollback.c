@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_dfu_antirollback.c
  * @brief Host unit tests for the DFU anti-rollback (downgrade) gate.
@@ -16,9 +20,6 @@
  *       shadow (the host fake does not model the extra-MRAM data side), so these
  *       tests validate the decision logic and the monotonic round-trip; silicon
  *       and ra8_emulator exercise the real flash path.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 /*

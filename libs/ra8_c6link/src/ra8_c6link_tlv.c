@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_c6link_tlv.c
  * @brief The two-tag envelope the co-processor's serial endpoint speaks.
@@ -21,8 +25,6 @@
  * endpoint name to be the same length, and its own parser checks that, so the
  * two are interchangeable as far as the framing is concerned.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

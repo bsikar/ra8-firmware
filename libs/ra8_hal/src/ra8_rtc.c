@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rtc.c
  * @brief BCD-calendar Realtime Clock driver implementation
@@ -21,9 +25,6 @@
  *    fall and then re-asserts it after the writes.
  *  - HUM Ch 26.2.21: writes to RCR2.HR24 / CNTMD only take effect
  *    after the bit reads back the new value, so init polls those.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_rtc.h"

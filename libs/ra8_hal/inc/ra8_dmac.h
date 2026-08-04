@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dmac.h
  * @brief 8-channel DMA controller (DMAC0) driver
@@ -23,9 +27,6 @@
  * Anything that needs the DTC's vector-table-driven semantics calls
  * `ra8_dtc_*` directly; this driver only handles the channel-style
  * DMAC.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

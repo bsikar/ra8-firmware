@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_blockdev_mram.c
  * @brief MRAM block-device backend -- a hard-fenced data-MRAM window as blocks.
@@ -19,9 +23,6 @@
  * array -- there is no erase-and-reuse cycle on this silicon. A rewritable
  * block backend therefore belongs on a real rewritable medium (OSPI / SD);
  * retargeting this backend and its demos off the OTP window is tracked by #315.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_blockdev_mram.h"

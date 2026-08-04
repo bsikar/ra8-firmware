@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_i3c_loopback.c
  * @brief Integration test: IIC_B init + scan path mirrors i3c_loopback main
@@ -8,8 +12,6 @@
  * -> ra8_i3c_scan against 0x43. All MMIO is via the host
  * tests/mocks/ra8_fake_mmap.c shim.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

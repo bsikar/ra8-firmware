@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fake_mmap.c
  * @brief Host-side MMIO backing store for RA8D2 HAL unit tests
@@ -20,9 +24,6 @@
  * The backing regions are installed by a constructor so they are
  * available before `main()` in every unit-test binary that links
  * against `ra8_core_hal`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #ifdef RA8_OFF_TARGET

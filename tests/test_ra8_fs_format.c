@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_fs_format.c
  * @brief Format (mkfs) round-trip + MC/DC unit tests for `ra8_fs_format()`.
@@ -19,9 +23,6 @@
  * ``priv_fmt_count_in_band``, ``priv_fmt_choose_geometry``) carry explicit
  * Modified Condition/Decision Coverage vectors per DO-178C Level B / IEC 61508
  * SIL 3 using the canonical N+1 pattern.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "test_ra8_fs_format_fixture.h"

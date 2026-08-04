@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_eth_gwca_default_cov.c
  * @brief Coverage-focused unit tests for ra8_eth_gwca_default.c
@@ -21,9 +25,6 @@
  * short-circuits the poll to k_ra8_ok, and every index that would make
  * a reload/kick reject is already rejected by the identical range
  * guard earlier in the same call chain).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

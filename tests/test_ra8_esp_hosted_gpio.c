@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_esp_hosted_gpio.c
  * @brief Unit tests for the esp-hosted side-band GPIO slots and edge detector
@@ -19,9 +23,6 @@
  *   - registration until the polled table is full, and teardown of both the
  *     hardware-interrupt and polled paths;
  *   - the honest refusals: a pull-down request and a pin-hold request.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

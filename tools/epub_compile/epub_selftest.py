@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Fixed-layout selftest (issue #196): a CBZ in EPUB clothing must survive intact.
 
 A fixed-layout / image-only EPUB3 has no flowable text at all -- each spine

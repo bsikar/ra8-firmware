@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sram.h
  * @brief SRAM (with ECC) HAL driver public API
@@ -35,9 +39,6 @@
  *    ``ra8_sram_dispatch`` (test path) and
  *    ``ra8_sram_dispatch_from_esr`` (NMI path that snapshots SRAMESR
  *    + EAR and walks every bit).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_panel_timing.h
  * @brief EK-RA8D2 panel timing as the HAL's ra8_glcdc_timing_t (ER-TFT070-6)
@@ -13,8 +17,6 @@
  * Unlike the geometry-only ra8_panel.h, this header pulls in the HAL type
  * (ra8_glcdc.h), so it is target-side -- not for host previews.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

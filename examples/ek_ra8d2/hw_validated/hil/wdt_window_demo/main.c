@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/wdt_window_demo/main.c
  * @brief WWDT (window watchdog) windowed-refresh demo for EK-RA8D2
@@ -24,8 +28,6 @@
  * Acceptance: at least 5 ``wdt: window_tick=ok`` banners visible in
  * the boot-timeout window, no fault banners.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

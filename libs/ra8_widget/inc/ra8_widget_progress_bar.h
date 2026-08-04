@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_widget_progress_bar.h
  * @brief Progress-bar leaf widget for the ra8_widget tree model (#145 Phase 2).
@@ -14,8 +18,6 @@
  * the fill-fraction maths is host-testable with a recording mock. It is
  * display-only, so its vtable leaves `on_input` NULL.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

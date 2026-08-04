@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file policies.c
  * @brief Reference eviction policies + the registry for the #147 benchmark.
@@ -8,8 +12,6 @@
  * policies (2Q / Segmented-LRU, CLOCK-Pro, CAR) live in their own TUs and are
  * appended to ::g_cb_policies.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

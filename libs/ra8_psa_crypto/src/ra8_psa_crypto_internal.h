@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_psa_crypto_internal.h
  * @brief Module-private definitions shared across the ``ra8_psa_crypto`` TUs.
@@ -24,8 +28,6 @@
  * This header is internal to the library; consumers include the public
  * ``ra8_psa_crypto.h`` only.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

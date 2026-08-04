@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/usbx/src/ux_dcd_ra8_usb_ep.c
  * @brief USBX device-controller-driver bridge to ra8_usb -- endpoint dispatch.
@@ -13,8 +17,6 @@
  * the maintainability line cap; the cross-translation-unit contract
  * lives in ``ux_dcd_ra8_usb_internal.h``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

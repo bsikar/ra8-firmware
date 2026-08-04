@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_widget_keyboard.c
  * @brief Unit tests for the ra8_widget on-screen-keyboard leaf (#145 Phase 2).
@@ -10,8 +14,6 @@
  * `ra8_keyboard`, no framebuffer), so the per-key render and the hit / apply /
  * commit routing are asserted in-process with full MC/DC vectors.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

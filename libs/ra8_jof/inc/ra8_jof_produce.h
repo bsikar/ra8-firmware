@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_jof_produce.h
  * @brief Import-time transcode producer: JPEG/PNG/WebP -> JOF band-tile atlas
@@ -62,8 +66,6 @@
  * error rather than a partial atlas being trusted. Zero heap: the producer
  * allocates nothing -- every byte of state lives in caller buffers.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * The band accumulator is always full-width, so streaming does not depend on
  * `tile_w`: narrow tiles are cut out of the same band. `tile_w == width`

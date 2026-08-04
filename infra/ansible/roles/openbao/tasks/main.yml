@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Deploy the OpenBao vault onto an existing k3s cluster (roles/k3s_node).
 # Idempotent: helm upgrade --install semantics plus a declarative Service.

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh.
 #
 # Every step below is a thin `bash scripts/ci.sh --gate <name>` driver. This

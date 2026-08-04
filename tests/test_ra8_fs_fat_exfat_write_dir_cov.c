@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file tests/test_ra8_fs_fat_exfat_write_dir_cov.c
  * @brief Coverage-boost tests for the exFAT create + directory write paths.
@@ -13,8 +17,6 @@
  * tests/support/fs_fat_exfat_write_test_util.h (see that header for the full
  * R/W call-sequence map).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_widget_button.c
  * @brief Push-button leaf widget for the ra8_widget tree model (#145 Phase 2).
@@ -13,8 +17,6 @@
  * `on_press` callback. Button-kind events are declined so they keep routing.
  * Like the rest of `ra8_widget`, the file carries no `ra8_gfx` dependency.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_jof_png_chunk.c
  * @brief PNG chunk layer for the streaming decoder: prologue, palette
@@ -11,8 +15,6 @@
  * this parser feeds on untrusted EPUB content. Spec citations reference the
  * W3C PNG specification (second edition), abbreviated `PNG sec N`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain]
  * {World: NS}

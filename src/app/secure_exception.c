@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file src/app/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
@@ -21,9 +25,6 @@
  * The handler runs in the secure world. NS code cannot reach it
  * directly because the SFSR register at 0xE000EDE4 is in the
  * secure-only system control region.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file libs/ra8_board_ek_ra8d2/boot/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
@@ -25,9 +29,6 @@
  * - `_etext`, `_sdata`, `_edata`, `_sbss`, `_ebss`: section boundaries
  *   used by `Reset_Handler` to copy initialized data from flash/MRAM
  *   to SRAM and zero the BSS.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

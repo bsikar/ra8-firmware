@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_scb.h
  * @brief Cortex-M85 System Control Block: VTOR relocation + fault-status decode.
@@ -39,9 +43,6 @@
  *       MMIO map (`tests/mocks/ra8_fake_mmap.c`), so every read and write is
  *       observable to unit tests while having no real core effect; the decode
  *       and relocation logic are exercised exactly as on silicon.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

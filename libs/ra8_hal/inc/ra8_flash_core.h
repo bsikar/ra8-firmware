@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_flash_core.h
  * @brief Code MRAM + Extra MRAM + Option-Setting driver -- core API
@@ -20,8 +24,6 @@
  * banner before calling any *write* / *erase* / *block_protect* /
  * *config_set* / *startup* / *zeroize* entry point.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/threadx_canfd_demo/main.c
  * @brief Eclipse ThreadX CANFD heartbeat / RX-logger demo for RA8D2
@@ -27,8 +31,6 @@
  * | canfd_tx   | 4        | 500 ms            |
  * | canfd_rx   | 4        | 50 ms (poll loop) |
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

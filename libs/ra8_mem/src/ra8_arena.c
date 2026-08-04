@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_arena.c
  * @brief Init-time bump-arena implementation (Layer 0, #147).
@@ -8,9 +12,6 @@
  * @details
  * Bump-only allocation with power-of-two alignment. Fit checks use `uintptr_t`
  * subtraction against the region end so they never overflow.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_arena.h"

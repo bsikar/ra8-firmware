@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_power_profile.h
  * @brief Power-profiling helper -- public API
@@ -31,9 +35,6 @@
  * ``k_ra8_power_profile_max_regions`` (16) to satisfy NASA Power-of-10
  * Rule 3 (no dynamic allocation): all per-region counters live in a
  * static array sized at compile time.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

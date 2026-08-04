@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_touch_cal.c
  * @brief Implementation of the touch-screen calibration utility
@@ -20,9 +24,6 @@
  * screen-Y coefficients ``(d, e, f)``. The solver is Cramer's rule on
  * the shared coefficient matrix, which keeps the implementation
  * branch-light and avoids dynamic allocation.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_touch_cal.h"

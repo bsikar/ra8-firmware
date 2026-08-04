@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scan_build.sh -- Run clang's scan-build static analyzer against the
 # host unit-test build of ra8-firmware.
@@ -67,8 +69,6 @@
 #                               (default: a per-checkout dir under $TMPDIR)
 #     MIN_TRANSLATION_UNITS  -- vacuity floor on the analysed TU count
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -uo pipefail
 

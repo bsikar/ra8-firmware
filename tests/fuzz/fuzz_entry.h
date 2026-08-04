@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file tests/fuzz/fuzz_entry.h
  * @brief The libFuzzer target entry point every fuzz harness defines
@@ -15,9 +19,6 @@
  * the twenty-odd definitions are checked against one contract. Getting the
  * signature wrong is not a compile error in a lone ``.c`` -- it is a
  * mismatched call from the driver at run time.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

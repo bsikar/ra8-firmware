@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_sd_image.c
  * @brief Backing-image lifecycle for the modelled SD card (see board_periph_sd.h)
@@ -15,8 +19,6 @@
  * formatting are three responsibilities, and the shared card state travels
  * through board_periph_sd_internal.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

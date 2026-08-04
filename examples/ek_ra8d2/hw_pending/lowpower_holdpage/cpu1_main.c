@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/lowpower_holdpage/cpu1_main.c
  * @brief CPU1 (Cortex-M33 secondary core) image: hold the page in low power
@@ -35,8 +39,6 @@
  * @note Only PCNTR1/PCNTR2 are touched. The LED1 / SW1 pins power up routed to
  *       PORT, so no PmnPFS / PWPR pin-function setup is needed here.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_threadx_filex_demo.c
  * @brief Integration test: FileX-equivalent FAT mount + listdir flow
@@ -21,8 +25,6 @@
  *   - ra8_cgc, ra8_time   (pre-kernel boot)
  *   - ra8_fs             (FAT adapter -- equivalent surface to FileX)
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

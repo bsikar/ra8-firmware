@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app Makefile for the `ra8_cache_store_demo` firmware.
 #
@@ -12,8 +14,6 @@
 # forced on, since the demo pulls in the vendored LevelX NOR library in
 # standalone (no-ThreadX) mode via `USES levelx_standalone`.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL     := /bin/bash

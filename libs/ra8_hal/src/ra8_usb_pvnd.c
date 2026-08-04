@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_pvnd.c
  * @brief Native USB device-side Vendor-defined class layer implementation
@@ -14,9 +18,6 @@
  *
  * Reference: USB 2.0 sec 9.3 "USB Device Requests" (vendor request
  * envelope encoding).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb_pvnd.h"

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_epub -- EPUB (.epub) reader and chapter iterator.
 #
@@ -23,8 +25,6 @@
 # to depend on ra8_epub, wire up an OBJECT or INTERFACE library here
 # following libs/ra8_tls/CMakeLists.txt.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

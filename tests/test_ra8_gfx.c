@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_gfx.c
  * @brief Unit tests for libs/ra8_gfx (software 2D graphics + bitmap font).
@@ -6,9 +10,6 @@
  * Each test allocates a small RGB565 / RGB888 / ARGB8888 framebuffer on
  * the stack (or .bss for bigger ones), binds ra8_gfx to it via
  * ra8_gfx_init(), and inspects raw bytes after a draw call.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_svg_internal.h
  * @brief Cross-TU surface for the split minimal-SVG subset (#112).
@@ -19,8 +23,6 @@
  * defining file. There is no MMIO and no heap: the only side effect of the whole
  * module is drawing through the bound ra8_gfx framebuffer.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

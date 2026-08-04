@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_lpm_deep_standby_3_demo.c
  * @brief Integration test: LPM init + DPSIER2.DRTCAIE + WUPEN0.RTCALM + DSBY1
@@ -10,8 +14,6 @@
  * mmap records each register write so the test can verify the
  * DPSIER2 / WUPEN0 / LPSCR state.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

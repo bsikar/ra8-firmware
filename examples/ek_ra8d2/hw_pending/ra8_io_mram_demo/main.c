@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/ra8_io_mram_demo/main.c
  * @brief ra8_io fabric over on-chip extra-MRAM (data flash) backend (#155/#156).
@@ -31,9 +35,6 @@
  * ra8_emulator models the MACI program/erase sequence (board_periph_mram.c), so the
  * round-trip runs headless: a successful run prints
  * `ra8_io_mram_demo: 512-byte block erase/program/read on extra MRAM PASS`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/nimble/src/ble_hci_ra8_ble.c
  * @brief Apache NimBLE HCI transport adapter against the ra8_ble HCI ring
@@ -29,8 +33,6 @@
  * under ``examples/_unsupported/`` until a NimBLE app is driven to real
  * hardware validation and promoted out of that tier.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

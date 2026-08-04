@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_err.h
  * @brief Error Code Definitions for ra8-firmware
@@ -68,9 +72,6 @@
  *   error, not a warning.
  * - **Rule 8**: uses a C23 typed enum (`: uint16_t`), not `#define`s.
  * - **Rule 10**: compiles clean with `-Wall -Wextra -Werror`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

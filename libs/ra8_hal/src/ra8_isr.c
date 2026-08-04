@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_isr.c
  * @brief NVIC + ICU IELSR allocator implementation
@@ -9,9 +13,6 @@
  * Ring 3 / HAL substrate. Owns every write to the ICU IELSR slot array
  * and to the Cortex-M85 NVIC ISER / ICER / IPR windows. See
  * ``ra8_isr.h`` for the API contract.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_isr.h"

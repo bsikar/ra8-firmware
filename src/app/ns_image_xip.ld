@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
+/*
  * GNU ld linker script for the ra8d2-ereader NON-SECURE image -- OSPI XIP variant.
  *
  * Selected by the RA8_EREADER_NS_XIP build option (default OFF, which uses the
@@ -18,9 +22,6 @@
  *
  * The flasher writes this image's bytes to OSPI physical 0x8000_0000; the NS
  * world addresses the same array through the 0x9000_0000 Non-secure alias.
- *
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 ENTRY(ns_reset_handler)

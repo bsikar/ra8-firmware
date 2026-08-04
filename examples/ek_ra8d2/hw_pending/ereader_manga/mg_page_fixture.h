@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file mg_page_fixture.h
  * @brief Baked demo manga page for the ereader_manga viewer (@generated).
@@ -11,9 +15,6 @@
  * at boot; it decodes to identical pixels on host, ra8_emulator and silicon.
  *
  * Regenerate: python3 scripts/gen/gen_manga_page_fixture.py
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sci_lin.h
  * @brief LIN (Local Interconnect Network) commander + responder driver on SCI_B
@@ -68,9 +72,6 @@
  * Pure helpers:
  * - ``ra8_sci_lin_pid``           -- pure: 6-bit id -> protected identifier
  * - ``ra8_sci_lin_checksum``      -- pure: classic / enhanced LIN checksum
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

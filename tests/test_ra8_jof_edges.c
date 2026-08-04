@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_jof_edges.c
  * @brief Partial-edge-tile round-trip and tile-distinctness guards (#231, #289).
@@ -30,8 +34,6 @@
  * under test (filters off, IDAT via miniz `mz_compress`), matching the sibling
  * producer tests.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

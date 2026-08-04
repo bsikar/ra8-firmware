@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_mstp_internal.h
  * @brief Module-private module-stop (MSTP) gate state shared with the core
@@ -25,8 +29,6 @@
  * host (tests/test_ra8_emulator_mstp_gate.c); the block glue that needs the engine
  * lives in @c board_periph_mstp.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

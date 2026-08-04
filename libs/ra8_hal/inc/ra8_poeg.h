@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_poeg.h
  * @brief Port Output Enable for GPT (POEG) driver
@@ -29,9 +33,6 @@
  * - ``ra8_poeg_attach_handler`` -- install IRQ callback
  * - ``ra8_poeg_enter_stop / exit_stop`` -- power transition
  * - ``ra8_poeg_dispatch`` -- ISR entry point
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

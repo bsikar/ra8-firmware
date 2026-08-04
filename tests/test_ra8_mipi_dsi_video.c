@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_mipi_dsi_video.c
  * @brief Unit tests for MIPI DSI-2 video mode, link status and timing setters
@@ -17,9 +21,6 @@
  * Sibling suites: test_ra8_mipi_dsi_cmd.c (init + command packets)
  * and test_ra8_mipi_dsi_mcdc.c (MC/DC vectors). Shared fixtures live
  * in support/mipi_dsi_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

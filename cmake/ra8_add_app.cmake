@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/ra8_add_app.cmake -- shared per-app firmware build recipe.
 #
@@ -64,8 +66,6 @@
 # directory scope (project() may not be called from a function, and the
 # middleware skip-guard must return from the app's own CMakeLists).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Captured at include time (file scope) so it points at cmake/, not the

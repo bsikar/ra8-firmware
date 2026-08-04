@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_reflow_tokenize_link_mcdc.c
  * @brief MC/DC tests for the tokenizer's link / stylesheet / font-face arms.
@@ -14,9 +18,6 @@
  * `ra8_reflow_register_face` / `ra8_reflow_layout_chapter` API with the
  * baked Ahem face. The shared engine fixture lives in
  * tests/support/reflow_tokenize_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

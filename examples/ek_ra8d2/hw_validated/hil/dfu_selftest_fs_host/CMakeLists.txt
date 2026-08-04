@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMakeLists for dfu_selftest_fs_host (USB self-loop Config B).
 #
@@ -5,8 +7,6 @@
 # then DFU_UPLOADs it back and byte-verifies. One image runs both roles over the
 # J7<->J11 cable. Uses the controller-agnostic libs/ra8_dfu core.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

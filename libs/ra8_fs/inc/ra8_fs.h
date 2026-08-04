@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fs.h
  * @brief Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write).
@@ -47,9 +51,6 @@
  *   - File size up to 4 GiB - 1 (FAT32 maximum).
  *   - Sector size: 512 bytes (the only size we test against; BPB is
  *     validated to enforce this).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

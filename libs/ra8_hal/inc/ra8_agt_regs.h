@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_agt_regs.h
  * @brief Asynchronous General-Purpose Timer (AGT) register layout for RA8D2
@@ -14,9 +18,6 @@
  * view). This driver targets the 16-bit view and matches the
  * authoritative FSP `R_AGTX0_AGT16_Type` layout exactly. HUM Ch 24
  * "Low Power Asynchronous General Purpose Timer (AGT)" p 1164-1186.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

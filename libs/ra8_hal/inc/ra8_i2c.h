@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_i2c.h
  * @brief I2C Bus Interface (IIC) controller driver -- polling mode
@@ -48,8 +52,6 @@
  *                              event and fire the attached callback -- callable
  *                              from the RIIC RXI / TXI / STPI ISR or a poll loop
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

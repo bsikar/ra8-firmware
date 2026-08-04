@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_crc_regs.h
  * @brief CRC calculator register layout for the Renesas RA8D2
@@ -23,9 +27,6 @@
  *
  * Layout cross-verified against FSP `R_CRC_Type` in
  * `R7KA8D2KF_core0.h` (lines 5289-5386, total size 16 bytes).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

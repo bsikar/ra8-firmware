@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_epub.c
  * @brief Unit tests for libs/ra8_epub (EPUB reader / chapter iterator).
@@ -30,8 +34,6 @@
  *   - render_glyph without an attached font returns `not_initialized`.
  *   - NULL-arg / pre-init guards on every public entry point.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}

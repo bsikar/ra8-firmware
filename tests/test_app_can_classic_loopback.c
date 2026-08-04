@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_can_classic_loopback.c
  * @brief Integration test: classic CAN 2.0B internal-loopback bring-up
@@ -7,8 +11,6 @@
  * ra8_canfd_init -> ra8_canfd_set_bitrate(nominal, data=0) ->
  * ra8_canfd_set_test_mode(self-test 1) -> classic transmit.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

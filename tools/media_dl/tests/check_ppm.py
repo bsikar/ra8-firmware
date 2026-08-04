@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Assert a viewer-dumped PPM actually rendered content.
 
 This exists because "the viewer exited 0 and wrote a file" is not evidence that

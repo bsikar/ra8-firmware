@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_usb_hmsc_enum_cov.c
  * @brief White-box line-coverage tests for the polled host-MSC enumeration
@@ -29,9 +33,6 @@
  * production definition in `ra8_usb_hmsc.c` (linked from `ra8_core_hal`), so
  * the instrumented copy reads and writes the same object the production
  * driver does.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

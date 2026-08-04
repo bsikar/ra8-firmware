@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app Makefile for the `cpu1_pingpong_ipc` firmware.
 #
@@ -13,8 +15,6 @@
 # scripts/hil/recover.sh if the SAU layout turns out to brick the
 # chip (see memory/project_sau_sgstubs_brick.md).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL     := /bin/bash

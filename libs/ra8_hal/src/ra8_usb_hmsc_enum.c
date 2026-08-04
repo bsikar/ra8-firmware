@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_hmsc_enum.c
  * @brief Native USB host-side MSC (Mass Storage Class) polled enumeration
@@ -19,8 +23,6 @@
  * The singleton shadow state (`s_usb_hmsc_state`) lives in `ra8_usb_hmsc.c`
  * and is shared with this TU through `ra8_hal_internal.h`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

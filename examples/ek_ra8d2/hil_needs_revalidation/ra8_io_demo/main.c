@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/main.c
  * @brief End-to-end demo of the ra8_io fabric (epic #155) over a RAM block device.
@@ -18,9 +22,6 @@
  * the byte counts are observable headlessly: a successful run prints
  * `ra8_io_demo: wrote/read 128 bytes ram:/HELLO.TXT PASS` followed by
  * `ra8_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

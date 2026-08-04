@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_threadx_blink.c
  * @brief Integration test: ThreadX blink scheduler + GPIO toggle flow
@@ -17,8 +21,6 @@
  *   - ra8_gpio (under the BSP)
  *   - ra8_pfs (pin routing)
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

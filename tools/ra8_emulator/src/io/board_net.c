@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_net.c
  * @brief Virtual network peer (Ethernet/ARP/IPv4/ICMP/TCP) for ra8_emulator
@@ -11,8 +15,6 @@
  * end-to-end with no hardware. Frames are exchanged as plain byte buffers;
  * main.c marshals them to/from guest memory.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

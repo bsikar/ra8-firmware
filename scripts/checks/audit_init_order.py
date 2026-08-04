@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """audit_init_order.py -- per-app init-order linter.
 
 Walks every ``main.c`` under ``examples/`` at ANY depth, extracts the

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # tools/cache_bench -- host build of the #147 eviction benchmark and the #208
 # block/frame-size sweep.
@@ -15,8 +17,6 @@
 #
 #   cmake -B build -S . && cmake --build build
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_hal_internal.h
  * @brief Cross-translation-unit private helpers shared inside ra8_hal.
@@ -13,8 +17,6 @@
  * the per-file size cap. It is NOT part of the public HAL surface and must
  * never be included from outside ``libs/ra8_hal/src``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_gpio_internal.h
  * @brief Module-private surface of the esp-hosted side-band GPIO slice.
@@ -22,8 +26,6 @@
  * deliver the same callback with the same argument, so the vendored driver
  * cannot tell them apart -- only the latency differs.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

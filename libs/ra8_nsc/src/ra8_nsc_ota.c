@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_nsc_ota.c
  * @brief NSC veneers: OTA bank-commit + flash-bank-config write
@@ -17,9 +21,6 @@
  *
  * No pointers cross the boundary, so no NS-region range check is
  * needed in these veneers.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

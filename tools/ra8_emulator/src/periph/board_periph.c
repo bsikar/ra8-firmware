@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph.c
  * @brief Peripheral-block registry core + ICU/NVIC routing for ra8_emulator
@@ -23,8 +27,6 @@
  * emulated memory / pend an NVIC line, so board_periph stays plain C and the
  * exception delivery stays in the one place that already models it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

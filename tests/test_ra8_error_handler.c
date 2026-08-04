@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_error_handler.c
  * @brief Unit tests for ra8_error_handler.c fatal sink
@@ -10,9 +14,6 @@
  * `siglongjmp()` to bail out of the trap instruction. gcov counters
  * increment synchronously as the function runs, so every line up to
  * (and including) the trap is credited to the parent process.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <setjmp.h>

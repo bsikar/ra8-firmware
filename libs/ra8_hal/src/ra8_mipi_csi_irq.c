@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mipi_csi_irq.c
  * @brief MIPI CSI-2 receiver HAL driver -- interrupt path and per-VC framing
@@ -22,8 +26,6 @@
  * Every register access carries a HUM Ch 66 citation immediately
  * above the access, per project policy.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

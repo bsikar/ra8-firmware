@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_fsfmt.c
  * @brief Filesystem-format registry: probe a volume + report capabilities.
@@ -11,9 +15,6 @@
  * probes read block 0 directly (no `ra8_fs` internals); foreign formats register
  * through ::ra8_io_fsfmt_register. Every check is a single condition, so no MC/DC
  * vectors are due.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_fsfmt.h"

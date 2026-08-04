@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/emu/matrix.sh -- the #67 "run every example" coverage matrix.
 #
@@ -65,8 +67,6 @@
 # Output: a per-app table on stdout plus a coverage summary, and a machine-
 # readable report at $ROOT/build/ra8_emulator_matrix.txt.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 # Shell options: -u (no unset vars) and -o pipefail (a failing stage fails the
 # pipe). We deliberately DO NOT use -e. Like the sibling ra8_emulator_smoke gate --

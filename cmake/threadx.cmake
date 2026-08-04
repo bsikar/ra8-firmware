@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/threadx.cmake
 #
@@ -26,8 +28,6 @@
 #     `threadx` target, so any consumer that links against it can
 #     `#include "tx_api.h"` directly.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 if(TARGET threadx)

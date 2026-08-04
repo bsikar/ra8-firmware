@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_device.h
  * @brief Compile-time device selection for the RA8 multi-chip build (RA8D2 / RA8P1)
@@ -46,8 +50,6 @@
  *       and touches no hardware, so it compiles unchanged under
  *       `RA8_OFF_TARGET`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

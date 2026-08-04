@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app Makefile for the RA8P1 Ethos-U55 .npub container loader demo `npu_vela`.
 #
@@ -13,8 +15,6 @@
 # plus the .npub loader ra8_npu_loader.c. The CPU flags, compiler, and linker
 # flags are shared with the RA8D2 toolchain.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL     := /bin/bash

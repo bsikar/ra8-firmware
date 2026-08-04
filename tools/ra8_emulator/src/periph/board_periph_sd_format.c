@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_sd_format.c
  * @brief Blank-card FAT16/FAT32 in-memory formatters (--sd-new)
@@ -9,8 +13,6 @@
  * stays with the card model), so this helper TU rides the board_periph_*.c
  * build glob with no CMake edit.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

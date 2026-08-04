@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_tls.c
  * @brief Implementation of the ``ra8_tls`` Mbed TLS facade.
@@ -19,9 +23,6 @@
  * file replaces every ``mbedtls_ssl_*`` call with a tiny in-memory
  * stand-in that exercises the BIO callback contract end-to-end. The
  * public ``ra8_tls_*`` surface is identical in either build.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_tls.h"

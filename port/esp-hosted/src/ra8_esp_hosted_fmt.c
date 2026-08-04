@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_fmt.c
  * @brief Bounded printf-subset formatter used by the esp-hosted port logger.
@@ -18,8 +22,6 @@
  * pointer so the "one byte reserved for the terminator" rule is expressed
  * once, in ::internal_put, instead of at every call site.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

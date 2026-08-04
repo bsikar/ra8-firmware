@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_lvd.h
  * @brief Programmable Voltage Detection (PVD / LVD) HAL driver
@@ -78,9 +82,6 @@
  * callback typedef live in ra8_lvd_types.h, and the public function
  * prototypes live in ra8_lvd_api.h. Both are re-included here so every
  * existing consumer of `ra8_lvd.h` is unaffected.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

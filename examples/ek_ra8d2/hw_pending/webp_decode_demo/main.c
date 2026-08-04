@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/webp_decode_demo/main.c
  * @brief On-target WebP decode smoke test (ra8_webp over vendored libwebp).
@@ -28,8 +32,6 @@
  * NOTE(#289): this decodes a whole WebP into one RGBA buffer. The band-tile
  * normalisation + ra8_reflow raster dispatch land with #289.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

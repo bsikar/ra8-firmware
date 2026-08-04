@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_reflow_tokenize.c
  * @brief Unit tests for libs/ra8_reflow/src/ra8_reflow_tokenize.c
@@ -10,9 +14,6 @@
  * markup handler. The tokenizer replaced the tinyxml2 DOM shim; its
  * output was verified byte-for-byte equivalent to that shim across a
  * corpus before the swap (see issue #82).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

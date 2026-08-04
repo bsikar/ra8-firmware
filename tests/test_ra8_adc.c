@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_adc.c
  * @brief Unit tests for adc.c (ADC_B polling driver, FSP-verified layout)
@@ -18,9 +22,6 @@
  *
  * The scan-group / comparator / oversampling tests, the MC/DC vectors,
  * and the accessor edge-pointer tests live in test_ra8_adc_scan.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_hw_err_cov.c
  * @brief Coverage + behaviour tests for the bounded-wait primitives
@@ -19,9 +23,6 @@
  * continuation branch). This drives both the success and the
  * `k_ra8_err_hw_timeout` legs of all four waiters, plus every branch of the seam
  * itself -- no hardware line is bypassed by an exclusion marker.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

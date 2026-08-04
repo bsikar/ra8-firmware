@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ota_parse.c
  * @brief Phase-5 OTA configuration + manifest parsing helpers.
@@ -23,8 +27,6 @@
  * immutable literal). No malloc anywhere (NASA Rule 3); every loop has
  * a static upper bound (NASA Rule 2).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file svg_fixture.h
  * @brief Baked deterministic SVG vector-art fixture for ereader_svg.
@@ -7,9 +11,6 @@
  * a bar `<rect>`, and a `<polygon>` triangle, each a distinct solid colour. SVG
  * is text, so this is a plain ASCII string literal -- no generator needed. The
  * rendered framebuffer hash in hil.conf pins the result.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

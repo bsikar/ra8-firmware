@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_fsfmt_demo/main.c
  * @brief ra8_io pluggable filesystem-format registry demo (Phase 4, #159).
@@ -23,9 +27,6 @@
  * The ra8_emulator captures the SCI8 console, so the PASS line is
  * observable headlessly: a successful run prints
  * `ra8_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

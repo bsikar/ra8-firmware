@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_vfs.c
  * @brief VFS mount table + `"name:/path"` router over `ra8_fs`.
@@ -10,9 +14,6 @@
  * split a `"name:/sub"` string, look the mount up, and delegate the `sub` path
  * to the matching `ra8_fs` operation. All string scans are bounded and use only
  * single-condition guards (no compound decisions, so no MC/DC vectors are due).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_vfs.h"

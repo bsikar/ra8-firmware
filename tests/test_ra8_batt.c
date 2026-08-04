@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_batt.c
  * @brief Unit tests for the ra8_batt low-battery nag policy.
@@ -8,9 +12,6 @@
  * while charging, the SOC clamp, the nag label map, and null guards, plus
  * MC/DC vector sets for the four compound decisions in ra8_batt_update (the two
  * re-arm ORs and the two raise ANDs).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

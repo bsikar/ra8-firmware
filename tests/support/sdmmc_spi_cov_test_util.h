@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file sdmmc_spi_cov_test_util.h
  * @brief Fixture for the SPI-mode SD protocol-core coverage tests: the
@@ -11,9 +15,6 @@
  * internal header (see the test file's @details for why the
  * include-the-.c pattern cannot be used here). Every fault is injected
  * deterministically by a call-index counter -- no timers, no SIGALRM.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/epub_toc/main.c
  * @brief On-silicon HIL: EPUB TOC navigation (NCX + nav.xhtml) from SD (#116).
@@ -34,8 +38,6 @@
  * (J25) with a microSD inserted. THIS APP MAY FORMAT THE CARD. Under ra8_emulator
  * attach a blank card with `--sd-new 64:fat32`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

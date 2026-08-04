@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_reflow_layout_content_mcdc.c
  * @brief MC/DC tests for the layout engine's image / table decisions.
@@ -13,9 +17,6 @@
  * decisions are driven through the public API with crafted markup and the DI
  * image loader; the shared engine fixture lives in
  * tests/support/reflow_layout_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/nimble.cmake
 #
@@ -33,8 +35,6 @@
 # CVE triage harder than it needed to be. Linking `nimble/host/src` for
 # real is #493; when that lands, this comment must change with it.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Idempotency guard. The same per-app build can include this file

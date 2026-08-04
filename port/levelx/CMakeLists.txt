@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/levelx/CMakeLists.txt
 #
@@ -12,8 +14,6 @@
 # globbed `ra8_hal` sources, so this shim only needs to surface the
 # include directory and the one source file the app must compile.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

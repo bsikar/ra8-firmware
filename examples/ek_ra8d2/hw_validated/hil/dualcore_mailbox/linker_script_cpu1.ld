@@ -1,11 +1,12 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
+/*
  * GNU ld linker script for the CPU1 (Cortex-M33) image of dualcore_mailbox.
  *
  * MRAM_CPU1 0x020C0000 256 KiB  Code + rodata + vectors
  * SRAM_CPU1 0x22190000  64 KiB  .data, .bss, M33 main stack
- *
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 ENTRY(cpu1_reset_handler)

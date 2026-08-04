@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_host.h
  * @brief Native USB controller driver public API -- host-mode bring-up
@@ -14,8 +18,6 @@
  * types and the device-mode surface live in `ra8_usb_device.h`. Both are
  * aggregated by the thin umbrella `ra8_usb.h`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file key_vault.c
  * @brief Secure-only symmetric key store implementation
@@ -20,9 +24,6 @@
  * baked into this file -- no external libraries, no heap. It is
  * NIST FIPS 180-4 compliant for the single-block case used here
  * (32-byte input, 32-byte output, single padding block).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "key_vault.h"

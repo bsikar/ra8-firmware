@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Compile an EPUB into a flat, execute-in-place .rabook blob.
 
 The on-device reader (libs/ra8_book) never unzips or parses XHTML at runtime.

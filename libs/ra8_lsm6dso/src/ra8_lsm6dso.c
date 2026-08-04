@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_lsm6dso.c
  * @brief ST LSM6DSO 6-DoF IMU driver -- implementation
@@ -21,8 +25,6 @@
  * Each public function carries at least two precondition checks and
  * two postcondition statements to satisfy NASA P10 Rule 5.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

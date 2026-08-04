@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epaper_geom.c
  * @brief IT8951 geometry, pixel-format, waveform-map and config validation
@@ -33,9 +37,6 @@
  * total function over a descriptor, checking exactly the geometry and
  * waveform-map facts above, so it can reject a bad board descriptor
  * before any bus exists to talk to.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

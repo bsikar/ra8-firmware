@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_psa_crypto_fake.c
  * @brief Off-target crypto primitives for the ``ra8_psa_crypto`` facade.
@@ -20,8 +24,6 @@
  * None of this code is compiled into a firmware image: the whole unit is
  * guarded by ``RA8_OFF_TARGET`` and never runs on the target.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

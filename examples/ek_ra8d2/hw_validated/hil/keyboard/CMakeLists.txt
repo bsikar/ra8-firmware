@@ -1,10 +1,10 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake stub for `keyboard`. The on-screen keyboard widget
 # (ra8_keyboard) + the hit-test/rect toolkit it builds on (ra8_ui) are pulled
 # via LIBS; all build logic lives in cmake/ra8_add_app.cmake.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

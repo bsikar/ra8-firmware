@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_sdramc.c
  * @brief Unit tests for the SDRAMC driver (ra8_sdramc.c)
@@ -7,9 +11,6 @@
  * IS42S32160F (512 Mbit, 16M x 32). Asserts the final SDRAMC
  * register image against the FSP `R_BSP_SdramInit` reference, plus
  * the deinit / refresh / status / power-transition lifecycle.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

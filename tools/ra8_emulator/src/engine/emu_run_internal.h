@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_run_internal.h
  * @brief Shared run-loop state + cross-TU run helpers (ra8_emulator internal)
@@ -11,8 +15,6 @@
  * and the RA8_PRIV declarations of the helpers called across the split. It is
  * NOT part of the ra8_emulator public surface (unlike emu_run.h).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

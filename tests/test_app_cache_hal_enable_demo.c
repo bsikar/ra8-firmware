@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_cache_hal_enable_demo.c
  * @brief Integration test: the cache_hal_enable_demo example's boot + round-trip.
@@ -24,8 +28,6 @@
  * The register-level maintenance is owned + covered by ra8_cache's own unit tests
  * (test_ra8_cache.c); this file pins the example's app-level composition of them.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

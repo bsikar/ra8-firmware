@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/widget_kit_demo/main.c
  * @brief Concrete ra8_widget leaf widgets composited on the GLCDC panel (#145).
@@ -44,8 +48,6 @@
  * alternately taps button A / button B and partial-composes the body band, so
  * the panel visibly toggles a button live (the damage-tracked A2 path).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / APP] {World: S}
  *

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file fs_fat_mount_test_util.h
  * @brief Shared fixture for test_ra8_fs_fat_mount_cov.c.
@@ -8,9 +12,6 @@
  * zero-count capacity), and the FAT16 / protective-MBR / GPT-header builders
  * used by the mount coverage suite. Everything here has internal linkage, so
  * the including test executable owns a private copy of the fixture state.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

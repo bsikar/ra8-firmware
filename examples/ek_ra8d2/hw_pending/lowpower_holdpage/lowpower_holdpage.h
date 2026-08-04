@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/lowpower_holdpage/lowpower_holdpage.h
  * @brief Shared-SRAM contract for the low-power "hold the page" dual-core demo
@@ -35,8 +39,6 @@
  *      core can do without waking the M85).
  * Waking the M85 for a heavy re-render is the remaining piece tracked in #150.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

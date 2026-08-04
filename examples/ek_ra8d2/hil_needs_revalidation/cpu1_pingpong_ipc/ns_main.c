@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/ns_main.c
  * @brief Self-contained Non-Secure image at 0x02080000 for the IPC ping-pong demo.
@@ -27,8 +31,6 @@
  * | ``ns_reset_handler``            | ``.ns_text``    | 0x02080000+      |
  * | ``g_ns_pingpong_*`` counters    | ``.ns_bss``     | 0x22100000+      |
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

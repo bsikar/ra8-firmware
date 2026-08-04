@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/mbedtls/CMakeLists.txt
 #
@@ -17,8 +19,6 @@
 #
 # Pulled in by ``cmake/mbedtls.cmake`` when ``RA8_USE_MBEDTLS=ON``.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

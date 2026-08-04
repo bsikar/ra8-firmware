@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_vin_regs.h
  * @brief Video Input Module (VIN) register layout for the RA8D2
@@ -64,9 +68,6 @@
  *
  * Total window size: 0x310 bytes (HUM Ch 67.2 "Register Description"
  * p 3974, FSP `R_VIN_Type` size = 0x310).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/camera_capture/src/cam_ov5640.c
  * @brief OV5640 SCCB driver: reset strap, chip-ID probe, DVP colour-bar config.
@@ -13,8 +17,6 @@
  * value here is device data from the OmniVision datasheet, not RA8D2 MMIO, so
  * no Hardware User's Manual citation applies to the table rows.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

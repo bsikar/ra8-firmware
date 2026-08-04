@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/power_profiler/main.c
  * @brief Power-mode profiler smoke app for the EK-RA8D2
@@ -35,8 +39,6 @@
  * into ``ra8_time_ms`` for the timestamp source so accumulation works
  * on the host test build under RA8_OFF_TARGET as well.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

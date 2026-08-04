@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_svg.c
  * @brief Host unit tests for the minimal SVG subset (#112).
@@ -6,9 +10,6 @@
  * extraction, and the `<rect>`/`<circle>`/`<line>`/`<polygon>`/`<path>`
  * rasteriser (rendered into a host ra8_gfx framebuffer and checked
  * pixel-by-pixel), plus the null/arg guards.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

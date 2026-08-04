@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_bkup.h
  * @brief Battery Backup Function (VBATT) HAL driver -- public API
@@ -30,9 +34,6 @@
  *   Ch 12.4 Table 12.2 p 518 (sources VBTADF0..2 share one ICU
  *   slot; the dispatch passes the live VBTADSR mask so the callback
  *   knows which channel(s) fired).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

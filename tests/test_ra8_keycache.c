@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_keycache.c
  * @brief Unit tests for the reusable ra8_mem keyed-LRU cache (Layer 3, #147).
@@ -9,9 +13,6 @@
  * (`user_bytes == 0`) configuration, and the validation guards. These are the
  * regression guard shared by ::ra8_glyph_atlas and ::ra8_tile_cache, which are both
  * thin facades over this cache.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

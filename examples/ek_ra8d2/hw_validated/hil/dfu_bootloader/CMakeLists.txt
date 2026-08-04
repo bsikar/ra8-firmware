@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMakeLists for dfu_bootloader (immutable USB-DFU MRAM bootloader).
 #
@@ -6,8 +8,6 @@
 # brings up the USBX DFU device on USB-FS and programs the inactive slot. Uses
 # the controller-agnostic libs/ra8_dfu core.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

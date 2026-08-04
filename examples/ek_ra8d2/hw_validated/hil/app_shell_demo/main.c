@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/app_shell_demo/main.c
  * @brief App-shell chrome: launch reader / library / settings apps (#146 Ph2).
@@ -58,8 +62,6 @@
  *       (`ra8_app_uninstall` runs an unmounted app's `deinit` once); a core app's
  *       `deinit` never fires because a core app can never be uninstalled.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / APP] {World: S}
  *

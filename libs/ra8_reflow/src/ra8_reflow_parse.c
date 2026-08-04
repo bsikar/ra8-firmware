@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_parse.c
  * @brief HTML-subset parser entry point for ra8_reflow.
@@ -12,8 +16,6 @@
  * Keeping this entry point small lets clang-tidy's
  * `readability-function-size` rule act on a single small function.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

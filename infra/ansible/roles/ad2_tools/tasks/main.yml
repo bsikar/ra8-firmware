@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Provision the Digilent Analog Discovery 2 on the HIL bench: the Adept runtime
 # (unattended, sha256-pinned), the WaveForms SDK (owner-staged deb, installed by

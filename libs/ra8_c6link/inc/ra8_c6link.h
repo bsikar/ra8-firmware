@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_c6link.h
  * @brief The single integration boundary between this firmware and the ESP32-C6.
@@ -63,8 +67,6 @@
  * @see ra8_c6link_wifi.h  Station bring-up and association on top of this link
  * @see ra8_c6link_transport.h  The hardware seam this facade is built on
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

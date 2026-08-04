@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_modem.c
  * @brief Cellular AT-modem device model for ra8_emulator (attached to SCI7).
@@ -23,8 +27,6 @@
  * the SCI_B block calls into (attach / attached / channel / feed_tx / reset /
  * report), the same shape as board_periph_sd.c and board_periph_eink.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_ereader_shelf_comic.c
  * @brief Host twin of the ereader_shelf comic reader (sh_comic.c, #236).
@@ -23,8 +27,6 @@
  *     sh_shelf.c's layout -- their logic is mirrored hermetically here and
  *     exercised with the MC/DC vectors documented per test.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_usb_xfer_cov.c
  * @brief Coverage top-up for the USB device-mode data path (ra8_usb_xfer.c)
@@ -20,9 +24,6 @@
  * ``internal_wait_frdy`` runs its real poll loop on the host and
  * consults the ra8_fake_mmio fault seam keyed on CFIFOCTR, so the
  * FRDY-timeout and retry legs are driven here by arming that seam.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

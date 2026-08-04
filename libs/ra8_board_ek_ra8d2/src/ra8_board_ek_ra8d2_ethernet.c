@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_board_ek_ra8d2_ethernet.c
  * @brief EK-RA8D2 BSP -- on-board RGMII Ethernet (GPY111/PEF7071) bring-up
@@ -21,8 +25,6 @@
  * Rev 1.01, October 2025); register citations name the RA8D2 Hardware
  * User's Manual.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

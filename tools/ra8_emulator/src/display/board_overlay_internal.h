@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_overlay_internal.h
  * @brief Module-private layout constants + draw primitives for the overlay
@@ -10,8 +14,6 @@
  * primitive declarations live here; nothing in this header is part of the
  * emulator-facing API in inc/board_overlay.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

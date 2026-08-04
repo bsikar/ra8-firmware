@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ble.h
  * @brief BLE HCI transport seam (host-side)
@@ -29,9 +33,6 @@
  *       backend is an ESP32-C6 companion IC: the C6 runs the BLE controller
  *       (below HCI) and this seam carries HCI over the companion link, with
  *       the host stack above unchanged.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

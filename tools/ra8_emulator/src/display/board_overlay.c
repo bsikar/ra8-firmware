@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_overlay.c
  * @brief Composite board-view renderer implementation (see board_overlay.h)
@@ -10,8 +14,6 @@
  * pixel buffer is deliberate: the macOS window and the @c --ppm snapshot show
  * the identical bytes, so the overlay is verifiable headlessly.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

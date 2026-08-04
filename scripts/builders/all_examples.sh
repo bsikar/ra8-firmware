@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/builders/all_examples.sh -- build every examples/<app> target.
 #
@@ -9,8 +11,6 @@
 # Usage:
 #   bash scripts/builders/all_examples.sh
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 set -uo pipefail

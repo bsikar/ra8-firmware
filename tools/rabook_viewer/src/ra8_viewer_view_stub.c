@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
  */
 /**
  * @file ra8_viewer_view_stub.c

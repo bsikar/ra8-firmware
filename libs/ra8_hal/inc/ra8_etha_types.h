@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_etha_types.h
  * @brief Per-port Ethernet Agent (ETHA) data types -- HUM Ch 32 (p 1627-1702)
@@ -15,8 +19,6 @@
  * ::ra8_etha_port_t,...) live in ra8_etha_regs.h, and the PHY link /
  * advertise types come from ra8_rmac.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

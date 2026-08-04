@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_c6link_internal.h
  * @brief Cross-translation-unit contract inside `libs/ra8_c6link`.
@@ -16,8 +20,6 @@
  * types. Keeping the includes here is what lets the public headers stay free of
  * the esp-hosted include path.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

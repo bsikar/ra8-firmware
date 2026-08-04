@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_haud.h
  * @brief Native USB host-side Audio class layer (USB Audio 1.0)
@@ -41,9 +45,6 @@
  *
  * Reference: USB Device Class Definition for Audio Devices revision
  * 1.0 (USB-IF, 1998-03-18) and USB Audio Data Formats 1.0.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

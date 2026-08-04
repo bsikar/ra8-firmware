@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_i2c_peripheral.c
  * @brief I2C Bus Interface (IIC) target (peripheral) role -- polling mode
@@ -49,8 +53,6 @@
  * Owns every write to the RIIC own-address and target-transfer registers.
  * See HUM Ch 39 "I2C Bus Interface (IIC)", p 2367-2444.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

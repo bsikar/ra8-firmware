@@ -1,8 +1,8 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # tools/reader_vmem/Makefile -- host build of the #147/#162 reader workload
 # driver. Links the REAL firmware Layer-1/Layer-2 page cache (ra8_vmem +
 # ra8_vsource) so the emitted trace is what the production cache actually sees.
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 Brighton Sikarskie
 
 CC      ?= cc
 CFLAGS  ?= -std=gnu23 -O2 -g -Wall -Wextra -Wno-unused-parameter

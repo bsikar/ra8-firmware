@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_reflow_css_select_mcdc.c
  * @brief MC/DC tests for the content-CSS selector / cascade / font-face arms.
@@ -14,9 +18,6 @@
  * target decision through a public entry point with crafted CSS / element
  * input; the shared sheet fixture lives in
  * tests/support/reflow_css_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_glcdc_gamma.c
  * @brief Unit tests for the GLCDC gamma correction API.
@@ -6,9 +10,6 @@
  * Exercises `ra8_glcdc_set_gamma` (per-channel LUT + AREA register writes)
  * and `ra8_glcdc_gamma_enable` (GAMSW.GAMON bit).  Every register write is
  * observed through the fake MMIO window provided by `ra8_fake_mmap`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

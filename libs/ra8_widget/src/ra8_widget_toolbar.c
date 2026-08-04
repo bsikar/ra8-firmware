@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_widget_toolbar.c
  * @brief Toolbar leaf widget for the ra8_widget tree model (#145 Phase 2).
@@ -11,8 +15,6 @@
  * file carries no `ra8_gfx` dependency and the whole thing is host-testable with
  * a recording mock paint.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

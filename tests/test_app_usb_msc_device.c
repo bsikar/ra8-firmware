@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_usb_msc_device.c
  * @brief Integration test: ThreadX + USBX MSC RAM-disk bring-up
@@ -21,8 +25,6 @@
  *   5. ra8_usb_pal_ep_open(EP1 IN bulk + EP2 OUT bulk).
  *   6. SCSI READ/WRITE bounds verified against the 8-block geometry.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

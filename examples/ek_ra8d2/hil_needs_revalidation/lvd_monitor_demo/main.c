@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/lvd_monitor_demo/main.c
  * @brief Safe LVD / PVD VCC-monitor demo for the EK-RA8D2
@@ -36,8 +40,6 @@
  * synthesised status bit) drives ``MON`` above the threshold and the HIL gate
  * is green. See ``README.md`` for details.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

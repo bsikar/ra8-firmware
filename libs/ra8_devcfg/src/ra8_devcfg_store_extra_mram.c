@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_devcfg_store_extra_mram.c
  * @brief Production ::ra8_devcfg_store_t binding over the extra-MRAM window.
@@ -24,9 +28,6 @@
  *       resolves cleanly to UNPROVISIONED.
  * @note The window is one-time-programmable (HUM Ch 59.7.4.5); a commit
  *       programs a fresh copy slot rather than rewriting one in place.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

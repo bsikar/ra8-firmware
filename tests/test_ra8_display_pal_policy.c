@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_display_pal_policy.c
  * @brief Unit tests for the e-ink page-turn refresh-cadence policy.
@@ -7,9 +11,6 @@
  * INIT-on-open rule, the three selectable strategies (fast_only / quality /
  * fast_clean), the periodic-clean cadence, the chapter-boundary clean, the
  * full-rect helper, and MC/DC for the "clean turn" compound decision.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

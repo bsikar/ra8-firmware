@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_pdg.c
  * @brief PWM Delay Generation Circuit (PDG) driver implementation
@@ -43,9 +47,6 @@
  *   Running -> Stopped [label="ra8_pdg_deinit"];
  * }
  * @enddot
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_pdg.h"

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epaper.h
  * @brief IT8951 e-paper controller SPI driver -- public API
@@ -64,8 +68,6 @@
  * Static allocation only -- the driver keeps one panel context
  * (``s_panel``) at file scope and rejects double-init.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

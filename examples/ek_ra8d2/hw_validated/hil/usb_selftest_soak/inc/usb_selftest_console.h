@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file usb_selftest_console.h
  * @brief Shared SCI8 console + text formatters for the soak self-test
@@ -7,8 +11,6 @@
  * polled SCI8 (the J-Link OB CDC bridge) with heap-free decimal / hex / fail
  * formatters. Defined in usb_selftest_console.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

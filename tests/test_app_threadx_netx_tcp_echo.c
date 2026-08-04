@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_threadx_netx_tcp_echo.c
  * @brief Integration test: ra8_eth NIC bring-up under the NetX-Duo demo
@@ -19,8 +23,6 @@
  *   5. ra8_eth_get_status / ra8_eth_clear_status (ISR back-end)
  *   6. ra8_eth_close
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

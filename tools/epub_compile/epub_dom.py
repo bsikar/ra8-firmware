@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """XHTML -> DOM, preserving everything.
 
 Fidelity is the rule: every tag, attribute and text run in a spine document

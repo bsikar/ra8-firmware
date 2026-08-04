@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_blockdev_sdram.c
  * @brief SDRAM block-device backend -- the 64 MiB SDRAM window as a ramdisk.
@@ -12,9 +16,6 @@
  * count against the window, starts the controller, and delegates the binding
  * (and thereby every read/write/erase/caps callback) to
  * ::ra8_io_blockdev_ram_init. Contents are volatile across a power cycle.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_blockdev_sdram.h"

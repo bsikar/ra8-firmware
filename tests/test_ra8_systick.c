@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_systick.c
  * @brief Unit tests for ra8_systick.c (Cortex-M85 SysTick + DWT timebase).
@@ -9,9 +13,6 @@
  * the reload arithmetic, the range guards (with the MC/DC vectors for the
  * compound zero-input guard), the configure / set-reload register sequences,
  * and the DWT cycle-counter enable / reset / read.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

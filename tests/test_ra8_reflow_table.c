@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_reflow_table.c
  * @brief Host unit tests + MC/DC for minimal `<table>` layout (#107).
@@ -8,9 +12,6 @@
  * increasing y, and a table taller than the page breaks across pages. Plus
  * MC/DC mirror vectors for the two new compound decisions -- the cell
  * word-wrap (column-fit) and the row page-break.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

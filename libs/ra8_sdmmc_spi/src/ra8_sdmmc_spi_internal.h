@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sdmmc_spi_internal.h
  * @brief Module-private cross-TU surface for the SPI-mode SD card driver.
@@ -19,8 +23,6 @@
  * section 7 ("SPI Mode") -- the same references documented inline at each
  * symbol's original definition site.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

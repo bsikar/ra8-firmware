@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # tests/run_tests.sh -- run ctest against a previously built tree.
 #
@@ -19,8 +21,6 @@
 #
 #     tests/run_tests.sh -R test_ra8_acmphs --output-on-failure
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

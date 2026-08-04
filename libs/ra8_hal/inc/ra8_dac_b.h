@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dac_b.h
  * @brief Full-featured 12-bit DAC_B driver
@@ -11,9 +15,6 @@
  * Extends the write stub with: descriptor-based init,
  * deinit, runtime reference reconfigure, output-enable controls,
  * interrupt-mode attach / dispatch, power transition.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

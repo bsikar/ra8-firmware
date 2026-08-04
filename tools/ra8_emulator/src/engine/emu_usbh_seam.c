@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_usbh_seam.c
  * @brief Virtual USB host-mode device seams (see emu_usbh_seam.h)
@@ -8,8 +12,6 @@
  * the live-MRAM data region, and the small write overlay for the writable
  * variant) -- moved verbatim out of the ra8_emulator main translation unit.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */
