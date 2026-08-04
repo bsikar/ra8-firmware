@@ -590,7 +590,8 @@ def _selftest_cases_kconfig() -> list[tuple[str, str, str, bool]]:
 
     Returns:
         One case per drift shape between the two files, plus the agreeing
-        control that must stay silent.
+        control that must stay silent. The dev-board preset has its own group
+        (``_selftest_cases_dev_board``).
     """
     return [
         ("agreeing pair", _GOOD_PINS, _GOOD_SDK, False),
@@ -638,11 +639,25 @@ def _selftest_cases_kconfig() -> list[tuple[str, str, str, bool]]:
             _GOOD_SDK.replace('CONFIG_IDF_TARGET="esp32c6"', 'CONFIG_IDF_TARGET="esp32c3"'),
             True,
         ),
-        # The dev-board preset. Its two drift shapes are distinct: a DIFFERENT
-        # board silently overrides every pin leaf above, while NO board leaves
-        # the choice to whatever upstream happens to default to. Asserting only
-        # that the symbol exists would miss the first, which is the one that
-        # produces a working build driving the wrong pins.
+    ]
+
+
+def _selftest_cases_dev_board() -> list[tuple[str, str, str, bool]]:
+    """Return the crafted cases for the dev-board preset.
+
+    Its two drift shapes are distinct and only one of them is obvious. A
+    DIFFERENT board silently overrides every SPI pin leaf, so the build still
+    succeeds and the C6 comes up on the preset's pins; NO board at all leaves
+    the choice to whatever upstream happens to default to. Asserting merely
+    that the symbol is present would miss the first, which is the worse one.
+
+    Returns:
+        One case per drift shape. There is no agreeing control here: the
+        agreeing pair in ``_selftest_cases_kconfig`` already carries a matching
+        ``C6_DEV_BOARD`` / ``CONFIG_ESP_HOST_DEV_BOARD_NONE`` pair, so this
+        rule's quiet direction is proven there rather than restated.
+    """
+    return [
         (
             "dev board drifted to another preset",
             _GOOD_PINS,
@@ -868,9 +883,14 @@ def _selftest_cases() -> list[tuple[str, str, str, bool]]:
     """Return every crafted case, across both halves of the comparator.
 
     Returns:
-        The concatenation of the three case groups.
+        The concatenation of the four case groups.
     """
-    return _selftest_cases_kconfig() + _selftest_cases_ra8_signals() + _selftest_cases_ra8_map()
+    return (
+        _selftest_cases_kconfig()
+        + _selftest_cases_dev_board()
+        + _selftest_cases_ra8_signals()
+        + _selftest_cases_ra8_map()
+    )
 
 
 def _selftest_port_failures() -> list[str]:
