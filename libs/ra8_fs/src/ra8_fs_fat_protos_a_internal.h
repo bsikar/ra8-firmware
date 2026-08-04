@@ -471,24 +471,32 @@ priv_exfat_bmp_switch(const ra8_fs_mount_t* m, uint32_t lba, uint32_t* loaded, u
 /**
  * @brief Create a contiguous file on an exFAT volume and write its contents.
  *
- * @details Allocates a contiguous run from the allocation bitmap, writes the
- * data, then appends a File/Stream/Name entry set (NoFatChain) to the root
- * directory. One-shot provisioning helper; does not overwrite an existing file.
+ * @details Unlinks any existing entry set for @p path (freeing its clusters
+ * and releasing its directory slots), then allocates a contiguous run from the
+ * allocation bitmap, writes the data, and appends a fresh File/Stream/Name
+ * entry set (NoFatChain) to the root directory. The unlink-first step is what
+ * makes a repeated create a REPLACE rather than the silent duplicate-plus-leak
+ * it used to be (#603), and mirrors the truncate `ra8_fs_open()` in
+ * ::k_ra8_fs_mode_write performs on the FAT side.
  *
  * @param[in,out] m    Mounted exFAT volume.
  * @param[in]     path Flat root-level file name (ASCII).
  * @param[in]     data File bytes.
  * @param[in]     len  Byte count (> 0).
  * @return Error code.
- * @retval k_ra8_ok              File created.
- * @retval k_ra8_err_invalid_arg Empty/oversized name or zero length.
+ * @retval k_ra8_ok              File created (or replaced).
+ * @retval k_ra8_err_invalid_arg Empty/oversized name, zero length, or @p path
+ *                               names an existing directory.
  * @retval k_ra8_err_no_mem      No contiguous space or directory slots.
  * @retval k_ra8_err_*           Backend or bitmap failure.
  * @pre @p m, @p path, @p data are non-NULL; ``m->type`` is exFAT.
- * @pre @p path does not already exist (not checked here).
- * @post On success the file is allocated, written, and linked.
- * @post On failure the volume may hold an orphaned (unlinked) run.
+ * @pre No handle is open on @p path.
+ * @post On success the file is allocated, written, and linked exactly once.
+ * @post On success no cluster of a replaced predecessor stays marked used.
  * @note Contiguous allocation only (NoFatChain).
+ * @note Not atomic: an old file is released before the new one is written, so
+ *       a failure mid-write leaves the name absent rather than stale -- the
+ *       same trade the FAT truncate path makes.
  * @since 0.1.0
  */
 RA8_PRIV
@@ -528,6 +536,11 @@ uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len);
  * @param[out] out_first First cluster of the file.
  * @param[out] out_size  File length in bytes (low 32 bits).
  * @param[out] out_nofat 1 if the file is contiguous (NoFatChain).
+ * @param[out] out_attr  Low byte of the File entry's FileAttributes, which is
+ *                       where ::k_exfat_attr_directory lives. Callers that act
+ *                       on the entry MUST consult it: a directory answers this
+ *                       lookup exactly like a file, and treating one as a file
+ *                       frees its cluster chain (#604).
  * @return Error code.
  * @retval k_ra8_ok            File found; outputs populated.
  * @retval k_ra8_err_not_found No matching entry in the root directory.
@@ -544,7 +557,8 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
                           const char*           path,
                           uint32_t*             out_first,
                           uint32_t*             out_size,
-                          uint8_t*              out_nofat);
+                          uint8_t*              out_nofat,
+                          uint8_t*              out_attr);
 
 /**
  * @brief Locate the allocation-bitmap entry in the exFAT root directory.
@@ -700,7 +714,9 @@ ra8_err_t priv_exfat_next_entry(const ra8_fs_mount_t* m, exfat_cursor_t* cur, ui
  * @brief Open a file (read-only) on a mounted exFAT volume.
  *
  * @details Resolves @p path in the root directory and populates a read handle;
- * write/append modes are rejected (exFAT is read-only here).
+ * write/append modes are rejected (exFAT is read-only here). A name that
+ * resolves to a directory is rejected rather than opened as the empty file its
+ * zero DataLength would otherwise describe (#604).
  *
  * @param[in]  handle   Mounted exFAT volume.
  * @param[in]  path     Flat root-level file name (ASCII).
@@ -709,6 +725,7 @@ ra8_err_t priv_exfat_next_entry(const ra8_fs_mount_t* m, exfat_cursor_t* cur, ui
  * @return Error code.
  * @retval k_ra8_ok                File opened.
  * @retval k_ra8_err_not_supported Write/append requested (exFAT is read-only).
+ * @retval k_ra8_err_invalid_arg   @p path names a directory, not a file.
  * @retval k_ra8_err_not_found     No such file.
  * @retval k_ra8_err_no_mem        File table full.
  * @pre @p handle, @p path, @p out_file are non-NULL; mount is exFAT.
@@ -774,14 +791,17 @@ uint16_t priv_exfat_set_checksum(const uint8_t* set, uint32_t bytes);
  *
  * @details Locates the file's directory-entry set, clears the in-use bit
  * (bit 7 of the entry type) on every entry in the set, and frees the
- * file's clusters in the allocation bitmap.
+ * file's clusters in the allocation bitmap. A set carrying
+ * ::k_exfat_attr_directory is refused: freeing a directory's chain would
+ * strand every entry inside it (#604).
  *
  * @param[in] m    Mounted exFAT volume.
  * @param[in] path Flat root-level file name (ASCII).
  * @return Error code.
- * @retval k_ra8_ok            File unlinked.
- * @retval k_ra8_err_not_found No such file.
- * @retval k_ra8_err_*         Directory or bitmap write failure.
+ * @retval k_ra8_ok              File unlinked.
+ * @retval k_ra8_err_invalid_arg @p path names a directory.
+ * @retval k_ra8_err_not_found   No such file.
+ * @retval k_ra8_err_*           Directory or bitmap write failure.
  * @pre @p m and @p path are non-NULL; mount is exFAT.
  * @pre The file is not open.
  * @post The name no longer resolves; its clusters are free.

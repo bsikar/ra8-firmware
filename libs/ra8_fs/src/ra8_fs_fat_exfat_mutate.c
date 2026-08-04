@@ -337,6 +337,12 @@ ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path)
   if (e != k_ra8_ok) {
     return e;
   }
+  /* A directory's entry set looks like a file's, so without this the chain
+   * holding every child is handed to priv_exfat_free_clusters and the children
+   * become unreachable allocated clusters -- silent, unrecoverable loss (#604). */
+  if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_directory) != 0U) {
+    return k_ra8_err_invalid_arg;
+  }
   for (uint32_t k = 0U; k < count; k++) {
     exfat_cursor_t one                        = {.cluster          = pos[k].cluster,
                                                  .entry_in_cluster = pos[k].index,
@@ -432,7 +438,8 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   uint32_t e_first = 0U;
   uint32_t e_size  = 0U;
   uint8_t  e_nofat = 0U;
-  if (priv_exfat_find(m, new_path, &e_first, &e_size, &e_nofat) == k_ra8_ok) {
+  uint8_t  e_attr  = 0U;
+  if (priv_exfat_find(m, new_path, &e_first, &e_size, &e_nofat, &e_attr) == k_ra8_ok) {
     return k_ra8_err_exists;
   }
   exfat_setpos_t  pos[k_exfat_set_max_entries] = {};

@@ -402,7 +402,9 @@ static bool s_cache_is_fresh(ra8_fs_mount_t*                  mount,
 
 /**
  * @brief Write a fresh marker file, replacing any stale one.
- * @details Unlinks first because `ra8_fs_write_file` will not overwrite.
+ * @details `ra8_fs_write_file` replaces an existing name by itself since
+ *          #603, so the unlink is belt-and-braces: it keeps the marker
+ *          absent rather than stale if the write fails partway.
  * @param[in] mount Mounted volume.
  * @param[in] path  Marker path (root-level 8.3).
  * @param[in] stamp Stamp to persist.

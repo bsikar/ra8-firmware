@@ -1,13 +1,14 @@
 /**
  * @file fs_fat_exfat_mutate_test_util.h
- * @brief Shared fixture for test_ra8_fs_fat_exfat_mutate_cov.c.
+ * @brief Shared fixture for the exFAT mutate + write_file test executables.
  *
  * @details
  * Header-only test fixture providing the RAM-backed block device, the 64 MiB
- * exFAT volume builder, and the raw directory-entry / FAT patching helpers
- * used by the exFAT mutate (unlink / rename / listdir corruption) coverage
- * suite. Everything here has internal linkage, so the including test
- * executable owns a private copy of the fixture state.
+ * exFAT volume builder, the raw directory-entry / FAT patching helpers used by
+ * the exFAT mutate (unlink / rename / listdir corruption) coverage suite, and
+ * the allocation-bitmap census `test_ra8_fs_exfat_write_file.c` uses to prove
+ * a repeated create leaks nothing. Everything here has internal linkage, so
+ * each including test executable owns a private copy of the fixture state.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -61,6 +62,10 @@ typedef enum : uint32_t {
   k_mut_type_name       = 0xC1U,       /**< exFAT File-name type byte.             */
   k_mut_type_bogus      = 0x42U,       /**< Invalid type used to corrupt entries.  */
   k_mut_fill_byte       = 0xA5U,       /**< Pre-format poison fill pattern.        */
+  k_mut_file_attr_off   = 4U,          /**< File entry FileAttributes byte offset. */
+  k_mut_attr_directory  = 0x10U,       /**< FileAttributes: directory bit.         */
+  k_mut_cluster_first   = 2U,          /**< exFAT cluster numbering starts at 2.   */
+  k_mut_bits_per_byte   = 8U,          /**< Allocation-bitmap bits per byte.       */
 } mut_cov_const_t;
 
 /* ---- RAM-backed block device ------------------------------------------- */
@@ -341,4 +346,68 @@ static inline uint32_t disk_get_u32le(uint32_t off)
   return (uint32_t)p[0] | ((uint32_t)p[1] << (uint32_t)k_mut_shift_byte8) |
          ((uint32_t)p[2] << (uint32_t)k_mut_shift_byte16) |
          ((uint32_t)p[3] << (uint32_t)k_mut_shift_byte24);
+}
+
+/**
+ * @brief Count the clusters currently marked allocated in the exFAT bitmap.
+ *
+ * @details Reads the allocation-bitmap directory entry (root slot 0, written by
+ *          the formatter), locates its data run, and counts the set bits over
+ *          the volume's cluster count. The bitmap is the authoritative record
+ *          of allocation in exFAT, so this is the direct measurement of whether
+ *          an operation leaked space: a create-then-recreate that leaks leaves
+ *          the first file's bits set with no directory entry referencing them.
+ *
+ * @param[in] h Mounted exFAT volume.
+ *
+ * @return Number of clusters whose bitmap bit is 1.
+ * @retval 0..count_of_clusters The allocated-cluster count.
+ *
+ * @pre h is non-NULL and mounted; s_disk.bytes holds the image.
+ * @pre The bitmap is contiguous (true for a freshly formatted volume).
+ * @post No disk state is modified.
+ *
+ * @since 0.1.0
+ */
+static inline uint32_t alloc_bitmap_used(const ra8_fs_mount_t* h)
+{
+  const uint32_t entry_off = root_byte(h, (uint32_t)k_mut_root_bitmap_idx);
+  const uint32_t bmp_clus  = disk_get_u32le(entry_off + (uint32_t)k_mut_strm_off_clus);
+  /* Partition-adjusted for the same reason as root_byte(): the formatter lays
+   * the volume down inside an MBR partition, so a census that forgets the base
+   * counts the pre-partition gap instead of the bitmap. */
+  const uint32_t bmp_lba = h->partition_base_lba + h->first_data_lba +
+                           ((bmp_clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
+  const uint32_t base    = bmp_lba * (uint32_t)k_mut_block_size;
+  uint32_t       used    = 0U;
+  for (uint32_t i = 0U; i < h->count_of_clusters; i++) {
+    const uint8_t byte = s_disk.bytes[base + (i / (uint32_t)k_mut_bits_per_byte)];
+    if (((byte >> (i % (uint32_t)k_mut_bits_per_byte)) & 1U) != 0U) {
+      used++;
+    }
+  }
+  return used;
+}
+
+/**
+ * @brief Stamp the directory attribute onto the first user File entry.
+ *
+ * @details The library has no exFAT `mkdir`, so the only way to present the
+ *          driver with an exFAT directory is to flip the FileAttributes bit on
+ *          an entry set it already wrote. Nothing in the lookup path verifies
+ *          the set's checksum, so the patched set resolves exactly like the
+ *          real thing -- which is precisely the situation the directory guards
+ *          have to survive.
+ *
+ * @param[in] h Mounted exFAT volume whose root slot 3 holds a File entry.
+ *
+ * @pre h is non-NULL and mounted; exactly one user file has been created.
+ * @post That file's entry set reports ::k_mut_attr_directory.
+ *
+ * @since 0.1.0
+ */
+static inline void mark_first_file_as_directory(const ra8_fs_mount_t* h)
+{
+  const uint32_t entry_off = root_byte(h, (uint32_t)k_mut_root_file0_idx);
+  s_disk.bytes[entry_off + (uint32_t)k_mut_file_attr_off] |= (uint8_t)k_mut_attr_directory;
 }

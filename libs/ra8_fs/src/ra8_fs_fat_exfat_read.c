@@ -243,7 +243,8 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
                           const char*           path,
                           uint32_t*             out_first,
                           uint32_t*             out_size,
-                          uint8_t*              out_nofat)
+                          uint8_t*              out_nofat,
+                          uint8_t*              out_attr)
 {
   /* Leading slashes are not part of the name; match FAT's priv_path_to_83
    * behavior so ra8_fs_open("/name") resolves on exFAT too (#93). */
@@ -265,6 +266,9 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
     }
     e = priv_exfat_match_set(m, &cur, path, out_first, out_size, out_nofat);
     if (e == k_ra8_ok) {
+      /* FileAttributes is 16-bit but every bit we act on (directory, archive)
+       * lives in the low byte, so the caller gets that byte. */
+      *out_attr = entry[k_exfat_off_file_attr];
       return k_ra8_ok;
     }
     if (e != k_ra8_err_not_found) {
@@ -286,9 +290,15 @@ ra8_err_t priv_exfat_open(ra8_fs_mount_t* handle,
   uint32_t  first = 0U;
   uint32_t  size  = 0U;
   uint8_t   nofat = 0U;
-  ra8_err_t e     = priv_exfat_find(handle, path, &first, &size, &nofat);
+  uint8_t   attr  = 0U;
+  ra8_err_t e     = priv_exfat_find(handle, path, &first, &size, &nofat, &attr);
   if (e != k_ra8_ok) {
     return e;
+  }
+  /* A directory answers the name lookup exactly like a file and reports
+   * DataLength 0, so without this it opens as a bogus empty file (#604). */
+  if ((attr & (uint8_t)k_exfat_attr_directory) != 0U) {
+    return k_ra8_err_invalid_arg;
   }
   ra8_fs_file_t* f = priv_alloc_file_slot();
   if (f == nullptr) {

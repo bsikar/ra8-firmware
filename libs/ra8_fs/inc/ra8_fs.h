@@ -29,13 +29,15 @@
  *     free-cluster scan when the current cluster fills.
  *   - Seek / tell / size.
  *   - Listdir via callback.
- *   - Unlink (mark dir entry 0xE5, free chain).
+ *   - Unlink (mark dir entry 0xE5, free chain) and rmdir of an empty
+ *     directory. Both refuse the wrong kind of entry: `unlink` will not take
+ *     a directory and `rmdir` will not take a file.
  *
  * ## What this deliberately skips
  *   - Long File Names (LFN, 0x0F attribute) on write -- short 8.3 only
  *     (LFN reads are matched).
- *   - Sub-directory removal (`rmdir`); `mkdir` and nested-path resolution
- *     are supported.
+ *   - exFAT directory creation and removal (`mkdir` / `rmdir` are FAT-only;
+ *     both are supported there, including nested-path resolution).
  *   - FAT32 FSInfo free-cluster cache (we always linearly scan).
  *   - Date/time stamps on writes (left at 0, like FSP's minimal mode).
  *   - Multi-partition MBR scanning (only partition 0 is followed; a
@@ -449,6 +451,12 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
 /**
  * @brief Open or create a file by 8.3 short path (root dir only).
  *
+ * @details A path that resolves to a DIRECTORY is rejected in every mode. In
+ * write mode that rejection is load-bearing: the truncate step would free the
+ * cluster chain holding the directory's contents and leave every file inside it
+ * unreachable. In read mode it prevents handing back the zero-byte handle a
+ * directory's `DIR_FileSize` of 0 would otherwise describe.
+ *
  * @param[in]  handle    Mount handle.
  * @param[in]  path      8.3 path, e.g. "HELLO.TXT". Subdirectories not supported.
  * @param[in]  mode      `k_ra8_fs_mode_read`, `_write`, or `_append`.
@@ -456,6 +464,8 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  *
  * @retval k_ra8_ok                     File opened.
  * @retval k_ra8_err_null_ptr           Any pointer arg is NULL.
+ * @retval k_ra8_err_invalid_arg        `path` names a directory (any mode), or
+ *                                     a new file's name is not 8.3.
  * @retval k_ra8_err_not_found          Read mode and path doesn't exist.
  * @retval k_ra8_err_no_mem             No free file slot.
  * @retval k_ra8_err_no_data            Write mode failed to allocate cluster.
@@ -466,9 +476,11 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  * @pre handle->in_use == 1.
  * @post On success, out_file->in_use == 1 and offset is at file start (read/write)
  *       or end (append).
+ * @post On `k_ra8_err_invalid_arg` the volume is unchanged.
  * @note On FAT12/16/32 all three modes work; exFAT accepts only
  *       `k_ra8_fs_mode_read` here (whole-file writes go through
  *       `ra8_fs_write_file()`).
+ * @see ra8_fs_rmdir()  The verb for removing a directory.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
@@ -515,19 +527,32 @@ ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_l
  * @brief Create a whole file in one call (provisioning helper).
  *
  * @details Convenience wrapper that creates @p path and writes @p data. On FAT
- * volumes it opens in write mode, writes, and closes. On exFAT it allocates a
- * contiguous cluster run and links a fresh directory entry (the only exFAT
- * write path). It does not overwrite an existing file.
+ * volumes it opens in write mode, writes, and closes. On exFAT it releases any
+ * existing entry set for the name, then allocates a contiguous cluster run and
+ * links a fresh directory entry (the only exFAT write path).
+ *
+ * An existing @p path is REPLACED on both filesystems: its old contents are
+ * discarded and its clusters returned to the volume's free space. Calling this
+ * twice with the same name leaves exactly one file, of the second call's
+ * contents, with no space lost to the first.
  *
  * @param[in] handle Mounted volume.
  * @param[in] path   Flat root-level file name (ASCII).
  * @param[in] data   File contents.
  * @param[in] len    Byte count (> 0).
  *
- * @retval k_ra8_ok           File created and written.
- * @retval k_ra8_err_null_ptr Any pointer argument was NULL.
- * @retval k_ra8_err_no_mem   Out of contiguous space or directory slots.
- * @retval k_ra8_err_*        Backend error.
+ * @retval k_ra8_ok              File created and written.
+ * @retval k_ra8_err_null_ptr    Any pointer argument was NULL.
+ * @retval k_ra8_err_invalid_arg Empty/oversized name, zero @p len, or @p path
+ *                               names an existing directory.
+ * @retval k_ra8_err_no_mem      Out of contiguous space or directory slots.
+ * @retval k_ra8_err_*           Backend error.
+ *
+ * @pre No handle is open on @p path.
+ * @post On success @p path resolves to exactly one entry of @p len bytes.
+ * @post On success a replaced predecessor's clusters read as free.
+ * @note Not atomic: a replaced file is released before the new content is
+ *       written, so a failure mid-write leaves @p path absent, not stale.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
@@ -579,9 +604,26 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
  * exFAT: clears the in-use bit on the whole entry set and frees the
  * clusters in the allocation bitmap (the bitmap is authoritative).
  *
+ * A DIRECTORY is refused on both filesystems. Deleting one this way would free
+ * the chain that holds its children while their own entries still claim their
+ * clusters, leaving them allocated and unreachable -- lost clusters that only a
+ * reformat recovers. Use `ra8_fs_rmdir()`.
+ *
+ * @param[in,out] handle Mount handle.
+ * @param[in]     path   NUL-terminated path to the file.
+ *
  * @retval k_ra8_ok               File unlinked.
  * @retval k_ra8_err_null_ptr     handle/path NULL.
+ * @retval k_ra8_err_invalid_arg  `path` names a directory, or is not 8.3.
  * @retval k_ra8_err_not_found    File doesn't exist.
+ *
+ * @pre `handle` and `path` are non-NULL; the mount is in use.
+ * @pre No open file handle refers to `path`.
+ * @post On success the name no longer resolves and its clusters are free.
+ * @post On `k_ra8_err_invalid_arg` the volume is unchanged.
+ *
+ * @note Not thread-safe; callers serialise.
+ * @see ra8_fs_rmdir()  Removes a directory instead.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_fs_unlink(ra8_fs_mount_t* handle, const char* path);
@@ -644,6 +686,62 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_fs_mkdir(ra8_fs_mount_t* handle, const char* path);
+
+/**
+ * @brief Remove an empty directory at @p path (FAT12/16/32).
+ *
+ * @details The symmetric partner of `ra8_fs_mkdir()`: resolves all-but-the-last
+ * path component to an existing parent, requires the final component to be an
+ * existing directory, requires that directory to hold nothing but its own "."
+ * and ".." links, then frees its cluster chain and marks its entry in the parent
+ * deleted. Nested paths are supported (`"/books/scifi"`).
+ *
+ * The emptiness proof runs before anything is freed, so a refusal costs the
+ * volume nothing. Deleted (0xE5) slots and orphaned long-name remnants do not
+ * count as contents -- `ra8_fs_unlink()` leaves the latter behind -- so a
+ * directory whose files have all been unlinked is removable.
+ *
+ * The volume root is not removable, and neither is a file: use `ra8_fs_unlink()`
+ * for those. exFAT is not supported, matching `ra8_fs_mkdir()`.
+ *
+ * @param[in,out] handle Mount handle.
+ * @param[in]     path   NUL-terminated directory path to remove.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Directory removed.
+ * @retval k_ra8_err_null_ptr       `handle` or `path` was NULL.
+ * @retval k_ra8_err_invalid_state  Mount is not in use.
+ * @retval k_ra8_err_invalid_arg    `path` is the root, is not a valid 8.3 name,
+ *                                  or names a file rather than a directory.
+ * @retval k_ra8_err_not_found      No such entry, or a component is missing.
+ * @retval k_ra8_err_not_empty      The directory still holds entries.
+ * @retval k_ra8_err_protocol_error Corrupt chain, or a directory entry that
+ *                                  claims no data cluster.
+ * @retval k_ra8_err_not_supported  The volume is exFAT.
+ *
+ * @pre `handle` and `path` are non-NULL; the mount is in use.
+ * @pre No open file handle refers to an entry inside @p path.
+ * @post On success @p path no longer resolves and its cluster is free.
+ * @post On any refusal (wrong type, non-empty, root) the volume is unchanged.
+ *
+ * @note An open handle to a file inside @p path cannot be orphaned by this
+ *       call: that file's directory entry still exists, so the emptiness check
+ *       refuses the removal first.
+ * @note Not thread-safe; callers serialise.
+ *
+ * @par Example:
+ * @code
+ * ra8_err_t e = ra8_fs_rmdir(mnt, "/logs");
+ * if (e == k_ra8_err_not_empty) {
+ *   // unlink the contents first, then retry
+ * }
+ * @endcode
+ *
+ * @see ra8_fs_mkdir()   Creates the directory this removes.
+ * @see ra8_fs_unlink()  Removes a file instead.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_fs_rmdir(ra8_fs_mount_t* handle, const char* path);
 
 #ifdef __cplusplus
 }

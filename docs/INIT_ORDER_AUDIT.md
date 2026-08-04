@@ -322,9 +322,9 @@ Source: ``examples/ek_ra8d2/hw_pending/adc_diag_tsn_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/battery_monitor_demo/main.c``
 
-- L257: ra8_i3c_init  (rank 100)
-- L268: ra8_smbus_init  (rank 100)
-- L273: ra8_batt_monitor_init  (rank 100)
+- L261: ra8_i3c_init  (rank 100)
+- L272: ra8_smbus_init  (rank 100)
+- L277: ra8_batt_monitor_init  (rank 100)
 
 ### blink_m33_hal
 
@@ -567,8 +567,8 @@ Source: ``examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/smbus_demo/main.c``
 
-- L210: ra8_i3c_init  (rank 100)
-- L221: ra8_smbus_init  (rank 100)
+- L211: ra8_i3c_init  (rank 100)
+- L222: ra8_smbus_init  (rank 100)
 
 ### tls_client
 

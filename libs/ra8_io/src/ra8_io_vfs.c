@@ -427,3 +427,15 @@ ra8_err_t ra8_io_vfs_mkdir(const char* path)
   }
   return ra8_fs_mkdir(m, sub);
 }
+
+ra8_err_t ra8_io_vfs_rmdir(const char* path)
+{
+  RA8_CHECK_NULL_PTR(path, s_tag, "path must not be nullptr");
+  ra8_fs_mount_t* m   = nullptr;
+  const char*     sub = nullptr;
+  const ra8_err_t e   = internal_resolve(path, &m, &sub);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  return ra8_fs_rmdir(m, sub);
+}
