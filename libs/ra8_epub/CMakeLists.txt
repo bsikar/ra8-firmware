@@ -22,8 +22,11 @@
 # consumers reach into inc/ + src/ directly. The host unit test build
 # in tests/CMakeLists.txt picks up ra8_epub via the recursive glob plus
 # the third-party additions wired up there. When an example app starts
-# to depend on ra8_epub, wire up an OBJECT or INTERFACE library here
-# following libs/ra8_tls/CMakeLists.txt.
+# to depend on ra8_epub, it does NOT need anything added here: name the
+# library in the app's ra8_add_app(... LIBS ra8_epub), which
+# cmake/ra8_app/sources.cmake resolves by globbing libs/<lib>/src/*.c and
+# appending libs/<lib>/inc. That is how every library consumer in this tree
+# actually links, including ra8_tls.
 #
 #
 

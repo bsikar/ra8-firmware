@@ -35,12 +35,18 @@ firmware as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
+- **Primary consumer: the Root-of-Trust secure-boot chain.** `libs/ra8_rot`
+  ECDSA-P256 signature verification in `dfu_bootloader`, `secure_boot_hil`,
+  `secure_boot_ns_hil` and `rot_verify_hil`. This is the silicon-validated
+  path: a fresh board refuses an unsigned image because of it.
 - PSA Crypto API implementation (key store, hashes, AEAD, asymmetric
-  signature) consumed via `libs/ra8_psa_crypto/` and indirectly by
-  `libs/ra8_tls/`, `libs/ra8_ota/`, and the secure-side substrate at
-  `src/secure_app/`.
-- Integrity claim category: control-flow (signature verification gates
-  the OTA acceptance decision and TLS handshake completion).
+  signature) also consumed via `libs/ra8_psa_crypto/` by `psa_crypto_hil`
+  and `crypto_aes_demo`, by the host KAT suite, and -- when
+  `RA8_USE_MBEDTLS=ON` -- underneath `libs/ra8_tls/`.
+- **Not** consumed by `libs/ra8_ota/`, which links no crypto library at all
+  (see `docs/SOUP/mbedtls.md`).
+- Integrity claim category: control-flow (signature verification gates the
+  secure-boot accept/reject decision).
 
 ## Qualification basis
 
@@ -60,11 +66,17 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- PSA Crypto key handles are owned by the secure-side key vault
-  (`src/secure_app/`) and surfaced to the non-secure side only through
-  the NSC veneers in `libs/ra8_nsc/`.
-- All callers go through the `libs/ra8_psa_crypto/` shim, never the raw
-  `psa/crypto.h` API directly.
+- Signature verification is the gate on secure boot, and the RoT public key
+  it verifies against is held on the secure side under `src/secure_app/`.
+- Two boundaries that this record previously claimed do NOT exist, and are
+  recorded here so the gap is visible rather than assumed away:
+  - PSA key handles are **not** brokered by the key vault or the NSC
+    veneers. `src/secure_app/key_vault.c` and `libs/ra8_nsc/` contain zero
+    PSA references; keys are imported transiently at the call site.
+  - `libs/ra8_psa_crypto/` is **not** a mandatory chokepoint. It is one
+    shim among several callers; `psa_crypto_hil`, `threadx_https_client`
+    and the PSA KAT shims include `psa/crypto.h` directly.
+  Making either boundary real is open work, not a shipped mitigation.
 
 ## Deviations / patches
 
