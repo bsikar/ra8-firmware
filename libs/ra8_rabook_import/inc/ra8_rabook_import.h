@@ -37,12 +37,12 @@
  * @note Not thread-safe: one import at a time on the single reader core.
  * @see ra8_rabook_import_compiler.h  Production adapter onto the real compiler.
  * @see ra8_fs.h                      Filesystem the cache lives on.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  *
  * [Ring 4 / EPUB Import] {World: NS}
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

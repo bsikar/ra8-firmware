@@ -35,10 +35,10 @@
  * asserts a stable render, and ``g_ls_loop_ticks`` feeds the jlink liveness
  * probe.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @see ra8_longstrip.h  The continuous vertical-scroll engine this drives.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

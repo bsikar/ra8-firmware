@@ -9,12 +9,12 @@
  * filled by the shared scanline polygon fill. No DOM, no heap. See
  * ra8_reflow_svg_internal.h for the shared geometry types and helper contracts.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -27,10 +27,10 @@
  * @see ra8_unarch_xz.h  The bounded XZ decode wrapper that installs this pool.
  * @see xz_config.h      The porting header mapping kmalloc/vmalloc here.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

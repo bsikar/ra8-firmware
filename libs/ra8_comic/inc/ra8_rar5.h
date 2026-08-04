@@ -46,10 +46,10 @@
  * @see ra8_rar.h   The block walker that locates the packed member.
  * @see ra8_comic.h The comic facade that turns a decoded page into pixels.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

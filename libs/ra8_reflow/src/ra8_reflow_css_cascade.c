@@ -11,12 +11,12 @@
  * sources into a single ::ra8_css_style_t. No MMIO, no heap; all state lives in
  * the caller-owned ::ra8_css_sheet_t.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

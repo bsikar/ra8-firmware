@@ -13,12 +13,12 @@
  * `on_press` callback. Button-kind events are declined so they keep routing.
  * Like the rest of `ra8_widget`, the file carries no `ra8_gfx` dependency.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

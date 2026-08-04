@@ -11,11 +11,11 @@
  * back by the cache is verified against the source blob. Row printing and
  * the summary report live in sweep_block_report.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include "sweep_block.h"

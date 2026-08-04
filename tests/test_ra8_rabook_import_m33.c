@@ -48,11 +48,11 @@
  * single-condition `if (err ...)` or `RA8_CHECK_NULL_PTR` guard, covered by driving
  * its one condition both ways across the cases above.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB Import] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  */
 

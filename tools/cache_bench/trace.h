@@ -10,11 +10,11 @@
  * loads real traces captured from the reader (ra8_emulator or the EK-RA8D2 over
  * UART) as `<object> <page>` lines.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

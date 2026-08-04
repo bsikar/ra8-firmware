@@ -9,11 +9,11 @@
  * is an integer nearest-neighbour scale-to-fit into a layout box, emitting one
  * `ra8_gfx_pixel()` per destination pixel (which clips to the framebuffer).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

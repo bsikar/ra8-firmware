@@ -28,11 +28,11 @@
  * baked PNG): the only new surface is the `ra8_epub_get_cover_image` extraction
  * in front of the proven decode+scale+blit pipeline.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

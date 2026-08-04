@@ -36,11 +36,11 @@
  * `if (err != k_ra8_ok)` / `RA8_CHECK_NULL_PTR` early return, each driven both
  * ways across the happy-path and guard cases below.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB Import] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  */
 

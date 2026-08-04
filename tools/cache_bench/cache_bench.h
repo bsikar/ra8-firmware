@@ -13,11 +13,11 @@
  * ::cache_policy_t exactly as the eventual firmware Layer 2 will (NASA Rule 9
  * allows the function-pointer vtable for this DIP seam).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

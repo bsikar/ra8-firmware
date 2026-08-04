@@ -27,11 +27,11 @@
  * so the banner is deterministic; on the bench it needs the IMU 12 Click
  * fitted (same prerequisite as `imu_lsm6dso_demo`).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

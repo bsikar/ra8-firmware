@@ -16,12 +16,12 @@
  * the render path ARM-Cortex-M cheap while still producing crisp
  * anti-aliased shapes thanks to stb's coverage-based rasteriser.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

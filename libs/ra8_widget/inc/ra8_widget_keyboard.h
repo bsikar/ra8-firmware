@@ -18,12 +18,12 @@
  * `ra8_kbd_key_glyph`, keeping the key-drawing + routing logic host-testable with
  * a recording mock seam while the layout logic stays in `ra8_keyboard`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -11,12 +11,12 @@
  * the selector and `@font-face` parsers; it is invoked by the stylesheet scanner
  * ::ra8_css_parse in a sibling translation unit. No MMIO, no heap.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -31,10 +31,10 @@
  * rest NULL, and add one row to the registry in `ra8_fmt_registry.c`. Nothing
  * else changes -- CLI dispatch and the usage text are driven off the registry.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @see ra8_jof.h  The band-tile atlas this tool was first built to debug.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

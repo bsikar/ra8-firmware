@@ -50,11 +50,11 @@
  * test_ra8_rabook_pipeline_err.c and the synthetic-EPUB builders in
  * tests/support/rabook_pipeline_fixture.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB_Compiler] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  */
 

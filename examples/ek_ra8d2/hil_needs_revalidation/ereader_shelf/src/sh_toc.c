@@ -8,11 +8,11 @@
  * time via SW1/SW2; tapping a visible row opens the reader at that chapter. The
  * window of visible rows is derived from the panel height and ::k_sh_toc_row_h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include "ra8_gfx.h"

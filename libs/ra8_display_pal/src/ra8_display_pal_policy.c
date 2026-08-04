@@ -7,11 +7,11 @@
  * The application owns a ::display_policy_t, feeds page-transition events in, and
  * applies the returned ::display_policy_decision_t through ``display_flush``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Display] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

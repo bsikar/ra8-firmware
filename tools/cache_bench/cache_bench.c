@@ -14,11 +14,11 @@
  * frame / chunk SIZE in bytes through the real ::ra8_vmem stack (see
  * sweep_block.h) rather than the capacity in frames.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include "cache_bench.h"

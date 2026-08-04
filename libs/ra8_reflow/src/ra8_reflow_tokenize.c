@@ -21,12 +21,12 @@
  * propagates down a bounded explicit stack -- no recursion (NASA P10
  * Rule 1) and bounded loops (Rule 2).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

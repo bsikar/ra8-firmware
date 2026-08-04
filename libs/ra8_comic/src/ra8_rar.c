@@ -23,10 +23,10 @@
  * truncated block is rejected (::k_ra8_err_validation_failed) rather than
  * over-read.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include "ra8_rar.h"
 

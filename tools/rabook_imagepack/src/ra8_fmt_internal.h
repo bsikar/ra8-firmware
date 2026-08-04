@@ -8,11 +8,11 @@
  * verbs share across those TUs; nothing here is public API -- consumers use the
  * ::ra8_fmt_desc_t seam in `ra8_fmt.h`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

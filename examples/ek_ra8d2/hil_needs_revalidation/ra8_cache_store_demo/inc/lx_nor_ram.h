@@ -20,13 +20,13 @@
  * actual power cycle; this RAM model persists across the in-process remount.)
  *
  * @note Single global instance; the store serialises access (one reader core).
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

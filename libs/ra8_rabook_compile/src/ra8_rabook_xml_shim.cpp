@@ -21,11 +21,11 @@
  * @par NASA Rule 1 (no recursion): RA8_NO_RECURSION documented below.
  * @par NASA Rule 3 deviation: tinyxml2 XMLDocument heap (bounded, local).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB Compiler] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  */
 

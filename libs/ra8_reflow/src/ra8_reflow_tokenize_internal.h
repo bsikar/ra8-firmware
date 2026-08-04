@@ -9,11 +9,11 @@
  * each decision directly (the tokenizer's main loop is otherwise reached
  * only through `priv_reflow_xml_walk`). Not part of the public API.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

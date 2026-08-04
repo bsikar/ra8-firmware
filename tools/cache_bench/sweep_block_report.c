@@ -11,11 +11,11 @@
  * against the 64 KiB `.rabook` chunk default from #204) is printed once the
  * sweep completes. Pure readers: nothing here mutates row data.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include <stdio.h>

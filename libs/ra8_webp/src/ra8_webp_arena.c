@@ -10,11 +10,11 @@
  * mirrors libs/ra8_reflow/src/ra8_img_arena.c (the stb_image arena) but adds a
  * zeroing calloc that libwebp's `WebPSafeCalloc` requires.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / WebP] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

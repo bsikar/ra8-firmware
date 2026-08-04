@@ -20,10 +20,10 @@
  * as `ra8_epub` does; the host unit-test build (`RA8_OFF_TARGET`) leaves miniz
  * on its default allocator.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include <stddef.h>
 #include <string.h>

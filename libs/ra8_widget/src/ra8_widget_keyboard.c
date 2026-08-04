@@ -11,12 +11,12 @@
  * goes through the injected ::ra8_widget_paint_t backend, so the render + route
  * logic is host-testable with a recording mock seam + paint.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
