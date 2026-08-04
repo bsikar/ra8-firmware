@@ -138,7 +138,6 @@ SKIP_PATTERNS = frozenset(
         "tests/test_ra8_mipi_phy_init.c",
         "tests/test_ra8_mipi_phy_lanes.c",
         "docs/SOUP/nimble.md",
-        "docs/SOUP/r_sce_AMC_firmware.md",
     }
 )
 

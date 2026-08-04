@@ -67,10 +67,9 @@ Out of scope:
   Section "Development Approach").
 - The Cortex-M33 secondary core (not currently built; reserved for
   future work).
-- Vendor binary blobs (RSIP-E50D firmware image, BLE controller patch
-  image) -- vendored under
-  [`../../libs/third_party/fsp_blobs/`](../../libs/third_party/fsp_blobs/)
-  and tracked under SOUP per `docs/SOUP/`.
+- The RSIP-E50D protected firmware image -- not vendored in this tree;
+  obtainable from public FSP under BSD-3-Clause, with the degradation it
+  causes recorded in [`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md).
 
 ### 1.3 Target assurance levels
 
@@ -528,7 +527,7 @@ Section 6.5 (Traceability Data).
 |-------------------------|-------|----------------|-----------------|----------------|
 | REQ-CHIP                | 7     | 7              | 0               | 0              |
 | REQ-CORE                | 14    | 13             | 1               | 0              |
-| REQ-DRV                 | 93    | 90             | 0               | 3 (BLE patch + 2 RSIP) |
+| REQ-DRV                 | 93    | 90             | 0               | 3 (RSIP)        |
 | REQ-HAL                 | 16    | 15             | 0               | 1 (BLE host end-to-end) |
 | REQ-BSP                 | 4     | 3              | 1               | 0              |
 | REQ-PORT                | 13    | 11             | 2               | 0              |

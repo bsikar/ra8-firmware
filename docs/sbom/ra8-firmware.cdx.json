@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:d14c3ccd-1947-5ed8-95c6-357e0bbf6b19",
+  "serialNumber": "urn:uuid:12150840-2d60-51e5-8a23-d804962cae2e",
   "version": 1,
   "metadata": {
     "tools": [
@@ -1201,70 +1201,6 @@
         {
           "name": "ra8:note1",
           "value": "Commit matches the ruy pin in TFLite-micro's tools/make/third_party_downloads.inc."
-        }
-      ]
-    },
-    {
-      "type": "firmware",
-      "bom-ref": "fsp_blobs/r_sce_AMC",
-      "name": "Renesas RSIP-E50D firmware (r_sce_AMC)",
-      "group": "renesas",
-      "version": "FSP default branch @ 40bbaa11 (2026-05-02); no tag pinned",
-      "description": "RSIP-E50D protected crypto procedures (key install/wrap).",
-      "scope": "required",
-      "licenses": [
-        {
-          "license": {
-            "id": "BSD-3-Clause"
-          }
-        }
-      ],
-      "copyright": "Per-file SPDX-BSD-3-Clause; upstream LICENSE.md mirrored.",
-      "purl": "pkg:github/renesas/fsp@40bbaa11b1a1b87e0ee0675e401aea6351f90d14",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "89a659441fd2f84f871382dd7a48b1bcca3cf8ad9fc5b305820a64ea70890e92"
-        }
-      ],
-      "externalReferences": [
-        {
-          "type": "vcs",
-          "url": "https://github.com/renesas/fsp"
-        }
-      ],
-      "properties": [
-        {
-          "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
-        },
-        {
-          "name": "ra8:path",
-          "value": "libs/third_party/fsp_blobs/r_sce_AMC"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "315"
-        },
-        {
-          "name": "ra8:upstreamCommit",
-          "value": "40bbaa11b1a1b87e0ee0675e401aea6351f90d14"
-        },
-        {
-          "name": "ra8:upstreamRef",
-          "value": "40bbaa11b1a1b87e0ee0675e401aea6351f90d14"
-        },
-        {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/fsp_blobs/r_sce_AMC/UPSTREAM_LICENSE.md"
-        },
-        {
-          "name": "ra8:modified",
-          "value": "false"
-        },
-        {
-          "name": "ra8:note0",
-          "value": "Gold-standard provenance: commit pin + aggregate SHA-256 of the sorted per-file hashes (excludes UPSTREAM_LICENSE.md). See docs/SOUP/r_sce_AMC_firmware.md."
         }
       ]
     },
