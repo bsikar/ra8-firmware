@@ -25,10 +25,19 @@ convention.
 What is compared
 ----------------
 Every SPI signal (CS, COPI/CIPO, SCK, DATA_READY, HANDSHAKE, RESET), the chip
-target, and the flash size. The flash size is the interesting one: esp-idf
-encodes it in the KEY (``CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y``) rather than the
-value, so it is parsed out of the key name and compared against
-``C6_FLASH_SIZE``.
+target, the flash size, and the dev-board preset. The last two are the
+interesting ones: esp-idf and esp-hosted-mcu encode both in the KEY
+(``CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y``, ``CONFIG_ESP_HOST_DEV_BOARD_NONE=y``)
+rather than in the value, so each is parsed out of the key name and compared
+against ``C6_FLASH_SIZE`` / ``C6_DEV_BOARD``.
+
+The dev-board preset is load-bearing and easy to miss. esp-hosted-mcu ships
+presets for Espressif's own dev boards, and selecting one OVERRIDES the SPI pin
+leaves -- so with any board but ``NONE`` selected, every pin this gate compares
+is silently ignored by the build and the C6 comes up on the preset's pins
+instead of ours. Comparing the enabled symbol's SUFFIX rather than merely
+asserting the symbol is present catches the drift in both of its shapes: the
+selection vanishing, and the selection moving to a different board.
 
 Two of the data signals carry Espressif's legacy names in their Kconfig symbols.
 Those symbols belong to upstream and cannot be renamed from here; the mapping
@@ -60,8 +69,9 @@ this same script before it builds, so the bench and CI apply one rule.
 Non-vacuity
 -----------
 ``--selftest`` drives the comparator with crafted file bodies: an agreeing
-pair must be silent, and a disagreeing pair, a missing key on either side, and
-a missing flash-size key must each be reported.
+pair must be silent, and a disagreeing pair, a missing key on either side, a
+missing flash-size key, and a dev-board preset that either moved to another
+board or stopped being selected must each be reported.
 
 Run::
 
@@ -114,6 +124,12 @@ VALUE_PAIRS: tuple[tuple[str, str, str], ...] = (
 # esp-idf encodes the flash size in the SYMBOL NAME, not the value.
 _FLASHSIZE_RE = re.compile(r"^CONFIG_ESPTOOLPY_FLASHSIZE_([0-9]+MB)$")
 FLASH_SIZE_KEY = "C6_FLASH_SIZE"
+
+# esp-hosted-mcu encodes the dev-board preset in the SYMBOL NAME too. Selecting
+# a board OVERRIDES the SPI pin leaves above, which would make every pin
+# comparison in this gate describe a build that does not happen.
+_DEV_BOARD_RE = re.compile(r"^CONFIG_ESP_HOST_DEV_BOARD_([A-Z0-9_]+)$")
+DEV_BOARD_KEY = "C6_DEV_BOARD"
 
 # (label, C6 GPIO key, RA8 landing-pin key, RA8 J26 hole key). The RA8 side of
 # the harness is recorded in pins.env too, because a pin map is only useful if
@@ -270,6 +286,24 @@ def _flash_size(sdk: dict[str, str]) -> str | None:
         match = _FLASHSIZE_RE.match(key)
         if match is not None and value == "y":
             return match.group(1)
+    return None
+
+
+def _dev_board(sdk: dict[str, str]) -> str | None:
+    """Return the dev-board preset encoded in an enabled DEV_BOARD symbol.
+
+    Args:
+        sdk: Parsed sdkconfig assignments.
+
+    Returns:
+        The board name lower-cased (e.g. "none"), or None when no such symbol
+        is enabled -- which is itself a finding, because the preset decides
+        whether our pin leaves are honoured at all.
+    """
+    for key, value in sdk.items():
+        match = _DEV_BOARD_RE.match(key)
+        if match is not None and value == "y":
+            return match.group(1).lower()
     return None
 
 
@@ -472,6 +506,23 @@ def compare(pins: dict[str, str], sdk: dict[str, str]) -> list[str]:
             f"but sdkconfig.defaults enables CONFIG_ESPTOOLPY_FLASHSIZE_{size}"
         )
 
+    board = _dev_board(sdk)
+    if DEV_BOARD_KEY not in pins:
+        findings.append(f"dev board: pins.env is missing {DEV_BOARD_KEY}")
+    elif board is None:
+        findings.append(
+            "dev board: sdkconfig.defaults enables no CONFIG_ESP_HOST_DEV_BOARD_<X> "
+            "symbol -- without an explicit selection the pin leaves above may be "
+            "overridden by whatever preset upstream defaults to"
+        )
+    elif board != pins[DEV_BOARD_KEY]:
+        findings.append(
+            f"dev board: pins.env {DEV_BOARD_KEY}={pins[DEV_BOARD_KEY]} "
+            f"but sdkconfig.defaults enables CONFIG_ESP_HOST_DEV_BOARD_{board.upper()} "
+            "-- a dev-board preset OVERRIDES the SPI pin leaves, so every pin "
+            "compared above would be ignored by the build"
+        )
+
     findings.extend(check_ra8_side(pins))
 
     try:
@@ -516,11 +567,13 @@ RA8_SW4_2=OFF
 RA8_SW4_3=ON
 RA8_SW4_4=OFF
 C6_FLASH_SIZE=16MB
+C6_DEV_BOARD=none
 ESP_TARGET=esp32c6
 """
 
 _GOOD_SDK = """
 CONFIG_IDF_TARGET="esp32c6"
+CONFIG_ESP_HOST_DEV_BOARD_NONE=y
 CONFIG_ESP_SPI_HSPI_GPIO_CS=0
 CONFIG_ESP_SPI_HSPI_GPIO_MOSI=1
 CONFIG_ESP_SPI_HSPI_GPIO_MISO=2
@@ -583,6 +636,40 @@ def _selftest_cases_kconfig() -> list[tuple[str, str, str, bool]]:
             "chip target drifted",
             _GOOD_PINS,
             _GOOD_SDK.replace('CONFIG_IDF_TARGET="esp32c6"', 'CONFIG_IDF_TARGET="esp32c3"'),
+            True,
+        ),
+        # The dev-board preset. Its two drift shapes are distinct: a DIFFERENT
+        # board silently overrides every pin leaf above, while NO board leaves
+        # the choice to whatever upstream happens to default to. Asserting only
+        # that the symbol exists would miss the first, which is the one that
+        # produces a working build driving the wrong pins.
+        (
+            "dev board drifted to another preset",
+            _GOOD_PINS,
+            _GOOD_SDK.replace(
+                "CONFIG_ESP_HOST_DEV_BOARD_NONE=y",
+                "CONFIG_ESP_HOST_DEV_BOARD_ESP32_C6_DEVKITC=y",
+            ),
+            True,
+        ),
+        (
+            "dev board selection turned off",
+            _GOOD_PINS,
+            _GOOD_SDK.replace(
+                "CONFIG_ESP_HOST_DEV_BOARD_NONE=y", "CONFIG_ESP_HOST_DEV_BOARD_NONE=n"
+            ),
+            True,
+        ),
+        (
+            "sdkconfig selects no dev board at all",
+            _GOOD_PINS,
+            _GOOD_SDK.replace("CONFIG_ESP_HOST_DEV_BOARD_NONE=y\n", ""),
+            True,
+        ),
+        (
+            "pins.env stopped declaring the dev board",
+            _GOOD_PINS.replace("C6_DEV_BOARD=none\n", ""),
+            _GOOD_SDK,
             True,
         ),
     ]
@@ -851,11 +938,17 @@ def main(argv: list[str]) -> int:
     findings.extend(check_fw_version_lock(pins, HOST_FW_VER.read_text(encoding="utf-8")))
 
     if not findings:
-        checked = len(PIN_PAIRS) + len(VALUE_PAIRS) + 2
+        # The three settings compared outside the two PAIR tables: the flash
+        # size, the dev-board preset (both encoded in a symbol NAME) and the
+        # host / co-processor firmware version lock.
+        key_encoded_and_version = 3
+        checked = len(PIN_PAIRS) + len(VALUE_PAIRS) + key_encoded_and_version
         ra8 = (len(RA8_TRIPLES) * 2) + len(SW4_KEYS)
         print(
             f"check_c6_pin_config.py: pins.env and sdkconfig.defaults agree "
-            f"({checked} settings); RA8-side map well-formed ({ra8} entries); "
+            f"({checked} settings); dev board "
+            f"{pins.get(DEV_BOARD_KEY, '?')} (no preset overriding our pins); "
+            f"RA8-side map well-formed ({ra8} entries); "
             f"co-processor firmware {pins.get(FW_VERSION_KEY, '?')} matches the "
             f"vendored host driver."
         )
