@@ -7,8 +7,8 @@
 # detector for it (cite_check.py --require-cites) ran in no gate at all, so
 # the rule was aspirational and the debt went unmeasured (#534).
 #
-# Total at this baseline: 2866 uncited access(es)
-# across 249 file(s).
+# Total at this baseline: 2857 uncited access(es)
+# across 248 file(s).
 #
 # The gate fails on any INCREASE, so the debt is frozen and can only be
 # burned down; a newly-added uncited access raises a count and fails.
@@ -175,7 +175,6 @@ tests/test_ra8_cnecc_isr.c	20
 tests/test_ra8_crc.c	15
 tests/test_ra8_dac_b.c	37
 tests/test_ra8_display_pal.c	4
-tests/test_ra8_dmac.c	9
 tests/test_ra8_doc.c	12
 tests/test_ra8_doc_window.c	11
 tests/test_ra8_dotf.c	18

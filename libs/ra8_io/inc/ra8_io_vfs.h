@@ -285,6 +285,40 @@ ra8_io_vfs_open(const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file);
  */
 [[nodiscard]] ra8_err_t ra8_io_vfs_mkdir(const char* path);
 
+/**
+ * @brief Remove the empty directory named `"name:/path"`.
+ *
+ * @details Routes to the named mount and delegates to `ra8_fs_rmdir`, which
+ *          removes the final path component when it is an existing directory
+ *          holding nothing but its own "." and ".." links. The volume root and
+ *          plain files are refused; exFAT volumes return
+ *          ::k_ra8_err_not_supported, matching `ra8_io_vfs_mkdir()`.
+ *
+ * @param[in] path `"name:/path"` directory string.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Directory removed.
+ * @retval k_ra8_err_null_ptr       `path` was NULL.
+ * @retval k_ra8_err_invalid_arg    `path` has no `name:` prefix, names the
+ *                                  root, or names a file.
+ * @retval k_ra8_err_not_found      The mount name or a path component is absent.
+ * @retval k_ra8_err_not_empty      The directory still holds entries.
+ * @retval k_ra8_err_not_supported  The volume is exFAT.
+ *
+ * @pre The named volume is mounted.
+ * @pre `path` is non-NULL.
+ * @post On success the directory no longer resolves.
+ * @post On any non-ok return the volume is unchanged.
+ *
+ * @note Not thread-safe.
+ *
+ * @see ra8_io_vfs_mkdir()   Creates the directory this removes.
+ * @see ra8_io_vfs_unlink()  Removes a file instead.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_io_vfs_rmdir(const char* path);
+
 #ifdef __cplusplus
 }
 #endif

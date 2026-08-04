@@ -80,6 +80,7 @@ typedef enum : uint8_t {
   k_dir_marker_free_perm = 0x00, /**< End-of-directory.          */
   k_dir_marker_free_used = 0xE5, /**< Slot was used, deleted.    */
   k_dir_marker_kanji_e5  = 0x05, /**< 0xE5 in raw name, escaped. */
+  k_dir_marker_dot       = 0x2E, /**< '.' -- a "." / ".." entry. */
 } ra8_fs_dir_marker_t;
 
 /**
@@ -167,6 +168,7 @@ typedef enum : uint32_t {
   k_exfat_entry_name     = 0xC1U,   /**< File-name entry.                         */
   k_exfat_secflag_no_fat = 0x02U,   /**< GeneralSecondaryFlags: NoFatChain.       */
   k_exfat_secflag_alloc  = 0x03U,   /**< AllocationPossible | NoFatChain.         */
+  k_exfat_attr_directory = 0x10U,   /**< FileAttributes: directory.               */
   k_exfat_attr_archive   = 0x20U,   /**< FileAttributes: archive.                 */
   k_exfat_fsname_len     = 8U,      /**< "EXFAT   " field length.                 */
   k_exfat_name_per_entry = 15U,     /**< UTF-16 units per file-name entry.        */

@@ -244,6 +244,19 @@ typedef enum : uint16_t {
    */
   k_ra8_err_estop = 0x110,
 
+  /**
+   * @brief Container still holds members -- the operation requires it empty.
+   * @details The exact inverse of `k_ra8_err_empty`: that one reports "nothing
+   *          to retrieve", this one reports "something is still in there".
+   *          Returned by `ra8_fs_rmdir()` for a directory that still has
+   *          entries, the POSIX `ENOTEMPTY` condition. Distinct from
+   *          `k_ra8_err_invalid_arg` on purpose: a caller that wants to remove
+   *          a tree must be able to tell "you named the wrong thing" from
+   *          "empty it first and retry".
+   * @par Value: 0x111
+   */
+  k_ra8_err_not_empty = 0x111,
+
   /* =========================================================================
    * Hardware errors (0x200 -- 0x2FF)
    * Peripheral, GPIO, and hardware-interface errors
