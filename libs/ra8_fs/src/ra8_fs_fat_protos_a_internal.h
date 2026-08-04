@@ -34,14 +34,19 @@
  *
  * @details Trims trailing space pad in the base portion, restores the
  *          0x05 -> 0xE5 kanji escape, and emits the dot + extension
- *          only when the extension is non-empty.
+ *          only when the extension is non-empty. The two `DIR_NTRes` case
+ *          flags are applied as they are unpacked, so an entry written for
+ *          `data.log` -- stored upper-case with both flags set -- reads back
+ *          as `data.log` rather than `DATA.LOG`. Pass 0 for @p ntres to get
+ *          the raw upper-case form.
  *
  * @param[in]  in11  Packed 11-byte name.
- * @param[out] out12 Buffer of at least 12 bytes (8 + . + 3 + NUL).
+ * @param[in]  ntres The entry's `DIR_NTRes` byte (0 when it has none).
+ * @param[out] out13 Buffer of at least 13 bytes (8 + . + 3 + NUL).
  *
- * @pre `in11` and `out12` are non-NULL.
- * @pre `out12` has at least 13 writable bytes.
- * @post `out12` is NUL-terminated.
+ * @pre `in11` and `out13` are non-NULL.
+ * @pre `out13` has at least 13 writable bytes.
+ * @post `out13` is NUL-terminated.
  * @post Trailing space padding has been stripped.
  *
  * @note Helper used only by `ra8_fs_listdir`.
@@ -49,7 +54,7 @@
  * @since 0.1.0
  */
 RA8_PRIV
-void priv_83_to_str(const uint8_t* in11, char* out12);
+void priv_83_to_str(const uint8_t* in11, uint8_t ntres, char* out13);
 
 /**
  * @brief Free-cluster scan from the next-free hint, wrapping exactly once.
@@ -295,37 +300,6 @@ ra8_err_t priv_dir_find(const ra8_fs_mount_t* m,
                         uint32_t*             out_lba,
                         uint32_t*             out_entry_off,
                         uint8_t               out_entry[k_ra8_fs_dir_entry_bytes]);
-
-/**
- * @brief Locate the first free entry slot in a given directory.
- *
- * @details Walks the directory @p loc and returns the first entry whose name
- *          field is 0x00 (never used) or 0xE5 (deleted).
- *
- * @param[in]  m             Mount providing geometry and backend.
- * @param[in]  loc           Directory to search (root or a subdirectory).
- * @param[out] out_lba       Sector containing the free entry.
- * @param[out] out_entry_off Byte offset within the sector.
- *
- * @return Error code.
- * @retval k_ra8_ok          Free slot found; out parameters populated.
- * @retval k_ra8_err_no_mem  Root directory has no free slot.
- * @retval k_ra8_err_*       Backend error.
- *
- * @pre All output pointers are non-NULL.
- * @pre `m` is mounted with valid geometry.
- * @post On success, out parameters identify a writable slot.
- * @post On failure, out parameters are unspecified.
- *
- * @note Thread-safety inherited from the backend.
- *
- * @since 0.1.0
- */
-RA8_PRIV
-ra8_err_t priv_dir_find_free(const ra8_fs_mount_t* m,
-                             const dir_loc_t*      loc,
-                             uint32_t*             out_lba,
-                             uint32_t*             out_entry_off);
 
 /**
  * @brief Find a directory entry by its VFAT long name (case-insensitive).

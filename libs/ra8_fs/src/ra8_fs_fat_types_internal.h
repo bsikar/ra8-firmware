@@ -65,11 +65,33 @@ typedef enum : uint16_t {
 typedef enum : uint8_t {
   k_dir_off_name        = 0,  /**< MS FAT spec sec 6 "DIR_Name" (11 bytes). */
   k_dir_off_attr        = 11, /**< MS FAT spec sec 6 "DIR_Attr".            */
+  k_dir_off_ntres       = 12, /**< MS FAT spec sec 6 "DIR_NTRes".           */
   k_dir_off_fst_clus_hi = 20, /**< MS FAT spec sec 6 "DIR_FstClusHI".       */
   k_dir_off_fst_clus_lo = 26, /**< MS FAT spec sec 6 "DIR_FstClusLO".       */
   k_dir_off_file_size   = 28, /**< MS FAT spec sec 6 "DIR_FileSize".        */
   k_dir_name_field_len  = 11, /**< 8 + 3 raw chars (no dot).                */
 } ra8_fs_dir_off_t;
+
+/**
+ * @enum ra8_fs_ntres_t
+ * @brief The two case flags Windows keeps in `DIR_NTRes` (byte 12).
+ *
+ * @details A name that differs from its 8.3 form only by being lower case
+ *          needs no long-name chain at all: the entry stores the upper-case
+ *          form and sets one or both of these bits, and every reader that
+ *          knows them renders `data.log` rather than `DATA.LOG`. The bits are
+ *          not in the Microsoft FAT specification's field table -- it reserves
+ *          the byte -- but they are what every Windows, Linux and macOS driver
+ *          writes and reads, so they are the interoperable encoding.
+ *
+ * @invariant The two bits are independent; either, both, or neither may be set.
+ * @see priv_name_classify()
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ntres_base_lower = 0x08U, /**< Render DIR_Name[0..7] lower case.  */
+  k_ntres_ext_lower  = 0x10U, /**< Render DIR_Name[8..10] lower case. */
+} ra8_fs_ntres_t;
 
 /**
  * @enum ra8_fs_dir_marker_t
@@ -469,16 +491,22 @@ typedef struct {
 
 /** @brief LFN directory-entry field offsets, sequence masks, and reassembly caps. */
 typedef enum : uint32_t {
-  k_lfn_off_seq        = 0U,      /**< Sequence/order byte (LDIR_Ord).            */
-  k_lfn_off_checksum   = 13U,     /**< Checksum of the matching 8.3 name.         */
-  k_lfn_seq_order_mask = 0x1FU,   /**< Order = seq & 0x1F (1..20).                */
-  k_lfn_seq_last       = 0x40U,   /**< Set on the last logical group.             */
-  k_lfn_chars_per_ent  = 13U,     /**< UTF-16 chars carried per LFN entry.        */
-  k_lfn_max_entries    = 19U,     /**< Cap so 19*13 = 247 chars fits the buffer.  */
-  k_lfn_name_cap       = 256U,    /**< Reassembled-name buffer capacity.          */
-  k_lfn_unicode_pad    = 0xFFFFU, /**< Slot padding past the name terminator.     */
-  k_lfn_ascii_max      = 0x7FU,   /**< Highest code point we keep verbatim.       */
-  k_sfn_csum_high_bit  = 0x80U,   /**< Rotate-in bit when the running sum is odd. */
+  k_lfn_off_seq        = 0U,      /**< Sequence/order byte (LDIR_Ord).             */
+  k_lfn_off_type       = 12U,     /**< LDIR_Type -- zero for a name component.     */
+  k_lfn_off_checksum   = 13U,     /**< Checksum of the matching 8.3 name.          */
+  k_lfn_off_clus_lo    = 26U,     /**< LDIR_FstClusLO -- must be written as 0.     */
+  k_lfn_seq_order_mask = 0x1FU,   /**< Order = seq & 0x1F (1..20).                 */
+  k_lfn_seq_last       = 0x40U,   /**< Set on the last logical group.              */
+  k_lfn_chars_per_ent  = 13U,     /**< UTF-16 chars carried per LFN entry.         */
+  k_lfn_max_entries    = 19U,     /**< Cap so 19*13 = 247 chars fits the buffer.   */
+  k_lfn_name_cap       = 256U,    /**< Reassembled-name buffer capacity.           */
+  k_lfn_unicode_pad    = 0xFFFFU, /**< Slot padding past the name terminator.      */
+  k_lfn_ascii_max      = 0x7FU,   /**< Highest code point we keep verbatim.        */
+  k_sfn_csum_high_bit  = 0x80U,   /**< Rotate-in bit when the running sum is odd.  */
+  k_lfn_write_max      = 247U,    /**< Longest name we WRITE (k_lfn_max_entries).  */
+  k_lfn_erase_max      = 20U,     /**< Longest chain we ERASE (spec LDIR_Ord max). */
+  k_lfn_alias_tail_max = 999999U, /**< Highest `~N` probed by the alias generator. */
+  k_lfn_alias_base_max = 6U,      /**< Basis chars kept ahead of a one-digit `~N`. */
 } ra8_fs_lfn_t;
 
 /** @brief In-progress reassembly of one LFN chain across the directory scan. */
@@ -487,6 +515,108 @@ typedef struct {
   uint8_t checksum;             /**< 8.3 checksum the chain claims.         */
   uint8_t have;                 /**< 1 once any group has been accumulated. */
 } lfn_state_t;
+
+/**
+ * @enum ra8_fs_name_kind_t
+ * @brief How a leaf component has to be stored in a FAT directory.
+ *
+ * @details Three answers, because there are three on-disk shapes: a name that
+ *          is already an 8.3 name occupies one slot; a name that differs from
+ *          one only in case occupies one slot plus a `DIR_NTRes` bit; and
+ *          anything else needs a VFAT chain plus a generated `~N` alias. The
+ *          distinction is made once, by ::priv_name_classify(), so that
+ *          `open`, `mkdir` and `rename` cannot disagree about it.
+ *
+ * @invariant `k_name_kind_short` implies the packed 8.3 output is valid.
+ * @see priv_name_classify()
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_name_kind_invalid = 0U, /**< Empty, over-long, or holds an illegal character. */
+  k_name_kind_short   = 1U, /**< Fits 8.3; store one entry (+ NTRes case bits).   */
+  k_name_kind_long    = 2U, /**< Needs a VFAT chain and a generated `~N` alias.   */
+} ra8_fs_name_kind_t;
+
+/**
+ * @struct dir_pos_t
+ * @brief The on-disk address of one 32-byte directory slot.
+ *
+ * @details A (sector, byte-offset) pair is how every directory primitive here
+ *          already names a slot; giving it a type lets the deleter carry a
+ *          whole LFN chain's worth of addresses without a walk per entry.
+ *
+ * @invariant `off` is a multiple of `k_ra8_fs_dir_entry_bytes` below one sector.
+ * @see priv_dir_erase_chain()
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t lba; /**< Sector holding the slot.                */
+  uint32_t off; /**< Byte offset of the slot in that sector. */
+} dir_pos_t;
+
+/**
+ * @struct dir_slot_t
+ * @brief A directory cursor that addresses one entry, not just one sector.
+ *
+ * @details ::dir_walk_t steps a sector at a time, which is all a scan needs.
+ *          Writing a run of entries needs to step an entry at a time and to
+ *          cross into the next sector in the middle of the run, so the walker
+ *          is paired with the index of the entry inside its current sector.
+ *
+ * @invariant `ent` is in `0 .. k_dir_entries_per_sector - 1`.
+ * @see priv_dir_insert()
+ * @since 0.1.0
+ */
+typedef struct {
+  dir_walk_t w;   /**< Sector-level cursor for the containing directory. */
+  uint32_t   ent; /**< Entry index within `w.cur_lba`.                   */
+} dir_slot_t;
+
+/**
+ * @struct dir_target_t
+ * @brief One resolved directory entry: where it is, and what is in it.
+ *
+ * @details `unlink`, `rmdir` and `rename` all have to answer the same three
+ *          questions before they touch anything -- which directory holds the
+ *          entry, which slot it is, and what the entry says -- and all three
+ *          then need the parent again to sweep up the long-name chain. Passing
+ *          them as one value stops each verb inventing its own out-parameter
+ *          quartet and forgetting one of them.
+ *
+ * @invariant `entry` is the 32 bytes currently on disk at (`lba`, `off`).
+ * @see priv_dir_erase_chain()
+ * @since 0.1.0
+ */
+typedef struct {
+  dir_loc_t parent;                          /**< Directory the entry lives in.   */
+  uint32_t  lba;                             /**< Sector holding the entry.       */
+  uint32_t  off;                             /**< Byte offset within that sector. */
+  uint8_t   entry[k_ra8_fs_dir_entry_bytes]; /**< The entry as read from disk.    */
+} dir_target_t;
+
+/**
+ * @struct dir_insert_t
+ * @brief Everything decided about a new directory entry before anything is written.
+ *
+ * @details Adding an entry is split into a reservation and a commit so the
+ *          caller can fail on a full directory BEFORE it allocates a cluster
+ *          for the thing it was about to file: `mkdir` reserves, then
+ *          allocates, then commits, and a directory with no room left costs no
+ *          cluster. It also means the alias probing and the free-run search --
+ *          the only two parts that read the directory -- happen exactly once.
+ *
+ * @invariant `lfn_entries` is 0 exactly when the name fits an 8.3 entry.
+ * @invariant `leaf` stays valid until ::priv_dir_commit() returns.
+ * @see priv_dir_reserve()
+ * @since 0.1.0
+ */
+typedef struct {
+  dir_slot_t  start;                  /**< First slot of the reserved run.          */
+  const char* leaf;                   /**< Caller's name; the chain's source text.  */
+  uint8_t     name83[k_max_8_3_name]; /**< Packed 8.3 name, or the generated alias. */
+  uint8_t     ntres;                  /**< `DIR_NTRes` case flags for the entry.    */
+  uint8_t     lfn_entries;            /**< Chain slots ahead of the 8.3 entry.      */
+} dir_insert_t;
 
 /**
  * @struct exfat_cursor_t
