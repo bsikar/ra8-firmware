@@ -96,8 +96,8 @@ typedef enum : uint32_t {
   k_fio_pat_max        = 2048U,       /**< Seed-pattern scratch size.            */
   k_fio_two_clusters   = 1024U,       /**< Two 512 B clusters at SPC=1.          */
   k_fio_small_write    = 4U,          /**< One partial-sector write.             */
-  k_fio_reads_walk_get = 4U,          /**< Reads before walk_grow FAT-get (255). */
-  k_fio_reads_walk_set = 9U,          /**< Reads before walk_grow FAT-set (265). */
+  k_fio_reads_walk_get = 0U,          /**< Reads before walk_grow FAT-get (255). */
+  k_fio_reads_walk_set = 4U,          /**< Reads before walk_grow FAT-set (265). */
 } ra8_fio_cov_t;
 
 /* ===========================================================================
@@ -548,6 +548,13 @@ static void test_read_walk_fat_get_error(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   seed_file(h, "RWALK.BIN", k_fio_two_clusters);
+  /* Remount so the FAT sector cache is cold (#607). Seeding the file walked
+   * the FAT, and a cached sector is served without touching the backend -- so
+   * the injected read failure below would never fire and this test would pass
+   * while proving nothing. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
+  h = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "RWALK.BIN", k_ra8_fs_mode_read, &f));
 
@@ -589,12 +596,22 @@ static void test_read_walk_hits_eoc(void)
   seed_file(h, "REOC.BIN", k_fio_two_clusters);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "REOC.BIN", k_ra8_fs_mode_read, &f));
+  const uint32_t first_cluster = f->first_cluster;
+  const uint32_t fat0_lba      = h->first_fat_lba;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
+  f = nullptr;
 
-  /* Corrupt FAT copy 0 entry for the first cluster to a FAT16 EOC marker. */
-  const uint32_t fat_byte =
-    (h->first_fat_lba * (uint32_t)k_fio_block_size) + (f->first_cluster * 2U);
+  /* Corrupt FAT copy 0 entry for the first cluster to a FAT16 EOC marker,
+   * while unmounted. The driver caches one FAT sector (#607), so a poke under
+   * a live mount would be masked by the copy already in memory -- and a card
+   * whose FAT went bad between sessions is the case this models anyway. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
+  h                           = nullptr;
+  const uint32_t fat_byte     = (fat0_lba * (uint32_t)k_fio_block_size) + (first_cluster * 2U);
   s_disk.bytes[fat_byte]      = k_fio_fat16_eoc_byte;
   s_disk.bytes[fat_byte + 1U] = k_fio_fat16_eoc_byte;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "REOC.BIN", k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, (uint32_t)k_fio_block_size));
   uint8_t  buf[k_fio_block_size] = {};
@@ -763,13 +780,14 @@ static void test_write_dir_entry_read_error(void)
  * @test test_walk_grow_fat_get_error
  * @brief A FAT read failing inside priv_walk_grow propagates out (line 255).
  *
- * @details Writes two clusters to a fresh file in one call. The first cluster
- *          (index 0) allocates and writes with four backend reads (FAT scan,
- *          two FAT-copy read-modify-writes, and the data read-modify-write).
- *          Advancing into cluster index 1 makes priv_walk_grow issue the fifth
- *          read (the FAT-get for the chain head); failing after four reads
- *          exercises the FAT-get error leg. Asserting on the error code (not a
- *          line) keeps the test robust to exact read ordering.
+ * @details Seeds a two-cluster file, then REMOUNTS so the FAT sector cache is
+ *          cold (#607) -- with a warm cache the chain-head FAT-get is served
+ *          from memory and no injected read failure can reach it. Reopening in
+ *          append mode puts the offset at cluster index 2, so the very first
+ *          backend read the write issues is priv_walk_grow's FAT-get for the
+ *          chain head. Failing read zero therefore lands exactly on the
+ *          FAT-get error leg. Asserting on the error code (not a line) keeps
+ *          the test robust to exact read ordering.
  *
  * @par MC/DC:
  * (no compound decision is driven here -- it fails the FAT-get inside
@@ -782,11 +800,15 @@ static void test_walk_grow_fat_get_error(void)
   build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
+  seed_file(h, "WGGET.BIN", k_fio_two_clusters);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
+  h = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "WGGET.BIN", k_ra8_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "WGGET.BIN", k_ra8_fs_mode_append, &f));
 
-  static uint8_t         s_data[k_fio_two_clusters] = {};
-  const ra8_fs_backend_t saved                      = h->backend;
+  static uint8_t         s_data[k_fio_small_write] = {};
+  const ra8_fs_backend_t saved                     = h->backend;
   use_inject(h, k_fio_reads_walk_get, k_fio_lba_none, k_fio_lba_none, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_write(f, s_data, sizeof(s_data))); /* 255 */
   h->backend = saved;
@@ -802,10 +824,14 @@ static void test_walk_grow_fat_get_error(void)
  * @brief A FAT write failing inside priv_walk_grow after growing the chain
  *        propagates out (line 265).
  *
- * @details Same two-cluster write as the FAT-get case, but reads are allowed
- *          to run until the chain-link FAT-set for the newly grown cluster,
- *          whose read-modify-write read is failed. Asserting on the error code
- *          keeps the test robust to exact read ordering.
+ * @details Writes two clusters to a fresh file in one call, on a mount whose
+ *          FAT sector cache starts cold. Four backend reads get through -- the
+ *          FAT-copy-0 scan miss, the mirror-copy read-modify-write behind the
+ *          first EOC mark, the data sector read-modify-write, and the mirror
+ *          read behind the second EOC mark. The fifth is the mirror read
+ *          inside the chain-link `priv_fat_set(cur, newc)`, and failing it
+ *          lands on the FAT-set error leg. Asserting on the error code (not a
+ *          line) keeps the test robust to exact read ordering.
  *
  * @par MC/DC:
  * (no compound decision is driven here -- this write-path case fails the

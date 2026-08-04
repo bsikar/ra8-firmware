@@ -690,6 +690,12 @@ static void test_streamed_compile_corrupt_fat(void)
   TEST_BEGIN("rabook_import_streamed: corrupt FAT chain -> open fails, no output");
   ra8_fs_mount_t* mount =
     fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
+  /* Unmount before corrupting and mount again after. Corruption arrives on
+   * real media between sessions, not under a live mount, and the driver caches
+   * one FAT sector (#607) -- poking the FAT behind a mounted volume would be
+   * masked by the copy already in memory. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
+  mount = nullptr;
 
   /* Point cluster 2 (the file's first cluster) at an off-disk cluster in every
    * FAT copy, so any chain walk past the first sector faults in mem_read. */
@@ -705,6 +711,7 @@ static void test_streamed_compile_corrupt_fat(void)
     s_disk.bytes[ent + 1U] =
       (uint8_t)(((uint32_t)k_st_offdisk_clus >> k_st_byte_shift) & k_st_byte_mask);
   }
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
 
   ra8_rabook_import_compiler_ctx_t ctx = {};
   make_ctx(&ctx);

@@ -26,7 +26,16 @@
  *     directory and in any FAT32 cluster-chain root.
  *   - Linear file read across cluster boundaries.
  *   - File create + write, growing the chain by allocating from the FAT
- *     free-cluster scan when the current cluster fills.
+ *     free-cluster scan when the current cluster fills. The scan starts at a
+ *     per-mount next-free hint and reads the FAT through a one-sector cache,
+ *     so appending to a file costs a bounded number of block reads per
+ *     cluster instead of rescanning the whole FAT.
+ *   - FAT32 FSInfo: validated at mount (both signatures plus the trailing
+ *     signature), used to seed the free count and the next-free hint, and
+ *     written back when a file is closed or the volume is unmounted.
+ *   - Create / modify / access timestamps on FAT and exFAT. With no clock
+ *     installed every stamp is the legal FAT epoch (1980-01-01 00:00:00);
+ *     install one with `ra8_fs_set_clock()` to record real time.
  *   - Seek / tell / size.
  *   - Listdir via callback.
  *   - Unlink (mark dir entry 0xE5, free chain) and rmdir of an empty
@@ -38,8 +47,6 @@
  *     (LFN reads are matched).
  *   - exFAT directory creation and removal (`mkdir` / `rmdir` are FAT-only;
  *     both are supported there, including nested-path resolution).
- *   - FAT32 FSInfo free-cluster cache (we always linearly scan).
- *   - Date/time stamps on writes (left at 0, like FSP's minimal mode).
  *   - Multi-partition MBR scanning (only partition 0 is followed; a
  *     superfloppy BPB at LBA 0 is still supported transparently).
  *
@@ -78,6 +85,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fs_seams.h"
 
 /* =============================================================================
  * Compile-time limits
@@ -204,117 +212,6 @@ typedef struct {
 } ra8_fs_backend_t;
 
 /* =============================================================================
- * Optional lock seam
- * =============================================================================
- */
-
-/**
- * @struct ra8_fs_lock_t
- * @brief Dependency-injection seam for mutual exclusion around the public API.
- *
- * @details
- * Two function pointers and a cookie. `ra8_fs` never creates, destroys or names
- * a lock primitive: the caller owns one and hands over the two operations that
- * drive it, exactly as ::ra8_fs_backend_t hands over the two operations that
- * drive a block device. A ThreadX consumer binds `tx_mutex_get` /
- * `tx_mutex_put` over a `TX_MUTEX*`; a bare-metal-with-interrupts consumer
- * binds a PRIMASK save / restore pair. Neither adapter belongs in this library
- * and neither is present in it.
- *
- * Both callbacks are invoked with @ref ctx as their only argument, and neither
- * may fail: a lock whose acquire can return an error is not a lock this seam
- * can express, and swallowing that error would be worse than not offering the
- * seam. Wrap such a primitive in an adapter that blocks until it succeeds.
- *
- * The pair must be *re-entrant-free*: `acquire` is never called twice without
- * an intervening `release`, so a plain non-recursive mutex is the right shape.
- *
- * @invariant `acquire` and `release` are both non-NULL, or the whole struct is
- *            never installed (::ra8_fs_set_lock rejects a half-filled one).
- * @invariant `ctx` may be NULL; it is passed through untouched.
- *
- * @par Example:
- * @code
- * static void tx_acquire(void* ctx) { (void)tx_mutex_get((TX_MUTEX*)ctx, TX_WAIT_FOREVER); }
- * static void tx_release(void* ctx) { (void)tx_mutex_put((TX_MUTEX*)ctx); }
- *
- * static TX_MUTEX s_fs_mutex;
- * const ra8_fs_lock_t lock = {.acquire = tx_acquire, .release = tx_release, .ctx = &s_fs_mutex};
- * (void)ra8_fs_set_lock(&lock);
- * @endcode
- *
- * @see ra8_fs_set_lock()  Installs (or removes) the binding.
- * @since 0.1.0
- */
-typedef struct {
-  /**
-   * @brief Take the lock; must block until it is held.
-   * @param[in] ctx The @ref ctx cookie, passed through unmodified.
-   */
-  void (*acquire)(void* ctx);
-
-  /**
-   * @brief Release the lock taken by the matching `acquire` call.
-   * @param[in] ctx The @ref ctx cookie, passed through unmodified.
-   */
-  void (*release)(void* ctx);
-
-  /** @brief Caller-owned cookie handed back to both callbacks. */
-  void* ctx;
-} ra8_fs_lock_t;
-
-/**
- * @brief Install (or remove) the lock taken around every public `ra8_fs` call.
- *
- * @details
- * There is one lock for the whole library, not one per mount: the state that
- * needs serialising -- the file-handle table, the mount table and the static
- * scratch sector -- is shared by every mount. Installing a lock therefore
- * serialises every public entry point against every other one.
- *
- * Passing NULL removes the binding and restores the default: no lock, no call,
- * and the caller is once again responsible for serialising access. That is the
- * state the library powers up in, so a bare-metal consumer never calls this
- * function at all and pays nothing for its existence.
- *
- * The binding is copied, so the caller's ::ra8_fs_lock_t need not outlive the
- * call; the object @ref ra8_fs_lock_t::ctx points at must, however, outlive
- * every subsequent `ra8_fs` call.
- *
- * Call this before the first `ra8_fs` call and before any other thread can
- * reach the library: swapping the binding while a call is in flight would
- * release a lock the caller never took.
- *
- * @param[in] lock Lock binding to install, or NULL to remove the current one.
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok              Binding installed (or removed for a NULL @p lock).
- * @retval k_ra8_err_invalid_arg @p lock is non-NULL but `acquire` or `release`
- *                               is NULL -- a half-filled binding would leave
- *                               the library holding a lock it cannot drop.
- *
- * @pre No `ra8_fs` call is in flight on any thread.
- * @pre When @p lock is non-NULL, both of its callbacks are non-NULL.
- * @post On ::k_ra8_ok with a non-NULL @p lock, every subsequent public call
- *       brackets itself with `acquire` / `release`.
- * @post On ::k_ra8_ok with a NULL @p lock, no callback is invoked again.
- * @post On ::k_ra8_err_invalid_arg the previous binding is unchanged.
- *
- * @note Not thread-safe with respect to itself; this is an init-time call.
- * @warning Installing a lock does not make one open ::ra8_fs_file_t shareable
- *          between threads. It serialises the library, not a handle: two
- *          threads reading the same handle still race on its offset.
- *
- * @par MC/DC:
- * Decision: `if (lock->acquire == nullptr || lock->release == nullptr)`
- * -- vectors live in `tests/test_ra8_fs_lock.c`.
- *
- * @see ra8_fs_lock_t  The binding this installs.
- * @since 0.1.0
- */
-[[nodiscard]] ra8_err_t ra8_fs_set_lock(const ra8_fs_lock_t* lock);
-
-/* =============================================================================
  * Format (mkfs) options
  * =============================================================================
  */
@@ -402,6 +299,7 @@ typedef struct {
   ra8_fs_mode_t   mode;               /**< Open mode.                                 */
   uint8_t         in_use;             /**< 0 = slot free, 1 = open.                   */
   uint8_t         no_fat_chain;       /**< exFAT contiguous file (no FAT walk).       */
+  uint8_t         dirty;              /**< 1 once written; drives the close mtime.    */
 } ra8_fs_file_t;
 
 /**
@@ -591,14 +489,23 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
 /**
  * @brief Unmount a previously mounted volume and release its slot.
  *
+ * @details On a FAT32 volume carrying a valid FSInfo sector this is also where
+ *          the free-cluster count and next-free hint are written back, so a
+ *          card the firmware wrote reports the right free space on a desktop
+ *          and `fsck.fat` stops calling the summary wrong. The slot is
+ *          released even when that write fails -- an unmount that could be
+ *          refused would be worse than a stale free count.
+ *
  * @param[in,out] handle Mount handle returned by `ra8_fs_mount()`.
  *
  * @retval k_ra8_ok           Slot released.
  * @retval k_ra8_err_null_ptr handle is NULL.
  * @retval k_ra8_err_invalid_state Slot was not in use.
+ * @retval k_ra8_err_*        FSInfo writeback failed; the slot is still released.
  *
  * @pre handle was returned by ra8_fs_mount.
  * @post handle->in_use == 0.
+ * @post Any pending FSInfo update has been attempted exactly once.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_fs_unmount(ra8_fs_mount_t* handle);
@@ -647,11 +554,24 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
 ra8_fs_open(ra8_fs_mount_t* handle, const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file);
 
 /**
- * @brief Close an open file. Pending writes have already been flushed by
- *        `ra8_fs_write()`, so this just releases the slot.
+ * @brief Close an open file, stamping its final modification time.
+ *
+ * @details File contents are never buffered -- `ra8_fs_write()` has already
+ *          put every byte on the volume -- so what closing does is metadata.
+ *          A handle that was written through gets `DIR_WrtTime` /
+ *          `DIR_WrtDate` set to the moment of the close (the time a host shows
+ *          as "modified" and a sync tool compares), and the volume's FAT32
+ *          FSInfo free count is committed. A handle opened read-only, or
+ *          write-opened and never written, touches nothing.
+ *
+ * @param[in,out] file Handle from `ra8_fs_open()`.
  *
  * @retval k_ra8_ok           Closed.
  * @retval k_ra8_err_null_ptr file is NULL.
+ * @retval k_ra8_err_*        The timestamp or FSInfo write failed. The handle
+ *                            is released anyway -- a close that could be
+ *                            refused would leak the slot.
+ * @post The file slot is free for reuse whatever the metadata write did.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_fs_close(ra8_fs_file_t* file);
@@ -675,10 +595,17 @@ ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_l
 /**
  * @brief Write `len` bytes; allocate new clusters from FAT free-space scan as needed.
  *
+ * @details New clusters come from a scan that starts at the mount's next-free
+ *          hint rather than at cluster 2, reading the FAT through a one-sector
+ *          cache, so appending stays linear in the bytes written instead of
+ *          quadratic. The directory entry's modification time advances with
+ *          every call, and again when the handle is closed.
+ *
  * @retval k_ra8_ok                Wrote all bytes; size + dir entry updated.
  * @retval k_ra8_err_null_ptr      file or buf NULL.
  * @retval k_ra8_err_invalid_state file not opened for writing.
  * @retval k_ra8_err_no_mem        Volume out of free clusters.
+ * @post On success the entry's `DIR_WrtTime` / `DIR_WrtDate` name this write.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_fs_write(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len);
@@ -850,6 +777,12 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
  * and NameHash, rebuilds the Name entry, and recomputes the SetChecksum --
  * supported when both names fit one Name entry (<= 15 characters), which
  * keeps the entry-set length unchanged. Data clusters never move.
+ *
+ * The LAST-ACCESS stamp advances; the modification stamp deliberately does
+ * not. A rename changes the name, not the bytes, so moving the modification
+ * time would tell every `rsync`, backup and "pick the newest image" heuristic
+ * that the contents changed. Neither format has a metadata-change field, so
+ * the access stamp is the honest record that the entry was touched.
  *
  * @param[in] handle   Mount handle.
  * @param[in] old_path Existing root-level name.

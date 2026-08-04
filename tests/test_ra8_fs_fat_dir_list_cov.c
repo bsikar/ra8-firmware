@@ -200,6 +200,12 @@ static void test_listdir_walk_fail(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   create_empty_files(h, "/SUB", (uint32_t)k_fill_subdir_files);
+  /* Remount so the FAT sector cache is cold (#607): creating those files
+   * walked the FAT, and a cached sector never reaches the backend, so read 3
+   * below would be served from memory and the walk would not fail. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
+  h = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_backend_t saved = h->backend;
   swap_to_inject(h, 2U, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_listdir(h, "/SUB", count_cb, nullptr));

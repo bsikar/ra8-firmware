@@ -52,10 +52,19 @@ RA8_PRIV
 void priv_83_to_str(const uint8_t* in11, char* out12);
 
 /**
- * @brief Linear free-cluster scan -- no FSInfo cache. O(count_of_clusters).
+ * @brief Free-cluster scan from the next-free hint, wrapping exactly once.
  *
- * @details Walks every cluster looking for one whose FAT entry is
- *          `k_cluster_free`. Returns the first match.
+ * @details Starts at the mount's next-free hint (::priv_alloc_hint_get, seeded
+ *          from FAT32's `FSI_Nxt_Free` when that validates) and walks forward
+ *          for at most `count_of_clusters` steps, wrapping back to cluster 2
+ *          once, so the whole volume is still examined before it is declared
+ *          full. The FAT entries are read through the one-sector cache, which
+ *          is what makes a scan cost one block read per 128 clusters on FAT32
+ *          instead of one per cluster.
+ *
+ *          On success the hint moves to the cluster after the one taken and
+ *          the tracked free count drops by one, so the FSInfo writeback has
+ *          something true to write.
  *
  * @param[in]  m           Mount providing geometry and backend.
  * @param[out] out_cluster On success, the allocated cluster number.
@@ -204,13 +213,23 @@ uint8_t priv_byte_equal(const uint8_t* a, const uint8_t* b, uint32_t n);
  * @return Error code.
  * @retval k_ra8_ok           File closed.
  * @retval k_ra8_err_null_ptr @p file was NULL.
+ * @retval k_ra8_err_*        The final modification-time stamp or the FSInfo
+ *                            writeback failed; the handle is released anyway.
  *
  * @pre The library lock is held (or none is installed).
  * @pre All pending writes have already been issued.
- * @post The file slot is marked free for reuse.
+ * @post The file slot is marked free for reuse, whatever the metadata write did.
  * @post `file->mount` is reset to NULL.
  *
  * @note Never call this from outside `ra8_fs`; it is the unlocked half.
+ *
+ * @par MC/DC:
+ * The metadata write is guarded by a four-condition conjunction: the handle is
+ * dirty, the handle is in use, it has a mount, and that mount is in use. Its
+ * five vectors are driven by `test_close_stamps_final_mtime` and
+ * `test_close_guards_an_unusable_handle` in `tests/test_ra8_fs_timestamps.c`,
+ * which cite it as
+ * `libs/ra8_fs/src/ra8_fs_fat_file.c@priv_close_locked`.
  *
  * @since 0.1.0
  */

@@ -61,6 +61,10 @@ static void priv_pack_dot_entry(uint8_t* ent, uint32_t dots, uint32_t cluster)
   }
   ent[k_dir_off_attr] = k_ra8_fs_attr_directory;
   priv_entry_set_cluster_size(ent, cluster, 0U);
+  /* "." and ".." are ordinary directory entries to every host, and every mkfs
+   * stamps them. Leaving them at zero would put an illegal date inside a
+   * directory this firmware had just created (#601). */
+  priv_fat_entry_stamp_create(ent);
 }
 
 /**

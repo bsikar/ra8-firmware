@@ -666,6 +666,13 @@ static void test_lfn_cov_walk_fail_long(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   /* 14 files + dot + dotdot = 16 entries; fills the first (only) cluster. */
   create_files_in(h, "/SUB", k_lcov_files_per_sub);
+  /* Remount so the FAT sector cache is cold (#607): creating those files
+   * walked the FAT, and a cached sector is served without touching the
+   * backend, so read 3 below would succeed and the failure path would never
+   * be entered. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
+  h = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   ra8_fs_backend_t saved = h->backend;
   /* Read 1 = root sector (find SUB), Read 2 = subdir sector, Read 3 = FAT. */
@@ -735,6 +742,12 @@ static void test_lfn_cov_walk_fail_free(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   /* dot + dotdot + 14 files = 16 entries; fills cluster 2 entirely. */
   create_files_in(h, "/SUB", k_lcov_files_per_sub);
+  /* Remount so the FAT sector cache is cold (#607): a cached sector never
+   * reaches the backend, so read 2 below would succeed and the walk would not
+   * fail. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
+  h = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* Subdir lives at cluster 2 (first allocated after mount on fresh volume). */
   dir_loc_t        subdir_loc = {.is_root = 0U, .cluster = 2U};

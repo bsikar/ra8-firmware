@@ -149,7 +149,7 @@ ra8_err_t priv_fat_get(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t* out_
   const uint32_t sec_off    = fat_offset % k_ra8_fs_bytes_per_sector;
 
   uint8_t   buf[k_ra8_fs_bytes_per_sector] = {};
-  ra8_err_t err                            = priv_read_sector(m, sec_num, buf);
+  ra8_err_t err                            = priv_fat_sector_read(m, sec_num, buf);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -163,7 +163,7 @@ ra8_err_t priv_fat_get(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t* out_
       b1 = buf[sec_off + 1U];
     } else {
       uint8_t buf2[k_ra8_fs_bytes_per_sector] = {};
-      err                                     = priv_read_sector(m, sec_num + 1U, buf2);
+      err                                     = priv_fat_sector_read(m, sec_num + 1U, buf2);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -182,6 +182,56 @@ ra8_err_t priv_fat_get(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t* out_
   }
 
   *out_value = v;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Commit one (or, when straddling, two) FAT12 sectors and refresh the cache.
+ *
+ * @details Split out of ::priv_fat12_set_one so that function stays inside the
+ *          statement budget: the write-back half is self-contained, and both
+ *          sectors go through ::priv_fat_sector_wrote so a later read of either
+ *          is served from memory rather than the device.
+ *
+ * @param[in] m        Mount providing backend access.
+ * @param[in] buf      The entry's first sector, already patched.
+ * @param[in] buf2     The following sector, meaningful only when straddling.
+ * @param[in] sec_num  Sector number of @p buf.
+ * @param[in] straddle Non-zero when the entry spans into @p buf2.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    Every affected sector is on disk.
+ * @retval k_ra8_err_* Backend write failure.
+ *
+ * @pre `m`, `buf` and `buf2` are non-NULL.
+ * @pre Both buffers hold a whole sector.
+ * @post On success the on-disk FAT12 entry reflects the new value.
+ * @post On success the sector cache matches what was written.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_fat12_store(const ra8_fs_mount_t* m,
+                                  const uint8_t*        buf,
+                                  const uint8_t*        buf2,
+                                  uint32_t              sec_num,
+                                  uint8_t               straddle)
+{
+  ra8_err_t err = priv_write_sector(m, sec_num, buf);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  priv_fat_sector_wrote(m, buf, sec_num);
+  if (straddle == 0U) {
+    return k_ra8_ok;
+  }
+  err = priv_write_sector(m, sec_num + 1U, buf2);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  priv_fat_sector_wrote(m, buf2, sec_num + 1U);
   return k_ra8_ok;
 }
 
@@ -219,7 +269,7 @@ static ra8_err_t priv_fat12_set_one(const ra8_fs_mount_t* m,
   uint8_t   buf[k_ra8_fs_bytes_per_sector]  = {};
   uint8_t   buf2[k_ra8_fs_bytes_per_sector] = {};
   uint8_t   straddle                        = 0U;
-  ra8_err_t err                             = priv_read_sector(m, sec_num, buf);
+  ra8_err_t err                             = priv_fat_sector_read(m, sec_num, buf);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -228,7 +278,7 @@ static ra8_err_t priv_fat12_set_one(const ra8_fs_mount_t* m,
   if (sec_off + 1U < (uint32_t)k_ra8_fs_bytes_per_sector) {
     b1 = buf[sec_off + 1U];
   } else {
-    err = priv_read_sector(m, sec_num + 1U, buf2);
+    err = priv_fat_sector_read(m, sec_num + 1U, buf2);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -248,14 +298,7 @@ static ra8_err_t priv_fat12_set_one(const ra8_fs_mount_t* m,
   } else {
     buf2[0] = (uint8_t)((raw >> k_shift_byte) & k_byte_mask);
   }
-  err = priv_write_sector(m, sec_num, buf);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (straddle != 0U) {
-    err = priv_write_sector(m, sec_num + 1U, buf2);
-  }
-  return err;
+  return priv_fat12_store(m, buf, buf2, sec_num, straddle);
 }
 
 /**
@@ -287,12 +330,17 @@ static ra8_err_t
 priv_fat16_set_one(const ra8_fs_mount_t* m, uint32_t sec_num, uint32_t sec_off, uint32_t value)
 {
   uint8_t   buf[k_ra8_fs_bytes_per_sector] = {};
-  ra8_err_t err                            = priv_read_sector(m, sec_num, buf);
+  ra8_err_t err                            = priv_fat_sector_read(m, sec_num, buf);
   if (err != k_ra8_ok) {
     return err;
   }
   priv_wr16(&buf[sec_off], (uint16_t)(value & k_word_mask));
-  return priv_write_sector(m, sec_num, buf);
+  err = priv_write_sector(m, sec_num, buf);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  priv_fat_sector_wrote(m, buf, sec_num);
+  return k_ra8_ok;
 }
 
 /**
@@ -324,13 +372,18 @@ static ra8_err_t
 priv_fat32_set_one(const ra8_fs_mount_t* m, uint32_t sec_num, uint32_t sec_off, uint32_t value)
 {
   uint8_t   buf[k_ra8_fs_bytes_per_sector] = {};
-  ra8_err_t err                            = priv_read_sector(m, sec_num, buf);
+  ra8_err_t err                            = priv_fat_sector_read(m, sec_num, buf);
   if (err != k_ra8_ok) {
     return err;
   }
   uint32_t prev = priv_rd32(&buf[sec_off]) & ~k_cluster_mask_fat32;
   priv_wr32(&buf[sec_off], (value & k_cluster_mask_fat32) | prev);
-  return priv_write_sector(m, sec_num, buf);
+  err = priv_write_sector(m, sec_num, buf);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  priv_fat_sector_wrote(m, buf, sec_num);
+  return k_ra8_ok;
 }
 
 /* `priv_fat_set()`: see header for the documented contract. */
@@ -386,10 +439,60 @@ uint32_t priv_cluster_to_lba(const ra8_fs_mount_t* m, uint32_t cluster)
   return m->first_data_lba + ((cluster - k_cluster_first_data) * m->sectors_per_cluster);
 }
 
+/**
+ * @brief Normalise a next-free hint into a real cluster number.
+ *
+ * @details A hint is an optimisation, not a promise: it can sit one past the
+ *          last cluster after the previous allocation took the final one, and
+ *          on a FAT32 volume it can arrive from an `FSI_Nxt_Free` some other
+ *          implementation wrote. Anything outside `[2, 2 + count)` restarts
+ *          the scan at the first data cluster.
+ *
+ * @param[in] m    Mount providing the cluster count.
+ * @param[in] hint Raw hint from ::priv_alloc_hint_get.
+ *
+ * @return A cluster number the scan may start at.
+ * @retval 2..(2 + count_of_clusters - 1) The clamped start cluster.
+ *
+ * @pre `m` is non-NULL with `count_of_clusters >= 1`.
+ * @pre `hint` came from the allocator state, not from a directory entry.
+ * @post No state modified.
+ * @post The result addresses a cluster this volume has.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @par MC/DC:
+ * Decision: `(hint - k_cluster_first_data) >= count_of_clusters` (1 condition).
+ * - hint past the last cluster -> true  -> restart at cluster 2.
+ * - an ordinary in-range hint  -> false -> start there.
+ * A hint BELOW cluster 2 needs no second condition: the subtraction is
+ * unsigned, so it wraps to a value far above any cluster count and the same
+ * test catches it. Spelling that out as a second range term would add a
+ * condition nothing in the tree can make true -- no caller can produce a hint
+ * below 2 -- and an untestable condition is a permanent MC/DC hole.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static uint32_t priv_alloc_start(const ra8_fs_mount_t* m, uint32_t hint)
+{
+  if ((hint - (uint32_t)k_cluster_first_data) >= m->count_of_clusters) {
+    return (uint32_t)k_cluster_first_data;
+  }
+  return hint;
+}
+
 /* `priv_alloc_cluster()`: see header for the documented contract. */
 ra8_err_t priv_alloc_cluster(const ra8_fs_mount_t* m, uint32_t* out_cluster)
 {
-  for (uint32_t c = k_cluster_first_data; c < (k_cluster_first_data + m->count_of_clusters); c++) {
+  /* Start where the last allocation stopped and wrap exactly once, instead of
+   * restarting at cluster 2 every time (#607). Combined with the FAT sector
+   * cache behind priv_fat_get(), appending to a file costs a bounded number of
+   * block reads per cluster rather than one read per cluster EXAMINED -- which
+   * is what made writing a K-cluster file O(K * N) real device round trips. */
+  const uint32_t past_end = (uint32_t)k_cluster_first_data + m->count_of_clusters;
+  uint32_t       c        = priv_alloc_start(m, priv_alloc_hint_get(m));
+  for (uint32_t seen = 0U; seen < m->count_of_clusters; seen++) {
     uint32_t  v   = 0;
     ra8_err_t err = priv_fat_get(m, c, &v);
     if (err != k_ra8_ok) {
@@ -397,7 +500,13 @@ ra8_err_t priv_alloc_cluster(const ra8_fs_mount_t* m, uint32_t* out_cluster)
     }
     if (v == k_cluster_free) {
       *out_cluster = c;
+      priv_alloc_hint_set(m, c + 1U);
+      priv_free_count_took(m, 1U);
       return k_ra8_ok;
+    }
+    c++;
+    if (c >= past_end) {
+      c = (uint32_t)k_cluster_first_data;
     }
   }
   return k_ra8_err_no_mem;
