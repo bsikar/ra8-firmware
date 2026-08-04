@@ -297,8 +297,34 @@ if [[ -n "$c_files" ]]; then
   fi
 
   # ---- cppcheck ----------------------------------------------------------
+  # ONE definition of the cppcheck policy. This step used to hand-roll its own
+  # scope -- every staged .c/.h except tests/ -- which is a SECOND, drifted
+  # definition of a check. CLAUDE.md is explicit that there is exactly one
+  # definition of a gate and that a gate body is never hand-copied, and the
+  # drift was not cosmetic: it failed commits over findings no gate has an
+  # opinion about. It diverged from gate_cppcheck in two separate ways.
+  #
+  # WHERE it looks. The gate covers src/, libs/ and the example apps. tools/
+  # is reached only by scripts/checks/cppcheck.sh under --error-exitcode=0,
+  # where a finding CANNOT fail anything, so the first commit to stage
+  # tools/*.c met 65 findings nothing had ever gated -- two of them verified
+  # false positives (a custom deallocator, and an fclose one call deeper)
+  # whose "fix" would have been a double free.
+  #
+  # WHAT it analyses. cppcheck analyses TRANSLATION UNITS. The gate passes
+  # DIRECTORIES, so a header is analysed in the context of a .c that includes
+  # it. Passing a bare .h on the command line analyses it standalone instead,
+  # with none of its includes or macros resolved -- which is why four
+  # libs/ra8_nsc/inc headers reported `unknownMacro: RA8_INTERNAL_ANNOTATE`
+  # and ra8_ether_regs.h reported a bogus `unusedScopedObject`. The gate is
+  # green on the identical tree, which is the proof that those are artefacts
+  # of the invocation rather than defects in the headers.
+  #
+  # So: the gate's scope, and .c translation units. Headers stay covered
+  # through the TUs that include them, exactly as in CI. Bringing tools/ under
+  # the gate is real work tracked as its own issue.
   if command -v cppcheck &>/dev/null; then
-    prod_files=$(echo "$c_files" | grep -vE "^tests/" || true)
+    prod_files=$(echo "$c_files" | grep -E "^(src|libs|examples)/" | grep -E "[.]c$" || true)
     if [[ -n "$prod_files" ]]; then
       mapfile -t prod_file_list <<<"$prod_files"
       if ! cppcheck --enable=warning,style,performance,portability \
