@@ -18,11 +18,11 @@
  * hit-test + text-buffer logic, so the banner is identical on host, ra8_emulator,
  * and silicon. A mismatch halts on a BKPT before the PASS line.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

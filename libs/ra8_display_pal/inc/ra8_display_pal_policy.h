@@ -21,11 +21,11 @@
  * Pure logic: no MMIO, no heap, no I/O. Continuous-refresh (LCD) backends do not
  * need it -- it is inert there (every hint behaves the same on a scan-out panel).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Display] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

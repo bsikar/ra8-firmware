@@ -40,10 +40,10 @@
  * @see ra8_comic.h  The comic facade that turns this walk into a page list.
  * @see https://www.rarlab.com/technote.htm  RAR 5.0 archive format (reference).
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

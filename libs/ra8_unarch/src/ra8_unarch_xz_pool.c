@@ -12,10 +12,10 @@
  * enforced on install (caller buffer) and on every bump (request rounding),
  * so the vendored decoder's `uint64_t`-bearing structs are always aligned.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include "ra8_unarch_xz_pool.h"
 

@@ -22,12 +22,12 @@
  * @note Not thread-safe; the cookie's storage is single-owner.
  * @see ra8_rabook_import.h          The cache manager that calls this seam.
  * @see ra8_rabook_compile_from_epub The compiler this wraps.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  *
  * [Ring 4 / EPUB Import] {World: NS}
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

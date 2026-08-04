@@ -36,10 +36,10 @@
  * @see ra8_unarch_io.h      The seek+read seam the decoder consumes.
  * @see ra8_unarch_tar.h     The tar walker layered over unwrapped bytes.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

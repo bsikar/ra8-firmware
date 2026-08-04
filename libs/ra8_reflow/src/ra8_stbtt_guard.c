@@ -8,11 +8,11 @@
  * table directory, proving every access stays inside the caller-supplied
  * buffer, and returns a verdict without ever calling into stb_truetype.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

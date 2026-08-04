@@ -32,11 +32,11 @@
  * toolchain-independent digest identical on host / ra8_emulator / silicon), which
  * the boot banner pins as the comic golden without disturbing the shelf render.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include <string.h>

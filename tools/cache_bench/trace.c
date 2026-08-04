@@ -6,11 +6,11 @@
  * every policy sees byte-identical input and runs are reproducible (the same
  * determinism ra8_emulator gives the captured traces).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include "trace.h"

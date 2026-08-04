@@ -19,10 +19,10 @@
  * The driver in `ra8_rar5.c` calls the four ::ra8_rar5_internal.h cross-TU entry
  * points here; nothing in this unit calls back into the driver.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include <string.h>
 

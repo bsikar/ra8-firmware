@@ -7,11 +7,11 @@
  * includes libwebp's public `src/webp/decode.h`; every consumer reaches WebP
  * through the `ra8_err_t` facade here, never through libwebp directly.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / WebP] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

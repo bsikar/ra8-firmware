@@ -25,11 +25,11 @@
  * The single-tile encode is the reference decode of the source image (no tiling
  * involved), so any mismatch is the tiling path's fault and nothing else's.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

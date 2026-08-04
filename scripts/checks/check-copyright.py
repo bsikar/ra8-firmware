@@ -172,6 +172,49 @@ def _block_span(lines: list[str], *, doxygen: bool) -> tuple[int, int] | None:
     return None
 
 
+#: Tag prefixes that belong to the attribution group, alongside the copyright
+#: and SPDX lines themselves.
+_GROUP_PREFIXES = ("@author", "@date", "@since")
+
+
+def _group_indices(body: list[str], want_copy: str) -> list[int]:
+    """Indices of the attribution tags present in a header block.
+
+    Args:
+        body: Comment-stripped lines of the file-header block.
+        want_copy: The copyright spelling this comment style expects.
+
+    Returns:
+        Sorted indices of every attribution tag found, possibly empty.
+    """
+    return [
+        i
+        for i, b in enumerate(body)
+        if b.startswith(_GROUP_PREFIXES) or b in {want_copy, COPY_TEXT, COPY_TAG, SPDX_TEXT}
+    ]
+
+
+def _group_blank_split(body: list[str], want_copy: str) -> int | None:
+    """Index of the first blank line splitting the attribution group, or None.
+
+    The group runs from the first attribution tag through the last, and must
+    read as one unbroken stanza. A blank line BEFORE the group -- the one that
+    separates it from the ``@details`` prose above -- is deliberately allowed;
+    only a break INSIDE it is a finding.
+
+    Args:
+        body: Comment-stripped lines of the file-header block.
+        want_copy: The copyright spelling this comment style expects.
+
+    Returns:
+        The offending index, or None when the group is contiguous.
+    """
+    idxs = _group_indices(body, want_copy)
+    if not idxs:
+        return None
+    return next((i for i in range(idxs[0], idxs[-1]) if not body[i]), None)
+
+
 def _attribution_outside(lines: list[str], span: tuple[int, int]) -> list[int]:
     """Indices of attribution lines living OUTSIDE the header block.
 
@@ -236,22 +279,31 @@ def _classify_block(lines: list[str], style: str) -> str | None:
             "belongs INSIDE that block as its closing tag group"
         )
     start, end = span
-    want_copy = COPY_TAG if style == STYLE_DOXY else COPY_TEXT
-    body = [_starless(x) for x in lines[start : end + 1]]
+    want_copy = COPY_TAG if doxygen else COPY_TEXT
+    return _classify_group([_starless(x) for x in lines[start : end + 1]], want_copy, doxygen)
+
+
+def _classify_group(body: list[str], want_copy: str, doxygen: bool) -> str | None:
+    """Judge the attribution tag group inside a file-header block.
+
+    Args:
+        body: Comment-stripped lines of the block.
+        want_copy: The copyright spelling this comment style expects.
+        doxygen: Whether the block is a Doxygen ``@file`` header.
+
+    Returns:
+        A short reason when the group is wrong, else None.
+    """
     ci = si = None
     for i, b in enumerate(body):
         if b == want_copy:
             ci = i
         elif b == SPDX_TEXT:
             si = i
-    return _pair_verdict(ci, si, style)
-
-
-def _pair_verdict(ci: int | None, si: int | None, style: str) -> str | None:
     if ci is None and si is None:
         return "the file-header block carries no copyright or SPDX line"
     if ci is None:
-        kind = "@copyright" if style == STYLE_DOXY else "copyright"
+        kind = "@copyright" if doxygen else "copyright"
         return f"the file-header block has no {kind} line"
     if si is None:
         return "the file-header block has no SPDX-License-Identifier line"
@@ -259,6 +311,13 @@ def _pair_verdict(ci: int | None, si: int | None, style: str) -> str | None:
         return (
             f"copyright and SPDX are not adjacent in the file-header block "
             f"(copyright at block line {ci + 1}, SPDX at {si + 1})"
+        )
+    blank = _group_blank_split(body, want_copy)
+    if blank is not None:
+        return (
+            f"a blank line at block line {blank + 1} splits the attribution "
+            "group; @author / @date / @copyright / SPDX / @since must be "
+            "consecutive lines"
         )
     return None
 
@@ -328,7 +387,44 @@ def _rewrite_block(lines: list[str], style: str) -> list[str] | None:
         if _starless(kept[i]).startswith("@since"):
             insert_at = i
             break
-    return kept[:insert_at] + pair + kept[insert_at:]
+    merged = kept[:insert_at] + pair + kept[insert_at:]
+    return _close_group_gaps(merged, want_copy, doxygen)
+
+
+def _close_group_gaps(lines: list[str], want_copy: str, doxygen: bool) -> list[str]:
+    """Delete blank comment lines that split the attribution group.
+
+    The group must read as one unbroken stanza. Removing the pair and
+    re-inserting it can strand the blank line that used to sit between the
+    pair and ``@since``, so this runs as the last step of every repair.
+
+    Args:
+        lines: The file's lines after the pair has been placed.
+        want_copy: The copyright spelling this comment style expects.
+        doxygen: Whether the header block is a Doxygen ``@file`` block.
+
+    Returns:
+        The lines with any intra-group blank comment lines removed.
+    """
+    span = _block_span(lines, doxygen=doxygen)
+    if span is None:
+        return lines
+    start, end = span
+    body = [_starless(x) for x in lines[start : end + 1]]
+    idxs = _group_indices(body, want_copy)
+    if not idxs:
+        return lines
+    drop = {start + i for i in range(idxs[0], idxs[-1]) if not body[i]}
+    # Collapse a run of blank comment lines directly above the group to a
+    # single separator. Lifting the old pair out strands the blank that used
+    # to sit above it, which would otherwise leave two ` *` lines stacked.
+    above = []
+    cursor = idxs[0] - 1
+    while cursor > 0 and not body[cursor]:
+        above.append(cursor)
+        cursor -= 1
+    drop.update(start + i for i in above[1:])
+    return [ln for i, ln in enumerate(lines) if i not in drop]
 
 
 # ---------------------------------------------------------------------------
@@ -347,7 +443,7 @@ def _is_generated(rel: str) -> bool:
 
 
 def enumerate_all() -> list[tuple[str, str]]:
-    """Enumerate every enforced (relative-path, style) pair, sorted."""
+    """Every first-party file this gate judges, as ``(path, style)`` pairs."""
     out: list[tuple[str, str]] = []
     for lang, rels in files_for(ENFORCED_LANGS).items():
         style = LANG_STYLE[lang]
@@ -423,6 +519,36 @@ MUST_FIRE: tuple[tuple[str, str, list[str]], ...] = (
         STYLE_DOXY,
         ["/**", " * @file x.c", f" * {COPY_TAG}", " * @since 0.1.0", f" * {SPDX_TEXT}", " */"],
     ),
+    (
+        # A blank comment line inside the group: the pair, then ` *`, then
+        # @since. The tags are individually right and the stanza is still torn.
+        "blank line between the pair and @since",
+        STYLE_DOXY,
+        [
+            "/**",
+            " * @file x.c",
+            f" * {COPY_TAG}",
+            f" * {SPDX_TEXT}",
+            " *",
+            " * @since 0.1.0",
+            " */",
+        ],
+    ),
+    (
+        "blank line between @date and the pair",
+        STYLE_DOXY,
+        [
+            "/**",
+            " * @file x.c",
+            " * @author Brighton Sikarskie",
+            " * @date 2026-04-29",
+            " *",
+            f" * {COPY_TAG}",
+            f" * {SPDX_TEXT}",
+            " * @since 0.1.0",
+            " */",
+        ],
+    ),
     ("doxy missing spdx", STYLE_DOXY, ["/**", " * @file x.c", f" * {COPY_TAG}", " */"]),
     ("doxy missing both", STYLE_DOXY, ["/**", " * @file x.c", " * @brief y", " */"]),
     ("plain missing spdx", STYLE_PLAIN, ["/*", " * ld", f" * {COPY_TEXT}", " */"]),
@@ -481,7 +607,7 @@ def _selftest_fix() -> list[str]:
 
 
 def selftest() -> int:
-    """Assert the classifier and fixer both ways; 0 on success."""
+    """Prove every wrong shape fires and every canonical shape stays silent."""
     failures = [
         f"  must-stay-quiet: {label} rejected ({classify(lines, style)})"
         for label, style, lines in MUST_STAY_QUIET
@@ -543,7 +669,7 @@ def _process(targets: list[tuple[str, str]], fix: bool) -> int:
 
 
 def main(argv: list[str]) -> int:
-    """CLI entry: --selftest, --fix, --all, or explicit file arguments."""
+    """Dispatch on the flags described in the module docstring."""
     args = argv[1:]
     if "--selftest" in args:
         return selftest()

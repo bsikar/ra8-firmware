@@ -17,11 +17,11 @@
  *   - ::k_sh_screen_reader -- full-book pagination across every chapter.
  *   - ::k_sh_screen_comic  -- full-page image reader for a CBZ / CBR comic.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

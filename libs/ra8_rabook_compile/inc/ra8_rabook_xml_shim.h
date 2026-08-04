@@ -14,12 +14,12 @@
  *       C++ ABI leaks out of this header.
  * @note Not thread-safe.
  * @see ra8_rabook_compile.h  Builder context populated by this parser.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  *
  * [Ring 4 / EPUB Compiler] {World: NS}
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 
