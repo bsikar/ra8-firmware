@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck shell=bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/lib/snapshot.sh -- materialise the tree a suite run is gating, and
 # run the suite inside it.

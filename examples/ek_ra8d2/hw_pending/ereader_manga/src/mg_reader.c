@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file src/mg_reader.c
  * @brief Tap-driven pan/zoom viewer over a tiled manga page (ereader_manga).
@@ -12,8 +16,6 @@
  * RGB565, and draws the chrome through ``ra8_gfx`` -- so the same render runs
  * on the firmware, under ra8_emulator, and in the host unit test.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,9 +1,10 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_bit_constants.c
  * @brief Unit tests for ra8_bit_constants.h named bit positions
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_bit_constants.h"

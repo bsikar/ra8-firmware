@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/gpt_capture_input/main.c
  * @brief GPT input-capture-style demo: measure SW1 press period
@@ -21,8 +25,6 @@
  * a bare EVM. The real hardware-capture + external-event-count path is
  * demonstrated by the gpt_edge_capture_count hw_pending app.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

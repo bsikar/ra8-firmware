@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_hcdc_ecm.c
  * @brief Native USB host-side CDC-ECM (Ethernet over USB) class layer
@@ -31,9 +35,6 @@
  * (production) or directly via `ra8_usb_hcdc_ecm_step` (tests). Each
  * step issues exactly one chapter-9 SETUP request via
  * `ra8_usb_host_setup_request`; the next CTRT advances the step.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb_hcdc_ecm.h"

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_main.c
  * @brief Non-Secure image: prove the NSC CGC veneers return OK from NS (#60).
@@ -42,8 +46,6 @@
  * (Run-time VMA in the SRAM NS alias; the image is flashed in Secure MRAM
  * at the LMA 0x02080000 and copied here by the secure ``trustzone_init``.)
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

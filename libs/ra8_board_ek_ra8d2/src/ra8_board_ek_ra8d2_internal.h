@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_board_ek_ra8d2_internal.h
  * @brief Cross-translation-unit seam for the EK-RA8D2 BSP implementation
@@ -16,8 +20,6 @@
  * unit. Keeping it here keeps a single source-of-truth and avoids an
  * "undeclared identifier" break if either unit moves.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

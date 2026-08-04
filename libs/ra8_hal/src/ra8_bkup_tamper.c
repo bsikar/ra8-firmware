@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_bkup_tamper.c
  * @brief Battery Backup Function (VBATT) driver -- tamper detection
@@ -26,9 +30,6 @@
  * path here runs inside an ``RA8_PROTECTED_WRITE`` window. Reads are
  * never protected. See the ``ra8_bkup.c`` file comment for the
  * bench evidence behind that rule.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

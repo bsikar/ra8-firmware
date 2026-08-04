@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/levelx_standalone.cmake
 #
@@ -26,8 +28,6 @@
 # (ThreadX-coupled `levelx` vs standalone `levelx_standalone`) are mutually
 # exclusive within one build; an app selects exactly one.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Idempotency guard: the same per-app build can include this file more than once

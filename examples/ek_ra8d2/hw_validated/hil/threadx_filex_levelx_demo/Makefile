@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app Makefile for the `threadx_filex_levelx_demo` firmware.
 #
@@ -13,8 +15,6 @@
 # volume on top of LevelX wear-levelling on top of the on-board
 # octal-SPI NOR flash, then writes / reads /levelx_test.txt.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL     := /bin/bash

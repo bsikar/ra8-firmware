@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_pal.c
  * @brief USB PAL implementation -- ra8_usb wrapper
@@ -12,9 +16,6 @@
  * ra8_usb pipe primitives land. On hardware the queue is backed
  * by the controller's pipe FIFOs; the stack-facing contract is
  * identical in either case.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb_pal.h"

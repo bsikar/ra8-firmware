@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/inc/ra8_esp_hosted_port.h
  * @brief Public entry point of the RA8D2 + ThreadX port of esp-hosted.
@@ -41,8 +45,6 @@
  * hole on 2026-07-27 at SPI mode 3 / 1 MHz; that probe drives the SCI directly
  * and reaches none of this code, which is why the port needed its own proof.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

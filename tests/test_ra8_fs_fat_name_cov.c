@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_fs_fat_name_cov.c
  * @brief Coverage booster for libs/ra8_fs/src/ra8_fs_fat_name.c.
@@ -26,9 +30,6 @@
  * The internal header ra8_fs_fat_internal.h is included to access dir_walk_t
  * for the synthetic walker calls (fixed-root and within-cluster cases) and
  * the cycle-guard case where count_of_clusters is temporarily zeroed.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,12 +1,13 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fake_dma.c
  * @brief Host-test DMA transfer fake implementation
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #ifdef RA8_OFF_TARGET

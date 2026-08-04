@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/nimble/inc/syscfg.h
  * @brief NimBLE syscfg overrides for the RA8 port.
@@ -37,9 +41,6 @@
  * board (see #86, #91). Enabling a knob here does not imply the feature
  * runs on silicon; consumers stay under ``examples/_unsupported/`` until a
  * NimBLE app is driven to real hardware validation and promoted.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

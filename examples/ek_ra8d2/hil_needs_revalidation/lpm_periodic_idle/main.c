@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/lpm_periodic_idle/main.c
  * @brief Periodic-app deep-idle loop: wake-do-work-standby on ULPT0 self-wake
@@ -55,8 +59,6 @@
  *       is correct-by-construction against that proven sibling pending
  *       that bench run.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

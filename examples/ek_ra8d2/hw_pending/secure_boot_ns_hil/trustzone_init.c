@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/trustzone_init.c
  * @brief Single-core TrustZone bring-up for a RAM-resident NS image (#172).
@@ -36,9 +40,6 @@
  *  - **Trusts:** the boot ROM left the SAU disabled and the IDAU in its
  *    documented reset state (fixed bit[28] split).
  *  - **Denies:** ``main()`` denies the BLXNS on a failed root-of-trust verify.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "trustzone_init.h"

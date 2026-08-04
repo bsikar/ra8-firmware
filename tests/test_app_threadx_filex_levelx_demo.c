@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_threadx_filex_levelx_demo.c
  * @brief Integration test: FileX-on-LevelX FAT format + read/write flow
@@ -14,8 +18,6 @@
  *   - ra8_fs (the FileX equivalent surface) precondition guards on a
  *     fresh / partially-initialized backend.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

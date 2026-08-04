@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_sci_spi.c
  * @brief Unit tests for the SCI Simple-SPI controller driver
@@ -21,9 +25,6 @@
  * leaving the awaited bit clear, which lets the bounded loop run to its
  * budget and return ``k_ra8_err_hw_timeout``. No SIGALRM / setitimer
  * injection is used anywhere in this file.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

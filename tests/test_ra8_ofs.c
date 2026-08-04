@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_ofs.c
  * @brief Unit tests for Option Function Select section constants (ra8_ofs.c)
@@ -11,9 +15,6 @@
  * discards the `.option_setting_*` output sections in the host test
  * link. The point of this test is to make sure the TU compiles
  * cleanly under the host toolchain so coverage includes it.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

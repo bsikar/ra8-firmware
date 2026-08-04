@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_board_ek_ra8d2.c
  * @brief Board-support implementation for the EK-RA8D2 v1
@@ -16,8 +20,6 @@
  * Rev 1.01, October 2025). Each pin entry's comment cites the table
  * and page in that document.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

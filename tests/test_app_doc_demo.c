@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_doc_demo.c
  * @brief Integration test: Data Operation Circuit (DOC) sum demo
@@ -10,8 +14,6 @@
  * final DODIR operand) instead of the arithmetic; the hw-sum ==
  * sw-sum match is what the doc_demo HIL app proves on silicon.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/usbx/inc/ux_dcd_ra8_usb_internal.h
  * @brief USBX device-controller-driver bridge to ra8_usb -- per-module
@@ -19,8 +23,6 @@
  * This header is included by every translation unit of the bridge, after
  * the public ux_dcd_ra8_usb.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ftl.c
  * @brief Flash Translation Layer implementation -- copy-on-write + wear-levelling.
@@ -11,9 +15,6 @@
  * forward to the underlying device (or synthesise the erase value for unmapped
  * blocks). Writes allocate the least-erased free physical block, erase it,
  * program the data, and re-point the map -- never touching a non-blank block.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_ftl.h"

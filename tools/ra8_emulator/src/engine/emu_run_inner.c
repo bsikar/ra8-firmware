@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_run_inner.c
  * @brief Inner per-chunk exception-resolve loop (see emu_run_internal.h)
@@ -10,8 +14,6 @@
  * the file-size bar. The contract for run_inner() lives on its declaration in
  * emu_run_internal.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

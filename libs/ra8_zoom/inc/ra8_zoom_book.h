@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_zoom_book.h
  * @brief Bind a `.rabook` image-pool figure as a ra8_zoom source (#478).
@@ -23,8 +27,6 @@
  * @see ra8_zoom.h        The viewport engine this feeds.
  * @see ra8_zoom_tiles.h  The tiled-atlas source, for comics and manga.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

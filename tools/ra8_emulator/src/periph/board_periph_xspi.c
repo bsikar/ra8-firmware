@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_xspi.c
  * @brief Octal-SPI (xSPI) manual-command + NOR-flash peripheral model for ra8_emulator
@@ -25,8 +29,6 @@
  * clears bits; erase restores 0xFF) match the real part and the host-test
  * register-level model in tests/mocks/ra8_fake_xspi_flash.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

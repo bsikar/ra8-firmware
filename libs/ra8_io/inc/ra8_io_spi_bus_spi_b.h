@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_spi_bus_spi_b.h
  * @brief SPI_B backend binder for the ra8_io SPI-bus facade.
@@ -14,8 +18,6 @@
  * never bring-up, so the caller keeps full control of mode, bit-rate, and
  * chip-select routing.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

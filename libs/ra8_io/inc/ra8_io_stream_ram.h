@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_stream_ram.h
  * @brief ra8_io byte-stream sink over a caller-owned RAM buffer.
@@ -11,8 +15,6 @@
  * reports ::k_ra8_err_no_mem. Useful as a capture buffer for tests, an in-memory
  * log ring, or staging bytes before a bulk transfer. Host-friendly: pure memory.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

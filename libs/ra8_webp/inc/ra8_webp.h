@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_webp.h
  * @brief Zero-heap WebP (VP8 / VP8L) decode facade over the vendored libwebp.
@@ -23,8 +27,6 @@
  * not yet have a WebP arm -- that lands with the #289 longstrip render path; see
  * the `TODO(#289)` seam in ra8_webp.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / WebP] {World: NS}
  *

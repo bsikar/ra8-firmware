@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file fuzz_log_sink.c
  * @brief Route ra8_log away from the ITM registers for every fuzz harness.
@@ -26,9 +30,6 @@
  *
  * The file is compiled into every harness (see the foreach in
  * tests/fuzz/CMakeLists.txt) and is a no-op outside `RA8_OFF_TARGET`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #ifdef RA8_OFF_TARGET

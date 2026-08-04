@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Top-level CMake for ra8-firmware (Cortex-M85 cross-build).
 #
@@ -11,8 +13,6 @@
 # day-to-day entry point; this top-level cmake exists so CI can build
 # everything with one configure step.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

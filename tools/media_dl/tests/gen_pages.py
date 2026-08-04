@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Generate synthetic, non-copyright page images for the media_dl harness.
 
 Feeds integration.sh. Every page is a distinct, high-contrast pattern, and both

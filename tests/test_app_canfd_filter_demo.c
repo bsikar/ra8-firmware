@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_canfd_filter_demo.c
  * @brief Integration test for examples/ek_ra8d2/canfd_filter_demo/main.c
@@ -7,8 +11,6 @@
  * round-trip from the demo. All MMIO is via the host
  * tests/mocks/ra8_fake_mmap.c shim.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

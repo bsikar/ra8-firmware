@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_io_stream_uart_cov.c
  * @brief Coverage-boost tests for ra8_io_stream_uart.c.
@@ -29,9 +33,6 @@
  * manual list entry is required.  gcovr merges its .gcda counters with
  * sibling tests so newly executed lines accumulate toward the module
  * coverage total.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

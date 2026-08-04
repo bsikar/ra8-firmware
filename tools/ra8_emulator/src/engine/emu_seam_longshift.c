@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_seam_longshift.c
  * @brief Armv8.1-M long-shift (LSLL/LSRL/ASRL) emulation seam (see emu_seams.h)
@@ -42,8 +46,6 @@
  * another long shift resolves in the correct order regardless of the order
  * Unicorn happens to invoke hooks in.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

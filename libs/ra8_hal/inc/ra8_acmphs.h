@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_acmphs.h
  * @brief Full-featured High-Speed Analog Comparator (ACMPHS) driver
@@ -11,9 +15,6 @@
  * the enable/read stub with: per-channel descriptor
  * init, deinit, runtime input selection, edge-sensitive IRQ
  * attach / dispatch, filter config, power transition.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

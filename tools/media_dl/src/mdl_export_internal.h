@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file mdl_export_internal.h
  * @brief Module-private page-list limits and the JOF exporter entry point.
@@ -18,8 +22,6 @@
  *
  * Nothing in this header is part of the exporter-facing API in mdl_export.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

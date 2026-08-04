@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rabook_gray4.h
  * @brief Grayscale image transcode stage (4-bpp / 8-bpp) for the on-device EPUB compiler (#149).
@@ -36,9 +40,6 @@
  * @since Version 0.1.0
  *
  * [Ring 4 / EPUB Compiler] {World: NS}
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

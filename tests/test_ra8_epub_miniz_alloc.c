@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_epub_miniz_alloc.c
  * @brief Host unit tests + MC/DC for the miniz static-arena allocator (#139).
@@ -7,9 +11,6 @@
  * alloc/align, split, free + coalesce reclaim, realloc grow-move + preserve,
  * realloc in-place, exhaustion, and overflow. Plus MC/DC mirror vectors for the
  * three compound decisions in the allocator (first-fit, coalesce, overflow).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

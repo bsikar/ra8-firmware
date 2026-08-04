@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_widget_panel.c
  * @brief Container-panel compositor for the ra8_widget tree model (#145).
@@ -12,8 +16,6 @@
  * and ::ra8_widget_render_dirty (composite) -- so this file adds only the
  * tree-recursion glue and stays free of any framebuffer dependency.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

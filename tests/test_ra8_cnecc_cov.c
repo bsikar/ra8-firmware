@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_cnecc_cov.c
  * @brief Coverage-closure unit tests for ra8_cnecc.c (CANFD ECC driver)
@@ -21,9 +25,6 @@
  * truncated. The mapped SRAM window is sub-4-GiB and is zeroed by
  * ``ra8_fake_mmap_reset``, so the round trip is exact on both the target
  * and the x86_64 test host.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_cnecc.h"

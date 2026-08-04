@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/touch_demo/main.c
  * @brief Standalone GoodIX GT911 capacitive-touch bring-up demo + HIL (#122).
@@ -20,8 +24,6 @@
  * out and reports `pts=0`, but `open=OK` still holds -- so `hil.conf` asserts
  * only the bring-up substring, which is stable either way.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

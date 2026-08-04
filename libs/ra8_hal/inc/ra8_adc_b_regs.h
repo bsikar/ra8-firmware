@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_adc_b_regs.h
  * @brief ADC16H (16-bit SAR) register layout for the Renesas RA8D2 / RA8P1
@@ -56,9 +60,6 @@
  * On the host unit-test build the FW build maps these MMIO offsets
  * onto an anonymous ``ra8_fake_mmap`` window so the same accessors
  * work in tests as on silicon.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

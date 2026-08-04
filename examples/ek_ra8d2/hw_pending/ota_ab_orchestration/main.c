@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/ota_ab_orchestration/main.c
  * @brief A/B OTA orchestration demo: stage -> verify -> commit / rollback over MRAM.
@@ -45,8 +49,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-07-16
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

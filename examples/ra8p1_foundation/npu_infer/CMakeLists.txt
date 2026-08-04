@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake stub for `npu_infer` -- the RA8P1 Ethos-U55 inference-runtime app.
 #
@@ -17,8 +19,6 @@
 # tflite::Register_ETHOSU() is wired to the NPU (asserted at runtime via
 # ra8_ethosu_kernel_available()).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/lpm_ulpt_standby/main.c
  * @brief ULPT0-underflow wake from Software Standby (LPSCR.LPMD = 0x5)
@@ -43,8 +47,6 @@
  * off LOCO, so the periodic ``"lpm_ulpt: wake"`` banner is a real,
  * bench-gatable wake signal (see ``hil.conf``).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

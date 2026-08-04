@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_zoom.h
  * @brief Tap-to-zoom image viewer: viewport state machine + tiled magnifying render (#478).
@@ -75,8 +79,6 @@
  * @see ra8_zoom_tiles.h Bind an `ra8_tile_cache` tiled atlas as a source.
  * @see ra8_gfx_dither.h The blue-noise quantiser this render re-dithers through.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

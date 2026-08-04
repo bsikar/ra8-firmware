@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_wdt_extended.c
  * @brief Extended unit tests for ra8_wdt.c covering previously uncovered paths
@@ -6,9 +10,6 @@
  * The OFSm option-setting decode (``ra8_wdt_ofs_get`` and its reader hook)
  * lives in test_ra8_wdt_ofs.c -- a separate responsibility, and splitting it
  * keeps both files under the 1000-line cap.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

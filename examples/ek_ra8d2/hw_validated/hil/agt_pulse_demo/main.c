@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/agt_pulse_demo/main.c
  * @brief AGT pulse-output / output-compare demo for EK-RA8D2
@@ -20,8 +24,6 @@
  *
  * The HIL gate scrapes ``agt_pulse: tick=`` to confirm bring-up.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

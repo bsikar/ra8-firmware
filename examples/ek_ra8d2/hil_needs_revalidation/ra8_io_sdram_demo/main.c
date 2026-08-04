@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_sdram_demo/main.c
  * @brief ra8_io fabric over the external SDRAM backend (epic #155) on EK-RA8D2.
@@ -17,9 +21,6 @@
  * ra8_emulator maps the SDRAM region and models the SDRAM controller bring-up, so
  * the PASS/FAIL line is observable headlessly: a successful run prints
  * `ra8_io_sdram_demo: mkdir+nested dr:/SUB/NOTE.TXT PASS`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

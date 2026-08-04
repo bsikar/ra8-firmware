@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_jof.c
  * @brief Host tests for the JOF atlas reader: structural validation, tile
@@ -10,8 +14,6 @@
  * atlas. Round-trips both codecs (raw + deflate) and proves byte parity
  * between paged tiles and the generator pattern.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

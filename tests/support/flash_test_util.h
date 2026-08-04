@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file flash_test_util.h
  * @brief Shared fixture for the test_ra8_flash* suite: frequency and
@@ -8,9 +12,6 @@
  * tests/CMakeLists.txt auto-glob stays free of non-test .c files.
  * Split out of test_ra8_flash.c when the suite was divided into
  * core / extra / ops binaries.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

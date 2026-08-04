@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file usb_selftest_device.h
  * @brief Device-side worker entry of the soak self-test
@@ -8,8 +12,6 @@
  * main.c can spawn it. Defined in usb_selftest_device.c. ThreadX/USBX only, so
  * the declaration is gated out of a (hypothetical) off-target build.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

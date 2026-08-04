@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """cite_ratchet.py -- HUM citation-COVERAGE ratchet (vs committed baseline).
 
 WHY THIS EXISTS

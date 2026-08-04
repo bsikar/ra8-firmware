@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_pmsc.h
  * @brief Native USB device-side MSC (Mass Storage Class) class layer
@@ -40,9 +44,6 @@
  * Reference: USB Mass Storage Class Bulk-Only Transport spec rev 1.0
  * (USB-IF, 1999-09-31), and SCSI Primary Commands rev 4 (T10/1731-D)
  * for the SBC opcodes used here.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

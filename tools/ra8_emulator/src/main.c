@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file main.c
  * @brief RA8D2 board emulator -- boot a real .elf on a CPU emulator, with ticks
@@ -24,8 +28,6 @@
  *
  *   ra8_emulator <firmware.elf>
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

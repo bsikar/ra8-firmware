@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/lpm_wake_matrix_demo/main.c
  * @brief Exercise the WUPEN0 / WUPEN1 wake-source enable matrix
@@ -35,8 +39,6 @@
  * ``tests/test_app_lpm_wake_matrix.c`` but running on real silicon
  * so the chip's read-as-written semantics are exercised.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_usb_host.h
  * @brief USBHS HOST-mode controller model (self-loop peer of the USBFS device)
@@ -31,8 +35,6 @@
  * firmware does not drain between chunks (no consumer in the EIL suite does
  * this; DFU class flows stay on their C-level seams).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

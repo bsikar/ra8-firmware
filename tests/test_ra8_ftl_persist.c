@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_ftl_persist.c
  * @brief Unit tests for FTL mapping telemetry + checkpoint persistence (#258).
@@ -17,9 +21,6 @@
  * checkpoint the mapping, discard the handle + caller tables (SRAM loss) while
  * keeping the backing store (MRAM retention), re-init, prove a naive re-open
  * has lost the data, then restore the checkpoint and read the data back intact.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

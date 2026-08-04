@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_vmem_hugebook.c
  * @brief #147 huge-book invariant gate: a GB-class object served correctly
@@ -34,9 +38,6 @@
  * No genuinely huge buffer is allocated: the object's bytes are generated on the
  * fly by a pure content function, so a 7.6 GiB file is modelled in a few hundred
  * KiB of host RAM.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

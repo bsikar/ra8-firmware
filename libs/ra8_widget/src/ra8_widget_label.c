@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_widget_label.c
  * @brief Text-label leaf widget for the ra8_widget tree model (#145 Phase 2).
@@ -12,8 +16,6 @@
  * place the text". Binding a widget with ::ra8_widget_label_init makes it a
  * label that drops into any panel's child array.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

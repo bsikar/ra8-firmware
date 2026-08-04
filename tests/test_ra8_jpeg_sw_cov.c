@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_jpeg_sw_cov.c
  * @brief Coverage supplement for ra8_jpeg_sw.c -- entropy-coder
@@ -50,9 +54,6 @@
  * All other decisions exercised in this file are single-condition;
  * each is covered by at least one true-branch and one false-branch
  * vector across the test suite (either here or in test_ra8_jpeg_sw.c).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file sweep_block.c
  * @brief Core of the #208 block/frame-size sweep (`--sweep-block`).
@@ -11,8 +15,6 @@
  * back by the cache is verified against the source blob. Row printing and
  * the summary report live in sweep_block_report.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

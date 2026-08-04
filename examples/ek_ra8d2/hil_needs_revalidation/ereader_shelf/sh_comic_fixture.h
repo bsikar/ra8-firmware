@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file sh_comic_fixture.h
  * @brief Baked CBZ + CBR comic fixtures for the ereader_shelf comic self-check.
@@ -7,9 +11,6 @@
  * ASCII byte arrays, like the bundled font/cover blobs. These are the same bytes
  * the standalone `ereader_comic` gate bakes, so `sh_comic.c`'s boot self-check
  * reproduces that gate's page-0 decode digest inside the full shelf app (#236).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_usb_host_bulk_cov.c
  * @brief Coverage unit tests for the USB host-mode bulk engine
@@ -24,9 +28,6 @@
  * return in ``internal_host_bulk_rx_packet`` is reached by arming the
  * ra8_fake_mmio fault seam on CFIFOCTR, which ``internal_wait_frdy``
  * consults on every poll of its real bounded loop.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

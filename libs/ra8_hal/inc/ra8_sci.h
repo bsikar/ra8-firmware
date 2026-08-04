@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sci.h
  * @brief Full-featured Serial Communications Interface driver
@@ -42,9 +46,6 @@
  * Not thread-safe. Configuration calls run from single-threaded
  * init context. IRQ callbacks fire from handler mode and must
  * not take any ra8_sci locks.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

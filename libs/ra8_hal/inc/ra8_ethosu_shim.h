@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ethosu_shim.h
  * @brief Arm ethos-u-core-driver C API shim over the `ra8_npu` driver (RA8P1-only)
@@ -45,8 +49,6 @@
  * Not thread-safe. The NPU is a single-job engine and the shim keeps one static
  * driver context; the caller owns serialisation, the same contract as `ra8_npu`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

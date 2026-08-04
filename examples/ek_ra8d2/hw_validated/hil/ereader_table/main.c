@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_table/main.c
  * @brief Headless on-silicon HIL gate for `<table>` grid layout (#107).
@@ -17,8 +21,6 @@
  * every boot and matches the host / ra8_emulator run, so any drift in the column
  * sizing, cell flow, or row stacking changes the hash.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

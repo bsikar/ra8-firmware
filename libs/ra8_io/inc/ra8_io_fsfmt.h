@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_fsfmt.h
  * @brief ra8_io pluggable filesystem-format registry (probe + capabilities).
@@ -29,8 +33,6 @@
  * }
  * @endcode
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

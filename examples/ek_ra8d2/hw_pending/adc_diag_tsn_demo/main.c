@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/adc_diag_tsn_demo/main.c
  * @brief ADC_B self-diagnosis (modes 1/2/3) + on-die temperature demo
@@ -39,8 +43,6 @@
  * HUM Ch 69 note), the per-mode PASS/FAIL is logged verbatim so a bench
  * operator can read the raw codes even if the verdict trips.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

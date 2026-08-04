@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_tile_cache.h
  * @brief Fixed-RAM-budget image-tile cache with LRU eviction (Layer 3b, #147).
@@ -33,8 +37,6 @@
  *
  * @note Not thread-safe; the decoder is single-threaded.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

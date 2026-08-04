@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file reader_vmem.c
  * @brief #147/#162 reader workload driver: page a modelled book through the real
@@ -23,8 +27,6 @@
  * reader re-references the TOC and a working set while flooding past one-shot
  * pages, which is exactly where 2Q/SLRU beats LRU/CLOCK.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

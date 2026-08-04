@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_gpio_input_demo.c
  * @brief Integration test: SW1 -> LED1 mirror demo bring-up
@@ -8,8 +12,6 @@
  * ra8_board_sw_read + ra8_board_led_on / ra8_board_led_off as the
  * mainline does.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

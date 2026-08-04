@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/ra8_ftl_demo/main.c
  * @brief Wear-levelled block I/O + power-cycle survival over the FTL (#258).
@@ -36,9 +40,6 @@
  * the whole run is observable headless over the SCI8 console. A successful run
  * ends with:
  * `ra8_ftl_demo: wear-level + power-cycle-survive on extra MRAM PASS`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

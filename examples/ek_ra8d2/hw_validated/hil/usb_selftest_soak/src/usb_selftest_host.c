@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file usb_selftest_host.c
  * @brief Host side of the soak self-test: enumerate, mount, verify, soak
@@ -10,8 +14,6 @@
  * is the one entry the host worker (main.c) drives; the J-Link probe vars live
  * here too. Split out of main.c (see usb_selftest_common.h).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

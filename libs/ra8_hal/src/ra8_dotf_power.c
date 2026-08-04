@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dotf_power.c
  * @brief Decryption On The Fly (DOTF) high-level open/close + power control
@@ -14,8 +18,6 @@
  * enter/exit pair. Every register / clock-gate access carries a HUM Ch 45
  * citation. See ``ra8_dotf.h`` for the public surface.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

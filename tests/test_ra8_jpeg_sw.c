@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_jpeg_sw.c
  * @brief Unit tests for the software JPEG codec (ra8_jpeg_sw.c).
@@ -13,9 +17,6 @@
  * tests plus the encoder MC/DC vectors; the segment-walk MC/DC vectors
  * live in test_ra8_jpeg_sw_seg_mcdc.c and the header-parse MC/DC vectors
  * in test_ra8_jpeg_sw_hdr_mcdc.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

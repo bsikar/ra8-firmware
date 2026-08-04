@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dotf_selftest_demo/main.c
  * @brief DOTF (Decryption On The Fly) bring-up + AES self-test demo (EK-RA8D2)
@@ -45,8 +49,6 @@
  * decryption path only exist on silicon. The demo therefore lives in
  * ``hw_pending/``. See ``README.md`` for the bench plan.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_eth.c
  * @brief R-Switch (ESWM / MFWD / COMA / ETHA / RMAC / GWCA) model for ra8_emulator
@@ -38,8 +42,6 @@
  * link is reported up at 100 Mb/s full-duplex because ::board_net is a real
  * peer on the wire, not because the value is invented.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

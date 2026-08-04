@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_stack_budget.h
  * @brief Greppable stack-frame deviation marker
@@ -42,9 +46,6 @@
  * - IEC 61508-3 Table A.4 (Highly Recommended: limited stack).
  * - DO-178C Section 6: resource-usage analysis must be substantiated.
  * - CWE-121 / CWE-674: bounded stack guard.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

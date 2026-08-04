@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_ipc_irq.c
  * @brief Unit tests for the ra8_ipc dispatch, per-event IRQ decode, NMI,
@@ -6,9 +10,6 @@
  * @details Split from test_ra8_ipc.c along the test-group seam. Shared
  * fixture state (stub callbacks, prep(), make_cfg()) lives in
  * support/ipc_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

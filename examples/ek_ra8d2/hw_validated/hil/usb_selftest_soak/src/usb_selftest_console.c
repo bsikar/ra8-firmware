@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file usb_selftest_console.c
  * @brief SCI8 / J-Link OB CDC console + text formatters (see header)
@@ -7,8 +11,6 @@
  * writes plus minimal heap-free decimal / hex / fail-line formatters. Split out
  * of main.c so every TU prints through one path.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_scb_diag_demo.c
  * @brief Integration test: scb_diag_demo example probe + verdict logic.
@@ -12,8 +16,6 @@
  * ``(err == ok) && (cfsr == 0) && (hfsr == 0)`` with MC/DC vectors -- the same
  * decision that gates the ``scb: probe PASS`` line the HIL scrape keys on.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

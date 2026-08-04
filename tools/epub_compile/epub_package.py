@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Reading the EPUB package: the OPF manifest/spine and the navigation document.
 
 Namespace-tolerant on purpose. Real EPUBs in the wild bind the OPF and NCX

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_bscan_regs.h
  * @brief JTAG / IEEE-1149.1 Boundary Scan TAP constants for the RA8D2
@@ -32,9 +36,6 @@
  * tool tells us, expected ID code) so a unit test can exercise the
  * lifecycle and constant-equivalence checks even though it cannot
  * exercise an actual scan.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

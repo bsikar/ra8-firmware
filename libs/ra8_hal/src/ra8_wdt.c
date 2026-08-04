@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_wdt.c
  * @brief Software Watchdog Timer (WDT) driver implementation
@@ -48,9 +52,6 @@
  * dedicated slot in the same table.
  *
  * Every register access carries a HUM Ch 27.x citation.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_wdt.h"

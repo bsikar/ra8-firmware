@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mipi_phy_types.h
  * @brief MIPI D-PHY driver -- shared enums, structs, and callback typedef
@@ -14,8 +18,6 @@
  * ``ra8_mipi_phy_api.h``; both are re-exported by the thin umbrella
  * ``ra8_mipi_phy.h``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

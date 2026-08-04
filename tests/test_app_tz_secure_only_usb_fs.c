@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_tz_secure_only_usb_fs.c
  * @brief Integration test: secure-world-only USB CDC ACM bring-up
@@ -20,8 +24,6 @@
  *   5. ra8_usb_pal_ep_open(EP1 IN bulk) -- CDC bulk-IN data pipe.
  *   6. ra8_usb_pal_ep_send(echo back)   -- bulk-IN reply.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

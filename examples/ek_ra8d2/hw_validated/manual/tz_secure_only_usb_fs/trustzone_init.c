@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_fs/trustzone_init.c
  * @brief No-op TrustZone bring-up for the secure-only USB experiment
@@ -20,9 +24,6 @@
  * `ra8_cgc_pll2_enable` succeeds in this configuration, we have proven
  * the failure is a TrustZone partitioning artifact and not a hardware
  * fault.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "trustzone_init.h"

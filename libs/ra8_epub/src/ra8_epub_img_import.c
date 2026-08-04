@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epub_img_import.c
  * @brief Import-time transcode wiring: manifest href -> JOF atlas -> binder
@@ -15,8 +19,6 @@
  * Guarded on `__has_include` exactly like the binder unit so epub-only apps
  * still link with this TU empty.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}

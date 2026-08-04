@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/c6_join_console.c
  * @brief Bounded console formatters for the C6 Wi-Fi join application.
@@ -12,8 +16,6 @@
  * image that has no heap at all. Every loop here is bounded by a constant from
  * ``c6_join.h`` (NASA Power of 10 Rule 2).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

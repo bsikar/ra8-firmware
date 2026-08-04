@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_zoom.c
  * @brief Viewport state machine for the tap-to-zoom image viewer (#478).
@@ -10,8 +14,6 @@
  *          on the unit-test host, in ra8_emulator and on silicon. The strip
  *          composite lives in ra8_zoom_render.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

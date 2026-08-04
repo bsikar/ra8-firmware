@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_dma_cov.c
  * @brief Coverage-gap tests for libs/ra8_hal/src/ra8_dma.c.
@@ -17,9 +21,6 @@
  *   330, 331      -- ra8_dma_request: ra8_dmac_start failure path
  *   381, 382      -- ra8_dma_release: ra8_dmac_stop failure path
  *   417, 420      -- ra8_dma_fake_peek_request: out-of-range / not-in-use
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

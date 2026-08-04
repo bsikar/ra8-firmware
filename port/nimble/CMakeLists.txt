@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/nimble/CMakeLists.txt
 #
@@ -29,8 +31,6 @@
 # `nimble_port_threadx` therefore stays under `examples/_unsupported/`
 # until a NimBLE app is driven to real hardware validation and promoted.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_ftl.c
  * @brief Unit tests for the Flash Translation Layer (issue #165).
@@ -13,9 +17,6 @@
  *   many operations, proving data integrity across copy-on-write relocation;
  * - overwrites cause real physical erases on the underlying device;
  * - erase counts stay tightly spread across physical blocks (wear-levelling).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

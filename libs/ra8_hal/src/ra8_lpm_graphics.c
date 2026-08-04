@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_lpm_graphics.c
  * @brief Graphics power-domain bring-up for the LPM HAL driver
@@ -17,9 +21,6 @@
  * ready, clear PDCTRGD.PDDE under the PRC1 unlock to request power-on, then
  * confirm the domain is live. Every protected write runs inside a scoped
  * ``RA8_PROTECTED_WRITE`` window so it cannot be silently discarded.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

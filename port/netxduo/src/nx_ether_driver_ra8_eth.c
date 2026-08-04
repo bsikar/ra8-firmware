@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/netxduo/src/nx_ether_driver_ra8_eth.c
  * @brief NetX Duo network driver bridging onto the RA8 ``ra8_eth`` frame API
@@ -26,9 +30,6 @@
  *
  * NetX serialises driver invocations on the IP thread, so no
  * additional locking is required around these statics.
- *
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "nx_ether_driver_ra8_eth.h"

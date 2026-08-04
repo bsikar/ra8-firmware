@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/netxduo/CMakeLists.txt
 #
@@ -22,8 +24,6 @@
 # surface the include directory + the single source file we expect
 # the app to compile.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

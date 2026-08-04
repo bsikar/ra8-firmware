@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck shell=bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/emu/emu_fixtures.sh -- which ra8_emulator devices each app needs attached.
 #

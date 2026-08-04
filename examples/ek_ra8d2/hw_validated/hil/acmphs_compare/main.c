@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/acmphs_compare/main.c
  * @brief High-Speed Analog Comparator (ACMPHS) channel-0 polling demo
@@ -19,8 +23,6 @@
  * exercise the bring-up + readback path, not to validate a known
  * threshold.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

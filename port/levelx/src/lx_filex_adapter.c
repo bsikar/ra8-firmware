@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/levelx/src/lx_filex_adapter.c
  * @brief FileX media driver bridging onto LevelX wear-levelled NOR storage
@@ -22,9 +26,6 @@
  * (``LX_NOR_SECTOR_SIZE`` = 128 ULONGs * 4 = 512 bytes), which is
  * also the FAT12/16/32 sector size FileX uses by default. This 1:1
  * line-up is what makes the shim trivial.
- *
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "lx_filex_adapter.h"

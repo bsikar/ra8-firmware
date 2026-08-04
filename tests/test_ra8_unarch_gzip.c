@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_unarch_gzip.c
  * @brief Tests for the clean-room gzip member decoder (RFC 1952 over tinfl).
@@ -17,9 +21,6 @@
  *      bytes after the member,
  *   3. the policy axes each fire through the decoder (ratio, output cap,
  *      iteration budget) and an undersized arena maps to no_mem.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_power_profile.c
  * @brief Unit tests for libs/ra8_power_profile/ -- mocked GPIO + RTC.
@@ -7,9 +11,6 @@
  * hooks. The mocks record every GPIO edge and feed back a controllable
  * monotonic clock so tests can assert on both the side-effects (pulse
  * count, edge order) and the time accumulators.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

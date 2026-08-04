@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_eth_gwca_queue_cov.c
  * @brief Coverage-focused unit tests for ra8_eth_gwca_queue.c
@@ -22,9 +26,6 @@
  * FSINGLE so find_slot returns no_data) and the unbacked-slot leg (a
  * FEMPTY slot whose PTR is still zero so decode returns nullptr). Both
  * are legitimate reachable error returns, not split statements.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

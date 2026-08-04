@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_eth.c
  * @brief Ethernet Switch Module (ESWM) + frame TX/RX driver implementation
@@ -24,9 +28,6 @@
  * default_send/default_recv helpers.
  *
  * Every register access carries a HUM Ch 29 / Ch 34 citation.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_eth.h"

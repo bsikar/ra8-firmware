@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/pagecache/main.c
  * @brief On-silicon HIL: ra8_reflow pagination-cache round-trip on SD (#117).
@@ -39,8 +43,6 @@
  * attach a blank card with `--sd-new 64:fat32` (round-trip + invalidate), and a
  * second run against a `--save-sd` image to prove the cache-hit reset-survival.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

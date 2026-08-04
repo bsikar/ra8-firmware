@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_xspi_cov.c
  * @brief Supplemental host coverage for the xSPI XIP enter/exit surface.
@@ -16,9 +20,6 @@
  *       the only branch is the single-condition ``RA8_CHECK_NULL_PTR`` guard,
  *       which each test exercises from both sides (valid + out-of-range
  *       instance). No ``&&`` / ``||`` appears in the code under test.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

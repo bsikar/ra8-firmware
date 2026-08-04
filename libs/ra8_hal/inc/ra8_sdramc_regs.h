@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sdramc_regs.h
  * @brief External SDRAM controller register layout for the Renesas RA8D2
@@ -13,9 +17,6 @@
  * Register offsets follow the RA8D2 Hardware User's Manual Ch 15
  * "Buses" (the SDRAMC sub-block of R_BUS) and the FSP CMSIS device
  * header `R_BUS->SDRAM`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

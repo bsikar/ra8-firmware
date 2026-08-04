@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_cpu1_pingpong.c
  * @brief Integration test: CPU1 release + IPC ping-pong contract
@@ -11,8 +15,6 @@
  *   5. Recv the reply and assert it equals 0x4321.
  *   6. Halt CPU1.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

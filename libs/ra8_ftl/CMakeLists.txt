@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # libs/ra8_ftl/CMakeLists.txt
 #
 # Intentionally a no-op, like ra8_io / ra8_display_pal / ra8_net_pal.
@@ -6,5 +8,3 @@
 # sources into the shared ra8_core_hal object library in tests/CMakeLists.txt;
 # cross-compiled apps pick them up through cmake/ra8_add_app.cmake.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT

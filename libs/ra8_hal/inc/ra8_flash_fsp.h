@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_flash_fsp.h
  * @brief Code MRAM driver -- FSP r_mram parity surface
@@ -15,8 +19,6 @@
  * ``ra8_flash_core.h`` and share its DANGEROUS / brick-capable warnings,
  * documented on the ``ra8_flash.h`` umbrella ``@file`` banner.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

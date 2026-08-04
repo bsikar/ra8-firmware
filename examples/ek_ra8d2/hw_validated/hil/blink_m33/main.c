@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/blink_m33/main.c
  * @brief CPU0 (Cortex-M85 primary core) launcher for the M33 blink template
@@ -29,8 +33,6 @@
  *       level of INFO or finer (a Debug build). `make emu-blink_m33` builds
  *       Debug so the `[itm]` lines appear.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/c6_fwver_link.c
  * @brief The esp-hosted transaction pump: frame in, frame out, counted.
@@ -33,8 +37,6 @@
  * size". Judging a filler frame by the rules for a data frame is a false
  * negative, and this file does not repeat it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

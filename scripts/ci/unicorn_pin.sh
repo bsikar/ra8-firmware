@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# shellcheck shell=bash
-# shellcheck disable=SC2034  # sourced config fragment: every RA8_UNICORN_* is consumed by the sourcing script, not here.
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
+# shellcheck disable=SC2034  # sourced config fragment: every RA8_UNICORN_* is consumed by the sourcing script, not here.
 #
 # scripts/ci/unicorn_pin.sh -- the ONE source of truth for the pinned Unicorn
 # CPU-emulator version that every ra8_emulator environment must link.

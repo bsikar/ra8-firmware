@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_cgc_usb_cov2.c
  * @brief Complementary white-box line-coverage tests for the PLL2 + USB clock
@@ -34,8 +38,6 @@
  * driver body only so the static SRDY poll helpers read the (mocked) register
  * model directly. No hardware line is bypassed by an exclusion marker.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

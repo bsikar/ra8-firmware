@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_spi_bus_spi_b.c
  * @brief SPI_B backend for the ra8_io SPI-bus facade -- thin shim over ra8_spi.
@@ -12,9 +16,6 @@
  * state and multiple bound buses coexist. Argument validation (channel
  * range, NULL buffers, divider limits) stays with the wrapped driver,
  * which also carries every HUM citation -- no raw MMIO is touched here.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_spi_bus_spi_b.h"

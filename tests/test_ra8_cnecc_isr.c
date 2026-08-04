@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_cnecc_isr.c
  * @brief Fault-handling tests for ra8_cnecc.c (CANFD ECC driver)
@@ -8,9 +12,6 @@
  * dispatch, fault-injection, test-mode, ISR attach / demux, standby,
  * deinit, and open / compute / verify tests; the init / status / counter
  * contract tests stay in test_ra8_cnecc.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_cnecc.h"

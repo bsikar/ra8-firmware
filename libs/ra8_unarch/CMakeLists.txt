@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_unarch -- bounded, fail-closed unarchivers for untrusted content.
 #
@@ -30,8 +32,6 @@
 # Like the other domain libs in this tree, consumers reach into inc/ + src/
 # directly; app builds glob libs/ra8_unarch/src/*.c via ra8_add_app(LIBS ...).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_cnecc_regs.h
  * @brief CANFD ECC (CNECC) register layout for the RA8D2
@@ -29,9 +33,6 @@
  *
  * The single shared interrupt vector for both instances is
  * ``CANn_MRAM_ERI`` (HUM 42.4 p 2875).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

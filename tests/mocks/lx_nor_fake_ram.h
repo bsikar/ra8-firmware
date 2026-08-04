@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file lx_nor_fake_ram.h
  * @brief RAM-backed LevelX NOR driver for host tests (the ra8_cache_store DIP seam).
@@ -18,9 +22,6 @@
  *
  * @par Tag
  * [Ring 4 / Storage] {World: NS}
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

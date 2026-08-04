@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_spi_bus_sci_spi.c
  * @brief SCI Simple-SPI backend for the ra8_io SPI-bus facade -- thin shim
@@ -14,9 +18,6 @@
  * 8-bit frames only, so the multi-frame row rejects wider widths with
  * ::k_ra8_err_not_supported instead of silently mis-framing. No raw MMIO is
  * touched here; the driver carries every HUM citation.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_spi_bus_sci_spi.h"

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_fpu_probe.c
  * @brief Unit tests for the double-precision FPU probe (ra8_fpu_probe.c)
@@ -15,9 +19,6 @@
  *
  * Every input triple below has a product-sum that is exactly
  * representable in IEEE-754 binary64, so exact equality is used.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

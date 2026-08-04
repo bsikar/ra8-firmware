@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck shell=bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/gates/build.sh -- Things that have to compile, link or generate cleanly.
 #

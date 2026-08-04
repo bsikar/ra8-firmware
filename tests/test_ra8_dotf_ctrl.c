@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_dotf_ctrl.c
  * @brief Unit tests for the ra8_dotf control surface: SCA level, key
@@ -10,9 +14,6 @@
  * install/rotate. The fixture block (test constants, stub callback,
  * prep(), make_region(), make_key_handle()) is carried privately by
  * each of the two binaries.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dotf.h"

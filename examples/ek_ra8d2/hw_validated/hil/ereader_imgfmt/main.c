@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/main.c
  * @brief On-silicon HIL: BMP + GIF decode format-coverage gate (#143).
@@ -24,8 +28,6 @@
  * banner is identical on host, ra8_emulator, and silicon. A decode failure prints
  * a FAIL banner and halts on a BKPT before the PASS line, so the gate is exact.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

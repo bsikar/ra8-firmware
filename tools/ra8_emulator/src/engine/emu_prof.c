@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_prof.c
  * @brief Firmware profiler implementation (see emu_prof.h)
@@ -9,8 +13,6 @@
  * flamechart, the boot timeline, and the inclusive/self table) -- moved
  * verbatim out of the ra8_emulator main translation unit.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

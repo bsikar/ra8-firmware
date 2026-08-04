@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_stream_uart.c
  * @brief UART/SCI byte-stream sink -- polled writes through ra8_sci.
@@ -9,9 +13,6 @@
  * Thin wrapper binding ::ra8_io_stream_iface to `ra8_sci_write_polling` /
  * `ra8_sci_flush`. Touches no raw MMIO -- the `ra8_sci` driver owns the HUM
  * citations.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_stream_uart.h"

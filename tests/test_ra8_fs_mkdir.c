@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_fs_mkdir.c
  * @brief Tests for ra8_fs directory creation + nested path resolution (#158).
@@ -14,9 +18,6 @@
  *
  * The volume is a synthetic in-memory FAT16 disk (hand-built BPB, zeroed data),
  * matching the harness in tests/test_ra8_fs_fat.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

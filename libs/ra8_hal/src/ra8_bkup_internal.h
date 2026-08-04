@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_bkup_internal.h
  * @brief Cross-TU shared surface for the ra8_bkup driver split.
@@ -23,9 +27,6 @@
  * validator are used nowhere else, and the security TU borrows nothing
  * but the log tag. It is NOT part of the public ABI; production code
  * outside this driver must use ``ra8_bkup.h``.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

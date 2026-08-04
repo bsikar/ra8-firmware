@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sdmmc_spi.c
  * @brief SD card driver in SPI-mode -- protocol implementation
@@ -17,9 +21,6 @@
  * the caller-supplied ``ra8_sdmmc_spi_transport_t``. This lets the host
  * tests inject a mock and the firmware app inject the real ``ra8_spi``
  * HAL driver through a thin shim that lives in the example app.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_sdmmc_spi.h"

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_m33/ereader_m33.h
  * @brief Shared contract for the "render a held e-reader page on the M33" demo
@@ -72,8 +76,6 @@
  *      deterministic CRC), publishes `turn_done`, and holds again. Steps 5..8
  *      repeat ::k_erm33_max_turns times, then both cores park for good.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

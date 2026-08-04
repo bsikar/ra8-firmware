@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_spi.c
  * @brief Unit tests for the SPI_B controller driver (``ra8_spi_b.c``)
@@ -7,9 +11,6 @@
  * 32-bit SPI_B register file in ``ra8_spi_regs.h``. All bit
  * positions referenced here come from FSP ``R_SPI_B0_Type`` and
  * HUM Ch 43 (p 2877-2985).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dma.h"

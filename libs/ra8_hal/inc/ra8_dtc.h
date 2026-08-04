@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dtc.h
  * @brief Data Transfer Controller (DTC) driver
@@ -24,9 +28,6 @@
  *  - `R_DTC_Reset`, `_InfoGet`: call sites edit the TI table directly.
  *  - `R_DTC_Reload`, `_SoftwareStart`, `_SoftwareStop`: not supported
  *    (matches FSP `FSP_ERR_UNSUPPORTED`).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

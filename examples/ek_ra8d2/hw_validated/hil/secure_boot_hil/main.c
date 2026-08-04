@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/main.c
  * @brief On-silicon enforcing secure boot: reject a tampered image, launch the signed one
@@ -27,8 +31,6 @@
  * A return from the genuine launch would mean the RoT rejected an authentic
  * image (a bug) -- it prints "secure-boot: LAUNCH FAILED" and halts.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sci_lin.c
  * @brief LIN commander + responder driver implementation on SCI_B
@@ -26,9 +30,6 @@
  * The LIN commander is the bus controller; responders are the subordinate
  * nodes. The legacy LIN node words are avoided in favour of Commander /
  * Responder.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_sci_lin.h"

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_jof_produce_guards.c
  * @brief Producer guard-arm MC/DC vectors: work-arena calculator overflow,
@@ -16,8 +20,6 @@
  * ascending work-arena sweep that lands in every carve-failure window of
  * both the PNG decoder bind and the producer pixel path.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

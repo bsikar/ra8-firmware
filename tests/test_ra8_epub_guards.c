@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_epub_guards.c
  * @brief MC/DC null-guard / state-guard tests for libs/ra8_epub
@@ -10,8 +14,6 @@
  * contract tests stay in test_ra8_epub.c. The synthetic in-memory EPUB
  * fixture is duplicated per sibling and built once in main().
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}

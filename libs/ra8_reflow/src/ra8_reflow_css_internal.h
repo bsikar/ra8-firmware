@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_css_internal.h
  * @brief Cross-TU surface for the split content-CSS cascade (#111).
@@ -15,8 +19,6 @@
  * every TU-private helper stays `static` in its defining file. There is no MMIO
  * and no heap: all state lives in the caller-owned ::ra8_css_sheet_t.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

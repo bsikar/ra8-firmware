@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_system_regs.h
  * @brief System Control (SYSC) register layout for the Renesas RA8D2
@@ -37,9 +41,6 @@
  *
  * See the Hardware User's Manual section 12 ("Register Write
  * Protection") for the full table.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

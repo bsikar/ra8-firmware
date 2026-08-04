@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epd_cal.c
  * @brief Per-device e-paper VCOM calibration -- record codec and resolver
@@ -17,9 +21,6 @@
  * No HAL header is included: the controller and the non-volatile store are
  * reached only through the injected seams in the config struct, which is
  * what lets every branch below run on the host.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_epd_cal.h"

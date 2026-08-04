@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_comic_internal.h
  * @brief Cross-TU seams between the comic facade and its CBZ / CBR backends.
@@ -15,9 +19,6 @@
  * of the public `ra8_comic.h` surface.
  *
  * @note Not thread-safe; the single-threaded reader loop serialises access.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

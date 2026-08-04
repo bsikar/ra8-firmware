@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_jpeg_sw_stream.c
  * @brief Host tests for the streaming JPEG stripe decoder: whole-vs-stream
@@ -11,8 +15,6 @@
  * window. Truncation, callback aborts, undersized buffers and hostile
  * marker structure are all driven to their contracted error codes.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

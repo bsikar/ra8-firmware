@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dual_core.h
  * @brief Dual-core (CPU0 / CPU1) lifecycle helper -- public API
@@ -34,8 +38,6 @@
  * HIL gate caught this when ``g_cpu1_pingpong_match`` stayed at zero
  * for the entire 5 s probe window.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

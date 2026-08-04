@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_spi_internal.h
  * @brief Module-private surface of the esp-hosted full-duplex SPI transport.
@@ -20,8 +24,6 @@
  * ``CONFIG_ESP_SPI_MODE=3``, and ::k_ra8_esp_hosted_spi_mode is asserted
  * against ``k_ra8_spi_mode_3`` so the two cannot drift apart silently.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

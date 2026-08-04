@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Provision the shared verification box from nothing to a box that can run
 # every gate. Idempotent: the two source builds are skipped once the pinned

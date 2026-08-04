@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_cache.c
  * @brief Import-time pagination cache serialiser / loader for `ra8_reflow`.
@@ -16,8 +20,6 @@
  * `k_ra8_reflow_max_pages`) and the blob length, so a malformed blob can
  * never overrun (NASA P10 Rules 2 and 7).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

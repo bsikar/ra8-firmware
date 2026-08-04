@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_glcdc_regs.h
  * @brief Graphics LCD Controller (GLCDC) register layout for the RA8D2
@@ -30,9 +34,6 @@
  * GR1 at 0x150, GR2 at 0x270, OUT at 0x390, SYSCNT at 0x420 --
  * all of which landed inside GR1/GR2 CLUTs or reserved gaps. Every
  * `k_ra8_glcdc_off_*` has been re-derived against FSP.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

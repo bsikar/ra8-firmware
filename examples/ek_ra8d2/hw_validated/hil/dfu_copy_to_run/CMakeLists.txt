@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMakeLists for dfu_copy_to_run (copy-to-run HIL proof).
 #
@@ -7,8 +9,6 @@
 # base (k_ra8_dfu_run_base) and branches there. The HIL alive gate then sees the
 # PC in the SRAM run window, proving copy-to-run executed (issue #97).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

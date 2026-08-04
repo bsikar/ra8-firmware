@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_pdg.h
  * @brief PWM Delay Generation Circuit (PDG) driver public API
@@ -58,9 +62,6 @@
  *
  * @see ra8_gpt.h GPT timer driver -- you must configure GPT320..323
  * output channels before the PDG delays take effect.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

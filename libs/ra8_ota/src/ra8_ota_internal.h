@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ota_internal.h
  * @brief Test-access surface for ra8_ota internal helpers (MC/DC).
@@ -8,9 +12,6 @@
  * header to drive compound boolean decisions sitting in TU-private
  * helpers. See CLAUDE.md "Test access to internal symbols
  * (MC/DC scope)".
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

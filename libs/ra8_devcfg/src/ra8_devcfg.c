@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_devcfg.c
  * @brief Per-device configuration record -- codec, two-copy resolver, commit.
@@ -13,9 +17,6 @@
  * only through the injected ::ra8_devcfg_store_t seam, which is what lets every
  * branch below run on the host. The extra-MRAM backing lives in the companion
  * translation unit ``ra8_devcfg_store_extra_mram.c``.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_devcfg.h"

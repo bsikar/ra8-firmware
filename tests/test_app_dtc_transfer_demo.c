@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_dtc_transfer_demo.c
  * @brief Integration test: DTC 1 KB SRAM->SRAM block-copy bring-up
@@ -19,8 +23,6 @@
  * Each test exercises one branch of the demo's compound decisions for
  * MC/DC coverage. No ra8_fake_mmap MMIO is required.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

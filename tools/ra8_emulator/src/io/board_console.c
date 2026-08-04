@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_console.c
  * @brief Multi-channel console log store implementation (see board_console.h).
@@ -10,8 +14,6 @@
  * after init); a back-index walk converts an age (0 = newest) to a ring slot the
  * same way the SCI scrollback ring did before this store subsumed it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

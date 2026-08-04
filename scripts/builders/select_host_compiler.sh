@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/builders/select_host_compiler.sh -- shared C23-capable host-compiler
 # selection (and the matching gcov tool) for the host-test, coverage, and
@@ -23,8 +25,6 @@
 #   ra8_gcov_executable_for "$CC"              -- echoes the gcovr --gcov-executable
 #       that reads coverage data produced by $CC (llvm-cov for clang, gcov for gcc).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 # Return success if compiler $1 accepts a C23 fixed-underlying-type enum.
 ra8_c23_compiler_ok() {

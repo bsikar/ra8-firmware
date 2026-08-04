@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file adc_internal.h
  * @brief Cross-TU constants shared by the ADC_B driver split.
@@ -21,8 +25,6 @@
  * here. ``ra8_adc_const_t`` is the single source of truth for those
  * timing constants.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

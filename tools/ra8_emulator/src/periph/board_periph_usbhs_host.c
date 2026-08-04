@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_usbhs_host.c
  * @brief On-chip USBHS host controller model (0x40351000) for the board emulator
@@ -36,8 +40,6 @@
  * lock) are defined locally and flagged with a [CONFIRM] note where the value
  * comes from general USB2_B knowledge rather than a direct HUM transcription.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

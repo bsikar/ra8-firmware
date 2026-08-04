@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # ra8-firmware -- MISRA-C 2012 audit (advisory)
 #
 # Runs cppcheck + the bundled misra.py addon over first-party source
@@ -22,8 +24,6 @@
 # `--dump` files with cppcheck and run misra.py directly on them --
 # the rule IDs (e.g. [misra-c2012-15.5]) are emitted regardless.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 set +H

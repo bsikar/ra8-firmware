@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_log.c
  * @brief Default log sink implementation
@@ -22,9 +26,6 @@
  *
  * @note Format: `"[TAG] level: message"` followed by a newline. The
  *       `*_val` variants append `" = <decimal>"`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_log.h"

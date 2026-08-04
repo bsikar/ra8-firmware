@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_vfs.h
  * @brief ra8_io virtual filesystem -- mount many volumes, address them by name.
@@ -29,8 +33,6 @@
  * (void)ra8_io_vfs_open("sd:/book.epb", k_ra8_fs_mode_read, &f);
  * @endcode
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

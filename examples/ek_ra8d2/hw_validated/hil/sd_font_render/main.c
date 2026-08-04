@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/sd_font_render/main.c
  * @brief Load a TTF/OTF font off an SD card and render text with ra8_reflow.
@@ -35,8 +39,6 @@
  * need not be pre-loaded with @c FONT.OTF. On the physical board this needs a
  * Digilent PMOD MicroSD in J25; in ra8_emulator the @c --sd image stands in.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dotf.h
  * @brief Decryption On The Fly (DOTF) HAL driver public API
@@ -94,9 +98,6 @@
  *   ARMED -> RESET [label="ra8_dotf_deinit"];
  * }
  * @enddot
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

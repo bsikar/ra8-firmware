@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """fix_wave_references.py -- conservative auto-fix for "Wave N" session refs.
 
 Companion to check_no_wave_references.py. Walks every tracked source/doc

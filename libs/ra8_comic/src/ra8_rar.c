@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rar.c
  * @brief Implementation of the clean-room RAR4/RAR5 archive walker (ra8_rar.h).
@@ -24,9 +28,6 @@
  * over-read.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #include "ra8_rar.h"
 

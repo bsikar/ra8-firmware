@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_pdg.c
  * @brief Unit tests for ra8_pdg.c (PWM Delay Generation Circuit driver)
@@ -6,9 +10,6 @@
  * This sibling owns the init / auto-tune / delay setter contract tests.
  * The runtime-control, capture, dispatch, and MC/DC vector tests live in
  * test_ra8_pdg_ctrl.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

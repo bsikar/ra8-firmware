@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_bscan.c
  * @brief JTAG / IEEE-1149.1 Boundary Scan TAP HAL implementation
@@ -17,9 +21,6 @@
  * Citation strategy: every public API includes at least one HUM Ch 50
  * citation in a comment to anchor the design intent in the
  * spec, even though no register write actually happens.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_bscan.h"

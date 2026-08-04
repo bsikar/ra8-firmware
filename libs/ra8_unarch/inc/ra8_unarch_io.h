@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_unarch_io.h
  * @brief Shared seek+read seam and flat-memory backing for the unarchivers.
@@ -24,9 +28,6 @@
  * @see ra8_unarch_xz.h   The XZ stream decoder driven through this seam.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

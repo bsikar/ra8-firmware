@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_i3c.c
  * @brief Unit tests for ra8_i3c.c (I3C Bus Interface driver)
@@ -9,9 +13,6 @@
  * queue.  Every test resets the fake MMIO backing store via
  * ``ra8_fake_mmap_reset`` so the FIFO ports start zeroed, then drives
  * the driver through one verifiable register sequence.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

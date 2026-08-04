@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_reader.c
  * @brief Full-book reader: per-chapter text extraction, word-wrap, pagination.
@@ -9,8 +13,6 @@
  * Page turns advance within a chapter and cross chapter boundaries in either
  * direction, so the whole book reads continuously -- not just one chapter.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *

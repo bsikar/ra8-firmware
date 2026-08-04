@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_sram_ecc.c
  * @brief ECC / runtime-control tests for ra8_sram.c (SRAM with ECC driver)
@@ -9,9 +13,6 @@
  * set_eccrgn / wait-state setters, status decode / clear, zero-init, ECC
  * self-test, bank info, security, boundary, dispatch, and MC/DC vector
  * tests; the init / deinit / stop contract tests stay in test_ra8_sram.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

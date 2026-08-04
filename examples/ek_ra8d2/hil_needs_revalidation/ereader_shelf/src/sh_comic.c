@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_comic.c
  * @brief Full-page image reader for CBZ / CBR comic archives (#236).
@@ -32,8 +36,6 @@
  * toolchain-independent digest identical on host / ra8_emulator / silicon), which
  * the boot banner pins as the comic golden without disturbing the shelf render.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *

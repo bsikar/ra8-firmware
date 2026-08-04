@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_i3c_cov.c
  * @brief Coverage supplement for ra8_i3c.c -- drives branches not yet
@@ -10,9 +14,6 @@
  *
  * Harness: identical to test_ra8_i3c.c -- RA8_OFF_TARGET mmap backing
  * store, ra8_mstp_init() before each case, unity_minimal.h assertions.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

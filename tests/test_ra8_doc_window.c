@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_doc_window.c
  * @brief Unit tests for the DOC window-comparison API.
@@ -18,9 +22,6 @@
  * No compound boolean decisions appear in the production code under test,
  * so the MC/DC commentary on each function notes that no decision vectors
  * are required.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_doc.h"

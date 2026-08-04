@@ -1,6 +1,6 @@
-# mk/docs.mk -- documentation + reports.
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# mk/docs.mk -- documentation + reports.
 
 .PHONY: docs docs-push dashboard app-sizes audit-init
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_ssie_audio_loop.c
  * @brief Integration test: SSIE I2S internal-loopback bring-up
@@ -8,8 +12,6 @@
  * -> ra8_ssie_stop -> ra8_ssie_deinit. All MMIO is via the host
  * tests/mocks/ra8_fake_mmap.c shim.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_fs_fat_name_mcdc.c
  * @brief MC/DC vectors for the compound decisions in ra8_fs_fat_name.c.
@@ -18,9 +22,6 @@
  * The name primitives are pure functions over caller-supplied buffers, so each
  * decision is driven directly with no block device; the citations name the
  * enclosing function as `libs/ra8_fs/src/ra8_fs_fat_name.c@<function>`.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

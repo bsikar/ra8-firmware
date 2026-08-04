@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file fuzz_ra8_jof_produce.c
  * @brief libFuzzer harness for the #231 import-time transcode producer.
@@ -17,9 +21,6 @@
  *
  * Build via tests/fuzz/CMakeLists.txt with -DRA8_FUZZ=ON.
  * Run for a longer fuzz session via scripts/checks/run_fuzz.sh.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

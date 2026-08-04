@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_register_protection.c
  * @brief Unit tests for the scoped PRCR unlock helper macro
@@ -24,9 +28,6 @@
  * The host-side fake maps a writable page at the SYSTEM block
  * base address, so `*ra8_sys_prcr() = ...` lands in observable host
  * memory and the asserts below read it back directly.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

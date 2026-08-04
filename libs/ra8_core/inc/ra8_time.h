@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_time.h
  * @brief SysTick-based tick counter, delay and timestamp helpers
@@ -15,9 +19,6 @@
  * The tick counter is a 32-bit `uint32_t` and wraps every ~49.7 days.
  * Code that compares timestamps should use subtraction so the
  * comparison stays monotonic across wrap.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

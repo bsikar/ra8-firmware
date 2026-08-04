@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_epaper.c
  * @brief Unit tests for the IT8951 e-paper SPI driver (``ra8_epaper.c``)
@@ -24,9 +28,6 @@
  *   - ``ra8_epaper_load_image`` rejects NULL / size mismatch.
  *   - Happy-path init -> load -> display -> sleep round-trip succeeds
  *     and leaves the driver back in the uninit state.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_longstrip -- continuous vertical-scroll (longstrip / manhwa) reading
 # mode (#289). A thin scroll/geometry engine over the JOF band-tile atlas
@@ -19,8 +21,6 @@
 # directly: the host unit-test build globs it in tests/CMakeLists.txt and apps
 # list `ra8_longstrip` in their ra8_add_app(... LIBS ...).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

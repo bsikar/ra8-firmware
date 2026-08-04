@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # mkfontimg -- build a FAT16 SD-card image carrying a font file, written
 # through the real ra8_fs so the firmware (sd_font_render / ra8_emulator --sd)
@@ -8,8 +10,6 @@
 #
 # Standalone host dev tool under tools/, outside the firmware cross-build.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 project(ra8d2_mkfontimg LANGUAGES C)

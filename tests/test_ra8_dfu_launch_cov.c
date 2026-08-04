@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_dfu_launch_cov.c
  * @brief White-box line-coverage tests for the copy-to-run launch hand-off
@@ -35,9 +39,6 @@
  * deterministic, test-scripted mocks. The REAL launch control flow then runs
  * line-by-line over the mocked verify results; no line is bypassed by an
  * exclusion marker.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

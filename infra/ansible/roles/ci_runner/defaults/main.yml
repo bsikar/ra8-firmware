@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # ci-runner role defaults. Override per deployment in group_vars / host_vars.
 #

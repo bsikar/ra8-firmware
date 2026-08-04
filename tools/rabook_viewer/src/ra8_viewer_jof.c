@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_viewer_jof.c
  * @brief JOF long-strip reader engine: vertical-scroll tile atlas rendering.
@@ -14,8 +18,6 @@
  * viewer-owned blit that converts whatever the strip's native bit depth is
  * (gray / RGB565 / RGB / RGBA) into the RGB565 target.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

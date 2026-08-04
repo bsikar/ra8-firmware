@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_bscan.h
  * @brief JTAG / IEEE-1149.1 Boundary Scan TAP HAL surface
@@ -67,9 +71,6 @@
  * vectors are validated externally by an IEEE-1149.1 JTAG fixture using the
  * device's BSDL file -- there is no firmware example for the scan chain
  * itself because it is not CPU-reachable (HUM Ch 50.2.3 p 3259).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

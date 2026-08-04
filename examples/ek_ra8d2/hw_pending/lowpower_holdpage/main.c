@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/lowpower_holdpage/main.c
  * @brief CPU0 (Cortex-M85 primary core) driver for the low-power hold-page demo
@@ -31,8 +35,6 @@
  *       heartbeat from the shared mailbox; a climbing heartbeat is honest proof
  *       the M33 is the live core while the M85 sleeps.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

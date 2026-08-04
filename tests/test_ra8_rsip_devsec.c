@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_rsip_devsec.c
  * @brief Unit tests for the RSIP device-security surface (asym / vault / lifecycle)
@@ -22,9 +26,6 @@
  *
  * Each test resets ``ra8_fake_mmap``, ``ra8_fake_mmio`` and ``ra8_mstp``
  * first so cases stay independent.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

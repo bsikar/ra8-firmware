@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_eth_hal_bringup.c
  * @brief Integration test: the eth_hal_bringup example's ESWM/COMA/RGMII flow
@@ -17,8 +21,6 @@
  * counterpart to the compile-gated ARM app: eth is HW-blocked on silicon
  * (#21), so this host integration test is the authoritative functional check.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

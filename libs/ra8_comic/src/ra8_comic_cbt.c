@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_comic_cbt.c
  * @brief CBT backend: walk a tar archive (ra8_unarch_tar.h) and index its pages.
@@ -19,9 +23,6 @@
  * legitimate reason for an undecodable header mid-chain.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #include <stddef.h>
 #include <stdint.h>

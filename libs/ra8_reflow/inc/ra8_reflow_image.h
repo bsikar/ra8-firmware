@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_image.h
  * @brief Zero-heap raster image decode + scale + blit for ra8_reflow (#106).
@@ -15,8 +19,6 @@
  * image it decodes (a few KiB in SRAM for thumbnails, a few MiB in SDRAM for a
  * full cover) -- the module allocates nothing static and reaches no `malloc`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

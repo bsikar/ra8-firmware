@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_mcdc_reflow.c
  * @brief MC/DC floor vectors for reachable compound decisions in ra8_reflow.
@@ -10,9 +14,6 @@
  *  - the SVG path/element scanners in ra8_reflow_svg_path.c / ra8_reflow_svg_doc.c,
  *    driven through the public ::ra8_svg_render entry with crafted markup whose
  *    separators and terminators exercise each condition of the scan decisions.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

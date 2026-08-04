@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_widget_book.h
  * @brief Book-card + book-grid leaf widget for the ra8_widget tree (#145 Phase 2).
@@ -14,8 +18,6 @@
  * `on_input` maps a touch to the card it lands on, records it in `selected`, and
  * fires the optional `on_open` callback.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

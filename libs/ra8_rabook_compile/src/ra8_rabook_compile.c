@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rabook_compile.c
  * @brief RABOOK1 emitter implementation (see ra8_rabook_compile.h).
@@ -12,8 +16,6 @@
  * pinned, padding-free structs from ra8_book.h; the target and the host test are
  * both little-endian, so a copy of those structs IS the wire layout.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

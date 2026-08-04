@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/scb_diag_demo/main.c
  * @brief Cortex-M85 SCB HAL demo: VTOR query + fault-status dump over UART.
@@ -26,8 +30,6 @@
  * both zero (no latched fault); that verdict is the line the HIL scrape keys
  * on. Bare EK-RA8D2, no expansion board.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

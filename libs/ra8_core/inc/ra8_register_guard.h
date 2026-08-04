@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_register_guard.h
  * @brief IRQ-masked read-modify-write helper for shared registers
@@ -19,9 +23,6 @@
  * `_enter` stores the current PRIMASK and then sets it (masking all
  * maskable interrupts). `_exit` restores the saved PRIMASK. Pairs
  * must always balance; nested calls are supported.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

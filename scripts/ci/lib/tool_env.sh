@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck shell=bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/lib/tool_env.sh -- deterministic tool resolution for every gate.
 #

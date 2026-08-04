@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/lpm_software_standby_demo/main.c
  * @brief Software Standby (LPSCR.LPMD = 0x5) + RTC periodic wake demo
@@ -32,8 +36,6 @@
  * crystal is silent. The wake path itself is verified by direct
  * benchwork (debugger / scope), not by the automated HIL.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

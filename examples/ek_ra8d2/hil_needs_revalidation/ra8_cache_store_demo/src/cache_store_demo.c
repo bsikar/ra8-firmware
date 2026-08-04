@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file cache_store_demo.c
  * @brief Hardware-free ra8_cache_store on-media cache demo -- implementation (#257).
@@ -11,9 +15,6 @@
  * re-put into the reclaimed sectors, checkpoint-close, then remount over the
  * same media and confirm the survivors + the pin persisted. Touches no
  * peripheral register, so the emulator and silicon runs are identical.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "cache_store_demo.h"

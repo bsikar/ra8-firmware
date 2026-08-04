@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mipi_dsi.c
  * @brief MIPI DSI-2 host driver -- full HUM Ch 65 coverage
@@ -56,9 +60,6 @@
  *   initialized -> idle [label="ra8_mipi_dsi_deinit()"];
  * }
  * @enddot
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_mipi_dsi.h"

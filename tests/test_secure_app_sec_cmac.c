@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_secure_app_sec_cmac.c
  * @brief KAT + MC/DC tests for src/secure_app/sec_cmac.c (AES-CMAC seam)
@@ -8,9 +12,6 @@
  * published NIST SP 800-38B known-answer vectors for AES-128 and AES-256, then
  * exercises the verify verdict (happy path, one-byte tamper, truncated tag)
  * with the MC/DC vector set for the compound decision in ``ra8_sec_cmac_verify``.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

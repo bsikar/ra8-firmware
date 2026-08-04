@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/poeg_safe_shutoff/main.c
  * @brief POEG (Port Output Enable for GPT) safe-shutoff demo for the EK-RA8D2
@@ -43,8 +47,6 @@
  * exactly as the hardware STATE latch would. The ``ra8_emulator_smoke.sh`` /
  * ``eil_all.sh`` gate keys on the ``ok=Y`` banner. Bare EK-RA8D2; no shields.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

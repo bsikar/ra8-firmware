@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Inclusive-terminology gate for commit message text read from stdin.
 
 Called by the inclusive-terminology CI workflow to verify that no commit

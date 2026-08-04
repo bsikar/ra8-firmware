@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_sci.c
  * @brief Unit tests for the SCI_B driver (libs/ra8_hal/src/ra8_sci.c).
@@ -6,9 +10,6 @@
  * This sibling owns the polling, IRQ-dispatch, and configuration contract
  * tests. The DMA streaming, interrupt-driven async read/write, and MC/DC
  * vector tests live in test_ra8_sci_dma_async.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

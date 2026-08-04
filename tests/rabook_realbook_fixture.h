@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file rabook_realbook_fixture.h
  * @brief Real-book byte-identity fixture for ra8_rabook_compile (#151).
@@ -13,8 +17,6 @@
  *            chapter DOM (and its preserved inline whitespace) round-trips
  *            against the desktop reference on real content.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

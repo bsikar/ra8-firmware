@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/src/c6_hosted_frame.c
  * @brief The single esp-hosted transaction, its decode and its verdict.
@@ -30,8 +34,6 @@
  * Every protocol size is read from the vendored headers rather than
  * restated, so an upstream change moves this file with it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

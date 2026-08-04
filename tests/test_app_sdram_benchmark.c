@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_sdram_benchmark.c
  * @brief Integration test: SDRAM init + mbps helper bench math
@@ -7,8 +11,6 @@
  * ra8_sdramc_init -> get_status. The mbps helper math is exercised
  * directly so MC/DC vectors land on the divide-by-zero clamp.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

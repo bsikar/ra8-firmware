@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ssie_regs.h
  * @brief Serial Sound Interface Enhanced (SSIE) register layout for the RA8D2
@@ -28,9 +32,6 @@
  * description tables (p 3056-3094) and cross-checked against the
  * ``ra/fsp/src/r_ssi/r_ssi.c`` shift macros in the Renesas FSP
  * sources (FSP is reference only -- no code copied).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

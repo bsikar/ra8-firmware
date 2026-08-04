@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_pprn.c
  * @brief Native USB device-side Printer class layer implementation
@@ -14,9 +18,6 @@
  *
  * Reference: USB Printer Class 1.1 sec 4.2 "Class Specific Requests"
  * (GET_DEVICE_ID = 0x00, GET_PORT_STATUS = 0x01, SOFT_RESET = 0x02).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb_pprn.h"

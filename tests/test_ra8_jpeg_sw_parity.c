@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_jpeg_sw_parity.c
  * @brief Byte-parity goldens for the software JPEG codec.
@@ -14,9 +18,6 @@
  *
  * The codec is pure integer arithmetic, so the hashes are identical
  * on the x86_64 test host, in ra8_emulator, and on the Cortex-M85 target.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_io_fsfmt_cov.c
  * @brief Coverage supplement: uncovered branches in ra8_io_fsfmt.c.
@@ -13,9 +17,6 @@
  * Line 80 (internal_read_boot0 null-be guard) is annotated GCOVR_EXCL_LINE in
  * the source: ra8_io_fsfmt_probe validates backend non-null before dispatching to
  * any probe, so no host input can ever reach that branch.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

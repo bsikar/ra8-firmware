@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/blink_hal/main.c
  * @brief HAL-based LED-blink demo for EK-RA8D2 (using ra8_board_ek_ra8d2)
@@ -21,8 +25,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-04-28
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

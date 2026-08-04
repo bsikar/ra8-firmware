@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_pdm.h
  * @brief Pulse Density Modulation Interface (PDM-IF) capture driver
@@ -28,9 +32,6 @@
  *   5. ::ra8_pdm_read_enable     -- clear status, enable + prime FIFO.
  *   6. ::ra8_pdm_read (repeated) -- drain PCM samples.
  *   7. ::ra8_pdm_stop            -- halt the channel.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

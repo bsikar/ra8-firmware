@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/usb_selftest_ospi_rw_device.c
  * @brief OSPI-flash bring-up + write-window pre-erase for the writable-OSPI self-loop
@@ -19,8 +23,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-06-13
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

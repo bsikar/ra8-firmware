@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_vsource.h
  * @brief Virtual-memory object sources -- the page-cache storage seam (Layer 1, #147).
@@ -41,8 +45,6 @@
  *
  * @note Not thread-safe; the reader serialises access.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @par Tag
  * [Ring 2 / Core] {World: NS}

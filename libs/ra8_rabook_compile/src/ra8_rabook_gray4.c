@@ -1,9 +1,11 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rabook_gray4.c
  * @brief Grayscale image transcode -- downscale + quantise + nibble-pack (4-bpp) or copy (8-bpp).
  * @since Version 0.1.0
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_rabook_gray4.h"

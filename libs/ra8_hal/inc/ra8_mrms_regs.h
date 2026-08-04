@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mrms_regs.h
  * @brief MRAM Memory System (MRMS) wait-state register layout for the RA8D2
@@ -33,9 +37,6 @@
  * | 0x000  | MRCPFB  | 32    | Prefetch buffer enable (0 or 1).            |
  * | 0x004  | MRCFREQ | 32    | MRICLK frequency in MHz, upper byte = 0x1E. |
  * | 0x008  | MREFREQ | 32    | MRPCLK frequency in MHz, upper byte = 0xE1. |
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

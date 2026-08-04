@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """check_inclusive_terminology.py -- inclusive-terminology gate for ra8-firmware.
 
 Bans the legacy master/slave/MOSI/MISO/SS vocabulary from FIRST-PARTY source

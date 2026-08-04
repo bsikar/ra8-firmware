@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_gpio_edge.c
  * @brief Software edge detector for side-band pins the ICU cannot serve.
@@ -26,8 +30,6 @@
  * thousand-line file cap, and the split falls on a real seam: the slots own
  * the vendored calling convention, this file owns a table and a timer.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

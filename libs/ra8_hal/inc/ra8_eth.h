@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_eth.h
  * @brief Ethernet Switch Module (ESWM) + frame TX/RX driver
@@ -31,9 +35,6 @@
  * pointer (RX), and the EDMAC engine walks the ring on the silicon
  * side. Hardware ownership is encoded by the descriptor TACT/RACT
  * bit per FSP convention.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

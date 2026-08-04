@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_esp_hosted_rtos_pool.c
  * @brief Host tests for the allocator, queue, mutex and semaphore vtable rows.
@@ -18,9 +22,6 @@
  * core reaches these functions, and through the recording ThreadX model,
  * whose one-shot failure injection is what makes pool exhaustion and a
  * refused create reachable rather than assumed unreachable.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_touch_decode.c
  * @brief Unit tests for the ra8_touch (GT911) wire-format decode parser
@@ -10,9 +14,6 @@
  * parser runs against caller-built byte buffers, so this TU needs no
  * fake priming. Driver lifecycle / bus-path tests live in
  * ``test_ra8_touch.c``.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

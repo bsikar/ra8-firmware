@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_view.h
  * @brief Minimal self-contained macOS window for the board emulator
@@ -9,8 +13,6 @@
  * dependency) to keep ra8_emulator a self-contained tool. The real Objective-C
  * lives in board_view.m; this header is plain C so main.c needs no AppKit.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

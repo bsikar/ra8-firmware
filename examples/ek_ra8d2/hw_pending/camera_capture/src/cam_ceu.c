@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/camera_capture/src/cam_ceu.c
  * @brief CEU parallel (DVP) capture: DVP pin routing, open, arm/poll, buffer.
@@ -12,8 +16,6 @@
  * bounded-poll capture wrapper. The raw `ra8_ceu_*` driver is wrapped so the
  * app never touches the ::ra8_ceu_config_t descriptor.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

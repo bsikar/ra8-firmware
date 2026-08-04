@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_scb.c
  * @brief Unit tests for the ra8_scb Cortex-M85 System Control Block driver.
@@ -9,9 +13,6 @@
  * register. Covers the fault-status read (field mapping + NULL guard), the
  * VTOR set / get round-trip, and the DEMCR.TRCENA query / enable pair
  * (including bit preservation).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

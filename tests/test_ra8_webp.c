@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_webp.c
  * @brief Host unit + MC/DC tests for the ra8_webp decode facade (#290).
@@ -14,8 +18,6 @@
  * bytes are embedded inline here (they are tiny) so the test needs no runtime
  * file I/O. See tests/fixtures/webp/README.md for their provenance.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / WebP]
  * {World: NS}

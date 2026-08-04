@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/rot_verify_hil/inc/rot_fixture.h
  * @brief Baked RoT-signed image fixture (body + ra8_rot_trailer_t).
@@ -9,8 +13,6 @@
  *     --out signed.bin --img-version 1
  * DO NOT EDIT BY HAND.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/inc/usb_printer_vendor_ch9.h
  * @brief Chapter-9 SETUP router + descriptor tables for the printer/vendor demo
@@ -43,8 +47,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-07-16
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

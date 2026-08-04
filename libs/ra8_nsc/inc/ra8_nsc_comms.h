@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_nsc_comms.h
  * @brief NSC veneers for the communications drivers
@@ -40,9 +44,6 @@
  * - **Denies:** raw struct pass-by-value crossing the boundary
  * (the cfg pointers stay opaque to the secure side until the
  * veneer copies what it needs).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

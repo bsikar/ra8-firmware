@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_vin_mcdc.c
  * @brief MC/DC vectors for the ra8_vin.c compound decisions
@@ -14,9 +18,6 @@
  * Sibling suites: test_ra8_vin_capture.c (lifecycle + capture path)
  * and test_ra8_vin_config.c (scaling / CSC / routing / status
  * setters). Shared fixtures live in support/vin_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

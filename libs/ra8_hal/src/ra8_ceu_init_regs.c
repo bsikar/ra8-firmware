@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ceu_init_regs.c
  * @brief Capture Engine Unit (CEU) init-time register programming
@@ -14,9 +18,6 @@
  * runtime-control entry points (capture start/stop, plane-B shadow,
  * status, dispatch) remain in ``ra8_ceu.c``. Register sequences are
  * cited out of HUM Ch 60 (p 3626-3682).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

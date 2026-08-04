@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck shell=bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/gates/lint.sh -- Language linters, plus the gate asserting every code file is claimed.
 #

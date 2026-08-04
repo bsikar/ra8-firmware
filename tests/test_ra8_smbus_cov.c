@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_smbus_cov.c
  * @brief Supplemental coverage tests for ra8_smbus -- targets the branches
@@ -29,9 +33,6 @@
  *   which the host fake (fixed NTDTBP0 RAM) cannot produce.
  * - Line 283: same for read_byte_data.
  * - Line 368: same for block_read.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

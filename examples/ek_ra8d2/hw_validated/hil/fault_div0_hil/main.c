@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/fault_div0_hil/main.c
  * @brief Prove CCR.DIV_0_TRP: a zero divisor must raise a decoded UsageFault.
@@ -36,8 +40,6 @@
  * the real fault dump on silicon (tracker issue #191), so the app lives in
  * `hw_validated/hil/`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

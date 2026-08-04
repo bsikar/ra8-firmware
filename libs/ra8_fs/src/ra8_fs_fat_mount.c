@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fs_fat_mount.c
  * @brief FAT/exFAT volume detection, geometry, and mount/unmount.
@@ -6,8 +10,6 @@
  * Slot allocation, BPB parsing, MBR/GPT partition location, volume-type
  * detection, and the public mount/unmount/format entry points.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

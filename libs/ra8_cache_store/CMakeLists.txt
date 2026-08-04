@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # libs/ra8_cache_store/CMakeLists.txt
 #
 # Intentionally a no-op, like ra8_ftl / ra8_io / ra8_mem. Each consumer (app or
@@ -12,5 +14,3 @@
 # LevelX ThreadX mutex fields, so it compiles under both LX_STANDALONE_ENABLE
 # (host tests) and the ThreadX LevelX build (target apps).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT

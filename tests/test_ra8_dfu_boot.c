@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_dfu_boot.c
  * @brief Host unit tests for the pure boot logic of the ra8_dfu core.
@@ -8,9 +12,6 @@
  * `ra8_dfu_boot_decide`. Every compound boolean decision in the production
  * source carries its MC/DC test vector pattern in the relevant `@par MC/DC:`
  * block.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

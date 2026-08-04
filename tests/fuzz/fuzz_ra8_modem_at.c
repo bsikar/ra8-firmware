@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file fuzz_ra8_modem_at.c
  * @brief libFuzzer harness for the ra8_modem_at AT response parser.
@@ -13,9 +17,6 @@
  * clock that always advances so the driver eventually times out. Each
  * iteration calls ra8_modem_at_send_cmd() which internally pumps the
  * rx_byte() callback and runs the response parser to completion.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

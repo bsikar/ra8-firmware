@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_zoom_tiles.c
  * @brief Tiled-atlas source adapter for the tap-to-zoom viewer (#478).
@@ -12,8 +16,6 @@
  *          The whole TU is guarded on `ra8_tile_cache.h` being reachable, the
  *          same pattern `ra8_comic_tiles.c` uses.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

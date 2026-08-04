@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dac_b.c
  * @brief 12-Bit D/A Converter (DAC_B) driver implementation
@@ -17,9 +21,6 @@
  * Start / Stop / Close paths). The bit layout used here mirrors
  * FSP `R_DAC_B0_DACR{0,1,2}_*_Msk` exactly. See HUM Ch 54 "12-Bit
  * D/A Converter (DAC12)" p 3490..3496.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dac_b.h"

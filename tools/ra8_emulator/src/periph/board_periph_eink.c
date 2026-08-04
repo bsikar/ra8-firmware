@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_eink.c
  * @brief IT8951 e-paper SPI-device model for ra8_emulator.
@@ -22,8 +26,6 @@
  * exchange / reset the SPI_B block calls. The panel HRDY "ready" GPIO is driven
  * high from the GPIO block's reset via ::board_eink_apply_gpio_defaults.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_run_guards.c
  * @brief Run-guard environment knob reader (see emu_run.h)
@@ -8,8 +12,6 @@
  * two stays under the file-size bar. The contract lives on the declaration
  * of run_read_guards() in emu_run.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

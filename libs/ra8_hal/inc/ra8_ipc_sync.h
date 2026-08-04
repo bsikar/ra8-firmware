@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ipc_sync.h
  * @brief Inter-Processor Communication (IPC) HAL driver -- sync API
@@ -13,8 +17,6 @@
  * repository file-size budget; ``ra8_ipc.h`` re-includes this header so
  * existing consumers are unaffected.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

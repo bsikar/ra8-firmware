@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # Pre-commit hook for ra8-firmware
 # Runs: ASCII check, C23 pattern check, defensive macro paren check,
 #       clang-format, clang-tidy

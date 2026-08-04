@@ -1,9 +1,11 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rabook_import.c
  * @brief On-import EPUB -> .rabook compile-and-cache manager (#151).
  * @since Version 0.1.0
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB Import] {World: NS}
  */

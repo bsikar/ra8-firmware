@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_etha.c
  * @brief Per-port Ethernet Agent (ETHA) driver implementation -- HUM Ch 32
@@ -39,9 +43,6 @@
  *
  * Every register access carries a HUM Ch 32 citation naming the register
  * it touches and the page that register is described on.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_etha.h"

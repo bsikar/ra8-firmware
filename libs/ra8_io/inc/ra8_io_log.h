@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_log.h
  * @brief Redirect `ra8_log` output into an ra8_io stream.
@@ -14,8 +18,6 @@
  * a RAM capture buffer, or a raw block device -- without `ra8_core` depending on
  * `ra8_io`. Detach to restore the default ITM backend.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

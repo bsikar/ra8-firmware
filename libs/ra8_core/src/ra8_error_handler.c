@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_error_handler.c
  * @brief Default implementation of the fatal-error sink
@@ -17,9 +21,6 @@
  * The function is marked `__attribute__((weak))` so that field builds
  * can override it to trigger a watchdog reset or a safety-halt
  * recovery sequence without editing this file.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_error_handler.h"

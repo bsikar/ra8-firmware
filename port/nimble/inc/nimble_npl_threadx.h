@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/nimble/inc/nimble_npl_threadx.h
  * @brief NimBLE Native Porting Layer mapping onto Eclipse ThreadX
@@ -37,9 +41,6 @@
  * symbol here as a link-only stub, not a working BLE stack. Consumers stay
  * under ``examples/_unsupported/`` until a NimBLE app is driven to real
  * hardware validation and promoted out of that tier.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

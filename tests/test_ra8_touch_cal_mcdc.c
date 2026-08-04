@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_touch_cal_mcdc.c
  * @brief MC/DC vector tests for the ra8_touch_cal null-guard decisions
@@ -12,9 +16,6 @@
  * on the host (no register fake needed) and cites its decision by the
  * drift-proof ``path@function`` anchor the MC/DC compound ratchet consumes
  * (issue #426).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

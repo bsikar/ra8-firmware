@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/agt_cascade_demo/main.c
  * @brief AGT0 + AGT1 cascade (32-bit virtual counter) demo for EK-RA8D2
@@ -21,8 +25,6 @@
  *
  * The HIL gate scrapes ``agt_cas: tick=`` to confirm bring-up.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/eth_open_probe/main.c
  * @brief Bare-metal ra8_eth_open() bring-up probe (tracker issue #524).
@@ -48,8 +52,6 @@
  * never reproduced the fault; only the bench could, which is exactly
  * why the wire gate and this app both matter.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

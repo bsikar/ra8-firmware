@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rsip_regs.h
  * @brief Renesas Secure IP (RSIP-E50D) register layout for the RA8D2
@@ -37,9 +41,6 @@
  * ``crypto_procedures_protected/src/rsip/ra/primitive/ra8_rsip_e50d/``;
  * the HUM does not publish a register table because the engine is
  * mailbox-driven.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

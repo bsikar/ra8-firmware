@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_img_arena_mcdc.c
  * @brief MC/DC vectors for the compound guard in libs/ra8_reflow/src/ra8_img_arena.c.
@@ -10,9 +14,6 @@
  * condition is ever the sole cause of the early return. This file supplies the
  * two independence vectors: a NULL pointer with an arena bound, and a non-NULL
  * pointer with no arena bound (post-unbind).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

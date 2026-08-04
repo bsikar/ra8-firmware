@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_cgc.h
  * @brief High-level Clock Generation Circuit driver
@@ -9,9 +13,6 @@
  * the IOPORT block without touching CGC at all. Use the helpers here
  * to move up to HOCO (20 MHz) or the full PLL1 path (CPUCLK0 up to
  * 1 GHz) as the firmware grows.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

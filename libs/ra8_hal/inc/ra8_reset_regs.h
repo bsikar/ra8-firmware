@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reset_regs.h
  * @brief Reset block register layout (offsets, bit masks, accessors)
@@ -51,9 +55,6 @@
  *   - HUM Ch 6.2.1 "RSTSAR", p 256
  *   - FSP CMSIS R7KA8D2KF_core0.h ``R_SYSTEM_Type`` (lines 15205,
  *     15731, 16645, 16664, 16677) for bit-position cross-check.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

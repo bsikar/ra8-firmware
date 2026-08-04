@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_net_pal.c
  * @brief Network PAL implementation -- ra8_eth wrapper
@@ -11,9 +15,6 @@
  * primitives. On real hardware the ring would be backed by the
  * GWCA descriptor engine; today the ring is a contiguous RAM
  * buffer large enough for Ethernet loopback tests.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_net_pal.h"

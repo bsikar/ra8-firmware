@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_glyph_atlas.h
  * @brief Fixed-RAM-budget glyph cache with LRU eviction (Layer 3, #147).
@@ -34,8 +38,6 @@
  *
  * @note Not thread-safe; the renderer is single-threaded.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

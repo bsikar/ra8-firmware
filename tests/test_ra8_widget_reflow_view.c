@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_widget_reflow_view.c
  * @brief Unit tests for the ra8_widget reflow-view leaf (#145 Phase 2).
@@ -9,8 +13,6 @@
  * recording mock seam (no `ra8_reflow`, no framebuffer), so the page-turn
  * clamping and link routing are asserted in-process with full MC/DC vectors.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

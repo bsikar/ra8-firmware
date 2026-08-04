@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Generate epub_cover_fixture.h: a minimal EPUB3 with a real PNG cover.
 
 The manifest declares the cover with `properties="cover-image"`, and the

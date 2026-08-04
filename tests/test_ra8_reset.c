@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_reset.c
  * @brief Unit tests for ra8_reset.c (Reset cause + software reset driver)
@@ -15,9 +19,6 @@
  *   - HUM Ch 6.2.3 p 258 -- RSTSR1
  *   - HUM Ch 6.2.4 p 261 -- RSTSR2
  *   - HUM Ch 6.2.5 p 261 -- RSTSR3
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

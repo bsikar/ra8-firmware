@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_vin.h
  * @brief Video Input Module (VIN) driver -- public API
@@ -58,9 +62,6 @@
  *    LUT, colour conversion, DMR options, CSI-2 / framebuffers,
  *    status, IRQ path, power, and the dynamic-window / frame-end
  *    function prototypes.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

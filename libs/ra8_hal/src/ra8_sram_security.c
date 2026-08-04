@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sram_security.c
  * @brief SRAM HAL: TrustZone security attribution + ECC error callbacks
@@ -17,9 +21,6 @@
  * The callback state defined here (``s_sram_on_error*``) is also referenced
  * by ``ra8_sram_deinit`` in ``ra8_sram.c`` via the ``extern`` declarations
  * in ``ra8_sram_internal.h`` so teardown can drop every registration.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

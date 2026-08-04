@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fs_fat_fileio.c
  * @brief FAT read / write / seek / tell / size I/O.
@@ -6,8 +10,6 @@
  * Cluster-chain skip/grow, sector-granular read and write streaming, and
  * the public read/write/seek/tell/size entry points.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

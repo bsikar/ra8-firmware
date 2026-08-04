@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mipi_phy_api.h
  * @brief MIPI D-PHY driver -- public function prototypes
@@ -22,8 +26,6 @@
  * forbidden); ``ra8_mipi_phy_init`` performs a direct MSTPCRC write
  * with a TODO marker so a later wave can promote it into ``ra8_mstp_t``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

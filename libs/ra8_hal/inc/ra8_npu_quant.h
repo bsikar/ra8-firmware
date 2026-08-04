@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_npu_quant.h
  * @brief Affine (scale + zero-point) tensor quantization for the NPU runtime
@@ -38,8 +42,6 @@
  * Re-entrant and stateless: every function reads only its arguments and writes
  * only the caller's output buffer. Safe to call from any context.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # tools/cache_bench/Makefile -- host build of the #147 eviction benchmark and
 # the #208 block/frame-size sweep. The sweep drives the REAL ra8_vmem/ra8_vsource
 # page cache and the REAL ra8_book_chunked RBKC reader (with miniz for genuine
@@ -5,8 +7,6 @@
 # miniz is SOUP: it is built as its own object with -w -fno-strict-aliasing,
 # matching how tests/CMakeLists.txt compiles it (gcc miscompiles its inflate
 # under strict aliasing at -O2).
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 Brighton Sikarskie
 
 CC      ?= cc
 CFLAGS  ?= -std=gnu23 -O2 -g -Wall -Wextra -Wno-unused-parameter

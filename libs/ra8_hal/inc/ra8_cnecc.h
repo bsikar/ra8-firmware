@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_cnecc.h
  * @brief CANFD ECC (CNECC) HAL driver public API
@@ -57,9 +61,6 @@
  *  - ``ra8_cnecc_detach_isr``           -- unwire ICU vectors
  *  - ``ra8_cnecc_isr_handler``          -- generic ICU trampoline
  *  - ``ra8_cnecc_dispatch``             -- direct dispatch (test/manual)
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

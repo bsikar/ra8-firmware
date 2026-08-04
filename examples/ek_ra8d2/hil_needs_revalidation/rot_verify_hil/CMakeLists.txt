@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake for `rot_verify_hil` -- on-silicon root-of-trust image verify.
 # Runs the REAL ra8_rot verify chain (SHA-256 -> version-bind -> ECDSA-P256
@@ -5,8 +7,6 @@
 # proving a working root of trust can authenticate images on this hardware.
 # This does NOT touch the boot path -- it is a self-test, so no brick risk.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

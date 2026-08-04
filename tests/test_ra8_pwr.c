@@ -1,9 +1,10 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_pwr.c
  * @brief Unit tests for the LPM + clock-domain wrapper (libs/ra8_hal/src/ra8_pwr.c).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

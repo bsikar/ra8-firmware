@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_pin_interface.h
  * @brief Abstract pin-driver interface for dependency injection
@@ -30,9 +34,6 @@
  * This is the "Dependency Inversion" D of SOLID. NASA Power of 10
  * Rule 9 nominally bans function pointers, but this project makes
  * the DI exception called out in CLAUDE.md.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

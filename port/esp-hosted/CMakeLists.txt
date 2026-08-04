@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/esp-hosted/CMakeLists.txt
 #
@@ -58,8 +60,6 @@
 # directly and reaches none of this code -- which is why the port needed
 # its own proof.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

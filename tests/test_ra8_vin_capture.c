@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_vin_capture.c
  * @brief Unit tests for the VIN lifecycle and capture datapath
@@ -18,9 +22,6 @@
  * Sibling suites: test_ra8_vin_config.c (scaling / CSC / routing /
  * status setters) and test_ra8_vin_mcdc.c (MC/DC vectors). Shared
  * fixtures live in support/vin_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

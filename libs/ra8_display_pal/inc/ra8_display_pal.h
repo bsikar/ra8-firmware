@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_display_pal.h
  * @brief Display Platform Abstraction Layer for the RA8D2
@@ -63,8 +67,6 @@
  * Applications that need to control speed-vs-quality on e-ink pass
  * the hint; LCD backends ignore it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

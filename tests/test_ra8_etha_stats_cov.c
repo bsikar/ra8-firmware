@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_etha_stats_cov.c
  * @brief Coverage supplement for ra8_etha_stats.c.
@@ -19,9 +23,6 @@
  *     while ``ra8_rmac_phy_auto_neg_wait`` times out because BMSR is 0.
  *     Each per-step error leg is reached by arming the seam to fail the
  *     matching MPSM wait-loop (fail_wait / fail_nth_wait).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

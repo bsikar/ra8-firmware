@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/lpm_deep_sleep_demo/main.c
  * @brief Deep-Sleep mode (LPMD=0, SCR.SLEEPDEEP=1) one-shot wake demo
@@ -46,8 +50,6 @@
  *
  * No external hardware required -- bare EK-RA8D2.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

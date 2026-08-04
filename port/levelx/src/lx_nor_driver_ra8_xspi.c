@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/levelx/src/lx_nor_driver_ra8_xspi.c
  * @brief LevelX NOR driver implementation backed by the RA8 ``ra8_xspi`` HAL
@@ -31,9 +35,6 @@
  *   first 256 KiB of the 64 MiB flash is reserved for LevelX's
  *   wear-levelled partition. The remainder of the chip stays untouched
  *   for XIP code or other firmware uses.
- *
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "lx_nor_driver_ra8_xspi.h"

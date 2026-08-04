@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_book_paged_edge.c
  * @brief Chunked-backing and hostile-blob tests for the paged ra8_book mode.
@@ -12,9 +16,6 @@
  * resident-vs-paged equivalence and guard tests stay in
  * test_ra8_book_paged.c. The in-memory .rabook fixture builder is
  * duplicated per sibling.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

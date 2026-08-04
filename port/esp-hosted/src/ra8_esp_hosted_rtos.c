@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_rtos.c
  * @brief Thread, sleep, timer and clock vtable slots, plus the bind entry.
@@ -13,8 +17,6 @@
  * and queue halves live in `ra8_esp_hosted_rtos_pool.c`, which also owns the
  * host-build ThreadX model's shared state.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

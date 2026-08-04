@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # tests/fuzz/CMakeLists.txt -- libFuzzer harnesses for the parsers most
 # exposed to untrusted input. Opt-in via -DRA8_FUZZ=ON so the normal
@@ -18,8 +20,6 @@
 #
 #     bash scripts/checks/run_fuzz.sh fuzz_ra8_jpeg_sw 600
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 if(NOT RA8_FUZZ)

@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
+/*
  * GNU ld linker script for the secure_boot_ns_hil NON-Secure image (#172).
  *
  * The Non-Secure half of a two-project TrustZone build, linked SEPARATELY from
@@ -12,9 +16,6 @@
  * Non-secure, then -- after ra8_rot_verify_image passes -- BLXNS-es to the reset
  * vector). tools/rot_sign.py appends the ra8_rot_trailer_t after the body; the
  * .ns_rot_header below tells the Secure verifier the body length.
- *
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 ENTRY(ns_reset_handler)

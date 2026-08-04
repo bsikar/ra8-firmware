@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_canfd_afl.c
  * @brief Unit tests for the CANFD Acceptance-Filter-List config API.
@@ -14,9 +18,6 @@
  * The code under test contains no compound boolean decisions, so the
  * per-test ``@par MC/DC:`` notes record that explicitly rather than a
  * vector table.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_canfd.h"

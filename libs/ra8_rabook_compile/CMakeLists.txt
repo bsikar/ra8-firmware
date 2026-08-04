@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_rabook_compile -- zero-heap RABOOK1 emitter (the #149 compiler back-end).
 #
@@ -19,8 +21,6 @@
 #   inc/ra8_rabook_compile.h   the zero-heap builder API
 #   src/ra8_rabook_compile.c   table/pool layout, header fill, body CRC-32
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Header-and-source library; no standalone build target. See the note above.

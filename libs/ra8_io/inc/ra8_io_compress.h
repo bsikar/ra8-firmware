@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_compress.h
  * @brief ra8_io DEFLATE compress / decompress (zero-heap, firmware-safe).
@@ -23,8 +27,6 @@
  * umbrella. Apps that compress include it directly and add `miniz` to their
  * `ra8_add_app(... LIBS ...)`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

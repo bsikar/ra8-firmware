@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_canfd_ctrl.c
  * @brief Unit tests for the ra8_canfd control surface: status + IRQ
@@ -11,9 +15,6 @@
  * the CANFD clock block latches a one-shot static "already inited"
  * guard on the first successful handshake in this process, after which
  * the handshake (and its timeout legs) is skipped.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_canfd.h"

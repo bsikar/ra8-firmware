@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rsip_protected.c
  * @brief RSIP protected-key HAL implementation
@@ -13,9 +17,6 @@
  * unprotected ``ra8_rsip_*`` operation, and scrubs the scratch buffer.
  *
  * @warning Stub backend; NOT cryptographically secure.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_rsip_protected.h"

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_lpm_regs.h
  * @brief Low Power Mode (LPM) register layout for the Renesas RA8D2
@@ -28,9 +32,6 @@
  * The LPM driver works in terms of byte offsets relative to those
  * two bases. Every offset enumerator below is byte-accurate against
  * the HUM reference.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

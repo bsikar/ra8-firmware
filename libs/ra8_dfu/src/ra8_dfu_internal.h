@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dfu_internal.h
  * @brief TU-shared surface for the DFU MRAM program/verify implementation.
@@ -15,8 +19,6 @@
  * defining TU are the tests under @c tests/ (see CLAUDE.md, "Test access to
  * internal symbols").
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

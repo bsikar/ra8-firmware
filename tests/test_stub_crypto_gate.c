@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_stub_crypto_gate.c
  * @brief Stub-vs-production crypto build-gate reachability test (issue #180)
@@ -30,9 +34,6 @@
  * of this set -- its forgeable XOR-fold MAC was replaced by a real AES-CMAC
  * (issue #291), so it is no longer a stub crypto TU. Its own tests live in
  * test_secure_app_key_import.c / test_secure_app_sec_cmac.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

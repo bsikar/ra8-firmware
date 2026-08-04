@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ftl.h
  * @brief Flash Translation Layer -- free overwrite over erase-before-write media.
@@ -78,8 +82,6 @@
  * (void)ra8_ftl_as_blockdev(&ftl, &bd);  // FAT now mounts on bd
  * @endcode
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

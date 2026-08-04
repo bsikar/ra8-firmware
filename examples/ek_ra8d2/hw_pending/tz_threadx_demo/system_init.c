@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/tz_threadx_demo/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
@@ -43,9 +47,6 @@
  * `SystemInit()`, so reads and writes of initialised globals here are
  * safe -- which matters because the Secure clock + TrustZone bring-up it
  * performs touches .data-resident driver state (e.g. log-tag pointers).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_sd_internal.h
  * @brief Module-private FAT formatter shared by the board_periph_sd TUs
@@ -10,8 +14,6 @@
  * owns the backing-image lifecycle, and board_periph_sd_format.c does the pure
  * image-buffer FAT transforms.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

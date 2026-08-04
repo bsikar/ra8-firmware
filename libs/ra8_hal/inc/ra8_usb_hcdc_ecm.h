@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_hcdc_ecm.h
  * @brief Native USB host-side CDC ECM (Communications Device Class -
@@ -41,9 +45,6 @@
  * The starter does not support hubs; it tracks a single attached
  * CDC-ECM adapter. Hub class enumeration is tracked as a deferred
  * follow-up.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

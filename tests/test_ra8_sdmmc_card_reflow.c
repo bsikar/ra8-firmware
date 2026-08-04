@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_sdmmc_card_reflow.c
  * @brief Full SD-over-SPI path: a modelled SD card serves a FAT volume to
@@ -18,9 +22,6 @@
  *
  * Pipeline: image (FAT) -> SD card model -> ra8_sdmmc_spi -> ra8_fs ->
  * ra8_reflow -> ra8_gfx framebuffer.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

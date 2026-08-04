@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """fix_inclusive_terminology.py -- conservative auto-fix for legacy spellings.
 
 Companion to check_inclusive_terminology.py. Walks tracked source/docs and

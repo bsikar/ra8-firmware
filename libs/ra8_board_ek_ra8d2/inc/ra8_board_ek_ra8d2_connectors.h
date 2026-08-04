@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_board_ek_ra8d2_connectors.h
  * @brief Board-identity, LEDs, switches, display, audio, Arduino, Pmod, and
@@ -23,8 +27,6 @@
  * Authoritative source: ``docs/reference/ek-ra8d2-v1-users-manual.pdf``
  * (Rev 1.01, R20UT5523EG0101, October 2025).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

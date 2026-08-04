@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file fuzz_ra8_unarch_xz.c
  * @brief libFuzzer harness for the bounded XZ decoder wrapper.
@@ -11,9 +15,6 @@
  * crashing, over-reading, or looping unboundedly; ASan / UBSan diagnose any
  * out-of-bounds access or integer UB inside the wrapper and the vendored
  * xz-embedded decoder.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

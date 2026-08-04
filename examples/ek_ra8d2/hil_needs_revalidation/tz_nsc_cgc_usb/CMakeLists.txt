@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake for `tz_nsc_cgc_usb` -- a TWO-PROJECT TrustZone build (#96).
 #
@@ -8,8 +10,6 @@
 # addresses. The two images are merged into one flashable hex. NS->Secure calls
 # go only through the import library's SG veneers.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

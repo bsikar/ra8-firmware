@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_ether_phy_cov.c
  * @brief Coverage-extension unit tests for ra8_ether_phy.c
@@ -16,9 +20,6 @@
  *  - 173-174 ra8_ether_phy_link_status_get(): LPA speed resolved to 10full.
  *  - 175-176 ra8_ether_phy_link_status_get(): LPA speed resolved to 10half.
  *  - 177     ra8_ether_phy_link_status_get(): closing brace of speed chain.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

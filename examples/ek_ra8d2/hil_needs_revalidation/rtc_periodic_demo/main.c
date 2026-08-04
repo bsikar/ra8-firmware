@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/rtc_periodic_demo/main.c
  * @brief RTC alarm + UART log demo for EK-RA8D2
@@ -21,8 +25,6 @@
  *   4. Loop: programme the +5 s alarm, poll for the alarm flag,
  *      log "alarm fired", advance the seed by ten seconds.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

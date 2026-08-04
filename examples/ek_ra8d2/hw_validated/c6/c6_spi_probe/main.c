@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/main.c
  * @brief First raw SPI link probe against the ESP32-C6 wireless co-processor
@@ -46,8 +50,6 @@
  *   7. Pull-up contest on the side-band pins, with the C6's queue drained.
  *   8. Print the resolved side-band map and the PASS/FAIL verdict.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

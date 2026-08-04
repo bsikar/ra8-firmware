@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fmt_internal.h
  * @brief Cross-TU declarations shared inside the `ra8_fmt` tool.
@@ -8,8 +12,6 @@
  * verbs share across those TUs; nothing here is public API -- consumers use the
  * ::ra8_fmt_desc_t seam in `ra8_fmt.h`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_tokenize_internal.h
  * @brief Test-access surface for ra8_reflow_tokenize.c internal helpers.
@@ -9,8 +13,6 @@
  * each decision directly (the tokenizer's main loop is otherwise reached
  * only through `priv_reflow_xml_walk`). Not part of the public API.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

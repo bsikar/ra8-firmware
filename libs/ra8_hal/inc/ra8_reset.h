@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reset.h
  * @brief Reset cause introspection + software reset trigger
@@ -54,9 +58,6 @@
  * behind PRCR. RSTSAR sits behind ``PRCR.PRC1`` (CGC + LVD group);
  * the driver does not touch RSTSAR write-side -- only read-side -- so
  * no PRCR unlock is required for ``ra8_reset_get_attribution``.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

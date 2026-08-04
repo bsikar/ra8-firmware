@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_view.c
  * @brief Board-view presentation implementation (see emu_view.h)
@@ -9,8 +13,6 @@
  * + core-control state -- moved verbatim out of the ra8_emulator main
  * translation unit.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

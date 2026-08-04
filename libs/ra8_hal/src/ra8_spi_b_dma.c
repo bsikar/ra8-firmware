@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_spi_b_dma.c
  * @brief SPI_B DMA TX/RX pipes with Cortex-M85 cache coherency
@@ -26,8 +30,6 @@
  * public DMA API contract is in ``ra8_spi.h``. No other ``ra8_spi_b.c``
  * statics are referenced from here.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

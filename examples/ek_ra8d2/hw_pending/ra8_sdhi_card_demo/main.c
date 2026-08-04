@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/ra8_sdhi_card_demo/main.c
  * @brief Native 4-bit SDHI raw-block round-trip on the EK-RA8D2 microSD (#123).
@@ -28,8 +32,6 @@
  * serves a card attached with `--sd-new 64:fat16`. On the bench a real microSD
  * is wired to the port-4 SDHI bus. THIS APP OVERWRITES ONE BLOCK of the card.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

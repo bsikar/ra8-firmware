@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_usb_cdc_cov.c
  * @brief Coverage-focused unit tests for the native USB CDC ACM class
@@ -21,9 +25,6 @@
  * `ra8_fake_mmap_reset` + `ra8_mstp_init`; no live controller, no timers,
  * no SIGALRM. Register pre-seeding is used where a specific controller
  * status is required to make a leg deterministic.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

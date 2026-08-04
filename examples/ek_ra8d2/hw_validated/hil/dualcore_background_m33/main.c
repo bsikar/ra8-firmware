@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/main.c
  * @brief CPU0 (Cortex-M85 primary core) driver for the autonomous M33 demo
@@ -28,8 +32,6 @@
  *       Debug, so `[itm]` lines appear; a release build runs the same logic
  *       but stays silent.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

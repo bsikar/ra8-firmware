@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/rtt_log_demo/main.c
  * @brief Minimal SEGGER RTT logging demo for EK-RA8D2
@@ -22,8 +26,6 @@
  *   3. Initialise the RTT control block in BSS (idempotent).
  *   4. Loop: ``rtt_write`` a counter line, toggle LED1, sleep 1 s.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

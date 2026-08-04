@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_gpt_capture_input.c
  * @brief Integration test for examples/ek_ra8d2/gpt_capture_input/main.c
@@ -6,8 +10,6 @@
  * Replays the falling-edge detector and the GPT init / read pair
  * the demo uses to approximate input capture.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

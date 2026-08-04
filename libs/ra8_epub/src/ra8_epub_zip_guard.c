@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epub_zip_guard.c
  * @brief Decompression-limits retrofit for every miniz ZIP consumer.
@@ -23,9 +27,6 @@
  * in the content path enforces.
  *
  * @since 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #include <stddef.h>
 #include <stdint.h>

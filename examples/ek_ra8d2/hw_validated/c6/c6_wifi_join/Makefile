@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app Makefile for the `c6_wifi_join` firmware.
 #
@@ -19,8 +21,6 @@
 # set the image still builds -- it prints a FAIL at runtime instead of baking a
 # blank credential -- so the aggregate cross-build stays green.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL     := /bin/bash

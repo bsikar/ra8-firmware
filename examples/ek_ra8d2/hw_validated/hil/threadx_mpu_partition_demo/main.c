@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/threadx_mpu_partition_demo/main.c
  * @brief Eclipse ThreadX + Arm v8-M MPU partition demo for RA8D2
@@ -21,8 +25,6 @@
  * declared regions fall through to the architectural defaults so
  * the kernel can still touch its bookkeeping pages.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

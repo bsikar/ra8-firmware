@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sci_spi.h
  * @brief SCI Simple-SPI controller-mode driver (polling, full-duplex)
@@ -24,8 +28,6 @@
  * SPI mode maps to CCR3.CPOL/CPHA directly (mode 0 = CPOL 0, CPHA 0),
  * which is the SD-over-SPI default.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

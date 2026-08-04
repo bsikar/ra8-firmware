@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_usb_vhost.c
  * @brief Built-in virtual chapter-9 USB host (see board_usb_internal.h)
@@ -7,8 +11,6 @@
  * per-step SETUP state machine, the CDC bulk echo and the MSC BOT/SCSI
  * driver -- moved verbatim out of board_usb.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

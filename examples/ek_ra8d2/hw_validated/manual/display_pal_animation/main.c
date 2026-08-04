@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/manual/display_pal_animation/main.c
  * @brief Canonical display PAL example -- animated scrolling colour bars
@@ -30,8 +34,6 @@
  * once per full repaint (LCD scans continuously, so flush is a
  * cheap memory barrier).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

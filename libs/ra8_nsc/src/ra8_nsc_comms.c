@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_nsc_comms.c
  * @brief NSC veneers for the communications drivers
@@ -9,9 +13,6 @@
  * retrofit. Each veneer validates pointer arguments
  * (under TrustZone) then forwards to the secure-side Ring-3
  * driver primitive.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_nsc_comms.h"

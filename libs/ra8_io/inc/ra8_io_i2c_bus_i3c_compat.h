@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_i2c_bus_i3c_compat.h
  * @brief I3C I2C-compatibility backend binder for the ra8_io I2C-bus facade.
@@ -18,8 +22,6 @@
  * `restart` flag inside the trampolines, so both backends present the
  * identical `ra8_io_i2c_bus_*` semantics.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

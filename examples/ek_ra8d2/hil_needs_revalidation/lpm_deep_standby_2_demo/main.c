@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/lpm_deep_standby_2_demo/main.c
  * @brief Deep Software Standby 2 (LPSCR.LPMD = 0x9) entry demo
@@ -32,8 +36,6 @@
  * happens; the HIL gate is boot-banner-only so the firmware build
  * + bring-up path is still exercised.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

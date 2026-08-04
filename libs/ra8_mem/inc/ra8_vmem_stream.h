@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_vmem_stream.h
  * @brief Read a page-cached object as a seekable byte stream (Layer 2 helper, #147/#151).
@@ -29,8 +33,6 @@
  *
  * @note Not thread-safe; the reader serialises access.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

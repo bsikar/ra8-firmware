@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_gfx_text_glyph.c
  * @brief Glyph-cell blitting and text rendering for the ra8_gfx software rasteriser.
@@ -9,8 +13,6 @@
  * (s_gfx_text_state) and the low-level packers/plotters with the core
  * rasteriser TU (ra8_gfx_text.c) via ra8_gfx_internal.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

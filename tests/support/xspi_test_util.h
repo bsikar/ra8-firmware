@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file xspi_test_util.h
  * @brief Shared fixture for the test_ra8_xspi* suite: instance/address
@@ -9,9 +13,6 @@
  * tests/CMakeLists.txt auto-glob stays free of non-test .c files.
  * Split out of test_ra8_xspi.c when the suite was divided into
  * core / program / ctrl binaries.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

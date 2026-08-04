@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_sideband.c
  * @brief Pmod1 side-band sampling, wire test, pull-up contest, chip-select hunt
@@ -26,8 +30,6 @@
  *     never drive the side-band pins; they are only ever read here, with
  *     the pull-up contest's brief weak pull as the sole exception.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

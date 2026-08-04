@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_layout.c
  * @brief Greedy line-break + page-break engine for ra8_reflow.
@@ -20,8 +24,6 @@
  * No floating-point allocations and no recursion -- the recursion
  * already happened during the parse pass; layout is a flat loop.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

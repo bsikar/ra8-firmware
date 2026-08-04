@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_usb_pmsc_scsi_cov.c
  * @brief Branch-coverage tests for the device-MSC SCSI command
@@ -17,9 +21,6 @@
  * Every branch here is driven by ordinary function inputs and mocked
  * storage callbacks; none of it touches the USB controller registers,
  * so no lines require GCOVR_EXCL markers.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

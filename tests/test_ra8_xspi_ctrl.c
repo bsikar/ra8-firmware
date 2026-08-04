@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_xspi_ctrl.c
  * @brief Unit tests for the xSPI controller lifecycle surface: deinit,
@@ -11,9 +15,6 @@
  * timeout legs are reachable only before the first successful
  * ra8_xspi_init in this process. Shared fixture constants and
  * prep_flash() live in support/xspi_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

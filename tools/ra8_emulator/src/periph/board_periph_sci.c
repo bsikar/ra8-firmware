@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_sci.c
  * @brief SCI_B UART peripheral-block model for the board emulator
@@ -23,8 +27,6 @@
  * Self-registers its descriptor (address range + read / write / tick / reset /
  * report) with the board_periph core from a file-scope constructor.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

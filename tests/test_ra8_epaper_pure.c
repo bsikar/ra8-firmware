@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_epaper_pure.c
  * @brief MC/DC and layout tests for the pure half of the IT8951 driver
@@ -18,9 +22,6 @@
  * cov TU's renamed symbols do not count toward the production build's
  * MC/DC. Testing the extracted predicates is what makes the vectors
  * expressible.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

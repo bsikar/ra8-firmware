@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fmt.h
  * @brief One-file converter / inspector for the first-party content formats.
@@ -31,8 +35,6 @@
  * rest NULL, and add one row to the registry in `ra8_fmt_registry.c`. Nothing
  * else changes -- CLI dispatch and the usage text are driven off the registry.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @see ra8_jof.h  The band-tile atlas this tool was first built to debug.
  * @since 0.1.0

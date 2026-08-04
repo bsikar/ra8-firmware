@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_usb_host_ctrl_cov.c
  * @brief Black-box line-coverage tests for the USB host control-transfer
@@ -52,9 +56,6 @@
  * (no SIGALRM, no unbounded spin). The silicon-only BRDYENB read-back timeout in
  * ``ra8_usb_dcp_out_arm`` is the module's one GCOVR_EXCL_LINE and is intentionally
  * not driven here.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

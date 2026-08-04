@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file rar5_enc_fixture.h
  * @brief Shared test fixture: a spec-conformant RAR5 "method 50" writer.
@@ -16,9 +20,6 @@
  *
  * Tests are magic-number exempt, so byte offsets and bit widths appear as
  * literals.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

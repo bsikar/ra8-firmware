@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_box -- bounded box-model layout for e-reader chrome.
 #
@@ -17,8 +19,6 @@
 # ra8_add_app(LIBS ...); the host test build folds libs/ra8_box/src/*.c into
 # the ra8_core_hal object library.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Header-and-source library; no standalone build target. See the note above.

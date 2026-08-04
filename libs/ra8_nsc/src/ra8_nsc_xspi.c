@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_nsc_xspi.c
  * @brief NSC veneer: external XSPI flash read + status
@@ -13,9 +17,6 @@
  * build is turned on, and the ``RA8_NSC_CHECK_NS_RANGE_RW``
  * macro becomes a real ``cmse_check_address_range`` at that
  * point too.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

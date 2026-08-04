@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_comic.c
  * @brief Tests for the CBZ (ZIP-of-images) comic reader (ra8_comic + ra8_comic_cbz).
@@ -18,9 +22,6 @@
  *   4. the open is bounded-RAM: the whole archive is never read (the big filler
  *      entry is untouched), and
  *   5. the open / page-read argument guards behave.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

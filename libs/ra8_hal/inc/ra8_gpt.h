@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_gpt.h
  * @brief Full-featured General PWM Timer (GPT) driver
@@ -25,9 +29,6 @@
  * - ``ra8_gpt_attach_handler`` -- IRQ callback
  * - ``ra8_gpt_enter_stop / exit_stop`` -- power transition
  * - ``ra8_gpt_dispatch_ovf / und / ccra / ccrb`` -- ISR entry points
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

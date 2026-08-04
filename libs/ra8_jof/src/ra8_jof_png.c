@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_jof_png.c
  * @brief Streaming PNG scanline decoder for the transcode producer (#231).
@@ -17,8 +21,6 @@
  * content. Spec citations reference the W3C PNG specification (second
  * edition), abbreviated `PNG sec N`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain]
  * {World: NS}

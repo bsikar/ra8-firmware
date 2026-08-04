@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sdfont.h
  * @brief Load a TTF/OTF font off a Pmod SD card, self-provisioning if absent.
@@ -44,8 +48,6 @@
  * }
  * @endcode
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

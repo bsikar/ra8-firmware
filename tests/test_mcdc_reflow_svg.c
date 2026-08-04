@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_mcdc_reflow_svg.c
  * @brief MC/DC independence vectors for the ra8_reflow SVG scanner/rasteriser.
@@ -11,9 +15,6 @@
  * by driving the scanners directly with crafted byte spans -- exactly what
  * this file does. The shape-fill, gradient, arc and self-closing-element
  * decisions are driven through the public ::ra8_svg_render entry point.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

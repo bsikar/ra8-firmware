@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_batt.h
  * @brief Bounded, allocation-free low-battery nag policy.
@@ -24,8 +28,6 @@
  * allocation (NASA P10 Rules 1-3), so it runs identically on the host test
  * harness and on the RA8D2.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

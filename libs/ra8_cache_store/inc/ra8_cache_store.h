@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_cache_store.h
  * @brief Persistent key(CRC32)->blob cache for compiled `.rabook` containers,
@@ -55,9 +59,6 @@
  *
  * @par Tag
  * [Ring 4 / Storage] {World: NS}
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

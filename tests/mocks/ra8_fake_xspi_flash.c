@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fake_xspi_flash.c
  * @brief Host-side register-level JEDEC NOR-flash model behind the xSPI engine
@@ -14,8 +18,6 @@
  * test process commits no resident pages for the 16 MiB windows until a
  * sector is actually programmed or erased.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

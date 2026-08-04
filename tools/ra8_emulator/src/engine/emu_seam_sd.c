@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file emu_seam_sd.c
  * @brief --fast-sd whole-block SD serving seam
@@ -9,8 +13,6 @@
  * the real firmware). Moved verbatim out of the ra8_emulator main translation
  * unit; the full rationale rides with the code below.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

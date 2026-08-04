@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_layout_image.c
  * @brief Block-level `<img>` layout for the ra8_reflow engine (#106).
@@ -16,8 +20,6 @@
  * core inline-flow helpers it reuses (line wrap, page flush) are shared through
  * `ra8_reflow_layout_internal.h`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

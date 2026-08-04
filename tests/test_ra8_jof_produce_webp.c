@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_jof_produce_webp.c
  * @brief Host tests for WebP normalize-on-import: WebP -> JOF through the
@@ -27,8 +31,6 @@
  * is built in-test with an encoder (miniz `mz_compress`) independent of the
  * decoder under test.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

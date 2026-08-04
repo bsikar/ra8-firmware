@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # hil_reflash.sh -- recover + reflash a TrustZone/RoT-provisioned EK-RA8D2.
 #
@@ -21,8 +23,6 @@
 #   bash scripts/hil/reflash.sh <app>
 #   make hil-reflash APP=<app>
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_ota_cov.c
  * @brief Coverage-gap tests for libs/ra8_ota/src/ra8_ota.c.
@@ -14,9 +18,6 @@
  *
  * The mock harness (network / crypto / flash fault-injection callbacks and
  * the priv_* fixture builders) lives in tests/support/ota_cov_mocks.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

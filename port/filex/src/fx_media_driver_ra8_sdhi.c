@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/filex/src/fx_media_driver_ra8_sdhi.c
  * @brief FileX media driver bridging onto the RA8 ``ra8_sdhi`` block API
@@ -21,9 +25,6 @@
  * micro-SD slot to channel 0; no current build needs the second
  * channel, and the FileX media struct exposes no field to plumb a
  * channel index through.
- *
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "fx_media_driver_ra8_sdhi.h"

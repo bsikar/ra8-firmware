@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_usb_internal.h
  * @brief Private split-seam shared between ns_usb.c and ns_usb_host.c (#96).
@@ -16,8 +20,6 @@
  * thread tunables both TUs need. Everything else stays file-local in its own
  * TU.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

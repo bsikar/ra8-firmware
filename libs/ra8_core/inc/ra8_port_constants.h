@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_port_constants.h
  * @brief Typed Port / Pin Constants for the RA8D2 IOPORT Module
@@ -35,9 +39,6 @@
  * | LED1  | `k_ra8_pin_p6_00`               | 0x0600    |
  * | LED2  | `k_ra8_pin_p3_03`               | 0x0303    |
  * | LED3  | `k_ra8_pin_p10_07`              | 0x0A07    |
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

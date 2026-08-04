@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/trustzone_init.c
  * @brief Single-core TrustZone bring-up for a RAM-resident NS image (#60)
@@ -48,9 +52,6 @@
  *    leaves Secure thread mode and never returns; a returned denial verdict
  *    is latched in ::g_tz_jump_ns_err and boot falls back to the S-side
  *    ``main()``.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "trustzone_init.h"

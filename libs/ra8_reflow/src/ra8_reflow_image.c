@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_image.c
  * @brief Zero-heap raster image decode + nearest-neighbour scale + blit (#106).
@@ -9,8 +13,6 @@
  * is an integer nearest-neighbour scale-to-fit into a layout box, emitting one
  * `ra8_gfx_pixel()` per destination pixel (which clips to the framebuffer).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

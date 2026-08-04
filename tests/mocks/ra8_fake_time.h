@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fake_time.h
  * @brief Host-test deterministic time source
@@ -19,9 +23,6 @@
  * This keeps tests deterministic regardless of host CPU speed
  * or scheduler behaviour. On the target, SysTick drives the
  * counter; on the host, the tests drive it directly.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_root_of_trust.c
  * @brief Host unit tests for the root-of-trust signed-image verifier.
@@ -25,9 +29,6 @@
  *       On-silicon ECDSA known-answer-test validation and provisioning of the
  *       real root public key remain outstanding (hardware / key-ceremony
  *       gated).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 /*

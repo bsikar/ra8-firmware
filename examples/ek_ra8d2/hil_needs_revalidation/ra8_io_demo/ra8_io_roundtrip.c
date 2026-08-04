@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_io_demo/ra8_io_roundtrip.c
  * @brief Shared ra8_io VFS round-trip implementation for the FAT demos (#155).
@@ -10,9 +14,6 @@
  * above the block-device seam is identical, so it lives here once. The helpers
  * are silent: each demo's `main.c` owns its PASS banner so the existing
  * ra8_emulator smoke expectations stay byte-identical.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_roundtrip.h"

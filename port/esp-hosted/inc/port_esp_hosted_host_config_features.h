@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/inc/port_esp_hosted_host_config_features.h
  * @brief esp-hosted port header: optional host features, RPC bounds, counters.
@@ -38,8 +42,6 @@
  * still given a value so the bound is stated rather than discovered the day
  * someone enables the feature.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

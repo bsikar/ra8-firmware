@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_viewer_reader_internal.h
  * @brief Module-private reader state + per-engine entry points for the viewer.
@@ -15,8 +19,6 @@
  * the fixed framebuffer, and render one native-resolution scroll tile -- so the
  * dispatcher in ra8_viewer_reader.c never needs to know an engine's internals.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_off_target_config.h
  * @brief Guards for host-compiled unit tests
@@ -20,9 +24,6 @@
  * This header does not define `RA8_OFF_TARGET` itself; it only
  * lifts the guards into the `k_ra8_*` enum space so clang-tidy's
  * `readability-magic-numbers` check does not flag them.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

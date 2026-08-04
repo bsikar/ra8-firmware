@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # shellcheck shell=bash
 # shellcheck disable=SC2154  # FIRMWARE_DIR / BUILD_DIR / RC_INFRA and the print_* helpers come from scripts/checks/clang_tidy.sh, the only thing that sources this file
 # shellcheck disable=SC2034  # TIDY_ARG_LEAD/TRAIL/SEEN_SEP are filled by split_tidy_args and READ by run_tidy_chunks below and by callers in passes.sh
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/checks/tidy/invoke.sh -- Running clang-tidy over one pass's file list.
 #

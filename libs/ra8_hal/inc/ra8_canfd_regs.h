@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_canfd_regs.h
  * @brief CANFD controller register layout for the Renesas RA8D2
@@ -41,9 +45,6 @@
  * Field shifts / masks below come from the FSP `R7KA8D2KF_core0.h`
  * bit-field unions and from HUM Ch 41 "CAN with Flexible Data-rate
  * (CANFD)" pages 2702..2867 (chapter map row 41).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

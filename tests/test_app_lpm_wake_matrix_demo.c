@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_lpm_wake_matrix_demo.c
  * @brief Integration test: WUPEN0 / WUPEN1 arm + disarm walk
@@ -10,8 +14,6 @@
  * landed and that ``ra8_lpm_get_exit_cause`` returns the packed
  * snapshot the demo relies on.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

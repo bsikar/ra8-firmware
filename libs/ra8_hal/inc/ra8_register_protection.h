@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_register_protection.h
  * @brief Scoped PRCR unlock helper
@@ -27,9 +31,6 @@
  *       *ra8_sys_sckscr() = k_ra8_cksel_hoco;
  *   }
  * @endcode
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_unarch_tar_fields.c
  * @brief Untrusted-byte parsers for the tar walker: numerics, checksum, pax.
@@ -15,9 +19,6 @@
  * no code from GNU tar / libarchive / busybox.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #include <string.h>
 

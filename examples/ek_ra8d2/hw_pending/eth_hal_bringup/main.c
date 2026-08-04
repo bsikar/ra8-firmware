@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/eth_hal_bringup/main.c
  * @brief HAL-based ESWM/COMA Ethernet media bring-up demo (issue #581)
@@ -33,8 +37,6 @@
  * it makes no claim of hardware validation. The COMA/RGMII register accesses
  * are host-tested in ``tests/test_ra8_eth_coma.c`` / ``tests/test_ra8_eth.c``.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

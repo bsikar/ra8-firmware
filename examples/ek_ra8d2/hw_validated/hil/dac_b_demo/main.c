@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dac_b_demo/main.c
  * @brief DAC_B 12-bit DC sweep demo for EK-RA8D2
@@ -20,8 +24,6 @@
  *   4. Loop: ``ra8_dac_b_write`` with monotonically increasing /
  *      decreasing 12-bit code.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

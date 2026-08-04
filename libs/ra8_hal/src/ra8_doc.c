@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_doc.c
  * @brief Data Operation Circuit (DOC) driver implementation
@@ -17,9 +21,6 @@
  *   2. Write the seed to DODSR0.
  *   3. Write the operand to DODIR -- triggers the operation.
  *   4. Read DODSR0 to obtain the result.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_doc.h"

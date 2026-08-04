@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_devcfg.h
  * @brief Per-device (per-unit) configuration record -- schema, storage seam,
@@ -57,9 +61,6 @@
  * There is deliberately **no compile-time production fallback for VCOM** -- a
  * build-time default is exactly the plausible-looking wrong value that damages
  * panels cumulatively and irreversibly.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

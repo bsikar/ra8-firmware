@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_spi_bus_ops.h
  * @brief Injected SPI-bus seam consumed by Ring-3 SPI device drivers.
@@ -28,8 +32,6 @@
  * CPOL/CPHA mode, bit-rate) is the app's responsibility, because only the
  * app knows which peripheral the board wires to the device.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

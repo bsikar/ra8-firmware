@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file sweep_block_backends.c
  * @brief The two in-tree #208 sweep backends (`mem`, `rbkc-z9`) + shared
@@ -12,8 +16,6 @@
  * Both implement the ::cbs_backend_t seam declared in sweep_block_internal.h
  * and are published through ::cbs_priv_backends() in report order.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

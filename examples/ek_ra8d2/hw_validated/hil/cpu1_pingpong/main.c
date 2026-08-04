@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/main.c
  * @brief CPU0 (Cortex-M85) ping-pong demo against CPU1 (Cortex-M33)
@@ -17,8 +21,6 @@
  * the IPC security problem entirely while still validating that
  * CPU1 was released, booted, and is executing user code.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

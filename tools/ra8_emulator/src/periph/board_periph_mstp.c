@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_mstp.c
  * @brief Module Stop Control (MSTPCRA..E) register block for ra8_emulator
@@ -21,8 +25,6 @@
  * without Unicorn (tests/test_ra8_emulator_mstp_gate.c); this glue is the thin
  * part that the core registry needs and that pulls in board_periph_block.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

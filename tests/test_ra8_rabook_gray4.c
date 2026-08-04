@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_rabook_gray4.c
  * @brief Host unit tests for the gray4 transcode stage (ra8_rabook_gray4).
@@ -69,8 +73,6 @@
  * @endcode
  *
  * @since Version 0.1.0
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <assert.h>

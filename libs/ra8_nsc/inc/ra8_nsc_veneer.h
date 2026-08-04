@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_nsc_veneer.h
  * @brief Macros for declaring Non-Secure Callable veneer functions
@@ -35,9 +39,6 @@
  * and the return value must fit in registers as well. The
  * existing veneer signatures already comply -- everything is
  * ``uint*_t`` / pointer / enum.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/epub_stress/main.c
  * @brief On-silicon HIL: large-structure EPUB opens on the static arena (#144).
@@ -30,8 +34,6 @@
  *
  * Any failure prints a FAIL banner and halts on a BKPT before PASS.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

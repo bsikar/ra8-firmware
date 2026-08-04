@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_fw_version/src/c6_fwver_priv.c
  * @brief The ESP_PRIV_IF control channel: host capabilities out, INIT in.
@@ -28,8 +32,6 @@
  * earlier run without power-cycling the C6 will not see one. This module
  * therefore records it when it arrives and never requires it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

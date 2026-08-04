@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fs_fat_name.c
  * @brief FAT 8.3 short-name pack/unpack and directory walking.
@@ -6,8 +10,6 @@
  * 8.3 short-name encode/decode, the directory-walk cursor, and the
  * short-name directory lookup primitives for the `ra8_fs` FAT adapter.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

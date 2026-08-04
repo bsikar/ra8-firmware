@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_gpt_capture.c
  * @brief Unit tests for the GPT input-capture and external-event-count API.
@@ -9,9 +13,6 @@
  * GTDNSR). Each register write is observed through the fake MMIO
  * window provided by ``ra8_fake_mmap``; the two compound argument guards
  * carry minimal MC/DC vector sets.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

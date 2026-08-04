@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_fs_format_fixture.h
  * @brief RAM-backed block device and helpers shared by the formatter tests.
@@ -12,9 +16,6 @@
  * Each test binary is linked separately, so the ``static`` definitions below
  * are per-executable and cannot collide. They carry ``[[maybe_unused]]``
  * because neither half exercises every fixture.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

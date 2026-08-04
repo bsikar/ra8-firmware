@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_usb_internal.h
  * @brief Module-private state + interfaces shared by the board_usb TUs
@@ -11,8 +15,6 @@
  * declarations and the cross-TU helpers. Nothing here is part of the
  * emulator-facing API in inc/board_usb.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

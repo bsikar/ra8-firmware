@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_mem_ecc.c
  * @brief Host tests for the SRAM ECC fault-inject -> error-record decode (#130).
@@ -14,8 +18,6 @@
  * on-device ra8_emulator model approximates (it latches both slots) and the
  * demo's globals report.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_smbus.h
  * @brief SMBus 3.2 protocol layer over an injected I2C bus seam
@@ -38,9 +42,6 @@
  *
  * Inclusive terminology: "controller" / "peripheral" replaces the
  * legacy controller/peripheral wording in the SMBus spec (the spec itself uses the older terminology).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

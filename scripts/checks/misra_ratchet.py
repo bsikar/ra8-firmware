@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """misra_ratchet.py -- MISRA-C 2012 ratchet gate (compare vs committed baseline).
 
 `scripts/checks/misra_check_inner.sh` (make misra) runs cppcheck + the bundled

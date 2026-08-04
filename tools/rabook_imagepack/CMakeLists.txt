@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # tools/rabook_imagepack -- single-file converter / inspector for the first-party
 # content container formats.
@@ -15,8 +17,6 @@
 # so a defect reproduced here is a defect on silicon and a clean result here
 # exonerates the file.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

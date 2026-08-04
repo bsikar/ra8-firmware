@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_svg_shape.c
  * @brief SVG shape rasterisers: rect / circle / line / polygon + fill + arc (#112).
@@ -10,8 +14,6 @@
  * scanline-filled. No DOM, no heap. See ra8_reflow_svg_internal.h for the shared
  * geometry types and cross-TU helper contracts.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

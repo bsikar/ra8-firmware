@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow.h
  * @brief HTML / CSS reflow + paginate engine for the ra8d2 ereader.
@@ -59,8 +63,6 @@
  *       continue to include `ra8_reflow.h` directly -- it pulls in both
  *       sub-headers so the public surface is unchanged.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

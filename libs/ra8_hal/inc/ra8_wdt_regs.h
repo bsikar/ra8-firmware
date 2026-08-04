@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_wdt_regs.h
  * @brief Watchdog Timer (WDT) register layout for the RA8D2
@@ -28,9 +32,6 @@
  * (R01UH1065EJ), chapter 27 "Watchdog Timer (WDT)" pages 1256-1270.
  * The block is 12 bytes (0x0C) total -- matches FSP ``R_WDT_Type``
  * in R7KA8D2KF_core0.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

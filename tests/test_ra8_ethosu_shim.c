@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_ethosu_shim.c
  * @brief Unit tests for ra8_ethosu_shim.c (Arm ethos-u-core-driver -> ra8_npu adapter)
@@ -16,9 +20,6 @@
  * nothing reaches cmd_end on its own in a host test, so each test pre-latches
  * STATUS.cmd_end (as the ra8_emulator NPU model would after executing) before the
  * invoke, so the bounded wait returns immediately.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

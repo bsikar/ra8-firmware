@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_coverage_compile_all.c
  * @brief Coverage baseline test -- forces uniform coverage measurement
@@ -21,8 +25,6 @@
  *
  * @note Mirrors the same-named file in star-rx72n-firmware/tests/.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since Version 0.1.0
  */

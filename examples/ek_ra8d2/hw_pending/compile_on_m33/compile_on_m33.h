@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/compile_on_m33/compile_on_m33.h
  * @brief Shared-SRAM contract for the "RABOOK1 emitter on the M33" demo (#149b)
@@ -54,8 +58,6 @@
  *       path stores verbatim) and NOT ra8_fs (the M85 owns the filesystem; the M33
  *       finalizes into the shared buffer).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

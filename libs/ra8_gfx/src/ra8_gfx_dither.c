@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_gfx_dither.c
  * @brief Void-and-cluster blue-noise dither: gray8 -> 16-level e-ink panel (#477).
@@ -17,8 +21,6 @@
  * through the public API. Scalar-first; a Helium/MVE lane-wise pass can replace
  * the inner loops later without moving the mask or the quantise rule.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

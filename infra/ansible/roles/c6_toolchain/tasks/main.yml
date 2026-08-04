@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Provision the ESP-IDF build environment for the ESP32-C6 co-processor.
 # Idempotent: safe to re-run; converges apt prereqs + a pinned IDF checkout +

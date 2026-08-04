@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_threadx_usbx_cdc_demo.c
  * @brief Integration test: ThreadX + USBX CDC ACM bring-up + bulk echo
@@ -18,8 +22,6 @@
  *   4. ra8_usb_pal_ep_open(EP1 OUT bulk) and EP1 IN bulk
  *   5. ra8_usb_pal_ep_send(echo back)   -- bulk-IN reply
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

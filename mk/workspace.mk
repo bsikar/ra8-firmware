@@ -1,11 +1,11 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # mk/workspace.mk -- per-agent isolated workspaces on a shared verification box.
 #
 # Thin wrappers over scripts/dev/agent_workspace.sh and scripts/ci/monitor.sh so the
 # lifecycle is discoverable from `make help` rather than being tribal knowledge.
 # The rationale for each lives in the header of the script it wraps.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 .PHONY: ws-new ws-free ws-list ws-reap ws-doctor ws-timer ci-status ci-quota
 

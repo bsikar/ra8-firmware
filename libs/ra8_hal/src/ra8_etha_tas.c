@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_etha_tas.c
  * @brief ETHA time-aware shaper (TAS / 802.1Qbv) flows -- HUM Ch 32.4.2
@@ -33,9 +37,6 @@
  * Nothing detected any of that, because all five shaper calls returned
  * success from argument validation alone and no caller ever read hardware
  * back. ::ra8_etha_read_tas_entry exists so that is no longer true.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

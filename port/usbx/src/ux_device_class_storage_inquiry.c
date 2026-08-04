@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/usbx/src/ux_device_class_storage_inquiry.c
  * @brief SPC-correct SCSI INQUIRY override for the USBX device storage class
@@ -28,8 +32,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-06-12
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

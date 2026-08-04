@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_nsc_wdt.c
  * @brief NSC veneers: secure-side watchdog arm + refresh
@@ -21,9 +25,6 @@
  *
  * Neither veneer takes a pointer argument, so no ``cmse_check_address_range``
  * is required: nothing crosses the boundary that must be range-checked.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

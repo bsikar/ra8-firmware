@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/_unsupported/threadx_sdcard_demo/main.c
  * @brief Eclipse ThreadX SD-card boot-sector dump on the EK-RA8D2
@@ -29,8 +33,6 @@
  * |:------------|:---------|:---------------|:-----------------------------|
  * | ``sdcard``  | 4        | 5000 ms loop   | Read block 0, dump 16 bytes  |
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

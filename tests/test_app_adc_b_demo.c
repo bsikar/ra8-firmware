@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_adc_b_demo.c
  * @brief Integration test: ADC_B 12-bit software-trigger sample demo
@@ -9,8 +13,6 @@
  * ADCHCRn / ADDOPCRCn / ADDRn window so the writes succeed and the test
  * validates both the acceptance path and documented rejection paths.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

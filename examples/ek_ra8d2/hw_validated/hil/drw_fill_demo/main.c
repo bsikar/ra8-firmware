@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/drw_fill_demo/main.c
  * @brief DRW 2D-engine framebuffer fill-rect + verify demo (EK-RA8D2)
@@ -34,8 +38,6 @@
  * and repaints the framebuffer with no CPU write race, see ``drw_dlist_demo``
  * (the display-list route).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_manga_stream.h
  * @brief #232 manga-scale streaming harness: a synthetic volume-of-JOF-atlases
@@ -45,8 +49,6 @@
  * owner/bench step (#232); this host gate is the EIL==HIL golden it is compared
  * against.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

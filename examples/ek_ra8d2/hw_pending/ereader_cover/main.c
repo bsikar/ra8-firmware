@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_cover/main.c
  * @brief On-silicon HIL: EPUB cover-art extraction + decode + render (#143).
@@ -28,8 +32,6 @@
  * baked PNG): the only new surface is the `ra8_epub_get_cover_image` extraction
  * in front of the proven decode+scale+blit pipeline.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

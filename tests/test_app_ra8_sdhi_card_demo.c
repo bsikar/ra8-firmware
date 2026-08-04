@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_ra8_sdhi_card_demo.c
  * @brief Integration test: ra8_sdhi_card_demo raw-block round-trip logic (pure)
@@ -10,8 +14,6 @@
  * matches" round-trip verdict -- both of which are pure C with no MMIO, so
  * they run in-process without any ra8_fake_mmap.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

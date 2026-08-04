@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_prcr.c
  * @brief SYSC register-write-protection (PRCR) model
@@ -30,8 +34,6 @@
  * PRC0, the PVD registers under PRC3 -- is deliberately left to the change
  * that verifies each on hardware, so no gate is tightened on theory alone.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

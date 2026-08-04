@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_layout_driver.c
  * @brief Token-stream driver + public lifecycle API for the ra8_reflow engine.
@@ -15,8 +19,6 @@
  * (`ra8_reflow_layout_chapter`, `ra8_reflow_set_font_size`), font (re)binding,
  * and face registration.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

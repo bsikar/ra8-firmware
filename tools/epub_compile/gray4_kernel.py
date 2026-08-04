@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Deterministic integer gray4 downscale kernel -- host mirror of the firmware.
 
 This is a pure-Python, integer-exact port of the on-device 4-bpp transcode in

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_jpeg_sw_seg_mcdc.c
  * @brief MC/DC vector tests for the JPEG segment-walk decisions (ra8_jpeg_sw.c)
@@ -8,9 +12,6 @@
  * JPEG byte stream inline; the shared gradient fixture is duplicated
  * per sibling. The core encode / decode / get_dimensions contract tests
  * stay in test_ra8_jpeg_sw.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

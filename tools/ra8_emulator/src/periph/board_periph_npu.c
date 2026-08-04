@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_npu.c
  * @brief Arm Ethos-U55 NPU command/queue execution model (RA8P1-only) for ra8_emulator
@@ -48,8 +52,6 @@
  * program this model cannot interpret, so it latches STATUS.cmd_parse (a fault)
  * rather than faking a completion. Nothing here claims real NPU numerics.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

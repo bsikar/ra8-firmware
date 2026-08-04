@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_mipi_phy_init.c
  * @brief Unit tests for the MIPI D-PHY bring-up, status and dispatch surface
@@ -18,9 +22,6 @@
  *
  * Sibling suite: test_ra8_mipi_phy_lanes.c (lane / clock / PLL /
  * timing setters + the MC/DC vector tests).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

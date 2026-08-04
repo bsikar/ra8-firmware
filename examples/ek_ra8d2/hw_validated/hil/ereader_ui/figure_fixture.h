@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file figure_fixture.h
  * @brief Baked 200x130 RGB PNG figure for the Reading screen (#106 Phase 1/2).
@@ -7,9 +11,6 @@
  * when the Reading chapter's `<img>` is laid out, demonstrating real image
  * rendering on book open. Pure 7-bit ASCII (a C array of the PNG bytes), like
  * the bundled font blob.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

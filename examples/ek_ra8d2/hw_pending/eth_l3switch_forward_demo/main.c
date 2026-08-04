@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/eth_l3switch_forward_demo/main.c
  * @brief L3 Ethernet switch / frame-forwarding config demo (ra8_eth_mfwd + ra8_layer3_switch)
@@ -36,8 +40,6 @@
  * frame is actually forwarded to the right egress port needs a multi-port
  * topology (two links + a traffic source, bench wiring #89).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

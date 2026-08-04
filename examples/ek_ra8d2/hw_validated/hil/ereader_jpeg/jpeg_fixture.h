@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file jpeg_fixture.h
  * @brief Baked 120x90 RGB JPEG test cover for the ereader_jpeg gate.
@@ -7,9 +11,6 @@
  * so the stb_image JPEG decode path is exercised. Generated once and
  * committed; the rendered framebuffer hash in hil.conf pins the result.
  * Pure 7-bit ASCII (a C array of the JPEG bytes).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

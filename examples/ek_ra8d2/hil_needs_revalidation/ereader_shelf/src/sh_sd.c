@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_sd.c
  * @brief Optional SD-card book source for the hybrid e-reader.
@@ -16,8 +20,6 @@
  * run without `--sd`) ra8_sdmmc_spi_init() times out and the shelf stays
  * baked-only.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *

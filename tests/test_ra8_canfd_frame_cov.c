@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file tests/test_ra8_canfd_frame_cov.c
  * @brief Coverage-gap tests for the receive path of ra8_canfd_frame.c
@@ -22,9 +26,6 @@
  *    successful pop, and its absence on the empty-FIFO leg.
  *  - Both arms of every header-decode ternary across two frames
  *    (extended+FD+BRS versus standard+classic).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_paud.c
  * @brief Native USB device-side Audio (UAC1) class layer implementation
@@ -21,9 +25,6 @@
  *
  * Reference: USB Audio 1.0 sec 5.2.1 "Request Layout" and sec A.9
  * "Audio Class-Specific Request Codes".
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_usb_paud.h"

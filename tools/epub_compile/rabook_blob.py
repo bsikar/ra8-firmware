@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """BlobBuilder: everything the compiler has parsed, laid out as one flat blob.
 
 The device executes this in place -- it never unzips, never parses XHTML, and

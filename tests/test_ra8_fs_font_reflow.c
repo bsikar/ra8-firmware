@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_fs_font_reflow.c
  * @brief End-to-end: font stored on a FAT volume -> read via ra8_fs ->
@@ -13,9 +17,6 @@
  * (`ra8_stbtt_alloc`), so the whole read-and-render path is heap-free
  * exactly as it runs on target -- only the font *storage* moves from the
  * (switch-gated, see #44) OSPI flash to an SD/FAT volume.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

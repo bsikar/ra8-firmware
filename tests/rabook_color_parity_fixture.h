@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file rabook_color_parity_fixture.h
  * @brief Colour-raster host-vs-device byte-identity fixture (#337).
@@ -13,8 +17,6 @@
  *            default path is one luma and one quantiser host-vs-device,
  *            decode included (issue #337).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

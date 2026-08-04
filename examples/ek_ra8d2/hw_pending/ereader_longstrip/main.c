@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_longstrip/main.c
  * @brief Viewable continuous vertical-scroll (longstrip / manhwa) reader (#289).
@@ -35,8 +39,6 @@
  * asserts a stable render, and ``g_ls_loop_ticks`` feeds the jlink liveness
  * probe.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @see ra8_longstrip.h  The continuous vertical-scroll engine this drives.
  * @since 0.1.0

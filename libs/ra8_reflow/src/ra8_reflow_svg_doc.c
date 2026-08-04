@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_reflow_svg_doc.c
  * @brief SVG document walk, gradient definitions, and the public render API (#112).
@@ -9,8 +13,6 @@
  * rasteriser in the sibling ra8_reflow_svg_*.c files. No DOM, no heap. See
  * ra8_reflow_svg_internal.h for the shared geometry types and helper contracts.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

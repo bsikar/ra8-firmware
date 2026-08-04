@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_ceu_config.c
  * @brief Unit tests for the CEU status, dispatch and runtime setters
@@ -13,9 +17,6 @@
  *
  * Sibling suite: test_ra8_ceu_capture.c (init + capture / DMA
  * datapath + MC/DC vectors).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_rabook_pipeline.c
  * @brief End-to-end EPUB -> RABOOK1 pipeline test (ra8_rabook_pipeline, #149).
@@ -50,8 +54,6 @@
  * test_ra8_rabook_pipeline_err.c and the synthetic-EPUB builders in
  * tests/support/rabook_pipeline_fixture.h.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB_Compiler] {World: NS}
  *

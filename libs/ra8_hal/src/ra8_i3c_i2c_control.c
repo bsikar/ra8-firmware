@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_i3c_i2c_control.c
  * @brief IIC_B (I3C unified IP) control-plane + diagnostics implementation
@@ -26,9 +30,6 @@
  *
  * Owns its writes to the I3C register block. See HUM Ch 40
  * "I3C Bus Interface (I3C)", p 2445-2701.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

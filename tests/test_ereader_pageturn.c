@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ereader_pageturn.c
  * @brief Host unit tests for the e-reader page-turn + input decisions (#78).
@@ -8,9 +12,6 @@
  * region split, the button mapping, and the next/prev page walk with chapter
  * crossing and book-end clamping -- with MC/DC on the page-walk boundary
  * decisions. Pure logic; no MMIO / GLCDC / touch.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

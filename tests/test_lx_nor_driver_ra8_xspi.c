@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_lx_nor_driver_ra8_xspi.c
  * @brief MC/DC vector tests for port/levelx/src/lx_nor_driver_ra8_xspi.c
@@ -25,9 +29,6 @@
  *
  * [Ring 4 / LEVELX_port]
  * {World: NS}
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

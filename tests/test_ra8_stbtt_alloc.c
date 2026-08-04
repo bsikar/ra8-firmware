@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_stbtt_alloc.c
  * @brief Unit tests for libs/ra8_reflow/src/ra8_stbtt_alloc.c
@@ -13,9 +17,6 @@
  * two-vector (true / false) coverage of the single-condition guards it
  * drives -- DO-178C 6.4.4.3 treats a single condition as trivially
  * MC/DC-covered by exercising both outcomes.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

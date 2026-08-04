@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_npu_fake_cmd.h
  * @brief ra8_emulator / host-test command-stream convention for the Ethos-U55 model
@@ -33,8 +37,6 @@
  * `RA8_HAS_NPU`: the host-side ra8_emulator model (which does not target the RA8P1)
  * must include it too.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_c6link_rpc.c
  * @brief The control plane: one protobuf message type, correlated by UID.
@@ -29,8 +33,6 @@
  * policy that nothing in this tree wants. Requests that arrive while one is
  * outstanding are refused with `k_ra8_err_busy` rather than silently serialised.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

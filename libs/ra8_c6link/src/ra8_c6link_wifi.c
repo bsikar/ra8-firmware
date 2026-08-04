@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_c6link_wifi.c
  * @brief Radio lifecycle: initialise, choose station mode, start, tear down.
@@ -21,8 +25,6 @@
  * beside it, so a mismatch is visible rather than buried in a macro expansion
  * nobody in this tree can read.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

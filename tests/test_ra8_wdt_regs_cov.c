@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_wdt_regs_cov.c
  * @brief Coverage tests for the inline helpers in ra8_wdt_regs.h
@@ -24,9 +28,6 @@
  * ra8_wdt_for() contains no compound boolean decision (it is a plain
  * switch/case dispatcher). No MC/DC vectors are required beyond exhausting
  * each case arm, which the tests below do.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

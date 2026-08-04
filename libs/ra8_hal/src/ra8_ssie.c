@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ssie.c
  * @brief Serial Sound Interface Enhanced (SSIE / I2S) driver implementation
@@ -18,9 +22,6 @@
  * ``r01uh1065ej0130-ra8d2.pdf``. FSP ``r_ssi.c`` was used as a
  * reference for the start/stop sequence and SSIFCR poll loop only;
  * no source code was copied from the FSP tree.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_ssie.h"

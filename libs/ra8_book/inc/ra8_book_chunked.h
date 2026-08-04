@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_book_chunked.h
  * @brief Demand-paged chunk reader for the "RBKC" `.rabook` container.
@@ -44,9 +48,6 @@
  * @see ra8_vsource.h     The registry ::ra8_book_chunked_read plugs into.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

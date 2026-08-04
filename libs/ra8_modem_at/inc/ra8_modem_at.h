@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_modem_at.h
  * @brief Cellular modem AT command/response driver layered on UART
@@ -55,9 +59,6 @@
  * The line accumulator buffer is owned by the caller and passed in
  * via ``ra8_modem_at_cfg_t``. Unsolicited-handler slots live in a
  * fixed-size table inside the module.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,10 +1,11 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rmac_phy_internal.h
  * @brief Test-access surface for ra8_rmac_phy internal helpers (MC/DC).
  * @ingroup grp_hal_net
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file trace.c
  * @brief Implementation of the #147 reader access-trace corpus + loader.
@@ -6,8 +10,6 @@
  * every policy sees byte-identical input and runs are reproducible (the same
  * determinism ra8_emulator gives the captured traces).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

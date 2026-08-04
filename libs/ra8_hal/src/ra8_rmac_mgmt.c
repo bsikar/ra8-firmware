@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rmac_mgmt.c
  * @brief RMAC status read/clear + statistics snapshot + Clause-22 PHY -- HUM Ch 33
@@ -24,9 +28,6 @@
  * Every register access carries a HUM Ch 33 citation. The driver-private
  * logger tag is a private read-only copy of the `ra8_rmac.c` tag so the two
  * units log under the same "RMAC" name without sharing a linker symbol.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

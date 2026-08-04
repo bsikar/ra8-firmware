@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_epub_chapter.c
  * @brief Chapter / metadata / cover / glyph accessors for the EPUB reader.
@@ -15,8 +19,6 @@
  *   - `ra8_epub_render_glyph()`      -- rasterise a code point via
  *                                      stb_truetype into an alpha-8 buffer.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}

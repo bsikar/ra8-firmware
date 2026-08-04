@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_nsc_xspi.c
  * @brief MC/DC unit test for libs/ra8_nsc/src/ra8_nsc_xspi.c
@@ -20,9 +24,6 @@
  * ``ra8_xspi_flash_read``.  We do not initialise the XSPI driver here,
  * so the dec=F vector falls through to a non-``invalid_arg`` failure
  * code (proving the validator did not reject the input).
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

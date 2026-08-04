@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_eth_link.c
  * @brief Ethernet PHY link-status poller + MAC speed/duplex resync
@@ -26,9 +30,6 @@
  * and shared via ra8_eth_internal.h.
  *
  * Every register access carries a HUM Ch 33 citation.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

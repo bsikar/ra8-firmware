@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rsip_internal.h
  * @brief Cross-TU surface for the ra8_rsip driver split.
@@ -36,8 +40,6 @@
  * the declarations below are intentionally minimal. See CLAUDE.md
  * "Test access to internal symbols (MC/DC scope)".
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/flash_journal/main.c
  * @brief Octo-SPI flash journal demo for EK-RA8D2
@@ -17,8 +21,6 @@
  * No filesystem layer (LevelX, FileX) is used -- this exercises
  * ``ra8_xspi_flash_*`` directly.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 r"""check_no_wave_references.py -- ban session-bookkeeping "Wave N" references.
 
 Rationale: comments and commit messages that cite "Wave 70 fixed FRDY" or

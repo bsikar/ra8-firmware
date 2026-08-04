@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/timer_capture_demo/main.c
  * @brief GPT free-running timer capture demo for the EK-RA8D2
@@ -25,8 +29,6 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

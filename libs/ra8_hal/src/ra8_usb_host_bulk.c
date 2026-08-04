@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_host_bulk.c
  * @brief USB host-mode bulk-transfer engine (polled, synchronous)
@@ -17,8 +21,6 @@
  * the shared register helpers and host addressing enums it uses are
  * declared in ``ra8_usb_internal.h``. No FSP source ships in this tree.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

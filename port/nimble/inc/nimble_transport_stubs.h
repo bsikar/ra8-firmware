@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/nimble/inc/nimble_transport_stubs.h
  * @brief Weak link stubs standing in for the NimBLE transport core
@@ -31,9 +35,6 @@
  *
  * @warning UNVALIDATED SCAFFOLD (issue #286). Every symbol declared here
  * is a link-only no-op, not a working BLE transport.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file inc/mg_reader.h
  * @brief Tap-driven pan/zoom viewer over a tiled manga page (ereader_manga).
@@ -23,8 +27,6 @@
  * spans more tiles than the cache has cells forces LRU eviction every frame --
  * the streaming-larger-than-RAM property the tile cache exists for.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/mbedtls/inc/mbedtls_config.h
  * @brief Project-wide Mbed TLS 4.x configuration for the RA8 firmware
@@ -48,9 +52,6 @@
  *   - **No POSIX timing helpers** -- ``MBEDTLS_TIMING_ALT`` is set
  *     and the project supplies its own monotonic-time hook from
  *     ra8_time later.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

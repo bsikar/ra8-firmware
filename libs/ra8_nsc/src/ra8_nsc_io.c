@@ -1,12 +1,13 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_nsc_io.c
  * @brief NSC veneers for the -6 I/O drivers
  *
  * @par Tag
  * [Ring 4 / NSC] {World: NSC}
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_nsc_io.h"

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/git/install-hooks.sh -- point this clone at the tracked git hooks.
 #
@@ -13,8 +15,6 @@
 #
 #     ./scripts/git/install-hooks.sh        (or: make hooks)
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 set -euo pipefail
 

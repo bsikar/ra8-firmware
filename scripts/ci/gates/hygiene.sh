@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck shell=bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/gates/hygiene.sh -- Textual hygiene gates: encoding, headers, attribution bans, formatting.
 #
@@ -547,13 +547,21 @@ gate_ascii() (
 )
 
 # --- copyright ------------------------------------------------------------
+# ONE canonical copyright + SPDX preamble, in the SAME order and position in
+# every first-party file: an `SPDX-License-Identifier` line immediately
+# followed by a `Copyright` line, right after the shebang if any and ahead of
+# the descriptive comment block. The check used to ask only whether the two
+# strings appeared SOMEWHERE, which let three different conventions coexist
+# (scripts SPDX-first-after-shebang, C `@copyright`+SPDX buried at the end of
+# the @file block, and one gate with the pair stranded sixty lines deep); this
+# now fixes the ORDER, POSITION and exact TEXT. --selftest FIRST proves the
+# rules fire and stay quiet (and that the fixer canonicalises) before the scan;
+# --all judges the DERIVED first-party scope (lint_targets) so a new top-level
+# directory is covered the day it lands rather than via a hand-maintained glob.
 gate_copyright() (
   set -e
-  local files=() line
-  while IFS= read -r line; do files+=("$line"); done < <(
-    git ls-files '*.c' '*.h' '*.cpp' '*.hpp' '*.cmake' '*.sh' '*.py' 'CMakeLists.txt'
-  )
-  python3 scripts/checks/check-copyright.py "${files[@]}"
+  python3 scripts/checks/check-copyright.py --selftest
+  python3 scripts/checks/check-copyright.py --all
 )
 
 # --- since ----------------------------------------------------------------

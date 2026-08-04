@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_comic_cbz.c
  * @brief CBZ backend: a streaming miniz ZIP reader that indexes page images.
@@ -21,9 +25,6 @@
  * on its default allocator.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #include <stddef.h>
 #include <string.h>

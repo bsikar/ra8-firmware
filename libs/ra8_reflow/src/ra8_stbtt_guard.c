@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_stbtt_guard.c
  * @brief sfnt table-directory bounds validator run before stbtt_InitFont().
@@ -8,8 +12,6 @@
  * table directory, proving every access stays inside the caller-supplied
  * buffer, and returns a verdict without ever calling into stb_truetype.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

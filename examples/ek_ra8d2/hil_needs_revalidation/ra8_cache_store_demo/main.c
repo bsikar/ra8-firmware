@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo/main.c
  * @brief ra8_cache_store on-media render/glyph cache demo for the EK-RA8D2 (#257)
@@ -36,8 +40,6 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-07-15
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

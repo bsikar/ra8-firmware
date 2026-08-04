@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_blockdev_sdhi.h
  * @brief ra8_io block-device backend over the native SDHI SD-card controller.
@@ -20,8 +24,6 @@
  * no host-visible erase primitive, so the vtable's `erase` slot is NULL and the
  * fabric maps an erase request to ::k_ra8_err_not_supported.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

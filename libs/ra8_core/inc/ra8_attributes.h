@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_attributes.h
  * @brief Annotation-attribute framework macros for ra8-firmware
@@ -32,9 +36,6 @@
  * `docs/CITATION_POLICY.md`. The `MCDC_DEACTIVATED` macro's reason
  * argument is enforced by the citation gate: it must not contain a
  * `<file>.<ext>:<line>` token.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

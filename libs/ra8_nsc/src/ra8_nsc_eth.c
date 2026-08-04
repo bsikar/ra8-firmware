@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_nsc_eth.c
  * @brief NSC veneer: ethernet frame TX / RX
@@ -10,9 +14,6 @@
  * which, in turn, delegates to ``ra8_eth``. adds
  * ``__attribute__((cmse_nonsecure_entry))`` and runtime address
  * checks via ``cmse_check_address_range``.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_c6link_transport.h
  * @brief The one seam between `ra8_c6link` and the wire that reaches the C6.
@@ -34,8 +38,6 @@
  * be guessing. Until #492 measures it, this link discovers pending receive data
  * by clocking a transaction, which is what the bench-proven bring-up did.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

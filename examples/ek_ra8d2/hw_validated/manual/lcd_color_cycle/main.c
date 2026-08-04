@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/manual/lcd_color_cycle/main.c
  * @brief GLCDC parallel-RGB BG-plane color cycle on the EK-RA8D2 panel
@@ -39,8 +43,6 @@
  * Pin map source (BSP): EK-RA8D2 v1 User Manual Table 33
  *   ("Parallel Graphics Expansion Port Assignments").
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

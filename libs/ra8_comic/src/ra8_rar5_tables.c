@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rar5_tables.c
  * @brief RAR 5.0 entropy front-end: bit reader, canonical Huffman, block tables.
@@ -20,9 +24,6 @@
  * points here; nothing in this unit calls back into the driver.
  *
  * @since Version 0.1.0
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #include <string.h>
 

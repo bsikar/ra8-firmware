@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake for `psa_crypto_hil` -- on-silicon NIST/RFC known-answer test
 # for the REAL tf-psa-crypto software backend (SHA-256 + AES-128-GCM +
@@ -5,8 +7,6 @@
 # needs actually works on the M85, using the software backend (the RSIP HASH
 # hardware is non-functional -- see libs/ra8_hal/src/ra8_rsip.c).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

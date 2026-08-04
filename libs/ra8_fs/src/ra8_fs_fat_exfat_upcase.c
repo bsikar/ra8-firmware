@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_fs_fat_exfat_upcase.c
  * @brief Canonical Microsoft exFAT up-case table + its writer for `ra8_fs`.
@@ -18,8 +22,6 @@
  * and is written by ::priv_exfat_write_upcase across the up-case clusters of a
  * freshly formatted volume.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

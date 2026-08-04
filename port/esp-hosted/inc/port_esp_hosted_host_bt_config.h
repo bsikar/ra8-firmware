@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/inc/port_esp_hosted_host_bt_config.h
  * @brief esp-hosted port header: which Bluetooth host runs above HCI.
@@ -24,8 +28,6 @@
  * initialises itself, so a host-side link-layer init would be initialising
  * a controller that is not there.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

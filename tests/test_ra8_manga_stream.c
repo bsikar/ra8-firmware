@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_manga_stream.c
  * @brief #232 manga-scale streaming gate (part 1): bounded residency + byte
@@ -20,8 +24,6 @@
  * The scan-resistance and eviction-split-tuning gates live in the companion
  * `test_ra8_manga_stream_policy.c`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

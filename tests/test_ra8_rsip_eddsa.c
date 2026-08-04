@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_rsip_eddsa.c
  * @brief Dispatch / opcode-selection tests for the RSIP EdDSA + RSA
@@ -46,8 +50,6 @@
  *          fiction; a real RFC 8017 KAT belongs with tf-psa-crypto if a
  *          consumer ever needs it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

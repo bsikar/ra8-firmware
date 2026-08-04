@@ -1,13 +1,14 @@
 /*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
+/*
  * Copy-to-run demo payload linker script.
  *
  * Links at the dfu_bootloader's SRAM run base (k_ra8_dfu_run_base = 0x22020000,
  * see libs/ra8_dfu/inc/ra8_dfu.h). The bootloader copies a staged slot body here
  * and branches to it, so the IDENTICAL image is bootable from either slot -- no
  * per-slot link base. ORIGIN MUST equal k_ra8_dfu_run_base.
- *
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 ENTRY(payload_reset)

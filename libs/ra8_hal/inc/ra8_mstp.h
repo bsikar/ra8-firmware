@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_mstp.h
  * @brief Ref-counted Module Stop Control wrapper for the RA8D2
@@ -50,9 +54,6 @@
  * The full list of peripherals lives in ``ra8_mstp_regs.h`` as
  * the ``ra8_mstp_t`` enum. Each entry packs the (register, bit)
  * pair from the HUM register description into a 16-bit value.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

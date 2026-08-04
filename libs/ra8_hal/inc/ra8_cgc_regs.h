@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_cgc_regs.h
  * @brief Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2
@@ -24,9 +28,6 @@
  *
  * Full field layouts come from the RA8D2 Hardware User's Manual
  * section 10 ("Clock Generation Circuit").
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

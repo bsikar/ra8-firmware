@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_eth_mfwd.c
  * @brief Ethernet Message Forwarding Engine driver implementation
@@ -10,9 +14,6 @@
  * Ethernet Switch MSTP gate (ESWM) so the lifecycle calls below
  * piggyback on ``k_ra8_mstp_eswm`` rather than a per-block bit.
  * Every register access carries a HUM Ch 30 citation.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_eth_mfwd.h"

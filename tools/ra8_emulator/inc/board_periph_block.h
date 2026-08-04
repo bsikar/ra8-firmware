@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_block.h
  * @brief Decentralized peripheral-block registry for the board emulator core
@@ -27,8 +31,6 @@
  * interrupt through the one ICU IELSR -> NVIC path the core owns) and
  * ::board_periph_trace (the --trace flag).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

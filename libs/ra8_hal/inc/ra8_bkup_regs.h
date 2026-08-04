@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_bkup_regs.h
  * @brief Battery Backup Function (VBATT / BAT*) register layout for the RA8D2
@@ -33,9 +37,6 @@
  * | 0xC50  | VBTNCWCR     | 8     | Noise canceller width select                   |
  * | 0xC54  | VBTADCR3     | 8     | Tamper HUK Zeroization enable                  |
  * | 0xD00  | VBTBKRn      | 8     | 128 backup-register bytes (n = 0..127)         |
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

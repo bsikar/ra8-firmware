@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_rsip_devsec.c
  * @brief RSIP-E50D device-security path (lifecycle / debug / tamper / DPA), fail-closed
@@ -53,8 +57,6 @@
  * genuinely needs real security state, wire it to the DLM / option-setting-
  * memory / SAU source rather than re-enabling the invented RSIP registers.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

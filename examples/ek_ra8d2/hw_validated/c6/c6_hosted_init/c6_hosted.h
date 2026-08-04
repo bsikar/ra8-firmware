@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/c6_hosted.h
  * @brief Shared contract for the esp-hosted port bring-up application.
@@ -23,8 +27,6 @@
  * restated. The frame type below is the one place the two meet: it is
  * declared here because both the transaction buffers and the decode need it.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

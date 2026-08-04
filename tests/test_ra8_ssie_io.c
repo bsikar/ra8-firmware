@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_ssie_io.c
  * @brief Unit tests for the ra8_ssie data path: sample/buffer TX+RX,
@@ -7,9 +11,6 @@
  * @details Split from test_ra8_ssie.c along the test-group seam.
  * Shared fixture state (prep(), make_controller_i2s_cfg(), the stub
  * dispatch callback) lives in support/ssie_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dmac.h"

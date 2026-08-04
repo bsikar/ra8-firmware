@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_dfu_program.c
  * @brief Host unit tests for the MRAM program/verify half of ra8_dfu.
@@ -9,9 +13,6 @@
  * there). Covers slot addressing, header construction, CRC read-back, and the
  * argument guards. Every compound boolean decision carries its `@par MC/DC:`
  * block.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

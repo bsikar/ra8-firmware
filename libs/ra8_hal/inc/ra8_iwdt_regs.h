@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_iwdt_regs.h
  * @brief Independent Watchdog Timer (IWDT) register layout for the RA8D2
@@ -34,9 +38,6 @@
  *
  * Block size = 12 (0x0C). Layout matches FSP ``R_IWDT_Type`` in
  * ``R7KA8D2KF_core0.h`` exactly.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

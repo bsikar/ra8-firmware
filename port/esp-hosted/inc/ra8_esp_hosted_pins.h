@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/inc/ra8_esp_hosted_pins.h
  * @brief THE single point of change for the RA8 <-> ESP32-C6 harness map.
@@ -52,8 +56,6 @@
  * while DATA_READY stays asserted until the host drains the queued frame
  * and so cannot be missed by a poll.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

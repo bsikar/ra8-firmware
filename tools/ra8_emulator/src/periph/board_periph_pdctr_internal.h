@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_pdctr_internal.h
  * @brief Module-private graphics power-domain state for the gated blocks
@@ -13,8 +17,6 @@
  * live register value, so the emulator shows a dark domain exactly as the
  * bench does. This header is the seam between them.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

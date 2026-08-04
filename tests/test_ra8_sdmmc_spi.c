@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_sdmmc_spi.c
  * @brief Host-side unit tests for the SPI-mode SD card driver.
@@ -25,9 +29,6 @@
  * the read paths live in the sibling test_ra8_sdmmc_spi_read.c and
  * the write + erase paths in test_ra8_sdmmc_spi_write.c. The mock SPI
  * transport lives in support/sdmmc_spi_test_util.h.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

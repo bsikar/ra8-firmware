@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_dmac_regs.h
  * @brief DMAC (Direct Memory Access Controller) register layout for the RA8D2
@@ -21,9 +25,6 @@
  *  - 17.2.13 DMOFR: p 743
  *  - 17.2.14 DMCNT: p 743
  *  - 17.2.20 DMAST: p 749
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

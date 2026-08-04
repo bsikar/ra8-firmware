@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_vmem.c
  * @brief Unit tests for the ra8_mem unified page cache (Layer 2, #147).
@@ -8,9 +12,6 @@
  * -- the headline property -- SLRU **scan resistance**: a re-referenced hot set
  * promoted into the protected segment survives a linear page-turn flood that a
  * plain LRU/CLOCK cache would have thrashed away.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

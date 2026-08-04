@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_spi.c
  * @brief The three transport slots of the esp-hosted OS-abstraction vtable.
@@ -24,8 +28,6 @@
  * Simple-SPI backend, so the last clock edge has retired before the call
  * returns and therefore before the chip select rises.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

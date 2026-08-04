@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/netxduo/inc/nx_ether_driver_c6.h
  * @brief NetX Duo network driver shim that bridges onto the ESP32-C6 link.
@@ -34,8 +38,6 @@
  * @see nx_ether_driver_ra8_eth.h  The on-chip twin this mirrors
  * @see ra8_c6link.h  The link this sits on
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_canfd.h
  * @brief CANFD Lite driver (bit-timing, TX, RX, error state)
@@ -11,9 +15,6 @@
  *
  * DMA hooks, interrupt delivery, and the full acceptance-filter bank
  * are deferred until there is a real consumer that needs them.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

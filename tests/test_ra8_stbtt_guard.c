@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_stbtt_guard.c
  * @brief Host unit tests for the #217 sfnt table-directory bounds guard.
@@ -27,9 +31,6 @@
  *     docs/SOUP/stb.md) rejects the glyph instead of reading past the buffer.
  *
  * @see docs/SOUP/stb.md  stb_truetype memory-safety hardening record.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

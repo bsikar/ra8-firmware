@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_flash_config_cov.c
  * @brief Coverage-completion tests for ra8_flash_config.c (ARC counters).
@@ -30,9 +34,6 @@
  * the 90% bar without them, so no source line is excluded. The
  * MSUINITR-kick timeout, previously listed here, is now driven in
  * test_ra8_flash.c through the ra8_fake_mmio fault seam.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

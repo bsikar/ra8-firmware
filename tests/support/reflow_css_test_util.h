@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file reflow_css_test_util.h
  * @brief Shared sheet fixture for the test_ra8_reflow_css_*_mcdc.c siblings.
@@ -8,9 +12,6 @@
  * literals shared by test_ra8_reflow_css_parse_mcdc.c and
  * test_ra8_reflow_css_select_mcdc.c. Everything here has internal linkage,
  * so each including test executable owns a private sheet.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

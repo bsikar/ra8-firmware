@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_lvd_types.h
  * @brief Programmable Voltage Detection (PVD / LVD) HAL types
@@ -15,8 +19,6 @@
  * See ra8_lvd.h for the driver overview and HUM Ch 8 "Programmable
  * Voltage Detection (PVD)", p 300-316 (R01UH1065EJ rev 1.30).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

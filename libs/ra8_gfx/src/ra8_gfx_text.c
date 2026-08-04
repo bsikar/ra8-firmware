@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_gfx_text.c
  * @brief Software pixel-pusher implementation of ra8_gfx primitives.
@@ -12,8 +16,6 @@
  * available the rect/blit fast paths will be replaced; the public API
  * does not change.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

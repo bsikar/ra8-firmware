@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """gen_unarch_xz_fixture.py -- regenerate tests/unarch_xz_fixture.h.
 
 The XZ decoder tests (tests/test_ra8_unarch_xz.c) need real .xz streams

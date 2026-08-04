@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file board_periph_pdctr.c
  * @brief Graphics power-domain gating (PDCTRGD) model
@@ -30,8 +34,6 @@
  * reads 0, so a driver polling "PDCSF == 0" makes progress, while @c PDPGSF
  * tracks @c PDDE so the "domain still gated" check is real.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

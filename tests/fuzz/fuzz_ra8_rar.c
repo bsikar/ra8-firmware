@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file fuzz_ra8_rar.c
  * @brief libFuzzer harness for the clean-room RAR walker + RAR5 decompressor.
@@ -10,9 +14,6 @@
  * fixed buffer. The walker and decoder must reject every malformed / hostile input
  * without crashing, over-reading, or looping unboundedly. ASan / UBSan diagnose any
  * out-of-bounds access or integer UB.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

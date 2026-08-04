@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_tile_cache.c
  * @brief Unit tests for the ra8_mem image-tile cache (Layer 3b, #147).
@@ -8,9 +12,6 @@
  * edge tile), LRU eviction past capacity, the pin/unpin contract (a fully-pinned
  * cache cannot evict), a decoder failure leaving the victim cold, and the
  * validation guards.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

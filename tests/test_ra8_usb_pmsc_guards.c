@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_usb_pmsc_guards.c
  * @brief Argument- and state-guard rejection vectors for the device-MSC
@@ -23,8 +27,6 @@
  * unfixable. Following the sibling suites, this translation unit shares no
  * state with them.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_io_stream_blockdev.h
  * @brief ra8_io byte-stream sink that buffers into a raw block device.
@@ -14,8 +18,6 @@
  * any partial trailing sector (zero-padded). Useful for streaming a log or a
  * blob straight onto SD / OSPI / MRAM via the fabric without a filesystem.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

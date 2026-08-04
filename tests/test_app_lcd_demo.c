@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_lcd_demo.c
  * @brief Integration test: GLCDC two-layer bring-up + bouncing-sprite loop
@@ -15,8 +19,6 @@
  * Exercised modules:
  *   - ra8_cgc, ra8_time, ra8_board_ek_ra8d2 (LED), ra8_glcdc
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

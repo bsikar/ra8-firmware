@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_tls -- thin TLS facade over the vendored Mbed TLS 4.x +
 # TF-PSA-Crypto 1.x libraries.
@@ -19,8 +21,6 @@
 # or it has not been included yet) the add_library() call is skipped
 # so this file is safe to include from both build trees.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

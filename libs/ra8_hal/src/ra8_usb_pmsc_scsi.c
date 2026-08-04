@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_usb_pmsc_scsi.c
  * @brief Native USB device-side MSC (Mass Storage Class) SCSI command
@@ -15,9 +19,6 @@
  * helpers via `ra8_usb_pmsc_internal.h`. FSP's
  * `pmsc_atapi_command_processing` is reference material only -- no FSP
  * source is pulled in verbatim.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

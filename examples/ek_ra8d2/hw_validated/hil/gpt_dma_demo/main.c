@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/gpt_dma_demo/main.c
  * @brief GPT period-streaming DMA HIL demo for EK-RA8D2
@@ -21,8 +25,6 @@
  *   - Wait for completion (callback bumps a flag).
  *   - Re-arm with the same period sequence.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

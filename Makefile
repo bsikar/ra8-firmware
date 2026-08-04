@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Top-level Makefile for ra8-firmware.
 #
@@ -24,8 +26,6 @@
 #   make tools      -- build every host developer tool
 #   make help       -- grouped reference of every top-level target
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL := /bin/bash

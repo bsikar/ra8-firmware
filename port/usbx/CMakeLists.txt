@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/usbx/CMakeLists.txt
 #
@@ -16,8 +18,6 @@
 # property so per-app builds can splice it into their `add_executable`
 # globs (mirrors how `port/filex/` exposes its sources).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_ether_phy.h
  * @brief Generic Ethernet PHY abstraction (MDIO Clause-22 + auto-neg)
@@ -13,9 +17,6 @@
  * for unit tests.
  *
  * Reference: FSP `r_ether_phy` driver shape, IEEE 802.3 Clause 22.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #pragma once

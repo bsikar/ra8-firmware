@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # dev_box role defaults -- provisions the shared verification box (the Debian
 # LXC every agent runs `make ci` / `make ci-native` on) from nothing.

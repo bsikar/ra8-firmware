@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_app_modem_at_demo.c
  * @brief Integration test: modem_at_demo decision logic + real ra8_modem_at run
@@ -19,8 +23,6 @@
  *    signal, registration + URC, PS attach, +CME ERROR path -- is exercised
  *    against the production driver and the verdict is asserted PASS.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

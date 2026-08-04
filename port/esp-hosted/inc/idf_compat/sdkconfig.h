@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file port/esp-hosted/inc/idf_compat/sdkconfig.h
  * @brief The ``CONFIG_*`` answers the vendored esp-hosted core asks for.
@@ -39,8 +43,6 @@
  * ever reached by the preprocessor on this side of the link, so neither is
  * defined here.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

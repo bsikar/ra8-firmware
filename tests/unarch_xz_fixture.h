@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file unarch_xz_fixture.h
  * @brief Committed .xz byte fixtures for the XZ decoder tests.
@@ -9,9 +13,6 @@
  * of `k_fx_xz_crc64_4k` is re-derivable in C: byte i is
  * `(state >> 16) & 0xFF` after `state = 1103515245 * state + 12345`
  * (uint32 wrap-around) from seed 0x12345678.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

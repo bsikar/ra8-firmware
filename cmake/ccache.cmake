@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/ccache.cmake -- wire ccache in as a compiler launcher when it is
 # available, for BOTH the host test builds and the arm-none-eabi cross builds.
@@ -33,8 +35,6 @@
 # Without them, every ephemeral snapshot directory (a fresh mktemp per `make ci`
 # run) would look like a different compilation and never hit.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Deliberately NOT include_guard()ed. The file is idempotent -- find_program

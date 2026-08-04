@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_gpt.c
  * @brief General PWM Timer (GPT) driver implementation
@@ -6,9 +10,6 @@
  * Provides a minimal "free-running 32-bit timer" interface on top of
  * the GPT register block. A full PWM / compare-match driver will
  * land once the motor-control layer needs it.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_gpt.h"

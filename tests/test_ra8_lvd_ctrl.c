@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file test_ra8_lvd_ctrl.c
  * @brief Runtime-control tests for ra8_lvd.c (PVD driver)
@@ -9,9 +13,6 @@
  * filter-delay helper, callback registration / ISR demux, threshold-table
  * sweep, and MC/DC vector tests; the init / deinit and single-bit setter
  * contract tests stay in test_ra8_lvd.c.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

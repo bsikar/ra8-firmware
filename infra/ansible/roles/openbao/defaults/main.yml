@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # openbao role defaults -- the secrets vault every other role reads credentials
 # from at run time.

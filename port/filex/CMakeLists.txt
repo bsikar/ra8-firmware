@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/filex/CMakeLists.txt
 #
@@ -11,8 +13,6 @@
 # `ra8_hal` sources, so this shim only needs to surface the include
 # directory + the one source file we expect the app to compile.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file ra8_sbrk_trap.c
  * @brief newlib _sbrk() trap stub -- enforces NASA Power of 10 Rule 3
@@ -27,9 +31,6 @@
  * (safety-critical)" and NASA Power of 10 Rule 3: "No dynamic memory
  * after initialisation") forbids any heap use in libs/ and src/.
  * This file is the hard enforcement layer.
- *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_sbrk_trap.h"

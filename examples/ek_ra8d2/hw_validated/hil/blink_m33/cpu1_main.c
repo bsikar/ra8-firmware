@@ -1,3 +1,7 @@
+/*
+ * SPDX-License-Identifier: MIT
+ * Copyright (c) 2026 Brighton Sikarskie
+ */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/blink_m33/cpu1_main.c
  * @brief CPU1 (Cortex-M33 secondary core) image: blink LED1 forever
@@ -24,8 +28,6 @@
  * @note Only PCNTR1 is touched (direction + output level); the LED pins power up
  *       routed to PORT, so no PmnPFS / PWPR pin-function setup is needed here.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
