@@ -180,7 +180,7 @@ static bool wifi_hal_run(void)
 static bool wifi_hal_report(const wifi_hal_result_t* res, bool joined)
 {
   wifi_hal_puts("wifi_hal: init=");
-  wifi_hal_puts(res->init_ok ? "ok" : "fail");
+  wifi_hal_puts(ra8_err_to_str(res->init_err));
   wifi_hal_puts("\r\n");
   if (!res->init_ok) {
     return false;
@@ -193,7 +193,9 @@ static bool wifi_hal_report(const wifi_hal_result_t* res, bool joined)
     return false;
   }
   if (!res->associated) {
-    wifi_hal_puts("wifi_hal: FAIL association did not complete\r\n");
+    wifi_hal_puts("wifi_hal: FAIL association did not complete connect=");
+    wifi_hal_puts(ra8_err_to_str(res->connect_err));
+    wifi_hal_puts("\r\n");
     return false;
   }
 
@@ -205,7 +207,9 @@ static bool wifi_hal_report(const wifi_hal_result_t* res, bool joined)
   wifi_hal_put_u32((uint32_t)res->ap.channel);
   wifi_hal_puts("\r\n");
   if (!res->ip_bound) {
-    wifi_hal_puts("wifi_hal: FAIL dhcp did not bind\r\n");
+    wifi_hal_puts("wifi_hal: FAIL dhcp did not bind err=");
+    wifi_hal_puts(ra8_err_to_str(res->ip_err));
+    wifi_hal_puts("\r\n");
     return false;
   }
   wifi_hal_print_lease(&res->lease);

@@ -97,12 +97,13 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_check_backend_session(const ra8_wifi_back
 }
 
 /**
- * @brief Validate the backend rows that only report state.
+ * @brief Validate the backend rows that report state or pace a wait.
  *
  * @details
- * The query half of ::ra8_wifi_backend_t -- pumping the transport and reading
- * back the station address and the associated AP. None of these change the
- * radio, which is why they are validated apart from the lifecycle rows.
+ * The observation half of ::ra8_wifi_backend_t -- pumping the transport,
+ * reading back the station address and the associated AP, and idling between
+ * attempts. None of these change the radio, which is why they are validated
+ * apart from the lifecycle rows.
  *
  * @param[in] b Candidate backend table; never null (the caller checked).
  *
@@ -124,6 +125,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_check_backend_query(const ra8_wifi_backen
   RA8_CHECK_NULL_PTR(b->service, RA8_WIFI_TAG, "backend.service");
   RA8_CHECK_NULL_PTR(b->get_mac, RA8_WIFI_TAG, "backend.get_mac");
   RA8_CHECK_NULL_PTR(b->get_ap, RA8_WIFI_TAG, "backend.get_ap");
+  RA8_CHECK_NULL_PTR(b->idle, RA8_WIFI_TAG, "backend.idle");
   return k_ra8_ok;
 }
 
@@ -249,7 +251,17 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_ensure_radio_up(ra8_wifi_t* wifi)
  * A join request only asks; association completes asynchronously, so the
  * transport has to be serviced until the link reports up. The poll count is a
  * compile-time bound (::k_ra8_wifi_join_polls), so this terminates whether or
- * not the AP ever answers -- NASA Power of 10 Rule 2.
+ * not the AP ever answers -- NASA Power of 10 Rule 2 -- and the backend idles
+ * ::k_ra8_wifi_poll_gap_ms between attempts, which is what makes that count a
+ * budget in seconds rather than in however fast the radio answers.
+ *
+ * A failed attempt ends the attempt, not the wait. Servicing a link whose radio
+ * is mid-association routinely fails: the co-processor is busy on the air and
+ * has nothing to hand back, which ::k_ra8_wifi_backend_c6link reports as
+ * ::k_ra8_err_hw_timeout. Treating the first such reading as fatal is what made
+ * association a coin toss on silicon, so the loop records the error and carries
+ * on, and reports it only if no attempt in the entire budget succeeded -- the
+ * one reading that does mean the radio is not there.
  *
  * @param[in,out] wifi Open handle with a join already requested.
  *
@@ -271,16 +283,28 @@ RA8_BOUNDED_LOOP(k_ra8_wifi_join_polls)
 static ra8_err_t ra8_wifi_await_association(ra8_wifi_t* wifi)
 {
   RA8_CHECK_NULL_PTR(wifi, RA8_WIFI_TAG, "wifi");
+  ra8_err_t last_fault = k_ra8_ok;
+  bool      answered   = false;
+
   for (uint16_t i = 0U; i < (uint16_t)k_ra8_wifi_join_polls; i++) {
     ra8_wifi_link_t link     = k_ra8_wifi_link_down;
     const ra8_err_t serviced = wifi->backend->service(wifi->backend_ctx, &link);
     if (serviced != k_ra8_ok) {
-      return serviced;
+      last_fault = serviced;
+    } else {
+      answered = true;
+      if (link == k_ra8_wifi_link_up) {
+        wifi->state = k_ra8_wifi_state_associated;
+        return k_ra8_ok;
+      }
     }
-    if (link == k_ra8_wifi_link_up) {
-      wifi->state = k_ra8_wifi_state_associated;
-      return k_ra8_ok;
-    }
+    wifi->backend->idle(wifi->backend_ctx, (uint16_t)k_ra8_wifi_poll_gap_ms);
+  }
+
+  /* Nothing answered across the whole budget: the radio is absent, not slow, so
+   * name the fault it kept reporting rather than calling it a plain timeout. */
+  if (!answered) {
+    return last_fault;
   }
   return k_ra8_err_timeout;
 }
@@ -418,6 +442,16 @@ ra8_err_t ra8_wifi_get_mac(ra8_wifi_t* wifi, ra8_wifi_mac_t* out)
 
   const ra8_err_t got = wifi->backend->get_mac(wifi->backend_ctx, out);
   if (got != k_ra8_ok) {
+    /* A station's own address does not change while it is associated, so a
+     * cached one is the right answer when the radio cannot be re-asked. It
+     * routinely cannot: once the AP starts forwarding broadcast traffic this
+     * query competes with it for the link, and handing the caller
+     * 00:00:00:00:00:00 instead is how the bench first printed a null MAC into
+     * a run that had in fact associated. */
+    if (wifi->mac_valid) {
+      *out = wifi->mac;
+      return k_ra8_ok;
+    }
     *out = (ra8_wifi_mac_t){};
     return got;
   }

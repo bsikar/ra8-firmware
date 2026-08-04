@@ -100,11 +100,16 @@ typedef enum : uint8_t {
  * @details
  * ::ra8_wifi_connect drives association by asking the backend to service the
  * link a bounded number of times. The count exists to give that loop a
- * statically provable bound (NASA Power of 10 Rule 2); each service call paces
- * itself against the radio, so this is a ceiling and not a busy-spin.
+ * statically provable bound (NASA Power of 10 Rule 2), and the gap is what
+ * turns that count into wall time: a service call costs whatever the radio
+ * takes to answer, which on a link that is answering promptly is tens of
+ * milliseconds, so a budget of attempts alone would be spent in a couple of
+ * seconds -- less than an 802.11 association needs. The pair is the figure the
+ * bench proved: two hundred attempts, fifty milliseconds apart.
  *
  * @invariant ::k_ra8_wifi_join_polls is non-zero, so at least one association
  *            attempt is always made.
+ * @invariant ::k_ra8_wifi_poll_gap_ms is non-zero, so the wait cannot busy-spin.
  *
  * @par Example:
  * @code
@@ -115,8 +120,10 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_ra8_wifi_join_polls = 200U, /**< Times ::ra8_wifi_connect services the link
+  k_ra8_wifi_join_polls  = 200U, /**< Times ::ra8_wifi_connect services the link
                                      while waiting for the join to complete. */
+  k_ra8_wifi_poll_gap_ms = 50U,  /**< Milliseconds the facade idles between two
+                                     association attempts.                   */
 } ra8_wifi_budget_t;
 
 /**
@@ -482,9 +489,18 @@ typedef struct ra8_wifi {
  * @details
  * Starts the radio if it is not already on, reads and caches the station MAC,
  * asks the backend to associate, and services the link until the station joins
- * or the attempt budget (::k_ra8_wifi_join_polls) is spent. On success the
- * handle is at ::k_ra8_wifi_state_associated and ::ra8_wifi_wait_ip is the next
- * step.
+ * or the attempt budget (::k_ra8_wifi_join_polls) is spent, idling
+ * ::k_ra8_wifi_poll_gap_ms between attempts. On success the handle is at
+ * ::k_ra8_wifi_state_associated and ::ra8_wifi_wait_ip is the next step.
+ *
+ * @par A quiet link is not a failed one
+ * While an association is in flight the radio routinely has nothing to say, and
+ * a backend is entitled to report that as an error -- ::k_ra8_wifi_backend_c6link
+ * returns ::k_ra8_err_hw_timeout when the co-processor does not arm its
+ * handshake line. Such a reading ends the attempt, never the wait: the loop
+ * keeps servicing until the budget is spent, and only surfaces a service error
+ * when *no* attempt in the whole budget succeeded, which is the reading that
+ * really does mean the radio is gone.
  *
  * @param[in,out] wifi Open handle; must be non-null.
  * @param[in] ssid Target SSID, NUL-terminated; must be non-null and 1..
@@ -498,7 +514,9 @@ typedef struct ra8_wifi {
  * @retval k_ra8_err_invalid_size @p ssid was empty or a credential was too long.
  * @retval k_ra8_err_timeout The join did not complete within the budget.
  * @retval k_ra8_err_protocol_error The radio refused a step of the join.
- * @retval k_ra8_err_spi_error The backend's transport refused a transfer.
+ * @retval k_ra8_err_spi_error The backend's transport refused every transfer of
+ *         the whole budget.
+ * @retval k_ra8_err_hw_timeout The radio answered no attempt of the whole budget.
  *
  * @pre @p wifi has been initialised.
  * @pre @p ssid names a network that is in range.
@@ -720,15 +738,23 @@ typedef struct ra8_wifi {
  * it out. The address is a property of the radio's efuses, so it is stable
  * across resets and available once the radio has been started.
  *
+ * That stability is also the fallback: when the backend cannot be asked -- an
+ * associated station shares its link with the traffic the AP has begun
+ * forwarding, and a query can lose that race -- the cached address ::ra8_wifi_connect
+ * already read is returned instead. Only a handle that has never held a valid
+ * address reports the failure, because only then is there no answer to give.
+ *
  * @param[in,out] wifi Open handle; must be non-null.
  * @param[out] out Address to fill; must be non-null.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok @p out holds the station address.
+ * @retval k_ra8_ok @p out holds the station address, freshly read or cached.
  * @retval k_ra8_err_null_ptr @p wifi or @p out was null.
  * @retval k_ra8_err_not_initialized @p wifi is not open.
- * @retval k_ra8_err_protocol_error The backend reported no valid address.
- * @retval k_ra8_err_spi_error The backend's transport refused a transfer.
+ * @retval k_ra8_err_protocol_error The backend reported no valid address and no
+ *         address has ever been cached.
+ * @retval k_ra8_err_spi_error The backend's transport refused a transfer and no
+ *         address has ever been cached.
  *
  * @pre @p wifi has been initialised.
  * @pre The radio has been started at least once, which ::ra8_wifi_connect does.

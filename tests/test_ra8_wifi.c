@@ -35,15 +35,16 @@
  * @brief Sizes and sentinels this test owns.
  */
 typedef enum : uint32_t {
-  k_t_ip        = 0xC0A80164U, /**< 192.168.1.100 as a leased address.    */
-  k_t_mask      = 0xFFFFFF00U, /**< 255.255.255.0.                        */
-  k_t_gw        = 0xC0A80101U, /**< 192.168.1.1 gateway.                  */
-  k_t_server    = 0xC0A801FEU, /**< 192.168.1.254 DHCP server.            */
-  k_t_up_after  = 3U,          /**< Service cycles before the mock joins. */
-  k_t_ssid_cap  = 64U,         /**< Capacity of the recorded-SSID buffer. */
-  k_t_mac_last  = 5U,          /**< Index of the low octet of a MAC.      */
-  k_t_mac_low   = 0x2AU,       /**< Low octet the mock reports.           */
-  k_t_mac_first = 0x02U,       /**< High octet: locally administered.     */
+  k_t_ip          = 0xC0A80164U, /**< 192.168.1.100 as a leased address.          */
+  k_t_mask        = 0xFFFFFF00U, /**< 255.255.255.0.                              */
+  k_t_gw          = 0xC0A80101U, /**< 192.168.1.1 gateway.                        */
+  k_t_server      = 0xC0A801FEU, /**< 192.168.1.254 DHCP server.                  */
+  k_t_up_after    = 3U,          /**< Service cycles before the mock joins.       */
+  k_t_quiet_polls = 5U,          /**< Attempts the mock radio answers not at all. */
+  k_t_ssid_cap    = 64U,         /**< Capacity of the recorded-SSID buffer.       */
+  k_t_mac_last    = 5U,          /**< Index of the low octet of a MAC.            */
+  k_t_mac_low     = 0x2AU,       /**< Low octet the mock reports.                 */
+  k_t_mac_first   = 0x02U,       /**< High octet: locally administered.           */
 } t_wifi_const_t;
 
 /** @brief Signed constants the mock reports (an enum cannot mix signedness). */
@@ -55,10 +56,15 @@ typedef enum : int8_t {
 typedef struct t_mock {
   int open_n, close_n, up_n, down_n, join_n, leave_n, service_n, mac_n, ap_n, ip_n;
   /**< Call counters, one per backend/ip operation. */
+  int idle_n;
+  /**< Times the facade paced itself through the `idle` row. */
+  uint16_t idle_ms;
+  /**< Gap in milliseconds the last `idle` was asked for. */
   ra8_err_t open_ret, close_ret, up_ret, down_ret, join_ret, leave_ret, service_ret;
   /**< Result each backend row returns next. */
   ra8_err_t mac_ret, ap_ret, ip_ret;
   /**< Result get_mac / get_ap / the ip provider return next. */
+  uint16_t         service_fail_first;      /**< Fail this many services, then answer.    */
   ra8_wifi_link_t  link;                    /**< Link state the mock reports directly.    */
   uint16_t         up_after;                /**< Report up once `service_n` reaches this. */
   ra8_wifi_mac_t   mac;                     /**< Address `get_mac` returns.               */
@@ -121,6 +127,11 @@ static ra8_err_t t_service(void* ctx, ra8_wifi_link_t* out_link)
 {
   (void)ctx;
   s_m.service_n++;
+  /* A radio that is busy on the air answers nothing for a while and then starts
+   * answering: the silicon behaviour a permanent `service_ret` cannot express. */
+  if ((uint16_t)s_m.service_n <= s_m.service_fail_first) {
+    return k_ra8_err_hw_timeout;
+  }
   if (s_m.service_ret != k_ra8_ok) {
     return s_m.service_ret;
   }
@@ -167,6 +178,13 @@ static ra8_err_t t_ip_bind(void* ctx, const ra8_wifi_mac_t* mac, ra8_wifi_lease_
   return k_ra8_ok;
 }
 
+static void t_idle(void* ctx, uint16_t ms)
+{
+  (void)ctx;
+  s_m.idle_n++;
+  s_m.idle_ms = ms;
+}
+
 /** @brief A complete, working backend table the tests copy and dent. */
 static const ra8_wifi_backend_t k_t_backend = {
   .open       = t_open,
@@ -178,6 +196,7 @@ static const ra8_wifi_backend_t k_t_backend = {
   .service    = t_service,
   .get_mac    = t_get_mac,
   .get_ap     = t_get_ap,
+  .idle       = t_idle,
 };
 
 /** @brief Reset the mock to "everything succeeds" defaults. */
@@ -244,6 +263,9 @@ static void test_init_validation(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wifi_init(&wifi, &bad));
   dented        = k_t_backend;
   dented.get_ap = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wifi_init(&wifi, &bad));
+  dented      = k_t_backend;
+  dented.idle = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wifi_init(&wifi, &bad));
 
   TEST_ASSERT_EQ(0, s_m.open_n); /* nothing opened while validation failed */
@@ -351,6 +373,49 @@ static void test_connect_success_and_reuse(void)
 }
 
 /**
+ * @test connect survives a radio that is quiet while it associates
+ *
+ * The silicon defect behind #586: ``ra8_wifi_backend_c6link``'s `service` maps
+ * onto the co-processor pump, which reports ::k_ra8_err_hw_timeout whenever the
+ * co-processor arms nothing -- its normal state while an 802.11 association is
+ * in flight. The wait used to return that first reading, so whether the station
+ * ever joined depended on whether the radio happened to stay chatty, and the
+ * bench saw the same image pass and fail alternately. The wait must ride out a
+ * quiet stretch and still associate when the link finally reports up.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- it exercises the
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_connect_rides_out_a_quiet_radio(void)
+{
+  TEST_BEGIN("wifi connect rides out a quiet radio");
+  t_reset();
+  ra8_wifi_t     wifi = {};
+  ra8_wifi_cfg_t cfg  = t_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_init(&wifi, &cfg));
+
+  /* Quiet for the first few attempts, then up on the one after. */
+  s_m.service_fail_first = (uint16_t)k_t_quiet_polls;
+  s_m.up_after           = (uint16_t)k_t_quiet_polls + 1U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_connect(&wifi, "ra8-bench", "secret"));
+  TEST_ASSERT_EQ(k_t_quiet_polls + 1, s_m.service_n);
+
+  ra8_wifi_status_t st = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_status(&wifi, &st));
+  TEST_ASSERT(st.associated);
+
+  /* Every attempt that did not associate paced itself, so the budget is spent
+   * in seconds and not in however fast the backend can answer. */
+  TEST_ASSERT_EQ(k_t_quiet_polls, s_m.idle_n);
+  TEST_ASSERT_EQ(k_ra8_wifi_poll_gap_ms, s_m.idle_ms);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_deinit(&wifi));
+  TEST_END("wifi connect rides out a quiet radio");
+}
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- it exercises the
  * happy path / error-rejection contract; no `&&` or `||` in the
@@ -385,10 +450,14 @@ static void test_connect_failure_paths(void)
   s_m.join_ret = k_ra8_err_protocol_error;
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_wifi_connect(&wifi, "x", "y"));
 
-  /* service failure while waiting. */
+  /* Service failing for the WHOLE budget is the radio being absent, so its own
+   * error is reported rather than a plain timeout -- and the wait spends the
+   * entire budget first, because one bad reading proves nothing. */
   s_m.join_ret    = k_ra8_ok;
   s_m.service_ret = k_ra8_err_spi_error;
+  s_m.service_n   = 0;
   TEST_ASSERT_EQ(k_ra8_err_spi_error, ra8_wifi_connect(&wifi, "x", "y"));
+  TEST_ASSERT_EQ(k_ra8_wifi_join_polls, s_m.service_n);
 
   /* never associates -> timeout after servicing the full poll budget. */
   s_m.service_ret = k_ra8_ok;
@@ -570,10 +639,22 @@ static void test_get_mac(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_init(&wifi, &cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wifi_get_mac(&wifi, nullptr));
 
+  /* Nothing has ever been read, so there is no answer to fall back on and the
+   * backend's failure is the only honest reply. */
   s_m.mac_ret = k_ra8_err_protocol_error;
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_wifi_get_mac(&wifi, &mac));
 
   s_m.mac_ret = k_ra8_ok;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_get_mac(&wifi, &mac));
+  TEST_ASSERT_EQ(0x02, mac.octet[0]);
+  TEST_ASSERT_EQ(0x2A, mac.octet[5]);
+
+  /* Once one HAS been read, a failed re-read serves the cached address instead
+   * of handing the caller 00:00:00:00:00:00 -- a station's own address cannot
+   * change under it, and the bench printed exactly that null MAC out of a run
+   * that had associated (#586). */
+  mac         = (ra8_wifi_mac_t){};
+  s_m.mac_ret = k_ra8_err_spi_error;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wifi_get_mac(&wifi, &mac));
   TEST_ASSERT_EQ(0x02, mac.octet[0]);
   TEST_ASSERT_EQ(0x2A, mac.octet[5]);
@@ -683,6 +764,7 @@ int main(void)
   test_init_open_paths();
   test_deinit();
   test_connect_success_and_reuse();
+  test_connect_rides_out_a_quiet_radio();
   test_connect_failure_paths();
   test_wait_ip();
   test_get_ip_not_open();

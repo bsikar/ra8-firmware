@@ -22,8 +22,9 @@
  * keeps its state private, and returns an ::ra8_err_t the facade propagates.
  * Together the rows are the smallest set that expresses a station's life:
  * bring the link up, start and stop the radio, join and leave a network,
- * service the wire, and read the two facts an IP stack needs -- the station MAC
- * and the associated AP.
+ * service the wire, read the two facts an IP stack needs -- the station MAC and
+ * the associated AP -- and idle between attempts so a bounded wait measures
+ * seconds rather than however fast the backend happens to answer.
  *
  * @see ra8_wifi.h
  * @see ra8_wifi_c6link.h
@@ -38,6 +39,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <stdint.h>
 
 #include "ra8_err.h"
 #include "ra8_wifi.h"
@@ -141,6 +144,22 @@ struct ra8_wifi_backend {
    * @return ::k_ra8_ok when @p out describes the association.
    */
   ra8_err_t (*get_ap)(void* ctx, ra8_wifi_ap_t* out);
+
+  /**
+   * @brief Idle for @p ms milliseconds, pacing a bounded wait.
+   * @details The facade counts poll attempts, not milliseconds, so without this
+   *          row its association wait would run as fast as the backend could
+   *          answer -- and a link that answers in tens of milliseconds spends a
+   *          two-hundred-attempt budget in a couple of seconds, far less than an
+   *          802.11 association takes. This is the only seam through which the
+   *          facade reaches a clock; a backend implements it with whatever delay
+   *          its transport already owns, and a host test makes it instantaneous.
+   *          It cannot fail, so it returns nothing.
+   * @param[in,out] ctx Backend context.
+   * @param[in] ms Milliseconds to idle for.
+   * @return Nothing.
+   */
+  void (*idle)(void* ctx, uint16_t ms);
 };
 
 #ifdef __cplusplus

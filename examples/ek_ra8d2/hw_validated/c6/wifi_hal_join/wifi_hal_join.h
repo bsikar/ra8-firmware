@@ -168,6 +168,10 @@ extern const char k_wifi_hal_fail_line[];
  * @invariant `passed` is true exactly when `ip_bound` is, i.e. the whole
  *            journey completed.
  * @invariant `associated` is set before `ip_bound` can be.
+ * @invariant Each `*_err` is the verdict of the call it names, or
+ *            ::k_ra8_err_not_initialized where the run stopped before that call
+ *            was reached -- so a failure always names a step and a reason
+ *            rather than only "init=fail".
  * @par Example:
  * @code
  * wifi_hal_result_t res = {};
@@ -177,13 +181,16 @@ extern const char k_wifi_hal_fail_line[];
  * @since 0.1.0
  */
 typedef struct wifi_hal_result {
-  bool             init_ok;    /**< The facade initialised.         */
-  bool             associated; /**< The station joined the network. */
-  bool             ip_bound;   /**< A DHCP lease was obtained.      */
-  bool             passed;     /**< The whole journey completed.    */
-  ra8_wifi_mac_t   mac;        /**< Station MAC, once associated.   */
-  ra8_wifi_ap_t    ap;         /**< AP record, once associated.     */
-  ra8_wifi_lease_t lease;      /**< The DHCP lease, once bound.     */
+  bool             init_ok;     /**< The facade initialised.           */
+  bool             associated;  /**< The station joined the network.   */
+  bool             ip_bound;    /**< A DHCP lease was obtained.        */
+  bool             passed;      /**< The whole journey completed.      */
+  ra8_err_t        init_err;    /**< What ::ra8_wifi_init returned.    */
+  ra8_err_t        connect_err; /**< What ::ra8_wifi_connect returned. */
+  ra8_err_t        ip_err;      /**< What ::ra8_wifi_wait_ip returned. */
+  ra8_wifi_mac_t   mac;         /**< Station MAC, once associated.     */
+  ra8_wifi_ap_t    ap;          /**< AP record, once associated.       */
+  ra8_wifi_lease_t lease;       /**< The DHCP lease, once bound.       */
 } wifi_hal_result_t;
 
 /**

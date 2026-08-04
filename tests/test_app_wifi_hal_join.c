@@ -97,6 +97,12 @@ static ra8_err_t m_get_ap(void* ctx, ra8_wifi_ap_t* out)
   return k_ra8_ok;
 }
 
+static void m_idle(void* ctx, uint16_t ms)
+{
+  (void)ctx;
+  (void)ms;
+}
+
 /** @brief A backend that always succeeds and reports link per ::s_link_up. */
 static const ra8_wifi_backend_t k_mock = {
   .open       = m_ok,
@@ -108,6 +114,7 @@ static const ra8_wifi_backend_t k_mock = {
   .service    = m_service,
   .get_mac    = m_get_mac,
   .get_ap     = m_get_ap,
+  .idle       = m_idle,
 };
 
 static ra8_err_t m_ip_bind(void* ctx, const ra8_wifi_mac_t* mac, ra8_wifi_lease_t* out)
@@ -228,6 +235,10 @@ static void test_app_association_fails(void)
   TEST_ASSERT(!res.associated);
   TEST_ASSERT(!res.ip_bound);
   TEST_ASSERT(!res.passed);
+  TEST_ASSERT_EQ(k_ra8_err_timeout, res.connect_err);
+  /* wait_ip was never reached, so its slot still says so rather than lying
+   * about a call that did not happen. */
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, res.ip_err);
   TEST_END("wifi_hal_join association fails");
 }
 
@@ -250,6 +261,11 @@ static void test_app_dhcp_fails(void)
   TEST_ASSERT(res.associated); /* got as far as association... */
   TEST_ASSERT(!res.ip_bound);  /* ...but no lease.             */
   TEST_ASSERT(!res.passed);
+  /* The run names the step and the reason, so a bench failure is diagnosable
+   * from the console alone rather than costing another flash to find out. */
+  TEST_ASSERT_EQ(k_ra8_ok, res.init_err);
+  TEST_ASSERT_EQ(k_ra8_ok, res.connect_err);
+  TEST_ASSERT_EQ(k_ra8_err_timeout, res.ip_err);
   TEST_END("wifi_hal_join dhcp fails");
 }
 
