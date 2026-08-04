@@ -1,7 +1,9 @@
 # ESP32-C6 wireless co-processor firmware
 
-The EK-RA8D2 gains Wi-Fi + Bluetooth by pairing the RA8D2 host with an
-**ESP32-C6** acting as a wireless co-processor. The C6 runs Espressif's
+The EK-RA8D2 gains Wi-Fi by pairing the RA8D2 host with an **ESP32-C6** acting
+as a wireless co-processor (Bluetooth over the same link is planned, not
+delivered -- the host `drivers/bt/` bridge is excluded from the build and the
+BLE HCI seam is still on loopback, #493). The C6 runs Espressif's
 **esp-hosted-mcu** `network_adapter` application (the peripheral-side, or
 upstream "slave", firmware) over a SPI transport; the RA8 is the host that <!-- LEGACY-OK: names the upstream esp-hosted-mcu role verbatim; our term is peripheral-side -->
 drives it.
@@ -10,8 +12,10 @@ drives it.
 esp-hosted-mcu, vendored-in as Software Of Unknown Provenance (SOUP). This
 directory holds only the *build recipe* (pinned versions, our proven
 `sdkconfig.defaults`, and reproducible build/flash scripts) -- not any source
-that runs on the C6. The RA8-side host driver is a separate follow-on and is
-**not** part of this directory.
+that runs on the C6. The RA8-side host driver is **not** part of this
+directory: it lives in `libs/third_party/esp-hosted/` (vendored),
+`port/esp-hosted/` (the first-party port) and `libs/ra8_c6link/` (the driver),
+all landed.
 
 - SOUP qualification: [`../../docs/SOUP/esp-hosted.md`](../../docs/SOUP/esp-hosted.md)
 - Architecture: [`../../docs/design/c6_wireless_architecture.md`](../../docs/design/c6_wireless_architecture.md)

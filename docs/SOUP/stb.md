@@ -13,8 +13,10 @@ libraries into this firmware as Software Of Unknown Provenance (SOUP).
   - `stb_truetype.h` v1.26 (per file header).
 - **Upstream URL**: https://github.com/nothings/stb
 - **Local path**: `libs/third_party/stb/`
-  - Files in tree: `stb_image.h`, `stb_truetype.h`,
-    `stb_truetype_impl.c`.
+  - Files in tree (four): `stb_image.h`, `stb_truetype.h`, and the two
+    first-party implementation TUs `stb_image_impl.c` and
+    `stb_truetype_impl.c` (matching `docs/sbom/upstream/stb.manifest`:
+    4 vendored files, 2 of them local).
 
 ## Provenance
 
@@ -36,8 +38,16 @@ libraries into this firmware as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
-- `stb_image`: PNG / JPEG decoding for cover art and inline EPUB images
-  inside `libs/ra8_epub/` and `libs/ra8_gfx/`.
+- `stb_image`: raster decoding on the reader's image path. The compiled format
+  set is JPEG, PNG, **GIF and BMP** (`STBI_ONLY_JPEG` / `_PNG` / `_GIF` /
+  `_BMP` in `stb_image_impl.c`); GIF and BMP are silicon-validated by
+  `ereader_imgfmt` (#143). GIF in particular is the historically CVE-dense
+  loader in this set and is in the hazard scope accordingly. The call sites are
+  `libs/ra8_reflow/src/ra8_reflow_image.c` (with
+  `ra8_reflow_layout_image.c`) and
+  `libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c` -- **not**
+  `libs/ra8_epub/` or `libs/ra8_gfx/`, neither of which calls any `stbi_*`
+  function.
 - `stb_truetype`: TTF font rasterization for the EPUB reader's text
   layout path.
 - Integrity claim category: data-handling (decoders consume locally
@@ -66,8 +76,11 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 - Both decoders run only on locally staged content (EPUB payloads);
   there is no network-driven decoding path.
-- Output buffer sizes are bounded by the framebuffer dimensions in
-  `libs/ra8_gfx/`.
+- Decode size is bounded before any pixel is written: `STBI_MAX_DIMENSIONS`
+  8192 per axis (`stb_image_impl.c`, T5-03/#179) caps the declared image, and
+  every allocation on the path comes from the fixed `ra8_img_arena` bump arena
+  (`libs/ra8_reflow/`), which returns NULL on exhaustion rather than growing a
+  heap this firmware does not have.
 
 ## Deviations / patches
 
@@ -158,6 +171,10 @@ AddressSanitizer.
 ## Last review date
 
 - Reviewed: 2026-05-02
+- File list, use case and decode bounds re-verified against the tree and
+  corrected (#623): 2026-08-04. `stb_image_impl.c` was missing from the file
+  list, the call sites named two libraries that call nothing, and the compiled
+  GIF/BMP loaders were unstated.
 - stb_truetype.h memory-safety hardening: 2026-07-15
 - stb_truetype.h rasteriser arena-exhaustion NULL-deref guard: 2026-07-25
 - Expected re-review by: 2027-05-02

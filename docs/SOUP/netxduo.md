@@ -27,11 +27,33 @@ firmware as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
-- Dual IPv4/IPv6 TCP/IP stack, plus NetX Secure (TLS), used by
-  `examples/ek_ra8d2/threadx_netx_tcp_echo` and the OTA demo's update
-  download path (`threadx_ota_demo` via `libs/ra8_ota`).
-- Integrity claim category: data-handling (frame parsing, TLS record
-  layer).
+- Dual IPv4/IPv6 TCP/IP stack. **The TCP/IP core only** -- see "What is not
+  built" below. Two driver bindings carry it:
+  - Wired, over the on-chip Ethernet MAC:
+    `port/netxduo/src/nx_ether_driver_ra8_eth.c`, used by
+    `examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo` and by the two
+    TLS apps (`examples/ek_ra8d2/hw_pending/tls_client`,
+    `examples/_unsupported/threadx_https_client`), which get their TLS from
+    Mbed TLS, not from this component.
+  - Wireless, over the ESP32-C6 co-processor:
+    `port/netxduo/src/nx_ether_driver_c6.c` (the `netxduo_port_c6` target),
+    used by the two hw_validated Wi-Fi apps
+    `examples/ek_ra8d2/hw_validated/c6/{c6_wifi_join,wifi_hal_join}`, which
+    additionally compile the vendored DHCP client
+    (`addons/dhcp/nxd_dhcp_client.c`) to take an address on the bench network.
+- Integrity claim category: data-handling (frame parsing).
+
+### What is not built
+
+- **NetX Secure is compiled by nothing.** `cmake/netxduo.cmake` adds
+  `nx_secure/inc` to the include path and nothing else; it deliberately
+  excludes the one crypto TU that includes `nx_secure_tls.h`. All 314
+  `nx_secure/` files are outside the build graph. TLS in this firmware is Mbed
+  TLS behind `libs/ra8_tls/`; no NetX TLS record layer exists in any image, so
+  this qualification makes no TLS claim.
+- The OTA download path this document used to cite is gone: `threadx_ota_demo`
+  was deleted in `d38587e80`, and `libs/ra8_ota` has never referenced NetX --
+  it takes a dependency-injected interface.
 
 ## Qualification basis
 
@@ -55,13 +77,14 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- All board-specific Ethernet/PHY plumbing is isolated in
-  `libs/ra8_net_pal/` (NetX Duo PAL) so the SOUP boundary is a single
-  driver shim.
-- TLS record handling is wrapped behind `libs/ra8_tls/` for use-case
-  policy enforcement.
-- Demo-only use in this revision; no safety-critical control loop runs
-  over the network.
+- The SOUP boundary is a single driver shim per link, and both shims are
+  first-party: `port/netxduo/src/nx_ether_driver_ra8_eth.c` calls the
+  `ra8_eth_*` HAL directly, and `nx_ether_driver_c6.c` bridges onto
+  `libs/ra8_c6link/`. (Neither goes through `libs/ra8_net_pal/`, whose
+  consumers are `ra8_nsc_eth` and the host tests.)
+- No safety-critical control loop runs over the network, and nothing in the
+  product image depends on the link: the consumers are bench and bring-up
+  applications.
 
 ## Deviations / patches
 
@@ -85,4 +108,9 @@ and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
 ## Last review date
 
 - Reviewed: 2026-05-02
+- Use case + risk mitigation re-verified against the tree and corrected
+  (#621): 2026-08-04. The document claimed a NetX Secure TLS role that no
+  build has, cited an application deleted in `d38587e80`, put the driver
+  boundary in a library the drivers do not call, and omitted the Wi-Fi
+  consumers entirely.
 - Expected re-review by: 2027-05-02

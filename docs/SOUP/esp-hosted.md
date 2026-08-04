@@ -47,9 +47,13 @@ protocol version 2.12.11, which is what makes them wire-compatible.
 
 ## Use case in this project
 
-- The ESP32-C6 is a **wireless co-processor**: it provides Wi-Fi and Bluetooth
-  to the RA8D2 host over a SPI transport. The C6 runs the esp-hosted-mcu
-  peripheral-side firmware; the RA8D2 is the host driving it.
+- The ESP32-C6 is a **wireless co-processor** reached over a SPI transport,
+  running the esp-hosted-mcu peripheral-side firmware with the RA8D2 as host.
+  **Wi-Fi is what works today** and is bench-proven (station join + DHCP on
+  `hw_validated/c6/`). Bluetooth is planned, not delivered: `cmake/esp_hosted.cmake`
+  excludes the host `drivers/bt/` bridge, `coprocessor/esp32c6/sdkconfig.defaults`
+  says nothing about the BT stack so what the C6 image contains is
+  undetermined, and the RA8-side BLE work is still open (#493).
 - **Zero first-party code runs on the C6.** The entire C6 image is upstream
   esp-hosted-mcu. This is why it is catalogued as co-processor firmware SOUP
   rather than a linked library: it never enters the RA8D2 firmware binary.
@@ -84,8 +88,10 @@ DO-178C Section 12.1.4 (previously developed software):
   connectivity path and cannot corrupt RA8D2 state outside the host driver.
 - The build is fully pinned (esp-idf `v5.5.4` + commit `949bb30` +
   verbatim `sdkconfig.defaults`), so the flashed image is reproducible.
-- All host-side access will be mediated through a single RA8 driver (a
-  separate follow-on), keeping one integration boundary.
+- Host-side access is mediated through first-party RA8 code -- the port at
+  `port/esp-hosted/` and the driver `libs/ra8_c6link/`, both landed -- keeping
+  one integration boundary. (Two bring-up applications still reach vendored
+  headers directly; see `esp-hosted-host.md`.)
 
 ## Deviations / patches
 
@@ -104,6 +110,9 @@ OSV.dev alongside the vendored SOUP.
 ## Last review date
 
 - Reviewed: 2026-07-26 (build recipe codified from the bench-proven build)
+- Use case + mitigation tense corrected against the tree (#612): 2026-08-04.
+  The RA8-side driver is no longer a "follow-on", and the Bluetooth half is
+  now stated as planned rather than provided.
 - Expected re-review by: 2027-07-26
 
 ## See also
