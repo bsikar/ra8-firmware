@@ -61,6 +61,9 @@ extern "C" {
  * @details The cache entries live in the FAT root with 8.3 short names so the
  *          reader's root-only `ra8_fs_open()` can re-read them. The name is the
  *          8 uppercase-hex digits of the source CRC-32 plus a 3-char extension.
+ *          The CRC keys the cache; it is not a workaround for a name limit any
+ *          more, since `ra8_fs` writes long names as of #600. Putting the book's
+ *          own title here instead is #633.
  * @since Version 0.1.0
  */
 typedef enum : uint8_t {

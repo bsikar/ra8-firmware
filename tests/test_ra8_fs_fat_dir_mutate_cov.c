@@ -103,31 +103,37 @@ static void test_unlink_bad_parent(void)
 
 /**
  * @test test_unlink_bad_83
- * @brief unlink with a non-8.3 leaf name returns k_ra8_err_invalid_arg (line 408).
+ * @brief unlink with a name that is not 8.3 now reports not_found, not invalid_arg.
  *
- * @details priv_path_to_83("bad name!") returns 0 -> line 408.
+ * @details Deleting never had to pack a name to 8.3 -- it has to FIND one. Since
+ *          #600, `"bad name!"` is a name a volume could genuinely hold, so the
+ *          honest answer for a volume that does not hold it is
+ *          `k_ra8_err_not_found`; `priv_dir_lookup_any()` misses on both the 8.3
+ *          and the long-name pass. The old `k_ra8_err_invalid_arg` said "that is
+ *          not a name", which stopped being true.
  *
  * @par MC/DC:
- * Decision: `if (priv_path_to_83(leaf, name83) == 0U)` (line 407, 1 condition).
- * V1: valid 8.3 -> false (continues to dir_find).
- * V2: invalid 8.3 -> true -> line 408.
+ * Decision: `if (err == k_ra8_err_not_found)` in `priv_dir_lookup_any()`
+ * (1 condition).
+ * V1: the 8.3 pass matched -> false (every other unlink case here).
+ * V2: it did not           -> true  -> the long-name pass runs and also misses.
  *
  * @pre FAT16 volume is mounted.
- * @post Result is k_ra8_err_invalid_arg.
+ * @post Result is k_ra8_err_not_found and the volume is unchanged.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
 static void test_unlink_bad_83(void)
 {
-  TEST_BEGIN("unlink: non-8.3 leaf -> invalid_arg (line 408)");
+  TEST_BEGIN("unlink: a long name that is absent -> not_found");
   build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_unlink(h, "/bad name!"));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_unlink(h, "/bad name!"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_vol();
-  TEST_END("unlink: non-8.3 leaf -> invalid_arg (line 408)");
+  TEST_END("unlink: a long name that is absent -> not_found");
 }
 
 /**
@@ -380,62 +386,73 @@ static void test_rename_cross_subdir(void)
 
 /**
  * @test test_rename_old_bad_83
- * @brief rename where old_path leaf is not 8.3 returns k_ra8_err_invalid_arg (line 491).
+ * @brief rename of an absent long name reports not_found, not invalid_arg.
  *
- * @details priv_rename_prepare: both parents resolve to root (ok). priv_path_to_83
- *          for the old leaf "bad name!" fails (contains spaces/punctuation) -> line 491.
+ * @details `priv_rename_prepare()` no longer packs either leaf: since #600 both
+ *          sides may be long names, so whether one fits 8.3 is not the rename's
+ *          question. `"bad name!"` is a name a volume could hold; this one does
+ *          not, so the lookup misses on both passes.
  *
  * @par MC/DC:
- * Decision: `if (priv_path_to_83(ol, old83) == 0U)` (line 490, 1 condition).
- * V1: valid 8.3 old name -> false (continues to new name check).
- * V2: invalid 8.3 old name -> true -> line 491.
+ * Decision: `if (err != k_ra8_ok)` after the old-name lookup in
+ * `priv_fat_rename()` (1 condition).
+ * V1: the old name resolved -> false (test_rename_success).
+ * V2: it did not            -> true  -> k_ra8_err_not_found.
  *
  * @pre FAT16 volume is mounted.
- * @post Result is k_ra8_err_invalid_arg.
+ * @post Result is k_ra8_err_not_found and the volume is unchanged.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
 static void test_rename_old_bad_83(void)
 {
-  TEST_BEGIN("rename: old leaf not 8.3 -> invalid_arg (line 491)");
+  TEST_BEGIN("rename: absent long old leaf -> not_found");
   build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rename(h, "/bad name!", "/NEW.TXT"));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rename(h, "/bad name!", "/NEW.TXT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_vol();
-  TEST_END("rename: old leaf not 8.3 -> invalid_arg (line 491)");
+  TEST_END("rename: absent long old leaf -> not_found");
 }
 
 /**
  * @test test_rename_new_bad_83
- * @brief rename where new_path leaf is not 8.3 returns k_ra8_err_invalid_arg (line 494).
+ * @brief rename to a name no encoding can hold returns k_ra8_err_invalid_arg.
  *
- * @details priv_rename_prepare: both parents resolve to root (ok). Old leaf
- *          "OLD.TXT" packs to 8.3 successfully. New leaf "bad name!" fails -> line 494.
+ * @details The new leaf `"bad?name"` carries a `?`, illegal in a long name as
+ *          well as an 8.3 one, so `priv_dir_reserve()` refuses it. The refusal
+ *          happens before anything is written -- proved by the file still being
+ *          openable under its original name afterwards.
  *
  * @par MC/DC:
- * Decision: `if (priv_path_to_83(nl, new83) == 0U)` (line 493, 1 condition).
- * V1: valid 8.3 new name -> false (parent set, returns k_ra8_ok).
- * V2: invalid 8.3 new name -> true -> line 494.
+ * Decision: `if (kind == k_name_kind_invalid)` in `priv_dir_reserve()`
+ * (1 condition).
+ * V1: a storable new name -> false (test_rename_success).
+ * V2: `"bad?name"`        -> true  -> k_ra8_err_invalid_arg.
  *
- * @pre FAT16 volume is mounted.
- * @post Result is k_ra8_err_invalid_arg.
+ * @pre FAT16 volume is mounted and holds /OLD.TXT.
+ * @post Result is k_ra8_err_invalid_arg and /OLD.TXT still resolves.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
 static void test_rename_new_bad_83(void)
 {
-  TEST_BEGIN("rename: new leaf not 8.3 -> invalid_arg (line 494)");
+  TEST_BEGIN("rename: unstorable new leaf -> invalid_arg");
   build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rename(h, "/OLD.TXT", "/bad name!"));
+  ra8_fs_file_t* f = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/OLD.TXT", k_ra8_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rename(h, "/OLD.TXT", "/bad?name"));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/OLD.TXT", k_ra8_fs_mode_read, &f));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_vol();
-  TEST_END("rename: new leaf not 8.3 -> invalid_arg (line 494)");
+  TEST_END("rename: unstorable new leaf -> invalid_arg");
 }
 
 /* ===========================================================================

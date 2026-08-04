@@ -319,15 +319,20 @@ static void test_mkdir_exfat(void)
 
 /**
  * @test test_mkdir_bad_leaf
- * @brief mkdir with a non-8.3 leaf name returns k_ra8_err_invalid_arg (line 283).
+ * @brief mkdir with a name no encoding can hold returns k_ra8_err_invalid_arg.
  *
- * @details The leaf "bad name!" contains a space and '!' which are not valid
- *          8.3 characters. priv_path_to_83 returns 0 -> line 283.
+ * @details `"bad?name"` carries a `?`, which is illegal in a long name as well
+ *          as in an 8.3 one, so ::priv_name_classify() reports
+ *          `k_name_kind_invalid` and `priv_dir_reserve()` refuses. The sibling
+ *          case `"bad name!"` -- illegal in 8.3 only, because of the space --
+ *          is created as a long name since #600 and is covered in
+ *          test_ra8_fs_lfn_write.c.
  *
  * @par MC/DC:
- * Decision: `if (priv_path_to_83(leaf, name83) == 0U)` (line 282, 1 condition).
- * V1: valid 8.3 -> false (continues to dir_find).
- * V2: invalid 8.3 -> true -> line 283.
+ * Decision: `if (kind == k_name_kind_invalid)` in `priv_dir_reserve()`
+ * (1 condition).
+ * V1: a storable name -> false (every other mkdir case here).
+ * V2: `"bad?name"`     -> true  -> k_ra8_err_invalid_arg.
  *
  * @pre FAT16 volume is mounted.
  * @post Result is k_ra8_err_invalid_arg.
@@ -337,14 +342,14 @@ static void test_mkdir_exfat(void)
  */
 static void test_mkdir_bad_leaf(void)
 {
-  TEST_BEGIN("mkdir: non-8.3 leaf -> invalid_arg (line 283)");
+  TEST_BEGIN("mkdir: unstorable leaf -> invalid_arg");
   build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_mkdir(h, "/bad name!"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_mkdir(h, "/bad?name"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_vol();
-  TEST_END("mkdir: non-8.3 leaf -> invalid_arg (line 283)");
+  TEST_END("mkdir: unstorable leaf -> invalid_arg");
 }
 
 /**

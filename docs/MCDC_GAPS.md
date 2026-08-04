@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **238**
-- Total compound decisions in scope: **1280**
-- Decisions at 100% MC/DC (`yes`): **1100**
+- Source files with at least one decision: **239**
+- Total compound decisions in scope: **1293**
+- Decisions at 100% MC/DC (`yes`): **1113**
 - Decisions partially covered (`partial`): **74**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **85.94%**
+- Coverage rate (yes / total): **86.08%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **89**
-- Reachable-condition denominator (total - deactivated): **1191**
-- **Reachable MC/DC rate**: **92.36%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1204**
+- **Reachable MC/DC rate**: **92.44%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -127,7 +127,7 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 3 | (file scope) | `if (meta_name != nullptr && meta_content != nullptr && st...` | Annotated deactivation: TU-local helper find_cover_by_met... |
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `if (elem == nullptr \|\| local == nullptr) {` | TU-local static helper `elem_local_is` -- defensive NULL ... |
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `if (elem == nullptr \|\| local == nullptr) {` | TU-local static helper `elem_local_is` -- defensive NULL ... |
-| libs/ra8_fs/src/ra8_fs_fat_name.c | 3 | priv_83_to_str | `if (j > 0 && (uint8_t)out12[0] == k_dir_marker_kanji_e5 &...` | Annotated deactivation: 3-condition AND on Shift-JIS kanj... |
+| libs/ra8_fs/src/ra8_fs_fat_name.c | 3 | priv_83_to_str | `if (j > 0 && (uint8_t)out13[0] == k_dir_marker_kanji_e5 &...` | Annotated deactivation: 3-condition AND on Shift-JIS kanj... |
 | libs/ra8_hal/src/ra8_ble.c | 2 | internal_dispatch_event | `if ((internal_rx_byte(&code) == 0U) \|\| (internal_rx_byt...` | Annotated deactivation: TU-local helper internal_dispatch... |
 | libs/ra8_hal/src/ra8_ble.c | 4 | internal_dispatch_acl | `if ((internal_rx_byte(&hdl_lo) == 0U) \|\| (internal_rx_b...` | Annotated deactivation: TU-local helper internal_dispatch... |
 | libs/ra8_hal/src/ra8_canfd_timing.c | 2 | (file scope) | `if ((bitrate_bps == 0U) \|\| (clock_hz == 0U)) {` | Annotated deactivation: both args are validated by ra8_ca... |
@@ -217,6 +217,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_canfd_timing | 3 | 1 | 2 | 0 |
 | ra8_reflow_image | 3 | 1 | 2 | 0 |
 | ra8_reflow_svg_doc | 20 | 19 | 1 | 0 |
+| ra8_fs_fat_name | 14 | 13 | 1 | 0 |
 | ra8_vin | 14 | 13 | 1 | 0 |
 | ra8_touch_cal | 13 | 12 | 1 | 0 |
 | ra8_flash_irq | 9 | 8 | 1 | 0 |
@@ -232,7 +233,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_rot | 6 | 5 | 0 | 1 |
 | ra8_longstrip | 5 | 4 | 1 | 0 |
 | ra8_box | 4 | 3 | 1 | 0 |
-| ra8_fs_fat_name | 4 | 3 | 1 | 0 |
 | ra8_reflow_render | 4 | 3 | 1 | 0 |
 | ra8_usb_cdc | 4 | 3 | 0 | 1 |
 | ra8_ceu | 3 | 2 | 1 | 0 |
@@ -263,7 +263,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_zoom | 10 | 10 | 0 | 0 |
 | ra8_esp_hosted_osi_absent | 9 | 9 | 0 | 0 |
 | ra8_epaper_geom | 8 | 8 | 0 | 0 |
-| ra8_fs_fat_lfn | 8 | 8 | 0 | 0 |
 | ra8_fs_fat_mount | 8 | 8 | 0 | 0 |
 | ra8_pdg | 8 | 8 | 0 | 0 |
 | ra8_reflow_layout | 8 | 8 | 0 | 0 |
@@ -273,6 +272,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_c6link_wifi_sta | 7 | 7 | 0 | 0 |
 | ra8_flash | 7 | 7 | 0 | 0 |
 | ra8_fs_fat_fileio | 7 | 7 | 0 | 0 |
+| ra8_fs_fat_lfn | 7 | 7 | 0 | 0 |
 | ra8_i3c | 7 | 7 | 0 | 0 |
 | ra8_mpu | 7 | 7 | 0 | 0 |
 | ra8_ota_parse | 7 | 7 | 0 | 0 |
@@ -308,6 +308,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epaper | 4 | 4 | 0 | 0 |
 | ra8_epd_cal | 4 | 4 | 0 | 0 |
 | ra8_flash_config | 4 | 4 | 0 | 0 |
+| ra8_fs_fat_lfn_write | 4 | 4 | 0 | 0 |
 | ra8_gfx_text_glyph | 4 | 4 | 0 | 0 |
 | ra8_lvd | 4 | 4 | 0 | 0 |
 | ra8_rabook_gray4 | 4 | 4 | 0 | 0 |

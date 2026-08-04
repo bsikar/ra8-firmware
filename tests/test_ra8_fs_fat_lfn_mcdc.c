@@ -8,7 +8,7 @@
  *
  *   - `priv_lfn_name_for`        -- the "no reassembled name yet" guard, driven
  *                                   directly against a crafted `lfn_state_t`.
- *   - `priv_dir_find_free`       -- the free-slot marker test, driven directly
+ *   - `priv_slot_is_free`        -- the free-slot marker test, driven directly
  *                                   against a planted root directory image.
  *   - `priv_dir_find_long_sector`-- the long-name match test, driven through
  *                                   `ra8_fs_open`'s non-8.3 long-name fallback.
@@ -264,8 +264,8 @@ static void test_mcdc_lfn_name_for_guard(void)
  * @par MC/DC:
  * Decision: `if (ent[name] == k_dir_marker_free_perm || ent[name] ==
  * k_dir_marker_free_used)` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_dir_find_free` (2 conditions), driven
- * directly against a planted root directory.
+ * `libs/ra8_fs/src/ra8_fs_fat_lfn_write.c@priv_slot_is_free` (2 conditions),
+ * driven through `priv_dir_find_free_run()` against a planted root directory.
  * - Root A: entry0 = live ('A'), entry1 = free-used (0xE5). Scanning entry0 sees
  *   0x41 != 0x00 (C1=F) and 0x41 != 0xE5 (C2=F) -> dec F, skip; entry1 sees C1=F,
  *   C2=T -> dec T -> returns entry1. Covers the both-false control and C2=T.
@@ -276,7 +276,7 @@ static void test_mcdc_lfn_name_for_guard(void)
  */
 static void test_mcdc_dir_find_free_marker(void)
 {
-  TEST_BEGIN("ra8_fs MC/DC: priv_dir_find_free marker (perm || used)");
+  TEST_BEGIN("ra8_fs MC/DC: priv_slot_is_free marker (perm || used)");
   build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
@@ -288,21 +288,19 @@ static void test_mcdc_dir_find_free_marker(void)
   /* Root A: live entry0 then free-used entry1 -> F,F then C2=T. */
   root[(uint32_t)k_dir_off_name]        = (uint8_t)k_lt_occupied_mark;
   root[ent1 + (uint32_t)k_dir_off_name] = (uint8_t)k_dir_marker_free_used;
-  uint32_t lba                          = 0U;
-  uint32_t off                          = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, priv_dir_find_free(h, &loc, &lba, &off));
-  TEST_ASSERT_EQ(ent1, off); /* entry1 chosen */
+  dir_slot_t slot                       = {};
+  TEST_ASSERT_EQ(k_ra8_ok, priv_dir_find_free_run(h, &loc, 1U, &slot));
+  TEST_ASSERT_EQ(1U, slot.ent); /* entry1 chosen */
 
   /* Root B: free-perm entry0 -> C1=T. */
   root[(uint32_t)k_dir_off_name] = (uint8_t)k_dir_marker_free_perm;
-  lba                            = 0U;
-  off                            = (uint32_t)k_lt_poison;
-  TEST_ASSERT_EQ(k_ra8_ok, priv_dir_find_free(h, &loc, &lba, &off));
-  TEST_ASSERT_EQ(0U, off); /* entry0 chosen */
+  slot.ent                       = (uint32_t)k_lt_poison;
+  TEST_ASSERT_EQ(k_ra8_ok, priv_dir_find_free_run(h, &loc, 1U, &slot));
+  TEST_ASSERT_EQ(0U, slot.ent); /* entry0 chosen */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
-  TEST_END("ra8_fs MC/DC: priv_dir_find_free marker (perm || used)");
+  TEST_END("ra8_fs MC/DC: priv_slot_is_free marker (perm || used)");
 }
 
 /**

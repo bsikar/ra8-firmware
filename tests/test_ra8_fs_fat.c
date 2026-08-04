@@ -574,6 +574,12 @@ static void test_mcdc_priv_to_upper_range(void)
  * via `ra8_fs_open`.
  * V1 "ABC.TXT": exits on '.' -> C1=T,C2=F. V2 ".TXT": first char '.' rejected.
  * V3 "": first char NUL -> C1=F. N+1 = 3 vectors for N=2.
+ *
+ * V2 no longer FAILS the open. `.TXT` has an empty 8.3 base, so `priv_pack_base`
+ * still rejects it -- which is the decision under test -- but since #600 that
+ * verdict routes the name to a long-name chain instead of ending the call, and
+ * the file is created under the alias `TXT~1`. The vector is unchanged; only
+ * what the caller sees afterwards is.
  */
 static void test_mcdc_pack_base_terminator(void)
 {
@@ -584,8 +590,9 @@ static void test_mcdc_pack_base_terminator(void)
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "ABC.TXT", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, ".TXT", k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, "", k_ra8_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, ".TXT", k_ra8_fs_mode_write, &f)); /* V2 */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, "", k_ra8_fs_mode_write, &f)); /* V3 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("ra8_fs MC/DC: pack_base (*p!=0 && *p!='.')");

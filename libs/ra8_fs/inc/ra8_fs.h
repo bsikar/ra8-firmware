@@ -24,6 +24,12 @@
  *   - FAT12 / FAT16 / FAT32 cluster-chain walking (read AND write).
  *   - 8.3 short filename directory parsing in the FAT12/16 fixed root
  *     directory and in any FAT32 cluster-chain root.
+ *   - VFAT long file names, read AND write: a name that is not
+ *     8.3-representable is stored as a chain of attr-0x0F entries behind a
+ *     generated `LONGNA~1.TXT` alias, and `unlink` / `rmdir` / `rename` take
+ *     the chain away with the entry it belongs to. A name that differs from an
+ *     8.3 one only in case costs no chain at all -- it travels in the two
+ *     `DIR_NTRes` flags, so `data.log` reads back as `data.log`.
  *   - Linear file read across cluster boundaries.
  *   - File create + write, growing the chain by allocating from the FAT
  *     free-cluster scan when the current cluster fills. The scan starts at a
@@ -43,8 +49,10 @@
  *     a directory and `rmdir` will not take a file.
  *
  * ## What this deliberately skips
- *   - Long File Names (LFN, 0x0F attribute) on write -- short 8.3 only
- *     (LFN reads are matched).
+ *   - Non-ASCII characters in a long name. The on-disk encoding is UTF-16LE
+ *     and a name is read back through it, but a code point above 0x7F is
+ *     rendered `?` on read and refused on write.
+ *   - Long names on exFAT, which has its own (unrelated) name encoding.
  *   - exFAT directory creation and removal (`mkdir` / `rmdir` are FAT-only;
  *     both are supported there, including nested-path resolution).
  *   - Multi-partition MBR scanning (only partition 0 is followed; a
@@ -516,7 +524,7 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  */
 
 /**
- * @brief Open or create a file by 8.3 short path (root dir only).
+ * @brief Open or create a file by path, 8.3 or long.
  *
  * @details A path that resolves to a DIRECTORY is rejected in every mode. In
  * write mode that rejection is load-bearing: the truncate step would free the
@@ -525,14 +533,18 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  * directory's `DIR_FileSize` of 0 would otherwise describe.
  *
  * @param[in]  handle    Mount handle.
- * @param[in]  path      8.3 path, e.g. "HELLO.TXT". Subdirectories not supported.
+ * @param[in]  path      Path from the volume root, e.g. `"HELLO.TXT"` or
+ *                       `"/Reading List/Chapter One.txt"`. Any component may
+ *                       be a long name of up to 247 characters.
  * @param[in]  mode      `k_ra8_fs_mode_read`, `_write`, or `_append`.
  * @param[out] out_file  Populated file handle on success.
  *
  * @retval k_ra8_ok                     File opened.
  * @retval k_ra8_err_null_ptr           Any pointer arg is NULL.
  * @retval k_ra8_err_invalid_arg        `path` names a directory (any mode), or
- *                                     a new file's name is not 8.3.
+ *                                     a new file's name is empty, longer than
+ *                                     247 characters, or holds a character no
+ *                                     FAT name may carry.
  * @retval k_ra8_err_not_found          Read mode and path doesn't exist.
  * @retval k_ra8_err_no_mem             No free file slot.
  * @retval k_ra8_err_no_data            Write mode failed to allocate cluster.
@@ -689,7 +701,8 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
  * @retval k_ra8_err_invalid_state Mount is not in use.
  * @retval k_ra8_err_not_found     Nothing at @p path (or an intermediate
  *                                 component is missing).
- * @retval k_ra8_err_invalid_arg   A path component is not a valid 8.3 name.
+ * @retval k_ra8_err_invalid_arg   A path component is longer than 247
+ *                                 characters.
  * @retval k_ra8_err_*             Backend read failure.
  *
  * @pre `handle`, `path` and `out` are non-NULL.
@@ -741,7 +754,8 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
 /**
  * @brief Delete a file: mark its dir entry deleted and free its clusters.
  *
- * @details FAT12/16/32: 0xE5-marks the entry and frees the FAT chain.
+ * @details FAT12/16/32: 0xE5-marks the entry -- together with the VFAT
+ * long-name chain in front of it, if it has one -- and frees the FAT chain.
  * exFAT: clears the in-use bit on the whole entry set and frees the
  * clusters in the allocation bitmap (the bitmap is authoritative).
  *
@@ -755,7 +769,7 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
  *
  * @retval k_ra8_ok               File unlinked.
  * @retval k_ra8_err_null_ptr     handle/path NULL.
- * @retval k_ra8_err_invalid_arg  `path` names a directory, or is not 8.3.
+ * @retval k_ra8_err_invalid_arg  `path` names a directory.
  * @retval k_ra8_err_not_found    File doesn't exist.
  *
  * @pre `handle` and `path` are non-NULL; the mount is in use.
@@ -770,9 +784,14 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
 [[nodiscard]] ra8_err_t ra8_fs_unlink(ra8_fs_mount_t* handle, const char* path);
 
 /**
- * @brief Rename a root-level file in place.
+ * @brief Rename a file within its own directory.
  *
- * @details FAT12/16/32: rewrites the 11-byte packed 8.3 name in the
+ * @details FAT12/16/32: re-files the entry under the new name -- writing the
+ * new entry (with its long-name chain, if the new name needs one) before
+ * taking the old one away, so a failure between the two leaves the file
+ * reachable under both names rather than under neither. The cluster, the size
+ * and the attributes are carried across unchanged. Legacy note: this used to
+ * rewrite the 11-byte packed 8.3 name in the
  * existing directory entry. exFAT: patches the Stream entry's NameLength
  * and NameHash, rebuilds the Name entry, and recomputes the SetChecksum --
  * supported when both names fit one Name entry (<= 15 characters), which
@@ -792,7 +811,11 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
  * @retval k_ra8_err_null_ptr      Any pointer arg is NULL.
  * @retval k_ra8_err_not_found     @p old_path does not exist.
  * @retval k_ra8_err_exists        @p new_path already resolves.
- * @retval k_ra8_err_not_supported exFAT name longer than 15 characters.
+ * @retval k_ra8_err_not_supported exFAT name longer than 15 characters, or the
+ *                                two paths are in different directories.
+ * @retval k_ra8_err_invalid_arg   The new leaf holds a character no FAT name
+ *                                may carry, or is longer than 247 characters.
+ * @retval k_ra8_err_no_mem        The directory has no room for the new entry.
  * @pre The file is not open.
  * @post On success @p new_path resolves to the same data.
  * @since 0.1.0
@@ -806,7 +829,9 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  * @details Resolves all-but-the-last path component to an existing parent
  * directory, then creates the final component as a new, empty subdirectory with
  * "." and ".." links. Nested paths are supported (`"/books/scifi"`), provided
- * each intermediate component already exists and every component is an 8.3 name.
+ * each intermediate component already exists. A leaf that is not
+ * 8.3-representable is stored as a long name, exactly as `ra8_fs_open()`
+ * stores one.
  * exFAT directory creation is not supported. A partial allocation is rolled
  * back on failure, so the volume is never leaked.
  *
@@ -817,7 +842,9 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  * @retval k_ra8_ok                Directory created.
  * @retval k_ra8_err_null_ptr      `handle` or `path` was NULL.
  * @retval k_ra8_err_invalid_state Mount is not in use.
- * @retval k_ra8_err_invalid_arg   The leaf is not a valid 8.3 name.
+ * @retval k_ra8_err_invalid_arg   The leaf is empty, longer than 247
+ *                                 characters, or holds a character no FAT
+ *                                 name may carry.
  * @retval k_ra8_err_exists        The name already exists in the parent.
  * @retval k_ra8_err_not_found     An intermediate component does not exist.
  * @retval k_ra8_err_no_mem        Parent directory or volume is full.
@@ -845,8 +872,9 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  *
  * The emptiness proof runs before anything is freed, so a refusal costs the
  * volume nothing. Deleted (0xE5) slots and orphaned long-name remnants do not
- * count as contents -- `ra8_fs_unlink()` leaves the latter behind -- so a
- * directory whose files have all been unlinked is removable.
+ * count as contents, so a directory that some other implementation left
+ * remnants in is still removable. The directory's own long-name chain, if it
+ * has one, goes with its entry.
  *
  * The volume root is not removable, and neither is a file: use `ra8_fs_unlink()`
  * for those. exFAT is not supported, matching `ra8_fs_mkdir()`.
@@ -858,8 +886,8 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  * @retval k_ra8_ok                 Directory removed.
  * @retval k_ra8_err_null_ptr       `handle` or `path` was NULL.
  * @retval k_ra8_err_invalid_state  Mount is not in use.
- * @retval k_ra8_err_invalid_arg    `path` is the root, is not a valid 8.3 name,
- *                                  or names a file rather than a directory.
+ * @retval k_ra8_err_invalid_arg    `path` is the root, or names a file rather
+ *                                  than a directory.
  * @retval k_ra8_err_not_found      No such entry, or a component is missing.
  * @retval k_ra8_err_not_empty      The directory still holds entries.
  * @retval k_ra8_err_protocol_error Corrupt chain, or a directory entry that

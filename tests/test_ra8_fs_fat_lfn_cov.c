@@ -12,9 +12,9 @@
  *   - lines 275-276: priv_dir_find_long -- leading-slash strip
  *   - line 286: priv_dir_find_long -- priv_read_sector I/O failure
  *   - lines 296-298: priv_dir_find_long -- priv_dir_walk_next_sector failure
- *   - line 317: priv_dir_find_free -- priv_read_sector I/O failure
- *   - lines 328-330: priv_dir_find_free -- priv_dir_walk_next_sector failure
- *   - line 333: priv_dir_find_free -- directory exhausted (no free slot)
+ *   - priv_dir_find_free_run -- priv_read_sector I/O failure
+ *   - priv_dir_find_free_run -- priv_dir_walk_next_sector failure
+ *   - priv_dir_find_free_run -- directory exhausted (no free slot)
  *   - line 346: priv_free_chain -- priv_fat_get I/O failure
  *   - line 350: priv_free_chain -- priv_fat_set write failure
  *   - line 359: priv_free_chain -- cyclic FAT chain guard fires
@@ -49,7 +49,6 @@ typedef enum : uint8_t {
  * @brief Long-name entry field offsets and the fixture's directory sizing.
  */
 typedef enum : uint16_t {
-  k_lfn_off_type = 12U, /**< LDIR_Type: reserved, must be zero. */
   k_lcov_files_per_sub =
     14U, /**< Files created in the subdirectory: enough that its entries spill past
               a single sector, which is the case these vectors exist to cover.     */
@@ -688,54 +687,53 @@ static void test_lfn_cov_walk_fail_long(void)
 
 /**
  * @test test_lfn_cov_read_fail_free
- * @brief priv_dir_find_free returns the backend error when priv_read_sector
- *        fails at the first read (line 317).
+ * @brief priv_dir_find_free_run returns the backend error when priv_read_sector
+ *        fails at the first read (the first-read guard).
  *
- * @details priv_dir_find_free is called directly via the internal API with
+ * @details priv_dir_find_free_run is called directly via the internal API with
  *          reads_left=0. The very first priv_read_sector call fails and
- *          line 317 is executed.
+ *          the first-read guard returns.
  *
  * @par MC/DC:
- * Not applicable -- line 317 is a single-condition early-return.
+ * Not applicable -- the first-read guard is a single-condition early-return.
  */
 static void test_lfn_cov_read_fail_free(void)
 {
-  TEST_BEGIN("ra8_fs LFN cov: priv_read_sector fail in find_free -> line 317");
+  TEST_BEGIN("ra8_fs LFN cov: priv_read_sector fail in find_free_run -> first read");
   build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   dir_loc_t        root_loc = {.is_root = 1U, .cluster = 0U};
-  uint32_t         lba      = 0U;
-  uint32_t         off      = 0U;
+  dir_slot_t       slot     = {};
   ra8_fs_backend_t saved    = h->backend;
   swap_to_inject(h, 0U, 0U); /* reads_left=0 */
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, priv_dir_find_free(h, &root_loc, &lba, &off));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, priv_dir_find_free_run(h, &root_loc, 1U, &slot));
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_vol();
-  TEST_END("ra8_fs LFN cov: priv_read_sector fail in find_free -> line 317");
+  TEST_END("ra8_fs LFN cov: priv_read_sector fail in find_free_run -> first read");
 }
 
 /**
  * @test test_lfn_cov_walk_fail_free
- * @brief priv_dir_find_free returns the backend error when
- *        priv_dir_walk_next_sector fails (lines 328-330).
+ * @brief priv_dir_find_free_run returns the backend error when
+ *        priv_dir_walk_next_sector fails (the walk-error return).
  *
  * @details A FAT16 volume with /SUB holding 16 non-free entries (dot, dotdot,
- *          14 files) is mounted. priv_dir_find_free is called directly on the
+ *          14 files) is mounted. priv_dir_find_free_run is called directly on the
  *          subdir location with reads_left=1.
  *          Read 1: subdir sector -> all 16 entries non-free -> loop exits.
  *          Read 2: FAT sector (priv_dir_walk_next_sector) -> FAILS.
- *          Lines 328-330 are reached.
+ *          The walk-error return is taken.
  *
  * @par MC/DC:
- * Not applicable -- lines 328-330 are a single-condition I/O error return.
+ * Not applicable -- the walk-error return is a single-condition I/O error return.
  */
 static void test_lfn_cov_walk_fail_free(void)
 {
-  TEST_BEGIN("ra8_fs LFN cov: walk_next fail in find_free -> lines 328-330");
+  TEST_BEGIN("ra8_fs LFN cov: walk_next fail in find_free_run -> walk error");
   build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
@@ -751,50 +749,48 @@ static void test_lfn_cov_walk_fail_free(void)
 
   /* Subdir lives at cluster 2 (first allocated after mount on fresh volume). */
   dir_loc_t        subdir_loc = {.is_root = 0U, .cluster = 2U};
-  uint32_t         lba        = 0U;
-  uint32_t         off        = 0U;
+  dir_slot_t       slot       = {};
   ra8_fs_backend_t saved      = h->backend;
   /* Read 1 = subdir sector (16 non-free), Read 2 = FAT (fails). */
   swap_to_inject(h, 1U, 0U);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, priv_dir_find_free(h, &subdir_loc, &lba, &off));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, priv_dir_find_free_run(h, &subdir_loc, 1U, &slot));
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_vol();
-  TEST_END("ra8_fs LFN cov: walk_next fail in find_free -> lines 328-330");
+  TEST_END("ra8_fs LFN cov: walk_next fail in find_free_run -> walk error");
 }
 
 /**
  * @test test_lfn_cov_no_mem_free
- * @brief priv_dir_find_free returns k_ra8_err_no_mem when the fixed root dir
- *        is fully occupied (line 333).
+ * @brief priv_dir_find_free_run returns k_ra8_err_no_mem when the fixed root dir
+ *        is fully occupied (the exhausted-directory return).
  *
  * @details A FAT16 volume with 16 files in the root directory is mounted.
- *          priv_dir_find_free is called directly on the root location.
+ *          priv_dir_find_free_run is called directly on the root location.
  *          The 16-entry root sector has no 0x00 or 0xE5 entries -> for-loop
  *          exits without a match. priv_dir_walk_next_sector sees
- *          fixed_remaining=0 -> eod=1. The while-loop exits -> line 333.
+ *          fixed_remaining=0 -> eod=1. The while-loop exits and no_mem is returned.
  *
  * @par MC/DC:
- * Not applicable -- line 333 is a simple sentinel return when the loop exits.
+ * Not applicable -- the no_mem return is a simple sentinel when the loop exits.
  */
 static void test_lfn_cov_no_mem_free(void)
 {
-  TEST_BEGIN("ra8_fs LFN cov: root dir full -> line 333 (k_ra8_err_no_mem)");
+  TEST_BEGIN("ra8_fs LFN cov: root dir full -> no_mem (directory exhausted)");
   build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   /* Fill all 16 root entries (F00.TXT through F15.TXT). */
   create_files_in(h, "/", 16U);
 
-  dir_loc_t root_loc = {.is_root = 1U, .cluster = 0U};
-  uint32_t  lba      = 0U;
-  uint32_t  off      = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_no_mem, priv_dir_find_free(h, &root_loc, &lba, &off));
+  dir_loc_t  root_loc = {.is_root = 1U, .cluster = 0U};
+  dir_slot_t slot     = {};
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, priv_dir_find_free_run(h, &root_loc, 1U, &slot));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_vol();
-  TEST_END("ra8_fs LFN cov: root dir full -> line 333 (k_ra8_err_no_mem)");
+  TEST_END("ra8_fs LFN cov: root dir full -> no_mem (directory exhausted)");
 }
 
 /**

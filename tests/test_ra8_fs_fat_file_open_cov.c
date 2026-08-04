@@ -27,6 +27,23 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum open_cov_name_cap_t
+ * @brief The longest leaf component `ra8_fs` will store, mirrored locally.
+ *
+ * @details Equal to `k_lfn_write_max` in `ra8_fs_fat_types_internal.h`
+ *          (19 long-name groups of 13 characters). It is restated instead of
+ *          included because that header also names the BPB field offsets, which
+ *          this suite's own fixture header already defines.
+ *
+ * @invariant Matches `k_lfn_write_max` exactly.
+ * @see test_enter_subdir_name_too_long()
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_oc_lfn_write_max = 247U, /**< 19 groups * 13 characters. */
+} open_cov_name_cap_t;
+
+/**
  * @enum file_open_cov_fixture_t
  * @brief Named constants for the open/resolve coverage vectors.
  *
@@ -240,20 +257,25 @@ static void test_open_existing_no_mem(void)
 
 /**
  * @test test_enter_subdir_name_too_long
- * @brief A path component longer than k_ra8_fs_short_name_len is rejected.
+ * @brief A path component longer than a long name can be is rejected.
  *
  * @details
- * ra8_fs_open with a path whose first component has 13 characters triggers the
- * `len > k_ra8_fs_short_name_len` check in priv_enter_subdir (line 264).
- *
- * Line targeted: 264.
+ * Since #600 a directory component is looked up as a long name as well as an
+ * 8.3 one, so thirteen characters is ordinary and the ceiling moved to
+ * `k_lfn_write_max` (mirrored here as ::k_oc_lfn_write_max). A component past
+ * that cannot exist on any volume this driver writes, so it is refused rather
+ * than searched for.
  *
  * @par MC/DC:
- * Decision: `if (len > k_ra8_fs_short_name_len)` in priv_enter_subdir
- * (1 condition).
- * V1: 13-char component -> TRUE -> k_ra8_err_invalid_arg.
- * V2: short component -> FALSE (every multi-component sibling test).
- * N=1 condition, 1 independent vector per DO-178C 6.4.4.3.
+ * Decision: `if (len > k_lfn_write_max)` in
+ * `libs/ra8_fs/src/ra8_fs_fat_file.c@priv_enter_subdir` (1 condition).
+ * V1: len = 13  -> FALSE (the sibling multi-component tests).
+ * V2: len = 248 -> TRUE  -> k_ra8_err_invalid_arg.
+ * N=1 condition, 1 independent vector per DO-178C 6.4.4.3. A `len == 0`
+ * guard used to sit alongside this one; it was removed rather than
+ * deactivated, because `priv_resolve_parent()` skips repeated separators and
+ * so never hands a zero-length component down -- a condition no input could
+ * exercise is not a guard, it is an unreachable branch.
  *
  * @pre Volume is formatted and accessible.
  * @post Open returns k_ra8_err_invalid_arg.
@@ -268,10 +290,20 @@ static void test_enter_subdir_name_too_long(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  /* Component "TOOLONGNAME13" is 13 chars > k_ra8_fs_short_name_len (12). */
+  /* One character past the cap: "/AAA...A/FILE.TXT". The value is restated
+   * here rather than included, because ra8_fs_fat_internal.h and this suite's
+   * own fixture header both name the BPB offsets and would collide. */
+  char path[(uint32_t)k_oc_lfn_write_max + 16U] = {};
+  path[0]                                       = '/';
+  for (uint32_t i = 0U; i <= (uint32_t)k_oc_lfn_write_max; i++) {
+    path[1U + i] = 'A';
+  }
+  (void)snprintf(&path[2U + (uint32_t)k_oc_lfn_write_max],
+                 sizeof(path) - (2U + (uint32_t)k_oc_lfn_write_max),
+                 "/FILE.TXT");
+
   ra8_fs_file_t* f = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_fs_open(h, "/TOOLONGNAME13/FILE.TXT", k_ra8_fs_mode_read, &f));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, path, k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
@@ -283,21 +315,22 @@ static void test_enter_subdir_name_too_long(void)
  * @brief A component that is not an 8.3-representable name is rejected.
  *
  * @details
- * A component that begins with a dot (e.g. ".HIDDEN") cannot be packed into
- * an 8.3 name by priv_path_to_83 (returns 0), so priv_enter_subdir returns
- * k_ra8_err_invalid_arg (line 273).
- *
- * Line targeted: 273.
+ * A component that begins with a dot (e.g. ".HIDDEN") cannot be packed into an
+ * 8.3 name by priv_path_to_83, so the 8.3 half of ::priv_dir_lookup_any() is
+ * skipped and the long-name half decides. On a volume that holds no such
+ * directory the answer is `k_ra8_err_not_found`: since #600 a dot-leading name
+ * is one this driver can create, so refusing it as malformed would be wrong.
  *
  * @par MC/DC:
- * Decision: `if (priv_path_to_83(comp, name83) == 0U)` in priv_enter_subdir
+ * Decision: `if (priv_path_to_83(leaf, name83) != 0U)` in priv_dir_lookup_any
  * (1 condition).
- * V1: dot-leading component ".HIDDEN" -> pack fails (0) -> TRUE -> invalid_arg.
- * V2: valid 8.3 component -> FALSE (test_resolve_dir_trailing_slash).
+ * V1: dot-leading component ".HIDDEN" -> pack fails (0) -> FALSE -> only the
+ *     long-name pass runs, and misses.
+ * V2: valid 8.3 component -> TRUE (test_resolve_dir_trailing_slash).
  * N=1 condition, 1 independent vector per DO-178C 6.4.4.3.
  *
  * @pre Volume is formatted and accessible.
- * @post Open returns k_ra8_err_invalid_arg.
+ * @post Open returns k_ra8_err_not_found and the volume is unchanged.
  *
  * @note Not thread-safe.
  * @since 0.1.0
@@ -311,8 +344,7 @@ static void test_enter_subdir_invalid_83(void)
 
   /* ".HIDDEN" starts with a dot so priv_path_to_83 returns 0. */
   ra8_fs_file_t* f = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_fs_open(h, "/.HIDDEN/FILE.TXT", k_ra8_fs_mode_read, &f));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "/.HIDDEN/FILE.TXT", k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();

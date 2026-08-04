@@ -150,19 +150,17 @@ static ra8_err_t priv_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
   if (rerr != k_ra8_ok) {
     return rerr;
   }
-  uint8_t name83[k_max_8_3_name] = {};
-  if (priv_path_to_83(leaf, name83) == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
   uint32_t lba                             = 0;
   uint32_t off                             = 0;
   uint8_t  entry[k_ra8_fs_dir_entry_bytes] = {};
-  if (priv_dir_find(handle, &parent, name83, &lba, &off, entry) == k_ra8_ok) {
+  /* By long name as well as by 8.3: a second `mkdir("/Reading List")` has to
+   * be refused, and the alias probe behind `priv_dir_reserve()` would happily
+   * file a second copy as `READIN~2` if it were not. */
+  if (priv_dir_lookup_any(handle, &parent, leaf, &lba, &off, entry) == k_ra8_ok) {
     return k_ra8_err_exists;
   }
-  uint32_t  free_lba = 0;
-  uint32_t  free_off = 0;
-  ra8_err_t err      = priv_dir_find_free(handle, &parent, &free_lba, &free_off);
+  dir_insert_t plan = {};
+  ra8_err_t    err  = priv_dir_reserve(handle, &parent, leaf, &plan);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -177,12 +175,14 @@ static ra8_err_t priv_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
     (void)priv_free_chain(handle, new_cluster);
     return err;
   }
-  err = priv_write_new_dir_entry(handle,
-                                 name83,
-                                 k_ra8_fs_attr_directory,
-                                 new_cluster,
-                                 free_lba,
-                                 free_off);
+  uint8_t tmpl[k_ra8_fs_dir_entry_bytes] = {};
+  tmpl[k_dir_off_attr]                   = (uint8_t)k_ra8_fs_attr_directory;
+  priv_entry_set_cluster_size(tmpl, new_cluster, 0U);
+  /* Same reasoning as the file case: a zero FAT date is illegal, and the
+   * directory's own "." and ".." were stamped when the cluster was built, so
+   * the entry in the parent must agree with them (#601). */
+  priv_fat_entry_stamp_create(tmpl);
+  err = priv_dir_commit(handle, &plan, tmpl, &lba, &off);
   if (err != k_ra8_ok) {
     (void)priv_free_chain(handle, new_cluster);
     return err;
@@ -371,14 +371,13 @@ static ra8_err_t priv_dir_is_empty(const ra8_fs_mount_t* m, uint32_t cluster, ui
  *
  * @param[in]  handle      Mounted FAT12/16/32 volume.
  * @param[in]  path        Directory path to remove.
- * @param[out] out_lba     Sector holding the directory's entry in its parent.
- * @param[out] out_off     Byte offset of that entry within the sector.
+ * @param[out] out         Receives the parent, the entry position and the entry.
  * @param[out] out_cluster The directory's own first cluster.
  *
  * @return Error code.
  * @retval k_ra8_ok                 Located; outputs populated.
- * @retval k_ra8_err_invalid_arg    `path` is the root, is not an 8.3 name, or
- *                                  names a file rather than a directory.
+ * @retval k_ra8_err_invalid_arg    `path` is the root, is unstorable, or names
+ *                                  a file rather than a directory.
  * @retval k_ra8_err_not_found      No such entry.
  * @retval k_ra8_err_protocol_error The entry claims no data cluster.
  * @retval k_ra8_err_*              Backend error.
@@ -395,32 +394,26 @@ static ra8_err_t priv_dir_is_empty(const ra8_fs_mount_t* m, uint32_t cluster, ui
 RA8_INTERNAL
 static ra8_err_t priv_rmdir_locate(const ra8_fs_mount_t* handle,
                                    const char*           path,
-                                   uint32_t*             out_lba,
-                                   uint32_t*             out_off,
+                                   dir_target_t*         out,
                                    uint32_t*             out_cluster)
 {
-  dir_loc_t       parent = {};
-  const char*     leaf   = nullptr;
-  const ra8_err_t rerr   = priv_resolve_parent(handle, path, &parent, &leaf);
+  const char*     leaf = nullptr;
+  const ra8_err_t rerr = priv_resolve_parent(handle, path, &out->parent, &leaf);
   if (rerr != k_ra8_ok) {
     return rerr;
   }
   if (leaf[0] == '\0') {
     return k_ra8_err_invalid_arg; /* "/" or a trailing slash: the root itself */
   }
-  uint8_t name83[k_max_8_3_name] = {};
-  if (priv_path_to_83(leaf, name83) == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  uint8_t         entry[k_ra8_fs_dir_entry_bytes] = {};
-  const ra8_err_t err = priv_dir_find(handle, &parent, name83, out_lba, out_off, entry);
+  const ra8_err_t err =
+    priv_dir_lookup_any(handle, &out->parent, leaf, &out->lba, &out->off, out->entry);
   if (err != k_ra8_ok) {
     return err;
   }
-  if ((entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_directory) == 0U) {
+  if ((out->entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_directory) == 0U) {
     return k_ra8_err_invalid_arg; /* a file: ra8_fs_unlink() is the verb for it */
   }
-  *out_cluster = priv_entry_first_cluster(entry);
+  *out_cluster = priv_entry_first_cluster(out->entry);
   if (*out_cluster < (uint32_t)k_cluster_first_data) {
     return k_ra8_err_protocol_error; /* a directory always owns a cluster */
   }
@@ -461,10 +454,9 @@ static ra8_err_t priv_rmdir_locate(const ra8_fs_mount_t* handle,
 RA8_INTERNAL
 static ra8_err_t priv_fat_rmdir(const ra8_fs_mount_t* handle, const char* path)
 {
-  uint32_t  lba     = 0;
-  uint32_t  off     = 0;
-  uint32_t  cluster = 0;
-  ra8_err_t err     = priv_rmdir_locate(handle, path, &lba, &off, &cluster);
+  dir_target_t t       = {};
+  uint32_t     cluster = 0;
+  ra8_err_t    err     = priv_rmdir_locate(handle, path, &t, &cluster);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -480,13 +472,7 @@ static ra8_err_t priv_fat_rmdir(const ra8_fs_mount_t* handle, const char* path)
   if (err != k_ra8_ok) {
     return err;
   }
-  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
-  err                                    = priv_read_sector(handle, lba, buf);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  buf[off + k_dir_off_name] = k_dir_marker_free_used;
-  return priv_write_sector(handle, lba, buf);
+  return priv_dir_erase_chain(handle, &t.parent, t.lba, t.off, &t.entry[k_dir_off_name]);
 }
 
 /**

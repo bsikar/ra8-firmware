@@ -771,43 +771,6 @@ RA8_PRIV
 void priv_wr32(uint8_t* p, uint32_t v);
 
 /**
- * @brief Write a fresh 8.3 directory entry into a free slot on disk.
- *
- * @details Reads the sector holding the free slot, zeroes the 32-byte entry,
- *          stamps the packed 8.3 name, the attribute byte, and the first
- *          cluster (size left 0), and writes the sector back. Shared by file
- *          creation (`priv_create_new`, archive attr, cluster 0) and directory
- *          creation (`ra8_fs_mkdir`, directory attr, the new dir cluster).
- *
- * @param[in] handle        Mount providing the backend.
- * @param[in] name83        Packed 11-byte 8.3 short name.
- * @param[in] attr          Attribute byte (archive for files, directory for dirs).
- * @param[in] first_cluster First cluster to record (0 for an empty new file).
- * @param[in] free_lba      Sector containing the free slot.
- * @param[in] free_off      Byte offset of the free slot within the sector.
- *
- * @return Error code.
- * @retval k_ra8_ok    Entry written to disk.
- * @retval k_ra8_err_* Backend read/write error.
- *
- * @pre @p handle and @p name83 are non-NULL; @p handle is a mounted volume.
- * @pre @p free_off is a valid byte offset for a 32-byte directory entry slot.
- * @post On success, the 32-byte slot at @p free_lba:@p free_off holds the new entry.
- * @post No other bytes of the sector are modified.
- *
- * @note Not thread-safe; callers serialise.
- *
- * @since 0.1.0
- */
-RA8_PRIV
-ra8_err_t priv_write_new_dir_entry(ra8_fs_mount_t* handle,
-                                   const uint8_t*  name83,
-                                   uint8_t         attr,
-                                   uint32_t        first_cluster,
-                                   uint32_t        free_lba,
-                                   uint32_t        free_off);
-
-/**
  * @brief Write a single sector from a caller-provided buffer.
  *
  * @details Forwards to the mount's `backend.write_block` callback.

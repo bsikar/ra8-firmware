@@ -158,14 +158,14 @@ static void test_mcdc_83_to_str_kanji_escape(void)
   /* V-true: an 0x05-escaped leading byte is restored to the raw 0xE5. */
   uint8_t in_kanji[k_name_packed_len] =
     {(uint8_t)k_dir_marker_kanji_e5, 'A', 'M', 'E', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
-  priv_83_to_str(in_kanji, out12);
+  priv_83_to_str(in_kanji, 0U, out12);
   const uint8_t restored = (uint8_t)out12[0];
   TEST_ASSERT_EQ(k_dir_marker_free_used, restored);
 
   /* V-false: an ordinary leading byte leaves the name untouched. */
   memset(out12, 0, sizeof out12);
   uint8_t in_plain[k_name_packed_len] = {'F', 'I', 'L', 'E', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
-  priv_83_to_str(in_plain, out12);
+  priv_83_to_str(in_plain, 0U, out12);
   TEST_ASSERT_EQ('F', out12[0]);
   TEST_END("ra8_fs name MC/DC: priv_83_to_str kanji escape (deactivated)");
 }

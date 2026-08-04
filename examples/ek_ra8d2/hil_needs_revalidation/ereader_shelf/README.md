@@ -14,10 +14,11 @@ Books come from **two sources, tested side by side in one app**:
   - `BOOKnn.RBK` -- a pre-compiled `.rabook`, read chunk-by-chunk from the file.
   - `BOOKnn.EPB` -- a plain **`.epub`**, parsed on-device by `ra8_epub` (ZIP +
     XML) so you can drop an ordinary book on the card without pre-compiling.
-    (`.epub` truncates to the 3-char 8.3 extension `.EPB` on FAT.)
+    (The `.EPB` extension is a convention this shelf still follows, not a
+    limit: since #600 `ra8_fs` writes `.epub` verbatim. #633 migrates it.)
   - `NAME.CBZ` / `NAME.CBR` -- a **comic** archive (ZIP / RAR of page images),
     opened by `ra8_comic` and read as a full-page image reader (#236). Both are
-    already 3-char exts, so they keep their name on FAT 8.3 (no truncation).
+    already 3-char exts, so they need nothing of the long-name path at all.
 
 `.rabook` books are **always demand-paged** (#204/#205): `sh_paged.c` binds the
 chunked RBKC reader (`ra8_book_chunked`) as the backing of an `ra8_vmem` page

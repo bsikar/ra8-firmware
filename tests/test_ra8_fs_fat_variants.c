@@ -361,12 +361,16 @@ static void test_short_name_boundary_cases(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "NOEXT", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, "ABCDEFGHI.TXT", k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, "A.TOOL", k_ra8_fs_mode_write, &f));
+  /* Nine base characters and a four-character extension are both past what an
+   * 8.3 entry can hold. Since #600 that is a long-name chain, not a refusal. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "ABCDEFGHI.TXT", k_ra8_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.TOOL", k_ra8_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   list_ctx_t ctx = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", list_cb, &ctx));
-  TEST_ASSERT_EQ(2, ctx.count);
+  TEST_ASSERT_EQ(4, ctx.count);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("ra8_fs FAT16: short-name packing boundaries");
