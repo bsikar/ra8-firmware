@@ -62,7 +62,7 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/main.c``
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/epub_open/main.c``
 
-- L402: ra8_log_init  (rank 100)
+- L401: ra8_log_init  (rank 100)
 
 ### epub_parse
 
@@ -74,7 +74,7 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/epub_parse/main.c``
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/epub_toc/main.c``
 
-- L456: ra8_log_init  (rank 100)
+- L455: ra8_log_init  (rank 100)
 
 ### ereader_shelf
 
@@ -164,7 +164,7 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/main.c``
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/pagecache/main.c``
 
-- L474: ra8_log_init  (rank 100)
+- L473: ra8_log_init  (rank 100)
 
 ### pdg_delay_demo
 
