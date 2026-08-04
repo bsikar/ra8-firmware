@@ -124,19 +124,71 @@ ra8_err_t priv_parse_volume(ra8_fs_mount_t* m)
   return priv_parse_bpb_into_mount(m);
 }
 
+/* `priv_exfat_dir_root()`: see header for the documented contract. */
+void priv_exfat_dir_root(const ra8_fs_mount_t* m, exfat_dir_t* out)
+{
+  out->cluster    = m->root_cluster;
+  out->contig_end = 0U; /* the root is always FAT-chained; the format has no other shape */
+}
+
+/* `priv_exfat_dir_from_set()`: see header for the documented contract. */
+void priv_exfat_dir_from_set(const ra8_fs_mount_t* m, const uint8_t* strm, exfat_dir_t* out)
+{
+  out->cluster    = priv_rd32(&strm[k_exfat_strm_off_clus]);
+  out->contig_end = 0U;
+  if ((strm[k_exfat_strm_off_flags] & (uint8_t)k_exfat_secflag_no_fat) == 0U) {
+    return;
+  }
+  const uint32_t cbytes = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
+  const uint32_t size   = priv_rd32(&strm[k_exfat_strm_off_dlen]);
+  out->contig_end       = out->cluster + ((size + cbytes - 1U) / cbytes);
+}
+
+/* `priv_exfat_cursor_init()`: see header for the documented contract. */
+void priv_exfat_cursor_init(const exfat_dir_t* dir, exfat_cursor_t* out)
+{
+  out->cluster          = dir->cluster;
+  out->entry_in_cluster = 0U;
+  out->scanned          = 0U;
+  out->contig_end       = dir->contig_end;
+}
+
+/* `priv_exfat_step_cluster()`: see header for the documented contract. */
+ra8_err_t priv_exfat_step_cluster(const ra8_fs_mount_t* m,
+                                  uint32_t              cluster,
+                                  uint32_t              contig_end,
+                                  uint32_t*             out_next)
+{
+  if (contig_end != 0U) {
+    const uint32_t adjacent = cluster + 1U;
+    if (adjacent >= contig_end) {
+      return k_ra8_err_not_found;
+    }
+    *out_next = adjacent;
+    return k_ra8_ok;
+  }
+  uint32_t        next = 0U;
+  const ra8_err_t e    = priv_fat_get(m, cluster, &next);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  if (priv_is_eoc(m, next) != 0U) {
+    return k_ra8_err_not_found;
+  }
+  *out_next = next;
+  return k_ra8_ok;
+}
+
 /* `priv_exfat_next_entry()`: see header for the documented contract. */
 ra8_err_t priv_exfat_next_entry(const ra8_fs_mount_t* m, exfat_cursor_t* cur, uint8_t* out)
 {
   const uint32_t per_cluster =
     (m->sectors_per_cluster * k_ra8_fs_bytes_per_sector) / (uint32_t)k_exfat_entry_bytes;
   if (cur->entry_in_cluster >= per_cluster) {
-    uint32_t  next = 0U;
-    ra8_err_t e    = priv_fat_get(m, cur->cluster, &next);
-    if (e != k_ra8_ok) {
-      return e;
-    }
-    if (priv_is_eoc(m, next) != 0U) {
-      return k_ra8_err_not_found;
+    uint32_t        next = 0U;
+    const ra8_err_t se   = priv_exfat_step_cluster(m, cur->cluster, cur->contig_end, &next);
+    if (se != k_ra8_ok) {
+      return se;
     }
     cur->cluster          = next;
     cur->entry_in_cluster = 0U;
@@ -236,15 +288,19 @@ static ra8_err_t priv_exfat_match_set(const ra8_fs_mount_t* m,
 }
 
 /* `priv_exfat_find()`: see header for the documented contract. */
-ra8_err_t
-priv_exfat_find(const ra8_fs_mount_t* m, const char* path, uint8_t* out_strm, uint8_t* out_attr)
+ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
+                          const exfat_dir_t*    dir,
+                          const char*           path,
+                          uint8_t*              out_strm,
+                          uint8_t*              out_attr)
 {
   /* Leading slashes are not part of the name; match FAT's priv_path_to_83
    * behavior so ra8_fs_open("/name") resolves on exFAT too (#93). */
   while (*path == '/') {
     path++;
   }
-  exfat_cursor_t cur = {.cluster = m->root_cluster, .entry_in_cluster = 0U, .scanned = 0U};
+  exfat_cursor_t cur = {};
+  priv_exfat_cursor_init(dir, &cur);
   while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
     uint8_t   entry[k_exfat_entry_bytes] = {};
     ra8_err_t e                          = priv_exfat_next_entry(m, &cur, entry);
@@ -337,7 +393,7 @@ ra8_err_t priv_exfat_open(ra8_fs_mount_t* handle,
   }
   uint8_t         strm[k_exfat_entry_bytes] = {};
   uint8_t         attr                      = 0U;
-  const ra8_err_t e                         = priv_exfat_find(handle, path, strm, &attr);
+  const ra8_err_t e                         = priv_exfat_lookup(handle, path, strm, &attr);
   if (e != k_ra8_ok) {
     return e;
   }

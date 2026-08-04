@@ -362,7 +362,8 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
  *          returned an error.
  *
  * @param[in,out] handle   Mounted exFAT volume.
- * @param[in]     path     Flat root-level name (ASCII, no leading '/').
+ * @param[in]     dir      Directory the name is created in.
+ * @param[in]     path     Leaf name (ASCII, no leading '/').
  * @param[in]     nlen     Length of @p path.
  * @param[in]     mode     Writing mode to record on the handle.
  * @param[out]    out_file Receives the open handle.
@@ -375,7 +376,7 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
  *
  * @pre Every pointer is non-NULL; the mount is an exFAT volume.
  * @pre `priv_strlen(path) == nlen` and @p nlen is within the name cap.
- * @post On success the root directory holds a zero-length set for @p path.
+ * @post On success @p dir holds a zero-length set for @p path.
  * @post On failure no file slot is left marked in use.
  *
  * @note Not thread-safe; callers serialise filesystem operations.
@@ -383,11 +384,12 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_open_created(ra8_fs_mount_t* handle,
-                                         const char*     path,
-                                         uint32_t        nlen,
-                                         ra8_fs_mode_t   mode,
-                                         ra8_fs_file_t** out_file)
+static ra8_err_t priv_exfat_open_created(ra8_fs_mount_t*    handle,
+                                         const exfat_dir_t* dir,
+                                         const char*        path,
+                                         uint32_t           nlen,
+                                         ra8_fs_mode_t      mode,
+                                         ra8_fs_file_t**    out_file)
 {
   ra8_fs_file_t* f = priv_alloc_file_slot();
   if (f == nullptr) {
@@ -395,7 +397,7 @@ static ra8_err_t priv_exfat_open_created(ra8_fs_mount_t* handle,
   }
   exfat_setpos_t  head  = {};
   uint32_t        count = 0U;
-  const ra8_err_t e     = priv_exfat_link(handle, path, nlen, &head, &count);
+  const ra8_err_t e     = priv_exfat_link(handle, dir, path, nlen, &head, &count);
   if (e != k_ra8_ok) {
     f->in_use = 0U;
     f->mount  = nullptr;
@@ -412,12 +414,16 @@ ra8_err_t priv_exfat_open_write(ra8_fs_mount_t* handle,
                                 ra8_fs_mode_t   mode,
                                 ra8_fs_file_t** out_file)
 {
-  /* Leading slashes are not part of the name, exactly as the read path and
-   * the create path already strip them (#93). Advanced through a local, so
-   * the caller's pointer is the one it handed in (MISRA C:2012 Rule 17.8). */
-  const char* leaf = path;
-  while (*leaf == '/') {
-    leaf++;
+  /* Resolve the directory the name lives in, rather than treating the whole
+   * path as one root-level name (#605). Leading slashes fall out of the walk,
+   * which is what used to make "/name" resolve (#93); "/logs/name" now lands in
+   * "/logs" instead of creating a file literally called "logs/name" that no
+   * matcher could ever find again. */
+  exfat_dir_t     parent = {};
+  const char*     leaf   = nullptr;
+  const ra8_err_t pe     = priv_exfat_resolve_parent(handle, path, &parent, &leaf);
+  if (pe != k_ra8_ok) {
+    return pe;
   }
   const uint32_t nlen = priv_strlen(leaf);
   if (nlen == 0U) {
@@ -430,13 +436,19 @@ ra8_err_t priv_exfat_open_write(ra8_fs_mount_t* handle,
   uint32_t        count                        = 0U;
   uint8_t         file_e[k_exfat_entry_bytes]  = {};
   uint8_t         strm[k_exfat_entry_bytes]    = {};
-  const ra8_err_t e =
-    priv_exfat_find_set(handle, leaf, pos, (uint32_t)k_exfat_set_max_entries, &count, file_e, strm);
+  const ra8_err_t e                            = priv_exfat_find_set(handle,
+                                          &parent,
+                                          leaf,
+                                          pos,
+                                          (uint32_t)k_exfat_set_max_entries,
+                                          &count,
+                                          file_e,
+                                          strm);
   if (e == k_ra8_ok) {
     return priv_exfat_open_found(handle, mode, &pos[0], count, file_e, strm, out_file);
   }
   if (e != k_ra8_err_not_found) {
     return e;
   }
-  return priv_exfat_open_created(handle, leaf, nlen, mode, out_file);
+  return priv_exfat_open_created(handle, &parent, leaf, nlen, mode, out_file);
 }

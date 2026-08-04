@@ -68,6 +68,21 @@ typedef enum : uint32_t {
   k_mut_bits_per_byte   = 8U,          /**< Allocation-bitmap bits per byte.       */
 } mut_cov_const_t;
 
+/**
+ * @enum mut_fault_t
+ * @brief Sentinel for the backend fault countdowns.
+ *
+ * @details Signed, because "never fail" has to be distinguishable from
+ *          "fail on the very next call".
+ *
+ * @invariant A countdown at ::k_mut_fault_never never reaches zero.
+ * @see s_mut_rd_fail_in
+ * @since 0.1.0
+ */
+typedef enum : int32_t {
+  k_mut_fault_never = -1, /**< Injection disabled (the default). */
+} mut_fault_t;
+
 /* ---- RAM-backed block device ------------------------------------------- */
 
 /**
@@ -102,6 +117,33 @@ typedef struct {
  */
 static mut_disk_t s_disk = {};
 
+/** @var s_mut_rd_fail_in
+ * @brief Read countdown: negative = never fail, 0 = fail this call, N = fail
+ *        after N more successful reads.
+ * @details Defaulted to "never", so every test written before fault injection
+ *          existed behaves exactly as it did. Set it to place a backend read
+ *          failure at a precise point in a call sequence.
+ * @details ONE-SHOT: the countdown disarms itself the moment it fires. That is
+ *          what lets a test observe a driver's ERROR HANDLING rather than only
+ *          its error return -- a rollback that frees the cluster it just
+ *          allocated needs a working device to do it with, and a latching fault
+ *          would make every rollback in the tree look broken.
+ * @warning Reset to ::k_mut_fault_never if a test arms it and does not reach it.
+ * @since 0.1.0
+ */
+static int32_t s_mut_rd_fail_in = (int32_t)k_mut_fault_never;
+
+/** @var s_mut_wr_fail_in
+ * @brief Write countdown, with the same convention as ::s_mut_rd_fail_in.
+ * @details The one that matters for `mkdir`: it is how a failure BETWEEN
+ *          allocating a directory's cluster and linking its entry set is
+ *          reached, which is the path the cluster rollback exists for. One-shot,
+ *          for the reason ::s_mut_rd_fail_in records.
+ * @warning Reset to ::k_mut_fault_never if a test arms it and does not reach it.
+ * @since 0.1.0
+ */
+static int32_t s_mut_wr_fail_in = (int32_t)k_mut_fault_never;
+
 /**
  * @brief `ra8_fs` backend: read @p count sectors from the RAM disk.
  *
@@ -121,6 +163,13 @@ static mut_disk_t s_disk = {};
  */
 static inline ra8_err_t mut_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
+  if (s_mut_rd_fail_in == 0) {
+    s_mut_rd_fail_in = (int32_t)k_mut_fault_never;
+    return k_ra8_err_out_of_range;
+  }
+  if (s_mut_rd_fail_in > 0) {
+    s_mut_rd_fail_in--;
+  }
   const mut_disk_t* d = (const mut_disk_t*)ctx;
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
@@ -150,6 +199,13 @@ static inline ra8_err_t mut_read(void* ctx, uint32_t lba, uint32_t count, uint8_
  */
 static inline ra8_err_t mut_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
+  if (s_mut_wr_fail_in == 0) {
+    s_mut_wr_fail_in = (int32_t)k_mut_fault_never;
+    return k_ra8_err_out_of_range;
+  }
+  if (s_mut_wr_fail_in > 0) {
+    s_mut_wr_fail_in--;
+  }
   mut_disk_t* d = (mut_disk_t*)ctx;
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
@@ -235,6 +291,8 @@ static inline void build_exfat_volume(void)
     TEST_FAIL_FMT("%s", "malloc failed for exFAT volume");
   }
   memset(s_disk.bytes, (int)k_mut_fill_byte, total);
+  s_mut_rd_fail_in          = (int32_t)k_mut_fault_never;
+  s_mut_wr_fail_in          = (int32_t)k_mut_fault_never;
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_exfat;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));

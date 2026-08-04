@@ -45,30 +45,8 @@ typedef enum : uint32_t {
   k_exfat_rename_bytes   = 96U, /**< Three 32-byte entries.                 */
 } exfat_mutate_const_t;
 
-/**
- * @brief Clear a contiguous cluster run in the allocation bitmap.
- *
- * @details Mirror of ::priv_exfat_bitmap_mark: clears one bit per cluster,
- * batching read-modify-write per bitmap sector. Per the exFAT spec the
- * bitmap alone is authoritative for allocation state, so freeing does not
- * require FAT edits.
- *
- * @param[in] m       Mounted exFAT volume.
- * @param[in] bmp_lba First LBA (volume-relative) of the bitmap.
- * @param[in] clus    First cluster of the run.
- * @param[in] count   Number of clusters to mark free.
- * @return Error code.
- * @retval k_ra8_ok    All bits cleared + written.
- * @retval k_ra8_err_* Backend read/write failure.
- * @pre @p m is non-NULL; the run is within the bitmap.
- * @pre The bitmap region is contiguous on disk.
- * @post The @p count bits for the run read as 0.
- * @post Only the affected bitmap sectors are rewritten.
- * @note Read-modify-write, one sector at a time.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t
+/* `priv_exfat_bitmap_clear()`: see header for the documented contract. */
+ra8_err_t
 priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint32_t count)
 {
   uint32_t loaded                         = UINT32_MAX;
@@ -165,8 +143,9 @@ static ra8_err_t priv_exfat_take_set(const ra8_fs_mount_t* m,
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `priv_exfat_find_set()` -- one aligned walk of the root. */
+/** @brief Implementation of `priv_exfat_find_set()` -- one aligned walk of a directory. */
 ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
+                              const exfat_dir_t*    dir,
                               const char*           path,
                               exfat_setpos_t*       pos,
                               uint32_t              max_pos,
@@ -178,7 +157,8 @@ ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
   while (*path == '/') {
     path++;
   }
-  exfat_cursor_t cur  = {.cluster = m->root_cluster, .entry_in_cluster = 0U, .scanned = 0U};
+  exfat_cursor_t cur = {};
+  priv_exfat_cursor_init(dir, &cur);
   const uint32_t nlen = priv_strlen(path);
   while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
     const exfat_setpos_t at = {.cluster = cur.cluster, .index = cur.entry_in_cluster};
@@ -284,30 +264,18 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
   return k_ra8_ok; /* GCOVR_EXCL_LINE */
 }
 
-/* `priv_exfat_unlink()`: see header for the documented contract. */
-ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path)
+/* `priv_exfat_drop_set()`: see header for the documented contract. */
+ra8_err_t priv_exfat_drop_set(const ra8_fs_mount_t* m, const exfat_setpos_t* pos, uint32_t count)
 {
-  exfat_setpos_t pos[k_exfat_set_max_entries] = {};
-  uint32_t       count                        = 0U;
-  uint8_t        file_e[k_exfat_entry_bytes]  = {};
-  uint8_t        strm_e[k_exfat_entry_bytes]  = {};
-  ra8_err_t      e =
-    priv_exfat_find_set(m, path, pos, (uint32_t)k_exfat_set_max_entries, &count, file_e, strm_e);
-  if (e != k_ra8_ok) {
-    return e;
-  }
-  /* A directory's entry set looks like a file's, so without this the chain
-   * holding every child is handed to priv_exfat_free_clusters and the children
-   * become unreachable allocated clusters -- silent, unrecoverable loss (#604). */
-  if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_directory) != 0U) {
-    return k_ra8_err_invalid_arg;
-  }
   for (uint32_t k = 0U; k < count; k++) {
+    /* A single-entry read at a recorded position: contig_end is irrelevant
+     * because this cursor never advances past the entry it was aimed at. */
     exfat_cursor_t one                        = {.cluster          = pos[k].cluster,
                                                  .entry_in_cluster = pos[k].index,
-                                                 .scanned          = 0U};
+                                                 .scanned          = 0U,
+                                                 .contig_end       = 0U};
     uint8_t        entry[k_exfat_entry_bytes] = {};
-    e                                         = priv_exfat_next_entry(m, &one, entry);
+    ra8_err_t      e                          = priv_exfat_next_entry(m, &one, entry);
     if (e != k_ra8_ok) {
       return e; /* GCOVR_EXCL_LINE */
     }
@@ -317,7 +285,53 @@ ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path)
       return e; /* GCOVR_EXCL_LINE */
     }
   }
+  return k_ra8_ok;
+}
+
+/* `priv_exfat_unlink_at()`: see header for the documented contract. */
+ra8_err_t priv_exfat_unlink_at(const ra8_fs_mount_t* m, const exfat_dir_t* dir, const char* name)
+{
+  exfat_setpos_t  pos[k_exfat_set_max_entries] = {};
+  uint32_t        count                        = 0U;
+  uint8_t         file_e[k_exfat_entry_bytes]  = {};
+  uint8_t         strm_e[k_exfat_entry_bytes]  = {};
+  const ra8_err_t e                            = priv_exfat_find_set(m,
+                                          dir,
+                                          name,
+                                          pos,
+                                          (uint32_t)k_exfat_set_max_entries,
+                                          &count,
+                                          file_e,
+                                          strm_e);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  /* A directory's entry set looks like a file's, so without this the chain
+   * holding every child is handed to priv_exfat_free_clusters and the children
+   * become unreachable allocated clusters -- silent, unrecoverable loss (#604). */
+  if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_directory) != 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  const ra8_err_t de = priv_exfat_drop_set(m, pos, count);
+  if (de != k_ra8_ok) {
+    return de; /* GCOVR_EXCL_LINE */
+  }
   return priv_exfat_free_clusters(m, strm_e);
+}
+
+/* `priv_exfat_unlink()`: see header for the documented contract. */
+ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path)
+{
+  exfat_dir_t     parent = {};
+  const char*     leaf   = nullptr;
+  const ra8_err_t e      = priv_exfat_resolve_parent(m, path, &parent, &leaf);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  if (priv_strlen(leaf) == 0U) {
+    return k_ra8_err_invalid_arg; /* "/" names the root, which is not a file */
+  }
+  return priv_exfat_unlink_at(m, &parent, leaf);
 }
 
 /**
@@ -381,19 +395,82 @@ static ra8_err_t priv_exfat_apply_rename(const ra8_fs_mount_t* m,
   return k_ra8_ok;
 }
 
+/**
+ * @brief Resolve a rename's two paths to one shared parent plus two leaves.
+ *
+ * @details Resolves both parents and requires them to be the same directory:
+ * this rename rewrites an entry set where it lies, so it cannot move one
+ * between directories. Both leaves must be real names -- the volume root is
+ * neither renameable nor a legal destination. Extracted from
+ * ::priv_exfat_rename so that function stays inside the size gate, and the
+ * exFAT mirror of ::priv_rename_prepare.
+ *
+ * @param[in]  m          Mounted exFAT volume.
+ * @param[in]  old_path   Existing path.
+ * @param[in]  new_path   Replacement path (same directory).
+ * @param[out] out_parent Receives the shared parent directory.
+ * @param[out] out_old    Receives a pointer to the old leaf name.
+ * @param[out] out_new    Receives a pointer to the new leaf name.
+ * @return Error code.
+ * @retval k_ra8_ok                Resolved; outputs populated.
+ * @retval k_ra8_err_invalid_arg   A path names the volume root.
+ * @retval k_ra8_err_not_supported The two paths are in different directories.
+ * @retval k_ra8_err_*             Resolution / backend failure.
+ * @pre Every pointer argument is non-NULL; the mount is exFAT.
+ * @pre Neither path is currently held open.
+ * @post On success both leaves point into their caller's path strings.
+ * @post No volume state is modified.
+ * @note Not thread-safe; callers serialise.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_exfat_rename_prepare(const ra8_fs_mount_t* m,
+                                           const char*           old_path,
+                                           const char*           new_path,
+                                           exfat_dir_t*          out_parent,
+                                           const char**          out_old,
+                                           const char**          out_new)
+{
+  exfat_dir_t     op = {};
+  const char*     ol = nullptr;
+  const ra8_err_t e1 = priv_exfat_resolve_parent(m, old_path, &op, &ol);
+  if (e1 != k_ra8_ok) {
+    return e1;
+  }
+  exfat_dir_t     np = {};
+  const char*     nl = nullptr;
+  const ra8_err_t e2 = priv_exfat_resolve_parent(m, new_path, &np, &nl);
+  if (e2 != k_ra8_ok) {
+    return e2;
+  }
+  if (op.cluster != np.cluster) {
+    return k_ra8_err_not_supported;
+  }
+  if (priv_strlen(ol) == 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (priv_strlen(nl) == 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  *out_parent = op;
+  *out_old    = ol;
+  *out_new    = nl;
+  return k_ra8_ok;
+}
+
 /* `priv_exfat_rename()`: see header for the documented contract. */
 ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const char* new_path)
 {
-  /* Strip leading slashes on both paths so the old name matches and the new
-   * name is stored without a slash (#93), consistent with create/find. */
-  while (*old_path == '/') {
-    old_path++;
+  exfat_dir_t     parent   = {};
+  const char*     old_name = nullptr;
+  const char*     new_name = nullptr;
+  const ra8_err_t pe =
+    priv_exfat_rename_prepare(m, old_path, new_path, &parent, &old_name, &new_name);
+  if (pe != k_ra8_ok) {
+    return pe;
   }
-  while (*new_path == '/') {
-    new_path++;
-  }
-  const uint32_t old_len = priv_strlen(old_path);
-  const uint32_t new_len = priv_strlen(new_path);
+  const uint32_t old_len = priv_strlen(old_name);
+  const uint32_t new_len = priv_strlen(new_name);
   if (old_len > (uint32_t)k_exfat_name_per_entry) {
     return k_ra8_err_not_supported;
   }
@@ -402,14 +479,15 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   }
   uint8_t e_strm[k_exfat_entry_bytes] = {};
   uint8_t e_attr                      = 0U;
-  if (priv_exfat_find(m, new_path, e_strm, &e_attr) == k_ra8_ok) {
+  if (priv_exfat_find(m, &parent, new_name, e_strm, &e_attr) == k_ra8_ok) {
     return k_ra8_err_exists;
   }
   exfat_setpos_t  pos[k_exfat_set_max_entries] = {};
   uint32_t        count                        = 0U;
   uint8_t         set[k_exfat_rename_bytes]    = {};
-  const ra8_err_t e = priv_exfat_find_set(m,
-                                          old_path,
+  const ra8_err_t e                            = priv_exfat_find_set(m,
+                                          &parent,
+                                          old_name,
                                           pos,
                                           (uint32_t)k_exfat_set_max_entries,
                                           &count,
@@ -421,7 +499,7 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   if (count != (uint32_t)k_exfat_rename_entries) {
     return k_ra8_err_not_supported;
   }
-  return priv_exfat_apply_rename(m, pos, set, new_path, new_len);
+  return priv_exfat_apply_rename(m, pos, set, new_name, new_len);
 }
 
 /**
@@ -482,12 +560,19 @@ static ra8_err_t priv_exfat_gather_name(const ra8_fs_mount_t* m,
 }
 
 /* `priv_exfat_listdir()`: see header for the documented contract. */
-ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m, ra8_fs_listdir_cb_t cb, void* ctx)
+ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m,
+                             const exfat_dir_t*    dir,
+                             ra8_fs_listdir_cb_t   cb,
+                             void*                 ctx)
 {
-  exfat_cursor_t cur = {.cluster = m->root_cluster, .entry_in_cluster = 0U, .scanned = 0U};
+  exfat_cursor_t cur = {};
+  priv_exfat_cursor_init(dir, &cur);
   while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
     uint8_t   e[k_exfat_entry_bytes] = {};
     ra8_err_t r                      = priv_exfat_next_entry(m, &cur, e);
+    if (r == k_ra8_err_not_found) {
+      return k_ra8_ok; /* the directory's run ended without a 0x00 marker */
+    }
     if (r != k_ra8_ok) {
       return r; /* GCOVR_EXCL_LINE */
     }
@@ -507,7 +592,14 @@ ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m, ra8_fs_listdir_cb_t cb, vo
     if (strm[0] != (uint8_t)k_exfat_entry_stream) {
       continue;
     }
-    const uint32_t size                        = priv_rd32(&strm[k_exfat_strm_off_dlen]);
+    /* A directory's exFAT DataLength is its ALLOCATION, not a byte count, so
+     * reporting it as a size would tell every caller that an empty folder held
+     * a cluster's worth of bytes. FAT reports 0 for a directory and so does
+     * ra8_fs_stat(); this is the third place that has to agree (#605). */
+    uint32_t size = priv_rd32(&strm[k_exfat_strm_off_dlen]);
+    if ((attr & (uint8_t)k_exfat_attr_directory) != 0U) {
+      size = 0U;
+    }
     const uint32_t nlen                        = (uint32_t)strm[k_exfat_strm_off_nlen];
     char           name[k_exfat_list_name_cap] = {};
     r = priv_exfat_gather_name(m, &cur, sc, nlen, name, (uint32_t)k_exfat_list_name_cap);

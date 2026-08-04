@@ -211,6 +211,7 @@ typedef enum : uint32_t {
   k_exfat_bit_shift      = 3U,      /**< log2(8): cluster index -> byte.            */
   k_exfat_inuse_bit      = 0x80U,   /**< Directory entry type bit 7 = in use.       */
   k_exfat_max_set_bytes  = 224U,    /**< (2 + ceil(64/15)) * 32 = 7 entries.        */
+  k_exfat_path_depth     = 32U,     /**< Max nested components per exFAT path.      */
 } ra8_fs_exfat_val_t;
 
 /**
@@ -626,12 +627,103 @@ typedef struct {
 /**
  * @struct exfat_cursor_t
  * @brief Linear cursor over a directory's 32-byte entries.
+ *
+ * @details `contig_end` is what lets one cursor walk both shapes an exFAT
+ *          directory comes in. The volume root is always a FAT chain, so it
+ *          leaves the field 0 and the walk follows ::priv_fat_get. A
+ *          subdirectory this driver creates is one contiguous run with
+ *          NoFatChain set, and per the exFAT specification the FAT entries for
+ *          such a run are explicitly invalid -- following them would read a
+ *          free entry (0), decide it is not end-of-chain, and walk off into
+ *          cluster 0. The run bound is the only correct successor there.
+ *
+ * @invariant `entry_in_cluster` is <= the entries one cluster holds.
+ * @invariant `contig_end` is 0, or greater than the run's first cluster.
+ * @see priv_exfat_cursor_init()
+ * @since 0.1.0
  */
 typedef struct {
-  uint32_t cluster;          /**< Current directory cluster.           */
-  uint32_t entry_in_cluster; /**< Next entry index within the cluster. */
-  uint32_t scanned;          /**< Total entries read (P10 bound).      */
+  uint32_t cluster;          /**< Current directory cluster.                 */
+  uint32_t entry_in_cluster; /**< Next entry index within the cluster.       */
+  uint32_t scanned;          /**< Total entries read (P10 bound).            */
+  uint32_t contig_end;       /**< One past the run's last cluster; 0 => FAT. */
 } exfat_cursor_t;
+
+/**
+ * @struct exfat_dir_t
+ * @brief Identifies the exFAT directory a lookup, scan or link operates in.
+ *
+ * @details The exFAT counterpart of ::dir_loc_t, and the thing that turns this
+ *          driver's flat root-only namespace into a tree: every scan used to
+ *          start at `m->root_cluster` at exactly one call site each, and each
+ *          of those now starts at one of these instead. The root needs no
+ *          special case -- it is the directory whose first cluster is
+ *          `m->root_cluster` and whose run is FAT-chained.
+ *
+ * @invariant `cluster` is a real heap cluster (>= ::k_cluster_first_data).
+ * @invariant `contig_end` is 0 (FAT-chained) or > `cluster` (contiguous run).
+ * @see priv_exfat_dir_root()
+ * @see priv_exfat_dir_from_set()
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t cluster;    /**< First cluster of the directory.                    */
+  uint32_t contig_end; /**< One past the run's last cluster; 0 => FAT-chained. */
+} exfat_dir_t;
+
+/**
+ * @enum exfat_set_const_t
+ * @brief Bounds on one exFAT directory entry set.
+ *
+ * @details exFAT spec sec 7.4: a File entry carries a SecondaryCount, and the
+ *          set is that many 32-byte entries plus the File entry itself. This
+ *          adapter's name cap (::k_exfat_name_cap, 64 UTF-16 units) needs one
+ *          Stream entry plus `ceil(64 / 15)` Name entries, so ::k_exfat_set_writable
+ *          is the largest set it can rewrite. ::k_exfat_set_max_entries is the
+ *          largest the FORMAT allows and bounds the walk over a set some other
+ *          implementation wrote.
+ *
+ * @invariant `k_exfat_set_writable <= k_exfat_set_max_entries`.
+ *
+ * @par Example:
+ * @code
+ * exfat_setpos_t pos[k_exfat_set_max_entries] = {};
+ * @endcode
+ *
+ * @see priv_exfat_find_set()
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_exfat_set_max_entries = 19U, /**< 1 File + 1 Stream + 17 Name entries.      */
+  k_exfat_set_writable    = 7U,  /**< 1 File + 1 Stream + 5 Name (64 chars).    */
+  k_exfat_set_min_entries = 3U,  /**< The smallest legal set: File+Stream+Name. */
+} exfat_set_const_t;
+
+/**
+ * @struct exfat_setpos_t
+ * @brief Directory position (cluster + entry index) of one 32-byte entry.
+ *
+ * @details A directory is a cluster chain, so an entry's address is a cluster
+ *          plus an index inside it and NOT a flat offset -- a set can straddle
+ *          a cluster boundary and its entries then live in two different
+ *          clusters. Everything that rewrites an entry in place carries these
+ *          coordinates rather than recomputing them.
+ *
+ * @invariant `index` is below the directory's entries-per-cluster.
+ *
+ * @par Example:
+ * @code
+ * const exfat_setpos_t head = {.cluster = f->entry_set_cluster,
+ *                              .index   = f->entry_set_index};
+ * @endcode
+ *
+ * @see priv_exfat_find_set()
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t cluster; /**< Directory cluster holding the entry.       */
+  uint32_t index;   /**< Entry index within that cluster (0-based). */
+} exfat_setpos_t;
 
 /**
  * @struct ra8_fs_fmt_geom_t

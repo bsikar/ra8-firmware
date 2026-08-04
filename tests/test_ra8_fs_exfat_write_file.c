@@ -582,38 +582,40 @@ static void test_exfat_write_file_over_directory_refused(void)
 }
 
 /**
- * @test test_exfat_rmdir_not_supported
- * @brief `ra8_fs_rmdir()` reports not-supported on an exFAT mount.
+ * @test test_exfat_rmdir_dispatches
+ * @brief `ra8_fs_rmdir()` reaches the exFAT remover, guards running first.
  *
- * @details Symmetric with `ra8_fs_mkdir()`: this driver has no exFAT directory
- *          creation path, so it declines removal rather than implementing half
- *          of a pair it cannot complete. Argument validation still runs first,
- *          so a NULL path is a null_ptr rather than a not_supported.
+ * @details This used to report `k_ra8_err_not_supported`: with no exFAT
+ *          directory-CREATION path, removal had no reachable subject and
+ *          declining was the only honest answer. Both halves landed together
+ *          (#605), so the dispatch now reaches `priv_exfat_rmdir` and a name
+ *          that is not there reports not_found. Argument validation still runs
+ *          first, so a NULL path is a null_ptr rather than a lookup.
  *
  * @par MC/DC:
- * Decision: `if (handle->type == k_ra8_fs_type_exfat)` in `ra8_fs_rmdir()` --
- * 1 condition.
- * - V1: type = exFAT -> T -> k_ra8_err_not_supported (THIS test).
- * - V2: type = FAT16 -> F -> dispatch to priv_fat_rmdir (test_ra8_fs_rmdir.c).
+ * Decision: `if (handle->type == k_ra8_fs_type_exfat)`
+ * (libs/ra8_fs/src/ra8_fs_fat_dirmk.c@priv_rmdir_locked, 1 condition).
+ * - V1: type = exFAT -> T -> priv_exfat_rmdir (THIS test).
+ * - V2: type = FAT16 -> F -> priv_fat_rmdir (test_ra8_fs_rmdir.c).
  *
  * @pre A freshly formatted exFAT volume is mounted.
- * @post The call returns k_ra8_err_not_supported.
+ * @post A NULL path reports null_ptr; a missing name reports not_found.
  *
  * @since 0.1.0
  */
-static void test_exfat_rmdir_not_supported(void)
+static void test_exfat_rmdir_dispatches(void)
 {
-  TEST_BEGIN("exfat rmdir: not supported, matching mkdir");
+  TEST_BEGIN("exfat rmdir: dispatches to the exFAT remover");
   build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_rmdir(h, nullptr));
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_rmdir(h, "/LOGS"));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rmdir(h, "/LOGS"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
-  TEST_END("exfat rmdir: not supported, matching mkdir");
+  TEST_END("exfat rmdir: dispatches to the exFAT remover");
 }
 
 /**
@@ -640,7 +642,7 @@ int32_t main(void)
   test_exfat_unlink_directory_refused();
   test_exfat_open_directory_refused();
   test_exfat_write_file_over_directory_refused();
-  test_exfat_rmdir_not_supported();
+  test_exfat_rmdir_dispatches();
   (void)fprintf(stderr, "[OK  ] test_ra8_fs_exfat_write_file.c\n");
   return 0;
 }

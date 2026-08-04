@@ -75,7 +75,12 @@ uint16_t priv_exfat_set_checksum(const uint8_t* set, uint32_t bytes)
 /* `priv_exfat_find_bitmap()`: see header for the documented contract. */
 ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, uint32_t* out_len)
 {
-  exfat_cursor_t cur = {.cluster = m->root_cluster, .entry_in_cluster = 0U, .scanned = 0U};
+  /* The bitmap entry lives in the ROOT directory by definition, so this is the
+   * one exFAT scan that is not parameterised by a directory (#605). */
+  exfat_dir_t root = {};
+  priv_exfat_dir_root(m, &root);
+  exfat_cursor_t cur = {};
+  priv_exfat_cursor_init(&root, &cur);
   while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
     uint8_t   e[k_exfat_entry_bytes] = {};
     ra8_err_t r                      = priv_exfat_next_entry(m, &cur, e);
@@ -299,68 +304,88 @@ static uint8_t priv_exfat_slot_free(uint8_t type_byte)
 }
 
 /**
- * @brief Find @p need consecutive free entries within one root-dir cluster.
+ * @brief Scan one directory cluster for @p need consecutive free entries.
  *
- * @details Scans each directory cluster for a run of free slots large enough for the set.
+ * @details Inner half of ::priv_exfat_find_dir_space, split out so the outer
+ *          walk stays inside the nesting and statement budgets.
  *
- * @param[in]  m        Mounted exFAT volume.
- * @param[in]  need     Number of consecutive free entries required.
- * @param[out] out_clus Cluster holding the run.
- * @param[out] out_idx  Entry index of the run start within that cluster.
+ * @param[in]  m       Mounted exFAT volume.
+ * @param[in]  cluster Directory cluster to scan.
+ * @param[in]  need    Number of consecutive free entries required.
+ * @param[out] out_idx Entry index of the run start within @p cluster.
  * @return Error code.
- * @retval k_ra8_ok         A run was found.
- * @retval k_ra8_err_no_mem No run of @p need entries in the root directory.
+ * @retval k_ra8_ok         A run of @p need free slots starts at ``*out_idx``.
+ * @retval k_ra8_err_no_mem No such run in this cluster.
  * @retval k_ra8_err_*      Backend read failure.
- * @pre All pointers are non-NULL; ``m->type`` is exFAT.
- * @pre @p need >= 1.
- * @post On success the run location is returned.
+ * @pre @p m and @p out_idx are non-NULL; @p need >= 1.
+ * @pre @p cluster belongs to the directory being searched.
+ * @post On success ``*out_idx`` addresses the first free slot of the run.
  * @post No volume state modified.
- * @note The set is kept within a single cluster (no chain spanning).
+ * @note A set is never split across two clusters.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
-                                           uint32_t              need,
-                                           uint32_t*             out_clus,
-                                           uint32_t*             out_idx)
+static ra8_err_t priv_exfat_space_in_cluster(const ra8_fs_mount_t* m,
+                                             uint32_t              cluster,
+                                             uint32_t              need,
+                                             uint32_t*             out_idx)
 {
   const uint32_t per_cluster =
     (m->sectors_per_cluster * k_ra8_fs_bytes_per_sector) / (uint32_t)k_exfat_entry_bytes;
-  uint32_t cluster = m->root_cluster;
-  uint32_t guard   = 0U;
-  while (guard < (uint32_t)k_exfat_scan_limit) {
-    uint32_t run = 0U;
-    for (uint32_t i = 0U; i < per_cluster; i++) {
-      uint8_t   e[k_exfat_entry_bytes] = {};
-      ra8_err_t r                      = priv_exfat_read_entry(m, cluster, i, e);
-      if (r != k_ra8_ok) {
-        return r;
-      }
-      if (priv_exfat_slot_free(e[0]) == 0U) {
-        run = 0U;
-        continue;
-      }
-      if (run == 0U) {
-        *out_idx = i;
-      }
-      run++;
-      if (run >= need) {
-        *out_clus = cluster;
-        return k_ra8_ok;
-      }
+  uint32_t run = 0U;
+  for (uint32_t i = 0U; i < per_cluster; i++) {
+    uint8_t         e[k_exfat_entry_bytes] = {};
+    const ra8_err_t r                      = priv_exfat_read_entry(m, cluster, i, e);
+    if (r != k_ra8_ok) {
+      return r;
     }
-    uint32_t  next = 0U;
-    ra8_err_t fe   = priv_fat_get(m, cluster, &next);
+    if (priv_exfat_slot_free(e[0]) == 0U) {
+      run = 0U;
+      continue;
+    }
+    if (run == 0U) {
+      *out_idx = i;
+    }
+    run++;
+    if (run >= need) {
+      return k_ra8_ok;
+    }
+  }
+  return k_ra8_err_no_mem;
+}
+
+/* `priv_exfat_find_dir_space()`: see header for the documented contract. */
+ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
+                                    const exfat_dir_t*    dir,
+                                    uint32_t              need,
+                                    uint32_t*             out_clus,
+                                    uint32_t*             out_idx)
+{
+  uint32_t cluster = dir->cluster;
+  for (uint32_t guard = 0U; guard < (uint32_t)k_exfat_scan_limit; guard++) {
+    const ra8_err_t r = priv_exfat_space_in_cluster(m, cluster, need, out_idx);
+    if (r == k_ra8_ok) {
+      *out_clus = cluster;
+      return k_ra8_ok;
+    }
+    if (r != k_ra8_err_no_mem) {
+      return r;
+    }
+    uint32_t        next = 0U;
+    const ra8_err_t fe   = priv_exfat_step_cluster(m, cluster, dir->contig_end, &next);
+    if (fe == k_ra8_err_not_found) {
+      /* The directory is full and this driver does not grow one yet (#605):
+       * a subdirectory here is a single-cluster NoFatChain run, and extending
+       * it means either finding the adjacent cluster free or converting the
+       * run to a FAT chain. Reported honestly rather than silently truncated. */
+      return k_ra8_err_no_mem;
+    }
     if (fe != k_ra8_ok) {
       return fe;
     }
-    if (priv_is_eoc(m, next) != 0U) {
-      return k_ra8_err_no_mem;
-    }
     cluster = next;
-    guard++;
   }
-  return k_ra8_err_no_mem;
+  return k_ra8_err_no_mem; /* GCOVR_EXCL_LINE -- 65536 directory clusters required */
 }
 
 /**
@@ -456,18 +481,19 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
 }
 
 /** @brief Implementation of `priv_exfat_link()` -- one directory-slot scan, one set write. */
-ra8_err_t priv_exfat_link(ra8_fs_mount_t* m,
-                          const char*     path,
-                          uint32_t        nlen,
-                          exfat_setpos_t* out_head,
-                          uint32_t*       out_count)
+ra8_err_t priv_exfat_link(ra8_fs_mount_t*    m,
+                          const exfat_dir_t* dir,
+                          const char*        path,
+                          uint32_t           nlen,
+                          exfat_setpos_t*    out_head,
+                          uint32_t*          out_count)
 {
   const uint32_t name_entries =
     (nlen + (uint32_t)k_exfat_name_per_entry - 1U) / (uint32_t)k_exfat_name_per_entry;
   const uint32_t need  = 2U + name_entries;
   uint32_t       dclus = 0U;
   uint32_t       didx  = 0U;
-  ra8_err_t      e     = priv_exfat_find_dir_space(m, need, &dclus, &didx);
+  ra8_err_t      e     = priv_exfat_find_dir_space(m, dir, need, &dclus, &didx);
   if (e != k_ra8_ok) {
     return e;
   }

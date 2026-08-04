@@ -94,13 +94,14 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra8_fs_listdir_c
 /**
  * @brief Enumerate a directory -- the guarded body of ::ra8_fs_listdir().
  *
- * @details Resolves @p path to a directory via `priv_resolve_dir` and walks it,
- *          invoking @p cb once per visible entry. FAT12/16/32 support any path
- *          (`"/"` or nested); exFAT remains root-only. The synthetic "." and
- *          ".." entries are not reported.
+ * @details Resolves @p path to a directory -- `priv_resolve_dir` on FAT,
+ *          `priv_exfat_resolve_dir` on exFAT -- and walks it, invoking @p cb
+ *          once per visible entry. Both filesystems take `"/"` or a nested
+ *          path. FAT's synthetic "." and ".." entries are not reported; exFAT
+ *          has none to report.
  *
  * @param[in,out] handle Mount handle.
- * @param[in]     path   Directory path (`"/"` or a nested path on FAT).
+ * @param[in]     path   Directory path (`"/"` or a nested path).
  * @param[in]     cb     Per-entry callback.
  * @param[in]     ctx    Opaque pointer forwarded to `cb`.
  *
@@ -109,7 +110,7 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra8_fs_listdir_c
  * @retval k_ra8_err_null_ptr        Any required pointer was NULL.
  * @retval k_ra8_err_invalid_state   Mount not in use.
  * @retval k_ra8_err_not_found       A path component does not exist.
- * @retval k_ra8_err_not_supported   exFAT path other than `"/"`.
+ * @retval k_ra8_err_invalid_arg     A path component names a file.
  * @retval k_ra8_err_*               Backend error.
  *
  * @pre The library lock is held (or none is installed).
@@ -134,14 +135,16 @@ priv_listdir_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_
     return k_ra8_err_invalid_state;
   }
   if (handle->type == k_ra8_fs_type_exfat) {
-    /* exFAT directory listing is root-only for now. */
-    if (path[0] != '/') {
-      return k_ra8_err_not_supported;
+    /* Any exFAT directory, not just the root (#605). A path that names nothing
+     * reports not_found and one that names a FILE reports invalid_arg, which is
+     * what the FAT side has always answered -- the two filesystems no longer
+     * disagree about what "list this path" means. */
+    exfat_dir_t     dir  = {};
+    const ra8_err_t xerr = priv_exfat_resolve_dir(handle, path, &dir);
+    if (xerr != k_ra8_ok) {
+      return xerr;
     }
-    if (path[1] != '\0') {
-      return k_ra8_err_not_supported;
-    }
-    return priv_exfat_listdir(handle, cb, ctx);
+    return priv_exfat_listdir(handle, &dir, cb, ctx);
   }
   dir_loc_t       loc  = {};
   const ra8_err_t rerr = priv_resolve_dir(handle, path, &loc);

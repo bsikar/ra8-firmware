@@ -11,7 +11,9 @@
  * Everything the grow/flush engine needs is declared here, whichever
  * translation unit defines it:
  *
- *   - ::exfat_setpos_t and ::k_exfat_set_max_entries, the coordinates of one
+ *   - ::exfat_setpos_t and ::k_exfat_set_max_entries -- declared in
+ *     `ra8_fs_fat_types_internal.h`, because the directory seam (#605) retires
+ *     and rewrites sets through the same coordinates -- naming one
  *     directory ENTRY SET, shared by the mutation helpers and the stream;
  *   - the allocation-bitmap primitives (`priv_exfat_bitmap_*`), which the
  *     grow path drives one cluster at a time;
@@ -40,60 +42,6 @@
 #include "ra8_attributes.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_types_internal.h"
-
-/**
- * @enum exfat_set_const_t
- * @brief Bounds on one exFAT directory entry set.
- *
- * @details exFAT spec sec 7.4: a File entry carries a SecondaryCount, and the
- *          set is that many 32-byte entries plus the File entry itself. This
- *          adapter's name cap (::k_exfat_name_cap, 64 UTF-16 units) needs one
- *          Stream entry plus `ceil(64 / 15)` Name entries, so ::k_exfat_set_writable
- *          is the largest set it can rewrite. ::k_exfat_set_max_entries is the
- *          largest the FORMAT allows and bounds the walk over a set some other
- *          implementation wrote.
- *
- * @invariant `k_exfat_set_writable <= k_exfat_set_max_entries`.
- *
- * @par Example:
- * @code
- * exfat_setpos_t pos[k_exfat_set_max_entries] = {};
- * @endcode
- *
- * @see priv_exfat_find_set()
- * @since 0.1.0
- */
-typedef enum : uint32_t {
-  k_exfat_set_max_entries = 19U, /**< 1 File + 1 Stream + 17 Name entries.      */
-  k_exfat_set_writable    = 7U,  /**< 1 File + 1 Stream + 5 Name (64 chars).    */
-  k_exfat_set_min_entries = 3U,  /**< The smallest legal set: File+Stream+Name. */
-} exfat_set_const_t;
-
-/**
- * @struct exfat_setpos_t
- * @brief Directory position (cluster + entry index) of one 32-byte entry.
- *
- * @details A directory is a cluster chain, so an entry's address is a cluster
- *          plus an index inside it and NOT a flat offset -- a set can straddle
- *          a cluster boundary and its entries then live in two different
- *          clusters. Everything that rewrites an entry in place carries these
- *          coordinates rather than recomputing them.
- *
- * @invariant `index` is below the directory's entries-per-cluster.
- *
- * @par Example:
- * @code
- * const exfat_setpos_t head = {.cluster = f->entry_set_cluster,
- *                              .index   = f->entry_set_index};
- * @endcode
- *
- * @see priv_exfat_find_set()
- * @since 0.1.0
- */
-typedef struct {
-  uint32_t cluster; /**< Directory cluster holding the entry.       */
-  uint32_t index;   /**< Entry index within that cluster (0-based). */
-} exfat_setpos_t;
 
 /**
  * @brief Read one allocation-bitmap bit: is this cluster free?
@@ -199,7 +147,8 @@ priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus,
  *          aligned.
  *
  * @param[in]  m         Mounted exFAT volume.
- * @param[in]  path      Target name (ASCII, root-level); leading '/' stripped.
+ * @param[in]  dir       Directory to search.
+ * @param[in]  path      Target leaf name (ASCII); leading '/' stripped.
  * @param[out] pos       Receives the positions (File entry first).
  * @param[in]  max_pos   Capacity of @p pos.
  * @param[out] out_count Receives the entry count (1 + SecondaryCount).
@@ -208,21 +157,22 @@ priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus,
  *
  * @return Error code.
  * @retval k_ra8_ok            Set found; outputs populated.
- * @retval k_ra8_err_not_found No matching set in the root directory.
+ * @retval k_ra8_err_not_found No matching set in @p dir.
  * @retval k_ra8_err_no_mem    The set has more entries than @p max_pos.
  * @retval k_ra8_err_*         Backend read failure.
  *
  * @pre All pointers are non-NULL; `m->type` is exFAT.
- * @pre @p path is a flat root-level name.
+ * @pre @p dir locates an existing directory on this volume.
  * @post On success @p pos holds `*out_count` valid positions.
  * @post On failure the outputs are unspecified.
  *
- * @note Only the root directory is searched (flat namespace).
+ * @note One directory is searched -- the one @p dir names (#605).
  *
  * @since 0.1.0
  */
 RA8_PRIV
 ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
+                              const exfat_dir_t*    dir,
                               const char*           path,
                               exfat_setpos_t*       pos,
                               uint32_t              max_pos,
@@ -269,7 +219,8 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
  *          searching the directory again on every flush.
  *
  * @param[in]  m         Mounted exFAT volume.
- * @param[in]  path      File name (ASCII, no leading '/').
+ * @param[in]  dir       Directory the set is linked into.
+ * @param[in]  path      Leaf name (ASCII, no leading '/').
  * @param[in]  nlen      Name length in characters (1..::k_exfat_name_cap).
  * @param[out] out_head  Receives the File entry's (cluster, index).
  * @param[out] out_count Receives the entry count (1 + SecondaryCount).
@@ -279,9 +230,9 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
  * @retval k_ra8_err_no_mem No run of free directory slots big enough.
  * @retval k_ra8_err_*      Backend read/write failure.
  *
- * @pre @p m, @p path, @p out_head and @p out_count are non-NULL.
+ * @pre @p m, @p dir, @p path, @p out_head and @p out_count are non-NULL.
  * @pre `priv_strlen(path) == nlen` and @p nlen >= 1.
- * @post On success the root directory holds a zero-length entry set for @p path.
+ * @post On success @p dir holds a zero-length entry set for @p path.
  * @post On success `*out_head` addresses that set's File entry.
  *
  * @note The set is kept within one directory cluster.
@@ -289,11 +240,12 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_exfat_link(ra8_fs_mount_t* m,
-                          const char*     path,
-                          uint32_t        nlen,
-                          exfat_setpos_t* out_head,
-                          uint32_t*       out_count);
+ra8_err_t priv_exfat_link(ra8_fs_mount_t*    m,
+                          const exfat_dir_t* dir,
+                          const char*        path,
+                          uint32_t           nlen,
+                          exfat_setpos_t*    out_head,
+                          uint32_t*          out_count);
 
 /**
  * @brief Open an exFAT file for writing: create, truncate, or position to append.
