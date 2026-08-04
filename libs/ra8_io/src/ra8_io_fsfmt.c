@@ -199,7 +199,16 @@ static const ra8_io_fsfmt_t k_fmt_fat = {
   .probe = fat_probe,
 };
 
-/** @brief Built-in exFAT format descriptor (whole-file writes only). */
+/**
+ * @brief Built-in exFAT format descriptor.
+ *
+ * @details `supports_streaming_write` was false while `ra8_fs_open()` refused a
+ *          writing mode on exFAT and every write had to go through
+ *          `ra8_fs_write_file()`. That is no longer the case (#602), and a
+ *          capability record that still said so would send a caller down the
+ *          whole-file path -- back into the RAM ceiling this table exists to
+ *          let it avoid.
+ */
 static const ra8_io_fsfmt_t k_fmt_exfat = {
   .name = "exfat",
   .caps =
@@ -207,7 +216,7 @@ static const ra8_io_fsfmt_t k_fmt_exfat = {
       .max_name_len             = (uint16_t)k_exfat_max_name,
       .read_only                = false,
       .supports_mkdir           = false,
-      .supports_streaming_write = false,
+      .supports_streaming_write = true,
       .case_sensitive           = false,
     },
   .probe = exfat_probe,

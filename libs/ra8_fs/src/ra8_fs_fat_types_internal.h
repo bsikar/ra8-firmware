@@ -161,20 +161,22 @@ typedef enum : uint16_t {
  * 0xC1) with UTF-16LE names. Read-only support; fields are little-endian.
  */
 typedef enum : uint16_t {
-  k_exfat_off_fsname     = 3,    /**< "EXFAT   " filesystem-name field (8 chars). */
-  k_exfat_off_fat_lba    = 0x50, /**< FatOffset (sectors from VBR).               */
-  k_exfat_off_fat_len    = 0x54, /**< FatLength (sectors).                        */
-  k_exfat_off_heap_lba   = 0x58, /**< ClusterHeapOffset (sectors from VBR).       */
-  k_exfat_off_clus_count = 0x5C, /**< ClusterCount.                               */
-  k_exfat_off_root_clus  = 0x60, /**< FirstClusterOfRootDirectory.                */
-  k_exfat_off_bps_shift  = 0x6C, /**< BytesPerSectorShift (log2).                 */
-  k_exfat_off_spc_shift  = 0x6D, /**< SectorsPerClusterShift (log2).              */
-  k_exfat_off_num_fats   = 0x6E, /**< NumberOfFats.                               */
-  k_exfat_strm_off_flags = 1,    /**< Stream-ext GeneralSecondaryFlags.           */
-  k_exfat_strm_off_nlen  = 3,    /**< Stream-ext NameLength (UTF-16 units).       */
-  k_exfat_strm_off_clus  = 0x14, /**< Stream-ext FirstCluster.                    */
-  k_exfat_strm_off_dlen  = 0x18, /**< Stream-ext DataLength (low 32 used).        */
-  k_exfat_name_off       = 2,    /**< File-name entry character offset.           */
+  k_exfat_off_fsname       = 3,    /**< "EXFAT   " filesystem-name field (8 chars). */
+  k_exfat_off_fat_lba      = 0x50, /**< FatOffset (sectors from VBR).               */
+  k_exfat_off_fat_len      = 0x54, /**< FatLength (sectors).                        */
+  k_exfat_off_heap_lba     = 0x58, /**< ClusterHeapOffset (sectors from VBR).       */
+  k_exfat_off_clus_count   = 0x5C, /**< ClusterCount.                               */
+  k_exfat_off_root_clus    = 0x60, /**< FirstClusterOfRootDirectory.                */
+  k_exfat_off_bps_shift    = 0x6C, /**< BytesPerSectorShift (log2).                 */
+  k_exfat_off_spc_shift    = 0x6D, /**< SectorsPerClusterShift (log2).              */
+  k_exfat_off_num_fats     = 0x6E, /**< NumberOfFats.                               */
+  k_exfat_strm_off_flags   = 1,    /**< Stream-ext GeneralSecondaryFlags.           */
+  k_exfat_strm_off_nlen    = 3,    /**< Stream-ext NameLength (UTF-16 units).       */
+  k_exfat_strm_off_vlen_hi = 0x0C, /**< Stream-ext ValidDataLength high word.       */
+  k_exfat_strm_off_clus    = 0x14, /**< Stream-ext FirstCluster.                    */
+  k_exfat_strm_off_dlen    = 0x18, /**< Stream-ext DataLength (low 32 used).        */
+  k_exfat_strm_off_dlen_hi = 0x1C, /**< Stream-ext DataLength high word.            */
+  k_exfat_name_off         = 2,    /**< File-name entry character offset.           */
 } ra8_fs_exfat_off_t;
 
 /**
@@ -182,32 +184,33 @@ typedef enum : uint16_t {
  * @brief exFAT entry-type tags + small magic values used by the reader.
  */
 typedef enum : uint32_t {
-  k_exfat_entry_eod      = 0x00U,   /**< End-of-directory marker.                 */
-  k_exfat_entry_bitmap   = 0x81U,   /**< Allocation-bitmap directory entry.       */
-  k_exfat_entry_file     = 0x85U,   /**< File directory entry.                    */
-  k_exfat_entry_stream   = 0xC0U,   /**< Stream-extension entry.                  */
-  k_exfat_entry_name     = 0xC1U,   /**< File-name entry.                         */
-  k_exfat_secflag_no_fat = 0x02U,   /**< GeneralSecondaryFlags: NoFatChain.       */
-  k_exfat_secflag_alloc  = 0x03U,   /**< AllocationPossible | NoFatChain.         */
-  k_exfat_attr_directory = 0x10U,   /**< FileAttributes: directory.               */
-  k_exfat_attr_archive   = 0x20U,   /**< FileAttributes: archive.                 */
-  k_exfat_fsname_len     = 8U,      /**< "EXFAT   " field length.                 */
-  k_exfat_name_per_entry = 15U,     /**< UTF-16 units per file-name entry.        */
-  k_exfat_entry_bytes    = 32U,     /**< Directory entry size.                    */
-  k_exfat_bps_shift_512  = 9U,      /**< log2(512) -- the only sector size we do. */
-  k_exfat_scan_limit     = 65536U,  /**< Max dir entries scanned (P10 bound).     */
-  k_exfat_name_cap       = 64U,     /**< Longest path name we compare.            */
-  k_exfat_ascii_hi_mask  = 0xFF00U, /**< UTF-16 unit is non-ASCII if set.         */
-  k_exfat_csum_hi_bit    = 0x8000U, /**< Wrap bit for the rotate-add checksum.    */
-  k_exfat_off_file_secnt = 1U,      /**< File entry: SecondaryCount.              */
-  k_exfat_off_file_csum  = 2U,      /**< File entry: SetChecksum (2 bytes).       */
-  k_exfat_off_file_attr  = 4U,      /**< File entry: FileAttributes (2 bytes).    */
-  k_exfat_off_strm_hash  = 4U,      /**< Stream entry: NameHash (2 bytes).        */
-  k_exfat_off_strm_valid = 8U,      /**< Stream entry: ValidDataLength (8 B).     */
-  k_exfat_bit_mask       = 7U,      /**< Bit index within a bitmap byte.          */
-  k_exfat_bit_shift      = 3U,      /**< log2(8): cluster index -> byte.          */
-  k_exfat_inuse_bit      = 0x80U,   /**< Directory entry type bit 7 = in use.     */
-  k_exfat_max_set_bytes  = 224U,    /**< (2 + ceil(64/15)) * 32 = 7 entries.      */
+  k_exfat_entry_eod      = 0x00U,   /**< End-of-directory marker.                   */
+  k_exfat_entry_bitmap   = 0x81U,   /**< Allocation-bitmap directory entry.         */
+  k_exfat_entry_file     = 0x85U,   /**< File directory entry.                      */
+  k_exfat_entry_stream   = 0xC0U,   /**< Stream-extension entry.                    */
+  k_exfat_entry_name     = 0xC1U,   /**< File-name entry.                           */
+  k_exfat_secflag_no_fat = 0x02U,   /**< GeneralSecondaryFlags: NoFatChain.         */
+  k_exfat_secflag_poss   = 0x01U,   /**< GeneralSecondaryFlags: AllocationPossible. */
+  k_exfat_secflag_alloc  = 0x03U,   /**< AllocationPossible | NoFatChain.           */
+  k_exfat_attr_directory = 0x10U,   /**< FileAttributes: directory.                 */
+  k_exfat_attr_archive   = 0x20U,   /**< FileAttributes: archive.                   */
+  k_exfat_fsname_len     = 8U,      /**< "EXFAT   " field length.                   */
+  k_exfat_name_per_entry = 15U,     /**< UTF-16 units per file-name entry.          */
+  k_exfat_entry_bytes    = 32U,     /**< Directory entry size.                      */
+  k_exfat_bps_shift_512  = 9U,      /**< log2(512) -- the only sector size we do.   */
+  k_exfat_scan_limit     = 65536U,  /**< Max dir entries scanned (P10 bound).       */
+  k_exfat_name_cap       = 64U,     /**< Longest path name we compare.              */
+  k_exfat_ascii_hi_mask  = 0xFF00U, /**< UTF-16 unit is non-ASCII if set.           */
+  k_exfat_csum_hi_bit    = 0x8000U, /**< Wrap bit for the rotate-add checksum.      */
+  k_exfat_off_file_secnt = 1U,      /**< File entry: SecondaryCount.                */
+  k_exfat_off_file_csum  = 2U,      /**< File entry: SetChecksum (2 bytes).         */
+  k_exfat_off_file_attr  = 4U,      /**< File entry: FileAttributes (2 bytes).      */
+  k_exfat_off_strm_hash  = 4U,      /**< Stream entry: NameHash (2 bytes).          */
+  k_exfat_off_strm_valid = 8U,      /**< Stream entry: ValidDataLength (8 B).       */
+  k_exfat_bit_mask       = 7U,      /**< Bit index within a bitmap byte.            */
+  k_exfat_bit_shift      = 3U,      /**< log2(8): cluster index -> byte.            */
+  k_exfat_inuse_bit      = 0x80U,   /**< Directory entry type bit 7 = in use.       */
+  k_exfat_max_set_bytes  = 224U,    /**< (2 + ceil(64/15)) * 32 = 7 entries.        */
 } ra8_fs_exfat_val_t;
 
 /**
@@ -336,9 +339,11 @@ typedef enum : uint32_t {
   k_cluster_eoc_min_fat16   = 0xFFF8,      /**< MS FAT spec sec 4.1 EOC threshold. */
   k_cluster_eoc_min_fat32   = 0x0FFFFFF8,  /**< MS FAT spec sec 4.2 EOC threshold. */
   k_cluster_mask_fat32      = 0x0FFFFFFFU, /**< Top 4 bits reserved on FAT32.      */
+  k_cluster_eoc_min_exfat   = 0xFFFFFFF8U, /**< exFAT spec sec 4.1 EOC threshold.  */
   k_cluster_eoc_write_fat12 = 0x0FFF,      /**< Value we write to terminate.       */
   k_cluster_eoc_write_fat16 = 0xFFFF,      /**< Cluster eoc write fat16.           */
   k_cluster_eoc_write_fat32 = 0x0FFFFFFFU, /**< Cluster eoc write fat32.           */
+  k_cluster_eoc_write_exfat = 0xFFFFFFFFU, /**< exFAT spec sec 4.1 EOC marker.     */
   k_cluster_free            = 0,           /**< Cluster free.                      */
   k_cluster_count_fat12_max = 4085,        /**< MS FAT spec sec 3.5 boundary.      */
   k_cluster_count_fat16_max = 65525,       /**< MS FAT spec sec 3.5 boundary.      */

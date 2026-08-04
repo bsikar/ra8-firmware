@@ -23,22 +23,27 @@
 /**
  * @enum exfat_mutate_const_t
  * @brief Sizing constants for the exFAT mutation helpers.
+ *
+ * @details The entry-set bounds these build on (::k_exfat_set_max_entries) and
+ *          the ::exfat_setpos_t coordinates they hand around are shared with
+ *          the streaming writer, so they live in
+ *          `ra8_fs_fat_exfat_stream_internal.h` rather than here.
+ *
+ * @invariant `k_exfat_rename_bytes` is `k_exfat_rename_entries * 32`.
+ *
+ * @par Example:
+ * @code
+ * char name[k_exfat_list_name_cap] = {};
+ * @endcode
+ *
+ * @see priv_exfat_rename()
+ * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_exfat_set_max_entries = 19U, /**< 1 File + 1 Stream + 17 Name entries.   */
-  k_exfat_list_name_cap   = 64U, /**< Listdir name buffer (truncated + NUL). */
-  k_exfat_rename_entries  = 3U,  /**< In-place rename set: File+Stream+Name. */
-  k_exfat_rename_bytes    = 96U, /**< Three 32-byte entries.                 */
+  k_exfat_list_name_cap  = 64U, /**< Listdir name buffer (truncated + NUL). */
+  k_exfat_rename_entries = 3U,  /**< In-place rename set: File+Stream+Name. */
+  k_exfat_rename_bytes   = 96U, /**< Three 32-byte entries.                 */
 } exfat_mutate_const_t;
-
-/**
- * @struct exfat_setpos_t
- * @brief Directory position (cluster + entry index) of one 32-byte entry.
- */
-typedef struct {
-  uint32_t cluster; /**< Directory cluster holding the entry.       */
-  uint32_t index;   /**< Entry index within that cluster (0-based). */
-} exfat_setpos_t;
 
 /**
  * @brief Clear a contiguous cluster run in the allocation bitmap.
@@ -160,40 +165,14 @@ static ra8_err_t priv_exfat_take_set(const ra8_fs_mount_t* m,
   return k_ra8_ok;
 }
 
-/**
- * @brief Locate a file's full directory-entry set with per-entry positions.
- *
- * @details Walks the root directory like ::priv_exfat_find but records the
- * (cluster, index) of every entry in the matched set -- the File entry plus
- * all its secondaries -- so callers can rewrite them in place. Non-matching
- * sets are skipped entry-by-entry, which keeps the cursor aligned.
- *
- * @param[in]  m         Mounted exFAT volume.
- * @param[in]  path      Target name (ASCII, root-level).
- * @param[out] pos       Receives the positions (File entry first).
- * @param[in]  max_pos   Capacity of @p pos.
- * @param[out] out_count Receives the entry count (1 + SecondaryCount).
- * @param[out] file_copy Receives the 32-byte File entry.
- * @param[out] strm_copy Receives the 32-byte Stream-extension entry.
- * @return Error code.
- * @retval k_ra8_ok            Set found; outputs populated.
- * @retval k_ra8_err_not_found No matching set in the root directory.
- * @retval k_ra8_err_no_mem    The set has more entries than @p max_pos.
- * @pre All pointers are non-NULL; ``m->type`` is exFAT.
- * @pre @p path is a flat root-level name.
- * @post On success @p pos holds @p *out_count valid positions.
- * @post On failure the outputs are unspecified.
- * @note Only the root directory is searched (flat namespace).
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
-                                     const char*           path,
-                                     exfat_setpos_t*       pos,
-                                     uint32_t              max_pos,
-                                     uint32_t*             out_count,
-                                     uint8_t*              file_copy,
-                                     uint8_t*              strm_copy)
+/** @brief Implementation of `priv_exfat_find_set()` -- one aligned walk of the root. */
+ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
+                              const char*           path,
+                              exfat_setpos_t*       pos,
+                              uint32_t              max_pos,
+                              uint32_t*             out_count,
+                              uint8_t*              file_copy,
+                              uint8_t*              strm_copy)
 {
   /* Strip leading slashes so a "/name" path matches (#93), as FAT does. */
   while (*path == '/') {
@@ -263,28 +242,8 @@ priv_exfat_put_entry(const ra8_fs_mount_t* m, const exfat_setpos_t* where, const
                                   (uint32_t)k_exfat_entry_bytes);
 }
 
-/**
- * @brief Free the cluster run / chain referenced by a Stream entry.
- *
- * @details Contiguous (NoFatChain) files free ceil(size / cluster bytes)
- * bitmap bits from the first cluster; FAT-chained files walk the FAT and
- * free each visited cluster. Per the exFAT spec the bitmap alone is
- * authoritative, so the FAT entries themselves are left untouched.
- *
- * @param[in] m    Mounted exFAT volume.
- * @param[in] strm The file's 32-byte Stream-extension entry.
- * @return Error code.
- * @retval k_ra8_ok    Clusters freed (or the file had none).
- * @retval k_ra8_err_* Bitmap or backend failure.
- * @pre @p m and @p strm are non-NULL.
- * @pre The directory entries were already marked deleted.
- * @post The file's clusters read as free in the bitmap.
- * @post FAT contents are unchanged.
- * @note Chain walk is bounded by the volume's cluster count.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
+/** @brief Implementation of `priv_exfat_free_clusters()` -- run or chain, bitmap only. */
+ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
 {
   const uint32_t first = priv_rd32(&strm[k_exfat_strm_off_clus]);
   const uint32_t size  = priv_rd32(&strm[k_exfat_strm_off_dlen]);
@@ -294,13 +253,11 @@ static ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t
   if (size == 0U) {
     return k_ra8_ok;
   }
-  uint32_t  bmp_clus = 0U;
-  uint32_t  bmp_len  = 0U;
-  ra8_err_t e        = priv_exfat_find_bitmap(m, &bmp_clus, &bmp_len);
+  uint32_t  bmp_lba = 0U;
+  ra8_err_t e       = priv_exfat_bitmap_lba(m, &bmp_lba);
   if (e != k_ra8_ok) {
     return e; /* GCOVR_EXCL_LINE */
   }
-  const uint32_t bmp_lba       = priv_cluster_to_lba(m, bmp_clus);
   const uint32_t cluster_bytes = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
   const uint8_t  nofat =
     ((strm[k_exfat_strm_off_flags] & (uint8_t)k_exfat_secflag_no_fat) != 0U) ? 1U : 0U;
@@ -443,11 +400,9 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   if (new_len > (uint32_t)k_exfat_name_per_entry) {
     return k_ra8_err_not_supported;
   }
-  uint32_t e_first = 0U;
-  uint32_t e_size  = 0U;
-  uint8_t  e_nofat = 0U;
-  uint8_t  e_attr  = 0U;
-  if (priv_exfat_find(m, new_path, &e_first, &e_size, &e_nofat, &e_attr) == k_ra8_ok) {
+  uint8_t e_strm[k_exfat_entry_bytes] = {};
+  uint8_t e_attr                      = 0U;
+  if (priv_exfat_find(m, new_path, e_strm, &e_attr) == k_ra8_ok) {
     return k_ra8_err_exists;
   }
   exfat_setpos_t  pos[k_exfat_set_max_entries] = {};

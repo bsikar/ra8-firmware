@@ -36,6 +36,13 @@
  *     per-mount next-free hint and reads the FAT through a one-sector cache,
  *     so appending to a file costs a bounded number of block reads per
  *     cluster instead of rescanning the whole FAT.
+ *   - exFAT streaming write: open / create / append / truncate through the
+ *     same `ra8_fs_open()` seam, growing out of the allocation bitmap one
+ *     cluster at a time. The entry set keeps `NoFatChain` while the run stays
+ *     contiguous and materialises a real FAT chain the moment it cannot, so a
+ *     fragmented volume is written rather than refused, and `ValidDataLength`
+ *     is tracked apart from `DataLength` so bytes past the written prefix
+ *     read as zero the way the format requires.
  *   - FAT32 FSInfo: validated at mount (both signatures plus the trailing
  *     signature), used to seed the free count and the next-free hint, and
  *     written back when a file is closed or the volume is unmounted.
@@ -154,11 +161,11 @@ typedef enum : uint8_t {
  * @brief FAT variant detected from the BPB cluster-count rule.
  */
 typedef enum : uint8_t {
-  k_ra8_fs_type_unknown = 0,  /**< Not yet detected / mount failed.          */
-  k_ra8_fs_type_fat12   = 12, /**< count_of_clusters < 4085.                 */
-  k_ra8_fs_type_fat16   = 16, /**< 4085 <= count_of_clusters < 65525.        */
-  k_ra8_fs_type_fat32   = 32, /**< count_of_clusters >= 65525.               */
-  k_ra8_fs_type_exfat   = 64, /**< exFAT (read + whole-file write + format). */
+  k_ra8_fs_type_unknown = 0,  /**< Not yet detected / mount failed.         */
+  k_ra8_fs_type_fat12   = 12, /**< count_of_clusters < 4085.                */
+  k_ra8_fs_type_fat16   = 16, /**< 4085 <= count_of_clusters < 65525.       */
+  k_ra8_fs_type_fat32   = 32, /**< count_of_clusters >= 65525.              */
+  k_ra8_fs_type_exfat   = 64, /**< exFAT (read + streaming write + format). */
 } ra8_fs_type_t;
 
 /* =============================================================================
@@ -293,6 +300,22 @@ typedef struct {
 /**
  * @struct ra8_fs_file_t
  * @brief Open-file state.
+ *
+ * @details The first block is common to both filesystems. The `entry_set_*`,
+ * `alloc_clusters`, `tail_cluster` and `valid_bytes` fields carry the extra
+ * bookkeeping an exFAT stream needs and are meaningless on a FAT12/16/32
+ * handle: exFAT locates a file by a directory ENTRY SET rather than one
+ * 32-byte entry, tracks its allocation separately from its length (the
+ * allocation bitmap, not a FAT chain, is authoritative), and distinguishes
+ * the bytes actually written (`ValidDataLength`) from the file's length
+ * (`DataLength`).
+ *
+ * @invariant `valid_bytes <= size_bytes` on an exFAT handle.
+ * @invariant `alloc_clusters * cluster_bytes >= size_bytes` on an exFAT handle.
+ * @invariant `no_fat_chain != 0` implies the allocation is the contiguous run
+ *            `[first_cluster, first_cluster + alloc_clusters)`.
+ * @see ra8_fs_open()
+ * @since 0.1.0
  */
 typedef struct {
   ra8_fs_mount_t* mount;              /**< Owning mount point.                        */
@@ -300,10 +323,16 @@ typedef struct {
   uint32_t        cur_cluster;        /**< Cluster the offset currently points into.  */
   uint32_t        walk_cache_idx;     /**< Chain index whose cluster is cached below. */
   uint32_t        walk_cache_cluster; /**< Cluster at walk_cache_idx; < 2 = no cache. */
-  uint32_t        size_bytes;         /**< File size (DIR_FileSize).                  */
+  uint32_t        size_bytes;         /**< File size (DIR_FileSize / DataLength).     */
   uint32_t        offset;             /**< Current read/write offset.                 */
-  uint32_t        dir_entry_lba;      /**< Sector containing the dir entry.           */
-  uint32_t        dir_entry_idx;      /**< Byte offset of dir entry within sector.    */
+  uint32_t        dir_entry_lba;      /**< FAT: sector containing the dir entry.      */
+  uint32_t        dir_entry_idx;      /**< FAT: byte offset of the entry in it.       */
+  uint32_t        valid_bytes;        /**< exFAT ValidDataLength (bytes written).     */
+  uint32_t        entry_set_cluster;  /**< exFAT: dir cluster of the File entry.      */
+  uint32_t        entry_set_index;    /**< exFAT: entry index of the File entry.      */
+  uint32_t        entry_set_count;    /**< exFAT: 1 + SecondaryCount.                 */
+  uint32_t        alloc_clusters;     /**< exFAT: clusters currently allocated.       */
+  uint32_t        tail_cluster;       /**< exFAT: last cluster of the allocation.     */
   ra8_fs_mode_t   mode;               /**< Open mode.                                 */
   uint8_t         in_use;             /**< 0 = slot free, 1 = open.                   */
   uint8_t         no_fat_chain;       /**< exFAT contiguous file (no FAT walk).       */
@@ -405,10 +434,9 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  * compressed up-case table (which may span several clusters), and a
  * root-directory cluster carrying the volume-label, allocation-bitmap, and
  * up-case-table system directory entries. The image is `fsck.exfat`-clean and
- * round-trips through `ra8_fs_mount()` plus the exFAT file API: whole-file
- * creation via `ra8_fs_write_file()`, read-back via `ra8_fs_open()` (read) +
- * `ra8_fs_read()`, `ra8_fs_rename()`, and `ra8_fs_unlink()` (exFAT has no
- * streaming open-for-write; see `ra8_fs_open()`).
+ * round-trips through `ra8_fs_mount()` plus the whole exFAT file API:
+ * `ra8_fs_open()` in every mode, `ra8_fs_read()`, `ra8_fs_write()`,
+ * `ra8_fs_write_file()`, `ra8_fs_rename()`, and `ra8_fs_unlink()`.
  *
  * @param[in] backend Block-device implementation (read/write/get_capacity all
  *                    non-NULL). Its `write_block` is driven during the format.
@@ -532,6 +560,15 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  * unreachable. In read mode it prevents handing back the zero-byte handle a
  * directory's `DIR_FileSize` of 0 would otherwise describe.
  *
+ * All three modes work on every filesystem this adapter mounts, exFAT included
+ * (#602). An exFAT write grows the file one cluster at a time out of the
+ * allocation bitmap, so the size a caller can create is bounded by the volume's
+ * free space rather than by RAM, and a fragmented volume is written the way the
+ * format intends: the entry set keeps `NoFatChain` while the run stays
+ * contiguous and drops it -- materialising a real FAT chain over the clusters
+ * already allocated -- the first time the next cluster is not the successor of
+ * the last.
+ *
  * @param[in]  handle    Mount handle.
  * @param[in]  path      Path from the volume root, e.g. `"HELLO.TXT"` or
  *                       `"/Reading List/Chapter One.txt"`. Any component may
@@ -542,23 +579,24 @@ typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t siz
  * @retval k_ra8_ok                     File opened.
  * @retval k_ra8_err_null_ptr           Any pointer arg is NULL.
  * @retval k_ra8_err_invalid_arg        `path` names a directory (any mode), or
- *                                     a new file's name is empty, longer than
- *                                     247 characters, or holds a character no
- *                                     FAT name may carry.
+ *                                     a new name is empty, holds a character no
+ *                                     name may carry, or is longer than the
+ *                                     volume allows -- 247 characters on FAT,
+ *                                     64 on exFAT.
  * @retval k_ra8_err_not_found          Read mode and path doesn't exist.
- * @retval k_ra8_err_no_mem             No free file slot.
+ * @retval k_ra8_err_no_mem             No free file slot, no directory slot, or
+ *                                     the volume has no free cluster.
  * @retval k_ra8_err_no_data            Write mode failed to allocate cluster.
- * @retval k_ra8_err_not_supported      Write/append mode on an exFAT mount: exFAT
- *                                     opens read-only via this seam. Create exFAT
- *                                     files with `ra8_fs_write_file()` instead.
+ * @retval k_ra8_err_not_supported      An exFAT entry set larger than this
+ *                                     adapter rewrites (a name over 64 chars
+ *                                     written by another implementation).
  *
  * @pre handle->in_use == 1.
  * @post On success, out_file->in_use == 1 and offset is at file start (read/write)
  *       or end (append).
  * @post On `k_ra8_err_invalid_arg` the volume is unchanged.
- * @note On FAT12/16/32 all three modes work; exFAT accepts only
- *       `k_ra8_fs_mode_read` here (whole-file writes go through
- *       `ra8_fs_write_file()`).
+ * @note Write mode TRUNCATES in place on both filesystems: the name keeps its
+ *       directory entry (and its creation stamp) and only the contents go.
  * @see ra8_fs_rmdir()  The verb for removing a directory.
  * @since 0.1.0
  */
@@ -625,33 +663,35 @@ ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_l
 /**
  * @brief Create a whole file in one call (provisioning helper).
  *
- * @details Convenience wrapper that creates @p path and writes @p data. On FAT
- * volumes it opens in write mode, writes, and closes. On exFAT it releases any
- * existing entry set for the name, then allocates a contiguous cluster run and
- * links a fresh directory entry (the only exFAT write path).
+ * @details Convenience wrapper, and nothing more: on EVERY filesystem it opens
+ * @p path in write mode, writes @p data, and closes. It carried a second,
+ * exFAT-only implementation until exFAT learned to stream (#602) -- a
+ * whole-file creator that needed one contiguous run and the entire payload in
+ * RAM at once. Both limits are gone with it, and the one remaining path means
+ * the two filesystems can no longer disagree about what this call does.
  *
- * An existing @p path is REPLACED on both filesystems: its old contents are
- * discarded and its clusters returned to the volume's free space. Calling this
- * twice with the same name leaves exactly one file, of the second call's
- * contents, with no space lost to the first.
+ * An existing @p path is REPLACED on both filesystems: write mode truncates it,
+ * so its old contents are discarded and its clusters returned to the volume's
+ * free space. Calling this twice with the same name leaves exactly one file, of
+ * the second call's contents, with no space lost to the first.
  *
  * @param[in] handle Mounted volume.
  * @param[in] path   Flat root-level file name (ASCII).
  * @param[in] data   File contents.
- * @param[in] len    Byte count (> 0).
+ * @param[in] len    Byte count; 0 leaves an empty file.
  *
  * @retval k_ra8_ok              File created and written.
  * @retval k_ra8_err_null_ptr    Any pointer argument was NULL.
- * @retval k_ra8_err_invalid_arg Empty/oversized name, zero @p len, or @p path
- *                               names an existing directory.
- * @retval k_ra8_err_no_mem      Out of contiguous space or directory slots.
+ * @retval k_ra8_err_invalid_arg Empty/oversized name, or @p path names an
+ *                               existing directory.
+ * @retval k_ra8_err_no_mem      Out of free clusters or directory slots.
  * @retval k_ra8_err_*           Backend error.
  *
  * @pre No handle is open on @p path.
  * @post On success @p path resolves to exactly one entry of @p len bytes.
  * @post On success a replaced predecessor's clusters read as free.
- * @note Not atomic: a replaced file is released before the new content is
- *       written, so a failure mid-write leaves @p path absent, not stale.
+ * @note Not atomic: the truncate lands before the new content does, so a
+ *       failure mid-write leaves @p path short, not stale.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t

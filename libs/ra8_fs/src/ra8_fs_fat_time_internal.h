@@ -277,3 +277,34 @@ void priv_exfat_file_stamp_create(uint8_t* file_entry);
  */
 RA8_PRIV
 void priv_exfat_file_stamp_access(uint8_t* file_entry);
+
+/**
+ * @brief Advance an exFAT File entry's modification (and access) stamps.
+ *
+ * @details The exFAT counterpart of ::priv_fat_entry_stamp_write, taken by
+ *          every flush of a streaming write. It moves
+ *          `LastModifiedTimestamp`, its 10 ms increment and its UtcOffset --
+ *          the three fields that together say WHEN the bytes on the card were
+ *          put there -- and `LastAccessedTimestamp` with them, because a write
+ *          is an access. The creation fields are deliberately untouched: a
+ *          truncate-in-place keeps a file's identity, and its birthday is part
+ *          of that.
+ *
+ * @param[in,out] file_entry 32-byte exFAT File (0x85) entry to stamp in place.
+ *
+ * @return Nothing.
+ *
+ * @pre @p file_entry is non-NULL and addresses 32 writable bytes.
+ * @pre @p file_entry was read back from the volume as part of an entry set.
+ * @post The modified and accessed stamps name the current instant.
+ * @post `CreateTimestamp`, `Create10msIncrement` and `CreateUtcOffset` are
+ *       unchanged.
+ *
+ * @warning The entry set's SetChecksum covers these bytes -- recompute it
+ *          after stamping or the volume fails a host `fsck`.
+ * @note Not thread-safe against ::ra8_fs_set_clock; install the clock first.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+void priv_exfat_file_stamp_write(uint8_t* file_entry);

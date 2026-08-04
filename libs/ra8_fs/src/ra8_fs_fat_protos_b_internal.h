@@ -771,6 +771,41 @@ RA8_PRIV
 void priv_wr32(uint8_t* p, uint32_t v);
 
 /**
+ * @brief Merge @p put bytes into one sector at @p lba, at @p off_in_sector.
+ *
+ * @details Read-modify-write of a single sector. Every partial-sector update in
+ *          this adapter goes through it, so a write that does not start or end
+ *          on a sector boundary cannot destroy the neighbouring bytes -- which,
+ *          inside a cluster, belong to the same file, and at a cluster edge may
+ *          belong to another.
+ *
+ * @param[in] m             Mount providing the backend.
+ * @param[in] lba           Volume-relative sector to update.
+ * @param[in] off_in_sector Byte offset within the sector.
+ * @param[in] src           Source bytes.
+ * @param[in] put           Number of bytes to write.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    Sector updated.
+ * @retval k_ra8_err_* Backend read or write failure.
+ *
+ * @pre `m` and `src` are non-NULL.
+ * @pre `off_in_sector + put <= k_ra8_fs_bytes_per_sector`.
+ * @post On success the sector reflects the merged content.
+ * @post On failure the sector content is implementation-defined.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
+                                 uint32_t              lba,
+                                 uint32_t              off_in_sector,
+                                 const uint8_t*        src,
+                                 uint32_t              put);
+
+/**
  * @brief Write a single sector from a caller-provided buffer.
  *
  * @details Forwards to the mount's `backend.write_block` callback.

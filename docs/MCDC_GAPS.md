@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **239**
-- Total compound decisions in scope: **1293**
-- Decisions at 100% MC/DC (`yes`): **1113**
+- Source files with at least one decision: **240**
+- Total compound decisions in scope: **1295**
+- Decisions at 100% MC/DC (`yes`): **1115**
 - Decisions partially covered (`partial`): **74**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **86.08%**
+- Coverage rate (yes / total): **86.10%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **89**
-- Reachable-condition denominator (total - deactivated): **1204**
-- **Reachable MC/DC rate**: **92.44%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1206**
+- **Reachable MC/DC rate**: **92.45%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -349,6 +349,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_esp_hosted_gpio_edge | 2 | 2 | 0 | 0 |
 | ra8_esp_hosted_osi | 2 | 2 | 0 | 0 |
 | ra8_fs_fat_dir | 2 | 2 | 0 | 0 |
+| ra8_fs_fat_exfat_stream | 2 | 2 | 0 | 0 |
 | ra8_fs_fat_file | 2 | 2 | 0 | 0 |
 | ra8_gfx_dither | 2 | 2 | 0 | 0 |
 | ra8_i3c_i2c_peripheral | 2 | 2 | 0 | 0 |
@@ -405,7 +406,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_ethosu_shim | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_alloc | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_exfat_fmt | 1 | 1 | 0 | 0 |
-| ra8_fs_fat_exfat_write | 1 | 1 | 0 | 0 |
+| ra8_fs_fat_exfat_openw | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_lock | 1 | 1 | 0 | 0 |
 | ra8_gfx_blit_gray4 | 1 | 1 | 0 | 0 |
 | ra8_glcdc_layer | 1 | 1 | 0 | 0 |

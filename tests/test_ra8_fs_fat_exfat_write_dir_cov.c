@@ -104,36 +104,44 @@ static void test_create_path_too_long(void)
 
 /**
  * @test test_create_zero_len
- * @brief `priv_exfat_create` rejects a zero-byte file (line 554).
+ * @brief A zero-byte `ra8_fs_write_file` creates an empty file on exFAT too.
  *
- * @details `ra8_fs_write_file` passes `len=0` to `priv_exfat_create`, which
- *          returns `k_ra8_err_invalid_arg` at line 554.
- *
- * Lines targeted: 554.
+ * @details This case used to assert `k_ra8_err_invalid_arg`, because the exFAT
+ *          whole-file creator refused `len == 0` while the FAT path accepted
+ *          it -- the same call meaning two different things depending on a
+ *          volume format the caller was supposed to be abstracted from. With
+ *          exFAT streaming (#602) there is one path for both, so a zero-length
+ *          create now does on exFAT exactly what it always did on FAT.
  *
  * @par MC/DC:
- * Decision: `if (len == 0U)` -- 1 condition.
- * V1: len=0 -> T -> invalid_arg (this test).
- * V2: len=1 -> F -> proceeds (all success-path tests).
+ * Decision: `if (len == 0U)` in
+ * `libs/ra8_fs/src/ra8_fs_fat_fileio.c@priv_write_locked` -- 1 condition.
+ * V1: len=0 -> T -> the write is a no-op and the created file stays empty
+ *     (this test).
+ * V2: len=1 -> F -> bytes are streamed (all the success-path cases).
  *
  * @pre Volume is formatted and accessible.
- * @post ra8_fs_write_file returns k_ra8_err_invalid_arg.
+ * @post `X.TXT` exists with a size of 0.
  *
  * @since 0.1.0
  */
 static void test_create_zero_len(void)
 {
-  TEST_BEGIN("exfat write cov: len=0 -> invalid_arg (line 554)");
+  TEST_BEGIN("exfat write cov: len=0 creates an empty file");
   build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
   const uint8_t dummy = (uint8_t)'X';
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_write_file(h, "X.TXT", &dummy, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "X.TXT", &dummy, 0U));
+
+  ra8_fs_stat_t st = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(h, "X.TXT", &st));
+  TEST_ASSERT_EQ(0U, st.size_bytes);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
-  TEST_END("exfat write cov: len=0 -> invalid_arg (line 554)");
+  TEST_END("exfat write cov: len=0 creates an empty file");
 }
 
 /**

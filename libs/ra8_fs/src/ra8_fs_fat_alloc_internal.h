@@ -64,10 +64,11 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_fs_cache_empty   = 0xFFFFFFFFU, /**< Cache holds no sector.               */
-  k_fs_free_unknown  = 0xFFFFFFFFU, /**< MS FAT spec sec 5: count not known.  */
-  k_fs_alloc_slots   = 2U,          /**< One state slot per mount slot.       */
-  k_fs_fsinfo_absent = 0U,          /**< No usable FSInfo sector on this vol. */
+  k_fs_cache_empty    = 0xFFFFFFFFU, /**< Cache holds no sector.               */
+  k_fs_free_unknown   = 0xFFFFFFFFU, /**< MS FAT spec sec 5: count not known.  */
+  k_fs_alloc_slots    = 2U,          /**< One state slot per mount slot.       */
+  k_fs_fsinfo_absent  = 0U,          /**< No usable FSInfo sector on this vol. */
+  k_fs_bitmap_unknown = 0xFFFFFFFFU, /**< exFAT bitmap LBA not resolved yet.   */
 } ra8_fs_alloc_const_t;
 
 /**
@@ -376,3 +377,37 @@ ra8_err_t priv_fsinfo_seed(const ra8_fs_mount_t* m);
  */
 RA8_PRIV
 ra8_err_t priv_fsinfo_flush(const ra8_fs_mount_t* m);
+
+/**
+ * @brief Resolve the exFAT allocation bitmap's first LBA, once per mount.
+ *
+ * @details The bitmap's location lives in a system directory entry in the root,
+ *          so finding it means walking the root directory -- fine once, ruinous
+ *          per cluster of a streaming write, which is exactly how often the
+ *          grow path needs it. The answer cannot change while a volume is
+ *          mounted (the bitmap is not relocatable), so the first walk is cached
+ *          in the mount's allocator state and every later call is a load.
+ *
+ *          A mount with no bound allocator slot still gets a correct answer,
+ *          just an uncached one: the accessor is total, like the rest of this
+ *          header's.
+ *
+ * @param[in]  m       Mounted exFAT volume.
+ * @param[out] out_lba Receives the volume-relative first LBA of the bitmap.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok            The bitmap was located (cached or freshly found).
+ * @retval k_ra8_err_not_found The root directory carries no bitmap entry.
+ * @retval k_ra8_err_*         Backend read failure during the directory walk.
+ *
+ * @pre @p m and @p out_lba are non-NULL and `m->type` is exFAT.
+ * @pre The volume is mounted; the root directory is readable.
+ * @post On success `*out_lba` addresses the bitmap's first sector.
+ * @post On failure `*out_lba` is unmodified.
+ *
+ * @note Not thread-safe; callers serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t priv_exfat_bitmap_lba(const ra8_fs_mount_t* m, uint32_t* out_lba);

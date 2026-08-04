@@ -18,7 +18,8 @@
  *   4. open("HELLO.TXT") -- without a slash -- also succeeds,
  *   5. the file content reads back byte-for-byte.
  *
- * It then exercises the exFAT write path (#104) on the same mounted volume:
+ * It then exercises the exFAT write path (#104, now the streaming writer behind
+ * `ra8_fs_write_file()`) on the same mounted volume:
  *   6. write_file + read-back + rename + unlink of a single-cluster file,
  *   7. the same cycle for a multi-cluster file (a payload spanning four 4 KiB
  *      clusters), proving the bitmap allocation, the read cluster-walk, and the
@@ -27,13 +28,14 @@
  *      the matcher's mismatch branches both ways.
  *
  * @par MC/DC:
- * Every decision in the exFAT section of ra8_fs_fat.c (priv_exfat_create /
- * _alloc_write / _build_set / _take_set / _find_set / _free_clusters and the
- * name-hash / set-checksum helpers) is single-condition -- there is not one
- * ``&&`` / ``||`` compound decision in the whole exFAT body -- so MC/DC for it
- * collapses to branch coverage: each decision must be taken both ways. The
- * cases above drive the match / mismatch and single- / multi-cluster branches
- * accordingly.
+ * Every decision this harness reaches -- the entry-set builders, matchers and
+ * the cluster-free walk -- is single-condition, so MC/DC for them collapses to
+ * branch coverage: each must be taken both ways, and the cases above drive the
+ * match / mismatch and single- / multi-cluster branches accordingly. The
+ * compound decisions the streaming writer added in #602 (contiguity probe,
+ * `NoFatChain` transition, chain walk, allocation survey) carry their vectors
+ * in the Unity suite, cited by `path@function`; this harness deliberately
+ * exercises the whole-file round trip, not those.
  *
  * The fixture holds HELLO.TXT (the expected string below) + NOTES.TXT, made
  * with a real exFAT formatter so the on-disk up-case table / name hashes /

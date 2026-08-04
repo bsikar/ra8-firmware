@@ -179,22 +179,24 @@ priv_exfat_name_chunk_eq(const uint8_t* entry, const char* path, uint32_t pos, u
  *
  * @details Called with @p cur positioned just after a 0x85 File entry. Reads
  * the 0xC0 stream-extension entry and the following 0xC1 name entries; on a
- * full match fills the file's location fields.
+ * full match hands the WHOLE Stream entry back rather than a chosen few of its
+ * fields. That is the cheaper contract for everyone: the callers want
+ * different subsets of it -- `stat` the length and cluster, an open also
+ * `ValidDataLength` and the flags -- and a copy of 32 bytes they already had
+ * in hand costs less than another out-parameter each time one is needed.
  *
- * @param[in]     m         Mounted exFAT volume.
- * @param[in,out] cur       Cursor (advanced past the consumed entries).
- * @param[in]     path      Target path (ASCII, flat root name).
- * @param[out]    out_first First cluster of the matched file.
- * @param[out]    out_size  File length in bytes (low 32 bits).
- * @param[out]    out_nofat 1 if the file is contiguous (NoFatChain).
+ * @param[in]     m        Mounted exFAT volume.
+ * @param[in,out] cur      Cursor (advanced past the consumed entries).
+ * @param[in]     path     Target path (ASCII, flat root name).
+ * @param[out]    out_strm Receives the matched 32-byte Stream-extension entry.
  * @return Error code.
- * @retval k_ra8_ok            Match; outputs populated.
+ * @retval k_ra8_ok            Match; @p out_strm populated.
  * @retval k_ra8_err_not_found This set is not @p path.
  * @retval k_ra8_err_*         Backend read failure.
  * @pre All pointers are non-NULL; @p cur follows a 0x85 entry.
  * @pre @p path is a flat (root-level) name.
- * @post On match the out-params describe the file.
- * @post On non-match the out-params are untouched.
+ * @post On match @p out_strm mirrors the on-disk Stream entry.
+ * @post On non-match @p out_strm is untouched.
  * @note Leftover name entries self-heal in ::priv_exfat_find.
  * @since 0.1.0
  */
@@ -202,9 +204,7 @@ RA8_INTERNAL
 static ra8_err_t priv_exfat_match_set(const ra8_fs_mount_t* m,
                                       exfat_cursor_t*       cur,
                                       const char*           path,
-                                      uint32_t*             out_first,
-                                      uint32_t*             out_size,
-                                      uint8_t*              out_nofat)
+                                      uint8_t*              out_strm)
 {
   uint8_t   strm[k_exfat_entry_bytes] = {};
   ra8_err_t e                         = priv_exfat_next_entry(m, cur, strm);
@@ -231,19 +231,13 @@ static ra8_err_t priv_exfat_match_set(const ra8_fs_mount_t* m,
       return k_ra8_err_not_found;
     }
   }
-  *out_first = priv_rd32(&strm[k_exfat_strm_off_clus]);
-  *out_size  = priv_rd32(&strm[k_exfat_strm_off_dlen]);
-  *out_nofat = ((strm[k_exfat_strm_off_flags] & (uint8_t)k_exfat_secflag_no_fat) != 0U) ? 1U : 0U;
+  priv_byte_copy(out_strm, strm, (uint32_t)k_exfat_entry_bytes);
   return k_ra8_ok;
 }
 
 /* `priv_exfat_find()`: see header for the documented contract. */
-ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
-                          const char*           path,
-                          uint32_t*             out_first,
-                          uint32_t*             out_size,
-                          uint8_t*              out_nofat,
-                          uint8_t*              out_attr)
+ra8_err_t
+priv_exfat_find(const ra8_fs_mount_t* m, const char* path, uint8_t* out_strm, uint8_t* out_attr)
 {
   /* Leading slashes are not part of the name; match FAT's priv_path_to_83
    * behavior so ra8_fs_open("/name") resolves on exFAT too (#93). */
@@ -263,7 +257,7 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
     if (entry[0] != (uint8_t)k_exfat_entry_file) {
       continue;
     }
-    e = priv_exfat_match_set(m, &cur, path, out_first, out_size, out_nofat);
+    e = priv_exfat_match_set(m, &cur, path, out_strm);
     if (e == k_ra8_ok) {
       /* FileAttributes is 16-bit but every bit we act on (directory, archive)
        * lives in the low byte, so the caller gets that byte. */
@@ -277,20 +271,73 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
   return k_ra8_err_not_found; /* GCOVR_EXCL_LINE -- 65536 entries required */
 }
 
+/**
+ * @brief Populate a read handle from the file's Stream-extension entry.
+ *
+ * @details Everything a READ needs and nothing a write does: the chain head,
+ *          the two lengths, and the contiguity flag. The streaming fields stay
+ *          zeroed because a read handle never grows the file -- but
+ *          `valid_bytes` is not one of them, because the bytes past it must
+ *          read as zero (exFAT spec sec 7.4.5) rather than as whatever the
+ *          previous tenant of those clusters left.
+ *
+ * @param[out] file   Freshly claimed file slot.
+ * @param[in]  handle Owning mount.
+ * @param[in]  strm   The file's 32-byte Stream-extension entry.
+ *
+ * @return Nothing.
+ *
+ * @pre All pointers are non-NULL and @p strm came from ::priv_exfat_find.
+ * @pre The slot is not already in use.
+ * @post @p file is in use, positioned at byte 0, in read mode.
+ * @post The read accelerator is seeded at the chain head.
+ *
+ * @note Not thread-safe; callers serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void priv_exfat_seed_read(ra8_fs_file_t* file, ra8_fs_mount_t* handle, const uint8_t* strm)
+{
+  const uint32_t first     = priv_rd32(&strm[k_exfat_strm_off_clus]);
+  file->mount              = handle;
+  file->first_cluster      = first;
+  file->cur_cluster        = first;
+  file->walk_cache_idx     = 0U; /* read accelerator seeded at the chain head */
+  file->walk_cache_cluster = first;
+  file->size_bytes         = priv_rd32(&strm[k_exfat_strm_off_dlen]);
+  file->offset             = 0U;
+  file->dir_entry_lba      = 0U;
+  file->dir_entry_idx      = 0U;
+  file->valid_bytes        = priv_rd32(&strm[k_exfat_off_strm_valid]);
+  file->entry_set_cluster  = 0U;
+  file->entry_set_index    = 0U;
+  file->entry_set_count    = 0U;
+  file->alloc_clusters     = 0U;
+  file->tail_cluster       = 0U;
+  file->mode               = k_ra8_fs_mode_read;
+  file->no_fat_chain =
+    ((strm[k_exfat_strm_off_flags] & (uint8_t)k_exfat_secflag_no_fat) != 0U) ? 1U : 0U;
+  file->in_use = 1U;
+  file->dirty  = 0U;
+}
+
 /* `priv_exfat_open()`: see header for the documented contract. */
 ra8_err_t priv_exfat_open(ra8_fs_mount_t* handle,
                           const char*     path,
                           ra8_fs_mode_t   mode,
                           ra8_fs_file_t** out_file)
 {
+  /* Writing modes need the file's entry-set coordinates, its allocation and
+   * its ValidDataLength -- none of which a read open has any use for -- so
+   * they get their own path rather than a second half bolted onto this one
+   * (#602). */
   if (mode != k_ra8_fs_mode_read) {
-    return k_ra8_err_not_supported;
+    return priv_exfat_open_write(handle, path, mode, out_file);
   }
-  uint32_t  first = 0U;
-  uint32_t  size  = 0U;
-  uint8_t   nofat = 0U;
-  uint8_t   attr  = 0U;
-  ra8_err_t e     = priv_exfat_find(handle, path, &first, &size, &nofat, &attr);
+  uint8_t         strm[k_exfat_entry_bytes] = {};
+  uint8_t         attr                      = 0U;
+  const ra8_err_t e                         = priv_exfat_find(handle, path, strm, &attr);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -303,18 +350,7 @@ ra8_err_t priv_exfat_open(ra8_fs_mount_t* handle,
   if (f == nullptr) {
     return k_ra8_err_no_mem;
   }
-  f->mount              = handle;
-  f->first_cluster      = first;
-  f->cur_cluster        = first;
-  f->walk_cache_idx     = 0U; /* read accelerator seeded at the chain head */
-  f->walk_cache_cluster = first;
-  f->size_bytes         = size;
-  f->offset             = 0U;
-  f->dir_entry_lba      = 0U;
-  f->dir_entry_idx      = 0U;
-  f->mode               = mode;
-  f->no_fat_chain       = nofat;
-  f->in_use             = 1U;
-  *out_file             = f;
+  priv_exfat_seed_read(f, handle, strm);
+  *out_file = f;
   return k_ra8_ok;
 }

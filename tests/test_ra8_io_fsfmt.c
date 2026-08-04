@@ -118,7 +118,10 @@ static void test_probe_builtins(void)
   const ra8_io_fsfmt_t* xfmt = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_fsfmt_probe(&xbe, &xfmt));
   TEST_ASSERT(strcmp(xfmt->name, "exfat") == 0);
-  TEST_ASSERT(!xfmt->caps.supports_streaming_write);
+  /* Both built-ins stream now: exFAT gained open-for-write in #602, so a
+   * capability record still reporting false would be routing callers back to
+   * the whole-file path and its RAM ceiling. */
+  TEST_ASSERT(xfmt->caps.supports_streaming_write);
   TEST_ASSERT_EQ(255, xfmt->caps.max_name_len);
   TEST_END("fsfmt probe builtins");
 }

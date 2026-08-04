@@ -1,10 +1,13 @@
 /**
  * @file ra8_fs_fat_exfat_write.c
- * @brief exFAT allocation-bitmap and whole-file write path.
+ * @brief exFAT allocation-bitmap primitives and directory entry-set construction.
  *
  * @details
- * Allocation-bitmap scan/mark, cluster data writes, directory-set
- * construction, and the one-shot provisioning create path.
+ * The two things every exFAT write needs before it can put a byte anywhere:
+ * somewhere to put it (the allocation bitmap -- locate, probe, scan, mark) and
+ * something to name it (the File + Stream + Name directory entry set -- build,
+ * checksum, place). The streaming engine that drives them lives in
+ * `ra8_fs_fat_exfat_stream.c`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -152,37 +155,8 @@ static ra8_err_t priv_exfat_bitmap_window(const ra8_fs_mount_t* m,
   return k_ra8_err_no_mem;
 }
 
-/**
- * @brief Find a contiguous free run, starting from the mount's next-free hint.
- *
- * @details The exFAT half of #607. The bitmap walk used to restart at cluster
- *          index 0 on every create, so a volume with a hundred files paid for
- *          re-reading the bitmap prefix each time. It now starts at the hint
- *          and, only if that finds nothing, repeats from index 0.
- *
- *          The second pass is a FULL rescan rather than a wrap-around of the
- *          remainder, and that is the point: a free run may STRADDLE the hint,
- *          and a window that stopped at it would miss a run the volume really
- *          has and report a full disk. Rescanning is the price of never lying
- *          about capacity, and it is paid only when the fast path fails.
- *
- * @param[in]  m        Mounted exFAT volume.
- * @param[in]  bmp_lba  First LBA (volume-relative) of the bitmap.
- * @param[in]  need     Number of contiguous free clusters required.
- * @param[out] out_clus First cluster of the found run.
- * @return Error code.
- * @retval k_ra8_ok         A run of @p need free clusters was found.
- * @retval k_ra8_err_no_mem No such run anywhere (volume full / too fragmented).
- * @retval k_ra8_err_*      Backend read failure.
- * @pre @p m and @p out_clus are non-NULL; @p need >= 1.
- * @pre The bitmap region is contiguous on disk.
- * @post On success ``*out_clus`` is the run's first cluster number.
- * @post No volume state modified.
- * @note Worst case is two passes over the bitmap; typical case is one short one.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t
+/** @brief Implementation of `priv_exfat_bitmap_scan()` -- hinted pass, then a full rescan. */
+ra8_err_t
 priv_exfat_bitmap_scan(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t need, uint32_t* out_clus)
 {
   const uint32_t hint = priv_alloc_hint_get(m);
@@ -224,27 +198,8 @@ priv_exfat_bmp_switch(const ra8_fs_mount_t* m, uint32_t lba, uint32_t* loaded, u
   return k_ra8_ok;
 }
 
-/**
- * @brief Mark a contiguous cluster run as allocated in the bitmap.
- *
- * @details Sets one bit per cluster, batching read-modify-write per bitmap sector.
- *
- * @param[in] m       Mounted exFAT volume.
- * @param[in] bmp_lba First LBA (volume-relative) of the bitmap.
- * @param[in] clus    First cluster of the run.
- * @param[in] count   Number of clusters to mark used.
- * @return Error code.
- * @retval k_ra8_ok    All bits set + written.
- * @retval k_ra8_err_* Backend read/write failure.
- * @pre @p m is non-NULL; the run is within the bitmap.
- * @pre The bitmap region is contiguous on disk.
- * @post The @p count bits for the run read as 1.
- * @post Only the affected bitmap sectors are rewritten.
- * @note Read-modify-write, one sector at a time.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t
+/** @brief Implementation of `priv_exfat_bitmap_mark()` -- one read-modify-write per sector. */
+ra8_err_t
 priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint32_t count)
 {
   uint32_t loaded                         = UINT32_MAX;
@@ -263,46 +218,21 @@ priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus,
   return priv_write_sector(m, loaded, sec);
 }
 
-/**
- * @brief Write file data into a contiguous cluster run (zero-padded).
- *
- * @details Copies the bytes sector by sector, zero-filling the final partial sector.
- *
- * @param[in] m    Mounted exFAT volume.
- * @param[in] clus First cluster of the run.
- * @param[in] data File bytes.
- * @param[in] len  Byte count (> 0).
- * @return Error code.
- * @retval k_ra8_ok    All sectors written.
- * @retval k_ra8_err_* Backend write failure.
- * @pre @p m and @p data are non-NULL; @p len > 0.
- * @pre The run has enough clusters for @p len.
- * @post The run holds @p data, last sector zero-padded.
- * @post No directory/bitmap state modified here.
- * @note Writes whole sectors.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t
-priv_exfat_write_data(const ra8_fs_mount_t* m, uint32_t clus, const uint8_t* data, uint32_t len)
+/** @brief Implementation of `priv_exfat_bitmap_test()` -- one sector read, one bit. */
+ra8_err_t
+priv_exfat_bitmap_test(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint8_t* out_free)
 {
-  const uint32_t base    = priv_cluster_to_lba(m, clus);
-  const uint32_t sectors = (len + k_ra8_fs_bytes_per_sector - 1U) / k_ra8_fs_bytes_per_sector;
-  for (uint32_t s = 0U; s < sectors; s++) {
-    uint8_t        sec[k_ra8_fs_bytes_per_sector] = {};
-    const uint32_t off                            = s * k_ra8_fs_bytes_per_sector;
-    uint32_t       n                              = (off < len) ? (len - off) : 0U;
-    if (n > k_ra8_fs_bytes_per_sector) {
-      n = k_ra8_fs_bytes_per_sector;
-    }
-    if (n > 0U) {
-      priv_byte_copy(sec, &data[off], n);
-    }
-    ra8_err_t e = priv_write_sector(m, base + s, sec);
-    if (e != k_ra8_ok) {
-      return e;
-    }
+  const uint32_t idx  = clus - (uint32_t)k_cluster_first_data;
+  const uint32_t lba  = bmp_lba + ((idx >> k_exfat_bit_shift) / k_ra8_fs_bytes_per_sector);
+  const uint32_t byte = (idx >> k_exfat_bit_shift) % k_ra8_fs_bytes_per_sector;
+  const uint32_t bit  = idx & k_exfat_bit_mask;
+
+  uint8_t         sec[k_ra8_fs_bytes_per_sector] = {};
+  const ra8_err_t e                              = priv_read_sector(m, lba, sec);
+  if (e != k_ra8_ok) {
+    return e;
   }
+  *out_free = (uint8_t)(((((uint32_t)sec[byte] >> bit) & 1U) != 0U) ? 0U : 1U);
   return k_ra8_ok;
 }
 
@@ -434,30 +364,35 @@ static ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
 }
 
 /**
- * @brief Build the File + Stream + Name entry set into @p set.
+ * @brief Build a zero-length File + Stream + Name entry set into @p set.
  *
- * @details Fills the typed entries, the name hash, and the trailing SetChecksum.
+ * @details Fills the typed entries, the name hash, the creation stamps and the
+ *          trailing SetChecksum for a file that owns NO clusters yet:
+ *          `FirstCluster` 0, `DataLength` 0, `ValidDataLength` 0 and
+ *          `GeneralSecondaryFlags` = AllocationPossible with `NoFatChain`
+ *          CLEAR. That is what exFAT spec sec 7.4.4 requires of an empty file,
+ *          and it is the honest starting point for a stream: the first
+ *          ::priv_exfat_flush_set after a byte lands rewrites the three fields
+ *          and sets `NoFatChain` if the run is still contiguous.
  *
- * @param[out] set        Buffer (>= set_len * 32 bytes).
- * @param[in]  path       File name (ASCII).
- * @param[in]  nlen       Name length in characters.
- * @param[in]  first_clus First data cluster of the file.
- * @param[in]  len        File length in bytes.
+ * @param[out] set  Buffer (>= `k_exfat_max_set_bytes`).
+ * @param[in]  path File name (ASCII).
+ * @param[in]  nlen Name length in characters.
+ *
  * @return The total byte length of the built set.
  * @retval >0 Number of bytes written into @p set.
+ *
  * @pre @p set and @p path are non-NULL; @p set is large enough.
- * @pre ``priv_strlen(path) == nlen``.
+ * @pre `priv_strlen(path) == nlen` and @p nlen >= 1.
  * @post @p set holds a complete entry set with a valid SetChecksum.
  * @post No volume state modified.
- * @note NoFatChain (contiguous) is recorded in the stream flags.
+ *
+ * @note Not thread-safe against ::ra8_fs_set_clock; install the clock first.
+ *
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_exfat_build_set(uint8_t*    set,
-                                     const char* path,
-                                     uint32_t    nlen,
-                                     uint32_t    first_clus,
-                                     uint32_t    len)
+static uint32_t priv_exfat_build_set(uint8_t* set, const char* path, uint32_t nlen)
 {
   const uint32_t name_entries =
     (nlen + (uint32_t)k_exfat_name_per_entry - 1U) / (uint32_t)k_exfat_name_per_entry;
@@ -476,12 +411,9 @@ static uint32_t priv_exfat_build_set(uint8_t*    set,
   priv_exfat_file_stamp_create(set);
   uint8_t* strm                = &set[k_exfat_entry_bytes];
   strm[0]                      = (uint8_t)k_exfat_entry_stream;
-  strm[k_exfat_strm_off_flags] = (uint8_t)k_exfat_secflag_alloc;
+  strm[k_exfat_strm_off_flags] = (uint8_t)k_exfat_secflag_poss;
   strm[k_exfat_strm_off_nlen]  = (uint8_t)nlen;
   priv_wr16(&strm[k_exfat_off_strm_hash], priv_exfat_name_hash(path, nlen));
-  priv_wr32(&strm[k_exfat_off_strm_valid], len);
-  priv_wr32(&strm[k_exfat_strm_off_clus], first_clus);
-  priv_wr32(&strm[k_exfat_strm_off_dlen], len);
   for (uint32_t n = 0U; n < name_entries; n++) {
     uint8_t* ne = &set[(size_t)(2U + n) * (size_t)k_exfat_entry_bytes];
     ne[0]       = (uint8_t)k_exfat_entry_name;
@@ -523,84 +455,12 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
   return k_ra8_ok;
 }
 
-/**
- * @brief Allocate a contiguous run, write the data, and mark the bitmap.
- *
- * @details Combines bitmap scan, data write, and bitmap marking into one step.
- *
- * @param[in]  m     Mounted exFAT volume.
- * @param[in]  data  File bytes.
- * @param[in]  len   Byte count (> 0).
- * @param[in]  nclus Clusters required.
- * @param[out] out_start First cluster of the allocated run.
- * @return Error code.
- * @retval k_ra8_ok         Data written; run marked used.
- * @retval k_ra8_err_no_mem No contiguous run of @p nclus clusters.
- * @retval k_ra8_err_*      Bitmap or backend failure.
- * @pre All pointers are non-NULL; @p nclus >= 1.
- * @pre ``m->type`` is exFAT.
- * @post On success the run holds the data and is marked allocated.
- * @post On failure an unlinked run may remain allocated.
- * @note Contiguous (NoFatChain) allocation only.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t priv_exfat_alloc_write(ra8_fs_mount_t* m,
-                                        const uint8_t*  data,
-                                        uint32_t        len,
-                                        uint32_t        nclus,
-                                        uint32_t*       out_start)
-{
-  uint32_t  bclus = 0U;
-  uint32_t  blen  = 0U;
-  ra8_err_t e     = priv_exfat_find_bitmap(m, &bclus, &blen);
-  if (e != k_ra8_ok) {
-    return e;
-  }
-  const uint32_t bmp_lba = priv_cluster_to_lba(m, bclus);
-  e                      = priv_exfat_bitmap_scan(m, bmp_lba, nclus, out_start);
-  if (e != k_ra8_ok) {
-    return e;
-  }
-  e = priv_exfat_write_data(m, *out_start, data, len);
-  if (e != k_ra8_ok) {
-    return e;
-  }
-  // NOLINTNEXTLINE(readability-suspicious-call-argument) -- (cluster, count) order is correct
-  e = priv_exfat_bitmap_mark(m, bmp_lba, *out_start, nclus);
-  if (e != k_ra8_ok) {
-    return e;
-  }
-  /* Only now, with the bits actually set, is it true that the next free run
-   * starts past this one (#607). */
-  priv_alloc_hint_set(m, *out_start + nclus);
-  return k_ra8_ok;
-}
-
-/**
- * @brief Append a File/Stream/Name entry set linking a written run.
- *
- * @details Finds directory space, builds the entry set, and writes it.
- *
- * @param[in] m     Mounted exFAT volume.
- * @param[in] path  File name (ASCII).
- * @param[in] nlen  Name length in characters.
- * @param[in] start First data cluster of the file.
- * @param[in] len   File length in bytes.
- * @return Error code.
- * @retval k_ra8_ok         Entry set written.
- * @retval k_ra8_err_no_mem No directory space.
- * @retval k_ra8_err_*      Backend failure.
- * @pre @p m and @p path are non-NULL; ``m->type`` is exFAT.
- * @pre ``priv_strlen(path) == nlen``.
- * @post On success the root directory references the file.
- * @post No data clusters are modified here.
- * @note Keeps the entry set within one directory cluster.
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t
-priv_exfat_link(ra8_fs_mount_t* m, const char* path, uint32_t nlen, uint32_t start, uint32_t len)
+/** @brief Implementation of `priv_exfat_link()` -- one directory-slot scan, one set write. */
+ra8_err_t priv_exfat_link(ra8_fs_mount_t* m,
+                          const char*     path,
+                          uint32_t        nlen,
+                          exfat_setpos_t* out_head,
+                          uint32_t*       out_count)
 {
   const uint32_t name_entries =
     (nlen + (uint32_t)k_exfat_name_per_entry - 1U) / (uint32_t)k_exfat_name_per_entry;
@@ -612,47 +472,13 @@ priv_exfat_link(ra8_fs_mount_t* m, const char* path, uint32_t nlen, uint32_t sta
     return e;
   }
   uint8_t        set[k_exfat_max_set_bytes] = {};
-  const uint32_t bytes                      = priv_exfat_build_set(set, path, nlen, start, len);
-  return priv_exfat_write_dir_set(m, dclus, didx, set, bytes);
-}
-
-/* `priv_exfat_create()`: see header for the documented contract. */
-ra8_err_t priv_exfat_create(ra8_fs_mount_t* m, const char* path, const uint8_t* data, uint32_t len)
-{
-  /* Strip leading slashes so the stored name matches what the matchers
-   * search for (#93); otherwise the file is created but cannot be reopened. */
-  while (*path == '/') {
-    path++;
-  }
-  const uint32_t nlen = priv_strlen(path);
-  if (nlen == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (nlen > (uint32_t)k_exfat_name_cap) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (len == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  /* Replace, do not duplicate (#603). Nothing in the create path used to look
-   * for the name, so a second create wrote a second File/Stream/Name set for
-   * it: the directory then held two entries for one name, and the first file's
-   * clusters stayed marked used in the allocation bitmap with nothing pointing
-   * at them -- unreclaimable without a reformat. Unlinking first frees those
-   * clusters AND the old set's slots (which the scan below then reuses), which
-   * is the truncate-then-write the FAT side gets from ra8_fs_open(write).
-   * priv_exfat_unlink() also carries the directory guard, so write_file() over
-   * a directory name reports k_ra8_err_invalid_arg instead of eating it. */
-  const ra8_err_t ue = priv_exfat_unlink(m, path);
-  if ((ue != k_ra8_ok) && (ue != k_ra8_err_not_found)) {
-    return ue;
-  }
-  const uint32_t cbytes = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
-  const uint32_t nclus  = (len + cbytes - 1U) / cbytes;
-  uint32_t       start  = 0U;
-  ra8_err_t      e      = priv_exfat_alloc_write(m, data, len, nclus, &start);
+  const uint32_t bytes                      = priv_exfat_build_set(set, path, nlen);
+  e                                         = priv_exfat_write_dir_set(m, dclus, didx, set, bytes);
   if (e != k_ra8_ok) {
     return e;
   }
-  return priv_exfat_link(m, path, nlen, start, len);
+  out_head->cluster = dclus;
+  out_head->index   = didx;
+  *out_count        = need;
+  return k_ra8_ok;
 }

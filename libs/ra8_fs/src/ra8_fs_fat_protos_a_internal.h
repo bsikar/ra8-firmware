@@ -489,40 +489,6 @@ ra8_err_t
 priv_exfat_bmp_switch(const ra8_fs_mount_t* m, uint32_t lba, uint32_t* loaded, uint8_t* sec);
 
 /**
- * @brief Create a contiguous file on an exFAT volume and write its contents.
- *
- * @details Unlinks any existing entry set for @p path (freeing its clusters
- * and releasing its directory slots), then allocates a contiguous run from the
- * allocation bitmap, writes the data, and appends a fresh File/Stream/Name
- * entry set (NoFatChain) to the root directory. The unlink-first step is what
- * makes a repeated create a REPLACE rather than the silent duplicate-plus-leak
- * it used to be (#603), and mirrors the truncate `ra8_fs_open()` in
- * ::k_ra8_fs_mode_write performs on the FAT side.
- *
- * @param[in,out] m    Mounted exFAT volume.
- * @param[in]     path Flat root-level file name (ASCII).
- * @param[in]     data File bytes.
- * @param[in]     len  Byte count (> 0).
- * @return Error code.
- * @retval k_ra8_ok              File created (or replaced).
- * @retval k_ra8_err_invalid_arg Empty/oversized name, zero length, or @p path
- *                               names an existing directory.
- * @retval k_ra8_err_no_mem      No contiguous space or directory slots.
- * @retval k_ra8_err_*           Backend or bitmap failure.
- * @pre @p m, @p path, @p data are non-NULL; ``m->type`` is exFAT.
- * @pre No handle is open on @p path.
- * @post On success the file is allocated, written, and linked exactly once.
- * @post On success no cluster of a replaced predecessor stays marked used.
- * @note Contiguous allocation only (NoFatChain).
- * @note Not atomic: an old file is released before the new one is written, so
- *       a failure mid-write leaves the name absent rather than stale -- the
- *       same trade the FAT truncate path makes.
- * @since 0.1.0
- */
-RA8_PRIV
-ra8_err_t priv_exfat_create(ra8_fs_mount_t* m, const char* path, const uint8_t* data, uint32_t len);
-
-/**
  * @brief exFAT 32-bit rotate-right-add checksum (boot region + up-case table).
  *
  * @details Folds @p len bytes of @p buf into the running checksum @p cs with
@@ -553,9 +519,10 @@ uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len);
  *
  * @param[in]  m         Mounted exFAT volume.
  * @param[in]  path      Target path (ASCII, root-level name).
- * @param[out] out_first First cluster of the file.
- * @param[out] out_size  File length in bytes (low 32 bits).
- * @param[out] out_nofat 1 if the file is contiguous (NoFatChain).
+ * @param[out] out_strm  Receives the matched 32-byte Stream-extension entry --
+ *                       first cluster, both lengths and the secondary flags,
+ *                       so a caller decodes the fields it needs rather than
+ *                       every caller paying for another out-parameter.
  * @param[out] out_attr  Low byte of the File entry's FileAttributes, which is
  *                       where ::k_exfat_attr_directory lives. Callers that act
  *                       on the entry MUST consult it: a directory answers this
@@ -567,18 +534,14 @@ uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len);
  * @retval k_ra8_err_*         Backend read failure.
  * @pre All pointers are non-NULL; ``m->type`` is exFAT.
  * @pre ``m->root_cluster`` is valid.
- * @post On success the out-params describe the file.
+ * @post On success @p out_strm mirrors the on-disk Stream entry.
  * @post Scan is bounded by ::k_exfat_scan_limit entries.
  * @note Only the root directory is searched (flat namespace).
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
-                          const char*           path,
-                          uint32_t*             out_first,
-                          uint32_t*             out_size,
-                          uint8_t*              out_nofat,
-                          uint8_t*              out_attr);
+ra8_err_t
+priv_exfat_find(const ra8_fs_mount_t* m, const char* path, uint8_t* out_strm, uint8_t* out_attr);
 
 /**
  * @brief Locate the allocation-bitmap entry in the exFAT root directory.
