@@ -201,8 +201,8 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_power_profile_gpio_pulse_fn_t pulse;  /**< GPIO edge hook (may be ``nullptr``).         */
-  ra8_power_profile_now_us_fn_t     now_us; /**< Microsecond clock hook (may be ``nullptr``). */
+  ra8_power_profile_gpio_pulse_fn_t pulse;         /**< GPIO edge hook (may be ``nullptr``). */
+  ra8_power_profile_now_us_fn_t     now_us;        /**< Clock hook, us (may be ``nullptr``). */
   void*                             user_ctx_gpio; /**< Opaque pointer passed to ``pulse``.  */
   void*                             user_ctx_time; /**< Opaque pointer passed to ``now_us``. */
 } ra8_power_profile_config_t;

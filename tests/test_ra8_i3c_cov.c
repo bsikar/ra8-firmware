@@ -39,7 +39,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_i3c_ibi_status_with_len =
-    0x00008409U, /**< An IBI queue word carrying a non-zero payload length, so the reader must drain the data buffer. */
+    0x00008409U, /**< IBI queue word, non-zero payload length, so the reader drains the buffer. */
 } i3c_cov_fixture2_t;
 
 /**
@@ -49,7 +49,7 @@ typedef enum : uint16_t {
 typedef enum : uint32_t {
   k_i3c_ibi_status_error_a = 0x80000200U, /**< An IBI queue word with the error bit set. */
   k_i3c_ibi_status_error_b =
-    0x80000400U, /**< A second error word with a different cause field, so the two are not conflated. */
+    0x80000400U, /**< A second error word, different cause field, so the two are not conflated. */
   k_i3c_probe_word =
     0xDEADBEEFU, /**< Payload word in the data buffer, read out four bytes at a time. */
 } i3c_cov_fixture3_t;

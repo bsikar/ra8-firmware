@@ -39,7 +39,7 @@ ra8_vmem_stream_init(ra8_vmem_stream_t* st, ra8_vmem_t* vm, uint32_t object_id, 
   }
   const uint32_t fb = vm->cfg.frame_bytes;
   if (fb == 0U) {
-    return k_ra8_err_invalid_size; /* GCOVR_EXCL_LINE -- ra8_vmem_init rejects a 0 frame size, so a live cache never has one */
+    return k_ra8_err_invalid_size; /* GCOVR_EXCL_LINE -- ra8_vmem_init rejects 0 frame size */
   }
   st->vm          = vm;
   st->object_id   = object_id;
@@ -87,11 +87,11 @@ size_t ra8_vmem_stream_read(void* ctx, uint64_t offset, void* buf, size_t len)
 
     void* page = nullptr;
     if (ra8_vmem_get(st->vm, st->object_id, frame_base, &page) != k_ra8_ok) {
-      break; /* GCOVR_EXCL_LINE -- get fails only on a loader error or all-frames-pinned; unreachable for a single-threaded reader */
+      break; /* GCOVR_EXCL_LINE -- ra8_vmem_get fails only on loader error or all-pinned frames */
     }
     (void)memcpy(out + done, (const uint8_t*)page + in_frame, chunk);
     if (ra8_vmem_put(st->vm, page) != k_ra8_ok) {
-      break; /* GCOVR_EXCL_LINE -- put fails only on a foreign/unpinned page; the pin came from the get just above */
+      break; /* GCOVR_EXCL_LINE -- put fails only on a foreign page; pin came from the get above */
     }
     done += chunk;
     cur += chunk;

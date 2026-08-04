@@ -98,24 +98,24 @@ typedef enum : uint16_t {
  * from the driver's own field enums so they cannot drift from the code.
  */
 typedef enum : uint16_t {
-  k_thc_speed_bogus = 9U,                                       /**< Not FS, not HS.             */
-  k_thc_sack_bit    = (uint16_t)(1U << k_ra8_int1_bit_sack),    /**< INTSTS1 SETUP-ACK latch.    */
-  k_thc_sign_bit    = (uint16_t)(1U << k_ra8_int1_bit_sign),    /**< INTSTS1 SETUP-fail latch.   */
-  k_thc_sureq_bit   = (uint16_t)(1U << k_ra8_dcpctr_bit_sureq), /**< DCPCTR SUREQ (pending req). */
-  k_thc_dcp_bit     = (uint16_t)k_ra8_usb_dcp_pipe0_bit,        /**< BRDY/BEMP/NRDY DCP (pipe0). */
-  k_thc_dir_in      = (uint16_t)k_ra8_usb_setup_dir_in, /**< bmRequestType device-to-host.  */
-  k_thc_dir_out     = 0U,                               /**< bmRequestType host-to-device.  */
-  k_thc_mps_dcp     = 64U,                              /**< DCPMAXP MXPS for a read.       */
-  k_thc_mps_multi   = 4U,                               /**< Small DCP MPS -> multi packet. */
-  k_thc_wlen_out    = 10U,                              /**< DATA-OUT wLength (> mps).      */
-  k_thc_wlen_step1  = 3U,                               /**< DATA-OUT wLength (mxps==0).    */
-  k_thc_wlen_in     = 64U,                              /**< DATA-IN wLength (> buffer).    */
-  k_thc_buf_in      = 8U,                               /**< DATA-IN buffer capacity.       */
-  k_thc_dtln        = 4U,                               /**< CFIFOCTR.DTLN for the drain.   */
-  k_thc_cap         = 8U,                               /**< dcp_out_read destination cap.  */
-  k_thc_cfifo_seed  = 0xBBAAU,                          /**< CFIFO data-port seed word.     */
-  k_thc_breq_out    = 0x09U,                            /**< A control-write bRequest.      */
-  k_thc_breq_in     = 0x06U,                            /**< A control-read bRequest.       */
+  k_thc_speed_bogus = 9U,                                       /**< Not FS, not HS.              */
+  k_thc_sack_bit    = (uint16_t)(1U << k_ra8_int1_bit_sack),    /**< INTSTS1 SETUP-ACK latch.     */
+  k_thc_sign_bit    = (uint16_t)(1U << k_ra8_int1_bit_sign),    /**< INTSTS1 SETUP-fail latch.    */
+  k_thc_sureq_bit   = (uint16_t)(1U << k_ra8_dcpctr_bit_sureq), /**< DCPCTR SUREQ (pending req).  */
+  k_thc_dcp_bit     = (uint16_t)k_ra8_usb_dcp_pipe0_bit,        /**< BRDY/BEMP/NRDY DCP (pipe0).  */
+  k_thc_dir_in      = (uint16_t)k_ra8_usb_setup_dir_in,         /**< bmRequestType device-to-host */
+  k_thc_dir_out     = 0U,                                       /**< bmRequestType host-to-device */
+  k_thc_mps_dcp     = 64U,                                      /**< DCPMAXP MXPS for a read.     */
+  k_thc_mps_multi   = 4U,                                       /**< Tiny DCP MPS -> multi packet */
+  k_thc_wlen_out    = 10U,                                      /**< DATA-OUT wLength (> mps).    */
+  k_thc_wlen_step1  = 3U,                                       /**< DATA-OUT wLength (mxps==0).  */
+  k_thc_wlen_in     = 64U,                                      /**< DATA-IN wLength (> buffer).  */
+  k_thc_buf_in      = 8U,                                       /**< DATA-IN buffer capacity.     */
+  k_thc_dtln        = 4U,                                       /**< CFIFOCTR.DTLN for the drain. */
+  k_thc_cap         = 8U,                                       /**< dcp_out_read destination cap */
+  k_thc_cfifo_seed  = 0xBBAAU,                                  /**< CFIFO data-port seed word.   */
+  k_thc_breq_out    = 0x09U,                                    /**< A control-write bRequest.    */
+  k_thc_breq_in     = 0x06U,                                    /**< A control-read bRequest.     */
 } thc_const_t;
 
 /**

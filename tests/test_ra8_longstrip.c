@@ -47,10 +47,13 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_band_index_poison =
-    0xFFU, /**< Poison band index written before a query, so a query that fails without setting it is detectable. */
-  k_atlas_off_tile_h = 10, /**< Tile height in the atlas header; the band height for a strip. */
-  k_atlas_off_bpp    = 12, /**< Bytes per pixel.                                              */
-  k_atlas_off_codec  = 13, /**< Codec id for the tile payloads.                               */
+    0xFFU, /**< Poison band index set before a query, so a failed query leaves it detectable. */
+  /** Tile height in the atlas header; the band height for a strip. */
+  k_atlas_off_tile_h = 10,
+  /** Bytes per pixel. */
+  k_atlas_off_bpp = 12,
+  /** Codec id for the tile payloads. */
+  k_atlas_off_codec = 13,
 } longstrip_fixture_t;
 
 /**
@@ -67,7 +70,7 @@ typedef enum : uint16_t {
  */
 typedef enum : uint32_t {
   k_scroll_beyond_ends =
-    100000, /**< A scroll delta far past either end of the strip, applied in both directions so the clamp is proven on both sides. */
+    100000, /**< Scroll delta past either end of the strip; proves the clamp both directions. */
 } longstrip_fixture3_t;
 
 /**

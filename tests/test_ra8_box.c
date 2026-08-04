@@ -29,7 +29,7 @@ typedef enum : uint8_t {
   k_box_leaf_small  = 10, /**< Main-axis size of the small leaf box. */
   k_box_leaf_medium = 20, /**< Of the medium one.                    */
   k_box_leaf_large =
-    30, /**< Of the large one; the three differ so a layout that summed the wrong children is visible in the total. */
+    30, /**< Of the large one; the three differ, so summing the wrong children shows in total. */
 } box_leaf_size_t;
 
 /** @brief Node-storage capacity for the test trees. */

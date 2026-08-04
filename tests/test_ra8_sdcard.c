@@ -59,7 +59,8 @@ typedef enum : uint32_t {
   k_ra8_sdcard_test_csd_w1 = 0xF0000000UL, /**< C_SIZE bits [29:8] of rsp[1] -> upper 16b */
   k_ra8_sdcard_test_csd_w2 = 0x00000000UL, /**< RA8 sdcard test csd w2.                   */
   k_ra8_sdcard_test_csd_w3 = 0x40000000UL, /**< CSD_STRUCTURE = 1                         */
-  k_ra8_sdcard_test_expected_blocks = (0xF000UL + 1UL) * 1024UL, /**< (C_SIZE+1)*1024 */
+  /** (C_SIZE+1)*1024 */
+  k_ra8_sdcard_test_expected_blocks = (0xF000UL + 1UL) * 1024UL,
 } ra8_sdcard_test_const_t;
 
 /** @brief When non-zero the CMD55 mock withholds APP_CMD, forcing a 4-bit decline. */

@@ -38,10 +38,11 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ftl_pattern_stride =
-    31U, /**< Byte stride of the block generator, `i * 31 + lbn * 7 + tag`; prime, so the pattern never repeats inside a block. */
+    31U, /**< Block stride `i * 31 + lbn * 7 + tag`; prime, so the pattern never repeats. */
   k_ftl_pattern_lbn_mul =
     7U, /**< Logical-block-number multiplier, so two blocks of one file still differ. */
-  k_ftl_probe_lbn = 5U, /**< Logical block the round-trip writes and reads back. */
+  /** Logical block the round-trip writes and reads back. */
+  k_ftl_probe_lbn = 5U,
   k_ftl_probe_tag =
     9U, /**< Its generation tag, so a stale mapping returning an older copy is detectable. */
 } ftl_fixture_t;

@@ -291,9 +291,12 @@ ra8_err_t ra8_glcdc_layer2_chroma_key_enable(uint32_t key_rgb888)
      * bit around (0, 16, 24).  Setting all three is safe: at most
      * one is meaningful, the others land in reserved bits which
      * the chip ignores. */
-    k_ab7_ckon  = (1UL << 0) | (1UL << 16) | (1UL << 24),                   /**< Ab7 ckon.  */
-    k_ab1_arcon = 1UL << 12,                                                /**< Ab1 arcon. */
-    k_arcdef_op = ((uint32_t)k_glcdc_alpha_opaque << k_glcdc_shift_arcdef), /**< Arcdef op. */
+    /** Ab7 ckon. */
+    k_ab7_ckon = (1UL << 0) | (1UL << 16) | (1UL << 24),
+    /** Ab1 arcon. */
+    k_ab1_arcon = 1UL << 12,
+    /** Arcdef op. */
+    k_arcdef_op         = ((uint32_t)k_glcdc_alpha_opaque << k_glcdc_shift_arcdef),
     k_alpha_opaque_byte = 0xFFUL << 24, /**< AB8 alpha-byte = opaque. */
     k_rgb888_mask       = 0x00FFFFFFUL, /**< 24-bit colour mask.      */
     k_ab9_transparent   = 0x00000000UL, /**< AB9 = alpha-0 replace.   */

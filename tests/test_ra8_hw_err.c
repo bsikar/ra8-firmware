@@ -19,11 +19,11 @@
  */
 typedef enum : uint8_t {
   k_hw_probe_byte_top_bit =
-    0x80U, /**< An 8-bit value with only the top bit set, the one a signed conversion would corrupt. */
+    0x80U, /**< An 8-bit value with only the top bit set; a signed conversion would corrupt it. */
   k_hw_probe_byte =
-    0xAAU, /**< An 8-bit register value with alternating bits, so a truncation or sign-extension shows up. */
+    0xAAU, /**< An 8-bit value with alternating bits, so truncation or sign-extension shows up. */
   k_hw_probe_all_but_lsb =
-    0xFEU, /**< Every bit set except the least significant, distinguishing a real read from an all-ones default. */
+    0xFEU, /**< All bits set but the LSB, so a real read is distinct from an all-ones default. */
 } hw_err_fixture_t;
 
 /**
@@ -33,7 +33,7 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_hw_probe_word_top_bit = 0x80000000U, /**< A 32-bit value with only bit 31 set. */
   k_hw_probe_word_all_ones =
-    0xFFFFFFFFU, /**< A full-width all-ones read, which is also what a dead bus returns; paired with the others so the two are distinguishable. */
+    0xFFFFFFFFU, /**< Full-width all-ones; also a dead-bus return, paired so the two differ. */
 } hw_err_fixture2_t;
 
 /**

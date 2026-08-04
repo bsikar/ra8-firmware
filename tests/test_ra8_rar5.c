@@ -473,7 +473,8 @@ static void test_rar5_malformed(void)
   static uint8_t s_notab[16] = {};
   s_notab[0]                 = k_t_notab_flags; /* last, no tables, bytecount 1 */
   s_notab[1]                 = 0x02U;           /* block size 2                 */
-  s_notab[2] = (uint8_t)(k_t_hdr_csum_seed ^ k_t_notab_flags ^ 0x02U); /* checksum */
+  /* checksum */
+  s_notab[2] = (uint8_t)(k_t_hdr_csum_seed ^ k_t_notab_flags ^ 0x02U);
   s_notab[3] = 0x00U;
   s_notab[4] = 0x00U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_notab, 5U, sizeof(k_src)));

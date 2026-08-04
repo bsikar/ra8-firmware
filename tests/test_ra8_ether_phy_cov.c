@@ -49,7 +49,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_phy_bmcr_reset =
-    0x8000U, /**< BMCR bit 15, the PHY reset bit, which the driver must clear when reset completes. */
+    0x8000U, /**< BMCR bit 15, the PHY reset bit, which the driver clears when reset completes. */
 } ether_phy_cov_fixture2_t;
 
 /* ---------------------------------------------------------------------------

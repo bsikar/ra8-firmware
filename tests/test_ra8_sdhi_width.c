@@ -54,11 +54,11 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_test_r1_ack       = (uint32_t)k_ra8_sdhi_r1_app_cmd_mask, /**< Test r1 ack.       */
   k_test_r1_no_appcmd = 0x00000000UL,                         /**< Test r1 no appcmd. */
-  k_test_r1_error     = (uint32_t)k_ra8_sdhi_r1_app_cmd_mask |
-                        (uint32_t)k_ra8_sdhi_r1_illegal_command, /**< Test r1 error. */
-  k_test_r1_clean     = 0x00000900UL, /**< R1: TRAN + ready, no error bits (eMMC CMD6 ok). */
-  k_test_bad_width    = 2U,           /**< Test bad width.                                 */
-  k_test_rca          = 0xB368UL,     /**< Test rca.                                       */
+  /** Test r1 error. */
+  k_test_r1_error  = (uint32_t)k_ra8_sdhi_r1_app_cmd_mask | (uint32_t)k_ra8_sdhi_r1_illegal_command,
+  k_test_r1_clean  = 0x00000900UL, /**< R1: TRAN + ready, no error bits (eMMC CMD6 ok). */
+  k_test_bad_width = 2U,           /**< Test bad width.                                 */
+  k_test_rca       = 0xB368UL,     /**< Test rca.                                       */
 } ra8_sdhi_width_test_const_t;
 
 /* Deterministic RSPEND servicing via the ra8_fake_mmio poll-hook -- it runs inline

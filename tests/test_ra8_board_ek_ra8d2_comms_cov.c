@@ -75,9 +75,9 @@
  */
 typedef enum : uint8_t {
   k_board_poison_len =
-    0xAAU, /**< Poison written into a length out-parameter, so a call that fails without setting it is detectable. */
+    0xAAU, /**< Poison in a length out-parameter; a call that skips setting it is detectable. */
   k_sys_oscsf_all_ready =
-    0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready. */
+    0xFFU, /**< Every oscillator-stabilisation flag set, so bring-up sees all sources ready. */
 } board_ek_ra8d2_comms_cov_fixture_t;
 
 /* -------------------------------------------------------------------------

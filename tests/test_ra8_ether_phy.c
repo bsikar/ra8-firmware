@@ -19,9 +19,8 @@
  * @brief The peripheral registers and field values this fixture drives, plus the physical quantities the configuration declares.
  */
 typedef enum : uint8_t {
-  k_phy_reset_wait_us =
-    100U, /**< Reset settling time the configuration requests, in microseconds. */
-  k_phy_reg_link_partner = 5, /**< MII register 5: the link-partner ability register. */
+  k_phy_reset_wait_us    = 100U, /**< Reset settling time the config requests, in microseconds. */
+  k_phy_reg_link_partner = 5,    /**< MII register 5: the link-partner ability register.        */
 } ether_phy_fixture_t;
 
 /**

@@ -229,13 +229,13 @@ static void test_init_cmd8_classifies_v1_card(void)
    * C_SIZE_MULT=7 -> ~1 GiB. */
   uint8_t csd_v1[k_ra8_sdmmc_spi_csd_response_len];
   memset(csd_v1, 0, sizeof(csd_v1));
-  csd_v1[0]                          = 0x00U;               /* CSD_STRUCTURE = 0               */
-  csd_v1[k_sd_csd_idx_bl_len]        = k_sd_csd_bl_len_512; /* READ_BL_LEN = 9 (low nibble)    */
-  csd_v1[6]                          = 0x03U;               /* C_SIZE bits 11:10 = 0b11        */
-  csd_v1[k_sd_csd_idx_csize_mid]     = k_sd_test_ff;        /* C_SIZE bits 9:2 = 0xFF          */
-  csd_v1[8]                          = k_sd_csd_csize_low;  /* C_SIZE bits 1:0 (C_SIZE = 1023) */
-  csd_v1[k_sd_csd_idx_csize_mult_hi] = 0x03U;               /* C_SIZE_MULT bits 2:1 = 0b11     */
-  csd_v1[k_sd_test_ten]              = k_sd_csd_csize_mult_low; /* C_SIZE_MULT bit 0 = 1 */
+  csd_v1[0]                          = 0x00U;                   /* CSD_STRUCTURE = 0             */
+  csd_v1[k_sd_csd_idx_bl_len]        = k_sd_csd_bl_len_512;     /* READ_BL_LEN = 9 (low nibble)  */
+  csd_v1[6]                          = 0x03U;                   /* C_SIZE bits 11:10 = 0b11      */
+  csd_v1[k_sd_csd_idx_csize_mid]     = k_sd_test_ff;            /* C_SIZE bits 9:2 = 0xFF        */
+  csd_v1[8]                          = k_sd_csd_csize_low;      /* C_SIZE bits 1:0 (C_SIZE=1023) */
+  csd_v1[k_sd_csd_idx_csize_mult_hi] = 0x03U;                   /* C_SIZE_MULT bits 2:1 = 0b11   */
+  csd_v1[k_sd_test_ten]              = k_sd_csd_csize_mult_low; /* C_SIZE_MULT bit 0 = 1         */
   queue_csd_read(csd_v1);
   /* CMD16 -> R1 ready. */
   queue_command_response_r1((uint8_t)k_test_r1_ready);

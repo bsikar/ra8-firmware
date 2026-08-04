@@ -70,7 +70,7 @@
  */
 typedef enum : uint8_t {
   k_jpeg_huff_symbol =
-    0x42U, /**< A Huffman table symbol; non-zero, so a table left cleared is distinguishable from one that was loaded. */
+    0x42U, /**< A Huffman table symbol; non-zero, so a cleared table differs from a loaded one. */
 } jpeg_sw_cov_fixture_t;
 
 /* ------------------------------------------------------------------ */

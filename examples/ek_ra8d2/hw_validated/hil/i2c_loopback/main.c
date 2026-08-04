@@ -46,10 +46,10 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_i2c_demo_baud        = 115200U, /**< I2C demo baud.      */
-  k_i2c_demo_period_ms   = 1000U,   /**< I2C demo period ms. */
-  k_i2c_demo_bus_hz      = 100000U, /**< I2C demo bus Hz.    */
-  k_i2c_demo_iic_channel = 1U, /**< RIIC ch1 (P512 SCL1 / P511 SDA1) -- U15 lives here, per #46. */
+  k_i2c_demo_baud        = 115200U, /**< I2C demo baud.                                         */
+  k_i2c_demo_period_ms   = 1000U,   /**< I2C demo period ms.                                    */
+  k_i2c_demo_bus_hz      = 100000U, /**< I2C demo bus Hz.                                       */
+  k_i2c_demo_iic_channel = 1U,      /**< RIIC ch1 (P512 SCL1 / P511 SDA1) -- U15 here, per #46. */
 } i2c_demo_const_t;
 
 /** @brief Probe target -- on-board PI4IOE5V6408 I/O port expander U15

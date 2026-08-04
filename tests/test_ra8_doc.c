@@ -25,7 +25,7 @@
  */
 typedef enum : uint8_t {
   k_doc_probe_docr =
-    0xFFU, /**< Every DOCR bit set, so a write that reached a neighbouring register leaves evidence. */
+    0xFFU, /**< Every DOCR bit set, so a write reaching a neighbouring register leaves evidence. */
 } doc_fixture_t;
 
 /**
@@ -35,7 +35,7 @@ typedef enum : uint8_t {
 typedef enum : uint16_t {
   k_doc_probe_dodir = 0xAAAAU, /**< Alternating bits in DODIR. */
   k_doc_probe_dodsr0 =
-    0x5555U, /**< Their complement in DODSR0, so a swap between the two registers is unmistakable. */
+    0x5555U, /**< Their complement in DODSR0, so swapping the two registers is unmistakable. */
 } doc_fixture2_t;
 
 typedef enum : uint16_t {

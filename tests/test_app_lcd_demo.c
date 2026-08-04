@@ -39,7 +39,7 @@
  */
 typedef enum : uint8_t {
   k_sys_oscsf_all_ready =
-    0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready. */
+    0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready */
 } app_lcd_demo_fixture_t;
 
 /** @brief Per-test enums. */

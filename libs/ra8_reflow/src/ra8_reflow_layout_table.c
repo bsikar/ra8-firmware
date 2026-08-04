@@ -448,7 +448,8 @@ static uint32_t priv_layout_row(ra8_reflow_t*         engine,
     engine->glyph_count = glyphs_before; /* roll the row back ... */
     (void)ra8_reflow_layout_finish_page(engine,
                                         cur); /* ... flush the page (cur->y -> margin) ... */
-    row_lines = priv_row_cells(engine, font, tr_start, tr_end, col_w, cur->y); /* ... re-lay it */
+    /* ... re-lay it */
+    row_lines = priv_row_cells(engine, font, tr_start, tr_end, col_w, cur->y);
     row_h     = (int32_t)row_lines * line_h;
   }
   cur->y += row_h + (int32_t)k_priv_row_gap_px;

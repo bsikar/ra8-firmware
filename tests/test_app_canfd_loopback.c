@@ -27,7 +27,7 @@
  */
 typedef enum : uint32_t {
   k_canfd_sts_all_ones =
-    0xFFFFFFFFUL, /**< Every status bit set, so a handler that clears the wrong flag leaves evidence in the rest. */
+    0xFFFFFFFFUL, /**< Every status bit set, so clearing the wrong flag leaves evidence. */
 } app_canfd_loopback_fixture_t;
 
 typedef enum : uint32_t {

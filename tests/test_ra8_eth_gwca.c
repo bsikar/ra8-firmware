@@ -27,7 +27,8 @@ typedef enum : uint8_t {
     64U, /**< A smaller accepted slot size, proving the check is a bound and not an equality. */
   k_gwca_chain_len =
     5, /**< Descriptors in the test chain: enough for a head, a body and a tail with spares. */
-  k_gwca_frame_bytes = 64, /**< Staging frame capacity. */
+  /** Staging frame capacity. */
+  k_gwca_frame_bytes = 64,
 } eth_gwca_fixture_t;
 
 /**

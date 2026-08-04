@@ -29,10 +29,11 @@
  */
 typedef enum : uint8_t {
   k_dfu_pattern_stride =
-    7U, /**< Stride of the image generator, `i * 7 + 3`, so no two bytes of the image agree by position. */
-  k_dfu_image_bytes = 64, /**< Size of the fixture image. */
+    7U, /**< Stride of image generator, `i * 7 + 3`, so no two bytes of image agree by position. */
+  /** Size of the fixture image. */
+  k_dfu_image_bytes = 64,
   k_dfu_flip_mask =
-    0xFFU, /**< XORed into the first byte to corrupt the image, so the verify step must reject it. */
+    0xFFU, /**< XORed into the first byte to corrupt the image, so the verify must reject it. */
 } dfu_program_fixture_t;
 
 /** @brief Test image geometry. */

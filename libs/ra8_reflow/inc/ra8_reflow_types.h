@@ -425,10 +425,10 @@ typedef enum : uint8_t {
  * @see ra8_reflow_register_face()
  */
 typedef struct {
-  const uint8_t* blob;         /**< TTF/OTF bytes; caller-owned, outlive the engine. */
-  size_t         len;          /**< Length of `blob`, bytes.                         */
-  uint8_t        css_face_idx; /**< `@font-face` table index this blob satisfies.    */
-  uint8_t        pad8[k_ra8_reflow_face_pad8]; /**< Padding to an 8-byte stride. */
+  const uint8_t* blob;                         /**< TTF/OTF bytes; caller-owned, outlives engine. */
+  size_t         len;                          /**< Length of `blob`, bytes.                      */
+  uint8_t        css_face_idx;                 /**< `@font-face` table index this blob satisfies. */
+  uint8_t        pad8[k_ra8_reflow_face_pad8]; /**< Padding to an 8-byte stride.                  */
 } ra8_reflow_face_t;
 
 /**
@@ -455,10 +455,10 @@ typedef struct {
   uint32_t link_color; /**< Anchor text colour (0xRRGGBB). */
 
   /* --- font (caller-owned TTF blob) ------------------------------------ */
-  const uint8_t*    font_data;                     /**< TTF blob; outlives the engine. */
-  size_t            font_len;                      /**< Length of `font_data`, bytes.  */
-  ra8_reflow_face_t faces[k_ra8_reflow_max_faces]; /**< Embedded `@font-face` set.     */
-  uint8_t           face_count; /**< Registered embedded faces (0 = single-face). */
+  const uint8_t*    font_data;                     /**< TTF blob; outlives the engine.         */
+  size_t            font_len;                      /**< Length of `font_data`, bytes.          */
+  ra8_reflow_face_t faces[k_ra8_reflow_max_faces]; /**< Embedded `@font-face` set.             */
+  uint8_t           face_count;                    /**< Embedded face count (0 = single-face). */
 
   /* --- cached chapter input ------------------------------------------- */
   const uint8_t* xhtml_buf; /**< Last `layout_chapter` input. */
@@ -482,16 +482,18 @@ typedef struct {
   ra8_img_arena_t*           img_arena;      /**< Decode scratch (NULL = off).      */
   ra8_reflow_css_loader_fn   css_loader;     /**< `<link>` CSS loader (NULL = off). */
   void*                      css_loader_ctx; /**< Opaque context for `css_loader`.  */
-  ra8_reflow_image_box_t     image_boxes[k_ra8_reflow_max_images]; /**< Laid-out images.  */
-  uint32_t                   image_box_count;                      /**< Image boxes used. */
+  /** Laid-out images. */
+  ra8_reflow_image_box_t image_boxes[k_ra8_reflow_max_images];
+  /** Image boxes used. */
+  uint32_t image_box_count;
 
   /* --- hyperlinks + anchors (#110) ----------------------------------- */
   ra8_reflow_link_target_t link_targets[k_ra8_reflow_max_links];    /**< Distinct hrefs.        */
   uint32_t                 link_target_count;                       /**< Interned link targets. */
   ra8_reflow_link_rect_t   link_rects[k_ra8_reflow_max_link_rects]; /**< Tappable rects.        */
-  uint32_t                 link_rect_count;                   /**< Positioned link rects used. */
-  ra8_reflow_anchor_t      anchors[k_ra8_reflow_max_anchors]; /**< id= anchor positions.       */
-  uint32_t                 anchor_count;                      /**< Anchor positions used.      */
+  uint32_t                 link_rect_count;                         /**< Link rects used.       */
+  ra8_reflow_anchor_t      anchors[k_ra8_reflow_max_anchors];       /**< id= anchor positions.  */
+  uint32_t                 anchor_count;                            /**< Anchor positions used. */
 
   /* --- content CSS cascade (#111) ------------------------------------ */
   ra8_css_sheet_t css; /**< Parsed `<style>` rules for the chapter. */

@@ -46,17 +46,17 @@ typedef enum : uint16_t {
  * Offsets ending `_b<N>` are the `N`-th byte of a big-endian 32-bit field.
  */
 typedef enum : uint8_t {
-  k_t_be32_hi_shift        = 24U, /**< Shift selecting the top byte of a big-endian 32-bit field. */
+  k_t_be32_hi_shift        = 24U,   /**< Shift for the top byte of a big-endian 32-bit field.     */
   k_t_byte_mask            = 0xFFU, /**< Low-byte mask used while serialising a big-endian field. */
-  k_t_png_ihdr_len         = 13U,   /**< IHDR payload length, fixed by the PNG spec.      */
-  k_t_ihdr_short_len       = 12U,   /**< One byte short of a legal IHDR; must be refused. */
-  k_t_ihdr_off_h_b1        = 5U,    /**< Height byte 1 within the IHDR payload.           */
-  k_t_ihdr_off_h_b3        = 7U,    /**< Height byte 3 within the IHDR payload.           */
-  k_t_ihdr_off_ct          = 9U,    /**< Colour-type byte within the IHDR payload.        */
-  k_t_ihdr_off_compression = 10U,   /**< Compression-method byte; only 0 is legal.        */
-  k_t_ihdr_off_filter      = 11U,   /**< Filter-method byte; only 0 is legal.             */
-  k_t_zlib_cmf             = 0x78U, /**< zlib CMF: deflate with a 32 KiB window.          */
-  k_t_filter_invalid       = 9U,    /**< Row filter outside the legal 0..4 range.         */
+  k_t_png_ihdr_len         = 13U,   /**< IHDR payload length, fixed by the PNG spec.              */
+  k_t_ihdr_short_len       = 12U,   /**< One byte short of a legal IHDR; must be refused.         */
+  k_t_ihdr_off_h_b1        = 5U,    /**< Height byte 1 within the IHDR payload.                   */
+  k_t_ihdr_off_h_b3        = 7U,    /**< Height byte 3 within the IHDR payload.                   */
+  k_t_ihdr_off_ct          = 9U,    /**< Colour-type byte within the IHDR payload.                */
+  k_t_ihdr_off_compression = 10U,   /**< Compression-method byte; only 0 is legal.                */
+  k_t_ihdr_off_filter      = 11U,   /**< Filter-method byte; only 0 is legal.                     */
+  k_t_zlib_cmf             = 0x78U, /**< zlib CMF: deflate with a 32 KiB window.                  */
+  k_t_filter_invalid       = 9U,    /**< Row filter outside the legal 0..4 range.                 */
 } t_png_layout_t;
 
 /**
@@ -92,17 +92,17 @@ typedef enum : uint8_t {
  * @brief Geometry and buffer sizing for the crafted corpora.
  */
 typedef enum : uint16_t {
-  k_t_kib               = 1024U, /**< Bytes per KiB.                               */
-  k_t_arena_kib         = 512U,  /**< Direct-seam bump-arena size, in KiB.         */
-  k_t_raw_cap           = 4096U, /**< Unfiltered-scanline scratch capacity, bytes. */
+  k_t_kib               = 1024U, /**< Bytes per KiB.                                              */
+  k_t_arena_kib         = 512U,  /**< Direct-seam bump-arena size, in KiB.                        */
+  k_t_raw_cap           = 4096U, /**< Unfiltered-scanline scratch capacity, bytes.                */
   k_t_zbuf_cap          = 4200U, /**< Stored-deflate output capacity: just over one 4 KiB window. */
-  k_t_zbig_kib          = 64U,   /**< Oversized zlib staging buffer, in KiB.                  */
-  k_t_frame_dim         = 300U,  /**< Edge of the square frame used for the large-image arms. */
-  k_t_frame_stride      = 301U,  /**< Its row stride: k_t_frame_dim pixels + 1 filter byte.   */
+  k_t_zbig_kib          = 64U,   /**< Oversized zlib staging buffer, in KiB.                      */
+  k_t_frame_dim         = 300U,  /**< Edge of the square frame used for the large-image arms.     */
+  k_t_frame_stride      = 301U,  /**< Its row stride: k_t_frame_dim pixels + 1 filter byte.       */
   k_t_window_frame_w    = 15U,   /**< Width of the frame whose zlib output is exactly one window. */
-  k_t_window_frame_h    = 255U,  /**< Its height; 15x255 gray encodes to exactly 4096 bytes. */
-  k_t_plte_oversize_len = 771U,  /**< PLTE payload one entry past the 256-entry maximum.     */
-  k_t_trns_oversize_len = 300U,  /**< tRNS payload past the 256-entry maximum.               */
+  k_t_window_frame_h    = 255U,  /**< Its height; 15x255 gray encodes to exactly 4096 bytes.      */
+  k_t_plte_oversize_len = 771U,  /**< PLTE payload one entry past the 256-entry maximum.          */
+  k_t_trns_oversize_len = 300U,  /**< tRNS payload past the 256-entry maximum.                    */
 } t_corpus_t;
 
 /** @brief Corpus geometry + buffer sizing. */

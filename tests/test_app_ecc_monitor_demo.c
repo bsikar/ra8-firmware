@@ -25,7 +25,7 @@
  */
 typedef enum : uint8_t {
   k_ecc_corrupt_word =
-    7, /**< Word of the buffer whose bit is flipped, inside the region so the monitor must detect rather than ignore it. */
+    7, /**< Word of the buffer whose bit is flipped, inside the region the monitor must detect. */
 } app_ecc_monitor_demo_fixture_t;
 
 typedef enum : uint32_t {

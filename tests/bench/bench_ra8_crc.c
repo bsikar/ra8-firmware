@@ -40,7 +40,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint32_t {
   k_crc_impossible_result =
-    0xDEADBEEFU, /**< A CRC the benchmark input cannot produce; the comparison exists only to keep the optimiser from discarding the loop. */
+    0xDEADBEEFU, /**< A CRC the input cannot produce; stops the optimiser discarding the loop. */
 } crc_bench_guard_t;
 
 /**

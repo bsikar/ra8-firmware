@@ -45,10 +45,12 @@ typedef enum : uint8_t {
     10, /**< BMP file-header offset of the pixel-data offset field. */
   k_rabook_pipeline_fixture_put_u32_le_14 =
     14, /**< BMP file-header offset of the DIB header size field. */
-  k_rabook_pipeline_fixture_put_u32_le_18 = 18, /**< BMP DIB offset of the image width field. */
+  /** BMP DIB offset of the image width field. */
+  k_rabook_pipeline_fixture_put_u32_le_18 = 18,
   k_rabook_pipeline_fixture_put_u32_le_22 =
     22, /**< BMP DIB offset of the image height field (bottom-up). */
-  k_rabook_pipeline_fixture_put_u32_le_34 = 34, /**< BMP DIB offset of the raw image size field. */
+  /** BMP DIB offset of the raw image size field. */
+  k_rabook_pipeline_fixture_put_u32_le_34 = 34,
   k_rabook_pipeline_fixture_put_u32_le_40 =
     40U, /**< BITMAPINFOHEADER size in bytes, written as the DIB header size. */
   k_rabook_pipeline_fixture_le32_hi_shift =
@@ -56,7 +58,8 @@ typedef enum : uint8_t {
   k_rabook_pipeline_fixture_bmp_bpp = 24U, /**< BMP bits per pixel: 24bpp BGR, no palette.      */
   k_rabook_pipeline_fixture_v_ff =
     0xFFU, /**< Low-byte mask while serialising a little-endian 32-bit field. */
-  k_rabook_pipeline_fixture_small_bmp_cap = 128, /**< Minimal in-test BMP buffer capacity. */
+  /** Minimal in-test BMP buffer capacity. */
+  k_rabook_pipeline_fixture_small_bmp_cap = 128,
   k_rabook_pipeline_fixture_bmp_off_planes =
     26, /**< BMP DIB header offset of the colour-plane count. */
   k_rabook_pipeline_fixture_bmp_off_bpp =
