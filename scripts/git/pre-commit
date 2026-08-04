@@ -325,16 +325,28 @@ if [[ -n "$c_files" ]]; then
   # So: the gate's scope, and .c translation units. Headers stay covered
   # through the TUs that include them, exactly as in CI. Bringing tools/ under
   # the gate is real work tracked as its own issue.
+  #
+  # WHICH INCLUDES it resolves -- the third divergence, and the same defect one
+  # level down. The gate passes an include list; this step passed none, so
+  # every macro reaching a TU from a header was unresolved here and resolved
+  # in CI. Object-like annotations survived that (cppcheck skips an unknown
+  # identifier before a declaration), so it went unnoticed until the first
+  # FUNCTION-like one at file scope -- `RA8_OWNS_RESOURCE("ra8_fs_lock")` --
+  # read as a call and failed the commit with `unknownMacro` while
+  # scripts/checks/cppcheck.sh was green on the identical tree. The list now
+  # comes from that script, which is the one place that defines it.
   if command -v cppcheck &>/dev/null; then
     prod_files=$(echo "$c_files" | grep -E "^(src|libs|examples)/" | grep -E "[.]c$" || true)
     if [[ -n "$prod_files" ]]; then
       mapfile -t prod_file_list <<<"$prod_files"
+      mapfile -t cppcheck_include_dirs < <(bash scripts/checks/cppcheck.sh --print-include-dirs)
       if ! cppcheck --enable=warning,style,performance,portability \
         --error-exitcode=1 \
         --suppressions-list=.cppcheck-suppressions \
         --inline-suppr \
         --std=c23 \
         --quiet \
+        "${cppcheck_include_dirs[@]}" \
         "${prod_file_list[@]}"; then
         echo "[FAIL] cppcheck violations found."
         error_found=1

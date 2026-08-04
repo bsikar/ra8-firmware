@@ -402,6 +402,90 @@ RA8_PRIV
 void priv_lfn_reset(lfn_state_t* s);
 
 /**
+ * @brief Take the library lock, if the caller installed one.
+ *
+ * @details Invokes the installed ::ra8_fs_lock_t::acquire with its cookie. With
+ *          no binding installed -- the bare-metal default -- this is a load and
+ *          a branch and nothing else, which is why the seam costs the default
+ *          world nothing. Called only by the public entry-point wrappers: an
+ *          internal helper taking it a second time would deadlock a
+ *          non-recursive mutex, and the `RA8_EXPECTS_LOCK("ra8_fs_lock")` tag
+ *          on every guarded implementation is what enforces that.
+ *
+ * @return Nothing.
+ *
+ * @pre The calling thread does not already hold the lock.
+ * @pre The installed binding (if any) is complete -- guaranteed by
+ *      ::ra8_fs_set_lock, which rejects a half-filled one.
+ * @post The lock is held, or no binding is installed.
+ * @post No library state other than the caller's lock is touched.
+ *
+ * @note Pairs 1:1 with ::priv_lock_release on every return path.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+void priv_lock_acquire(void);
+
+/**
+ * @brief Drop the library lock taken by ::priv_lock_acquire.
+ *
+ * @details Invokes the installed ::ra8_fs_lock_t::release with its cookie, or
+ *          does nothing when no binding is installed. This is the release half
+ *          the annotation checker looks for when it decides whether a public
+ *          wrapper discharged the ownership it took.
+ *
+ * @return Nothing.
+ *
+ * @pre A matching ::priv_lock_acquire ran on this thread.
+ * @pre The binding has not changed since that call.
+ * @post The lock is no longer held.
+ * @post No library state other than the caller's lock is touched.
+ *
+ * @note Called on the success path and every error path of each wrapper.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+RA8_RELEASES_RESOURCE("ra8_fs_lock")
+void priv_lock_release(void);
+
+/**
+ * @brief Open a file by path -- the guarded body of ::ra8_fs_open().
+ *
+ * @details Carries the whole contract documented for ::ra8_fs_open() in
+ *          `ra8_fs.h`; the public symbol is the wrapper that brackets this
+ *          call with ::priv_lock_acquire / ::priv_lock_release. Exposed across
+ *          translation units because ::ra8_fs_write_file()'s guarded body has
+ *          to reach it without taking the lock a second time.
+ *
+ * @param[in]  handle   Mount handle.
+ * @param[in]  path     NUL-terminated path.
+ * @param[in]  mode     Open mode.
+ * @param[out] out_file Receives the open file handle.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok            File opened.
+ * @retval k_ra8_err_null_ptr  Any pointer argument was NULL.
+ * @retval k_ra8_err_*         As documented for ::ra8_fs_open().
+ *
+ * @pre The library lock is held (or none is installed).
+ * @pre `handle`, `path`, and `out_file` are non-NULL.
+ * @post On success `*out_file` is a valid open handle.
+ * @post On failure no file slot is marked in use.
+ *
+ * @note Never call this from outside `ra8_fs`; it is the unlocked half.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
+                           const char*     path,
+                           ra8_fs_mode_t   mode,
+                           ra8_fs_file_t** out_file);
+
+/**
  * @brief Parse the BPB layout fields out of `s_scratch` into `m`.
  *
  * @details Validates the boot signature (0x55AA) and reads the BPB

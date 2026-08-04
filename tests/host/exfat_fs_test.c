@@ -309,6 +309,55 @@ static void check_multicluster_path(ra8_fs_mount_t* mnt)
 /* #104: drive the name-matcher's mismatch branches in priv_exfat_take_set --
  * one wrong name of the SAME length (the byte-compare fails) and one of a
  * DIFFERENT length (the length pre-filter fails). Both must report not_found. */
+/**
+ * @brief exFAT `stat` on the fixture's real directory, file, and a missing name (#609).
+ *
+ * @details The fixture was written by a real exFAT formatter and carries
+ * `.fseventsd` -- a genuine DIRECTORY entry (FileAttributes 0x12: hidden |
+ * directory) -- alongside two ordinary files. That is the case the old
+ * VFS `stat` got wrong and could not have got right: it opened the path and
+ * reported `is_directory = false` unconditionally, so a folder came back as an
+ * existing zero-byte file. Nothing else in the suite can assert it, because
+ * exFAT directory CREATION is out of scope here (#611), so this image is the
+ * only real exFAT directory the tests have.
+ *
+ * @param[in] mnt The mounted fixture volume.
+ *
+ * @return Nothing; failures are recorded through ::check.
+ *
+ * @pre @p mnt is a mounted exFAT volume.
+ * @pre The fixture still carries `.fseventsd` and HELLO.TXT.
+ * @post No volume state is modified.
+ * @post Every assertion has been recorded in ``g_fail``.
+ *
+ * @note Reads only; the write-path checks run after this one.
+ *
+ * @since 0.1.0
+ */
+static void check_stat_paths(ra8_fs_mount_t* mnt)
+{
+  ra8_fs_stat_t dir = {};
+  check(ra8_fs_stat(mnt, "/.fseventsd", &dir) == k_ra8_ok, "stat finds the fixture's directory");
+  check(dir.is_directory, "a real exFAT directory reports is_directory");
+  check(dir.size_bytes == 0U, "a directory reports length 0");
+  check((dir.attr & (uint8_t)k_ra8_fs_attr_directory) != 0U, "its attr carries the directory bit");
+  check((dir.attr & (uint8_t)k_ra8_fs_attr_hidden) != 0U,
+        "and its hidden bit survives -- the attr is the entry's, not a constant");
+
+  ra8_fs_stat_t file = {};
+  check(ra8_fs_stat(mnt, "/HELLO.TXT", &file) == k_ra8_ok, "stat finds an ordinary file");
+  check(!file.is_directory, "a file does not report is_directory");
+  check(file.size_bytes == (uint32_t)strlen(k_expect), "a file reports its real length");
+
+  ra8_fs_stat_t gone = {};
+  check(ra8_fs_stat(mnt, "/NOPE.TXT", &gone) == k_ra8_err_not_found,
+        "a missing name is not-found, not an empty file");
+
+  ra8_fs_stat_t root = {};
+  check(ra8_fs_stat(mnt, "/", &root) == k_ra8_ok, "stat resolves the volume root");
+  check(root.is_directory, "the root reports as a directory");
+}
+
 static void check_lookup_mismatch_branches(ra8_fs_mount_t* mnt)
 {
   ra8_fs_file_t* nf = nullptr;
@@ -410,6 +459,7 @@ int main(int argc, char** argv)
   check(ra8_fs_open(mnt, "/NOPE.TXT", k_ra8_fs_mode_read, &nf) == k_ra8_err_not_found,
         "missing file -> not_found");
 
+  check_stat_paths(mnt);
   check_write_path(mnt);
   check_multicluster_path(mnt);
   check_lookup_mismatch_branches(mnt);
