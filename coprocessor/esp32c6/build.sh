@@ -191,17 +191,23 @@ if [[ ! -f "${GENERATED_LOCK}" ]]; then
 fi
 
 echo "==> verifying resolved components against components-lock.txt"
-component_diff="$(
-  diff -u --label committed --label resolved \
-    <(record_to_records "${COMPONENT_RECORD}") \
-    <(lock_to_records "${GENERATED_LOCK}") || true
-)"
-if [[ -n "${component_diff}" ]]; then
+
+# Each normalisation is its own statement so it runs under a normal errexit
+# context: masking a first-party function's status with `||` swallows a failure
+# part-way through its body and leaves the caller reading only the last
+# command's status. Only the diff -- an external command whose exit 1 is the
+# expected "they differ" answer -- is allowed to fail here.
+recorded_components="$(record_to_records "${COMPONENT_RECORD}")"
+resolved_components="$(lock_to_records "${GENERATED_LOCK}")"
+
+if [[ "${recorded_components}" != "${resolved_components}" ]]; then
   echo "ERROR: the esp-idf component manager resolved a DIFFERENT component set" >&2
   echo "       than the one this firmware was proven with. '-' lines are what" >&2
   echo "       coprocessor/esp32c6/components-lock.txt records; '+' lines are what" >&2
   echo "       this build actually resolved." >&2
-  printf '%s\n' "${component_diff}" >&2
+  diff -u --label committed --label resolved \
+    <(printf '%s\n' "${recorded_components}") \
+    <(printf '%s\n' "${resolved_components}") >&2 || true
   echo >&2
   echo "       This is not a warning to click past: the recipe is unchanged, so a" >&2
   echo "       difference here means the registry handed back something else. Either" >&2
