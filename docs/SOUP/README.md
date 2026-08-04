@@ -48,14 +48,17 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 
 ## One-line summaries
 
-- **ThreadX** -- Cooperative + preemptive RTOS kernel under every
-  `threadx_*` example.
-- **NetX Duo** -- Dual IPv4/IPv6 TCP/IP + TLS stack used by the NetX
-  echo demo and OTA download path.
-- **FileX** -- FAT / exFAT file system used by the FileX demos and OTA
-  staging.
+- **ThreadX** -- Preemptive RTOS kernel under 45 example applications (39 of
+  them hw_validated), the vendored middleware, and the e-reader NS image.
+- **NetX Duo** -- Dual IPv4/IPv6 TCP/IP stack over wired Ethernet and over the
+  ESP32-C6 Wi-Fi link. TCP/IP core only: NetX Secure is compiled by nothing
+  and TLS comes from Mbed TLS.
+- **FileX** -- FAT12/16/32 file system used by two demo applications. No
+  exFAT: the vendored snapshot ships none, and this firmware's exFAT is the
+  first-party `libs/ra8_fs/`.
 - **USBX** -- USB host / device stack for the CDC, HID, and MSC demos.
-- **LevelX** -- NOR-flash wear-leveling layer under FileX on Octo-SPI.
+- **LevelX** -- NOR-flash wear-levelling on Octo-SPI, both under FileX and
+  standalone (no ThreadX, no FileX) beneath `libs/ra8_cache_store/`.
 - **Mbed TLS** -- TLS record layer and X.509 handling consumed via
   `libs/ra8_tls/` and `libs/ra8_ota/`.
 - **TF-PSA-Crypto** -- PSA Crypto API implementation backing TLS, OTA
@@ -63,14 +66,17 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 - **Apache NimBLE** -- Bluetooth 5.4 host + controller stack staged for
   future BLE bring-up; not yet linked to an example.
 - **litehtml** -- HTML/CSS layout engine for the EPUB reader.
-- **miniz** -- Deflate / inflate / ZIP support for EPUB unpacking.
+- **miniz** -- Deflate / inflate / ZIP support behind five decode paths: EPUB,
+  CBZ, PNG, gzip, and the `ra8_io` compress-on-write fabric seam.
 - **XZ Embedded** (decode-only) -- XZ/LZMA2 decoding for wrapped archive
   content (`.tar.xz`) behind the bounded `libs/ra8_unarch` wrapper.
-- **stb** -- PNG / JPEG decoding (`stb_image`) and TTF rasterization
+- **stb** -- JPEG / PNG / GIF / BMP decoding (`stb_image`, via
+  `libs/ra8_reflow/` and `libs/ra8_rabook_compile/`) and TTF rasterization
   (`stb_truetype`) for the EPUB reader.
 - **libwebp** (decode-only) -- WebP (VP8 / VP8L) decoding for longstrip / manga
-  raster content, reached through the `libs/ra8_webp/` facade. Not yet wired
-  into the raster decode dispatch (that is #289).
+  raster content, reached through the `libs/ra8_webp/` facade. Wired for band
+  tiles via the JOF producer; the `ra8_reflow` inline small-image path is
+  still `stb_image`-only (#637).
 - **TinyXML-2** -- XML parser for EPUB container metadata.
 - **TFLite-micro** -- On-device neural-network inference runtime
   (MicroInterpreter + a lean reference-kernel set) for the RA8P1 Ethos-U55 NPU.
@@ -81,17 +87,19 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 - **ruy** -- A single profiler-instrumentation stub header included by
   TFLite-micro kernel utilities (no ruy GEMM backend).
 - **esp-hosted host driver** -- The RA8D2-side driver for the ESP32-C6
-  wireless co-processor: transport framing, RPC codec, serial and Bluetooth
-  HCI channels. Vendored without the upstream ESP-IDF port; a first-party
-  port under `port/esp-hosted/` supplies that seam. Not yet compiled by any
-  target (the port and build wiring are the follow-on change).
+  wireless co-processor: transport framing, RPC codec and the serial channel.
+  Vendored without the upstream ESP-IDF port; the first-party port at
+  `port/esp-hosted/` supplies that seam. Eight translation units compile
+  behind `RA8_USE_ESP_HOSTED` into five hw_validated applications, and the
+  protocol round-trip is proven on silicon.
 - **protobuf-c** -- Protocol Buffers C runtime backing the esp-hosted RPC
   codec; a git submodule upstream, so it is pinned and licensed separately
   (BSD-2-Clause) inside `libs/third_party/esp-hosted/common/protobuf-c/`.
 - **Vela** (host tool) -- Arm's offline Ethos-U model compiler; runs at build
   time, links nothing into firmware. See [vela.md](vela.md).
 - **Espressif esp-hosted-mcu** -- ESP32-C6 wireless co-processor firmware
-  (Wi-Fi/BLE) built from a pinned upstream commit and flashed onto the C6.
+  (Wi-Fi today; BLE planned) built from a pinned upstream commit and flashed
+  onto the C6.
   Not vendored and not linked into the RA8 image; recipe in `coprocessor/esp32c6/`.
 
 ## Aggregated license inventory and SBOM

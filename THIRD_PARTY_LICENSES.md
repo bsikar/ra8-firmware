@@ -71,7 +71,7 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | TF-PSA-Crypto | 1.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/tf-psa-crypto/` | <https://github.com/Mbed-TLS/TF-PSA-Crypto> |
 | Apache NimBLE | 1.10.0 (tag `nimble_1_10_0_tag`, git `a7a156f2`) | Apache-2.0 | `libs/third_party/nimble/` | <https://github.com/apache/mynewt-nimble> |
 | litehtml | git `8836bc1b` (post-v0.9 dev snapshot) | BSD-3-Clause | `libs/third_party/litehtml/` | <https://github.com/litehtml/litehtml> |
-| miniz | 11.0.2 | MIT (zlib-style) | `libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
+| miniz | 11.0.2 (`MZ_VERSION`; release artifact `miniz-3.0.2.zip`) | MIT (zlib-style) | `libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
 | XZ Embedded (decode-only) | tag `v2024-12-30` (git `ae63ae3a`) | 0BSD | `libs/third_party/xz_embedded/` | <https://github.com/tukaani-project/xz-embedded> |
 | stb (stb_image + stb_truetype) | image 2.30 / truetype 1.26 | MIT OR Unlicense (public domain) | `libs/third_party/stb/` | <https://github.com/nothings/stb> |
 | libwebp (decode-only, **patched**) | 1.5.0 | BSD-3-Clause (+ PATENTS grant) | `libs/third_party/libwebp/` | <https://chromium.googlesource.com/webm/libwebp> |
@@ -97,11 +97,6 @@ enumerated in the component's `docs/SOUP/*.md` and machine-checked (see
 Vela** is a build-time host tool (pinned at `tools/vela/requirements.txt`),
 linked into nothing -- see the build-tools note below and
 [`docs/SOUP/vela.md`](docs/SOUP/vela.md).
-
-The esp-hosted host driver is vendored but **not yet compiled by any target**:
-it needs the first-party port under `port/esp-hosted/` before it can build, and
-the port plus the CMake wiring are a follow-on change. See
-[`docs/SOUP/esp-hosted-host.md`](docs/SOUP/esp-hosted-host.md).
 
 ---
 

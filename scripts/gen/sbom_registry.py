@@ -144,7 +144,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/eclipse-threadx/threadx",
         path="libs/third_party/threadx",
         provenance=PROV_COMMIT_PINNED,
-        description="Preemptive RTOS kernel under every threadx_* example.",
+        description="Preemptive RTOS kernel: 45 example apps, vendored middleware, NS image.",
         purl="pkg:github/eclipse-threadx/threadx@6.5.0",
         upstream_commit="3726d7906b4808bfec7855fc088e073199df9120",
         upstream_ref="v6.5.0.202601_rel",
@@ -165,7 +165,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/eclipse-threadx/netxduo",
         path="libs/third_party/netxduo",
         provenance=PROV_COMMIT_PINNED,
-        description="Dual IPv4/IPv6 TCP/IP + TLS stack (NetX echo / OTA path).",
+        description="Dual IPv4/IPv6 TCP/IP stack (wired eth + C6 Wi-Fi); NetX Secure not compiled.",
         purl="pkg:github/eclipse-threadx/netxduo@6.5.0",
         upstream_commit="8b6e03ac30ab688bec02c69d42f2304b7f72a202",
         upstream_ref="v6.5.0.202601_rel",
@@ -190,7 +190,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/eclipse-threadx/filex",
         path="libs/third_party/filex",
         provenance=PROV_COMMIT_PINNED,
-        description="FAT / exFAT file system (FileX demos + OTA staging).",
+        description="FAT12/16/32 file system used by the two FileX demos (snapshot has no exFAT).",
         purl="pkg:github/eclipse-threadx/filex@6.5.0",
         upstream_commit="bb6e295af079f3cd903272982106b0ddd9537422",
         upstream_ref="v6.5.0.202601_rel",
@@ -232,7 +232,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/eclipse-threadx/levelx",
         path="libs/third_party/levelx",
         provenance=PROV_COMMIT_PINNED,
-        description="NOR-flash wear-leveling layer under FileX on Octo-SPI.",
+        description="NOR-flash wear-levelling on Octo-SPI: under FileX, and standalone.",
         purl="pkg:github/eclipse-threadx/levelx@6.5.0",
         upstream_commit="a46b74fb8aa133796ccbc13e7902cb8bb818e12f",
         upstream_ref="v6.5.0.202601_rel",
@@ -405,7 +405,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/richgel999/miniz",
         path="libs/third_party/miniz",
         provenance=PROV_ARCHIVE_PINNED,
-        description="Deflate / inflate / ZIP support for EPUB unpacking.",
+        description="Deflate / inflate / ZIP behind EPUB, CBZ, PNG, gzip and the ra8_io seam.",
         purl="pkg:github/richgel999/miniz@11.0.2",
         upstream_transport=UPSTREAM_ARCHIVE,
         upstream_ref="3.0.2",
@@ -469,7 +469,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/nothings/stb",
         path="libs/third_party/stb",
         provenance=PROV_COMMIT_PINNED,
-        description="PNG/JPEG decode (stb_image) + TTF/OTF raster (stb_truetype).",
+        description="JPEG/PNG/GIF/BMP decode (stb_image) + TTF/OTF raster (stb_truetype).",
         purl="pkg:github/nothings/stb",
         upstream_commit="31c1ad37456438565541f4919958214b6e762fb4",
         upstream_ref="31c1ad37456438565541f4919958214b6e762fb4",
@@ -714,9 +714,11 @@ REGISTRY: tuple[Component, ...] = (
             "NOT vendored: a first-party RA8/ThreadX port supplies the same 10 "
             "port_esp_hosted_host_*.h header contracts and fills the 72-entry "
             "hosted_osi_funcs_t vtable. See docs/SOUP/esp-hosted-host.md.",
-            "Not compiled by any target yet: the sources cannot build until the "
-            "first-party port under port/esp-hosted/ lands (the follow-on "
-            "change), which is also when the CMake wiring is added.",
+            "Compiled: cmake/esp_hosted.cmake builds 8 of the vendored TUs into "
+            "esp_hosted_objs behind RA8_USE_ESP_HOSTED, consumed by five "
+            "applications under examples/ek_ra8d2/hw_validated/c6/. The "
+            "first-party port (port/esp-hosted/) and driver (libs/ra8_c6link/) "
+            "have landed and the protocol round-trip is proven on silicon.",
         ),
     ),
     Component(

@@ -14,10 +14,17 @@ as Software Of Unknown Provenance (SOUP).
   match among the 169 commits reachable from the upstream default branch).
 - **Upstream URL**: https://github.com/tukaani-project/xz-embedded
 - **Local path**: `libs/third_party/xz_embedded/`
-- **Integrity**: aggregate SHA-256
-  `9dc6c2af6988af773cdf64d383a450f70c31a6df467ec5bcf827901c21c95dd9`
-  (SHA-256 over the newline-joined, name-sorted per-file SHA-256 hashes of
-  the whole vendored directory), recorded in `scripts/gen/sbom_registry.py`.
+- **Integrity**: two derived checks, neither of them a constant transcribed
+  into prose. `docs/sbom/upstream/xz_embedded.manifest` carries the git blob
+  SHA-1 upstream publishes for every one of the 11 vendored files, written by
+  a real fetch of upstream and compared against this tree by
+  `scripts/checks/check_soup_upstream.py` (the `soup-upstream` gate);
+  `docs/sbom/ra8-firmware.cdx.json` carries the per-run digest that
+  `gen_sbom.py` re-derives from the directory on every run. There is
+  deliberately **no** integrity-hash field in `scripts/gen/sbom_registry.py`:
+  #538 deleted the stored `aggregate_sha256` literals precisely because a
+  hand-transcribed constant compared against itself reported clean on a
+  mutated vendored byte.
 
 ## Provenance
 
@@ -103,4 +110,7 @@ None. The vendored tree is unmodified (byte-identical to upstream commit
 ## Last review date
 
 - Reviewed: 2026-07-16
+- Integrity sentence corrected (#627): 2026-08-04. It cited a transcribed
+  aggregate hash "recorded in `sbom_registry.py`" -- the field #538 removed,
+  and a value no gate parsed.
 - Expected re-review by: 2027-07-16

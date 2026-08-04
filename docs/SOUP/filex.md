@@ -26,10 +26,21 @@ firmware as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
-- FAT12/16/32 / exFAT file system used by `examples/ek_ra8d2/threadx_filex_demo`
-  and `threadx_filex_levelx_demo`. Layered above LevelX for raw-flash
-  storage and above MMC/SD media drivers in `libs/ra8_fs/` for block
-  devices.
+- FAT12/16/32 file system used by exactly two applications,
+  `examples/ek_ra8d2/hw_validated/hil/threadx_filex_demo` and
+  `threadx_filex_levelx_demo`. Both mount their FAT volume on LevelX through
+  the FileX media driver `fx_media_driver_ra8_levelx`
+  (`port/levelx/src/lx_filex_adapter.c`). A second media driver for SD/MMC
+  block devices, `fx_media_driver_ra8_sdhi`
+  (`port/filex/src/fx_media_driver_ra8_sdhi.c`), is compiled by
+  `cmake/filex.cmake`, but nothing binds it today.
+- **No exFAT.** The vendored 6.5.0 snapshot ships no exFAT source:
+  `FX_ENABLE_EXFAT` appears nowhere in `common/`, and the only surviving
+  occurrences of the string anywhere in the component are historical entries
+  in `docs/revision_history.txt`. Upstream dropped it. exFAT in this firmware
+  comes from the first-party `libs/ra8_fs/`, an independent implementation
+  over its own `ra8_fs_backend_t` seam that FileX never calls into, so this
+  qualification covers no exFAT capability.
 - Integrity claim category: data-handling (filesystem metadata and
   user-file payloads).
 
@@ -51,10 +62,13 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- Block-device access is mediated through `libs/ra8_fs/` so the SOUP
-  boundary is well defined.
-- No safety-critical configuration is currently committed to the file
-  system; FileX is used for log capture and OTA staging only.
+- Block-device access is mediated through the first-party media drivers in
+  `port/filex/` and `port/levelx/`, so the SOUP boundary is one shim per
+  backing store. It is **not** `libs/ra8_fs/`: that library is a separate
+  first-party filesystem, not a layer FileX sits on.
+- No safety-critical configuration is committed to the file system, and no
+  product image mounts FileX: the only two consumers are the demo apps named
+  under "Use case".
 
 ## Deviations / patches
 
@@ -78,4 +92,7 @@ and prose does not notice a tree-wide sweep reaching into `libs/third_party/`.
 ## Last review date
 
 - Reviewed: 2026-05-02
+- Use case + risk mitigation re-verified against the tree and corrected
+  (#598): 2026-08-04. The exFAT claim and the `libs/ra8_fs/` boundary were
+  both false; neither was ever checked by anything.
 - Expected re-review by: 2027-05-02

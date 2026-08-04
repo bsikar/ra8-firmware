@@ -25,12 +25,15 @@ version (2.12.11), which is what makes them wire-compatible.
   `949bb30612747a3bd9e402eda8d01fbfa1f8503e` (short `949bb30`).
 - **Upstream URL**: <https://github.com/espressif/esp-hosted-mcu>.
 - **Local path**: `libs/third_party/esp-hosted/`.
-- **Integrity**: aggregate SHA-256
-  `79ae04974accce04871f64d6e5cfb1e46676a4e70a0252eed616405826d29cc0`
-  (SHA-256 over the newline-joined, name-sorted per-file SHA-256 hashes of
-  the 77 esp-hosted-owned files; the separately-pinned nested protobuf-c
-  subtree is excluded and hashed on its own). Recorded in
-  `scripts/gen/sbom_registry.py`.
+- **Integrity**: the 77 esp-hosted-owned files are pinned file by file in
+  `docs/sbom/upstream/esp-hosted.manifest` (the nested protobuf-c subtree is
+  excluded and pinned separately, below). Those hashes come from a real fetch
+  of upstream, and `scripts/checks/check_soup_upstream.py` compares them
+  against this tree on every run of the `soup-upstream` gate; the per-run
+  derived digest is published in `docs/sbom/ra8-firmware.cdx.json`. No
+  aggregate hash is transcribed into the registry -- #538 removed that field
+  because a hand-copied constant compared against itself reports clean on a
+  mutated byte.
 
 ### Nested component: protobuf-c
 
@@ -47,9 +50,9 @@ esp-hosted aggregate hash.
 - **Upstream URL**: <https://github.com/protobuf-c/protobuf-c>.
 - **Local path**: `libs/third_party/esp-hosted/common/protobuf-c/`.
 - **License**: BSD-2-Clause (upstream `LICENSE`).
-- **Integrity**: aggregate SHA-256
-  `67da2264194eb142d30830ab92a8a64decb1557d4d4ee8a82dddd7f731784d7f`
-  over its 3 files.
+- **Integrity**: its 3 files are pinned individually in
+  `docs/sbom/upstream/esp-hosted/protobuf-c.manifest`, checked by the same
+  `soup-upstream` gate.
 
 ## Provenance
 
@@ -101,19 +104,21 @@ size, not correctness, and the linker drops what is never referenced.
 - Integrity-claim category: connectivity convenience. No safety signal in this
   project depends on the C6 link.
 
-## Build status: the SPI transport half compiles
+## Build status: the SPI transport half compiles, and runs on silicon
 
 The first-party port landed at `port/esp-hosted/`, and `cmake/esp_hosted.cmake`
-compiles nine of the vendored translation units into the `esp_hosted` object
-library behind the `RA8_USE_ESP_HOSTED` option. Its consumer is
-`examples/ek_ra8d2/hw_validated/c6/c6_hosted_init`, so the cross-build gate covers
-it on every push.
+compiles **eight** of the vendored translation units into the
+`esp_hosted_objs` object library behind the `RA8_USE_ESP_HOSTED` option. Five
+applications consume it, all of them under
+`examples/ek_ra8d2/hw_validated/c6/`: `c6_fw_version`, `c6_hosted_init`,
+`c6_wifi_join`, `c6_wifi_link` and `wifi_hal_join`. The cross-build gate
+therefore covers it on every push.
 
-**Compiled today** -- the SPI transport, the serial (control-plane) channel,
-the RPC wire codec and the shared utilities:
+**Compiled today** -- the SPI transport, the serial (control-plane) lower
+layer, the RPC wire codec and the shared utilities:
 
 `host/drivers/transport/spi/spi_drv.c`, `host/drivers/transport/transport_util.c`,
-`host/api/src/esp_hosted_transport_config.c`, `host/drivers/serial/serial_drv.c`,
+`host/api/src/esp_hosted_transport_config.c`,
 `host/drivers/serial/serial_ll_if.c`, `host/drivers/power_save/power_save_drv.c`,
 `host/utils/stats.c`, `common/proto/esp_hosted_rpc.pb-c.c`,
 `common/protobuf-c/protobuf-c/protobuf-c.c`.
@@ -122,12 +127,18 @@ the RPC wire codec and the shared utilities:
 
 - `host/drivers/transport/transport_drv.c`, the whole `host/drivers/rpc/`
   layer, `host/api/src/esp_hosted_api.c` and `esp_wifi_weak.c` are written
-  against ESP-IDF's Wi-Fi API. They name 43 distinct `wifi_*_t` /
-  `esp_netif_*` types in their declarations, and those layouts are what the
-  co-processor decodes on the far side of the link, so they have to be
-  reproduced from ESP-IDF rather than approximated -- a hand-guessed
-  `esp_wifi_types.h` would compile and then mis-encode every RPC request.
-  That is the next piece of work, not a defect in this one.
+  against ESP-IDF's Wi-Fi API, naming 43 distinct `wifi_*_t` / `esp_netif_*`
+  types this tree does not have. They are excluded because they are upstream's
+  API surface, **not** because the capability is missing. An earlier revision
+  of this document argued that those struct layouts "are what the co-processor
+  decodes on the far side of the link" and called reproducing them the next
+  piece of work; #490 disproved that on the bench. The C6 decodes **protobuf**:
+  `esp_hosted_rpc.pb-c.{h,c}` contains zero `wifi_config_t` / `esp_netif`
+  references, `WifiStaConfig` is a message with named fields, and padding or
+  field order on this side never reaches the co-processor. The landed
+  replacement is the first-party `libs/ra8_c6link/`, which speaks the same
+  wire through the generated codec compiled above and takes the C6's Wi-Fi
+  station up on silicon (`c6_wifi_link`).
 - `common/mempool/mempool*.c` is excluded structurally: `mempool_ll.h`
   includes `freertos/FreeRTOS.h`, `portmacro.h`, `task.h` and `semphr.h`
   unconditionally. It is a FreeRTOS data structure and this image runs
@@ -138,26 +149,32 @@ the RPC wire codec and the shared utilities:
   per-TU include order with no diagnostic. With the symbol absent, the port's
   own fixed ThreadX byte pool supplies the bounded, allocate-once behaviour
   the upstream pool existed to provide.
-- `host/drivers/virtual_serial_if/serial_if.c` is the only vendored file that
-  expands `HOSTED_CALLOC`, an allocate-or-bail macro whose failure arm is a
-  `goto` to a caller-supplied label. Supplying that macro would put a `goto`
+- `host/drivers/serial/serial_drv.c` and
+  `host/drivers/virtual_serial_if/serial_if.c` expand `HOSTED_CALLOC`, an
+  allocate-or-bail macro whose failure arm is a `goto` to a caller-supplied
+  label. (`host/drivers/rpc/core/rpc_core.c` expands it too, and is excluded
+  for the ESP-IDF-API reason above.) Supplying that macro would put a `goto`
   in first-party code, which NASA Power of 10 Rule 1 forbids and
-  `check_no_goto_setjmp.py` rejects with no allowlist; substituting a `return`
-  for the jump would be behaviourally identical at this pinned commit and
-  would silently stop being so at the next one. The macro is therefore absent
-  and this file goes with it. It is a TLV framing helper whose only consumers
-  are in the RPC layer, which does not compile here anyway.
+  `check_no_goto_setjmp.py` rejects with no allowlist. Substituting a `return`
+  for the jump is not equivalent either: `serial_drv.c`'s `free_bufs` label
+  frees two buffers before returning, so a bare `return` would leak. Both
+  files are therefore excluded. `serial_ll_if.c`, the lower layer that does
+  not expand the macro, is compiled.
 - `host/drivers/transport/{sdio,spi_hd,uart}/` and `host/drivers/bt/` are
   transports and a Bluetooth bridge this integration does not use yet: the
   C6 is reached over full-duplex SPI only, and the Bluetooth pair needs the
   NimBLE transport headers and belongs with the NimBLE integration.
 
-No code in this port has **ever run on silicon**. The wire beneath it is
-proven -- the probe `examples/ek_ra8d2/hw_validated/c6/c6_spi_probe` qualified
-every J26 hole on 2026-07-27 and brought the raw link up at SPI mode 3 / 1 MHz
-with zero bad checksums -- but that probe drives the SCI directly and reaches
-none of the code described here. Every app that links this port therefore
-stays under `examples/*/hw_pending/` until a run on real silicon promotes it.
+This port **runs on silicon**. The wire beneath it was qualified first -- the
+probe `examples/ek_ra8d2/hw_validated/c6/c6_spi_probe` walked every J26 hole on
+2026-07-27 and brought the raw link up at SPI mode 3 / 1 MHz with zero bad
+checksums, driving the SCI directly -- and the first protocol round-trip
+through the code described here landed in `6d7ddb532`. Every application that
+links this port consequently sits under
+`examples/ek_ra8d2/hw_validated/c6/`; none is in `hw_pending/`. They form
+their own HIL lane (`make hil-c6`) rather than joining `hw_validated/hil/`,
+because `ra8_emulator` models no ESP32-C6 (#494) and the EIL-parity gate over
+that directory rightly admits no skips.
 
 ## The port contract
 
@@ -244,9 +261,16 @@ DO-178C Section 12.1.4 (previously developed software):
 
 ## Risk mitigation (compensating controls)
 
-- **One integration boundary.** All C6 access is mediated by the first-party
-  port and driver module; application code never reaches the vendored API
-  directly.
+- **One integration boundary, with two bring-up exceptions stated honestly.**
+  Production-shaped access goes through the first-party `libs/ra8_c6link/`,
+  which owns the vendored RPC codec and frame header behind its own API --
+  that is the path `c6_wifi_join`, `c6_wifi_link` and `wifi_hal_join` take.
+  The two bring-up applications predate it and do reach vendored headers
+  directly: `c6_hosted_init` and `c6_fw_version` include
+  `esp_hosted_header.h`, and `c6_fw_version` additionally includes
+  `esp_hosted_rpc.pb-c.h` and `protobuf-c/protobuf-c.h` to assemble a version
+  query. Moving those two onto `ra8_c6link` is the change that would make the
+  boundary absolute.
 - **The port is first-party and fully governed.** Every line of
   `port/esp-hosted/` is held to the full project bar (C23, Doxygen, MC/DC,
   NASA P10). Because the vendored core reaches the hardware *only* through the
@@ -254,10 +278,14 @@ DO-178C Section 12.1.4 (previously developed software):
   this SOUP is first-party code under test.
 - **No safety claim.** The link carries connectivity, not any integrity
   signal; a fault is contained to the connectivity path.
-- **Untrusted input is remote.** The driver parses frames produced by the C6.
-  The RPC codec path (protobuf-c plus the generated
-  `esp_hosted_rpc.pb-c.c`) is the parsing surface that most warrants a fuzz
-  harness once the port makes the code buildable.
+- **Untrusted input is remote, and this surface is NOT yet fuzzed.** The
+  driver parses frames produced by the C6. The RPC codec path (protobuf-c plus
+  the generated `esp_hosted_rpc.pb-c.c`) is the parsing surface that most
+  warrants a fuzz harness, and every precondition for one is now met: the code
+  is buildable, host-tested (`tests/cmake/tests_c6link.cmake` compiles the
+  codec) and parsing remote frames on silicon. No harness covers it -- an open
+  gap tracked by #612, which is the one part of this component's audit that
+  is not a documentation fix.
 - **Fully pinned and reproducible.** Commit pin plus aggregate SHA-256 for
   both the esp-hosted tree and the nested protobuf-c tree; every vendored file
   was verified byte-identical at vendor-in.
@@ -281,6 +309,10 @@ alongside the rest of the vendored SOUP.
 ## Last review date
 
 - Reviewed: 2026-07-26 (host driver vendored at `949bb30`)
+- Build status, compiled-TU list, integration boundary and integrity clause
+  re-verified against the tree and corrected (#612): 2026-08-04. The document
+  still said this port had never run on silicon, listed nine compiled TUs
+  including one the build excludes, and taught the premise #490 disproved.
 - Expected re-review by: 2027-07-26
 
 ## See also
