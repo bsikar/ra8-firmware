@@ -13,7 +13,7 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: pre-commit-checks, annotations, doc-attachment, tests-readme, init-order-freshness, cite-check, hil-eil-parity
+# Gates in this file: pre-commit-checks, annotations, doc-attachment, tests-readme, disambig-readmes, init-order-freshness, cite-check, hil-eil-parity
 
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
@@ -490,6 +490,28 @@ gate_tests_readme() (
   require_cmd python3 "the tests-readme gate reads tests/README.md against the tree"
   python3 scripts/checks/check_tests_readme.py --selftest
   python3 scripts/checks/check_tests_readme.py
+)
+
+# --- disambig-readmes -----------------------------------------------------
+# Several pairs of things here can be picked wrongly -- two filesystems, two
+# firmware-update mechanisms, a facade and the driver under it -- and each pair
+# carries one small README saying which to use. That prose rots the same way the
+# tests/ README did: the library gets renamed, the cited symbol disappears, the
+# "two apps use this" count quietly becomes eleven, and nothing notices.
+#
+# So each of those READMEs states its load-bearing claims in a machine-readable
+# block and this gate re-derives every one from the tree. Registration is the
+# block itself -- a second list of anti-drift READMEs would be the very drift the
+# gate exists to stop.
+#
+# --selftest FIRST, both directions plus the floor: a broken path, a vanished
+# symbol, a stale count and a misfiled owner each fire, an in-sync tree stays
+# quiet, and a scan that finds nothing is reported as vacuous rather than clean.
+gate_disambig_readmes() (
+  set -e
+  require_cmd python3 "the disambig-readmes gate re-derives README claims from the tree"
+  python3 scripts/checks/check_disambig_readmes.py --selftest
+  python3 scripts/checks/check_disambig_readmes.py
 )
 
 # --- cite-check -----------------------------------------------------------
