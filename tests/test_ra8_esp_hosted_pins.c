@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_esp_hosted_pins.c
  * @brief Unit tests for the esp-hosted link's pin map and IRQ routing table.
@@ -34,6 +30,9 @@
  * driver that toggles the wrong net.
  *
  * No hardware registers are touched; no ``ra8_fake_mmap`` window is required.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

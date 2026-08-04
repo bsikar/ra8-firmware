@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_frame.c
  * @brief Hand-decoded esp-hosted payload header for the ESP32-C6 SPI probe
@@ -16,6 +12,8 @@
  * endianness and the acceptance rules all live in ``c6_proto.h`` next to the
  * upstream file they were read from.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

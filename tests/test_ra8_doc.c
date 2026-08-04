@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_doc.c
  * @brief Unit tests for ra8_doc.c (Data Operation Circuit driver)
@@ -12,6 +8,9 @@
  * programming, the DODSR0 seed write, the DODIR trigger write, and the
  * DODSR0 readback -- rather than the arithmetic, which the silicon
  * engine performs and the ``doc_demo`` HIL app proves on hardware.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_doc.h"

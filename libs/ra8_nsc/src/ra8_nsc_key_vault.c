@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_nsc_key_vault.c
  * @brief NSC veneer: secure key vault challenge-response
@@ -13,6 +9,9 @@
  * deliverable. Wraps ``ra8_key_vault_sha256_xor_challenge``
  * for Non-Secure callers. The raw key never leaves the secure
  * world; only the 32-byte SHA-256 digest crosses the boundary.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "key_vault.h"

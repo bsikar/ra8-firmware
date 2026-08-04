@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rabook_xml_shim.cpp
  * @brief C++ -> C shim: tinyxml2 XHTML parser -> ra8_rabook DOM builder (#149).
@@ -25,6 +21,8 @@
  * @par NASA Rule 1 (no recursion): RA8_NO_RECURSION documented below.
  * @par NASA Rule 3 deviation: tinyxml2 XMLDocument heap (bounded, local).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB Compiler] {World: NS}
  *

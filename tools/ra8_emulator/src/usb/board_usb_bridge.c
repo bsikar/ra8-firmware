@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_usb_bridge.c
  * @brief USBHS-host <-> USBFS-device bridge (see board_usb_internal.h)
@@ -12,6 +8,8 @@
  * control/bulk hand-off primitives and the level-triggered DCP-OUT pump --
  * moved verbatim out of board_usb.c.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

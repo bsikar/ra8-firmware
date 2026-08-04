@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_tls.c
  * @brief Unit tests for the ``ra8_tls`` Mbed TLS facade.
@@ -18,6 +14,9 @@
  *  - ``ra8_tls_session_close`` rejects NULL and non-pool pointers.
  *  - End-to-end loopback: handshake + send + recv with a tiny in-memory
  *    BIO pair so the function-pointer plumbing is fully covered.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file sweep_block_internal.h
  * @brief Module-private seams shared by the #208 sweep translation units.
@@ -25,6 +21,8 @@
  * across those translation units. Nothing here is part of the tool's public
  * surface: `cache_bench.c` consumes only `sweep_block.h`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *

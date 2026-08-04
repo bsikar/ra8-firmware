@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_secure.h
  * @brief Secure-comparison primitives for the crypto / secure-boot paths
@@ -21,6 +17,9 @@
  *
  * Route every MAC / tag / digest / key equality check through ::ra8_ct_equal;
  * keep plain ``memcmp`` only for non-secret, non-verdict comparisons.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

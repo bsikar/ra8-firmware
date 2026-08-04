@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_media_dl.c
  * @brief Host unit tests for the media_dl pure-logic units + export round-trip.
@@ -11,6 +7,8 @@
  * mapping, the `<img>`/`<a>` scanner and URL resolver, the site-descriptor
  * parser, and an end-to-end CBZ export re-opened with miniz. Uses the repo's
  * `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <stdio.h>
 #include <stdlib.h>

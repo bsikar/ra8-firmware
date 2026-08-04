@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_reflow_api_mcdc.c
  * @brief MC/DC vector tests for the public ra8_reflow API guards (v1 engine).
@@ -17,6 +13,8 @@
  * like its sibling it is excluded from the build under
  * RA8_REFLOW_USE_LITEHTML (v2 does not populate the v1 glyph internals).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

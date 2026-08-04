@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_ui/inc/ereader_ui_steps.h
  * @brief E-reader UI chrome -- shared contract between main.c and the
@@ -25,6 +21,8 @@
  *   - ``ereader_ui_input.c``   keyboard rendering, battery nag, tap + button
  *                              polling.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

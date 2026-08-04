@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev_sdhi.c
  * @brief Native-SDHI block-device backend -- an SD card as 512-byte blocks.
@@ -16,6 +12,9 @@
  * per-device state. The card exposes no host erase primitive, so the vtable's
  * `erase` slot is NULL; capacity comes from ::ra8_sdcard_get_capacity. This file
  * touches no raw MMIO -- the HUM citations live in the `ra8_sdcard` driver.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_blockdev_sdhi.h"

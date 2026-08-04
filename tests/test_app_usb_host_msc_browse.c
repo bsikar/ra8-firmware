@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_usb_host_msc_browse.c
  * @brief Integration test: USB host MSC bring-up + SCSI browse path
@@ -17,6 +13,8 @@
  * surface (PFS routing + ra8_usb_hmsc init/attach/inquiry/read_capacity
  * /read10) under mocked MMIO.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

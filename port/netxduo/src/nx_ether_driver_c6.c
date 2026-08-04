@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/netxduo/src/nx_ether_driver_c6.c
  * @brief NetX Duo network driver bound to the ESP32-C6 link (``ra8_c6link``).
@@ -22,6 +18,9 @@
  * that poll (or inside a transmit pump) through ::nx_ether_driver_c6_rx, so the
  * receive callback never re-enters the wire and never needs the mutex itself --
  * the thread that calls the facade already holds it.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "nx_ether_driver_c6.h"

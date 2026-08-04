@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_mipi_csi.h
  * @brief MIPI CSI-2 receiver HAL driver -- public API
@@ -70,6 +66,9 @@
  * This is a thin umbrella header. The public API is split across the
  * sub-headers below to stay within the per-file line budget; including
  * ``ra8_mipi_csi.h`` pulls in the entire surface unchanged.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

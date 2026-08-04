@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs_fat_mount_cov.c
  * @brief Coverage booster for libs/ra8_fs/src/ra8_fs_fat_mount.c.
@@ -31,6 +27,9 @@
  *   - ra8_fs_mount no free slot (line 546).
  *   - ra8_fs_mount geometry failure (line 559).
  *   - ra8_fs_unmount slot not in use (line 595).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

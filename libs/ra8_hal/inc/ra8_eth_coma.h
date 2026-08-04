@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_eth_coma.h
  * @brief Ethernet Common Agent (COMA) driver
@@ -15,6 +11,9 @@
  * agent that owns bus arbitration counters + shared per-port
  * descriptor fences. This driver covers lifecycle + status + IRQ
  * + power transition.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

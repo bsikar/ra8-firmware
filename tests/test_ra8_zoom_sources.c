@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_zoom_sources.c
  * @brief Host unit tests for the two ra8_zoom source adapters (#478).
@@ -23,6 +19,9 @@
  *     is proven to be a pass-through rather than a second unpacker.
  *   - `ra8_tile_rect_of_pixels`, the pixel-rect -> tile-rect conversion that had
  *     no library producer before this change.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

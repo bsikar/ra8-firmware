@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/src/ra8_esp_hosted_port_internal.h
  * @brief Library-private surface of the esp-hosted port bring-up.
@@ -19,6 +15,8 @@
  *
  * Nothing outside ``port/esp-hosted/`` and ``tests/`` may include this.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

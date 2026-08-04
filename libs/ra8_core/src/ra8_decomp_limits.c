@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_decomp_limits.c
  * @brief Unified decompression-limits policy -- budget charging and checks.
@@ -20,6 +16,9 @@
  * is tested independently (and carries no compound-decision MC/DC burden).
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "ra8_decomp_limits.h"
 

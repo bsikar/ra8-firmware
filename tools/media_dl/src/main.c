@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file main.c
  * @brief media_dl -- host CLI for the e-reader media downloader.
@@ -26,6 +22,8 @@
  *
  * The tool identifies itself honestly, honours robots.txt by default, and
  * sanitises every untrusted name before it reaches the filesystem.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <limits.h>
 #include <stdio.h>

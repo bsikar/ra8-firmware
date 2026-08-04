@@ -1,10 +1,9 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_acmphs.c
  * @brief Unit tests for ra8_acmphs.c (High-Speed Analog Comparator driver)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_acmphs.h"

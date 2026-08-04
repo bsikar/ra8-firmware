@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_glcdc.c
  * @brief Graphics LCD Controller (GLCDC) framebuffer-descriptor model for ra8_emulator
@@ -40,6 +36,8 @@
  * and presents the active layer's framebuffer: GR1 when its FLMRD is set
  * (the upper layer the e-reader and @c glcdc_render draw into), otherwise GR2.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

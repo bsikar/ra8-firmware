@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_insn_seams.c
  * @brief Invalid-instruction dispatcher + trap-path seams (see emu_seams.h)
@@ -16,6 +12,8 @@
  * (editing PC and continuing in-place corrupts Unicorn's block/Thumb state).
  * Moved verbatim out of the ra8_emulator main translation unit.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

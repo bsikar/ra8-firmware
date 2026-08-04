@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_dac_waveform.c
  * @brief Integration test: DAC_B init + triangle-wave write loop
@@ -13,6 +9,8 @@
  * (0, 4095, 4096-and-above), and that NULL cfg + invalid channel
  * are rejected by the API.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

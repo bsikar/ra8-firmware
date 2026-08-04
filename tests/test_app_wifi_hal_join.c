@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file test_app_wifi_hal_join.c
  * @brief Host test for the wifi_hal_join example's core wiring.
@@ -22,8 +16,9 @@
  * flow to PASS. The facade-over-real-c6 path is covered in
  * test_ra8_wifi_c6link.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

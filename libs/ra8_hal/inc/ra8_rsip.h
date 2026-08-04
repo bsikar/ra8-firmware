@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rsip.h
  * @brief Renesas Secure IP (RSIP-E50D) HAL driver -- public API
@@ -49,6 +45,9 @@
  * blobs -- raw key bytes never leave secure RAM. Each such API is
  * marked ``[[nodiscard]]`` so a forgotten error check is a build
  * failure.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ *            SPDX-License-Identifier: MIT
  */
 
 #pragma once

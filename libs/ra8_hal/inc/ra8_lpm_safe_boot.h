@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_lpm_safe_boot.h
  * @brief Self-healing LPM register reset for very early boot
@@ -35,6 +31,8 @@
  *  - inlined so a stale ``s_tag`` symbol or logging path cannot reach
  *    it from another translation unit.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

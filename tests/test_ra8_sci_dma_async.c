@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_sci_dma_async.c
  * @brief DMA, async, and MC/DC tests for the SCI_B driver (ra8_sci.c).
@@ -12,6 +8,9 @@
  * interrupt-driven async read/write tests, and the MC/DC vector tests for
  * the compound boolean decisions in ra8_sci.c; the polling / IRQ-dispatch /
  * configuration contract tests stay in test_ra8_sci.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

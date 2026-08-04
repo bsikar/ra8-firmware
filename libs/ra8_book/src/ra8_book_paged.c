@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_book_paged.c
  * @brief Paged book-source layer: copy-out reads over ra8_vmem (#163).
@@ -16,6 +12,9 @@
  * much of the book a chapter walk touches.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "ra8_book_paged.h"
 

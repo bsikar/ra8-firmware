@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dfu_selftest_hs_host/main.c
  * @brief USB self-loop: HS host DFU-downloads firmware to an FS DFU device, uploads + verifies
@@ -41,6 +37,8 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-06-15
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

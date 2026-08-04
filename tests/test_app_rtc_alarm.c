@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_rtc_alarm.c
  * @brief Integration test: RTC init + set + new ra8_rtc_set_alarm API
@@ -13,6 +9,8 @@
  * helper introduced for this app, including its NULL-pointer and
  * out-of-range guards.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

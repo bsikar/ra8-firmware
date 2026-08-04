@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/canfd_loopback/main.c
  * @brief CANFD0 internal-loopback HIL test for EK-RA8D2
@@ -27,6 +23,8 @@
  *
  * Exits the loop on the first hard HAL error and parks in WFI.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_stream.c
  * @brief Unit tests for the ra8_io targetable byte-stream layer (issue #157).
@@ -11,6 +7,9 @@
  * end-to-end over a RAM block device (stream bytes -> sectors -> device), the
  * "same call, two targets" property, uart/usb-cdc bind + NULL-guard, handle
  * validation, and the `ra8_log` -> stream redirect captured into a RAM buffer.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

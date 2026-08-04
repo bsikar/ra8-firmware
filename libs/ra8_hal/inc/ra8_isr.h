@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_isr.h
  * @brief NVIC + ICU IELSR allocator
@@ -59,6 +55,9 @@
  * Not thread-safe. Driver init runs from single-threaded init
  * context; IRQ handlers run in their own context with the caller
  * stored state but never reach the allocator.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

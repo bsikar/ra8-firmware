@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_css_rules.c
  * @brief Content-CSS selector + `@font-face` rule parsing (#111).
@@ -15,6 +11,8 @@
  * the selector and `@font-face` parsers; it is invoked by the stylesheet scanner
  * ::ra8_css_parse in a sibling translation unit. No MMIO, no heap.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

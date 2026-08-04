@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sdfont.c
  * @brief SD-card font store with self-provisioning -- implementation.
@@ -27,6 +23,9 @@
  * ::ra8_sdfont_load (single-shot, init-context helper). Error propagation uses
  * the project's dominant light `if (err != k_ra8_ok)` idiom rather than the
  * logging `RA8_RETURN_ON_ERROR`: each lower call already logs at its own tag.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_sdfont.h"

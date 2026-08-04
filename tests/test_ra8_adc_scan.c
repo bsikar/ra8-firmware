@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_adc_scan.c
  * @brief Scan-group / comparator / oversample tests for adc.c (ADC_B driver)
@@ -17,6 +13,9 @@
  * window. After ra8_fake_mmap_reset() ADACT0 reads 0 (idle), so the driver's
  * bounded busy-wait observes the conversion already complete on its first
  * poll and takes the success path deterministically.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

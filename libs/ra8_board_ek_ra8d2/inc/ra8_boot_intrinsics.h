@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file libs/ra8_board_ek_ra8d2/inc/ra8_boot_intrinsics.h
  * @brief Tiny MMIO / barrier intrinsics shared by the boot files
@@ -17,6 +13,8 @@
  * documented per file. All are ``static inline`` -- each including TU
  * gets its own internal-linkage copy, so there is no shared state.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

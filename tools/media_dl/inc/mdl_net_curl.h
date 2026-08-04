@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_net_curl.h
  * @brief Factory for the concrete libcurl-backed ::mdl_net_iface_t backend.
@@ -16,6 +12,8 @@
  * that header stay backend-agnostic.
  *
  * @see mdl_net.h  The abstract seam and its dispatchers.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

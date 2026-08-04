@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fs_fat_exfat_mutate.c
  * @brief exFAT unlink / rename / listdir mutation helpers.
@@ -10,6 +6,8 @@
  * Locates a directory-entry set, frees its clusters and bitmap bits, and
  * applies in-place rename, plus the exFAT directory listing.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

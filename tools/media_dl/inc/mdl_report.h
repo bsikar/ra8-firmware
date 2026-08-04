@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_report.h
  * @brief Human-facing progress and failure reporting for the media_dl CLI.
@@ -14,6 +10,8 @@
  * end-of-run summary that names every lost page with a human-readable reason,
  * so a long run is legible live and its failures survive the scrollback. Kept
  * out of `main.c` so the entry point stays a thin dispatcher.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

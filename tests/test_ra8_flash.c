@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_flash.c
  * @brief Unit tests for ra8_flash.c (full HUM Ch 7 + Ch 59 coverage)
@@ -29,6 +25,9 @@
  * test_ra8_flash_extra.c and the IRQ + r_mram-parity + suspend/lock +
  * MC/DC surface in test_ra8_flash_ops.c. Shared fixture constants live
  * in support/flash_test_util.h.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

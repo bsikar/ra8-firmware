@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fake_mmio.h
  * @brief Host-test programmable MMIO fault seam for bounded HAL waits
@@ -50,6 +46,9 @@
  * ra8_fake_mmio_fail_wait(&ra8_sci(0)->CSR);
  * TEST_ASSERT_EQUAL(k_ra8_err_hw_timeout, ra8_sci_flush(0));
  * @endcode
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

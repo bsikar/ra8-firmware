@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_api.h
  * @brief Reflow-engine public + internal function prototypes.
@@ -16,6 +12,8 @@
  * still include `ra8_reflow.h` and never reference this file directly. The
  * data model these functions operate on lives in `ra8_reflow_types.h`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

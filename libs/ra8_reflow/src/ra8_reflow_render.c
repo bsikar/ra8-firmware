@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_render.c
  * @brief Page-rasteriser for ra8_reflow.
@@ -20,6 +16,8 @@
  * the render path ARM-Cortex-M cheap while still producing crisp
  * anti-aliased shapes thanks to stb's coverage-based rasteriser.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

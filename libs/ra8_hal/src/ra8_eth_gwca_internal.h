@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_eth_gwca_internal.h
  * @brief Cross-TU shared surface for the ra8_eth_gwca driver split.
@@ -25,6 +21,8 @@
  * three debug globals), and the two address-encoding descriptor
  * helpers. It is NOT part of the public ABI.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_blockdev_cache.c
  * @brief Unit tests for the ra8_io caching block device (issue #160).
@@ -10,6 +6,9 @@
  * Wraps a RAM block device with a 2-slot LRU cache and checks: read hit vs miss
  * accounting, LRU eviction, write-through (the backend sees the write and a
  * follow-up read hits the cache), erase invalidation, and init validation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

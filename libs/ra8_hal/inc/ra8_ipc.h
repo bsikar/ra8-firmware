@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ipc.h
  * @brief Inter-Processor Communication (IPC) HAL driver -- public API
@@ -70,6 +66,9 @@
  * attribution), and ``ra8_ipc_sync.h`` (semaphores, NMI, interrupt
  * dispatch, ring-buffer). Consumers continue to ``#include "ra8_ipc.h"``
  * unchanged.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

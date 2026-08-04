@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT */
-/* Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file examples/ek_ra8d2/hw_pending/blink_m33_hal/blink_m33_hal.h
  * @brief One-iteration LED1 blink step for the HAL-based M33 example
@@ -19,6 +13,8 @@
  * LED1 (BLUE) is `k_ra8_pin_led1` = P600 = PORT6 pin 0; the step drives it through
  * the CPU1-safe HAL primitive `ra8_pcntr_set_output()` (issue #580) -- no raw
  * MMIO, no `ra8_hal` object linked.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

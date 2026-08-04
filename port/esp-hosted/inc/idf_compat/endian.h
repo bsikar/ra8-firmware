@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/idf_compat/endian.h
  * @brief Little-endian wire conversions for the esp-hosted frame header.
@@ -46,6 +42,8 @@
  * evaluated exactly once, it is type-checked, and the return type is the width
  * the caller asked for rather than whatever the argument promoted to.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

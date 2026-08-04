@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_compress.c
  * @brief Unit tests for the ra8_io DEFLATE compress/decompress (issue #161).
@@ -11,6 +7,9 @@
  * trip is byte-identical, highly-repetitive input compresses smaller than it
  * started, and every guard path (NULL args, undersized scratch, undersized
  * output on each direction) returns the documented error.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

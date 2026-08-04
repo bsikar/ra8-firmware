@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_agt.c
  * @brief Low Power Asynchronous General Purpose Timer driver
@@ -16,6 +12,9 @@
  * 16-bit down-counter clocked from PCLKB. Used as a coarse tick
  * source on boards where SysTick is not desirable. Every register
  * access carries a HUM Ch 24 citation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_agt.h"

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ota.h
  * @brief Phase-5 OTA firmware-update orchestration for the RA8D2.
@@ -48,6 +44,9 @@
  *
  * Every buffer is a file-static in ``ra8_ota.c``. There is zero
  * dynamic allocation anywhere in this module (NASA Rule 3).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

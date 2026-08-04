@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rsip_mgmt.h
  * @brief Renesas Secure IP (RSIP-E50D) HAL -- vault / KDF / lifecycle / tamper
@@ -36,6 +32,8 @@
  * real device-security state lives in the DLM / option-setting memory /
  * SAU, not an RSIP MMIO read.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

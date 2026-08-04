@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/eth_tsn_tas_demo/main.c
  * @brief TSN scheduled-traffic demo: 802.1Qbv time-aware + 802.1Qav credit shaper
@@ -65,6 +61,8 @@
  * verdict is compile-gated in CI and asserted on the bench, while
  * ``eth_gptp_timestamp_demo`` carries the emulator-gated counter-advance check.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

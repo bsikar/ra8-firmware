@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_host_asm_stub.c
  * @brief Host-safe definitions of the bare CPU intrinsics (issue #293)
@@ -26,6 +22,9 @@
  * owns the divergence. Each function's documented contract lives on its
  * declaration in ``ra8_hw_intrinsics.h``; per the definition-site policy the
  * bodies below carry no restating comment.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #ifdef RA8_OFF_TARGET

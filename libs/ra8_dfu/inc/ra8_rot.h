@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rot.h
  * @brief Root-of-trust signed-image verifier (SHA-256 + ECDSA-P256, default-deny).
@@ -75,6 +71,9 @@
  *
  * @see @ref md_docs_2formats_2ROT1 -- the full ROT1 wire-format specification
  *      (rationale, algorithms, worked example, failure modes).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

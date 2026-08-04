@@ -1,10 +1,9 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_ulpt.c
  * @brief Unit tests for ra8_ulpt.c (Ultra-Low-Power Timer driver)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

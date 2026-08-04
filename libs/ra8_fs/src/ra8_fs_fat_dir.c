@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fs_fat_dir.c
  * @brief FAT listdir / mkdir / unlink / rename directory operations.
@@ -10,6 +6,8 @@
  * Directory listing, subdirectory creation, and the unlink/rename
  * operations dispatched across FAT and exFAT volumes.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

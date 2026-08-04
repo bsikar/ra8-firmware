@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_vfs_compress.c
  * @brief Transparent whole-file compress-on-write / decompress-on-read over the
@@ -18,6 +14,9 @@
  * file into the caller blob buffer and inflates it into the caller output. No
  * allocator is touched -- every buffer is caller-owned. All guards are
  * single-condition (no compound decisions, so no MC/DC vectors are due).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_vfs_compress.h"

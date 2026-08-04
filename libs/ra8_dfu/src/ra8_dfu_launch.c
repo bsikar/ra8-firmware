@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dfu_launch.c
  * @brief Copy-to-run launch: copy an image to the SRAM run base and branch to it.
@@ -35,6 +31,9 @@
  * DSB after the copy plus a DSB/ISB before the branch -- no cache maintenance.
  * If caches are ever enabled there, a clean-DCache + invalidate-ICache must be
  * added before the branch.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_attributes.h"

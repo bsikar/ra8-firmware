@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_tz_secure_boot.c
  * @brief FSP-style TrustZone secure-boot implementation for RA8D2
@@ -19,6 +15,9 @@
  * CPSCU MMIO writes for in-memory captures, lets the tests assert on
  * the documented PRCR-unlock / IPCSAR-write sequence, and replaces
  * the ``BLXNS`` instruction with a captured-target-then-return path.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_tz_secure_boot.h"

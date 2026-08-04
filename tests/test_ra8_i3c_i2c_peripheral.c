@@ -1,10 +1,9 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_i3c_i2c_peripheral.c
  * @brief Unit tests for the IIC_B peripheral driver.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <string.h>

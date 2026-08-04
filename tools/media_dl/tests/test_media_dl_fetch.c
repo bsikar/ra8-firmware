@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_media_dl_fetch.c
  * @brief Host unit tests for the #305 resumable/incremental/deduping download
@@ -22,6 +18,8 @@
  *     re-fetched (content-hash dedup);
  *   - a corrupt state file degrades to a clean rebuild rather than a crash.
  * Uses the repo's `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <limits.h>
 #include <stdint.h>

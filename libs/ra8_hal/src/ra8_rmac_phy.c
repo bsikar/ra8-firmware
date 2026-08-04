@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rmac_phy.c
  * @brief RMAC off-chip PHY driver
@@ -14,6 +10,9 @@
  * `ra8_ether_phy` but tracks 1000BASE-T capabilities and a vendor
  * LSI identifier (KSZ8041 / KSZ8091RNB / DP83620 / ICS1894 /
  * GPY111 / VSC8541) so future quirks can fan out by `lsi_type`.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_rmac_phy.h"

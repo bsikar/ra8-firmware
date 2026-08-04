@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_eth_mfwd.h
  * @brief Ethernet Message Forwarding Engine (MFWD) driver
@@ -17,6 +13,9 @@
  * This driver covers lifecycle + status + IRQ + power transition;
  * the per-frame forwarding-table programming surface lands with
  * the first routing-aware consumer.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file tests/host/exfat_fs_test.c
  * @brief Standalone host test for ra8_fs exFAT read (#85), the leading-slash
@@ -45,6 +41,8 @@
  * sectors/cluster) with ~480 free clusters, so the multi-cluster file fits.
  *
  * @author Brighton Sikarskie
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include <stdint.h>

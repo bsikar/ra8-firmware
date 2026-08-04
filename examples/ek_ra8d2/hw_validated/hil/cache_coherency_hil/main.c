@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/main.c
  * @brief CPU0 (Cortex-M85) cache-coherency validator against CPU1 (Cortex-M33)
@@ -48,6 +44,8 @@
  *     the run cleanly right after the banner -- the same clean stop a
  *     terminal WFI would give, without breaking the memprobe gate.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

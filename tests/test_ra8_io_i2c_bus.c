@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_i2c_bus.c
  * @brief Unit tests for the ra8_io I2C-bus facade
@@ -28,6 +24,9 @@
  * Determinism mirrors the sibling driver tests: RIIC ICSR2 flags and I3C
  * NTST/BCST flags are pre-armed so the drivers' bounded polls fall
  * through immediately; no timers and no signal injection are used.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

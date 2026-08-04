@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/agt_periodic/main.c
  * @brief AGT 1 Hz tick + LED1 blink demo for EK-RA8D2
@@ -28,6 +24,8 @@
  *   3. ``ra8_agt_start_free_run(0, k_agt_periodic_reload)``.
  *   4. Loop: poll AGTCR, on underflow: clear, toggle LED1, log tick.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

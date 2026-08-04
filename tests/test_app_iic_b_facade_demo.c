@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_iic_b_facade_demo.c
  * @brief Integration + MC/DC test for
@@ -28,6 +24,8 @@
  * ``static`` in an example TU that is not linked into the host suite); the
  * mirrors are kept byte-identical to the app and cross-referenced here.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

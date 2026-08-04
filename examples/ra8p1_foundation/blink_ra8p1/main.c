@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ra8p1_foundation/blink_ra8p1/main.c
  * @brief RA8P1 build-foundation blink -- proves ra8_core + ra8_hal compile and
@@ -31,6 +27,8 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-07-09
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

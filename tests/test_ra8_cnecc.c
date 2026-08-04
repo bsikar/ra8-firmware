@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_cnecc.c
  * @brief Unit tests for ra8_cnecc.c (CANFD ECC driver)
@@ -14,6 +10,9 @@
  * sibling owns the init / status / counter contract tests; the
  * clear-status, dispatch, fault-injection, ISR, standby, deinit, and
  * open / compute / verify tests live in test_ra8_cnecc_isr.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_cnecc.h"

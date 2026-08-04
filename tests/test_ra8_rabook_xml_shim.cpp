@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rabook_xml_shim.cpp
  * @brief MC/DC + DOM-structure tests for ra8_rabook_xml_shim (#149).
@@ -63,6 +59,8 @@
  *       leaves (elem false -> no push), and test_cdata_skipped supplies a skipped
  *       node (new_idx nil -> no push).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

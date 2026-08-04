@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_zoom/main.c
  * @brief Viewable tap-to-zoom image viewer: full-screen zoom + panel loupe (#478).
@@ -36,6 +32,8 @@
  *   ``ereader-zoom: page 4096x3072 tile 256 cells 35 z1=<8hex> pan=<8hex>
  *   z2=<8hex> lens=<8hex> hit=<n> miss=<n> evict=<n> warm=<n> ok``
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

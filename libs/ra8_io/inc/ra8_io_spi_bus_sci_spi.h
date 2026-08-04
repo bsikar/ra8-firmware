@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_spi_bus_sci_spi.h
  * @brief SCI Simple-SPI backend binder for the ra8_io SPI-bus facade.
@@ -22,6 +18,8 @@
  * `ra8_io_spi_bus_write_read` on this backend reports
  * ::k_ra8_err_not_supported for 16/32-bit widths.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

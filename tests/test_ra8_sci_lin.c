@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_sci_lin.c
  * @brief Unit tests for the LIN commander + responder driver
@@ -20,6 +16,9 @@
  * vector set). Status-flag polls are driven by pre-seeding CSR.TDRE /
  * CSR.RDRF / XSR0.BFDF or by arming the ra8_fake_mmio wait seam; no SIGALRM
  * injection is used.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

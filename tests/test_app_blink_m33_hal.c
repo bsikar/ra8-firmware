@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT */
-/* Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file test_app_blink_m33_hal.c
  * @brief App-level test: the blink_m33_hal example's CPU1 blink step drives LED1
@@ -22,6 +16,8 @@
  * The step has no compound boolean decision (its only branch is the single
  * `level == k_ra8_level_high` toggle select), so there are no MC/DC vectors to
  * enumerate; the low/high cases still drive both branches for full coverage.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "blink_m33_hal.h"

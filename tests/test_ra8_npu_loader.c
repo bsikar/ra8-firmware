@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_npu_loader.c
  * @brief Unit tests for ra8_npu_loader.c (`.npub` Vela blob -> ra8_npu_job_t)
@@ -29,6 +25,9 @@
  * The NPU register window (`0x40140000`) sits inside the host MMIO backing
  * store, so `ra8_npu_submit()` writes land in RAM and the mirror reads QBASE /
  * BASEPn back exactly as the fake does.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

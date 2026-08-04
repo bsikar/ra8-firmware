@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fs_fat_fmt.c
  * @brief FAT12/16/32 formatter (mkfs) for the `ra8_fs` adapter.
@@ -10,6 +6,8 @@
  * Geometry selection, BPB/FSInfo construction, FAT seeding, and the
  * region-clear helpers shared with the exFAT formatter.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fs_fat_lfn.c
  * @brief VFAT long-filename (LFN) read support for the FAT adapter.
@@ -10,6 +6,8 @@
  * Reassembles a chain of attr-0x0F entries into a long file name, then
  * matches it during directory scans (read-only).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

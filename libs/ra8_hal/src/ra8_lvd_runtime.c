@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_lvd_runtime.c
  * @brief PVD / LVD runtime control: IRQ / reset / CMPE toggles, filter,
@@ -18,6 +14,8 @@
  * calls live in `ra8_lvd_internal.h`; every register access keeps its
  * HUM Ch 8 citation (R01UH1065EJ rev 1.30).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

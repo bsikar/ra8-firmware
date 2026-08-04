@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file reflow_svg_test_util.h
  * @brief Shared framebuffer fixture for the test_ra8_reflow_svg_*_mcdc.c siblings.
@@ -13,6 +9,9 @@
  * test_ra8_reflow_svg_shape_mcdc.c, and test_ra8_reflow_svg_paint_mcdc.c.
  * Everything here has internal linkage, so each including test executable
  * owns a private framebuffer.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/common/ra8_io_roundtrip.h
  * @brief Shared, backend-agnostic ra8_io VFS round-trip for the FAT demos (#155).
@@ -27,6 +23,8 @@
  *                                      VFS read-back + byte-compare.
  *   - ::ra8_io_roundtrip_subdir_file -- mkdir + nested open/write/read/compare.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

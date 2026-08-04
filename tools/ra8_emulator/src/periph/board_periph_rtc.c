@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_rtc.c
  * @brief Realtime Clock (RTC) calendar peripheral-block model for ra8_emulator
@@ -41,6 +37,8 @@
  * The RTC is a single register window (@c 0x40202000, 0x80 bytes); the block
  * carries a @c tick that advances the calendar and raises the two events.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

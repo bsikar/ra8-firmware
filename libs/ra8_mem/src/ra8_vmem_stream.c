@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_vmem_stream.c
  * @brief Read a page-cached object as a seekable byte stream -- impl (#147/#151).
@@ -15,6 +11,9 @@
  * in-frame slice, release the pin (`ra8_vmem_put`), and advance. At most one frame
  * is pinned at any instant, so the resident set is the caller's fixed `ra8_vmem`
  * pool plus O(1) -- never the object size.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_vmem_stream.h"

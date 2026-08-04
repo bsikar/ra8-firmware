@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ns_main.c
  * @brief Non-Secure main entry point: launches ThreadX and the e-reader UI.
@@ -24,6 +20,8 @@
  * debugger) instead of hanging silently; routing expiry to an internal reset
  * for automatic reboot is a separate product decision.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

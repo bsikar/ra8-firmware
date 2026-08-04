@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_secure_app_ota_commit.c
  * @brief Unit + MC/DC tests for src/secure_app/ota_commit.c
@@ -11,6 +7,9 @@
  * masking write path. Includes a targeted MC/DC vector set for the
  * compound boolean decision identified in docs/MCDC_GAPS.csv at
  * src/secure_app/ota_commit.c.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

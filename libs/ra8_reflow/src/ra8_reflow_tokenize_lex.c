@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_tokenize_lex.c
  * @brief Lexical primitives for the no-heap streaming XHTML tokenizer:
@@ -19,6 +15,8 @@
  * promoted into ra8_reflow_tokenize_internal.h. Pure forward-pass scanning --
  * no recursion (NASA P10 Rule 1) and bounded loops (Rule 2).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}

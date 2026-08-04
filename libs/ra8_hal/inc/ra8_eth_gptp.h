@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_eth_gptp.h
  * @brief Ethernet Generic PTP Timer (GPTP) driver -- HUM Ch 35
@@ -39,6 +35,9 @@
  * parts of the same register window need the MEDIA_IN / MEDIA_OUT /
  * CYCLIC_COMP pins, which the EK-RA8D2 board layer does not route, so this
  * driver does not address them.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT */
-/* Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file examples/ek_ra8d2/hw_pending/blink_m33_hal/cpu1_main.c
  * @brief CPU1 (Cortex-M33) image: blink LED1 through the HAL PCNTR primitive
@@ -33,6 +27,8 @@
  * @note LED1 powers up routed to PORT, so no PmnPFS / PWPR pin-function setup is
  *       needed; the primitive touches only PCNTR1 (direction + output level).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

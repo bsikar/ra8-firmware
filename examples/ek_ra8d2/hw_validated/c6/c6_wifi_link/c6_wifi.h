@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_wifi_link/c6_wifi.h
  * @brief Shared contract for the `ra8_c6link` facade bring-up application.
@@ -28,6 +24,8 @@
  * Everything protocol-shaped lives in the facade. This file holds only what an
  * application genuinely owns: pacing, buffer bounds and formatter widths.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

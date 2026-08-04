@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_c6_model.h
  * @brief A modelled ESP32-C6 behind the `ra8_c6link` transport seam (#490).
@@ -18,6 +14,9 @@
  * host's, so an answer can never appear in the same transaction as its
  * question. The transfer row serves the receive side from its queue before it
  * looks at the transmit side, exactly as the silicon does.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

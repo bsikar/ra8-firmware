@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_reflow_corpus.c
  * @brief Content corpus + live-layout pagination-cache acceptance (#79).
@@ -32,6 +28,9 @@
  * The font is located relative to `__FILE__` (mirrors
  * `tests/test_ra8_fs_font_reflow.c`); if it is missing the test SKIPs
  * rather than failing, so the suite stays green on a bare checkout.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

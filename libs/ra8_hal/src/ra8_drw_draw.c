@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_drw_draw.c
  * @brief 2D Drawing Engine (DRW / D/AVE 2D) geometry primitives
@@ -21,6 +17,9 @@
  *
  * Every register access carries a HUM Ch 62 citation immediately
  * above it so ``cite_check.py`` can validate provenance.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

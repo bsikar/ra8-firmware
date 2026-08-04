@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_stbtt_alloc.h
  * @brief Heap-free scratch allocator for stb_truetype (glyph rasterise).
@@ -31,6 +27,8 @@
  * NASA Power-of-10 Rule 3 (no dynamic allocation after init): the backing
  * store is a single file-scope array.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_elc_regs.h
  * @brief Event Link Controller (ELC) register layout for the Renesas RA8D2
@@ -38,6 +34,9 @@
  *       `fsp/ra/fsp/src/bsp/mcu/ra8d2/bsp_elc.h`. Copy in the
  *       entries the firmware actually wires up rather than the
  *       whole list.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

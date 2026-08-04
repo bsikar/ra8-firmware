@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dfu_device.c
  * @brief USBX DFU device class wired to the ra8_dfu MRAM program path.
@@ -18,6 +14,9 @@
  * worker catches up; `dfu_read` serves DFU_UPLOAD straight out of the target
  * slot's MRAM body. The whole TU is firmware-only (the host test build defines
  * `RA8_OFF_TARGET` and has no USBX).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_dfu_device.h"

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_flash_regs.h
  * @brief Flash / MRAM controller register layout for the Renesas RA8D2
@@ -29,6 +25,9 @@
  *       (e.g. ``ECCBYPC`` vs ``ECCEN``); we use the HUM names
  *       wherever they differ. References to FSP source files in
  *       comments are pointers, never copies of the FSP code.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

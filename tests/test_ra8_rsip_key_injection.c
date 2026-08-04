@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_rsip_key_injection.c
  * @brief Unit tests for ra8_rsip_key_injection.c (RSIP wrapped-key wrap)
@@ -18,6 +14,9 @@
  * - NULL-argument rejection on every entry point.
  *
  * Each test resets ``ra8_fake_mmap`` first so cases stay independent.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <string.h>

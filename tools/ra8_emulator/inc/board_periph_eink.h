@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_eink.h
  * @brief IT8951 e-paper SPI-device model for ra8_emulator (attached to SPI_B).
@@ -33,6 +29,8 @@
  * device block, register reads such as LUTAFSR "LUT idle") so the driver
  * completes exactly as it would on silicon.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

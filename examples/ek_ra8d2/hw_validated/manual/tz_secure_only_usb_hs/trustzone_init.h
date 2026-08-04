@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/trustzone_init.h
  * @brief No-op TrustZone bring-up entry point for the secure-only USB demo
@@ -16,6 +12,9 @@
  * programming, no IDAU touching, no ALLNS bit. The chip stays in the
  * reset-state security configuration where every address is Secure
  * (the IDAU default).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

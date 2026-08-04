@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_drw.c
  * @brief 2D Drawing Engine (DRW / D/AVE 2D) HAL driver implementation
@@ -42,6 +38,9 @@
  *   initialized -> reset [label="ra8_drw_deinit"];
  * }
  * @enddot
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_drw.h"

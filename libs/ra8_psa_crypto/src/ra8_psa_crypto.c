@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_psa_crypto.c
  * @brief Implementation of the ``ra8_psa_crypto`` facade over TF-PSA-Crypto.
@@ -34,6 +30,9 @@
  * The public ``ra8_psa_*`` surface is identical in either build, so a
  * caller migrating from off-target mode to a real firmware image only
  * has to flip the build flag.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_psa_crypto.h"

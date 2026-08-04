@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/bscan_selftest/main.c
  * @brief Headless on-silicon self-test gate for the JTAG boundary-scan
@@ -29,6 +25,8 @@
  * on a FAIL banner before reaching the PASS line, so the gate is exact.
  * The banner is identical on host, ra8_emulator, and silicon.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fake_dma.h
  * @brief Host-test DMA transfer fake
@@ -41,6 +37,9 @@
  * state -- if a test wants the channel freed, it must also call
  * ``ra8_dma_release``. This mirrors real hardware: a completion
  * IRQ on its own does not free a channel; the driver must.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

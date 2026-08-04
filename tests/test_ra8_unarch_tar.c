@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_unarch_tar.c
  * @brief Tests for the clean-room streaming tar walker (ustar / pax / GNU).
@@ -22,6 +18,9 @@
  *      and the per-member output cap each fire,
  *   4. the promoted field parsers (`ra8_unarch_tar_internal.h`) hit every
  *      rejection branch, with MC/DC vectors for each compound decision.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

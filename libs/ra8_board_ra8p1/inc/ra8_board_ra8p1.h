@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_board_ra8p1.h
  * @brief Board-support layer for the Renesas RA8P1 (R7KA8P1KFLCAC) target board
@@ -50,6 +46,8 @@
  * ``ra8_port_pin_t`` / ``ra8_psel_t`` / ``ra8_icu_irq_cfg_t`` values and forwards
  * to the HAL.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

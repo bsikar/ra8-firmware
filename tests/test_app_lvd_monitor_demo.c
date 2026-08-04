@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_lvd_monitor_demo.c
  * @brief Integration test: LVD / PVD VCC-monitor bring-up (pure logic)
@@ -18,6 +14,8 @@
  *
  * No ra8_fake_mmap MMIO is required, so this test runs in-process.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

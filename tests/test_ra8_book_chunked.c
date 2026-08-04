@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_book_chunked.c
  * @brief Tests for the demand-paged "RBKC" chunk reader (ra8_book_chunked.c).
@@ -20,6 +16,9 @@
  * The payload here is patterned bytes, not a valid RABOOK1 blob -- the chunk
  * reader is a byte-transport layer; blob validity is the paged accessor
  * equivalence test's concern (test_ra8_book_paged.c).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

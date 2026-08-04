@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_board_ek_ra8d2_audio_usb.c
  * @brief EK-RA8D2 BSP -- DA7212 audio CODEC, USB-HS, and U15 I/O expander
@@ -25,6 +21,8 @@
  * ``docs/reference/ek-ra8d2-v1-users-manual.pdf`` (R20UT5523EG0101
  * Rev 1.01, October 2025).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

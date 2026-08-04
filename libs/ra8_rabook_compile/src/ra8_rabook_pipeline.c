@@ -1,11 +1,9 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rabook_pipeline.c
  * @brief End-to-end EPUB -> RABOOK1 compile pipeline (#149).
  * @since Version 0.1.0
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_rabook_pipeline.h"

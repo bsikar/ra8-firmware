@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fpu_probe.h
  * @brief Double-precision FPU probe -- codegen witness for the RA8P1 DP-FPU
@@ -36,6 +32,8 @@
  * @see cmake/toolchain-ra8p1.cmake  Overrides `-mfpu` to the DP-FPU for RA8P1.
  * @see ra8_device.h                  RA8D2/RA8P1 compile-time device switch.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

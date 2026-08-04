@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_app_launcher_render.c
  * @brief Widget-rendered CRC golden of the app-framework chrome + launcher.
@@ -27,6 +23,8 @@
  * each tested in its own TU), so there is no `@par MC/DC` obligation in this
  * file; it asserts the two goldens and the registry-reflects invariant.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

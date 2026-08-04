@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev_ram.h
  * @brief ra8_io block-device backend over a caller-owned RAM buffer.
@@ -18,6 +14,8 @@
  * SRAM, or -- via the SDRAM backend's identical model -- the 64 MiB external
  * SDRAM window). It erases to zero and needs no erase-before-write.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

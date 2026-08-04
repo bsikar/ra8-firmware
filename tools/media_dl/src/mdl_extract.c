@@ -1,10 +1,8 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_extract.c
  * @brief v1 `<img>`/`<a>` tag scanner + relative-URL resolver.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_extract.h"
 

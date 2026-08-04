@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_pin_validator.c
  * @brief Runtime pin-ownership bitmap implementation
@@ -11,6 +7,9 @@
  * 30-byte bitmap (15 ports x 16 pins x 1 bit) and a parallel owner-tag
  * array so that diagnostics can report *which* driver currently owns a
  * given pin.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_pin_validator.h"

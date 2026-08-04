@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_board_ek_ra8d2.h
  * @brief Board-support layer for the Renesas EK-RA8D2 v1 evaluation kit
@@ -38,6 +34,8 @@
  * names into the right ``ra8_port_pin_t`` / ``ra8_psel_t`` /
  * ``ra8_icu_irq_cfg_t`` values and forwards to the HAL.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

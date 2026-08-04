@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file key_import_internal.h
  * @brief Secure-side sealed key import + opaque handle vending
@@ -37,6 +33,9 @@
  * KAT-pinned in-tree AES-CMAC reference in host tests. A forged blob
  * therefore requires recovering the KAK, not merely replaying a
  * trivial fold.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

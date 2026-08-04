@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_tsn.h
  * @brief On-chip Temperature Sensor (TSN) driver
@@ -59,6 +55,9 @@
  *  - Single-point conversion (using only TSCDR + the typical slope
  *    from HUM Ch 69 "Electrical Characteristics"). Two-point trim
  *    is more accurate so the driver only ships that path.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_rsip_protected.h
  * @brief RSIP protected-key HAL -- crypto operations driven by wrapped
@@ -33,6 +29,9 @@
  *
  * @see ra8_rsip.h  Underlying RSIP HAL surface.
  * @see ra8_rsip_key_injection.h  Producer of wrapped-key blobs.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/widget_app_demo/main.c
  * @brief Interactive ra8_widget + ra8_app launcher on the live GLCDC panel.
@@ -39,6 +35,8 @@
  * (the full 1024x600 panel needs SDRAM, a separate task) and composites top-left
  * over the GLCDC background plane.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / APP] {World: S}
  *

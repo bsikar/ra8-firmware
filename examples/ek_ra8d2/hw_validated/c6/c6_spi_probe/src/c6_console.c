@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_console.c
  * @brief Bounded console formatters for the ESP32-C6 SPI probe
@@ -15,6 +11,8 @@
  * reentrancy machinery) into a bare-metal image. Every loop here is bounded
  * by a constant from ``c6_probe.h``.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

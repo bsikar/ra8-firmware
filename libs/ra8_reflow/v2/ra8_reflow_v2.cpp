@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_reflow_v2.cpp
  * @brief LiteHTML-backed reflow engine -- ra8_reflow public API adapter.
@@ -17,6 +13,8 @@
  * Hands the chapter buffer to ``litehtml::document::createFromString``,
  * runs ``render(viewport_w)``, then paginates by viewport height.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

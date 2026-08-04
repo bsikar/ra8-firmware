@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_i2c_config.c
  * @brief I2C Bus Interface (IIC) bring-up, clock and error-status plane
@@ -24,6 +20,8 @@
  * bring-up and clock setup. See HUM Ch 39 "I2C Bus Interface (IIC)",
  * p 2367-2470.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

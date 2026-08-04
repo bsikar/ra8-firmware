@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_io_blockdev_xspi.c
  * @brief OSPI NOR block-device backend -- 512-byte LBAs over ra8_xspi flash.
@@ -17,6 +13,9 @@
  * sector, overlay the touched 512-byte blocks, erase the sector, and program
  * the 4 KiB back (chunked). Erases are sector-aligned. The file touches no MMIO;
  * every flash access routes through the HAL, which owns the HUM citations.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_io_blockdev_xspi.h"

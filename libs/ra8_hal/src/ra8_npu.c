@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_npu.c
  * @brief Arm Ethos-U55 NPU command/queue driver foundation (RA8P1-only)
@@ -23,6 +19,8 @@
  * yet, so this is host-tested for the register write sequence only -- a real
  * on-silicon inference is a follow-up.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/battery_monitor_demo/main.c
  * @brief Battery state-of-charge monitor over a MAX17048-class fuel gauge.
@@ -35,6 +31,8 @@
  * banner prints), so the app lives in ``hw_pending/`` until a real fuel-gauge
  * board is on the MikroBUS. See ``README.md`` for the bench plan.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

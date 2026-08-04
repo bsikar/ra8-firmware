@@ -1,8 +1,4 @@
 /*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/*
  * GNU ld linker script for the tz_nsc_cgc_usb NON-SECURE image (#96).
  *
  * This is the Non-Secure half of a two-project TrustZone build: it is linked
@@ -16,6 +12,9 @@
  * Run-time VMA: SRAM2 Non-secure alias 0x3210_0000. Load LMA: Secure MRAM
  * 0x0208_0000 (the Secure boot copies LMA->VMA after SRAMSABAR2 marks SRAM2
  * Non-secure, then BLXNS-es to the reset vector).
+ *
+ * Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 ENTRY(ns_reset_handler)

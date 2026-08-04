@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file secure_trng.c
  * @brief Secure-side TRNG read implementation (host PRNG stub)
@@ -14,6 +10,9 @@
  * in ; the wrapper interface here is the part the NSC
  * veneer ``ra8_nsc_trng_read`` depends on, so the seam is committed
  * now.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

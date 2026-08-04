@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_dac_b_regs.h
  * @brief 12-bit DAC_B register layout for the Renesas RA8D2
@@ -28,6 +24,9 @@
  * Register offsets and bit positions tracked against HUM Ch 54
  * "12-Bit D/A Converter (DAC12)" p 3490..3496 and against FSP
  * `R_DAC_B0_DACR{0,1,2}_*_Msk` constants.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

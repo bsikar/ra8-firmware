@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/main.c
  * @brief CPU0 (Cortex-M85 primary core) driver for the dual-core demo
@@ -37,6 +33,8 @@
  *       builds Debug, so the `[itm]` lines appear; a default release build
  *       still runs the dual-core exchange but stays silent.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

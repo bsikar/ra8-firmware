@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_library.h
  * @brief Library-wide operations over a directory of tracked series.
@@ -19,6 +15,8 @@
  * bulk update (re-run an incremental fetch per series), and any future
  * per-series command, without this module depending on the download or
  * state-printing machinery.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

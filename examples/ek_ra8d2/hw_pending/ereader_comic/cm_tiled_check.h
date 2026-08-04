@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_comic/cm_tiled_check.h
  * @brief Boot-time self-check that opens an oversized comic page via the JOF
@@ -20,6 +16,8 @@
  * concatenated tile payloads. The integer tile pipeline makes the digest
  * identical on host, ra8_emulator, and silicon, so the boot banner can pin it.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

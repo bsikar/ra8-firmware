@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_gfx_dither.h
  * @brief Void-and-cluster blue-noise dithering: continuous-tone gray8 -> 16-level panel (#477).
@@ -42,6 +38,8 @@
  * @see ra8_gfx_blit_gray8      Non-dithered 1:1 gray8 blit (hard tone copy).
  * @see ra8_gfx_blit_gray4_zoom Packed-gray4 loupe blit the dither can feed.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

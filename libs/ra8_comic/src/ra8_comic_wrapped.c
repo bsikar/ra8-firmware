@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_comic_wrapped.c
  * @brief Wrapped comic open: gzip / XZ unwrap in front of the container detect.
@@ -25,6 +21,9 @@
  * ::k_ra8_err_decomp_depth bomb before any inner decode starts.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <stddef.h>
 #include <stdint.h>

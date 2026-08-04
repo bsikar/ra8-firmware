@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file tests/test_ra8_fs_fat_exfat_read_cov.c
  * @brief Coverage-boost tests for `ra8_fs_fat_exfat_read.c`.
@@ -31,6 +27,8 @@
  * carries GCOVR_EXCL_LINE: reaching it requires 65536 consecutive non-EOD
  * directory entries, which no host-side input can synthesise in a bounded test.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

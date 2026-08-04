@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_etha_rmac_edge_cases.c
  * @brief Edge-case + stress unit tests for the Ethernet stack (ra8_etha + ra8_rmac).
@@ -23,6 +19,9 @@
  *     EATMFSC field is 14 bits wide so 17 KiB requests must be rejected;
  *   - per-class IRQ enable/disable bit masking is non-destructive across
  *     all three EAEIE blocks.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

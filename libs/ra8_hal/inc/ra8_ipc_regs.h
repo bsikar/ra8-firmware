@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_ipc_regs.h
  * @brief Inter-Processor Communication (IPC) register layout for the RA8D2
@@ -44,6 +40,9 @@
  *
  * Register offsets tracked against HUM Ch 3 "Inter-Processor
  * Communication (IPC)" p 204-233.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

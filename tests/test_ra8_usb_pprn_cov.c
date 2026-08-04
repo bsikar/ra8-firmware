@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_usb_pprn_cov.c
  * @brief Coverage top-up for the native USB device-side Printer class
@@ -35,6 +31,9 @@
  * The init `deinit`-on-pipe-failure leg (source lines 210-211) is not
  * reachable from the host and is branch-excluded in the source: see the
  * justification comment above `internal_configure_pipes`'s error return.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

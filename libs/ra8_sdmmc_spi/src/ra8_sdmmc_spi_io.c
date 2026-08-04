@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sdmmc_spi_io.c
  * @brief SD card driver in SPI-mode -- public block I/O and SCI factory.
@@ -22,6 +18,8 @@
  * CRC behaviour follows SD Specification Part 1 Physical Layer Simplified
  * Specification v9.10 section 7 ("SPI Mode").
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

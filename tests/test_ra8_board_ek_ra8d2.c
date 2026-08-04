@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_board_ek_ra8d2.c
  * @brief Unit tests for the EK-RA8D2 v1 board-support layer
@@ -12,6 +8,9 @@
  * of the surface tested here is enum values and lookup tables that
  * must match the EK-RA8D2 v1 User's Manual (R20UT5523EG0101 Rev
  * 1.01) verbatim.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

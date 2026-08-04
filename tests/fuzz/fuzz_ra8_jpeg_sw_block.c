@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file fuzz_ra8_jpeg_sw_block.c
  * @brief libFuzzer harness focused on the JPEG block-level Huffman decoder
@@ -19,6 +15,9 @@
  * (DC + AC), one component, and an SOS that selects them. Any byte
  * sequence the fuzzer mutates after the SOS marker becomes the
  * compressed scan data the decoder must walk through ``dec_block``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_politeness.h
  * @brief Jittered inter-request delay plus the per-host politeness governor.
@@ -22,6 +18,8 @@
  * record the requested delay and advance a virtual clock. The maths is identical
  * either way, so a test asserts spacing, backoff growth/decay and `Retry-After`
  * precedence deterministically.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

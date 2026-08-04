@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_board_ek_ra8d2_ethernet_cov.c
  * @brief Coverage-boosting unit tests for the EK-RA8D2 Ethernet BSP layer
@@ -33,6 +29,8 @@
  * board happy path (which drives both HAL primitives) stays covered by
  * test_board_ethernet_init in test_ra8_board_ek_ra8d2.c.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_lpm_software_standby_demo.c
  * @brief Integration test: LPM init + WUPEN0.RTCALM arm + Software Standby entry
@@ -13,6 +9,8 @@
  * WFI is a no-op and the host fake mmap records each register write
  * so the test can verify the LPSCR and WUPEN0 state.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

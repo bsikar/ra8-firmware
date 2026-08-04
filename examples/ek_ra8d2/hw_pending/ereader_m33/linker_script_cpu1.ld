@@ -1,8 +1,4 @@
 /*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/*
  * GNU ld linker script for the CPU1 (Cortex-M33) image of ereader_m33.
  *
  * MRAM_CPU1 0x020C0000 256 KiB  Code + rodata + vectors (incl. the ra8_gfx font)
@@ -24,6 +20,9 @@
  * .sdram_bss section below -- the same arena-in-SDRAM pattern the sibling
  * compile_on_m33 image uses. On ra8_emulator the SDRAM window is always mapped; on
  * silicon the M85 brings up the SDRAM controller before releasing the M33.
+ *
+ * Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 ENTRY(cpu1_reset_handler)

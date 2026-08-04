@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs_fat_fmt_mcdc.c
  * @brief MC/DC vectors for the FAT format-time and BPB-parse compound decisions.
@@ -20,6 +16,9 @@
  *     driven with a counting backend whose erase result and presence vary.
  *   - `priv_fmt_label_field` (ra8_fs_fat_fmt.c, TU-static) -- the volume-label
  *     copy/pad split, driven through a real `ra8_fs_format` with a short label.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

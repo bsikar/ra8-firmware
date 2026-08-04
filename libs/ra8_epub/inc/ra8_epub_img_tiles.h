@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_epub_img_tiles.h
  * @brief Page a large in-EPUB image through ra8_tile_cache + a real reflow
@@ -44,6 +40,8 @@
  *      is reported unavailable rather than blowing the budget (the tile
  *      binder is the path for those).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @see ra8_jof.h          The JOF atlas format + reader.
  * @see ra8_jof_produce.h  The import-time transcode producer.

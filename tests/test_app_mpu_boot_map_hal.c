@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_mpu_boot_map_hal.c
  * @brief Integration test: MPU boot map brought up via the ra8_mpu HAL (#576)
@@ -29,6 +25,8 @@
  * The fake MPU block is seeded via a whole-struct write and read back via a
  * struct snapshot, so no line performs a direct `reg->FIELD` MMIO access.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

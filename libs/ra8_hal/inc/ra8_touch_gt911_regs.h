@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_touch_gt911_regs.h
  * @brief Register layout for the GoodIX GT911 capacitive touch controller
@@ -45,6 +41,9 @@
  * Cross-checked against GoodIX "GT911 Programming Guide" rev 0.1
  * (publicly distributed reference; this project does not vendor the
  * document).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

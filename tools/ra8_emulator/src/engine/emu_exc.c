@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_exc.c
  * @brief Hand-modelled Cortex-M exception engine (see emu_exc.h)
@@ -17,6 +13,8 @@
  * idle-spin detector and the DWT cycle-counter model. Moved verbatim out of
  * the ra8_emulator main translation unit.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

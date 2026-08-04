@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_c6link.c
  * @brief The `ra8_c6link` facade against a co-processor model (#490).
@@ -17,6 +13,9 @@
  *
  * The pure layers underneath (arena, payload header, envelope) are tested on
  * their own in `test_ra8_c6link_wire.c`, so a failure here is unambiguous.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

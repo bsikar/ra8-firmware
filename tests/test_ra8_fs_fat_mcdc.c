@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_fs_fat_mcdc.c
  * @brief Residual MC/DC vectors for the still-uncovered decisions in ra8_fs_fat.c.
@@ -33,6 +29,9 @@
  * decision, N+1 vectors observe every condition both true and false AND prove
  * each independently flips the decision outcome. Structurally unreachable
  * conditions are flagged as deactivated under DO-178C 6.4.4.3.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

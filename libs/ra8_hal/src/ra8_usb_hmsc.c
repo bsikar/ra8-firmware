@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /* GCOVR_EXCL_START -- host-unreachable: called only from the
  * internal_run_data_out data-chunk loop, which runs only after a bulk-OUT
  * CBW push completes; the plain-RAM fake never re-asserts the pipe's

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file fuzz_ra8_usb_pal.c
  * @brief libFuzzer harness for the USB PAL endpoint open / send / recv path.
@@ -24,6 +20,9 @@
  * then ra8_usb_pal_ep_send() with the payload, then attempts a recv
  * to drain whatever the PAL routed back. Errors are silently ignored
  * -- the goal is to exercise the validators, not to assert success.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

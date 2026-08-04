@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file c6_probe.h
  * @brief Shared contract for the EK-RA8D2 <-> ESP32-C6 esp-hosted SPI probe.
@@ -30,6 +26,8 @@
  * this file relies on come from upstream's `docs/spi_full_duplex.md` and
  * `slave/main/spi_slave_api.c` -- what the C6 drives. LEGACY-OK: upstream path
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: S}
  *

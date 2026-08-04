@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_pdm.c
  * @brief Pulse Density Modulation Interface (PDM-IF) capture driver
@@ -16,6 +12,9 @@
  * signed PCM from the data-read register. The hardware performs the
  * PDM->PCM decimation; this driver only sequences and reads it. Every
  * register access carries a HUM Ch 49 citation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_pdm.h"

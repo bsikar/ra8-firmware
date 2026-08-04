@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_cac.c
  * @brief CAC (Clock Frequency Accuracy Measurement) edge-counter model
@@ -34,6 +30,8 @@
  *  - @c CAULVR (+0x06) / @c CALLVR (+0x08) are the window limits the driver
  *    programmes; @c CACNTBR (+0x0A) is the latched count it reads back.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_sanitize.h
  * @brief Neutralise untrusted names before they reach a filesystem or XML sink.
@@ -14,6 +10,8 @@
  * EPUB this tool feeds back to the on-device reader). This module holds the
  * three pure predicates that close those holes, kept out of the CLI's
  * translation unit so they are unit-testable both directions.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

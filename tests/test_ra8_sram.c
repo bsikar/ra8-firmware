@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_sram.c
  * @brief Unit tests for ra8_sram.c (SRAM with ECC driver)
@@ -34,6 +30,9 @@
  *  - SRAMWTSC manual + auto-from-clock helpers
  *  - enter_stop / exit_stop lifecycle
  *  - bank-info introspection
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

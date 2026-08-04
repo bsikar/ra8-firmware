@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_power_profile.c
  * @brief Power-profiling helper -- implementation
@@ -15,6 +11,9 @@
  * (GPIO pulse, microsecond clock). Nothing in this file touches the
  * RA8D2 register map directly; that decoupling keeps the helper
  * trivially testable on the host.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_power_profile.h"

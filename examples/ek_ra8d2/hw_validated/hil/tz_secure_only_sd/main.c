@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd/main.c
  * @brief SPI-mode SD card round-trip HIL demo for the EK-RA8D2
@@ -43,6 +39,8 @@
  * with a FAT-formatted (FAT16 or FAT32) microSD card inserted. The
  * demo does NOT format the card.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

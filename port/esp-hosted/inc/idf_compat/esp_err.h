@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file port/esp-hosted/inc/idf_compat/esp_err.h
  * @brief ESP-IDF-compatible error type and error codes, supplied by this port.
@@ -69,6 +65,8 @@
  *   - ``ESP_ERR_NO_BUFFS``. It appears once in ``transport_drv.c`` and only on a
  *     commented-out line; it is not part of ESP-IDF's core error space either.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

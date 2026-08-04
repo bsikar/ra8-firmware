@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_poeg_regs.h
  * @brief Port Output Enable for GPT (POEG) register layout for the RA8D2
@@ -14,6 +10,9 @@
  * (high-impedance) state without CPU involvement. Essential for
  * safety-critical motor control so an over-current fault can halt
  * the H-bridges in a single cycle.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

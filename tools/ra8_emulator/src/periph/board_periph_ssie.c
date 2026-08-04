@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file board_periph_ssie.c
  * @brief Serial Sound Interface Enhanced (SSIE / I2S) peripheral-block model
@@ -30,6 +26,8 @@
  * matching the rest of board_periph (it validates "does the firmware program the
  * SSIE correctly", not silicon timing).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

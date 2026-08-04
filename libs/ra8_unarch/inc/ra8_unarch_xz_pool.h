@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_unarch_xz_pool.h
  * @brief Caller-owned bump arena backing xz-embedded's allocator seam.
@@ -32,6 +28,9 @@
  * @see xz_config.h      The porting header mapping kmalloc/vmalloc here.
  *
  * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

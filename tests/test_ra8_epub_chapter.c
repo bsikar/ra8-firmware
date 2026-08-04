@@ -1,10 +1,9 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_epub_chapter.c
  * @brief MC/DC unit tests for libs/ra8_epub/src/ra8_epub_chapter.c
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

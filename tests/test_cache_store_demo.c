@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_cache_store_demo.c
  * @brief Host unit test for the ra8_cache_store_demo example core (#257).
@@ -17,6 +13,9 @@
  * The store's own primitives (put/get/evict/pin/recovery + their MC/DC vectors)
  * are covered separately in test_ra8_cache_store.c; this test proves the example
  * wrapper drives them correctly end to end.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

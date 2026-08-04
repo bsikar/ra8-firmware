@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file fuzz_ra8_etha.c
  * @brief libFuzzer harness for the Ethernet II header parse fixture
@@ -13,6 +9,9 @@
  * or MMIO). The harness does not care about the parser output -- the
  * goal is to surface any out-of-bounds read or integer UB in the header
  * decode for malformed inputs.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

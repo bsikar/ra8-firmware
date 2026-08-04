@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_net_curl_internal.h
  * @brief Module-private libcurl-backend helpers promoted for host unit tests.
@@ -17,6 +13,8 @@
  * Nothing here is part of the backend-facing API in `mdl_net.h` or the factory
  * in `mdl_net_curl.h`; production callers use the vtable dispatchers.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_widget_nav_bar.h
  * @brief Navigation-strip leaf widget for the ra8_widget tree model (#145 Phase 2).
@@ -17,6 +13,8 @@
  * `on_input` maps a touch to the cell it landed in, records it in `selected`, and
  * fires the optional `on_select` callback; a button event is declined.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_app_flash_journal.c
  * @brief Integration test for examples/ek_ra8d2/flash_journal/main.c
@@ -12,6 +8,8 @@
  * ``tests/mocks/ra8_fake_xspi_flash.c`` services the driver's real
  * erase + program + read register sequence so the round-trip closes.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

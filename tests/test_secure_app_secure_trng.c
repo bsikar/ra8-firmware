@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_secure_app_secure_trng.c
  * @brief Unit + MC/DC tests for src/secure_app/secure_trng.c
@@ -10,6 +6,9 @@
  * Exercises the host-PRNG-stub TRNG entropy reader. Includes targeted
  * MC/DC vector sets for the two compound boolean decisions identified
  * in docs/MCDC_GAPS.csv at src/secure_app/secure_trng.c and :89.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

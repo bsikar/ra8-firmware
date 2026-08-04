@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_tls_net.c
  * @brief Unit tests for the ``ra8_tls`` TLS-over-network glue: cipher /
@@ -25,6 +21,9 @@
  *    the ``ra8_net_pal`` frame ring (a loopback on the host build), so both
  *    ``ra8_tls.h`` and ``ra8_net_pal.h`` are exercised together exactly as
  *    the firmware example wires them.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

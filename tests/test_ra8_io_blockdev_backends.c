@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_blockdev_backends.c
  * @brief Unit tests for the ra8_io hardware block-device backends (issue #156).
@@ -17,6 +13,9 @@
  *            capabilities, and a memory-mapped read of poked data.
  *   - sdspi / sdhi: bind + NULL-guard (the data path needs a real card, so it
  *            is exercised by ra8_emulator / HIL, not here).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

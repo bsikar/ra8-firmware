@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_layer3_switch.h
  * @brief Layer-3 Ethernet switch driver -- placeholder
@@ -21,6 +17,9 @@
  *          `k_ra8_err_not_supported`.
  *
  * Reference: FSP `r_layer3_switch` driver shape.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

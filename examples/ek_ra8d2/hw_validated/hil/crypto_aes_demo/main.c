@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo/main.c
  * @brief AES-128-GCM encrypt + decrypt round-trip on EK-RA8D2
@@ -35,6 +31,8 @@
  *      d. ``ra8_psa_key_destroy``.
  *      e. Log result over UART, toggle LED1 / LED2 accordingly.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

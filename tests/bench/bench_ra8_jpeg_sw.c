@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file bench_ra8_jpeg_sw.c
  * @brief Microbenchmark: software JPEG decode of a known fixture.
@@ -20,6 +16,8 @@
  * the throughput number directly comparable to network / flash read
  * rates that feed the decoder.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

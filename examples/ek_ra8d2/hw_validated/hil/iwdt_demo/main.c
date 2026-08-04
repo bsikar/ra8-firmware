@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/iwdt_demo/main.c
  * @brief IWDT window-mode refresh demo for EK-RA8D2
@@ -26,6 +22,8 @@
  *   3. Loop: poll counter; refresh only when the counter is inside
  *      the legal window; clear status; toggle LED1 each refresh.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

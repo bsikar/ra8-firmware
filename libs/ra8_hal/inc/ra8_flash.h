@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_flash.h
  * @brief Code MRAM + Extra MRAM + Option-Setting driver -- DANGEROUS, brick-capable
@@ -105,6 +101,9 @@
  * itself -- caller must ensure the call site is in SRAM
  * (e.g. ``__attribute__((section(".sram_text")))``) when
  * targeting MRAM addresses.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

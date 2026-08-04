@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_zoom_book.c
  * @brief `.rabook` image-pool source adapter for the tap-to-zoom viewer (#478).
@@ -17,6 +13,8 @@
  *          same pattern `ra8_comic_tiles.c` uses, so an app that magnifies only
  *          tiled comics does not link `ra8_book`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *

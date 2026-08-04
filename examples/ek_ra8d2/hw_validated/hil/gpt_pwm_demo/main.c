@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/gpt_pwm_demo/main.c
  * @brief GPT PWM duty-cycle LED demo for EK-RA8D2
@@ -25,6 +21,8 @@
  *
  * Bare EK-RA8D2; no expansion board.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_jof_produce.c
  * @brief Transcode producer: sniff, decode, tile, encode, emit (#231, #290).
@@ -18,6 +14,8 @@
  * `ra8_jof_produce_webp.c`, sharing the producer state and the
  * geometry / rows / prefix-pull seams through `ra8_jof_internal.h`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain]
  * {World: NS}

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_fs_fat_internal.h
  * @brief Cross-TU shared declarations for the FAT/exFAT `ra8_fs` adapter.
@@ -25,6 +21,8 @@
  * This header is included by every `ra8_fs_fat*.c` file and by nothing outside
  * this module.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

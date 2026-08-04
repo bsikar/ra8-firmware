@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sci_spi.c
  * @brief SCI Simple-SPI controller-mode driver (polling, full-duplex)
@@ -23,6 +19,9 @@
  * The chip-select is the caller's responsibility (held as a GPIO so
  * it can span a multi-frame SD transaction); this driver never
  * touches SSn (CCR0.SSE stays 0).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_sci_spi.h"

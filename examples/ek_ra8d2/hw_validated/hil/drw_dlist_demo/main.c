@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/drw_dlist_demo/main.c
  * @brief DRW display-list (DLR) clear+fill demo -- loop-stable (EK-RA8D2, #247)
@@ -33,6 +29,8 @@
  * is left off (``enable_caches = false``) so the CPU reads the freshly
  * rasterized pixels directly.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

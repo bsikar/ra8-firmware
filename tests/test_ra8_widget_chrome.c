@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_widget_chrome.c
  * @brief Unit tests for the ra8_widget concrete chrome leaves (#145 Phase 2).
@@ -17,6 +13,8 @@
  * The shelf's book grid is exercised by the sibling
  * `test_ra8_widget_book_grid.c`.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

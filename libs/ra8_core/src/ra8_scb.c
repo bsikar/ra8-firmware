@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_scb.c
  * @brief Cortex-M85 System Control Block driver implementation.
@@ -19,6 +15,8 @@
  * (the pattern ra8_cache.c uses), so on a host build the fake MMIO map backs
  * the window and the reads / writes are observable to unit tests.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

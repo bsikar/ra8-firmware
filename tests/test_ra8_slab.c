@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_slab.c
  * @brief Unit tests for the ra8_mem fixed-cell slab allocator (Layer 0, #147).
@@ -11,6 +7,9 @@
  * (all cells distinct + in range, full drain and refill), the stats counters,
  * and every validation guard (NULL args, bad cell size/alignment, zero-cell
  * buffer, out-of-range / misaligned free).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

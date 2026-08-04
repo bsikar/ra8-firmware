@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_pending/cache_hal_enable_demo/main.c
  * @brief Cortex-M85 L1 cache brought up through the ra8_cache HAL (issue #577).
@@ -47,6 +43,8 @@
  *
  * @author Brighton Sikarskie
  * @date 2026-08-02
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_eth_coma.c
  * @brief Ethernet Common Agent driver implementation
@@ -13,6 +9,9 @@
  * driver for the RA8D2 COMA block. Shares the ESWM MSTP
  * gate with the rest of the ethernet subsystem. Every register
  * access carries a HUM Ch 31 citation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_eth_coma.h"

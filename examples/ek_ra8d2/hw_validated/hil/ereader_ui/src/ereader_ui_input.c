@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/ereader_ui_input.c
  * @brief E-reader UI chrome -- on-screen keyboard, battery nag, input polling.
@@ -18,6 +14,8 @@
  * dispatch (touch taps and SW1/SW2 page-turn buttons). The composited chrome is
  * byte-identical to the pre-split monolith.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

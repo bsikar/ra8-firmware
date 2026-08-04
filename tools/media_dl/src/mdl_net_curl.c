@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file mdl_net_curl.c
  * @brief libcurl host backend registered through the mdl_net vtable seam.
@@ -22,6 +18,8 @@
  * explicitly, `.netrc` and proxy-env are disabled, and every response is size-
  * and time-bounded. Every `curl_easy_setopt` of a security-relevant option is
  * checked; a failure fails handle creation rather than proceeding unhardened.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_net_curl.h"
 

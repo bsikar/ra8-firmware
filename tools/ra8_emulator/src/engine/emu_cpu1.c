@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file emu_cpu1.c
  * @brief Second-core (cpu1) engine implementation (see emu_cpu1.h)
@@ -11,6 +7,8 @@
  * shared-SRAM backing, and the interleaved stepping -- moved verbatim out of
  * the ra8_emulator main translation unit.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
  */

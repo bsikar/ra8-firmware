@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_comic_tiles.c
  * @brief Tile an oversized comic page: encoded bytes -> JOF atlas -> tile cache
@@ -26,6 +22,9 @@
  * Guarded on `__has_include`: a comic app that never pulls in `ra8_mem` /
  * `ra8_jof` still links this TU empty (a comic-only reader keeps the
  * whole-decode path and never references the tile binder).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 /* Compile the tile reader only where the ra8_mem tile cache and the JOF atlas

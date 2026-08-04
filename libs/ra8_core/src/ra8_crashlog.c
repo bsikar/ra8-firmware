@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_crashlog.c
  * @brief Cross-reset crash-log implementation (`.noinit` record + loop guard).
@@ -19,6 +15,9 @@
  * from a fault context where no peripheral may be assumed powered or
  * initialised, so the checksum is a tiny bitwise CRC-32 that touches
  * nothing but the record's own bytes.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_crashlog.h"

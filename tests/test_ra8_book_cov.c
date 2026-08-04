@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_book_cov.c
  * @brief Line-coverage tests for the compiled-book container loader
@@ -16,6 +12,9 @@
  * is shaped to run one previously-unexecuted branch of the loader
  * (`ra8_book_container_header_fields`, `s_container_view`, `s_inflate_chunks`)
  * and the returned ::ra8_err_t is asserted.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stddef.h>

@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_stbtt_guard.h
  * @brief sfnt (TrueType/OpenType) table-directory bounds guard for stb_truetype.
@@ -28,6 +24,8 @@
  * past its buffer. It is a pure, heap-free byte validator: it includes no
  * stb_truetype internals and touches no hardware.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *

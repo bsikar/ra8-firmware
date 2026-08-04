@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_sdhi_regs.h
  * @brief SDHI (SD/MMC host interface) register layout for the Renesas RA8D2
@@ -19,6 +15,9 @@
  * `0x1E4` bytes) -- the same hardware block ships unchanged across
  * RA6M3, RA6M5, and RA8 series. Register access widths and bit
  * positions are identical; only the base address differs on RA8D2.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once

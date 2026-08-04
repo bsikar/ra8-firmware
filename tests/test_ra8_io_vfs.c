@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file test_ra8_io_vfs.c
  * @brief Unit tests for the ra8_io VFS mount table + path router (issue #158).
@@ -11,6 +7,9 @@
  * exercises name-based open / stat / unlink / rename / listdir, mount-table
  * mechanics (duplicate, full, unmount isolation), path-parse rejection, and the
  * not-yet-supported mkdir.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>

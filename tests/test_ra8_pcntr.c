@@ -1,9 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
-/* SPDX-License-Identifier: MIT */
-/* Copyright (c) 2026 Brighton Sikarskie */
 /**
  * @file test_ra8_pcntr.c
  * @brief Unit tests for the CPU1-safe PCNTR PORT primitive (ra8_pcntr.h)
@@ -20,6 +14,8 @@
  * conditions too), so there are no MC/DC vectors to enumerate; each case notes
  * this in its `@par MC/DC:` block, and the low/high pairs still drive both
  * branches of the level select for full branch coverage.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_err.h"

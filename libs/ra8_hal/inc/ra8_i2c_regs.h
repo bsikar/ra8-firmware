@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_i2c_regs.h
  * @brief I2C Bus Interface (IIC) register layout for the Renesas RA8D2
@@ -24,6 +20,8 @@
  * (HUM Ch 39.2, p 2369-2394). Every RIIC register is a single byte;
  * the registers are laid out contiguously from offset 0x00.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

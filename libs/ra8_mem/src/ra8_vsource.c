@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_vsource.c
  * @brief Virtual-memory object sources -- implementation (Layer 1, #147).
@@ -13,6 +9,9 @@
  * A flat object array indexed by `object_id` (the assignment order). The loader
  * adapter zeroes the whole frame first, then fills the in-range prefix from the
  * object's backing, so a short tail at the object's end reads back as zeros.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_vsource.h"

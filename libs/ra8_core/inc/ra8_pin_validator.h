@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Brighton Sikarskie
- */
 /**
  * @file ra8_pin_validator.h
  * @brief Runtime Pin-Ownership Validator
@@ -36,6 +32,9 @@
  *
  * The bitmap is guarded by an IRQ-masked critical section. Safe to call
  * from any context (init, task body, ISR).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #pragma once
