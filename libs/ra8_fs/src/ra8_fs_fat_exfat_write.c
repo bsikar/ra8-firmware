@@ -92,33 +92,40 @@ ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, ui
 }
 
 /**
- * @brief Scan the allocation bitmap for a contiguous run of free clusters.
+ * @brief Scan a window of the allocation bitmap for a contiguous free run.
  *
- * @details Assumes a contiguous bitmap (true for a freshly formatted volume).
+ * @details Walks cluster indices `[from, m->count_of_clusters)` looking for
+ *          @p need consecutive clear bits, loading each bitmap sector once.
+ *          Assumes a contiguous bitmap (true for a freshly formatted volume).
+ *
  * @param[in]  m        Mounted exFAT volume.
  * @param[in]  bmp_lba  First LBA (volume-relative) of the bitmap.
+ * @param[in]  from     Cluster INDEX (0-based) to begin the walk at.
  * @param[in]  need     Number of contiguous free clusters required.
  * @param[out] out_clus First cluster of the found run.
  * @return Error code.
  * @retval k_ra8_ok         A run of @p need free clusters was found.
- * @retval k_ra8_err_no_mem No such run (volume full / too fragmented).
+ * @retval k_ra8_err_no_mem No such run in this window.
  * @retval k_ra8_err_*      Backend read failure.
  * @pre @p m and @p out_clus are non-NULL; @p need >= 1.
- * @pre The bitmap region is contiguous on disk.
- * @post On success ``*out_clus`` is the run's first cluster number.
+ * @pre @p from is a cluster index, not a cluster number.
+ * @post On success ``*out_clus`` is the run's first cluster NUMBER.
  * @post No volume state modified.
- * @note O(count_of_clusters); bounded by the volume size.
+ * @note O(count_of_clusters - from); bounded by the volume size.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_exfat_bitmap_scan(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t need, uint32_t* out_clus)
+static ra8_err_t priv_exfat_bitmap_window(const ra8_fs_mount_t* m,
+                                          uint32_t              bmp_lba,
+                                          uint32_t              from,
+                                          uint32_t              need,
+                                          uint32_t*             out_clus)
 {
   uint32_t run                            = 0U;
   uint32_t start                          = 0U;
   uint32_t loaded                         = UINT32_MAX;
   uint8_t  sec[k_ra8_fs_bytes_per_sector] = {};
-  for (uint32_t idx = 0U; idx < m->count_of_clusters; idx++) {
+  for (uint32_t idx = from; idx < m->count_of_clusters; idx++) {
     const uint32_t lba = bmp_lba + ((idx >> k_exfat_bit_shift) / k_ra8_fs_bytes_per_sector);
     if (lba != loaded) {
       ra8_err_t e = priv_read_sector(m, lba, sec);
@@ -143,6 +150,57 @@ priv_exfat_bitmap_scan(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t need,
     }
   }
   return k_ra8_err_no_mem;
+}
+
+/**
+ * @brief Find a contiguous free run, starting from the mount's next-free hint.
+ *
+ * @details The exFAT half of #607. The bitmap walk used to restart at cluster
+ *          index 0 on every create, so a volume with a hundred files paid for
+ *          re-reading the bitmap prefix each time. It now starts at the hint
+ *          and, only if that finds nothing, repeats from index 0.
+ *
+ *          The second pass is a FULL rescan rather than a wrap-around of the
+ *          remainder, and that is the point: a free run may STRADDLE the hint,
+ *          and a window that stopped at it would miss a run the volume really
+ *          has and report a full disk. Rescanning is the price of never lying
+ *          about capacity, and it is paid only when the fast path fails.
+ *
+ * @param[in]  m        Mounted exFAT volume.
+ * @param[in]  bmp_lba  First LBA (volume-relative) of the bitmap.
+ * @param[in]  need     Number of contiguous free clusters required.
+ * @param[out] out_clus First cluster of the found run.
+ * @return Error code.
+ * @retval k_ra8_ok         A run of @p need free clusters was found.
+ * @retval k_ra8_err_no_mem No such run anywhere (volume full / too fragmented).
+ * @retval k_ra8_err_*      Backend read failure.
+ * @pre @p m and @p out_clus are non-NULL; @p need >= 1.
+ * @pre The bitmap region is contiguous on disk.
+ * @post On success ``*out_clus`` is the run's first cluster number.
+ * @post No volume state modified.
+ * @note Worst case is two passes over the bitmap; typical case is one short one.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t
+priv_exfat_bitmap_scan(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t need, uint32_t* out_clus)
+{
+  const uint32_t hint = priv_alloc_hint_get(m);
+  uint32_t       from = 0U;
+  if (hint > (uint32_t)k_cluster_first_data) {
+    from = hint - (uint32_t)k_cluster_first_data;
+  }
+  if (from >= m->count_of_clusters) {
+    from = 0U;
+  }
+  const ra8_err_t e = priv_exfat_bitmap_window(m, bmp_lba, from, need, out_clus);
+  if (e != k_ra8_err_no_mem) {
+    return e;
+  }
+  if (from == 0U) {
+    return e;
+  }
+  return priv_exfat_bitmap_window(m, bmp_lba, 0U, need, out_clus);
 }
 
 /* `priv_exfat_bmp_switch()`: see header for the documented contract. */
@@ -411,6 +469,11 @@ static uint32_t priv_exfat_build_set(uint8_t*    set,
   set[0]                      = (uint8_t)k_exfat_entry_file;
   set[k_exfat_off_file_secnt] = (uint8_t)sec_count;
   priv_wr16(&set[k_exfat_off_file_attr], (uint16_t)k_exfat_attr_archive);
+  /* Before the SetChecksum below, which covers these bytes. exFAT's stamps are
+   * zero-is-illegal for the same reason FAT's are -- month and day are 1-based
+   * -- and it has three fields FAT does not: the 10 ms increments and the
+   * UtcOffset bytes (#601). */
+  priv_exfat_file_stamp_create(set);
   uint8_t* strm                = &set[k_exfat_entry_bytes];
   strm[0]                      = (uint8_t)k_exfat_entry_stream;
   strm[k_exfat_strm_off_flags] = (uint8_t)k_exfat_secflag_alloc;
@@ -504,7 +567,14 @@ static ra8_err_t priv_exfat_alloc_write(ra8_fs_mount_t* m,
     return e;
   }
   // NOLINTNEXTLINE(readability-suspicious-call-argument) -- (cluster, count) order is correct
-  return priv_exfat_bitmap_mark(m, bmp_lba, *out_start, nclus);
+  e = priv_exfat_bitmap_mark(m, bmp_lba, *out_start, nclus);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  /* Only now, with the bits actually set, is it true that the next free run
+   * starts past this one (#607). */
+  priv_alloc_hint_set(m, *out_start + nclus);
+  return k_ra8_ok;
 }
 
 /**

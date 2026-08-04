@@ -322,6 +322,79 @@ static ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
 }
 
 /**
+ * @struct write_walk_t
+ * @brief Forward waypoint carried across one write's grow-walks.
+ *
+ * @details Without it every sector of a long write re-walked the chain from
+ *          the head, which is O(K^2) FAT lookups over a K-cluster file -- the
+ *          same quadratic as the allocation scan and worth the same fix
+ *          (#607). One write's offset only ever moves forward, so the
+ *          waypoint is always at or behind the cluster being written.
+ *
+ * @invariant `index` is the chain index of `cluster`.
+ * @see priv_write_position()
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t cluster; /**< Cluster the last walk reached. */
+  uint32_t index;   /**< Chain index of `cluster`.      */
+} write_walk_t;
+
+/**
+ * @brief Position the write cursor at chain index @p idx, growing as needed.
+ *
+ * @details Allocates the file's first cluster when it has none, then walks
+ *          forward from the waypoint -- not from the chain head -- extending
+ *          the chain if the walk runs off the end. The waypoint is advanced to
+ *          wherever the walk landed.
+ *
+ * @param[in,out] file        File handle whose chain is being extended.
+ * @param[in,out] way         Forward waypoint, advanced on success.
+ * @param[in]     idx         Chain index the write needs.
+ * @param[out]    out_cluster Receives the cluster at @p idx.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok         Cursor positioned; `*out_cluster` is valid.
+ * @retval k_ra8_err_no_mem The volume has no free cluster to grow into.
+ * @retval k_ra8_err_*      Backend or FAT error.
+ *
+ * @pre `file`, `way` and `out_cluster` are non-NULL.
+ * @pre `way->index <= idx` (a write only moves forward).
+ * @post On success the waypoint sits at @p idx.
+ * @post On failure the chain may have been partially extended.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t
+priv_write_position(ra8_fs_file_t* file, write_walk_t* way, uint32_t idx, uint32_t* out_cluster)
+{
+  ra8_fs_mount_t* m = file->mount;
+  if (file->first_cluster < k_cluster_first_data) {
+    uint32_t        c   = 0;
+    const ra8_err_t err = priv_alloc_eoc_cluster(m, &c);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    file->first_cluster = c;
+    file->cur_cluster   = c;
+    way->cluster        = c;
+    way->index          = idx;
+  }
+  uint32_t        cur = 0;
+  const ra8_err_t err = priv_walk_grow(m, way->cluster, idx - way->index, &cur);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  way->cluster = cur;
+  way->index   = idx;
+  *out_cluster = cur;
+  return k_ra8_ok;
+}
+
+/**
  * @brief Inner write loop: stream `len` bytes from `buf` into the file's chain.
  *
  * @details Allocates the first cluster on demand, then walks/grows
@@ -353,19 +426,11 @@ static ra8_err_t priv_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint
   uint32_t        consumed      = 0;
   /* A write may allocate/grow the chain, invalidating any cached read waypoint. */
   file->walk_cache_cluster = 0;
+  write_walk_t way         = {.cluster = file->first_cluster, .index = 0U};
   while (consumed < len) {
-    if (file->first_cluster < k_cluster_first_data) {
-      uint32_t  c   = 0;
-      ra8_err_t err = priv_alloc_eoc_cluster(m, &c);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      file->first_cluster = c;
-      file->cur_cluster   = c;
-    }
     const uint32_t cluster_idx_now = file->offset / cluster_bytes;
     uint32_t       cur             = 0;
-    ra8_err_t      err             = priv_walk_grow(m, file->first_cluster, cluster_idx_now, &cur);
+    ra8_err_t      err             = priv_write_position(file, &way, cluster_idx_now, &cur);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -441,6 +506,12 @@ static ra8_err_t priv_write_locked(ra8_fs_file_t* file, const uint8_t* buf, uint
     return err;
   }
   priv_entry_set_cluster_size(&dirsec[file->dir_entry_idx], file->first_cluster, file->size_bytes);
+  /* The contents just changed, so the modification time has to move with them
+   * (#601). Doing it here as well as at close means a writer that is cut off
+   * mid-stream still leaves an mtime describing what is actually on the card,
+   * rather than whatever a PC wrote when it created the file. */
+  priv_fat_entry_stamp_write(&dirsec[file->dir_entry_idx]);
+  file->dirty = 1U;
   return priv_write_sector(m, file->dir_entry_lba, dirsec);
 }
 

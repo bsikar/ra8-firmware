@@ -256,6 +256,12 @@ static void test_epub_fs_read_error_corrupt_fat(void)
   ra8_fs_mount_t* mount = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
   write_epub(mount, "BOOK.EPB");
+  /* Unmount before corrupting, and mount again after. Corruption arrives on
+   * real media between sessions, not under a live mount, and the driver caches
+   * one FAT sector (#607) -- so poking the FAT behind a mounted volume would
+   * be masked by the copy already in memory and prove nothing. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
+  mount = nullptr;
 
   /* Point cluster 2 at an off-disk cluster in both FAT copies so the chain walk
    * past the first sector faults. FAT-relative byte = cluster*2 = 4. */
@@ -265,6 +271,7 @@ static void test_epub_fs_read_error_corrupt_fat(void)
   put16(s_disk.bytes,
         (k_fat16_fat1_lba * (uint32_t)k_disk_block_size) + (uint32_t)k_fat16_clus2_ent_byte,
         (uint16_t)k_fat16_offdisk_clus);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
 
   ra8_epub_stream_fs_ctx_t io   = {};
   ra8_epub_book_t          book = {};
