@@ -31,7 +31,7 @@
       "name": "Eclipse ThreadX",
       "group": "eclipse-threadx",
       "version": "6.5.0",
-      "description": "Preemptive RTOS kernel under every threadx_* example.",
+      "description": "Preemptive RTOS kernel: 45 example apps, vendored middleware, NS image.",
       "scope": "required",
       "licenses": [
         {
@@ -90,7 +90,7 @@
       "name": "Eclipse NetX Duo",
       "group": "eclipse-threadx",
       "version": "6.5.0",
-      "description": "Dual IPv4/IPv6 TCP/IP + TLS stack (NetX echo / OTA path).",
+      "description": "Dual IPv4/IPv6 TCP/IP stack (wired eth + C6 Wi-Fi); NetX Secure not compiled.",
       "scope": "required",
       "licenses": [
         {
@@ -153,7 +153,7 @@
       "name": "Eclipse FileX",
       "group": "eclipse-threadx",
       "version": "6.5.0",
-      "description": "FAT / exFAT file system (FileX demos + OTA staging).",
+      "description": "FAT12/16/32 file system used by the two FileX demos (snapshot has no exFAT).",
       "scope": "required",
       "licenses": [
         {
@@ -271,7 +271,7 @@
       "name": "Eclipse LevelX",
       "group": "eclipse-threadx",
       "version": "6.5.0",
-      "description": "NOR-flash wear-leveling layer under FileX on Octo-SPI.",
+      "description": "NOR-flash wear-levelling on Octo-SPI: under FileX, and standalone.",
       "scope": "required",
       "licenses": [
         {
@@ -605,7 +605,7 @@
       "name": "miniz",
       "group": "richgel999",
       "version": "11.0.2",
-      "description": "Deflate / inflate / ZIP support for EPUB unpacking.",
+      "description": "Deflate / inflate / ZIP behind EPUB, CBZ, PNG, gzip and the ra8_io seam.",
       "scope": "required",
       "licenses": [
         {
@@ -741,7 +741,7 @@
       "name": "stb (stb_image + stb_truetype)",
       "group": "nothings",
       "version": "stb_image 2.30 / stb_truetype 1.26",
-      "description": "PNG/JPEG decode (stb_image) + TTF/OTF raster (stb_truetype).",
+      "description": "JPEG/PNG/GIF/BMP decode (stb_image) + TTF/OTF raster (stb_truetype).",
       "scope": "required",
       "licenses": [
         {
@@ -1272,7 +1272,7 @@
         },
         {
           "name": "ra8:note3",
-          "value": "Not compiled by any target yet: the sources cannot build until the first-party port under port/esp-hosted/ lands (the follow-on change), which is also when the CMake wiring is added."
+          "value": "Compiled: cmake/esp_hosted.cmake builds 8 of the vendored TUs into esp_hosted_objs behind RA8_USE_ESP_HOSTED, consumed by five applications under examples/ek_ra8d2/hw_validated/c6/. The first-party port (port/esp-hosted/) and driver (libs/ra8_c6link/) have landed and the protocol round-trip is proven on silicon."
         }
       ]
     },

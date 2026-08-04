@@ -208,7 +208,7 @@ follow-up firmware fixes; the test config itself is correct.
 | `dma_memcopy_demo`           | `dma: copied 1024B match=Y`     | **RED**: DMA emits `match=N` |
 | `i2c_loopback`               | `iic_b: scan 0x77 ack=1`        | **RED**: emits `scan ERROR` |
 | `threadx_ipc_demo`           | `[ipc_demo] <- pong`            | **RED**: queue not passing |
-| `threadx_filex_levelx_demo`  | `[fxlx] booting xSPI flash`     | **RED**: `lx_nor_flash_format failed` |
+| `threadx_filex_levelx_demo`  | `[fxlx] readback: Hello from wear-leveled FAT!` | `lx_nor_flash_format` failure (#87) fixed; full FAT-on-LevelX-on-xSPI round-trip verified live 2026-06-10 |
 | `adc_b_demo`                 | `adc: raw=`                     | short OK |
 | `agt_periodic`               | `agt: tick`                     | short OK |
 | `crc_demo`                   | `crc: hw=`                      | short OK; **RED**: emits `match=N` |
