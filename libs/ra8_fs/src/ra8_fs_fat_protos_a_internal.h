@@ -512,13 +512,17 @@ RA8_PRIV
 uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len);
 
 /**
- * @brief Find a flat root-directory file by name on an exFAT volume.
+ * @brief Find a name in ONE exFAT directory.
  *
- * @details Streams the root directory entries, matching each File entry set
- * against @p path; stops at end-of-directory or the scan bound.
+ * @details Streams @p dir's entries, matching each File entry set against
+ * @p path; stops at end-of-directory, the end of the directory's run, or the
+ * scan bound. This is a single-directory lookup, not a path resolver -- pass a
+ * leaf name and the directory it should be in, or use ::priv_exfat_lookup,
+ * which resolves a whole path and then calls this (#605).
  *
  * @param[in]  m         Mounted exFAT volume.
- * @param[in]  path      Target path (ASCII, root-level name).
+ * @param[in]  dir       Directory to search.
+ * @param[in]  path      Target leaf name (ASCII); leading slashes are skipped.
  * @param[out] out_strm  Receives the matched 32-byte Stream-extension entry --
  *                       first cluster, both lengths and the secondary flags,
  *                       so a caller decodes the fields it needs rather than
@@ -529,19 +533,22 @@ uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len);
  *                       lookup exactly like a file, and treating one as a file
  *                       frees its cluster chain (#604).
  * @return Error code.
- * @retval k_ra8_ok            File found; outputs populated.
- * @retval k_ra8_err_not_found No matching entry in the root directory.
+ * @retval k_ra8_ok            Entry found; outputs populated.
+ * @retval k_ra8_err_not_found No matching entry in @p dir.
  * @retval k_ra8_err_*         Backend read failure.
  * @pre All pointers are non-NULL; ``m->type`` is exFAT.
- * @pre ``m->root_cluster`` is valid.
+ * @pre @p dir locates an existing directory on this volume.
  * @post On success @p out_strm mirrors the on-disk Stream entry.
  * @post Scan is bounded by ::k_exfat_scan_limit entries.
- * @note Only the root directory is searched (flat namespace).
+ * @note Not thread-safe; callers serialise.
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t
-priv_exfat_find(const ra8_fs_mount_t* m, const char* path, uint8_t* out_strm, uint8_t* out_attr);
+ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
+                          const exfat_dir_t*    dir,
+                          const char*           path,
+                          uint8_t*              out_strm,
+                          uint8_t*              out_attr);
 
 /**
  * @brief Locate the allocation-bitmap entry in the exFAT root directory.
@@ -605,28 +612,33 @@ ra8_err_t
 priv_exfat_format(const ra8_fs_backend_t* backend, uint32_t total_sectors, const char* label);
 
 /**
- * @brief Enumerate the root directory of an exFAT volume.
+ * @brief Enumerate ONE directory of an exFAT volume.
  *
- * @details Walks the directory entry stream; every in-use File entry set
- * yields one callback with the ASCII name (truncated to the local buffer,
- * NUL-terminated), the low attribute byte, and the file size. Deleted
- * entries and non-file sets (bitmap, up-case table, label) are skipped.
+ * @details Walks @p dir's entry stream; every in-use File entry set yields one
+ * callback with the ASCII name (truncated to the local buffer, NUL-terminated),
+ * the low attribute byte, and the size. Deleted entries and non-file sets
+ * (bitmap, up-case table, label) are skipped. Subdirectories are reported like
+ * any other entry set, with ::k_exfat_attr_directory set in the attribute byte.
  *
  * @param[in] m   Mounted exFAT volume.
- * @param[in] cb  Callback invoked once per visible file.
+ * @param[in] dir Directory to enumerate (::priv_exfat_dir_root for the root).
+ * @param[in] cb  Callback invoked once per visible entry set.
  * @param[in] ctx Cookie forwarded to the callback.
  * @return Error code.
- * @retval k_ra8_ok    Enumeration completed (EOD reached).
+ * @retval k_ra8_ok    Enumeration completed (EOD or end of run reached).
  * @retval k_ra8_err_* Backend read failure.
- * @pre @p m and @p cb are non-NULL; mount is exFAT.
- * @pre The volume is mounted.
- * @post @p cb ran once per in-use file set.
+ * @pre @p m, @p dir and @p cb are non-NULL; mount is exFAT.
+ * @pre @p dir locates an existing directory on this volume.
+ * @post @p cb ran once per in-use entry set.
  * @post No volume state modified.
  * @note Names longer than the buffer are truncated (still NUL-terminated).
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m, ra8_fs_listdir_cb_t cb, void* ctx);
+ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m,
+                             const exfat_dir_t*    dir,
+                             ra8_fs_listdir_cb_t   cb,
+                             void*                 ctx);
 
 /**
  * @brief Compare one file-name entry's 15 UTF-16 units against an ASCII path.
@@ -770,26 +782,26 @@ RA8_PRIV
 uint16_t priv_exfat_set_checksum(const uint8_t* set, uint32_t bytes);
 
 /**
- * @brief Delete a root-level file on an exFAT volume.
+ * @brief Delete a file on an exFAT volume, at any depth.
  *
- * @details Locates the file's directory-entry set, clears the in-use bit
- * (bit 7 of the entry type) on every entry in the set, and frees the
- * file's clusters in the allocation bitmap. A set carrying
- * ::k_exfat_attr_directory is refused: freeing a directory's chain would
- * strand every entry inside it (#604).
+ * @details Resolves the path's parent, then hands the leaf to
+ * ::priv_exfat_unlink_at: the entry set is located, every entry's in-use bit
+ * (bit 7 of the entry type) is cleared, and the clusters are freed in the
+ * allocation bitmap. A set carrying ::k_exfat_attr_directory is refused:
+ * freeing a directory's run would strand every entry inside it (#604).
  *
  * @param[in] m    Mounted exFAT volume.
- * @param[in] path Flat root-level file name (ASCII).
+ * @param[in] path File path (ASCII), nested or root-level.
  * @return Error code.
  * @retval k_ra8_ok              File unlinked.
- * @retval k_ra8_err_invalid_arg @p path names a directory.
- * @retval k_ra8_err_not_found   No such file.
+ * @retval k_ra8_err_invalid_arg @p path names a directory or the volume root.
+ * @retval k_ra8_err_not_found   No such file, or a component is missing.
  * @retval k_ra8_err_*           Directory or bitmap write failure.
  * @pre @p m and @p path are non-NULL; mount is exFAT.
  * @pre The file is not open.
  * @post The name no longer resolves; its clusters are free.
  * @post Other directory entries are untouched.
- * @note Root-directory namespace only.
+ * @note Not thread-safe; callers serialise.
  * @since 0.1.0
  */
 RA8_PRIV

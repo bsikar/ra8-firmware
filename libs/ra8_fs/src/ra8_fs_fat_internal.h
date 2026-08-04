@@ -28,8 +28,12 @@
  * - `ra8_fs_fat_exfat_stream_internal.h` -- the exFAT streaming-write mechanism:
  *                             entry-set coordinates, the allocation-bitmap
  *                             primitives, and the grow/flush engine.
+ * - `ra8_fs_fat_exfat_dir_internal.h` -- the exFAT DIRECTORY seam: directory
+ *                             locations and cursors, path resolution, and the
+ *                             allocate / link / retire verbs `mkdir`, `rmdir`,
+ *                             `unlink` and `write_file` share.
  *
- * The last four are split by THEME rather than alphabetically, because each
+ * The last five are split by THEME rather than alphabetically, because each
  * owns a self-contained mechanism with its own on-disk vocabulary. Folding
  * them into the alphabetical `protos_a` / `protos_b` pair would scatter one
  * mechanism's constants across two files and push all of them past the
@@ -46,6 +50,7 @@
 #pragma once
 
 #include "ra8_fs_fat_alloc_internal.h"
+#include "ra8_fs_fat_exfat_dir_internal.h"
 #include "ra8_fs_fat_exfat_stream_internal.h"
 #include "ra8_fs_fat_lfn_write_internal.h"
 #include "ra8_fs_fat_protos_a_internal.h"

@@ -127,27 +127,29 @@ static void priv_entry_to_stat(const uint8_t* entry, ra8_fs_stat_t* out)
 }
 
 /**
- * @brief `stat` a root-level name on an exFAT volume.
+ * @brief `stat` a name on an exFAT volume, at any depth.
  *
- * @details Reuses ::priv_exfat_find, which hands back the File entry's
- *          attribute byte alongside the cluster and length, so a directory is
- *          told from a file by the bit that says so.
+ * @details Reuses ::priv_exfat_lookup, which resolves the path's intermediate
+ *          components and hands back the whole Stream entry plus the File
+ *          entry's attribute byte, so a directory is told from a file by the
+ *          bit that says so and the lengths come out of the same 32 bytes.
  *
  * @param[in]  m    Mounted exFAT volume.
- * @param[in]  path Root-level name (ASCII).
+ * @param[in]  path Path (ASCII), nested or root-level.
  * @param[out] out  Receives the metadata of the entry.
  *
  * @return Error code.
- * @retval k_ra8_ok            Entry found; @p out populated.
- * @retval k_ra8_err_not_found No such name in the root directory.
- * @retval k_ra8_err_*         Backend read failure.
+ * @retval k_ra8_ok              Entry found; @p out populated.
+ * @retval k_ra8_err_not_found   No such name, or a component is missing.
+ * @retval k_ra8_err_invalid_arg An intermediate component names a file.
+ * @retval k_ra8_err_*           Backend read failure.
  *
  * @pre @p m, @p path and @p out are non-NULL; `m->type` is exFAT.
  * @pre The volume is mounted.
  * @post On success `out->attr` is the entry's own FileAttributes low byte.
  * @post No volume state is modified.
  *
- * @note Root-directory namespace only, like every other exFAT lookup here.
+ * @note The volume root is answered by the caller, before this is reached.
  *
  * @since 0.1.0
  */
@@ -156,7 +158,7 @@ static ra8_err_t priv_stat_exfat(const ra8_fs_mount_t* m, const char* path, ra8_
 {
   uint8_t         strm[k_exfat_entry_bytes] = {};
   uint8_t         attr                      = 0U;
-  const ra8_err_t err                       = priv_exfat_find(m, path, strm, &attr);
+  const ra8_err_t err                       = priv_exfat_lookup(m, path, strm, &attr);
   if (err != k_ra8_ok) {
     return err;
   }

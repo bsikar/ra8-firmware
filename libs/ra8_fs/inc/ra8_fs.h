@@ -54,14 +54,22 @@
  *   - Unlink (mark dir entry 0xE5, free chain) and rmdir of an empty
  *     directory. Both refuse the wrong kind of entry: `unlink` will not take
  *     a directory and `rmdir` will not take a file.
+ *   - Directories on exFAT too, not only on FAT: `mkdir`, `rmdir`, nested path
+ *     resolution and per-directory listing. An exFAT directory is the same
+ *     File + Stream + Name entry set a file gets, with the Directory attribute
+ *     and a zeroed cluster behind it, and no "." / ".." entries -- exFAT has
+ *     none.
  *
  * ## What this deliberately skips
  *   - Non-ASCII characters in a long name. The on-disk encoding is UTF-16LE
  *     and a name is read back through it, but a code point above 0x7F is
  *     rendered `?` on read and refused on write.
  *   - Long names on exFAT, which has its own (unrelated) name encoding.
- *   - exFAT directory creation and removal (`mkdir` / `rmdir` are FAT-only;
- *     both are supported there, including nested-path resolution).
+ *   - GROWING a directory. A directory holds as many entry sets as fit the
+ *     clusters it was created with, and reports `k_ra8_err_no_mem` past that
+ *     rather than extending itself. On exFAT the run is contiguous and carries
+ *     NoFatChain, so extending it means either finding the adjacent cluster
+ *     free or converting the run to a FAT chain.
  *   - Multi-partition MBR scanning (only partition 0 is followed; a
  *     superfloppy BPB at LBA 0 is still supported transparently).
  *
@@ -676,7 +684,8 @@ ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_l
  * the second call's contents, with no space lost to the first.
  *
  * @param[in] handle Mounted volume.
- * @param[in] path   Flat root-level file name (ASCII).
+ * @param[in] path   File path (ASCII); nested paths resolve on both
+ *                   filesystems, provided every intermediate directory exists.
  * @param[in] data   File contents.
  * @param[in] len    Byte count; 0 leaves an empty file.
  *
@@ -731,8 +740,8 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
  * geometry: it always exists and is always a directory.
  *
  * @param[in]  handle Mount handle.
- * @param[in]  path   NUL-terminated path. Nested paths resolve on FAT12/16/32;
- *                    exFAT resolves root-level names only.
+ * @param[in]  path   NUL-terminated path. Nested paths resolve on every
+ *                    supported filesystem, FAT12/16/32 and exFAT alike.
  * @param[out] out    Receives the entry's metadata on success.
  *
  * @return ra8_err_t Error code.
@@ -774,18 +783,21 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
 /**
  * @brief Enumerate directory entries; invoke `cb` once per visible entry.
  *
- * @details FAT12/16/32 enumerate any directory by path (`"/"` for the root,
- * `"/books"` for a subdirectory). exFAT enumeration remains root-only (`"/"`).
+ * @details Every supported filesystem enumerates any directory by path (`"/"`
+ * for the root, `"/books"` for a subdirectory) -- exFAT included since #605.
+ * FAT's synthetic "." and ".." entries are not reported; exFAT has none to
+ * report. A subdirectory appears in its parent's listing like any other entry,
+ * with the directory bit set in the `attr` argument.
  *
  * @param[in] handle Mount handle.
- * @param[in] path   Directory path (`"/"` or a nested path on FAT).
+ * @param[in] path   Directory path (`"/"` or a nested path).
  * @param[in] cb     Callback (must be non-NULL).
  * @param[in] ctx    Cookie forwarded to the callback.
  *
  * @retval k_ra8_ok                 Enumeration complete.
  * @retval k_ra8_err_null_ptr       handle/cb NULL.
  * @retval k_ra8_err_not_found      A path component does not exist.
- * @retval k_ra8_err_not_supported  exFAT path other than "/".
+ * @retval k_ra8_err_invalid_arg    A path component names a file.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
@@ -844,8 +856,9 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
  * the access stamp is the honest record that the entry was touched.
  *
  * @param[in] handle   Mount handle.
- * @param[in] old_path Existing root-level name.
- * @param[in] new_path Replacement name (must not already exist).
+ * @param[in] old_path Existing path.
+ * @param[in] new_path Replacement path, in the same directory (must not
+ *                     already exist).
  *
  * @retval k_ra8_ok                File renamed.
  * @retval k_ra8_err_null_ptr      Any pointer arg is NULL.
@@ -864,16 +877,23 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
 ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path);
 
 /**
- * @brief Create a directory at @p path (FAT12/16/32).
+ * @brief Create a directory at @p path.
  *
  * @details Resolves all-but-the-last path component to an existing parent
- * directory, then creates the final component as a new, empty subdirectory with
- * "." and ".." links. Nested paths are supported (`"/books/scifi"`), provided
- * each intermediate component already exists. A leaf that is not
- * 8.3-representable is stored as a long name, exactly as `ra8_fs_open()`
- * stores one.
- * exFAT directory creation is not supported. A partial allocation is rolled
- * back on failure, so the volume is never leaked.
+ * directory, then creates the final component as a new, empty subdirectory.
+ * Nested paths are supported (`"/books/scifi"`), provided each intermediate
+ * component already exists. A partial allocation is rolled back on failure, so
+ * the volume is never leaked.
+ *
+ * On FAT the new directory is stamped with its "." and ".." links, and a leaf
+ * that is not 8.3-representable is stored as a long name, exactly as
+ * `ra8_fs_open()` stores one. On exFAT the new directory is one zeroed cluster
+ * -- entry type 0x00 is end-of-directory, so that IS an empty directory -- and
+ * there are no dot entries at all, because exFAT has none.
+ *
+ * An existing name is REFUSED with ::k_ra8_err_exists, whether it is a file or
+ * a directory. `mkdir` is not a create-or-replace verb; `ra8_fs_write_file()`
+ * is the one that replaces.
  *
  * @param[in,out] handle Mount handle.
  * @param[in]     path   NUL-terminated directory path to create.
@@ -888,7 +908,6 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  * @retval k_ra8_err_exists        The name already exists in the parent.
  * @retval k_ra8_err_not_found     An intermediate component does not exist.
  * @retval k_ra8_err_no_mem        Parent directory or volume is full.
- * @retval k_ra8_err_not_supported The volume is exFAT.
  *
  * @pre `handle` and `path` are non-NULL; the parent path exists.
  * @pre Mount is in use.
@@ -902,22 +921,23 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
 [[nodiscard]] ra8_err_t ra8_fs_mkdir(ra8_fs_mount_t* handle, const char* path);
 
 /**
- * @brief Remove an empty directory at @p path (FAT12/16/32).
+ * @brief Remove an empty directory at @p path.
  *
  * @details The symmetric partner of `ra8_fs_mkdir()`: resolves all-but-the-last
  * path component to an existing parent, requires the final component to be an
- * existing directory, requires that directory to hold nothing but its own "."
- * and ".." links, then frees its cluster chain and marks its entry in the parent
- * deleted. Nested paths are supported (`"/books/scifi"`).
+ * existing directory, requires that directory to be empty, then frees its
+ * clusters and takes its entry away. Nested paths are supported
+ * (`"/books/scifi"`).
  *
  * The emptiness proof runs before anything is freed, so a refusal costs the
- * volume nothing. Deleted (0xE5) slots and orphaned long-name remnants do not
- * count as contents, so a directory that some other implementation left
- * remnants in is still removable. The directory's own long-name chain, if it
- * has one, goes with its entry.
+ * volume nothing. Only remnants are discounted -- FAT's deleted (0xE5) slots
+ * and orphaned long-name entries, exFAT's entries with the in-use bit clear --
+ * so a directory another implementation left remnants in is still removable,
+ * while anything live makes it ::k_ra8_err_not_empty. On FAT the directory's
+ * own "." and ".." links do not count either; exFAT has none to discount.
  *
  * The volume root is not removable, and neither is a file: use `ra8_fs_unlink()`
- * for those. exFAT is not supported, matching `ra8_fs_mkdir()`.
+ * for those.
  *
  * @param[in,out] handle Mount handle.
  * @param[in]     path   NUL-terminated directory path to remove.
@@ -932,7 +952,6 @@ ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path
  * @retval k_ra8_err_not_empty      The directory still holds entries.
  * @retval k_ra8_err_protocol_error Corrupt chain, or a directory entry that
  *                                  claims no data cluster.
- * @retval k_ra8_err_not_supported  The volume is exFAT.
  *
  * @pre `handle` and `path` are non-NULL; the mount is in use.
  * @pre No open file handle refers to an entry inside @p path.

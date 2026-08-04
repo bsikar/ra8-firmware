@@ -7,8 +7,11 @@
  * they are inverses over the same on-disk shape: `mkdir` allocates a cluster,
  * stamps `.` and `..` into it and links an ATTR_DIRECTORY entry, and `rmdir`
  * undoes exactly that -- after proving the directory holds nothing but those
- * two dot entries. Neither is available on exFAT, which this driver has no
- * directory-creation path for at all.
+ * two dot entries.
+ *
+ * The public entry points at the bottom dispatch: exFAT has neither dot entries
+ * nor a parent back-link, so its half lives in `ra8_fs_fat_exfat_dir.c` (#605)
+ * rather than being bent into the FAT shape here.
  *
  * Split out of `ra8_fs_fat_dir.c` for the 1000-line file-size cap.
  *
@@ -193,8 +196,8 @@ static ra8_err_t priv_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
 /**
  * @brief Create a directory -- the guarded body of ::ra8_fs_mkdir().
  *
- * @details Validates arguments and the mount, then dispatches to the FAT
- *          directory creator. exFAT directory creation is not yet supported.
+ * @details Validates arguments and the mount, then dispatches to the FAT or
+ *          the exFAT directory creator (#605).
  *
  * @param[in,out] handle Mount handle.
  * @param[in]     path   NUL-terminated directory path to create.
@@ -203,8 +206,7 @@ static ra8_err_t priv_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
  * @retval k_ra8_ok                Directory created.
  * @retval k_ra8_err_null_ptr      `handle` or `path` was NULL.
  * @retval k_ra8_err_invalid_state Mount not in use.
- * @retval k_ra8_err_not_supported The volume is exFAT.
- * @retval k_ra8_err_*             See `priv_fat_mkdir`.
+ * @retval k_ra8_err_*             See `priv_fat_mkdir` / `priv_exfat_mkdir`.
  *
  * @pre The library lock is held (or none is installed).
  * @pre `handle` and `path` are non-NULL.
@@ -230,7 +232,7 @@ static ra8_err_t priv_mkdir_locked(ra8_fs_mount_t* handle, const char* path)
     return k_ra8_err_invalid_state;
   }
   if (handle->type == k_ra8_fs_type_exfat) {
-    return k_ra8_err_not_supported;
+    return priv_exfat_mkdir(handle, path);
   }
   return priv_fat_mkdir(handle, path);
 }
@@ -478,11 +480,12 @@ static ra8_err_t priv_fat_rmdir(const ra8_fs_mount_t* handle, const char* path)
 /**
  * @brief Remove an empty directory -- the guarded body of ::ra8_fs_rmdir().
  *
- * @details Validates arguments and the mount, then dispatches to the FAT
- *          directory remover. exFAT directory removal is not supported, for
- *          the same reason exFAT `mkdir` is not: this driver has no exFAT
- *          directory-creation path, so an exFAT volume mounted here never
- *          contains a directory it made.
+ * @details Validates arguments and the mount, then dispatches to the FAT or
+ *          the exFAT directory remover (#605). exFAT `rmdir` landed with exFAT
+ *          `mkdir`, in one change: before it, a volume mounted here never
+ *          contained a directory this driver had made, so the verb had no
+ *          reachable subject and could only have been exercised against a
+ *          hand-crafted fixture.
  *
  * @param[in,out] handle Mount handle.
  * @param[in]     path   NUL-terminated directory path to remove.
@@ -491,8 +494,7 @@ static ra8_err_t priv_fat_rmdir(const ra8_fs_mount_t* handle, const char* path)
  * @retval k_ra8_ok                Directory removed.
  * @retval k_ra8_err_null_ptr      `handle` or `path` was NULL.
  * @retval k_ra8_err_invalid_state Mount not in use.
- * @retval k_ra8_err_not_supported The volume is exFAT.
- * @retval k_ra8_err_*             See `priv_fat_rmdir`.
+ * @retval k_ra8_err_*             See `priv_fat_rmdir` / `priv_exfat_rmdir`.
  *
  * @pre The library lock is held (or none is installed).
  * @pre `handle` and `path` are non-NULL.
@@ -518,7 +520,7 @@ static ra8_err_t priv_rmdir_locked(ra8_fs_mount_t* handle, const char* path)
     return k_ra8_err_invalid_state;
   }
   if (handle->type == k_ra8_fs_type_exfat) {
-    return k_ra8_err_not_supported;
+    return priv_exfat_rmdir(handle, path);
   }
   return priv_fat_rmdir(handle, path);
 }
