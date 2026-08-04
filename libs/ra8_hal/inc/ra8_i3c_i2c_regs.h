@@ -87,46 +87,47 @@ typedef enum : uint8_t {
  * be touched.
  */
 typedef struct {
-  volatile uint32_t PRTS;          /**< +0x000 Protocol Selection (HUM 40.2, p 2452).          */
-  volatile uint32_t RESERVED0[3];  /**< Reserved.                                              */
-  volatile uint32_t CECTL;         /**< +0x010 Clock Enable Control (HUM 40.2, p 2453).        */
-  volatile uint32_t BCTL;          /**< +0x014 Bus Control (HUM 40.2, p 2454).                 */
-  volatile uint32_t MSDVAD;        /**< +0x018 Controller Device Address (HUM 40.2, p 2455).   */
-  volatile uint32_t RESERVED1;     /**< Reserved.                                              */
-  volatile uint32_t RSTCTL;        /**< +0x020 Reset Control (HUM 40.2, p 2456).               */
-  volatile uint32_t PRSST;         /**< +0x024 Present State (HUM 40.2, p 2457).               */
-  volatile uint32_t RESERVED2[2];  /**< Reserved.                                              */
-  volatile uint32_t INST;          /**< +0x030 Internal Status (HUM 40.2, p 2458).             */
-  volatile uint32_t INSTE;         /**< +0x034 Internal Status Enable (HUM 40.2, p 2459).      */
-  volatile uint32_t INIE;          /**< +0x038 Internal Interrupt Enable (HUM 40.2, p 2460).   */
-  volatile uint32_t INSTFC;        /**< +0x03C Internal Status Force (HUM 40.2, p 2460).       */
-  volatile uint32_t RESERVED3;     /**< Reserved.                                              */
-  volatile uint32_t DVCT;          /**< +0x044 Device Characteristic Table (HUM 40.2, p 2460). */
-  volatile uint32_t RESERVED4[4];  /**< Reserved.                                              */
-  volatile uint32_t IBINCTL;       /**< +0x058 IBI Notify Control (HUM 40.2, p 2460).          */
-  volatile uint32_t RESERVED5;     /**< Reserved.                                              */
-  volatile uint32_t BFCTL;         /**< +0x060 Bus Function Control (HUM 40.2, p 2461).        */
-  volatile uint32_t SVCTL;         /**< +0x064 Peripheral Control (HUM 40.2, p 2461).          */
-  volatile uint32_t RESERVED6[2];  /**< Reserved.                                              */
-  volatile uint32_t REFCKCTL;      /**< +0x070 Reference Clock Control (HUM 40.2, p 2462).     */
-  volatile uint32_t STDBR;         /**< +0x074 Standard Bit Rate (HUM 40.2, p 2462).           */
-  volatile uint32_t EXTBR;         /**< +0x078 Extended Bit Rate (HUM 40.2, p 2463).           */
-  volatile uint32_t BFRECDT;       /**< +0x07C Bus Free Cond Detect Time (HUM 40.2, p 2463).   */
+  volatile uint32_t PRTS;          /**< +0x000 Protocol Selection (HUM 40.2, p 2452).             */
+  volatile uint32_t RESERVED0[3];  /**< Reserved.                                                 */
+  volatile uint32_t CECTL;         /**< +0x010 Clock Enable Control (HUM 40.2, p 2453).           */
+  volatile uint32_t BCTL;          /**< +0x014 Bus Control (HUM 40.2, p 2454).                    */
+  volatile uint32_t MSDVAD;        /**< +0x018 Controller Device Address (HUM 40.2, p 2455).      */
+  volatile uint32_t RESERVED1;     /**< Reserved.                                                 */
+  volatile uint32_t RSTCTL;        /**< +0x020 Reset Control (HUM 40.2, p 2456).                  */
+  volatile uint32_t PRSST;         /**< +0x024 Present State (HUM 40.2, p 2457).                  */
+  volatile uint32_t RESERVED2[2];  /**< Reserved.                                                 */
+  volatile uint32_t INST;          /**< +0x030 Internal Status (HUM 40.2, p 2458).                */
+  volatile uint32_t INSTE;         /**< +0x034 Internal Status Enable (HUM 40.2, p 2459).         */
+  volatile uint32_t INIE;          /**< +0x038 Internal Interrupt Enable (HUM 40.2, p 2460).      */
+  volatile uint32_t INSTFC;        /**< +0x03C Internal Status Force (HUM 40.2, p 2460).          */
+  volatile uint32_t RESERVED3;     /**< Reserved.                                                 */
+  volatile uint32_t DVCT;          /**< +0x044 Device Characteristic Table (HUM 40.2, p 2460).    */
+  volatile uint32_t RESERVED4[4];  /**< Reserved.                                                 */
+  volatile uint32_t IBINCTL;       /**< +0x058 IBI Notify Control (HUM 40.2, p 2460).             */
+  volatile uint32_t RESERVED5;     /**< Reserved.                                                 */
+  volatile uint32_t BFCTL;         /**< +0x060 Bus Function Control (HUM 40.2, p 2461).           */
+  volatile uint32_t SVCTL;         /**< +0x064 Peripheral Control (HUM 40.2, p 2461).             */
+  volatile uint32_t RESERVED6[2];  /**< Reserved.                                                 */
+  volatile uint32_t REFCKCTL;      /**< +0x070 Reference Clock Control (HUM 40.2, p 2462).        */
+  volatile uint32_t STDBR;         /**< +0x074 Standard Bit Rate (HUM 40.2, p 2462).              */
+  volatile uint32_t EXTBR;         /**< +0x078 Extended Bit Rate (HUM 40.2, p 2463).              */
+  volatile uint32_t BFRECDT;       /**< +0x07C Bus Free Cond Detect Time (HUM 40.2, p 2463).      */
   volatile uint32_t BAVLCDT;       /**< +0x080 Bus Available Cond Detect Time (HUM 40.2, p 2464). */
-  volatile uint32_t BIDLCDT;       /**< +0x084 Bus Idle Cond Detect Time (HUM 40.2, p 2464). */
-  volatile uint32_t OUTCTL;        /**< +0x088 Output Control (HUM 40.2, p 2465).            */
-  volatile uint32_t INCTL;         /**< +0x08C Input Control (HUM 40.2, p 2466).             */
-  volatile uint32_t TMOCTL;        /**< +0x090 Timeout Control (HUM 40.2, p 2466).           */
-  volatile uint32_t RESERVED7;     /**< Reserved.                                            */
-  volatile uint32_t WUCTL;         /**< +0x098 Wake Up Unit Control (HUM 40.2, p 2467).      */
-  volatile uint32_t RESERVED8;     /**< Reserved.                                            */
-  volatile uint32_t ACKCTL;        /**< +0x0A0 Acknowledge Control (HUM 40.2, p 2468).       */
-  volatile uint32_t SCSTRCTL;      /**< +0x0A4 SCL Stretch Control (HUM 40.2, p 2469).       */
-  volatile uint32_t RESERVED9[2];  /**< Reserved.                                            */
-  volatile uint32_t SCSTLCTL;      /**< +0x0B0 SCL Stalling Control (HUM 40.2, p 2470).      */
-  volatile uint32_t RESERVED10[3]; /**< Reserved.                                            */
-  volatile uint32_t SVTDLG0; /**< +0x0C0 Peripheral Transfer Data Length 0 (HUM 40.2, p 2470). */
-  volatile uint32_t RESERVED11[k_ra8_i3c_i2c_rsv_words_svtdlg_to_stctl]; /**< Reserved. */
+  volatile uint32_t BIDLCDT;       /**< +0x084 Bus Idle Cond Detect Time (HUM 40.2, p 2464).      */
+  volatile uint32_t OUTCTL;        /**< +0x088 Output Control (HUM 40.2, p 2465).                 */
+  volatile uint32_t INCTL;         /**< +0x08C Input Control (HUM 40.2, p 2466).                  */
+  volatile uint32_t TMOCTL;        /**< +0x090 Timeout Control (HUM 40.2, p 2466).                */
+  volatile uint32_t RESERVED7;     /**< Reserved.                                                 */
+  volatile uint32_t WUCTL;         /**< +0x098 Wake Up Unit Control (HUM 40.2, p 2467).           */
+  volatile uint32_t RESERVED8;     /**< Reserved.                                                 */
+  volatile uint32_t ACKCTL;        /**< +0x0A0 Acknowledge Control (HUM 40.2, p 2468).            */
+  volatile uint32_t SCSTRCTL;      /**< +0x0A4 SCL Stretch Control (HUM 40.2, p 2469).            */
+  volatile uint32_t RESERVED9[2];  /**< Reserved.                                                 */
+  volatile uint32_t SCSTLCTL;      /**< +0x0B0 SCL Stalling Control (HUM 40.2, p 2470).           */
+  volatile uint32_t RESERVED10[3]; /**< Reserved.                                                 */
+  volatile uint32_t SVTDLG0;       /**< +0x0C0 Peripheral Xfer Data Length 0 (HUM 40.2, p 2470).  */
+  /** Reserved. */
+  volatile uint32_t RESERVED11[k_ra8_i3c_i2c_rsv_words_svtdlg_to_stctl];
   volatile uint32_t STCTL;         /**< +0x120 Synchronous Timing Control (HUM 40.2, p 2471).  */
   volatile uint32_t ATCTL;         /**< +0x124 Asynchronous Timing Control (HUM 40.2, p 2472). */
   volatile uint32_t ATTRG;         /**< +0x128 Asynchronous Timing Trigger (HUM 40.2, p 2472). */
@@ -137,7 +138,8 @@ typedef struct {
   volatile uint32_t NCMDQP;        /**< +0x150 Normal Command Queue Port (HUM 40.2, p 2473).   */
   volatile uint32_t NRSPQP;        /**< +0x154 Normal Response Queue Port (HUM 40.2, p 2475).  */
   volatile uint32_t NTDTBP0;       /**< +0x158 Normal Tx/Rx Data Buffer 0 (HUM 40.2, p 2476).  */
-  volatile uint32_t RESERVED14[k_ra8_i3c_i2c_rsv_words_ntdtbp0_to_nibiqp]; /**< Reserved. */
+  /** Reserved. */
+  volatile uint32_t RESERVED14[k_ra8_i3c_i2c_rsv_words_ntdtbp0_to_nibiqp];
   volatile uint32_t NIBIQP;    /**< +0x17C Normal IBI Queue Port (HUM 40.2, p 2477).        */
   volatile uint32_t NRSQP;     /**< +0x180 Normal Receive Status Queue (HUM 40.2, p 2477).  */
   volatile uint32_t HCMDQP;    /**< +0x184 High Priority Cmd Queue Port (HUM 40.2, p 2478). */
@@ -145,7 +147,8 @@ typedef struct {
   volatile uint32_t HTDTBP;    /**< +0x18C High Priority Tx Data Buffer (HUM 40.2, p 2478). */
   volatile uint32_t NQTHCTL;   /**< +0x190 Normal Queue Threshold Ctrl (HUM 40.2, p 2479).  */
   volatile uint32_t NTBTHCTL0; /**< +0x194 Normal Tx/Rx Threshold 0 (HUM 40.2, p 2480).     */
-  volatile uint32_t RESERVED15[k_ra8_i3c_i2c_rsv_words_ntbthctl_to_nrqthc]; /**< Reserved. */
+  /** Reserved. */
+  volatile uint32_t RESERVED15[k_ra8_i3c_i2c_rsv_words_ntbthctl_to_nrqthc];
   volatile uint32_t NRQTHCTL;      /**< +0x1C0 Normal RxStatus Threshold (HUM 40.2, p 2481).    */
   volatile uint32_t HQTHCTL;       /**< +0x1C4 High Priority Q Threshold (HUM 40.2, p 2481).    */
   volatile uint32_t HTBTHCTL;      /**< +0x1C8 High Priority Tx Threshold (HUM 40.2, p 2482).   */

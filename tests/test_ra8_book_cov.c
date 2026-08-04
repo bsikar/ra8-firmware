@@ -40,8 +40,9 @@ typedef enum : uint8_t {
  */
 typedef enum : uint32_t {
   k_crc32_init =
-    0xFFFFFFFFU, /**< CRC-32 initial value, the final XOR-out, and the mask that flips a valid CRC to corrupt it. */
-  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial. */
+    0xFFFFFFFFU, /**< CRC-32 init value, final XOR-out, and the mask that corrupts a valid CRC. */
+  /** The reflected CRC-32 polynomial. */
+  k_crc32_poly_reflected = 0xEDB88320U,
 } book_cov_fixture2_t;
 
 /**

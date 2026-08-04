@@ -26,7 +26,7 @@
  */
 typedef enum : uint8_t {
   k_rtt_read_offset =
-    5U, /**< A non-zero read cursor, so the wrap arithmetic is exercised rather than the empty-ring shortcut. */
+    5U, /**< Non-zero read cursor, so wrap arithmetic runs, not the empty-ring shortcut. */
 } app_rtt_log_demo_fixture_t;
 
 typedef enum : uint32_t {

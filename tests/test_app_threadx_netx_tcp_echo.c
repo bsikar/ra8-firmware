@@ -42,7 +42,7 @@
  */
 typedef enum : uint8_t {
   k_sys_oscsf_all_ready =
-    0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready. */
+    0xFFU, /**< Every oscillator-stabilisation flag set; clock bring-up sees all sources ready. */
 } app_threadx_netx_tcp_echo_fixture_t;
 
 /**
@@ -51,7 +51,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_eth_handler_ctx_token =
-    0xCAFEU, /**< Token handed to the Ethernet handler and checked on the way back, proving the context pointer survives. */
+    0xCAFEU, /**< Token handed to the Ethernet handler, checked on return, context survives. */
 } app_threadx_netx_tcp_echo_fixture2_t;
 
 /**

@@ -281,9 +281,9 @@ typedef enum : uint32_t {
 
   /* Layer-3 glyph atlas (#164): cache rasterised body glyphs in SDRAM so page
    * turns reuse them instead of re-running stb_truetype every frame. */
-  k_er_glyph_cell_px    = 64U,                                     /**< Cell edge, px (>= body). */
-  k_er_glyph_cell_bytes = k_er_glyph_cell_px * k_er_glyph_cell_px, /**< Bytes per cell.          */
-  k_er_glyph_cells      = 256U,                                    /**< Glyph-cache budget.      */
+  k_er_glyph_cell_px    = 64U,                                     /**< Cell edge, px (>= body).  */
+  k_er_glyph_cell_bytes = k_er_glyph_cell_px * k_er_glyph_cell_px, /**< Bytes per cell.           */
+  k_er_glyph_cells      = 256U,                                    /**< Glyph-cache budget.       */
   k_er_glyph_buckets    = 512U,                                    /**< Glyph-cache hash buckets. */
 } er_reflow_cfg_t;
 

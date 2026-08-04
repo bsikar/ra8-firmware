@@ -45,11 +45,11 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_comic_filler_stride =
-    31U, /**< Stride of the filler generator, `i * 31 + (i >> 3)`; prime, so the filler stays incompressible enough to be recognisable. */
+    31U, /**< Stride `i * 31 + (i >> 3)`; prime, so filler stays incompressible, recognisable. */
   k_comic_truncated_arc_bytes =
-    22U, /**< Archive truncated to fewer bytes than its own header claims, so the reader must fail rather than read past the end. */
+    22U, /**< Archive shorter than its header claims; reader must fail, not read past the end. */
   k_comic_page_side_px =
-    5U, /**< Side of the square fixture page, in pixels; small enough that a whole page fits one tile. */
+    5U, /**< Square fixture page side, in pixels; small enough a whole page fits one tile. */
 } comic_fixture_t;
 
 /**

@@ -20,7 +20,7 @@
  */
 typedef enum : uint8_t {
   k_acmphs_probe_cmpctl =
-    0xFFU, /**< Every CMPCTL bit set, so a configure that clears the wrong field leaves evidence in the rest. */
+    0xFFU, /**< Every CMPCTL bit set, so clearing the wrong field leaves evidence in the rest. */
 } acmphs_fixture_t;
 
 typedef enum : uint8_t {

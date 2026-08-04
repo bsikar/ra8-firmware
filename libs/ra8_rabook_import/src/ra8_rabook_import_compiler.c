@@ -74,7 +74,7 @@ static ra8_err_t s_source_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_
   RA8_CHECK_NULL_PTR(ctx, s_tag, "source_read: ctx");
   RA8_CHECK_NULL_PTR(buf, s_tag, "source_read: buf");
   if (offset > (uint64_t)UINT32_MAX) {
-    return k_ra8_err_out_of_range; /* GCOVR_EXCL_LINE -- the object size is an ra8_fs_size result (32-bit) and the loader clamps offsets within it */
+    return k_ra8_err_out_of_range; /* GCOVR_EXCL_LINE -- ra8_fs_size is 32-bit, so offsets fit */
   }
   ra8_fs_file_t* file = (ra8_fs_file_t*)ctx;
   ra8_err_t      err  = ra8_fs_seek(file, (uint32_t)offset);
@@ -87,7 +87,7 @@ static ra8_err_t s_source_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_
     return err; /* corrupt FAT chain / backend fault mid-stream */
   }
   if (got != len) {
-    return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE -- defensive: ra8_fs_read reports ok only after producing every requested in-bounds byte */
+    return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE -- ra8_fs_read reports ok only when fully read */
   }
   return k_ra8_ok;
 }
@@ -122,7 +122,7 @@ s_cache_bind(const ra8_rabook_import_compiler_ctx_t* ctx, import_stream_t* ss, u
   RA8_CHECK_NULL_PTR(ss->file, s_tag, "file");
   ra8_err_t err = ra8_vsource_init(&ss->vsrc, &ss->obj, 1U);
   if (err != k_ra8_ok) {
-    return err; /* GCOVR_EXCL_LINE -- registry storage is this frame's own struct, never NULL/zero */
+    return err; /* GCOVR_EXCL_LINE -- registry storage is the frame's own struct, never NULL/zero */
   }
   uint32_t oid = 0U;
   err = ra8_vsource_add_paged(&ss->vsrc, s_source_read, ss->file, 0U, (uint64_t)size, &oid);

@@ -39,10 +39,11 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_fs_pattern_stride =
-    31U, /**< Stride of the payload generator, `i * 31 + 7`; prime, so the pattern does not repeat inside a sector. */
+    31U, /**< Payload stride, `i * 31 + 7`; prime, so the pattern never repeats inside a sector. */
   k_fs_spc_max =
-    128U, /**< The largest sectors-per-cluster the format allows, so the geometry maths is exercised at its limit. */
-  k_fs_pattern_bias = 7U, /**< Its bias, so index 0 is not byte 0. */
+    128U, /**< Largest sectors-per-cluster allowed, so geometry maths is exercised at its limit. */
+  /** Its bias, so index 0 is not byte 0. */
+  k_fs_pattern_bias = 7U,
 } fs_format_fixture_t;
 
 /**

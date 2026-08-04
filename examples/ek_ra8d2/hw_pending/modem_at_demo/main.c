@@ -71,7 +71,8 @@ typedef enum : uint32_t {
   k_modem_console_baud = 115200U, /**< J-Link OB VCOM console line rate. */
   k_modem_heartbeat_ms = 500U,    /**< LED heartbeat period after PASS.  */
   k_modem_dec_base     = 10U,     /**< Radix for integer-to-ASCII.       */
-  k_modem_uart_channel = (uint32_t)k_ra8_board_mikrobus_uart_sci_channel, /**< SCI7. */
+  /** SCI7. */
+  k_modem_uart_channel = (uint32_t)k_ra8_board_mikrobus_uart_sci_channel,
 } modem_const_t;
 
 /** @brief Per-command timeout handed to ``ra8_modem_at`` (ms). */

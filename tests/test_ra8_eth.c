@@ -33,12 +33,16 @@ typedef enum : uint8_t {
     10U, /**< A buffer size below the minimum frame, which validation must reject. */
   k_eth_channel_out_of_range =
     7U, /**< A channel index past the last real ETHA channel; init must reject it. */
-  k_eth_pattern_wrap = 0x0FU, /**< Its 16-byte wrap, so a misaligned copy shows as a phase shift. */
+  /** Its 16-byte wrap, so a misaligned copy shows as a phase shift. */
+  k_eth_pattern_wrap = 0x0FU,
   k_eth_desc_count_over_max =
-    99U, /**< A descriptor count above the driver's fixed ring size, for both the TX and RX guard. */
-  k_eth_bytes_short_frame = 128, /**< A short frame, still over the minimum. */
-  k_eth_bytes_min_frame   = 64,  /**< The 64-byte minimum Ethernet frame.    */
-  k_eth_pattern_base = 0xC0U, /**< Base byte of the frame payload generator, `0xC0 + (i & 0x0F)`. */
+    99U, /**< Descriptor count above the driver's fixed ring size, for both the TX and RX guard. */
+  /** A short frame, still over the minimum. */
+  k_eth_bytes_short_frame = 128,
+  /** The 64-byte minimum Ethernet frame. */
+  k_eth_bytes_min_frame = 64,
+  /** Base byte of the frame payload generator, `0xC0 + (i & 0x0F)`. */
+  k_eth_pattern_base = 0xC0U,
 } eth_fixture_t;
 
 /**
@@ -47,11 +51,13 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_eth_buffer_valid =
-    2000U, /**< A buffer size that satisfies it, so the neighbouring field is proven not to be the cause. */
+    2000U, /**< Satisfies it, so the neighbouring field is proven not to be the cause. */
   k_eswm_sts_probe_b =
     0xBABEU, /**< A second, different value, so the read cannot be a cached first result. */
-  k_eswm_sts_probe_a = 0xCAFEU, /**< Planted in ESWM_STS to prove the read reaches the register. */
-  k_eth_bytes_over_mtu = 2000,  /**< A frame past the configured MTU, which transmit must refuse. */
+  /** Planted in ESWM_STS to prove the read reaches the register. */
+  k_eswm_sts_probe_a = 0xCAFEU,
+  /** A frame past the configured MTU, which transmit must refuse. */
+  k_eth_bytes_over_mtu = 2000,
 } eth_fixture2_t;
 
 /**

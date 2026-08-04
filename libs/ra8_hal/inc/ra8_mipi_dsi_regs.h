@@ -776,7 +776,7 @@ typedef enum : uint16_t {
  * @invariant `sizeof(r_mipi_dsi_regs_t) == k_ra8_mipi_dsi_window_bytes`
  */
 typedef struct {
-  volatile uint32_t ISR; /**< +0x000 Interrupt status (RO). */
+  volatile uint32_t ISR;                                         /**< +0x000 IRQ status (RO).  */
   volatile uint32_t _r0[k_ra8_mipi_dsi_rsv_words_isr_to_linksr]; /**< +0x004..0x00C reserved.  */
   volatile uint32_t LINKSR;                                      /**< +0x010 Link status (RO). */
   volatile uint32_t

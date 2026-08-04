@@ -487,7 +487,8 @@ static void test_mcdc_format_null_and_ops(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&no_write, &opts)); /* V5 */
   ra8_fs_backend_t no_cap = s_backend;
   no_cap.get_capacity     = nullptr; /* write_block stays set -> isolates C2 */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&no_cap, &opts)); /* V6 */
+  /* V6 */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&no_cap, &opts));
 
   free_volume();
   TEST_END("ra8_fs MC/DC: ra8_fs_format null + ops guards");

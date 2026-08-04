@@ -48,9 +48,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_unarch_tar_n_4096 =
-    4096U, /**< Hard cap on archive members walked (NASA P10 Rule 2 loop bound). */
-  k_unarch_tar_name_cap = 512, /**< Extracted-entry name buffer capacity. */
+  k_unarch_tar_n_4096   = 4096U, /**< Hard cap on archive members walked (NASA P10 Rule 2 bound). */
+  k_unarch_tar_name_cap = 512,   /**< Extracted-entry name buffer capacity.                       */
 } unarch_tar_uint16_const_t;
 
 /** @brief Member extraction buffer. */

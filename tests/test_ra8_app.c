@@ -28,12 +28,15 @@ typedef enum : uint8_t {
   k_app_id_reader  = 20,  /**< Id of the reader app.                           */
   k_app_id_mount_b = 200, /**< Its second.                                     */
   k_app_id_settings =
-    30, /**< Id of the settings app. The three are spaced apart so an off-by-one in a lookup cannot land on a neighbour. */
-  k_app_id_freed       = 7, /**< App registered only to be freed again.   */
-  k_app_id_init_fails  = 9, /**< App whose init deliberately fails.       */
-  k_app_id_null_vtable = 5, /**< App registered with a null vtable entry. */
+    30, /**< Id of the settings app; spacing keeps an off-by-one lookup off a neighbour. */
+  /** App registered only to be freed again. */
+  k_app_id_freed = 7,
+  /** App whose init deliberately fails. */
+  k_app_id_init_fails = 9,
+  /** App registered with a null vtable entry. */
+  k_app_id_null_vtable = 5,
   k_app_poison_out =
-    99U, /**< Poison written into a count or depth out-parameter, so a call that fails without setting it is detectable. */
+    99U, /**< Poison for a count/depth out-param; a failing call that skips it is detectable. */
   k_app_id_unregistered =
     77U, /**< An id no fixture app registers, so a back-trail entry naming it must be rejected. */
 } app_fixture_t;

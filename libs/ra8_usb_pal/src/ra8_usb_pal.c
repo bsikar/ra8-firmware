@@ -107,13 +107,13 @@ typedef struct {
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool                  opened;                         /**< True once ra8_usb_pal_ep_open fired. */
-  ra8_usb_pal_ep_dir_t  dir;                            /**< Stored direction.       */
-  ra8_usb_pal_ep_type_t type;                           /**< Stored transfer type.   */
-  uint16_t              max_packet;                     /**< Stored max packet size. */
-  uint16_t              head;                           /**< Next slot to pop.       */
-  uint16_t              tail;                           /**< Next slot to push.      */
-  uint16_t              count;                          /**< In-flight packet count. */
-  ra8_usb_pal_packet_t  ring[k_ra8_usb_pal_ring_slots]; /**< Per-EP queue.           */
+  ra8_usb_pal_ep_dir_t  dir;                            /**< Stored direction.                    */
+  ra8_usb_pal_ep_type_t type;                           /**< Stored transfer type.                */
+  uint16_t              max_packet;                     /**< Stored max packet size.              */
+  uint16_t              head;                           /**< Next slot to pop.                    */
+  uint16_t              tail;                           /**< Next slot to push.                   */
+  uint16_t              count;                          /**< In-flight packet count.              */
+  ra8_usb_pal_packet_t  ring[k_ra8_usb_pal_ring_slots]; /**< Per-EP queue.                        */
 } ra8_usb_pal_ep_slot_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

@@ -28,7 +28,7 @@ typedef enum : uint8_t {
   k_sdhi_flip_mask =
     0xFFU, /**< XORed into that byte to corrupt it, so the verify step must reject the block. */
   k_sdhi_corrupt_offset =
-    100, /**< Byte of the read-back block that is flipped, well inside the block so the comparison must scan past its start. */
+    100, /**< Byte flipped in the block, well inside it so the compare must scan past its start. */
 } app_ra8_sdhi_card_demo_fixture_t;
 
 /** @brief Constants mirroring `sdhi_card_config_t` in the app. */

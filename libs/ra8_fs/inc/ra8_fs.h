@@ -262,18 +262,18 @@ typedef struct {
  * @brief Open-file state.
  */
 typedef struct {
-  ra8_fs_mount_t* mount;         /**< Owning mount point.                       */
-  uint32_t        first_cluster; /**< Head of the file's cluster chain.         */
-  uint32_t        cur_cluster;   /**< Cluster the offset currently points into. */
-  uint32_t walk_cache_idx;     /**< Read accelerator: chain index whose cluster is cached below. */
-  uint32_t walk_cache_cluster; /**< Read accelerator: cluster at walk_cache_idx; < 2 = no cache. */
-  uint32_t size_bytes;         /**< File size (DIR_FileSize).                                    */
-  uint32_t offset;             /**< Current read/write offset.                                   */
-  uint32_t dir_entry_lba;      /**< Sector containing the dir entry.                             */
-  uint32_t dir_entry_idx;      /**< Byte offset of dir entry within sector.                      */
-  ra8_fs_mode_t mode;          /**< Open mode.                                                   */
-  uint8_t       in_use;        /**< 0 = slot free, 1 = open.                                     */
-  uint8_t       no_fat_chain;  /**< exFAT contiguous file (no FAT walk).                         */
+  ra8_fs_mount_t* mount;              /**< Owning mount point.                        */
+  uint32_t        first_cluster;      /**< Head of the file's cluster chain.          */
+  uint32_t        cur_cluster;        /**< Cluster the offset currently points into.  */
+  uint32_t        walk_cache_idx;     /**< Chain index whose cluster is cached below. */
+  uint32_t        walk_cache_cluster; /**< Cluster at walk_cache_idx; < 2 = no cache. */
+  uint32_t        size_bytes;         /**< File size (DIR_FileSize).                  */
+  uint32_t        offset;             /**< Current read/write offset.                 */
+  uint32_t        dir_entry_lba;      /**< Sector containing the dir entry.           */
+  uint32_t        dir_entry_idx;      /**< Byte offset of dir entry within sector.    */
+  ra8_fs_mode_t   mode;               /**< Open mode.                                 */
+  uint8_t         in_use;             /**< 0 = slot free, 1 = open.                   */
+  uint8_t         no_fat_chain;       /**< exFAT contiguous file (no FAT walk).       */
 } ra8_fs_file_t;
 
 /* =============================================================================

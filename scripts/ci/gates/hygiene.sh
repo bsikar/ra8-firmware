@@ -665,5 +665,10 @@ gate_format() (
   set -e
   local cf
   cf="$(pick_clang_format)"
+  # format_code.sh drives check_comment_format.py, which is a DETECTOR: it is
+  # the only thing that reports a comment block clang-format tore in two.
+  # Prove it still detects before believing its verdict on the tree.
+  require_cmd python3
+  python3 scripts/checks/check_comment_format.py --selftest
   CLANG_FORMAT="$cf" bash scripts/checks/format_code.sh --check --verbose
 )

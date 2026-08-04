@@ -28,7 +28,7 @@
  */
 typedef enum : uint16_t {
   k_rtc_alarm_year =
-    2026U, /**< Alarm year; past the RTC epoch so the year field is non-zero and a dropped field is visible. */
+    2026U, /**< Alarm year, past the RTC epoch; non-zero, so a dropped field is visible. */
 } rtc_alarm_date_t;
 
 typedef enum : uint8_t {

@@ -84,7 +84,8 @@ extern "C" {
  */
 typedef struct {
   const ra8_io_blockdev_t* bd; /**< Bound block device (private; read-only use). */
-  uint8_t scratch[(uint32_t)k_ra8_io_block_size_bytes]; /**< One-sector bounce buffer (private). */
+  /** One-sector bounce buffer (private). */
+  uint8_t scratch[(uint32_t)k_ra8_io_block_size_bytes];
 } ra8_io_blockdev_vsource_ctx_t;
 
 /**

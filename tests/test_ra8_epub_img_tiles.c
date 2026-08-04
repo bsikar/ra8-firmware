@@ -47,21 +47,21 @@ typedef enum : uint8_t {
   k_tile_store_cap     = 64U, /**< Capacity of the tile memstore the import path writes into. */
   k_fig_pattern_stride = 13U, /**< Stride of the flat figure generator, `i * 13 + 7`.         */
   k_shift_byte3 =
-    24U, /**< Shift to the most significant byte; PNG lengths and CRCs are big-endian, so this byte is written first. */
-  k_png_chunk_overhead =
-    12U, /**< Bytes a chunk costs beyond its payload: 4 length + 4 type + 4 CRC. */
-  k_png_off_crc_b2         = 10U, /**< Its third byte.                                */
-  k_png_off_crc_b3         = 11U, /**< Its last byte.                                 */
-  k_png_ihdr_data_len      = 13,  /**< An IHDR chunk's data is exactly 13 bytes.      */
-  k_png_ihdr_off_height_b1 = 5,   /**< Second byte of IHDR's big-endian height field. */
+    24U, /**< Shift to the MSB; PNG lengths/CRCs are big-endian, so this byte is written first. */
+  k_png_chunk_overhead     = 12U, /**< Chunk overhead beyond payload: 4 length + 4 type + 4 CRC. */
+  k_png_off_crc_b2         = 10U, /**< Its third byte.                                           */
+  k_png_off_crc_b3         = 11U, /**< Its last byte.                                            */
+  k_png_ihdr_data_len      = 13,  /**< An IHDR chunk's data is exactly 13 bytes.                 */
+  k_png_ihdr_off_height_b1 = 5,   /**< Second byte of IHDR's big-endian height field.            */
   k_hostile_entry_bytes =
-    64, /**< Size of the corrupt atlas entry: past the magic, but far too short to hold a real header. */
-  k_png_ihdr_off_height_b3 = 7, /**< Its last byte. */
+    64, /**< Corrupt atlas entry size: past the magic, but too short to hold a real header. */
+  /** Its last byte. */
+  k_png_ihdr_off_height_b3 = 7,
   k_png_off_crc_b1 =
     9U,                /**< Second byte of a chunk's trailing CRC, 9 + len from the chunk start. */
   k_byte_mask = 0xFFU, /**< Low-byte mask used by the put16 helper.                              */
   k_fig_pattern_y_mul =
-    7U, /**< Row multiplier of the figure generator, `(x * 3 + y * 7) & 0xFF`; coprime with the column multiplier so no two pixels in a tile collide. */
+    7U, /**< Row multiplier `(x * 3 + y * 7) & 0xFF`; coprime with column mult, no collisions. */
 } epub_img_tiles_fixture_t;
 
 /**
@@ -83,16 +83,17 @@ typedef enum : uint32_t {
   k_cell_bytes = k_tile * k_tile, /**< Bytes per cache cell (gray8 tile).        */
   k_cells      = 8U,              /**< Cache cell budget.                        */
   k_buckets    = 16U,             /**< Cache hash buckets.                       */
-  k_scratch    = k_cell_bytes + (k_cell_bytes / 8U) + 256U, /**< Stored-tile staging. */
-  k_arc_cap    = 512U * 1024U, /**< Archive scratch capacity.         */
-  k_store_cap  = 256U * 1024U, /**< Per-atlas memstore capacity.      */
-  k_work_cap   = 640U * 1024U, /**< Producer work arena.              */
-  k_png_cap    = 64U * 1024U,  /**< Synthesized PNG capacity.         */
-  k_fig_bytes  = 900U,         /**< Small figure resource.            */
-  k_ldr_cap    = 2048U,        /**< Reflow-loader scratch (fits fig). */
-  k_id_big     = 1U,           /**< image_id for the big atlas.       */
-  k_id_edge    = 2U,           /**< image_id for the edge atlas.      */
-  k_id_imp     = 3U,           /**< image_id for the imported page.   */
+  /** Stored-tile staging. */
+  k_scratch   = k_cell_bytes + (k_cell_bytes / 8U) + 256U,
+  k_arc_cap   = 512U * 1024U, /**< Archive scratch capacity.         */
+  k_store_cap = 256U * 1024U, /**< Per-atlas memstore capacity.      */
+  k_work_cap  = 640U * 1024U, /**< Producer work arena.              */
+  k_png_cap   = 64U * 1024U,  /**< Synthesized PNG capacity.         */
+  k_fig_bytes = 900U,         /**< Small figure resource.            */
+  k_ldr_cap   = 2048U,        /**< Reflow-loader scratch (fits fig). */
+  k_id_big    = 1U,           /**< image_id for the big atlas.       */
+  k_id_edge   = 2U,           /**< image_id for the edge atlas.      */
+  k_id_imp    = 3U,           /**< image_id for the imported page.   */
 } tile_dim_t;
 
 /* ---------------------------------------------------------------------------

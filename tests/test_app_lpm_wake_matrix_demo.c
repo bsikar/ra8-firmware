@@ -29,7 +29,7 @@
  */
 typedef enum : uint64_t {
   k_lpm_poison_cause =
-    0xDEADBEEFCAFEBABEULL, /**< Poison written into the 64-bit wake-cause out-parameter; both halves are non-zero, so a call that set only one is detectable. */
+    0xDEADBEEFCAFEBABEULL, /**< 64-bit wake-cause poison; halves non-zero, catch half-set calls. */
 } app_lpm_wake_matrix_demo_fixture_t;
 
 /** @brief Bit-cast widths used for packing WUPEN1 into the high word. */

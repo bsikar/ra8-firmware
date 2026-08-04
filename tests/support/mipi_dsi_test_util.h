@@ -33,26 +33,26 @@ typedef enum : uint32_t {
   k_test_param0         = 0xAAU, /**< Test param0.             */
   k_test_param1         = 0x55U, /**< Test param1.             */
   k_test_isr_seed =
-    (uint32_t)k_ra8_mipi_dsi_isr_sq0 | (uint32_t)k_ra8_mipi_dsi_isr_vm, /**< Test ISR seed.    */
-  k_test_bad_vc              = 9U,                                      /**< Test bad vc.      */
-  k_test_long_len            = 8U,                                      /**< Test long length. */
-  k_test_huge_len            = 200U,                                    /**< > LP cap (128).   */
-  k_test_long_payload_first  = 0xDEU,        /**< Test long payload first.  */
-  k_test_long_payload_second = 0xADU,        /**< Test long payload second. */
-  k_test_video_h_act         = 1024U,        /**< Test video h act.         */
-  k_test_video_v_act         = 600U,         /**< Test video v act.         */
-  k_test_video_hsa           = 12U,          /**< Test video hsa.           */
-  k_test_video_hbp           = 64U,          /**< Test video hbp.           */
-  k_test_video_hfp           = 32U,          /**< Test video hfp.           */
-  k_test_video_vsa           = 4U,           /**< Test video vsa.           */
-  k_test_video_vbp           = 8U,           /**< Test video vbp.           */
-  k_test_video_vfp           = 6U,           /**< Test video vfp.           */
-  k_test_ulps_wkup           = 0x40U,        /**< Test ulps wkup.           */
-  k_test_action_code         = 0x24U,        /**< Initial skew calibration. */
-  k_test_rx_payload_w0       = 0xDEADBEEFUL, /**< Test RX payload w0.       */
-  k_test_rx_payload_w1       = 0xCAFEBABEUL, /**< Test RX payload w1.       */
-  k_test_rx_payload_w2       = 0x12345678UL, /**< Test RX payload w2.       */
-  k_test_rx_payload_w3       = 0x90ABCDEFUL, /**< Test RX payload w3.       */
+    (uint32_t)k_ra8_mipi_dsi_isr_sq0 | (uint32_t)k_ra8_mipi_dsi_isr_vm, /**< Test ISR seed.       */
+  k_test_bad_vc              = 9U,                                      /**< Test bad vc.         */
+  k_test_long_len            = 8U,                                      /**< Test long length.    */
+  k_test_huge_len            = 200U,                                    /**< > LP cap (128).      */
+  k_test_long_payload_first  = 0xDEU,                                   /**< Long payload first.  */
+  k_test_long_payload_second = 0xADU,                                   /**< Long payload second. */
+  k_test_video_h_act         = 1024U,                                   /**< Test video h act.    */
+  k_test_video_v_act         = 600U,                                    /**< Test video v act.    */
+  k_test_video_hsa           = 12U,                                     /**< Test video hsa.      */
+  k_test_video_hbp           = 64U,                                     /**< Test video hbp.      */
+  k_test_video_hfp           = 32U,                                     /**< Test video hfp.      */
+  k_test_video_vsa           = 4U,                                      /**< Test video vsa.      */
+  k_test_video_vbp           = 8U,                                      /**< Test video vbp.      */
+  k_test_video_vfp           = 6U,                                      /**< Test video vfp.      */
+  k_test_ulps_wkup           = 0x40U,                                   /**< Test ulps wkup.      */
+  k_test_action_code         = 0x24U,                                   /**< Initial skew calib.  */
+  k_test_rx_payload_w0       = 0xDEADBEEFUL,                            /**< Test RX payload w0.  */
+  k_test_rx_payload_w1       = 0xCAFEBABEUL,                            /**< Test RX payload w1.  */
+  k_test_rx_payload_w2       = 0x12345678UL,                            /**< Test RX payload w2.  */
+  k_test_rx_payload_w3       = 0x90ABCDEFUL,                            /**< Test RX payload w3.  */
 } ra8_mipi_dsi_test_const_t;
 
 /**

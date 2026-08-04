@@ -53,9 +53,10 @@
 
 /** @enum sd_consts_t @brief Console / bus / device knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_sd_uart_baud  = 115200U, /**< Console baud.                 */
-  k_sd_bus_hz     = 100000U, /**< IIC_B standard-mode bit rate. */
-  k_sd_iic_chan   = (uint32_t)k_ra8_board_mikrobus_iic_b_channel, /**< 0. */
+  k_sd_uart_baud = 115200U, /**< Console baud.                 */
+  k_sd_bus_hz    = 100000U, /**< IIC_B standard-mode bit rate. */
+  /** 0. */
+  k_sd_iic_chan   = (uint32_t)k_ra8_board_mikrobus_iic_b_channel,
   k_sd_lsm_addr   = 0x6BU, /**< LSM6DSO 7-bit address (SA0 high). */
   k_sd_reg_whoami = 0x0FU, /**< WHO_AM_I register index.          */
   k_sd_whoami_val = 0x6CU, /**< Expected WHO_AM_I value.          */

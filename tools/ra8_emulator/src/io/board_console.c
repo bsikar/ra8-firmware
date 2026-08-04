@@ -32,7 +32,8 @@
  * @invariant @c head < ::k_board_console_ring_depth at all times.
  */
 typedef struct {
-  char     lines[k_board_console_ring_depth][k_board_console_line_cap]; /**< Row storage. */
+  /** Row storage. */
+  char     lines[k_board_console_ring_depth][k_board_console_line_cap];
   uint32_t head;  /**< Next write slot (one past newest).   */
   uint32_t count; /**< Rows held (saturates at ring depth). */
   uint32_t total; /**< Rows ever pushed (monotonic).        */

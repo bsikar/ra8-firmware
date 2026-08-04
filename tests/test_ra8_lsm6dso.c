@@ -44,8 +44,8 @@
  * @brief Values planted in registers to prove a read or write reaches them, plus protocol and on-disk field offsets.
  */
 typedef enum : uint8_t {
-  k_lsm6dso_off_z_high     = 5, /**< High byte of Z within the 6-byte little-endian XYZ block. */
-  k_lsm6dso_fifo_last_off  = 7, /**< Offset of that last byte within the FIFO data window.     */
+  k_lsm6dso_off_z_high     = 5,     /**< High byte of Z in the 6-byte little-endian XYZ block.   */
+  k_lsm6dso_fifo_last_off  = 7,     /**< Offset of that last byte within the FIFO data window.   */
   k_lsm6dso_ctrl1_xl_probe = 0x0CU, /**< A CTRL1_XL value the driver must read back unchanged.   */
   k_lsm6dso_x_high         = 0x12U, /**< X high byte of that same value.                         */
   k_lsm6dso_x_low          = 0x34U, /**< X low byte; with the high byte it forms 0x1234 = +4660. */
@@ -55,8 +55,10 @@ typedef enum : uint8_t {
     0x7FU, /**< Z high byte 0x7F, giving 0x7FFF = +32767, the most positive one. */
   k_lsm6dso_z_high_min =
     0x80U, /**< Z high byte 0x80, giving 0x8000 = -32768, the most negative 16-bit sample. */
-  k_lsm6dso_fifo_byte_first = 0xAAU, /**< First byte of the mocked FIFO word. */
-  k_lsm6dso_fifo_byte_last = 0xBBU, /**< Its last byte, distinct so a byte-order slip is visible. */
+  /** First byte of the mocked FIFO word. */
+  k_lsm6dso_fifo_byte_first = 0xAAU,
+  /** Its last byte, distinct so a byte-order slip is visible. */
+  k_lsm6dso_fifo_byte_last = 0xBBU,
   k_lsm6dso_all_ones =
     0xFFU, /**< 0xFF: makes Y read back as 0xFFFF = -1, and stands in for a wrong WHO_AM_I. */
 } lsm6dso_fixture_t;
@@ -67,7 +69,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_lsm6dso_words_poison =
-    0xFFFFU, /**< Poison written into the word-count out-parameter, so a call that fails without setting it is detectable. */
+    0xFFFFU, /**< Poison in the word-count out-parameter, so a call that skips it is detectable. */
 } lsm6dso_fixture2_t;
 
 /* =============================================================================

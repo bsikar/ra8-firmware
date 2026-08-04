@@ -124,11 +124,11 @@ RA8_INTERNAL
 static void priv_dirname(const char* path, char* dst, size_t cap)
 {
   if (dst == nullptr || cap == 0U) {
-    return; /* GCOVR_EXCL_LINE -- only callsite passes out_book->opf_dir (never NULL) and k_ra8_epub_max_path_len (never 0) */
+    return; /* GCOVR_EXCL_LINE -- passes opf_dir (never NULL), k_ra8_epub_max_path_len (never 0) */
   }
   dst[0] = '\0';
   if (path == nullptr) {
-    return; /* GCOVR_EXCL_LINE -- only callsite passes cres.opf_path (local char array, never NULL) */
+    return; /* GCOVR_EXCL_LINE -- callsite passes cres.opf_path (local array, never NULL) */
   }
   const char* slash = strrchr(path, '/');
   if (slash == nullptr) {
@@ -176,7 +176,7 @@ priv_extract(mz_zip_archive* zip, const char* name, uint8_t* buf, size_t cap, si
   }
   mz_zip_archive_file_stat st;
   if (mz_zip_reader_file_stat(zip, (mz_uint)idx, &st) == MZ_FALSE) {
-    return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- stat fails only on a corrupt central-directory entry that locate already found; no well-formed in-memory ZIP can produce this */
+    return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- stat cannot fail: locate found it */
   }
   const ra8_err_t gerr = ra8_epub_zip_guard_entry(&st);
   if (gerr != k_ra8_ok) {
@@ -186,7 +186,7 @@ priv_extract(mz_zip_archive* zip, const char* name, uint8_t* buf, size_t cap, si
     return k_ra8_err_no_mem;
   }
   if (mz_zip_reader_extract_to_mem(zip, (mz_uint)idx, buf, cap, 0U) == MZ_FALSE) {
-    return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- extraction fails only with corrupt compressed stream (bad CRC / LZ data); no well-formed in-memory ZIP can produce this after stat succeeded */
+    return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- cannot fail: stat validated it */
   }
   *got = (size_t)st.m_uncomp_size;
   return k_ra8_ok;
@@ -223,7 +223,7 @@ RA8_INTERNAL
 static void priv_zip_destroy(mz_zip_archive* zip)
 {
   if (zip == nullptr) {
-    return; /* GCOVR_EXCL_LINE -- only callsite passes (mz_zip_archive*)&out_book->zip_archive_storage[0] which is never NULL */
+    return; /* GCOVR_EXCL_LINE -- callsite passes &zip_archive_storage[0], never NULL */
   }
   mz_zip_reader_end(zip);
 }
@@ -405,10 +405,10 @@ static size_t priv_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size
 {
   const ra8_epub_stream_media_t* sm = (const ra8_epub_stream_media_t*)opaque;
   if (sm == nullptr || sm->read == nullptr) {
-    return 0U; /* GCOVR_EXCL_LINE -- open binds a validated media; miniz never calls with a NULL opaque */
+    return 0U; /* GCOVR_EXCL_LINE -- open binds validated media; never called with NULL opaque */
   }
   if (file_ofs >= sm->size) {
-    return 0U; /* GCOVR_EXCL_LINE -- miniz clamps every read to within m_archive_size before calling */
+    return 0U; /* GCOVR_EXCL_LINE -- miniz clamps reads within m_archive_size before calling */
   }
   const uint64_t avail = sm->size - file_ofs;
   const size_t   want  = ((uint64_t)n > avail) ? (size_t)avail : n;
@@ -440,7 +440,7 @@ RA8_INTERNAL
 static ra8_err_t priv_finish_open(mz_zip_archive* zip, ra8_epub_book_t* out_book)
 {
   if (zip == nullptr || out_book == nullptr) {
-    return k_ra8_err_null_ptr; /* GCOVR_EXCL_LINE -- callers pass the book's inline storage + non-NULL out_book */
+    return k_ra8_err_null_ptr; /* GCOVR_EXCL_LINE -- callers pass storage + non-NULL out_book */
   }
   /* Archive-level decompression-limits guard: an archive whose central
    * directory floods the policy entry cap dies before any entry work. */

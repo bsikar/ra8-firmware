@@ -28,10 +28,10 @@
  * @brief Values planted in registers to prove a read or write reaches them, plus poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint8_t {
-  k_bkup_registers_checked = 7U, /**< Backup registers the survival decision inspects. */
-  k_bkup_probe_index = 5U, /**< Backup register index whose contents must survive the reset. */
+  k_bkup_registers_checked = 7U, /**< Backup registers the survival decision inspects.         */
+  k_bkup_probe_index       = 5U, /**< Backup register index whose contents must survive reset. */
   k_bkup_poison_out =
-    9U, /**< Poison written into the survival and boot-count out-parameters, so a decision that set neither is detectable. */
+    9U, /**< Poison in survival and boot-count out-params; setting neither is detectable. */
 } app_bkup_survival_demo_fixture_t;
 
 /** @brief Mirror of the demo's app-local constants. */

@@ -141,10 +141,10 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t             magic; /**< ::k_ra8_crashlog_magic_valid when valid (not CRC-covered). */
-  uint32_t             crc;   /**< CRC-32 over `boot_loops`..end of record.                   */
-  uint32_t             boot_loops; /**< Monotonic recorded-fault counter; cleared by a claim. */
-  ra8_exception_last_t fault;      /**< Embedded copy of the decoded fault / NMI snapshot.    */
+  uint32_t             magic;      /**< ::k_ra8_crashlog_magic_valid if valid (not CRC-covered). */
+  uint32_t             crc;        /**< CRC-32 over `boot_loops`..end of record.                 */
+  uint32_t             boot_loops; /**< Monotonic recorded-fault counter; cleared by a claim.    */
+  ra8_exception_last_t fault;      /**< Embedded copy of the decoded fault / NMI snapshot.       */
 } ra8_crashlog_record_t;
 
 /**

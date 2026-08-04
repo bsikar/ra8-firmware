@@ -27,7 +27,7 @@
  */
 typedef enum : uint32_t {
   k_timer_poison_out =
-    0xAAAAAAAAUL, /**< Poison written into the capture out-parameter, so a read that fails without setting it is detectable. */
+    0xAAAAAAAAUL, /**< Poison in the capture out-param; a read that skips it is detectable. */
 } app_timer_capture_demo_fixture_t;
 
 typedef enum : uint32_t {

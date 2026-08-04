@@ -96,18 +96,18 @@ typedef enum : uint32_t {
   k_mg_view_rows =
     ((((uint32_t)k_panel_height_px - (uint32_t)k_mg_statusbar_h) + k_mg_tile_edge - 1U) /
      k_mg_tile_edge) +
-    1U,                                                         /**< 1:1 content rows.          */
-  k_mg_cells   = (k_mg_view_cols + 1U) * (k_mg_view_rows + 1U), /**< Frame + 1-tile pan margin. */
-  k_mg_buckets = 64U,                          /**< Cache hash buckets (>= cells).  */
-  k_mg_cell_budget_bytes = 4U * 1024U * 1024U, /**< SDRAM the tile cache may claim. */
-  k_mg_scratch           = 96U * 1024U,        /**< read_tile deflate staging.      */
-  k_mg_work_bytes        = 3203832U,           /**< SDRAM producer work arena.      */
-  k_mg_store_bytes       = 4U * 1024U * 1024U, /**< SDRAM atlas memstore.           */
-  k_mg_image_id          = 1U,                 /**< Tile-cache key image id.        */
-  k_mg_hex_nibbles       = 8U,                 /**< Hex digits in a 32-bit value.   */
-  k_mg_nibble_bits       = 4U,                 /**< Bits per hex nibble.            */
-  k_mg_nibble_mask       = 0x0FU,              /**< Low-nibble mask.                */
-  k_mg_dec_ten           = 10U,                /**< Decimal radix / hex split.      */
+    1U,                                                         /**< 1:1 content rows.            */
+  k_mg_cells   = (k_mg_view_cols + 1U) * (k_mg_view_rows + 1U), /**< Frame + 1-tile pan margin.   */
+  k_mg_buckets = 64U,                                           /**< Hash buckets (>= cells).     */
+  k_mg_cell_budget_bytes = 4U * 1024U * 1024U,                  /**< SDRAM tile cache may claim.  */
+  k_mg_scratch           = 96U * 1024U,                         /**< read_tile deflate staging.   */
+  k_mg_work_bytes        = 3203832U,                            /**< SDRAM producer work arena.   */
+  k_mg_store_bytes       = 4U * 1024U * 1024U,                  /**< SDRAM atlas memstore.        */
+  k_mg_image_id          = 1U,                                  /**< Tile-cache key image id.     */
+  k_mg_hex_nibbles       = 8U,                                  /**< Hex digits per 32-bit value. */
+  k_mg_nibble_bits       = 4U,                                  /**< Bits per hex nibble.         */
+  k_mg_nibble_mask       = 0x0FU,                               /**< Low-nibble mask.             */
+  k_mg_dec_ten           = 10U,                                 /**< Decimal radix / hex split.   */
 } mg_atlas_t;
 
 /*

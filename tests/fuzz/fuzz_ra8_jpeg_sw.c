@@ -29,7 +29,7 @@
  */
 typedef enum : uint8_t {
   k_fuzz_input_cap_log2 =
-    20, /**< Log2 of the largest input this harness accepts; longer cases are dropped so a run stays bounded. */
+    20, /**< Log2 of the largest input accepted; longer cases drop so a run stays bounded. */
 } jpeg_fuzz_bound_t;
 
 /*

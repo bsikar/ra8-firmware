@@ -29,7 +29,7 @@
  */
 typedef enum : uint8_t {
   k_xhtml_poison_len =
-    99U, /**< Poison written into a length out-parameter, so a call that fails without setting it is detectable. */
+    99U, /**< Poison in a length out-parameter, so a failed call that skips it is detectable. */
 } book_xhtml_fixture_t;
 
 /**

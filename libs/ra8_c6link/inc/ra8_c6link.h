@@ -303,7 +303,8 @@ typedef struct ra8_c6link_event {
   int32_t                 wifi_event_id; /**< Raw id, `wifi`.                         */
   uint32_t                reset_reason;  /**< Co-processor reset cause, `boot`.       */
   ra8_c6link_mac_t        bssid;         /**< AP address for the two station events.  */
-  char                    ssid[k_ra8_c6link_ssid_max + 1U]; /**< AP SSID, NUL-terminated. */
+  /** AP SSID, NUL-terminated. */
+  char ssid[k_ra8_c6link_ssid_max + 1U];
 } ra8_c6link_event_t;
 
 /**

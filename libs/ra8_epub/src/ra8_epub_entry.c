@@ -254,7 +254,7 @@ static ra8_err_t priv_open_iter(ra8_epub_book_t*                   book,
   }
   mz_zip_archive_file_stat st;
   if (mz_zip_reader_file_stat(zip, (mz_uint)idx, &st) == MZ_FALSE) {
-    return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- stat cannot fail on a just-located entry */
+    return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- stat cannot fail on a located entry */
   }
   const ra8_err_t gerr = ra8_epub_zip_guard_entry(&st);
   if (gerr != k_ra8_ok) {
@@ -303,7 +303,7 @@ static ra8_err_t priv_stored_data_offset(ra8_epub_book_t* book,
   }
   mz_zip_archive_file_stat st;
   if (mz_zip_reader_file_stat(zip, (mz_uint)idx, &st) == MZ_FALSE) {
-    return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- stat cannot fail on a just-located entry */
+    return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- stat cannot fail on a located entry */
   }
   const ra8_err_t gerr = ra8_epub_zip_guard_entry(&st);
   if (gerr != k_ra8_ok) {
@@ -407,7 +407,7 @@ ra8_err_t ra8_epub_entry_close(ra8_epub_entry_reader_t* reader)
   reader->iter     = nullptr;
   if (full) {
     if (ok == MZ_FALSE) {
-      return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- fully-read good archives pass CRC/size */
+      return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- good archives pass CRC/size */
     }
   }
   return k_ra8_ok;

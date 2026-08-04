@@ -19,7 +19,7 @@
  */
 typedef enum : uint8_t {
   k_dtc_regs_bytes =
-    0x30U, /**< Size the DTC register block must have; the static assertion fails if the struct ever drifts from the hardware layout. */
+    0x30U, /**< Required DTC register-block size; static_assert catches hardware-layout drift. */
 } dtc_fixture_t;
 
 /**
@@ -28,10 +28,11 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_dtc_probe_sts_c =
-    0xBEADU, /**< A third, differing from the second in one nibble, so a partial-width read is visible. */
+    0xBEADU, /**< A third value, one nibble off the second, so a partial-width read is visible. */
   k_dtc_probe_sts_b =
     0xBEEFU, /**< A second, different value, so the read cannot be a cached first result. */
-  k_dtc_probe_sts_a = 0xCAFEU, /**< Planted in DTCSTS to prove the read reaches the register. */
+  /** Planted in DTCSTS to prove the read reaches the register. */
+  k_dtc_probe_sts_a = 0xCAFEU,
 } dtc_fixture2_t;
 
 typedef enum : uintptr_t {

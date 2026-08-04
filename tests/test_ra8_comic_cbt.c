@@ -42,9 +42,11 @@ typedef enum : uint8_t {
   k_gzip_magic_b0 = 0x1FU, /**< First byte of the gzip magic (0x1F8B). */
   k_gzip_magic_b1 = 0x8BU, /**< Its second byte.                       */
   k_tcb_payload_len =
-    7U, /**< Length of the fixture payload, short enough that the tar entry stays inside one 512-byte record. */
-  k_tcb_name_cap = 64,    /**< Capacity of the entry-name scratch buffer.                       */
-  k_byte_mask    = 0xFFU, /**< Truncates each shifted CRC and length byte for the gzip trailer. */
+    7U, /**< Fixture payload length, short enough to stay inside one 512-byte tar record. */
+  /** Capacity of the entry-name scratch buffer. */
+  k_tcb_name_cap = 64,
+  /** Truncates each shifted CRC and length byte for the gzip trailer. */
+  k_byte_mask = 0xFFU,
 } comic_cbt_fixture_t;
 
 /**
@@ -53,7 +55,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_tcb_non_archive_bytes =
-    600U, /**< Bytes of filler presented as a non-archive, past any header the sniffer might read so the rejection is on content rather than length. */
+    600U, /**< Filler past any header the sniffer reads; rejection turns on content, not length. */
 } comic_cbt_fixture2_t;
 
 /**

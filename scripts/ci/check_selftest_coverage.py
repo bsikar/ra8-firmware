@@ -62,6 +62,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -138,13 +139,56 @@ def scan_gate_invocations(text: str) -> dict[str, bool]:
 def collect() -> dict[str, bool]:
     """Gather every gate-invoked script and whether any gate runs its selftest.
 
+    Gate bodies delegate. ``gate_format`` invokes ``format_code.sh``, and
+    *that* is what drives ``check_comment_format.py`` -- a detector every bit as
+    gate-wired as one named in the fragment itself. Reading only the fragments
+    made such a script invisible: it was neither credited as invoked nor asked
+    for its selftest, so the checker reported clean over a detector no gate ever
+    proved. The walk therefore follows first-party shell helpers to a fixed
+    point, `seen` guarding against a helper cycle.
+
     Returns:
-        ``script path -> selftest is invoked somewhere in the gate bodies``.
+        ``script path -> selftest is invoked somewhere along the gate's reach``.
     """
-    out: dict[str, bool] = {}
+    direct: dict[str, bool] = {}
     for fragment in sorted(GATE_DIR.glob("*.sh")):
         for rel, ran in scan_gate_invocations(fragment.read_text(encoding="utf-8")).items():
-            out[rel] = out.get(rel, False) or ran
+            direct[rel] = direct.get(rel, False) or ran
+
+    def read(rel: str) -> str | None:
+        path = REPO_ROOT / rel
+        return path.read_text(encoding="utf-8") if path.is_file() else None
+
+    return expand_helpers(direct, read)
+
+
+def expand_helpers(
+    direct: dict[str, bool], read_text: Callable[[str], str | None]
+) -> dict[str, bool]:
+    """Extend `direct` with the scripts its shell helpers invoke, transitively.
+
+    Args:
+        direct: ``script path -> a selftest ran`` as read from the gate bodies.
+        read_text: Returns a script's source, or None when it cannot be read.
+
+    Returns:
+        The same mapping, plus every script reachable through a ``.sh`` helper.
+        `seen` makes a helper cycle terminate rather than spin.
+    """
+    out = dict(direct)
+    queue = list(direct)
+    seen: set[str] = set()
+    while queue:
+        rel = queue.pop()
+        if rel in seen or not rel.endswith(".sh"):
+            continue
+        seen.add(rel)
+        text = read_text(rel)
+        if text is None:
+            continue
+        for sub, ran in scan_gate_invocations(text).items():
+            out[sub] = out.get(sub, False) or ran
+            queue.append(sub)
     return out
 
 
@@ -389,7 +433,34 @@ def selftest() -> int:
         expectation = "must fire" if must_fire else "must stay quiet"
         print(f"  [{'ok' if ok else 'FAIL'}] {label} ({expectation})")
 
+    # The helper walk, driven off a fixture filesystem. Without it a detector
+    # invoked through a gate's shell helper is invisible in both directions:
+    # never credited as gate-wired, never asked for its selftest.
+    helper = "scripts/checks/helper.sh"  # PATHREF-OK: selftest fixture, not a real script
+    detector = "scripts/checks/check_thing.py"  # PATHREF-OK: selftest fixture, not a real script
+    quiet_helper = {helper: f"python3 {detector}\n"}
+    loud_helper = {helper: f"python3 {detector} --selftest\npython3 {detector}\n"}
+    other = "scripts/checks/other.sh"  # PATHREF-OK: selftest fixture, not a real script
+    cyclic = {helper: f"bash {other}\n", other: f"bash {helper}\n"}
+
+    reached_quiet = expand_helpers({helper: False}, quiet_helper.get)
+    reached_loud = expand_helpers({helper: False}, loud_helper.get)
+    reached_cycle = expand_helpers({helper: False}, cyclic.get)
+
     checks: list[tuple[str, bool]] = [
+        (
+            "a detector reached through a gate helper is seen",
+            detector in reached_quiet,
+        ),
+        (
+            "its selftest going unrun through that helper is reported",
+            reached_quiet.get(detector) is False,
+        ),
+        (
+            "its selftest being run through that helper counts",
+            reached_loud.get(detector) is True,
+        ),
+        ("a helper cycle terminates", other in reached_cycle),
         ("scripts/checks/ is classified as a detector", is_detector("scripts/checks/check_asm.py")),
         (
             "scripts/ci/check_*.py is classified as a detector",

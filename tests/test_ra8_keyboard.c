@@ -24,7 +24,7 @@
  */
 typedef enum : uint8_t {
   k_keyboard_scan_rounds =
-    200U, /**< Scan rounds driven back to back, more than the debounce window, so the state machine settles. */
+    200U, /**< Scan rounds driven back to back, past the debounce window, so the state settles. */
 } keyboard_fixture_t;
 
 enum : int32_t {

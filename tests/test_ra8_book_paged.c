@@ -43,14 +43,21 @@
  * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
-  k_pbook_long_run_chars =
-    253U, /**< Characters in that single text run: more than one paged chunk, so emit_run must take its multi-chunk path and stitch the pieces byte-identically. */
-  k_pbook_node_ch2_h1_text   = 7U, /**< Text node under that section's <h1>.   */
-  k_pbook_node_ch2_para_text = 9U, /**< Text node under its <p>.               */
-  k_pbook_node_ch2_section   = 5U, /**< The <section> that chapter 2 roots at. */
+  /**
+   * Characters in that single text run: more than one paged chunk, so emit_run
+   * must take its multi-chunk path and stitch the pieces byte-identically.
+   */
+  k_pbook_long_run_chars = 253U,
+  /** Text node under that section's <h1>. */
+  k_pbook_node_ch2_h1_text = 7U,
+  /** Text node under its <p>. */
+  k_pbook_node_ch2_para_text = 9U,
+  /** The <section> that chapter 2 roots at. */
+  k_pbook_node_ch2_section = 5U,
   k_pbook_node_count =
-    10, /**< Nodes in the fixture book: the nodes[] extent and the header's node_count are the same fact. */
-  k_pbook_name_cap = 64, /**< Capacity of the single-name scratch buffer. */
+    10, /**< Node count: the nodes[] extent and the header's node_count are the same fact. */
+  /** Capacity of the single-name scratch buffer. */
+  k_pbook_name_cap = 64,
 } book_paged_fixture_t;
 
 /**
@@ -59,9 +66,11 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_pbook_long_strings_cap =
-    1024, /**< String-pool capacity of the long-run fixture, sized to hold one run longer than a paging chunk. */
-  k_pbook_strings_cap = 320, /**< String-pool capacity of the fixture.              */
-  k_pbook_render_cap  = 512, /**< Capacity of the rendered-text comparison buffers. */
+    1024, /**< String-pool capacity of the long-run fixture: room for a run past a paging chunk. */
+  /** String-pool capacity of the fixture. */
+  k_pbook_strings_cap = 320,
+  /** Capacity of the rendered-text comparison buffers. */
+  k_pbook_render_cap = 512,
 } book_paged_fixture2_t;
 
 /**

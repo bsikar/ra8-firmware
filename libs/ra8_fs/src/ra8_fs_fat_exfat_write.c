@@ -89,7 +89,7 @@ ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, ui
       return k_ra8_ok;
     }
   }
-  return k_ra8_err_not_found; /* GCOVR_EXCL_LINE -- scan sentinel: reaching here requires k_exfat_scan_limit (65536) consecutive non-EOD, non-bitmap root dir entries; no host-side input can manufacture that many raw entries without a separate cluster-allocation API that does not exist */
+  return k_ra8_err_not_found; /* GCOVR_EXCL_LINE -- k_exfat_scan_limit (65536) entries required */
 }
 
 /**

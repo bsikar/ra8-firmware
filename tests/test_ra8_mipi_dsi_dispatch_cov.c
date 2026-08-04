@@ -45,18 +45,18 @@
  * slot so each RXRSSnR read can be verified independently.
  */
 typedef enum : uint32_t {
-  k_cov_slot1_data0     = 0xA1U,        /**< data0 byte seeded into RXRSS1R. */
-  k_cov_slot1_data1     = 0x22U,        /**< data1 byte seeded into RXRSS1R. */
-  k_cov_slot2_data0     = 0xB2U,        /**< data0 byte seeded into RXRSS2R. */
-  k_cov_slot2_data1     = 0x33U,        /**< data1 byte seeded into RXRSS2R. */
-  k_cov_slot3_data0     = 0xC3U,        /**< data0 byte seeded into RXRSS3R. */
-  k_cov_slot3_data1     = 0x44U,        /**< data1 byte seeded into RXRSS3R. */
-  k_cov_slot_dt         = 0x06U,        /**< DSI data-type field (DCS read). */
-  k_cov_rstcr_seed      = 0xFFFFFFFFUL, /**< Sentinel pre-seed of RSTCR.     */
+  k_cov_slot1_data0 = 0xA1U,        /**< data0 byte seeded into RXRSS1R. */
+  k_cov_slot1_data1 = 0x22U,        /**< data1 byte seeded into RXRSS1R. */
+  k_cov_slot2_data0 = 0xB2U,        /**< data0 byte seeded into RXRSS2R. */
+  k_cov_slot2_data1 = 0x33U,        /**< data1 byte seeded into RXRSS2R. */
+  k_cov_slot3_data0 = 0xC3U,        /**< data0 byte seeded into RXRSS3R. */
+  k_cov_slot3_data1 = 0x44U,        /**< data1 byte seeded into RXRSS3R. */
+  k_cov_slot_dt     = 0x06U,        /**< DSI data-type field (DCS read). */
+  k_cov_rstcr_seed  = 0xFFFFFFFFUL, /**< Sentinel pre-seed of RSTCR.     */
+  /** Cov all ISR. */
   k_cov_all_isr         = (uint32_t)k_ra8_mipi_dsi_isr_sq0 | (uint32_t)k_ra8_mipi_dsi_isr_sq1 |
                           (uint32_t)k_ra8_mipi_dsi_isr_vm | (uint32_t)k_ra8_mipi_dsi_isr_rcv |
-                          (uint32_t)k_ra8_mipi_dsi_isr_ferr |
-                          (uint32_t)k_ra8_mipi_dsi_isr_ppi, /**< Cov all ISR. */
+                          (uint32_t)k_ra8_mipi_dsi_isr_ferr | (uint32_t)k_ra8_mipi_dsi_isr_ppi,
   k_cov_expected_fanout = 6U, /**< One user callback per interrupt class. */
 } ra8_mipi_dsi_cov_const_t;
 

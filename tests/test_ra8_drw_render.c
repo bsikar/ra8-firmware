@@ -29,11 +29,11 @@
 typedef enum : uint32_t {
   k_drw_alpha_opaque = 0xFF000000UL, /**< Alpha byte of an ARGB8888 entry set to fully opaque. */
   k_drw_grey_step =
-    0x010101UL, /**< Added once per entry to step R, G and B together, so the table is a grey ramp with no two entries alike. */
+    0x010101UL, /**< Steps R, G, B together per entry, for a grey ramp with no two alike. */
   k_drw_probe_perfcount1 =
     0x12345678UL, /**< Planted in PERFCOUNT1 to prove the read reaches the register. */
   k_drw_probe_perfcount2 =
-    0xDEADBEEFUL, /**< Planted in PERFCOUNT2; different from PERFCOUNT1 so the two cannot be confused. */
+    0xDEADBEEFUL, /**< Planted in PERFCOUNT2; differs from PERFCOUNT1 so two are not confused. */
 } drw_render_fixture_t;
 
 /**

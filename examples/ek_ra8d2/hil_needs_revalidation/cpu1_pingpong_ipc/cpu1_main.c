@@ -46,7 +46,7 @@ typedef enum : uint8_t {
  * @note Single-threaded entry.
  * @since 0.1.0
  */
-/* Self-contained IPC for CPU1 -- avoid the M85 HAL whose accessors */ /* LEGACY-OK: ARMv8-M bus-architecture term */
+/* Self-contained IPC for CPU1 -- avoid the M85 HAL whose accessors */ /* LEGACY-OK: ARM bus term */
 /* the M33 cannot all reach through its NS-controller view. Channel windows
  * via the NS alias (bit 28 set) so the IPCSAR-attributed channels are
  * reachable. HUM Ch 3.2 p 205. */
@@ -262,14 +262,14 @@ static void cpu1_sau_init(void)
  */
 [[noreturn]] void cpu1_reset_handler(void)
 {
-  /* CPU1 NS-alias-side marker. The M33 here has SECEXT disabled so it */ /* LEGACY-OK: ARMv8-M bus-architecture term */
+  /* CPU1 NS-alias-side marker. The M33 here has SECEXT disabled so it */ /* LEGACY-OK: ARM term */
   /* is hardware-locked to the NS controller state; the dedicated SRAM_CPU1
    * bank at 0x22190000 is its physical alias for these BSS reads, but
    * CPU0's J-Link memprobe sees the same bytes through the standard
    * 0x22190000 view. Bench tail: confirm 0xC0DEDEAD before the data
    * copy starts -- it tells us reset_handler actually ran and the
    * MRAM_CPU1 fetch worked. */
-  /* Markers placed in NS_SRAM (CPU0 J-Link memprobe can read this view; */ /* LEGACY-OK: ARMv8-M bus-architecture term */
+  /* Markers placed in NS_SRAM (CPU0 J-Link memprobe can read this view; */ /* LEGACY-OK: ARM bus */
   /* CPU0's SAU NS_SRAM region 0x22100000-0x221FFFE0 maps NS, and CPU1
    * as a permanent NS controller can write to the same physical bytes
    * through the NS alias 0x32100200). The chip's two views of SRAM

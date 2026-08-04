@@ -28,7 +28,7 @@
  */
 typedef enum : uint8_t {
   k_aes_flip_mask =
-    0xFFU, /**< XORed into the last ciphertext byte, so the authentication tag check must reject it. */
+    0xFFU, /**< XORed into the last ciphertext byte, so the auth tag check must reject it. */
 } app_crypto_aes_demo_fixture_t;
 
 typedef enum : uint8_t {

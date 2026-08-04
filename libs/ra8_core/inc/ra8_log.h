@@ -82,11 +82,11 @@ extern "C" {
 #define RA8_LOG_LEVEL_DEBUG (4)
 
 typedef enum : uint8_t {
-  k_ra8_log_level_none  = RA8_LOG_LEVEL_NONE,  /**< Disable all logging. */
-  k_ra8_log_level_error = RA8_LOG_LEVEL_ERROR, /**< Errors only.         */
-  k_ra8_log_level_warn  = RA8_LOG_LEVEL_WARN,  /**< Errors + warnings.   */
+  k_ra8_log_level_none  = RA8_LOG_LEVEL_NONE,  /**< Disable all logging.                          */
+  k_ra8_log_level_error = RA8_LOG_LEVEL_ERROR, /**< Errors only.                                  */
+  k_ra8_log_level_warn  = RA8_LOG_LEVEL_WARN,  /**< Errors + warnings.                            */
   k_ra8_log_level_info  = RA8_LOG_LEVEL_INFO,  /**< Errors + warnings + info (default for Debug). */
-  k_ra8_log_level_debug = RA8_LOG_LEVEL_DEBUG, /**< Everything, including per-iteration traces. */
+  k_ra8_log_level_debug = RA8_LOG_LEVEL_DEBUG, /**< Everything, including per-iteration traces.   */
 } ra8_log_level_t;
 
 #ifndef RA8_LOG_LEVEL

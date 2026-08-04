@@ -41,14 +41,15 @@
  */
 typedef enum : uint8_t {
   k_epub_reread_poison =
-    123U, /**< Poison length written before a second read, so a re-read that silently returns nothing is detectable. */
+    123U, /**< Poison length before a second read, so a silent no-op re-read is detectable. */
   k_epub_pattern_modulus =
-    251U, /**< Modulus of the second generator: prime and just under 256, giving data that varies yet still compresses. */
+    251U, /**< Second generator's modulus: prime, just under 256, so data varies yet compresses. */
   k_epub_pattern_stride =
-    37U, /**< Stride of the raw payload generator, `i * 37 + 11`; prime, so the byte pattern does not repeat within a deflate window. */
+    37U, /**< Payload stride `i * 37 + 11`; prime, so it does not repeat in a deflate window. */
   k_epub_pattern_shift =
     5U, /**< Shift XORed into that generator, adding a slowly-varying high component. */
-  k_epub_pattern_bias = 11U, /**< Its bias, so index 0 is not byte 0. */
+  /** Its bias, so index 0 is not byte 0. */
+  k_epub_pattern_bias = 11U,
 } epub_entry_fixture_t;
 
 /* ---------------------------------------------------------------------------

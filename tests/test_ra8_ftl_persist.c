@@ -37,11 +37,14 @@
  */
 typedef enum : uint8_t {
   k_ftl_pattern_stride =
-    17U, /**< Byte stride of the block generator, `i * 17 + lbn * 5 + tag`; prime, so the pattern never repeats inside a block. */
+    17U, /**< Block stride `i * 17 + lbn * 5 + tag`; prime, pattern never repeats in a block. */
   k_ftl_pattern_lbn_mul =
     5U, /**< Logical-block-number multiplier, so two blocks of one file still differ. */
-  k_ftl_tag_base =
-    100U, /**< Base generation tag of the rewrite loop; `+ rep` makes each rewrite of the same block distinguishable, which is what proves the newest copy wins. */
+  /**
+   * Base generation tag of the rewrite loop; `+ rep` makes each rewrite of
+   * the same block distinguishable, which is what proves the newest copy wins.
+   */
+  k_ftl_tag_base = 100U,
 } ftl_persist_fixture_t;
 
 /**
@@ -83,7 +86,8 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t  store[(size_t)k_persist_phys * (size_t)k_persist_block]; /**< Backing. */
+  /** Backing. */
+  uint8_t  store[(size_t)k_persist_phys * (size_t)k_persist_block];
   uint32_t block_count; /**< Advertised physical block count. */
 } persist_fake_t;
 

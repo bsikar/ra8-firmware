@@ -29,8 +29,7 @@
  * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint8_t {
-  k_dma_ch_unset =
-    0xFFU, /**< Poison DMA channel id written before an allocate, so an allocate that failed without touching it is detectable. */
+  k_dma_ch_unset = 0xFFU, /**< Poison DMA channel id; a failed allocate leaves it detectable. */
 } gpt_pwm_dma_fixture_t;
 
 /**

@@ -50,9 +50,11 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_epub_chapter_buf_bytes =
-    2048, /**< Chapter read-back buffer; larger than any fixture chapter, so a truncation is visible. */
-  k_bpb_off_sig_lo = 510, /**< Offset of the 0xAA55 boot signature's low byte. */
-  k_bpb_off_sig_hi = 511, /**< Offset of its high byte.                        */
+    2048, /**< Chapter read-back buffer; larger than any fixture chapter, truncation would show. */
+  /** Offset of the 0xAA55 boot signature's low byte. */
+  k_bpb_off_sig_lo = 510,
+  /** Offset of its high byte. */
+  k_bpb_off_sig_hi = 511,
 } epub_fs_fixture2_t;
 
 /* --- RAM block device + minimal FAT16 volume (mirrors test_ra8_fs_fat.c) --- */

@@ -167,7 +167,7 @@ static ra8_err_t priv_tile_decode(void*                 ctx,
   ra8_epub_tile_binder_t* binder = (ra8_epub_tile_binder_t*)ctx;
   const int32_t           si     = priv_find(binder, key->image_id);
   if (si < 0) {
-    return k_ra8_err_not_found; /* GCOVR_EXCL_LINE -- get() rejects unregistered ids before the cache */
+    return k_ra8_err_not_found; /* GCOVR_EXCL_LINE -- get() rejects unregistered ids before cache */
   }
   ra8_epub_tile_source_t* src   = &binder->sources[si];
   const ra8_jof_pread_fn  pread = (src->book != nullptr) ? priv_entry_pread : src->pread;

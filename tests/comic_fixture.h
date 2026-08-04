@@ -30,17 +30,21 @@
  */
 typedef enum : uint8_t {
   k_cf_pixel_col_mul =
-    5U, /**< Column multiplier of the page generator, `seed + r * 3 + c * 5`; coprime with the row multiplier so no two pixels on a page collide. */
-  k_png_ihdr_data_len = 13U, /**< An IHDR chunk's data is exactly 13 bytes. */
+    5U, /**< Page column multiplier, `seed + r * 3 + c * 5`; coprime with row multiplier. */
+  /** An IHDR chunk's data is exactly 13 bytes. */
+  k_png_ihdr_data_len = 13U,
   k_shift_byte3 =
-    24, /**< Shift to the most significant byte; PNG fields are big-endian, so this one is written first. */
+    24, /**< Shift to the most significant byte; big-endian PNG fields write this one first. */
   k_png_chunk_overhead =
     12U, /**< Bytes a PNG chunk costs beyond its payload: 4 length + 4 type + 4 CRC. */
   k_png_off_type_b1 =
     5, /**< Second byte of a chunk's four-character type field, which starts at offset 4. */
-  k_cf_scratch_kib          = 64U, /**< Scratch pool size in KiB.                       */
-  k_png_off_type_b3         = 7,   /**< Its fourth byte.                                */
-  k_png_ihdr_off_color_type = 9,   /**< IHDR's colour-type byte, 9 into the chunk data. */
+  /** Scratch pool size in KiB. */
+  k_cf_scratch_kib = 64U,
+  /** Its fourth byte. */
+  k_png_off_type_b3 = 7,
+  /** IHDR's colour-type byte, 9 into the chunk data. */
+  k_png_ihdr_off_color_type = 9,
 } comic_fixture_fixture_t;
 
 /**

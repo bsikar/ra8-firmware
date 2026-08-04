@@ -161,7 +161,8 @@ typedef struct {
   ra8_usb_speed_t           speed;       /**< Underlying controller.        */
   ra8_usb_composite_state_t state;       /**< Dispatch state machine phase. */
   uint8_t                   class_count; /**< Registered classes count.     */
-  ra8_usb_composite_class_t classes[k_ra8_usb_composite_max_classes]; /**< Table. */
+  /** Table. */
+  ra8_usb_composite_class_t classes[k_ra8_usb_composite_max_classes];
   uint8_t                   if_owner_plus_one[k_ra8_usb_composite_max_ifs];
   /**< IF -> class index + 1 (0 = unowned). */
   const uint8_t* device_desc;        /**< Cached device descriptor.    */

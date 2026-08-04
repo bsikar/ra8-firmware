@@ -25,7 +25,7 @@
  */
 typedef enum : uint8_t {
   k_bkup_field_invalid =
-    0xFFU, /**< A field value outside every enumeration it is assigned to, so each configuration guard must reject it. */
+    0xFFU, /**< A value outside every enumeration it is assigned to; each guard must reject it. */
 } bkup_tamper_fixture_t;
 
 /**

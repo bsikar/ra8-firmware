@@ -136,9 +136,12 @@ typedef struct ra8_c6_model {
   uint8_t  caps_len;                         /**< Octets of `caps` the host sent.            */
   uint16_t eth_tx_len;                       /**< Length of the last 802.3 frame sent up.    */
   uint8_t  eth_tx[k_c6m_eth_len];            /**< Its leading octets.                        */
-  uint8_t  queue[k_c6m_queue][k_ra8_c6link_frame_bytes]; /**< Frames to send.              */
-  uint8_t  head;                                         /**< Next queue slot to transmit. */
-  uint8_t  tail;                                         /**< Next free queue slot.        */
+  /** Frames to send. */
+  uint8_t queue[k_c6m_queue][k_ra8_c6link_frame_bytes];
+  /** Next queue slot to transmit. */
+  uint8_t head;
+  /** Next free queue slot. */
+  uint8_t tail;
 } ra8_c6_model_t;
 
 /**

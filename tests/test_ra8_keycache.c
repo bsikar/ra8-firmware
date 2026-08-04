@@ -28,11 +28,15 @@
 typedef enum : uint8_t {
   k_kc_image_a = 0x41U, /**< Image id of the first cache key. */
   k_kc_tile_shared =
-    7U, /**< One tile index reused across many images, so lookups must discriminate on the image half of the key. */
-  k_kc_tile_a       = 0x99U, /**< Its tile index. */
-  k_kc_image_absent = 99U, /**< An image id no entry was inserted under, so the lookup must miss. */
-  k_kc_image_b      = 0xABU, /**< Image id of a second key, sharing no byte with the first. */
-  k_kc_tile_b       = 0xCDU, /**< Its tile index.                                           */
+    7U, /**< Tile index reused across images; lookups discriminate on the image half of the key. */
+  /** Its tile index. */
+  k_kc_tile_a = 0x99U,
+  /** An image id no entry was inserted under, so the lookup must miss. */
+  k_kc_image_absent = 99U,
+  /** Image id of a second key, sharing no byte with the first. */
+  k_kc_image_b = 0xABU,
+  /** Its tile index. */
+  k_kc_tile_b = 0xCDU,
 } keycache_fixture_t;
 
 /**

@@ -76,9 +76,9 @@ typedef enum : uint8_t {
  * silicon happens to surface (HUM Ch 55.2.1 "TSCR" p 3498).
  */
 typedef enum : uint8_t {
-  k_ra8_tscr_mask_tsen = (uint8_t)(1U << 4U), /**< TSEN bit (sensor enable).        */
-  k_ra8_tscr_mask_tsoe = (uint8_t)(1U << 7U), /**< TSOE bit (output enable to ADC). */
-  k_ra8_tscr_mask_all  = (uint8_t)((1U << 4U) | (1U << 7U)), /**< TSEN | TSOE. */
+  k_ra8_tscr_mask_tsen = (uint8_t)(1U << 4U),                /**< TSEN bit (sensor enable).     */
+  k_ra8_tscr_mask_tsoe = (uint8_t)(1U << 7U),                /**< TSOE bit (ADC output enable). */
+  k_ra8_tscr_mask_all  = (uint8_t)((1U << 4U) | (1U << 7U)), /**< TSEN | TSOE.                  */
 } ra8_tscr_mask_t;
 
 /**

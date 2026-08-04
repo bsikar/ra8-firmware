@@ -67,7 +67,7 @@
  */
 typedef enum : uint16_t {
   k_epub_container_overflow_pad =
-    512U, /**< Padding pushing the container XML past the parser's buffer, so the overflow guard fires. */
+    512U, /**< Padding pushing container XML past the parser buffer, so the overflow guard fires. */
 } epub_open_pad_t;
 
 /* ---------------------------------------------------------------------------

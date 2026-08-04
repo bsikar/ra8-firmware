@@ -33,12 +33,12 @@
  * @brief Protocol and on-disk field offsets, plus the byte-level helpers.
  */
 typedef enum : uint8_t {
-  k_bpb_off_bytes_per_sec = 11U, /**< BPB_BytsPerSec: bytes per sector.             */
-  k_bpb_off_rsvd_sec_cnt  = 14U, /**< BPB_RsvdSecCnt: sectors before the first FAT. */
-  k_bpb_off_root_ent_cnt  = 17U, /**< BPB_RootEntCnt: root-directory entries.       */
-  k_bpb_off_tot_sec16     = 19U, /**< BPB_TotSec16: total sectors.                  */
-  k_byte_mask = 0xFFU, /**< Truncates each shifted CRC and length byte for the gzip trailer. */
-  k_bpb_off_sec_per_clus = 13, /**< BPB_SecPerClus: sectors per cluster. */
+  k_bpb_off_bytes_per_sec = 11U, /**< BPB_BytsPerSec: bytes per sector.                           */
+  k_bpb_off_rsvd_sec_cnt  = 14U, /**< BPB_RsvdSecCnt: sectors before the first FAT.               */
+  k_bpb_off_root_ent_cnt  = 17U, /**< BPB_RootEntCnt: root-directory entries.                     */
+  k_bpb_off_tot_sec16     = 19U, /**< BPB_TotSec16: total sectors.                                */
+  k_byte_mask = 0xFFU,           /**< Truncates the shifted CRC/length byte for the gzip trailer. */
+  k_bpb_off_sec_per_clus = 13,   /**< BPB_SecPerClus: sectors per cluster.                        */
 } fs_font_reflow_fixture_t;
 
 /* ---------------------------------------------------------------------------

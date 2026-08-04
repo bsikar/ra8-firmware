@@ -105,21 +105,21 @@ typedef enum : uint32_t {
  * stay correct.
  */
 typedef struct {
-  volatile uint32_t PDSTRTR;                       /**< +0x00 Software Start Trigger.         */
-  volatile uint32_t PDSTPTR;                       /**< +0x04 Software Stop Trigger.          */
-  volatile uint32_t PDCHGTR;                       /**< +0x08 Software Change Trigger.        */
-  volatile uint32_t PDICR;                         /**< +0x0C Interrupt Control.              */
-  volatile uint32_t PDSDCR;                        /**< +0x10 Status Detection Control.       */
-  volatile uint32_t PDSR;                          /**< +0x14 Status.                         */
-  volatile uint32_t PDSCR;                         /**< +0x18 Status Clear.                   */
-  volatile uint32_t RESERVED0;                     /**< +0x1C reserved.                       */
-  volatile uint32_t PDMDSR;                        /**< +0x20 Mode Setting.                   */
-  volatile uint32_t PDSFCR;                        /**< +0x24 Sinc Filter Control.            */
-  volatile uint32_t PDHFCS0R;                      /**< +0x28 High-pass filter coeff s(0).    */
-  volatile uint32_t PDHFCK1R;                      /**< +0x2C High-pass filter coeff k(1).    */
-  volatile uint32_t PDHFCHR[2];                    /**< +0x30 High-pass filter coeff h(0..1). */
-  volatile uint32_t PDCFCHR[k_ra8_pdm_cfch_count]; /**< +0x38 Compensation filter coeff h(0..10). */
-  volatile uint32_t PDLFCH010R;                    /**< +0x64 Low-pass filter coeff h0(10). */
+  volatile uint32_t PDSTRTR;                         /**< +0x00 Software Start Trigger.          */
+  volatile uint32_t PDSTPTR;                         /**< +0x04 Software Stop Trigger.           */
+  volatile uint32_t PDCHGTR;                         /**< +0x08 Software Change Trigger.         */
+  volatile uint32_t PDICR;                           /**< +0x0C Interrupt Control.               */
+  volatile uint32_t PDSDCR;                          /**< +0x10 Status Detection Control.        */
+  volatile uint32_t PDSR;                            /**< +0x14 Status.                          */
+  volatile uint32_t PDSCR;                           /**< +0x18 Status Clear.                    */
+  volatile uint32_t RESERVED0;                       /**< +0x1C reserved.                        */
+  volatile uint32_t PDMDSR;                          /**< +0x20 Mode Setting.                    */
+  volatile uint32_t PDSFCR;                          /**< +0x24 Sinc Filter Control.             */
+  volatile uint32_t PDHFCS0R;                        /**< +0x28 High-pass filter coeff s(0).     */
+  volatile uint32_t PDHFCK1R;                        /**< +0x2C High-pass filter coeff k(1).     */
+  volatile uint32_t PDHFCHR[2];                      /**< +0x30 High-pass filter coeff h(0..1).  */
+  volatile uint32_t PDCFCHR[k_ra8_pdm_cfch_count];   /**< +0x38 Comp filter coeff h(0..10).      */
+  volatile uint32_t PDLFCH010R;                      /**< +0x64 Low-pass filter coeff h0(10).    */
   volatile uint32_t PDLFCH1R[k_ra8_pdm_lfch1_count]; /**< +0x68 Low-pass filter coeff h1(0..19). */
   volatile uint32_t PDSDLTR;                         /**< +0xB8 Sound Detection Lower Threshold. */
   volatile uint32_t PDSDUTR;                         /**< +0xBC Sound Detection Upper Threshold. */
@@ -167,9 +167,12 @@ typedef struct {
   volatile uint32_t PDCSDCR;      /**< +0x20 Channel Sound Detection Control. */
   volatile uint32_t PDCDRCR;      /**< +0x24 Channel Data Read Control.       */
   volatile uint32_t PDCDCR;       /**< +0x28 Channel Data Clear.              */
-  volatile uint32_t RESERVED1[k_ra8_pdm_common_rsvd1_words]; /**< +0x2C reserved. */
-  volatile uint32_t PDVR;                                    /**< +0x80 Version.  */
-  volatile uint32_t RESERVED2[k_ra8_pdm_common_rsvd2_words]; /**< +0x84 reserved. */
+  /** +0x2C reserved. */
+  volatile uint32_t RESERVED1[k_ra8_pdm_common_rsvd1_words];
+  /** +0x80 Version. */
+  volatile uint32_t PDVR;
+  /** +0x84 reserved. */
+  volatile uint32_t RESERVED2[k_ra8_pdm_common_rsvd2_words];
   r_pdm_ch_regs_t   CH[3]; /**< +0x100 Per-channel register banks. */
 } r_pdm_regs_t;
 

@@ -35,7 +35,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint32_t {
   k_css_parent_color =
-    0x123456U, /**< A parent colour with three distinct channel bytes, so a child that inherited only part of it is visible. */
+    0x123456U, /**< Parent colour, three distinct channel bytes, so partial inherit is visible. */
 } css_inherit_t;
 
 /** @brief Shared parsed stylesheet for the matching / cascade tests. */

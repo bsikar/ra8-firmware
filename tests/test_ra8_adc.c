@@ -46,7 +46,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_adc_poison_out =
-    0xBEEFU, /**< Poison written into the sample out-parameter, so a read that fails without setting it is detectable. */
+    0xBEEFU, /**< Poison written into the sample out-param, so a failing read is detectable. */
 } adc_fixture2_t;
 
 /* ---------------------------------------------------------------------------

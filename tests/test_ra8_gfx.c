@@ -26,9 +26,10 @@
 typedef enum : uint8_t {
   k_gfx_fb_width =
     64, /**< Framebuffer width in pixels; the buffer is width x 32 x 3 bytes for RGB888. */
-  k_gfx_span_start = 10, /**< First coordinate of the drawn span. */
+  /** First coordinate of the drawn span. */
+  k_gfx_span_start = 10,
   k_gfx_span_end =
-    13, /**< One past its last, so the span is three pixels and a fencepost error changes the count. */
+    13, /**< One past its last, so the span is three pixels; a fencepost error changes the count. */
 } gfx_fixture_t;
 
 /**

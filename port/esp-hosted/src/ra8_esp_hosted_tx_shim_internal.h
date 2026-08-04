@@ -349,10 +349,14 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ULONG    ticks;                                         /**< Fake 32-bit kernel tick counter. */
-  UINT     status[k_ra8_esp_hosted_tx_shim_family_count]; /**< Injected codes.                  */
-  bool     armed[k_ra8_esp_hosted_tx_shim_family_count];  /**< Injection armed.                 */
-  uint32_t calls[k_ra8_esp_hosted_tx_shim_family_count];  /**< Per-family calls.                */
+  /** Fake 32-bit kernel tick counter. */
+  ULONG ticks;
+  /** Injected codes. */
+  UINT status[k_ra8_esp_hosted_tx_shim_family_count];
+  /** Injection armed. */
+  bool armed[k_ra8_esp_hosted_tx_shim_family_count];
+  /** Per-family calls. */
+  uint32_t calls[k_ra8_esp_hosted_tx_shim_family_count];
   uint32_t sleeps;       /**< Number of ``tx_thread_sleep`` calls.      */
   ULONG    last_sleep;   /**< Ticks requested by the most recent sleep. */
   uint32_t relinquishes; /**< Number of ``tx_thread_relinquish`` calls. */

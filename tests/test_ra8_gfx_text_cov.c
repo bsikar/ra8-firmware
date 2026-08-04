@@ -154,10 +154,10 @@ static void test_uninitialized_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_gfx_set_clip(0, 0, 1, 1));      /* 592 */
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_gfx_reset_clip());              /* 628 */
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_gfx_pixel(0, 0, k_cov_col_fg)); /* 640 */
-  TEST_ASSERT_EQ(
-    k_ra8_err_not_initialized,
-    ra8_gfx_blit_gray8(s_gray_src, k_cov_gray_dim, k_cov_gray_dim, 0, 0));           /* 700-701 */
-  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_gfx_line(0, 0, 1, 1, k_cov_col_fg)); /* 726     */
+  /* 700-701 */
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized,
+                 ra8_gfx_blit_gray8(s_gray_src, k_cov_gray_dim, k_cov_gray_dim, 0, 0));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_gfx_line(0, 0, 1, 1, k_cov_col_fg));       /* 726 */
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_gfx_rect(0, 0, 1, 1, k_cov_col_fg, true)); /* 759 */
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_gfx_circle(0, 0, 1, k_cov_col_fg, true));  /* 833 */
   TEST_ASSERT_EQ(

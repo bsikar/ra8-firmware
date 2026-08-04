@@ -269,7 +269,7 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_ra8_board_sw1      = 0U, /**< SW1: provisional P009 (IRQ13). TODO(EK-RA8P1 UM / ra8p1_kicad). */
   k_ra8_board_sw2      = 1U, /**< SW2: provisional P008 (IRQ12). TODO(EK-RA8P1 UM / ra8p1_kicad). */
-  k_ra8_board_sw_count = 2U, /**< Number of user switches. */
+  k_ra8_board_sw_count = 2U, /**< Number of user switches.                                        */
 } ra8_board_sw_id_t;
 
 /**

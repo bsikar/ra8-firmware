@@ -31,7 +31,7 @@
  */
 typedef enum : uint8_t {
   k_ipc_ch_unset =
-    0xFFU, /**< Poison channel id the callback record starts from, so a callback that never ran is distinguishable from one that reported channel 0. */
+    0xFFU, /**< Poison channel id the callback starts from; unrun differs from channel 0. */
 } app_cpu1_pingpong_fixture_t;
 
 typedef enum : uint32_t {

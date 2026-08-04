@@ -27,7 +27,7 @@ typedef enum : uint8_t {
   k_pal_refreshes_past_threshold =
     10U, /**< Enough to cross it, so the policy must call for a full refresh. */
   k_pal_partial_refreshes =
-    5U, /**< Partial refreshes driven before the policy is consulted; under the threshold, so no full refresh is due. */
+    5U, /**< Partial refreshes before the policy check; under threshold, no full refresh due. */
 } pal_refresh_counts_t;
 
 /** @brief Local cadence used by the cadence/MC-DC tests. */
