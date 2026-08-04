@@ -23,11 +23,11 @@ project's marketing.
 | Capability | `ra8_fs` | FileX 6.5.0 (vendored) |
 |---|---|---|
 | FAT12 / FAT16 / FAT32, read + write | Yes | Yes |
-| exFAT | Yes -- mount, streaming read, whole-file write, rename, unlink, format | **No.** The vendored snapshot ships no exFAT source at all; the only occurrences of the word are historical entries in `docs/revision_history.txt` |
+| exFAT | Yes -- mount, streaming read, whole-file write (a repeated write REPLACES the name rather than duplicating its entry set), rename, unlink, format | **No.** The vendored snapshot ships no exFAT source at all; the only occurrences of the word are historical entries in `docs/revision_history.txt` |
 | Long file names, read | Yes -- LFN chains are reassembled and matched (`src/ra8_fs_fat_lfn.c`) | Yes |
 | Long file names, write | **No** -- creates 8.3 short names only | Yes, up to `FX_MAX_LONG_NAME_LEN` (256), written by `fx_directory_entry_write` |
 | `mkdir` | Yes on FAT12/16/32, including nested paths, with rollback on failure. Not on exFAT | Yes (`fx_directory_create`) |
-| `rmdir` | **No** | Yes (`fx_directory_delete`) |
+| `rmdir` | Yes on FAT12/16/32, including nested paths. Refuses the root, refuses a file, and proves the directory holds nothing but its own "." / ".." before freeing a cluster (`k_ra8_err_not_empty` otherwise). Not on exFAT, which has no `mkdir` here either | Yes (`fx_directory_delete`) |
 | Create / write timestamps | **No** -- date and time fields are left at 0 | Yes (`fx_file_date_time_set`, `fx_system_date_set` / `fx_system_time_set`) |
 | Unicode / UTF-16 name API | No | Yes -- 13 `fx_unicode_*` modules (create, rename, name get, short-name get) |
 | Formatter | Yes. FAT12/16/32 as a superfloppy at LBA 0 with auto cluster-size selection; exFAT into **MBR partition 1 aligned at 1 MiB**, with the spec's compressed up-case table, validated `fsck.exfat`-clean (#568) | Yes (`fx_media_format`), FAT only. Writes no partition table |
@@ -42,7 +42,7 @@ project's marketing.
 | Concurrency model | Not thread-safe by contract; callers serialise | A `TX_MUTEX` per media (`FX_SINGLE_THREAD` is not defined in this build) |
 | Backends in tree | Any object with the three callbacks: SD-over-SPI, native SDHI, OSPI NOR, MRAM, SDRAM, in-RAM scratch, USB MSC, plus the host-test mock | One media driver, `port/filex/src/fx_media_driver_ra8_sdhi.c`, plus the LevelX NOR adapter used by `threadx_filex_levelx_demo` |
 | Verification | First-party. Held to the 90% per-file line-coverage floor with **no allowlist** (`scripts/checks/check_coverage_floor.py`; `ra8_fs` has no row in `.github/coverage-baseline.txt` or `.github/mcdc-baseline.txt`), MC/DC vectors on its compound decisions, MISRA via `scripts/checks/misra_check.sh` (ratcheted in `.github/misra-baseline.txt`), clang-tidy, the ASCII / Doxygen / annotation gates | SOUP. Explicitly out of scope for the coverage floor (`OUT_OF_SCOPE_PREFIXES`), for MISRA (`-ilibs/third_party`), and for the first-party style rules; compiled with `-w`. Accepted on service history, Eclipse Foundation process and pre-Eclipse SGS-TUV Saar pre-certifications -- see [`docs/SOUP/filex.md`](../../docs/SOUP/filex.md). Byte-identity against the upstream pin is re-verified every CI run |
-| Host tests | 25 test binaries (`tests/test_ra8_fs*.c`) plus a libFuzzer harness (`tests/fuzz/fuzz_ra8_fs_fat.c`) | None. SOUP is not re-tested here |
+| Host tests | 27 test binaries (`tests/test_ra8_fs*.c`) plus a libFuzzer harness (`tests/fuzz/fuzz_ra8_fs_fat.c`) | None. SOUP is not re-tested here |
 | Size | 13 `.c` files | 212 `.c` files in `common/src` |
 | Apps using it | 29 example `CMakeLists.txt` reference it | 2 enable `RA8_USE_FILEX`: `threadx_filex_demo` and `threadx_filex_levelx_demo` |
 
@@ -50,8 +50,8 @@ project's marketing.
 
 **Bare-metal app -> `ra8_fs`.** That is nearly every app here, and it is the
 only option without a scheduler. **ThreadX app -> FileX**, which is already in
-that world and brings long-name writes, `rmdir`, timestamps and optional
-journalling with it. Reaching a file through `ra8_io`'s VFS
+that world and brings long-name writes, timestamps and optional journalling
+with it. Reaching a file through `ra8_io`'s VFS
 (`ra8_io_vfs_open()`) is still `ra8_fs` underneath -- `ra8_io` adds mount
 points, caching and format probing, not a second filesystem.
 
@@ -71,7 +71,7 @@ users: ra8_fs = 29
 users: RA8_USE_FILEX = 2
 files: libs/ra8_fs/src/*.c = 13
 files: libs/third_party/filex/common/src/*.c = 212
-files: tests/test_ra8_fs*.c = 25
+files: tests/test_ra8_fs*.c = 27
 files: libs/third_party/filex/common/src/fx_fault_tolerant_*.c = 19
 files: libs/third_party/filex/common/src/fx_unicode_*.c = 13
 -->

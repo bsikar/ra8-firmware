@@ -1,10 +1,13 @@
 /**
  * @file ra8_fs_fat_dir.c
- * @brief FAT listdir / mkdir / unlink / rename directory operations.
+ * @brief FAT listdir / mkdir / rmdir / unlink / rename directory operations.
  *
  * @details
- * Directory listing, subdirectory creation, and the unlink/rename
- * operations dispatched across FAT and exFAT volumes.
+ * Directory listing, subdirectory creation and removal, and the
+ * unlink/rename operations dispatched across FAT and exFAT volumes.
+ * `rmdir` and `unlink` are each other's guard as well as each other's
+ * counterpart: neither will take the kind of entry the other owns, because
+ * doing so frees a cluster chain something else still references (#604).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -66,7 +69,7 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra8_fs_listdir_c
       priv_lfn_add(lfn, ent);
       continue;
     }
-    if (ent[k_dir_off_name] == '.') {
+    if (ent[k_dir_off_name] == k_dir_marker_dot) {
       priv_lfn_reset(lfn); /* synthetic "." / ".." -- not reported to the caller */
       continue;
     }
@@ -367,10 +370,374 @@ ra8_err_t ra8_fs_mkdir(ra8_fs_mount_t* handle, const char* path)
 }
 
 /**
+ * @enum dir_scan_t
+ * @brief Verdict of scanning one directory sector for occupancy.
+ *
+ * @details Three-valued because "this sector held nothing" and "the directory
+ *          ends here" are different answers: the first means keep walking, the
+ *          second means stop and report empty.
+ *
+ * @invariant Exactly one value is returned per scanned sector.
+ * @see priv_rmdir_scan_sector()
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_dir_scan_more  = 0U, /**< Only skippable slots here; keep walking. */
+  k_dir_scan_empty = 1U, /**< End-of-directory marker reached.         */
+  k_dir_scan_used  = 2U, /**< A real entry was found; not empty.       */
+} dir_scan_t;
+
+/**
+ * @brief Classify one already-loaded directory sector as empty / occupied / more.
+ *
+ * @details A slot does not count as an occupant when it is deleted (0xE5), an
+ *          attr-0x0F long-name slot, or one of the synthetic "." / ".." dot
+ *          entries. Long-name slots are skipped rather than counted because
+ *          `ra8_fs_unlink()` clears only the 8.3 entry, so a removed file
+ *          leaves its whole LFN chain behind; counting those remnants would
+ *          make a genuinely empty directory permanently un-removable. A live
+ *          LFN chain is always followed by its own 8.3 entry in the same
+ *          directory, so nothing real is missed by skipping it.
+ *
+ * @param[in] buf 512-byte sector buffer holding directory entries.
+ *
+ * @return The sector's verdict.
+ * @retval k_dir_scan_used  A non-skippable entry was seen.
+ * @retval k_dir_scan_empty The end-of-directory marker was seen first.
+ * @retval k_dir_scan_more  Sector exhausted with only skippable slots.
+ *
+ * @pre `buf` is non-NULL and holds a sector loaded from disk.
+ * @pre `buf` addresses at least `k_ra8_fs_bytes_per_sector` readable bytes.
+ * @post No state is modified; `buf` is unchanged.
+ * @post The scan visits at most `k_dir_entries_per_sector` slots.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static dir_scan_t priv_rmdir_scan_sector(const uint8_t* buf)
+{
+  for (uint32_t e = 0; e < (uint32_t)k_dir_entries_per_sector; e++) {
+    const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes];
+    if (ent[k_dir_off_name] == k_dir_marker_free_perm) {
+      return k_dir_scan_empty;
+    }
+    if (ent[k_dir_off_name] == k_dir_marker_free_used) {
+      continue;
+    }
+    if (ent[k_dir_off_attr] == k_ra8_fs_attr_lfn) {
+      continue;
+    }
+    if (ent[k_dir_off_name] == k_dir_marker_dot) {
+      continue;
+    }
+    return k_dir_scan_used;
+  }
+  return k_dir_scan_more;
+}
+
+/**
+ * @brief Decide whether a subdirectory holds any entry other than "." / "..".
+ *
+ * @details Walks the directory's cluster chain with the shared `dir_walk_t`
+ *          iterator, classifying each sector via priv_rmdir_scan_sector() and
+ *          stopping at the first definite answer.
+ *
+ * @param[in]  m         Mount providing geometry and backend.
+ * @param[in]  cluster   The subdirectory's first cluster.
+ * @param[out] out_empty Receives 1 when the directory is removable, else 0.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                 Verdict written to `*out_empty`.
+ * @retval k_ra8_err_protocol_error Cluster-chain cycle detected (corrupt FAT).
+ * @retval k_ra8_err_*              Backend read error.
+ *
+ * @pre `m` and `out_empty` are non-NULL; `cluster >= k_cluster_first_data`.
+ * @pre The entry for `cluster` carries `k_ra8_fs_attr_directory`.
+ * @post On success `*out_empty` is 0 or 1.
+ * @post No on-disk state is modified.
+ *
+ * @note The walk is bounded: `priv_dir_walk_next_sector` fails a chain that
+ *       revisits a cluster, so the loop cannot run away on a corrupt FAT
+ *       (NASA Power of 10 Rule 2).
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_dir_is_empty(const ra8_fs_mount_t* m, uint32_t cluster, uint8_t* out_empty)
+{
+  const dir_loc_t loc = {.is_root = 0U, .cluster = cluster};
+  dir_walk_t      w   = {};
+  priv_dir_walk_init_loc(m, &loc, &w);
+  uint8_t eod                            = 0;
+  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
+  while (eod == 0U) {
+    ra8_err_t err = priv_read_sector(m, w.cur_lba, buf);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    const dir_scan_t verdict = priv_rmdir_scan_sector(buf);
+    if (verdict == k_dir_scan_used) {
+      *out_empty = 0U;
+      return k_ra8_ok;
+    }
+    if (verdict == k_dir_scan_empty) {
+      *out_empty = 1U;
+      return k_ra8_ok;
+    }
+    err = priv_dir_walk_next_sector(m, &w, &eod);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+  }
+  *out_empty = 1U; /* chain exhausted with no occupant and no 0x00 marker */
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Resolve a path to a removable subdirectory's entry and first cluster.
+ *
+ * @details Resolves the parent, refuses the volume root, packs the leaf to 8.3,
+ *          looks it up, and requires the matched entry to carry
+ *          `k_ra8_fs_attr_directory` with a real first cluster. Split out of
+ *          `priv_fat_rmdir` so both stay inside the function-size gate.
+ *
+ * @param[in]  handle      Mounted FAT12/16/32 volume.
+ * @param[in]  path        Directory path to remove.
+ * @param[out] out_lba     Sector holding the directory's entry in its parent.
+ * @param[out] out_off     Byte offset of that entry within the sector.
+ * @param[out] out_cluster The directory's own first cluster.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                 Located; outputs populated.
+ * @retval k_ra8_err_invalid_arg    `path` is the root, is not an 8.3 name, or
+ *                                  names a file rather than a directory.
+ * @retval k_ra8_err_not_found      No such entry.
+ * @retval k_ra8_err_protocol_error The entry claims no data cluster.
+ * @retval k_ra8_err_*              Backend error.
+ *
+ * @pre All pointers are non-NULL; `handle` is a mounted FAT volume.
+ * @pre `handle->type` is not exFAT (the caller has dispatched already).
+ * @post On success the outputs address a directory entry on disk.
+ * @post No on-disk state is modified.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_rmdir_locate(const ra8_fs_mount_t* handle,
+                                   const char*           path,
+                                   uint32_t*             out_lba,
+                                   uint32_t*             out_off,
+                                   uint32_t*             out_cluster)
+{
+  dir_loc_t       parent = {};
+  const char*     leaf   = nullptr;
+  const ra8_err_t rerr   = priv_resolve_parent(handle, path, &parent, &leaf);
+  if (rerr != k_ra8_ok) {
+    return rerr;
+  }
+  if (leaf[0] == '\0') {
+    return k_ra8_err_invalid_arg; /* "/" or a trailing slash: the root itself */
+  }
+  uint8_t name83[k_max_8_3_name] = {};
+  if (priv_path_to_83(leaf, name83) == 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  uint8_t         entry[k_ra8_fs_dir_entry_bytes] = {};
+  const ra8_err_t err = priv_dir_find(handle, &parent, name83, out_lba, out_off, entry);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if ((entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_directory) == 0U) {
+    return k_ra8_err_invalid_arg; /* a file: ra8_fs_unlink() is the verb for it */
+  }
+  *out_cluster = priv_entry_first_cluster(entry);
+  if (*out_cluster < (uint32_t)k_cluster_first_data) {
+    return k_ra8_err_protocol_error; /* a directory always owns a cluster */
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Implementation of `priv_fat_rmdir()` -- remove one empty FAT directory.
+ *
+ * @details Locates the directory, proves it holds nothing but its own "." and
+ *          ".." links, frees its cluster chain, then 0xE5-marks its entry in
+ *          the parent. The emptiness proof runs before anything is freed, so a
+ *          refused removal changes nothing on disk.
+ *
+ * @param[in] handle Mounted FAT12/16/32 volume.
+ * @param[in] path   NUL-terminated directory path to remove.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                 Directory removed.
+ * @retval k_ra8_err_invalid_arg    Root, not an 8.3 name, or not a directory.
+ * @retval k_ra8_err_not_found      No such entry.
+ * @retval k_ra8_err_not_empty      The directory still holds entries.
+ * @retval k_ra8_err_protocol_error Corrupt chain or a directory with no cluster.
+ * @retval k_ra8_err_*              Backend / FAT error.
+ *
+ * @pre `handle` and `path` are non-NULL; `handle` is a mounted FAT volume.
+ * @pre No open file handle refers to an entry inside `path`.
+ * @post On success the name no longer resolves and its cluster chain is free.
+ * @post On any error other than a mid-free backend fault the volume is unchanged.
+ *
+ * @note An open handle to a file inside the directory cannot be orphaned: that
+ *       file's entry is still present, so the emptiness check refuses first.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_fat_rmdir(const ra8_fs_mount_t* handle, const char* path)
+{
+  uint32_t  lba     = 0;
+  uint32_t  off     = 0;
+  uint32_t  cluster = 0;
+  ra8_err_t err     = priv_rmdir_locate(handle, path, &lba, &off, &cluster);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  uint8_t empty = 0;
+  err           = priv_dir_is_empty(handle, cluster, &empty);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (empty == 0U) {
+    return k_ra8_err_not_empty;
+  }
+  err = priv_free_chain(handle, cluster);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
+  err                                    = priv_read_sector(handle, lba, buf);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  buf[off + k_dir_off_name] = k_dir_marker_free_used;
+  return priv_write_sector(handle, lba, buf);
+}
+
+/**
+ * @brief Remove an empty directory from a mounted volume (public API).
+ *
+ * @details Validates arguments and the mount, then dispatches to the FAT
+ *          directory remover. exFAT directory removal is not supported, for
+ *          the same reason exFAT `mkdir` is not: this driver has no exFAT
+ *          directory-creation path, so an exFAT volume mounted here never
+ *          contains a directory it made.
+ *
+ * @param[in,out] handle Mount handle.
+ * @param[in]     path   NUL-terminated directory path to remove.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                Directory removed.
+ * @retval k_ra8_err_null_ptr      `handle` or `path` was NULL.
+ * @retval k_ra8_err_invalid_state Mount not in use.
+ * @retval k_ra8_err_not_supported The volume is exFAT.
+ * @retval k_ra8_err_*             See `priv_fat_rmdir`.
+ *
+ * @pre `handle` and `path` are non-NULL.
+ * @pre Mount is in use.
+ * @post On success `path` no longer resolves.
+ * @post On failure the volume is unchanged.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+ra8_err_t ra8_fs_rmdir(ra8_fs_mount_t* handle, const char* path)
+{
+  if (handle == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (path == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (handle->in_use == 0U) {
+    return k_ra8_err_invalid_state;
+  }
+  if (handle->type == k_ra8_fs_type_exfat) {
+    return k_ra8_err_not_supported;
+  }
+  return priv_fat_rmdir(handle, path);
+}
+
+/**
+ * @brief Resolve a path to a deletable FILE's entry and first cluster.
+ *
+ * @details Resolves the parent, packs the leaf to 8.3, looks it up, and
+ *          requires the matched entry NOT to carry `k_ra8_fs_attr_directory`.
+ *          The mirror image of priv_rmdir_locate(): each verb refuses the kind
+ *          of entry the other owns, and both refuse before anything is freed.
+ *          Split out of `ra8_fs_unlink` so it stays inside the function-size
+ *          gate.
+ *
+ * @param[in]  handle      Mounted FAT12/16/32 volume.
+ * @param[in]  path        File path to delete.
+ * @param[out] out_lba     Sector holding the file's entry in its parent.
+ * @param[out] out_off     Byte offset of that entry within the sector.
+ * @param[out] out_cluster The file's first cluster (0 when it has none).
+ *
+ * @return Error code.
+ * @retval k_ra8_ok              Located; outputs populated.
+ * @retval k_ra8_err_invalid_arg `path` is not an 8.3 name, or names a directory.
+ * @retval k_ra8_err_not_found   No such entry.
+ * @retval k_ra8_err_*           Backend error.
+ *
+ * @pre All pointers are non-NULL; `handle` is a mounted FAT volume.
+ * @pre `handle->type` is not exFAT (the caller has dispatched already).
+ * @post On success the outputs address a file entry on disk.
+ * @post No on-disk state is modified.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_unlink_locate(const ra8_fs_mount_t* handle,
+                                    const char*           path,
+                                    uint32_t*             out_lba,
+                                    uint32_t*             out_off,
+                                    uint32_t*             out_cluster)
+{
+  dir_loc_t       parent = {};
+  const char*     leaf   = nullptr;
+  const ra8_err_t rerr   = priv_resolve_parent(handle, path, &parent, &leaf);
+  if (rerr != k_ra8_ok) {
+    return rerr;
+  }
+  uint8_t name83[k_max_8_3_name] = {};
+  if (priv_path_to_83(leaf, name83) == 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  uint8_t         entry[k_ra8_fs_dir_entry_bytes] = {};
+  const ra8_err_t err = priv_dir_find(handle, &parent, name83, out_lba, out_off, entry);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  /* priv_dir_find() matches on the 11-byte name field alone, so a directory
+   * matches like any other entry. Freeing its chain orphans every file inside
+   * it -- their clusters stay allocated in the FAT with nothing referencing
+   * them, which fsck.fat reports as lost clusters (#604). */
+  if ((entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_directory) != 0U) {
+    return k_ra8_err_invalid_arg; /* a directory: ra8_fs_rmdir() is the verb */
+  }
+  *out_cluster = priv_entry_first_cluster(entry);
+  return k_ra8_ok;
+}
+
+/**
  * @brief Delete a file from the root directory.
  *
  * @details Frees the cluster chain (if any) and marks the dir entry
  *          deleted by writing 0xE5 to the first byte of the name field.
+ *          Refuses a directory: use `ra8_fs_rmdir()` for those.
  *
  * @param[in,out] handle Mount handle.
  * @param[in]     path   NUL-terminated path; only flat root names supported.
@@ -379,7 +746,8 @@ ra8_err_t ra8_fs_mkdir(ra8_fs_mount_t* handle, const char* path)
  * @retval k_ra8_ok                File deleted.
  * @retval k_ra8_err_null_ptr      Any pointer was NULL.
  * @retval k_ra8_err_invalid_state Mount not in use.
- * @retval k_ra8_err_invalid_arg   Path is not a valid 8.3 name.
+ * @retval k_ra8_err_invalid_arg   Path is not a valid 8.3 name, or it names a
+ *                                 directory.
  * @retval k_ra8_err_not_found     No such file.
  * @retval k_ra8_err_*             Backend or FAT error.
  *
@@ -387,6 +755,7 @@ ra8_err_t ra8_fs_mkdir(ra8_fs_mount_t* handle, const char* path)
  * @pre Mount is in use; no file handle currently references this entry.
  * @post On success, file's clusters are free and dir entry is deleted.
  * @post On failure, on-disk state may be partially updated.
+ * @post A path naming a directory leaves the volume untouched.
  *
  * @note Not thread-safe; callers serialise.
  *
@@ -403,26 +772,16 @@ ra8_err_t ra8_fs_unlink(ra8_fs_mount_t* handle, const char* path)
   if (handle->type == k_ra8_fs_type_exfat) {
     return priv_exfat_unlink(handle, path);
   }
-  dir_loc_t       parent = {};
-  const char*     leaf   = nullptr;
-  const ra8_err_t rerr   = priv_resolve_parent(handle, path, &parent, &leaf);
-  if (rerr != k_ra8_ok) {
-    return rerr;
+  uint32_t        lba     = 0;
+  uint32_t        off     = 0;
+  uint32_t        cluster = 0;
+  const ra8_err_t lerr    = priv_unlink_locate(handle, path, &lba, &off, &cluster);
+  if (lerr != k_ra8_ok) {
+    return lerr;
   }
-  uint8_t name83[k_max_8_3_name] = {};
-  if (priv_path_to_83(leaf, name83) == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  uint32_t  lba                             = 0;
-  uint32_t  off                             = 0;
-  uint8_t   entry[k_ra8_fs_dir_entry_bytes] = {};
-  ra8_err_t err = priv_dir_find(handle, &parent, name83, &lba, &off, entry);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const uint32_t first_cluster = priv_entry_first_cluster(entry);
-  if (first_cluster >= k_cluster_first_data) {
-    err = priv_free_chain(handle, first_cluster);
+  ra8_err_t err = k_ra8_ok;
+  if (cluster >= (uint32_t)k_cluster_first_data) {
+    err = priv_free_chain(handle, cluster);
     if (err != k_ra8_ok) {
       return err;
     }

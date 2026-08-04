@@ -565,6 +565,19 @@ ra8_err_t priv_exfat_create(ra8_fs_mount_t* m, const char* path, const uint8_t* 
   if (len == 0U) {
     return k_ra8_err_invalid_arg;
   }
+  /* Replace, do not duplicate (#603). Nothing in the create path used to look
+   * for the name, so a second create wrote a second File/Stream/Name set for
+   * it: the directory then held two entries for one name, and the first file's
+   * clusters stayed marked used in the allocation bitmap with nothing pointing
+   * at them -- unreclaimable without a reformat. Unlinking first frees those
+   * clusters AND the old set's slots (which the scan below then reuses), which
+   * is the truncate-then-write the FAT side gets from ra8_fs_open(write).
+   * priv_exfat_unlink() also carries the directory guard, so write_file() over
+   * a directory name reports k_ra8_err_invalid_arg instead of eating it. */
+  const ra8_err_t ue = priv_exfat_unlink(m, path);
+  if ((ue != k_ra8_ok) && (ue != k_ra8_err_not_found)) {
+    return ue;
+  }
   const uint32_t cbytes = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
   const uint32_t nclus  = (len + cbytes - 1U) / cbytes;
   uint32_t       start  = 0U;

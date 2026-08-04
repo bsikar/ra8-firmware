@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 13464
+# total findings: 13500
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -306,28 +306,27 @@ libs/ra8_epub/src/ra8_epub_zip_guard.c	misra-c2012-8.4	2
 libs/ra8_fs/src/ra8_fs_fat.c	misra-c2012-12.1	5
 libs/ra8_fs/src/ra8_fs_fat.c	misra-c2012-15.5	17
 libs/ra8_fs/src/ra8_fs_fat.c	misra-c2012-9.2	6
-libs/ra8_fs/src/ra8_fs_fat_dir.c	misra-c2012-10.4	1
 libs/ra8_fs/src/ra8_fs_fat_dir.c	misra-c2012-12.1	2
-libs/ra8_fs/src/ra8_fs_fat_dir.c	misra-c2012-15.5	46
-libs/ra8_fs/src/ra8_fs_fat_dir.c	misra-c2012-8.4	4
-libs/ra8_fs/src/ra8_fs_fat_dir.c	misra-c2012-9.2	22
+libs/ra8_fs/src/ra8_fs_fat_dir.c	misra-c2012-15.5	69
+libs/ra8_fs/src/ra8_fs_fat_dir.c	misra-c2012-8.4	5
+libs/ra8_fs/src/ra8_fs_fat_dir.c	misra-c2012-9.2	28
 libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c	misra-c2012-15.5	22
 libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c	misra-c2012-17.8	4
 libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c	misra-c2012-9.2	1
-libs/ra8_fs/src/ra8_fs_fat_exfat_mutate.c	misra-c2012-15.5	28
+libs/ra8_fs/src/ra8_fs_fat_exfat_mutate.c	misra-c2012-15.5	29
 libs/ra8_fs/src/ra8_fs_fat_exfat_mutate.c	misra-c2012-17.8	3
 libs/ra8_fs/src/ra8_fs_fat_exfat_mutate.c	misra-c2012-9.2	13
-libs/ra8_fs/src/ra8_fs_fat_exfat_read.c	misra-c2012-15.5	24
+libs/ra8_fs/src/ra8_fs_fat_exfat_read.c	misra-c2012-15.5	25
 libs/ra8_fs/src/ra8_fs_fat_exfat_read.c	misra-c2012-17.8	1
 libs/ra8_fs/src/ra8_fs_fat_exfat_read.c	misra-c2012-9.2	4
 libs/ra8_fs/src/ra8_fs_fat_exfat_upcase.c	misra-c2012-15.5	1
 libs/ra8_fs/src/ra8_fs_fat_exfat_upcase.c	misra-c2012-8.9	1
-libs/ra8_fs/src/ra8_fs_fat_exfat_write.c	misra-c2012-15.5	27
+libs/ra8_fs/src/ra8_fs_fat_exfat_write.c	misra-c2012-15.5	28
 libs/ra8_fs/src/ra8_fs_fat_exfat_write.c	misra-c2012-17.8	1
 libs/ra8_fs/src/ra8_fs_fat_exfat_write.c	misra-c2012-9.2	8
 libs/ra8_fs/src/ra8_fs_fat_file.c	misra-c2012-10.8	1
 libs/ra8_fs/src/ra8_fs_fat_file.c	misra-c2012-12.1	1
-libs/ra8_fs/src/ra8_fs_fat_file.c	misra-c2012-15.5	27
+libs/ra8_fs/src/ra8_fs_fat_file.c	misra-c2012-15.5	28
 libs/ra8_fs/src/ra8_fs_fat_file.c	misra-c2012-18.4	1
 libs/ra8_fs/src/ra8_fs_fat_file.c	misra-c2012-8.4	2
 libs/ra8_fs/src/ra8_fs_fat_file.c	misra-c2012-9.2	10
@@ -1049,8 +1048,8 @@ libs/ra8_io/src/ra8_io_stream_usbcdc.c	misra-c2012-11.5	1
 libs/ra8_io/src/ra8_io_stream_usbcdc.c	misra-c2012-15.5	5
 libs/ra8_io/src/ra8_io_stream_usbcdc.c	misra-c2012-8.4	1
 libs/ra8_io/src/ra8_io_stream_usbcdc.c	misra-c2012-8.9	1
-libs/ra8_io/src/ra8_io_vfs.c	misra-c2012-15.5	41
-libs/ra8_io/src/ra8_io_vfs.c	misra-c2012-8.4	9
+libs/ra8_io/src/ra8_io_vfs.c	misra-c2012-15.5	43
+libs/ra8_io/src/ra8_io_vfs.c	misra-c2012-8.4	10
 libs/ra8_io/src/ra8_io_vfs_compress.c	misra-c2012-15.5	22
 libs/ra8_io/src/ra8_io_vfs_compress.c	misra-c2012-8.4	2
 libs/ra8_jof/src/ra8_jof.c	misra-c2012-11.5	2

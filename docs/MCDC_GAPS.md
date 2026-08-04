@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **235**
-- Total compound decisions in scope: **1276**
-- Decisions at 100% MC/DC (`yes`): **1096**
+- Source files with at least one decision: **236**
+- Total compound decisions in scope: **1277**
+- Decisions at 100% MC/DC (`yes`): **1097**
 - Decisions partially covered (`partial`): **74**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **85.89%**
+- Coverage rate (yes / total): **85.90%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **89**
-- Reachable-condition denominator (total - deactivated): **1187**
-- **Reachable MC/DC rate**: **92.33%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1188**
+- **Reachable MC/DC rate**: **92.34%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -402,6 +402,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_ether_phy | 1 | 1 | 0 | 0 |
 | ra8_ethosu_shim | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_exfat_fmt | 1 | 1 | 0 | 0 |
+| ra8_fs_fat_exfat_write | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_file | 1 | 1 | 0 | 0 |
 | ra8_gfx_blit_gray4 | 1 | 1 | 0 | 0 |
 | ra8_glcdc_layer | 1 | 1 | 0 | 0 |

@@ -105,14 +105,16 @@ priv_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint32_t lba, u
  * @param[out]    out_file Receives the populated file handle.
  *
  * @return Error code.
- * @retval k_ra8_ok          File handle ready.
- * @retval k_ra8_err_no_mem  File table is full.
- * @retval k_ra8_err_*       Backend error during truncation.
+ * @retval k_ra8_ok              File handle ready.
+ * @retval k_ra8_err_invalid_arg `entry` carries ATTR_DIRECTORY.
+ * @retval k_ra8_err_no_mem      File table is full.
+ * @retval k_ra8_err_*           Backend error during truncation.
  *
  * @pre All pointers are non-NULL; mount is in use.
  * @pre `entry` came from a successful `priv_dir_find` for `lba`/`off`.
  * @post On success, `*out_file` is in use and configured for `mode`.
  * @post On failure, the file slot is marked free again.
+ * @post A directory entry is rejected before any slot or chain is touched.
  *
  * @note Not thread-safe; callers serialise.
  *
@@ -126,6 +128,15 @@ static ra8_err_t priv_open_existing(ra8_fs_mount_t* handle,
                                     ra8_fs_mode_t   mode,
                                     ra8_fs_file_t** out_file)
 {
+  /* A directory is not a file (#604). Without this the write path ran
+   * priv_truncate_existing() on it -- freeing the chain that held every child
+   * and stamping cluster 0 / size 0 into an entry still flagged ATTR_DIRECTORY
+   * -- and the read path handed back a zero-byte handle, because a directory's
+   * DIR_FileSize is 0 by specification. Rejected for every mode, before the
+   * file slot is allocated, so a refused open consumes nothing. */
+  if ((entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_directory) != 0U) {
+    return k_ra8_err_invalid_arg;
+  }
   ra8_fs_file_t* f = priv_alloc_file_slot();
   if (f == nullptr) {
     return k_ra8_err_no_mem;
@@ -435,7 +446,8 @@ static ra8_err_t priv_create_new(ra8_fs_mount_t*  handle,
  * @retval k_ra8_ok                File opened.
  * @retval k_ra8_err_null_ptr      Any pointer argument was NULL.
  * @retval k_ra8_err_invalid_state Mount is not currently in use.
- * @retval k_ra8_err_invalid_arg   Path is not a valid 8.3 name.
+ * @retval k_ra8_err_invalid_arg   Path is not a valid 8.3 name, or it resolves
+ *                                 to a directory (any mode).
  * @retval k_ra8_err_not_found     Read-only open of a missing file.
  * @retval k_ra8_err_no_mem        File or directory table full.
  * @retval k_ra8_err_*             Backend error.
@@ -444,6 +456,7 @@ static ra8_err_t priv_create_new(ra8_fs_mount_t*  handle,
  * @pre Mount is in use.
  * @post On success, `*out_file` is a valid open handle.
  * @post On failure, no file slot is marked in use.
+ * @post A path naming a directory leaves the volume untouched.
  *
  * @note Not thread-safe; callers serialise.
  *
