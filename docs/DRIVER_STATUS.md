@@ -189,7 +189,7 @@ work; subsequent fixes may live in later commits.
 
 | Driver | FSP parity | Status | Landed | Notes |
 |---|---|---|---|---|
-| ra8_ble | r_ble | placeholder | sweep 8 (`5e154b9`) | controller bring-up + HCI command/event ring; production needs Renesas firmware patch image |
+| ra8_ble | r_ble | placeholder | sweep 8 (`5e154b9`) | HCI command/event ring only; the RA8D2 has no on-chip BLE radio (`6f6209a95`), so the controller is the ESP32-C6 companion |
 
 ## HMI / sensing
 

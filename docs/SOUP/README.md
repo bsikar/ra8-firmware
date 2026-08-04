@@ -35,7 +35,6 @@ basis.
 | ruy             | git `d3712831` | Google                | [ruy.md](ruy.md)                   |
 | esp-hosted host driver | 2.12.11 git `949bb30` | Espressif Systems | [esp-hosted-host.md](esp-hosted-host.md) |
 | protobuf-c (nested in esp-hosted) | 1.4.1 git `abc67a11` | protobuf-c authors | [esp-hosted-host.md](esp-hosted-host.md) |
-| RSIP-E50D firmware (`r_sce_AMC`) | FSP TBD | Renesas / FSP            | [r_sce_AMC_firmware.md](r_sce_AMC_firmware.md) |
 
 Host build tool (not vendored source, not linked into firmware): **Arm Ethos-U
 Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
@@ -94,11 +93,6 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 - **Espressif esp-hosted-mcu** -- ESP32-C6 wireless co-processor firmware
   (Wi-Fi/BLE) built from a pinned upstream commit and flashed onto the C6.
   Not vendored and not linked into the RA8 image; recipe in `coprocessor/esp32c6/`.
-- **RSIP-E50D firmware (`r_sce_AMC`)** -- Renesas Secure IP protected
-  procedures (key install / wrap / unwrap) consumed by
-  `libs/ra8_hal/src/ra8_rsip*.c` and the secure-side key vault.
-  Vendored from `renesas/fsp` -- see
-  `libs/third_party/fsp_blobs/README.md`.
 
 ## Aggregated license inventory and SBOM
 
@@ -154,7 +148,7 @@ Deliberate deviations are declared in the registry (`patched_files`,
 `local_files`) with a justification, and `--refresh` REFUSES to record a
 deviation the registry has not declared -- otherwise a corrupted file would be
 quietly re-recorded as "modified on purpose" and the gate would go green having
-absorbed it. As of 2026-07-28: 22 components, 9735 vendored files, 9716
+absorbed it. As of 2026-08-04: 21 components, 9420 vendored files, 9401
 byte-identical to their pinned upstream revision, 19 declared deviations.
 
 Applying that check for the first time found five undeclared deviations that

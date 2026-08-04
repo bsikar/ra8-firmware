@@ -82,19 +82,16 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | ruy | git `d3712831` | Apache-2.0 | `libs/third_party/ruy/` | <https://github.com/google/ruy> |
 | esp-hosted host driver | 2.12.11 (git `949bb30`) | Apache-2.0 | `libs/third_party/esp-hosted/` | <https://github.com/espressif/esp-hosted-mcu> |
 | protobuf-c (nested in esp-hosted) | 1.4.1 (git `abc67a11`) | BSD-2-Clause | `libs/third_party/esp-hosted/common/protobuf-c/` | <https://github.com/protobuf-c/protobuf-c> |
-| Renesas RSIP-E50D fw (`r_sce_AMC`) | FSP @ `40bbaa11` | BSD-3-Clause | `libs/third_party/fsp_blobs/r_sce_AMC/` | <https://github.com/renesas/fsp> |
-| Renesas BLE controller patch (**not vendored**) | FSP (Renesas SLA) | Renesas SLA | `libs/third_party/fsp_blobs/ble_patch/` (absent) | <https://github.com/renesas/fsp> |
 | Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/ra8_fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
 
-Counts: **20 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
-the vendored RSIP-E50D firmware and the absent BLE patch) + **1 bundled font
-asset**. One of the twenty (protobuf-c) is *nested*: upstream esp-hosted carries
-it as a git submodule, so it is pinned and licensed in its own right rather than
-folded into its parent. Ten of the twenty-two carry a declared deviation from
+Counts: **20 vendored source components** + **1 bundled font asset**. One of
+the twenty (protobuf-c) is *nested*: upstream esp-hosted carries it as a git
+submodule, so it is pinned and licensed in its own right rather than folded
+into its parent. Ten of the twenty-one carry a declared deviation from
 their upstream pin -- TinyXML-2, libwebp and stb each an in-tree code patch, the
 five Eclipse ThreadX trees a `.gitattributes` edit, and Mbed TLS /
 TF-PSA-Crypto their build-generated sources -- so those are *modified* SOUP;
-the other twelve are byte-identical to their pin. Every deviation is
+the other eleven are byte-identical to their pin. Every deviation is
 enumerated in the component's `docs/SOUP/*.md` and machine-checked (see
 "Provenance and integrity" below). Separately, **Arm Ethos-U
 Vela** is a build-time host tool (pinned at `tools/vela/requirements.txt`),
@@ -110,7 +107,7 @@ the port plus the CMake wiring are a follow-on change. See
 
 ## Provenance and integrity
 
-**All twenty-two vendored components are now pinned to an upstream revision and
+**All twenty-one vendored components are now pinned to an upstream revision and
 verified against it file by file.** Ten of them had no upstream pin at all
 until #548 -- their version was read out of a header in our own tree, which
 says what the code calls itself, not where it came from. Each was resolved by
@@ -145,11 +142,9 @@ permitted to differ.
 | ruy | `d37128311b445e758136b8602d1bbd2a755e115d` | 2/2 | none |
 | esp-hosted host driver | `949bb30612747a3bd9e402eda8d01fbfa1f8503e` | 77/77 | none |
 | protobuf-c (nested) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | 3/3 | none |
-| RSIP-E50D (`r_sce_AMC`) | FSP `40bbaa11b1a1b87e0ee0675e401aea6351f90d14` | 315/315 | none (1 relocated) |
 | Literata | tag `3.103` `0c2761b727a1b3a7cffd313c37f0f5163dfc7a63` | 1/1 | none (1 relocated) |
-| BLE patch | not vendored | n/a | absent |
 
-**Totals: 22 components, 9735 vendored files, 9716 byte-identical to their
+**Totals: 21 components, 9420 vendored files, 9401 byte-identical to their
 pinned upstream revision, 19 declared deviations.**
 
 ### Why there are no hash values in this table
@@ -249,13 +244,6 @@ below); this section reproduces the copyright line and points to that text.
   the esp-hosted tree because upstream embeds it there as a git submodule;
   it is a separate upstream project under a separate license and is pinned
   and attributed as one.
-- **RSIP-E50D firmware (`r_sce_AMC`)** -- BSD-3-Clause, per-file SPDX.
-  Renesas Electronics Corporation. Upstream `LICENSE.md` mirrored at
-  `libs/third_party/fsp_blobs/r_sce_AMC/UPSTREAM_LICENSE.md`.
-- **BLE controller patch** -- Renesas Software License Agreement; an
-  encrypted binary that is NOT in the public BSD-3-Clause FSP and is NOT
-  present in this tree. Not linked into MIT code. See
-  [`docs/SOUP/ble_patch_image.md`](docs/SOUP/ble_patch_image.md).
 - **Literata** -- "Copyright 2017 The Literata Project Authors
   (https://github.com/googlefonts/literata)." Licensed under the SIL Open Font
   License, Version 1.1; the full license text ships at
@@ -368,6 +356,6 @@ component cannot ship without updating both artifacts.
   weekly OSV CVE scan (SBOM purl leg + pinned-commit leg).
 - [`docs/SOUP/`](docs/SOUP/) -- per-component qualification (service history,
   CVE notes, integration seams, re-review cadence).
-- [`libs/third_party/fsp_blobs/README.md`](libs/third_party/fsp_blobs/README.md)
-  -- the gold-standard pinned-blob provenance pattern.
+- [`docs/VENDOR_BLOBS.md`](docs/VENDOR_BLOBS.md) -- the vendor-blob
+  procurement route: what is deliberately not in this tree, and why.
 - [`LICENSE.txt`](LICENSE.txt) -- the MIT license for all first-party code.
