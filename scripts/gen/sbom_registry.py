@@ -682,28 +682,6 @@ REGISTRY: tuple[Component, ...] = (
         ),
     ),
     Component(
-        key="fsp_blobs/r_sce_AMC",
-        name="Renesas RSIP-E50D firmware (r_sce_AMC)",
-        version="FSP default branch @ 40bbaa11 (2026-05-02); no tag pinned",
-        ctype="firmware",
-        group="renesas",
-        url="https://github.com/renesas/fsp",
-        path="libs/third_party/fsp_blobs/r_sce_AMC",
-        provenance=PROV_COMMIT_PINNED,
-        description="RSIP-E50D protected crypto procedures (key install/wrap).",
-        purl="pkg:github/renesas/fsp@40bbaa11b1a1b87e0ee0675e401aea6351f90d14",
-        spdx="BSD-3-Clause",
-        license_note="Per-file SPDX-BSD-3-Clause; upstream LICENSE.md mirrored.",
-        license_file="libs/third_party/fsp_blobs/r_sce_AMC/UPSTREAM_LICENSE.md",
-        upstream_commit="40bbaa11b1a1b87e0ee0675e401aea6351f90d14",
-        upstream_ref="40bbaa11b1a1b87e0ee0675e401aea6351f90d14",
-        extra_notes=(
-            "Gold-standard provenance: commit pin + aggregate SHA-256 of the "
-            "sorted per-file hashes (excludes UPSTREAM_LICENSE.md). See "
-            "docs/SOUP/r_sce_AMC_firmware.md.",
-        ),
-    ),
-    Component(
         key="esp-hosted",
         name="Espressif esp-hosted-mcu (host driver)",
         version="2.12.11 (host driver) @ git 949bb30",

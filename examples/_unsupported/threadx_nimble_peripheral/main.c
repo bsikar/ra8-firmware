@@ -31,11 +31,13 @@
  * subscribe to Battery Level notifications, watch the value tick
  * down once every ten seconds.
  *
- * @par BLE patch image gap
- * Phase 1.3 of the BLE roadmap: ``ra8_ble_open`` currently stubs the
- * controller patch-load loop. Real silicon needs the Renesas-supplied
- * BLE firmware patch image before this demo can pass the smoke test
- * end-to-end -- see README.md alongside this file.
+ * @par No on-chip BLE radio
+ * This demo cannot pass a smoke test on a stock EK-RA8D2: the RA8D2 has
+ * no on-chip BLE radio (established by commit ``6f6209a95``), so there
+ * is no controller here to bring up and no vendor patch image that
+ * would supply one. BLE on this board means an ESP32-C6 companion
+ * carrying the controller across the ``ra8_ble`` HCI transport seam.
+ * Only the software path is wired -- see README.md alongside this file.
  *
  * @author Brighton Sikarskie
  * @date 2026-04-29
@@ -207,7 +209,7 @@ static void demo_ble_or_halt(void)
     .deep_sleep_enable = 0U,
   };
   if (ra8_ble_open(&ble_cfg) != k_ra8_ok) {
-    demo_log("[nimble] ra8_ble_open failed -- patch image missing?\r\n");
+    demo_log("[nimble] ra8_ble_open failed -- no C6 companion?\r\n");
     demo_panic_halt();
   }
   if (ble_hci_ra8_ble_init() != k_ra8_ok) {

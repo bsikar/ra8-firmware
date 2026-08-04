@@ -167,8 +167,8 @@ full anomaly log. Summary of items deferred from v1 release:
 | OP-001 | Major    | USB device chapter-9 enumeration not implemented | Deferred (multi-day port)  |
 | OP-002 | Major    | LevelX xSPI NOR returns 0xFFFFFF (chip silent)   | Deferred (logic-analyzer)  |
 | OP-003 | Major    | 4 EVM apps stuck in `*_panic_halt`               | Deferred                   |
-| OP-004 | Critical | 5 BLE apps blocked on Renesas patch image (NDA)  | Blocked (vendor blob)      |
-| OP-005 | Critical | RSIP-E BIST blocked on AMC blob (NDA)            | Blocked (vendor blob)      |
+| OP-004 | Critical | 5 BLE apps blocked on Renesas patch image (NDA)  | CLOSED INVALID (`6f6209a95`): no on-chip BLE radio, so no patch image exists; controller is the ESP32-C6 companion |
+| OP-005 | Critical | RSIP-E BIST blocked on AMC blob                  | Blocked (not vendored; public FSP, BSD-3-Clause) |
 | OP-006 | Minor    | Doxygen tag completeness (was 429 functions)     | CLOSED (0 gaps, 2747 audited) |
 | OP-007 | Major    | MC/DC reachable target                           | CLOSED reachable (100.00%); absolute 92.29% informational |
 | OP-008 | Minor    | `make smoke` hangs in current bench environment  | Mitigated: HIL is developer-laptop pre-push (`docs/HIL_DEVELOPER_WORKFLOW.md`) |
@@ -243,10 +243,12 @@ closure schedule.
 4. Hardware-in-the-loop is the developer-laptop pre-push workflow in
    `docs/HIL_DEVELOPER_WORKFLOW.md`; a self-hosted CI runner is out
    of scope.
-5. Vendor binary blobs (BLE controller patch, RSIP-E AMC image) are
-   vendored under `libs/third_party/fsp_blobs/` and tracked under
-   SOUP. The corresponding apps live under `examples/_unsupported/`
-   and are not built into the release image.
+5. No vendor binary blob is shipped in this tree. Hardware-backed RSIP
+   key wrap would need the RSIP-E AMC firmware, obtainable from public
+   FSP under BSD-3-Clause but deliberately not vendored (see
+   `docs/VENDOR_BLOBS.md`); the software backend is what is built and
+   host-tested. The RA8D2 has no BLE radio, so there is no controller
+   patch image to obtain.
 
 This SAS will be re-issued at the close of each Phase to record
 progress against these items.

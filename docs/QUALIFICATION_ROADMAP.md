@@ -359,23 +359,25 @@ hardware-in-the-loop smoke (Phase 6) plus integration tests
 
 ## 6. Open questions and blockers
 
-### Vendor-blob blockers -- CLOSED 2026-05-02
+### Vendor-blob blockers -- CLOSED 2026-05-02 (as a PROCUREMENT ROUTE)
 
-The vendor-blob item is **CLOSED**: the project pulls the
-blob **directly from `renesas/fsp` as SOUP** per IEC 61508-3
-sec. 7.4.2.12 and DO-178C sec. 12.1.4. No NDA route, no
-clean-room rewrite. The runtime stubs in `libs/ra8_hal/src/ra8_rsip*.c`
-remain in place for host unit tests; the FSP-vendored blob is
-dropped into `libs/third_party/fsp_blobs/` for any hardware build
-that needs it.
+The vendor-blob item is **CLOSED**, and what closed it is a *route*, not
+a driver in this tree: the RSIP-E50D protected procedures are published
+in the public `renesas/fsp` repository under BSD-3-Clause, so they can be
+pulled as SOUP per IEC 61508-3 sec. 7.4.2.12 and DO-178C sec. 12.1.4
+whenever a hardware build needs them. No NDA route, no clean-room
+rewrite. The software backend in `libs/ra8_hal/src/ra8_rsip*.c`
+(`RA8_RSIP_SOFTWARE_BACKEND`) is what the tree actually builds today.
 
-1. **RSIP-E50D firmware blobs** -- CLOSED. Vendored from
-   `renesas/fsp` as SOUP. SOUP entry:
-   `docs/SOUP/r_sce_AMC_firmware.md`. Drop-in path:
-   `libs/third_party/fsp_blobs/r_sce_AMC/` (procurement plan in
-   `libs/third_party/fsp_blobs/README.md`; the actual binary copy
-   is a follow-up commit when network and a tagged FSP release are
-   available).
+1. **RSIP-E50D firmware blobs** -- CLOSED as a licensing/procurement
+   question. Nothing is vendored: a snapshot of the FSP primitives was
+   carried in `libs/third_party/fsp_blobs/` from 2026-05-02 and deleted
+   in 2026-08 (#614) because it was compiled by no target, referenced by
+   no call site, and could not compile in any case -- 284 of its 287
+   translation units included FSP headers that were never copied. A real
+   port re-vendors a complete, tag-pinned snapshot together with the
+   `r_rsip_protected` driver layer and a build option that actually
+   compiles it; procurement guidance is in `docs/VENDOR_BLOBS.md`.
 
 ### Process blockers
 

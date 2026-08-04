@@ -94,10 +94,14 @@ EXIT_VACUOUS = 2
 # pronounce all of them clean, and a manifest made only of `patch`/`local` rows
 # would prove nothing about upstream at all -- it would record our opinion of
 # our own tree, which is exactly the defect this gate exists to remove.  All
-# three are MEASURED against the live tree on 2026-07-28 -- 22 components,
-# 9735 vendored files, 9715 of them byte-identical to their pinned upstream
-# revision -- and set below the measurement by enough slack that ordinary
-# re-vendoring does not trip them, but far above any plausible collapse.
+# three are MEASURED against the live tree.  Re-measured 2026-08-04, after
+# #614 deleted the never-compiled r_sce_AMC vendoring: 21 components, 9420
+# vendored files, 9401 of them byte-identical to their pinned upstream
+# revision (was 22 / 9735 / 9716 on 2026-07-28).  The file floors keep enough
+# slack that ordinary re-vendoring does not trip them while sitting far above
+# any plausible collapse; MIN_COMPONENTS now has only one component of slack,
+# so deleting another vendored component is meant to fail here until whoever
+# does it re-measures these three numbers deliberately.
 MIN_COMPONENTS = 20
 MIN_ENTRIES = 9000
 MIN_UPSTREAM_VERIFIED = 8900

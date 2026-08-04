@@ -65,20 +65,21 @@ That forwards to the per-app Makefile, which configures cmake with
    notifications.
 6. Watch the value tick down once every 10 seconds.
 
-## BLE patch image gap (Phase 1.3 of roadmap)
+## No on-chip BLE radio
 
-The RA8D2 BLE controller requires a Renesas-supplied firmware patch
-image at boot. `ra8_ble_open` currently stubs the patch-load loop
-(`ra8_ble.h` documents this), so on real silicon `ra8_ble_open` will
-report success but no air activity will happen until the production
-patch loader is wired in.
+This app cannot produce air activity on a stock EK-RA8D2, and no vendor
+blob changes that. Commit `6f6209a95` established that **the RA8D2 has
+no on-chip BLE radio at all**. Earlier revisions of this file claimed a
+"Renesas-supplied firmware patch image" was the missing piece; there is
+no such image, and the controller this app once tried to bring up was a
+phantom that has since been deleted.
 
-This / Phase 1.3 task wires the *software* path (HCI transport bridge,
-NPL, and GATT skeleton) so that it links. That path has never been
-exercised on silicon: the patch-load gap is one of several unproven
-links (patch loader, `ra8_ble` transport, the NimBLE port itself), and
-none of them has been demonstrated end-to-end. Do not read this app as
-"one blocker away from working."
+BLE on this board means an **ESP32-C6 companion** carrying the
+controller, reached over the `ra8_ble` HCI transport seam. What is
+wired here is the *software* path only -- HCI transport bridge, NPL,
+and GATT skeleton -- so that it links and is host-tested. It has never
+been exercised end-to-end on silicon. Do not read this app as "one
+blocker away from working."
 
 ## Files
 
