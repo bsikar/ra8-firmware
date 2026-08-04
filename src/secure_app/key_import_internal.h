@@ -28,9 +28,10 @@
  * bytes, keyed by the key-authentication key (KAK) the vault holds
  * (``ra8_key_vault_load_mac_key``) -- a secret the Non-Secure world
  * can never reach. The CMAC itself is computed through the
- * ``ra8_sec_cmac_*`` seam, which routes to the silicon-proven
- * TF-PSA-Crypto ``psa_mac_*`` backend on the firmware image and to a
- * KAT-pinned in-tree AES-CMAC reference in host tests. A forged blob
+ * ``ra8_sec_cmac_*`` seam. That seam resolves to the KAT-pinned in-tree
+ * AES-CMAC reference in EVERY build, firmware and host alike; its
+ * TF-PSA-Crypto ``psa_mac_*`` backend is compiled by nothing (#619).
+ * A forged blob
  * therefore requires recovering the KAK, not merely replaying a
  * trivial fold.
  *

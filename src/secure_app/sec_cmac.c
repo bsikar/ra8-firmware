@@ -9,13 +9,20 @@
  * Two interchangeable backends behind the ``ra8_sec_cmac_*`` API declared in
  * ``sec_cmac_internal.h``:
  *
- * - ``RA8_KEY_IMPORT_PSA_CMAC`` defined -- delegate to the vendored,
- *   silicon-proven TF-PSA-Crypto: ``psa_mac_compute`` for generation and
- *   ``psa_mac_verify`` for the verdict, both with ``PSA_ALG_CMAC`` over a
- *   transiently imported ``PSA_KEY_TYPE_AES`` key. This is the production /
- *   HIL path; the app that links TF-PSA-Crypto sets the flag.
- * - otherwise (the default: host unit tests and every app that does not link
- *   TF-PSA-Crypto) -- a self-contained AES-128 / AES-256 + CMAC reference
+ * - ``RA8_KEY_IMPORT_PSA_CMAC`` defined -- delegate to the vendored
+ *   TF-PSA-Crypto: ``psa_mac_compute`` for generation and ``psa_mac_verify``
+ *   for the verdict, both with ``PSA_ALG_CMAC`` over a transiently imported
+ *   ``PSA_KEY_TYPE_AES`` key.
+ *   **NOTHING DEFINES THIS FLAG (#619).** No build sets it, so this backend
+ *   has never been compiled by any image, host test or gate. It is not the
+ *   production path and must not be described as one. Turning it on is not a
+ *   one-line change: this file is compiled into EVERY app through the
+ *   ``src/secure_app`` source set, so defining the flag globally would drag
+ *   TF-PSA-Crypto into images that link no crypto library today, while
+ *   defining it per-app would leave two CMAC implementations live at once
+ *   with the KATs covering only one of them.
+ * - otherwise -- THE PATH EVERY BUILD ACTUALLY TAKES, host and firmware
+ *   alike: a self-contained AES-128 / AES-256 + CMAC reference
  *   (FIPS 197 + NIST SP 800-38B). It is exercised by the host suite against
  *   the published SP 800-38B known-answer vectors, so it is real, not a
  *   forgeable placeholder.

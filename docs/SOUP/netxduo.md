@@ -46,11 +46,19 @@ firmware as Software Of Unknown Provenance (SOUP).
 ### What is not built
 
 - **NetX Secure is compiled by nothing.** `cmake/netxduo.cmake` adds
-  `nx_secure/inc` to the include path and nothing else; it deliberately
-  excludes the one crypto TU that includes `nx_secure_tls.h`. All 314
+  `nx_secure/inc` to the include path and nothing else. All 314
   `nx_secure/` files are outside the build graph. TLS in this firmware is Mbed
   TLS behind `libs/ra8_tls/`; no NetX TLS record layer exists in any image, so
   this qualification makes no TLS claim.
+- **NetX Crypto is compiled by nothing either.** All 56
+  `crypto_libraries/src` TUs used to be globbed into every NetX image, with no
+  first-party caller of any `nx_crypto_*` symbol -- `--gc-sections` was the
+  only thing keeping them out of flash. The glob was removed rather than
+  justified: a second, unqualified crypto implementation inside this component
+  is exactly the sort of thing a SOUP record must not have to explain away.
+  `crypto_libraries/inc` remains on the include path because
+  `common/inc/nx_api.h` needs the `NX_CRYPTO_METHOD` struct definition; the
+  core reads its fields and never calls a crypto function.
 - The OTA download path this document used to cite is gone: `threadx_ota_demo`
   was deleted in `d38587e80`, and `libs/ra8_ota` has never referenced NetX --
   it takes a dependency-injected interface.
