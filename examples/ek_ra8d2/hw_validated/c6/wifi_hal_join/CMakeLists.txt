@@ -49,21 +49,48 @@ if(TARGET wifi_hal_join.elf)
   # Vendored SOUP; silence its warnings the way cmake/netxduo.cmake does.
   set_source_files_properties("${_dhcp_src}" PROPERTIES COMPILE_OPTIONS "-w")
 
-  # Wi-Fi credentials, injected from the environment at configure time. Empty by
-  # default so the aggregate cross-build stays green and no credential is ever
-  # committed; the runtime prints a FAIL when the SSID is empty.
+  # Wi-Fi credentials: read from environment / wifi.env, or auto-fetched from OpenBao
+  # (secret/ra8d2/bench-network) if configured. Empty by default so aggregate cross-builds stay green.
   set(_c6_ssid "")
   set(_c6_psk "")
+  set(_c6_source "none")
   if(DEFINED RA8_C6_WIFI_SSID)
     set(_c6_ssid "${RA8_C6_WIFI_SSID}")
+    set(_c6_source "environment variable")
   elseif(DEFINED ENV{RA8_C6_WIFI_SSID})
     set(_c6_ssid "$ENV{RA8_C6_WIFI_SSID}")
+    set(_c6_source "environment variable / wifi.env")
   endif()
   if(DEFINED RA8_C6_WIFI_PSK)
     set(_c6_psk "${RA8_C6_WIFI_PSK}")
   elseif(DEFINED ENV{RA8_C6_WIFI_PSK})
     set(_c6_psk "$ENV{RA8_C6_WIFI_PSK}")
   endif()
+
+  # Fallback: query OpenBao for bench credentials if not explicitly supplied
+  if(NOT _c6_psk AND EXISTS "${_d}/scripts/secrets/openbao_client.py")
+    execute_process(
+      COMMAND python3 "${_d}/scripts/secrets/openbao_client.py" get secret/ra8d2/bench-network bench_psk
+      OUTPUT_VARIABLE _bao_psk
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+      RESULT_VARIABLE _bao_res
+    )
+    if(_bao_res EQUAL 0 AND _bao_psk)
+      set(_c6_psk "${_bao_psk}")
+      if(NOT _c6_ssid)
+        set(_c6_ssid "ra8-bench")
+      endif()
+      set(_c6_source "OpenBao vault (secret/ra8d2/bench-network)")
+    endif()
+  endif()
+
+  if(_c6_ssid AND _c6_psk)
+    message(STATUS "[Wi-Fi] Compiled credentials: SSID='${_c6_ssid}' (source: ${_c6_source})")
+  else()
+    message(STATUS "[Wi-Fi] No credentials supplied (set RA8_C6_WIFI_SSID/PSK in env/wifi.env, or configure OpenBao)")
+  endif()
+
   target_compile_definitions(
     wifi_hal_join.elf PRIVATE "RA8_C6_WIFI_SSID=\"${_c6_ssid}\"" "RA8_C6_WIFI_PSK=\"${_c6_psk}\""
   )

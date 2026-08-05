@@ -212,8 +212,9 @@ static bool c6_join_phase_associate(ra8_c6link_mac_t* mac_out)
    * empty string only in a no-credentials build, non-empty once compiled with
    * RA8_C6_WIFI_SSID -- cppcheck sees only the default-build literal. */
   if (s_ssid[0] == '\0') {
-    c6_join_puts("c6_join: FAIL no Wi-Fi credentials compiled in -- rebuild with "
-                 "RA8_C6_WIFI_SSID / RA8_C6_WIFI_PSK\r\n");
+    c6_join_puts("c6_join: FAIL no Wi-Fi credentials compiled in! Set RA8_C6_WIFI_SSID / "
+                 "RA8_C6_WIFI_PSK in env, or in coprocessor/esp32c6/wifi.env, or fetch via "
+                 "OpenBao (python3 scripts/secrets/openbao_client.py)\r\n");
     return false;
   }
   const ra8_err_t started = ra8_c6link_wifi_start(&s_link);
