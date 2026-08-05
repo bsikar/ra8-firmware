@@ -186,11 +186,9 @@ class OpenBaoClient:
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) >= 4 and sys.argv[1] == "get":
-        req_path = sys.argv[2]
+    if len(sys.argv) >= 4 and sys.argv[1] == "get":  # noqa: PLR2004
+        req_path = sys.argv[2].removeprefix("secret/")
         req_key = sys.argv[3]
-        if req_path.startswith("secret/"):
-            req_path = req_path[len("secret/") :]
         try:
             client = OpenBaoClient()
             if not client.configured:
