@@ -220,6 +220,7 @@ endforeach()
 
 # Include the main e-reader application target
 add_subdirectory(src/app)
+list(APPEND RA8_APPS "ra8d2-ereader")
 
 # Convenience alias `firmware` that maps to the default app's elf.
 if("${RA8_DEFAULT_APP}" IN_LIST RA8_APPS)
