@@ -187,8 +187,9 @@ static bool wifi_hal_report(const wifi_hal_result_t* res, bool joined)
 
   /* cppcheck-suppress knownConditionTrueFalse ; build-dependent credential. */
   if (s_ssid[0] == '\0') {
-    wifi_hal_puts("wifi_hal: FAIL no Wi-Fi credentials compiled in -- rebuild with "
-                  "RA8_C6_WIFI_SSID / RA8_C6_WIFI_PSK\r\n");
+    wifi_hal_puts("wifi_hal: FAIL no Wi-Fi credentials compiled in! Set RA8_C6_WIFI_SSID / "
+                  "RA8_C6_WIFI_PSK in env, or in coprocessor/esp32c6/wifi.env, or fetch via "
+                  "OpenBao (python3 scripts/secrets/openbao_client.py)\r\n");
     return false;
   }
   if (!res->associated) {

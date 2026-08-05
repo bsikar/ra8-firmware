@@ -181,3 +181,24 @@ class OpenBaoClient:
             {"X-Vault-Token": self.login()},
             {"custom_metadata": custom_metadata},
         )
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) >= 4 and sys.argv[1] == "get":
+        req_path = sys.argv[2]
+        req_key = sys.argv[3]
+        if req_path.startswith("secret/"):
+            req_path = req_path[len("secret/") :]
+        try:
+            client = OpenBaoClient()
+            if not client.configured:
+                sys.exit(1)
+            secret_data = client.kv_get(req_path)
+            if req_key in secret_data:
+                print(secret_data[req_key])
+                sys.exit(0)
+        except (OpenBaoError, OSError):
+            sys.exit(1)
+    sys.exit(1)
