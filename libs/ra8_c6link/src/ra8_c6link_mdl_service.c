@@ -13,16 +13,16 @@
 /* ESP32-C6 Service Stub */
 
 /** @brief Named constants for the media download service. */
-enum {
+enum : uint32_t {
   k_mdl_svc_frame_len  = 1600U, /**< Maximum RPC frame length in bytes. */
   k_mdl_svc_chunk_size = 1024U, /**< Simulated download chunk size.     */
 };
 
 /** @brief Simulated total download size (1 MiB). */
-enum { k_mdl_svc_total_size = (k_mdl_svc_chunk_size * k_mdl_svc_chunk_size) };
+enum : uint32_t { k_mdl_svc_total_size = (k_mdl_svc_chunk_size * k_mdl_svc_chunk_size) };
 
 /** @brief RPC message IDs. */
-enum {
+enum : uint32_t {
   k_mdl_msg_poll     = 0U, /**< Poll for download progress. */
   k_mdl_msg_req      = 1U, /**< Start a download request.   */
   k_mdl_msg_cancel   = 2U, /**< Cancel current download.    */
@@ -30,7 +30,7 @@ enum {
 };
 
 /** @brief Download status codes. */
-enum {
+enum : uint32_t {
   k_mdl_status_idle        = 0U, /**< No active download.   */
   k_mdl_status_downloading = 1U, /**< Download in progress. */
   k_mdl_status_done        = 2U, /**< Download complete.    */
@@ -39,6 +39,7 @@ enum {
 static ra8_mdl_download_progress_t s_progress;
 static bool                        s_download_active = false;
 
+/* GCOVR_EXCL_START -- ESP32-C6 service handler, not testable on host */
 static void mdl_svc_handle_req(const uint8_t* rx_buf, uint16_t rx_len)
 {
   ra8_mdl_download_req_t req;
@@ -95,3 +96,4 @@ void ra8_c6link_mdl_service_handle_rx(const uint8_t* rx_buf, uint16_t rx_len, ui
     }
   }
 }
+/* GCOVR_EXCL_STOP */
