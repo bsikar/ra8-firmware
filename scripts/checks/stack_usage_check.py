@@ -137,6 +137,14 @@ FIRST_PARTY_EXEMPTIONS = (
     #     "to avoid heap; only invoked once at chapter open from the "
     #     "ereader worker thread (8 kB stack budget).",
     # ),
+    (
+        "c6_mdl_test/main.c",
+        "main",
+        4096,
+        "Test harness: large inline struct initialisation for the RPC "
+        "request/progress test buffers; only runs as an HIL test app "
+        "with an 8 kB stack budget.",
+    ),
 )
 
 
