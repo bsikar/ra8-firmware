@@ -96,3 +96,50 @@ long mdl_urlname_chapter_number(const char* url);
  * @since 0.1.0
  */
 void mdl_urlname_ext(const char* url, char* out, size_t cap);
+
+/**
+ * @brief Sniff true image extension and MIME type from magic bytes and/or HTTP Content-Type.
+ *
+ * @details
+ * Inspects HTTP `Content-Type` header and magic bytes of buffer data:
+ *   - JPEG: `FF D8 FF` -> `.jpg` / `image/jpeg`
+ *   - PNG: `89 50 4E 47` -> `.png` / `image/png`
+ *   - WebP: `RIFF....WEBP` -> `.webp` / `image/webp`
+ *   - GIF: `GIF87a` / `GIF89a` -> `.gif` / `image/gif`
+ *
+ * @param[in]  buf          Data buffer holding raw magic bytes (may be NULL if buf_len == 0).
+ * @param[in]  buf_len      Length of @p buf in bytes.
+ * @param[in]  content_type HTTP Content-Type header string (may be NULL or empty).
+ * @param[out] out_ext      Destination buffer for lower-case extension (e.g. "jpg"). May be NULL.
+ * @param[in]  ext_cap      Capacity of @p out_ext in bytes.
+ * @param[out] out_mime     Destination buffer for exact MIME type (e.g. "image/jpeg"). May be NULL.
+ * @param[in]  mime_cap     Capacity of @p out_mime in bytes.
+ *
+ * @return true if an image type was recognized from magic bytes or Content-Type header, false otherwise.
+ */
+bool mdl_urlname_sniff_image_type(const void* buf,
+                                  size_t buf_len,
+                                  const char* content_type,
+                                  char* out_ext,
+                                  size_t ext_cap,
+                                  char* out_mime,
+                                  size_t mime_cap);
+
+/**
+ * @brief Sniff true image extension and MIME type from a file on disk.
+ *
+ * @param[in]  file_path    Absolute or relative path to the image file on disk.
+ * @param[in]  content_type HTTP Content-Type header string (may be NULL or empty).
+ * @param[out] out_ext      Destination buffer for lower-case extension (e.g. "jpg"). May be NULL.
+ * @param[in]  ext_cap      Capacity of @p out_ext in bytes.
+ * @param[out] out_mime     Destination buffer for exact MIME type (e.g. "image/jpeg"). May be NULL.
+ * @param[in]  mime_cap     Capacity of @p out_mime in bytes.
+ *
+ * @return true if an image type was recognized from magic bytes or Content-Type header, false otherwise.
+ */
+bool mdl_urlname_sniff_file(const char* file_path,
+                            const char* content_type,
+                            char* out_ext,
+                            size_t ext_cap,
+                            char* out_mime,
+                            size_t mime_cap);

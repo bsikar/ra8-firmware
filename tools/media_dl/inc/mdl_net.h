@@ -41,9 +41,11 @@
  *       less, so we deliberately do not.
  */
 typedef struct {
-  const char* user_agent; /**< Session User-Agent; never per-request random. */
-  const char* referer;    /**< Referer header value, or NULL to omit.        */
-  uint32_t    timeout_ms; /**< Whole-request time budget, milliseconds.      */
+  const char* user_agent;        /**< Session User-Agent; never per-request random. */
+  const char* referer;           /**< Referer header value, or NULL to omit.        */
+  const char* if_none_match;     /**< If-None-Match conditional header (ETag), or NULL. */
+  const char* if_modified_since; /**< If-Modified-Since header (Last-Modified), or NULL. */
+  uint32_t    timeout_ms;        /**< Whole-request time budget, milliseconds.      */
 } mdl_net_req_t;
 
 /**
@@ -59,14 +61,20 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  bool     allow_private_hosts;       /**< Permit loopback/private/link-local peers. */
-  bool     allow_cross_host_redirect; /**< Permit a redirect to a different host.    */
-  uint64_t max_response_bytes;        /**< Per-response byte cap (0 = unlimited).    */
+  bool        allow_private_hosts;       /**< Permit loopback/private/link-local peers. */
+  bool        allow_cross_host_redirect; /**< Permit a redirect to a different host.    */
+  uint64_t    max_response_bytes;        /**< Per-response byte cap (0 = unlimited).    */
+  const char* proxy;                     /**< HTTP/HTTPS proxy URL, or NULL for none.   */
+  const char* socks5;                    /**< SOCKS5 proxy URL, or NULL for none.       */
+  const char* cookie_file;               /**< Cookie file path for libcurl, or NULL.    */
 } mdl_net_policy_t;
 
 /** @brief Captured-response-field buffer sizes. */
 typedef enum : uint16_t {
-  k_mdl_retry_after_max = 64U, /**< Raw `Retry-After` header value buffer bytes. */
+  k_mdl_retry_after_max  = 64U,  /**< Raw `Retry-After` header value buffer bytes. */
+  k_mdl_etag_max         = 128U, /**< Raw `ETag` header value buffer bytes.        */
+  k_mdl_last_mod_max     = 64U,  /**< Raw `Last-Modified` header value buffer bytes. */
+  k_mdl_content_type_max = 128U, /**< Raw `Content-Type` header value buffer bytes. */
 } mdl_net_resp_size_t;
 
 /**
@@ -91,8 +99,11 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct {
-  long status;                             /**< Finished transfer's HTTP status, 0 if none. */
-  char retry_after[k_mdl_retry_after_max]; /**< Raw `Retry-After` value, "" when absent.    */
+  long status;                                 /**< Finished transfer's HTTP status, 0 if none. */
+  char retry_after[k_mdl_retry_after_max];     /**< Raw `Retry-After` value, "" when absent.    */
+  char etag[k_mdl_etag_max];                   /**< Raw `ETag` value, "" when absent.           */
+  char last_modified[k_mdl_last_mod_max];      /**< Raw `Last-Modified` value, "" when absent.  */
+  char content_type[k_mdl_content_type_max];   /**< Raw `Content-Type` value, "" when absent.  */
 } mdl_net_resp_t;
 
 /**

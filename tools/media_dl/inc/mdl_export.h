@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8_err.h"
@@ -74,30 +75,84 @@ const char* mdl_format_ext(mdl_format_t fmt);
  */
 bool mdl_format_is_dir_output(mdl_format_t fmt);
 
+/** @brief Sizing constants for metadata fields. */
+typedef enum : uint16_t {
+  k_mdl_meta_title_max   = 256, /**< Title (series or chapter) buffer max bytes. */
+  k_mdl_meta_summary_max = 1024,/**< Summary description buffer max bytes.       */
+  k_mdl_meta_name_max    = 128, /**< Person name (writer/artist) buffer max bytes. */
+  k_mdl_meta_path_max    = 256, /**< Cover image path buffer max bytes.           */
+} mdl_meta_size_t;
+
 /**
- * @brief Package `chapter_dir`'s contents into `out_path` as `fmt`.
- *
- * @details
- * For single-container formats (CBZ/CBT/CBT.GZ/CBT.XZ/CBR/EPUB/RABOOK) the
- * archive is created at @p out_path. For a directory-output format (JOF, see
- * ::mdl_format_is_dir_output) the pages are written as `.jof` siblings inside
- * @p chapter_dir and @p out_path is unused. Fails rather than silently
- * truncating: a chapter with more than ::k_max_pages page images, a page name
- * that will not fit a ustar entry, or an EPUB accumulator overrun all return an
- * error instead of producing short or malformed output.
+ * @struct mdl_export_meta_t
+ * @brief Rich series and chapter metadata for export containers (ComicInfo.xml, EPUB OPF).
+ */
+typedef struct {
+  char   series_title[k_mdl_meta_title_max];   /**< Series title.                    */
+  char   summary[k_mdl_meta_summary_max];        /**< Summary / description.           */
+  char   writer[k_mdl_meta_name_max];           /**< Writer / Author.                 */
+  char   artist[k_mdl_meta_name_max];           /**< Artist / Illustrator.            */
+  char   chapter_title[k_mdl_meta_title_max];  /**< Chapter title.                   */
+  double chapter_number;                       /**< Chapter number (0.0 if unnumbered). */
+  char   cover_path[k_mdl_meta_path_max];      /**< Cover image filename/path.       */
+  int    cover_index;                          /**< Cover page index (0-based, -1 if unset). */
+} mdl_export_meta_t;
+
+/**
+ * @brief Initialise a metadata struct to empty/default values.
+ * @param[out] meta Struct to clear (never NULL).
+ */
+void mdl_meta_init(mdl_export_meta_t* meta);
+
+/**
+ * @brief Parse metadata key-value lines or XML text into a metadata struct.
+ * @param[in,out] meta Metadata struct to populate.
+ * @param[in]     text Key-value string or XML document.
+ * @return k_ra8_ok on success, k_ra8_err_invalid_arg if meta or text is NULL.
+ */
+ra8_err_t mdl_meta_parse(mdl_export_meta_t* meta, const char* text);
+
+/**
+ * @brief Load metadata from a directory by looking for metadata files.
+ * @param[out] meta Metadata struct to fill.
+ * @param[in]  dir  Directory path to inspect.
+ * @return k_ra8_ok on success, error code on invalid arg.
+ */
+ra8_err_t mdl_meta_load_dir(mdl_export_meta_t* meta, const char* dir);
+
+/**
+ * @brief Generate ComicInfo.xml content from metadata.
+ * @param[in]  meta Metadata struct (or NULL for default metadata).
+ * @param[out] buf  Output buffer for XML string.
+ * @param[in]  cap  Capacity of @p buf.
+ * @return k_ra8_ok on success, error code if buffer too small or NULL arg.
+ */
+ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, size_t cap);
+
+/**
+ * @brief Package `chapter_dir`'s contents into `out_path` as `fmt` with rich metadata.
  *
  * @param[in] fmt         Target container (must not be loose/invalid).
  * @param[in] chapter_dir Absolute path to the chapter's page folder.
- * @param[in] out_path    Absolute path of the archive to create (single-file
- *                        formats); unused for directory-output formats but must
- *                        be non-NULL.
+ * @param[in] out_path    Absolute path of the archive to create.
+ * @param[in] meta        Rich metadata (may be NULL).
  *
- * @retval k_ra8_ok               Archive (or every `.jof` sibling) written.
+ * @retval k_ra8_ok               Archive written.
  * @retval k_ra8_err_invalid_arg  NULL/loose/invalid argument.
- * @retval k_ra8_err_invalid_size Over-long page name, or more than
- *                                ::k_max_pages page images in @p chapter_dir.
+ * @retval k_ra8_err_invalid_size Over-long page name or cap overflow.
  * @retval k_ra8_err_empty        No page images found in @p chapter_dir.
  * @retval k_ra8_err_not_supported The archiver tool is not on PATH.
  * @retval k_ra8_fail             The archiver ran but failed.
  */
+ra8_err_t mdl_export_chapter_meta(mdl_format_t             fmt,
+                                  const char*              chapter_dir,
+                                  const char*              out_path,
+                                  const mdl_export_meta_t* meta);
+
+/**
+ * @brief Package `chapter_dir`'s contents into `out_path` as `fmt`.
+ * @details Convenience wrapper around ::mdl_export_chapter_meta that attempts to
+ *          load metadata from @p chapter_dir automatically.
+ */
 ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path);
+
