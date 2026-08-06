@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 cmake_minimum_required(VERSION 3.20)
 
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
