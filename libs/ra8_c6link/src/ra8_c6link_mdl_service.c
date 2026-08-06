@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <string.h>
+#include <stddef.h>
 
 #include "ra8_c6link_mdl_msg.h"
 
@@ -43,7 +43,10 @@ static void mdl_svc_handle_req(const uint8_t* rx_buf, uint16_t rx_len)
 {
   ra8_mdl_download_req_t req;
   if (rx_len >= (1U + (uint16_t)sizeof(req))) {
-    (void)memcpy(&req, &rx_buf[1], sizeof(req));
+    uint8_t* const req_bytes = (uint8_t*)&req; /* cppcheck-suppress misra-c2012-11.5 */
+    for (size_t i = 0U; i < sizeof(req); ++i) {
+      req_bytes[i] = rx_buf[1U + i];
+    }
     s_download_active         = true;
     s_progress.bytes_received = 0U;
     s_progress.total_bytes    = k_mdl_svc_total_size;
@@ -60,7 +63,11 @@ static void mdl_svc_handle_poll(uint8_t* tx_buf)
       s_download_active = false;
     }
     tx_buf[0] = k_mdl_msg_progress;
-    (void)memcpy(&tx_buf[1], &s_progress, sizeof(s_progress));
+    const uint8_t* const prog_bytes =
+      (const uint8_t*)&s_progress; /* cppcheck-suppress misra-c2012-11.5 */
+    for (size_t i = 0U; i < sizeof(s_progress); ++i) {
+      tx_buf[1U + i] = prog_bytes[i];
+    }
   }
 }
 
@@ -68,7 +75,9 @@ void ra8_c6link_mdl_service_handle_rx(const uint8_t* rx_buf, uint16_t rx_len, ui
 {
   /* mcdc-deactivated: stub service handler, null guards unreachable via RPC */
   if ((rx_buf != nullptr) && (tx_buf != nullptr) && (rx_len != 0U)) {
-    (void)memset(tx_buf, 0, k_mdl_svc_frame_len);
+    for (uint16_t i = 0U; i < (uint16_t)k_mdl_svc_frame_len; ++i) {
+      tx_buf[i] = 0U;
+    }
 
     switch (rx_buf[0]) {
       case k_mdl_msg_req:
