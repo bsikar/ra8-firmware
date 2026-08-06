@@ -27,6 +27,10 @@
 #include "ra8_jof.h"
 #include "tiny_jpeg_fixture.h"
 #include "unity_minimal.h"
+#include "ra8_arena.h"
+
+static uint8_t s_test_arena_buf[4U * 1024U * 1024U];
+static ra8_arena_t s_test_arena;
 
 /** @brief Permission bits for the scratch directories these tests create. */
 typedef enum : uint16_t {
@@ -213,7 +217,7 @@ static void test_export_cbz_roundtrip(void)
   write_fixture("/tmp/mdl_test_chap/page_001.jpg", 'a');
   write_fixture("/tmp/mdl_test_chap/page_002.jpg", 'b');
 
-  const ra8_err_t rc = mdl_export_chapter(k_mdl_fmt_cbz, dir, out);
+  const ra8_err_t rc = mdl_export_chapter(&s_test_arena, k_mdl_fmt_cbz, dir, out);
   TEST_ASSERT(rc == k_ra8_ok);
 
   mz_zip_archive zr;
@@ -250,7 +254,7 @@ static void test_export_skips_non_images(void)
   write_fixture("/tmp/mdl_mixed_chap/notes.txt", 't');
   write_fixture("/tmp/mdl_mixed_chap/.DS_Store", 'd');
 
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbz, dir, out) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_cbz, dir, out) == k_ra8_ok);
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
   TEST_ASSERT(mz_zip_reader_init_file(&zr, out, 0) != MZ_FALSE);
@@ -298,7 +302,7 @@ static void test_export_epub_roundtrip(void)
   (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   write_fixture("/tmp/mdl_epub_chap/page_001.jpg", 'a');
   write_fixture("/tmp/mdl_epub_chap/page_002.jpg", 'b');
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_epub, dir, out) == k_ra8_ok);
 
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
@@ -331,7 +335,7 @@ static void test_export_jof_roundtrip(void)
   TEST_ASSERT(mdl_format_is_dir_output(k_mdl_fmt_jof));
   TEST_ASSERT(!mdl_format_is_dir_output(k_mdl_fmt_cbz));
   TEST_ASSERT(!mdl_format_is_dir_output(k_mdl_fmt_epub));
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_jof, dir, dir) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_jof, dir, dir) == k_ra8_ok);
 
   /* The reported output -- the `.jof` sibling -- actually exists on disk. */
   FILE* f = fopen(jof, "rb");
@@ -557,10 +561,10 @@ static void test_tar_rejects_long_name(void)
   char name[k_buf_256];
   memset(name, 'p', (size_t)k_longname_len);
   (void)snprintf(name + k_longname_len, sizeof(name) - (size_t)k_longname_len, ".jpg");
-  char path[k_buf_256];
+  char path[k_buf_320];
   (void)snprintf(path, sizeof(path), "%s/%s", dir, name);
   write_fixture(path, 'x');
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbt, dir, out) == k_ra8_err_invalid_size);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_cbt, dir, out) == k_ra8_err_invalid_size);
   (void)unlink(path);
   (void)unlink(out);
   (void)rmdir(dir);
@@ -569,7 +573,7 @@ static void test_tar_rejects_long_name(void)
   const char* okout = "/tmp/mdl_okname_chap.cbt";
   (void)mkdir(okdir, (mode_t)k_mdl_test_dir_mode);
   write_fixture("/tmp/mdl_okname_chap/page_001.jpg", 'x');
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbt, okdir, okout) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_cbt, okdir, okout) == k_ra8_ok);
   (void)unlink("/tmp/mdl_okname_chap/page_001.jpg");
   (void)unlink(okout);
   (void)rmdir(okdir);
@@ -585,7 +589,7 @@ static void test_epub_escapes_name(void)
   const char* img = "/tmp/mdl_xml_chap/a&b<c>d.jpg";
   (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   write_fixture(img, 'x');
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_epub, dir, out) == k_ra8_ok);
 
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
@@ -640,7 +644,7 @@ static void test_epub_long_filenames(void)
   char path[k_buf_320];
   (void)snprintf(path, sizeof(path), "%s/%s", dir, raw);
   write_fixture(path, 'x');
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_epub, dir, out) == k_ra8_ok);
 
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
@@ -685,7 +689,7 @@ static void test_export_page_cap(void)
     write_fixture(path, 'x');
   }
   /* One image too many -> refuse rather than package a short chapter. */
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbz, dir, out) == k_ra8_err_invalid_size);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_cbz, dir, out) == k_ra8_err_invalid_size);
 
   for (size_t i = 0U; i < over; ++i) {
     char path[k_buf_256];
@@ -821,6 +825,7 @@ static void test_robots_cache(void)
  */
 int32_t main(void)
 {
+  ra8_arena_init(&s_test_arena, s_test_arena_buf, sizeof s_test_arena_buf);
   test_format_mapping();
   test_extract_images();
   test_extract_anchors();

@@ -249,6 +249,7 @@ static void priv_print_rabook_hdr(FILE*    out,
 
 ra8_err_t ra8_fmt_rabook_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
+  (void)arena; /* conforming to unified fmt interface; no allocation needed */
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
   if (src->len < (size_t)k_ra8_book_container_header_len) {

@@ -56,10 +56,11 @@
  *
  * @since 0.1.0
  */
-ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title)
+ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t* arena)
 {
   (void)reader;
   (void)title;
+  (void)arena;
   return nullptr;
 }
 

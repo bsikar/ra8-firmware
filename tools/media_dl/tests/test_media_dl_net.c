@@ -27,6 +27,10 @@
 #include "mdl_net_curl_internal.h"
 #include "mdl_politeness.h"
 #include "unity_minimal.h"
+#include "ra8_arena.h"
+
+static uint8_t s_test_arena_buf[4U * 1024U * 1024U];
+static ra8_arena_t s_test_arena;
 
 /* ---- #310: mdl_net vtable seam -- scripted fake backend + net tests ------ */
 
@@ -706,7 +710,7 @@ static void test_curl_get_file_failure_keeps_existing(void)
   const mdl_net_policy_t pol = {.allow_private_hosts       = true,
                                 .allow_cross_host_redirect = false,
                                 .max_response_bytes        = 0U};
-  mdl_net_iface_t*       net = mdl_net_curl_create(&pol);
+  mdl_net_iface_t*       net = mdl_net_curl_create(&s_test_arena, &pol);
   TEST_ASSERT(net != nullptr);
 
   const mdl_net_req_t req  = {.user_agent = "media_dl-test",
@@ -737,6 +741,7 @@ static void test_curl_get_file_failure_keeps_existing(void)
  */
 int32_t main(void)
 {
+  ra8_arena_init(&s_test_arena, s_test_arena_buf, sizeof s_test_arena_buf);
   test_net_dispatch_guard();
   test_net_get_file_guard();
   test_net_fake_scripts_and_records();

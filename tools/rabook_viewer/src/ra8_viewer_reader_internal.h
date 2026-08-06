@@ -363,7 +363,7 @@ RA8_PRIV ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page);
  * @note Not thread-safe (drives the shared reader and band cache).
  * @since 0.1.0
  */
-viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out, ra8_arena_t* arena);
+ra8_err_t viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out, ra8_arena_t* arena);
 
 /**
  * @brief Populate the per-band tile-size cache for an open JOF strip.

@@ -159,6 +159,7 @@ viewer_read_page_bytes(ra8_viewer_reader_t* r, uint32_t page, size_t* got, ra8_a
 
 ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped, ra8_arena_t* arena)
 {
+  (void)arena; /* conforming to unified viewer interface */
   if (wrapped) {
     return ra8_comic_open_wrapped(&r->comic,
                                   viewer_read,

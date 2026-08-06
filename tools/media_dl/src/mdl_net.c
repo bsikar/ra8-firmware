@@ -72,5 +72,5 @@ void mdl_net_destroy(mdl_net_iface_t* net)
   if ((net->vtable != nullptr) && (net->vtable->destroy != nullptr)) {
     net->vtable->destroy(net->ctx);
   }
-  free(net);
+  /* net is arena-allocated; lifetime is managed by arena reset. */
 }
