@@ -15,7 +15,7 @@ cmake_minimum_required(VERSION 3.20)
 
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-  project(ra8d2-ereader LANGUAGES C ASM)
+  project(ra8d2-ereader LANGUAGES C CXX ASM)
 endif()
 
 # Dynamically resolve repository root directory
