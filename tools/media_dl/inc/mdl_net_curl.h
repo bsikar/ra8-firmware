@@ -13,8 +13,10 @@
  *
  * @see mdl_net.h  The abstract seam and its dispatchers.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #pragma once
 

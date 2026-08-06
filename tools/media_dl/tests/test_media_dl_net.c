@@ -11,8 +11,10 @@
  * the seeded jitter + injectable-clock politeness behaviour. Uses the repo's
  * `unity_minimal.h` harness, mirroring `tests/test_*.c`.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include <curl/curl.h>
 #include <dirent.h>

@@ -19,8 +19,10 @@
  * plus the pure ::mdl_retry_after_parse helper for both header forms. Uses the
  * repo's `unity_minimal.h` harness, mirroring `tests/test_*.c`.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include <stdint.h>
 #include <stdio.h>

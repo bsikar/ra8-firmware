@@ -15,8 +15,10 @@
  * Usage: mkbookimg <out.img> <book1.rabook> [book2.rabook ...]
  *
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include <stdint.h>
 #include <stdio.h>

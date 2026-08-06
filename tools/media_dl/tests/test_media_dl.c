@@ -8,8 +8,10 @@
  * parser, and an end-to-end CBZ export re-opened with miniz. Uses the repo's
  * `unity_minimal.h` harness, mirroring `tests/test_*.c`.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include <stdio.h>
 #include <stdlib.h>

@@ -10,8 +10,10 @@
  * into the production tool alongside the libcurl backend -- which is what makes
  * the argument-validation decisions here testable without a network.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include "mdl_net.h"
 

@@ -18,8 +18,10 @@
  * its own translation unit rather than widening this one's dependencies. This
  * file still dispatches to it, via mdl_export_jof() in mdl_export_internal.h.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 /* glibc gates its posix_spawn chdir file-action and `environ` behind
  * _GNU_SOURCE. It is defined by the build (tools/media_dl/CMakeLists.txt and

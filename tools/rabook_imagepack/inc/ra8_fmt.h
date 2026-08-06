@@ -35,8 +35,10 @@
  * @see ra8_jof.h  The band-tile atlas this tool was first built to debug.
  * @since 0.1.0
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 
 #pragma once

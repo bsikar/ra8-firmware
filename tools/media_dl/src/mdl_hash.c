@@ -2,8 +2,10 @@
  * @file mdl_hash.c
  * @brief FNV-1a 64 content-identity hashing (host stdio for the file path).
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include "mdl_hash.h"
 

@@ -23,8 +23,10 @@
  * The tool identifies itself honestly, honours robots.txt by default, and
  * sanitises every untrusted name before it reaches the filesystem.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include <limits.h>
 #include <stdio.h>

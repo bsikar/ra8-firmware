@@ -33,8 +33,10 @@
  *
  * @since 0.1.0
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 
 #ifndef RA8_ARENA_H
@@ -47,6 +49,7 @@
 
 /**
  * @brief Alignment the arena hands out blocks at (8-byte for uint64_t safety).
+ * @since 0.1.0
  */
 enum : uint32_t {
   k_ra8_arena_align = 8U,
@@ -60,6 +63,7 @@ enum : uint32_t {
  * The arena does not own its buffer. The caller is responsible for the
  * lifetime of the backing storage. Call ::ra8_arena_reset to reclaim all
  * allocations without releasing the underlying buffer.
+ * @since 0.1.0
  */
 typedef struct {
   uint8_t* buf;  /**< Backing buffer (caller-owned).       */
@@ -76,6 +80,7 @@ typedef struct {
  *
  * @retval k_ra8_ok       Success.
  * @retval k_ra8_err_null_ptr @p a or @p buf is null.
+ * @since 0.1.0
  */
 static inline ra8_err_t ra8_arena_init(ra8_arena_t* a, uint8_t* buf, uint32_t bytes)
 {

@@ -2,8 +2,10 @@
  * @file mdl_politeness.c
  * @brief Seeded xorshift64 jitter, injectable clock, and the per-host governor.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include "mdl_politeness.h"
 

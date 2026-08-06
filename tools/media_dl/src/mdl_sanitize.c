@@ -2,8 +2,10 @@
  * @file mdl_sanitize.c
  * @brief Implementation of the untrusted-name sanitisers.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include "mdl_sanitize.h"
 

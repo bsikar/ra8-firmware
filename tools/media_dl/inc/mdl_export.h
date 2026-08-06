@@ -16,8 +16,10 @@
  * when it is absent). JOF/RABOOK (added separately) reuse the firmware's own
  * producers compiled host-side.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #pragma once
 

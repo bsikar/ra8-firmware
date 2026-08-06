@@ -19,8 +19,10 @@
  * and time-bounded. Every `curl_easy_setopt` of a security-relevant option is
  * checked; a failure fails handle creation rather than proceeding unhardened.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include "mdl_net_curl.h"
 

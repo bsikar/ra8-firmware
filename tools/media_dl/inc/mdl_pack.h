@@ -12,8 +12,10 @@
  * the guarded ::mdl_path_join, so an untrusted leaf can never escape the series
  * directory.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #pragma once
 
