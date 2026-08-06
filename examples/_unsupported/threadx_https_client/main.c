@@ -409,14 +409,14 @@ static UINT demo_netx_bring_up(void)
   ULONG ip_addr = demo_pack_ip(k_demo_ip);
   ULONG ip_mask = demo_pack_ip(k_demo_mask);
   s             = nx_ip_create(&s_ip,
-                               (CHAR*)"ra8_eth_ip",
-                               ip_addr,
-                               ip_mask,
-                               &s_packet_pool,
-                               nx_ether_driver_ra8_eth,
-                               (VOID*)s_ip_stack,
-                               (ULONG)sizeof(s_ip_stack),
-                               (UINT)k_demo_ip_thread_pri);
+                   (CHAR*)"ra8_eth_ip",
+                   ip_addr,
+                   ip_mask,
+                   &s_packet_pool,
+                   nx_ether_driver_ra8_eth,
+                   (VOID*)s_ip_stack,
+                   (ULONG)sizeof(s_ip_stack),
+                   (UINT)k_demo_ip_thread_pri);
   if (s != NX_SUCCESS) {
     return s;
   }
@@ -471,9 +471,9 @@ static UINT demo_tcp_connect(void)
   }
   ULONG host_ip = demo_pack_ip(k_demo_host_ip);
   s             = nx_tcp_client_socket_connect(&s_tls_socket,
-                                               host_ip,
-                                               (UINT)k_demo_https_port,
-                                               (ULONG)k_demo_handshake_max);
+                                   host_ip,
+                                   (UINT)k_demo_https_port,
+                                   (ULONG)k_demo_handshake_max);
   return s;
 }
 
