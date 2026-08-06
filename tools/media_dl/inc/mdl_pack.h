@@ -11,6 +11,7 @@
  * place, and so `main.c` stays a thin dispatcher. Every path is composed through
  * the guarded ::mdl_path_join, so an untrusted leaf can never escape the series
  * directory.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -48,7 +49,8 @@
  */
 #include "ra8_arena.h"
 
-size_t mdl_pack_one(ra8_arena_t* arena, mdl_format_t format, const char* series_dir, const char* chap_id);
+size_t
+mdl_pack_one(ra8_arena_t* arena, mdl_format_t format, const char* series_dir, const char* chap_id);
 
 /**
  * @brief Package a combined page folder, refusing an incomplete archive by default.

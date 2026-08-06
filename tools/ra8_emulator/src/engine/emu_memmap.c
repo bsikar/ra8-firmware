@@ -7,9 +7,10 @@
  * factory-trim seed, and the region + MMIO-window mapping -- moved verbatim
  * out of the ra8_emulator main translation unit.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include "emu_memmap.h"

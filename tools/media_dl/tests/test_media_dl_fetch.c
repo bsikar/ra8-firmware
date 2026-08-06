@@ -18,6 +18,7 @@
  *     re-fetched (content-hash dedup);
  *   - a corrupt state file degrades to a clean rebuild rather than a crash.
  * Uses the repo's `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -144,7 +145,9 @@ static ra8_err_t mock_get_file(void*                ctx,
   }
   FILE* fp = fopen(out_path, "wb");
   if (fp == nullptr) {
-    if (fp) { (void)fclose(fp); }
+    if (fp) {
+      (void)fclose(fp);
+    }
     return k_ra8_fail;
   }
   (void)fwrite(url, 1U, strlen(url), fp);

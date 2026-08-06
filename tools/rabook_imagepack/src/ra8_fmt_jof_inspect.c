@@ -17,9 +17,10 @@
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -190,16 +191,16 @@ static ra8_err_t priv_tile_content(const ra8_fmt_blob_t*   atlas,
   uint16_t           tw    = 0U;
   uint16_t           th    = 0U;
   const ra8_err_t    rc    = ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                               &store,
-                                               info,
-                                               (uint16_t)(idx % (uint32_t)info->tile_cols),
-                                               (uint16_t)(idx / (uint32_t)info->tile_cols),
-                                               buf->scratch,
-                                               buf->scratch_cap,
-                                               buf->cell,
-                                               buf->cell_cap,
-                                               &tw,
-                                               &th);
+                                         &store,
+                                         info,
+                                         (uint16_t)(idx % (uint32_t)info->tile_cols),
+                                         (uint16_t)(idx / (uint32_t)info->tile_cols),
+                                         buf->scratch,
+                                         buf->scratch_cap,
+                                         buf->cell,
+                                         buf->cell_cap,
+                                         &tw,
+                                         &th);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -420,7 +421,8 @@ static ra8_err_t priv_collect_tiles(ra8_arena_t*          arena,
   return rc;
 }
 
-ra8_err_t ra8_fmt_jof_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t
+ra8_fmt_jof_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
@@ -438,7 +440,8 @@ ra8_err_t ra8_fmt_jof_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src, con
     return rc;
   }
   priv_print_geom(opts->report, &info, src->len);
-  fmt_tile_rec_t* recs = (fmt_tile_rec_t*)ra8_arena_calloc(arena, (uint32_t)info.tile_count, sizeof(*recs));
+  fmt_tile_rec_t* recs =
+    (fmt_tile_rec_t*)ra8_arena_calloc(arena, (uint32_t)info.tile_count, sizeof(*recs));
   if (recs == nullptr) {
     return k_ra8_err_no_mem;
   }

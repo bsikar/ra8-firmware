@@ -15,9 +15,10 @@
  * the fixed framebuffer, and render one native-resolution scroll tile -- so the
  * dispatcher in ra8_viewer_reader.c never needs to know an engine's internals.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #pragma once
@@ -25,6 +26,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "ra8_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_comic.h"
 #include "ra8_decomp_limits.h"
@@ -33,7 +35,6 @@
 #include "ra8_jof.h"
 #include "ra8_longstrip.h"
 #include "ra8_tile_cache.h"
-#include "ra8_arena.h"
 #include "ra8_unarch_xz.h"
 #include "ra8_viewer_reader.h"
 
@@ -286,8 +287,12 @@ RA8_PRIV ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page, ra
  * @note Not thread-safe (drives the shared reader and arena).
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t
-viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out, ra8_arena_t* arena);
+RA8_PRIV ra8_err_t viewer_tile_comic(ra8_viewer_reader_t* r,
+                                     uint32_t             i,
+                                     uint32_t*            w,
+                                     uint32_t*            h,
+                                     uint16_t**           out,
+                                     ra8_arena_t*         arena);
 
 /**
  * @brief Probe one comic page's native size into the tile-size cache.
@@ -303,7 +308,10 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
  * @note Not thread-safe (writes the shared size cache).
  * @since 0.1.0
  */
-RA8_PRIV void viewer_probe_comic_tile(ra8_viewer_reader_t* r, uint32_t i, ra8_img_arena_t* img_arena, ra8_arena_t* arena);
+RA8_PRIV void viewer_probe_comic_tile(ra8_viewer_reader_t* r,
+                                      uint32_t             i,
+                                      ra8_img_arena_t*     img_arena,
+                                      ra8_arena_t*         arena);
 
 /**
  * @brief Open a JOF strip: slurp, parse, size the cache, then wire the engine.
@@ -363,7 +371,12 @@ RA8_PRIV ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page);
  * @note Not thread-safe (drives the shared reader and band cache).
  * @since 0.1.0
  */
-ra8_err_t viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out, ra8_arena_t* arena);
+ra8_err_t viewer_tile_jof(ra8_viewer_reader_t* r,
+                          uint32_t             i,
+                          uint32_t*            w,
+                          uint32_t*            h,
+                          uint16_t**           out,
+                          ra8_arena_t*         arena);
 
 /**
  * @brief Populate the per-band tile-size cache for an open JOF strip.

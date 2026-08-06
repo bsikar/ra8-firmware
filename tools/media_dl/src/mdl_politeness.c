@@ -1,6 +1,7 @@
 /**
  * @file mdl_politeness.c
  * @brief Seeded xorshift64 jitter, injectable clock, and the per-host governor.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -415,10 +416,10 @@ gov_on_throttle(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now, uint32_t re
 
 /** @brief Apply a non-throttle outcome: count success, decay, honour Retry-After. */
 RA8_INTERNAL static void gov_on_success(const mdl_governor_t* g,
-                                        mdl_host_rec_t* rec,
-                                        int64_t         now,
-                                        bool            has_retry,
-                                        uint32_t        retry_ms)
+                                        mdl_host_rec_t*       rec,
+                                        int64_t               now,
+                                        bool                  has_retry,
+                                        uint32_t              retry_ms)
 {
   rec->success_streak += 1U;
   if ((g->cfg.decay_after > 0U) && (rec->success_streak >= g->cfg.decay_after)) {

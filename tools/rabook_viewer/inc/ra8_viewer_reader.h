@@ -16,9 +16,10 @@
  * core shares nothing with it but plain buffers, so it stays testable and
  * dumpable without a display.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 #pragma once
 
@@ -78,7 +79,8 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_viewer_open(ra8_viewer_reader_t** out, const char* path, ra8_arena_t* arena);
+[[nodiscard]] ra8_err_t
+ra8_viewer_open(ra8_viewer_reader_t** out, const char* path, ra8_arena_t* arena);
 
 /**
  * @brief Number of pages in the open document.
@@ -109,7 +111,8 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* r, uint32_t page, ra8_arena_t* arena);
+[[nodiscard]] ra8_err_t
+ra8_viewer_render_page(ra8_viewer_reader_t* r, uint32_t page, ra8_arena_t* arena);
 
 /**
  * @brief Number of vertically-stacked tiles in the document.

@@ -22,6 +22,7 @@
  *
  * The tool identifies itself honestly, honours robots.txt by default, and
  * sanitises every untrusted name before it reaches the filesystem.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -36,7 +37,6 @@
 #include "mdl_config.h"
 #include "mdl_discover.h"
 #include "mdl_export.h"
-#include "ra8_arena.h"
 #include "mdl_extract.h"
 #include "mdl_fetch.h"
 #include "mdl_fetch_internal.h"
@@ -51,6 +51,7 @@
 #include "mdl_session.h"
 #include "mdl_state.h"
 #include "mdl_urlname.h"
+#include "ra8_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 
@@ -357,7 +358,8 @@ RA8_INTERNAL static bool state_path_of(const char* abs_dir, char* out, size_t ca
 }
 
 /** @brief Export every chapter in `sel` that completed at/after `run_start`. */
-RA8_INTERNAL static size_t export_fresh_separate(ra8_arena_t*          arena, mdl_format_t          format,
+RA8_INTERNAL static size_t export_fresh_separate(ra8_arena_t*          arena,
+                                                 mdl_format_t          format,
                                                  const char*           abs_dir,
                                                  const mdl_url_list_t* sel,
                                                  int64_t               run_start)
@@ -455,7 +457,8 @@ RA8_INTERNAL static mdl_fetch_ctx_t make_ctx(const series_run_t* r,
 }
 
 /** @brief Package the freshly-downloaded output; returns the export-failure count. */
-RA8_INTERNAL static size_t export_after(const series_run_t*      r, ra8_arena_t* arena,
+RA8_INTERNAL static size_t export_after(const series_run_t*      r,
+                                        ra8_arena_t*             arena,
                                         const char*              abs_dir,
                                         mdl_fetch_layout_t       layout,
                                         const char*              combined_rel,
@@ -467,7 +470,12 @@ RA8_INTERNAL static size_t export_after(const series_run_t*      r, ra8_arena_t*
     return 0U;
   }
   if (layout == k_mdl_layout_combined) {
-    return mdl_pack_combined(arena, r->format, r->opts->allow_incomplete, abs_dir, combined_rel, stats);
+    return mdl_pack_combined(arena,
+                             r->format,
+                             r->opts->allow_incomplete,
+                             abs_dir,
+                             combined_rel,
+                             stats);
   }
   return export_fresh_separate(arena, r->format, abs_dir, sel, run_start);
 }
@@ -499,14 +507,15 @@ RA8_INTERNAL static int run_prepared(const series_run_t* r,
   const int64_t     run_start = (int64_t)time(nullptr);
   mdl_fetch_stats_t stats;
   const ra8_err_t   frc = mdl_fetch_run(&ctx,
-                                        sel,
-                                        layout,
-                                        (layout == k_mdl_layout_combined) ? combined_rel : nullptr,
-                                        &stats);
+                                      sel,
+                                      layout,
+                                      (layout == k_mdl_layout_combined) ? combined_rel : nullptr,
+                                      &stats);
   (void)mdl_state_save(state_path, &s_state);
   report_stats(abs_dir, &stats);
   mdl_report_failures(&s_faillog);
-  const size_t efail = export_after(r, r->arena, abs_dir, layout, combined_rel, sel, &stats, run_start);
+  const size_t efail =
+    export_after(r, r->arena, abs_dir, layout, combined_rel, sel, &stats, run_start);
   return ((frc == k_ra8_ok) && (efail == 0U)) ? 0 : 1;
 }
 
@@ -707,7 +716,8 @@ RA8_INTERNAL static size_t download_page_images(const char* url,
 }
 
 /** @brief page mode: fetch one URL, download its `<img>` URLs (debug path). */
-RA8_INTERNAL static int run_page(ra8_arena_t* arena, const char*           url,
+RA8_INTERNAL static int run_page(ra8_arena_t*          arena,
+                                 const char*           url,
                                  const char*           out_dir,
                                  const char*           attr,
                                  uint32_t              max_imgs,
@@ -792,8 +802,11 @@ RA8_INTERNAL static int run_pack(ra8_arena_t* arena, const char* dir, mdl_format
 }
 
 /** @brief Assemble a ::series_run_t from parsed args + validated scalars. */
-RA8_INTERNAL static series_run_t
-build_run(ra8_arena_t* arena, const mdl_args_t* a, mdl_format_t format, const mdl_run_opts_t* opts, const mdl_nums_t* n)
+RA8_INTERNAL static series_run_t build_run(ra8_arena_t*          arena,
+                                           const mdl_args_t*     a,
+                                           mdl_format_t          format,
+                                           const mdl_run_opts_t* opts,
+                                           const mdl_nums_t*     n)
 {
   return (series_run_t){.arena        = arena,
                         .cfg_path     = a->cfg,
@@ -812,7 +825,8 @@ build_run(ra8_arena_t* arena, const mdl_args_t* a, mdl_format_t format, const md
 
 /** @brief search/browse discovery: fetch a results page, list hits, and -- when
  *  `--pick N` selected one -- download it as a series via @p base. */
-RA8_INTERNAL static int run_discover(ra8_arena_t* arena, const mdl_args_t*     a,
+RA8_INTERNAL static int run_discover(ra8_arena_t*          arena,
+                                     const mdl_args_t*     a,
                                      const mdl_run_opts_t* opts,
                                      const mdl_nums_t*     n,
                                      const series_run_t*   base)
@@ -879,7 +893,8 @@ RA8_INTERNAL static int run_library(const mdl_args_t* a, const series_run_t* run
 }
 
 /** @brief Select and run the mode implied by the parsed args; return the exit code. */
-RA8_INTERNAL static int dispatch_run(ra8_arena_t* arena, const mdl_args_t*     a,
+RA8_INTERNAL static int dispatch_run(ra8_arena_t*          arena,
+                                     const mdl_args_t*     a,
                                      mdl_format_t          format,
                                      const mdl_run_opts_t* opts,
                                      const mdl_nums_t*     nums,
@@ -903,7 +918,14 @@ RA8_INTERNAL static int dispatch_run(ra8_arena_t* arena, const mdl_args_t*     a
     return run_series(run);
   }
   if (a->page_url != nullptr) {
-    return run_page(arena, a->page_url, a->out, a->attr, nums->max_imgs, nums->seed, nums->timeout, opts);
+    return run_page(arena,
+                    a->page_url,
+                    a->out,
+                    a->attr,
+                    nums->max_imgs,
+                    nums->seed,
+                    nums->timeout,
+                    opts);
   }
   mdl_cli_usage(prog);
   return 2;
@@ -923,8 +945,8 @@ RA8_INTERNAL static int dispatch_run(ra8_arena_t* arena, const mdl_args_t*     a
  */
 int main(int argc, char** argv)
 {
-  uint32_t arena_size = 64U * 1024U * 1024U;
-  uint8_t* arena_buf = (uint8_t*)malloc(arena_size);
+  uint32_t    arena_size = 64U * 1024U * 1024U;
+  uint8_t*    arena_buf  = (uint8_t*)malloc(arena_size);
   ra8_arena_t main_arena;
   (void)ra8_arena_init(&main_arena, arena_buf, arena_size);
   ra8_arena_t* arena = &main_arena;

@@ -20,14 +20,15 @@
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 #include <stdlib.h>
 
-#include "ra8_attributes.h"
 #include "cache_bench.h"
+#include "ra8_attributes.h"
 
 /* ------------------------------------------------------------------ SLRU -- */
 
@@ -162,7 +163,8 @@ static void slru_push_head(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only bench: policy state */
-static int slru_init(cb_cache_t* c)
+  static int
+  slru_init(cb_cache_t* c)
 {
   slru_t* l = (slru_t*)calloc(1U, sizeof(slru_t));
   if (l == NULL) {
@@ -359,7 +361,8 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only bench: policy state */
-static int srrip_init(cb_cache_t* c)
+  static int
+  srrip_init(cb_cache_t* c)
 {
   uint32_t* hand = (uint32_t*)calloc(1U, sizeof(uint32_t));
   c->policy_data = hand;

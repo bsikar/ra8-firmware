@@ -10,6 +10,7 @@
  * the libcurl backend's pure transfer classifier and bounded write callback, and
  * the seeded jitter + injectable-clock politeness behaviour. Uses the repo's
  * `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -26,10 +27,10 @@
 #include "mdl_net_curl.h"
 #include "mdl_net_curl_internal.h"
 #include "mdl_politeness.h"
-#include "unity_minimal.h"
 #include "ra8_arena.h"
+#include "unity_minimal.h"
 
-static uint8_t s_test_arena_buf[4U * 1024U * 1024U];
+static uint8_t     s_test_arena_buf[4U * 1024U * 1024U];
 static ra8_arena_t s_test_arena;
 
 /* ---- #310: mdl_net vtable seam -- scripted fake backend + net tests ------ */
@@ -366,8 +367,8 @@ static void test_net_buf_write_overflow(void)
 {
   TEST_BEGIN("net buf write overflow");
   char       dst[k_net_dst] = {};
-  char       chunk[] = "abcde";
-  buf_sink_t sink    = {.buf = dst, .cap = 4U, .len = 0U, .overflow = false};
+  char       chunk[]        = "abcde";
+  buf_sink_t sink           = {.buf = dst, .cap = 4U, .len = 0U, .overflow = false};
   /* within cap: 3 bytes into cap 4. */
   TEST_ASSERT_EQ((uint16_t)3, (uint16_t)mdl_net_curl_buf_write(chunk, 1U, 3U, &sink));
   TEST_ASSERT_EQ((uint16_t)3, (uint16_t)sink.len);
@@ -537,7 +538,9 @@ static bool atom_write(const char* path, const char* body)
 {
   FILE* f = fopen(path, "wb");
   if (f == nullptr) {
-    if (f) { (void)fclose(f); }
+    if (f) {
+      (void)fclose(f);
+    }
     return false;
   }
   const size_t n  = strlen(body);
@@ -550,7 +553,9 @@ static long atom_read(const char* path, char* out, size_t cap)
 {
   FILE* f = fopen(path, "rb");
   if (f == nullptr) {
-    if (f) { (void)fclose(f); }
+    if (f) {
+      (void)fclose(f);
+    }
     return -1;
   }
   const size_t n = fread(out, 1U, cap - 1U, f);

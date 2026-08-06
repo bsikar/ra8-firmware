@@ -1,6 +1,7 @@
 /**
  * @file mdl_pack.c
  * @brief Implementation of the downloaded-folder archive packaging.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -28,7 +29,8 @@ RA8_INTERNAL static bool snprintf_fit(int n, size_t cap)
   return (n >= 0) && ((size_t)n < cap);
 }
 
-size_t mdl_pack_one(ra8_arena_t* arena, mdl_format_t format, const char* series_dir, const char* chap_id)
+size_t
+mdl_pack_one(ra8_arena_t* arena, mdl_format_t format, const char* series_dir, const char* chap_id)
 {
   const char* ext = mdl_format_ext(format);
   char        dir[k_pack_dir_bytes];
@@ -64,7 +66,8 @@ size_t mdl_pack_one(ra8_arena_t* arena, mdl_format_t format, const char* series_
 }
 
 /** @brief Package the combined chapter folder `combined_rel` into `format`. */
-RA8_INTERNAL static size_t pack_combined_dir(ra8_arena_t* arena, mdl_format_t format,
+RA8_INTERNAL static size_t pack_combined_dir(ra8_arena_t* arena,
+                                             mdl_format_t format,
                                              const char*  series_dir,
                                              const char*  combined_rel,
                                              bool         incomplete)

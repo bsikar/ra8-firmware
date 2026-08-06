@@ -25,9 +25,10 @@
  * Objective-C window backend consumes the tiles; the reader stays testable and
  * dumpable headless.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include "ra8_viewer_reader.h"
@@ -210,7 +211,7 @@ RA8_INTERNAL static ra8_err_t viewer_alloc_core(ra8_viewer_reader_t** out, ra8_a
     return k_ra8_err_no_mem;
   }
   const size_t fb_pixels = (size_t)k_ra8_viewer_fb_width * (size_t)k_ra8_viewer_fb_height;
-  r->fb                  = (uint16_t*)ra8_arena_calloc(arena, (uint32_t)fb_pixels, sizeof(uint16_t));
+  r->fb = (uint16_t*)ra8_arena_calloc(arena, (uint32_t)fb_pixels, sizeof(uint16_t));
   if (r->fb == nullptr) {
     viewer_free(r);
     return k_ra8_err_no_mem;
@@ -249,7 +250,8 @@ RA8_INTERNAL static ra8_err_t viewer_alloc_core(ra8_viewer_reader_t** out, ra8_a
  */
 RA8_INTERNAL static ra8_err_t viewer_alloc_comic(ra8_viewer_reader_t* r, ra8_arena_t* arena)
 {
-  r->pages      = (ra8_comic_page_t*)ra8_arena_calloc(arena, (uint32_t)k_viewer_page_cap, sizeof(*r->pages));
+  r->pages =
+    (ra8_comic_page_t*)ra8_arena_calloc(arena, (uint32_t)k_viewer_page_cap, sizeof(*r->pages));
   r->names      = (char*)ra8_arena_calloc(arena, (uint32_t)k_viewer_name_cap, sizeof(char));
   r->arena_mem  = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)k_viewer_arena_bytes);
   r->unwrap     = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)k_viewer_unwrap_bytes);
@@ -346,7 +348,8 @@ RA8_INTERNAL static ra8_err_t viewer_reject_fmt(viewer_fmt_t fmt, const char* pa
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t viewer_dispatch_open(ra8_viewer_reader_t* r, viewer_fmt_t fmt, ra8_arena_t* arena)
+RA8_INTERNAL static ra8_err_t
+viewer_dispatch_open(ra8_viewer_reader_t* r, viewer_fmt_t fmt, ra8_arena_t* arena)
 {
   switch (fmt) {
     case k_vfmt_comic:

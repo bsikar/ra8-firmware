@@ -15,9 +15,10 @@
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,9 +26,9 @@
 #include <time.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_book_chunked.h"
 #include "ra8_err.h"
-#include "ra8_attributes.h"
 #include "sweep_block_internal.h"
 
 /**
@@ -472,10 +473,10 @@ static int cbs_rbkc_pack(const uint8_t* blob,
     }
     mz_ulong  dst_len = (mz_ulong)(out_cap - (payload_off + cur));
     const int rc      = mz_compress2(&out[payload_off + cur],
-                                     &dst_len,
-                                     &blob[at],
-                                     (mz_ulong)span,
-                                     MZ_BEST_COMPRESSION);
+                                &dst_len,
+                                &blob[at],
+                                (mz_ulong)span,
+                                MZ_BEST_COMPRESSION);
     if (rc != MZ_OK) {
       return 1;
     }
@@ -548,8 +549,8 @@ static void cbs_rbkc_teardown(cbs_backend_t* be)
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only bench: dynamic cache arrays */
-static int
-cbs_rbkc_setup(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint32_t block_bytes)
+  static int
+  cbs_rbkc_setup(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint32_t block_bytes)
 {
   if ((be == nullptr) || (blob == nullptr) || (blob_bytes == 0U) || (block_bytes == 0U)) {
     return 1;
@@ -559,11 +560,11 @@ cbs_rbkc_setup(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint
   const uint32_t count = (blob_bytes + block_bytes - 1U) / block_bytes;
   const uint64_t bound = (uint64_t)mz_compressBound((mz_ulong)block_bytes);
   const uint64_t cap   = (uint64_t)k_ra8_book_container_header_len +
-                         (((uint64_t)count + 1U) * k_ra8_book_container_entry_len) +
-                         ((uint64_t)count * bound);
-  rb->container        = (uint8_t*)malloc((size_t)cap);
-  rb->table            = (uint64_t*)malloc(((size_t)count + 1U) * sizeof(uint64_t));
-  rb->staging          = (uint8_t*)malloc((size_t)bound);
+                       (((uint64_t)count + 1U) * k_ra8_book_container_entry_len) +
+                       ((uint64_t)count * bound);
+  rb->container = (uint8_t*)malloc((size_t)cap);
+  rb->table     = (uint64_t*)malloc(((size_t)count + 1U) * sizeof(uint64_t));
+  rb->staging   = (uint8_t*)malloc((size_t)bound);
   if ((rb->container == nullptr) || (rb->table == nullptr) || (rb->staging == nullptr)) {
     cbs_rbkc_teardown(be);
     return 1;

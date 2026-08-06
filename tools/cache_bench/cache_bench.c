@@ -17,17 +17,18 @@
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
-#include "ra8_attributes.h"
 #include "cache_bench.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "sweep_block.h"
 #include "trace.h"
 
@@ -327,7 +328,8 @@ static uint32_t cb_replay_take_frame(const cache_policy_t* pol,
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only bench: dynamic cache arrays */
-static bool cb_replay_open(cb_index_t* idx, cb_frame_t** frames, uint32_t capacity)
+  static bool
+  cb_replay_open(cb_index_t* idx, cb_frame_t** frames, uint32_t capacity)
 {
   const uint32_t hsize = cb_pow2_ceil(capacity * 4U);
   *frames              = (cb_frame_t*)calloc((size_t)capacity, sizeof(cb_frame_t));

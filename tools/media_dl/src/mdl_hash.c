@@ -1,6 +1,7 @@
 /**
  * @file mdl_hash.c
  * @brief FNV-1a 64 content-identity hashing (host stdio for the file path).
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -72,7 +73,9 @@ ra8_err_t mdl_hash_file(const char* path, uint64_t* out)
   }
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
-    if (fp) { (void)fclose(fp); }
+    if (fp) {
+      (void)fclose(fp);
+    }
     return k_ra8_fail;
   }
   uint64_t   h  = (uint64_t)k_mdl_fnv_offset;

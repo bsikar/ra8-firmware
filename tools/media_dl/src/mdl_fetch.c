@@ -1,6 +1,7 @@
 /**
  * @file mdl_fetch.c
  * @brief State-aware, resumable, deduping chapter/page download loop.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -515,17 +516,17 @@ RA8_INTERNAL static ra8_err_t fetch_chapter_html(mdl_fetch_ctx_t* ctx, const cha
 }
 
 /** @brief Resolve the output directory + starting page number for one chapter. */
-RA8_INTERNAL static bool resolve_dest(const mdl_fetch_ctx_t*   ctx,
-                                      mdl_fetch_layout_t layout,
-                                      const char*        id,
-                                      const char*        combined_abs,
-                                      const char*        combined_rel,
-                                      size_t             global_no,
-                                      char*              chap_abs,
-                                      size_t             chap_cap,
-                                      const char**       dest_abs,
-                                      const char**       dest_rel,
-                                      size_t*            base)
+RA8_INTERNAL static bool resolve_dest(const mdl_fetch_ctx_t* ctx,
+                                      mdl_fetch_layout_t     layout,
+                                      const char*            id,
+                                      const char*            combined_abs,
+                                      const char*            combined_rel,
+                                      size_t                 global_no,
+                                      char*                  chap_abs,
+                                      size_t                 chap_cap,
+                                      const char**           dest_abs,
+                                      const char**           dest_rel,
+                                      size_t*                base)
 {
   if (layout == k_mdl_layout_combined) {
     *dest_abs = combined_abs;

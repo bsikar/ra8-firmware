@@ -15,9 +15,10 @@
  * ra8_viewer <file> --headless --dump-ppm P [--page N | --dump-tile N]
  * @endcode
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -41,7 +42,7 @@ typedef enum : int32_t {
   k_viewer_frame_ns  = 16000000, /**< Cooperative pump period, ~60 Hz (ns). */
   k_viewer_min_args  = 2,        /**< argv count with just the file path.   */
   k_viewer_radix_dec = 10,       /**< Base for parsing --page (decimal).    */
-  k_arena_bytes = 16U * 1024U * 1024U,
+  k_arena_bytes      = 16U * 1024U * 1024U,
 } viewer_main_cfg_t;
 
 /**
@@ -166,8 +167,10 @@ static uint32_t viewer_clamp_page(uint32_t page, uint32_t count)
  * @note Not thread-safe (drives the shared framebuffer).
  * @since 0.1.0
  */
-static bool
-viewer_render_and_dump(ra8_viewer_reader_t* reader, const viewer_opts_t* opts, uint32_t page, ra8_arena_t* arena)
+static bool viewer_render_and_dump(ra8_viewer_reader_t* reader,
+                                   const viewer_opts_t* opts,
+                                   uint32_t             page,
+                                   ra8_arena_t*         arena)
 {
   const ra8_err_t rc = ra8_viewer_render_page(reader, page, arena);
   if (rc != k_ra8_ok) {
@@ -253,7 +256,8 @@ static void viewer_log_sink(void* ctx, uint8_t byte)
  * @note Not thread-safe (drives the shared reader).
  * @since 0.1.0
  */
-static bool viewer_dump_tile(ra8_viewer_reader_t* reader, uint32_t tile, const char* path, ra8_arena_t* arena)
+static bool
+viewer_dump_tile(ra8_viewer_reader_t* reader, uint32_t tile, const char* path, ra8_arena_t* arena)
 {
   uint32_t        w   = 0U;
   uint32_t        h   = 0U;
@@ -286,7 +290,7 @@ int main(int argc, char** argv)
 {
   ra8_log_set_byte_sink(viewer_log_sink, nullptr);
 
-  uint8_t* arena_buf = (uint8_t*)malloc((size_t)k_arena_bytes);
+  uint8_t*    arena_buf = (uint8_t*)malloc((size_t)k_arena_bytes);
   ra8_arena_t arena;
   ra8_arena_init(&arena, arena_buf, (uint32_t)k_arena_bytes);
 

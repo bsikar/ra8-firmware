@@ -18,9 +18,10 @@
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -247,7 +248,8 @@ static void priv_print_rabook_hdr(FILE*    out,
   (void)fprintf(out, "  reserved       : %u\n", (unsigned)reserved);
 }
 
-ra8_err_t ra8_fmt_rabook_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t
+ra8_fmt_rabook_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   (void)arena; /* conforming to unified fmt interface; no allocation needed */
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");

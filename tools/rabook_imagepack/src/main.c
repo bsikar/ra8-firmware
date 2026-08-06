@@ -18,32 +18,34 @@
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include <stdlib.h>
-
+#include "ra8_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fmt.h"
 #include "ra8_log.h"
-#include "ra8_arena.h"
 
 enum : uint32_t { k_arena_bytes = 4U * 1024U * 1024U };
-static uint8_t* s_arena_buf;
+static uint8_t*    s_arena_buf;
 static ra8_arena_t s_arena;
 
 RA8_NASA_RULE_3_OK
-static ra8_err_t init_arena(void) {
-    s_arena_buf = (uint8_t*)malloc(k_arena_bytes);
-    if (s_arena_buf == nullptr) return k_ra8_err_no_mem;
-    return ra8_arena_init(&s_arena, s_arena_buf, k_arena_bytes);
+static ra8_err_t init_arena(void)
+{
+  s_arena_buf = (uint8_t*)malloc(k_arena_bytes);
+  if (s_arena_buf == nullptr)
+    return k_ra8_err_no_mem;
+  return ra8_arena_init(&s_arena, s_arena_buf, k_arena_bytes);
 }
 
 /**
@@ -276,7 +278,7 @@ int main(int argc, char** argv)
     (void)fprintf(stderr, "ra8_fmt: failed to initialize arena\n");
     return (int)k_fmt_exit_fail;
   }
-  
+
   if (argc < 2) {
     priv_usage(stderr);
     return (int)k_fmt_exit_usage;

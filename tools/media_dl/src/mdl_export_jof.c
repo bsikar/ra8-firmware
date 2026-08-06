@@ -23,9 +23,10 @@
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <limits.h>
@@ -138,7 +139,8 @@ RA8_INTERNAL static ra8_err_t jof_sink(void* ctx, const uint8_t* buf, size_t len
 }
 
 /** @brief Read a whole file into a malloc'd buffer. */
-RA8_INTERNAL static ra8_err_t slurp(ra8_arena_t* arena, const char* path, uint8_t** out_buf, size_t* out_len)
+RA8_INTERNAL static ra8_err_t
+slurp(ra8_arena_t* arena, const char* path, uint8_t** out_buf, size_t* out_len)
 {
   FILE* f = fopen(path, "rb");
   if (f == NULL) {
@@ -155,7 +157,7 @@ RA8_INTERNAL static ra8_err_t slurp(ra8_arena_t* arena, const char* path, uint8_
   }
   uint8_t* buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sz, 1U);
   if ((buf == nullptr) || (fread(buf, 1U, (size_t)sz, f) != (size_t)sz)) {
-    
+
     (void)fclose(f);
     return k_ra8_fail;
   }
@@ -191,7 +193,8 @@ RA8_INTERNAL static ra8_err_t slurp(ra8_arena_t* arena, const char* path, uint8_
  * @see ra8_jof_webp_work_bytes()
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t jof_carve_webp(ra8_arena_t* arena, const uint8_t* src,
+RA8_INTERNAL static ra8_err_t jof_carve_webp(ra8_arena_t*   arena,
+                                             const uint8_t* src,
                                              size_t         slen,
                                              uint16_t       w,
                                              uint16_t       h,
@@ -209,7 +212,7 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(ra8_arena_t* arena, const uint8_t* 
   }
   uint8_t* mem = (uint8_t*)ra8_arena_alloc(arena, need, 8U);
   if (mem == NULL) {
-    
+
     return k_ra8_err_no_mem;
   }
   *out_work = mem;
@@ -249,7 +252,8 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(ra8_arena_t* arena, const uint8_t* 
  * @see jof_carve_webp()
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t jof_produce_page(ra8_arena_t* arena, const uint8_t* src,
+RA8_INTERNAL static ra8_err_t jof_produce_page(ra8_arena_t*   arena,
+                                               const uint8_t* src,
                                                size_t         slen,
                                                uint16_t       w,
                                                uint16_t       h,
@@ -259,14 +263,14 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(ra8_arena_t* arena, const uint8_t
 {
   uint8_t* work = (uint8_t*)ra8_arena_alloc(arena, work_cap, 8U);
   if (work == NULL) {
-    
+
     return k_ra8_err_no_mem;
   }
   uint8_t*        webp_work = nullptr;
   size_t          webp_cap  = 0U;
   const ra8_err_t carve_rc  = jof_carve_webp(arena, src, slen, w, h, &webp_work, &webp_cap);
   if (carve_rc != k_ra8_ok) {
-    
+
     return carve_rc;
   }
   jof_pull_ctx_t        pull = {.data = src, .len = slen, .pos = 0U};
@@ -285,8 +289,7 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(ra8_arena_t* arena, const uint8_t
                                 .webp_work_cap = webp_cap};
   ra8_jof_info_t        info = {};
   const ra8_err_t       rc   = ra8_jof_produce(&cfg, &info);
-  
-  
+
   return rc;
 }
 
@@ -294,9 +297,9 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(ra8_arena_t* arena, const uint8_t
 RA8_INTERNAL static ra8_err_t jof_one(ra8_arena_t* arena, const char* in_path, const char* out_path)
 {
   const uint32_t mark = ra8_arena_save(arena);
-  uint8_t*  src  = nullptr;
-  size_t    slen = 0U;
-  ra8_err_t rc   = slurp(arena, in_path, &src, &slen);
+  uint8_t*       src  = nullptr;
+  size_t         slen = 0U;
+  ra8_err_t      rc   = slurp(arena, in_path, &src, &slen);
   if (rc != k_ra8_ok) {
     ra8_arena_restore(arena, mark);
     return rc;
@@ -306,13 +309,13 @@ RA8_INTERNAL static ra8_err_t jof_one(ra8_arena_t* arena, const char* in_path, c
   /* Probe through the producer's own dispatch, so every format the producer can
    * decode (JPEG, PNG, WebP) is a format this exporter can size and write. */
   if (ra8_jof_probe_dims(src, slen, &w, &h) != k_ra8_ok) {
-    
+
     return k_ra8_err_not_supported;
   }
   const uint16_t tile_h   = (h < (uint16_t)k_jof_band_h) ? h : (uint16_t)k_jof_band_h;
   const uint32_t work_cap = ra8_jof_work_bytes(w, h, w, tile_h);
   if (work_cap == 0U) {
-    
+
     ra8_arena_restore(arena, mark);
     return k_ra8_err_invalid_size;
   }
@@ -321,12 +324,12 @@ RA8_INTERNAL static ra8_err_t jof_one(ra8_arena_t* arena, const char* in_path, c
    * decode (see mdl_atomic.h). */
   char tmp[PATH_MAX];
   if (!mdl_atomic_tmp_path(out_path, tmp, sizeof(tmp))) {
-    
+
     return k_ra8_fail;
   }
   FILE* out = fopen(tmp, "wb");
   if (out == NULL) {
-    
+
     // cppcheck-suppress resourceLeak
     // out is NULL here
     return k_ra8_fail;
@@ -335,7 +338,7 @@ RA8_INTERNAL static ra8_err_t jof_one(ra8_arena_t* arena, const char* in_path, c
   if (fclose(out) != 0) {
     rc = (rc == k_ra8_ok) ? k_ra8_fail : rc;
   }
-  
+
   if (rc != k_ra8_ok) {
     mdl_atomic_abort(tmp);
     ra8_arena_restore(arena, mark);
@@ -346,7 +349,10 @@ RA8_INTERNAL static ra8_err_t jof_one(ra8_arena_t* arena, const char* in_path, c
   return rc;
 }
 
-RA8_PRIV ra8_err_t mdl_export_jof(ra8_arena_t* arena, const char* dir, const char names[][k_name_max], size_t count)
+RA8_PRIV ra8_err_t mdl_export_jof(ra8_arena_t* arena,
+                                  const char*  dir,
+                                  const char   names[][k_name_max],
+                                  size_t       count)
 {
   ra8_log_set_byte_sink(jof_log_sink, nullptr);
   ra8_err_t rc = k_ra8_ok;

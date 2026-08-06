@@ -7,12 +7,12 @@
  * and .symtab symbol resolution -- moved verbatim out of the ra8_emulator main
  * translation unit. The contracts live on the declarations in emu_elf.h.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
-#include "ra8_attributes.h"
 #include "emu_elf.h"
 
 #include <stdio.h>
@@ -28,9 +28,11 @@
 #include "emu_mpu.h"
 #include "emu_seams.h"
 #include "emu_view.h"
+#include "ra8_attributes.h"
 
 RA8_NASA_RULE_3_OK /* host-only emu: elf file buffer */
-uint8_t* read_file(const char* path, long* out_len)
+  uint8_t*
+  read_file(const char* path, long* out_len)
 {
   FILE* f = fopen(path, "rb");
   if (f == NULL) {

@@ -18,6 +18,7 @@
  * explicitly, `.netrc` and proxy-env are disabled, and every response is size-
  * and time-bounded. Every `curl_easy_setopt` of a security-relevant option is
  * checked; a failure fails handle creation rather than proceeding unhardened.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -260,9 +261,9 @@ RA8_INTERNAL static bool apply_req(mdl_curl_ctx_t* net, const char* url, const m
   }
   CURL* curl = net->curl;
   bool  ok   = ok_code(curl_easy_setopt(curl, CURLOPT_URL, url)) &&
-               ok_code(curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, (long)req->timeout_ms)) &&
-               /* CURLOPT_REFERER with NULL clears any prior value -- what we want. */
-               ok_code(curl_easy_setopt(curl, CURLOPT_REFERER, req->referer));
+            ok_code(curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, (long)req->timeout_ms)) &&
+            /* CURLOPT_REFERER with NULL clears any prior value -- what we want. */
+            ok_code(curl_easy_setopt(curl, CURLOPT_REFERER, req->referer));
   if (ok && (req->user_agent != nullptr)) {
     ok = ok_code(curl_easy_setopt(curl, CURLOPT_USERAGENT, req->user_agent));
   }
@@ -371,7 +372,9 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
 
   FILE* fp = fopen(tmp_path, "wb");
   if (fp == nullptr) {
-    if (fp) { (void)fclose(fp); }
+    if (fp) {
+      (void)fclose(fp);
+    }
     return k_ra8_fail;
   }
 
@@ -421,7 +424,6 @@ RA8_INTERNAL static void curl_destroy(void* ctx)
   if (net->curl != nullptr) {
     curl_easy_cleanup(net->curl);
   }
-  
 }
 
 /** @brief The libcurl backend's immutable method table. */
@@ -444,7 +446,7 @@ mdl_net_iface_t* mdl_net_curl_create(ra8_arena_t* arena, const mdl_net_policy_t*
 
   mdl_curl_ctx_t* ctx = (mdl_curl_ctx_t*)ra8_arena_calloc(arena, 1U, (uint32_t)sizeof(*ctx));
   if (ctx == nullptr) {
-    
+
     return nullptr;
   }
   if (policy != nullptr) {
@@ -454,20 +456,19 @@ mdl_net_iface_t* mdl_net_curl_create(ra8_arena_t* arena, const mdl_net_policy_t*
   }
   ctx->curl = curl_easy_init();
   if (ctx->curl == nullptr) {
-    
+
     return nullptr;
   }
   if (!apply_security_opts(ctx->curl, ctx) || !apply_behavior_opts(ctx->curl)) {
     curl_easy_cleanup(ctx->curl);
-    
+
     return nullptr;
   }
 
   mdl_net_iface_t* net = (mdl_net_iface_t*)ra8_arena_calloc(arena, 1U, (uint32_t)sizeof(*net));
   if (net == nullptr) {
     curl_easy_cleanup(ctx->curl);
-    
-    
+
     return nullptr;
   }
   net->vtable = &s_curl_vtable;

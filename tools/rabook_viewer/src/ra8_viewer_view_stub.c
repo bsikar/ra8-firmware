@@ -25,9 +25,10 @@
  * @see ra8_viewer_view.h  The contract both backends implement.
  * @see ra8_viewer_view.m  The Cocoa backend this replaces off the APPLE path.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -56,7 +57,8 @@
  *
  * @since 0.1.0
  */
-ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t* arena)
+ra8_viewer_view_t*
+ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t* arena)
 {
   (void)reader;
   (void)title;

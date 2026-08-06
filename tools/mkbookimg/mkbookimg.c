@@ -14,6 +14,7 @@
  *
  * Usage: mkbookimg <out.img> <book1.rabook> [book2.rabook ...]
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -22,11 +23,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra8_fs.h"
 #include "ra8_arena.h"
 #include "ra8_attributes.h"
+#include "ra8_fs.h"
 
-enum : uint32_t { k_arena_bytes = 128U * 1024U * 1024U }; // 128 MiB — generous for disk images
+enum : uint32_t { k_arena_bytes = 128U * 1024U * 1024U }; // 128 MiB - generous for disk images
 
 enum : uint32_t {
   k_block_size  = 512U,    /**< FAT sector size.                       */
@@ -144,8 +145,8 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
 static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   const mem_disk_t* d = (const mem_disk_t*)ctx;
-  *block_count  = d->block_count;
-  *block_size   = k_block_size;
+  *block_count        = d->block_count;
+  *block_size         = k_block_size;
   return k_ra8_ok;
 }
 
@@ -329,9 +330,9 @@ int main(int argc, char** argv)
     (void)fprintf(stderr, "mkbookimg: too many books (max %u)\n", k_max_books);
     rc = 2;
   } else {
-    const int n_books = argc - 2;
+    const int n_books  = argc - 2;
     s_disk.block_count = k_img_sectors;
-    s_disk.bytes       = (uint8_t*)ra8_arena_calloc(&arena, 1U, (uint32_t)k_img_sectors * k_block_size);
+    s_disk.bytes = (uint8_t*)ra8_arena_calloc(&arena, 1U, (uint32_t)k_img_sectors * k_block_size);
     if (s_disk.bytes == nullptr) {
       (void)fprintf(stderr, "mkbookimg: out of memory\n");
       rc = 1;
@@ -341,7 +342,7 @@ int main(int argc, char** argv)
                                         .get_capacity = mem_cap,
                                         .ctx          = &s_disk};
       ra8_fs_mount_t*        mnt     = nullptr;
-      rc = fs_format_mount(&backend, &mnt);
+      rc                             = fs_format_mount(&backend, &mnt);
       if (rc == 0) {
         rc = write_books(&arena, mnt, argv, n_books);
         (void)ra8_fs_unmount(mnt);

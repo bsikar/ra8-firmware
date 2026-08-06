@@ -18,9 +18,10 @@
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -220,14 +221,14 @@ static ra8_err_t priv_encode_roundtrip(ra8_arena_t*          arena,
 {
   ra8_fmt_blob_t atlas = {};
   ra8_err_t      rc    = ra8_fmt_jof_produce(arena,
-                                             src,
-                                             max_w,
-                                             max_h,
-                                             tile_w,
-                                             tile_h,
-                                             (uint8_t)k_ra8_jof_codec_deflate,
-                                             &atlas,
-                                             info);
+                                     src,
+                                     max_w,
+                                     max_h,
+                                     tile_w,
+                                     tile_h,
+                                     (uint8_t)k_ra8_jof_codec_deflate,
+                                     &atlas,
+                                     info);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -254,8 +255,10 @@ static ra8_err_t priv_encode_roundtrip(ra8_arena_t*          arena,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_encode_pair(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts, fmt_ver_pair_t* pair)
+static ra8_err_t priv_encode_pair(ra8_arena_t*          arena,
+                                  const ra8_fmt_blob_t* src,
+                                  const ra8_fmt_opts_t* opts,
+                                  fmt_ver_pair_t*       pair)
 {
   uint16_t  w  = 0U;
   uint16_t  h  = 0U;
@@ -273,14 +276,14 @@ priv_encode_pair(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_op
                           ? pair->rinfo.height
                           : (uint16_t)k_fmt_ver_band_h;
   rc                  = priv_encode_roundtrip(arena,
-                                              src,
-                                              w,
-                                              h,
-                                              pair->rinfo.width,
-                                              band,
-                                              &pair->got,
-                                              &pair->gotn,
-                                              &pair->ginfo);
+                             src,
+                             w,
+                             h,
+                             pair->rinfo.width,
+                             band,
+                             &pair->got,
+                             &pair->gotn,
+                             &pair->ginfo);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "verify: banded encode failed (rc=%d)\n", (int)rc);
     pair->ref = nullptr;
@@ -296,7 +299,8 @@ priv_encode_pair(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_op
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_fmt_jof_verify(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t
+ra8_fmt_jof_verify(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");

@@ -9,9 +9,10 @@
  * flamechart, the boot timeline, and the inclusive/self table) -- moved
  * verbatim out of the ra8_emulator main translation unit.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include "emu_prof.h"

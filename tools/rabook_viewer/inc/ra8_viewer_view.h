@@ -16,9 +16,10 @@
  * is Objective-C (ra8_viewer_view.m); this header stays pure C so the C reader and
  * `main` need no Objective-C.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 #pragma once
 
@@ -59,7 +60,8 @@ typedef struct ra8_viewer_view ra8_viewer_view_t;
  *       thread-safe; call on the main thread.
  * @since 0.1.0
  */
-ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t* arena);
+ra8_viewer_view_t*
+ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t* arena);
 
 /**
  * @brief Drain pending window events cooperatively.

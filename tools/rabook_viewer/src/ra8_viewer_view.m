@@ -16,10 +16,11 @@
  * the caller's loop rather than taking over with `[NSApp run]`. Built with
  * -fobjc-arc; CGImageRef (a CF type, not ARC-managed) is released by hand.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @since 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "ra8_viewer_view.h"
@@ -64,7 +65,8 @@ typedef enum : uint32_t {
  * @param[in] h      Tile height.
  * @return A retained CGImageRef, or NULL on allocation failure.
  */
-static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w, uint32_t h, ra8_arena_t* arena)
+static CGImageRef
+ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w, uint32_t h, ra8_arena_t* arena)
 {
   const size_t n    = (size_t)w * (size_t)h;
   uint32_t*    argb = (uint32_t*)ra8_arena_alloc(arena, (uint32_t)(n * sizeof(uint32_t)));
@@ -81,15 +83,15 @@ static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w
     const uint32_t b  = (b5 << 3) | (b5 >> 2);
     argb[i]           = (r << k_viewer_argb_r) | (g << k_viewer_argb_g) | b;
   }
-  CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
-  CGContextRef bmp = CGBitmapContextCreate(argb,
+  CGColorSpaceRef cs  = CGColorSpaceCreateDeviceRGB();
+  CGContextRef    bmp = CGBitmapContextCreate(argb,
                                            (size_t)w,
                                            (size_t)h,
                                            (size_t)k_viewer_bpp_bits,
                                            (size_t)w * sizeof(uint32_t),
                                            cs,
                                            kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little);
-  CGImageRef   img = (bmp != NULL) ? CGBitmapContextCreateImage(bmp) : NULL;
+  CGImageRef      img = (bmp != NULL) ? CGBitmapContextCreateImage(bmp) : NULL;
   if (bmp != NULL) {
     CGContextRelease(bmp);
   }
@@ -146,8 +148,7 @@ static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w
 }
 
 - (void)dealloc
-{
-}
+{}
 
 /* Top-left origin, y downward: tile 0 at the top, natural reading order. */
 - (BOOL)isFlipped
@@ -364,14 +365,15 @@ static void ra8_viewer_install_menu(void)
   NSMenu*     appMenu = [[NSMenu alloc] init];
   NSString*   name    = [[NSProcessInfo processInfo] processName];
   NSMenuItem* quit    = [[NSMenuItem alloc] initWithTitle:[@"Quit " stringByAppendingString:name]
-                                                   action:@selector(terminate:)
-                                            keyEquivalent:@"q"];
+                                                action:@selector(terminate:)
+                                         keyEquivalent:@"q"];
   [appMenu addItem:quit];
   [appItem setSubmenu:appMenu];
   [NSApp setMainMenu:menubar];
 }
 
-ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t* arena)
+ra8_viewer_view_t*
+ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t* arena)
 {
   if (reader == nullptr) {
     return nullptr;
@@ -394,10 +396,10 @@ ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char*
     const NSRect     rect  = NSMakeRect(0.0, 0.0, w, h);
     const NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
                              NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
-    NSWindow*        win   = [[NSWindow alloc] initWithContentRect:rect
-                                                         styleMask:style
-                                                           backing:NSBackingStoreBuffered
-                                                             defer:NO];
+    NSWindow* win = [[NSWindow alloc] initWithContentRect:rect
+                                                styleMask:style
+                                                  backing:NSBackingStoreBuffered
+                                                    defer:NO];
     if (win == nil) {
       return nullptr;
     }

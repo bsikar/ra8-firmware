@@ -24,9 +24,10 @@
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -295,7 +296,8 @@ typedef struct {
 
 /** @brief Build the deterministic glyph access stream. Returns count via out_n. */
 RA8_NASA_RULE_3_OK /* host-only bench: glyph sequence array */
-static gb_access_t* gb_build_stream(uint64_t* rng, uint64_t* out_n)
+  static gb_access_t*
+  gb_build_stream(uint64_t* rng, uint64_t* out_n)
 {
   const uint64_t total =
     (uint64_t)k_gb_pages * (uint64_t)k_gb_reread_pages * (uint64_t)k_gb_page_glyphs;
@@ -354,7 +356,8 @@ static gb_access_t* gb_build_stream(uint64_t* rng, uint64_t* out_n)
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only bench: dynamic atlas arrays */
-static double gb_run(const gb_access_t* seq, uint64_t n, uint32_t budget, uint32_t* out_rasters)
+  static double
+  gb_run(const gb_access_t* seq, uint64_t n, uint32_t budget, uint32_t* out_rasters)
 {
   uint8_t*             cell_mem = (uint8_t*)malloc((size_t)budget * (size_t)k_gb_cell_bytes);
   ra8_glyph_key_t*     keys     = (ra8_glyph_key_t*)calloc((size_t)budget, sizeof(ra8_glyph_key_t));
@@ -408,8 +411,8 @@ static double gb_run(const gb_access_t* seq, uint64_t n, uint32_t budget, uint32
 
 int main(void)
 {
-  uint64_t     rng = (uint64_t)k_gb_seed;
-  uint64_t     n   = 0U;
+  uint64_t           rng = (uint64_t)k_gb_seed;
+  uint64_t           n   = 0U;
   const gb_access_t* seq = gb_build_stream(&rng, &n);
   if ((seq == nullptr) || (n == 0U)) {
     (void)fprintf(stderr, "glyph_bench: failed to build the glyph stream\n");

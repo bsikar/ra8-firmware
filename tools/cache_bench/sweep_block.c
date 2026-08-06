@@ -14,11 +14,11 @@
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
-#include "ra8_attributes.h"
 #include "sweep_block.h"
 
 #include <stdio.h>
@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_vmem.h"
 #include "ra8_vsource.h"
@@ -171,8 +172,8 @@ static void cbs_cache_close(cbs_cache_t* c)
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only bench: dynamic cache arrays */
-static int
-cbs_cache_open(cbs_cache_t* c, const cbs_backend_t* be, uint32_t blob_bytes, uint32_t block_bytes)
+  static int
+  cbs_cache_open(cbs_cache_t* c, const cbs_backend_t* be, uint32_t blob_bytes, uint32_t block_bytes)
 {
   if ((c == nullptr) || (be == nullptr) || (be->read == nullptr) || (block_bytes == 0U)) {
     return 1;

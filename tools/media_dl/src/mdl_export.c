@@ -17,6 +17,7 @@
  * reaches into the firmware's `ra8_jof` decode/encode stack, so it owns
  * its own translation unit rather than widening this one's dependencies. This
  * file still dispatches to it, via mdl_export_jof() in mdl_export_internal.h.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -452,10 +453,11 @@ RA8_INTERNAL static mz_bool gz_put(const void* buf, int len, void* user)
  *          the source nor the compressed stream is ever held whole. CRC32 and
  *          ISIZE are accumulated incrementally across the chunks.
  */
-RA8_INTERNAL static ra8_err_t gzip_file(ra8_arena_t* arena, const char* in_path, const char* out_path)
+RA8_INTERNAL static ra8_err_t
+gzip_file(ra8_arena_t* arena, const char* in_path, const char* out_path)
 {
   const uint32_t mark = ra8_arena_save(arena);
-  FILE* in = fopen(in_path, "rb");
+  FILE*          in   = fopen(in_path, "rb");
   if (in == NULL) {
     // cppcheck-suppress resourceLeak
     // in is NULL here
@@ -470,18 +472,19 @@ RA8_INTERNAL static ra8_err_t gzip_file(ra8_arena_t* arena, const char* in_path,
     ra8_arena_restore(arena, mark);
     return k_ra8_fail;
   }
-  tdefl_compressor* d = (tdefl_compressor*)ra8_arena_alloc(arena, (uint32_t)sizeof(*d), _Alignof(tdefl_compressor));
+  tdefl_compressor* d =
+    (tdefl_compressor*)ra8_arena_alloc(arena, (uint32_t)sizeof(*d), _Alignof(tdefl_compressor));
   if (d == NULL) {
     (void)fclose(in);
     (void)fclose(out);
-    
+
     ra8_arena_restore(arena, mark);
     return k_ra8_err_no_mem;
   }
   const uint8_t hdr[k_gzip_hdr_len] =
     {k_gz_id1, k_gz_id2, k_gz_cm, 0U, 0U, 0U, 0U, 0U, 0U, k_gz_os};
-  bool     ok    = (fwrite(hdr, 1U, sizeof(hdr), out) == sizeof(hdr)) &&
-                   (tdefl_init(d, gz_put, out, TDEFL_DEFAULT_MAX_PROBES) == TDEFL_STATUS_OKAY);
+  bool ok = (fwrite(hdr, 1U, sizeof(hdr), out) == sizeof(hdr)) &&
+            (tdefl_init(d, gz_put, out, TDEFL_DEFAULT_MAX_PROBES) == TDEFL_STATUS_OKAY);
   uint32_t crc   = (uint32_t)MZ_CRC32_INIT;
   uint32_t isize = 0U; /* ISIZE = total input length mod 2^32 */
   uint8_t  chunk[k_stream_chunk];
@@ -500,7 +503,7 @@ RA8_INTERNAL static ra8_err_t gzip_file(ra8_arena_t* arena, const char* in_path,
   if (ok && (tdefl_compress_buffer(d, nullptr, 0U, TDEFL_FINISH) != TDEFL_STATUS_DONE)) {
     ok = false;
   }
-  
+
   ok = ok && put_u32le(out, crc) && put_u32le(out, isize);
   ok = (fclose(out) == 0) && ok;
   (void)fclose(in);
@@ -600,13 +603,13 @@ RA8_INTERNAL static ra8_err_t xz_file(ra8_arena_t* arena, const char* in_path, c
  *          file is removed on every exit path.
  */
 RA8_INTERNAL static ra8_err_t export_tar_wrapped(ra8_arena_t* arena,
-                                                 const char* dir,
-                                                 char        names[][k_name_max],
-                                                 size_t      count,
-                                                 const char* out_path,
+                                                 const char*  dir,
+                                                 char         names[][k_name_max],
+                                                 size_t       count,
+                                                 const char*  out_path,
                                                  ra8_err_t (*compress)(ra8_arena_t* arena,
-                                                                       const char* in_path,
-                                                                       const char* out_path))
+                                                                       const char*  in_path,
+                                                                       const char*  out_path))
 {
   /* A truncated suffix would name a DIFFERENT file than intended -- possibly
    * one that already exists -- so overflow aborts rather than proceeding. */
@@ -789,16 +792,18 @@ RA8_INTERNAL static ra8_err_t epub_add_page(mz_zip_archive* zip,
 }
 
 /** @brief Build + add content.opf and nav.xhtml, then finalize the archive. */
-RA8_INTERNAL static ra8_err_t
-epub_add_meta(ra8_arena_t* arena, mz_zip_archive* zip, const char* mani, const char* spine, const char* nav)
+RA8_INTERNAL static ra8_err_t epub_add_meta(ra8_arena_t*    arena,
+                                            mz_zip_archive* zip,
+                                            const char*     mani,
+                                            const char*     spine,
+                                            const char*     nav)
 {
   const size_t opf_cap = strlen(mani) + strlen(spine) + (size_t)k_epub_base_bytes;
   const size_t nav_cap = strlen(nav) + (size_t)k_epub_base_bytes;
   char*        opf     = (char*)ra8_arena_alloc(arena, (uint32_t)opf_cap, 1U);
   char*        navdoc  = (char*)ra8_arena_alloc(arena, (uint32_t)nav_cap, 1U);
   if ((opf == nullptr) || (navdoc == nullptr)) {
-    
-    
+
     return k_ra8_err_no_mem;
   }
   (void)snprintf(opf,
@@ -826,27 +831,30 @@ epub_add_meta(ra8_arena_t* arena, mz_zip_archive* zip, const char* mani, const c
   const bool ok = epub_add_str(zip, "OEBPS/content.opf", opf) &&
                   epub_add_str(zip, "OEBPS/nav.xhtml", navdoc) &&
                   (mz_zip_writer_finalize_archive(zip) != MZ_FALSE);
-  
-  
+
   return ok ? k_ra8_ok : k_ra8_fail;
 }
 
 /** @brief Package `dir`'s pages into a valid EPUB3 at `out_path`. */
-RA8_INTERNAL static ra8_err_t
-export_epub(ra8_arena_t* arena, const char* dir, char names[][k_name_max], size_t count, const char* out_path)
+RA8_INTERNAL static ra8_err_t export_epub(ra8_arena_t* arena,
+                                          const char*  dir,
+                                          char         names[][k_name_max],
+                                          size_t       count,
+                                          const char*  out_path)
 {
-  const uint32_t mark = ra8_arena_save(arena);
-  const size_t cap   = (size_t)k_epub_base_bytes + (count * (size_t)k_epub_per_page_bytes);
-  char*        mani  = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
-  char*        spine = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
-  char*        nav   = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
-  if (mani) memset(mani, 0, cap);
-  if (spine) memset(spine, 0, cap);
-  if (nav) memset(nav, 0, cap);
+  const uint32_t mark  = ra8_arena_save(arena);
+  const size_t   cap   = (size_t)k_epub_base_bytes + (count * (size_t)k_epub_per_page_bytes);
+  char*          mani  = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
+  char*          spine = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
+  char*          nav   = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
+  if (mani)
+    memset(mani, 0, cap);
+  if (spine)
+    memset(spine, 0, cap);
+  if (nav)
+    memset(nav, 0, cap);
   if ((mani == nullptr) || (spine == nullptr) || (nav == nullptr)) {
-    
-    
-    
+
     return k_ra8_err_no_mem;
   }
   mz_zip_archive zip;
@@ -866,9 +874,7 @@ export_epub(ra8_arena_t* arena, const char* dir, char names[][k_name_max], size_
   if (zip_open) {
     (void)mz_zip_writer_end(&zip);
   }
-  
-  
-  
+
   /* A partial EPUB is ::export_atomic's temp to discard, not ours. */
   ra8_arena_restore(arena, mark);
   return rc;
@@ -924,7 +930,8 @@ export_rabook(const char* dir, char names[][k_name_max], size_t count, const cha
 }
 
 /** @brief Run one format's writer, producing the container at `out_path`. */
-RA8_INTERNAL static ra8_err_t export_dispatch(ra8_arena_t* arena, mdl_format_t fmt,
+RA8_INTERNAL static ra8_err_t export_dispatch(ra8_arena_t* arena,
+                                              mdl_format_t fmt,
                                               const char*  dir,
                                               char         names[][k_name_max],
                                               size_t       count,
@@ -963,7 +970,8 @@ RA8_INTERNAL static ra8_err_t export_dispatch(ra8_arena_t* arena, mdl_format_t f
  *          costs nothing: the destination is not touched until a complete good
  *          copy exists. See mdl_atomic.h.
  */
-RA8_INTERNAL static ra8_err_t export_atomic(ra8_arena_t* arena, mdl_format_t fmt,
+RA8_INTERNAL static ra8_err_t export_atomic(ra8_arena_t* arena,
+                                            mdl_format_t fmt,
                                             const char*  dir,
                                             char         names[][k_name_max],
                                             size_t       count,
@@ -981,7 +989,10 @@ RA8_INTERNAL static ra8_err_t export_atomic(ra8_arena_t* arena, mdl_format_t fmt
   return mdl_atomic_commit(tmp_path, out_path) ? k_ra8_ok : k_ra8_fail;
 }
 
-ra8_err_t mdl_export_chapter(ra8_arena_t* arena, mdl_format_t fmt, const char* chapter_dir, const char* out_path)
+ra8_err_t mdl_export_chapter(ra8_arena_t* arena,
+                             mdl_format_t fmt,
+                             const char*  chapter_dir,
+                             const char*  out_path)
 {
   if ((chapter_dir == nullptr) || (out_path == nullptr) || (fmt == k_mdl_fmt_loose) ||
       (fmt == k_mdl_fmt_invalid)) {

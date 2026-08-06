@@ -9,11 +9,11 @@
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
-#include "ra8_attributes.h"
 #include "trace.h"
 
 #include <errno.h>
@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "ra8_attributes.h"
 
 /**
  * @enum cb_workload_dim_t
@@ -190,7 +192,8 @@ static uint32_t cb_rand_below(uint64_t* s, uint32_t span)
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only bench: trace keys array */
-static bool cb_alloc(cb_trace_t* t, const char* name, uint64_t n)
+  static bool
+  cb_alloc(cb_trace_t* t, const char* name, uint64_t n)
 {
   t->name      = name;
   t->n         = n;
@@ -508,7 +511,7 @@ static cb_trace_t cb_gen_hugebook(void)
     for (uint32_t s = 0U; (s < (uint32_t)k_cb_huge_scan) && (i < t.n); ++s, ++i) {
       const uint32_t page = (uint32_t)k_cb_huge_hot +
                             ((scan_pos + s) % (k_cb_huge_footprint - (uint32_t)k_cb_huge_hot));
-      t.keys[i]           = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
+      t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
     }
     scan_pos += (uint32_t)k_cb_huge_scan;
   }
@@ -517,7 +520,8 @@ static cb_trace_t cb_gen_hugebook(void)
 }
 
 RA8_NASA_RULE_3_OK /* host-only bench: synthetic trace array */
-cb_trace_t* cb_traces_synthetic(uint32_t* out_count)
+  cb_trace_t*
+  cb_traces_synthetic(uint32_t* out_count)
 {
   cb_trace_t (*gens[])(void) = {
     cb_gen_sequential,
@@ -597,7 +601,8 @@ static bool cb_parse_trace_line(const char* line, uint32_t* obj, uint32_t* pg)
 }
 
 RA8_NASA_RULE_3_OK /* host-only bench: dynamic trace loading */
-cb_trace_t cb_trace_load(const char* path, const char* name)
+  cb_trace_t
+  cb_trace_load(const char* path, const char* name)
 {
   cb_trace_t t = {.name = name};
   FILE*      f = fopen(path, "r");

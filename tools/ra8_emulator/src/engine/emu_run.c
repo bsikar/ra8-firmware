@@ -9,9 +9,10 @@
  * unit (the loop body is unchanged; the former main() locals it consumed now
  * arrive through ::emu_run_cfg_t).
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <stdio.h>
@@ -21,7 +22,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "ra8_attributes.h"
 #include "board_console.h"
 #include "board_input.h"
 #include "board_net.h"
@@ -43,6 +43,7 @@
 #include "emu_seams.h"
 #include "emu_usbh_seam.h"
 #include "emu_view.h"
+#include "ra8_attributes.h"
 
 /**
  * @enum loop_action_t
@@ -110,7 +111,8 @@ static void run_setup_geometry(const emu_run_cfg_t* cfg, run_loop_t* st)
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only emu: window buffers */
-static void run_open_view_buffers(const emu_run_cfg_t* cfg, run_loop_t* st)
+  static void
+  run_open_view_buffers(const emu_run_cfg_t* cfg, run_loop_t* st)
 {
   if (cfg->want_view) {
     st->view = board_view_open(st->comp_w, st->comp_h, cfg->win_title);
@@ -695,8 +697,8 @@ static bool run_stop_banner(run_loop_t* st)
   const char* const last_itm  = board_console_line(k_board_console_ch_itm, 0U);
   const char* const last_rtt  = board_console_line(k_board_console_ch_rtt, 0U);
   const bool        hit = ((last_uart != nullptr) && (strstr(last_uart, stop_on) != nullptr)) ||
-                          ((last_itm != nullptr) && (strstr(last_itm, stop_on) != nullptr)) ||
-                          ((last_rtt != nullptr) && (strstr(last_rtt, stop_on) != nullptr));
+                   ((last_itm != nullptr) && (strstr(last_itm, stop_on) != nullptr)) ||
+                   ((last_rtt != nullptr) && (strstr(last_rtt, stop_on) != nullptr));
   if (hit) {
     st->usb_stopped = true;
     return true;

@@ -22,20 +22,21 @@
  *   Writes a formatted-but-empty FAT16 image (no font) -- the "random card"
  *   case used to exercise @ref ra8_sdfont_load's self-provisioning path.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra8_fs.h"
 #include "ra8_arena.h"
 #include "ra8_attributes.h"
+#include "ra8_fs.h"
 
-enum : uint32_t { k_arena_bytes = 128U * 1024U * 1024U }; // 128 MiB — generous for disk images
+enum : uint32_t { k_arena_bytes = 128U * 1024U * 1024U }; // 128 MiB - generous for disk images
 
 /** @brief FAT16 geometry + BPB field offsets (mirror of the host test). */
 typedef enum : uint32_t {
@@ -174,8 +175,8 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
 static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   const mem_disk_t* d = (const mem_disk_t*)ctx;
-  *block_count  = d->block_count;
-  *block_size   = (uint32_t)k_block_size;
+  *block_count        = d->block_count;
+  *block_size         = (uint32_t)k_block_size;
   return k_ra8_ok;
 }
 
@@ -348,11 +349,15 @@ static int dump_image(const char* image_out)
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
-static int
-build_and_dump(ra8_arena_t* arena, const char* image_out, const uint8_t* font, size_t font_len, const char* dest_name)
+static int build_and_dump(ra8_arena_t*   arena,
+                          const char*    image_out,
+                          const uint8_t* font,
+                          size_t         font_len,
+                          const char*    dest_name)
 {
   s_disk.block_count = (uint32_t)k_blocks_fat16;
-  s_disk.bytes       = (uint8_t*)ra8_arena_calloc(arena, 1U, (uint32_t)k_blocks_fat16 * (uint32_t)k_block_size);
+  s_disk.bytes =
+    (uint8_t*)ra8_arena_calloc(arena, 1U, (uint32_t)k_blocks_fat16 * (uint32_t)k_block_size);
   if (s_disk.bytes == nullptr) {
     (void)fprintf(stderr, "mkfontimg: out of memory (disk)\n");
     return 1;
@@ -491,7 +496,7 @@ static int run_font(ra8_arena_t* arena, int argc, char** argv)
   const char* image_out = argv[2];
   const char* dest_name = (argc > 3) ? argv[3] : "FONT.OTF";
 
-  size_t   font_len = 0U;
+  size_t         font_len = 0U;
   const uint8_t* font     = slurp_font(arena, font_in, &font_len);
   if (font == nullptr) {
     return 1;

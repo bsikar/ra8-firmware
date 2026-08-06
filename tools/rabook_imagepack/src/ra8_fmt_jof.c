@@ -28,9 +28,10 @@
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -312,8 +313,16 @@ ra8_err_t ra8_fmt_jof_produce(ra8_arena_t*          arena,
     return k_ra8_err_no_mem;
   }
   ra8_jof_memstore_t store = {.buf = sink, .cap = sink_cap, .len = 0U};
-  const ra8_err_t    rc =
-    fmt_jof_run_produce(arena, src, max_w, max_h, tile_w, tile_h, codec, work_cap, &store, out_info);
+  const ra8_err_t    rc    = fmt_jof_run_produce(arena,
+                                           src,
+                                           max_w,
+                                           max_h,
+                                           tile_w,
+                                           tile_h,
+                                           codec,
+                                           work_cap,
+                                           &store,
+                                           out_info);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -322,7 +331,8 @@ ra8_err_t ra8_fmt_jof_produce(ra8_arena_t*          arena,
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_fmt_jof_convert(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t
+ra8_fmt_jof_convert(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
@@ -340,7 +350,8 @@ ra8_err_t ra8_fmt_jof_convert(ra8_arena_t* arena, const ra8_fmt_blob_t* src, con
   const uint16_t band  = (h < (uint16_t)k_fmt_jof_band_h) ? h : (uint16_t)k_fmt_jof_band_h;
   ra8_fmt_blob_t atlas = {};
   ra8_jof_info_t info  = {};
-  rc = ra8_fmt_jof_produce(arena, src, w, h, w, band, (uint8_t)k_ra8_jof_codec_deflate, &atlas, &info);
+  rc =
+    ra8_fmt_jof_produce(arena, src, w, h, w, band, (uint8_t)k_ra8_jof_codec_deflate, &atlas, &info);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "ra8_fmt: transcode failed (rc=%d)\n", (int)rc);
     return rc;

@@ -11,14 +11,15 @@
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 #include <stdlib.h>
 
-#include "ra8_attributes.h"
 #include "cache_bench.h"
+#include "ra8_attributes.h"
 
 /* ------------------------------------------------------------------ FIFO -- */
 
@@ -44,7 +45,8 @@
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only bench: policy state */
-static int cb_fifo_init(cb_cache_t* c)
+  static int
+  cb_fifo_init(cb_cache_t* c)
 {
   uint32_t* hand = (uint32_t*)calloc(1U, sizeof(uint32_t));
   c->policy_data = hand;
@@ -161,7 +163,8 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only bench: policy state */
-static int cb_rand_init(cb_cache_t* c)
+  static int
+  cb_rand_init(cb_cache_t* c)
 {
   uint64_t* s = (uint64_t*)malloc(sizeof(uint64_t));
   if (s != nullptr) {
@@ -266,7 +269,8 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only bench: policy state */
-static int cb_lru_init(cb_cache_t* c)
+  static int
+  cb_lru_init(cb_cache_t* c)
 {
   cb_lru_t* l = (cb_lru_t*)calloc(1U, sizeof(cb_lru_t));
   if (l == NULL) {
@@ -482,7 +486,8 @@ static const cache_policy_t s_cb_policy_lru = {
  * @since 0.1.0
  */
 RA8_NASA_RULE_3_OK /* host-only bench: policy state */
-static int cb_clock_init(cb_cache_t* c)
+  static int
+  cb_clock_init(cb_cache_t* c)
 {
   uint32_t* hand = (uint32_t*)calloc(1U, sizeof(uint32_t));
   c->policy_data = hand;

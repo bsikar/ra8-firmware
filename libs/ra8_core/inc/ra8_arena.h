@@ -31,9 +31,10 @@
  * Follows the same design as the `ra8_c6link` decode arena but is
  * decoupled from protobuf-c and usable by any library.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #ifndef RA8_ARENA_H
@@ -61,9 +62,9 @@ enum : uint32_t {
  * allocations without releasing the underlying buffer.
  */
 typedef struct {
-  uint8_t* buf;   /**< Backing buffer (caller-owned).       */
-  uint32_t cap;   /**< Total capacity in bytes.              */
-  uint32_t used;  /**< Current bump offset.                  */
+  uint8_t* buf;  /**< Backing buffer (caller-owned).       */
+  uint32_t cap;  /**< Total capacity in bytes.              */
+  uint32_t used; /**< Current bump offset.                  */
 } ra8_arena_t;
 
 /**
@@ -76,8 +77,7 @@ typedef struct {
  * @retval k_ra8_ok       Success.
  * @retval k_ra8_err_null_ptr @p a or @p buf is null.
  */
-static inline ra8_err_t ra8_arena_init(ra8_arena_t* a, uint8_t* buf,
-                                       uint32_t bytes)
+static inline ra8_err_t ra8_arena_init(ra8_arena_t* a, uint8_t* buf, uint32_t bytes)
 {
   if ((a == nullptr) || (buf == nullptr)) {
     return k_ra8_err_null_ptr;
@@ -96,6 +96,7 @@ static inline ra8_err_t ra8_arena_init(ra8_arena_t* a, uint8_t* buf,
  *
  * @return Aligned pointer to the allocated block, or @c nullptr if the
  *         arena has insufficient space.
+ * @since 0.1.0
  */
 static inline void* ra8_arena_alloc(ra8_arena_t* a, uint32_t bytes)
 {
@@ -114,7 +115,7 @@ static inline void* ra8_arena_alloc(ra8_arena_t* a, uint32_t bytes)
   }
 
   const uint32_t at = a->used;
-  a->used = at + bytes + pad;
+  a->used           = at + bytes + pad;
   return &a->buf[at];
 }
 
@@ -126,12 +127,12 @@ static inline void* ra8_arena_alloc(ra8_arena_t* a, uint32_t bytes)
  * @param[in]     size  Size of each element in bytes.
  *
  * @return Aligned, zeroed pointer, or @c nullptr on OOM.
+ * @since 0.1.0
  */
-static inline void* ra8_arena_calloc(ra8_arena_t* a, uint32_t count,
-                                     uint32_t size)
+static inline void* ra8_arena_calloc(ra8_arena_t* a, uint32_t count, uint32_t size)
 {
   const uint32_t total = count * size;
-  void* p = ra8_arena_alloc(a, total);
+  void*          p     = ra8_arena_alloc(a, total);
   if (p != nullptr) {
     uint8_t* dst = (uint8_t*)p;
     for (uint32_t i = 0U; i < total; ++i) {
@@ -149,6 +150,7 @@ static inline void* ra8_arena_calloc(ra8_arena_t* a, uint32_t count,
  * become invalid.
  *
  * @param[in,out] a Arena to reset.
+ * @since 0.1.0
  */
 static inline void ra8_arena_reset(ra8_arena_t* a)
 {
@@ -162,6 +164,7 @@ static inline void ra8_arena_reset(ra8_arena_t* a)
  *
  * @param[in] a Arena to query.
  * @return Bytes remaining, or 0 if @p a is null.
+ * @since 0.1.0
  */
 static inline uint32_t ra8_arena_remaining(const ra8_arena_t* a)
 {

@@ -33,9 +33,10 @@
  *
  *
  * @see ra8_jof.h  The band-tile atlas this tool was first built to debug.
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #pragma once
@@ -44,8 +45,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "ra8_err.h"
 #include "ra8_arena.h"
+#include "ra8_err.h"
 
 /**
  * @enum ra8_fmt_limits_t
@@ -111,7 +112,9 @@ typedef struct {
  * @return k_ra8_ok when `opts->out_path` holds a complete container.
  * @since 0.1.0
  */
-typedef ra8_err_t (*ra8_fmt_convert_fn)(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
+typedef ra8_err_t (*ra8_fmt_convert_fn)(ra8_arena_t*          arena,
+                                        const ra8_fmt_blob_t* src,
+                                        const ra8_fmt_opts_t* opts);
 
 /**
  * @typedef ra8_fmt_inspect_fn
@@ -122,7 +125,9 @@ typedef ra8_err_t (*ra8_fmt_convert_fn)(ra8_arena_t* arena, const ra8_fmt_blob_t
  *         structurally invalid (the report states why).
  * @since 0.1.0
  */
-typedef ra8_err_t (*ra8_fmt_inspect_fn)(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
+typedef ra8_err_t (*ra8_fmt_inspect_fn)(ra8_arena_t*          arena,
+                                        const ra8_fmt_blob_t* src,
+                                        const ra8_fmt_opts_t* opts);
 
 /**
  * @typedef ra8_fmt_verify_fn
@@ -132,7 +137,9 @@ typedef ra8_err_t (*ra8_fmt_inspect_fn)(ra8_arena_t* arena, const ra8_fmt_blob_t
  * @return k_ra8_ok when the decoded result matched the source exactly.
  * @since 0.1.0
  */
-typedef ra8_err_t (*ra8_fmt_verify_fn)(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
+typedef ra8_err_t (*ra8_fmt_verify_fn)(ra8_arena_t*          arena,
+                                       const ra8_fmt_blob_t* src,
+                                       const ra8_fmt_opts_t* opts);
 
 /**
  * @typedef ra8_fmt_sniff_fn

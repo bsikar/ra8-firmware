@@ -1,6 +1,7 @@
 /**
  * @file mdl_state.c
  * @brief Persistent per-series library state: parse, serialise (atomic), query.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -221,7 +222,9 @@ ra8_err_t mdl_state_save(const char* path, const mdl_state_t* st)
   }
   FILE* fp = fopen(tmp, "w");
   if (fp == nullptr) {
-    if (fp) { (void)fclose(fp); }
+    if (fp) {
+      (void)fclose(fp);
+    }
     return k_ra8_fail;
   }
   (void)fprintf(fp, "# media_dl library state v%u\n", (unsigned)k_mdl_state_version);
@@ -372,11 +375,15 @@ ra8_err_t mdl_state_load(const char* path, mdl_state_t* st)
   FILE* fp = fopen(path, "r");
   if (fp == nullptr) {
     if (errno == ENOENT) {
-      if (fp) { (void)fclose(fp); }
+      if (fp) {
+        (void)fclose(fp);
+      }
       return k_ra8_ok; /* first run of this series: start empty */
     }
     (void)fprintf(stderr, "media_dl: cannot read state '%s'\n", path);
-    if (fp) { (void)fclose(fp); }
+    if (fp) {
+      (void)fclose(fp);
+    }
     return k_ra8_err_invalid_state;
   }
   const bool ok = parse_stream(fp, st);

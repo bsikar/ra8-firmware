@@ -15,6 +15,7 @@
  * `cbr` requires the proprietary `rar` tool on PATH (a clear error is printed
  * when it is absent). JOF/RABOOK (added separately) reuse the firmware's own
  * producers compiled host-side.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -102,4 +103,7 @@ bool mdl_format_is_dir_output(mdl_format_t fmt);
  */
 #include "ra8_arena.h"
 
-ra8_err_t mdl_export_chapter(ra8_arena_t* arena, mdl_format_t fmt, const char* chapter_dir, const char* out_path);
+ra8_err_t mdl_export_chapter(ra8_arena_t* arena,
+                             mdl_format_t fmt,
+                             const char*  chapter_dir,
+                             const char*  out_path);

@@ -14,9 +14,10 @@
  * viewer-owned blit that converts whatever the strip's native bit depth is
  * (gray / RGB565 / RGB / RGBA) into the RGB565 target.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -198,12 +199,18 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r, ra8_arena
 RA8_INTERNAL static ra8_err_t
 viewer_jof_alloc_cache(viewer_jof_t* w, uint32_t cell_count, size_t band_bytes, ra8_arena_t* arena)
 {
-  w->scratch = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)(band_bytes + (size_t)k_viewer_jof_scratch_pad));
-  w->cells   = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)((size_t)cell_count * band_bytes));
-  w->meta    = (ra8_keycache_cell_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->meta));
-  w->keys    = (ra8_tile_key_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->keys));
-  w->dims    = (ra8_tile_dims_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->dims));
-  w->buckets = (int32_t*)ra8_arena_calloc(arena, (uint32_t)k_viewer_jof_buckets, (uint32_t)sizeof(*w->buckets));
+  w->scratch =
+    (uint8_t*)ra8_arena_alloc(arena, (uint32_t)(band_bytes + (size_t)k_viewer_jof_scratch_pad));
+  w->cells = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)((size_t)cell_count * band_bytes));
+  w->meta =
+    (ra8_keycache_cell_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->meta));
+  w->keys =
+    (ra8_tile_key_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->keys));
+  w->dims =
+    (ra8_tile_dims_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->dims));
+  w->buckets = (int32_t*)ra8_arena_calloc(arena,
+                                          (uint32_t)k_viewer_jof_buckets,
+                                          (uint32_t)sizeof(*w->buckets));
   if ((w->scratch == nullptr) || (w->cells == nullptr) || (w->meta == nullptr) ||
       (w->keys == nullptr) || (w->dims == nullptr) || (w->buckets == nullptr)) {
     return k_ra8_err_no_mem;
@@ -388,8 +395,12 @@ ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page)
   return ra8_longstrip_render(&w->strip, &st);
 }
 
-ra8_err_t
-viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out, ra8_arena_t* arena)
+ra8_err_t viewer_tile_jof(ra8_viewer_reader_t* r,
+                          uint32_t             i,
+                          uint32_t*            w,
+                          uint32_t*            h,
+                          uint16_t**           out,
+                          ra8_arena_t*         arena)
 {
   viewer_jof_t*  wt = &r->jof;
   const uint32_t nw = r->tile_wpx[i];

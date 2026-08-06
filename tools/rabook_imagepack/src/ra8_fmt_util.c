@@ -12,9 +12,10 @@
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -22,11 +23,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_fmt.h"
-#include "ra8_arena.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_fmt_util";

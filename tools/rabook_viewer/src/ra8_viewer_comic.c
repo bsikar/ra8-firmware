@@ -13,9 +13,10 @@
  * (scaled to fit and centred, for the headless dump) and a native-resolution
  * scroll tile (capped to the ra8_gfx max edge, for the desktop window).
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -225,8 +226,12 @@ ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page, ra8_arena_t
                              nullptr);
 }
 
-ra8_err_t
-viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out, ra8_arena_t* arena)
+ra8_err_t viewer_tile_comic(ra8_viewer_reader_t* r,
+                            uint32_t             i,
+                            uint32_t*            w,
+                            uint32_t*            h,
+                            uint16_t**           out,
+                            ra8_arena_t*         arena)
 {
   const uint32_t nw = r->tile_wpx[i];
   const uint32_t nh = r->tile_hpx[i];
@@ -257,15 +262,15 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
   if (rc == k_ra8_ok) {
     (void)ra8_gfx_clear((uint32_t)k_viewer_bg);
     ra8_img_arena_t img_arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
-    rc                    = ra8_img_decode_blit(&img_arena,
-                                                r->page_buf,
-                                                got,
-                                                0,
-                                                0,
-                                                (int32_t)rw,
-                                                (int32_t)rh,
-                                                nullptr,
-                                                nullptr);
+    rc                        = ra8_img_decode_blit(&img_arena,
+                             r->page_buf,
+                             got,
+                             0,
+                             0,
+                             (int32_t)rw,
+                             (int32_t)rh,
+                             nullptr,
+                             nullptr);
   }
   if (rc != k_ra8_ok) {
     return rc;
@@ -276,7 +281,10 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
   return k_ra8_ok;
 }
 
-void viewer_probe_comic_tile(ra8_viewer_reader_t* r, uint32_t i, ra8_img_arena_t* img_arena, ra8_arena_t* arena)
+void viewer_probe_comic_tile(ra8_viewer_reader_t* r,
+                             uint32_t             i,
+                             ra8_img_arena_t*     img_arena,
+                             ra8_arena_t*         arena)
 {
   size_t got = 0U;
   if (viewer_read_page_bytes(r, i, &got, arena) != k_ra8_ok) {

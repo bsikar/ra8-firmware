@@ -21,9 +21,10 @@
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #pragma once
@@ -101,4 +102,7 @@ typedef enum : uint16_t {
  */
 #include "ra8_arena.h"
 
-RA8_PRIV ra8_err_t mdl_export_jof(ra8_arena_t* arena, const char* dir, const char names[][k_name_max], size_t count);
+RA8_PRIV ra8_err_t mdl_export_jof(ra8_arena_t* arena,
+                                  const char*  dir,
+                                  const char   names[][k_name_max],
+                                  size_t       count);

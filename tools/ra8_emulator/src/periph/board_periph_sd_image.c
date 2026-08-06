@@ -15,9 +15,10 @@
  * formatting are three responsibilities, and the shared card state travels
  * through board_periph_sd_internal.h.
  *
+ * @since 0.1.0
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.1.0
  */
 
 #include <fcntl.h>
@@ -28,10 +29,10 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "ra8_attributes.h"
 #include "board_console.h"
 #include "board_periph_sd.h"
 #include "board_periph_sd_internal.h"
+#include "ra8_attributes.h"
 
 /** @brief Release the current backing image (munmap a sparse card, else free). */
 static void board_sd_release_image(void)
@@ -52,7 +53,8 @@ static void board_sd_release_image(void)
 }
 
 RA8_NASA_RULE_3_OK /* host-only emu: sd image buffer */
-bool board_sd_attach(const char* path)
+  bool
+  board_sd_attach(const char* path)
 {
   if (path == nullptr) {
     return false;
