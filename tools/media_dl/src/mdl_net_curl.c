@@ -25,6 +25,7 @@
 
 #include <curl/curl.h>
 #include <limits.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,11 +52,14 @@ typedef enum : uint32_t {
 
 /** @brief Private state of the libcurl backend (the vtable's `ctx`). */
 typedef struct {
-  CURL*    curl;                           /**< Reused easy handle.          */
-  bool     allow_private;                  /**< SSRF opt-in (private peers). */
-  bool     allow_cross_host;               /**< Cross-host redirect opt-in.  */
-  uint64_t max_bytes;                      /**< Per-response cap (0 = none). */
-  char     origin_host[k_origin_host_max]; /**< Host of the current request. */
+  CURL*       curl;                           /**< Reused easy handle.          */
+  bool        allow_private;                  /**< SSRF opt-in (private peers). */
+  bool        allow_cross_host;               /**< Cross-host redirect opt-in.  */
+  uint64_t    max_bytes;                      /**< Per-response cap (0 = none). */
+  const char* proxy;                          /**< HTTP/HTTPS proxy URL.        */
+  const char* socks5;                         /**< SOCKS5 proxy URL.             */
+  const char* cookie_file;                    /**< Cookie file path.            */
+  char        origin_host[k_origin_host_max]; /**< Host of the current request. */
 } mdl_curl_ctx_t;
 
 /** @brief Size-bounded FILE* sink state for an image fetch. */
@@ -68,7 +72,10 @@ typedef struct {
 
 /** @brief Response-header capture sink: keeps the final response's Retry-After. */
 typedef struct {
-  char retry_after[k_mdl_retry_after_max]; /**< Raw value, "" when absent. */
+  char retry_after[k_mdl_retry_after_max];   /**< Raw value, "" when absent.         */
+  char etag[k_mdl_etag_max];                 /**< Raw ETag, "" when absent.          */
+  char last_modified[k_mdl_last_mod_max];    /**< Raw Last-Modified, "" when absent. */
+  char content_type[k_mdl_content_type_max]; /**< Raw Content-Type, "" when absent.  */
 } hdr_sink_t;
 
 /** @brief Lower-case an ASCII byte (locale-independent). */
@@ -131,9 +138,18 @@ RA8_INTERNAL static size_t on_header(char* buffer, size_t size, size_t nitems, v
   }
   /* A new status line starts a fresh response (redirect chain): drop stale values. */
   if (header_is(buffer, len, "http/")) {
-    sink->retry_after[0] = '\0';
+    sink->retry_after[0]   = '\0';
+    sink->etag[0]          = '\0';
+    sink->last_modified[0] = '\0';
+    sink->content_type[0]  = '\0';
   } else if (header_is(buffer, len, "retry-after:")) {
     header_value(buffer, len, sink->retry_after, sizeof(sink->retry_after));
+  } else if (header_is(buffer, len, "etag:")) {
+    header_value(buffer, len, sink->etag, sizeof(sink->etag));
+  } else if (header_is(buffer, len, "last-modified:")) {
+    header_value(buffer, len, sink->last_modified, sizeof(sink->last_modified));
+  } else if (header_is(buffer, len, "content-type:")) {
+    header_value(buffer, len, sink->content_type, sizeof(sink->content_type));
   }
   return len;
 }
@@ -228,13 +244,23 @@ RA8_INTERNAL static bool ok_code(CURLcode code)
 /** @brief Apply the security-critical, life-of-handle options (all checked). */
 RA8_INTERNAL static bool apply_security_opts(CURL* curl, mdl_curl_ctx_t* net)
 {
-  return ok_code(curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http,https")) &&
+  bool proxy_ok = true;
+  if ((net->socks5 != nullptr) && (net->socks5[0] != '\0')) {
+    proxy_ok = ok_code(curl_easy_setopt(curl, CURLOPT_PROXY, net->socks5)) &&
+               ok_code(curl_easy_setopt(curl, CURLOPT_PROXYTYPE, (long)CURLPROXY_SOCKS5_HOSTNAME));
+  } else if ((net->proxy != nullptr) && (net->proxy[0] != '\0')) {
+    proxy_ok = ok_code(curl_easy_setopt(curl, CURLOPT_PROXY, net->proxy));
+  } else {
+    proxy_ok = ok_code(curl_easy_setopt(curl, CURLOPT_PROXY, ""));
+  }
+
+  return proxy_ok &&
+         ok_code(curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http,https")) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "http,https")) &&
          /* Defaults are correct today; assert them so the guarantee is in code. */
          ok_code(curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_NETRC, (long)CURL_NETRC_IGNORED)) &&
-         ok_code(curl_easy_setopt(curl, CURLOPT_PROXY, "")) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_MAXREDIRS, (long)k_curl_max_redirects)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_PREREQFUNCTION, on_prereq)) &&
@@ -242,15 +268,33 @@ RA8_INTERNAL static bool apply_security_opts(CURL* curl, mdl_curl_ctx_t* net)
 }
 
 /** @brief Apply the behavioural, life-of-handle options (all checked). */
-RA8_INTERNAL static bool apply_behavior_opts(CURL* curl)
+RA8_INTERNAL static bool apply_behavior_opts(CURL* curl, const mdl_curl_ctx_t* net)
 {
+  const char* cfile = (net != nullptr && net->cookie_file != nullptr) ? net->cookie_file : "";
   return ok_code(curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "")) &&
-         ok_code(curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "")) &&
+         ok_code(curl_easy_setopt(curl, CURLOPT_COOKIEFILE, cfile)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, on_header)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, (long)k_connect_timeout_ms)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, (long)k_low_speed_bytes)) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, (long)k_low_speed_secs));
+}
+
+/** @brief Build conditional request headers (If-None-Match, If-Modified-Since). */
+RA8_INTERNAL static struct curl_slist* build_req_headers(const mdl_net_req_t* req)
+{
+  struct curl_slist* slist = nullptr;
+  if ((req != nullptr) && (req->if_none_match != nullptr) && (req->if_none_match[0] != '\0')) {
+    char hbuf[256];
+    (void)snprintf(hbuf, sizeof(hbuf), "If-None-Match: %s", req->if_none_match);
+    slist = curl_slist_append(slist, hbuf);
+  }
+  if ((req != nullptr) && (req->if_modified_since != nullptr) && (req->if_modified_since[0] != '\0')) {
+    char hbuf[256];
+    (void)snprintf(hbuf, sizeof(hbuf), "If-Modified-Since: %s", req->if_modified_since);
+    slist = curl_slist_append(slist, hbuf);
+  }
+  return slist;
 }
 
 /** @brief Apply the per-request options shared by both fetch paths. */
@@ -305,6 +349,9 @@ RA8_INTERNAL static ra8_err_t finish_transfer(CURL*             curl,
   if (resp != nullptr) {
     resp->status = status;
     (void)snprintf(resp->retry_after, sizeof(resp->retry_after), "%s", hdr->retry_after);
+    (void)snprintf(resp->etag, sizeof(resp->etag), "%s", hdr->etag);
+    (void)snprintf(resp->last_modified, sizeof(resp->last_modified), "%s", hdr->last_modified);
+    (void)snprintf(resp->content_type, sizeof(resp->content_type), "%s", hdr->content_type);
   }
   return mdl_net_curl_classify(code, overflow, status);
 }
@@ -323,17 +370,23 @@ RA8_INTERNAL static ra8_err_t curl_get_buf(void*                ctx,
     return k_ra8_err_invalid_arg; /* refuse file://, gopher://, ... before curl */
   }
 
+  struct curl_slist* req_headers = build_req_headers(req);
   buf_sink_t sink = {.buf = buf, .cap = cap, .len = 0U, .overflow = false};
   hdr_sink_t hdr  = {};
   if (!apply_req(net, url, req) ||
+      !ok_code(curl_easy_setopt(net->curl, CURLOPT_HTTPHEADER, req_headers)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_HEADERDATA, &hdr)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEFUNCTION, mdl_net_curl_buf_write)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEDATA, &sink))) {
+    (void)curl_easy_setopt(net->curl, CURLOPT_HTTPHEADER, nullptr);
+    curl_slist_free_all(req_headers);
     return k_ra8_fail;
   }
 
   const CURLcode  code = curl_easy_perform(net->curl);
   const ra8_err_t rc   = finish_transfer(net->curl, code, sink.overflow, &hdr, resp);
+  (void)curl_easy_setopt(net->curl, CURLOPT_HTTPHEADER, nullptr);
+  curl_slist_free_all(req_headers);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -375,23 +428,29 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
     return k_ra8_fail;
   }
 
+  struct curl_slist* req_headers = build_req_headers(req);
   file_sink_t sink = {.fp = fp, .written = 0U, .cap = net->max_bytes, .overflow = false};
   hdr_sink_t  hdr  = {};
   /* MAXFILESIZE_LARGE checks an advertised Content-Length up front; 0 disables
    * it, exactly as cap == 0 disables the callback check below. */
   if (!apply_req(net, url, req) ||
+      !ok_code(curl_easy_setopt(net->curl, CURLOPT_HTTPHEADER, req_headers)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_HEADERDATA, &hdr)) ||
       !ok_code(
         curl_easy_setopt(net->curl, CURLOPT_MAXFILESIZE_LARGE, (curl_off_t)net->max_bytes)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEFUNCTION, on_file_write)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEDATA, &sink))) {
     (void)fclose(fp);
+    (void)curl_easy_setopt(net->curl, CURLOPT_HTTPHEADER, nullptr);
+    curl_slist_free_all(req_headers);
     mdl_atomic_abort(tmp_path);
     return k_ra8_fail;
   }
 
   const CURLcode  code = curl_easy_perform(net->curl);
   const ra8_err_t rc   = finish_transfer(net->curl, code, sink.overflow, &hdr, resp);
+  (void)curl_easy_setopt(net->curl, CURLOPT_HTTPHEADER, nullptr);
+  curl_slist_free_all(req_headers);
 
   const long fsize = ftell(fp);
   if (fclose(fp) != 0) {
@@ -401,6 +460,21 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
   if (rc != k_ra8_ok) {
     mdl_atomic_abort(tmp_path); /* Truncated/oversized: destination untouched. */
     return rc;
+  }
+  long status = 0;
+  if (resp != nullptr) {
+    status = resp->status;
+  } else {
+    curl_easy_getinfo(net->curl, CURLINFO_RESPONSE_CODE, &status);
+  }
+  if (status == 304) {
+    /* 304 Not Modified: discard empty temp file, retain existing destination file. */
+    mdl_atomic_abort(tmp_path);
+    if (out_len != nullptr) {
+      struct stat st;
+      *out_len = (stat(out_path, &st) == 0) ? (size_t)st.st_size : 0U;
+    }
+    return k_ra8_ok;
   }
   if (!mdl_atomic_commit(tmp_path, out_path)) {
     return k_ra8_fail;
@@ -450,13 +524,16 @@ mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
     ctx->allow_private    = policy->allow_private_hosts;
     ctx->allow_cross_host = policy->allow_cross_host_redirect;
     ctx->max_bytes        = policy->max_response_bytes;
+    ctx->proxy            = policy->proxy;
+    ctx->socks5           = policy->socks5;
+    ctx->cookie_file      = policy->cookie_file;
   }
   ctx->curl = curl_easy_init();
   if (ctx->curl == nullptr) {
     free(ctx);
     return nullptr;
   }
-  if (!apply_security_opts(ctx->curl, ctx) || !apply_behavior_opts(ctx->curl)) {
+  if (!apply_security_opts(ctx->curl, ctx) || !apply_behavior_opts(ctx->curl, ctx)) {
     curl_easy_cleanup(ctx->curl);
     free(ctx);
     return nullptr;

@@ -140,3 +140,119 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap)
     (void)snprintf(out, cap, "%s", ext);
   }
 }
+
+bool mdl_urlname_sniff_image_type(const void* buf,
+                                  size_t buf_len,
+                                  const char* content_type,
+                                  char* out_ext,
+                                  size_t ext_cap,
+                                  char* out_mime,
+                                  size_t mime_cap)
+{
+  const char* ext   = nullptr;
+  const char* mime  = nullptr;
+  bool        found = false;
+
+  /* 1. Inspect Magic Bytes of fetched buffer */
+  if ((buf != nullptr) && (buf_len >= 3U)) {
+    const uint8_t* b = (const uint8_t*)buf;
+    /* JPEG: FF D8 FF */
+    if ((b[0] == 0xFFU) && (b[1] == 0xD8U) && (b[2] == 0xFFU)) {
+      ext   = "jpg";
+      mime  = "image/jpeg";
+      found = true;
+    }
+  }
+
+  if (!found && (buf != nullptr) && (buf_len >= 4U)) {
+    const uint8_t* b = (const uint8_t*)buf;
+    /* PNG: 89 50 4E 47 */
+    if ((b[0] == 0x89U) && (b[1] == 0x50U) && (b[2] == 0x4EU) && (b[3] == 0x47U)) {
+      ext   = "png";
+      mime  = "image/png";
+      found = true;
+    }
+  }
+
+  if (!found && (buf != nullptr) && (buf_len >= 12U)) {
+    const uint8_t* b = (const uint8_t*)buf;
+    /* WebP: RIFF....WEBP */
+    if ((b[0] == 'R') && (b[1] == 'I') && (b[2] == 'F') && (b[3] == 'F') &&
+        (b[8] == 'W') && (b[9] == 'E') && (b[10] == 'B') && (b[11] == 'P')) {
+      ext   = "webp";
+      mime  = "image/webp";
+      found = true;
+    }
+  }
+
+  if (!found && (buf != nullptr) && (buf_len >= 6U)) {
+    const uint8_t* b = (const uint8_t*)buf;
+    /* GIF: GIF87a / GIF89a */
+    if ((b[0] == 'G') && (b[1] == 'I') && (b[2] == 'F') && (b[3] == '8') &&
+        ((b[4] == '7') || (b[4] == '9')) && (b[5] == 'a')) {
+      ext   = "gif";
+      mime  = "image/gif";
+      found = true;
+    }
+  }
+
+  /* 2. Fallback to HTTP Content-Type header */
+  if (!found && (content_type != nullptr) && (content_type[0] != '\0')) {
+    char   ct_lower[128];
+    size_t i = 0U;
+    for (; (content_type[i] != '\0') && (i + 1U < sizeof(ct_lower)); ++i) {
+      ct_lower[i] = to_lower_ascii(content_type[i]);
+    }
+    ct_lower[i] = '\0';
+
+    if ((strstr(ct_lower, "image/jpeg") != nullptr) || (strstr(ct_lower, "image/jpg") != nullptr)) {
+      ext   = "jpg";
+      mime  = "image/jpeg";
+      found = true;
+    } else if (strstr(ct_lower, "image/png") != nullptr) {
+      ext   = "png";
+      mime  = "image/png";
+      found = true;
+    } else if (strstr(ct_lower, "image/webp") != nullptr) {
+      ext   = "webp";
+      mime  = "image/webp";
+      found = true;
+    } else if (strstr(ct_lower, "image/gif") != nullptr) {
+      ext   = "gif";
+      mime  = "image/gif";
+      found = true;
+    }
+  }
+
+  if (found) {
+    if ((out_ext != nullptr) && (ext_cap > 0U)) {
+      (void)snprintf(out_ext, ext_cap, "%s", ext);
+    }
+    if ((out_mime != nullptr) && (mime_cap > 0U)) {
+      (void)snprintf(out_mime, mime_cap, "%s", mime);
+    }
+    return true;
+  }
+
+  return false;
+}
+
+bool mdl_urlname_sniff_file(const char* file_path,
+                            const char* content_type,
+                            char* out_ext,
+                            size_t ext_cap,
+                            char* out_mime,
+                            size_t mime_cap)
+{
+  if (file_path == nullptr) {
+    return mdl_urlname_sniff_image_type(nullptr, 0U, content_type, out_ext, ext_cap, out_mime, mime_cap);
+  }
+  FILE* f = fopen(file_path, "rb");
+  if (f == nullptr) {
+    return mdl_urlname_sniff_image_type(nullptr, 0U, content_type, out_ext, ext_cap, out_mime, mime_cap);
+  }
+  uint8_t      header[16];
+  const size_t nread = fread(header, 1U, sizeof(header), f);
+  (void)fclose(f);
+  return mdl_urlname_sniff_image_type(header, nread, content_type, out_ext, ext_cap, out_mime, mime_cap);
+}

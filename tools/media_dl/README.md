@@ -24,7 +24,7 @@ By default the N chapters **combine into one archive** named for the chapter
 range:
 
 ```
-downloads/<series-slug>/<slug>-<lo>-<hi>.<ext>     e.g. nano-machine-1-2.cbz
+downloads/<series-slug>/<slug>-<lo>-<hi>.<ext>     e.g. my-series-1-2.cbz
 ```
 
 Pass `--separate` for one archive per chapter instead, or `--format loose` (the
@@ -63,6 +63,14 @@ empty list dressed up as success. The term is percent-encoded, so spaces, `&`,
 **library mode** (over `--out`): `--list` prints every tracked series with its
 chapter coverage and gaps, `--update-all --config S.conf` incrementally updates
 them all, and `--remove URL|SLUG` drops one series.
+
+**verify mode** (`--verify [DIR]`): verify existing downloaded archives and page
+images in `downloads/` (or a specified directory) against recorded `.mdl_state`
+content hashes and check container integrity.
+
+**init-site wizard** (`--init-site URL`): generate a starter `.conf` site
+descriptor template for a site given its URL, helping quickly add support for
+new comic sites.
 
 **pack mode** (`--pack DIR --format FMT`): package an existing folder of page
 images -- no network. Handy for re-encoding a download into another format and
@@ -160,11 +168,11 @@ Requires libcurl (present on macOS by default) and a C23 host compiler
 
 ## Run
 
-Series mode (combined by default -- two chapters into one `nano-machine-1-2.cbz`):
+Series mode (combined by default -- two chapters into one `my-series-1-2.cbz`):
 
 ```sh
 ./build/media_dl --config sites/manhwaus.conf \
-                 --series "https://manhwaus.net/webtoon/nano-machine/" \
+                 --series "https://example.com/webtoon/my-series/" \
                  --chapters 2 --format cbz \
                  [--separate] [--from CHAP] [--update] [--out DIR] [--seed S] [--timeout MS]
 ```
@@ -178,6 +186,12 @@ Series mode (combined by default -- two chapters into one `nano-machine-1-2.cbz`
                    index into the scraped list); download up to `--chapters` of them
 - `--update`       fetch only chapters not already recorded complete (incremental)
 - `--out DIR`      output root / library (default `downloads/`)
+- `--progress`     terminal progress bar during downloads
+- `--proxy URL`    HTTP/HTTPS proxy URL passed to libcurl
+- `--socks5 URL`   SOCKS5 proxy URL passed to libcurl
+- `--cookie-file FILE` pass cookies file to libcurl
+- `--verify [DIR]` verify existing downloaded archives/files in `downloads/`
+- `--init-site URL` helper wizard that generates a starter `.conf` site descriptor template
 
 Following a series is then: run once, and later `--update` (or `--update-all`)
 to pull whatever is new. Re-running never re-downloads a page already held, and a
@@ -204,7 +218,7 @@ pages are reused by content) rather than a crash or a silent full refetch.
 Pack mode (re-package a folder, no network):
 
 ```sh
-./build/media_dl --pack downloads/nano-machine/nano-machine-1-2 --format jof
+./build/media_dl --pack downloads/my-series/my-series-1-2 --format jof
 ```
 
 Page mode (debug):
@@ -287,9 +301,10 @@ Working: config-driven series -> chapter list -> polite, **resumable** download
 with **persistent per-series state** (`--update` incremental pulls, content-hash
 dedup, `--list`/`--update-all`/`--remove`) -> combined (or `--separate`)
 packaging into every reader format, verified end-to-end by `make test-integration`
-and against manhwaus.net. Known limits: naive extension
-naming from the URL (Content-Type/magic-byte typing is a planned fix -- pages
-are named `.jpg` even when the bytes are PNG/WebP, though the readers sniff the
-real magic on open), single-site descriptor format (richer TOML later), and no
-proxy/Cloudflare handling. Next: the full politeness governor (per-host token
-bucket, 429/503 Retry-After backoff) and Content-Type-driven page naming.
+and against manhwaus.net. Features added: proxy (`--proxy`/`--socks5`), cookie
+file (`--cookie-file`), terminal progress bar (`--progress`), library integrity
+verification (`--verify`), and starter site descriptor wizard (`--init-site`).
+Known limits: naive extension naming from the URL (Content-Type/magic-byte typing
+is a planned fix -- pages are named `.jpg` even when the bytes are PNG/WebP, though
+the readers sniff the real magic on open), single-site descriptor format (richer
+TOML later). Next: Content-Type-driven page naming.

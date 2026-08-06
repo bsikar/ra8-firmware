@@ -33,6 +33,7 @@ typedef struct {
   bool             honor_robots;     /**< False when --ignore-robots is set.   */
   bool             polite;           /**< True when --polite is set.           */
   bool             allow_incomplete; /**< True when --allow-incomplete is set. */
+  bool             progress;         /**< True when --progress is set.         */
 } mdl_run_opts_t;
 
 /**
@@ -62,6 +63,11 @@ typedef struct {
   const char* remove_series;    /**< --remove: series URL/slug to drop from the library.       */
   const char* search;           /**< --search TERM: find series by title, no known URL.        */
   const char* pick;             /**< --pick N: download the Nth discovery hit (1-based).       */
+  const char* proxy;            /**< --proxy URL: HTTP/HTTPS proxy URL.                        */
+  const char* socks5;           /**< --socks5 URL: SOCKS5 proxy URL.                           */
+  const char* cookie_file;      /**< --cookie-file FILE: cookie file path for libcurl.         */
+  const char* verify_dir;       /**< --verify [DIR]: directory to verify.                      */
+  const char* init_site_url;    /**< --init-site URL: generate site descriptor template.       */
   bool        browse;           /**< --browse: list a site's latest-updates page.              */
   bool        separate;         /**< --separate: one archive per chapter (default: combine).   */
   bool        update;           /**< --update: fetch only chapters not already complete.       */
@@ -69,9 +75,11 @@ typedef struct {
   bool        update_all;       /**< --update-all: incremental update of every tracked series. */
   bool        polite;           /**< --polite: raise per-host delays.                          */
   bool        ignore_robots;    /**< --ignore-robots: escape hatch (off by default).           */
-  bool        allow_private;    /**< --allow-private: permit private/loopback peers.           */
+  bool        allow_private;    /**< --allow-private: permit loopback/private/link-local peers.           */
   bool        cross_host;       /**< --cross-host: permit cross-host redirects.                */
   bool        allow_incomplete; /**< --allow-incomplete: package a run with failed pages.      */
+  bool        progress;         /**< --progress: terminal progress bar during downloads.       */
+  bool        verify;           /**< --verify: verify existing downloaded archives/files.      */
   bool        bad;              /**< An unrecognised argument was seen.                        */
 } mdl_args_t;
 

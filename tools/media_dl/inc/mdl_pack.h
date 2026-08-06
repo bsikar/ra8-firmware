@@ -49,36 +49,26 @@
 size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* chap_id);
 
 /**
- * @brief Package a combined page folder, refusing an incomplete archive by default.
- *
- * @details
- * A combined archive assembled from a run that lost a chapter or a page would
- * look complete while silently missing pages, so it is packaged only when the
- * run is clean (per ::mdl_fetch_run_incomplete) or when @p allow_incomplete is
- * set -- in which case the archive is named `.INCOMPLETE` so its partial state
- * is visible without opening it. Nothing is packaged when no chapter completed.
- *
- * @param[in] format           Output container/format.
- * @param[in] allow_incomplete Package (and mark) even when the run is incomplete.
- * @param[in] series_dir       Absolute, resolved series directory.
- * @param[in] combined_rel     Combined page folder leaf (relative to @p series_dir).
- * @param[in] stats            The finished run's tallies (never NULL).
- *
- * @return The number of export failures (0 when packaged, skipped, or clean).
- * @retval 0U Packaged, or deliberately not packaged (nothing lost, or refused).
- * @retval 1U A path was rejected or the export itself failed.
- *
- * @pre @p series_dir, @p combined_rel, @p stats are non-NULL.
- * @pre @p stats was produced by ::mdl_fetch_run for this @p combined_rel.
- * @post An incomplete run is not packaged unless @p allow_incomplete is set.
- * @post A forced incomplete archive is named `.INCOMPLETE`.
- *
- * @note Not thread-safe (shared cwd during path resolution).
- * @see mdl_fetch_run_incomplete
- * @since 0.1.0
+ * @brief Package one downloaded chapter folder into @p format with rich metadata.
  */
+size_t mdl_pack_one_meta(mdl_format_t             format,
+                         const char*              series_dir,
+                         const char*              chap_id,
+                         const mdl_export_meta_t* meta);
+
 size_t mdl_pack_combined(mdl_format_t             format,
                          bool                     allow_incomplete,
                          const char*              series_dir,
                          const char*              combined_rel,
                          const mdl_fetch_stats_t* stats);
+
+/**
+ * @brief Package a combined page folder into @p format with rich metadata.
+ */
+size_t mdl_pack_combined_meta(mdl_format_t             format,
+                              bool                     allow_incomplete,
+                              const char*              series_dir,
+                              const char*              combined_rel,
+                              const mdl_fetch_stats_t* stats,
+                              const mdl_export_meta_t* meta);
+

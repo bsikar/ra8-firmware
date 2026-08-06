@@ -202,7 +202,7 @@ static void test_state_chapters_and_pages(void)
   TEST_ASSERT(!mdl_state_chapter_complete(&s_a, "nope"));
   TEST_ASSERT_NULL(mdl_state_find_chapter(&s_a, "nope"));
 
-  TEST_ASSERT(mdl_state_add_page(&s_a, (uint64_t)k_uh_a, (uint64_t)k_ch_a, "c1/page_0001.jpg"));
+  TEST_ASSERT(mdl_state_add_page(&s_a, (uint64_t)k_uh_a, (uint64_t)k_ch_a, "c1/page_0001.jpg", nullptr, nullptr));
   const mdl_page_rec_t* p = mdl_state_find_page(&s_a, (uint64_t)k_uh_a);
   TEST_ASSERT_NOT_NULL(p);
   TEST_ASSERT_EQ((uint64_t)k_ch_a, p->content_hash);
@@ -227,8 +227,8 @@ static void seed_fixture(void)
   mdl_chapter_rec_t* c2 = mdl_state_add_chapter(&s_a, "chapter-2", "http://s/c2", (long)k_ch_two);
   c2->complete          = false;
   c2->page_count        = (uint16_t)k_ch_one;
-  (void)mdl_state_add_page(&s_a, (uint64_t)k_uh_a, (uint64_t)k_ch_a, "chapter-1/page_0001.jpg");
-  (void)mdl_state_add_page(&s_a, (uint64_t)k_uh_b, (uint64_t)k_ch_b, "chapter-1/page_0002.jpg");
+  (void)mdl_state_add_page(&s_a, (uint64_t)k_uh_a, (uint64_t)k_ch_a, "chapter-1/page_0001.jpg", "e1", "m1");
+  (void)mdl_state_add_page(&s_a, (uint64_t)k_uh_b, (uint64_t)k_ch_b, "chapter-1/page_0002.jpg", "e2", "m2");
 }
 
 /**
@@ -268,6 +268,8 @@ static void test_state_roundtrip_atomic(void)
   TEST_ASSERT_NOT_NULL(pb);
   TEST_ASSERT_EQ((uint64_t)k_ch_b, pb->content_hash);
   TEST_ASSERT(strcmp(pb->rel_path, "chapter-1/page_0002.jpg") == 0);
+  TEST_ASSERT(strcmp(pb->etag, "e2") == 0);
+  TEST_ASSERT(strcmp(pb->last_modified, "m2") == 0);
   (void)unlink(path);
   TEST_END("state round-trip + atomic");
 }

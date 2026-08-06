@@ -44,6 +44,17 @@
 void mdl_report_progress(void* ctx, const mdl_fetch_progress_t* ev);
 
 /**
+ * @brief Per-page progress bar sink: render an in-place terminal progress bar.
+ *
+ * @param[in] ctx Unused progress context (kept for the ::mdl_progress_fn ABI).
+ * @param[in] ev  The just-completed page's progress event, or NULL (no-op).
+ *
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void mdl_report_progress_bar(void* ctx, const mdl_fetch_progress_t* ev);
+
+/**
  * @brief End-of-run summary: list every failure with its URL and reason.
  *
  * @details

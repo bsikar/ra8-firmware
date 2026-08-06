@@ -48,19 +48,27 @@ void mdl_cli_usage(const char* a0)
                 "descriptor).\n"
                 "  library (over --out): %s --list | --update-all --config SITE.conf "
                 "| --remove URL|SLUG [--out DIR]\n"
+                "  verify: %s --verify [DIR]  verify existing downloaded archives/files\n"
+                "  init-site: %s --init-site URL  generate starter .conf site descriptor template\n"
                 "  pack:   %s --pack DIR --format FMT   "
                 "package an existing folder of page images (no network)\n"
                 "  page:   %s URL [--out DIR] [--max N] [--attr data-src|src] "
                 "[--seed S] [--timeout MS]\n"
-                "  identity/politeness (series + page):\n"
+                "  identity/politeness/network options:\n"
                 "    --contact <email|url>  identify yourself in the User-Agent\n"
                 "    --polite               raise delays; per-host concurrency 1\n"
+                "    --progress             terminal progress bar during downloads\n"
+                "    --proxy <URL>          HTTP/HTTPS proxy URL for libcurl\n"
+                "    --socks5 <URL>         SOCKS5 proxy URL for libcurl\n"
+                "    --cookie-file <FILE>   cookie file path for libcurl\n"
                 "    --max-bytes N          per-response size cap (default 64 MiB)\n"
                 "    --ignore-robots        do NOT honour robots.txt (logged loudly)\n"
                 "    --allow-private        permit loopback/private/link-local peers\n"
                 "    --cross-host           permit redirects to a different host\n"
                 "    --allow-incomplete     package a run with failed pages; the archive\n"
                 "                           is named .INCOMPLETE so it is visibly partial\n",
+                a0,
+                a0,
                 a0,
                 a0,
                 a0,
@@ -101,7 +109,8 @@ RA8_INTERNAL static bool parse_bool_flags(const char* arg, mdl_args_t* a)
          take_flag(arg, "--ignore-robots", &a->ignore_robots) ||
          take_flag(arg, "--allow-private", &a->allow_private) ||
          take_flag(arg, "--cross-host", &a->cross_host) ||
-         take_flag(arg, "--allow-incomplete", &a->allow_incomplete);
+         take_flag(arg, "--allow-incomplete", &a->allow_incomplete) ||
+         take_flag(arg, "--progress", &a->progress);
 }
 
 void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
@@ -127,9 +136,21 @@ void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
     {"--remove", &a->remove_series},
     {"--search", &a->search},
     {"--pick", &a->pick},
+    {"--proxy", &a->proxy},
+    {"--socks5", &a->socks5},
+    {"--cookie-file", &a->cookie_file},
+    {"--init-site", &a->init_site_url},
   };
   for (int i = 1; i < argc; ++i) {
     if (parse_bool_flags(argv[i], a)) {
+      continue;
+    }
+    if ((argv[i] != nullptr) && (strcmp(argv[i], "--verify") == 0)) {
+      a->verify = true;
+      if ((i + 1 < argc) && (argv[i + 1] != nullptr) && (argv[i + 1][0] != '-')) {
+        i += 1;
+        a->verify_dir = argv[i];
+      }
       continue;
     }
     bool matched = false;
@@ -155,11 +176,15 @@ mdl_run_opts_t mdl_cli_run_opts(const mdl_args_t* a)
   return (mdl_run_opts_t){
     .policy           = {.allow_private_hosts       = a->allow_private,
                          .allow_cross_host_redirect = a->cross_host,
-                         .max_response_bytes        = max_bytes},
+                         .max_response_bytes        = max_bytes,
+                         .proxy                     = a->proxy,
+                         .socks5                    = a->socks5,
+                         .cookie_file               = a->cookie_file},
     .contact          = a->contact,
     .honor_robots     = !a->ignore_robots,
     .polite           = a->polite,
     .allow_incomplete = a->allow_incomplete,
+    .progress         = a->progress,
   };
 }
 

@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <sys/stat.h>
 
 #include "mdl_atomic.h"
 #include "mdl_fetch_internal.h"
@@ -280,13 +281,31 @@ try_reuse(mdl_fetch_ctx_t* ctx, uint64_t url_hash, const char* target_abs, const
   if ((mdl_hash_file(src_abs, &have) != k_ra8_ok) || (have != held->content_hash)) {
     return false; /* the held file is gone or torn: refetch */
   }
-  if (strcmp(held->rel_path, target_rel) == 0) {
+
+  char act_abs[PATH_MAX];
+  char act_rel[k_mdl_relpath_max];
+  (void)snprintf(act_abs, sizeof(act_abs), "%s", target_abs);
+  (void)snprintf(act_rel, sizeof(act_rel), "%s", target_rel);
+
+  const char* held_dot = strrchr(held->rel_path, '.');
+  const char* tab_dot  = strrchr(act_abs, '.');
+  const char* tre_dot  = strrchr(act_rel, '.');
+  if ((held_dot != nullptr) && (tab_dot != nullptr) && (tre_dot != nullptr)) {
+    const char* held_ext = held_dot + 1;
+    if (strcmp(tab_dot + 1, held_ext) != 0) {
+      (void)snprintf(act_abs, sizeof(act_abs), "%.*s.%s", (int)(tab_dot - target_abs), target_abs, held_ext);
+      (void)snprintf(act_rel, sizeof(act_rel), "%.*s.%s", (int)(tre_dot - target_rel), target_rel, held_ext);
+    }
+  }
+
+  if (strcmp(held->rel_path, act_rel) == 0) {
     return true; /* already in place (same-chapter resume) */
   }
-  if (!copy_file(src_abs, target_abs)) {
+  if (!copy_file(src_abs, act_abs)) {
     return false;
   }
-  (void)mdl_state_add_page(ctx->state, url_hash, held->content_hash, target_rel);
+  (void)mdl_state_add_page(
+    ctx->state, url_hash, held->content_hash, act_rel, held->etag, held->last_modified);
   return true;
 }
 
@@ -304,7 +323,7 @@ RA8_INTERNAL static ra8_err_t governed_get_file(mdl_fetch_ctx_t*     ctx,
                                                 const char*          target_abs,
                                                 uint32_t             jmin,
                                                 uint32_t             jmax,
-                                                long*                out_status,
+                                                mdl_net_resp_t*      out_resp,
                                                 size_t*              out_bytes)
 {
   if (mdl_governor_acquire(ctx->gov, host, jmin, jmax) == k_ra8_err_would_block) {
@@ -315,8 +334,8 @@ RA8_INTERNAL static ra8_err_t governed_get_file(mdl_fetch_ctx_t*     ctx,
   const ra8_err_t rc   = mdl_net_get_file(ctx->session->net, url, req, target_abs, &got, &resp);
   mdl_governor_observe(ctx->gov, host, resp.status, resp.retry_after);
   mdl_governor_release(ctx->gov, host);
-  if (out_status != nullptr) {
-    *out_status = resp.status;
+  if (out_resp != nullptr) {
+    *out_resp = resp;
   }
   if (out_bytes != nullptr) {
     *out_bytes = got;
@@ -332,12 +351,12 @@ RA8_INTERNAL static ra8_err_t fetch_with_retry(mdl_fetch_ctx_t*     ctx,
                                                const char*          target_abs,
                                                uint32_t             jmin,
                                                uint32_t             jmax,
-                                               long*                out_status,
+                                               mdl_net_resp_t*      out_resp,
                                                size_t*              out_bytes)
 {
   ra8_err_t rc = k_ra8_fail;
   for (uint8_t attempt = 0U; attempt < (uint8_t)k_fetch_max_attempts; ++attempt) {
-    rc = governed_get_file(ctx, host, url, req, target_abs, jmin, jmax, out_status, out_bytes);
+    rc = governed_get_file(ctx, host, url, req, target_abs, jmin, jmax, out_resp, out_bytes);
     if (!mdl_fetch_is_retryable(rc)) {
       break; /* success, or a permanent failure not worth retrying */
     }
@@ -346,38 +365,92 @@ RA8_INTERNAL static ra8_err_t fetch_with_retry(mdl_fetch_ctx_t*     ctx,
 }
 
 /** @brief Gate, govern (with backoff retry), fetch, hash and record one page. */
+RA8_INTERNAL static bool page_exists_abs(const char* path)
+{
+  struct stat st;
+  return (path != nullptr) && (stat(path, &st) == 0);
+}
+
 RA8_INTERNAL static ra8_err_t do_fetch_page(mdl_fetch_ctx_t* ctx,
                                             const char*      chapter_url,
                                             const char*      url,
                                             const char*      target_abs,
                                             const char*      target_rel,
-                                            size_t*          out_bytes)
+                                            size_t*          out_bytes,
+                                            mdl_net_resp_t*  out_resp)
 {
   uint32_t crawl = 0U;
   if (!mdl_session_url_allowed(ctx->session, url, &crawl)) {
     record_fail(ctx, url, 0, k_ra8_fail); /* robots refused (message printed) */
     return k_ra8_fail;
   }
+  const mdl_page_rec_t* held = mdl_state_find_page(ctx->state, mdl_hash_str(url));
   char                hostbuf[k_mdl_gov_host_max];
   const char*         host   = page_host(url, hostbuf, sizeof(hostbuf));
   const uint32_t      jmin   = max_u32(ctx->site->img_delay_min, crawl);
   const uint32_t      jmax   = max_u32(ctx->site->img_delay_max, crawl);
-  const mdl_net_req_t req    = {.user_agent = ctx->session->user_agent,
-                                .referer    = chapter_url,
-                                .timeout_ms = ctx->timeout_ms};
-  long                status = 0;
-  const ra8_err_t     rc =
-    fetch_with_retry(ctx, host, url, &req, target_abs, jmin, jmax, &status, out_bytes);
+  const mdl_net_req_t req    = {
+    .user_agent        = ctx->session->user_agent,
+    .referer           = chapter_url,
+    .if_none_match     = (held != nullptr && held->etag[0] != '\0') ? held->etag : nullptr,
+    .if_modified_since = (held != nullptr && held->last_modified[0] != '\0') ? held->last_modified : nullptr,
+    .timeout_ms        = ctx->timeout_ms,
+  };
+  mdl_net_resp_t  resp = {};
+  const ra8_err_t rc   =
+    fetch_with_retry(ctx, host, url, &req, target_abs, jmin, jmax, &resp, out_bytes);
+  if (out_resp != nullptr) {
+    *out_resp = resp;
+  }
   if (rc != k_ra8_ok) {
-    record_fail(ctx, url, status, rc);
+    record_fail(ctx, url, resp.status, rc);
     return k_ra8_fail;
   }
+  if (resp.status == 304) {
+    if (!page_exists_abs(target_abs) && (held != nullptr)) {
+      char src_abs[PATH_MAX];
+      if (snprintf(src_abs, sizeof(src_abs), "%s/%s", ctx->series_abs_dir, held->rel_path) > 0) {
+        (void)copy_file(src_abs, target_abs);
+      }
+    }
+  }
+
+  char act_abs[PATH_MAX];
+  char act_rel[k_mdl_relpath_max];
+  (void)snprintf(act_abs, sizeof(act_abs), "%s", target_abs);
+  (void)snprintf(act_rel, sizeof(act_rel), "%s", target_rel);
+
+  char true_ext[8];
+  if (mdl_urlname_sniff_file(act_abs, resp.content_type, true_ext, sizeof(true_ext), nullptr, 0)) {
+    const char* dot_abs = strrchr(act_abs, '.');
+    const char* dot_rel = strrchr(act_rel, '.');
+    if ((dot_abs != nullptr) && (dot_rel != nullptr)) {
+      if (strcmp(dot_abs + 1, true_ext) != 0) {
+        char new_abs[PATH_MAX];
+        char new_rel[k_mdl_relpath_max];
+        const size_t pabs = (size_t)(dot_abs - act_abs);
+        const size_t prel = (size_t)(dot_rel - act_rel);
+        (void)snprintf(new_abs, sizeof(new_abs), "%.*s.%s", (int)pabs, act_abs, true_ext);
+        (void)snprintf(new_rel, sizeof(new_rel), "%.*s.%s", (int)prel, act_rel, true_ext);
+        if (rename(act_abs, new_abs) == 0) {
+          (void)snprintf(act_abs, sizeof(act_abs), "%s", new_abs);
+          (void)snprintf(act_rel, sizeof(act_rel), "%s", new_rel);
+        }
+      }
+    }
+  }
+
   uint64_t content = 0U;
-  if (mdl_hash_file(target_abs, &content) != k_ra8_ok) {
-    record_fail(ctx, url, status, k_ra8_fail);
+  if (mdl_hash_file(act_abs, &content) != k_ra8_ok) {
+    record_fail(ctx, url, resp.status, k_ra8_fail);
     return k_ra8_fail;
   }
-  (void)mdl_state_add_page(ctx->state, mdl_hash_str(url), content, target_rel);
+  const char* etag_to_save =
+    (resp.etag[0] != '\0') ? resp.etag : ((held != nullptr) ? held->etag : "");
+  const char* lastmod_to_save =
+    (resp.last_modified[0] != '\0') ? resp.last_modified : ((held != nullptr) ? held->last_modified : "");
+  (void)mdl_state_add_page(
+    ctx->state, mdl_hash_str(url), content, act_rel, etag_to_save, lastmod_to_save);
   return k_ra8_ok;
 }
 
@@ -409,17 +482,25 @@ RA8_INTERNAL static ra8_err_t fetch_one_page(mdl_fetch_ctx_t*    ctx,
     stats->pages_reused += 1U;
     *out = (mdl_page_outcome_t){.bytes = 0U, .elapsed_ms = 0U, .reused = true};
   } else {
-    const int64_t   t0  = mono_ms(ctx);
-    size_t          got = 0U;
-    const ra8_err_t rc  = do_fetch_page(ctx, chapter_url, url, target_abs, target_rel, &got);
+    const int64_t   t0   = mono_ms(ctx);
+    size_t          got  = 0U;
+    mdl_net_resp_t  resp = {};
+    const ra8_err_t rc   = do_fetch_page(ctx, chapter_url, url, target_abs, target_rel, &got, &resp);
     if (rc != k_ra8_ok) {
       stats->pages_failed += 1U;
       return rc;
     }
-    stats->pages_fetched += 1U;
-    *out = (mdl_page_outcome_t){.bytes      = (uint64_t)got,
-                                .elapsed_ms = (uint32_t)(mono_ms(ctx) - t0),
-                                .reused     = false};
+    if (resp.status == 304) {
+      stats->pages_reused += 1U;
+      *out = (mdl_page_outcome_t){.bytes      = 0U,
+                                  .elapsed_ms = (uint32_t)(mono_ms(ctx) - t0),
+                                  .reused     = true};
+    } else {
+      stats->pages_fetched += 1U;
+      *out = (mdl_page_outcome_t){.bytes      = (uint64_t)got,
+                                  .elapsed_ms = (uint32_t)(mono_ms(ctx) - t0),
+                                  .reused     = false};
+    }
   }
   rec->pages_done = (uint16_t)(idx + 1U);
   checkpoint(ctx);

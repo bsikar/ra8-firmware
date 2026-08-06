@@ -40,7 +40,9 @@ typedef enum : uint8_t {
   k_p_urlhash = 1, /**< Source-URL hash (hex).   */
   k_p_content = 2, /**< Content hash (hex).      */
   k_p_relpath = 3, /**< Path under the series.   */
-  k_p_fields  = 4, /**< Fields a `P` line needs. */
+  k_p_etag    = 4, /**< Cached ETag (optional).  */
+  k_p_lastmod = 5, /**< Cached Last-Modified (optional). */
+  k_p_fields  = 4, /**< Minimum fields a `P` line needs. */
 } mdl_p_col_t;
 
 void mdl_state_init(mdl_state_t* st)
@@ -154,19 +156,32 @@ const mdl_page_rec_t* mdl_state_find_page(const mdl_state_t* st, uint64_t url_ha
 bool mdl_state_add_page(mdl_state_t* st,
                         uint64_t     url_hash,
                         uint64_t     content_hash,
-                        const char*  rel_path)
+                        const char*  rel_path,
+                        const char*  etag,
+                        const char*  last_modified)
 {
   if ((st == nullptr) || (rel_path == nullptr)) {
     return false;
   }
-  if (st->page_rec_count >= (uint32_t)k_mdl_max_page_recs) {
-    return false;
+  mdl_page_rec_t* rec = nullptr;
+  for (uint32_t i = 0U; i < st->page_rec_count; ++i) {
+    if (st->pages[i].url_hash == url_hash) {
+      rec = &st->pages[i];
+      break;
+    }
   }
-  mdl_page_rec_t* rec = &st->pages[st->page_rec_count];
-  rec->url_hash       = url_hash;
-  rec->content_hash   = content_hash;
+  if (rec == nullptr) {
+    if (st->page_rec_count >= (uint32_t)k_mdl_max_page_recs) {
+      return false;
+    }
+    rec = &st->pages[st->page_rec_count];
+    st->page_rec_count += 1U;
+  }
+  rec->url_hash     = url_hash;
+  rec->content_hash = content_hash;
   (void)snprintf(rec->rel_path, sizeof(rec->rel_path), "%s", rel_path);
-  st->page_rec_count += 1U;
+  (void)snprintf(rec->etag, sizeof(rec->etag), "%s", (etag != nullptr) ? etag : "");
+  (void)snprintf(rec->last_modified, sizeof(rec->last_modified), "%s", (last_modified != nullptr) ? last_modified : "");
   return true;
 }
 
@@ -202,10 +217,12 @@ RA8_INTERNAL static void write_records(FILE* fp, const mdl_state_t* st)
   for (uint32_t i = 0U; i < st->page_rec_count; ++i) {
     const mdl_page_rec_t* p = &st->pages[i];
     (void)fprintf(fp,
-                  "P\t%016llx\t%016llx\t%s\n",
+                  "P\t%016llx\t%016llx\t%s\t%s\t%s\n",
                   (unsigned long long)p->url_hash,
                   (unsigned long long)p->content_hash,
-                  p->rel_path);
+                  p->rel_path,
+                  p->etag,
+                  p->last_modified);
   }
 }
 
@@ -297,7 +314,9 @@ RA8_INTERNAL static bool apply_page(mdl_state_t* st, char* fld[], size_t nf)
   }
   const uint64_t uh = (uint64_t)strtoull(fld[k_p_urlhash], nullptr, (int)k_state_hex_base);
   const uint64_t ch = (uint64_t)strtoull(fld[k_p_content], nullptr, (int)k_state_hex_base);
-  return mdl_state_add_page(st, uh, ch, fld[k_p_relpath]);
+  const char*    etag = (nf > (size_t)k_p_etag) ? fld[k_p_etag] : "";
+  const char*    lastmod = (nf > (size_t)k_p_lastmod) ? fld[k_p_lastmod] : "";
+  return mdl_state_add_page(st, uh, ch, fld[k_p_relpath], etag, lastmod);
 }
 
 /** @brief Apply one already-split record line; false when it is malformed. */
