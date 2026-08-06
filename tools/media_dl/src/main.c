@@ -926,7 +926,7 @@ int main(int argc, char** argv)
   uint32_t arena_size = 64U * 1024U * 1024U;
   uint8_t* arena_buf = (uint8_t*)malloc(arena_size);
   ra8_arena_t main_arena;
-  ra8_arena_init(&main_arena, arena_buf, arena_size);
+  (void)ra8_arena_init(&main_arena, arena_buf, arena_size);
   ra8_arena_t* arena = &main_arena;
 
   mdl_args_t a = {};

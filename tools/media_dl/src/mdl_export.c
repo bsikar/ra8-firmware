@@ -454,10 +454,12 @@ RA8_INTERNAL static mz_bool gz_put(const void* buf, int len, void* user)
  */
 RA8_INTERNAL static ra8_err_t gzip_file(ra8_arena_t* arena, const char* in_path, const char* out_path)
 {
+  const uint32_t mark = ra8_arena_save(arena);
   FILE* in = fopen(in_path, "rb");
   if (in == NULL) {
     // cppcheck-suppress resourceLeak
     // in is NULL here
+    ra8_arena_restore(arena, mark);
     return k_ra8_fail;
   }
   FILE* out = fopen(out_path, "wb");
@@ -465,13 +467,15 @@ RA8_INTERNAL static ra8_err_t gzip_file(ra8_arena_t* arena, const char* in_path,
     (void)fclose(in);
     // cppcheck-suppress resourceLeak
     // out is NULL here
+    ra8_arena_restore(arena, mark);
     return k_ra8_fail;
   }
-  tdefl_compressor* d = (tdefl_compressor*)ra8_arena_alloc(arena, (uint32_t)sizeof(*d));
+  tdefl_compressor* d = (tdefl_compressor*)ra8_arena_alloc(arena, (uint32_t)sizeof(*d), _Alignof(tdefl_compressor));
   if (d == NULL) {
     (void)fclose(in);
     (void)fclose(out);
     
+    ra8_arena_restore(arena, mark);
     return k_ra8_err_no_mem;
   }
   const uint8_t hdr[k_gzip_hdr_len] =
@@ -500,6 +504,7 @@ RA8_INTERNAL static ra8_err_t gzip_file(ra8_arena_t* arena, const char* in_path,
   ok = ok && put_u32le(out, crc) && put_u32le(out, isize);
   ok = (fclose(out) == 0) && ok;
   (void)fclose(in);
+  ra8_arena_restore(arena, mark);
   return ok ? k_ra8_ok : k_ra8_fail;
 }
 
@@ -789,8 +794,8 @@ epub_add_meta(ra8_arena_t* arena, mz_zip_archive* zip, const char* mani, const c
 {
   const size_t opf_cap = strlen(mani) + strlen(spine) + (size_t)k_epub_base_bytes;
   const size_t nav_cap = strlen(nav) + (size_t)k_epub_base_bytes;
-  char*        opf     = (char*)ra8_arena_alloc(arena, (uint32_t)opf_cap);
-  char*        navdoc  = (char*)ra8_arena_alloc(arena, (uint32_t)nav_cap);
+  char*        opf     = (char*)ra8_arena_alloc(arena, (uint32_t)opf_cap, 1U);
+  char*        navdoc  = (char*)ra8_arena_alloc(arena, (uint32_t)nav_cap, 1U);
   if ((opf == nullptr) || (navdoc == nullptr)) {
     
     
@@ -830,10 +835,14 @@ epub_add_meta(ra8_arena_t* arena, mz_zip_archive* zip, const char* mani, const c
 RA8_INTERNAL static ra8_err_t
 export_epub(ra8_arena_t* arena, const char* dir, char names[][k_name_max], size_t count, const char* out_path)
 {
+  const uint32_t mark = ra8_arena_save(arena);
   const size_t cap   = (size_t)k_epub_base_bytes + (count * (size_t)k_epub_per_page_bytes);
-  char*        mani  = (char*)ra8_arena_calloc(arena, 1U, (uint32_t)cap);
-  char*        spine = (char*)ra8_arena_calloc(arena, 1U, (uint32_t)cap);
-  char*        nav   = (char*)ra8_arena_calloc(arena, 1U, (uint32_t)cap);
+  char*        mani  = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
+  char*        spine = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
+  char*        nav   = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
+  if (mani) memset(mani, 0, cap);
+  if (spine) memset(spine, 0, cap);
+  if (nav) memset(nav, 0, cap);
   if ((mani == nullptr) || (spine == nullptr) || (nav == nullptr)) {
     
     
@@ -861,6 +870,7 @@ export_epub(ra8_arena_t* arena, const char* dir, char names[][k_name_max], size_
   
   
   /* A partial EPUB is ::export_atomic's temp to discard, not ours. */
+  ra8_arena_restore(arena, mark);
   return rc;
 }
 

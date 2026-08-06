@@ -153,7 +153,7 @@ RA8_INTERNAL static ra8_err_t slurp(ra8_arena_t* arena, const char* path, uint8_
     (void)fclose(f);
     return k_ra8_fail;
   }
-  uint8_t* buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sz);
+  uint8_t* buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sz, 1U);
   if ((buf == nullptr) || (fread(buf, 1U, (size_t)sz, f) != (size_t)sz)) {
     
     (void)fclose(f);
@@ -207,7 +207,7 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(ra8_arena_t* arena, const uint8_t* 
   if (need == 0U) {
     return k_ra8_err_invalid_size;
   }
-  uint8_t* mem = (uint8_t*)ra8_arena_alloc(arena, need);
+  uint8_t* mem = (uint8_t*)ra8_arena_alloc(arena, need, 8U);
   if (mem == NULL) {
     
     return k_ra8_err_no_mem;
@@ -257,7 +257,7 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(ra8_arena_t* arena, const uint8_t
                                                uint32_t       work_cap,
                                                FILE*          out)
 {
-  uint8_t* work = (uint8_t*)ra8_arena_alloc(arena, work_cap);
+  uint8_t* work = (uint8_t*)ra8_arena_alloc(arena, work_cap, 8U);
   if (work == NULL) {
     
     return k_ra8_err_no_mem;
@@ -293,10 +293,12 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(ra8_arena_t* arena, const uint8_t
 /** @brief Transcode one JPEG / PNG / WebP page to a `.jof` full-width-column atlas. */
 RA8_INTERNAL static ra8_err_t jof_one(ra8_arena_t* arena, const char* in_path, const char* out_path)
 {
+  const uint32_t mark = ra8_arena_save(arena);
   uint8_t*  src  = nullptr;
   size_t    slen = 0U;
   ra8_err_t rc   = slurp(arena, in_path, &src, &slen);
   if (rc != k_ra8_ok) {
+    ra8_arena_restore(arena, mark);
     return rc;
   }
   uint16_t w = 0U;
@@ -311,6 +313,7 @@ RA8_INTERNAL static ra8_err_t jof_one(ra8_arena_t* arena, const char* in_path, c
   const uint32_t work_cap = ra8_jof_work_bytes(w, h, w, tile_h);
   if (work_cap == 0U) {
     
+    ra8_arena_restore(arena, mark);
     return k_ra8_err_invalid_size;
   }
   /* Produce into a sibling temp and rename on success: re-exporting a chapter
@@ -335,9 +338,12 @@ RA8_INTERNAL static ra8_err_t jof_one(ra8_arena_t* arena, const char* in_path, c
   
   if (rc != k_ra8_ok) {
     mdl_atomic_abort(tmp);
+    ra8_arena_restore(arena, mark);
     return rc;
   }
-  return mdl_atomic_commit(tmp, out_path) ? k_ra8_ok : k_ra8_fail;
+  rc = mdl_atomic_commit(tmp, out_path) ? k_ra8_ok : k_ra8_fail;
+  ra8_arena_restore(arena, mark);
+  return rc;
 }
 
 RA8_PRIV ra8_err_t mdl_export_jof(ra8_arena_t* arena, const char* dir, const char names[][k_name_max], size_t count)
