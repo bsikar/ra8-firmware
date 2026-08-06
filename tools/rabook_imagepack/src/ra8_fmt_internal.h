@@ -25,6 +25,7 @@
 #include "ra8_err.h"
 #include "ra8_fmt.h"
 #include "ra8_jof.h"
+#include "ra8_arena.h"
 
 /**
  * @brief Compute a safe memory-sink capacity for an atlas built from a source.
@@ -79,7 +80,8 @@ RA8_PRIV [[nodiscard]] size_t ra8_fmt_jof_sink_cap(size_t src_len);
  * @note Not thread-safe (the producer keeps module-static state).
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_produce(ra8_arena_t* arena,
+                                                     const ra8_fmt_blob_t* src,
                                                      uint16_t              max_w,
                                                      uint16_t              max_h,
                                                      uint16_t              tile_w,
@@ -143,7 +145,8 @@ ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* atlas,
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_reassemble(ra8_arena_t*          arena,
+                                                        const ra8_fmt_blob_t* atlas,
                                                         const ra8_jof_info_t* info,
                                                         uint8_t**             out_px,
                                                         size_t*               out_len);
@@ -155,7 +158,7 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* at
  * @return k_ra8_ok when the atlas was written to `opts->out_path`.
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_convert(const ra8_fmt_blob_t* src,
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_convert(ra8_arena_t* arena, const ra8_fmt_blob_t* src,
                                                      const ra8_fmt_opts_t* opts);
 
 /**
@@ -165,7 +168,7 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_convert(const ra8_fmt_blob_t* src,
  * @return k_ra8_ok when the container validated clean.
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src,
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src,
                                                      const ra8_fmt_opts_t* opts);
 
 /**
@@ -175,7 +178,7 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src,
  * @return k_ra8_ok when the banded raster matched the reference exactly.
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_verify(const ra8_fmt_blob_t* src,
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_verify(ra8_arena_t* arena, const ra8_fmt_blob_t* src,
                                                     const ra8_fmt_opts_t* opts);
 
 /**
@@ -201,5 +204,5 @@ RA8_PRIV [[nodiscard]] bool ra8_fmt_rabook_sniff(const ra8_fmt_blob_t* src);
  * @return k_ra8_ok when the container validated clean.
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_rabook_inspect(const ra8_fmt_blob_t* src,
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_rabook_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src,
                                                         const ra8_fmt_opts_t* opts);

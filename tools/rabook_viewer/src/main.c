@@ -26,6 +26,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "ra8_arena.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
 #include "ra8_viewer_reader.h"
@@ -40,6 +41,7 @@ typedef enum : int32_t {
   k_viewer_frame_ns  = 16000000, /**< Cooperative pump period, ~60 Hz (ns). */
   k_viewer_min_args  = 2,        /**< argv count with just the file path.   */
   k_viewer_radix_dec = 10,       /**< Base for parsing --page (decimal).    */
+  k_arena_bytes = 16U * 1024U * 1024U,
 } viewer_main_cfg_t;
 
 /**
@@ -165,9 +167,9 @@ static uint32_t viewer_clamp_page(uint32_t page, uint32_t count)
  * @since 0.1.0
  */
 static bool
-viewer_render_and_dump(ra8_viewer_reader_t* reader, const viewer_opts_t* opts, uint32_t page)
+viewer_render_and_dump(ra8_viewer_reader_t* reader, const viewer_opts_t* opts, uint32_t page, ra8_arena_t* arena)
 {
-  const ra8_err_t rc = ra8_viewer_render_page(reader, page);
+  const ra8_err_t rc = ra8_viewer_render_page(reader, page, arena);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "render page %u failed: 0x%x\n", page, (unsigned)rc);
     return false;
@@ -199,9 +201,9 @@ viewer_render_and_dump(ra8_viewer_reader_t* reader, const viewer_opts_t* opts, u
  * @note Not thread-safe; must run on the main thread (Cocoa requirement).
  * @since 0.1.0
  */
-static int viewer_run_window(ra8_viewer_reader_t* reader)
+static int viewer_run_window(ra8_viewer_reader_t* reader, ra8_arena_t* arena)
 {
-  ra8_viewer_view_t* view = ra8_viewer_view_open(reader, "RA8 Viewer");
+  ra8_viewer_view_t* view = ra8_viewer_view_open(reader, "RA8 Viewer", arena);
   if (view == nullptr) {
     (void)fprintf(stderr, "no window (headless host?); use --headless --dump-ppm PATH\n");
     return 1;
@@ -251,18 +253,17 @@ static void viewer_log_sink(void* ctx, uint8_t byte)
  * @note Not thread-safe (drives the shared reader).
  * @since 0.1.0
  */
-static bool viewer_dump_tile(ra8_viewer_reader_t* reader, uint32_t tile, const char* path)
+static bool viewer_dump_tile(ra8_viewer_reader_t* reader, uint32_t tile, const char* path, ra8_arena_t* arena)
 {
   uint32_t        w   = 0U;
   uint32_t        h   = 0U;
   uint16_t*       buf = nullptr;
-  const ra8_err_t rc  = ra8_viewer_render_tile565(reader, tile, &w, &h, &buf);
+  const ra8_err_t rc  = ra8_viewer_render_tile565(reader, tile, &w, &h, &buf, arena);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "render tile %u failed: 0x%x\n", tile, (unsigned)rc);
     return false;
   }
   const ra8_err_t wrc = ra8_viewer_write_ppm565(buf, w, h, path);
-  free(buf);
   if (wrc != k_ra8_ok) {
     (void)fprintf(stderr, "write tile ppm failed: 0x%x\n", (unsigned)wrc);
     return false;
@@ -285,6 +286,10 @@ int main(int argc, char** argv)
 {
   ra8_log_set_byte_sink(viewer_log_sink, nullptr);
 
+  uint8_t* arena_buf = (uint8_t*)malloc((size_t)k_arena_bytes);
+  ra8_arena_t arena;
+  ra8_arena_init(&arena, arena_buf, (uint32_t)k_arena_bytes);
+
   viewer_opts_t opts = {};
   if (!viewer_parse_args(argc, argv, &opts)) {
     viewer_usage(argv[0]);
@@ -292,7 +297,7 @@ int main(int argc, char** argv)
   }
 
   ra8_viewer_reader_t* reader = nullptr;
-  const ra8_err_t      rc     = ra8_viewer_open(&reader, opts.path);
+  const ra8_err_t      rc     = ra8_viewer_open(&reader, opts.path, &arena);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "open '%s' failed: 0x%x\n", opts.path, (unsigned)rc);
     return 1;
@@ -304,17 +309,19 @@ int main(int argc, char** argv)
   /* Headless tile dump: verify the scroll render path independent of a window. */
   if (opts.dump_tile >= 0) {
     const char* out    = (opts.dump_ppm != nullptr) ? opts.dump_ppm : "/tmp/ra8_tile.ppm";
-    const int   status = viewer_dump_tile(reader, (uint32_t)opts.dump_tile, out) ? 0 : 1;
+    const int   status = viewer_dump_tile(reader, (uint32_t)opts.dump_tile, out, &arena) ? 0 : 1;
     ra8_viewer_close(reader);
+    free(arena_buf);
     return status;
   }
 
   int status = 0;
   if (opts.headless || (opts.dump_ppm != nullptr)) {
-    status = viewer_render_and_dump(reader, &opts, page) ? 0 : 1;
+    status = viewer_render_and_dump(reader, &opts, page, &arena) ? 0 : 1;
   } else {
-    status = viewer_run_window(reader);
+    status = viewer_run_window(reader, &arena);
   }
   ra8_viewer_close(reader);
+  free(arena_buf);
   return status;
 }

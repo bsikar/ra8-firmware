@@ -23,6 +23,10 @@
 #include <string.h>
 
 #include "ra8_fs.h"
+#include "ra8_arena.h"
+#include "ra8_attributes.h"
+
+enum : uint32_t { k_arena_bytes = 128U * 1024U * 1024U }; // 128 MiB — generous for disk images
 
 enum : uint32_t {
   k_block_size  = 512U,    /**< FAT sector size.                       */
@@ -145,8 +149,8 @@ static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
   return k_ra8_ok;
 }
 
-/** @brief Read a whole file into a freshly malloc'd buffer; nullptr on failure. */
-static uint8_t* read_file(const char* path, uint32_t* out_len)
+/** @brief Read a whole file into a freshly arena-allocated buffer; nullptr on failure. */
+static uint8_t* read_file(ra8_arena_t* arena, const char* path, uint32_t* out_len)
 {
   FILE* f = fopen(path, "rb");
   if (f == NULL) {
@@ -159,9 +163,8 @@ static uint8_t* read_file(const char* path, uint32_t* out_len)
     (void)fclose(f);
     return nullptr;
   }
-  uint8_t* buf = (uint8_t*)malloc((size_t)n);
+  uint8_t* buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)n);
   if ((buf == nullptr) || (fread(buf, 1U, (size_t)n, f) != (size_t)n)) {
-    free(buf);
     (void)fclose(f);
     return nullptr;
   }
@@ -245,11 +248,11 @@ static const char* book_ext(const char* path)
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
-static int write_books(ra8_fs_mount_t* mnt, char** argv, int n_books)
+static int write_books(ra8_arena_t* arena, ra8_fs_mount_t* mnt, char** argv, int n_books)
 {
   for (int i = 0; i < n_books; ++i) {
     uint32_t       len  = 0U;
-    uint8_t* const data = read_file(argv[2 + i], &len);
+    uint8_t* const data = read_file(arena, argv[2 + i], &len);
     if (data == nullptr) {
       (void)fprintf(stderr, "mkbookimg: cannot read %s\n", argv[2 + i]);
       return 1;
@@ -260,7 +263,6 @@ static int write_books(ra8_fs_mount_t* mnt, char** argv, int n_books)
     if (err == k_ra8_ok) {
       (void)fprintf(stderr, "mkbookimg: + %s  (%u bytes)  <- %s\n", name, len, argv[2 + i]);
     }
-    free(data);
     if (err != k_ra8_ok) {
       (void)fprintf(stderr, "mkbookimg: write %s failed\n", name);
       return 1;
@@ -304,39 +306,54 @@ static int dump_image(const char* path)
   return (wrote == total) ? 0 : 1;
 }
 
+RA8_NASA_RULE_3_OK
 int main(int argc, char** argv)
 {
-  if (argc < 3) {
-    (void)fprintf(stderr, "usage: %s <out.img> <book1.rabook> [book2.rabook ...]\n", argv[0]);
-    return 2;
-  }
-  const int n_books = argc - 2;
-  if (n_books > (int)k_max_books) {
-    (void)fprintf(stderr, "mkbookimg: too many books (max %u)\n", k_max_books);
-    return 2;
-  }
-  s_disk.block_count = k_img_sectors;
-  s_disk.bytes       = (uint8_t*)calloc(1U, (size_t)k_img_sectors * k_block_size);
-  if (s_disk.bytes == nullptr) {
-    (void)fprintf(stderr, "mkbookimg: out of memory\n");
+  uint8_t* arena_buf = (uint8_t*)malloc(k_arena_bytes);
+  if (arena_buf == nullptr) {
+    (void)fprintf(stderr, "mkbookimg: out of memory for arena\n");
+    // cppcheck-suppress memleak  /* arena_buf is nullptr here */
     return 1;
   }
-  const ra8_fs_backend_t backend = {.read_block   = mem_read,
-                                    .write_block  = mem_write,
-                                    .get_capacity = mem_cap,
-                                    .ctx          = &s_disk};
-  ra8_fs_mount_t*        mnt     = nullptr;
-  int                    rc      = fs_format_mount(&backend, &mnt);
-  if (rc == 0) {
-    rc = write_books(mnt, argv, n_books);
-    (void)ra8_fs_unmount(mnt);
+  ra8_arena_t arena;
+  if (ra8_arena_init(&arena, arena_buf, k_arena_bytes) != k_ra8_ok) {
+    free(arena_buf);
+    return 1;
   }
-  if (rc == 0) {
-    rc = dump_image(argv[1]);
+
+  int rc = 0;
+  if (argc < 3) {
+    (void)fprintf(stderr, "usage: %s <out.img> <book1.rabook> [book2.rabook ...]\n", argv[0]);
+    rc = 2;
+  } else if ((argc - 2) > (int)k_max_books) {
+    (void)fprintf(stderr, "mkbookimg: too many books (max %u)\n", k_max_books);
+    rc = 2;
+  } else {
+    const int n_books = argc - 2;
+    s_disk.block_count = k_img_sectors;
+    s_disk.bytes       = (uint8_t*)ra8_arena_calloc(&arena, 1U, (uint32_t)k_img_sectors * k_block_size);
+    if (s_disk.bytes == nullptr) {
+      (void)fprintf(stderr, "mkbookimg: out of memory\n");
+      rc = 1;
+    } else {
+      const ra8_fs_backend_t backend = {.read_block   = mem_read,
+                                        .write_block  = mem_write,
+                                        .get_capacity = mem_cap,
+                                        .ctx          = &s_disk};
+      ra8_fs_mount_t*        mnt     = nullptr;
+      rc = fs_format_mount(&backend, &mnt);
+      if (rc == 0) {
+        rc = write_books(&arena, mnt, argv, n_books);
+        (void)ra8_fs_unmount(mnt);
+      }
+      if (rc == 0) {
+        rc = dump_image(argv[1]);
+      }
+      if (rc == 0) {
+        (void)fprintf(stderr, "mkbookimg: wrote %s (%d book(s), 64 MiB FAT32)\n", argv[1], n_books);
+      }
+    }
   }
-  free(s_disk.bytes);
-  if (rc == 0) {
-    (void)fprintf(stderr, "mkbookimg: wrote %s (%d book(s), 64 MiB FAT32)\n", argv[1], n_books);
-  }
+  free(arena_buf);
   return rc;
 }

@@ -100,4 +100,6 @@ bool mdl_format_is_dir_output(mdl_format_t fmt);
  * @retval k_ra8_err_not_supported The archiver tool is not on PATH.
  * @retval k_ra8_fail             The archiver ran but failed.
  */
-ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path);
+#include "ra8_arena.h"
+
+ra8_err_t mdl_export_chapter(ra8_arena_t* arena, mdl_format_t fmt, const char* chapter_dir, const char* out_path);

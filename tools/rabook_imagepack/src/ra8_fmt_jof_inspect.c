@@ -392,20 +392,19 @@ static void priv_print_table(FILE* out, const fmt_tile_rec_t* recs, uint32_t cou
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_collect_tiles(const ra8_fmt_blob_t* atlas,
+static ra8_err_t priv_collect_tiles(ra8_arena_t*          arena,
+                                    const ra8_fmt_blob_t* atlas,
                                     const ra8_jof_info_t* info,
                                     fmt_tile_rec_t*       recs,
                                     const ra8_fmt_opts_t* opts)
 {
   const uint32_t   tmax = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
-  fmt_decode_buf_t buf  = {.cell        = (uint8_t*)malloc((size_t)tmax),
+  fmt_decode_buf_t buf  = {.cell        = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)tmax),
                            .cell_cap    = tmax,
                            .scratch     = nullptr,
                            .scratch_cap = ra8_jof_stored_bound(tmax)};
-  buf.scratch           = (uint8_t*)malloc((size_t)buf.scratch_cap);
+  buf.scratch           = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)buf.scratch_cap);
   if ((buf.cell == nullptr) || (buf.scratch == nullptr)) {
-    free(buf.cell);
-    free(buf.scratch);
     return k_ra8_err_no_mem;
   }
   ra8_err_t rc = k_ra8_ok;
@@ -418,12 +417,10 @@ static ra8_err_t priv_collect_tiles(const ra8_fmt_blob_t* atlas,
       (void)fprintf(opts->report, "  tile %u could not be read or decoded\n", (unsigned)i);
     }
   }
-  free(buf.cell);
-  free(buf.scratch);
   return rc;
 }
 
-ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t ra8_fmt_jof_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
@@ -441,13 +438,12 @@ ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* o
     return rc;
   }
   priv_print_geom(opts->report, &info, src->len);
-  fmt_tile_rec_t* recs = (fmt_tile_rec_t*)calloc((size_t)info.tile_count, sizeof(*recs));
+  fmt_tile_rec_t* recs = (fmt_tile_rec_t*)ra8_arena_calloc(arena, (uint32_t)info.tile_count, sizeof(*recs));
   if (recs == nullptr) {
     return k_ra8_err_no_mem;
   }
-  rc = priv_collect_tiles(src, &info, recs, opts);
+  rc = priv_collect_tiles(arena, src, &info, recs, opts);
   if (rc != k_ra8_ok) {
-    free(recs);
     return rc;
   }
   if (opts->verbose) {
@@ -461,7 +457,6 @@ ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* o
   }
   const ra8_err_t verdict =
     priv_check_table(recs, info.tile_count, (uint32_t)k_ra8_jof_hdr_bytes, opts->report);
-  free(recs);
   (void)fprintf(opts->report,
                 "verdict: %s\n",
                 (verdict == k_ra8_ok) ? "VALID (coverage exact, no duplicate tiles)"
@@ -594,10 +589,8 @@ static ra8_err_t priv_reassemble_tiles(ra8_jof_memstore_t*   store,
  * @par Example:
  * @code
  * fmt_reassemble_ws_t ws = {};
- * if (priv_open_reassemble_ws(atlas, info, &ws)) {
+ * if (priv_open_reassemble_ws(arena, atlas, info, &ws)) {
  *   // ... use ws.px ...
- *   free(ws.cell);
- *   free(ws.scratch);
  * }
  * @endcode
  *
@@ -611,8 +604,8 @@ typedef struct {
   uint32_t           tile_max;  /**< Decoded-tile buffer size in bytes.     */
   uint32_t           scratch_c; /**< Stored-tile scratch size in bytes.     */
   uint8_t*           px;        /**< Zeroed full-page raster; caller keeps. */
-  uint8_t*           cell;      /**< One decoded tile; freed with the pass. */
-  uint8_t*           scratch;   /**< One stored tile; freed with the pass.  */
+  uint8_t*           cell;      /**< One decoded tile. */
+  uint8_t*           scratch;   /**< One stored tile.  */
 } fmt_reassemble_ws_t;
 
 /**
@@ -642,7 +635,8 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_open_reassemble_ws(const ra8_fmt_blob_t* atlas,
+static bool priv_open_reassemble_ws(ra8_arena_t*          arena,
+                                    const ra8_fmt_blob_t* atlas,
                                     const ra8_jof_info_t* info,
                                     fmt_reassemble_ws_t*  ws)
 {
@@ -652,22 +646,20 @@ static bool priv_open_reassemble_ws(const ra8_fmt_blob_t* atlas,
   ws->tile_max  = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
   ws->scratch_c = ra8_jof_stored_bound(ws->tile_max);
 
-  ws->px      = (uint8_t*)calloc(ws->raster, 1U);
-  ws->cell    = (uint8_t*)malloc((size_t)ws->tile_max);
-  ws->scratch = (uint8_t*)malloc((size_t)ws->scratch_c);
+  ws->px      = (uint8_t*)ra8_arena_calloc(arena, (uint32_t)ws->raster, 1U);
+  ws->cell    = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)ws->tile_max);
+  ws->scratch = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)ws->scratch_c);
   if ((ws->px != nullptr) && (ws->cell != nullptr) && (ws->scratch != nullptr)) {
     return true;
   }
-  free(ws->px);
-  free(ws->cell);
-  free(ws->scratch);
   ws->px      = nullptr;
   ws->cell    = nullptr;
   ws->scratch = nullptr;
   return false;
 }
 
-ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* atlas,
+ra8_err_t ra8_fmt_jof_reassemble(ra8_arena_t*          arena,
+                                 const ra8_fmt_blob_t* atlas,
                                  const ra8_jof_info_t* info,
                                  uint8_t**             out_px,
                                  size_t*               out_len)
@@ -678,7 +670,7 @@ ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* atlas,
   RA8_CHECK_NULL_PTR(out_len, s_tag, "out_len must not be nullptr");
   *out_px                = nullptr;
   fmt_reassemble_ws_t ws = {};
-  if (!priv_open_reassemble_ws(atlas, info, &ws)) {
+  if (!priv_open_reassemble_ws(arena, atlas, info, &ws)) {
     return k_ra8_err_no_mem;
   }
   const ra8_err_t rc = priv_reassemble_tiles(&ws.store,
@@ -689,10 +681,7 @@ ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* atlas,
                                              ws.tile_max,
                                              ws.scratch,
                                              ws.scratch_c);
-  free(ws.cell);
-  free(ws.scratch);
   if (rc != k_ra8_ok) {
-    free(ws.px);
     return rc;
   }
   *out_px  = ws.px;

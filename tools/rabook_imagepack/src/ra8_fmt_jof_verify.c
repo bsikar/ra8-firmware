@@ -208,7 +208,8 @@ static size_t priv_diff_rasters(const uint8_t* a,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_encode_roundtrip(const ra8_fmt_blob_t* src,
+static ra8_err_t priv_encode_roundtrip(ra8_arena_t*          arena,
+                                       const ra8_fmt_blob_t* src,
                                        uint16_t              max_w,
                                        uint16_t              max_h,
                                        uint16_t              tile_w,
@@ -218,7 +219,8 @@ static ra8_err_t priv_encode_roundtrip(const ra8_fmt_blob_t* src,
                                        ra8_jof_info_t*       info)
 {
   ra8_fmt_blob_t atlas = {};
-  ra8_err_t      rc    = ra8_fmt_jof_produce(src,
+  ra8_err_t      rc    = ra8_fmt_jof_produce(arena,
+                                             src,
                                              max_w,
                                              max_h,
                                              tile_w,
@@ -229,7 +231,7 @@ static ra8_err_t priv_encode_roundtrip(const ra8_fmt_blob_t* src,
   if (rc != k_ra8_ok) {
     return rc;
   }
-  rc = ra8_fmt_jof_reassemble(&atlas, info, out_px, out_n);
+  rc = ra8_fmt_jof_reassemble(arena, &atlas, info, out_px, out_n);
   ra8_fmt_blob_free(&atlas);
   return rc;
 }
@@ -253,7 +255,7 @@ static ra8_err_t priv_encode_roundtrip(const ra8_fmt_blob_t* src,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_encode_pair(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts, fmt_ver_pair_t* pair)
+priv_encode_pair(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts, fmt_ver_pair_t* pair)
 {
   uint16_t  w  = 0U;
   uint16_t  h  = 0U;
@@ -262,7 +264,7 @@ priv_encode_pair(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts, fmt_ver_
     (void)fprintf(opts->report, "verify: cannot read source dimensions (rc=%d)\n", (int)rc);
     return rc;
   }
-  rc = priv_encode_roundtrip(src, w, h, w, h, &pair->ref, &pair->refn, &pair->rinfo);
+  rc = priv_encode_roundtrip(arena, src, w, h, w, h, &pair->ref, &pair->refn, &pair->rinfo);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "verify: reference encode failed (rc=%d)\n", (int)rc);
     return rc;
@@ -270,7 +272,8 @@ priv_encode_pair(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts, fmt_ver_
   const uint16_t band = (pair->rinfo.height < (uint16_t)k_fmt_ver_band_h)
                           ? pair->rinfo.height
                           : (uint16_t)k_fmt_ver_band_h;
-  rc                  = priv_encode_roundtrip(src,
+  rc                  = priv_encode_roundtrip(arena,
+                                              src,
                                               w,
                                               h,
                                               pair->rinfo.width,
@@ -280,7 +283,6 @@ priv_encode_pair(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts, fmt_ver_
                                               &pair->ginfo);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "verify: banded encode failed (rc=%d)\n", (int)rc);
-    free(pair->ref);
     pair->ref = nullptr;
     return rc;
   }
@@ -294,17 +296,17 @@ priv_encode_pair(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts, fmt_ver_
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_fmt_jof_verify(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t ra8_fmt_jof_verify(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
   fmt_ver_pair_t  pair = {};
-  const ra8_err_t rc   = priv_encode_pair(src, opts, &pair);
+  const ra8_err_t rc   = priv_encode_pair(arena, src, opts, &pair);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  uint8_t* const       ref   = pair.ref;
-  uint8_t* const       got   = pair.got;
+  const uint8_t* const ref   = pair.ref;
+  const uint8_t* const got   = pair.got;
   const size_t         refn  = pair.refn;
   const size_t         gotn  = pair.gotn;
   const ra8_jof_info_t rinfo = pair.rinfo;
@@ -327,8 +329,6 @@ ra8_err_t ra8_fmt_jof_verify(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* op
                   opts->out_path,
                   (prc == k_ra8_ok) ? "ok" : "FAILED");
   }
-  free(ref);
-  free(got);
   (void)fprintf(opts->report,
                 "verdict: %s (%zu differing bytes)\n",
                 (diffs == 0U) ? "ROUND-TRIP EXACT -- the produced file is correct" : "MISMATCH",

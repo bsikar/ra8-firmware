@@ -33,6 +33,7 @@
 #include "ra8_jof.h"
 #include "ra8_longstrip.h"
 #include "ra8_tile_cache.h"
+#include "ra8_arena.h"
 #include "ra8_unarch_xz.h"
 #include "ra8_viewer_reader.h"
 
@@ -225,7 +226,7 @@ RA8_PRIV size_t viewer_read(void* ctx, uint64_t offset, void* buf, size_t len);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t viewer_reserve_page_buf(ra8_viewer_reader_t* r, size_t need);
+RA8_PRIV ra8_err_t viewer_reserve_page_buf(ra8_viewer_reader_t* r, size_t need, ra8_arena_t* arena);
 
 /**
  * @brief Open a bare or gzip/xz-wrapped comic archive via ra8_comic.
@@ -243,7 +244,7 @@ RA8_PRIV ra8_err_t viewer_reserve_page_buf(ra8_viewer_reader_t* r, size_t need);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped);
+RA8_PRIV ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped, ra8_arena_t* arena);
 
 /**
  * @brief Render one comic page (extract -> decode -> fit-blit) into the fb.
@@ -262,7 +263,7 @@ RA8_PRIV ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped);
  * @note Not thread-safe (drives the shared framebuffer and arena).
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page);
+RA8_PRIV ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page, ra8_arena_t* arena);
 
 /**
  * @brief Render comic page @p i into a fresh RGB565 buffer (gfx-max capped).
@@ -273,7 +274,7 @@ RA8_PRIV ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page);
  * @param[in]     i   Tile (page) index.
  * @param[out]    w   Receives the rendered width in pixels.
  * @param[out]    h   Receives the rendered height in pixels.
- * @param[out]    out Receives a malloc'd `w*h` RGB565 buffer (caller frees).
+ * @param[out]    out Receives an arena-allocated `w*h` RGB565 buffer.
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                Tile rendered; `*out` owns `w*h` pixels.
  * @retval k_ra8_err_no_mem        The output buffer could not be allocated.
@@ -286,7 +287,7 @@ RA8_PRIV ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page);
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t
-viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out);
+viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out, ra8_arena_t* arena);
 
 /**
  * @brief Probe one comic page's native size into the tile-size cache.
@@ -302,7 +303,7 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
  * @note Not thread-safe (writes the shared size cache).
  * @since 0.1.0
  */
-RA8_PRIV void viewer_probe_comic_tile(ra8_viewer_reader_t* r, uint32_t i, ra8_img_arena_t* arena);
+RA8_PRIV void viewer_probe_comic_tile(ra8_viewer_reader_t* r, uint32_t i, ra8_img_arena_t* img_arena, ra8_arena_t* arena);
 
 /**
  * @brief Open a JOF strip: slurp, parse, size the cache, then wire the engine.
@@ -320,7 +321,7 @@ RA8_PRIV void viewer_probe_comic_tile(ra8_viewer_reader_t* r, uint32_t i, ra8_im
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r);
+RA8_PRIV ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r, ra8_arena_t* arena);
 
 /**
  * @brief Render one JOF "page": scroll the strip by one viewport and composite.
@@ -350,7 +351,7 @@ RA8_PRIV ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page);
  * @param[in]     i   Band (tile) index.
  * @param[out]    w   Receives the rendered width in pixels.
  * @param[out]    h   Receives the rendered height in pixels.
- * @param[out]    out Receives a malloc'd `w*h` RGB565 buffer (caller frees).
+ * @param[out]    out Receives an arena-allocated `w*h` RGB565 buffer.
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Band rendered; `*out` owns `w*h` pixels.
  * @retval k_ra8_err_no_mem       The output buffer could not be allocated.
@@ -362,8 +363,7 @@ RA8_PRIV ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page);
  * @note Not thread-safe (drives the shared reader and band cache).
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t
-viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out);
+viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out, ra8_arena_t* arena);
 
 /**
  * @brief Populate the per-band tile-size cache for an open JOF strip.

@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_arena.h"
 #include "ra8_err.h"
 
 #ifdef __cplusplus
@@ -77,7 +78,7 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_viewer_open(ra8_viewer_reader_t** out, const char* path);
+[[nodiscard]] ra8_err_t ra8_viewer_open(ra8_viewer_reader_t** out, const char* path, ra8_arena_t* arena);
 
 /**
  * @brief Number of pages in the open document.
@@ -108,7 +109,7 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* r, uint32_t page);
+[[nodiscard]] ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* r, uint32_t page, ra8_arena_t* arena);
 
 /**
  * @brief Number of vertically-stacked tiles in the document.
@@ -140,9 +141,8 @@ ra8_viewer_tile_size(const ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint
 /**
  * @brief Render tile @p i at native resolution into a fresh RGB565 buffer.
  *
- * @details Allocates a `w*h` RGB565 buffer, rasterises tile @p i into it via the
- *          document's engine (comic page decode, or one webtoon band), and
- *          transfers ownership to the caller (who must `free` it). Unlike
+ * @details Allocates a `w*h` RGB565 buffer from the arena, rasterises tile @p i into it via the
+ *          document's engine (comic page decode, or one webtoon band). Unlike
  *          ::ra8_viewer_render_page this does not touch the shared framebuffer,
  *          so window tiles and the headless framebuffer path never interfere.
  *
@@ -150,7 +150,7 @@ ra8_viewer_tile_size(const ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint
  * @param[in]     i   Tile index (`< ra8_viewer_tile_count(r)`).
  * @param[out]    w   Receives the rendered width in pixels.
  * @param[out]    h   Receives the rendered height in pixels.
- * @param[out]    out Receives a malloc'd `w*h` RGB565 buffer (caller frees).
+ * @param[out]    out Receives an arena-allocated `w*h` RGB565 buffer.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Tile rendered; `*out` owns `w*h` pixels.
@@ -166,7 +166,8 @@ ra8_viewer_tile_size(const ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint
                                                   uint32_t             i,
                                                   uint32_t*            w,
                                                   uint32_t*            h,
-                                                  uint16_t**           out);
+                                                  uint16_t**           out,
+                                                  ra8_arena_t*         arena);
 
 /**
  * @brief Write the current framebuffer to a binary PPM (P6) file.

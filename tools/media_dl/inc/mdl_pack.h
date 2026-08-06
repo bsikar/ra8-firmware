@@ -46,7 +46,9 @@
  * @note Not thread-safe (shared cwd during path resolution).
  * @since 0.1.0
  */
-size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* chap_id);
+#include "ra8_arena.h"
+
+size_t mdl_pack_one(ra8_arena_t* arena, mdl_format_t format, const char* series_dir, const char* chap_id);
 
 /**
  * @brief Package a combined page folder, refusing an incomplete archive by default.
@@ -77,7 +79,8 @@ size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* cha
  * @see mdl_fetch_run_incomplete
  * @since 0.1.0
  */
-size_t mdl_pack_combined(mdl_format_t             format,
+size_t mdl_pack_combined(ra8_arena_t*             arena,
+                         mdl_format_t             format,
                          bool                     allow_incomplete,
                          const char*              series_dir,
                          const char*              combined_rel,
