@@ -635,7 +635,7 @@ static void internal_bump_rnc0_locked(volatile r_canfd_t* reg, uint16_t filter_i
   if (cur_rnc < new_rnc) {
     const uint32_t cfg0 = reg->CFDGAFLCFG0;
     reg->CFDGAFLCFG0    = (cfg0 & ~(k_ra8_gaflcfg0_mask_rnc0 << k_ra8_gaflcfg0_shift_rnc0)) |
-                          ((new_rnc & k_ra8_gaflcfg0_mask_rnc0) << k_ra8_gaflcfg0_shift_rnc0);
+                       ((new_rnc & k_ra8_gaflcfg0_mask_rnc0) << k_ra8_gaflcfg0_shift_rnc0);
   }
 }
 

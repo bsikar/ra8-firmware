@@ -281,8 +281,8 @@ static bool ra8_book_emit_attrs(const void*            base,
 {
   const ra8_book_attr_t* attrs = ra8_book_attrs(base);
   for (uint16_t i = 0U; i < node->attr_count; ++i) {
-    const ra8_book_attr_t* a = &attrs[node->first_attr + i];
-    bool ok = ra8_book_emit(out, cap, pos, " ", 1U) &&
+    const ra8_book_attr_t* a  = &attrs[node->first_attr + i];
+    bool                   ok = ra8_book_emit(out, cap, pos, " ", 1U) &&
               ra8_book_emit_cstr(out, cap, pos, ra8_book_string(base, a->name_off)) &&
               ra8_book_emit(out, cap, pos, "=\"", 2U) &&
               ra8_book_emit_escaped(out, cap, pos, ra8_book_string(base, a->value_off), true) &&

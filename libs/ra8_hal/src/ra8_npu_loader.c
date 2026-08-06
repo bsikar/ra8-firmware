@@ -160,8 +160,8 @@ static ra8_err_t internal_npu_check_header(const uint8_t* p,
     return k_ra8_err_invalid_arg;
   }
   const uint32_t coff   = ra8_npu_blob_read_word(p,
-                                                 (uint32_t)k_ra8_npu_blob_word_cmd_offset *
-                                                   (uint32_t)k_ra8_npu_blob_word_bytes);
+                                               (uint32_t)k_ra8_npu_blob_word_cmd_offset *
+                                                 (uint32_t)k_ra8_npu_blob_word_bytes);
   const uint32_t cbytes = ra8_npu_blob_read_word(p,
                                                  (uint32_t)k_ra8_npu_blob_word_cmd_bytes *
                                                    (uint32_t)k_ra8_npu_blob_word_bytes);

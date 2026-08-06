@@ -333,7 +333,7 @@ static ra8_err_t internal_selfdiag_run(uint32_t diagval)
 
   /* HUM Ch 53.2.4.1 "ADSGDCRn : Scan Group Diagnosis Function Control Register n" p 3340 */
   volatile uint32_t* sgdcr = ra8_adc_b_adsgdcr((uint8_t)k_ra8_adc_diag_group);
-  *sgdcr = (*sgdcr & ~k_ra8_adsgdcr_mask_diagval) |
+  *sgdcr                   = (*sgdcr & ~k_ra8_adsgdcr_mask_diagval) |
            ((diagval << (uint32_t)k_ra8_adsgdcr_bit_diagval) & k_ra8_adsgdcr_mask_diagval);
 
   const ra8_err_t run_err = internal_start_and_wait((uint8_t)k_ra8_adc_diag_group);

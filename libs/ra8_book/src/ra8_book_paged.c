@@ -254,9 +254,9 @@ static ra8_err_t priv_book_image_row(const ra8_book_src_t*   src,
     for (uint32_t i = 0U; i < cpx; ++i) {
       const uint32_t flat = flat0 + i;
       const uint8_t  byte = packed[(flat >> 1U) - first];
-      const uint8_t nib = ((flat & 1U) != 0U) ? (uint8_t)(byte & (uint8_t)k_ra8_book_gray4_nib_lo)
-                                              : (uint8_t)(byte >> (uint8_t)k_ra8_book_gray4_nib_sh);
-      out[done + i]     = (uint8_t)((nib << (uint8_t)k_ra8_book_gray4_nib_sh) | nib);
+      const uint8_t  nib  = ((flat & 1U) != 0U) ? (uint8_t)(byte & (uint8_t)k_ra8_book_gray4_nib_lo)
+                                                : (uint8_t)(byte >> (uint8_t)k_ra8_book_gray4_nib_sh);
+      out[done + i]       = (uint8_t)((nib << (uint8_t)k_ra8_book_gray4_nib_sh) | nib);
     }
     done += cpx;
   }
@@ -603,7 +603,7 @@ static bool priv_paged_visit_node(const ra8_book_src_t* src,
                                    io_err);
   }
   char            tag[k_ra8_book_paged_tagbuf] = {};
-  const ra8_err_t te = ra8_book_paged_str_short(src,
+  const ra8_err_t te                           = ra8_book_paged_str_short(src,
                                                 src->hdr.string_off + node.name_off,
                                                 tag,
                                                 (uint32_t)k_ra8_book_paged_tagbuf);

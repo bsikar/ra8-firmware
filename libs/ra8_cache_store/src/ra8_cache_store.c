@@ -423,10 +423,10 @@ ra8_err_t ra8_cache_store_get(const ra8_cache_store_t*  store,
     return k_ra8_err_not_found;
   }
   const ra8_cache_store_entry_t* e = &store->index[slot];
-  *out_reader = (ra8_cache_store_reader_t){.store        = store,
-                                           .data_start   = e->start_sector + 1U,
-                                           .data_sectors = (uint32_t)e->sector_count - 1U,
-                                           .byte_len     = e->byte_len};
+  *out_reader                      = (ra8_cache_store_reader_t){.store        = store,
+                                                                .data_start   = e->start_sector + 1U,
+                                                                .data_sectors = (uint32_t)e->sector_count - 1U,
+                                                                .byte_len     = e->byte_len};
   return k_ra8_ok;
 }
 
@@ -521,7 +521,7 @@ ra8_err_t ra8_cache_store_pin(ra8_cache_store_t* store, uint32_t key, bool pin)
   if (pin) {
     e->flags |= (uint8_t)k_ra8_cache_store_flag_pinned;
   } else {
-    e->flags &= (uint8_t)~(uint8_t)k_ra8_cache_store_flag_pinned;
+    e->flags &= (uint8_t) ~(uint8_t)k_ra8_cache_store_flag_pinned;
   }
   return k_ra8_ok;
 }

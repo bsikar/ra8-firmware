@@ -467,7 +467,7 @@ static void internal_i3c_i2c_apply_init_regs(volatile r_i3c_i2c_regs_t* reg,
   const uint8_t  half  = internal_i3c_i2c_half_period(cfg->bus_hz, cfg->pclka_hz);
   const uint32_t stdbr = ((uint32_t)half << (uint32_t)k_ra8_i3c_i2c_stdbr_sbrlo_pos) |
                          ((uint32_t)half << (uint32_t)k_ra8_i3c_i2c_stdbr_sbrho_pos);
-  reg->STDBR           = stdbr;
+  reg->STDBR = stdbr;
 
   /* HUM Ch 40.2.12 "BFCTL : Bus Function Control Register" p 2459 */
   uint32_t bfctl =
@@ -603,7 +603,7 @@ ra8_err_t internal_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t 
   /* HUM Ch 40.2.15 "STDBR : Standard Bit Rate Register" p 2463 */
   const uint8_t half = internal_i3c_i2c_half_period(bus_hz, pclka_hz);
   reg->STDBR         = ((uint32_t)half << (uint32_t)k_ra8_i3c_i2c_stdbr_sbrlo_pos) |
-                       ((uint32_t)half << (uint32_t)k_ra8_i3c_i2c_stdbr_sbrho_pos);
+               ((uint32_t)half << (uint32_t)k_ra8_i3c_i2c_stdbr_sbrho_pos);
   return k_ra8_ok;
 }
 

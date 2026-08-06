@@ -653,15 +653,15 @@ static void board_sd_dispatch_data(board_sd_state_t* c, uint8_t idx, uint32_t ar
  */
 static void board_sd_process_cmd(board_sd_state_t* c)
 {
-  const uint8_t  idx     = (uint8_t)(c->cmd[0] & (uint8_t)k_sd_idx_mask);
-  const uint32_t arg     = ((uint32_t)c->cmd[1] << (uint32_t)k_sd_arg_sh0) |
-                           ((uint32_t)c->cmd[2] << (uint32_t)k_sd_arg_sh1) |
-                           ((uint32_t)c->cmd[3] << (uint32_t)k_sd_byte_bits) | (uint32_t)c->cmd[4];
-  const bool     was_app = c->app_cmd;
-  const uint8_t  r1      = c->ready ? (uint8_t)k_sd_r1_ready : (uint8_t)k_sd_r1_idle;
-  c->app_cmd             = false;
-  c->resp_pos            = 0U;
-  c->resp_len            = 0U;
+  const uint8_t  idx = (uint8_t)(c->cmd[0] & (uint8_t)k_sd_idx_mask);
+  const uint32_t arg = ((uint32_t)c->cmd[1] << (uint32_t)k_sd_arg_sh0) |
+                       ((uint32_t)c->cmd[2] << (uint32_t)k_sd_arg_sh1) |
+                       ((uint32_t)c->cmd[3] << (uint32_t)k_sd_byte_bits) | (uint32_t)c->cmd[4];
+  const bool    was_app = c->app_cmd;
+  const uint8_t r1      = c->ready ? (uint8_t)k_sd_r1_ready : (uint8_t)k_sd_r1_idle;
+  c->app_cmd            = false;
+  c->resp_pos           = 0U;
+  c->resp_len           = 0U;
 
   if ((idx == (uint8_t)k_sd_idx_acmd41) && was_app) { /* ACMD41 -- init done. */
     c->ready    = true;

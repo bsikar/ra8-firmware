@@ -124,7 +124,7 @@ void board_periph_reset_set_cause(bool power_on, bool software, bool watchdog, b
     return;
   }
   /* Any non-power-on reset clears PORF and latches the specific cause flag(s). */
-  s_rstsr0 &= (uint8_t)~(uint8_t)k_rstsr0_porf;
+  s_rstsr0 &= (uint8_t) ~(uint8_t)k_rstsr0_porf;
   if (software) {
     s_rstsr1 |= (uint32_t)k_rstsr1_swrf;
   }

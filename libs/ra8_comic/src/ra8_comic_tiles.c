@@ -125,16 +125,16 @@ static ra8_err_t priv_tile_decode(void*                 ctx,
 {
   ra8_comic_tile_reader_t* r   = (ra8_comic_tile_reader_t*)ctx;
   const ra8_err_t          err = ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                                   &r->store,
-                                                   &r->info,
-                                                   key->tile_x,
-                                                   key->tile_y,
-                                                   r->scratch,
-                                                   r->scratch_cap,
-                                                   cell,
-                                                   cell_bytes,
-                                                   out_w,
-                                                   out_h);
+                                          &r->store,
+                                          &r->info,
+                                          key->tile_x,
+                                          key->tile_y,
+                                          r->scratch,
+                                          r->scratch_cap,
+                                          cell,
+                                          cell_bytes,
+                                          out_w,
+                                          out_h);
   if (err == k_ra8_err_invalid_size) {
     return k_ra8_err_no_mem; /* tile exceeds the cell / scratch budget */
   }

@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8_arena.h"
+#include "../libs/ra8_mem/inc/ra8_arena.h"
 #include "ra8_err.h"
 #include "ra8_slab.h"
 #include "ra8_tile_cache.h"

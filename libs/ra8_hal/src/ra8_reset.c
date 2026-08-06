@@ -514,7 +514,7 @@ ra8_err_t ra8_reset_set_source_mask(ra8_reset_source_t source, bool disable)
    * group; preserve the other PRC bits. */
   /* HUM Ch 6.2.6 "SYRSTMSK0" p 263 */
   const uint16_t prcr_cur = *prcr;
-  *prcr = (uint16_t)((uint16_t)k_ra8_reset_prcr_key |
+  *prcr                   = (uint16_t)((uint16_t)k_ra8_reset_prcr_key |
                      (uint16_t)(prcr_cur & (uint16_t)k_ra8_reset_prcr_pr_bits_msk) |
                      (uint16_t)k_ra8_reset_prcr_prc5_msk);
 
@@ -526,9 +526,9 @@ ra8_err_t ra8_reset_set_source_mask(ra8_reset_source_t source, bool disable)
   /* Relock PRCR.PRC5. */
   /* HUM Ch 6.2.6 "SYRSTMSK0" p 263 */
   const uint16_t prcr_now = *prcr;
-  *prcr = (uint16_t)((uint16_t)k_ra8_reset_prcr_key |
+  *prcr                   = (uint16_t)((uint16_t)k_ra8_reset_prcr_key |
                      (uint16_t)((prcr_now & (uint16_t)k_ra8_reset_prcr_pr_bits_msk) &
-                                (uint16_t)~(uint16_t)k_ra8_reset_prcr_prc5_msk));
+                                (uint16_t) ~(uint16_t)k_ra8_reset_prcr_prc5_msk));
   return k_ra8_ok;
 }
 

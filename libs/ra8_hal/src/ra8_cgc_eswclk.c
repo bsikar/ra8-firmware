@@ -238,7 +238,7 @@ static ra8_err_t internal_eswclk_power_on_domain(void)
     const uint8_t state = *pd;
     if (((state & (1U << k_ra8_pdctr_bit_pdcsf)) == 0U) &&
         ((state & (1U << k_ra8_pdctr_bit_pdpgsf)) != 0U)) {
-      *pd = (uint8_t)(state & (uint8_t)~(1U << k_ra8_pdctr_bit_pdde));
+      *pd = (uint8_t)(state & (uint8_t) ~(1U << k_ra8_pdctr_bit_pdde));
     }
   }
   /* Wait for power-on outside the PRCR window (the status flags are

@@ -59,8 +59,8 @@ bool ra8_dfu_hdr_valid(const ra8_dfu_img_hdr_t* hdr, uint32_t computed_crc)
   }
   const bool magic_ok = (hdr->magic == (uint32_t)k_ra8_dfu_hdr_magic);
   const bool len_ok   = (hdr->img_len != 0U) && (hdr->img_len <= (uint32_t)k_ra8_dfu_img_max) &&
-                        ((hdr->img_len % (uint32_t)k_ra8_dfu_page_size) == 0U);
-  const bool crc_ok   = (computed_crc == hdr->img_crc32);
+                      ((hdr->img_len % (uint32_t)k_ra8_dfu_page_size) == 0U);
+  const bool crc_ok = (computed_crc == hdr->img_crc32);
   return magic_ok && len_ok && crc_ok;
 }
 
@@ -68,7 +68,7 @@ bool ra8_dfu_run_target_valid(uint32_t entry, uint32_t img_len)
 {
   const bool entry_ok = (entry == (uint32_t)k_ra8_dfu_run_base);
   const bool len_ok   = (img_len != 0U) && (img_len <= (uint32_t)k_ra8_dfu_img_max) &&
-                        ((img_len % (uint32_t)k_ra8_dfu_page_size) == 0U);
+                      ((img_len % (uint32_t)k_ra8_dfu_page_size) == 0U);
   return entry_ok && len_ok;
 }
 

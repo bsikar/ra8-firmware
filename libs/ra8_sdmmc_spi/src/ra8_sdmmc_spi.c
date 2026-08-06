@@ -452,9 +452,9 @@ static uint32_t internal_csd_to_blocks(const uint8_t* csd)
      * csd[7] (middle 8 bits), csd[8][7:6] (low 2 bits). */
     const uint8_t  read_bl_len = (uint8_t)(csd[5] & k_sd_read_bl_mask);
     const uint32_t c_size      = (((uint32_t)csd[6] & 0x03U) << k_sd_csize_shift) |
-                                 ((uint32_t)csd[7] << 2U) |
-                                 ((uint32_t)(csd[8] & k_sd_csize_lo_mask) >> 6U);
-    const uint8_t  c_size_mult =
+                            ((uint32_t)csd[7] << 2U) |
+                            ((uint32_t)(csd[8] & k_sd_csize_lo_mask) >> 6U);
+    const uint8_t c_size_mult =
       (uint8_t)((((uint8_t)csd[9] & 0x03U) << 1U) |
                 (((uint8_t)csd[10] & k_sd_mult_lo_mask) >> k_sd_mult_shift));
     const uint32_t mult      = (uint32_t)1U << ((uint32_t)c_size_mult + 2U);

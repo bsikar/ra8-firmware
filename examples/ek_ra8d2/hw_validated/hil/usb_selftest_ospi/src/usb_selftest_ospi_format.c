@@ -229,7 +229,7 @@ void selftest_pattern_fill(uint32_t win_sector, UCHAR* out)
   for (uint32_t i = 0U; i < (uint32_t)k_selftest_block_size; i++) {
     const uint32_t v = (win_sector * (uint32_t)k_ospi_pat_smul) + (i * (uint32_t)k_ospi_pat_imul) +
                        (uint32_t)k_ospi_pat_bias;
-    out[i]           = (UCHAR)(v & (uint32_t)k_ospi_pat_mask);
+    out[i] = (UCHAR)(v & (uint32_t)k_ospi_pat_mask);
   }
 }
 

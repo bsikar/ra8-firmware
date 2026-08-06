@@ -607,9 +607,9 @@ typedef enum : uint32_t {
   s_dbg_phase               = (uint32_t)k_dfu_phase_download;
   ra8_dfu_host_result_t res = {};
   err                       = ra8_dfu_host_program(k_ra8_usb_speed_hs,
-                                                   s_boot_payload,
-                                                   (uint32_t)sizeof(s_boot_payload),
-                                                   &res);
+                             s_boot_payload,
+                             (uint32_t)sizeof(s_boot_payload),
+                             &res);
   s_dbg_pid                 = res.pid;
   if (err != k_ra8_ok) {
     (void)dfu_print_fail("dfu program", err);

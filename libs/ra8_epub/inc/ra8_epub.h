@@ -300,7 +300,7 @@ typedef struct {
   /* --- Chapter table --------------------------------------------------- */
   uint16_t chapter_count; /**< Spine length actually stored. */
   char     chapter_paths[k_ra8_epub_max_chapters]
-                        [k_ra8_epub_max_path_len]; /**< Manifest hrefs (relative to OPF dir). */
+                    [k_ra8_epub_max_path_len]; /**< Manifest hrefs (relative to OPF dir). */
 
   /* --- Metadata -------------------------------------------------------- */
   char title[k_ra8_epub_meta_len];      /**< Dublin Core `<dc:title>`.                       */
@@ -314,7 +314,7 @@ typedef struct {
   /* --- Embedded fonts (#109) ------------------------------------------- */
   uint16_t embedded_font_count; /**< Manifest font items found (<= cap). */
   char     embedded_font_paths[k_ra8_epub_max_fonts]
-                              [k_ra8_epub_max_path_len]; /**< Font hrefs (rel. to OPF dir). */
+                          [k_ra8_epub_max_path_len]; /**< Font hrefs (rel. to OPF dir). */
 
   /* --- Manifest (document order, #151) -------------------------------- */
   uint16_t manifest_count; /**< `<manifest>` `<item>` entries stored (<= cap). */

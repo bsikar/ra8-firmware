@@ -137,7 +137,7 @@ static ra8_err_t priv_exfat_geometry(uint32_t total_sectors, exfat_geom_t* g)
   for (uint32_t i = 0U; i < (uint32_t)k_exfat_fmt_geom_iters; i++) {
     const uint64_t fat_bytes = ((uint64_t)clusters + 2U) * 4U;
     const uint32_t fat_len   = (uint32_t)((fat_bytes + (uint32_t)k_ra8_fs_bytes_per_sector - 1U) /
-                                          (uint32_t)k_ra8_fs_bytes_per_sector);
+                                        (uint32_t)k_ra8_fs_bytes_per_sector);
     const uint32_t heap      = g->fat_offset + fat_len;
     if (total_sectors <= heap) {
       return k_ra8_err_invalid_size;
@@ -388,11 +388,11 @@ static ra8_err_t priv_exfat_write_boot(const ra8_fs_backend_t* backend, const ex
   priv_exfat_build_vbr(s_scratch, g);
   /* Boot checksum over sector 0 skips bytes 106,107 (VolumeFlags) and 112
    * (PercentInUse): fold [0,106), [108,112), [113,512). */
-  uint32_t cs = priv_exfat_csum32(0U, &s_scratch[0], (uint32_t)k_exfat_fmt_csum_skip0);
-  cs = priv_exfat_csum32(cs,
+  uint32_t cs         = priv_exfat_csum32(0U, &s_scratch[0], (uint32_t)k_exfat_fmt_csum_skip0);
+  cs                  = priv_exfat_csum32(cs,
                          &s_scratch[k_exfat_off_bps_shift],
                          (uint32_t)k_exfat_fmt_csum_skip2 - (uint32_t)k_exfat_off_bps_shift);
-  cs = priv_exfat_csum32(cs,
+  cs                  = priv_exfat_csum32(cs,
                          &s_scratch[(uint32_t)k_exfat_fmt_csum_skip2 + 1U],
                          (uint32_t)k_ra8_fs_bytes_per_sector -
                            ((uint32_t)k_exfat_fmt_csum_skip2 + 1U));
@@ -643,8 +643,8 @@ static void priv_exfat_lba_to_chs(uint32_t lba, uint8_t* out3)
   const uint32_t sec  = (lba % spt) + 1U;
   out3[0]             = (uint8_t)head;
   out3[1]             = (uint8_t)((sec & (uint32_t)k_mbr_fmt_chs_sec_mask) |
-                                  ((cyl & (uint32_t)k_mbr_fmt_chs_cyl_hi_mask) >>
-                                   (uint32_t)k_mbr_fmt_chs_cyl_hi_shift));
+                      ((cyl & (uint32_t)k_mbr_fmt_chs_cyl_hi_mask) >>
+                       (uint32_t)k_mbr_fmt_chs_cyl_hi_shift));
   out3[2]             = (uint8_t)(cyl & (uint32_t)k_byte_mask);
 }
 

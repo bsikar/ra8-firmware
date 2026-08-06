@@ -609,8 +609,8 @@ typedef struct {
   uint32_t           tile_max;  /**< Decoded-tile buffer size in bytes.     */
   uint32_t           scratch_c; /**< Stored-tile scratch size in bytes.     */
   uint8_t*           px;        /**< Zeroed full-page raster; caller keeps. */
-  uint8_t*           cell;      /**< One decoded tile. */
-  uint8_t*           scratch;   /**< One stored tile.  */
+  uint8_t*           cell;      /**< One decoded tile.                      */
+  uint8_t*           scratch;   /**< One stored tile.                       */
 } fmt_reassemble_ws_t;
 
 /**

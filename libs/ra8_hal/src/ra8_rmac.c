@@ -243,10 +243,10 @@ static inline uint32_t internal_make_mpic(ra8_rmac_pis_t    iface,
                                           uint32_t          psmcs)
 {
   /* HUM Ch 33.4 "MPIC : PHY Interfaces Configuration Register" p 1709 */
-  const uint32_t pis         = ((uint32_t)iface & k_ra8_rmac_mask_mpic_pis)
-                               << (uint32_t)k_ra8_rmac_shift_mpic_pis;
-  const uint32_t lsc         = ((uint32_t)speed & k_ra8_rmac_mask_mpic_lsc)
-                               << (uint32_t)k_ra8_rmac_shift_mpic_lsc;
+  const uint32_t pis = ((uint32_t)iface & k_ra8_rmac_mask_mpic_pis)
+                       << (uint32_t)k_ra8_rmac_shift_mpic_pis;
+  const uint32_t lsc = ((uint32_t)speed & k_ra8_rmac_mask_mpic_lsc)
+                       << (uint32_t)k_ra8_rmac_shift_mpic_lsc;
   const uint32_t pipp        = (duplex == k_ra8_rmac_duplex_full) ? (1U << k_rmac_pipp_pos) : 0U;
   const uint32_t psmcs_field = (psmcs & k_ra8_rmac_mask_mpic_psmcs)
                                << (uint32_t)k_ra8_rmac_shift_mpic_psmcs;
@@ -382,15 +382,15 @@ static void internal_mpsm_issue(volatile r_rmac_regs_t* reg,
                                 bool                    mff)
 {
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
-  const uint32_t pda     = ((uint32_t)pda_5bit & k_ra8_rmac_mask_mpsm_phy_reg)
-                           << (uint32_t)k_ra8_rmac_shift_mpsm_pda;
-  const uint32_t pra     = ((uint32_t)pra_5bit & k_ra8_rmac_mask_mpsm_phy_reg)
-                           << (uint32_t)k_ra8_rmac_shift_mpsm_pra;
-  const uint32_t pop     = ((uint32_t)op & k_ra8_rmac_mask_mpsm_op)
-                           << (uint32_t)k_ra8_rmac_shift_mpsm_pop;
-  const uint32_t prd     = ((uint32_t)prd_16bit & k_ra8_rmac_mask_mpsm_data)
-                           << (uint32_t)k_ra8_rmac_shift_mpsm_prd;
-  uint32_t       mff_bit = 0UL;
+  const uint32_t pda = ((uint32_t)pda_5bit & k_ra8_rmac_mask_mpsm_phy_reg)
+                       << (uint32_t)k_ra8_rmac_shift_mpsm_pda;
+  const uint32_t pra = ((uint32_t)pra_5bit & k_ra8_rmac_mask_mpsm_phy_reg)
+                       << (uint32_t)k_ra8_rmac_shift_mpsm_pra;
+  const uint32_t pop = ((uint32_t)op & k_ra8_rmac_mask_mpsm_op)
+                       << (uint32_t)k_ra8_rmac_shift_mpsm_pop;
+  const uint32_t prd = ((uint32_t)prd_16bit & k_ra8_rmac_mask_mpsm_data)
+                       << (uint32_t)k_ra8_rmac_shift_mpsm_prd;
+  uint32_t mff_bit = 0UL;
   if (mff) {
     mff_bit = (1UL << 2U);
   }
@@ -635,7 +635,7 @@ ra8_err_t ra8_rmac_set_ptp_filter(ra8_rmac_port_t port,
   const uint32_t pfbn = (uint32_t)byte_offset & k_ra8_rmac_mask_byte;
   const uint32_t pfbv = ((uint32_t)value & k_ra8_rmac_mask_byte)
                         << (uint32_t)k_ra8_rmac_shift_mpfc_val;
-  uint32_t       te   = 0UL;
+  uint32_t te = 0UL;
   if (tef0) {
     te |= (1UL << (uint32_t)k_ra8_rmac_shift_mpfc_te0);
   }
@@ -698,10 +698,10 @@ ra8_err_t ra8_rmac_set_pause_frame(ra8_rmac_port_t       port,
     return k_ra8_err_invalid_arg;
   }
   /* HUM Ch 33.4 "MTPFC : MAC Transmission Pause or PFC Frame Configuration" p 1712 */
-  const uint32_t pt    = ((uint32_t)pause_time & k_ra8_rmac_mask_mtpfc_pt)
-                         << (uint32_t)k_ra8_rmac_shift_mtpfc_pt;
-  const uint32_t pfrt  = ((uint32_t)retry_time & k_ra8_rmac_mask_mtpfc_pfrt)
-                         << (uint32_t)k_ra8_rmac_shift_mtpfc_pfrt;
+  const uint32_t pt = ((uint32_t)pause_time & k_ra8_rmac_mask_mtpfc_pt)
+                      << (uint32_t)k_ra8_rmac_shift_mtpfc_pt;
+  const uint32_t pfrt = ((uint32_t)retry_time & k_ra8_rmac_mask_mtpfc_pfrt)
+                        << (uint32_t)k_ra8_rmac_shift_mtpfc_pfrt;
   const uint32_t pfrlv = ((uint32_t)retry_level & k_rmac_pfrlv_mask)
                          << (uint32_t)k_ra8_rmac_shift_mtpfc_pfrlv;
   /* HUM Ch 33.4 "MTPFC2 : MAC Transmission Pause or PFC Frame Cfg 2" p 1713 */

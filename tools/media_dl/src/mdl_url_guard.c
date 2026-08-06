@@ -107,7 +107,7 @@ RA8_INTERNAL static mdl_addr_class_t classify_v4(const unsigned char* o)
                       (o1 <= (unsigned)k_v4_private_b_hi);
   const bool priv_c = (o0 == (unsigned)k_v4_private_c) && (o1 == (unsigned)k_v4_private_c_2);
   const bool cgnat  = (o0 == (unsigned)k_v4_cgnat) && (o1 >= (unsigned)k_v4_cgnat_lo) &&
-                      (o1 <= (unsigned)k_v4_cgnat_hi);
+                     (o1 <= (unsigned)k_v4_cgnat_hi);
   return (priv_a || priv_b || priv_c || cgnat) ? k_mdl_addr_private : k_mdl_addr_public;
 }
 

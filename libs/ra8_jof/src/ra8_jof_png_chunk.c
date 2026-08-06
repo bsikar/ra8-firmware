@@ -123,9 +123,9 @@ RA8_PRIV ra8_err_t ra8_jof_png_priv_chunk_hdr(ra8_png_state_t* st,
   if (err != k_ra8_ok) {
     return err;
   }
-  const uint32_t len  = ((uint32_t)hdr[0] << k_ra8_png_be_sh24) |
-                        ((uint32_t)hdr[1] << k_ra8_png_be_sh16) |
-                        ((uint32_t)hdr[2] << k_ra8_png_be_sh8) | (uint32_t)hdr[3];
+  const uint32_t len = ((uint32_t)hdr[0] << k_ra8_png_be_sh24) |
+                       ((uint32_t)hdr[1] << k_ra8_png_be_sh16) |
+                       ((uint32_t)hdr[2] << k_ra8_png_be_sh8) | (uint32_t)hdr[3];
   const uint32_t type = ((uint32_t)hdr[4] << k_ra8_png_be_sh24) |
                         ((uint32_t)hdr[5] << k_ra8_png_be_sh16) |
                         ((uint32_t)hdr[6] << k_ra8_png_be_sh8) | (uint32_t)hdr[7];

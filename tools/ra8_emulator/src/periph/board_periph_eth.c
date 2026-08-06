@@ -349,7 +349,7 @@ static void eth_phy_write(uint32_t reg, uint16_t value)
     return;
   }
   if (reg == (uint32_t)k_eth_phy_reg_bmcr) {
-    value = (uint16_t)(value & (uint16_t)~(k_eth_phy_bmcr_reset | k_eth_phy_bmcr_anrst));
+    value = (uint16_t)(value & (uint16_t) ~(k_eth_phy_bmcr_reset | k_eth_phy_bmcr_anrst));
   }
   s_eth.phy[reg] = value;
 }

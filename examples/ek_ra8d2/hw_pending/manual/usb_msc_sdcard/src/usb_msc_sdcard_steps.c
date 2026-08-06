@@ -286,8 +286,8 @@ static UINT sdmsc_msc_read(VOID*  storage,
   if (err != k_ra8_ok) {
     s_dbg_media_err = (uint32_t)err;
     *media_status   = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_medium_error,
-                                                           k_scsi_asc_unrecovered_read,
-                                                           k_scsi_ascq_none);
+                                                         k_scsi_asc_unrecovered_read,
+                                                         k_scsi_ascq_none);
     return UX_ERROR;
   }
   s_dbg_read_blocks += (uint32_t)number_blocks;
@@ -354,8 +354,8 @@ static UINT sdmsc_msc_write(VOID*  storage,
   if (err != k_ra8_ok) {
     s_dbg_media_err = (uint32_t)err;
     *media_status   = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_medium_error,
-                                                           k_scsi_asc_write_fault,
-                                                           k_scsi_ascq_none);
+                                                         k_scsi_asc_write_fault,
+                                                         k_scsi_ascq_none);
     return UX_ERROR;
   }
   s_dbg_write_blocks += (uint32_t)number_blocks;

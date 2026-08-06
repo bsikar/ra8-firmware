@@ -35,7 +35,7 @@ enum : uint32_t {
   k_block_size  = 512U,    /**< FAT sector size.                       */
   k_img_sectors = 131072U, /**< 64 MiB image (FAT32 needs >= ~34 MiB). */
   k_max_books   = 32U,     /**< BOOK01..BOOK32.                        */
-  k_name_len    = 16U,     /**< "BOOKNN.RABOOK" + NUL.                  */
+  k_name_len    = 16U,     /**< "BOOKNN.RABOOK" + NUL.                 */
 };
 
 /** @brief In-memory disk for the ra8_fs backend. */

@@ -191,10 +191,10 @@ static void internal_pad_space(uint8_t* dst, uint32_t len)
 RA8_INTERNAL
 static void internal_decode_rw10(const uint8_t* cdb, uint32_t* out_lba, uint32_t* out_block_count)
 {
-  *out_lba         = ((uint32_t)cdb[k_ra8_pmsc_cdb_off_lba_msb] << k_ra8_pmsc_shift_byte3) |
-                     ((uint32_t)cdb[k_ra8_pmsc_cdb_off_lba_b1] << k_ra8_pmsc_shift_byte2) |
-                     ((uint32_t)cdb[k_ra8_pmsc_cdb_off_lba_b2] << k_ra8_pmsc_shift_byte1) |
-                     ((uint32_t)cdb[k_ra8_pmsc_cdb_off_lba_lsb] << k_ra8_pmsc_shift_byte0);
+  *out_lba = ((uint32_t)cdb[k_ra8_pmsc_cdb_off_lba_msb] << k_ra8_pmsc_shift_byte3) |
+             ((uint32_t)cdb[k_ra8_pmsc_cdb_off_lba_b1] << k_ra8_pmsc_shift_byte2) |
+             ((uint32_t)cdb[k_ra8_pmsc_cdb_off_lba_b2] << k_ra8_pmsc_shift_byte1) |
+             ((uint32_t)cdb[k_ra8_pmsc_cdb_off_lba_lsb] << k_ra8_pmsc_shift_byte0);
   *out_block_count = ((uint32_t)cdb[k_ra8_pmsc_cdb_off_cnt_msb] << k_ra8_pmsc_shift_byte1) |
                      ((uint32_t)cdb[k_ra8_pmsc_cdb_off_cnt_lsb] << k_ra8_pmsc_shift_byte0);
 }

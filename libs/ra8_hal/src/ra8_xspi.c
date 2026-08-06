@@ -626,8 +626,8 @@ ra8_err_t ra8_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd,
   const uint8_t base                                    = 0U; /* slot 0 base index */
   reg->CMCFGCS[base + k_ra8_xspi_cmcfgcs_word_read_cmd] = (uint32_t)read_cmd
                                                           << k_ra8_xspi_cmcfgcs_pos_cmd;
-  reg->CMCFGCS[base + k_ra8_xspi_cmcfgcs_word_addr]     = (uint32_t)addr_bytes
-                                                          << k_ra8_xspi_cmcfgcs_pos_addr_size;
+  reg->CMCFGCS[base + k_ra8_xspi_cmcfgcs_word_addr] = (uint32_t)addr_bytes
+                                                      << k_ra8_xspi_cmcfgcs_pos_addr_size;
 
   if (enable) {
     /* Mirror FSP r_ospi_b_xip(true): map read-only and arm XIPEN. */

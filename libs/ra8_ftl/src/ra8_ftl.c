@@ -848,7 +848,7 @@ ra8_err_t ra8_ftl_checkpoint_size(const ra8_ftl_t* ftl, uint32_t* size_out)
   }
   const size_t total = sizeof(ra8_ftl_ck_hdr_t) + ((size_t)ftl->logical_blocks * sizeof(uint16_t)) +
                        ((size_t)ftl->physical_blocks * sizeof(ra8_ftl_pblock_t));
-  *size_out          = (uint32_t)total;
+  *size_out = (uint32_t)total;
   return k_ra8_ok;
 }
 

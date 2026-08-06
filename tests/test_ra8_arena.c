@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 
-#include "ra8_arena.h"
+#include "../libs/ra8_mem/inc/ra8_arena.h"
 #include "ra8_err.h"
 #include "unity_minimal.h"
 

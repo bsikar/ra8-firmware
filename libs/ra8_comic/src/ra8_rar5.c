@@ -394,8 +394,8 @@ static void s_filter_arm(uint8_t* d, uint32_t len, uint64_t filepos)
   uint32_t       i     = 0U;
   while (i <= limit) { /* bound: i steps by 4 to limit */
     if (d[i + 3U] == (uint8_t)k_r5_arm_bl) {
-      uint32_t       v = (uint32_t)d[i] | ((uint32_t)d[i + 1U] << k_r5_byte_bits) |
-                         ((uint32_t)d[i + 2U] << (k_r5_byte_bits * 2U));
+      uint32_t v = (uint32_t)d[i] | ((uint32_t)d[i + 1U] << k_r5_byte_bits) |
+                   ((uint32_t)d[i + 2U] << (k_r5_byte_bits * 2U));
       const uint32_t p = (uint32_t)((filepos + (uint64_t)i) >> 2U);
       v                = (v - p) & (uint32_t)k_r5_arm_off_mask;
       d[i]             = (uint8_t)(v & (uint32_t)k_r5_byte_mask);

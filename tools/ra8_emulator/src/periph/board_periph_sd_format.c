@@ -244,8 +244,8 @@ uint32_t sd_format_fat16(uint8_t* img, uint32_t total_sectors, const char* label
   const uint32_t root_sectors = (((uint32_t)k_fmt_root_ents * (uint32_t)k_bpb_dir_ent_size) +
                                  ((uint32_t)k_fmt_sec_bytes - 1U)) /
                                 (uint32_t)k_fmt_sec_bytes;
-  uint32_t       fatsz        = 1U;
-  const uint32_t spc          = fat16_solve_geometry(total_sectors, root_sectors, &fatsz);
+  uint32_t       fatsz = 1U;
+  const uint32_t spc   = fat16_solve_geometry(total_sectors, root_sectors, &fatsz);
 
   fat16_write_bpb(img, total_sectors, spc, fatsz, label);
 

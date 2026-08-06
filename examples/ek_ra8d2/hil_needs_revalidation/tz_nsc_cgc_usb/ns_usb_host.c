@@ -161,7 +161,7 @@ static void ns_host_pattern_fill(uint32_t round, uint8_t* out, uint32_t len)
   for (uint32_t i = 0U; i < len; i++) {
     const uint32_t v = (round * (uint32_t)k_ns_pat_round_mul) + (i * (uint32_t)k_ns_pat_idx_mul) +
                        (uint32_t)k_ns_pat_bias;
-    out[i]           = (uint8_t)(v & (uint32_t)k_ns_byte_mask);
+    out[i] = (uint8_t)(v & (uint32_t)k_ns_byte_mask);
   }
 }
 
@@ -340,7 +340,7 @@ static void ns_host_pattern_fill(uint32_t round, uint8_t* out, uint32_t len)
   }
   *out_pid = (uint32_t)desc[k_ns_off_dev_pid] |
              ((uint32_t)desc[(uint32_t)k_ns_off_dev_pid + 1U] << (uint32_t)k_ns_byte_bits);
-  err      = ns_host_set_address();
+  err = ns_host_set_address();
   if (err != k_ra8_ok) {
     return err;
   }
@@ -379,10 +379,10 @@ static void ns_host_pattern_fill(uint32_t round, uint8_t* out, uint32_t len)
   }
   uint16_t rx = 0U;
   err         = ra8_usb_host_bulk_in(k_ra8_usb_speed_hs,
-                                     (uint8_t)k_ns_host_pipe_in,
-                                     s_rx,
-                                     (uint16_t)k_ns_echo_buf,
-                                     &rx);
+                             (uint8_t)k_ns_host_pipe_in,
+                             s_rx,
+                             (uint16_t)k_ns_echo_buf,
+                             &rx);
   if (err != k_ra8_ok) {
     return err;
   }

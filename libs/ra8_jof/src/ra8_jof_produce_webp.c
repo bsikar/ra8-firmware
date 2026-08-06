@@ -143,11 +143,11 @@ priv_webp_feed(ra8_jof_prod_state_t* st, const uint8_t* frame, uint16_t w, uint1
   while (y < (uint32_t)h) {
     const uint32_t  nrows = (((uint32_t)h - y) < th) ? ((uint32_t)h - y) : th;
     const ra8_err_t err   = ra8_jof_priv_on_rows(st,
-                                                 &frame[(size_t)y * (size_t)stride],
-                                                 w,
-                                                 (uint16_t)y,
-                                                 (uint16_t)nrows,
-                                                 (uint8_t)k_ra8_jof_webp_bpp);
+                                               &frame[(size_t)y * (size_t)stride],
+                                               w,
+                                               (uint16_t)y,
+                                               (uint16_t)nrows,
+                                               (uint8_t)k_ra8_jof_webp_bpp);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -189,13 +189,13 @@ RA8_PRIV ra8_err_t ra8_jof_priv_webp_transcode(ra8_jof_prod_state_t* st, ra8_jof
   const size_t     scr_off = used + frame_n;
   ra8_webp_arena_t wa = {.base = &arena[scr_off], .cap = acap - scr_off, .offset = 0U, .live = 0U};
   err                 = ra8_webp_decode_rgba(arena,
-                                             src_len,
-                                             &wa,
-                                             frame,
-                                             (size_t)w * (size_t)k_ra8_jof_webp_bpp,
-                                             frame_n,
-                                             nullptr,
-                                             nullptr);
+                             src_len,
+                             &wa,
+                             frame,
+                             (size_t)w * (size_t)k_ra8_jof_webp_bpp,
+                             frame_n,
+                             nullptr,
+                             nullptr);
   if (err != k_ra8_ok) {
     return err;
   }

@@ -219,16 +219,16 @@ static void wdt_sup_demo_bring_up(void)
   if (err != k_ra8_ok) {
     wdt_sup_demo_halt();
   }
-  g_wdt_supervisor_demo_step = k_wdt_sup_step_supervisor_init;
-  err = ra8_wdt_supervisor_register_thread("worker_a",
+  g_wdt_supervisor_demo_step     = k_wdt_sup_step_supervisor_init;
+  err                            = ra8_wdt_supervisor_register_thread("worker_a",
                                            (uint32_t)k_wdt_sup_demo_worker_a_deadline_ms,
                                            &s_handle_a);
   g_wdt_supervisor_demo_last_err = (uint32_t)err;
   if (err != k_ra8_ok) {
     wdt_sup_demo_halt();
   }
-  g_wdt_supervisor_demo_step = k_wdt_sup_step_worker_a_registered;
-  err = ra8_wdt_supervisor_register_thread("worker_b",
+  g_wdt_supervisor_demo_step     = k_wdt_sup_step_worker_a_registered;
+  err                            = ra8_wdt_supervisor_register_thread("worker_b",
                                            (uint32_t)k_wdt_sup_demo_worker_b_deadline_ms,
                                            &s_handle_b);
   g_wdt_supervisor_demo_last_err = (uint32_t)err;

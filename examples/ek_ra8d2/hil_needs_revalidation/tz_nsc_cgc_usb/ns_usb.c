@@ -508,7 +508,7 @@ static UINT ns_cdc_class_register(void)
   };
   /* (UCHAR*)(uintptr_t): USBX takes a non-const class name; the uintptr_t hop
    * launders the string-literal const without tripping -Wcast-qual. */
-  return _ux_device_stack_class_register((UCHAR*)(uintptr_t)"ux_slave_class_cdc_acm",
+  return _ux_device_stack_class_register((UCHAR*)(uintptr_t) "ux_slave_class_cdc_acm",
                                          _ux_device_class_cdc_acm_entry,
                                          1,
                                          0,

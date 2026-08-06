@@ -319,7 +319,7 @@ static ra8_err_t internal_host_bulk_rx_packet(volatile r_usb_regs_t* reg,
    * packet) lands while the FIFO is being read, and clearing the status
    * afterwards wipes that new edge (observed as the follow-up packet
    * stuck with BSTS=1 while the wait times out). */
-  reg->BRDYSTS = (uint16_t)~(uint16_t)(1U << pipe_num);
+  reg->BRDYSTS = (uint16_t) ~(uint16_t)(1U << pipe_num);
   internal_select_cfifo(reg, (uint16_t)pipe_num, false);
   const ra8_err_t ferr = internal_wait_frdy(reg);
   if (ferr != k_ra8_ok) {
@@ -380,11 +380,11 @@ static ra8_err_t internal_host_bulk_rx_loop(volatile r_usb_regs_t* reg,
     uint16_t dtln   = 0U;
     uint16_t copied = 0U;
     err             = internal_host_bulk_rx_packet(reg,
-                                                   pipe_num,
-                                                   &buf[rx],
-                                                   (uint16_t)(max_len - rx),
-                                                   &dtln,
-                                                   &copied);
+                                       pipe_num,
+                                       &buf[rx],
+                                       (uint16_t)(max_len - rx),
+                                       &dtln,
+                                       &copied);
     if (err != k_ra8_ok) {
       done = true;
     } else {

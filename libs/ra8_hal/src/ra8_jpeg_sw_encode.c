@@ -419,16 +419,16 @@ static void enc_rgb_to_ycc_row(const uint8_t* rgb, uint16_t n, int32_t* y, int32
     int32_t  g  = (int32_t)rgb[px + 1U];
     int32_t  b  = (int32_t)rgb[px + 2U];
     y[i]        = (((int32_t)k_ra8_jpeg_yr * r) + ((int32_t)k_ra8_jpeg_yg * g) +
-                   ((int32_t)k_ra8_jpeg_yb * b)) >>
-                  k_ra8_jpeg_yuv_shift;
-    cb[i]       = ((((int32_t)k_ra8_jpeg_cbr * r) + ((int32_t)k_ra8_jpeg_cbg * g) +
-                    ((int32_t)k_ra8_jpeg_cbb * b)) >>
-                   k_ra8_jpeg_yuv_shift) +
-                  (int32_t)k_ra8_jpeg_level_offset;
-    cr[i]       = ((((int32_t)k_ra8_jpeg_crr * r) + ((int32_t)k_ra8_jpeg_crg * g) +
-                    ((int32_t)k_ra8_jpeg_crb * b)) >>
-                   k_ra8_jpeg_yuv_shift) +
-                  (int32_t)k_ra8_jpeg_level_offset;
+            ((int32_t)k_ra8_jpeg_yb * b)) >>
+           k_ra8_jpeg_yuv_shift;
+    cb[i] = ((((int32_t)k_ra8_jpeg_cbr * r) + ((int32_t)k_ra8_jpeg_cbg * g) +
+              ((int32_t)k_ra8_jpeg_cbb * b)) >>
+             k_ra8_jpeg_yuv_shift) +
+            (int32_t)k_ra8_jpeg_level_offset;
+    cr[i] = ((((int32_t)k_ra8_jpeg_crr * r) + ((int32_t)k_ra8_jpeg_crg * g) +
+              ((int32_t)k_ra8_jpeg_crb * b)) >>
+             k_ra8_jpeg_yuv_shift) +
+            (int32_t)k_ra8_jpeg_level_offset;
   }
 }
 

@@ -400,7 +400,7 @@ ra8_err_t ra8_cgc_usbfs_clock_enable(
   {
     volatile uint8_t* const hococr = ra8_sys_hococr();
     if ((*hococr & (uint8_t)(1U << k_ra8_hococr_hcstp)) != 0U) {
-      *hococr = (uint8_t)((uint8_t)*hococr & (uint8_t)~(1U << k_ra8_hococr_hcstp));
+      *hococr = (uint8_t)((uint8_t)*hococr & (uint8_t) ~(1U << k_ra8_hococr_hcstp));
     }
   }
   /* OSCSF.HOCOSF poll outside PRCR window (read-only register). */
@@ -567,7 +567,7 @@ ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck(void)
   {
     volatile uint8_t* const hococr = ra8_sys_hococr();
     if ((*hococr & (uint8_t)(1U << k_ra8_hococr_hcstp)) != 0U) {
-      *hococr = (uint8_t)((uint8_t)*hococr & (uint8_t)~(1U << k_ra8_hococr_hcstp));
+      *hococr = (uint8_t)((uint8_t)*hococr & (uint8_t) ~(1U << k_ra8_hococr_hcstp));
     }
   }
   /* On host tests the OSCSF wait consults the ra8_fake_mmio seam and

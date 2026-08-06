@@ -332,7 +332,7 @@ static bool mve_exec_one(uc_engine* uc, const cs_insn* insn)
 {
   const cs_arm* d     = &insn->detail->arm;
   const bool    op0_q = (d->op_count == 2) && (d->operands[0].type == ARM_OP_REG) &&
-                        (d->operands[0].reg >= ARM_REG_Q0) && (d->operands[0].reg <= ARM_REG_Q7);
+                     (d->operands[0].reg >= ARM_REG_Q0) && (d->operands[0].reg <= ARM_REG_Q7);
   if (!op0_q) {
     return false;
   }

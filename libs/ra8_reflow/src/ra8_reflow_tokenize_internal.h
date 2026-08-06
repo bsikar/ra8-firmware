@@ -60,7 +60,7 @@ typedef enum : uint32_t {
   k_priv_base_hex      = 16U,       /**< Hexadecimal numeric-entity base.        */
   k_priv_hex_offset    = 10U,       /**< Value of hex 'a'/'A' minus the letter.  */
   k_priv_style_mask    = ((uint32_t)k_ra8_reflow_style_bold | (uint32_t)k_ra8_reflow_style_italic |
-                          (uint32_t)k_ra8_reflow_style_underline), /**< Run-style bits. */
+                       (uint32_t)k_ra8_reflow_style_underline), /**< Run-style bits. */
 } priv_tok_consts_t;
 
 /**

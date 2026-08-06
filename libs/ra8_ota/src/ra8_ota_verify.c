@@ -81,7 +81,7 @@ static ra8_err_t priv_rehash_bank(const ra8_ota_manifest_t* m, uint8_t out_diges
     }
     const uint32_t remaining = m->image_size_bytes - offset;
     const uint32_t want = (remaining < k_ra8_ota_chunk_bytes) ? remaining : k_ra8_ota_chunk_bytes;
-    e = s_ra8_ota_cfg.flash.readback(s_ra8_ota_cfg.flash.ctx,
+    e                   = s_ra8_ota_cfg.flash.readback(s_ra8_ota_cfg.flash.ctx,
                                      s_ra8_ota_cfg.flash.inactive_bank_addr + offset,
                                      s_ra8_ota_buf,
                                      want);

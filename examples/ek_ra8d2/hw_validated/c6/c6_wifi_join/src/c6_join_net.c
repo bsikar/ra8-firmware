@@ -125,9 +125,9 @@ static UINT priv_net_dhcp(c6_join_lease_t* out)
   }
   ULONG actual = 0U;
   s            = nx_ip_status_check(&s_ip,
-                                    (ULONG)NX_IP_ADDRESS_RESOLVED,
-                                    &actual,
-                                    (ULONG)k_c6_join_dhcp_wait_ms);
+                         (ULONG)NX_IP_ADDRESS_RESOLVED,
+                         &actual,
+                         (ULONG)k_c6_join_dhcp_wait_ms);
   if (s != NX_SUCCESS) {
     return s;
   }
@@ -154,11 +154,11 @@ static bool priv_net_ping(uint32_t gateway)
   for (uint32_t i = 0U; i < (uint32_t)k_c6_join_ping_tries; i++) {
     NX_PACKET* resp = NX_NULL;
     UINT       s    = nx_icmp_ping(&s_ip,
-                                   (ULONG)gateway,
-                                   s_ping_payload,
-                                   (ULONG)k_c6_join_ping_len,
-                                   &resp,
-                                   (ULONG)k_c6_join_ping_wait_ms);
+                          (ULONG)gateway,
+                          s_ping_payload,
+                          (ULONG)k_c6_join_ping_len,
+                          &resp,
+                          (ULONG)k_c6_join_ping_wait_ms);
     if (s == NX_SUCCESS) {
       if (resp != NX_NULL) {
         (void)nx_packet_release(resp);

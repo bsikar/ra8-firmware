@@ -82,11 +82,11 @@ static void internal_sha256_schedule(uint32_t      schedule[k_ra8_psa_sha256_sch
     const uint32_t w15 = schedule[i - (uint32_t)k_ra8_psa_w_back_15];
     const uint32_t w2  = schedule[i - (uint32_t)k_ra8_psa_w_back_2];
     const uint32_t s0  = internal_sha256_rotr(w15, k_ra8_psa_rot_s0_a) ^
-                         internal_sha256_rotr(w15, k_ra8_psa_rot_s0_b) ^ (w15 >> k_ra8_psa_shr_s0);
-    const uint32_t s1  = internal_sha256_rotr(w2, k_ra8_psa_rot_s1_a) ^
-                         internal_sha256_rotr(w2, k_ra8_psa_rot_s1_b) ^ (w2 >> k_ra8_psa_shr_s1);
-    schedule[i]        = schedule[i - (uint32_t)k_ra8_psa_w_back_16] + s0 +
-                         schedule[i - (uint32_t)k_ra8_psa_w_back_7] + s1;
+                        internal_sha256_rotr(w15, k_ra8_psa_rot_s0_b) ^ (w15 >> k_ra8_psa_shr_s0);
+    const uint32_t s1 = internal_sha256_rotr(w2, k_ra8_psa_rot_s1_a) ^
+                        internal_sha256_rotr(w2, k_ra8_psa_rot_s1_b) ^ (w2 >> k_ra8_psa_shr_s1);
+    schedule[i] = schedule[i - (uint32_t)k_ra8_psa_w_back_16] + s0 +
+                  schedule[i - (uint32_t)k_ra8_psa_w_back_7] + s1;
   }
 }
 
@@ -111,16 +111,16 @@ static void internal_sha256_rounds(uint32_t       state[k_ra8_psa_sha256_state_w
     const uint32_t big_sigma0 = internal_sha256_rotr(a, k_ra8_psa_rot_a_a) ^
                                 internal_sha256_rotr(a, k_ra8_psa_rot_a_b) ^
                                 internal_sha256_rotr(a, k_ra8_psa_rot_a_c);
-    const uint32_t maj        = (a & b) ^ (a & c) ^ (b & c);
-    const uint32_t temp2      = big_sigma0 + maj;
-    h                         = g;
-    g                         = f;
-    f                         = e;
-    e                         = d + temp1;
-    d                         = c;
-    c                         = b;
-    b                         = a;
-    a                         = temp1 + temp2;
+    const uint32_t maj   = (a & b) ^ (a & c) ^ (b & c);
+    const uint32_t temp2 = big_sigma0 + maj;
+    h                    = g;
+    g                    = f;
+    f                    = e;
+    e                    = d + temp1;
+    d                    = c;
+    c                    = b;
+    b                    = a;
+    a                    = temp1 + temp2;
   }
   state[k_ra8_psa_state_idx_a] += a;
   state[k_ra8_psa_state_idx_b] += b;

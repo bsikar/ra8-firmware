@@ -256,7 +256,7 @@ int32_t main(void)
 
   const bool nav_ok = iu_nav_check();
   ok                = ok && nav_ok && (hits == (uint32_t)ntargets) &&
-                      (taps == (uint32_t)(ntargets + (uint16_t)k_iu_miss_count));
+       (taps == (uint32_t)(ntargets + (uint16_t)k_iu_miss_count));
 
   iu_print(k_msg_pre, (uint32_t)sizeof(k_msg_pre) - 1U);
   iu_print_uint(taps);

@@ -369,11 +369,11 @@ static ra8_err_t internal_enum_read_config(uint8_t* out_cfg_value)
   uint8_t         cfg[k_ra8_hmsc_cfg_buf_len] = {};
   uint16_t        rx                          = 0U;
   ra8_usb_setup_t setup                       = {
-    .bm_request_type = k_ra8_hmsc_bm_std_dev_in,
-    .b_request       = k_ra8_hmsc_breq_get_descriptor,
-    .w_value         = (uint16_t)((uint16_t)k_ra8_hmsc_desc_configuration << k_ra8_hmsc_byte_bits),
-    .w_index         = 0U,
-    .w_length        = k_ra8_hmsc_cfg_desc_len,
+                          .bm_request_type = k_ra8_hmsc_bm_std_dev_in,
+                          .b_request       = k_ra8_hmsc_breq_get_descriptor,
+                          .w_value         = (uint16_t)((uint16_t)k_ra8_hmsc_desc_configuration << k_ra8_hmsc_byte_bits),
+                          .w_index         = 0U,
+                          .w_length        = k_ra8_hmsc_cfg_desc_len,
   };
   ra8_err_t err = ra8_usb_host_control_xfer(s_usb_hmsc_state.speed,
                                             &setup,
@@ -435,10 +435,10 @@ static ra8_err_t internal_enum_configure(uint8_t dev_addr, uint8_t cfg_value)
   uint8_t         lun             = 0U;
   uint16_t        lun_rx          = 0U;
   const ra8_err_t lun_err         = ra8_usb_host_control_xfer(s_usb_hmsc_state.speed,
-                                                              &get_lun,
-                                                              &lun,
-                                                              (uint16_t)k_ra8_hmsc_get_max_lun_len,
-                                                              &lun_rx);
+                                                      &get_lun,
+                                                      &lun,
+                                                      (uint16_t)k_ra8_hmsc_get_max_lun_len,
+                                                      &lun_rx);
   s_usb_hmsc_state.device.max_lun = 0U;
   if (lun_err == k_ra8_ok) {
     if (lun_rx == (uint16_t)k_ra8_hmsc_get_max_lun_len) {

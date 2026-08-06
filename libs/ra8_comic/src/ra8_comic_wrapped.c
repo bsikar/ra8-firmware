@@ -147,14 +147,14 @@ ra8_err_t ra8_comic_open_wrapped(ra8_comic_t*      c,
   const size_t    payload_cap = arena_cap - (size_t)k_wrap_hdr_bytes;
   size_t          inner_len   = 0U;
   const ra8_err_t uerr        = s_unwrap(read,
-                                         ctx,
-                                         size,
-                                         is_gzip,
-                                         payload,
-                                         payload_cap,
-                                         xz_scratch,
-                                         xz_scratch_len,
-                                         &inner_len);
+                                  ctx,
+                                  size,
+                                  is_gzip,
+                                  payload,
+                                  payload_cap,
+                                  xz_scratch,
+                                  xz_scratch_len,
+                                  &inner_len);
   if (uerr != k_ra8_ok) {
     return uerr;
   }

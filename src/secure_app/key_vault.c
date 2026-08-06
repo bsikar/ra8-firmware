@@ -290,7 +290,7 @@ RA8_INTERNAL static void internal_sha256_schedule(const uint8_t* block, uint32_t
     const uint32_t s1 = internal_rotr(w[i - 2U], k_sha256_ssig1_r0) ^
                         internal_rotr(w[i - 2U], k_sha256_ssig1_r1) ^
                         (w[i - 2U] >> k_sha256_ssig1_sh);
-    w[i]              = w[i - 16U] + s0 + w[i - k_sha256_back7] + s1;
+    w[i] = w[i - 16U] + s0 + w[i - k_sha256_back7] + s1;
   }
 }
 
@@ -330,11 +330,11 @@ RA8_INTERNAL static void internal_sha256_compress(const uint32_t* w, uint8_t* ou
   for (uint32_t i = 0U; i < k_sha256_words; ++i) {
     const uint32_t s1 = internal_rotr(e, k_sha256_bsig1_r0) ^ internal_rotr(e, k_sha256_bsig1_r1) ^
                         internal_rotr(e, k_sha256_bsig1_r2);
-    const uint32_t ch = (e & f) ^ (~e & g);
+    const uint32_t ch    = (e & f) ^ (~e & g);
     const uint32_t temp1 = h + s1 + ch + k_sha256_k[i] + w[i];
-    const uint32_t s0  = internal_rotr(a, k_sha256_bsig0_r0) ^ internal_rotr(a, k_sha256_bsig0_r1) ^
-                         internal_rotr(a, k_sha256_bsig0_r2);
-    const uint32_t maj = (a & b) ^ (a & c) ^ (b & c);
+    const uint32_t s0 = internal_rotr(a, k_sha256_bsig0_r0) ^ internal_rotr(a, k_sha256_bsig0_r1) ^
+                        internal_rotr(a, k_sha256_bsig0_r2);
+    const uint32_t maj   = (a & b) ^ (a & c) ^ (b & c);
     const uint32_t temp2 = s0 + maj;
     h                    = g;
     g                    = f;

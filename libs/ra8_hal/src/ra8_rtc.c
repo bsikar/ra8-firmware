@@ -262,7 +262,7 @@ ra8_err_t ra8_rtc_clock_init(ra8_rtc_clk_src_t src)
   /* HUM Ch 26.2.21 "RCR2 : RTC Control Register 2" p 1232 -- stop the
    * prescaler (START = 0) before the frequency register and software
    * reset, and wait for the bit to fall. */
-  rtc->RCR2 = (uint8_t)(rtc->RCR2 & (uint8_t)~(1U << k_ra8_rcr2_bit_start));
+  rtc->RCR2 = (uint8_t)(rtc->RCR2 & (uint8_t) ~(1U << k_ra8_rcr2_bit_start));
   internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_start), 0U);
 
   if (src == k_ra8_rtc_clk_loco) {
@@ -333,7 +333,7 @@ ra8_err_t ra8_rtc_set(const ra8_rtc_datetime_t* dt)
    * registers must only be written while START=0. Clear the bit and
    * wait for the hardware to honour it (FSP's r_rtc_start_bit_update). */
   const uint8_t saved = rtc->RCR2;
-  rtc->RCR2           = (uint8_t)(saved & (uint8_t)~(1U << k_ra8_rcr2_bit_start));
+  rtc->RCR2           = (uint8_t)(saved & (uint8_t) ~(1U << k_ra8_rcr2_bit_start));
   internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_start), 0U);
 
   /* HUM Ch 26.2.2 "RSECCNT : Second Counter" p 1221 */
@@ -493,7 +493,7 @@ ra8_err_t ra8_rtc_get_status(uint8_t* out_mask)
 ra8_err_t ra8_rtc_clear_status(uint8_t mask)
 {
   volatile r_rtc_regs_t* rtc = ra8_rtc();
-  rtc->RCR1                  = (uint8_t)(rtc->RCR1 & (uint8_t)~(mask & k_ra8_rtc_irq_all));
+  rtc->RCR1                  = (uint8_t)(rtc->RCR1 & (uint8_t) ~(mask & k_ra8_rtc_irq_all));
   return k_ra8_ok;
 }
 
@@ -518,7 +518,7 @@ ra8_err_t ra8_rtc_enter_stop(void)
 {
   volatile r_rtc_regs_t* rtc = ra8_rtc();
   /* HUM Ch 26.2.21 "RCR2.START" p 1232 */ /* clear START to halt counter. */
-  rtc->RCR2 = (uint8_t)(rtc->RCR2 & (uint8_t)~(1U << k_ra8_rcr2_bit_start));
+  rtc->RCR2 = (uint8_t)(rtc->RCR2 & (uint8_t) ~(1U << k_ra8_rcr2_bit_start));
   internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra8_rcr2_bit_start), 0U);
   return k_ra8_ok;
 }

@@ -500,7 +500,7 @@ ra8_err_t ra8_dmac_set_address_mode(uint8_t              channel,
   /* HUM 17.2.12 DMAMD p 741 -- preserve DARA/SARA/DADR/SADR fields and
    * only rewrite the SM/DM 2-bit slots. */
   uint16_t v = reg->DMAMD;
-  v &= (uint16_t)~(k_ra8_dmamd_sm_mask | k_ra8_dmamd_dm_mask);
+  v &= (uint16_t) ~(k_ra8_dmamd_sm_mask | k_ra8_dmamd_dm_mask);
   v |= (uint16_t)((uint16_t)src_mode << k_ra8_dmamd_sm_pos);
   v |= (uint16_t)((uint16_t)dest_mode << k_ra8_dmamd_dm_pos);
   reg->DMAMD = v;

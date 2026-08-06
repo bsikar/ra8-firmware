@@ -386,8 +386,8 @@ static bool internal_i2c_target_finish_tx(volatile r_i2c_regs_t* reg)
 
   /* Step 7: clear NACKF and STOP (W0C) for the next transfer.
    * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2 -- W0C" p 2384 */
-  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_nackf |
-                                                          (uint8_t)k_ra8_i2c_msk_icsr2_stop));
+  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t) ~(uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_nackf |
+                                                           (uint8_t)k_ra8_i2c_msk_icsr2_stop));
   return ended;
 }
 
@@ -440,9 +440,9 @@ ra8_err_t ra8_i2c_peripheral_deinit(uint8_t channel)
   /* HUM Ch 39.2.7 "ICSER : I2C Bus Status Enable Register" p 2380 */
   reg->ICSER = 0U;
   /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- WAIT" p 2376 */
-  reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t)~(uint8_t)k_ra8_i2c_msk_icmr3_wait);
+  reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t) ~(uint8_t)k_ra8_i2c_msk_icmr3_wait);
   /* HUM Ch 39.2.8 "ICIER : I2C Bus Interrupt Enable Register" p 2381 */
-  reg->ICIER = (uint8_t)(reg->ICIER & (uint8_t)~(uint8_t)k_ra8_i2c_peripheral_icier_arm);
+  reg->ICIER = (uint8_t)(reg->ICIER & (uint8_t) ~(uint8_t)k_ra8_i2c_peripheral_icier_arm);
   s_i2c_state[channel].peripheral_active = false;
   return k_ra8_ok;
 }
@@ -507,7 +507,7 @@ ra8_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uin
 
   /* Step 6: clear the STOP flag (W0C) for the next transfer.
    * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2 -- STOP W0C" p 2384 */
-  reg->ICSR2    = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra8_i2c_msk_icsr2_stop);
+  reg->ICSR2    = (uint8_t)(reg->ICSR2 & (uint8_t) ~(uint8_t)k_ra8_i2c_msk_icsr2_stop);
   *out_received = count;
   return (count == 0U) ? err : k_ra8_ok;
 }

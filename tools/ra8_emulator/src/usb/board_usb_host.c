@@ -525,7 +525,7 @@ static void usbhs_dvstctr_write(uc_engine* uc, uint16_t value)
 {
   const uint32_t w   = usbhs_word((uint64_t)k_ra8_usb_off_dvstctr0);
   const uint16_t old = s_hs.reg[w];
-  s_hs.reg[w]        = (uint16_t)(value & (uint16_t)~(uint16_t)k_usbhs_rhst_mask);
+  s_hs.reg[w]        = (uint16_t)(value & (uint16_t) ~(uint16_t)k_usbhs_rhst_mask);
   const bool was_rst = (old & (uint16_t)k_usbhs_dvst_usbrst) != 0U;
   const bool is_rst  = (value & (uint16_t)k_usbhs_dvst_usbrst) != 0U;
   if (was_rst && !is_rst) {
@@ -568,8 +568,8 @@ static void usbhs_dcpctr_write(uc_engine* uc, uint16_t value)
       ((old & (uint16_t)k_usbhs_dcpctr_ccpl) == 0U)) {
     usbhs_do_ccpl(uc);
   }
-  s_hs.reg[w] = (uint16_t)(value & (uint16_t)~(uint16_t)((uint16_t)k_usbhs_ctr_pulse_mask |
-                                                         (uint16_t)k_usbhs_dcpctr_sureqclr));
+  s_hs.reg[w] = (uint16_t)(value & (uint16_t) ~(uint16_t)((uint16_t)k_usbhs_ctr_pulse_mask |
+                                                          (uint16_t)k_usbhs_dcpctr_sureqclr));
 }
 
 /* =============================================================================
@@ -656,7 +656,7 @@ static void usbhs_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t
 {
   const uint16_t value = (uint16_t)value64;
   const uint8_t  sel   = (uint8_t)(s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_pipesel)] &
-                                   (uint16_t)k_ra8_fifosel_curpipe);
+                                (uint16_t)k_ra8_fifosel_curpipe);
   /* The CFIFO port spans +0x14..+0x17: 32-bit head words at +0x14, the
    * CFIFOH (+0x16) / CFIFOHH (+0x17) residual aliases for the 2- / 1-byte
    * tails. All append to the same OUT staging. */
@@ -706,7 +706,7 @@ static void usbhs_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t
       (off < (uint64_t)(k_ra8_usb_off_pipectr +
                         ((uint64_t)k_ra8_usb_pipectr_count * sizeof(uint16_t))))) {
     /* PIPECTR: PID persists; the SQSET / SQCLR pulses never store. */
-    s_hs.reg[usbhs_word(off)] = (uint16_t)(value & (uint16_t)~(uint16_t)k_usbhs_ctr_pulse_mask);
+    s_hs.reg[usbhs_word(off)] = (uint16_t)(value & (uint16_t) ~(uint16_t)k_usbhs_ctr_pulse_mask);
     return;
   }
   s_hs.reg[usbhs_word(off)] = value;

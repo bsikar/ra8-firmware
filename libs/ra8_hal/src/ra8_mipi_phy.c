@@ -681,7 +681,7 @@ ra8_err_t ra8_mipi_phy_set_lane_count(ra8_mipi_phy_lane_count_t count)
   /* When the count drops to 1, force lane 1 off so callers don't see
    * a stale "enabled" answer for an inactive lane. */
   if (count == k_ra8_mipi_phy_lane_count_1) {
-    s_lane_enable_mask &= (uint8_t)~((uint8_t)1U << k_ra8_mipi_phy_lane_bit_d1);
+    s_lane_enable_mask &= (uint8_t) ~((uint8_t)1U << k_ra8_mipi_phy_lane_bit_d1);
   } else {
     s_lane_enable_mask |= (uint8_t)((uint8_t)1U << k_ra8_mipi_phy_lane_bit_d1);
   }
@@ -720,7 +720,7 @@ ra8_err_t ra8_mipi_phy_set_lane_enable(ra8_mipi_phy_lane_id_t lane, bool enable)
   if (enable) {
     s_lane_enable_mask |= (uint8_t)((uint8_t)1U << bit);
   } else {
-    s_lane_enable_mask &= (uint8_t)~((uint8_t)1U << bit);
+    s_lane_enable_mask &= (uint8_t) ~((uint8_t)1U << bit);
   }
   return k_ra8_ok;
 }

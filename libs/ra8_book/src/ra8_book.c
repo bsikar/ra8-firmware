@@ -496,10 +496,10 @@ static ra8_err_t s_inflate_chunks(const ra8_book_container_view_t* view,
     }
     size_t          produced = 0U;
     const ra8_err_t err      = inflate(&view->payload[(size_t)off],
-                                       (size_t)(next - off),
-                                       &scratch[(size_t)dst_off],
-                                       (size_t)expected,
-                                       &produced);
+                                  (size_t)(next - off),
+                                  &scratch[(size_t)dst_off],
+                                  (size_t)expected,
+                                  &produced);
     if (err != k_ra8_ok) {
       return err;
     }

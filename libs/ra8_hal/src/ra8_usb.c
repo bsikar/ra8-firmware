@@ -511,8 +511,8 @@ internal_fifo_write_hs_tail(volatile r_usb_regs_t* reg, const uint8_t* data, uin
     return;
   }
   const uint16_t sel_save = reg->CFIFOSEL;
-  const uint16_t sel_base = (uint16_t)(sel_save & (uint16_t)~(uint16_t)k_ra8_fifosel_mbw_msk);
-  uint16_t       offset   = (uint16_t)(len & (uint16_t)~(uint16_t)0x3U);
+  const uint16_t sel_base = (uint16_t)(sel_save & (uint16_t) ~(uint16_t)k_ra8_fifosel_mbw_msk);
+  uint16_t       offset   = (uint16_t)(len & (uint16_t) ~(uint16_t)0x3U);
   /* For USBHS in little-endian mode, FSP writes the 16-bit residual
    * halfword to CFIFOH (CFIFO base + 0x02) and the 8-bit residual
    * byte to CFIFOHH (CFIFO base + 0x03), NOT to CFIFO itself. See
@@ -611,7 +611,7 @@ void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16
      * hw_usb_write_fifo8 for USBFS. HUM Ch 36.2.6 CFIFOSEL.MBW. */
     const uint16_t sel_save = reg->CFIFOSEL;
     const uint16_t sel_8 =
-      (uint16_t)((sel_save & (uint16_t)~(uint16_t)k_ra8_fifosel_mbw_msk) | k_ra8_fifosel_mbw_8);
+      (uint16_t)((sel_save & (uint16_t) ~(uint16_t)k_ra8_fifosel_mbw_msk) | k_ra8_fifosel_mbw_8);
     volatile uint8_t* const cfifo8 = (volatile uint8_t*)(uintptr_t)&reg->CFIFO;
     reg->CFIFOSEL                  = sel_8;
     *cfifo8                        = data[len - 1U];
@@ -679,7 +679,7 @@ static void internal_fifo_read_hs_tail(volatile r_usb_regs_t* reg, uint8_t* data
    * unused-byte slots as don't-care). One read, one pointer advance,
    * no MBW transition. */
   const uint32_t word     = *(volatile ra8_usb_cfifo32_t*)(uintptr_t)&reg->CFIFO;
-  const uint16_t off_base = (uint16_t)(len & (uint16_t)~(uint16_t)0x3U);
+  const uint16_t off_base = (uint16_t)(len & (uint16_t) ~(uint16_t)0x3U);
   const uint8_t  bytes[4] = {
     (uint8_t)(word & k_ra8_usb_byte_mask),
     (uint8_t)((word >> k_ra8_usb_shift_b1) & k_ra8_usb_byte_mask),
@@ -727,7 +727,7 @@ void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
      * advances by exactly 1. Mirrors FSP hw_usb_read_fifo8 for USBFS. */
     const uint16_t sel_save = reg->CFIFOSEL;
     const uint16_t sel_8 =
-      (uint16_t)((sel_save & (uint16_t)~(uint16_t)k_ra8_fifosel_mbw_msk) | k_ra8_fifosel_mbw_8);
+      (uint16_t)((sel_save & (uint16_t) ~(uint16_t)k_ra8_fifosel_mbw_msk) | k_ra8_fifosel_mbw_8);
     volatile uint8_t* const cfifo8 = (volatile uint8_t*)(uintptr_t)&reg->CFIFO;
     reg->CFIFOSEL                  = sel_8;
     data[len - 1U]                 = *cfifo8;

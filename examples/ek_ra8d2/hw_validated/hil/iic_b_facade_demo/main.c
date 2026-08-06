@@ -329,11 +329,11 @@ static void iic_print_dec(uint32_t value)
   const uint8_t   ptr[k_iic_ptr_len]    = {(uint8_t)k_iic_prod_ptr_hi, (uint8_t)k_iic_prod_ptr_lo};
   uint8_t         id[k_iic_prod_len]    = {};
   const ra8_err_t err                   = ra8_io_i2c_bus_transfer(&s_iic_bus,
-                                                                  (uint8_t)k_iic_ctrl_addr_7b,
-                                                                  ptr,
-                                                                  (uint32_t)k_iic_ptr_len,
-                                                                  id,
-                                                                  (uint32_t)k_iic_prod_len);
+                                                (uint8_t)k_iic_ctrl_addr_7b,
+                                                ptr,
+                                                (uint32_t)k_iic_ptr_len,
+                                                id,
+                                                (uint32_t)k_iic_prod_len);
   const iic_facade_ctrl_result_t result = iic_facade_classify_ctrl(err);
   *out_id0                              = (result == k_iic_ctrl_ok) ? id[0] : 0U;
   return result;

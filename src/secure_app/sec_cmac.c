@@ -160,12 +160,12 @@ ra8_err_t ra8_sec_cmac_compute(const uint8_t* key,
   }
   size_t             produced = 0U;
   const psa_status_t st       = psa_mac_compute(kid,
-                                                PSA_ALG_CMAC,
-                                                msg,
-                                                (size_t)msg_len,
-                                                out_mac,
-                                                (size_t)k_ra8_sec_cmac_tag_bytes,
-                                                &produced);
+                                          PSA_ALG_CMAC,
+                                          msg,
+                                          (size_t)msg_len,
+                                          out_mac,
+                                          (size_t)k_ra8_sec_cmac_tag_bytes,
+                                          &produced);
   (void)psa_destroy_key(kid);
   if ((st != PSA_SUCCESS) || (produced != (size_t)k_ra8_sec_cmac_tag_bytes)) {
     return k_ra8_err_hw_error;

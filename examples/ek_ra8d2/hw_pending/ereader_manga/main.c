@@ -449,11 +449,11 @@ static bool mg_build_atlas(void)
 /** @brief Wire the tile cache (decode-on-miss = read_tile) over the atlas. */
 static bool mg_setup_cache(void)
 {
-  s_tile_src = (mg_tile_src_t){.info        = &s_info,
-                               .pread       = ra8_jof_memstore_pread,
-                               .pread_ctx   = &s_store,
-                               .scratch     = s_scratch,
-                               .scratch_cap = (uint32_t)sizeof(s_scratch)};
+  s_tile_src                           = (mg_tile_src_t){.info        = &s_info,
+                                                         .pread       = ra8_jof_memstore_pread,
+                                                         .pread_ctx   = &s_store,
+                                                         .scratch     = s_scratch,
+                                                         .scratch_cap = (uint32_t)sizeof(s_scratch)};
   const ra8_tile_cache_cfg_t cache_cfg = {.cell_mem     = s_cell_mem,
                                           .cell_bytes   = (uint32_t)k_mg_cell_bytes,
                                           .cell_count   = (uint32_t)k_mg_cells,

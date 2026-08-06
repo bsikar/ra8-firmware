@@ -308,7 +308,7 @@ typedef enum : uint32_t {
   }
   *out_pid = (uint32_t)desc[k_hid_off_dev_pid] |
              ((uint32_t)desc[(uint32_t)k_hid_off_dev_pid + 1U] << (uint32_t)k_hid_byte_bits);
-  err      = hid_enum_set_address();
+  err = hid_enum_set_address();
   if (err != k_ra8_ok) {
     (void)hid_print_fail("set_address", err);
     return err;

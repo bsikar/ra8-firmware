@@ -181,9 +181,9 @@ RA8_INTERNAL
 static void priv_decode_one(const uint8_t* raw, ra8_touch_point_t* out)
 {
   out->track_id = raw[k_ra8_touch_gt911_point_off_track];
-  out->x = (uint16_t)((uint32_t)raw[k_ra8_touch_gt911_point_off_x_lsb] |
+  out->x        = (uint16_t)((uint32_t)raw[k_ra8_touch_gt911_point_off_x_lsb] |
                       ((uint32_t)raw[k_ra8_touch_gt911_point_off_x_msb] << k_ra8_touch_byte_shift));
-  out->y = (uint16_t)((uint32_t)raw[k_ra8_touch_gt911_point_off_y_lsb] |
+  out->y        = (uint16_t)((uint32_t)raw[k_ra8_touch_gt911_point_off_y_lsb] |
                       ((uint32_t)raw[k_ra8_touch_gt911_point_off_y_msb] << k_ra8_touch_byte_shift));
   /* Pressure is the low byte of the 16-bit "size" field; the high byte
    * is rarely populated and is dropped here so the public type stays

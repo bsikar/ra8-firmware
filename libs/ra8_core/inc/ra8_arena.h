@@ -66,9 +66,9 @@ enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t* buf;  /**< Backing buffer (caller-owned).       */
-  uint32_t cap;  /**< Total capacity in bytes.              */
-  uint32_t used; /**< Current bump offset.                  */
+  uint8_t* buf;  /**< Backing buffer (caller-owned). */
+  uint32_t cap;  /**< Total capacity in bytes.       */
+  uint32_t used; /**< Current bump offset.           */
 } ra8_arena_t;
 
 /**

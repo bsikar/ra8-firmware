@@ -401,7 +401,7 @@ ra8_err_t ra8_jof_parse(ra8_jof_pread_fn pread,
     return err;
   }
   uint8_t ftr[k_ra8_jof_footer_bytes] = {};
-  err = priv_pread_exact(pread,
+  err                                 = priv_pread_exact(pread,
                          pread_ctx,
                          total_size - (uint64_t)k_ra8_jof_footer_bytes,
                          ftr,

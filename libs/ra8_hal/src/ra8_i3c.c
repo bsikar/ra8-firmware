@@ -682,7 +682,7 @@ ra8_err_t ra8_i3c_read(uint8_t channel, uint8_t addr, uint8_t* buf, uint32_t len
   uint32_t               cmd = priv_ra8_i3c_xfer_cmd_word(target_addr, true);
   reg->NCMDQP                = cmd;
   reg->NCMDQP                = (len << k_ra8_i3c_cmd_xfer_length_shift) &
-                               (k_ra8_i3c_cmd_xfer_length_max << k_ra8_i3c_cmd_xfer_length_shift);
+                (k_ra8_i3c_cmd_xfer_length_max << k_ra8_i3c_cmd_xfer_length_shift);
   priv_ra8_i3c_fifo_read(reg, buf, len);
   reg->NTST = reg->NTST & ~k_ra8_i3c_ntst_cmdqef_mask;
   return k_ra8_ok;
@@ -874,7 +874,7 @@ ra8_err_t ra8_i3c_ibi_enable(uint8_t target_addr)
   };
   volatile r_i3c_regs_t* reg = ra8_i3c();
   reg->NTIBIVCTL             = (k_ra8_i3c_ntibivctl_one_target << k_ra8_i3c_ntibivctl_vlcnt_shift) &
-                               k_ra8_i3c_ntibivctl_vlcnt_mask;
+                   k_ra8_i3c_ntibivctl_vlcnt_mask;
   (void)target_addr;
   return k_ra8_ok;
 }

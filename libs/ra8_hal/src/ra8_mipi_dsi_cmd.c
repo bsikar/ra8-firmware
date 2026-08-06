@@ -393,16 +393,16 @@ RA8_INTERNAL static void internal_send_stage_and_pulse(const ra8_mipi_dsi_comman
 {
   uint8_t                      buf[2] = {param0, param1};
   const ra8_mipi_dsi_command_t cmd    = {
-    .cmd_id          = cmd_id,
-    .virtual_channel = vc,
-    .bta             = k_ra8_mipi_dsi_bta_none,
-    .low_power       = true,
-    .ack_request     = false,
-    .aux_operation   = false,
-    .action_code     = 0U,
-    .tx_len          = 2U,
-    .p_tx_buffer     = buf,
-    .p_rx_buffer     = nullptr,
+       .cmd_id          = cmd_id,
+       .virtual_channel = vc,
+       .bta             = k_ra8_mipi_dsi_bta_none,
+       .low_power       = true,
+       .ack_request     = false,
+       .aux_operation   = false,
+       .action_code     = 0U,
+       .tx_len          = 2U,
+       .p_tx_buffer     = buf,
+       .p_rx_buffer     = nullptr,
   };
   return ra8_mipi_dsi_send_command(&cmd);
 }
@@ -444,16 +444,16 @@ RA8_INTERNAL static void internal_send_stage_and_pulse(const ra8_mipi_dsi_comman
   }
   uint8_t                      tx_buf[2] = {param0, param1};
   const ra8_mipi_dsi_command_t cmd       = {
-    .cmd_id          = cmd_id,
-    .virtual_channel = vc,
-    .bta             = k_ra8_mipi_dsi_bta_read,
-    .low_power       = true,
-    .ack_request     = true,
-    .aux_operation   = false,
-    .action_code     = 0U,
-    .tx_len          = 2U,
-    .p_tx_buffer     = tx_buf,
-    .p_rx_buffer     = p_rx_buffer,
+          .cmd_id          = cmd_id,
+          .virtual_channel = vc,
+          .bta             = k_ra8_mipi_dsi_bta_read,
+          .low_power       = true,
+          .ack_request     = true,
+          .aux_operation   = false,
+          .action_code     = 0U,
+          .tx_len          = 2U,
+          .p_tx_buffer     = tx_buf,
+          .p_rx_buffer     = p_rx_buffer,
   };
   s_mipi_dsi_pending_rx_buffer = p_rx_buffer;
   s_mipi_dsi_pending_rx_len    = rx_len;

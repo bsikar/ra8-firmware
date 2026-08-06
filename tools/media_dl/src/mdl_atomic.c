@@ -44,13 +44,13 @@ bool mdl_atomic_tmp_path(const char* final_path, char* out, size_t cap)
   } else {
     const size_t dir_len = (size_t)(leaf - final_path) + 1U; /* keep the '/' */
     n                    = snprintf(out,
-                                    cap,
-                                    "%.*s%s%ld-%s",
-                                    (int)dir_len,
-                                    final_path,
-                                    s_mdl_atomic_marker,
-                                    (long)getpid(),
-                                    leaf + 1);
+                 cap,
+                 "%.*s%s%ld-%s",
+                 (int)dir_len,
+                 final_path,
+                 s_mdl_atomic_marker,
+                 (long)getpid(),
+                 leaf + 1);
   }
   /* A truncated temp path could name a DIFFERENT file than intended, so a
    * short buffer aborts the write rather than silently retargeting it. */

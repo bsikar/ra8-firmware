@@ -209,8 +209,8 @@ void ra8_crashlog_record_fault(const volatile ra8_exception_last_t* decoded)
   uint32_t next = 1U;
   if (ra8_crashlog_is_valid()) {
     const uint32_t prior = s_ra8_crashlog_record.boot_loops;
-    next = (prior < (uint32_t)k_ra8_crashlog_loops_max) ? (prior + 1U)
-                                                        : (uint32_t)k_ra8_crashlog_loops_max;
+    next                 = (prior < (uint32_t)k_ra8_crashlog_loops_max) ? (prior + 1U)
+                                                                        : (uint32_t)k_ra8_crashlog_loops_max;
   }
   s_ra8_crashlog_record.magic      = 0U; /* invalidate for the write window */
   s_ra8_crashlog_record.boot_loops = next;

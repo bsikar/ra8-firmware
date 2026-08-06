@@ -507,9 +507,9 @@ RA8_INTERNAL static ra8_err_t internal_eth_phy_soft_reset(void)
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_board_eth_phy_reset_spin; ++i) {
     uint16_t bmcr = 0U;
     err           = ra8_rmac_mdio_c22_read((ra8_rmac_port_t)k_ra8_board_eth_rmac_port,
-                                           (uint8_t)k_ra8_board_eth_phy_addr,
-                                           (uint8_t)k_ra8_board_eth_phy_reg_bmcr,
-                                           &bmcr);
+                                 (uint8_t)k_ra8_board_eth_phy_addr,
+                                 (uint8_t)k_ra8_board_eth_phy_reg_bmcr,
+                                 &bmcr);
     if (err != k_ra8_ok) {
       return err;
     }

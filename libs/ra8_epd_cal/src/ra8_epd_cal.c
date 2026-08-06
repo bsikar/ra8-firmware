@@ -561,8 +561,8 @@ RA8_INTERNAL
     ra8_log_error(s_tag, "provision: VCOM outside the panel's window");
     return k_ra8_err_range_check_failed;
   }
-  const ra8_epd_cal_record_t rec = {.vcom_mv        = vcom_mv,
-                                    .schema_version = (uint8_t)k_ra8_epd_cal_schema_version};
+  const ra8_epd_cal_record_t rec                           = {.vcom_mv        = vcom_mv,
+                                                              .schema_version = (uint8_t)k_ra8_epd_cal_schema_version};
   uint8_t                    blob[k_ra8_epd_cal_blob_size] = {};
   const ra8_err_t serr = ra8_epd_cal_serialize(&rec, blob, (size_t)k_ra8_epd_cal_blob_size);
   if (serr != k_ra8_ok) {

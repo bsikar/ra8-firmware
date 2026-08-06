@@ -355,11 +355,11 @@ static uint32_t drw_shade(uint32_t dst)
 {
   const uint32_t src_a = drw_chan(s_drw.color1, (uint32_t)k_drw_a_shift);
   const uint32_t fs    = drw_factor((s_drw.control2 & (uint32_t)k_drw_c2_bsf) != 0U,
-                                    (s_drw.control2 & (uint32_t)k_drw_c2_bsi) != 0U,
-                                    src_a);
+                                 (s_drw.control2 & (uint32_t)k_drw_c2_bsi) != 0U,
+                                 src_a);
   const uint32_t fd    = drw_factor((s_drw.control2 & (uint32_t)k_drw_c2_bdf) != 0U,
-                                    (s_drw.control2 & (uint32_t)k_drw_c2_bdi) != 0U,
-                                    src_a);
+                                 (s_drw.control2 & (uint32_t)k_drw_c2_bdi) != 0U,
+                                 src_a);
 
   const uint32_t r = drw_mix(drw_chan(s_drw.color1, (uint32_t)k_drw_r_shift),
                              drw_chan(dst, (uint32_t)k_drw_r_shift),

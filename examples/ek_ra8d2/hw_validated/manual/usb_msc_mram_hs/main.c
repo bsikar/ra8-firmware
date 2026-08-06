@@ -703,8 +703,8 @@ static VOID demo_worker(ULONG arg)
     s_dbg_fw_len    = (uint32_t)_ux_system_slave->ux_system_slave_device_framework_length;
     s_dbg_thr_state = (uint32_t)_ux_system_slave->ux_system_slave_class_array[0]
                         .ux_slave_class_thread.tx_thread_state;
-    s_dbg_thr_runs  = (uint32_t)_ux_system_slave->ux_system_slave_class_array[0]
-                        .ux_slave_class_thread.tx_thread_run_count;
+    s_dbg_thr_runs = (uint32_t)_ux_system_slave->ux_system_slave_class_array[0]
+                       .ux_slave_class_thread.tx_thread_run_count;
     /* Diagnostic kick: if the class thread is parked SUSPENDED while the
      * device is CONFIGURED, the activate-time resume (ISR context) did
      * not take; re-resume from thread context and count it. */

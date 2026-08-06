@@ -298,12 +298,12 @@ static uint32_t cs_dir_pack_sector(ra8_cache_store_t* store, uint16_t* slot, uin
       break;
     }
     const ra8_cache_store_entry_t* src = &store->index[*slot];
-    ra8_cs_dir_ent_t ent = {.key          = src->key,
-                            .start_sector = src->start_sector,
-                            .byte_len     = src->byte_len,
-                            .sector_count = src->sector_count,
-                            .flags =
-                              (uint16_t)(src->flags & (uint8_t)k_ra8_cache_store_flag_pinned)};
+    ra8_cs_dir_ent_t               ent = {.key          = src->key,
+                                          .start_sector = src->start_sector,
+                                          .byte_len     = src->byte_len,
+                                          .sector_count = src->sector_count,
+                                          .flags =
+                                            (uint16_t)(src->flags & (uint8_t)k_ra8_cache_store_flag_pinned)};
     (void)memcpy(&out512[(size_t)e * (uint32_t)k_ra8_cs_dir_ent_bytes], &ent, sizeof(ent));
     (*slot)++;
     packed++;
@@ -581,8 +581,8 @@ static ra8_err_t cs_geometry(ra8_cache_store_t* store, const ra8_cache_store_cfg
 {
   RA8_CHECK_NULL_PTR(store, s_tag, "store");
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
-  uint32_t dirs          = ((uint32_t)cfg->index_cap + (uint32_t)k_ra8_cs_dir_per_sector - 1U) /
-                           (uint32_t)k_ra8_cs_dir_per_sector;
+  uint32_t dirs = ((uint32_t)cfg->index_cap + (uint32_t)k_ra8_cs_dir_per_sector - 1U) /
+                  (uint32_t)k_ra8_cs_dir_per_sector;
   store->checkpoint_dirs = (uint16_t)dirs;
   store->log_start       = 1U + dirs;
   store->logical_sectors = cfg->logical_sectors;
@@ -624,7 +624,7 @@ static ra8_err_t cs_open_levelx(ra8_cache_store_t* store, const ra8_cache_store_
     s_cs_lx_system_inited = true;
   }
   /* LevelX takes a mutable CHAR* name but never writes it. */
-  CHAR* nm = (cfg->name != nullptr) ? (CHAR*)(uintptr_t)cfg->name : (CHAR*)(uintptr_t)"ra8_cache";
+  CHAR* nm = (cfg->name != nullptr) ? (CHAR*)(uintptr_t)cfg->name : (CHAR*)(uintptr_t) "ra8_cache";
   if (cfg->format) {
     if (lx_nor_flash_format(store->flash, nm, cfg->nor_driver_init, LX_NULL) != (UINT)LX_SUCCESS) {
       return k_ra8_err_hw_init_failed;

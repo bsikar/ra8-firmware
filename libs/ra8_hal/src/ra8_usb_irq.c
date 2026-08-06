@@ -160,7 +160,7 @@ void ra8_usb_dispatch(ra8_usb_speed_t speed)
                                        (1U << k_ra8_int0_bit_bemp) | (1U << k_ra8_int0_bit_brdy) |
                                        (1U << k_ra8_int0_bit_nrdy) | (1U << k_ra8_int0_bit_vbse) |
                                        (1U << k_ra8_int0_bit_rsme) | (1U << k_ra8_int0_bit_sofr));
-  reg->INTSTS0            = (uint16_t)~(uint16_t)(mask & ack_bits);
+  reg->INTSTS0            = (uint16_t) ~(uint16_t)(mask & ack_bits);
 
   const uint8_t            slot = internal_cb_slot(speed);
   const ra8_usb_event_fn_t fn   = s_usb_fn[slot];

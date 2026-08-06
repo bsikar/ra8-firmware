@@ -131,13 +131,13 @@ static bool webp_demo_decode_ok(void)
   uint32_t         w     = 0U;
   uint32_t         h     = 0U;
   const ra8_err_t  e     = ra8_webp_decode_rgba(k_webp_lossless,
-                                                sizeof k_webp_lossless,
-                                                &arena,
-                                                s_webp_demo_fb,
-                                                (size_t)k_webp_demo_stride,
-                                                sizeof s_webp_demo_fb,
-                                                &w,
-                                                &h);
+                                           sizeof k_webp_lossless,
+                                           &arena,
+                                           s_webp_demo_fb,
+                                           (size_t)k_webp_demo_stride,
+                                           sizeof s_webp_demo_fb,
+                                           &w,
+                                           &h);
   if ((e != k_ra8_ok) || (w != k_webp_demo_dim) || (h != k_webp_demo_dim)) {
     return false;
   }

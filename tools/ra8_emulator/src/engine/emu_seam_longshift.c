@@ -174,9 +174,9 @@ static bool long_shift_decode(uint16_t hw1, uint16_t hw2, long_shift_insn_t* out
   }
   const uint32_t tail = (uint32_t)hw2 & (uint32_t)k_lsh_hw2_lo_mask;
   *out                = (long_shift_insn_t){
-    .rdalo = (uint32_t)hw1 & (uint32_t)k_lsh_rdalo_mask,
-    .rdahi = rdahi,
-    .op    = op,
+                   .rdalo = (uint32_t)hw1 & (uint32_t)k_lsh_rdalo_mask,
+                   .rdahi = rdahi,
+                   .op    = op,
   };
   if (tail == (uint32_t)k_lsh_tail_imm) {
     const uint32_t imm3 = ((uint32_t)hw2 >> (uint32_t)k_lsh_imm3_shift) & (uint32_t)k_lsh_imm3_mask;

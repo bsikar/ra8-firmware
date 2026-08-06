@@ -117,11 +117,11 @@ static void on_nvic_en_write(uc_engine*  uc,
   (void)type;
   (void)size;
   (void)user;
-  const bool     is_set = (addr >= (uint64_t)k_nvic_iser_base) &&
-                          (addr < ((uint64_t)k_nvic_iser_base + (uint64_t)k_nvic_en_span));
-  const uint64_t base   = is_set ? (uint64_t)k_nvic_iser_base : (uint64_t)k_nvic_icer_base;
-  const uint32_t word   = (uint32_t)((addr - base) / 4U);
-  const uint32_t bits   = (uint32_t)value;
+  const bool is_set = (addr >= (uint64_t)k_nvic_iser_base) &&
+                      (addr < ((uint64_t)k_nvic_iser_base + (uint64_t)k_nvic_en_span));
+  const uint64_t base = is_set ? (uint64_t)k_nvic_iser_base : (uint64_t)k_nvic_icer_base;
+  const uint32_t word = (uint32_t)((addr - base) / 4U);
+  const uint32_t bits = (uint32_t)value;
   for (uint32_t b = 0U; b < 32U; b++) {
     if ((bits & (1U << b)) != 0U) {
       board_periph_nvic_set_enable((word * 32U) + b, is_set);
