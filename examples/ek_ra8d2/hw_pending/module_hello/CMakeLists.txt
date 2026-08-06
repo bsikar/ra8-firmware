@@ -43,3 +43,21 @@ target_link_libraries(module_hello.elf PRIVATE threadx_modules)
 target_link_options(module_hello.elf PRIVATE -Wl,--allow-multiple-definition)
 
 target_compile_definitions(module_hello.elf PRIVATE RA8_APP_UART_LOG)
+
+# ---- Embed the module binary -----------------------------------------------
+# Convert hello_module.bin → hello_module_bin.o via objcopy, then link it in.
+# Run objcopy from the directory containing the .bin so symbols get short
+# names: _binary_hello_module_bin_{start,end,size}.
+set(MODULE_BIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/module/build")
+set(MODULE_OBJ "${CMAKE_CURRENT_BINARY_DIR}/hello_module_bin.o")
+
+add_custom_command(
+  OUTPUT  ${MODULE_OBJ}
+  COMMAND ${CMAKE_OBJCOPY} -I binary -O elf32-littlearm -B arm
+          --rename-section .data=.rodata,alloc,load,readonly,data,contents
+          hello_module.bin ${MODULE_OBJ}
+  WORKING_DIRECTORY ${MODULE_BIN_DIR}
+  DEPENDS ${MODULE_BIN_DIR}/hello_module.bin
+  COMMENT "Embedding hello_module.bin into kernel ELF"
+)
+target_sources(module_hello.elf PRIVATE ${MODULE_OBJ})

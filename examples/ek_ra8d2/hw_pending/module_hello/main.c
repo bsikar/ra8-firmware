@@ -4,8 +4,8 @@
  * @ingroup grp_examples
  *
  * @details
- * Initialises the ThreadX Module Manager, verifies the Ed25519 signature
- * on a compiled-in module binary, loads it in-place, and starts it.
+ * Initialises the ThreadX Module Manager, loads a compiled-in module
+ * binary in-place, and starts it. The module runs inside the MPU sandbox.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -14,20 +14,16 @@
 
 #include "tx_api.h"
 #include "txm_module.h"
-#include "ra8_app_verify.h"
-#include "ra8_app_api.h"
-#include "ra8_err.h"
 #include "ra8_log.h"
+
+#include <stdint.h>
 
 static const char s_tag[] = "module_hello";
 
-/* ---- Dummy module binary (stub for build verification) ------------------- */
-/* In a real app this would be loaded from SD card or linked via objcopy.
- * For build verification, provide a minimal stub. */
-static const uint8_t s_dummy_module_bin[128] __attribute__((aligned(4))) = {0};
-
-/* ---- Dummy Ed25519 public key (zeroed; real key goes here) --------------- */
-static const uint8_t s_dummy_pubkey[32] = {0};
+/* ---- Embedded module binary ---------------------------------------------- */
+/* Linked via objcopy --binary in CMakeLists.txt. */
+extern const uint8_t _binary_hello_module_bin_start[];
+extern const uint8_t _binary_hello_module_bin_end[];
 
 /* ---- Module Manager memory pools ----------------------------------------- */
 enum : uint32_t {
@@ -57,6 +53,7 @@ void tx_application_define(void* first_unused_memory)
     ra8_log_error_val(s_tag, "txm_module_manager_initialize failed", (uint32_t)st);
     return;
   }
+  ra8_log_info(s_tag, "module manager initialized");
 
   /* 2. Create an object pool for module-created ThreadX objects. */
   st = txm_module_manager_object_pool_create(s_obj_pool, k_obj_pool_bytes);
@@ -64,36 +61,26 @@ void tx_application_define(void* first_unused_memory)
     ra8_log_error_val(s_tag, "txm_module_manager_object_pool_create failed", (uint32_t)st);
     return;
   }
+  ra8_log_info(s_tag, "object pool created");
 
-  /* 3. Verify the compiled-in module binary. */
-  const ra8_err_t verify = ra8_app_verify(s_dummy_module_bin,
-                                          (uint32_t)sizeof(s_dummy_module_bin),
-                                          s_dummy_pubkey);
-  if (verify != k_ra8_ok) {
-    ra8_log_error_val(s_tag, "module signature check failed", (uint32_t)verify);
-    /* Expected to fail with the dummy binary — this is fine for the
-     * build verification PoC. In a real app, this would reject the
-     * module and return. */
-    ra8_log_info(s_tag, "module_hello: build verification PoC complete (dummy binary, expected signature failure)");
-    return;
-  }
+  /* 3. Load the module in-place from the compiled-in binary. */
+  const uint32_t mod_size = (uint32_t)(_binary_hello_module_bin_end -
+                                       _binary_hello_module_bin_start);
+  ra8_log_info_val(s_tag, "module binary size", mod_size);
 
-  ra8_log_info(s_tag, "module signature OK");
-
-  /* 4. Load the module in-place. */
   st = txm_module_manager_in_place_load(&s_hello_module, "hello",
-                                        (VOID*)s_dummy_module_bin);
+                                        (VOID*)_binary_hello_module_bin_start);
   if (st != TX_SUCCESS) {
     ra8_log_error_val(s_tag, "txm_module_manager_in_place_load failed", (uint32_t)st);
     return;
   }
   ra8_log_info(s_tag, "module loaded");
 
-  /* 5. Start the module. */
+  /* 4. Start the module. */
   st = txm_module_manager_start(&s_hello_module);
   if (st != TX_SUCCESS) {
     ra8_log_error_val(s_tag, "txm_module_manager_start failed", (uint32_t)st);
     return;
   }
-  ra8_log_info(s_tag, "module started");
+  ra8_log_info(s_tag, "module started — running inside MPU sandbox");
 }
