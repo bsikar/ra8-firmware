@@ -25,7 +25,7 @@
  * ra8_arena_init(&arena, s_buf, (uint32_t)sizeof s_buf);
  *
  * // Both paths use the same allocation API:
- * void* p = ra8_arena_alloc(&arena, 256U);
+ * void* p = ra8_arena_alloc(&arena, 256U, k_ra8_arena_align);
  * @endcode
  *
  * Follows the same design as the `ra8_c6link` decode arena but is
@@ -136,7 +136,7 @@ static inline void* ra8_arena_alloc(ra8_arena_t* a, uint32_t bytes, uint32_t ali
 static inline void* ra8_arena_calloc(ra8_arena_t* a, uint32_t count, uint32_t size)
 {
   const uint32_t total = count * size;
-  void*          p     = ra8_arena_alloc(a, total);
+  void*          p     = ra8_arena_alloc(a, total, k_ra8_arena_align);
   if (p != nullptr) {
     uint8_t* dst = (uint8_t*)p;
     for (uint32_t i = 0U; i < total; ++i) {
