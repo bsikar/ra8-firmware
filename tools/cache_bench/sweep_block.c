@@ -18,6 +18,7 @@
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
+#include "ra8_attributes.h"
 #include "sweep_block.h"
 
 #include <stdio.h>
@@ -169,6 +170,7 @@ static void cbs_cache_close(cbs_cache_t* c)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: dynamic cache arrays */
 static int
 cbs_cache_open(cbs_cache_t* c, const cbs_backend_t* be, uint32_t blob_bytes, uint32_t block_bytes)
 {
@@ -403,6 +405,7 @@ static const uint32_t s_cbs_blocks[] = {
   (uint32_t)k_cbs_block_256kib,
 };
 
+RA8_NASA_RULE_3_OK /* host-only bench: sweep payload blob */
 int cb_sweep_block(void)
 {
   uint8_t* blob = (uint8_t*)malloc((size_t)k_cbs_blob_bytes);

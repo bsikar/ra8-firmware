@@ -28,6 +28,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include "ra8_attributes.h"
 #include "board_console.h"
 #include "board_periph_sd.h"
 #include "board_periph_sd_internal.h"
@@ -50,6 +51,7 @@ static void board_sd_release_image(void)
   s_sd.map_fd  = -1;
 }
 
+RA8_NASA_RULE_3_OK /* host-only emu: sd image buffer */
 bool board_sd_attach(const char* path)
 {
   if (path == nullptr) {

@@ -21,6 +21,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "ra8_attributes.h"
 #include "board_console.h"
 #include "board_input.h"
 #include "board_net.h"
@@ -108,6 +109,7 @@ static void run_setup_geometry(const emu_run_cfg_t* cfg, run_loop_t* st)
  * @note Not thread-safe; performs window open + malloc during setup.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only emu: window buffers */
 static void run_open_view_buffers(const emu_run_cfg_t* cfg, run_loop_t* st)
 {
   if (cfg->want_view) {

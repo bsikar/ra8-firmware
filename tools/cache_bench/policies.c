@@ -17,6 +17,7 @@
  */
 #include <stdlib.h>
 
+#include "ra8_attributes.h"
 #include "cache_bench.h"
 
 /* ------------------------------------------------------------------ FIFO -- */
@@ -42,6 +43,7 @@
  * @note Not thread-safe: allocates and stores policy state.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: policy state */
 static int cb_fifo_init(cb_cache_t* c)
 {
   uint32_t* hand = (uint32_t*)calloc(1U, sizeof(uint32_t));
@@ -158,6 +160,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe: allocates and stores policy state.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: policy state */
 static int cb_rand_init(cb_cache_t* c)
 {
   uint64_t* s = (uint64_t*)malloc(sizeof(uint64_t));
@@ -262,6 +265,7 @@ typedef struct {
  * @note Not thread-safe: allocates and stores policy state.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: policy state */
 static int cb_lru_init(cb_cache_t* c)
 {
   cb_lru_t* l = (cb_lru_t*)calloc(1U, sizeof(cb_lru_t));
@@ -477,6 +481,7 @@ static const cache_policy_t s_cb_policy_lru = {
  * @note Not thread-safe: allocates and stores policy state.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: policy state */
 static int cb_clock_init(cb_cache_t* c)
 {
   uint32_t* hand = (uint32_t*)calloc(1U, sizeof(uint32_t));

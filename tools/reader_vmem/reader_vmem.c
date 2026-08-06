@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
 #include "ra8_vmem.h"
@@ -465,6 +466,7 @@ static void rv_res_free(rv_res_t* res)
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: mock book buffer */
 static bool rv_alloc_book(rv_driver_t* d)
 {
   s_book_bytes   = (uint64_t)d->total_frames * (uint64_t)k_rv_frame_bytes;
@@ -508,6 +510,7 @@ static bool rv_alloc_book(rv_driver_t* d)
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: dynamic cache arrays */
 static bool rv_vmem_setup(ra8_vmem_t* vm, rv_res_t* res, uint32_t budget, ra8_vsource_t* vs)
 {
   res->frame_mem = (uint8_t*)malloc((size_t)budget * (size_t)k_rv_frame_bytes);
