@@ -947,7 +947,7 @@ RA8_INTERNAL static int dispatch_run(ra8_arena_t*          arena,
  */
 int main(int argc, char** argv)
 {
-  enum { k_main_arena_bytes = 64U * 1024U * 1024U }; /* MAGIC-OK: 64 MiB arena */
+  enum : uint32_t { k_main_arena_bytes = 64U * 1024U * 1024U }; /* MAGIC-OK: 64 MiB arena */
   uint32_t    arena_size = (uint32_t)k_main_arena_bytes;
   uint8_t*    arena_buf  = (uint8_t*)malloc(arena_size);
   ra8_arena_t main_arena;
