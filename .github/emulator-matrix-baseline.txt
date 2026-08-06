@@ -21,5 +21,6 @@
 #
 # Re-baseline after burning debt down (causes are carried forward):
 #   bash scripts/emu/matrix.sh; python3 scripts/checks/matrix_ratchet.py --update
-# total: 1
+# total: 2
 import_reader	FAULT	reaches 'card ready' + 'volume mounted', then 'FAIL import compile' and traps; wants a pre-populated library card (cf. sd_font_render's baked FONT.OTF image)
+media_download	BUILD_FAIL	stub example; depends on ra8_c6link library not yet wired to emulator build

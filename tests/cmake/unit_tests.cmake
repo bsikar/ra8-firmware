@@ -248,6 +248,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_emulator_
 # registered by hand in tests_c6link.cmake rather than through the auto-glob.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_wire.c)
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c)
 
 # test_ra8_wifi_c6link.c drives the ESP32-C6 ra8_wifi backend, which -- like the
 # c6link tests above -- links libs/ra8_c6link + the vendored codec against the
