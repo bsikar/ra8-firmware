@@ -507,9 +507,14 @@ bool exc_take_pending(uc_engine* uc, uint32_t vtor_base, bool allow_systick)
     }
   }
 
-  /* PendSV: taken when the firmware has requested a context switch. */
+  /* PendSV: taken when the firmware has requested a context switch.
+   * Check both the ICSR bit (which may have been scrubbed by on_icsr_write to
+   * prevent Unicorn's internal exception engine from tripping on it) and the
+   * s_pendsv_stop flag that on_icsr_write sets as our own tracking. */
   uint32_t icsr = rd32(uc, (uint64_t)k_scb_icsr);
-  if ((icsr & (1U << (uint32_t)k_icsr_pendsvset)) != 0U) {
+  const bool pendsv_requested =
+    ((icsr & (1U << (uint32_t)k_icsr_pendsvset)) != 0U) || s_pendsv_stop;
+  if (pendsv_requested) {
     if (exc_priority(uc, (uint32_t)k_exc_pendsv) < active) {
       const uint32_t handler = exc_vector(uc, vtor_base, (uint32_t)k_exc_pendsv);
       if (handler != 0U) {
@@ -780,6 +785,16 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
   if (((uint32_t)value & (1U << (uint32_t)k_icsr_pendsvset)) == 0U) {
     return; /* not a PendSV request (e.g. PENDSVCLR / status write) */
   }
+  /* Scrub PENDSVSET from the PPB word that just landed.  Unicorn maps the PPB
+   * as flat RAM; its internal ARM exception engine can see the pend bit and
+   * attempt a PendSV entry it cannot model (→ UC_ERR_EXCEPTION).  We track
+   * the pending PendSV ourselves via s_pendsv_stop and exc_take_pending, so
+   * the bit must NOT remain in PPB RAM for Unicorn to trip over. */
+  uint32_t icsr_val = 0U;
+  (void)uc_mem_read(uc, (uint64_t)k_scb_icsr, &icsr_val, sizeof(icsr_val));
+  icsr_val &= ~(1U << (uint32_t)k_icsr_pendsvset);
+  (void)uc_mem_write(uc, (uint64_t)k_scb_icsr, &icsr_val, sizeof(icsr_val));
+
   /* Only end the chunk when PendSV could actually activate now: interrupts
    * unmasked and no equal/higher-priority handler already running. If masked
    * (the store sits inside a ThreadX critical section), do NOT stop -- the run

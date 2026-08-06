@@ -169,6 +169,16 @@ static inner_action_t run_inner_take_exception(uc_engine* uc,
     (void)uc_reg_read(uc, UC_ARM_REG_PC, run_pc);
     return k_inner_continue;
   }
+  /* UC_ERR_EXCEPTION from a PENDSVSET store is not a real fault: Unicorn's
+   * internal ARM exception engine sees the pend bit in ICSR (PPB RAM) and
+   * tries to take PendSV, which it cannot model for Cortex-M -- returning
+   * UC_ERR_EXCEPTION.  Our ICSR write hook already set s_pendsv_stop, so
+   * treat this as a normal context-switch boundary, not a fatal error. */
+  if (err == UC_ERR_EXCEPTION && emu_exc_pendsv_stop()) {
+    (void)exc_take_pending(uc, vtor_base, false);
+    (void)uc_reg_read(uc, UC_ARM_REG_PC, run_pc);
+    return k_inner_continue;
+  }
   if (err != UC_ERR_OK) {
     *faulted = true;
     return k_inner_break;
