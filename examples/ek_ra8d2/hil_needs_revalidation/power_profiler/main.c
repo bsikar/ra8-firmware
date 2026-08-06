@@ -213,7 +213,7 @@ static bool pp_demo_cycle_modes(void)
  * @param[in]  v   Value to render.
  * @return Number of ASCII digits written.
  *
- * @pre ``buf`` is non-NULL with >= 10 bytes capacity.
+ * @pre ``buf`` is non-nullptr with >= 10 bytes capacity.
  * @post No null terminator is written.
  * @since 0.1.0
  */
@@ -246,7 +246,7 @@ static uint8_t pp_demo_uint_to_dec(uint8_t* buf, uint64_t v)
  * @param[in]     val 64-bit decimal value to append.
  * @return New offset after the append.
  *
- * @pre ``buf`` and ``tag`` are non-NULL.
+ * @pre ``buf`` and ``tag`` are non-nullptr.
  * @post ``buf[off..]`` contains tag + decimal digits.
  *
  * @since 0.1.0
@@ -269,7 +269,7 @@ static uint32_t pp_demo_append(uint8_t* buf, uint32_t off, const char* tag, uint
  * @param[in]  stats Stats snapshot.
  * @return Number of bytes written.
  *
- * @pre ``out`` is non-NULL with >= k_pp_demo_print_buf capacity.
+ * @pre ``out`` is non-nullptr with >= k_pp_demo_print_buf capacity.
  * @post No bytes beyond the returned length are touched.
  *
  * @since 0.1.0

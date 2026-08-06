@@ -325,7 +325,7 @@ static void ns_host_pattern_fill(uint32_t round, uint8_t* out, uint32_t len)
  * @return First failing step's error, or k_ra8_ok.
  * @retval k_ra8_ok Device enumerated; bulk pipes open.
  * @pre ::ra8_usb_host_init succeeded on this pass.
- * @pre @p out_pid is non-NULL.
+ * @pre @p out_pid is non-nullptr.
  * @post @p out_pid holds the device idProduct on success.
  * @post On failure the bus is left mid-ladder for the caller to deinit.
  * @note Blocking; runs on the host worker thread.

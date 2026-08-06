@@ -88,7 +88,7 @@ static size_t run_inner_budget(uc_engine* uc, uint32_t run_pc)
  * @return true when @p act is authoritative, false to fall through.
  * @retval true  One of the relaunch / stop conditions applied.
  * @retval false No condition applied; take the exception boundary next.
- * @pre @p faulted and @p act are non-NULL.
+ * @pre @p faulted and @p act are non-nullptr.
  * @pre The chunk has returned and its final PC has been read back.
  * @post @p faulted is written only when true is returned via a BKPT.
  * @post On true, @p act is ::k_inner_continue or ::k_inner_break.
@@ -140,7 +140,7 @@ static bool run_inner_check_stops(uc_engine* uc, bool* faulted, inner_action_t* 
  * @return The loop action for run_inner.
  * @retval k_inner_continue A boundary was resolved; re-enter the loop.
  * @retval k_inner_break    An emulation fault or quiescence ended the run.
- * @pre @p run_pc and @p faulted are non-NULL.
+ * @pre @p run_pc and @p faulted are non-nullptr.
  * @pre The chunk returned and ::run_inner_check_stops returned false.
  * @post @p run_pc reflects the post-boundary PC.
  * @post @p faulted is true only on a returned ::k_inner_break via @p err.

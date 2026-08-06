@@ -317,9 +317,9 @@ static void demo_setup_or_halt(void)
 /**
  * @brief Convenience wrapper to write a NUL-terminated string to SCI8.
  *
- * @param[in] s NUL-terminated ASCII string. Must not be NULL.
+ * @param[in] s NUL-terminated ASCII string. Must not be nullptr.
  *
- * @pre s != NULL.
+ * @pre s != nullptr.
  * @post Bytes are queued in the SCI8 TX FIFO (best-effort).
  *
  * @since 0.1.0
@@ -860,7 +860,7 @@ static void demo_thread_entry(ULONG thread_input)
  * @param[in] n    Element count.
  * @param[in] size Element size in bytes.
  *
- * @return Newly allocated zeroed memory, or NULL on failure.
+ * @return Newly allocated zeroed memory, or nullptr on failure.
  *
  * @pre ``s_byte_pool`` has been created.
  *
@@ -883,7 +883,7 @@ static void* demo_calloc(size_t n, size_t size)
 /**
  * @brief ``mbedtls_free`` hook backed by the ThreadX byte pool.
  *
- * @param[in] p Pointer previously returned by ``demo_calloc`` (NULL OK).
+ * @param[in] p Pointer previously returned by ``demo_calloc`` (nullptr OK).
  *
  * @since 0.1.0
  */
