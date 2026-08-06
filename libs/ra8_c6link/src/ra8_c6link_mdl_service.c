@@ -20,6 +20,7 @@ void ra8_c6link_mdl_service_handle_rx(const uint8_t* rx_buf, uint16_t rx_len, ui
   static ra8_mdl_download_progress_t s_progress;
   static bool                        s_download_active = false;
 
+  /* mcdc-deactivated: stub service handler, null guards unreachable via RPC */
   if ((rx_buf != nullptr) && (tx_buf != nullptr) && (rx_len != 0U)) {
     const uint8_t msg_id = rx_buf[0];
 
