@@ -10,10 +10,11 @@
 #include "ra8_app_verify.h"
 #include "ra8_app_api.h"
 #include <stddef.h>
+#include <string.h>
 
 ra8_err_t ra8_app_verify(const uint8_t *binary, uint32_t len, const uint8_t public_key[32])
 {
-    if (binary == NULL || public_key == NULL) {
+    if ((binary == nullptr) || (public_key == nullptr)) {
         return k_ra8_err_invalid_arg;
     }
 
@@ -21,22 +22,25 @@ ra8_err_t ra8_app_verify(const uint8_t *binary, uint32_t len, const uint8_t publ
         return k_ra8_err_invalid_arg;
     }
 
-    const ra8_app_header_t *hdr = (const ra8_app_header_t *)binary;
+    /* Copy header to a properly-aligned local to avoid -Wcast-align on ARM. */
+    ra8_app_header_t hdr;
+    (void)memcpy(&hdr, binary, sizeof(hdr));
 
-    if (hdr->magic != k_ra8_app_magic) {
+    if (hdr.magic != k_ra8_app_magic) {
         return k_ra8_err_invalid_arg;
     }
 
-    if (hdr->version != 1U) {
+    if (hdr.version != 1U) {
         return k_ra8_err_invalid_arg;
     }
 
-    if ((hdr->sig_offset + 64U) > len) {
+    if ((hdr.sig_offset + 64U) > len) {
         return k_ra8_err_invalid_arg;
     }
 
-    /* TODO: wire to actual Ed25519 lib */
-    /* Check Ed25519 signature in binary + hdr->sig_offset */
+    /* TODO: wire to actual Ed25519 verification library.
+     * Signature is at binary + hdr.sig_offset (64 bytes).
+     * Signed region is binary[0 .. hdr.sig_offset). */
 
     return k_ra8_ok;
 }

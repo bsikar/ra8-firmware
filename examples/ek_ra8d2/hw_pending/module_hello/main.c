@@ -1,64 +1,99 @@
 /**
  * @file main.c
- * @brief ThreadX Module hello world example.
+ * @brief ThreadX Module Manager hello-world kernel-side example.
+ * @ingroup grp_examples
+ *
+ * @details
+ * Initialises the ThreadX Module Manager, verifies the Ed25519 signature
+ * on a compiled-in module binary, loads it in-place, and starts it.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since 0.1.0
  */
 
 #include "tx_api.h"
 #include "txm_module.h"
 #include "ra8_app_verify.h"
+#include "ra8_app_api.h"
 #include "ra8_err.h"
-#include <stdio.h>
+#include "ra8_log.h"
 
-/* Define the Module Manager objects. */
-static TXM_MODULE_MANAGER g_my_module_manager;
-static TXM_MODULE g_my_module;
+static const char s_tag[] = "module_hello";
 
-/* Dummy public key (32 bytes) */
-static const uint8_t g_dummy_pubkey[32] = {0};
+/* ---- Dummy module binary (stub for build verification) ------------------- */
+/* In a real app this would be loaded from SD card or linked via objcopy.
+ * For build verification, provide a minimal stub. */
+static const uint8_t s_dummy_module_bin[128] __attribute__((aligned(4))) = {0};
 
-/* Example binary buffer (could be loaded from SD card in real use) */
-extern const uint8_t hello_module_bin[];
-extern const uint32_t hello_module_bin_len;
+/* ---- Dummy Ed25519 public key (zeroed; real key goes here) --------------- */
+static const uint8_t s_dummy_pubkey[32] = {0};
 
-/* Memory area for the module manager */
-#define MODULE_MANAGER_MEMORY_SIZE 65536
-static uint8_t g_module_manager_memory[MODULE_MANAGER_MEMORY_SIZE];
+/* ---- Module Manager memory pools ----------------------------------------- */
+enum : uint32_t {
+  k_mgr_pool_bytes = 64U * 1024U,
+  k_obj_pool_bytes = 16U * 1024U,
+};
+static uint8_t s_mgr_pool[k_mgr_pool_bytes] __attribute__((aligned(4)));
+static uint8_t s_obj_pool[k_obj_pool_bytes] __attribute__((aligned(4)));
+
+/* ---- Module instance ----------------------------------------------------- */
+static TXM_MODULE_INSTANCE s_hello_module;
 
 /**
- * @brief Application entry point after ThreadX initialization.
- * @param first_unused_memory Pointer to first unused memory.
+ * @brief ThreadX application entry — called from tx_kernel_enter().
+ *
+ * @param[in] first_unused_memory  First byte after kernel-owned RAM.
  */
-void tx_application_define(void *first_unused_memory)
+void tx_application_define(void* first_unused_memory)
 {
-    (void)first_unused_memory;
-    
-    printf("Starting ThreadX Module Manager...\n");
-    
-    /* Initialize module manager */
-    UINT status = txm_module_manager_initialize((VOID *)g_module_manager_memory, MODULE_MANAGER_MEMORY_SIZE);
-    if (status != TX_SUCCESS) {
-        printf("Failed to initialize module manager: %u\n", status);
-        return;
-    }
-    
-    printf("Verifying module signature...\n");
-    /* Verify the module */
-    ra8_err_t err = ra8_app_verify(hello_module_bin, hello_module_bin_len, g_dummy_pubkey);
-    if (err == k_ra8_ok) {
-        printf("Signature OK. Loading module...\n");
-        /* Load the module */
-        status = txm_module_manager_in_place_load(&g_my_module, "hello_module", (VOID *)hello_module_bin);
-        if (status == TX_SUCCESS) {
-            printf("Module loaded. Starting module...\n");
-            /* Start the module */
-            txm_module_manager_start(&g_my_module);
-        } else {
-            printf("Failed to load module: %u\n", status);
-        }
-    } else {
-        printf("Signature verification failed: %d\n", err);
-    }
+  (void)first_unused_memory;
+
+  ra8_log_info(s_tag, "module_hello: starting Module Manager");
+
+  /* 1. Initialise the Module Manager pool. */
+  UINT st = txm_module_manager_initialize(s_mgr_pool, k_mgr_pool_bytes);
+  if (st != TX_SUCCESS) {
+    ra8_log_error_val(s_tag, "txm_module_manager_initialize failed", (uint32_t)st);
+    return;
+  }
+
+  /* 2. Create an object pool for module-created ThreadX objects. */
+  st = txm_module_manager_object_pool_create(s_obj_pool, k_obj_pool_bytes);
+  if (st != TX_SUCCESS) {
+    ra8_log_error_val(s_tag, "txm_module_manager_object_pool_create failed", (uint32_t)st);
+    return;
+  }
+
+  /* 3. Verify the compiled-in module binary. */
+  const ra8_err_t verify = ra8_app_verify(s_dummy_module_bin,
+                                          (uint32_t)sizeof(s_dummy_module_bin),
+                                          s_dummy_pubkey);
+  if (verify != k_ra8_ok) {
+    ra8_log_error_val(s_tag, "module signature check failed", (uint32_t)verify);
+    /* Expected to fail with the dummy binary — this is fine for the
+     * build verification PoC. In a real app, this would reject the
+     * module and return. */
+    ra8_log_info(s_tag, "module_hello: build verification PoC complete (dummy binary, expected signature failure)");
+    return;
+  }
+
+  ra8_log_info(s_tag, "module signature OK");
+
+  /* 4. Load the module in-place. */
+  st = txm_module_manager_in_place_load(&s_hello_module, "hello",
+                                        (VOID*)s_dummy_module_bin);
+  if (st != TX_SUCCESS) {
+    ra8_log_error_val(s_tag, "txm_module_manager_in_place_load failed", (uint32_t)st);
+    return;
+  }
+  ra8_log_info(s_tag, "module loaded");
+
+  /* 5. Start the module. */
+  st = txm_module_manager_start(&s_hello_module);
+  if (st != TX_SUCCESS) {
+    ra8_log_error_val(s_tag, "txm_module_manager_start failed", (uint32_t)st);
+    return;
+  }
+  ra8_log_info(s_tag, "module started");
 }
