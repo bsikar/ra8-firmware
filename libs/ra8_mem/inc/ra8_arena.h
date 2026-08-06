@@ -41,6 +41,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8_err.h"
@@ -165,10 +166,11 @@ static inline void ra8_arena_reset(ra8_arena_t* arena)
 
 static inline uint32_t ra8_arena_save(ra8_arena_t* arena)
 {
+  uint32_t mark = 0U;
   if (arena != NULL) {
-    return arena->used;
+    mark = arena->used;
   }
-  return 0U;
+  return mark;
 }
 
 static inline void ra8_arena_restore(ra8_arena_t* arena, uint32_t mark)
