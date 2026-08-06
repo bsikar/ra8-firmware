@@ -15,10 +15,10 @@
 #include "ra8_err.h"
 
 /** Maximum URL length for a download request. */
-#define RA8_MDL_URL_MAX 256U
+#define RA8_MDL_URL_MAX  (256U)
 
 /** Maximum output path length for a download request. */
-#define RA8_MDL_PATH_MAX 256U
+#define RA8_MDL_PATH_MAX (256U)
 
 /** @brief RPC message: download request.
  *  @since 0.1.0 */
