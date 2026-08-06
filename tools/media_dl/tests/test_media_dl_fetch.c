@@ -88,6 +88,11 @@ typedef struct {
   size_t            busy_on_file_call; /**< 1-based call to 503+Retry (0=off).   */
   const char*       busy_retry_after;  /**< Retry-After for the busy reply.      */
   const char*       fail_url;          /**< URL that fails on EVERY attempt.     */
+  size_t            not_mod_on_file_call; /**< 1-based call to return 304.       */
+  const char*       resp_etag;         /**< ETag response header to return.      */
+  const char*       resp_last_modified;/**< Last-Modified response to return.   */
+  const char*       last_if_none_match;/**< Captured If-None-Match header.        */
+  const char*       last_if_mod_since; /**< Captured If-Modified-Since header.   */
 } mock_net_t;
 
 /** @brief Fake get_buf: serve the mapped HTML for a chapter URL. */
@@ -123,11 +128,31 @@ static ra8_err_t mock_get_file(void*                ctx,
                                size_t*              out_len,
                                mdl_net_resp_t*      resp)
 {
-  (void)req;
   mock_net_t* f = (mock_net_t*)ctx;
   f->get_file_calls += 1U;
+  if (req != nullptr) {
+    f->last_if_none_match = req->if_none_match;
+    f->last_if_mod_since  = req->if_modified_since;
+  }
+  if (resp != nullptr) {
+    if (f->resp_etag != nullptr) {
+      (void)snprintf(resp->etag, sizeof(resp->etag), "%s", f->resp_etag);
+    }
+    if (f->resp_last_modified != nullptr) {
+      (void)snprintf(resp->last_modified, sizeof(resp->last_modified), "%s", f->resp_last_modified);
+    }
+  }
+  if ((f->not_mod_on_file_call != 0U) && (f->get_file_calls == f->not_mod_on_file_call)) {
+    if (resp != nullptr) {
+      resp->status = 304;
+    }
+    if (out_len != nullptr) {
+      *out_len = 0U;
+    }
+    return k_ra8_ok;
+  }
   if ((f->busy_on_file_call != 0U) && (f->get_file_calls == f->busy_on_file_call)) {
-    if (resp != nullptr) { /* scripted throttle: 503 + Retry-After, nothing written */
+    if (resp != nullptr) {
       resp->status = (long)k_http_unavailable;
       (void)snprintf(resp->retry_after,
                      sizeof(resp->retry_after),
@@ -137,10 +162,13 @@ static ra8_err_t mock_get_file(void*                ctx,
     return k_ra8_err_busy;
   }
   if ((f->fail_on_file_call != 0U) && (f->get_file_calls == f->fail_on_file_call)) {
-    return k_ra8_fail; /* a single transient failure: the retry recovers it */
+    return k_ra8_fail;
   }
   if ((f->fail_url != nullptr) && (strcmp(f->fail_url, url) == 0)) {
-    return k_ra8_fail; /* a permanently-unreachable page: every attempt fails */
+    return k_ra8_fail;
+  }
+  if (resp != nullptr) {
+    resp->status = 200;
   }
   FILE* fp = fopen(out_path, "wb");
   if (fp == nullptr) {
@@ -694,8 +722,70 @@ static void test_mcdc_run_incomplete(void)
  * @return 0 when all tests passed; a failing assertion aborts via the harness.
  * @since 0.1.0
  */
+static void test_conditional_fetch_304_not_modified(void)
+{
+  TEST_BEGIN("conditional fetch 304 not modified");
+  setup_site();
+  g_mock.map               = s_map1;
+  g_mock.map_n             = sizeof(s_map1) / sizeof(s_map1[0]);
+  g_mock.resp_etag         = "\"v100\"";
+  g_mock.resp_last_modified = "Wed, 21 Oct 2015 07:28:00 GMT";
+  char abs_dir[PATH_MAX];
+  char state_path[PATH_MAX];
+  make_series_dir(abs_dir, sizeof(abs_dir), state_path, sizeof(state_path));
+  mdl_state_init(&g_state);
+  const char* c1[] = {"http://s/chapter-1"};
+  set_chapters(c1, 1U);
+
+  /* Run 1: 200 OK, returns ETag "v100" and Last-Modified */
+  mdl_fetch_stats_t s1;
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok,
+                 run_fetch(abs_dir, state_path, k_mdl_layout_separate, nullptr, false, 0U, &s1));
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)s1.pages_fetched);
+  TEST_ASSERT(page_exists(abs_dir, "chapter-1/page_0001.jpg"));
+
+  /* Verify state cached etag and last_modified */
+  const mdl_page_rec_t* p = mdl_state_find_page(&g_state, mdl_hash_str("http://cdn/a.jpg"));
+  TEST_ASSERT_NOT_NULL(p);
+  TEST_ASSERT(strcmp(p->etag, "\"v100\"") == 0);
+  TEST_ASSERT(strcmp(p->last_modified, "Wed, 21 Oct 2015 07:28:00 GMT") == 0);
+
+  /* Reload state from disk to test persistence */
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_state_load(state_path, &g_state));
+
+  /* Force conditional re-fetch: mark chapter incomplete and invalidate content_hash so try_reuse falls through to do_fetch_page */
+  mdl_chapter_rec_t* ch = mdl_state_find_chapter(&g_state, "chapter-1");
+  TEST_ASSERT_NOT_NULL(ch);
+  ch->complete = false;
+
+  mdl_page_rec_t* page_rec = (mdl_page_rec_t*)mdl_state_find_page(&g_state, mdl_hash_str("http://cdn/a.jpg"));
+  TEST_ASSERT_NOT_NULL(page_rec);
+  page_rec->content_hash = 0;
+
+  g_mock.not_mod_on_file_call = 1U; /* Script call 1 of run 2 to 304 */
+  mdl_fetch_stats_t s2;
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok,
+                 run_fetch(abs_dir, state_path, k_mdl_layout_separate, nullptr, false, 0U, &s2));
+  g_mock.not_mod_on_file_call = 0U;
+  g_mock.resp_etag            = nullptr;
+  g_mock.resp_last_modified    = nullptr;
+
+  /* 304 is treated as success, counts as reused, retains existing file */
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)s2.pages_reused);
+  TEST_ASSERT_EQ((uint16_t)0, (uint16_t)s2.pages_fetched);
+  TEST_ASSERT(page_exists(abs_dir, "chapter-1/page_0001.jpg"));
+
+  /* Verify conditional headers were sent */
+  TEST_ASSERT_NOT_NULL(g_mock.last_if_none_match);
+  TEST_ASSERT(strcmp(g_mock.last_if_none_match, "\"v100\"") == 0);
+  TEST_ASSERT_NOT_NULL(g_mock.last_if_mod_since);
+  TEST_ASSERT(strcmp(g_mock.last_if_mod_since, "Wed, 21 Oct 2015 07:28:00 GMT") == 0);
+  TEST_END("conditional fetch 304 not modified");
+}
+
 int32_t main(void)
 {
+  test_conditional_fetch_304_not_modified();
   test_first_run_then_update_only_new();
   test_resume_equals_uninterrupted();
   test_content_dedup_across_chapters();
