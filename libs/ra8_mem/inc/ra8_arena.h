@@ -134,8 +134,6 @@ ra8_arena_carve(ra8_arena_t* arena, uint32_t bytes, uint32_t align, void** out_p
  */
 [[nodiscard]] ra8_err_t ra8_arena_remaining(const ra8_arena_t* arena, uint32_t* out_remaining);
 
-#include <stddef.h>
-
 static inline void* ra8_arena_alloc(ra8_arena_t* arena, uint32_t bytes, uint32_t align)
 {
   void* ptr = NULL;
@@ -145,11 +143,14 @@ static inline void* ra8_arena_alloc(ra8_arena_t* arena, uint32_t bytes, uint32_t
 
 static inline void* ra8_arena_calloc(ra8_arena_t* arena, uint32_t count, uint32_t size)
 {
-  void* ptr = ra8_arena_alloc(arena, count * size, 8U);
+  const uint32_t total = (count) * (size);
+  void*          ptr   = ra8_arena_alloc(arena, total, 8U);
   if (ptr != NULL) {
-    uint8_t* dst = (uint8_t*)ptr;
-    for (uint32_t i = 0; i < count * size; ++i) {
-      dst[i] = 0;
+    /* MISRA 11.5: ra8_arena_carve guarantees the pointer is to a writable
+     * uint8_t region, so the conversion from void* is safe. */
+    uint8_t* dst = (uint8_t*)ptr; /* cppcheck-suppress misra-c2012-11.5 */
+    for (uint32_t i = 0U; i < total; ++i) {
+      dst[i] = 0U;
     }
   }
   return ptr;
@@ -157,19 +158,24 @@ static inline void* ra8_arena_calloc(ra8_arena_t* arena, uint32_t count, uint32_
 
 static inline void ra8_arena_reset(ra8_arena_t* arena)
 {
-  if (arena)
-    arena->used = 0;
+  if (arena != NULL) {
+    arena->used = 0U;
+  }
 }
 
 static inline uint32_t ra8_arena_save(ra8_arena_t* arena)
 {
-  return arena ? arena->used : 0;
+  if (arena != NULL) {
+    return arena->used;
+  }
+  return 0U;
 }
 
 static inline void ra8_arena_restore(ra8_arena_t* arena, uint32_t mark)
 {
-  if (arena)
+  if (arena != NULL) {
     arena->used = mark;
+  }
 }
 
 #ifdef __cplusplus
