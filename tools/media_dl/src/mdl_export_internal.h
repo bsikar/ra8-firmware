@@ -78,6 +78,7 @@ typedef enum : uint16_t {
  * partially converted directory is always explained by a non-ok return rather
  * than discovered later; pages already written before the failure remain.
  *
+ * @param[in] arena Scratch arena.
  * @param[in] dir   Chapter directory holding the page files.
  * @param[in] names Page file names, `count` entries of at most ::k_name_max
  *                  bytes each, in the order they should be converted.

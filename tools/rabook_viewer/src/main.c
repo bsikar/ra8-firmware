@@ -159,6 +159,7 @@ static uint32_t viewer_clamp_page(uint32_t page, uint32_t count)
  * @param[in]  reader Open reader.
  * @param[in]  opts   Parsed options.
  * @param[in]  page   Page to render.
+ * @param[in] arena Scratch arena.
  * @return true on success.
  * @retval true  The page rendered and any requested dump was written.
  * @retval false Rendering or the PPM write failed (reported on stderr).
@@ -196,6 +197,7 @@ static bool viewer_render_and_dump(ra8_viewer_reader_t* reader,
  *          user closes the window. A NULL view means no window could be created
  *          (a headless host), reported with the `--headless` hint.
  * @param[in] reader Open reader (the window's tile source).
+ * @param[in] arena Scratch arena.
  * @return 0 on clean exit; 1 if no window could be created (headless host).
  * @retval 0 The window opened and was closed by the user.
  * @retval 1 No window could be created on this host.
@@ -248,6 +250,7 @@ static void viewer_log_sink(void* ctx, uint8_t byte)
  * @param[in] reader Open reader.
  * @param[in] tile   Tile index.
  * @param[in] path   Output PPM path.
+ * @param[in] arena Scratch arena.
  * @return true on success.
  * @retval true  The tile rendered and its PPM was written.
  * @retval false Tile render or the PPM write failed (reported on stderr).

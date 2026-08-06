@@ -210,6 +210,7 @@ static bool priv_parse_opts(int argc, char** argv, ra8_fmt_opts_t* opts, const c
 
 /**
  * @brief Resolve the descriptor for a verb, by name or by sniffing the input.
+ * @param[in] arena Scratch arena for temporary allocations.
  * @param[in] verb Selected verb.
  * @param[in] name `--format` selector, or NULL.
  * @param[in] src  Slurped input (used for sniffing on `inspect`).
@@ -238,6 +239,7 @@ priv_resolve(ra8_fmt_verb_t verb, const char* name, const ra8_fmt_blob_t* src)
  *          for @p verb and calls it; a NULL slot means this format does not
  *          implement the verb, which is reported to `opts->report` and returned
  *          as ::k_ra8_err_not_supported rather than dereferenced.
+ * @param[in] arena Scratch arena for temporary allocations.
  * @param[in] verb Selected verb.
  * @param[in] desc Resolved format descriptor (non-NULL).
  * @param[in] src  Slurped input.
