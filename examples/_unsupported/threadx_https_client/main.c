@@ -317,9 +317,9 @@ static void demo_setup_or_halt(void)
 /**
  * @brief Convenience wrapper to write a NUL-terminated string to SCI8.
  *
- * @param[in] s NUL-terminated ASCII string. Must not be NULL.
+ * @param[in] s NUL-terminated ASCII string. Must not be nullptr.
  *
- * @pre s != NULL.
+ * @pre s != nullptr.
  * @post Bytes are queued in the SCI8 TX FIFO (best-effort).
  *
  * @since 0.1.0
@@ -409,14 +409,14 @@ static UINT demo_netx_bring_up(void)
   ULONG ip_addr = demo_pack_ip(k_demo_ip);
   ULONG ip_mask = demo_pack_ip(k_demo_mask);
   s             = nx_ip_create(&s_ip,
-                               (CHAR*)"ra8_eth_ip",
-                               ip_addr,
-                               ip_mask,
-                               &s_packet_pool,
-                               nx_ether_driver_ra8_eth,
-                               (VOID*)s_ip_stack,
-                               (ULONG)sizeof(s_ip_stack),
-                               (UINT)k_demo_ip_thread_pri);
+                   (CHAR*)"ra8_eth_ip",
+                   ip_addr,
+                   ip_mask,
+                   &s_packet_pool,
+                   nx_ether_driver_ra8_eth,
+                   (VOID*)s_ip_stack,
+                   (ULONG)sizeof(s_ip_stack),
+                   (UINT)k_demo_ip_thread_pri);
   if (s != NX_SUCCESS) {
     return s;
   }
@@ -471,9 +471,9 @@ static UINT demo_tcp_connect(void)
   }
   ULONG host_ip = demo_pack_ip(k_demo_host_ip);
   s             = nx_tcp_client_socket_connect(&s_tls_socket,
-                                               host_ip,
-                                               (UINT)k_demo_https_port,
-                                               (ULONG)k_demo_handshake_max);
+                                   host_ip,
+                                   (UINT)k_demo_https_port,
+                                   (ULONG)k_demo_handshake_max);
   return s;
 }
 
@@ -860,7 +860,7 @@ static void demo_thread_entry(ULONG thread_input)
  * @param[in] n    Element count.
  * @param[in] size Element size in bytes.
  *
- * @return Newly allocated zeroed memory, or NULL on failure.
+ * @return Newly allocated zeroed memory, or nullptr on failure.
  *
  * @pre ``s_byte_pool`` has been created.
  *
@@ -883,7 +883,7 @@ static void* demo_calloc(size_t n, size_t size)
 /**
  * @brief ``mbedtls_free`` hook backed by the ThreadX byte pool.
  *
- * @param[in] p Pointer previously returned by ``demo_calloc`` (NULL OK).
+ * @param[in] p Pointer previously returned by ``demo_calloc`` (nullptr OK).
  *
  * @since 0.1.0
  */

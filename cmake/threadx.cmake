@@ -122,9 +122,21 @@ target_include_directories(
 
 # Vendor headers + project tx_user.h. Public so app TUs can #include
 # "tx_api.h" without re-stating the include dirs.
-target_include_directories(
-  threadx SYSTEM PUBLIC "${RA8_THREADX_ROOT}/common/inc" "${RA8_THREADX_M85_GNU}/inc"
-)
+if(RA8_USE_THREADX_MODULES)
+  target_include_directories(
+    threadx SYSTEM PUBLIC
+    "${RA8_THREADX_ROOT}/ports_module/cortex_m85/gnu/inc"
+    "${RA8_THREADX_ROOT}/common/inc"
+    "${RA8_THREADX_M85_GNU}/inc"
+  )
+else()
+  target_include_directories(
+    threadx SYSTEM PUBLIC
+    "${RA8_THREADX_ROOT}/common/inc"
+    "${RA8_THREADX_M85_GNU}/inc"
+  )
+endif()
+
 target_include_directories(threadx PUBLIC "${RA8_THREADX_PORT_DIR}/inc")
 
 # Force ThreadX to pick up our tx_user.h on every TU it compiles, and
@@ -147,6 +159,10 @@ target_link_options(
 # the firmware build elevates to errors. Apply only to C TUs; the .S
 # files are passed through the assembler and reject -W flags.
 target_compile_options(threadx PRIVATE $<$<COMPILE_LANGUAGE:C>:-w>)
+
+# Force C23 on the threadx library so project-tuned TUs like
+# tx_systick_retune.c can use ra8_core headers (bool, nullptr).
+set_target_properties(threadx PROPERTIES C_STANDARD 23 C_STANDARD_REQUIRED ON)
 
 message(STATUS "ThreadX: ${CMAKE_PROJECT_NAME}/threadx target configured")
 message(STATUS "ThreadX: tx_user.h     = ${RA8_THREADX_PORT_DIR}/inc/tx_user.h")

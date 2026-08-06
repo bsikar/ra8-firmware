@@ -208,6 +208,80 @@ static void on_mpu_rlar_write(uc_engine*  uc,
 }
 
 /**
+ * @brief Capture a region from an alias RLAR_An write (RNR + offset).
+ *
+ * @details
+ * The Armv8-M MPU provides alias registers RBAR_A1..A3 / RLAR_A1..A3 at
+ * 8-byte stride above RBAR/RLAR. Writing RBAR_An stores the RBAR value for
+ * region RNR+N into the flat PPB; writing RLAR_An captures region RNR+N
+ * (reading the corresponding RBAR_An back from PPB RAM).
+ *
+ * ThreadX Module Manager uses these to program up to 4 regions in one batch:
+ *   RNR -> RBAR/RLAR -> RBAR_A1/RLAR_A1 -> RBAR_A2/RLAR_A2 -> RBAR_A3/RLAR_A3
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     rlar_val  The RLAR alias value being written.
+ * @param[in]     rbar_addr The corresponding RBAR alias PPB address.
+ * @param[in]     rnr_off   Offset from current RNR (1, 2, or 3).
+ */
+static void
+mpu_capture_alias(uc_engine* uc, uint32_t rlar_val, uint64_t rbar_addr, uint32_t rnr_off)
+{
+  const uint32_t rnr     = (rd32(uc, (uint64_t)k_mpu_rnr) + rnr_off) & (uint32_t)k_mpu_rnr_mask;
+  const uint32_t rbar    = rd32(uc, rbar_addr);
+  s_mpu_region[rnr].base = rbar & (uint32_t)k_mpu_addr_mask;
+  s_mpu_region[rnr].limit =
+    (rlar_val & (uint32_t)k_mpu_addr_mask) | (uint32_t)k_mpu_region_low_mask;
+  s_mpu_region[rnr].ro = (rbar & (uint32_t)k_mpu_rbar_ap_ro_bit) != 0U;
+  s_mpu_region[rnr].en = (rlar_val & (uint32_t)k_mpu_rlar_en_bit) != 0U;
+}
+
+/** @brief RLAR_A1 write hook - capture region RNR+1. */
+static void on_mpu_rlar_a1_write(uc_engine*  uc,
+                                 uc_mem_type type,
+                                 uint64_t    addr,
+                                 int         size,
+                                 int64_t     value,
+                                 void*       user)
+{
+  (void)type;
+  (void)addr;
+  (void)size;
+  (void)user;
+  mpu_capture_alias(uc, (uint32_t)value, (uint64_t)k_mpu_rbar_a1, 1U);
+}
+
+/** @brief RLAR_A2 write hook - capture region RNR+2. */
+static void on_mpu_rlar_a2_write(uc_engine*  uc,
+                                 uc_mem_type type,
+                                 uint64_t    addr,
+                                 int         size,
+                                 int64_t     value,
+                                 void*       user)
+{
+  (void)type;
+  (void)addr;
+  (void)size;
+  (void)user;
+  mpu_capture_alias(uc, (uint32_t)value, (uint64_t)k_mpu_rbar_a2, 2U);
+}
+
+/** @brief RLAR_A3 write hook - capture region RNR+3. */
+static void on_mpu_rlar_a3_write(uc_engine*  uc,
+                                 uc_mem_type type,
+                                 uint64_t    addr,
+                                 int         size,
+                                 int64_t     value,
+                                 void*       user)
+{
+  (void)type;
+  (void)addr;
+  (void)size;
+  (void)user;
+  mpu_capture_alias(uc, (uint32_t)value, (uint64_t)k_mpu_rbar_a3, 3U);
+}
+
+/**
  * @brief UC_HOOK_MEM_WRITE handler for MPU_CTRL -- arm / disarm enforcement.
  *
  * @details
@@ -287,7 +361,7 @@ void mpu_synth_memmanage(uc_engine* uc, uint32_t vtor_base)
   }
 }
 
-/** @brief Implementation of `emu_mpu_install()` -- RLAR capture + CTRL edges. */
+/** @brief Implementation of `emu_mpu_install()` -- RLAR capture + alias hooks + CTRL edges. */
 void emu_mpu_install(uc_engine* uc)
 {
   /* Armv8-M MPU enforcement: capture each region at its RLAR write, then arm /
@@ -296,6 +370,11 @@ void emu_mpu_install(uc_engine* uc)
    * store synthesises MemManage in the run loop (see on_mpu_ro_write). */
   static uc_hook s_h_mpu_rlar;
   static uc_hook s_h_mpu_ctrl;
+  static uc_hook s_h_mpu_rlar_a1;
+  static uc_hook s_h_mpu_rlar_a2;
+  static uc_hook s_h_mpu_rlar_a3;
+
+  /* Primary RLAR hook (region RNR). */
   (void)uc_hook_add(uc,
                     &s_h_mpu_rlar,
                     UC_HOOK_MEM_WRITE,
@@ -303,6 +382,31 @@ void emu_mpu_install(uc_engine* uc)
                     nullptr,
                     (uint64_t)k_mpu_rlar,
                     (uint64_t)k_mpu_rlar + 3U);
+
+  /* Alias RLAR hooks (RLAR_A1..A3 for RNR+1..RNR+3). */
+  (void)uc_hook_add(uc,
+                    &s_h_mpu_rlar_a1,
+                    UC_HOOK_MEM_WRITE,
+                    (void*)on_mpu_rlar_a1_write,
+                    nullptr,
+                    (uint64_t)k_mpu_rlar_a1,
+                    (uint64_t)k_mpu_rlar_a1 + 3U);
+  (void)uc_hook_add(uc,
+                    &s_h_mpu_rlar_a2,
+                    UC_HOOK_MEM_WRITE,
+                    (void*)on_mpu_rlar_a2_write,
+                    nullptr,
+                    (uint64_t)k_mpu_rlar_a2,
+                    (uint64_t)k_mpu_rlar_a2 + 3U);
+  (void)uc_hook_add(uc,
+                    &s_h_mpu_rlar_a3,
+                    UC_HOOK_MEM_WRITE,
+                    (void*)on_mpu_rlar_a3_write,
+                    nullptr,
+                    (uint64_t)k_mpu_rlar_a3,
+                    (uint64_t)k_mpu_rlar_a3 + 3U);
+
+  /* MPU_CTRL hook (arm/disarm enforcement). */
   (void)uc_hook_add(uc,
                     &s_h_mpu_ctrl,
                     UC_HOOK_MEM_WRITE,

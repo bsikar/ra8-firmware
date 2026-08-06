@@ -300,7 +300,7 @@ RA8_INTERNAL [[gnu::used]] static void mpu_simple_fault_recover(uint32_t* frame)
   const uint16_t  first_halfwd = *insn;
   const uint16_t  hi5          = (uint16_t)((first_halfwd >> k_thumb_hi5_shift) & k_thumb_hi5_mask);
   const bool is_thumb2_32b     = (hi5 == k_thumb2_prefix_11101) || (hi5 == k_thumb2_prefix_11110) ||
-                                 (hi5 == k_thumb2_prefix_11111);
+                             (hi5 == k_thumb2_prefix_11111);
   frame[k_mpu_simple_frame_pc_idx] += (is_thumb2_32b ? 4U : 2U);
 
   /* NOTE: we deliberately do NOT clear the MemManage half-word of

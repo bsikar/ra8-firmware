@@ -39,7 +39,7 @@ void wlun_pattern_fill(uint32_t lun, uint32_t lba, UCHAR* out)
   for (uint32_t i = 0U; i < (uint32_t)k_wlun_block_size; i++) {
     const uint32_t v = (lun * (uint32_t)k_wlun_pat_lun_mul) + (lba * (uint32_t)k_wlun_pat_lba_mul) +
                        i + (uint32_t)k_wlun_pat_bias;
-    out[i]           = (UCHAR)(v & (uint32_t)k_wlun_byte_mask);
+    out[i] = (UCHAR)(v & (uint32_t)k_wlun_byte_mask);
   }
 }
 

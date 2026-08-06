@@ -442,6 +442,42 @@ static bool dispatch_armv81_seam(uc_engine* uc, uint32_t pc, const uint8_t code[
   if (emulate_lob(uc, pc, code)) {
     return true; /* handled -- run loop resumes at the loop top or past the loop */
   }
+
+  /* MRS Rd, <special> - Unicorn's M33 model does not handle all Cortex-M
+   * special register reads (IPSR, CONTROL, BASEPRI, etc.).  ThreadX reads
+   * IPSR to detect handler/thread mode; the Module Manager reads CONTROL.
+   * Encoding (T1): hw1 = 0xF3EF, hw2 = 0x8d00 | SYSm, Rd = hw2[11:8].
+   * We handle IPSR (SYSm=5), CONTROL (SYSm=0x14), and xPSR (SYSm=0). */
+  {
+    const uint16_t hw1 = (uint16_t)((uint16_t)code[0] | ((uint16_t)code[1] << 8U));
+    const uint16_t hw2 = (uint16_t)((uint16_t)code[2] | ((uint16_t)code[3] << 8U));
+    if (hw1 == 0xF3EFU && (hw2 & 0xF000U) == 0x8000U) {
+      const uint32_t rd   = (uint32_t)((hw2 >> 8U) & 0xFU);
+      const uint32_t sysm = (uint32_t)(hw2 & 0xFFU);
+      uint32_t       val  = 0U;
+      if (sysm == 0x05U) {
+        /* IPSR: exception number of the currently active handler, or 0 for
+         * Thread mode. Our exc_enter/exc_return track this. */
+        (void)uc_reg_read(uc, UC_ARM_REG_XPSR, &val);
+        val &= 0x1FFU; /* IPSR is bits [8:0] of xPSR */
+      } else if (sysm == 0x14U) {
+        /* CONTROL: Unicorn should track this, but read it anyway. */
+        (void)uc_reg_read(uc, UC_ARM_REG_CONTROL, &val);
+      } else if (sysm == 0x00U) {
+        /* xPSR (full) */
+        (void)uc_reg_read(uc, UC_ARM_REG_XPSR, &val);
+      } else {
+        /* Other special regs: just return 0 for now (best-effort). */
+        val = 0U;
+      }
+      const int arm_r0 = UC_ARM_REG_R0;
+      (void)uc_reg_write(uc, arm_r0 + (int)rd, &val);
+      uint32_t npc = pc + 4U;
+      (void)uc_reg_write(uc, UC_ARM_REG_PC, &npc);
+      return true;
+    }
+  }
+
   return false;
 }
 

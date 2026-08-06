@@ -196,15 +196,15 @@ typedef enum : uint32_t {
  * each character into @p out until @p out reaches @p cap. A run that would
  * overflow the page is truncated, never wrapped past the buffer.
  *
- * @param[in,out] out   Page accumulator (never NULL).
- * @param[in,out] plen  In/out count of characters already buffered (never NULL).
+ * @param[in,out] out   Page accumulator (never nullptr).
+ * @param[in,out] plen  In/out count of characters already buffered (never nullptr).
  * @param[in]     cap   Capacity of @p out in characters.
- * @param[in]     txt   NUL-terminated run from the validated blob (may be NULL).
+ * @param[in]     txt   NUL-terminated run from the validated blob (may be nullptr).
  *
  * @return Nothing.
  *
- * @pre @p out and @p plen are non-NULL; `*plen <= cap`.
- * @pre @p txt, when non-NULL, points inside the validated blob's string pool.
+ * @pre @p out and @p plen are non-nullptr; `*plen <= cap`.
+ * @pre @p txt, when non-nullptr, points inside the validated blob's string pool.
  * @post `*plen <= cap` still holds.
  * @post Iteration bounded by ::k_max_run_len (NASA Rule 2).
  *
@@ -252,12 +252,12 @@ typedef struct {
 /**
  * @brief Push a node index onto the DOM-walk stack if it fits.
  *
- * @param[in,out] st   Walk stack (never NULL).
+ * @param[in,out] st   Walk stack (never nullptr).
  * @param[in]     node Node index to push, or ::k_ra8_book_nil to ignore.
  *
  * @return Nothing.
  *
- * @pre @p st is non-NULL with `sp <= k_walk_stack_depth`.
+ * @pre @p st is non-nullptr with `sp <= k_walk_stack_depth`.
  * @pre @p node is a node index or the nil sentinel.
  * @post A non-nil @p node is pushed unless the stack is full (then dropped).
  * @post `st->sp <= k_walk_stack_depth` still holds.
@@ -288,14 +288,14 @@ static void walk_push(m33_walk_stack_t* st, uint32_t node)
  * ::append_run; the walk stops once @p cap characters are buffered. The pop loop
  * is bounded by ::k_walk_iter_max.
  *
- * @param[in]  base       Validated `RABOOK1` blob base (never NULL).
+ * @param[in]  base       Validated `RABOOK1` blob base (never nullptr).
  * @param[in]  root       Chapter root node index, or ::k_ra8_book_nil.
  * @param[in]  node_count Node-table length (an out-of-range index is dropped).
- * @param[out] out        Page accumulator (never NULL).
+ * @param[out] out        Page accumulator (never nullptr).
  * @param[in]  cap        Capacity of @p out in characters.
  *
  * @return Count of characters collected (`<= cap`).
- * @retval 0 @p base or @p out was NULL, or the chapter held no text.
+ * @retval 0 @p base or @p out was nullptr, or the chapter held no text.
  *
  * @pre @p base was accepted by ::book_is_valid.
  * @pre @p out has room for @p cap characters.
@@ -351,13 +351,13 @@ collect_chapter_text(const void* base, uint32_t root, uint32_t node_count, char*
  * row every ::k_erm33_fb_cols cells, blitting each row string with one
  * `ra8_gfx_text_out`. The row loop is bounded by ::k_erm33_fb_rows.
  *
- * @param[out] fb   SDRAM framebuffer base (never NULL).
- * @param[in]  text Collected page text (never NULL).
+ * @param[out] fb   SDRAM framebuffer base (never nullptr).
+ * @param[in]  text Collected page text (never nullptr).
  * @param[in]  len  Count of valid characters in @p text.
  *
  * @return Whether every `ra8_gfx` call succeeded.
  * @retval true  The plane holds the page over a paper-white background.
- * @retval false A NULL argument or an `ra8_gfx` error; the plane is undefined.
+ * @retval false A nullptr argument or an `ra8_gfx` error; the plane is undefined.
  *
  * @pre @p fb is ::k_erm33_fb_bytes bytes of SDRAM.
  * @pre @p text holds at least @p len characters.
@@ -422,11 +422,11 @@ static bool render_page(uint8_t* fb, const char* text, uint32_t len)
  * SDRAM is what proves the M33's pixels actually landed; a blank plane hashes to
  * one fixed value, so a different CRC demonstrates genuine rendering.
  *
- * @param[in] fb  Framebuffer base (never NULL).
+ * @param[in] fb  Framebuffer base (never nullptr).
  * @param[in] len Bytes to hash; expected to equal ::k_erm33_fb_bytes.
  *
  * @return CRC-32 of the @p len bytes at @p fb.
- * @retval 0 @p fb is NULL or @p len is 0 (no pixels to hash).
+ * @retval 0 @p fb is nullptr or @p len is 0 (no pixels to hash).
  *
  * @pre @p fb addresses the rendered SDRAM framebuffer.
  * @pre The render completed and a `dsb` drained the pixels to SDRAM.
@@ -467,7 +467,7 @@ static uint32_t fb_crc32(const uint8_t* fb, uint32_t len)
  * glyph count and the freshly-folded CRC into the shared mailbox, each behind a
  * `dsb` so the parked M85 observes a fully-formed descriptor.
  *
- * @param[out] mb      Shared mailbox (never NULL).
+ * @param[out] mb      Shared mailbox (never nullptr).
  * @param[in]  crc     CRC-32 the M33 folded over the framebuffer.
  * @param[in]  glyphs  Characters laid onto the held page.
  *
@@ -504,7 +504,7 @@ static void publish_page(volatile erm33_mailbox_t* mb, uint32_t crc, uint32_t gl
  * non-zero and within sane caps. Mirrors the real loader's gate so the M33 never
  * walks a malformed blob (the inline accessors do no bounds checking).
  *
- * @param[in] base Candidate blob base (never NULL in this app).
+ * @param[in] base Candidate blob base (never nullptr in this app).
  * @param[in] size Baked blob length in bytes (::k_rabook_fixture_len).
  *
  * @return Whether the blob is well-formed enough to walk.
@@ -560,13 +560,13 @@ static bool book_is_valid(const void* base, uint32_t size)
  * render and each page-turn re-render) yields the identical CRC, keeping the
  * ra8_emulator gate's golden stable.
  *
- * @param[in]  base       Validated `RABOOK1` blob base (never NULL).
+ * @param[in]  base       Validated `RABOOK1` blob base (never nullptr).
  * @param[out] out_crc    Receives the CRC-32 of the rendered framebuffer.
  * @param[out] out_glyphs Receives the count of characters laid onto the page.
  *
  * @return Whether the render + CRC fold succeeded.
  * @retval true  The page rendered and @p out_crc / @p out_glyphs are set.
- * @retval false @p base / @p out_crc / @p out_glyphs was NULL, or `ra8_gfx` failed.
+ * @retval false @p base / @p out_crc / @p out_glyphs was nullptr, or `ra8_gfx` failed.
  *
  * @pre @p base was accepted by ::book_is_valid.
  * @pre @p out_crc and @p out_glyphs are writable.
@@ -591,10 +591,10 @@ static bool render_held_page(const void* base, uint32_t* out_crc, uint32_t* out_
   const ra8_book_chapter_t* chapters = ra8_book_chapters(base);
   char                      page_text[k_erm33_page_chars];
   const uint32_t            glyphs = collect_chapter_text(base,
-                                                          chapters[0].root_node,
-                                                          hdr->node_count,
-                                                          page_text,
-                                                          (uint32_t)k_erm33_page_chars);
+                                               chapters[0].root_node,
+                                               hdr->node_count,
+                                               page_text,
+                                               (uint32_t)k_erm33_page_chars);
   if (!render_page(s_framebuffer, page_text, glyphs)) {
     return false;
   }
@@ -665,12 +665,12 @@ static void simulate_touch_dwell(void)
  * for that ack across ra8_emulator's core interleaves; the bound is the NASA Rule 2
  * backstop for an ack that never arrives.
  *
- * @param[in] mb   Shared mailbox (never NULL).
+ * @param[in] mb   Shared mailbox (never nullptr).
  * @param[in] turn The page-turn number being acknowledged (1-based).
  *
  * @return Whether `turn_ack` reached @p turn within budget.
  * @retval true  `turn_ack >= turn` within ::k_m33_ack_budget iterations.
- * @retval false @p mb was NULL or the budget was exhausted first.
+ * @retval false @p mb was nullptr or the budget was exhausted first.
  *
  * @pre @p mb is the fixed-address mailbox pointer; `turn_req == turn` published.
  * @pre The M85 was poked via ::notify_m85.
@@ -704,8 +704,8 @@ static bool wait_for_ack(volatile erm33_mailbox_t* mb, uint32_t turn)
  * same CRC), republishes the descriptor, and sets `turn_done`. A missed ack ends
  * the loop. The outer loop is bounded by ::k_erm33_max_turns (NASA Rule 2).
  *
- * @param[in,out] mb   Shared mailbox (never NULL).
- * @param[in]     base Validated `RABOOK1` blob base (never NULL).
+ * @param[in,out] mb   Shared mailbox (never nullptr).
+ * @param[in]     base Validated `RABOOK1` blob base (never nullptr).
  *
  * @return Nothing.
  *
@@ -768,7 +768,7 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
 /**
  * @brief Mark a failure status, publish `done`, and park the M33.
  *
- * @param[out] mb     Shared mailbox (never NULL).
+ * @param[out] mb     Shared mailbox (never nullptr).
  * @param[in]  status Failure status code (::erm33_const_t).
  *
  * @return This function never returns.

@@ -132,11 +132,11 @@ typedef enum : uint32_t {
   k_ls_idx_entry     = 8U,  /**< Index-entry length (offset + len). */
   k_ls_ftr_magic_off = 12U, /**< Footer "JOFE" magic offset.        */
   k_ls_atlas_total   = (uint32_t)k_ls_hdr_bytes + ((uint32_t)k_ls_bands * 8U) +
-                       (uint32_t)k_ls_ftr_bytes, /**< 176-byte atlas length. */
-  k_ls_byte_mask     = 0xFFU,                    /**< Low-byte mask.         */
-  k_ls_shift_8       = 8U,                       /**< One-byte shift.        */
-  k_ls_shift_16      = 16U,                      /**< Two-byte shift.        */
-  k_ls_shift_24      = 24U,                      /**< Three-byte shift.      */
+                     (uint32_t)k_ls_ftr_bytes, /**< 176-byte atlas length. */
+  k_ls_byte_mask = 0xFFU,                      /**< Low-byte mask.         */
+  k_ls_shift_8   = 8U,                         /**< One-byte shift.        */
+  k_ls_shift_16  = 16U,                        /**< Two-byte shift.        */
+  k_ls_shift_24  = 24U,                        /**< Three-byte shift.      */
 } ls_atlas_t;
 
 /**
@@ -627,7 +627,7 @@ static void ls_row_color(uint32_t base, uint32_t r, uint32_t th, uint8_t* rgb)
  * @param[out] out_h      Receives the band height, pixels (clamped for the last).
  * @return ra8_err_t
  * @retval k_ra8_ok               Band painted into @p cell.
- * @retval k_ra8_err_null_ptr     A required pointer is NULL.
+ * @retval k_ra8_err_null_ptr     A required pointer is nullptr.
  * @retval k_ra8_err_out_of_range The band payload exceeds @p cell_bytes.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -727,7 +727,7 @@ static void ls_open_strip(uint32_t total)
  * @param[in] bpp    Bytes per pixel (unused: strip is RGB888).
  * @param[in] dst_x  Destination left in the framebuffer.
  * @param[in] dst_y  Destination top in the framebuffer (may be negative).
- * @return k_ra8_ok on success; k_ra8_err_null_ptr if @p pixels is NULL.
+ * @return k_ra8_ok on success; k_ra8_err_null_ptr if @p pixels is nullptr.
  * @note Not thread-safe.
  * @since 0.1.0
  */

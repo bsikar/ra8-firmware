@@ -420,7 +420,7 @@ static UCHAR s_ns_language_id_framework[] = {k_ns_usb_langid_lo, k_ns_usb_langid
  * @return void.
  * @pre Invoked by the USBX device stack during SET_CONFIGURATION processing
  *      (here, from inside the worker's ra8_usb_dispatch call).
- * @pre ``_ux_system_slave`` is non-NULL.
+ * @pre ``_ux_system_slave`` is non-nullptr.
  * @post ::s_ns_cdc_acm points at the live class; device state pinned CONFIGURED.
  * @post ISR-side OUT->IN auto-echo is armed; ::g_tz_usb_configured advanced.
  * @note Runs in the polled-dispatch worker context.
@@ -508,7 +508,7 @@ static UINT ns_cdc_class_register(void)
   };
   /* (UCHAR*)(uintptr_t): USBX takes a non-const class name; the uintptr_t hop
    * launders the string-literal const without tripping -Wcast-qual. */
-  return _ux_device_stack_class_register((UCHAR*)(uintptr_t)"ux_slave_class_cdc_acm",
+  return _ux_device_stack_class_register((UCHAR*)(uintptr_t) "ux_slave_class_cdc_acm",
                                          _ux_device_class_cdc_acm_entry,
                                          1,
                                          0,
