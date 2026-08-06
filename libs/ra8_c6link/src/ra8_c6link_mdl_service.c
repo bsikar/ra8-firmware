@@ -15,7 +15,7 @@
 /** @brief Named constants for the media download service. */
 enum {
   k_mdl_svc_frame_len  = 1600U, /**< Maximum RPC frame length in bytes. */
-  k_mdl_svc_chunk_size = 1024U, /**< Simulated download chunk size. */
+  k_mdl_svc_chunk_size = 1024U, /**< Simulated download chunk size.     */
 };
 
 /** @brief Simulated total download size (1 MiB). */
@@ -24,16 +24,16 @@ enum { k_mdl_svc_total_size = (k_mdl_svc_chunk_size * k_mdl_svc_chunk_size) };
 /** @brief RPC message IDs. */
 enum {
   k_mdl_msg_poll     = 0U, /**< Poll for download progress. */
-  k_mdl_msg_req      = 1U, /**< Start a download request. */
-  k_mdl_msg_cancel   = 2U, /**< Cancel current download. */
-  k_mdl_msg_progress = 3U, /**< Progress response. */
+  k_mdl_msg_req      = 1U, /**< Start a download request.   */
+  k_mdl_msg_cancel   = 2U, /**< Cancel current download.    */
+  k_mdl_msg_progress = 3U, /**< Progress response.          */
 };
 
 /** @brief Download status codes. */
 enum {
-  k_mdl_status_idle        = 0U, /**< No active download. */
+  k_mdl_status_idle        = 0U, /**< No active download.   */
   k_mdl_status_downloading = 1U, /**< Download in progress. */
-  k_mdl_status_done        = 2U, /**< Download complete. */
+  k_mdl_status_done        = 2U, /**< Download complete.    */
 };
 
 static ra8_mdl_download_progress_t s_progress;
