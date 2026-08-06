@@ -256,7 +256,7 @@ ra8_err_t viewer_tile_comic(ra8_viewer_reader_t* r,
   if (buf_bytes > r->limits.max_output_bytes) {
     return k_ra8_err_decomp_output_cap;
   }
-  uint16_t* buf = (uint16_t*)ra8_arena_alloc(arena, (uint32_t)buf_bytes);
+  uint16_t* buf = (uint16_t*)ra8_arena_alloc(arena, (uint32_t)buf_bytes, k_ra8_arena_align);
   if (buf == nullptr) {
     return k_ra8_err_no_mem;
   }

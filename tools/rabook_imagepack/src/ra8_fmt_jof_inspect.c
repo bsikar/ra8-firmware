@@ -402,11 +402,12 @@ static ra8_err_t priv_collect_tiles(ra8_arena_t*          arena,
                                     const ra8_fmt_opts_t* opts)
 {
   const uint32_t   tmax = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
-  fmt_decode_buf_t buf  = {.cell        = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)tmax),
+  fmt_decode_buf_t buf  = {.cell =
+                             (uint8_t*)ra8_arena_alloc(arena, (uint32_t)tmax, k_ra8_arena_align),
                            .cell_cap    = tmax,
                            .scratch     = nullptr,
                            .scratch_cap = ra8_jof_stored_bound(tmax)};
-  buf.scratch           = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)buf.scratch_cap);
+  buf.scratch = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)buf.scratch_cap, k_ra8_arena_align);
   if ((buf.cell == nullptr) || (buf.scratch == nullptr)) {
     return k_ra8_err_no_mem;
   }
@@ -652,8 +653,8 @@ static bool priv_open_reassemble_ws(ra8_arena_t*          arena,
   ws->scratch_c = ra8_jof_stored_bound(ws->tile_max);
 
   ws->px      = (uint8_t*)ra8_arena_calloc(arena, (uint32_t)ws->raster, 1U);
-  ws->cell    = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)ws->tile_max);
-  ws->scratch = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)ws->scratch_c);
+  ws->cell    = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)ws->tile_max, k_ra8_arena_align);
+  ws->scratch = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)ws->scratch_c, k_ra8_arena_align);
   if ((ws->px != nullptr) && (ws->cell != nullptr) && (ws->scratch != nullptr)) {
     return true;
   }

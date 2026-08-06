@@ -129,7 +129,7 @@ ra8_err_t ra8_fmt_slurp(ra8_arena_t* arena, const char* path, ra8_fmt_blob_t* ou
     (void)fclose(f);
     return rc;
   }
-  uint8_t* buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)len);
+  uint8_t* buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)len, k_ra8_arena_align);
   if (buf == nullptr) {
     (void)fclose(f);
     return k_ra8_err_no_mem;

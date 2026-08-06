@@ -166,7 +166,7 @@ static uint8_t* read_file(ra8_arena_t* arena, const char* path, uint32_t* out_le
     (void)fclose(f);
     return nullptr;
   }
-  uint8_t* buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)n);
+  uint8_t* buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)n, k_ra8_arena_align);
   if ((buf == nullptr) || (fread(buf, 1U, (size_t)n, f) != (size_t)n)) {
     (void)fclose(f);
     return nullptr;

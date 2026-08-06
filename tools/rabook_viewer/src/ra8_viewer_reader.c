@@ -72,7 +72,7 @@ ra8_err_t viewer_reserve_page_buf(ra8_viewer_reader_t* r, size_t need, ra8_arena
   if (r->page_cap >= need) {
     return k_ra8_ok;
   }
-  uint8_t* grown = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)need);
+  uint8_t* grown = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)need, k_ra8_arena_align);
   if (grown == nullptr) {
     // cppcheck-suppress memleak
     // grown is nullptr here
@@ -254,10 +254,12 @@ RA8_INTERNAL static ra8_err_t viewer_alloc_comic(ra8_viewer_reader_t* r, ra8_are
 {
   r->pages =
     (ra8_comic_page_t*)ra8_arena_calloc(arena, (uint32_t)k_viewer_page_cap, sizeof(*r->pages));
-  r->names      = (char*)ra8_arena_calloc(arena, (uint32_t)k_viewer_name_cap, sizeof(char));
-  r->arena_mem  = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)k_viewer_arena_bytes);
-  r->unwrap     = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)k_viewer_unwrap_bytes);
-  r->xz_scratch = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)k_viewer_xz_scratch);
+  r->names = (char*)ra8_arena_calloc(arena, (uint32_t)k_viewer_name_cap, sizeof(char));
+  r->arena_mem =
+    (uint8_t*)ra8_arena_alloc(arena, (uint32_t)k_viewer_arena_bytes, k_ra8_arena_align);
+  r->unwrap = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)k_viewer_unwrap_bytes, k_ra8_arena_align);
+  r->xz_scratch =
+    (uint8_t*)ra8_arena_alloc(arena, (uint32_t)k_viewer_xz_scratch, k_ra8_arena_align);
   if ((r->pages == nullptr) || (r->names == nullptr) || (r->arena_mem == nullptr) ||
       (r->unwrap == nullptr) || (r->xz_scratch == nullptr)) {
     return k_ra8_err_no_mem;

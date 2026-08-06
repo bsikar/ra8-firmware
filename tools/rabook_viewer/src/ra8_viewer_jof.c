@@ -162,7 +162,7 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r, ra8_arena
     return k_ra8_err_decomp_output_cap;
   }
   const size_t sz  = (size_t)r->file.size;
-  uint8_t*     buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sz);
+  uint8_t*     buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sz, k_ra8_arena_align);
   if (buf == nullptr) {
     // cppcheck-suppress memleak
     // buf is nullptr here
@@ -201,9 +201,12 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r, ra8_arena
 RA8_INTERNAL static ra8_err_t
 viewer_jof_alloc_cache(viewer_jof_t* w, uint32_t cell_count, size_t band_bytes, ra8_arena_t* arena)
 {
-  w->scratch =
-    (uint8_t*)ra8_arena_alloc(arena, (uint32_t)(band_bytes + (size_t)k_viewer_jof_scratch_pad));
-  w->cells = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)((size_t)cell_count * band_bytes));
+  w->scratch = (uint8_t*)ra8_arena_alloc(arena,
+                                         (uint32_t)(band_bytes + (size_t)k_viewer_jof_scratch_pad),
+                                         k_ra8_arena_align);
+  w->cells   = (uint8_t*)ra8_arena_alloc(arena,
+                                       (uint32_t)((size_t)cell_count * band_bytes),
+                                       k_ra8_arena_align);
   w->meta =
     (ra8_keycache_cell_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->meta));
   w->keys =
@@ -413,8 +416,9 @@ ra8_err_t viewer_tile_jof(ra8_viewer_reader_t* r,
   /* nw is the atlas width (bounded to k_ra8_jof_max_dim by ra8_jof_parse) and nh
    * is one viewport band (<= the fixed framebuffer height), so this product is
    * bounded by those prior policy checks and cannot wrap size_t. */
-  const size_t px  = (size_t)nw * (size_t)nh;
-  uint16_t*    buf = (uint16_t*)ra8_arena_alloc(arena, (uint32_t)(px * sizeof(uint16_t)));
+  const size_t px = (size_t)nw * (size_t)nh;
+  uint16_t*    buf =
+    (uint16_t*)ra8_arena_alloc(arena, (uint32_t)(px * sizeof(uint16_t)), k_ra8_arena_align);
   if (buf == nullptr) {
     // cppcheck-suppress memleak
     // buf is nullptr here

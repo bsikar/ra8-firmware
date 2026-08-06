@@ -409,7 +409,7 @@ static int build_and_dump(ra8_arena_t*   arena,
  */
 static uint8_t* slurp_font(ra8_arena_t* arena, const char* font_in, size_t* font_len)
 {
-  uint8_t* font = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)k_font_cap);
+  uint8_t* font = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)k_font_cap, k_ra8_arena_align);
   if (font == nullptr) {
     (void)fprintf(stderr, "mkfontimg: out of memory\n");
     return nullptr;

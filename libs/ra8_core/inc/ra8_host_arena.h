@@ -51,10 +51,8 @@
  * @brief Alignment the arena hands out blocks at (8-byte for uint64_t safety).
  * @since 0.1.0
  */
-enum : uint32_t {
-  k_ra8_arena_align = 8U,
-  k_ra8_arena_mask  = 7U,
-};
+#define k_ra8_arena_align ((uint32_t)8U)
+#define k_ra8_arena_mask  ((uint32_t)7U)
 
 /**
  * @brief A bump allocator over a caller-supplied buffer.
@@ -103,18 +101,19 @@ static inline ra8_err_t ra8_arena_init(ra8_arena_t* a, uint8_t* buf, uint32_t by
  *         arena has insufficient space.
  * @since 0.1.0
  */
-static inline void* ra8_arena_alloc(ra8_arena_t* a, uint32_t bytes)
+static inline void* ra8_arena_alloc(ra8_arena_t* a, uint32_t bytes, uint32_t align)
 {
   if ((a == nullptr) || (a->buf == nullptr)) {
     return nullptr;
   }
 
+  const uint32_t mask  = (align > 0U) ? (align - 1U) : k_ra8_arena_mask;
   const uint32_t avail = a->cap - a->used;
   if (bytes > avail) {
     return nullptr;
   }
 
-  const uint32_t pad = (0U - bytes) & (uint32_t)k_ra8_arena_mask;
+  const uint32_t pad = (0U - bytes) & mask;
   if (pad > (avail - bytes)) {
     return nullptr;
   }
@@ -177,6 +176,36 @@ static inline uint32_t ra8_arena_remaining(const ra8_arena_t* a)
     return 0U;
   }
   return a->cap - a->used;
+}
+
+/**
+ * @brief Save the current bump offset for later restore.
+ *
+ * @param[in] a Arena to query.
+ * @return Current offset, or 0 if @p a is null.
+ * @since 0.1.0
+ */
+static inline uint32_t ra8_arena_save(ra8_arena_t* a)
+{
+  uint32_t mark = 0U;
+  if (a != nullptr) {
+    mark = a->used;
+  }
+  return mark;
+}
+
+/**
+ * @brief Restore the bump offset to a previously saved mark.
+ *
+ * @param[in,out] a    Arena to restore.
+ * @param[in]     mark Saved offset from ::ra8_arena_save.
+ * @since 0.1.0
+ */
+static inline void ra8_arena_restore(ra8_arena_t* a, uint32_t mark)
+{
+  if (a != nullptr) {
+    a->used = mark;
+  }
 }
 
 #endif /* RA8_HOST_ARENA_H */

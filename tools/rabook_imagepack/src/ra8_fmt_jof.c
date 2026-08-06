@@ -195,7 +195,7 @@ static ra8_err_t fmt_jof_carve_webp(ra8_arena_t*          arena,
   if (need == 0U) {
     return k_ra8_err_invalid_size;
   }
-  uint8_t* mem = (uint8_t*)ra8_arena_alloc(arena, need);
+  uint8_t* mem = (uint8_t*)ra8_arena_alloc(arena, need, k_ra8_arena_align);
   if (mem == nullptr) {
     return k_ra8_err_no_mem;
   }
@@ -261,7 +261,7 @@ static ra8_err_t fmt_jof_run_produce(ra8_arena_t*          arena,
                                      ra8_jof_memstore_t*   store,
                                      ra8_jof_info_t*       out_info)
 {
-  uint8_t* work = (uint8_t*)ra8_arena_alloc(arena, work_cap);
+  uint8_t* work = (uint8_t*)ra8_arena_alloc(arena, work_cap, k_ra8_arena_align);
   if (work == nullptr) {
     return k_ra8_err_no_mem;
   }
@@ -310,7 +310,7 @@ ra8_err_t ra8_fmt_jof_produce(ra8_arena_t*          arena,
   /* The atlas can expand slightly over the source for incompressible input;
    * size the sink from the decoded worst case plus the index and trailer. */
   const size_t sink_cap = ra8_fmt_jof_sink_cap(src->len);
-  uint8_t*     sink     = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sink_cap);
+  uint8_t*     sink     = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sink_cap, k_ra8_arena_align);
   if (sink == nullptr) {
     return k_ra8_err_no_mem;
   }
