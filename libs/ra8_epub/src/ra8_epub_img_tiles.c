@@ -173,16 +173,16 @@ static ra8_err_t priv_tile_decode(void*                 ctx,
   const ra8_jof_pread_fn  pread = (src->book != nullptr) ? priv_entry_pread : src->pread;
   void*                   pctx  = (src->book != nullptr) ? (void*)src : src->pread_ctx;
   const ra8_err_t         err   = ra8_jof_read_tile(pread,
-                                          pctx,
-                                          &src->info,
-                                          key->tile_x,
-                                          key->tile_y,
-                                          binder->scratch,
-                                          binder->scratch_cap,
-                                          cell,
-                                          cell_bytes,
-                                          out_w,
-                                          out_h);
+                                                    pctx,
+                                                    &src->info,
+                                                    key->tile_x,
+                                                    key->tile_y,
+                                                    binder->scratch,
+                                                    binder->scratch_cap,
+                                                    cell,
+                                                    cell_bytes,
+                                                    out_w,
+                                                    out_h);
   if (err == k_ra8_err_invalid_size) {
     return k_ra8_err_no_mem; /* tile exceeds the cell / scratch budget */
   }

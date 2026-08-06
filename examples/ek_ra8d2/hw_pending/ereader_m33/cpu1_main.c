@@ -591,10 +591,10 @@ static bool render_held_page(const void* base, uint32_t* out_crc, uint32_t* out_
   const ra8_book_chapter_t* chapters = ra8_book_chapters(base);
   char                      page_text[k_erm33_page_chars];
   const uint32_t            glyphs = collect_chapter_text(base,
-                                               chapters[0].root_node,
-                                               hdr->node_count,
-                                               page_text,
-                                               (uint32_t)k_erm33_page_chars);
+                                                          chapters[0].root_node,
+                                                          hdr->node_count,
+                                                          page_text,
+                                                          (uint32_t)k_erm33_page_chars);
   if (!render_page(s_framebuffer, page_text, glyphs)) {
     return false;
   }

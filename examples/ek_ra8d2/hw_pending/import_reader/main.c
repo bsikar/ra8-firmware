@@ -437,15 +437,15 @@ static void imp_build_cookie(void)
   };
   s_imp_arena = (ra8_img_arena_t){s_imp_img_scratch, sizeof(s_imp_img_scratch), 0U, 0U};
   s_imp_scr   = (ra8_rabook_pipeline_scratch_t){
-      .xhtml     = s_imp_xhtml,
-      .xhtml_cap = sizeof(s_imp_xhtml),
-      .image_raw = s_imp_image_raw,
-      .image_cap = sizeof(s_imp_image_raw),
-      .img_arena = &s_imp_arena,
-      .gray      = s_imp_gray,
-      .gray_cap  = (uint32_t)k_imp_gray_cap,
-      .css       = s_imp_css,
-      .css_cap   = sizeof(s_imp_css),
+    .xhtml     = s_imp_xhtml,
+    .xhtml_cap = sizeof(s_imp_xhtml),
+    .image_raw = s_imp_image_raw,
+    .image_cap = sizeof(s_imp_image_raw),
+    .img_arena = &s_imp_arena,
+    .gray      = s_imp_gray,
+    .gray_cap  = (uint32_t)k_imp_gray_cap,
+    .css       = s_imp_css,
+    .css_cap   = sizeof(s_imp_css),
   };
   s_imp_cookie = (ra8_rabook_import_compiler_ctx_t){
     .epub               = &s_imp_epub,

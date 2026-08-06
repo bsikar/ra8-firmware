@@ -761,7 +761,7 @@ ra8_err_t ra8_lvd_set_irq_edge(ra8_lvd_channel_t channel, ra8_lvd_edge_t edge)
   /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307 */
   const uint8_t prev     = *ra8_lvd_reg8(map.cr1);
   const uint8_t next     = (uint8_t)((prev & (uint8_t)~k_ra8_lvd_cr1_mask_idtsel) |
-                                 ((uint8_t)edge & k_ra8_lvd_cr1_mask_idtsel));
+                                     ((uint8_t)edge & k_ra8_lvd_cr1_mask_idtsel));
   *ra8_lvd_reg8(map.cr1) = next;
   return k_ra8_ok;
 }

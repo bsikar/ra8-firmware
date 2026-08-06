@@ -206,14 +206,14 @@ int32_t main(void)
   int32_t         out_w = 0;
   int32_t         out_h = 0;
   const ra8_err_t err   = ra8_img_decode_blit(&arena,
-                                            k_cover_png,
-                                            (size_t)k_cover_png_len,
-                                            0,
-                                            0,
-                                            (int32_t)k_iv_fb_w,
-                                            (int32_t)k_iv_fb_h,
-                                            &out_w,
-                                            &out_h);
+                                              k_cover_png,
+                                              (size_t)k_cover_png_len,
+                                              0,
+                                              0,
+                                              (int32_t)k_iv_fb_w,
+                                              (int32_t)k_iv_fb_h,
+                                              &out_w,
+                                              &out_h);
   if (err != k_ra8_ok) {
     iv_print(k_msg_derr, (uint32_t)sizeof(k_msg_derr) - 1U);
     iv_panic_halt();

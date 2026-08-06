@@ -301,8 +301,8 @@ static bool rtc_alarm_matches(void)
                       (rtc_bcd_to_bin((uint8_t)(sar & (uint8_t)k_rtc_alarm_val)) == s_rtc.sec);
   const bool min_ok = ((mar & (uint8_t)k_rtc_alarm_enb) == 0U) ||
                       (rtc_bcd_to_bin((uint8_t)(mar & (uint8_t)k_rtc_alarm_val)) == s_rtc.min);
-  const bool hr_ok = ((har & (uint8_t)k_rtc_alarm_enb) == 0U) ||
-                     (rtc_bcd_to_bin((uint8_t)(har & (uint8_t)k_rtc_alarm_val)) == s_rtc.hour);
+  const bool hr_ok  = ((har & (uint8_t)k_rtc_alarm_enb) == 0U) ||
+                      (rtc_bcd_to_bin((uint8_t)(har & (uint8_t)k_rtc_alarm_val)) == s_rtc.hour);
   return sec_ok && min_ok && hr_ok;
 }
 

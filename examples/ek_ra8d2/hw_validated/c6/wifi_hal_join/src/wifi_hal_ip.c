@@ -124,9 +124,9 @@ static UINT priv_net_dhcp(ra8_wifi_lease_t* out)
   }
   ULONG actual = 0U;
   s            = nx_ip_status_check(&s_ip,
-                         (ULONG)NX_IP_ADDRESS_RESOLVED,
-                         &actual,
-                         (ULONG)k_wifi_hal_dhcp_wait_ms);
+                                    (ULONG)NX_IP_ADDRESS_RESOLVED,
+                                    &actual,
+                                    (ULONG)k_wifi_hal_dhcp_wait_ms);
   if (s != NX_SUCCESS) {
     return s;
   }

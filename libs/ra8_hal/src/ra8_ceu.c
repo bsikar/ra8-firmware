@@ -158,7 +158,7 @@ static ra8_err_t internal_wait_idle(void)
     /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 */
     const uint32_t capsr = *ra8_ceu_reg32(k_ra8_ceu_off_capsr);
     const bool     idle  = ((cstsr & (uint32_t)k_ra8_ceu_cstsr_mask_cpton) == 0U) &&
-                      ((capsr & (uint32_t)k_ra8_ceu_capsr_mask_cpkil) == 0U);
+                           ((capsr & (uint32_t)k_ra8_ceu_capsr_mask_cpkil) == 0U);
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
     /* Host MMIO fault seam, keyed on CSTSR (the primary status reg). */
     if (ra8_fake_mmio_wait_eval(ra8_ceu_reg32(k_ra8_ceu_off_cstsr), i, idle)) {

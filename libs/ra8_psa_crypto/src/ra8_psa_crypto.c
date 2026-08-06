@@ -387,12 +387,12 @@ ra8_err_t ra8_psa_sign_hash(ra8_psa_key_t  handle,
 #else
   size_t             produced = 0U;
   const psa_status_t st       = psa_sign_hash(handle->psa_id,
-                                        PSA_ALG_ECDSA(PSA_ALG_SHA_256),
-                                        hash,
-                                        hash_len,
-                                        sig,
-                                        sig_cap,
-                                        &produced);
+                                              PSA_ALG_ECDSA(PSA_ALG_SHA_256),
+                                              hash,
+                                              hash_len,
+                                              sig,
+                                              sig_cap,
+                                              &produced);
   if (st != PSA_SUCCESS) {
     return k_ra8_err_hw_error;
   }
@@ -536,16 +536,16 @@ ra8_err_t ra8_psa_aead_encrypt(ra8_psa_key_t  handle,
 #else
   size_t             produced = 0U;
   const psa_status_t st       = psa_aead_encrypt(handle->psa_id,
-                                           PSA_ALG_GCM,
-                                           nonce,
-                                           nonce_len,
-                                           aad,
-                                           aad_len,
-                                           plain,
-                                           plain_len,
-                                           out,
-                                           out_cap,
-                                           &produced);
+                                                 PSA_ALG_GCM,
+                                                 nonce,
+                                                 nonce_len,
+                                                 aad,
+                                                 aad_len,
+                                                 plain,
+                                                 plain_len,
+                                                 out,
+                                                 out_cap,
+                                                 &produced);
   if (st != PSA_SUCCESS) {
     return k_ra8_err_hw_error;
   }
@@ -614,17 +614,17 @@ ra8_err_t ra8_psa_aead_decrypt(ra8_psa_key_t  handle,
   }
   size_t          plain_len = 0U;
   const ra8_err_t ck        = internal_aead_decrypt_check(handle,
-                                                   alg,
-                                                   nonce,
-                                                   nonce_len,
-                                                   aad,
-                                                   aad_len,
-                                                   cipher,
-                                                   cipher_len,
-                                                   out,
-                                                   out_cap,
-                                                   out_len,
-                                                   &plain_len);
+                                                          alg,
+                                                          nonce,
+                                                          nonce_len,
+                                                          aad,
+                                                          aad_len,
+                                                          cipher,
+                                                          cipher_len,
+                                                          out,
+                                                          out_cap,
+                                                          out_len,
+                                                          &plain_len);
   if (ck != k_ra8_ok) {
     return ck;
   }
@@ -645,16 +645,16 @@ ra8_err_t ra8_psa_aead_decrypt(ra8_psa_key_t  handle,
 #else
   size_t             produced = 0U;
   const psa_status_t st       = psa_aead_decrypt(handle->psa_id,
-                                           PSA_ALG_GCM,
-                                           nonce,
-                                           nonce_len,
-                                           aad,
-                                           aad_len,
-                                           cipher,
-                                           cipher_len,
-                                           out,
-                                           out_cap,
-                                           &produced);
+                                                 PSA_ALG_GCM,
+                                                 nonce,
+                                                 nonce_len,
+                                                 aad,
+                                                 aad_len,
+                                                 cipher,
+                                                 cipher_len,
+                                                 out,
+                                                 out_cap,
+                                                 &produced);
   if (st == PSA_ERROR_INVALID_SIGNATURE) {
     return k_ra8_err_crc_mismatch;
   }

@@ -320,11 +320,11 @@ static ra8_err_t s_dispatch_and_cache(const ra8_rabook_import_compiler_m33_ctx_t
 {
   uint32_t  blob_len = 0U;
   ra8_err_t err      = ctx->dispatch(ctx->dispatch_ctx,
-                                ctx->epub_load_buf,
-                                epub_len,
-                                ctx->blob_buf,
-                                ctx->blob_cap,
-                                &blob_len);
+                                     ctx->epub_load_buf,
+                                     epub_len,
+                                     ctx->blob_buf,
+                                     ctx->blob_cap,
+                                     &blob_len);
   if (err != k_ra8_ok) {
     return err;
   }

@@ -132,11 +132,11 @@ typedef enum : uint32_t {
   k_ls_idx_entry     = 8U,  /**< Index-entry length (offset + len). */
   k_ls_ftr_magic_off = 12U, /**< Footer "JOFE" magic offset.        */
   k_ls_atlas_total   = (uint32_t)k_ls_hdr_bytes + ((uint32_t)k_ls_bands * 8U) +
-                     (uint32_t)k_ls_ftr_bytes, /**< 176-byte atlas length. */
-  k_ls_byte_mask = 0xFFU,                      /**< Low-byte mask.         */
-  k_ls_shift_8   = 8U,                         /**< One-byte shift.        */
-  k_ls_shift_16  = 16U,                        /**< Two-byte shift.        */
-  k_ls_shift_24  = 24U,                        /**< Three-byte shift.      */
+                       (uint32_t)k_ls_ftr_bytes, /**< 176-byte atlas length. */
+  k_ls_byte_mask     = 0xFFU,                    /**< Low-byte mask.         */
+  k_ls_shift_8       = 8U,                       /**< One-byte shift.        */
+  k_ls_shift_16      = 16U,                      /**< Two-byte shift.        */
+  k_ls_shift_24      = 24U,                      /**< Three-byte shift.      */
 } ls_atlas_t;
 
 /**

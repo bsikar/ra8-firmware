@@ -326,13 +326,13 @@ static ra8_err_t s_unwrap_pass(xz_unwrap_state_t* st, bool* end)
   size_t          used     = 0U;
   size_t          produced = 0U;
   const ra8_err_t rerr     = ra8_unarch_xz_stream_run(&st->xs,
-                                                  st->chunk,
-                                                  got,
-                                                  &used,
-                                                  &st->out[st->total_out],
-                                                  owin,
-                                                  &produced,
-                                                  end);
+                                                      st->chunk,
+                                                      got,
+                                                      &used,
+                                                      &st->out[st->total_out],
+                                                      owin,
+                                                      &produced,
+                                                      end);
   st->in_off += (uint64_t)used;
   st->total_out += produced;
   if (rerr != k_ra8_ok) {

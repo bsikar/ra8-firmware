@@ -677,7 +677,7 @@ ra8_err_t ra8_pdg_get_status_full(ra8_pdg_status_full_t* out)
   out->dll_enabled   = (uint8_t)((cr & k_ra8_pdg_gtdlycr_mask_dllen) != 0U);
   out->in_reset      = (uint8_t)((cr & k_ra8_pdg_gtdlycr_mask_dlyrst) != 0U);
   out->frange        = (ra8_pdg_frange_t)((cr & k_ra8_pdg_gtdlycr_mask_frange) >>
-                                   (uint16_t)k_ra8_pdg_gtdlycr_shift_frange);
+                                          (uint16_t)k_ra8_pdg_gtdlycr_shift_frange);
   for (uint8_t ch = 0U; ch < k_ra8_pdg_channel_count; ++ch) {
     const uint16_t bs_bit = (uint16_t)(1U << ((uint16_t)k_ra8_pdg_gtdlycr2_shift_dlybs + ch));
     const uint16_t en_bit = (uint16_t)(1U << ((uint16_t)k_ra8_pdg_gtdlycr2_shift_dlyen + ch));

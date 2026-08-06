@@ -485,8 +485,8 @@ gzip_file(ra8_arena_t* arena, const char* in_path, const char* out_path)
   }
   const uint8_t hdr[k_gzip_hdr_len] =
     {k_gz_id1, k_gz_id2, k_gz_cm, 0U, 0U, 0U, 0U, 0U, 0U, k_gz_os};
-  bool ok = (fwrite(hdr, 1U, sizeof(hdr), out) == sizeof(hdr)) &&
-            (tdefl_init(d, gz_put, out, TDEFL_DEFAULT_MAX_PROBES) == TDEFL_STATUS_OKAY);
+  bool     ok    = (fwrite(hdr, 1U, sizeof(hdr), out) == sizeof(hdr)) &&
+                   (tdefl_init(d, gz_put, out, TDEFL_DEFAULT_MAX_PROBES) == TDEFL_STATUS_OKAY);
   uint32_t crc   = (uint32_t)MZ_CRC32_INIT;
   uint32_t isize = 0U; /* ISIZE = total input length mod 2^32 */
   uint8_t  chunk[k_stream_chunk];

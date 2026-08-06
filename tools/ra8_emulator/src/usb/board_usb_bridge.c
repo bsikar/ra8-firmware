@@ -262,7 +262,7 @@ void bridge_pump_device(uc_engine* uc)
   const uint16_t dcpctr  = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_dcpctr)];
   const uint16_t brdyenb = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_brdyenb)];
   const bool     armed   = ((dcpctr & (uint16_t)k_ra8_pid_mask) == (uint16_t)k_ra8_pid_buf) &&
-                     ((brdyenb & (uint16_t)k_usb_dcp_pipe_bit) != 0U);
+                           ((brdyenb & (uint16_t)k_usb_dcp_pipe_bit) != 0U);
   if (!armed) {
     return; /* device has not armed its DCP for OUT yet; keep the bytes on the wire. */
   }

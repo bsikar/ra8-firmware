@@ -524,7 +524,7 @@ static void internal_sw_sha256_schedule(uint32_t      w[k_ra8_rsip_sw_sha256_rou
 {
   for (uint32_t i = 0U; i < k_ra8_rsip_sw_sha256_block_w; ++i) {
     const size_t base = (size_t)i * (size_t)k_ra8_rsip_trng_word_bytes;
-    w[i]              = ((uint32_t)block[base] << k_ra8_rsip_byte_shift_3) |
+    w[i] = ((uint32_t)block[base] << k_ra8_rsip_byte_shift_3) |
            ((uint32_t)block[base + 1U] << k_ra8_rsip_byte_shift_2) |
            ((uint32_t)block[base + 2U] << k_ra8_rsip_byte_bits) | (uint32_t)block[base + 3U];
   }
@@ -532,11 +532,11 @@ static void internal_sw_sha256_schedule(uint32_t      w[k_ra8_rsip_sw_sha256_rou
     const uint32_t back15 = w[i - k_ra8_rsip_sw_sha256_w_back_15];
     const uint32_t back2  = w[i - k_ra8_rsip_sw_sha256_w_back_2];
     const uint32_t s0     = internal_sw_rotr(back15, k_ra8_rsip_sw_rotr_7) ^
-                        internal_sw_rotr(back15, k_ra8_rsip_sw_rotr_18) ^
-                        (back15 >> k_ra8_rsip_sw_rotr_3);
-    const uint32_t s1 = internal_sw_rotr(back2, k_ra8_rsip_sw_rotr_17) ^
-                        internal_sw_rotr(back2, k_ra8_rsip_sw_rotr_19) ^
-                        (back2 >> k_ra8_rsip_sw_rotr_10);
+                            internal_sw_rotr(back15, k_ra8_rsip_sw_rotr_18) ^
+                            (back15 >> k_ra8_rsip_sw_rotr_3);
+    const uint32_t s1     = internal_sw_rotr(back2, k_ra8_rsip_sw_rotr_17) ^
+                            internal_sw_rotr(back2, k_ra8_rsip_sw_rotr_19) ^
+                            (back2 >> k_ra8_rsip_sw_rotr_10);
     w[i] = w[i - k_ra8_rsip_sw_sha256_w_back_16] + s0 + w[i - k_ra8_rsip_sw_sha256_w_back_7] + s1;
   }
 }
@@ -589,14 +589,14 @@ static void internal_sw_sha256_rounds(uint32_t       s[k_ra8_rsip_sw_sha256_stat
   uint32_t g = s[k_sha256_lane_g];
   uint32_t h = s[k_sha256_lane_h];
   for (uint32_t i = 0U; i < k_ra8_rsip_sw_sha256_round_cnt; ++i) {
-    const uint32_t s1 = internal_sw_rotr(e, k_ra8_rsip_sw_rotr_6) ^
-                        internal_sw_rotr(e, k_ra8_rsip_sw_rotr_11) ^
-                        internal_sw_rotr(e, k_ra8_rsip_sw_rotr_25);
+    const uint32_t s1    = internal_sw_rotr(e, k_ra8_rsip_sw_rotr_6) ^
+                           internal_sw_rotr(e, k_ra8_rsip_sw_rotr_11) ^
+                           internal_sw_rotr(e, k_ra8_rsip_sw_rotr_25);
     const uint32_t ch    = (e & f) ^ ((~e) & g);
     const uint32_t temp1 = h + s1 + ch + s_sw_sha256_k[i] + w[i];
     const uint32_t s0    = internal_sw_rotr(a, k_ra8_rsip_sw_rotr_2) ^
-                        internal_sw_rotr(a, k_ra8_rsip_sw_rotr_13) ^
-                        internal_sw_rotr(a, k_ra8_rsip_sw_rotr_22);
+                           internal_sw_rotr(a, k_ra8_rsip_sw_rotr_13) ^
+                           internal_sw_rotr(a, k_ra8_rsip_sw_rotr_22);
     const uint32_t maj   = (a & b) ^ (a & c) ^ (b & c);
     const uint32_t temp2 = s0 + maj;
     h                    = g;

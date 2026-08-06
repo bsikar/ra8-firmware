@@ -208,8 +208,8 @@ static bool priv_now_or_epoch(ra8_fs_datetime_t* out)
     }
   }
   out->year  = (uint16_t)priv_clamp_u32(out->year,
-                                       (uint32_t)k_fs_time_epoch_year,
-                                       (uint32_t)k_fs_time_year_max);
+                                        (uint32_t)k_fs_time_epoch_year,
+                                        (uint32_t)k_fs_time_year_max);
   out->month = (uint8_t)priv_clamp_u32(out->month,
                                        (uint32_t)k_fs_time_month_min,
                                        (uint32_t)k_fs_time_month_max);
@@ -325,12 +325,12 @@ static void priv_fat_stamp_now(fat_stamp_t* out)
   ra8_fs_datetime_t t = {};
   (void)priv_now_or_epoch(&t); /* FAT has no offset field: real or epoch, same packing */
   const uint32_t years = (uint32_t)t.year - (uint32_t)k_fs_time_epoch_year;
-  out->date            = (uint16_t)((years << (uint32_t)k_fs_date_shift_year) |
-                         ((uint32_t)t.month << (uint32_t)k_fs_date_shift_month) | (uint32_t)t.day);
-  out->time            = (uint16_t)(((uint32_t)t.hour << (uint32_t)k_fs_time_shift_hour) |
-                         ((uint32_t)t.minute << (uint32_t)k_fs_time_shift_minute) |
-                         ((uint32_t)t.second / (uint32_t)k_fs_time_second_div));
-  out->tenth           = priv_tenths_of(&t);
+  out->date  = (uint16_t)((years << (uint32_t)k_fs_date_shift_year) |
+                          ((uint32_t)t.month << (uint32_t)k_fs_date_shift_month) | (uint32_t)t.day);
+  out->time  = (uint16_t)(((uint32_t)t.hour << (uint32_t)k_fs_time_shift_hour) |
+                          ((uint32_t)t.minute << (uint32_t)k_fs_time_shift_minute) |
+                          ((uint32_t)t.second / (uint32_t)k_fs_time_second_div));
+  out->tenth = priv_tenths_of(&t);
 }
 
 /**
@@ -360,12 +360,12 @@ static void priv_exfat_stamp_now(exfat_stamp_t* out)
   const bool        real  = priv_now_or_epoch(&t);
   const uint32_t    years = (uint32_t)t.year - (uint32_t)k_fs_time_epoch_year;
   const uint32_t    date  = (years << (uint32_t)k_fs_xf_shift_year) |
-                        ((uint32_t)t.month << (uint32_t)k_fs_xf_shift_month) | (uint32_t)t.day;
-  const uint32_t time = ((uint32_t)t.hour << (uint32_t)k_fs_time_shift_hour) |
-                        ((uint32_t)t.minute << (uint32_t)k_fs_time_shift_minute) |
-                        ((uint32_t)t.second / (uint32_t)k_fs_time_second_div);
-  out->stamp = (date << (uint32_t)k_fs_xf_shift_date) | time;
-  out->inc10 = priv_tenths_of(&t);
+                            ((uint32_t)t.month << (uint32_t)k_fs_xf_shift_month) | (uint32_t)t.day;
+  const uint32_t    time  = ((uint32_t)t.hour << (uint32_t)k_fs_time_shift_hour) |
+                            ((uint32_t)t.minute << (uint32_t)k_fs_time_shift_minute) |
+                            ((uint32_t)t.second / (uint32_t)k_fs_time_second_div);
+  out->stamp              = (date << (uint32_t)k_fs_xf_shift_date) | time;
+  out->inc10              = priv_tenths_of(&t);
   /* An offset is a claim about a real instant. The epoch placeholder is not
    * one, so saying "this is UTC" about it would be a fabrication -- exFAT's
    * OffsetValid-clear encoding exists for exactly that case. */

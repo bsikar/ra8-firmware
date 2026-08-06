@@ -260,7 +260,7 @@ static void dfu_pattern_fill(uint32_t block, uint8_t* out, uint32_t len)
   for (uint32_t i = 0U; i < len; i++) {
     const uint32_t v = (block * (uint32_t)k_dfu_pat_blk_mul) + (i * (uint32_t)k_dfu_pat_idx_mul) +
                        (uint32_t)k_dfu_pat_bias;
-    out[i] = (uint8_t)(v & (uint32_t)k_dfu_byte_mask);
+    out[i]           = (uint8_t)(v & (uint32_t)k_dfu_byte_mask);
   }
 }
 

@@ -224,7 +224,7 @@ static void internal_i2c_clear_status(volatile r_i2c_regs_t* reg)
                 (uint8_t)k_ra8_i2c_msk_icsr2_al), /**< RA8 I2C status clear mask. */
   };
   /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2 -- W0C" p 2384 */
-  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t) ~(uint8_t)k_ra8_i2c_status_clear_mask);
+  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra8_i2c_status_clear_mask);
 }
 
 /**
@@ -330,7 +330,7 @@ static void internal_i2c_wait_bus_free(volatile const r_i2c_regs_t* reg)
 static void internal_i2c_stop_request(volatile r_i2c_regs_t* reg)
 {
   /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t) ~(uint8_t)k_ra8_i2c_msk_icsr2_stop);
+  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra8_i2c_msk_icsr2_stop);
   /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
   reg->ICCR2 = (uint8_t)(reg->ICCR2 | (uint8_t)k_ra8_i2c_msk_iccr2_sp);
 }
@@ -380,7 +380,7 @@ static void internal_i2c_set_nack(volatile r_i2c_regs_t* reg)
   /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- ACKWP/ACKBT" p 2376 */
   reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra8_i2c_msk_icmr3_ackwp);
   reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra8_i2c_msk_icmr3_ackbt);
-  reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t) ~(uint8_t)k_ra8_i2c_msk_icmr3_ackwp);
+  reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t)~(uint8_t)k_ra8_i2c_msk_icmr3_ackwp);
 }
 
 /**
@@ -663,8 +663,8 @@ static ra8_err_t internal_i2c_drain_rx(volatile r_i2c_regs_t* reg, uint8_t* out,
   /* Clear WAIT (lets the requested STOP fire) and ACKBT for the next
    * transaction, then wait for the bus to be released.
    * HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3" p 2376 */
-  reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t) ~(uint8_t)((uint8_t)k_ra8_i2c_msk_icmr3_wait |
-                                                           (uint8_t)k_ra8_i2c_msk_icmr3_ackbt));
+  reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t)~(uint8_t)((uint8_t)k_ra8_i2c_msk_icmr3_wait |
+                                                          (uint8_t)k_ra8_i2c_msk_icmr3_ackbt));
   internal_i2c_wait_bus_free(reg);
   return err;
 }

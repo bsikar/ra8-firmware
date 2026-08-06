@@ -485,9 +485,9 @@ static ra8_err_t priv_format_locked(const ra8_fs_backend_t*     backend,
   geom.reserved_sectors  = priv_fmt_reserved_for(opts->type);
   geom.root_entries      = (opts->type == k_ra8_fs_type_fat32) ? 0U : (uint32_t)k_fmt_root_ents_f16;
   geom.root_sectors      = ((geom.root_entries * (uint32_t)k_ra8_fs_dir_entry_bytes) +
-                       ((uint32_t)k_ra8_fs_bytes_per_sector - 1U)) /
-                      (uint32_t)k_ra8_fs_bytes_per_sector;
-  err = priv_fmt_choose_geometry(&geom, opts->sectors_per_cluster);
+                            ((uint32_t)k_ra8_fs_bytes_per_sector - 1U)) /
+                           (uint32_t)k_ra8_fs_bytes_per_sector;
+  err                    = priv_fmt_choose_geometry(&geom, opts->sectors_per_cluster);
   if (err != k_ra8_ok) {
     return err;
   }

@@ -646,12 +646,12 @@ static void demo_report(ra8_tls_session_t session)
 
   char line[k_demo_line_buf];
   int  n = snprintf(line,
-                   sizeof(line),
-                   "[tls] cipher=%s id=0x%04X verify=0x%08lX %s\r\n",
-                   name,
-                   (unsigned)id,
-                   (unsigned long)flags,
-                   (flags == 0U) ? "OK" : "UNVERIFIED");
+                    sizeof(line),
+                    "[tls] cipher=%s id=0x%04X verify=0x%08lX %s\r\n",
+                    name,
+                    (unsigned)id,
+                    (unsigned long)flags,
+                    (flags == 0U) ? "OK" : "UNVERIFIED");
   if (n > 0 && (size_t)n < sizeof(line)) {
     demo_print(line);
   }
@@ -676,10 +676,10 @@ static ra8_err_t demo_run_tls(void)
   {
     char line[k_demo_line_buf];
     int  n = snprintf(line,
-                     sizeof(line),
-                     "[tls] MTU=%u -> MSS clamp=%u\r\n",
-                     (unsigned)k_demo_mtu,
-                     (unsigned)mss);
+                      sizeof(line),
+                      "[tls] MTU=%u -> MSS clamp=%u\r\n",
+                      (unsigned)k_demo_mtu,
+                      (unsigned)mss);
     if (n > 0 && (size_t)n < sizeof(line)) {
       demo_print(line);
     }

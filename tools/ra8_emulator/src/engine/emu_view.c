@@ -151,14 +151,14 @@ static void build_frame(uc_engine* uc, uint16_t* fb, uint16_t width_px, uint16_t
 
   const uint32_t saddr = mmio_peek((uint64_t)k_glcdc_gr1_saddr);
   const uint32_t fmt   = (mmio_peek((uint64_t)k_glcdc_gr1_fmt) >> (uint32_t)k_glcdc_fmt_shift) &
-                       (uint32_t)k_glcdc_fmt_mask;
+                         (uint32_t)k_glcdc_fmt_mask;
   if (!addr_is_ram(saddr) || (fmt != (uint32_t)k_glcdc_fmt_rgb565)) {
     return; /* no graphics layer -- background-only frame */
   }
   const uint32_t stride = (mmio_peek((uint64_t)k_glcdc_gr1_flm3) >> (uint32_t)k_glcdc_high_shift) &
                           (uint32_t)k_glcdc_stride_mask;
-  const uint32_t lnnum = (mmio_peek((uint64_t)k_glcdc_gr1_flm5) >> (uint32_t)k_glcdc_high_shift) &
-                         (uint32_t)k_glcdc_lnnum_mask;
+  const uint32_t lnnum  = (mmio_peek((uint64_t)k_glcdc_gr1_flm5) >> (uint32_t)k_glcdc_high_shift) &
+                          (uint32_t)k_glcdc_lnnum_mask;
   if (stride < 2U) {
     return;
   }

@@ -483,8 +483,8 @@ static uint16_t priv_css_font_px(const tok_ctx_t* ctx, const ra8_css_style_t* co
   const uint16_t parent = (ctx->css_font_px != 0U) ? ctx->css_font_px : ctx->engine->font_px;
   uint32_t       px =
     ((ra8_css_font_unit_t)comp->font_unit == k_ra8_css_font_pct)
-            ? (((uint32_t)parent * (uint32_t)comp->font_val) / (uint32_t)k_ra8_reflow_pct_full)
-            : (uint32_t)comp->font_val;
+      ? (((uint32_t)parent * (uint32_t)comp->font_val) / (uint32_t)k_ra8_reflow_pct_full)
+      : (uint32_t)comp->font_val;
   if (px < (uint32_t)k_ra8_reflow_min_font_px) {
     px = (uint32_t)k_ra8_reflow_min_font_px;
   }

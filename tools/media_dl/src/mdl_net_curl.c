@@ -263,9 +263,9 @@ RA8_INTERNAL static bool apply_req(mdl_curl_ctx_t* net, const char* url, const m
   }
   CURL* curl = net->curl;
   bool  ok   = ok_code(curl_easy_setopt(curl, CURLOPT_URL, url)) &&
-            ok_code(curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, (long)req->timeout_ms)) &&
-            /* CURLOPT_REFERER with NULL clears any prior value -- what we want. */
-            ok_code(curl_easy_setopt(curl, CURLOPT_REFERER, req->referer));
+               ok_code(curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, (long)req->timeout_ms)) &&
+               /* CURLOPT_REFERER with NULL clears any prior value -- what we want. */
+               ok_code(curl_easy_setopt(curl, CURLOPT_REFERER, req->referer));
   if (ok && (req->user_agent != nullptr)) {
     ok = ok_code(curl_easy_setopt(curl, CURLOPT_USERAGENT, req->user_agent));
   }

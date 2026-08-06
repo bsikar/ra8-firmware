@@ -158,7 +158,7 @@ static ra8_err_t internal_host_dcp_in_wait(volatile r_usb_regs_t* reg)
       return k_ra8_err_hw_error;
     }
     if ((reg->NRDYSTS & (uint16_t)k_ra8_usb_dcp_pipe0_bit) != 0U) {
-      reg->NRDYSTS = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+      reg->NRDYSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
       internal_dcp_pid(reg, k_ra8_pid_buf);
     }
   }
@@ -202,7 +202,7 @@ static ra8_err_t internal_host_setup_wait(volatile r_usb_regs_t* reg)
    * host unit-test build: its plain-RAM INTSTS1 cannot be re-latched by a SIE
    * after a W0C clear, so wiping it here would erase the SACK/SIGN outcome a
    * test pre-loaded and the poll below would never observe it. */
-  reg->INTSTS1 = (uint16_t) ~(uint16_t)(sack | sign);
+  reg->INTSTS1 = (uint16_t)~(uint16_t)(sack | sign);
 #endif
   internal_rmw16(&reg->DCPCTR, sureq, 0U);
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_usb_ctrl_poll_limit; ++i) {
@@ -279,8 +279,8 @@ static ra8_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra8_
   reg->BEMPSTS = (uint16_t)(reg->BEMPSTS & (uint16_t)k_ra8_usb_dcp_pipe0_bit);
   reg->BRDYSTS = (uint16_t)(reg->BRDYSTS & (uint16_t)k_ra8_usb_dcp_pipe0_bit);
 #else
-  reg->BEMPSTS = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
-  reg->BRDYSTS = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+  reg->BEMPSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+  reg->BRDYSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
 #endif
   const uint16_t req = (uint16_t)((uint16_t)setup->bm_request_type |
                                   (uint16_t)((uint16_t)setup->b_request << k_ra8_usb_byte_bits));
@@ -379,7 +379,7 @@ static ra8_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
     }
     reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
     rx            = (uint16_t)(rx + dtln);
-    reg->BRDYSTS  = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+    reg->BRDYSTS  = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
     if (dtln < mxps) {
       done = true;
     }
@@ -422,8 +422,8 @@ RA8_INTERNAL
 static ra8_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write_zlp)
 {
   const uint16_t ccpl = (uint16_t)(1U << k_ra8_dcpctr_bit_ccpl);
-  reg->BEMPSTS        = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
-  reg->BRDYSTS        = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+  reg->BEMPSTS        = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+  reg->BRDYSTS        = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
   reg->BEMPENB        = (uint16_t)(reg->BEMPENB | (uint16_t)k_ra8_usb_dcp_pipe0_bit);
   reg->BRDYENB        = (uint16_t)(reg->BRDYENB | (uint16_t)k_ra8_usb_dcp_pipe0_bit);
   /* A control-WRITE data stage left DCPCFG.DIR = 1 (OUT tokens); its IN-ZLP
@@ -459,7 +459,7 @@ static ra8_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool writ
    * stayed dead). Then arm PID=BUF + CCPL and require the BRDY that
    * marks the device's status ZLP received. */
   reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
-  reg->NRDYSTS  = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+  reg->NRDYSTS  = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
   internal_dcp_pid(reg, k_ra8_pid_buf);
   internal_rmw16(&reg->DCPCTR, ccpl, 0U);
   const ra8_err_t ierr = internal_host_dcp_in_wait(reg);
@@ -467,7 +467,7 @@ static ra8_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool writ
   internal_rmw16(&reg->DCPCTR, 0U, ccpl);
   /* Drain the status ZLP so it cannot alias the next data stage. */
   reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
-  reg->BRDYSTS  = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+  reg->BRDYSTS  = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
   return ierr;
 }
 
@@ -516,7 +516,7 @@ static ra8_err_t internal_host_ctrl_data_out(volatile r_usb_regs_t* reg,
   /* First data packet after SETUP is DATA1; force the DCP sequence bit so the
    * device does not drop it on a toggle mismatch. */
   internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_sqset), 0U);
-  reg->BEMPSTS = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+  reg->BEMPSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
   reg->BEMPENB = (uint16_t)(reg->BEMPENB | (uint16_t)k_ra8_usb_dcp_pipe0_bit);
 
   const uint16_t step = (mxps == 0U) ? (uint16_t)1U : mxps;
@@ -538,7 +538,7 @@ static ra8_err_t internal_host_ctrl_data_out(volatile r_usb_regs_t* reg,
      * drain (back-pressure for multi-packet) but proceed regardless; the IN
      * status stage + the class protocol (DFU_GETSTATUS) confirm delivery. */
     (void)internal_host_wait_sts(&reg->BEMPSTS, (uint16_t)k_ra8_usb_dcp_pipe0_bit);
-    reg->BEMPSTS = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+    reg->BEMPSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
     off          = (uint16_t)(off + chunk);
   }
   internal_dcp_pid(reg, k_ra8_pid_nak);
@@ -590,7 +590,7 @@ ra8_err_t ra8_usb_dcp_out_arm(ra8_usb_speed_t speed)
    * Device-side mirror of the host guard in ::internal_host_ctrl_setup.
    * HUM Ch 36.2.21 "DCPCTR : DCP Control Register" p 1991 (CCPL). */
   internal_rmw16(&reg->DCPCTR, 0U, (uint16_t)(1U << (uint8_t)k_ra8_dcpctr_bit_ccpl));
-  reg->BRDYSTS = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+  reg->BRDYSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
   internal_select_cfifo(reg, 0U, false);
   reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
   reg->BRDYENB  = (uint16_t)(reg->BRDYENB | (uint16_t)k_ra8_usb_dcp_pipe0_bit);
@@ -651,8 +651,8 @@ ra8_err_t ra8_usb_dcp_out_read(ra8_usb_speed_t speed, uint8_t* buf, uint16_t cap
   /* Disable the one-shot DCP BRDY and W0C-clear the latch before draining
    * (FSP order; protects DBLB bank edges and prevents an ISR re-storm).
    * HUM Ch 36.2.11 "BRDYENB" p 1982 / Ch 36.2.13 "BRDYSTS" p 1984. */
-  reg->BRDYENB = (uint16_t)(reg->BRDYENB & (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit);
-  reg->BRDYSTS = (uint16_t) ~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
+  reg->BRDYENB = (uint16_t)(reg->BRDYENB & (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit);
+  reg->BRDYSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
 
   internal_select_cfifo(reg, 0U, false);
   if (internal_wait_frdy(reg) != k_ra8_ok) {

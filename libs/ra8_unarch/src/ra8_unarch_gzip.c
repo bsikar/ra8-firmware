@@ -337,14 +337,14 @@ static ra8_err_t s_inflate_pass(gz_inflate_t* st)
   const size_t    space      = st->out_cap - st->total;
   size_t          out_bytes  = (space > (size_t)k_gz_out_window) ? (size_t)k_gz_out_window : space;
   const mz_uint32 flags      = (mz_uint32)TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF |
-                          (more_input ? (mz_uint32)TINFL_FLAG_HAS_MORE_INPUT : 0U);
-  const tinfl_status ts = tinfl_decompress(&s_gz_inflator,
-                                           &st->win[st->win_ofs],
-                                           &in_bytes,
-                                           st->out,
-                                           &st->out[st->total],
-                                           &out_bytes,
-                                           flags);
+                               (more_input ? (mz_uint32)TINFL_FLAG_HAS_MORE_INPUT : 0U);
+  const tinfl_status ts      = tinfl_decompress(&s_gz_inflator,
+                                                &st->win[st->win_ofs],
+                                                &in_bytes,
+                                                st->out,
+                                                &st->out[st->total],
+                                                &out_bytes,
+                                                flags);
   st->win_ofs += in_bytes;
   if (out_bytes > 0U) {
     st->crc = (uint32_t)mz_crc32(st->crc, &st->out[st->total], out_bytes);

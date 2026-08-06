@@ -75,7 +75,7 @@ static void dfu_pattern_fill(uint32_t block, uint8_t* out, uint32_t len)
   for (uint32_t i = 0U; i < len; i++) {
     const uint32_t v = (block * (uint32_t)k_dfu_pat_blk_mul) + (i * (uint32_t)k_dfu_pat_idx_mul) +
                        (uint32_t)k_dfu_pat_bias;
-    out[i] = (uint8_t)(v & (uint32_t)k_dfu_byte_mask);
+    out[i]           = (uint8_t)(v & (uint32_t)k_dfu_byte_mask);
   }
 }
 
@@ -404,11 +404,11 @@ static uint32_t dfu_str_len(const char* text)
 {
   uint8_t               status[k_dfu_getstatus_len] = {};
   const ra8_usb_setup_t setup                       = {
-                          .bm_request_type = (uint8_t)k_dfu_bm_class_if_in,
-                          .b_request       = (uint8_t)k_dfu_breq_getstatus,
-                          .w_value         = 0U,
-                          .w_index         = (uint16_t)k_dfu_intf,
-                          .w_length        = (uint16_t)k_dfu_getstatus_len,
+    .bm_request_type = (uint8_t)k_dfu_bm_class_if_in,
+    .b_request       = (uint8_t)k_dfu_breq_getstatus,
+    .w_value         = 0U,
+    .w_index         = (uint16_t)k_dfu_intf,
+    .w_length        = (uint16_t)k_dfu_getstatus_len,
   };
   uint16_t        rx  = 0U;
   const ra8_err_t err = ra8_usb_host_control_xfer(k_ra8_usb_speed_hs,
@@ -548,11 +548,11 @@ static uint32_t dfu_str_len(const char* text)
   for (uint16_t b = 0U; b < (uint16_t)k_dfu_blocks; b++) {
     uint8_t               got[k_dfu_xfer_size] = {};
     const ra8_usb_setup_t setup                = {
-                     .bm_request_type = (uint8_t)k_dfu_bm_class_if_in,
-                     .b_request       = (uint8_t)k_dfu_breq_upload,
-                     .w_value         = b,
-                     .w_index         = (uint16_t)k_dfu_intf,
-                     .w_length        = (uint16_t)k_dfu_xfer_size,
+      .bm_request_type = (uint8_t)k_dfu_bm_class_if_in,
+      .b_request       = (uint8_t)k_dfu_breq_upload,
+      .w_value         = b,
+      .w_index         = (uint16_t)k_dfu_intf,
+      .w_length        = (uint16_t)k_dfu_xfer_size,
     };
     uint16_t        rx = 0U;
     const ra8_err_t err =
@@ -604,7 +604,7 @@ static uint32_t dfu_str_len(const char* text)
   }
   s_dbg_pid = (uint32_t)desc[k_dfu_off_dev_pid] |
               ((uint32_t)desc[(uint32_t)k_dfu_off_dev_pid + 1U] << (uint32_t)k_dfu_byte_bits);
-  err = dfu_enum_set_address();
+  err       = dfu_enum_set_address();
   if (err != k_ra8_ok) {
     (void)dfu_print_fail("set_address", err);
     (void)ra8_usb_host_deinit(k_ra8_usb_speed_hs);

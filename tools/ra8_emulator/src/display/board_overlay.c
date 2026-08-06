@@ -86,13 +86,13 @@ draw_io_block(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const
   char    buf[k_io_row_cap];
   int32_t cy = section_head(out, w, h, x, y, "I/O");
   cy         = kv_row(out,
-              w,
-              h,
-              x,
-              cy,
-              "usb",
-              (st->usb_state != nullptr) ? st->usb_state : "-",
-              (uint16_t)k_ovl_text);
+                      w,
+                      h,
+                      x,
+                      cy,
+                      "usb",
+                      (st->usb_state != nullptr) ? st->usb_state : "-",
+                      (uint16_t)k_ovl_text);
   (void)
     snprintf(buf, sizeof(buf), "%u total  IRQ0 x%u  IRQ1 x%u", st->irq_total, st->irq0, st->irq1);
   cy = kv_row(out, w, h, x, cy, "irq", buf, (uint16_t)k_ovl_text);

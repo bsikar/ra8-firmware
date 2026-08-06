@@ -354,7 +354,7 @@ void tx_application_define(void* first_unused_memory)
    * the thread name; the uintptr_t hop launders the string-literal const
    * without tripping -Wcast-qual (same pattern as ra8_wdt_supervisor). */
   if (tx_thread_create(&s_ui_thread,
-                       (CHAR*)(uintptr_t) "UI Thread",
+                       (CHAR*)(uintptr_t)"UI Thread",
                        ui_thread_entry,
                        0UL,
                        s_ui_thread_stack,
@@ -368,7 +368,7 @@ void tx_application_define(void* first_unused_memory)
 
   /* Create the System/Storage thread */
   if (tx_thread_create(&s_sys_thread,
-                       (CHAR*)(uintptr_t) "System Thread",
+                       (CHAR*)(uintptr_t)"System Thread",
                        sys_thread_entry,
                        0UL,
                        s_sys_thread_stack,

@@ -253,9 +253,9 @@ ra8_err_t ra8_canfd_transmit(uint8_t channel, const ra8_canfd_frame_t* frame)
 
   /* HUM Ch 41 p 2806 "CFDTMID/CFDTMPTR/CFDTMFDCTR/CFDTMDF" +
    * FSP r_canfd.c line ~668..684. */
-  reg->CFDTM[k_ra8_canfd_tx_mb_default].ID  = internal_tx_id(frame);
-  reg->CFDTM[k_ra8_canfd_tx_mb_default].PTR = ((uint32_t)frame->dlc & k_ra8_canfd_ptr_mask_dlc)
-                                              << (uint32_t)k_ra8_canfd_ptr_shift_dlc;
+  reg->CFDTM[k_ra8_canfd_tx_mb_default].ID    = internal_tx_id(frame);
+  reg->CFDTM[k_ra8_canfd_tx_mb_default].PTR   = ((uint32_t)frame->dlc & k_ra8_canfd_ptr_mask_dlc)
+                                                << (uint32_t)k_ra8_canfd_ptr_shift_dlc;
   reg->CFDTM[k_ra8_canfd_tx_mb_default].FDCTR = internal_tx_fdctr(frame);
   internal_write_tx_data(reg, frame);
 

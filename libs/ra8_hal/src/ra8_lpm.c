@@ -639,17 +639,17 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs)
   /* HUM Ch 11.2.1 "LPMSAR : Low Power Mode Security Attribution Register", p 436 */
   volatile uint8_t* pll1 = ra8_lpm_sysc_reg8(k_ra8_lpm_pll1ldocr_off);
   *pll1                  = (uint8_t)((*pll1 & (uint8_t)~k_ra8_lpm_ldocr_skeep_mask) |
-                    (uint8_t)((uint8_t)cfg->pll1 << k_ra8_lpm_ldocr_skeep_shift));
+                                     (uint8_t)((uint8_t)cfg->pll1 << k_ra8_lpm_ldocr_skeep_shift));
 
   /* HUM Ch 11.2.1 "LPMSAR : Low Power Mode Security Attribution Register", p 436 */
   volatile uint8_t* pll2 = ra8_lpm_sysc_reg8(k_ra8_lpm_pll2ldocr_off);
   *pll2                  = (uint8_t)((*pll2 & (uint8_t)~k_ra8_lpm_ldocr_skeep_mask) |
-                    (uint8_t)((uint8_t)cfg->pll2 << k_ra8_lpm_ldocr_skeep_shift));
+                                     (uint8_t)((uint8_t)cfg->pll2 << k_ra8_lpm_ldocr_skeep_shift));
 
   /* HUM Ch 11.2.1 "LPMSAR : Low Power Mode Security Attribution Register", p 436 */
   volatile uint8_t* hoco = ra8_lpm_sysc_reg8(k_ra8_lpm_hocoldocr_off);
   *hoco                  = (uint8_t)((*hoco & (uint8_t)~k_ra8_lpm_ldocr_skeep_mask) |
-                    (uint8_t)((uint8_t)cfg->hoco << k_ra8_lpm_ldocr_skeep_shift));
+                                     (uint8_t)((uint8_t)cfg->hoco << k_ra8_lpm_ldocr_skeep_shift));
   return k_ra8_ok;
 }
 

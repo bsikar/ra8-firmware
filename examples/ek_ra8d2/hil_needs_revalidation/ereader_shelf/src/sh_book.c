@@ -304,14 +304,14 @@ static bool sh_epub_thumb(uint16_t idx)
   int32_t         w     = 0;
   int32_t         h     = 0;
   const ra8_err_t err   = ra8_img_decode_blit(&arena,
-                                            s_cover,
-                                            got,
-                                            0,
-                                            0,
-                                            (int32_t)k_sh_thumb_w,
-                                            (int32_t)k_sh_thumb_h,
-                                            &w,
-                                            &h);
+                                              s_cover,
+                                              got,
+                                              0,
+                                              0,
+                                              (int32_t)k_sh_thumb_w,
+                                              (int32_t)k_sh_thumb_h,
+                                              &w,
+                                              &h);
   if (err == k_ra8_ok) {
     for (int32_t y = 0; y < h; ++y) {
       for (int32_t x = 0; x < w; ++x) {

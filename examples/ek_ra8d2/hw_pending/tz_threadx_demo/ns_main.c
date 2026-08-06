@@ -146,7 +146,7 @@ void tx_application_define(void* first_unused_memory)
    * a non-const CHAR* for the thread name; the uintptr_t hop launders the
    * string-literal const without tripping -Wcast-qual. */
   (void)tx_thread_create(&s_ui_thread,
-                         (CHAR*)(uintptr_t) "UI Thread",
+                         (CHAR*)(uintptr_t)"UI Thread",
                          ui_thread_entry,
                          0UL,
                          s_ui_thread_stack,
@@ -158,7 +158,7 @@ void tx_application_define(void* first_unused_memory)
 
   /* Create the Worker thread */
   (void)tx_thread_create(&s_work_thread,
-                         (CHAR*)(uintptr_t) "Worker Thread",
+                         (CHAR*)(uintptr_t)"Worker Thread",
                          work_thread_entry,
                          0UL,
                          s_work_thread_stack,

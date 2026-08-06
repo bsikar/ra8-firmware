@@ -625,10 +625,10 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     /* HUM Ch 42.4 "Interrupts", p 2875 */
     void* const     instance_ctx = (void*)(uintptr_t)i;
     const ra8_err_t err          = ra8_isr_register(s_cnecc_event_table[i],
-                                           ra8_cnecc_isr_handler,
-                                           instance_ctx,
-                                           priority,
-                                           nullptr);
+                                                    ra8_cnecc_isr_handler,
+                                                    instance_ctx,
+                                                    priority,
+                                                    nullptr);
     if (err != k_ra8_ok) {
       /* Roll back any earlier slot we opened. */
       for (uint8_t j = 0U; j < i; ++j) {

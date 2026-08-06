@@ -234,7 +234,7 @@ static uint8_t sdram_demo_uint_to_hex(uint8_t* buf, uint32_t v)
     buf[i]            = (nyb < (uint8_t)k_sdram_demo_dec_base)
                           ? (uint8_t)((uint8_t)k_sdram_demo_ascii_zero + nyb)
                           : (uint8_t)((uint8_t)k_sdram_demo_ascii_a +
-                           (uint8_t)(nyb - (uint8_t)k_sdram_demo_dec_base));
+                                      (uint8_t)(nyb - (uint8_t)k_sdram_demo_dec_base));
   }
   return (uint8_t)k_sdram_demo_hex_digits;
 }

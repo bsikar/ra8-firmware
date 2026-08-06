@@ -316,15 +316,15 @@ ra8_err_t ra8_fmt_jof_produce(ra8_arena_t*          arena,
   }
   ra8_jof_memstore_t store = {.buf = sink, .cap = sink_cap, .len = 0U};
   const ra8_err_t    rc    = fmt_jof_run_produce(arena,
-                                           src,
-                                           max_w,
-                                           max_h,
-                                           tile_w,
-                                           tile_h,
-                                           codec,
-                                           work_cap,
-                                           &store,
-                                           out_info);
+                                                 src,
+                                                 max_w,
+                                                 max_h,
+                                                 tile_w,
+                                                 tile_h,
+                                                 codec,
+                                                 work_cap,
+                                                 &store,
+                                                 out_info);
   if (rc != k_ra8_ok) {
     return rc;
   }

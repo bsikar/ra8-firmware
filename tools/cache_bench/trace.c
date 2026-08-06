@@ -513,7 +513,7 @@ static cb_trace_t cb_gen_hugebook(void)
     for (uint32_t s = 0U; (s < (uint32_t)k_cb_huge_scan) && (i < t.n); ++s, ++i) {
       const uint32_t page = (uint32_t)k_cb_huge_hot +
                             ((scan_pos + s) % (k_cb_huge_footprint - (uint32_t)k_cb_huge_hot));
-      t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
+      t.keys[i]           = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
     }
     scan_pos += (uint32_t)k_cb_huge_scan;
   }

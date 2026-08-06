@@ -263,9 +263,9 @@ static const char* selftest_fs_type_name(ra8_fs_type_t type)
        blk += (uint32_t)k_selftest_burst_blocks) {
     const uint32_t lba = (uint32_t)k_fat_data_lba + blk;
     ra8_err_t      err = ra8_usb_hmsc_read10((uint8_t)k_selftest_target_lun,
-                                        lba,
-                                        (uint16_t)k_selftest_burst_blocks,
-                                        s_burst);
+                                             lba,
+                                             (uint16_t)k_selftest_burst_blocks,
+                                             s_burst);
     if (err != k_ra8_ok) {
       (void)selftest_print_fail("READ(10) burst", err);
       return err;

@@ -281,11 +281,11 @@ RA8_INTERNAL static ra8_err_t internal_getstatus(ra8_usb_speed_t speed, uint8_t*
 {
   uint8_t               status[k_rdh_getstatus_len] = {};
   const ra8_usb_setup_t setup                       = {
-                          .bm_request_type = (uint8_t)k_rdh_bm_class_if_in,
-                          .b_request       = (uint8_t)k_rdh_breq_getstatus,
-                          .w_value         = 0U,
-                          .w_index         = (uint16_t)k_rdh_intf,
-                          .w_length        = (uint16_t)k_rdh_getstatus_len,
+    .bm_request_type = (uint8_t)k_rdh_bm_class_if_in,
+    .b_request       = (uint8_t)k_rdh_breq_getstatus,
+    .w_value         = 0U,
+    .w_index         = (uint16_t)k_rdh_intf,
+    .w_length        = (uint16_t)k_rdh_getstatus_len,
   };
   uint16_t        rx = 0U;
   const ra8_err_t err =
@@ -554,11 +554,11 @@ RA8_INTERNAL static ra8_err_t internal_upload_verify(ra8_usb_speed_t        spee
   for (uint16_t b = 0U; b < blocks; b++) {
     uint8_t               got[k_rdh_xfer_size] = {};
     const ra8_usb_setup_t setup                = {
-                     .bm_request_type = (uint8_t)k_rdh_bm_class_if_in,
-                     .b_request       = (uint8_t)k_rdh_breq_upload,
-                     .w_value         = b,
-                     .w_index         = (uint16_t)k_rdh_intf,
-                     .w_length        = (uint16_t)k_rdh_xfer_size,
+      .bm_request_type = (uint8_t)k_rdh_bm_class_if_in,
+      .b_request       = (uint8_t)k_rdh_breq_upload,
+      .w_value         = b,
+      .w_index         = (uint16_t)k_rdh_intf,
+      .w_length        = (uint16_t)k_rdh_xfer_size,
     };
     uint16_t        rx = 0U;
     const ra8_err_t err =
@@ -623,7 +623,7 @@ RA8_INTERNAL static ra8_err_t internal_run_seq(ra8_usb_speed_t        speed,
   }
   out->pid = (uint32_t)desc[k_rdh_off_dev_pid] |
              ((uint32_t)desc[(uint32_t)k_rdh_off_dev_pid + 1U] << (uint32_t)k_rdh_byte_bits);
-  err = internal_set_address(speed);
+  err      = internal_set_address(speed);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -713,7 +713,7 @@ RA8_INTERNAL static ra8_err_t internal_program_seq(ra8_usb_speed_t        speed,
   }
   out->pid = (uint32_t)desc[k_rdh_off_dev_pid] |
              ((uint32_t)desc[(uint32_t)k_rdh_off_dev_pid + 1U] << (uint32_t)k_rdh_byte_bits);
-  err = internal_set_address(speed);
+  err      = internal_set_address(speed);
   if (err != k_ra8_ok) {
     return err;
   }

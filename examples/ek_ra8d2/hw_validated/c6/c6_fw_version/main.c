@@ -240,12 +240,12 @@ static void c6_fwver_phase_caps(void)
 
   c6_fwver_pump_stats_t stats = {};
   const ra8_err_t       ran   = c6_fwver_link_pump((uint8_t)ESP_PRIV_IF,
-                                           0U,
-                                           s_c6_fwver_txbuf,
-                                           len,
-                                           (uint16_t)k_c6_fwver_caps_transfers,
-                                           c6_fwver_dispatch,
-                                           &stats);
+                                                   0U,
+                                                   s_c6_fwver_txbuf,
+                                                   len,
+                                                   (uint16_t)k_c6_fwver_caps_transfers,
+                                                   c6_fwver_dispatch,
+                                                   &stats);
   c6_fwver_print_pump("caps", &stats);
   if (ran != k_ra8_ok) {
     c6_fwver_puts("c6_fwver: caps pump=");
@@ -281,12 +281,12 @@ static void c6_fwver_phase_request(void)
 
   c6_fwver_pump_stats_t stats = {};
   const ra8_err_t       ran   = c6_fwver_link_pump((uint8_t)ESP_SERIAL_IF,
-                                           0U,
-                                           s_c6_fwver_txbuf,
-                                           len,
-                                           (uint16_t)k_c6_fwver_max_transfers,
-                                           c6_fwver_dispatch,
-                                           &stats);
+                                                   0U,
+                                                   s_c6_fwver_txbuf,
+                                                   len,
+                                                   (uint16_t)k_c6_fwver_max_transfers,
+                                                   c6_fwver_dispatch,
+                                                   &stats);
   c6_fwver_print_pump("rpc", &stats);
   if (ran != k_ra8_ok) {
     c6_fwver_puts("c6_fwver: rpc pump=");

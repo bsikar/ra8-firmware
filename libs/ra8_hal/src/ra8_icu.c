@@ -86,7 +86,7 @@ ra8_err_t ra8_icu_configure_irq_pin(uint8_t irq_num, const ra8_icu_irq_cfg_t* cf
 
   const uint8_t irqmd = ((uint8_t)cfg->sense & k_ra8_icu_irqcr_mask_irqmd);
   const uint8_t fclk  = (uint8_t)(((uint8_t)cfg->filter_div << k_ra8_icu_irqcr_bit_fclksel) &
-                                 k_ra8_icu_irqcr_mask_fclksel);
+                                  k_ra8_icu_irqcr_mask_fclksel);
   uint8_t       val   = (uint8_t)(irqmd | fclk);
   if (cfg->filter_en) {
     val |= k_ra8_icu_irqcr_mask_flten;

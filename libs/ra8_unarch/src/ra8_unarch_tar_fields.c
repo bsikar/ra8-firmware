@@ -427,15 +427,15 @@ ra8_err_t ra8_unarch_tar_pax_parse(const uint8_t* data,
     }
     const size_t    key_len = (size_t)((const uint8_t*)eq - kv);
     const ra8_err_t aerr    = s_pax_apply(kv,
-                                       key_len,
-                                       &kv[key_len + 1U],
-                                       kv_len - key_len - 1U,
-                                       name_buf,
-                                       name_cap,
-                                       name_len,
-                                       have_path,
-                                       size_ovr,
-                                       have_size);
+                                          key_len,
+                                          &kv[key_len + 1U],
+                                          kv_len - key_len - 1U,
+                                          name_buf,
+                                          name_cap,
+                                          name_len,
+                                          have_path,
+                                          size_ovr,
+                                          have_size);
     if (aerr != k_ra8_ok) {
       return aerr;
     }

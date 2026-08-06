@@ -134,13 +134,13 @@ static void cac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   } else if (off == (uint64_t)k_cac_off_caicr) {
     /* CAICR clear bits are write-1-to-clear of the matching CASTR flags. */
     if (((uint8_t)value & (uint8_t)k_cac_caicr_ferrfcl) != 0U) {
-      s_cac.castr &= (uint8_t) ~(uint8_t)k_cac_castr_ferrf;
+      s_cac.castr &= (uint8_t)~(uint8_t)k_cac_castr_ferrf;
     }
     if (((uint8_t)value & (uint8_t)k_cac_caicr_mendfcl) != 0U) {
-      s_cac.castr &= (uint8_t) ~(uint8_t)k_cac_castr_mendf;
+      s_cac.castr &= (uint8_t)~(uint8_t)k_cac_castr_mendf;
     }
     if (((uint8_t)value & (uint8_t)k_cac_caicr_ovffcl) != 0U) {
-      s_cac.castr &= (uint8_t) ~(uint8_t)k_cac_castr_ovff;
+      s_cac.castr &= (uint8_t)~(uint8_t)k_cac_castr_ovff;
     }
   } else if (off == (uint64_t)k_cac_off_caulvr) {
     s_cac.caulvr = (uint16_t)value;

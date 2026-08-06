@@ -192,7 +192,7 @@ static void aes_demo_setup_or_halt(void)
 
   uint8_t ct[k_aes_demo_plain_bytes + k_ra8_psa_gcm_tag_len] = {};
   size_t  ct_len                                             = 0U;
-  err                                                        = ra8_psa_aead_encrypt(key,
+  err = ra8_psa_aead_encrypt(key,
                              k_ra8_psa_alg_aes_gcm,
                              k_aes_demo_nonce,
                              (size_t)k_ra8_psa_gcm_nonce_len,
@@ -211,16 +211,16 @@ static void aes_demo_setup_or_halt(void)
   uint8_t recovered[k_aes_demo_plain_bytes] = {};
   size_t  rec_len                           = 0U;
   err                                       = ra8_psa_aead_decrypt(key,
-                             k_ra8_psa_alg_aes_gcm,
-                             k_aes_demo_nonce,
-                             (size_t)k_ra8_psa_gcm_nonce_len,
-                             k_aes_demo_aad,
-                             (size_t)k_aes_demo_aad_bytes,
-                             ct,
-                             ct_len,
-                             recovered,
-                             sizeof(recovered),
-                             &rec_len);
+                                                                   k_ra8_psa_alg_aes_gcm,
+                                                                   k_aes_demo_nonce,
+                                                                   (size_t)k_ra8_psa_gcm_nonce_len,
+                                                                   k_aes_demo_aad,
+                                                                   (size_t)k_aes_demo_aad_bytes,
+                                                                   ct,
+                                                                   ct_len,
+                                                                   recovered,
+                                                                   sizeof(recovered),
+                                                                   &rec_len);
   (void)ra8_psa_key_destroy(key);
   if (err != k_ra8_ok) {
     return err;

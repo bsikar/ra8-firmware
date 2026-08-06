@@ -193,16 +193,16 @@ static ra8_err_t priv_tile_content(const ra8_fmt_blob_t*   atlas,
   uint16_t           tw    = 0U;
   uint16_t           th    = 0U;
   const ra8_err_t    rc    = ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                         &store,
-                                         info,
-                                         (uint16_t)(idx % (uint32_t)info->tile_cols),
-                                         (uint16_t)(idx / (uint32_t)info->tile_cols),
-                                         buf->scratch,
-                                         buf->scratch_cap,
-                                         buf->cell,
-                                         buf->cell_cap,
-                                         &tw,
-                                         &th);
+                                               &store,
+                                               info,
+                                               (uint16_t)(idx % (uint32_t)info->tile_cols),
+                                               (uint16_t)(idx / (uint32_t)info->tile_cols),
+                                               buf->scratch,
+                                               buf->scratch_cap,
+                                               buf->cell,
+                                               buf->cell_cap,
+                                               &tw,
+                                               &th);
   if (rc != k_ra8_ok) {
     return rc;
   }

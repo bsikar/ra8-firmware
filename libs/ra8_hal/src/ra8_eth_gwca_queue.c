@@ -481,10 +481,10 @@ ra8_err_t ra8_eth_gwca_tx_frame(ra8_gwca_basic_descriptor_t* chain,
   }
   uint32_t        slot = 0U;
   const ra8_err_t err  = ra8_eth_gwca_find_slot(chain,
-                                               ring_depth,
-                                               k_ra8_gwdcc_dt_fempty,
-                                               *tail_idx % (ring_depth - 1U),
-                                               &slot);
+                                                ring_depth,
+                                                k_ra8_gwdcc_dt_fempty,
+                                                *tail_idx % (ring_depth - 1U),
+                                                &slot);
   if (err != k_ra8_ok) {
     return err;
   }

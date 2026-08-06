@@ -418,10 +418,10 @@ static ra8_err_t png_inflate_step(ra8_png_state_t* st, ra8_png_iter_t* it)
     }
     it->in_pos = 0U;
   }
-  size_t        in_sz  = (size_t)(it->in_avail - it->in_pos);
-  size_t        out_sz = (size_t)((uint32_t)k_ra8_png_ring_bytes - st->ring_wr);
-  const mz_uint flags  = (mz_uint)TINFL_FLAG_PARSE_ZLIB_HEADER |
-                        ((st->source_done == 0U) ? (mz_uint)TINFL_FLAG_HAS_MORE_INPUT : 0U);
+  size_t             in_sz  = (size_t)(it->in_avail - it->in_pos);
+  size_t             out_sz = (size_t)((uint32_t)k_ra8_png_ring_bytes - st->ring_wr);
+  const mz_uint      flags  = (mz_uint)TINFL_FLAG_PARSE_ZLIB_HEADER |
+                              ((st->source_done == 0U) ? (mz_uint)TINFL_FLAG_HAS_MORE_INPUT : 0U);
   const tinfl_status status = tinfl_decompress(st->inflator,
                                                &st->inbuf[it->in_pos],
                                                &in_sz,

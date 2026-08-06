@@ -594,11 +594,11 @@ ra8_err_t ra8_rabook_import_open(const ra8_rabook_import_cfg_t* cfg,
   uint32_t src_size = 0U;
   uint32_t src_crc  = 0U;
   err               = s_compute_source_key(cfg->mount,
-                             epub_path,
-                             cfg->scratch,
-                             cfg->scratch_cap,
-                             &src_size,
-                             &src_crc);
+                                           epub_path,
+                                           cfg->scratch,
+                                           cfg->scratch_cap,
+                                           &src_size,
+                                           &src_crc);
   if (err != k_ra8_ok) {
     return err;
   }

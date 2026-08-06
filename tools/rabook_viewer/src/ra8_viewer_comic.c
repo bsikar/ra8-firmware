@@ -265,14 +265,14 @@ ra8_err_t viewer_tile_comic(ra8_viewer_reader_t* r,
     (void)ra8_gfx_clear((uint32_t)k_viewer_bg);
     ra8_img_arena_t img_arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
     rc                        = ra8_img_decode_blit(&img_arena,
-                             r->page_buf,
-                             got,
-                             0,
-                             0,
-                             (int32_t)rw,
-                             (int32_t)rh,
-                             nullptr,
-                             nullptr);
+                                                    r->page_buf,
+                                                    got,
+                                                    0,
+                                                    0,
+                                                    (int32_t)rw,
+                                                    (int32_t)rh,
+                                                    nullptr,
+                                                    nullptr);
   }
   if (rc != k_ra8_ok) {
     return rc;

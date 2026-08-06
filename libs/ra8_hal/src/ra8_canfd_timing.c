@@ -151,14 +151,14 @@ static ra8_err_t internal_solve_timing(uint32_t            clock_hz,
 RA8_INTERNAL
 static uint32_t internal_pack_ncfg(const ra8_canfd_timing_t* t)
 {
-  const uint32_t brp_field = ((t->prescaler - 1U) & k_ra8_cncfg_mask_nbrp)
-                             << (uint32_t)k_ra8_cncfg_shift_nbrp;
+  const uint32_t brp_field   = ((t->prescaler - 1U) & k_ra8_cncfg_mask_nbrp)
+                               << (uint32_t)k_ra8_cncfg_shift_nbrp;
   const uint32_t tseg1_field = (t->tseg1 & k_ra8_cncfg_mask_ntseg1)
                                << (uint32_t)k_ra8_cncfg_shift_ntseg1;
   const uint32_t tseg2_field = (t->tseg2 & k_ra8_cncfg_mask_ntseg2)
                                << (uint32_t)k_ra8_cncfg_shift_ntseg2;
-  const uint32_t sjw_field = ((t->sjw - 1U) & k_ra8_cncfg_mask_nsjw)
-                             << (uint32_t)k_ra8_cncfg_shift_nsjw;
+  const uint32_t sjw_field   = ((t->sjw - 1U) & k_ra8_cncfg_mask_nsjw)
+                               << (uint32_t)k_ra8_cncfg_shift_nsjw;
   return brp_field | tseg1_field | tseg2_field | sjw_field;
 }
 
@@ -183,14 +183,14 @@ static uint32_t internal_pack_ncfg(const ra8_canfd_timing_t* t)
 RA8_INTERNAL
 static uint32_t internal_pack_dcfg(const ra8_canfd_timing_t* t)
 {
-  const uint32_t brp_field = ((t->prescaler - 1U) & k_ra8_dcfg_mask_dbrp)
-                             << (uint32_t)k_ra8_dcfg_shift_dbrp;
+  const uint32_t brp_field   = ((t->prescaler - 1U) & k_ra8_dcfg_mask_dbrp)
+                               << (uint32_t)k_ra8_dcfg_shift_dbrp;
   const uint32_t tseg1_field = (t->tseg1 & k_ra8_dcfg_mask_dtseg1)
                                << (uint32_t)k_ra8_dcfg_shift_dtseg1;
   const uint32_t tseg2_field = (t->tseg2 & k_ra8_dcfg_mask_dtseg2)
                                << (uint32_t)k_ra8_dcfg_shift_dtseg2;
-  const uint32_t sjw_field = ((t->sjw - 1U) & k_ra8_dcfg_mask_dsjw)
-                             << (uint32_t)k_ra8_dcfg_shift_dsjw;
+  const uint32_t sjw_field   = ((t->sjw - 1U) & k_ra8_dcfg_mask_dsjw)
+                               << (uint32_t)k_ra8_dcfg_shift_dsjw;
   return brp_field | tseg1_field | tseg2_field | sjw_field;
 }
 

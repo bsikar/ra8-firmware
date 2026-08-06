@@ -261,9 +261,9 @@ ra8_err_t ra8_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
     addr; /* NOLINT(performance-no-int-to-ptr) -- alignment-safe reinterpret documented above. */
   uint16_t        written = 0U;
   const ra8_err_t err     = ra8_ssie_write_buffer((uint8_t)k_ra8_board_audio_ssie_channel,
-                                              packed,
-                                              (uint16_t)words,
-                                              &written);
+                                                  packed,
+                                                  (uint16_t)words,
+                                                  &written);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -674,7 +674,7 @@ RA8_INTERNAL static ra8_err_t internal_io_expander_program_u15(uint8_t output_by
   }
   s_io_expander_probe = (uint32_t)k_io_exp_probe_pre_write_hiz;
   err                 = internal_io_expander_write_reg((uint8_t)k_ra8_board_pi4ioe_reg_hiz,
-                                       (uint8_t)k_ra8_board_pi4ioe_hiz_none);
+                                                       (uint8_t)k_ra8_board_pi4ioe_hiz_none);
   if (err != k_ra8_ok) {
     return err;
   }

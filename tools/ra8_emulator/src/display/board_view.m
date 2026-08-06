@@ -183,8 +183,8 @@ static void board_view_install_menu(void)
   NSMenu*     appMenu = [[NSMenu alloc] init];
   NSString*   name    = [[NSProcessInfo processInfo] processName];
   NSMenuItem* quit    = [[NSMenuItem alloc] initWithTitle:[@"Quit " stringByAppendingString:name]
-                                                action:@selector(terminate:)
-                                         keyEquivalent:@"q"];
+                                                   action:@selector(terminate:)
+                                            keyEquivalent:@"q"];
   [appMenu addItem:quit];
   [appItem setSubmenu:appMenu];
   [NSApp setMainMenu:menubar];

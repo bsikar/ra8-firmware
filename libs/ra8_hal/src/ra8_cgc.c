@@ -534,7 +534,7 @@ static void internal_program_dividers(void)
                             ((uint32_t)k_ra8_clock_div_16 << k_ra8_sckdivcr_pckb_shift) |
                             ((uint32_t)k_ra8_clock_div_8 << k_ra8_sckdivcr_pckc_shift) |
                             ((uint32_t)k_ra8_clock_div_4 << k_ra8_sckdivcr_pckd_shift);
-  *ra8_sys_sckdivcr() = sckdivcr;
+  *ra8_sys_sckdivcr()     = sckdivcr;
 
   /* HUM Ch 9.2.7 "SCKDIVCR2 : System Clock Division Control Register 2"
    * / FSP bsp_clocks.c */
@@ -761,7 +761,7 @@ ra8_err_t ra8_cgc_init(void)
 ra8_err_t ra8_cgc_use_hoco(void)
 {
   volatile uint8_t* const hococr = ra8_sys_hococr();
-  *hococr = (uint8_t)((uint8_t)*hococr & (uint8_t) ~(1U << k_ra8_hococr_hcstp));
+  *hococr = (uint8_t)((uint8_t)*hococr & (uint8_t)~(1U << k_ra8_hococr_hcstp));
 
   const ra8_err_t err = ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_hocosf);
   if (err != k_ra8_ok) {

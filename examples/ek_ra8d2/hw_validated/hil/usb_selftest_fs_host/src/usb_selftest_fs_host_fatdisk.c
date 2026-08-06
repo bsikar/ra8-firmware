@@ -789,8 +789,8 @@ VOID selftest_device_worker(ULONG arg)
     s_dbg_fw_len    = (uint32_t)_ux_system_slave->ux_system_slave_device_framework_length;
     s_dbg_thr_state = (uint32_t)_ux_system_slave->ux_system_slave_class_array[0]
                         .ux_slave_class_thread.tx_thread_state;
-    s_dbg_thr_runs = (uint32_t)_ux_system_slave->ux_system_slave_class_array[0]
-                       .ux_slave_class_thread.tx_thread_run_count;
+    s_dbg_thr_runs  = (uint32_t)_ux_system_slave->ux_system_slave_class_array[0]
+                        .ux_slave_class_thread.tx_thread_run_count;
     if (s_dbg_dev_state == (uint32_t)UX_DEVICE_CONFIGURED) {
       s_dbg_state3_seen++;
       if (s_dbg_thr_state == (uint32_t)TX_SUSPENDED) {

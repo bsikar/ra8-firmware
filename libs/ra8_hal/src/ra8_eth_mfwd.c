@@ -182,7 +182,7 @@ ra8_err_t ra8_eth_mfwd_route_queue(uint8_t port, uint8_t queue_index)
   /* HUM Ch 30 "Ethernet Message Forwarding Engine (MFWD)" p 1321 */
   volatile uint32_t* reg = internal_mfwd_fwpbfcsdc(port);
   const uint32_t     val = (*reg & ~(uint32_t)k_ra8_mfwd_pbcsd_mask) |
-                       ((uint32_t)queue_index & (uint32_t)k_ra8_mfwd_pbcsd_mask);
-  *reg = val;
+                           ((uint32_t)queue_index & (uint32_t)k_ra8_mfwd_pbcsd_mask);
+  *reg                   = val;
   return k_ra8_ok;
 }

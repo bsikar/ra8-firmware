@@ -290,7 +290,7 @@ static void internal_program_channel(uint8_t virtual_ch, uint8_t physical_ch)
     ((uint32_t)physical_ch << (uint32_t)k_ra8_adchcr_bit_cnvcs) & k_ra8_adchcr_mask_cnvcs;
   const uint32_t sgsel = ((uint32_t)k_ra8_adc_default_group << (uint32_t)k_ra8_adchcr_bit_sgsel) &
                          k_ra8_adchcr_mask_sgsel;
-  *reg = (cnvcs | sgsel);
+  *reg                 = (cnvcs | sgsel);
 }
 
 /**

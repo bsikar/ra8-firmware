@@ -677,7 +677,7 @@ static void host_msc_parse_capacity(const uint8_t* d, uint16_t n)
                     ((uint32_t)d[k_cap10_blocklen_off + k_be_lane_b2] << 16) |
                     ((uint32_t)d[k_cap10_blocklen_off + k_be_lane_b1] << 8) |
                     (uint32_t)d[k_cap10_blocklen_off + k_be_lane_b0];
-  s_msc_blocks = last_lba + 1U;
+  s_msc_blocks    = last_lba + 1U;
 }
 
 /** @brief Phase ::k_msc_send: push the next CBW, or finish the script. */

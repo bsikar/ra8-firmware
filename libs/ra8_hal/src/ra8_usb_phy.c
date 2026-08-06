@@ -244,7 +244,7 @@ RA8_INTERNAL
 static void internal_usbhs_enable_syscfg(volatile r_usb_regs_t* reg)
 {
   /* HUM Ch 37.2.1 "SYSCFG : System Configuration Control Register", p 2061 */
-  reg->SYSCFG = (uint16_t)(reg->SYSCFG & (uint16_t) ~(uint16_t)(1U << k_ra8_syscfg_bit_drpd));
+  reg->SYSCFG = (uint16_t)(reg->SYSCFG & (uint16_t)~(uint16_t)(1U << k_ra8_syscfg_bit_drpd));
   reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra8_syscfg_bit_usbe));
 
   const uint32_t lo  = s_usbhs_init_probe & (uint32_t)k_ra8_usbhs_probe_lo_mask;
@@ -325,7 +325,7 @@ static void internal_usbhs_arm_phy_reset(volatile uint16_t* physet_reg, uint16_t
    * reset, mask out CLKSEL[1:0], then OR in the candidate field. */
   uint16_t v  = *physet_reg;
   v           = (uint16_t)(v | (uint16_t)k_ra8_physet_dirpd | (uint16_t)k_ra8_physet_pllreset);
-  v           = (uint16_t)(v & (uint16_t) ~(uint16_t)k_ra8_physet_clksel);
+  v           = (uint16_t)(v & (uint16_t)~(uint16_t)k_ra8_physet_clksel);
   v           = (uint16_t)(v | (uint16_t)(clksel_value & (uint16_t)k_ra8_physet_clksel));
   *physet_reg = v;
 }
@@ -369,16 +369,16 @@ static ra8_err_t internal_usbhs_try_clksel(volatile uint16_t* physet,
 {
   /* Drop SUSPENDM so the PHY clock is gated; subsequent PHYSET writes
    * are then sequenced through a single SUSPENDM 0->1 transition. */
-  *lpsts = (uint16_t)(*lpsts & (uint16_t) ~(uint16_t)k_ra8_lpsts_suspendm);
+  *lpsts = (uint16_t)(*lpsts & (uint16_t)~(uint16_t)k_ra8_lpsts_suspendm);
   internal_usb_delay_1us();
 
   internal_usbhs_arm_phy_reset(physet, clksel_value);
   internal_usb_delay_1us();
 
   /* Release DIRPD (PHY analog up), wait 1 ms, release PLLRESET. */
-  *physet = (uint16_t)(*physet & (uint16_t) ~(uint16_t)k_ra8_physet_dirpd);
+  *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra8_physet_dirpd);
   ra8_delay_ms(1U);
-  *physet = (uint16_t)(*physet & (uint16_t) ~(uint16_t)k_ra8_physet_pllreset);
+  *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra8_physet_pllreset);
 
   /* HUM Ch 37.2.43 LPSTS, p 2111: SUSPENDM=1 starts the PHY clock,
    * which both commits any previously-latched PHYSET writes and
@@ -572,7 +572,7 @@ ra8_err_t internal_usbfs_module_bringup(volatile r_usb_regs_t* reg)
       break;
     }
   }
-  reg->SYSCFG = (uint16_t)(reg->SYSCFG & (uint16_t) ~(uint16_t)(1U << k_ra8_syscfg_bit_drpd));
+  reg->SYSCFG = (uint16_t)(reg->SYSCFG & (uint16_t)~(uint16_t)(1U << k_ra8_syscfg_bit_drpd));
   reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra8_syscfg_bit_usbe));
   return k_ra8_ok;
 }

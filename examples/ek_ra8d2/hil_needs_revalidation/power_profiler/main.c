@@ -278,16 +278,16 @@ static uint32_t pp_demo_format_line(uint8_t* out, const ra8_power_profile_stats_
 {
   uint32_t off = 0U;
   off          = pp_demo_append(out,
-                       off,
-                       "pp: a=",
-                       stats->regions[k_ra8_power_profile_region_active].total_time_us);
+                                off,
+                                "pp: a=",
+                                stats->regions[k_ra8_power_profile_region_active].total_time_us);
   off =
     pp_demo_append(out, off, " s=", stats->regions[k_ra8_power_profile_region_sleep].total_time_us);
-  off                    = pp_demo_append(out,
+  off = pp_demo_append(out,
                        off,
                        " d=",
                        stats->regions[k_ra8_power_profile_region_deep_standby].total_time_us);
-  off                    = pp_demo_append(out,
+  off = pp_demo_append(out,
                        off,
                        " st=",
                        stats->regions[k_ra8_power_profile_region_software_standby].total_time_us);

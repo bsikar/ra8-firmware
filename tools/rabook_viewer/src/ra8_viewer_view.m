@@ -85,15 +85,15 @@ ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w, uint32_t h, ra8_
     const uint32_t b  = (b5 << 3) | (b5 >> 2);
     argb[i]           = (r << k_viewer_argb_r) | (g << k_viewer_argb_g) | b;
   }
-  CGColorSpaceRef cs  = CGColorSpaceCreateDeviceRGB();
-  CGContextRef    bmp = CGBitmapContextCreate(argb,
+  CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+  CGContextRef bmp = CGBitmapContextCreate(argb,
                                            (size_t)w,
                                            (size_t)h,
                                            (size_t)k_viewer_bpp_bits,
                                            (size_t)w * sizeof(uint32_t),
                                            cs,
                                            kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little);
-  CGImageRef      img = (bmp != NULL) ? CGBitmapContextCreateImage(bmp) : NULL;
+  CGImageRef   img = (bmp != NULL) ? CGBitmapContextCreateImage(bmp) : NULL;
   if (bmp != NULL) {
     CGContextRelease(bmp);
   }
@@ -367,8 +367,8 @@ static void ra8_viewer_install_menu(void)
   NSMenu*     appMenu = [[NSMenu alloc] init];
   NSString*   name    = [[NSProcessInfo processInfo] processName];
   NSMenuItem* quit    = [[NSMenuItem alloc] initWithTitle:[@"Quit " stringByAppendingString:name]
-                                                action:@selector(terminate:)
-                                         keyEquivalent:@"q"];
+                                                   action:@selector(terminate:)
+                                            keyEquivalent:@"q"];
   [appMenu addItem:quit];
   [appItem setSubmenu:appMenu];
   [NSApp setMainMenu:menubar];
@@ -398,10 +398,10 @@ ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t
     const NSRect     rect  = NSMakeRect(0.0, 0.0, w, h);
     const NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
                              NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
-    NSWindow* win = [[NSWindow alloc] initWithContentRect:rect
-                                                styleMask:style
-                                                  backing:NSBackingStoreBuffered
-                                                    defer:NO];
+    NSWindow*        win   = [[NSWindow alloc] initWithContentRect:rect
+                                                         styleMask:style
+                                                           backing:NSBackingStoreBuffered
+                                                             defer:NO];
     if (win == nil) {
       return nullptr;
     }

@@ -82,7 +82,7 @@ priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus
     if (e != k_ra8_ok) {
       return e; /* GCOVR_EXCL_LINE */
     }
-    sec[byte] = (uint8_t)(sec[byte] & (uint8_t) ~(uint8_t)(1U << bit));
+    sec[byte] = (uint8_t)(sec[byte] & (uint8_t)~(uint8_t)(1U << bit));
     /* Pull the scan hint back to the space just released, or the next create
      * would step over it and only find it after a full rescan (#607). */
     priv_alloc_hint_lower(m, idx + (uint32_t)k_cluster_first_data);
@@ -311,7 +311,7 @@ ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path)
     if (e != k_ra8_ok) {
       return e; /* GCOVR_EXCL_LINE */
     }
-    entry[0] = (uint8_t)(entry[0] & (uint8_t) ~(uint8_t)k_exfat_inuse_bit);
+    entry[0] = (uint8_t)(entry[0] & (uint8_t)~(uint8_t)k_exfat_inuse_bit);
     e        = priv_exfat_put_entry(m, &pos[k], entry);
     if (e != k_ra8_ok) {
       return e; /* GCOVR_EXCL_LINE */
@@ -408,7 +408,7 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   exfat_setpos_t  pos[k_exfat_set_max_entries] = {};
   uint32_t        count                        = 0U;
   uint8_t         set[k_exfat_rename_bytes]    = {};
-  const ra8_err_t e                            = priv_exfat_find_set(m,
+  const ra8_err_t e = priv_exfat_find_set(m,
                                           old_path,
                                           pos,
                                           (uint32_t)k_exfat_set_max_entries,

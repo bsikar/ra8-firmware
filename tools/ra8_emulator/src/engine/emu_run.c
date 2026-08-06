@@ -699,8 +699,8 @@ static bool run_stop_banner(run_loop_t* st)
   const char* const last_itm  = board_console_line(k_board_console_ch_itm, 0U);
   const char* const last_rtt  = board_console_line(k_board_console_ch_rtt, 0U);
   const bool        hit = ((last_uart != nullptr) && (strstr(last_uart, stop_on) != nullptr)) ||
-                   ((last_itm != nullptr) && (strstr(last_itm, stop_on) != nullptr)) ||
-                   ((last_rtt != nullptr) && (strstr(last_rtt, stop_on) != nullptr));
+                          ((last_itm != nullptr) && (strstr(last_itm, stop_on) != nullptr)) ||
+                          ((last_rtt != nullptr) && (strstr(last_rtt, stop_on) != nullptr));
   if (hit) {
     st->usb_stopped = true;
     return true;

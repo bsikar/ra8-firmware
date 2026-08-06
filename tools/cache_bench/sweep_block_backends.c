@@ -475,10 +475,10 @@ static int cbs_rbkc_pack(const uint8_t* blob,
     }
     mz_ulong  dst_len = (mz_ulong)(out_cap - (payload_off + cur));
     const int rc      = mz_compress2(&out[payload_off + cur],
-                                &dst_len,
-                                &blob[at],
-                                (mz_ulong)span,
-                                MZ_BEST_COMPRESSION);
+                                     &dst_len,
+                                     &blob[at],
+                                     (mz_ulong)span,
+                                     MZ_BEST_COMPRESSION);
     if (rc != MZ_OK) {
       return 1;
     }
@@ -562,11 +562,11 @@ RA8_NASA_RULE_3_OK /* host-only bench: dynamic cache arrays */
   const uint32_t count = (blob_bytes + block_bytes - 1U) / block_bytes;
   const uint64_t bound = (uint64_t)mz_compressBound((mz_ulong)block_bytes);
   const uint64_t cap   = (uint64_t)k_ra8_book_container_header_len +
-                       (((uint64_t)count + 1U) * k_ra8_book_container_entry_len) +
-                       ((uint64_t)count * bound);
-  rb->container = (uint8_t*)malloc((size_t)cap);
-  rb->table     = (uint64_t*)malloc(((size_t)count + 1U) * sizeof(uint64_t));
-  rb->staging   = (uint8_t*)malloc((size_t)bound);
+                         (((uint64_t)count + 1U) * k_ra8_book_container_entry_len) +
+                         ((uint64_t)count * bound);
+  rb->container        = (uint8_t*)malloc((size_t)cap);
+  rb->table            = (uint64_t*)malloc(((size_t)count + 1U) * sizeof(uint64_t));
+  rb->staging          = (uint8_t*)malloc((size_t)bound);
   if ((rb->container == nullptr) || (rb->table == nullptr) || (rb->staging == nullptr)) {
     cbs_rbkc_teardown(be);
     return 1;

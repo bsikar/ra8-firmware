@@ -630,7 +630,7 @@ static ra8_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* 
     const uint32_t word = (uint32_t)cursor[0] | ((uint32_t)cursor[1] << k_ra8_sdhi_shift_b1) |
                           ((uint32_t)cursor[2] << k_ra8_sdhi_shift_b2) |
                           ((uint32_t)cursor[3] << k_ra8_sdhi_shift_b3);
-    reg->SD_BUF0 = word;
+    reg->SD_BUF0        = word;
     cursor += k_ra8_sdhi_fifo_word_bytes;
   }
   return k_ra8_ok;

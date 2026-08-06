@@ -196,11 +196,11 @@ typedef enum : uint32_t {
   k_ra8_drw_status_buserrmtxmrl = (1UL << 9U),  /**< Texture/RLE bus error.     */
   k_ra8_drw_status_buserrmdl    = (1UL << 10U), /**< Display list bus error.    */
   k_ra8_drw_status_busy_mask    = (k_ra8_drw_status_busyenum | k_ra8_drw_status_busywrite |
-                                k_ra8_drw_status_dlistactive), /**< RA8 DRW status busy mask. */
+                                   k_ra8_drw_status_dlistactive), /**< RA8 DRW status busy mask. */
   k_ra8_drw_status_irq_mask     = (k_ra8_drw_status_enumirq | k_ra8_drw_status_dlistirq |
-                               k_ra8_drw_status_busirq), /**< RA8 DRW status IRQ mask. */
+                                   k_ra8_drw_status_busirq), /**< RA8 DRW status IRQ mask. */
   k_ra8_drw_status_buserr_mask  = (k_ra8_drw_status_buserrmfb | k_ra8_drw_status_buserrmtxmrl |
-                                  k_ra8_drw_status_buserrmdl), /**< RA8 DRW status buserr mask. */
+                                   k_ra8_drw_status_buserrmdl), /**< RA8 DRW status buserr mask. */
 } ra8_drw_status_mask_t;
 
 /* =============================================================================
@@ -228,9 +228,9 @@ typedef enum : uint32_t {
   k_ra8_drw_irqctl_busirqen    = (1UL << 4U), /**< BUSIRQ unmask.   */
   k_ra8_drw_irqctl_busirqclr   = (1UL << 5U), /**< Clear BUSIRQ.    */
   k_ra8_drw_irqctl_all_clr     = (k_ra8_drw_irqctl_enumirqclr | k_ra8_drw_irqctl_dlistirqclr |
-                              k_ra8_drw_irqctl_busirqclr), /**< RA8 DRW irqctl all clr. */
+                                  k_ra8_drw_irqctl_busirqclr), /**< RA8 DRW irqctl all clr. */
   k_ra8_drw_irqctl_all_en      = (k_ra8_drw_irqctl_enumirqen | k_ra8_drw_irqctl_dlistirqen |
-                             k_ra8_drw_irqctl_busirqen), /**< RA8 DRW irqctl all en. */
+                                  k_ra8_drw_irqctl_busirqen), /**< RA8 DRW irqctl all en. */
 } ra8_drw_irqctl_mask_t;
 
 /* =============================================================================

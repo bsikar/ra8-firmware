@@ -241,7 +241,7 @@ ra8_err_t ra8_wdt_supervisor_init(const ra8_wdt_sup_cfg_t* cfg)
   s_state.refresh = internal_default_refresh;
   s_state.started = false;
 
-  const UINT mx = tx_mutex_create(&s_state.mutex, (CHAR*)(uintptr_t) "ra8_wdt_sup", TX_NO_INHERIT);
+  const UINT mx = tx_mutex_create(&s_state.mutex, (CHAR*)(uintptr_t)"ra8_wdt_sup", TX_NO_INHERIT);
   if (mx != TX_SUCCESS) {
     return k_ra8_err_rtos_error; /* GCOVR_EXCL_LINE -- shim always returns TX_SUCCESS */
   }
@@ -372,7 +372,7 @@ ra8_err_t ra8_wdt_supervisor_start(void)
   }
 
   const UINT tx = tx_thread_create(&s_state.thread,
-                                   (CHAR*)(uintptr_t) "ra8_wdt_sup",
+                                   (CHAR*)(uintptr_t)"ra8_wdt_sup",
                                    internal_thread_entry,
                                    0UL,
                                    s_state.cfg.stack,

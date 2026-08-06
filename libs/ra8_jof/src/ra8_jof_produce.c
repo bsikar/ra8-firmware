@@ -604,12 +604,12 @@ ra8_jof_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_w, uin
     ((uint64_t)max_width * (uint64_t)k_ra8_jpeg_sw_stream_mcu_rows_max * 3U);
   const uint64_t png_set = (uint64_t)sizeof(tinfl_decompressor) + (uint64_t)k_ra8_jof_png_ring +
                            (uint64_t)k_ra8_jof_png_inbuf + (3U * ((uint64_t)max_width * bpp)) + 2U;
-  const uint64_t dec_set     = (jpeg_set > png_set) ? jpeg_set : png_set;
-  const uint64_t band        = (uint64_t)max_width * (uint64_t)tile_h * bpp;
-  const uint64_t tw_eff      = ((uint64_t)tile_w < (uint64_t)max_width) ? tile_w : max_width;
-  const uint64_t th_eff      = ((uint64_t)tile_h < (uint64_t)max_height) ? tile_h : max_height;
-  const uint64_t stage       = tw_eff * th_eff * bpp;
-  const uint64_t cmp         = (uint64_t)ra8_jof_stored_bound((uint32_t)stage);
+  const uint64_t dec_set = (jpeg_set > png_set) ? jpeg_set : png_set;
+  const uint64_t band    = (uint64_t)max_width * (uint64_t)tile_h * bpp;
+  const uint64_t tw_eff  = ((uint64_t)tile_w < (uint64_t)max_width) ? tile_w : max_width;
+  const uint64_t th_eff  = ((uint64_t)tile_h < (uint64_t)max_height) ? tile_h : max_height;
+  const uint64_t stage   = tw_eff * th_eff * bpp;
+  const uint64_t cmp     = (uint64_t)ra8_jof_stored_bound((uint32_t)stage);
   const uint64_t index_bytes = cols * rows * (uint64_t)k_ra8_jof_index_entry;
   const uint64_t dfl         = (uint64_t)k_ra8_io_compress_scratch_bytes;
   const uint64_t total =

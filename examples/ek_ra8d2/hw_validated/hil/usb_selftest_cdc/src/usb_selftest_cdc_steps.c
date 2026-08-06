@@ -113,7 +113,7 @@ static void cdc_pattern_fill(uint32_t round, uint8_t* out, uint32_t len)
   for (uint32_t i = 0U; i < len; i++) {
     const uint32_t v = (round * (uint32_t)k_cdc_pat_round_mul) + (i * (uint32_t)k_cdc_pat_idx_mul) +
                        (uint32_t)k_cdc_pat_bias;
-    out[i] = (uint8_t)(v & (uint32_t)k_cdc_byte_mask);
+    out[i]           = (uint8_t)(v & (uint32_t)k_cdc_byte_mask);
   }
 }
 
@@ -588,7 +588,7 @@ typedef enum : uint32_t {
   }
   *out_pid = (uint32_t)desc[k_cdc_off_dev_pid] |
              ((uint32_t)desc[(uint32_t)k_cdc_off_dev_pid + 1U] << (uint32_t)k_cdc_byte_bits);
-  err = cdc_enum_set_address();
+  err      = cdc_enum_set_address();
   if (err != k_ra8_ok) {
     (void)cdc_print_fail("set_address", err);
     return err;
@@ -699,10 +699,10 @@ typedef enum : uint32_t {
   }
   uint16_t rx = 0U;
   err         = ra8_usb_host_bulk_in(k_ra8_usb_speed_hs,
-                             (uint8_t)k_cdc_pipe_in,
-                             s_rx,
-                             (uint16_t)k_cdc_echo_buf,
-                             &rx);
+                                     (uint8_t)k_cdc_pipe_in,
+                                     s_rx,
+                                     (uint16_t)k_cdc_echo_buf,
+                                     &rx);
   if (err != k_ra8_ok) {
     (void)cdc_print_fail("bulk_in", err);
     return err;

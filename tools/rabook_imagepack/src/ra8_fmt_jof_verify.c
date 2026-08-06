@@ -223,14 +223,14 @@ static ra8_err_t priv_encode_roundtrip(ra8_arena_t*          arena,
 {
   ra8_fmt_blob_t atlas = {};
   ra8_err_t      rc    = ra8_fmt_jof_produce(arena,
-                                     src,
-                                     max_w,
-                                     max_h,
-                                     tile_w,
-                                     tile_h,
-                                     (uint8_t)k_ra8_jof_codec_deflate,
-                                     &atlas,
-                                     info);
+                                             src,
+                                             max_w,
+                                             max_h,
+                                             tile_w,
+                                             tile_h,
+                                             (uint8_t)k_ra8_jof_codec_deflate,
+                                             &atlas,
+                                             info);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -278,14 +278,14 @@ static ra8_err_t priv_encode_pair(ra8_arena_t*          arena,
                           ? pair->rinfo.height
                           : (uint16_t)k_fmt_ver_band_h;
   rc                  = priv_encode_roundtrip(arena,
-                             src,
-                             w,
-                             h,
-                             pair->rinfo.width,
-                             band,
-                             &pair->got,
-                             &pair->gotn,
-                             &pair->ginfo);
+                                              src,
+                                              w,
+                                              h,
+                                              pair->rinfo.width,
+                                              band,
+                                              &pair->got,
+                                              &pair->gotn,
+                                              &pair->ginfo);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "verify: banded encode failed (rc=%d)\n", (int)rc);
     pair->ref = nullptr;
