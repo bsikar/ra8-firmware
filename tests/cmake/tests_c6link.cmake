@@ -77,11 +77,15 @@ add_test(NAME test_ra8_c6link COMMAND test_ra8_c6link)
 
 # test_ra8_c6link_mdl: lightweight coverage of the media download stub client.
 # Only needs ra8_c6link_mdl.c (no esp-hosted codec or transport).
-add_executable(
-  test_ra8_c6link_mdl
-  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c
-  ${RA8_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl.c
-  $<TARGET_OBJECTS:ra8_core_hal>
-)
-target_include_directories(test_ra8_c6link_mdl PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
-add_test(NAME test_ra8_c6link_mdl COMMAND test_ra8_c6link_mdl)
+# Guard: unit_tests.cmake should exclude it from the auto-glob, but cmake
+# caching may cause a stale duplicate; if(...NOT TARGET) is defensive.
+if(NOT TARGET test_ra8_c6link_mdl)
+  add_executable(
+    test_ra8_c6link_mdl
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c
+    ${RA8_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl.c
+    $<TARGET_OBJECTS:ra8_core_hal>
+  )
+  target_include_directories(test_ra8_c6link_mdl PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
+  add_test(NAME test_ra8_c6link_mdl COMMAND test_ra8_c6link_mdl)
+endif()
