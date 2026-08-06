@@ -137,7 +137,7 @@ static c6_fwver_rsp_t s_c6_fwver_rsp;
  * @param[in] allocator_data Unused; the pool is a module singleton.
  * @param[in] size Bytes requested.
  * @return Pointer to the block, or null when the pool cannot serve it.
- * @retval NULL The fixed pool is exhausted.
+ * @retval nullptr The fixed pool is exhausted.
  * @pre The esp-hosted port is up, so the pool exists.
  * @pre The caller frees through ::c6_fwver_rpc_pool_free.
  * @post No pool bookkeeping is bypassed.
@@ -259,7 +259,7 @@ ra8_err_t c6_fwver_rpc_request(uint8_t* out, uint16_t cap, uint16_t* out_len)
  * @param[out] proto_len Protobuf length found; must be non-null.
  * @return Pointer to the protobuf bytes, or null when the envelope is not
  *         one this endpoint recognises.
- * @retval NULL The tags, the endpoint name or the lengths did not check out.
+ * @retval nullptr The tags, the endpoint name or the lengths did not check out.
  * @pre @p len bytes are readable at @p payload.
  * @pre @p proto_len is writable.
  * @post On success @p proto_len is non-zero and the returned range lies
