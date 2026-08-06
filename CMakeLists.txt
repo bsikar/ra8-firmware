@@ -25,7 +25,7 @@ string(STRIP "${RA8_PROJECT_VERSION}" RA8_PROJECT_VERSION)
 
 project(
   ra8-firmware
-  LANGUAGES C ASM
+  LANGUAGES C CXX ASM
   VERSION ${RA8_PROJECT_VERSION}
   DESCRIPTION "Bare-metal firmware for Renesas RA8D2 (Cortex-M85) on EK-RA8D2"
 )
