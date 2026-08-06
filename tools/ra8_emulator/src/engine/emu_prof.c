@@ -418,7 +418,7 @@ static void prof_write_speedscope(const char* path)
     return;
   }
   FILE* f = fopen(path, "w");
-  if (f == nullptr) {
+  if (f == NULL) {
     return;
   }
   uint64_t total = 0U;
@@ -510,7 +510,7 @@ static void prof_write_html(const char* path, uint64_t total)
     return;
   }
   FILE* f = fopen(path, "w");
-  if (f == nullptr) {
+  if (f == NULL) {
     return;
   }
   (void)fputs(k_prof_html_head, f);

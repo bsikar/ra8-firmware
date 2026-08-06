@@ -298,7 +298,7 @@ static gb_access_t* gb_build_stream(uint64_t* rng, uint64_t* out_n)
   const uint64_t total =
     (uint64_t)k_gb_pages * (uint64_t)k_gb_reread_pages * (uint64_t)k_gb_page_glyphs;
   gb_access_t* seq = (gb_access_t*)malloc((size_t)total * sizeof(gb_access_t));
-  if (seq == nullptr) {
+  if (seq == NULL) {
     *out_n = 0U;
     return nullptr;
   }
@@ -407,7 +407,7 @@ int main(void)
 {
   uint64_t     rng = (uint64_t)k_gb_seed;
   uint64_t     n   = 0U;
-  gb_access_t* seq = gb_build_stream(&rng, &n);
+  const gb_access_t* seq = gb_build_stream(&rng, &n);
   if ((seq == nullptr) || (n == 0U)) {
     (void)fprintf(stderr, "glyph_bench: failed to build the glyph stream\n");
     return 1;
@@ -438,6 +438,5 @@ int main(void)
   (void)printf("\nWithout a cache the renderer rasterises once per glyph get (%llu).\n",
                (unsigned long long)n);
 
-  free(seq);
   return 0;
 }

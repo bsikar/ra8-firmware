@@ -523,7 +523,7 @@ static void cb_report_trace(const cb_trace_t* tr)
  * @note Not thread-safe: writes stdout and runs replays. Benchmark thread only.
  * @since 0.1.0
  */
-static void cb_report_summary(cb_trace_t* traces, uint32_t ntr)
+static void cb_report_summary(const cb_trace_t* traces, uint32_t ntr)
 {
   const uint32_t mid_cap = (uint32_t)k_cb_mid_cap;
   (void)printf("\n## Summary at %u frames (mean over all workloads)\n\n", mid_cap);

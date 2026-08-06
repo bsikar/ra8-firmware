@@ -192,8 +192,9 @@ static void seed_tsn_calibration(uc_engine* uc)
 static uint8_t* alloc_backing(uint64_t size, const char* what)
 {
   uint8_t* const buf = (uint8_t*)aligned_alloc((size_t)k_page_size, (size_t)size);
-  if (buf == nullptr) {
+  if (buf == NULL) {
     (void)fprintf(stderr, "%s host buffer alloc failed\n", what);
+    free(buf);
     return nullptr;
   }
   (void)memset(buf, 0, (size_t)size);

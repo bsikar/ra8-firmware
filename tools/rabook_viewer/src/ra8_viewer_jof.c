@@ -161,6 +161,8 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
   const size_t sz  = (size_t)r->file.size;
   uint8_t*     buf = (uint8_t*)malloc(sz);
   if (buf == nullptr) {
+    // cppcheck-suppress memleak
+    // buf is NULL here
     return k_ra8_err_no_mem;
   }
   if (fseeko(r->file.fp, 0, SEEK_SET) != 0) {
@@ -403,6 +405,8 @@ viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, ui
   const size_t px  = (size_t)nw * (size_t)nh;
   uint16_t*    buf = (uint16_t*)malloc(px * sizeof(uint16_t));
   if (buf == nullptr) {
+    // cppcheck-suppress memleak
+    // buf is NULL here
     return k_ra8_err_no_mem;
   }
   /* Point the long-strip blit at this native-width band buffer (restored after). */

@@ -93,9 +93,10 @@ static mem_disk_t s_disk;
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
+// cppcheck-suppress constParameterCallback
 static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
-  mem_disk_t* d = (mem_disk_t*)ctx;
+  const mem_disk_t* d = (const mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
@@ -165,9 +166,10 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
+// cppcheck-suppress constParameterCallback
 static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
-  mem_disk_t* d = (mem_disk_t*)ctx;
+  const mem_disk_t* d = (const mem_disk_t*)ctx;
   *block_count  = d->block_count;
   *block_size   = (uint32_t)k_block_size;
   return k_ra8_ok;
@@ -302,7 +304,7 @@ static int dump_image(const char* image_out)
 {
   const size_t image_bytes = (size_t)k_blocks_fat16 * (size_t)k_block_size;
   FILE*        fout        = fopen(image_out, "wb");
-  if (fout == nullptr) {
+  if (fout == NULL) {
     (void)fprintf(stderr, "mkfontimg: cannot write %s\n", image_out);
     return 1;
   }
@@ -400,12 +402,12 @@ build_and_dump(const char* image_out, const uint8_t* font, size_t font_len, cons
 static uint8_t* slurp_font(const char* font_in, size_t* font_len)
 {
   uint8_t* font = (uint8_t*)malloc((size_t)k_font_cap);
-  if (font == nullptr) {
+  if (font == NULL) {
     (void)fprintf(stderr, "mkfontimg: out of memory\n");
     return nullptr;
   }
   FILE* fin = fopen(font_in, "rb");
-  if (fin == nullptr) {
+  if (fin == NULL) {
     (void)fprintf(stderr, "mkfontimg: cannot open %s\n", font_in);
     free(font);
     return nullptr;

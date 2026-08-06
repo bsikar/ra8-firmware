@@ -249,6 +249,7 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
   }
   uint16_t* buf = (uint16_t*)malloc((size_t)buf_bytes);
   if (buf == nullptr) {
+    free(buf);
     return k_ra8_err_no_mem;
   }
   rc = ra8_gfx_init(buf, (uint16_t)rw, (uint16_t)rh, k_ra8_gfx_format_rgb565);

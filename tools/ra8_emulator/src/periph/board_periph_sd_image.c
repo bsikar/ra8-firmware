@@ -58,6 +58,8 @@ bool board_sd_attach(const char* path)
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
     (void)fprintf(stderr, "ra8_emulator: --sd: cannot open '%s'\n", path);
+    // cppcheck-suppress resourceLeak
+    // fp is NULL here
     return false;
   }
   (void)fseek(fp, 0L, SEEK_END);
@@ -229,6 +231,8 @@ bool board_sd_save(const char* path)
   FILE* fp = fopen(path, "wb");
   if (fp == nullptr) {
     (void)fprintf(stderr, "ra8_emulator: --save-sd: cannot write '%s'\n", path);
+    // cppcheck-suppress resourceLeak
+    // fp is NULL here
     return false;
   }
   const size_t put = fwrite(s_sd.image, 1U, (size_t)s_sd.image_len, fp);

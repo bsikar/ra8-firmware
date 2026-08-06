@@ -66,9 +66,10 @@ static mem_disk_t s_disk;
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
+// cppcheck-suppress constParameterCallback
 static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
-  mem_disk_t* d = (mem_disk_t*)ctx;
+  const mem_disk_t* d = (const mem_disk_t*)ctx;
   if ((lba + count) > d->block_count) {
     return k_ra8_err_out_of_range;
   }
@@ -135,9 +136,10 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
+// cppcheck-suppress constParameterCallback
 static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
-  mem_disk_t* d = (mem_disk_t*)ctx;
+  const mem_disk_t* d = (const mem_disk_t*)ctx;
   *block_count  = d->block_count;
   *block_size   = k_block_size;
   return k_ra8_ok;
@@ -147,7 +149,7 @@ static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
 static uint8_t* read_file(const char* path, uint32_t* out_len)
 {
   FILE* f = fopen(path, "rb");
-  if (f == nullptr) {
+  if (f == NULL) {
     return nullptr;
   }
   (void)fseek(f, 0, SEEK_END);
@@ -292,7 +294,7 @@ static int write_books(ra8_fs_mount_t* mnt, char** argv, int n_books)
 static int dump_image(const char* path)
 {
   FILE* out = fopen(path, "wb");
-  if (out == nullptr) {
+  if (out == NULL) {
     (void)fprintf(stderr, "mkbookimg: cannot write %s\n", path);
     return 1;
   }

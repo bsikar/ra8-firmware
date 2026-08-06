@@ -74,6 +74,7 @@ typedef struct {
 } gov_clock_t;
 
 /** @brief Injected clock: return the virtual now. */
+// cppcheck-suppress constParameterCallback
 static int64_t gov_clk_now(void* ctx)
 {
   return ((const gov_clock_t*)ctx)->now_ms;

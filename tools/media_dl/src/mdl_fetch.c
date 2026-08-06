@@ -211,7 +211,9 @@ RA8_INTERNAL static bool copy_file(const char* src, const char* dst)
     return false;
   }
   FILE* in = fopen(src, "rb");
-  if (in == nullptr) {
+  if (in == NULL) {
+    // cppcheck-suppress resourceLeak
+    // in is NULL here
     return false;
   }
   /* Same rule as every other writer here: a partial copy must not be able to
@@ -222,8 +224,10 @@ RA8_INTERNAL static bool copy_file(const char* src, const char* dst)
     return false;
   }
   FILE* out = fopen(tmp, "wb");
-  if (out == nullptr) {
+  if (out == NULL) {
     (void)fclose(in);
+    // cppcheck-suppress resourceLeak
+    // out is NULL here
     return false;
   }
   bool    ok = true;
@@ -511,7 +515,7 @@ RA8_INTERNAL static ra8_err_t fetch_chapter_html(mdl_fetch_ctx_t* ctx, const cha
 }
 
 /** @brief Resolve the output directory + starting page number for one chapter. */
-RA8_INTERNAL static bool resolve_dest(mdl_fetch_ctx_t*   ctx,
+RA8_INTERNAL static bool resolve_dest(const mdl_fetch_ctx_t*   ctx,
                                       mdl_fetch_layout_t layout,
                                       const char*        id,
                                       const char*        combined_abs,

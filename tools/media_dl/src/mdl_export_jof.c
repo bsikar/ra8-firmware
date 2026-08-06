@@ -141,7 +141,9 @@ RA8_INTERNAL static ra8_err_t jof_sink(void* ctx, const uint8_t* buf, size_t len
 RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t* out_len)
 {
   FILE* f = fopen(path, "rb");
-  if (f == nullptr) {
+  if (f == NULL) {
+    // cppcheck-suppress resourceLeak
+    // f is NULL here
     return k_ra8_fail;
   }
   (void)fseek(f, 0, SEEK_END);
@@ -206,7 +208,8 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
     return k_ra8_err_invalid_size;
   }
   uint8_t* mem = (uint8_t*)malloc((size_t)need);
-  if (mem == nullptr) {
+  if (mem == NULL) {
+    free(mem);
     return k_ra8_err_no_mem;
   }
   *out_work = mem;
@@ -255,7 +258,8 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t* src,
                                                FILE*          out)
 {
   uint8_t* work = (uint8_t*)malloc((size_t)work_cap);
-  if (work == nullptr) {
+  if (work == NULL) {
+    free(work);
     return k_ra8_err_no_mem;
   }
   uint8_t*        webp_work = nullptr;
@@ -318,8 +322,10 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
     return k_ra8_fail;
   }
   FILE* out = fopen(tmp, "wb");
-  if (out == nullptr) {
+  if (out == NULL) {
     free(src);
+    // cppcheck-suppress resourceLeak
+    // out is NULL here
     return k_ra8_fail;
   }
   rc = jof_produce_page(src, slen, w, h, tile_h, work_cap, out);

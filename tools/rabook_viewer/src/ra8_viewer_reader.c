@@ -71,6 +71,8 @@ ra8_err_t viewer_reserve_page_buf(ra8_viewer_reader_t* r, size_t need)
   }
   uint8_t* grown = (uint8_t*)realloc(r->page_buf, need);
   if (grown == nullptr) {
+    // cppcheck-suppress memleak
+    // grown is NULL here
     return k_ra8_err_no_mem;
   }
   r->page_buf = grown;
@@ -217,6 +219,8 @@ RA8_INTERNAL static ra8_err_t viewer_alloc_core(ra8_viewer_reader_t** out)
 {
   ra8_viewer_reader_t* r = (ra8_viewer_reader_t*)calloc(1U, sizeof(*r));
   if (r == nullptr) {
+    // cppcheck-suppress memleak
+    // freed by viewer_free(r)
     return k_ra8_err_no_mem;
   }
   const size_t fb_pixels = (size_t)k_ra8_viewer_fb_width * (size_t)k_ra8_viewer_fb_height;
