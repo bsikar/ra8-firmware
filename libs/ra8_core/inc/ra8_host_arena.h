@@ -39,8 +39,7 @@
 
  */
 
-#ifndef RA8_HOST_ARENA_H
-#define RA8_HOST_ARENA_H
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
@@ -208,4 +207,4 @@ static inline void ra8_arena_restore(ra8_arena_t* a, uint32_t mark)
   }
 }
 
-#endif /* RA8_HOST_ARENA_H */
+

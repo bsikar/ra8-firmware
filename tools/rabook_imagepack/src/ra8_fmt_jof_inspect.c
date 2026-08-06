@@ -379,7 +379,8 @@ static void priv_print_table(FILE* out, const fmt_tile_rec_t* recs, uint32_t cou
  * @details Owns the shared decode buffers for the whole walk so inspection
  *          allocates once rather than per tile, and releases them on every exit
  *          path including the error ones.
- * @param[in]  atlas Container bytes (non-nullptr).
+ * @param[in,out] arena Bump allocator for decode buffers.
+ * @param[in]     atlas Container bytes (non-nullptr).
  * @param[in]  info  Parsed geometry (non-nullptr).
  * @param[out] recs  Array of `info->tile_count` records to fill (non-nullptr).
  * @param[in]  opts  Options carrying the report sink (non-nullptr).

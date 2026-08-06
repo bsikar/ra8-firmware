@@ -226,6 +226,7 @@ ra8_err_t ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t
  * sink it hands back to its own caller) instead of juggling three, which is
  * what keeps the entry point's cleanup legible.
  *
+ * @param[in,out] arena     Bump allocator for produce scratch.
  * @param[in]     src       Source image bytes to tile.
  * @param[in]     max_w     Width cap in pixels, sizing the WebP arena.
  * @param[in]     max_h     Height cap in pixels, sizing the WebP arena.
