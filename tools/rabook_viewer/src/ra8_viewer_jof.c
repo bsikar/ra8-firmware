@@ -139,7 +139,8 @@ RA8_INTERNAL static ra8_err_t viewer_jof_blit(void*          ctx,
  *          (the atlas is held wholly resident), then reads the whole file into an
  *          owned buffer and points the memstore pread at it, so tile decodes read
  *          straight from RAM.
- * @param[in,out] r Reader whose file is already open (non-nullptr).
+ * @param[in,out] r     Reader whose file is already open (non-nullptr).
+ * @param[in,out] arena Bump allocator for the atlas buffer.
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                    The atlas is resident and memstore wired.
  * @retval k_ra8_err_decomp_output_cap The file exceeds the per-unit output cap.
@@ -188,6 +189,7 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r, ra8_arena
  * @param[in,out] w          JOF state to populate (non-nullptr).
  * @param[in]     cell_count Resident-band count (>= 1).
  * @param[in]     band_bytes Bytes per decoded band (> 0).
+ * @param[in,out] arena      Bump allocator for cache backing arrays.
  * @return ra8_err_t; ::k_ra8_err_no_mem on any allocation failure.
  * @retval k_ra8_ok         Every backing buffer was allocated.
  * @retval k_ra8_err_no_mem At least one allocation failed.

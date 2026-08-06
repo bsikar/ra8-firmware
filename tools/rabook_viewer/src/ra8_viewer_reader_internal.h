@@ -239,6 +239,7 @@ RA8_PRIV ra8_err_t viewer_reserve_page_buf(ra8_viewer_reader_t* r, size_t need, 
  *          parses the archive into the reader's page index.
  * @param[in,out] r       Reader with file backing populated (non-nullptr).
  * @param[in]     wrapped true to route through `ra8_comic_open_wrapped`.
+ * @param[in,out] arena   Bump allocator for comic resources.
  * @return ra8_err_t from ra8_comic's open.
  * @retval k_ra8_ok The archive parsed and `r->comic` holds a page index.
  * @pre `r->pages` / `r->names` are allocated (see viewer_alloc_comic()).
@@ -256,8 +257,9 @@ RA8_PRIV ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped, ra8_a
  *          bound arena, then scales it to fit the framebuffer width and centres
  *          it over a white margin. The heavy buffers are borrowed from the
  *          reader, so no large allocation happens per page.
- * @param[in,out] r    Reader of a comic format (non-nullptr).
- * @param[in]     page Page index (`< ra8_viewer_page_count(r)`).
+ * @param[in,out] r     Reader of a comic format (non-nullptr).
+ * @param[in]     page  Page index (`< ra8_viewer_page_count(r)`).
+ * @param[in,out] arena Bump allocator for decode scratch.
  * @return ra8_err_t from the extract / probe / decode pipeline.
  * @retval k_ra8_ok The page was decoded and blitted into `r->fb`.
  * @pre The document was opened as ::k_vfmt_comic or ::k_vfmt_comic_wrap.
@@ -278,7 +280,8 @@ RA8_PRIV ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page, ra
  * @param[in]     i   Tile (page) index.
  * @param[out]    w   Receives the rendered width in pixels.
  * @param[out]    h   Receives the rendered height in pixels.
- * @param[out]    out Receives an arena-allocated `w*h` RGB565 buffer.
+ * @param[out]    out   Receives an arena-allocated `w*h` RGB565 buffer.
+ * @param[in,out] arena Bump allocator for the tile output buffer.
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                Tile rendered; `*out` owns `w*h` pixels.
  * @retval k_ra8_err_no_mem        The output buffer could not be allocated.
@@ -322,7 +325,8 @@ RA8_PRIV void viewer_probe_comic_tile(ra8_viewer_reader_t* r,
  *          sizes and initialises the band tile-cache, and opens the long-strip
  *          document over the memstore -- so later renders only decode bands on
  *          demand.
- * @param[in,out] r Reader with file backing populated (non-nullptr).
+ * @param[in,out] r     Reader with file backing populated (non-nullptr).
+ * @param[in,out] arena Bump allocator for JOF data and cache.
  * @return ra8_err_t from the parse / cache-init / long-strip-open pipeline.
  * @retval k_ra8_ok The strip opened and `r->jof.strip` is ready.
  * @pre The document classified as ::k_vfmt_jof.
@@ -362,7 +366,8 @@ RA8_PRIV ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page);
  * @param[in]     i   Band (tile) index.
  * @param[out]    w   Receives the rendered width in pixels.
  * @param[out]    h   Receives the rendered height in pixels.
- * @param[out]    out Receives an arena-allocated `w*h` RGB565 buffer.
+ * @param[out]    out   Receives an arena-allocated `w*h` RGB565 buffer.
+ * @param[in,out] arena Bump allocator for the band output buffer.
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Band rendered; `*out` owns `w*h` pixels.
  * @retval k_ra8_err_no_mem       The output buffer could not be allocated.
