@@ -44,6 +44,8 @@ static void hello_thread_entry(ULONG input)
  *
  * @param[in] id  Module ID passed by the Module Manager.
  */
+void demo_module_start(ULONG id);
+
 void demo_module_start(ULONG id)
 {
   (void)id;

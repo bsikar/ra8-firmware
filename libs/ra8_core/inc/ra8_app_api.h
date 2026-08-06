@@ -1,7 +1,7 @@
 /**
  * @file ra8_app_api.h
  * @brief Syscall table for RA8 application modules.
- * @ingroup grp_app
+ * @ingroup grp_core
  *
  * @par Tag
  * [Ring 3 / App] {World: NS}
@@ -149,7 +149,9 @@ typedef struct {
   uint32_t reserved[3];    /**< Reserved for future use (must be 0).        */
 } ra8_app_header_t;
 
-_Static_assert(sizeof(ra8_app_header_t) == 48U, "ra8_app_header_t must be 48 bytes");
+#define RA8_APP_HEADER_LEN 48U
+
+_Static_assert(sizeof(ra8_app_header_t) == RA8_APP_HEADER_LEN, "ra8_app_header_t must be 48 bytes");
 
 /* =========================================================================
  * Kernel-side dispatch (implemented in ra8_app_dispatch.c)

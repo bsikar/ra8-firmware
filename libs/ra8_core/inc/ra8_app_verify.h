@@ -1,7 +1,7 @@
 /**
  * @file ra8_app_verify.h
  * @brief Ed25519 signature verification for RA8 ThreadX modules.
- * @ingroup grp_app
+ * @ingroup grp_core
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

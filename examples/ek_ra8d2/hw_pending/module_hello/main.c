@@ -1,7 +1,6 @@
 /**
  * @file main.c
  * @brief ThreadX Module Manager hello-world kernel-side example.
- * @ingroup grp_examples
  *
  * @details
  * Initialises the ThreadX Module Manager, loads a compiled-in module
@@ -15,11 +14,11 @@
  * @since 0.1.0
  */
 
+#include <stdint.h>
+
+#include "ra8_log.h"
 #include "tx_api.h"
 #include "txm_module.h"
-#include "ra8_log.h"
-
-#include <stdint.h>
 
 static const char s_tag[] = "module_hello";
 
@@ -58,8 +57,8 @@ static void startup_thread_entry(ULONG input)
   (void)input;
 
   /* Copy module binary into aligned buffer. */
-  const uint32_t mod_size = (uint32_t)(_binary_hello_module_bin_end -
-                                       _binary_hello_module_bin_start);
+  const uint32_t mod_size =
+    (uint32_t)((uintptr_t)_binary_hello_module_bin_end - (uintptr_t)_binary_hello_module_bin_start);
   ra8_log_info_val(s_tag, "module binary size", mod_size);
 
   if (mod_size > sizeof(s_mod_aligned)) {
@@ -75,8 +74,7 @@ static void startup_thread_entry(ULONG input)
   ra8_log_error_val(s_tag, "preamble[13] (cb_stack)", preamble[13]);
 
   /* Load the module in-place. */
-  UINT st = txm_module_manager_in_place_load(&s_hello_module, "hello",
-                                             (VOID*)s_mod_aligned);
+  UINT st = txm_module_manager_in_place_load(&s_hello_module, "hello", (VOID*)s_mod_aligned);
   if (st != TX_SUCCESS) {
     ra8_log_error_val(s_tag, "in_place_load failed", (uint32_t)st);
     return;
@@ -121,11 +119,16 @@ void tx_application_define(void* first_unused_memory)
 
   /* 3. Create a startup thread to load and start the module.
    * Must be a thread because txm_module_manager_start uses a mutex. */
-  st = tx_thread_create(&s_startup_thread, "startup",
-                        startup_thread_entry, 0U,
-                        s_startup_stack, sizeof(s_startup_stack),
-                        1U, 1U,          /* Priority 1 (high) */
-                        TX_NO_TIME_SLICE, TX_AUTO_START);
+  st = tx_thread_create(&s_startup_thread,
+                        "startup",
+                        startup_thread_entry,
+                        0U,
+                        s_startup_stack,
+                        sizeof(s_startup_stack),
+                        1U,
+                        1U, /* Priority 1 (high) */
+                        TX_NO_TIME_SLICE,
+                        TX_AUTO_START);
   if (st != TX_SUCCESS) {
     ra8_log_error_val(s_tag, "tx_thread_create startup failed", (uint32_t)st);
     return;

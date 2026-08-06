@@ -13,32 +13,30 @@
  * @since 0.1.0
  */
 
-#include "tx_api.h"
 #include <stdint.h>
 
-__attribute__((weak))
-UINT _tx_thread_secure_mode_stack_allocate(TX_THREAD* thread_ptr, ULONG stack_size)
+#include "tx_api.h"
+
+__attribute__((weak)) UINT _tx_thread_secure_mode_stack_allocate(TX_THREAD* thread_ptr,
+                                                                 ULONG      stack_size)
 {
   (void)thread_ptr;
   (void)stack_size;
   return TX_FEATURE_NOT_ENABLED;
 }
 
-__attribute__((weak))
-UINT _tx_thread_secure_mode_stack_free(TX_THREAD* thread_ptr)
+__attribute__((weak)) UINT _tx_thread_secure_mode_stack_free(TX_THREAD* thread_ptr)
 {
   (void)thread_ptr;
   return TX_FEATURE_NOT_ENABLED;
 }
 
-__attribute__((weak))
-void _tx_thread_secure_stack_context_save(TX_THREAD* thread_ptr)
+__attribute__((weak)) void _tx_thread_secure_stack_context_save(TX_THREAD* thread_ptr)
 {
   (void)thread_ptr;
 }
 
-__attribute__((weak))
-void _tx_thread_secure_stack_context_restore(TX_THREAD* thread_ptr)
+__attribute__((weak)) void _tx_thread_secure_stack_context_restore(TX_THREAD* thread_ptr)
 {
   (void)thread_ptr;
 }
@@ -55,4 +53,4 @@ int main(void)
 /* Normally emitted by the app linker script. The board's default LD
  * doesn't define it, so provide a fallback pointing at the end of BSS. */
 extern uint8_t g_ra8_ls_ebss[];
-uint8_t* g_ra8_threadx_unused_memory_start = g_ra8_ls_ebss;
+uint8_t*       g_ra8_threadx_unused_memory_start = g_ra8_ls_ebss;
