@@ -304,9 +304,10 @@ RA8_PRIV ra8_err_t viewer_tile_comic(ra8_viewer_reader_t* r,
  * @brief Probe one comic page's native size into the tile-size cache.
  * @details A page that fails to probe stays 0x0 and the view draws a placeholder
  *          for it, so one unreadable page never sinks the whole document.
- * @param[in,out] r     Reader of a comic format (non-nullptr).
- * @param[in]     i     Page index.
- * @param[in]     arena Bindable decode arena for the JPEG header probe.
+ * @param[in,out] r         Reader of a comic format (non-nullptr).
+ * @param[in]     i         Page index.
+ * @param[in,out] img_arena Image decode arena for the JPEG header probe.
+ * @param[in,out] arena     Bump allocator for page buffer growth.
  * @pre @p r was opened as a comic format and @p i is a valid page.
  * @pre @p arena is a decode arena the probe may bind.
  * @post `r->tile_wpx[i]` / `r->tile_hpx[i]` are set, or left 0 on failure.

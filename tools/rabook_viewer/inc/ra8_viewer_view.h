@@ -49,8 +49,9 @@ typedef struct ra8_viewer_view ra8_viewer_view_t;
  *          continuous vertical strip, pulling and scaling tiles lazily as they
  *          scroll into view. The view borrows @p reader and renders on demand; a
  *          headless host with no display returns nullptr.
- * @param[in] reader Open reader whose tiles the window renders (non-nullptr).
- * @param[in] title  Window title (NUL-terminated, may be nullptr).
+ * @param[in]     reader Open reader whose tiles the window renders (non-nullptr).
+ * @param[in]     title  Window title (NUL-terminated, may be nullptr).
+ * @param[in,out] arena  Bump allocator for window resources.
  * @return New view handle, or nullptr if a window could not be created (e.g. a
  *         headless host with no display).
  * @retval nullptr No window could be created on this host.

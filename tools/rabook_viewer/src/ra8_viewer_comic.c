@@ -123,9 +123,10 @@ RA8_INTERNAL static void viewer_cap_render(uint32_t nw, uint32_t nh, uint32_t* r
  *          decompression-bomb declaration before allocating
  *          (`ra8_decomp_check_declared`), grows the scratch buffer to fit, then
  *          reads the encoded image into it.
- * @param[in,out] r    Reader of a comic format (non-nullptr).
- * @param[in]     page Page index.
- * @param[out]    got  Receives the byte count read (non-nullptr).
+ * @param[in,out] r     Reader of a comic format (non-nullptr).
+ * @param[in]     page  Page index.
+ * @param[out]    got   Receives the byte count read (non-nullptr).
+ * @param[in,out] arena Bump allocator for scratch buffer growth.
  * @return ra8_err_t from `ra8_comic_page_info` / `ra8_comic_page_read`.
  * @retval k_ra8_ok The bytes were read and `*got` holds the count.
  * @pre @p r was opened as a comic format and @p page is valid.
