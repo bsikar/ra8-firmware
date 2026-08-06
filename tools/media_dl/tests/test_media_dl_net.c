@@ -60,8 +60,8 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_err_t   rc;          /**< Result the fetch call returns.                    */
-  long        status;      /**< HTTP status reported through `resp`.              */
+  ra8_err_t   rc;          /**< Result the fetch call returns.                       */
+  long        status;      /**< HTTP status reported through `resp`.                 */
   const char* body;        /**< Body copied into the buffer on ok, or nullptr.       */
   const char* retry_after; /**< Raw Retry-After surfaced through `resp`, or nullptr. */
 } fake_reply_t;
@@ -670,8 +670,8 @@ static void test_atomic_commit_and_abort(void)
   TEST_ASSERT(strcmp(body, "NEWBYTES") == 0);
   TEST_ASSERT(!atom_has_debris(dir));
 
-  TEST_ASSERT(!mdl_atomic_commit(nullptr, dst)); /* V2                         */
-  TEST_ASSERT(!mdl_atomic_commit(dst, nullptr)); /* V3                         */
+  TEST_ASSERT(!mdl_atomic_commit(nullptr, dst)); /* V2                            */
+  TEST_ASSERT(!mdl_atomic_commit(dst, nullptr)); /* V3                            */
   mdl_atomic_abort(nullptr);                     /* no crash on the nullptr no-op */
 
   (void)unlink(dst);

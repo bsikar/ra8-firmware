@@ -73,9 +73,9 @@ static mdl_url_list_t s_list;
  * @since 0.1.0
  */
 typedef struct {
-  int                       count;  /**< Number of fetches performed.     */
+  int                       count;  /**< Number of fetches performed.        */
   const char*               body;   /**< Canned robots.txt body, or nullptr. */
-  mdl_robots_fetch_result_t result; /**< Result the fetcher reports.      */
+  mdl_robots_fetch_result_t result; /**< Result the fetcher reports.         */
 } fake_fetch_ctx_t;
 
 /** @brief Injected robots.txt fetcher returning a canned body/result. */

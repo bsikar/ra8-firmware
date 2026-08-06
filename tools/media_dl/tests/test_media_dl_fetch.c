@@ -175,15 +175,15 @@ static const mdl_net_vtable_t s_mock_vtable = {
 
 /* ---- shared fixtures (large objects live off the stack) ------------------ */
 
-static mock_net_t          g_mock;               /**< The scripted backend context.           */
-static mdl_session_t       g_sess;               /**< Session over the fake (64 KiB embed).   */
-static mdl_site_t          g_site;               /**< Selectors + (zero) politeness bounds.   */
-static mdl_state_t         g_state;              /**< State under test (~2 MiB).              */
-static mdl_url_list_t      g_chapters;           /**< Live chapter list for a scenario.       */
-static mdl_url_list_t      g_images;             /**< Extracted-image scratch.                */
-static char                g_page[k_page_bytes]; /**< Chapter-HTML scratch.                   */
+static mock_net_t          g_mock;               /**< The scripted backend context.              */
+static mdl_session_t       g_sess;               /**< Session over the fake (64 KiB embed).      */
+static mdl_site_t          g_site;               /**< Selectors + (zero) politeness bounds.      */
+static mdl_state_t         g_state;              /**< State under test (~2 MiB).                 */
+static mdl_url_list_t      g_chapters;           /**< Live chapter list for a scenario.          */
+static mdl_url_list_t      g_images;             /**< Extracted-image scratch.                   */
+static char                g_page[k_page_bytes]; /**< Chapter-HTML scratch.                      */
 static mdl_governor_t*     g_fetch_gov;          /**< Governor wired into run_fetch, or nullptr. */
-static mdl_fetch_faillog_t g_faillog;            /**< Failure log run_fetch fills each run.   */
+static mdl_fetch_faillog_t g_faillog;            /**< Failure log run_fetch fills each run.      */
 
 /**
  * @struct fetch_clock_t

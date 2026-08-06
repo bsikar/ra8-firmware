@@ -100,9 +100,9 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const char* in_path;  /**< Source file path (required).                    */
+  const char* in_path;  /**< Source file path (required).                       */
   const char* out_path; /**< Destination path, or nullptr for a read-only verb. */
-  bool        verbose;  /**< Print per-entry tables, not just the summary.   */
+  bool        verbose;  /**< Print per-entry tables, not just the summary.      */
   FILE*       report;   /**< Human-readable output sink (never nullptr).        */
 } ra8_fmt_opts_t;
 
@@ -167,13 +167,13 @@ typedef bool (*ra8_fmt_sniff_fn)(const ra8_fmt_blob_t* src);
  * @since 0.1.0
  */
 typedef struct {
-  const char*        name;    /**< CLI selector, e.g. "jof".                */
-  const char*        ext;     /**< Canonical file extension, e.g. ".jof".   */
-  const char*        summary; /**< One-line description for the usage text. */
-  ra8_fmt_sniff_fn   sniff;   /**< Magic test for auto-detection, or nullptr.  */
-  ra8_fmt_convert_fn convert; /**< Single-unit converter, or nullptr.          */
-  ra8_fmt_inspect_fn inspect; /**< Structure dumper, or nullptr.               */
-  ra8_fmt_verify_fn  verify;  /**< Round-trip checker, or nullptr.             */
+  const char*        name;    /**< CLI selector, e.g. "jof".                  */
+  const char*        ext;     /**< Canonical file extension, e.g. ".jof".     */
+  const char*        summary; /**< One-line description for the usage text.   */
+  ra8_fmt_sniff_fn   sniff;   /**< Magic test for auto-detection, or nullptr. */
+  ra8_fmt_convert_fn convert; /**< Single-unit converter, or nullptr.         */
+  ra8_fmt_inspect_fn inspect; /**< Structure dumper, or nullptr.              */
+  ra8_fmt_verify_fn  verify;  /**< Round-trip checker, or nullptr.            */
 } ra8_fmt_desc_t;
 
 /**
