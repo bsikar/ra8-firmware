@@ -47,6 +47,14 @@ typedef enum : uint64_t {
   k_mpu_rnr           = 0xE000ED98UL, /**< MPU_RNR (region number select).        */
   k_mpu_rbar          = 0xE000ED9CUL, /**< MPU_RBAR (BASE[31:5]|SH|AP[2:1]|XN).   */
   k_mpu_rlar          = 0xE000EDA0UL, /**< MPU_RLAR (LIMIT[31:5]|AttrIdx|EN).     */
+  k_mpu_rbar_a1       = 0xE000EDA4UL, /**< MPU_RBAR_A1 (alias, RNR+1).            */
+  k_mpu_rlar_a1       = 0xE000EDA8UL, /**< MPU_RLAR_A1 (alias, RNR+1).            */
+  k_mpu_rbar_a2       = 0xE000EDACUL, /**< MPU_RBAR_A2 (alias, RNR+2).            */
+  k_mpu_rlar_a2       = 0xE000EDB0UL, /**< MPU_RLAR_A2 (alias, RNR+2).            */
+  k_mpu_rbar_a3       = 0xE000EDB4UL, /**< MPU_RBAR_A3 (alias, RNR+3).            */
+  k_mpu_rlar_a3       = 0xE000EDB8UL, /**< MPU_RLAR_A3 (alias, RNR+3).            */
+  k_mpu_mair0         = 0xE000EDC0UL, /**< MPU_MAIR0 (memory attribute indirection). */
+  k_mpu_mair1         = 0xE000EDC4UL, /**< MPU_MAIR1 (memory attribute indirection). */
   k_scb_ccr           = 0xE000ED14UL, /**< Configuration and Control (CCR).       */
   k_ccr_div_0_trp     = 0x10UL,       /**< CCR.DIV_0_TRP bit4: divide-by-0 traps. */
   k_scb_cfsr          = 0xE000ED28UL, /**< Config Fault Status (MMFSR low byte).  */

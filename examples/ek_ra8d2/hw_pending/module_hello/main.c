@@ -7,6 +7,9 @@
  * Initialises the ThreadX Module Manager, loads a compiled-in module
  * binary in-place, and starts it. The module runs inside the MPU sandbox.
  *
+ * Module start must happen from a running thread (not tx_application_define)
+ * because txm_module_manager_start acquires a mutex with TX_WAIT_FOREVER.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -33,8 +36,55 @@ enum : uint32_t {
 static uint8_t s_mgr_pool[k_mgr_pool_bytes] __attribute__((aligned(4)));
 static uint8_t s_obj_pool[k_obj_pool_bytes] __attribute__((aligned(4)));
 
+/* ---- Module binary aligned copy buffer ----------------------------------- */
+static uint8_t s_mod_aligned[2048U] __attribute__((aligned(32)));
+
 /* ---- Module instance ----------------------------------------------------- */
 static TXM_MODULE_INSTANCE s_hello_module;
+
+/* ---- Startup thread ------------------------------------------------------ */
+static TX_THREAD s_startup_thread;
+static uint8_t   s_startup_stack[2048U] __attribute__((aligned(4)));
+
+/**
+ * @brief Startup thread — loads and starts the module.
+ *
+ * @details
+ * txm_module_manager_start acquires a mutex with TX_WAIT_FOREVER, so it
+ * must be called from a running thread, not from tx_application_define.
+ */
+static void startup_thread_entry(ULONG input)
+{
+  (void)input;
+
+  /* Copy module binary into aligned buffer. */
+  const uint32_t mod_size = (uint32_t)(_binary_hello_module_bin_end -
+                                       _binary_hello_module_bin_start);
+  ra8_log_info_val(s_tag, "module binary size", mod_size);
+
+  if (mod_size > sizeof(s_mod_aligned)) {
+    ra8_log_error_val(s_tag, "module too large", mod_size);
+    return;
+  }
+  __builtin_memcpy(s_mod_aligned, _binary_hello_module_bin_start, mod_size);
+
+  /* Load the module in-place. */
+  UINT st = txm_module_manager_in_place_load(&s_hello_module, "hello",
+                                             (VOID*)s_mod_aligned);
+  if (st != TX_SUCCESS) {
+    ra8_log_error_val(s_tag, "in_place_load failed", (uint32_t)st);
+    return;
+  }
+  ra8_log_info(s_tag, "module loaded");
+
+  /* Start the module. */
+  st = txm_module_manager_start(&s_hello_module);
+  if (st != TX_SUCCESS) {
+    ra8_log_error_val(s_tag, "module_manager_start failed", (uint32_t)st);
+    return;
+  }
+  ra8_log_info(s_tag, "module started — running inside MPU sandbox");
+}
 
 /**
  * @brief ThreadX application entry — called from tx_kernel_enter().
@@ -63,24 +113,16 @@ void tx_application_define(void* first_unused_memory)
   }
   ra8_log_info(s_tag, "object pool created");
 
-  /* 3. Load the module in-place from the compiled-in binary. */
-  const uint32_t mod_size = (uint32_t)(_binary_hello_module_bin_end -
-                                       _binary_hello_module_bin_start);
-  ra8_log_info_val(s_tag, "module binary size", mod_size);
-
-  st = txm_module_manager_in_place_load(&s_hello_module, "hello",
-                                        (VOID*)_binary_hello_module_bin_start);
+  /* 3. Create a startup thread to load and start the module.
+   * Must be a thread because txm_module_manager_start uses a mutex. */
+  st = tx_thread_create(&s_startup_thread, "startup",
+                        startup_thread_entry, 0U,
+                        s_startup_stack, sizeof(s_startup_stack),
+                        1U, 1U,          /* Priority 1 (high) */
+                        TX_NO_TIME_SLICE, TX_AUTO_START);
   if (st != TX_SUCCESS) {
-    ra8_log_error_val(s_tag, "txm_module_manager_in_place_load failed", (uint32_t)st);
+    ra8_log_error_val(s_tag, "tx_thread_create startup failed", (uint32_t)st);
     return;
   }
-  ra8_log_info(s_tag, "module loaded");
-
-  /* 4. Start the module. */
-  st = txm_module_manager_start(&s_hello_module);
-  if (st != TX_SUCCESS) {
-    ra8_log_error_val(s_tag, "txm_module_manager_start failed", (uint32_t)st);
-    return;
-  }
-  ra8_log_info(s_tag, "module started — running inside MPU sandbox");
+  ra8_log_info(s_tag, "startup thread created — will load module");
 }

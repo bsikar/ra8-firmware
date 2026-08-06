@@ -55,9 +55,10 @@ add_custom_command(
   OUTPUT  ${MODULE_OBJ}
   COMMAND ${CMAKE_OBJCOPY} -I binary -O elf32-littlearm -B arm
           --rename-section .data=.rodata,alloc,load,readonly,data,contents
+          --set-section-alignment .rodata=32
           hello_module.bin ${MODULE_OBJ}
   WORKING_DIRECTORY ${MODULE_BIN_DIR}
   DEPENDS ${MODULE_BIN_DIR}/hello_module.bin
-  COMMENT "Embedding hello_module.bin into kernel ELF"
+  COMMENT "Embedding hello_module.bin (32-byte aligned) into kernel ELF"
 )
 target_sources(module_hello.elf PRIVATE ${MODULE_OBJ})
