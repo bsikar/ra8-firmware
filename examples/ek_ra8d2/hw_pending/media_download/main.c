@@ -19,7 +19,7 @@
 
 int main(void)
 {
-  ra8_c6link_t link = {0};
+  ra8_c6link_t link = {};
 
   /* 1. Initialize c6link. */
   /* ra8_c6link_cfg_t cfg = { ... }; */
@@ -35,7 +35,7 @@ int main(void)
   }
 
   /* 3. Show progress on the display and write to SD card. */
-  ra8_mdl_download_progress_t progress = {0};
+  ra8_mdl_download_progress_t progress = {};
   while (progress.status == 0U) {
     err = ra8_c6link_mdl_poll(&link, &progress);
     if (err == k_ra8_ok) {
