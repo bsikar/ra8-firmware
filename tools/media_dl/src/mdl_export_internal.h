@@ -24,6 +24,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #pragma once
@@ -75,6 +78,7 @@ typedef enum : uint16_t {
  * partially converted directory is always explained by a non-ok return rather
  * than discovered later; pages already written before the failure remain.
  *
+ * @param[in] arena Scratch arena.
  * @param[in] dir   Chapter directory holding the page files.
  * @param[in] names Page file names, `count` entries of at most ::k_name_max
  *                  bytes each, in the order they should be converted.
@@ -99,4 +103,9 @@ typedef enum : uint16_t {
  * @see mdl_export_chapter()
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t mdl_export_jof(const char* dir, const char names[][k_name_max], size_t count);
+#include "ra8_host_arena.h"
+
+RA8_PRIV ra8_err_t mdl_export_jof(ra8_arena_t* arena,
+                                  const char*  dir,
+                                  const char   names[][k_name_max],
+                                  size_t       count);

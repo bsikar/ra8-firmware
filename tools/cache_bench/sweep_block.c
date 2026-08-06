@@ -17,6 +17,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 #include "sweep_block.h"
 
@@ -25,6 +28,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_vmem.h"
 #include "ra8_vsource.h"
@@ -121,9 +125,9 @@ typedef struct {
  *          arrays, then zeroes the bundle so a repeat call is a safe no-op.
  *          Called on every leg exit and on any partial ::cbs_cache_open failure.
  *
- * @param[in,out] c Cache bundle to release (NULL tolerated as a no-op).
+ * @param[in,out] c Cache bundle to release (nullptr tolerated as a no-op).
  *
- * @pre @p c is NULL, or its buffers came from ::cbs_cache_open.
+ * @pre @p c is nullptr, or its buffers came from ::cbs_cache_open.
  * @pre Called on the single benchmark thread.
  * @post All four heap carvings are freed and @p c is all-zero.
  * @post The embedded ::ra8_vmem is no longer usable until reopened.
@@ -159,7 +163,7 @@ static void cbs_cache_close(cbs_cache_t* c)
  *
  * @return int 0 on success, 1 on allocation or init failure.
  * @retval 0 @p c is cold and ready for ::ra8_vmem_get.
- * @retval 1 A NULL/zero argument, or an allocation / init step failed.
+ * @retval 1 A nullptr/zero argument, or an allocation / init step failed.
  *
  * @pre `be->setup` succeeded for this block size.
  * @pre @p c is writable.
@@ -169,8 +173,9 @@ static void cbs_cache_close(cbs_cache_t* c)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static int
-cbs_cache_open(cbs_cache_t* c, cbs_backend_t* be, uint32_t blob_bytes, uint32_t block_bytes)
+RA8_NASA_RULE_3_OK /* host-only bench: dynamic cache arrays */
+  static int
+  cbs_cache_open(cbs_cache_t* c, const cbs_backend_t* be, uint32_t blob_bytes, uint32_t block_bytes)
 {
   if ((c == nullptr) || (be == nullptr) || (be->read == nullptr) || (block_bytes == 0U)) {
     return 1;
@@ -241,7 +246,7 @@ cbs_cache_open(cbs_cache_t* c, cbs_backend_t* be, uint32_t blob_bytes, uint32_t 
  *
  * @return int 0 on success, 1 on any get/put/verify failure.
  * @retval 0 Every request hit correct bytes; @p row is fully filled.
- * @retval 1 A NULL argument, a get/put error, or a byte mismatch occurred.
+ * @retval 1 A nullptr argument, a get/put error, or a byte mismatch occurred.
  *
  * @pre @p c was opened by ::cbs_cache_open and is unused (cold).
  * @pre @p wrap_bytes is a non-zero multiple of ::k_cbs_req_bytes.
@@ -330,7 +335,7 @@ static const char* const s_cbs_leg_names[k_cbs_leg_count] = {"seq", "hot"};
  *
  * @return int 0 on success, 1 on any setup / leg failure.
  * @retval 0 Both legs ran; ::k_cbs_leg_count rows were appended and printed.
- * @retval 1 A NULL argument, a backend setup, an open, or a drive failed.
+ * @retval 1 A nullptr argument, a backend setup, an open, or a drive failed.
  *
  * @pre @p rows has space for ::k_cbs_leg_count more rows.
  * @pre @p be has `setup` and `teardown` bound.
@@ -403,13 +408,14 @@ static const uint32_t s_cbs_blocks[] = {
   (uint32_t)k_cbs_block_256kib,
 };
 
+RA8_NASA_RULE_3_OK /* host-only bench: sweep payload blob */
 int cb_sweep_block(void)
 {
   uint8_t* blob = (uint8_t*)malloc((size_t)k_cbs_blob_bytes);
   if (blob == nullptr) {
     (void)fprintf(stderr, "sweep-block: payload allocation failed\n");
     /* cppcheck-suppress memleak ; false positive: cppcheck 2.13 does not
-     * model the C23 nullptr keyword, so it cannot see blob is NULL here. */
+     * model the C23 nullptr keyword, so it cannot see blob is nullptr here. */
     return 1;
   }
   cbs_priv_fill_text(blob, (uint32_t)k_cbs_blob_bytes);

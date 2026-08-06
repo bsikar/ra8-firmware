@@ -57,6 +57,7 @@ set(MDL_JOF_SRC
     ${FW}/ra8_core/src/ra8_log.c
     ${FW}/ra8_core/src/ra8_error_handler.c
     ${FW}/ra8_core/src/ra8_decomp_limits.c
+    ${FW}/ra8_mem/src/ra8_arena.c
 )
 set(MDL_JOF_INC
     ${FW}/ra8_jof/inc
@@ -108,9 +109,7 @@ add_executable(
 target_include_directories(
   media_dl
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
-          # Reuse the firmware error contract host-side. RA8_OFF_TARGET is the same
-          # switch the host unit-test build uses so register-reaching code takes the
-          # host-safe path.
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_mem/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
           ${MDL_JOF_INC}
@@ -152,6 +151,7 @@ target_include_directories(
   test_media_dl
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_mem/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
@@ -179,10 +179,14 @@ add_executable(
   src/mdl_net_curl.c
   src/mdl_politeness.c
   src/mdl_url_guard.c
+  ../../libs/ra8_mem/src/ra8_arena.c
+  ../../libs/ra8_core/src/ra8_log.c
+  ../../libs/ra8_core/src/ra8_error_handler.c
 )
 target_include_directories(
   test_media_dl_net
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_mem/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
@@ -206,10 +210,15 @@ add_executable(
   src/mdl_net.c
   src/mdl_politeness.c
   src/mdl_url_guard.c
+  ../../libs/ra8_mem/src/ra8_arena.c
+  ../../libs/ra8_core/src/ra8_log.c
+  ../../libs/ra8_core/src/ra8_error_handler.c
 )
 target_include_directories(
   test_media_dl_session
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_mem/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
 target_compile_definitions(test_media_dl_session PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
@@ -227,10 +236,15 @@ add_executable(
   src/mdl_hash.c
   src/mdl_urlname.c
   src/mdl_sanitize.c
+  ../../libs/ra8_mem/src/ra8_arena.c
+  ../../libs/ra8_core/src/ra8_log.c
+  ../../libs/ra8_core/src/ra8_error_handler.c
 )
 target_include_directories(
   test_media_dl_state
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_mem/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
 target_compile_definitions(test_media_dl_state PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
@@ -260,10 +274,14 @@ add_executable(
   src/mdl_politeness.c
   src/mdl_url_guard.c
   src/mdl_extract.c
+  ../../libs/ra8_mem/src/ra8_arena.c
+  ../../libs/ra8_core/src/ra8_log.c
+  ../../libs/ra8_core/src/ra8_error_handler.c
 )
 target_include_directories(
   test_media_dl_fetch
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_mem/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
@@ -276,10 +294,12 @@ add_test(NAME test_media_dl_fetch COMMAND test_media_dl_fetch)
 # both forms, and the per-host in-flight cap) driven entirely through the
 # injectable clock/sleep seams -- no network, no real time. The governor lives
 # in mdl_politeness.c and is self-contained, so this binary links only that unit.
-add_executable(test_media_dl_governor tests/test_media_dl_governor.c src/mdl_politeness.c)
+add_executable(test_media_dl_governor tests/test_media_dl_governor.c src/mdl_politeness.c ../../libs/ra8_mem/src/ra8_arena.c ../../libs/ra8_core/src/ra8_log.c ../../libs/ra8_core/src/ra8_error_handler.c)
 target_include_directories(
   test_media_dl_governor
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_mem/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
 target_compile_definitions(test_media_dl_governor PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
@@ -291,10 +311,12 @@ add_test(NAME test_media_dl_governor COMMAND test_media_dl_governor)
 # expander, and the honest zero-vs-broken result classifier -- driven against a
 # captured search-results fixture with NO network. Covers the matched, zero-hit
 # and malformed-markup cases the issue requires. Links only the two pure units.
-add_executable(test_media_dl_search tests/test_media_dl_search.c src/mdl_search.c src/mdl_extract.c)
+add_executable(test_media_dl_search tests/test_media_dl_search.c src/mdl_search.c src/mdl_extract.c ../../libs/ra8_mem/src/ra8_arena.c ../../libs/ra8_core/src/ra8_log.c ../../libs/ra8_core/src/ra8_error_handler.c)
 target_include_directories(
   test_media_dl_search
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_mem/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
 )
 target_compile_definitions(test_media_dl_search PRIVATE _GNU_SOURCE RA8_OFF_TARGET)

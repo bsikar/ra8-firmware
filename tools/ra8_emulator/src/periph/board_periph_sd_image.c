@@ -18,6 +18,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include <fcntl.h>
@@ -31,6 +34,7 @@
 #include "board_console.h"
 #include "board_periph_sd.h"
 #include "board_periph_sd_internal.h"
+#include "ra8_attributes.h"
 
 /** @brief Release the current backing image (munmap a sparse card, else free). */
 static void board_sd_release_image(void)
@@ -50,7 +54,9 @@ static void board_sd_release_image(void)
   s_sd.map_fd  = -1;
 }
 
-bool board_sd_attach(const char* path)
+RA8_NASA_RULE_3_OK /* host-only emu: sd image buffer */
+  bool
+  board_sd_attach(const char* path)
 {
   if (path == nullptr) {
     return false;
@@ -58,6 +64,8 @@ bool board_sd_attach(const char* path)
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
     (void)fprintf(stderr, "ra8_emulator: --sd: cannot open '%s'\n", path);
+    // cppcheck-suppress resourceLeak
+    // fp is nullptr here
     return false;
   }
   (void)fseek(fp, 0L, SEEK_END);
@@ -229,6 +237,8 @@ bool board_sd_save(const char* path)
   FILE* fp = fopen(path, "wb");
   if (fp == nullptr) {
     (void)fprintf(stderr, "ra8_emulator: --save-sd: cannot write '%s'\n", path);
+    // cppcheck-suppress resourceLeak
+    // fp is nullptr here
     return false;
   }
   const size_t put = fwrite(s_sd.image, 1U, (size_t)s_sd.image_len, fp);

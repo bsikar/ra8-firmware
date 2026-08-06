@@ -18,8 +18,11 @@
  * explicitly, `.netrc` and proxy-env are disabled, and every response is size-
  * and time-bounded. Every `curl_easy_setopt` of a security-relevant option is
  * checked; a failure fails handle creation rather than proceeding unhardened.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include "mdl_net_curl.h"
 
@@ -84,7 +87,7 @@ RA8_INTERNAL static char ascii_lower(char c)
 RA8_INTERNAL static bool header_is(const char* line, size_t line_len, const char* prefix)
 {
   size_t i = 0U;
-  for (; (prefix[i] != '\0') && (i < line_len); ++i) {
+  for (; (i < line_len) && (prefix[i] != '\0'); ++i) {
     if (ascii_lower(line[i]) != prefix[i]) {
       return false;
     }
@@ -195,6 +198,7 @@ RA8_INTERNAL static bool redirect_host_ok(mdl_curl_ctx_t* net)
 /* The libcurl CURLOPT_PREREQFUNCTION ABI fixes these parameter types as
  * non-const `char*`; conn_local_ip is unused here but cannot be re-qualified. */
 RA8_INTERNAL static int on_prereq(void* clientp,
+                                  // cppcheck-suppress constParameterCallback
                                   char* conn_primary_ip,
                                   char* conn_local_ip, // NOLINT(readability-non-const-parameter)
                                   int   conn_primary_port,
@@ -259,9 +263,9 @@ RA8_INTERNAL static bool apply_req(mdl_curl_ctx_t* net, const char* url, const m
   }
   CURL* curl = net->curl;
   bool  ok   = ok_code(curl_easy_setopt(curl, CURLOPT_URL, url)) &&
-               ok_code(curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, (long)req->timeout_ms)) &&
-               /* CURLOPT_REFERER with NULL clears any prior value -- what we want. */
-               ok_code(curl_easy_setopt(curl, CURLOPT_REFERER, req->referer));
+            ok_code(curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, (long)req->timeout_ms)) &&
+            /* CURLOPT_REFERER with nullptr clears any prior value -- what we want. */
+            ok_code(curl_easy_setopt(curl, CURLOPT_REFERER, req->referer));
   if (ok && (req->user_agent != nullptr)) {
     ok = ok_code(curl_easy_setopt(curl, CURLOPT_USERAGENT, req->user_agent));
   }
@@ -370,6 +374,9 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
 
   FILE* fp = fopen(tmp_path, "wb");
   if (fp == nullptr) {
+    if (fp) {
+      (void)fclose(fp);
+    }
     return k_ra8_fail;
   }
 
@@ -419,7 +426,6 @@ RA8_INTERNAL static void curl_destroy(void* ctx)
   if (net->curl != nullptr) {
     curl_easy_cleanup(net->curl);
   }
-  free(net);
 }
 
 /** @brief The libcurl backend's immutable method table. */
@@ -430,7 +436,7 @@ static const mdl_net_vtable_t s_curl_vtable = {
 };
 
 RA8_DI_SLOT("net_iface")
-mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
+mdl_net_iface_t* mdl_net_curl_create(ra8_arena_t* arena, const mdl_net_policy_t* policy)
 {
   static bool s_global_ready = false;
   if (!s_global_ready) {
@@ -440,8 +446,9 @@ mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
     s_global_ready = true;
   }
 
-  mdl_curl_ctx_t* ctx = (mdl_curl_ctx_t*)calloc(1U, sizeof(*ctx));
+  mdl_curl_ctx_t* ctx = (mdl_curl_ctx_t*)ra8_arena_calloc(arena, 1U, (uint32_t)sizeof(*ctx));
   if (ctx == nullptr) {
+
     return nullptr;
   }
   if (policy != nullptr) {
@@ -451,19 +458,19 @@ mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
   }
   ctx->curl = curl_easy_init();
   if (ctx->curl == nullptr) {
-    free(ctx);
+
     return nullptr;
   }
   if (!apply_security_opts(ctx->curl, ctx) || !apply_behavior_opts(ctx->curl)) {
     curl_easy_cleanup(ctx->curl);
-    free(ctx);
+
     return nullptr;
   }
 
-  mdl_net_iface_t* net = (mdl_net_iface_t*)calloc(1U, sizeof(*net));
+  mdl_net_iface_t* net = (mdl_net_iface_t*)ra8_arena_calloc(arena, 1U, (uint32_t)sizeof(*net));
   if (net == nullptr) {
     curl_easy_cleanup(ctx->curl);
-    free(ctx);
+
     return nullptr;
   }
   net->vtable = &s_curl_vtable;

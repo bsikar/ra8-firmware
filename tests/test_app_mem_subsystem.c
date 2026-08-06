@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8_arena.h"
+#include "../libs/ra8_mem/inc/ra8_arena.h"
 #include "ra8_err.h"
 #include "ra8_slab.h"
 #include "ra8_tile_cache.h"
@@ -342,7 +342,7 @@ stream_window(ra8_vmem_stream_t* st, uint64_t off, uint32_t len, uint32_t* crc, 
  * @param[out] st Receives the stream over the whole backing object.
  *
  *
- * @pre All three out-pointers are non-NULL and outlive @p st.
+ * @pre All three out-pointers are non-nullptr and outlive @p st.
  * @pre No other stack is live over the same static pools.
  * @post @p st reads the full `k_vmem_obj_bytes` object.
  * @post The frame pool is smaller than the object, so paging is forced.

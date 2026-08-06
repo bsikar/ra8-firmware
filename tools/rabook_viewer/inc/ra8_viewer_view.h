@@ -19,6 +19,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 #pragma once
 
@@ -27,6 +30,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "ra8_host_arena.h"
 
 /** @brief Opaque reader handle (defined in ra8_viewer_reader.h). */
 typedef struct ra8_viewer_reader ra8_viewer_reader_t;
@@ -43,12 +48,13 @@ typedef struct ra8_viewer_view ra8_viewer_view_t;
  * @details Creates a native scrolling window that reads the document as one
  *          continuous vertical strip, pulling and scaling tiles lazily as they
  *          scroll into view. The view borrows @p reader and renders on demand; a
- *          headless host with no display returns NULL.
- * @param[in] reader Open reader whose tiles the window renders (non-NULL).
- * @param[in] title  Window title (NUL-terminated, may be NULL).
- * @return New view handle, or NULL if a window could not be created (e.g. a
+ *          headless host with no display returns nullptr.
+ * @param[in]     reader Open reader whose tiles the window renders (non-nullptr).
+ * @param[in]     title  Window title (NUL-terminated, may be nullptr).
+ * @param[in,out] arena  Bump allocator for window resources.
+ * @return New view handle, or nullptr if a window could not be created (e.g. a
  *         headless host with no display).
- * @retval NULL No window could be created on this host.
+ * @retval nullptr No window could be created on this host.
  * @pre @p reader is an open document that outlives the view.
  * @pre A window system is available.
  * @post On success a window is open and borrows @p reader.
@@ -57,7 +63,8 @@ typedef struct ra8_viewer_view ra8_viewer_view_t;
  *       thread-safe; call on the main thread.
  * @since 0.1.0
  */
-ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title);
+ra8_viewer_view_t*
+ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t* arena);
 
 /**
  * @brief Drain pending window events cooperatively.
@@ -65,11 +72,11 @@ ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char*
  *          blocking, so the caller keeps its own run loop rather than handing
  *          control to the platform's blocking run call. Returns true once the
  *          user has closed the window.
- * @param[in] view View handle (NULL treated as closed).
+ * @param[in] view View handle (nullptr treated as closed).
  * @return true when the window has been closed (the caller should exit).
- * @retval true  The window has closed, or @p view is NULL.
+ * @retval true  The window has closed, or @p view is nullptr.
  * @retval false The window is still open; keep pumping.
- * @pre @p view was returned by ::ra8_viewer_view_open, or is NULL.
+ * @pre @p view was returned by ::ra8_viewer_view_open, or is nullptr.
  * @pre Called from the thread that created the view.
  * @post Events queued before the call have been processed.
  * @post The view is unchanged except for consumed events.
@@ -81,9 +88,9 @@ bool ra8_viewer_view_pump(ra8_viewer_view_t* view);
 /**
  * @brief Close the window and release the view handle.
  * @details Tears down the window and frees the view; the borrowed reader is not
- *          touched. Safe to call with NULL, which is a no-op.
- * @param[in] view View handle (NULL is ignored).
- * @pre @p view was returned by ::ra8_viewer_view_open, or is NULL.
+ *          touched. Safe to call with nullptr, which is a no-op.
+ * @param[in] view View handle (nullptr is ignored).
+ * @pre @p view was returned by ::ra8_viewer_view_open, or is nullptr.
  * @pre The view is not pumped again after this call.
  * @post The window is closed and @p view is freed.
  * @post The borrowed reader is left untouched.

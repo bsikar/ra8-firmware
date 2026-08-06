@@ -7,8 +7,11 @@
  * mapping, the `<img>`/`<a>` scanner and URL resolver, the site-descriptor
  * parser, and an end-to-end CBZ export re-opened with miniz. Uses the repo's
  * `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,9 +27,13 @@
 #include "mdl_sanitize.h"
 #include "mdl_url_guard.h"
 #include "miniz.h"
+#include "ra8_host_arena.h"
 #include "ra8_jof.h"
 #include "tiny_jpeg_fixture.h"
 #include "unity_minimal.h"
+
+static uint8_t     s_test_arena_buf[4U * 1024U * 1024U];
+static ra8_arena_t s_test_arena;
 
 /** @brief Permission bits for the scratch directories these tests create. */
 typedef enum : uint16_t {
@@ -66,9 +73,9 @@ static mdl_url_list_t s_list;
  * @since 0.1.0
  */
 typedef struct {
-  int                       count;  /**< Number of fetches performed.     */
-  const char*               body;   /**< Canned robots.txt body, or NULL. */
-  mdl_robots_fetch_result_t result; /**< Result the fetcher reports.      */
+  int                       count;  /**< Number of fetches performed.        */
+  const char*               body;   /**< Canned robots.txt body, or nullptr. */
+  mdl_robots_fetch_result_t result; /**< Result the fetcher reports.         */
 } fake_fetch_ctx_t;
 
 /** @brief Injected robots.txt fetcher returning a canned body/result. */
@@ -157,10 +164,10 @@ static void test_extract_anchors(void)
                              "<a href='/about/'>about</a>"
                              "<a href='/webtoon/x/chapter-2/'>2</a>";
   const ra8_err_t   rc     = mdl_extract_anchors(html,
-                                                 sizeof(html) - 1U,
-                                                 "https://example.net/webtoon/x/",
-                                                 "/chapter-",
-                                                 &s_list);
+                                           sizeof(html) - 1U,
+                                           "https://example.net/webtoon/x/",
+                                           "/chapter-",
+                                           &s_list);
   TEST_ASSERT(rc == k_ra8_ok);
   TEST_ASSERT_EQ((uint16_t)2, s_list.count); /* the /about/ link is dropped */
   TEST_ASSERT(strcmp(s_list.urls[0], "https://example.net/webtoon/x/chapter-1/") == 0);
@@ -213,7 +220,7 @@ static void test_export_cbz_roundtrip(void)
   write_fixture("/tmp/mdl_test_chap/page_001.jpg", 'a');
   write_fixture("/tmp/mdl_test_chap/page_002.jpg", 'b');
 
-  const ra8_err_t rc = mdl_export_chapter(k_mdl_fmt_cbz, dir, out);
+  const ra8_err_t rc = mdl_export_chapter(&s_test_arena, k_mdl_fmt_cbz, dir, out);
   TEST_ASSERT(rc == k_ra8_ok);
 
   mz_zip_archive zr;
@@ -250,7 +257,7 @@ static void test_export_skips_non_images(void)
   write_fixture("/tmp/mdl_mixed_chap/notes.txt", 't');
   write_fixture("/tmp/mdl_mixed_chap/.DS_Store", 'd');
 
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbz, dir, out) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_cbz, dir, out) == k_ra8_ok);
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
   TEST_ASSERT(mz_zip_reader_init_file(&zr, out, 0) != MZ_FALSE);
@@ -298,7 +305,7 @@ static void test_export_epub_roundtrip(void)
   (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   write_fixture("/tmp/mdl_epub_chap/page_001.jpg", 'a');
   write_fixture("/tmp/mdl_epub_chap/page_002.jpg", 'b');
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_epub, dir, out) == k_ra8_ok);
 
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
@@ -331,7 +338,7 @@ static void test_export_jof_roundtrip(void)
   TEST_ASSERT(mdl_format_is_dir_output(k_mdl_fmt_jof));
   TEST_ASSERT(!mdl_format_is_dir_output(k_mdl_fmt_cbz));
   TEST_ASSERT(!mdl_format_is_dir_output(k_mdl_fmt_epub));
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_jof, dir, dir) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_jof, dir, dir) == k_ra8_ok);
 
   /* The reported output -- the `.jof` sibling -- actually exists on disk. */
   FILE* f = fopen(jof, "rb");
@@ -490,12 +497,12 @@ static void test_path_contained(void)
  * @par MC/DC:
  * Decision A `if (out == nullptr || cap == 0U)` (2 conditions)
  * - out=buf,  cap>0  -> false (control: a normal join proceeds)
- * - out=NULL, cap>0  -> true  (varies out)
+ * - out=nullptr, cap>0  -> true  (varies out)
  * - out=buf,  cap=0  -> true  (varies cap)
  * Decision B `if (parent == nullptr || seg == nullptr)` (2 conditions)
  * - parent="/base", seg="c"    -> false (control)
- * - parent=NULL,    seg="c"    -> true  (varies parent)
- * - parent="/base", seg=NULL   -> true  (varies seg)
+ * - parent=nullptr,    seg="c"    -> true  (varies parent)
+ * - parent="/base", seg=nullptr   -> true  (varies seg)
  * Decision C `if (is_dot_segment(seg) || has_separator(seg))` (2 conditions)
  * - seg="chap-1" -> false (control: dot=F, sep=F, join succeeds)
  * - seg=".."     -> true  (varies dot: dot=T, sep=F)
@@ -520,10 +527,10 @@ static void test_path_join(void)
   TEST_ASSERT(!mdl_path_join("/base", "", out, sizeof(out)));
   TEST_ASSERT(!mdl_path_join("/base", "a/b", out, sizeof(out)));  /* separator */
   TEST_ASSERT(!mdl_path_join("/base", "/etc", out, sizeof(out))); /* absolute  */
-  /* Decision B: a NULL parent or segment fails. */
+  /* Decision B: a nullptr parent or segment fails. */
   TEST_ASSERT(!mdl_path_join(nullptr, "c", out, sizeof(out)));
   TEST_ASSERT(!mdl_path_join("/base", nullptr, out, sizeof(out)));
-  /* Decision A: a NULL destination or zero capacity fails. */
+  /* Decision A: a nullptr destination or zero capacity fails. */
   TEST_ASSERT(!mdl_path_join("/base", "c", nullptr, sizeof(out)));
   TEST_ASSERT(!mdl_path_join("/base", "c", out, 0U));
   /* Decision D: a result that would not fit is refused, never truncated. */
@@ -557,10 +564,10 @@ static void test_tar_rejects_long_name(void)
   char name[k_buf_256];
   memset(name, 'p', (size_t)k_longname_len);
   (void)snprintf(name + k_longname_len, sizeof(name) - (size_t)k_longname_len, ".jpg");
-  char path[k_buf_256];
+  char path[k_buf_320];
   (void)snprintf(path, sizeof(path), "%s/%s", dir, name);
   write_fixture(path, 'x');
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbt, dir, out) == k_ra8_err_invalid_size);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_cbt, dir, out) == k_ra8_err_invalid_size);
   (void)unlink(path);
   (void)unlink(out);
   (void)rmdir(dir);
@@ -569,7 +576,7 @@ static void test_tar_rejects_long_name(void)
   const char* okout = "/tmp/mdl_okname_chap.cbt";
   (void)mkdir(okdir, (mode_t)k_mdl_test_dir_mode);
   write_fixture("/tmp/mdl_okname_chap/page_001.jpg", 'x');
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbt, okdir, okout) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_cbt, okdir, okout) == k_ra8_ok);
   (void)unlink("/tmp/mdl_okname_chap/page_001.jpg");
   (void)unlink(okout);
   (void)rmdir(okdir);
@@ -585,7 +592,7 @@ static void test_epub_escapes_name(void)
   const char* img = "/tmp/mdl_xml_chap/a&b<c>d.jpg";
   (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   write_fixture(img, 'x');
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_epub, dir, out) == k_ra8_ok);
 
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
@@ -640,7 +647,7 @@ static void test_epub_long_filenames(void)
   char path[k_buf_320];
   (void)snprintf(path, sizeof(path), "%s/%s", dir, raw);
   write_fixture(path, 'x');
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_epub, dir, out) == k_ra8_ok);
 
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
@@ -685,7 +692,7 @@ static void test_export_page_cap(void)
     write_fixture(path, 'x');
   }
   /* One image too many -> refuse rather than package a short chapter. */
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbz, dir, out) == k_ra8_err_invalid_size);
+  TEST_ASSERT(mdl_export_chapter(&s_test_arena, k_mdl_fmt_cbz, dir, out) == k_ra8_err_invalid_size);
 
   for (size_t i = 0U; i < over; ++i) {
     char path[k_buf_256];
@@ -768,13 +775,13 @@ static void test_robots_cache(void)
                             .body   = "User-agent: *\nDisallow: /x\n",
                             .result = k_mdl_robots_fetch_ok};
   const mdl_robots_t* r  = mdl_robots_cache_consult(&s_cache,
-                                                    "https",
-                                                    "site.net",
-                                                    "media_dl",
-                                                    fake_fetch,
-                                                    &ok,
-                                                    scratch,
-                                                    sizeof(scratch));
+                                                   "https",
+                                                   "site.net",
+                                                   "media_dl",
+                                                   fake_fetch,
+                                                   &ok,
+                                                   scratch,
+                                                   sizeof(scratch));
   TEST_ASSERT_NOT_NULL(r);
   TEST_ASSERT(!mdl_robots_allows(r, "/x/y"));
   TEST_ASSERT(mdl_robots_allows(r, "/z"));
@@ -791,24 +798,24 @@ static void test_robots_cache(void)
 
   fake_fetch_ctx_t    deny = {.count = 0, .body = nullptr, .result = k_mdl_robots_fetch_denied};
   const mdl_robots_t* rd   = mdl_robots_cache_consult(&s_cache,
-                                                      "https",
-                                                      "deny.net",
-                                                      "media_dl",
-                                                      fake_fetch,
-                                                      &deny,
-                                                      scratch,
-                                                      sizeof(scratch));
+                                                    "https",
+                                                    "deny.net",
+                                                    "media_dl",
+                                                    fake_fetch,
+                                                    &deny,
+                                                    scratch,
+                                                    sizeof(scratch));
   TEST_ASSERT(rd == nullptr); /* 5xx -> disallow all */
 
   fake_fetch_ctx_t    gone = {.count = 0, .body = nullptr, .result = k_mdl_robots_fetch_absent};
   const mdl_robots_t* rg   = mdl_robots_cache_consult(&s_cache,
-                                                      "https",
-                                                      "gone.net",
-                                                      "media_dl",
-                                                      fake_fetch,
-                                                      &gone,
-                                                      scratch,
-                                                      sizeof(scratch));
+                                                    "https",
+                                                    "gone.net",
+                                                    "media_dl",
+                                                    fake_fetch,
+                                                    &gone,
+                                                    scratch,
+                                                    sizeof(scratch));
   TEST_ASSERT_NOT_NULL(rg);
   TEST_ASSERT(mdl_robots_allows(rg, "/anything")); /* absent -> allow all */
   TEST_END("robots cache");
@@ -821,6 +828,7 @@ static void test_robots_cache(void)
  */
 int32_t main(void)
 {
+  (void)ra8_arena_init(&s_test_arena, s_test_arena_buf, sizeof s_test_arena_buf);
   test_format_mapping();
   test_extract_images();
   test_extract_anchors();

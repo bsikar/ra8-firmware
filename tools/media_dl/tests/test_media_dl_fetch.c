@@ -18,8 +18,11 @@
  *     re-fetched (content-hash dedup);
  *   - a corrupt state file degrades to a clean rebuild rather than a crash.
  * Uses the repo's `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include <limits.h>
 #include <stdint.h>
@@ -144,6 +147,9 @@ static ra8_err_t mock_get_file(void*                ctx,
   }
   FILE* fp = fopen(out_path, "wb");
   if (fp == nullptr) {
+    if (fp) {
+      (void)fclose(fp);
+    }
     return k_ra8_fail;
   }
   (void)fwrite(url, 1U, strlen(url), fp);
@@ -169,15 +175,15 @@ static const mdl_net_vtable_t s_mock_vtable = {
 
 /* ---- shared fixtures (large objects live off the stack) ------------------ */
 
-static mock_net_t          g_mock;               /**< The scripted backend context.           */
-static mdl_session_t       g_sess;               /**< Session over the fake (64 KiB embed).   */
-static mdl_site_t          g_site;               /**< Selectors + (zero) politeness bounds.   */
-static mdl_state_t         g_state;              /**< State under test (~2 MiB).              */
-static mdl_url_list_t      g_chapters;           /**< Live chapter list for a scenario.       */
-static mdl_url_list_t      g_images;             /**< Extracted-image scratch.                */
-static char                g_page[k_page_bytes]; /**< Chapter-HTML scratch.                   */
-static mdl_governor_t*     g_fetch_gov;          /**< Governor wired into run_fetch, or NULL. */
-static mdl_fetch_faillog_t g_faillog;            /**< Failure log run_fetch fills each run.   */
+static mock_net_t          g_mock;               /**< The scripted backend context.              */
+static mdl_session_t       g_sess;               /**< Session over the fake (64 KiB embed).      */
+static mdl_site_t          g_site;               /**< Selectors + (zero) politeness bounds.      */
+static mdl_state_t         g_state;              /**< State under test (~2 MiB).                 */
+static mdl_url_list_t      g_chapters;           /**< Live chapter list for a scenario.          */
+static mdl_url_list_t      g_images;             /**< Extracted-image scratch.                   */
+static char                g_page[k_page_bytes]; /**< Chapter-HTML scratch.                      */
+static mdl_governor_t*     g_fetch_gov;          /**< Governor wired into run_fetch, or nullptr. */
+static mdl_fetch_faillog_t g_faillog;            /**< Failure log run_fetch fills each run.      */
 
 /**
  * @struct fetch_clock_t
@@ -190,6 +196,7 @@ typedef struct {
 } fetch_clock_t;
 
 /** @brief Injected clock: return the virtual now. */
+// cppcheck-suppress constParameterCallback
 static int64_t fetch_now(void* c)
 {
   return ((const fetch_clock_t*)c)->now_ms;

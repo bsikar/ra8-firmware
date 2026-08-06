@@ -16,6 +16,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include <stdint.h>
@@ -24,6 +27,7 @@
 #include "ra8_comic.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
+#include "ra8_host_arena.h"
 #include "ra8_img_arena.h"
 #include "ra8_reflow_image.h"
 #include "ra8_viewer_reader.h"
@@ -49,7 +53,7 @@ typedef struct {
  *          page of any aspect lands whole and centred with white margins.
  * @param[in]  src_w Source width in pixels (>= 1).
  * @param[in]  src_h Source height in pixels (>= 1).
- * @param[out] box   Receives the centred destination rectangle (non-NULL).
+ * @param[out] box   Receives the centred destination rectangle (non-nullptr).
  * @pre @p src_w and @p src_h are each at least 1.
  * @pre @p box is writable.
  * @post `box->w` and `box->h` are clamped to at least 1 pixel.
@@ -87,8 +91,8 @@ RA8_INTERNAL static void viewer_fit_centered(int32_t src_w, int32_t src_h, viewe
  *          cost is resolution on very tall pages, not aspect.
  * @param[in]  nw Native width in pixels.
  * @param[in]  nh Native height in pixels.
- * @param[out] rw Receives the capped render width (non-NULL, >= 1).
- * @param[out] rh Receives the capped render height (non-NULL, >= 1).
+ * @param[out] rw Receives the capped render width (non-nullptr, >= 1).
+ * @param[out] rh Receives the capped render height (non-nullptr, >= 1).
  * @pre @p rw and @p rh are writable.
  * @pre @p nw and @p nh are the page's native dimensions.
  * @post `*rw` and `*rh` are each at least 1 and within ::k_ra8_gfx_max_dim.
@@ -119,9 +123,10 @@ RA8_INTERNAL static void viewer_cap_render(uint32_t nw, uint32_t nh, uint32_t* r
  *          decompression-bomb declaration before allocating
  *          (`ra8_decomp_check_declared`), grows the scratch buffer to fit, then
  *          reads the encoded image into it.
- * @param[in,out] r    Reader of a comic format (non-NULL).
- * @param[in]     page Page index.
- * @param[out]    got  Receives the byte count read (non-NULL).
+ * @param[in,out] r     Reader of a comic format (non-nullptr).
+ * @param[in]     page  Page index.
+ * @param[out]    got   Receives the byte count read (non-nullptr).
+ * @param[in,out] arena Bump allocator for scratch buffer growth.
  * @return ra8_err_t from `ra8_comic_page_info` / `ra8_comic_page_read`.
  * @retval k_ra8_ok The bytes were read and `*got` holds the count.
  * @pre @p r was opened as a comic format and @p page is valid.
@@ -132,7 +137,7 @@ RA8_INTERNAL static void viewer_cap_render(uint32_t nw, uint32_t nh, uint32_t* r
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
-viewer_read_page_bytes(ra8_viewer_reader_t* r, uint32_t page, size_t* got)
+viewer_read_page_bytes(ra8_viewer_reader_t* r, uint32_t page, size_t* got, ra8_arena_t* arena)
 {
   uint64_t  raw_size = 0U;
   ra8_err_t rc = ra8_comic_page_info(&r->comic, page, nullptr, 0U, nullptr, &raw_size, nullptr);
@@ -148,7 +153,7 @@ viewer_read_page_bytes(ra8_viewer_reader_t* r, uint32_t page, size_t* got)
   if (rc != k_ra8_ok) {
     return rc;
   }
-  rc = viewer_reserve_page_buf(r, (size_t)raw_size);
+  rc = viewer_reserve_page_buf(r, (size_t)raw_size, arena);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -156,8 +161,9 @@ viewer_read_page_bytes(ra8_viewer_reader_t* r, uint32_t page, size_t* got)
   return ra8_comic_page_read(&r->comic, page, r->page_buf, r->page_cap, got);
 }
 
-ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped)
+ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped, ra8_arena_t* arena)
 {
+  (void)arena; /* conforming to unified viewer interface */
   if (wrapped) {
     return ra8_comic_open_wrapped(&r->comic,
                                   viewer_read,
@@ -182,10 +188,10 @@ ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped)
                         (uint32_t)k_viewer_name_cap);
 }
 
-ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page)
+ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page, ra8_arena_t* arena)
 {
   size_t    got = 0U;
-  ra8_err_t rc  = viewer_read_page_bytes(r, page, &got);
+  ra8_err_t rc  = viewer_read_page_bytes(r, page, &got, arena);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -211,8 +217,8 @@ ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page)
   viewer_fit_box_t box = {.x = 0, .y = 0, .w = k_ra8_viewer_fb_width, .h = k_ra8_viewer_fb_height};
   viewer_fit_centered(src_w, src_h, &box);
 
-  ra8_img_arena_t arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
-  return ra8_img_decode_blit(&arena,
+  ra8_img_arena_t img_arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
+  return ra8_img_decode_blit(&img_arena,
                              r->page_buf,
                              got,
                              box.x,
@@ -223,8 +229,12 @@ ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page)
                              nullptr);
 }
 
-ra8_err_t
-viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out)
+ra8_err_t viewer_tile_comic(ra8_viewer_reader_t* r,
+                            uint32_t             i,
+                            uint32_t*            w,
+                            uint32_t*            h,
+                            uint16_t**           out,
+                            ra8_arena_t*         arena)
 {
   const uint32_t nw = r->tile_wpx[i];
   const uint32_t nh = r->tile_hpx[i];
@@ -236,7 +246,7 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
   viewer_cap_render(nw, nh, &rw, &rh);
 
   size_t    got = 0U;
-  ra8_err_t rc  = viewer_read_page_bytes(r, i, &got);
+  ra8_err_t rc  = viewer_read_page_bytes(r, i, &got, arena);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -247,26 +257,25 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
   if (buf_bytes > r->limits.max_output_bytes) {
     return k_ra8_err_decomp_output_cap;
   }
-  uint16_t* buf = (uint16_t*)malloc((size_t)buf_bytes);
+  uint16_t* buf = (uint16_t*)ra8_arena_alloc(arena, (uint32_t)buf_bytes, k_ra8_arena_align);
   if (buf == nullptr) {
     return k_ra8_err_no_mem;
   }
   rc = ra8_gfx_init(buf, (uint16_t)rw, (uint16_t)rh, k_ra8_gfx_format_rgb565);
   if (rc == k_ra8_ok) {
     (void)ra8_gfx_clear((uint32_t)k_viewer_bg);
-    ra8_img_arena_t arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
-    rc                    = ra8_img_decode_blit(&arena,
-                                                r->page_buf,
-                                                got,
-                                                0,
-                                                0,
-                                                (int32_t)rw,
-                                                (int32_t)rh,
-                                                nullptr,
-                                                nullptr);
+    ra8_img_arena_t img_arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
+    rc                        = ra8_img_decode_blit(&img_arena,
+                             r->page_buf,
+                             got,
+                             0,
+                             0,
+                             (int32_t)rw,
+                             (int32_t)rh,
+                             nullptr,
+                             nullptr);
   }
   if (rc != k_ra8_ok) {
-    free(buf);
     return rc;
   }
   *w   = rw;
@@ -275,15 +284,18 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
   return k_ra8_ok;
 }
 
-void viewer_probe_comic_tile(ra8_viewer_reader_t* r, uint32_t i, ra8_img_arena_t* arena)
+void viewer_probe_comic_tile(ra8_viewer_reader_t* r,
+                             uint32_t             i,
+                             ra8_img_arena_t*     img_arena,
+                             ra8_arena_t*         arena)
 {
   size_t got = 0U;
-  if (viewer_read_page_bytes(r, i, &got) != k_ra8_ok) {
+  if (viewer_read_page_bytes(r, i, &got, arena) != k_ra8_ok) {
     return;
   }
   int32_t pw = 0;
   int32_t ph = 0;
-  ra8_img_arena_bind(arena);
+  ra8_img_arena_bind(img_arena);
   const ra8_err_t prc = ra8_img_probe_size(r->page_buf, got, &pw, &ph);
   ra8_img_arena_unbind();
   if ((prc == k_ra8_ok) && (pw > 0) && (ph > 0)) {

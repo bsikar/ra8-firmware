@@ -12,6 +12,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include "emu_view.h"
@@ -148,14 +151,14 @@ static void build_frame(uc_engine* uc, uint16_t* fb, uint16_t width_px, uint16_t
 
   const uint32_t saddr = mmio_peek((uint64_t)k_glcdc_gr1_saddr);
   const uint32_t fmt   = (mmio_peek((uint64_t)k_glcdc_gr1_fmt) >> (uint32_t)k_glcdc_fmt_shift) &
-                         (uint32_t)k_glcdc_fmt_mask;
+                       (uint32_t)k_glcdc_fmt_mask;
   if (!addr_is_ram(saddr) || (fmt != (uint32_t)k_glcdc_fmt_rgb565)) {
     return; /* no graphics layer -- background-only frame */
   }
   const uint32_t stride = (mmio_peek((uint64_t)k_glcdc_gr1_flm3) >> (uint32_t)k_glcdc_high_shift) &
                           (uint32_t)k_glcdc_stride_mask;
-  const uint32_t lnnum  = (mmio_peek((uint64_t)k_glcdc_gr1_flm5) >> (uint32_t)k_glcdc_high_shift) &
-                          (uint32_t)k_glcdc_lnnum_mask;
+  const uint32_t lnnum = (mmio_peek((uint64_t)k_glcdc_gr1_flm5) >> (uint32_t)k_glcdc_high_shift) &
+                         (uint32_t)k_glcdc_lnnum_mask;
   if (stride < 2U) {
     return;
   }
@@ -231,7 +234,7 @@ static void fill_status_hw(board_status_t* st, const char* app_name)
  *
  * @param[out] st Status block whose `console_ch_*` fields are filled.
  *
- * @pre @p st is non-NULL.
+ * @pre @p st is non-nullptr.
  * @pre `s_view_console_ch` names a valid channel.
  * @post At most @ref k_overlay_console_tabs_max tabs are described.
  * @post `st->console_active_ch` reflects the current channel.
@@ -559,7 +562,7 @@ static void panel_rstrip(char* s)
  * @return True when a `key=value` pair was found, false for a blank, comment,
  *         or `=`-less line the caller should skip.
  *
- * @pre @p line, @p key and @p val are non-NULL.
+ * @pre @p line, @p key and @p val are non-nullptr.
  * @pre @p line is NUL-terminated and writable.
  * @post On true, both `*key` and `*val` point inside @p line.
  * @post On false, `*key` and `*val` are untouched.
@@ -597,7 +600,7 @@ static bool panel_split_kv(char* line, char** key, char** val)
  * @param[out] out Panel description receiving the name.
  * @param[in]  val Raw value text, optionally wrapped in double quotes.
  *
- * @pre @p out and @p val are non-NULL.
+ * @pre @p out and @p val are non-nullptr.
  * @pre @p val is NUL-terminated.
  * @post `out->name` is NUL-terminated and never overruns its buffer.
  * @post A value longer than the field is truncated rather than rejected.
@@ -626,7 +629,7 @@ static void panel_set_name(board_panel_t* out, const char* val)
  * @param[in]     key Trimmed key text.
  * @param[in]     val Trimmed value text.
  *
- * @pre @p out, @p key and @p val are non-NULL.
+ * @pre @p out, @p key and @p val are non-nullptr.
  * @pre @p key and @p val are NUL-terminated.
  * @post Exactly one field of @p out is written, or none for an unknown key.
  * @post Unknown keys are ignored so newer configs stay loadable.

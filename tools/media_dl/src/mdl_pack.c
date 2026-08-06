@@ -1,8 +1,11 @@
 /**
  * @file mdl_pack.c
  * @brief Implementation of the downloaded-folder archive packaging.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include "mdl_pack.h"
 
@@ -28,7 +31,8 @@ RA8_INTERNAL static bool snprintf_fit(int n, size_t cap)
   return (n >= 0) && ((size_t)n < cap);
 }
 
-size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* chap_id)
+size_t
+mdl_pack_one(ra8_arena_t* arena, mdl_format_t format, const char* series_dir, const char* chap_id)
 {
   const char* ext = mdl_format_ext(format);
   char        dir[k_pack_dir_bytes];
@@ -39,7 +43,7 @@ size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* cha
   if (mdl_format_is_dir_output(format)) {
     /* JOF writes per-page `.jof` siblings into the chapter dir; report that dir,
      * never a single-container name that was not created. */
-    const ra8_err_t drc = mdl_export_chapter(format, dir, dir);
+    const ra8_err_t drc = mdl_export_chapter(arena, format, dir, dir);
     if (drc != k_ra8_ok) {
       (void)fprintf(stderr, "  export %s .%s FAILED (err 0x%X)\n", chap_id, ext, (unsigned)drc);
       return 1U;
@@ -54,7 +58,7 @@ size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* cha
     (void)fprintf(stderr, "  export %s.%s path rejected, skipped\n", chap_id, ext);
     return 1U;
   }
-  const ra8_err_t rc = mdl_export_chapter(format, dir, out);
+  const ra8_err_t rc = mdl_export_chapter(arena, format, dir, out);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "  export %s.%s FAILED (err 0x%X)\n", chap_id, ext, (unsigned)rc);
     return 1U;
@@ -64,7 +68,8 @@ size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* cha
 }
 
 /** @brief Package the combined chapter folder `combined_rel` into `format`. */
-RA8_INTERNAL static size_t pack_combined_dir(mdl_format_t format,
+RA8_INTERNAL static size_t pack_combined_dir(ra8_arena_t* arena,
+                                             mdl_format_t format,
                                              const char*  series_dir,
                                              const char*  combined_rel,
                                              bool         incomplete)
@@ -78,7 +83,7 @@ RA8_INTERNAL static size_t pack_combined_dir(mdl_format_t format,
   }
   if (mdl_format_is_dir_output(format)) {
     /* JOF: the combined pages become `.jof` siblings inside the combined dir. */
-    const ra8_err_t drc = mdl_export_chapter(format, dir, dir);
+    const ra8_err_t drc = mdl_export_chapter(arena, format, dir, dir);
     if (drc != k_ra8_ok) {
       (void)fprintf(stderr, "  combine export FAILED (err 0x%X)\n", (unsigned)drc);
       return 1U;
@@ -94,7 +99,7 @@ RA8_INTERNAL static size_t pack_combined_dir(mdl_format_t format,
     (void)fprintf(stderr, "  combine export path rejected under %s\n", series_dir);
     return 1U;
   }
-  const ra8_err_t rc = mdl_export_chapter(format, dir, out);
+  const ra8_err_t rc = mdl_export_chapter(arena, format, dir, out);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "  combine export FAILED (err 0x%X)\n", (unsigned)rc);
     return 1U;
@@ -103,7 +108,8 @@ RA8_INTERNAL static size_t pack_combined_dir(mdl_format_t format,
   return 0U;
 }
 
-size_t mdl_pack_combined(mdl_format_t             format,
+size_t mdl_pack_combined(ra8_arena_t*             arena,
+                         mdl_format_t             format,
                          bool                     allow_incomplete,
                          const char*              series_dir,
                          const char*              combined_rel,
@@ -124,5 +130,5 @@ size_t mdl_pack_combined(mdl_format_t             format,
       return 0U;
     }
   }
-  return pack_combined_dir(format, series_dir, combined_rel, incomplete);
+  return pack_combined_dir(arena, format, series_dir, combined_rel, incomplete);
 }

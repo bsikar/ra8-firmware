@@ -19,12 +19,16 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 #pragma once
 
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_host_arena.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,27 +66,29 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  *          EPUB / RABOOK return ::k_ra8_err_not_supported for now (reflow render
  *          is a TODO seam -- see the .c file).
  *
- * @param[out] out  Receives the newly allocated reader handle on success.
- * @param[in]  path NUL-terminated filesystem path to the document.
+ * @param[out]    out   Receives the newly allocated reader handle on success.
+ * @param[in]     path  NUL-terminated filesystem path to the document.
+ * @param[in,out] arena Bump allocator for all reader memory.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                Document opened; `*out` is valid.
- * @retval k_ra8_err_null_ptr      @p out or @p path was NULL.
+ * @retval k_ra8_err_null_ptr      @p out or @p path was nullptr.
  * @retval k_ra8_err_not_found     The file could not be opened or is empty.
  * @retval k_ra8_err_no_mem        A reader buffer allocation failed.
  * @retval k_ra8_err_not_supported The format is not (yet) handled.
  * @retval k_ra8_err_*             A reader-engine error.
  *
- * @post On any error `*out` is left NULL and nothing is leaked.
+ * @post On any error `*out` is left nullptr and nothing is leaked.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_viewer_open(ra8_viewer_reader_t** out, const char* path);
+[[nodiscard]] ra8_err_t
+ra8_viewer_open(ra8_viewer_reader_t** out, const char* path, ra8_arena_t* arena);
 
 /**
  * @brief Number of pages in the open document.
- * @param[in] r Reader from ::ra8_viewer_open (may be NULL).
- * @return Page count, or 0 for a NULL reader.
+ * @param[in] r Reader from ::ra8_viewer_open (may be nullptr).
+ * @return Page count, or 0 for a nullptr reader.
  * @since 0.1.0
  */
 [[nodiscard]] uint32_t ra8_viewer_page_count(const ra8_viewer_reader_t* r);
@@ -94,12 +100,13 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  *          encoded image bytes through the engine, then decodes and blits them
  *          scaled-to-fit and centred via `ra8_img_decode_blit`.
  *
- * @param[in,out] r    Reader from ::ra8_viewer_open (non-NULL).
- * @param[in]     page Page index (`< ra8_viewer_page_count(r)`).
+ * @param[in,out] r     Reader from ::ra8_viewer_open (non-nullptr).
+ * @param[in]     page  Page index (`< ra8_viewer_page_count(r)`).
+ * @param[in,out] arena Bump allocator for decode scratch.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Page rasterised into the framebuffer.
- * @retval k_ra8_err_null_ptr     @p r was NULL.
+ * @retval k_ra8_err_null_ptr     @p r was nullptr.
  * @retval k_ra8_err_out_of_range @p page is at or past the page count.
  * @retval k_ra8_err_no_mem       The page buffer or decode arena was too small.
  * @retval k_ra8_err_*            An engine / decode error.
@@ -108,7 +115,8 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* r, uint32_t page);
+[[nodiscard]] ra8_err_t
+ra8_viewer_render_page(ra8_viewer_reader_t* r, uint32_t page, ra8_arena_t* arena);
 
 /**
  * @brief Number of vertically-stacked tiles in the document.
@@ -118,15 +126,15 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  *          width by the view. For comics one tile == one page; for a JOF
  *          webtoon the tall strip is split into framebuffer-height bands. This is
  *          the same count as ::ra8_viewer_page_count, named for the scroll model.
- * @param[in] r Reader (may be NULL).
- * @return Tile count, or 0 for a NULL reader.
+ * @param[in] r Reader (may be nullptr).
+ * @return Tile count, or 0 for a nullptr reader.
  * @since 0.1.0
  */
 [[nodiscard]] uint32_t ra8_viewer_tile_count(const ra8_viewer_reader_t* r);
 
 /**
  * @brief Native pixel dimensions of tile @p i (for laying out the scroll canvas).
- * @param[in]  r Reader (non-NULL).
+ * @param[in]  r Reader (non-nullptr).
  * @param[in]  i Tile index (`< ra8_viewer_tile_count(r)`).
  * @param[out] w Receives the tile's native width in pixels.
  * @param[out] h Receives the tile's native height in pixels.
@@ -140,33 +148,34 @@ ra8_viewer_tile_size(const ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint
 /**
  * @brief Render tile @p i at native resolution into a fresh RGB565 buffer.
  *
- * @details Allocates a `w*h` RGB565 buffer, rasterises tile @p i into it via the
- *          document's engine (comic page decode, or one webtoon band), and
- *          transfers ownership to the caller (who must `free` it). Unlike
+ * @details Allocates a `w*h` RGB565 buffer from the arena, rasterises tile @p i into it via the
+ *          document's engine (comic page decode, or one webtoon band). Unlike
  *          ::ra8_viewer_render_page this does not touch the shared framebuffer,
  *          so window tiles and the headless framebuffer path never interfere.
  *
- * @param[in,out] r   Reader (non-NULL).
+ * @param[in,out] r   Reader (non-nullptr).
  * @param[in]     i   Tile index (`< ra8_viewer_tile_count(r)`).
  * @param[out]    w   Receives the rendered width in pixels.
  * @param[out]    h   Receives the rendered height in pixels.
- * @param[out]    out Receives a malloc'd `w*h` RGB565 buffer (caller frees).
+ * @param[out]    out   Receives an arena-allocated `w*h` RGB565 buffer.
+ * @param[in,out] arena Bump allocator for the tile output buffer.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Tile rendered; `*out` owns `w*h` pixels.
- * @retval k_ra8_err_null_ptr     A required pointer was NULL.
+ * @retval k_ra8_err_null_ptr     A required pointer was nullptr.
  * @retval k_ra8_err_out_of_range @p i is at or past the tile count.
  * @retval k_ra8_err_no_mem       The output buffer could not be allocated.
  * @retval k_ra8_err_*            An engine / decode error (e.g. a page too tall
- *                                for the whole-image decoder); `*out` stays NULL.
- * @post On any error `*out` is left NULL and nothing is leaked.
+ *                                for the whole-image decoder); `*out` stays nullptr.
+ * @post On any error `*out` is left nullptr and nothing is leaked.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_viewer_render_tile565(ra8_viewer_reader_t* r,
                                                   uint32_t             i,
                                                   uint32_t*            w,
                                                   uint32_t*            h,
-                                                  uint16_t**           out);
+                                                  uint16_t**           out,
+                                                  ra8_arena_t*         arena);
 
 /**
  * @brief Write the current framebuffer to a binary PPM (P6) file.
@@ -174,11 +183,11 @@ ra8_viewer_tile_size(const ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint
  *          8-bit RGB and written as a P6 portable pixmap, so a page can be dumped
  *          on a headless host and converted to PNG offline. A thin wrapper over
  *          ::ra8_viewer_write_ppm565 bound to the reader's fixed framebuffer.
- * @param[in] r    Reader whose framebuffer to dump (non-NULL).
- * @param[in] path Output PPM path (non-NULL).
+ * @param[in] r    Reader whose framebuffer to dump (non-nullptr).
+ * @param[in] path Output PPM path (non-nullptr).
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok            File written.
- * @retval k_ra8_err_null_ptr  @p r or @p path was NULL.
+ * @retval k_ra8_err_null_ptr  @p r or @p path was nullptr.
  * @retval k_ra8_err_not_found The output path could not be opened for writing.
  * @see ra8_viewer_write_ppm565()  Dump an arbitrary RGB565 buffer (scroll tiles).
  * @since 0.1.0
@@ -193,14 +202,14 @@ ra8_viewer_tile_size(const ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint
  *          than 0xF8. Shared by the fixed-framebuffer dump and the scroll-tile
  *          dump so the two cannot drift apart.
  *
- * @param[in] px   Packed RGB565 pixels, row-major, `w * h` entries (non-NULL).
+ * @param[in] px   Packed RGB565 pixels, row-major, `w * h` entries (non-nullptr).
  * @param[in] w    Image width in pixels (>= 1).
  * @param[in] h    Image height in pixels (>= 1).
- * @param[in] path Output PPM path (non-NULL).
+ * @param[in] path Output PPM path (non-nullptr).
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               File written and closed.
- * @retval k_ra8_err_null_ptr     @p px or @p path was NULL.
+ * @retval k_ra8_err_null_ptr     @p px or @p path was nullptr.
  * @retval k_ra8_err_invalid_size @p w or @p h was 0.
  * @retval k_ra8_err_not_found    The path could not be opened, or close failed.
  *
@@ -238,10 +247,10 @@ ra8_viewer_write_ppm565(const uint16_t* px, uint32_t w, uint32_t h, const char* 
 /**
  * @brief Release a reader and all of its owned buffers.
  * @details Frees the format-specific backing (comic archive or JOF cache), the
- *          framebuffer and the reader struct itself. Safe to call with NULL,
+ *          framebuffer and the reader struct itself. Safe to call with nullptr,
  *          which is a no-op.
- * @param[in,out] r Reader from ::ra8_viewer_open (NULL is ignored).
- * @pre @p r came from ::ra8_viewer_open, or is NULL.
+ * @param[in,out] r Reader from ::ra8_viewer_open (nullptr is ignored).
+ * @pre @p r came from ::ra8_viewer_open, or is nullptr.
  * @pre @p r is not used again after this call.
  * @post Every buffer the reader owned is freed and @p r is invalid.
  * @post No resource borrowed from outside the reader is touched.

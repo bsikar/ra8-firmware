@@ -15,8 +15,11 @@
  * `cbr` requires the proprietary `rar` tool on PATH (a clear error is printed
  * when it is absent). JOF/RABOOK (added separately) reuse the firmware's own
  * producers compiled host-side.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #pragma once
 
@@ -40,7 +43,7 @@ typedef enum : uint8_t {
 
 /**
  * @brief Map a `--format` string to a container kind.
- * @param[in] s Format name, or NULL (treated as "loose").
+ * @param[in] s Format name, or nullptr (treated as "loose").
  * @return The matching kind, or ::k_mdl_fmt_invalid.
  */
 mdl_format_t mdl_format_from_str(const char* s);
@@ -90,14 +93,19 @@ bool mdl_format_is_dir_output(mdl_format_t fmt);
  * @param[in] chapter_dir Absolute path to the chapter's page folder.
  * @param[in] out_path    Absolute path of the archive to create (single-file
  *                        formats); unused for directory-output formats but must
- *                        be non-NULL.
+ *                        be non-nullptr.
  *
  * @retval k_ra8_ok               Archive (or every `.jof` sibling) written.
- * @retval k_ra8_err_invalid_arg  NULL/loose/invalid argument.
+ * @retval k_ra8_err_invalid_arg  nullptr/loose/invalid argument.
  * @retval k_ra8_err_invalid_size Over-long page name, or more than
  *                                ::k_max_pages page images in @p chapter_dir.
  * @retval k_ra8_err_empty        No page images found in @p chapter_dir.
  * @retval k_ra8_err_not_supported The archiver tool is not on PATH.
  * @retval k_ra8_fail             The archiver ran but failed.
  */
-ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path);
+#include "ra8_host_arena.h"
+
+ra8_err_t mdl_export_chapter(ra8_arena_t* arena,
+                             mdl_format_t fmt,
+                             const char*  chapter_dir,
+                             const char*  out_path);

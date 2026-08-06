@@ -9,7 +9,7 @@
  * ra8_viewer_view.h, with zero AppKit/QuartzCore references.
  *
  * ::ra8_viewer_view_open reports failure by returning `nullptr`, which is a
- * documented outcome of that contract ("NULL if a window could not be created,
+ * documented outcome of that contract ("nullptr if a window could not be created,
  * e.g. a headless host with no display"), not an invented one. main.c already
  * has the matching branch: it prints the "no window (headless host?)" hint and
  * exits non-zero, so nothing silently pretends a window appeared. The render
@@ -28,6 +28,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include <stdint.h>
@@ -56,10 +59,12 @@
  *
  * @since 0.1.0
  */
-ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title)
+ra8_viewer_view_t*
+ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t* arena)
 {
   (void)reader;
   (void)title;
+  (void)arena;
   return nullptr;
 }
 

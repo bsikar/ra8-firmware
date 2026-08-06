@@ -30,6 +30,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #pragma once
@@ -38,6 +41,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8_err.h"
@@ -68,7 +72,7 @@ typedef struct {
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Arena ready (empty).
- * @retval k_ra8_err_null_ptr     `arena` or `base` was NULL.
+ * @retval k_ra8_err_null_ptr     `arena` or `base` was nullptr.
  * @retval k_ra8_err_invalid_size `size` was zero.
  *
  * @pre `base` addresses at least `size` writable bytes.
@@ -92,7 +96,7 @@ typedef struct {
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Block carved; `*out_ptr` set.
- * @retval k_ra8_err_null_ptr     `arena` or `out_ptr` was NULL.
+ * @retval k_ra8_err_null_ptr     `arena` or `out_ptr` was nullptr.
  * @retval k_ra8_err_invalid_size `bytes` was zero.
  * @retval k_ra8_err_invalid_arg  `align` was zero or not a power of two.
  * @retval k_ra8_err_no_mem       The aligned block does not fit the remainder.
@@ -118,7 +122,7 @@ ra8_arena_carve(ra8_arena_t* arena, uint32_t bytes, uint32_t align, void** out_p
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok           Remaining bytes reported.
- * @retval k_ra8_err_null_ptr `arena` or `out_remaining` was NULL.
+ * @retval k_ra8_err_null_ptr `arena` or `out_remaining` was nullptr.
  *
  * @pre `arena` was populated by ::ra8_arena_init.
  * @pre `out_remaining` is writable.
@@ -130,6 +134,51 @@ ra8_arena_carve(ra8_arena_t* arena, uint32_t bytes, uint32_t align, void** out_p
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_arena_remaining(const ra8_arena_t* arena, uint32_t* out_remaining);
+
+static inline void* ra8_arena_alloc(ra8_arena_t* arena, uint32_t bytes, uint32_t align)
+{
+  void* ptr = nullptr;
+  (void)ra8_arena_carve(arena, bytes, align, &ptr);
+  return ptr;
+}
+
+static inline void* ra8_arena_calloc(ra8_arena_t* arena, uint32_t count, uint32_t size)
+{
+  const uint32_t total = (count) * (size);
+  void*          ptr   = ra8_arena_alloc(arena, total, 8U);
+  if (ptr != nullptr) {
+    /* MISRA 11.5: ra8_arena_carve guarantees the pointer is to a writable
+     * uint8_t region, so the conversion from void* is safe. */
+    uint8_t* dst = (uint8_t*)ptr; /* cppcheck-suppress misra-c2012-11.5 */
+    for (uint32_t i = 0U; i < total; ++i) {
+      dst[i] = 0U;
+    }
+  }
+  return ptr;
+}
+
+static inline void ra8_arena_reset(ra8_arena_t* arena)
+{
+  if (arena != nullptr) {
+    arena->used = 0U;
+  }
+}
+
+static inline uint32_t ra8_arena_save(ra8_arena_t* arena)
+{
+  uint32_t mark = 0U;
+  if (arena != nullptr) {
+    mark = arena->used;
+  }
+  return mark;
+}
+
+static inline void ra8_arena_restore(ra8_arena_t* arena, uint32_t mark)
+{
+  if (arena != nullptr) {
+    arena->used = mark;
+  }
+}
 
 #ifdef __cplusplus
 }

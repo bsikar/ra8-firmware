@@ -23,10 +23,14 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 #include <stdlib.h>
 
 #include "cache_bench.h"
+#include "ra8_attributes.h"
 
 /* ------------------------------------------------------------------ SLRU -- */
 
@@ -82,7 +86,7 @@ typedef struct {
  * @param[in,out] tail The segment's tail endpoint, updated if @p f was tail.
  *
  * @pre @p f is currently linked in the segment named by @p head / @p tail.
- * @pre @p head and @p tail are non-NULL and @p f < capacity.
+ * @pre @p head and @p tail are non-nullptr and @p f < capacity.
  * @post @p f is absent from that segment; neighbour links stay consistent.
  * @post `*head`/`*tail` still name real members (or -1 if the segment emptied).
  *
@@ -116,7 +120,7 @@ static void slru_unlink(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
  * @param[in,out] tail The segment's tail endpoint, set to @p f if it was empty.
  *
  * @pre @p f is detached and @p f < capacity.
- * @pre @p head and @p tail are non-NULL.
+ * @pre @p head and @p tail are non-nullptr.
  * @post `*head == f` and @p f precedes the former head.
  * @post `*tail == f` iff the segment was previously empty.
  *
@@ -152,7 +156,7 @@ static void slru_push_head(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
  * @retval 0 `c->policy_data` holds empty probationary + protected segments.
  * @retval 1 Out of memory; any partial allocation was freed.
  *
- * @pre @p c is non-NULL with `capacity > 0`.
+ * @pre @p c is non-nullptr with `capacity > 0`.
  * @pre Called on the single benchmark thread.
  * @post On success both segment heads/tails are -1 and `pt_cap` is set.
  * @post On failure `c->policy_data` is untouched (nothing is leaked).
@@ -160,11 +164,11 @@ static void slru_push_head(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
  * @note Not thread-safe: allocates and stores policy state.
  * @since 0.1.0
  */
-static int slru_init(cb_cache_t* c)
+RA8_NASA_RULE_3_OK /* host-only bench: policy state */
+  static int
+  slru_init(cb_cache_t* c)
 {
   slru_t* l = (slru_t*)calloc(1U, sizeof(slru_t));
-  /* cppcheck-suppress memleak ; false positive: cppcheck 2.13 does not model
-   * the C23 nullptr keyword, so it cannot see l is NULL on this path. */
   if (l == nullptr) {
     return 1;
   }
@@ -190,13 +194,13 @@ static int slru_init(cb_cache_t* c)
 /**
  * @brief Release SLRU state (control block + shared index arrays).
  *
- * @details Frees the `prev`/`next` arrays and the ::slru_t when present; a NULL
+ * @details Frees the `prev`/`next` arrays and the ::slru_t when present; a nullptr
  *          `policy_data` (a failed init) is tolerated.
  *
  * @param[in,out] c Cache whose SLRU `policy_data` is freed.
  *
- * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::slru_init state or NULL.
+ * @pre @p c is non-nullptr.
+ * @pre `c->policy_data` is a ::slru_init state or nullptr.
  * @post All segment buffers are released.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
@@ -209,7 +213,6 @@ static void slru_deinit(cb_cache_t* c)
   if (l != nullptr) {
     free(l->prev);
     free(l->next);
-    free(l);
   }
 }
 
@@ -296,7 +299,7 @@ static void slru_access(cb_cache_t* c, uint32_t frame)
  * @retval <capacity The probationary LRU, or the protected LRU if none.
  *
  * @pre `c->policy_data` is a valid ::slru_init state with a resident frame.
- * @pre @p scanned is non-NULL.
+ * @pre @p scanned is non-nullptr.
  * @post `*scanned == 1` and the victim is unlinked from its segment.
  * @post `pt_count` drops by one only when a protected frame was evicted.
  *
@@ -349,9 +352,9 @@ typedef enum : uint8_t {
  *
  * @return int 0 on success, 1 on allocation failure.
  * @retval 0 `c->policy_data` holds a zeroed hand.
- * @retval 1 Out of memory; `c->policy_data` is NULL.
+ * @retval 1 Out of memory; `c->policy_data` is nullptr.
  *
- * @pre @p c is non-NULL and its `policy_data` is unset.
+ * @pre @p c is non-nullptr and its `policy_data` is unset.
  * @pre Called on the single benchmark thread.
  * @post On success `c->policy_data` points at a zero-initialized hand.
  * @post No frame contents are altered.
@@ -359,7 +362,9 @@ typedef enum : uint8_t {
  * @note Not thread-safe: allocates and stores policy state.
  * @since 0.1.0
  */
-static int srrip_init(cb_cache_t* c)
+RA8_NASA_RULE_3_OK /* host-only bench: policy state */
+  static int
+  srrip_init(cb_cache_t* c)
 {
   uint32_t* hand = (uint32_t*)calloc(1U, sizeof(uint32_t));
   c->policy_data = hand;
@@ -368,13 +373,13 @@ static int srrip_init(cb_cache_t* c)
 /**
  * @brief Release SRRIP state (the sweep hand).
  *
- * @details Frees the `uint32_t` hand ::srrip_init allocated; `free(NULL)` is
+ * @details Frees the `uint32_t` hand ::srrip_init allocated; `free(nullptr)` is
  *          safe after a failed init.
  *
  * @param[in,out] c Cache whose `policy_data` hand is freed.
  *
- * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::srrip_init hand or NULL.
+ * @pre @p c is non-nullptr.
+ * @pre `c->policy_data` is a ::srrip_init hand or nullptr.
  * @post The hand memory is released.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
@@ -395,7 +400,7 @@ static void srrip_deinit(cb_cache_t* c)
  * @param[in,out] c     Cache whose frame RRPV is set.
  * @param[in]     frame Frame that was just (re)populated.
  *
- * @pre @p c is non-NULL and @p frame < capacity.
+ * @pre @p c is non-nullptr and @p frame < capacity.
  * @pre @p frame is currently resident.
  * @post `frames[frame].meta[0] == k_rrip_long`.
  * @post No other frame or policy state changes.
@@ -417,7 +422,7 @@ static void srrip_insert(cb_cache_t* c, uint32_t frame)
  * @param[in,out] c     Cache whose frame RRPV is reset.
  * @param[in]     frame Frame that was just hit.
  *
- * @pre @p c is non-NULL and @p frame < capacity.
+ * @pre @p c is non-nullptr and @p frame < capacity.
  * @pre @p frame is currently resident.
  * @post `frames[frame].meta[0] == k_rrip_near`.
  * @post No other frame or policy state changes.
@@ -444,7 +449,7 @@ static void srrip_access(cb_cache_t* c, uint32_t frame)
  * @retval <capacity The first frame reached at RRPV ::k_rrip_max.
  *
  * @pre `c->policy_data` is a valid ::srrip_init hand and `capacity > 0`.
- * @pre @p scanned is non-NULL.
+ * @pre @p scanned is non-nullptr.
  * @post `*scanned` equals the frames inspected and the hand advanced past them.
  * @post Frames passed over below max had their RRPV incremented.
  *

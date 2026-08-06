@@ -1,8 +1,11 @@
 /**
  * @file mdl_politeness.c
  * @brief Seeded xorshift64 jitter, injectable clock, and the per-host governor.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include "mdl_politeness.h"
 
@@ -255,7 +258,7 @@ RA8_INTERNAL static int64_t gov_cap_ms(const mdl_gov_cfg_t* cfg)
   return gov_interval_ms(cfg) * (int64_t)cfg->burst;
 }
 
-/** @brief Find an existing per-host record, or NULL. */
+/** @brief Find an existing per-host record, or nullptr. */
 RA8_INTERNAL static mdl_host_rec_t* gov_find(mdl_governor_t* g, const char* host)
 {
   if (host == nullptr) {
@@ -269,7 +272,7 @@ RA8_INTERNAL static mdl_host_rec_t* gov_find(mdl_governor_t* g, const char* host
   return nullptr;
 }
 
-/** @brief Find-or-create a per-host record; NULL if the table is full or host NULL. */
+/** @brief Find-or-create a per-host record; nullptr if the table is full or host nullptr. */
 RA8_INTERNAL static mdl_host_rec_t* gov_get(mdl_governor_t* g, const char* host, int64_t now)
 {
   mdl_host_rec_t* rec = gov_find(g, host);
@@ -355,12 +358,12 @@ ra8_err_t mdl_governor_acquire(mdl_governor_t* g,
                                uint32_t        jitter_max_ms)
 {
   if (g == nullptr) {
-    return k_ra8_ok; /* pacing disabled -- matches a NULL jitter source */
+    return k_ra8_ok; /* pacing disabled -- matches a nullptr jitter source */
   }
   const int64_t   now = gov_now(g);
   mdl_host_rec_t* rec = gov_get(g, host, now);
   if (rec == nullptr) {
-    /* NULL host or table full: still space requests with jitter, no tracking. */
+    /* nullptr host or table full: still space requests with jitter, no tracking. */
     gov_sleep(g, (int64_t)draw_range(&g->rng, jitter_min_ms, jitter_max_ms));
     return k_ra8_ok;
   }
@@ -414,11 +417,11 @@ gov_on_throttle(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now, uint32_t re
 }
 
 /** @brief Apply a non-throttle outcome: count success, decay, honour Retry-After. */
-RA8_INTERNAL static void gov_on_success(mdl_governor_t* g,
-                                        mdl_host_rec_t* rec,
-                                        int64_t         now,
-                                        bool            has_retry,
-                                        uint32_t        retry_ms)
+RA8_INTERNAL static void gov_on_success(const mdl_governor_t* g,
+                                        mdl_host_rec_t*       rec,
+                                        int64_t               now,
+                                        bool                  has_retry,
+                                        uint32_t              retry_ms)
 {
   rec->success_streak += 1U;
   if ((g->cfg.decay_after > 0U) && (rec->success_streak >= g->cfg.decay_after)) {
@@ -440,7 +443,7 @@ void mdl_governor_observe(mdl_governor_t* g, const char* host, long status, cons
   const int64_t   now = gov_now(g);
   mdl_host_rec_t* rec = gov_get(g, host, now);
   if (rec == nullptr) {
-    return; /* NULL host or table full */
+    return; /* nullptr host or table full */
   }
   uint32_t   retry_ms  = 0U;
   const bool has_retry = (retry_after != nullptr) &&

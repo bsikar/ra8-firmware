@@ -21,6 +21,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include <stdint.h>
@@ -80,7 +83,7 @@ static uint64_t priv_rd_u64(const uint8_t* buf)
  *          `offset[count]` equals the remaining payload length. Each entry's
  *          byte range is printed so a malformed inventory is visible, not
  *          merely reported.
- * @param[in] src        Container bytes (non-NULL).
+ * @param[in] src        Container bytes (non-nullptr).
  * @param[in] table_off  Byte offset of `offset[0]` within the container.
  * @param[in] count      Entry count (the table holds `count + 1` offsets).
  * @param[in] payload    Byte offset where the concatenated streams begin.
@@ -247,8 +250,10 @@ static void priv_print_rabook_hdr(FILE*    out,
   (void)fprintf(out, "  reserved       : %u\n", (unsigned)reserved);
 }
 
-ra8_err_t ra8_fmt_rabook_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t
+ra8_fmt_rabook_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
+  (void)arena; /* conforming to unified fmt interface; no allocation needed */
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
   if (src->len < (size_t)k_ra8_book_container_header_len) {

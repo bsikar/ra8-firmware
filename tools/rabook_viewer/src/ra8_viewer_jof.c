@@ -17,6 +17,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include <stdint.h>
@@ -57,7 +60,7 @@ typedef enum : uint8_t {
  * @details Handles the four source formats the strip decoder emits: 1-byte gray
  *          (replicated to R=G=B), 2-byte little-endian RGB565 (repacked), and
  *          3-byte RGB or 4-byte RGBA (the alpha byte dropped).
- * @param[in] sp  Source pixel (non-NULL, at least @p bpp bytes readable).
+ * @param[in] sp  Source pixel (non-nullptr, at least @p bpp bytes readable).
  * @param[in] bpp Bytes per source pixel (1, 2, 3, or 4).
  * @return The packed RGB565 value; an RGBA alpha byte is dropped.
  * @retval 0 The source pixel is black.
@@ -136,7 +139,8 @@ RA8_INTERNAL static ra8_err_t viewer_jof_blit(void*          ctx,
  *          (the atlas is held wholly resident), then reads the whole file into an
  *          owned buffer and points the memstore pread at it, so tile decodes read
  *          straight from RAM.
- * @param[in,out] r Reader whose file is already open (non-NULL).
+ * @param[in,out] r     Reader whose file is already open (non-nullptr).
+ * @param[in,out] arena Bump allocator for the atlas buffer.
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                    The atlas is resident and memstore wired.
  * @retval k_ra8_err_decomp_output_cap The file exceeds the per-unit output cap.
@@ -149,7 +153,7 @@ RA8_INTERNAL static ra8_err_t viewer_jof_blit(void*          ctx,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
+RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r, ra8_arena_t* arena)
 {
   /* The whole atlas is held resident in RAM, so a file larger than the per-unit
    * output cap is refused before allocating -- the same working-set ceiling the
@@ -159,16 +163,16 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
     return k_ra8_err_decomp_output_cap;
   }
   const size_t sz  = (size_t)r->file.size;
-  uint8_t*     buf = (uint8_t*)malloc(sz);
+  uint8_t*     buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sz, k_ra8_arena_align);
   if (buf == nullptr) {
+    // cppcheck-suppress memleak
+    // buf is nullptr here
     return k_ra8_err_no_mem;
   }
   if (fseeko(r->file.fp, 0, SEEK_SET) != 0) {
-    free(buf);
     return k_ra8_err_not_found;
   }
   if (fread(buf, 1U, sz, r->file.fp) != sz) {
-    free(buf);
     return k_ra8_err_not_found;
   }
   r->jof.atlas = buf;
@@ -182,13 +186,14 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
  *          scratch (one band plus slack), the cell pool, and the metadata, key,
  *          dims and bucket arrays. Partial allocations are left in place for
  *          viewer_free() to release, so there is no cleanup on the error path.
- * @param[in,out] w          JOF state to populate (non-NULL).
+ * @param[in,out] w          JOF state to populate (non-nullptr).
  * @param[in]     cell_count Resident-band count (>= 1).
  * @param[in]     band_bytes Bytes per decoded band (> 0).
+ * @param[in,out] arena      Bump allocator for cache backing arrays.
  * @return ra8_err_t; ::k_ra8_err_no_mem on any allocation failure.
  * @retval k_ra8_ok         Every backing buffer was allocated.
  * @retval k_ra8_err_no_mem At least one allocation failed.
- * @pre @p w is a JOF state with NULL backing pointers.
+ * @pre @p w is a JOF state with nullptr backing pointers.
  * @pre @p cell_count >= 1 and @p band_bytes > 0.
  * @post On ::k_ra8_ok every cache backing buffer is allocated.
  * @post Partial allocations are retained for viewer_free() to release.
@@ -196,14 +201,23 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
-viewer_jof_alloc_cache(viewer_jof_t* w, uint32_t cell_count, size_t band_bytes)
+viewer_jof_alloc_cache(viewer_jof_t* w, uint32_t cell_count, size_t band_bytes, ra8_arena_t* arena)
 {
-  w->scratch = (uint8_t*)malloc(band_bytes + (size_t)k_viewer_jof_scratch_pad);
-  w->cells   = (uint8_t*)malloc((size_t)cell_count * band_bytes);
-  w->meta    = (ra8_keycache_cell_t*)calloc(cell_count, sizeof(*w->meta));
-  w->keys    = (ra8_tile_key_t*)calloc(cell_count, sizeof(*w->keys));
-  w->dims    = (ra8_tile_dims_t*)calloc(cell_count, sizeof(*w->dims));
-  w->buckets = (int32_t*)calloc((size_t)k_viewer_jof_buckets, sizeof(*w->buckets));
+  w->scratch = (uint8_t*)ra8_arena_alloc(arena,
+                                         (uint32_t)(band_bytes + (size_t)k_viewer_jof_scratch_pad),
+                                         k_ra8_arena_align);
+  w->cells   = (uint8_t*)ra8_arena_alloc(arena,
+                                       (uint32_t)((size_t)cell_count * band_bytes),
+                                       k_ra8_arena_align);
+  w->meta =
+    (ra8_keycache_cell_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->meta));
+  w->keys =
+    (ra8_tile_key_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->keys));
+  w->dims =
+    (ra8_tile_dims_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->dims));
+  w->buckets = (int32_t*)ra8_arena_calloc(arena,
+                                          (uint32_t)k_viewer_jof_buckets,
+                                          (uint32_t)sizeof(*w->buckets));
   if ((w->scratch == nullptr) || (w->cells == nullptr) || (w->meta == nullptr) ||
       (w->keys == nullptr) || (w->dims == nullptr) || (w->buckets == nullptr)) {
     return k_ra8_err_no_mem;
@@ -216,8 +230,8 @@ viewer_jof_alloc_cache(viewer_jof_t* w, uint32_t cell_count, size_t band_bytes)
  * @details Composition happens at the strip's native width; the desktop view
  *          scales each tile to the window width, and the headless framebuffer
  *          path recentres/clips into its fixed width via `x_off` set per render.
- * @param[in,out] r          Reader whose JOF buffers are allocated (non-NULL).
- * @param[in]     info       Parsed atlas geometry (non-NULL).
+ * @param[in,out] r          Reader whose JOF buffers are allocated (non-nullptr).
+ * @param[in]     info       Parsed atlas geometry (non-nullptr).
  * @param[in]     band_bytes Bytes per decoded band.
  * @param[in]     cell_count Resident-band count for the LRU cache.
  * @return ra8_err_t from the tile-cache init / long-strip-open steps.
@@ -279,7 +293,7 @@ RA8_INTERNAL static ra8_err_t viewer_jof_wire(ra8_viewer_reader_t*  r,
  *          already showed -- visible as duplicated content with a seam.
  *          Setting the viewport to the page's real content height makes the
  *          requested position land exactly on the recomputed clamp.
- * @param[in,out] w    JOF state of an open strip (non-NULL).
+ * @param[in,out] w    JOF state of an open strip (non-nullptr).
  * @param[in]     page Vertical page index.
  * @return ra8_err_t from `ra8_longstrip_set_viewport` / `ra8_longstrip_scroll_by`.
  * @retval k_ra8_ok               The strip is positioned at page @p page.
@@ -309,10 +323,10 @@ RA8_INTERNAL static ra8_err_t viewer_jof_seek(viewer_jof_t* w, uint32_t page)
   return ra8_longstrip_scroll_by(&w->strip, delta);
 }
 
-ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r)
+ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r, ra8_arena_t* arena)
 {
   viewer_jof_t* w  = &r->jof;
-  ra8_err_t     rc = viewer_jof_slurp(r);
+  ra8_err_t     rc = viewer_jof_slurp(r, arena);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -358,7 +372,7 @@ ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r)
   if (cell_count > max_resident) {
     cell_count = max_resident;
   }
-  rc = viewer_jof_alloc_cache(w, cell_count, band_bytes);
+  rc = viewer_jof_alloc_cache(w, cell_count, band_bytes, arena);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -388,8 +402,12 @@ ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page)
   return ra8_longstrip_render(&w->strip, &st);
 }
 
-ra8_err_t
-viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out)
+ra8_err_t viewer_tile_jof(ra8_viewer_reader_t* r,
+                          uint32_t             i,
+                          uint32_t*            w,
+                          uint32_t*            h,
+                          uint16_t**           out,
+                          ra8_arena_t*         arena)
 {
   viewer_jof_t*  wt = &r->jof;
   const uint32_t nw = r->tile_wpx[i];
@@ -400,9 +418,12 @@ viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, ui
   /* nw is the atlas width (bounded to k_ra8_jof_max_dim by ra8_jof_parse) and nh
    * is one viewport band (<= the fixed framebuffer height), so this product is
    * bounded by those prior policy checks and cannot wrap size_t. */
-  const size_t px  = (size_t)nw * (size_t)nh;
-  uint16_t*    buf = (uint16_t*)malloc(px * sizeof(uint16_t));
+  const size_t px = (size_t)nw * (size_t)nh;
+  uint16_t*    buf =
+    (uint16_t*)ra8_arena_alloc(arena, (uint32_t)(px * sizeof(uint16_t)), k_ra8_arena_align);
   if (buf == nullptr) {
+    // cppcheck-suppress memleak
+    // buf is nullptr here
     return k_ra8_err_no_mem;
   }
   /* Point the long-strip blit at this native-width band buffer (restored after). */
@@ -421,7 +442,6 @@ viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, ui
   r->rt_w  = (uint32_t)k_ra8_viewer_fb_width;
   r->rt_h  = (uint32_t)k_ra8_viewer_fb_height;
   if (rc != k_ra8_ok) {
-    free(buf);
     return rc;
   }
   *w   = nw;

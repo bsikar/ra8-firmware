@@ -18,6 +18,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include <stdint.h>
@@ -27,6 +30,7 @@
 #include <time.h>
 
 #include "ra8_err.h"
+#include "ra8_host_arena.h"
 #include "ra8_log.h"
 #include "ra8_viewer_reader.h"
 #include "ra8_viewer_view.h"
@@ -40,6 +44,7 @@ typedef enum : int32_t {
   k_viewer_frame_ns  = 16000000, /**< Cooperative pump period, ~60 Hz (ns). */
   k_viewer_min_args  = 2,        /**< argv count with just the file path.   */
   k_viewer_radix_dec = 10,       /**< Base for parsing --page (decimal).    */
+  k_arena_bytes      = 16U * 1024U * 1024U,
 } viewer_main_cfg_t;
 
 /**
@@ -49,7 +54,7 @@ typedef enum : int32_t {
  */
 typedef struct {
   const char* path;      /**< Input document path (required).         */
-  const char* dump_ppm;  /**< PPM dump path, or NULL.                 */
+  const char* dump_ppm;  /**< PPM dump path, or nullptr.              */
   uint32_t    page;      /**< Page to render for --dump-ppm.          */
   int64_t     dump_tile; /**< Tile to dump via the scroll API, or -1. */
   bool        headless;  /**< Skip opening a window when true.        */
@@ -154,6 +159,7 @@ static uint32_t viewer_clamp_page(uint32_t page, uint32_t count)
  * @param[in]  reader Open reader.
  * @param[in]  opts   Parsed options.
  * @param[in]  page   Page to render.
+ * @param[in] arena Scratch arena.
  * @return true on success.
  * @retval true  The page rendered and any requested dump was written.
  * @retval false Rendering or the PPM write failed (reported on stderr).
@@ -164,10 +170,12 @@ static uint32_t viewer_clamp_page(uint32_t page, uint32_t count)
  * @note Not thread-safe (drives the shared framebuffer).
  * @since 0.1.0
  */
-static bool
-viewer_render_and_dump(ra8_viewer_reader_t* reader, const viewer_opts_t* opts, uint32_t page)
+static bool viewer_render_and_dump(ra8_viewer_reader_t* reader,
+                                   const viewer_opts_t* opts,
+                                   uint32_t             page,
+                                   ra8_arena_t*         arena)
 {
-  const ra8_err_t rc = ra8_viewer_render_page(reader, page);
+  const ra8_err_t rc = ra8_viewer_render_page(reader, page, arena);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "render page %u failed: 0x%x\n", page, (unsigned)rc);
     return false;
@@ -186,9 +194,10 @@ viewer_render_and_dump(ra8_viewer_reader_t* reader, const viewer_opts_t* opts, u
  * @brief Open the scrolling reader window and pump events until it closes.
  * @details Creates the Cocoa view over @p reader and cooperatively pumps events
  *          at ~60 Hz (::k_viewer_frame_ns), sleeping between frames, until the
- *          user closes the window. A NULL view means no window could be created
+ *          user closes the window. A nullptr view means no window could be created
  *          (a headless host), reported with the `--headless` hint.
  * @param[in] reader Open reader (the window's tile source).
+ * @param[in] arena Scratch arena.
  * @return 0 on clean exit; 1 if no window could be created (headless host).
  * @retval 0 The window opened and was closed by the user.
  * @retval 1 No window could be created on this host.
@@ -199,9 +208,9 @@ viewer_render_and_dump(ra8_viewer_reader_t* reader, const viewer_opts_t* opts, u
  * @note Not thread-safe; must run on the main thread (Cocoa requirement).
  * @since 0.1.0
  */
-static int viewer_run_window(ra8_viewer_reader_t* reader)
+static int viewer_run_window(ra8_viewer_reader_t* reader, ra8_arena_t* arena)
 {
-  ra8_viewer_view_t* view = ra8_viewer_view_open(reader, "RA8 Viewer");
+  ra8_viewer_view_t* view = ra8_viewer_view_open(reader, "RA8 Viewer", arena);
   if (view == nullptr) {
     (void)fprintf(stderr, "no window (headless host?); use --headless --dump-ppm PATH\n");
     return 1;
@@ -241,6 +250,7 @@ static void viewer_log_sink(void* ctx, uint8_t byte)
  * @param[in] reader Open reader.
  * @param[in] tile   Tile index.
  * @param[in] path   Output PPM path.
+ * @param[in] arena Scratch arena.
  * @return true on success.
  * @retval true  The tile rendered and its PPM was written.
  * @retval false Tile render or the PPM write failed (reported on stderr).
@@ -251,18 +261,18 @@ static void viewer_log_sink(void* ctx, uint8_t byte)
  * @note Not thread-safe (drives the shared reader).
  * @since 0.1.0
  */
-static bool viewer_dump_tile(ra8_viewer_reader_t* reader, uint32_t tile, const char* path)
+static bool
+viewer_dump_tile(ra8_viewer_reader_t* reader, uint32_t tile, const char* path, ra8_arena_t* arena)
 {
   uint32_t        w   = 0U;
   uint32_t        h   = 0U;
   uint16_t*       buf = nullptr;
-  const ra8_err_t rc  = ra8_viewer_render_tile565(reader, tile, &w, &h, &buf);
+  const ra8_err_t rc  = ra8_viewer_render_tile565(reader, tile, &w, &h, &buf, arena);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "render tile %u failed: 0x%x\n", tile, (unsigned)rc);
     return false;
   }
   const ra8_err_t wrc = ra8_viewer_write_ppm565(buf, w, h, path);
-  free(buf);
   if (wrc != k_ra8_ok) {
     (void)fprintf(stderr, "write tile ppm failed: 0x%x\n", (unsigned)wrc);
     return false;
@@ -285,6 +295,10 @@ int main(int argc, char** argv)
 {
   ra8_log_set_byte_sink(viewer_log_sink, nullptr);
 
+  uint8_t*    arena_buf = (uint8_t*)malloc((size_t)k_arena_bytes);
+  ra8_arena_t arena;
+  ra8_arena_init(&arena, arena_buf, (uint32_t)k_arena_bytes);
+
   viewer_opts_t opts = {};
   if (!viewer_parse_args(argc, argv, &opts)) {
     viewer_usage(argv[0]);
@@ -292,7 +306,7 @@ int main(int argc, char** argv)
   }
 
   ra8_viewer_reader_t* reader = nullptr;
-  const ra8_err_t      rc     = ra8_viewer_open(&reader, opts.path);
+  const ra8_err_t      rc     = ra8_viewer_open(&reader, opts.path, &arena);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "open '%s' failed: 0x%x\n", opts.path, (unsigned)rc);
     return 1;
@@ -304,17 +318,19 @@ int main(int argc, char** argv)
   /* Headless tile dump: verify the scroll render path independent of a window. */
   if (opts.dump_tile >= 0) {
     const char* out    = (opts.dump_ppm != nullptr) ? opts.dump_ppm : "/tmp/ra8_tile.ppm";
-    const int   status = viewer_dump_tile(reader, (uint32_t)opts.dump_tile, out) ? 0 : 1;
+    const int   status = viewer_dump_tile(reader, (uint32_t)opts.dump_tile, out, &arena) ? 0 : 1;
     ra8_viewer_close(reader);
+    free(arena_buf);
     return status;
   }
 
   int status = 0;
   if (opts.headless || (opts.dump_ppm != nullptr)) {
-    status = viewer_render_and_dump(reader, &opts, page) ? 0 : 1;
+    status = viewer_render_and_dump(reader, &opts, page, &arena) ? 0 : 1;
   } else {
-    status = viewer_run_window(reader);
+    status = viewer_run_window(reader, &arena);
   }
   ra8_viewer_close(reader);
+  free(arena_buf);
   return status;
 }

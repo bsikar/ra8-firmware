@@ -10,6 +10,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include "emu_elf.h"
@@ -27,8 +30,11 @@
 #include "emu_mpu.h"
 #include "emu_seams.h"
 #include "emu_view.h"
+#include "ra8_attributes.h"
 
-uint8_t* read_file(const char* path, long* out_len)
+RA8_NASA_RULE_3_OK /* host-only emu: elf file buffer */
+  uint8_t*
+  read_file(const char* path, long* out_len)
 {
   FILE* f = fopen(path, "rb");
   if (f == nullptr) {
@@ -203,7 +209,7 @@ typedef struct {
  * @return True when `sh` is an SHT_SYMTAB whose entry size and string-table
  *         link are both usable; false otherwise (the caller skips the section).
  *
- * @pre `elf` and `out` are non-NULL.
+ * @pre `elf` and `out` are non-nullptr.
  * @pre `sh` points inside the image (the caller bounds-checks it).
  * @post On true, `out->entsize` is non-zero.
  * @post On false, `*out` is untouched.
@@ -252,11 +258,11 @@ static bool elf_symtab_decode(const uint8_t* elf,
  * @param[in]  name     Symbol name to match.
  * @param[in]  nlen     `strlen(name) + 1`, so the NUL is compared too.
  * @param[in]  st       Table to search.
- * @param[out] size_out Receives `st_size` on a hit; may be NULL.
+ * @param[out] size_out Receives `st_size` on a hit; may be nullptr.
  *
  * @return The symbol's value with the Thumb bit cleared, or 0 when absent.
  *
- * @pre `elf`, `name` and `st` are non-NULL.
+ * @pre `elf`, `name` and `st` are non-nullptr.
  * @pre `st->entsize` is non-zero.
  * @post `*size_out` is written only on a hit.
  * @post Every read stays inside the first `len` bytes of the image.

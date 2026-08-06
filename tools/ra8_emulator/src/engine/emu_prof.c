@@ -12,6 +12,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include "emu_prof.h"
@@ -316,7 +319,7 @@ static void prof_insn_hook(uc_engine* uc, uint64_t address, uint32_t size, void*
  *
  * @param[in,out] f Open output stream positioned after the `"frames":[`.
  *
- * @pre @p f is non-NULL and writable.
+ * @pre @p f is non-nullptr and writable.
  * @pre `s_prof_n` frames are populated.
  * @post Exactly `s_prof_n` comma-separated objects are written.
  * @post The enclosing bracket is left for the caller to close.
@@ -342,7 +345,7 @@ static void prof_json_frames(FILE* f)
  *
  * @param[in,out] f Open output stream positioned after the `"samples":[`.
  *
- * @pre @p f is non-NULL and writable.
+ * @pre @p f is non-nullptr and writable.
  * @pre `s_samp_n` samples are populated with matching depths in `s_samp_d`.
  * @post Exactly `s_samp_n` comma-separated arrays are written.
  * @post The enclosing bracket is left for the caller to close.
@@ -368,7 +371,7 @@ static void prof_json_samples(FILE* f)
  *
  * @param[in,out] f Open output stream positioned after the `"weights":[`.
  *
- * @pre @p f is non-NULL and writable.
+ * @pre @p f is non-nullptr and writable.
  * @pre `s_samp_w` holds `s_samp_n` weights.
  * @post Exactly `s_samp_n` comma-separated integers are written.
  * @post The enclosing bracket is left for the caller to close.
@@ -391,7 +394,7 @@ static void prof_json_weights(FILE* f)
  *
  * @param[in,out] f Open output stream positioned after the `FRAMES=[`.
  *
- * @pre @p f is non-NULL and writable.
+ * @pre @p f is non-nullptr and writable.
  * @pre `s_prof_n` frames are populated.
  * @post Exactly `s_prof_n` comma-separated quoted names are written.
  * @post The enclosing bracket is left for the caller to close.

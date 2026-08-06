@@ -21,16 +21,34 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fmt.h"
+#include "ra8_host_arena.h"
 #include "ra8_log.h"
+
+enum : uint32_t { k_arena_bytes = 4U * 1024U * 1024U };
+static uint8_t*    s_arena_buf;
+static ra8_arena_t s_arena;
+
+RA8_NASA_RULE_3_OK
+static ra8_err_t init_arena(void)
+{
+  s_arena_buf = (uint8_t*)malloc(k_arena_bytes);
+  if (s_arena_buf == nullptr)
+    return k_ra8_err_no_mem;
+  return ra8_arena_init(&s_arena, s_arena_buf, k_arena_bytes);
+}
 
 /**
  * @enum ra8_fmt_exit_t
@@ -87,7 +105,7 @@ static void fmt_log_sink(void* ctx, uint8_t byte)
 /**
  * @brief Print the usage banner, listing every registered format.
  * @details Driven off the registry so a newly added format documents itself.
- * @param[in] out Stream to write the banner to (non-NULL).
+ * @param[in] out Stream to write the banner to (non-nullptr).
  * @pre @p out is an open stream.
  * @pre The registry is statically initialised.
  * @post The banner and one line per format were written.
@@ -123,7 +141,7 @@ static void priv_usage(FILE* out)
  * @details Exact string match against the three verb spellings; anything else
  *          (including a flag given where a verb is expected) yields
  *          ::k_fmt_verb_none so the caller falls through to printing usage.
- * @param[in] arg Argument to match (non-NULL).
+ * @param[in] arg Argument to match (non-nullptr).
  * @return The matching verb, or ::k_fmt_verb_none.
  * @retval k_fmt_verb_none @p arg is not a recognised verb.
  * @pre @p arg is a NUL-terminated string.
@@ -154,8 +172,8 @@ static ra8_fmt_verb_t priv_parse_verb(const char* arg)
  *          argument is taken as the input path so `inspect <file>` works.
  * @param[in]     argc Argument count.
  * @param[in]     argv Argument vector.
- * @param[in,out] opts Options to populate (non-NULL).
- * @param[out]    fmt  Receives the `--format` selector, or NULL when absent.
+ * @param[in,out] opts Options to populate (non-nullptr).
+ * @param[out]    fmt  Receives the `--format` selector, or nullptr when absent.
  * @return `true` when every argument was recognised, else `false`.
  * @retval false An unknown flag or a flag missing its value was found.
  * @pre @p opts and @p fmt are writable.
@@ -192,15 +210,16 @@ static bool priv_parse_opts(int argc, char** argv, ra8_fmt_opts_t* opts, const c
 
 /**
  * @brief Resolve the descriptor for a verb, by name or by sniffing the input.
+ * @param[in] arena Scratch arena for temporary allocations.
  * @param[in] verb Selected verb.
- * @param[in] name `--format` selector, or NULL.
+ * @param[in] name `--format` selector, or nullptr.
  * @param[in] src  Slurped input (used for sniffing on `inspect`).
- * @return The resolved descriptor, or NULL when it could not be determined.
- * @retval NULL No `--format` given and the magic matched no known format.
+ * @return The resolved descriptor, or nullptr when it could not be determined.
+ * @retval nullptr No `--format` given and the magic matched no known format.
  * @pre @p src holds the slurped input file.
  * @pre @p verb is a recognised verb.
  * @post No state is mutated.
- * @post A non-NULL result points into the static registry.
+ * @post A non-nullptr result points into the static registry.
  * @note Thread-safe (pure over immutable data).
  * @since 0.1.0
  */
@@ -217,11 +236,12 @@ priv_resolve(ra8_fmt_verb_t verb, const char* name, const ra8_fmt_blob_t* src)
 /**
  * @brief Invoke the verb's entry point on the descriptor, or report absence.
  * @details Selects the descriptor's convert / inspect / verify function pointer
- *          for @p verb and calls it; a NULL slot means this format does not
+ *          for @p verb and calls it; a nullptr slot means this format does not
  *          implement the verb, which is reported to `opts->report` and returned
  *          as ::k_ra8_err_not_supported rather than dereferenced.
+ * @param[in] arena Scratch arena for temporary allocations.
  * @param[in] verb Selected verb.
- * @param[in] desc Resolved format descriptor (non-NULL).
+ * @param[in] desc Resolved format descriptor (non-nullptr).
  * @param[in] src  Slurped input.
  * @param[in] opts Parsed options.
  * @return The verb's result, or ::k_ra8_err_not_supported when unimplemented.
@@ -234,7 +254,8 @@ priv_resolve(ra8_fmt_verb_t verb, const char* name, const ra8_fmt_blob_t* src)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_dispatch(ra8_fmt_verb_t        verb,
+static ra8_err_t priv_dispatch(ra8_arena_t*          arena,
+                               ra8_fmt_verb_t        verb,
                                const ra8_fmt_desc_t* desc,
                                const ra8_fmt_blob_t* src,
                                const ra8_fmt_opts_t* opts)
@@ -251,12 +272,17 @@ static ra8_err_t priv_dispatch(ra8_fmt_verb_t        verb,
     (void)fprintf(opts->report, "ra8_fmt: format '%s' does not support this verb\n", desc->name);
     return k_ra8_err_not_supported;
   }
-  return fn(src, opts);
+  return fn(arena, src, opts);
 }
 
 int main(int argc, char** argv)
 {
   ra8_log_set_byte_sink(fmt_log_sink, nullptr);
+  if (init_arena() != k_ra8_ok) {
+    (void)fprintf(stderr, "ra8_fmt: failed to initialize arena\n");
+    return (int)k_fmt_exit_fail;
+  }
+
   if (argc < 2) {
     priv_usage(stderr);
     return (int)k_fmt_exit_usage;
@@ -281,7 +307,7 @@ int main(int argc, char** argv)
     return (int)k_fmt_exit_usage;
   }
   ra8_fmt_blob_t  src    = {};
-  const ra8_err_t src_rc = ra8_fmt_slurp(opts.in_path, &src);
+  const ra8_err_t src_rc = ra8_fmt_slurp(&s_arena, opts.in_path, &src);
   if (src_rc != k_ra8_ok) {
     (void)fprintf(stderr, "ra8_fmt: cannot read '%s' (rc=%d)\n", opts.in_path, (int)src_rc);
     return (int)k_fmt_exit_fail;
@@ -293,7 +319,7 @@ int main(int argc, char** argv)
     priv_usage(stderr);
     return (int)k_fmt_exit_usage;
   }
-  const ra8_err_t rc = priv_dispatch(verb, desc, &src, &opts);
+  const ra8_err_t rc = priv_dispatch(&s_arena, verb, desc, &src, &opts);
   ra8_fmt_blob_free(&src);
   return (rc == k_ra8_ok) ? (int)k_fmt_exit_ok : (int)k_fmt_exit_fail;
 }

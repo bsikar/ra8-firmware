@@ -1,5 +1,5 @@
 /**
- * @file mdl_export.c
+ * @file mdl_export.c  FILE-SIZE-OK: cohesive EPUB/JOF export pipeline
  * @brief Package a chapter folder into a reader-openable container.
  *
  * @details
@@ -17,8 +17,11 @@
  * reaches into the firmware's `ra8_jof` decode/encode stack, so it owns
  * its own translation unit rather than widening this one's dependencies. This
  * file still dispatches to it, via mdl_export_jof() in mdl_export_internal.h.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 /* glibc gates its posix_spawn chdir file-action and `environ` behind
  * _GNU_SOURCE. It is defined by the build (tools/media_dl/CMakeLists.txt and
@@ -194,7 +197,7 @@ RA8_INTERNAL static char* const* spawn_environ(void)
  *          is present, so one source serves both without a platform guess.
  *
  * @param[in,out] actions Initialised file-actions object to extend.
- * @param[in]     dir     Directory the spawned child starts in (non-NULL).
+ * @param[in]     dir     Directory the spawned child starts in (non-nullptr).
  *
  * @return 0 on success, else an errno value from the underlying call.
  * @retval 0 The chdir action was appended.
@@ -358,7 +361,7 @@ RA8_INTERNAL static ra8_err_t tar_copy_file(FILE* in, FILE* out, size_t size)
   }
   const size_t pad = round_block(size) - size;
   if (pad > 0U) {
-    uint8_t zeros[k_tar_block] = {};
+    const uint8_t zeros[k_tar_block] = {};
     if (fwrite(zeros, 1U, pad, out) != pad) {
       return k_ra8_fail;
     }
@@ -415,6 +418,8 @@ write_tar_file(const char* dir, char names[][k_name_max], size_t count, const ch
 {
   FILE* f = fopen(out_path, "wb");
   if (f == nullptr) {
+    // cppcheck-suppress resourceLeak
+    // f is nullptr here
     return k_ra8_fail;
   }
   ra8_err_t  rc       = build_tar_to_file(dir, names, count, f);
@@ -450,27 +455,38 @@ RA8_INTERNAL static mz_bool gz_put(const void* buf, int len, void* user)
  *          the source nor the compressed stream is ever held whole. CRC32 and
  *          ISIZE are accumulated incrementally across the chunks.
  */
-RA8_INTERNAL static ra8_err_t gzip_file(const char* in_path, const char* out_path)
+RA8_INTERNAL static ra8_err_t
+gzip_file(ra8_arena_t* arena, const char* in_path, const char* out_path)
 {
-  FILE* in = fopen(in_path, "rb");
+  const uint32_t mark = ra8_arena_save(arena);
+  FILE*          in   = fopen(in_path, "rb");
   if (in == nullptr) {
+    // cppcheck-suppress resourceLeak
+    // in is nullptr here
+    ra8_arena_restore(arena, mark);
     return k_ra8_fail;
   }
   FILE* out = fopen(out_path, "wb");
   if (out == nullptr) {
     (void)fclose(in);
+    // cppcheck-suppress resourceLeak
+    // out is nullptr here
+    ra8_arena_restore(arena, mark);
     return k_ra8_fail;
   }
-  tdefl_compressor* d = (tdefl_compressor*)malloc(sizeof(*d));
+  tdefl_compressor* d =
+    (tdefl_compressor*)ra8_arena_alloc(arena, (uint32_t)sizeof(*d), _Alignof(tdefl_compressor));
   if (d == nullptr) {
     (void)fclose(in);
     (void)fclose(out);
+
+    ra8_arena_restore(arena, mark);
     return k_ra8_err_no_mem;
   }
   const uint8_t hdr[k_gzip_hdr_len] =
     {k_gz_id1, k_gz_id2, k_gz_cm, 0U, 0U, 0U, 0U, 0U, 0U, k_gz_os};
-  bool     ok    = (fwrite(hdr, 1U, sizeof(hdr), out) == sizeof(hdr)) &&
-                   (tdefl_init(d, gz_put, out, TDEFL_DEFAULT_MAX_PROBES) == TDEFL_STATUS_OKAY);
+  bool ok = (fwrite(hdr, 1U, sizeof(hdr), out) == sizeof(hdr)) &&
+            (tdefl_init(d, gz_put, out, TDEFL_DEFAULT_MAX_PROBES) == TDEFL_STATUS_OKAY);
   uint32_t crc   = (uint32_t)MZ_CRC32_INIT;
   uint32_t isize = 0U; /* ISIZE = total input length mod 2^32 */
   uint8_t  chunk[k_stream_chunk];
@@ -489,10 +505,11 @@ RA8_INTERNAL static ra8_err_t gzip_file(const char* in_path, const char* out_pat
   if (ok && (tdefl_compress_buffer(d, nullptr, 0U, TDEFL_FINISH) != TDEFL_STATUS_DONE)) {
     ok = false;
   }
-  free(d);
+
   ok = ok && put_u32le(out, crc) && put_u32le(out, isize);
   ok = (fclose(out) == 0) && ok;
   (void)fclose(in);
+  ra8_arena_restore(arena, mark);
   return ok ? k_ra8_ok : k_ra8_fail;
 }
 
@@ -572,8 +589,9 @@ RA8_INTERNAL static ra8_err_t run_to_file(const char* const argv[], const char* 
 }
 
 /** @brief Compress `in_path` to `out_path` via the external `xz` with reader-safe flags. */
-RA8_INTERNAL static ra8_err_t xz_file(const char* in_path, const char* out_path)
+RA8_INTERNAL static ra8_err_t xz_file(ra8_arena_t* arena, const char* in_path, const char* out_path)
 {
+  (void)arena;
   /* CRC32 check + 1 MiB dict so the on-device xz scratch accepts the stream. */
   const char* const a[] =
     {"xz", "--check=crc32", "--lzma2=preset=6,dict=1MiB", "-c", in_path, nullptr};
@@ -586,12 +604,14 @@ RA8_INTERNAL static ra8_err_t xz_file(const char* in_path, const char* out_path)
  *          `compress` reads that file and streams its own output, and the temp
  *          file is removed on every exit path.
  */
-RA8_INTERNAL static ra8_err_t export_tar_wrapped(const char* dir,
-                                                 char        names[][k_name_max],
-                                                 size_t      count,
-                                                 const char* out_path,
-                                                 ra8_err_t (*compress)(const char* in_path,
-                                                                       const char* out_path))
+RA8_INTERNAL static ra8_err_t export_tar_wrapped(ra8_arena_t* arena,
+                                                 const char*  dir,
+                                                 char         names[][k_name_max],
+                                                 size_t       count,
+                                                 const char*  out_path,
+                                                 ra8_err_t (*compress)(ra8_arena_t* arena,
+                                                                       const char*  in_path,
+                                                                       const char*  out_path))
 {
   /* A truncated suffix would name a DIFFERENT file than intended -- possibly
    * one that already exists -- so overflow aborts rather than proceeding. */
@@ -602,7 +622,7 @@ RA8_INTERNAL static ra8_err_t export_tar_wrapped(const char* dir,
   }
   ra8_err_t rc = write_tar_file(dir, names, count, tmp);
   if (rc == k_ra8_ok) {
-    rc = compress(tmp, out_path);
+    rc = compress(arena, tmp, out_path);
   }
   (void)remove(tmp);
   return rc;
@@ -774,16 +794,18 @@ RA8_INTERNAL static ra8_err_t epub_add_page(mz_zip_archive* zip,
 }
 
 /** @brief Build + add content.opf and nav.xhtml, then finalize the archive. */
-RA8_INTERNAL static ra8_err_t
-epub_add_meta(mz_zip_archive* zip, const char* mani, const char* spine, const char* nav)
+RA8_INTERNAL static ra8_err_t epub_add_meta(ra8_arena_t*    arena,
+                                            mz_zip_archive* zip,
+                                            const char*     mani,
+                                            const char*     spine,
+                                            const char*     nav)
 {
   const size_t opf_cap = strlen(mani) + strlen(spine) + (size_t)k_epub_base_bytes;
   const size_t nav_cap = strlen(nav) + (size_t)k_epub_base_bytes;
-  char*        opf     = (char*)malloc(opf_cap);
-  char*        navdoc  = (char*)malloc(nav_cap);
+  char*        opf     = (char*)ra8_arena_alloc(arena, (uint32_t)opf_cap, 1U);
+  char*        navdoc  = (char*)ra8_arena_alloc(arena, (uint32_t)nav_cap, 1U);
   if ((opf == nullptr) || (navdoc == nullptr)) {
-    free(opf);
-    free(navdoc);
+
     return k_ra8_err_no_mem;
   }
   (void)snprintf(opf,
@@ -811,23 +833,30 @@ epub_add_meta(mz_zip_archive* zip, const char* mani, const char* spine, const ch
   const bool ok = epub_add_str(zip, "OEBPS/content.opf", opf) &&
                   epub_add_str(zip, "OEBPS/nav.xhtml", navdoc) &&
                   (mz_zip_writer_finalize_archive(zip) != MZ_FALSE);
-  free(opf);
-  free(navdoc);
+
   return ok ? k_ra8_ok : k_ra8_fail;
 }
 
 /** @brief Package `dir`'s pages into a valid EPUB3 at `out_path`. */
-RA8_INTERNAL static ra8_err_t
-export_epub(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
+RA8_INTERNAL static ra8_err_t export_epub(ra8_arena_t* arena,
+                                          const char*  dir,
+                                          char         names[][k_name_max],
+                                          size_t       count,
+                                          const char*  out_path)
 {
-  const size_t cap   = (size_t)k_epub_base_bytes + (count * (size_t)k_epub_per_page_bytes);
-  char*        mani  = (char*)calloc(1U, cap);
-  char*        spine = (char*)calloc(1U, cap);
-  char*        nav   = (char*)calloc(1U, cap);
+  const uint32_t mark  = ra8_arena_save(arena);
+  const size_t   cap   = (size_t)k_epub_base_bytes + (count * (size_t)k_epub_per_page_bytes);
+  char*          mani  = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
+  char*          spine = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
+  char*          nav   = (char*)ra8_arena_alloc(arena, (uint32_t)cap, 1U);
+  if (mani)
+    memset(mani, 0, cap);
+  if (spine)
+    memset(spine, 0, cap);
+  if (nav)
+    memset(nav, 0, cap);
   if ((mani == nullptr) || (spine == nullptr) || (nav == nullptr)) {
-    free(mani);
-    free(spine);
-    free(nav);
+
     return k_ra8_err_no_mem;
   }
   mz_zip_archive zip;
@@ -842,15 +871,14 @@ export_epub(const char* dir, char names[][k_name_max], size_t count, const char*
     rc = epub_add_page(&zip, dir, names[i], i, mani, spine, nav, cap);
   }
   if (rc == k_ra8_ok) {
-    rc = epub_add_meta(&zip, mani, spine, nav);
+    rc = epub_add_meta(arena, &zip, mani, spine, nav);
   }
   if (zip_open) {
     (void)mz_zip_writer_end(&zip);
   }
-  free(mani);
-  free(spine);
-  free(nav);
+
   /* A partial EPUB is ::export_atomic's temp to discard, not ours. */
+  ra8_arena_restore(arena, mark);
   return rc;
 }
 
@@ -861,8 +889,8 @@ RA8_INTERNAL static ra8_err_t run_rabook_python(const char* cbz, const char* out
 {
 #ifdef MDL_EPUB_COMPILE_DIR
   char script[PATH_MAX];
-  (void)snprintf(script, sizeof(script), "%s/cbz_compile.py", MDL_EPUB_COMPILE_DIR);
-  (void)setenv("PYTHONPATH", MDL_EPUB_COMPILE_DIR, 1);
+  (void)snprintf(script, sizeof(script), "%s/cbz_compile.py", (const char*)(MDL_EPUB_COMPILE_DIR));
+  (void)setenv("PYTHONPATH", (const char*)(MDL_EPUB_COMPILE_DIR), 1);
   const char* const argv[] = {"python3", script, cbz, out_path, "--rtl", nullptr};
   pid_t             pid    = 0;
   const int rc = posix_spawnp(&pid, argv[0], nullptr, nullptr, (char* const*)argv, spawn_environ());
@@ -904,7 +932,8 @@ export_rabook(const char* dir, char names[][k_name_max], size_t count, const cha
 }
 
 /** @brief Run one format's writer, producing the container at `out_path`. */
-RA8_INTERNAL static ra8_err_t export_dispatch(mdl_format_t fmt,
+RA8_INTERNAL static ra8_err_t export_dispatch(ra8_arena_t* arena,
+                                              mdl_format_t fmt,
                                               const char*  dir,
                                               char         names[][k_name_max],
                                               size_t       count,
@@ -916,11 +945,11 @@ RA8_INTERNAL static ra8_err_t export_dispatch(mdl_format_t fmt,
     case k_mdl_fmt_cbt:
       return write_tar_file(dir, names, count, out_path);
     case k_mdl_fmt_cbt_gz:
-      return export_tar_wrapped(dir, names, count, out_path, gzip_file);
+      return export_tar_wrapped(arena, dir, names, count, out_path, gzip_file);
     case k_mdl_fmt_cbt_xz:
-      return export_tar_wrapped(dir, names, count, out_path, xz_file);
+      return export_tar_wrapped(arena, dir, names, count, out_path, xz_file);
     case k_mdl_fmt_epub:
-      return export_epub(dir, names, count, out_path);
+      return export_epub(arena, dir, names, count, out_path);
     case k_mdl_fmt_rabook:
       return export_rabook(dir, names, count, out_path);
     case k_mdl_fmt_cbr:
@@ -943,7 +972,8 @@ RA8_INTERNAL static ra8_err_t export_dispatch(mdl_format_t fmt,
  *          costs nothing: the destination is not touched until a complete good
  *          copy exists. See mdl_atomic.h.
  */
-RA8_INTERNAL static ra8_err_t export_atomic(mdl_format_t fmt,
+RA8_INTERNAL static ra8_err_t export_atomic(ra8_arena_t* arena,
+                                            mdl_format_t fmt,
                                             const char*  dir,
                                             char         names[][k_name_max],
                                             size_t       count,
@@ -953,7 +983,7 @@ RA8_INTERNAL static ra8_err_t export_atomic(mdl_format_t fmt,
   if (!mdl_atomic_tmp_path(out_path, tmp_path, sizeof(tmp_path))) {
     return k_ra8_fail;
   }
-  const ra8_err_t rc = export_dispatch(fmt, dir, names, count, tmp_path);
+  const ra8_err_t rc = export_dispatch(arena, fmt, dir, names, count, tmp_path);
   if (rc != k_ra8_ok) {
     mdl_atomic_abort(tmp_path);
     return rc;
@@ -961,7 +991,10 @@ RA8_INTERNAL static ra8_err_t export_atomic(mdl_format_t fmt,
   return mdl_atomic_commit(tmp_path, out_path) ? k_ra8_ok : k_ra8_fail;
 }
 
-ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path)
+ra8_err_t mdl_export_chapter(ra8_arena_t* arena,
+                             mdl_format_t fmt,
+                             const char*  chapter_dir,
+                             const char*  out_path)
 {
   if ((chapter_dir == nullptr) || (out_path == nullptr) || (fmt == k_mdl_fmt_loose) ||
       (fmt == k_mdl_fmt_invalid)) {
@@ -969,7 +1002,7 @@ ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const ch
   }
   if (fmt == k_mdl_fmt_cbr) {
     /* `rar` archives the directory itself, so it needs no page table. */
-    return export_atomic(fmt, chapter_dir, nullptr, 0U, out_path);
+    return export_atomic(arena, fmt, chapter_dir, nullptr, 0U, out_path);
   }
 
   static char  s_names[k_max_pages][k_name_max];
@@ -987,7 +1020,7 @@ ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const ch
     /* JOF writes one `.jof` sibling per page into chapter_dir; out_path names
      * no single container (see mdl_format_is_dir_output), so there is no single
      * file to rename into place -- mdl_export_jof commits each page itself. */
-    return mdl_export_jof(chapter_dir, s_names, count);
+    return mdl_export_jof(arena, chapter_dir, s_names, count);
   }
-  return export_atomic(fmt, chapter_dir, s_names, count, out_path);
+  return export_atomic(arena, fmt, chapter_dir, s_names, count, out_path);
 }

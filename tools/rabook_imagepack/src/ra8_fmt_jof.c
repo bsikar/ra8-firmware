@@ -31,6 +31,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include <stdint.h>
@@ -83,7 +86,7 @@ static const uint8_t s_fmt_webp_webp[4] = {'W', 'E', 'B', 'P'}; /* MAGIC-OK: WEB
  * @return Whether @p src begins with a WebP container head.
  * @retval true  Both the "RIFF" and "WEBP" fourCCs are present.
  * @retval false Too short, or either fourCC differs.
- * @pre @p src is non-NULL and describes `len` readable bytes at `bytes`.
+ * @pre @p src is non-nullptr and describes `len` readable bytes at `bytes`.
  * @pre @p src has been slurped whole (the sniff reads the head only).
  * @post No state is mutated.
  * @post A false result leaves the JPEG / PNG probes free to claim the source.
@@ -156,7 +159,7 @@ static ra8_err_t fmt_jof_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  *          scratch simultaneously. JPEG and PNG stream and would pay that
  *          whole-frame cost for nothing, so the arena is carved only when the
  *          source really is a WebP. For every other codec this reports success
- *          having produced a NULL arena, which is exactly the producer's
+ *          having produced a nullptr arena, which is exactly the producer's
  *          fail-closed "reject WebP" signal.
  * @param[in]  src      Encoded source blob to sniff.
  * @param[in]  max_w    Width cap in pixels used to size the arena.
@@ -176,7 +179,8 @@ static ra8_err_t fmt_jof_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t fmt_jof_carve_webp(const ra8_fmt_blob_t* src,
+static ra8_err_t fmt_jof_carve_webp(ra8_arena_t*          arena,
+                                    const ra8_fmt_blob_t* src,
                                     uint16_t              max_w,
                                     uint16_t              max_h,
                                     uint8_t**             out_work,
@@ -191,7 +195,7 @@ static ra8_err_t fmt_jof_carve_webp(const ra8_fmt_blob_t* src,
   if (need == 0U) {
     return k_ra8_err_invalid_size;
   }
-  uint8_t* mem = (uint8_t*)malloc((size_t)need);
+  uint8_t* mem = (uint8_t*)ra8_arena_alloc(arena, need, k_ra8_arena_align);
   if (mem == nullptr) {
     return k_ra8_err_no_mem;
   }
@@ -222,6 +226,7 @@ ra8_err_t ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t
  * sink it hands back to its own caller) instead of juggling three, which is
  * what keeps the entry point's cleanup legible.
  *
+ * @param[in,out] arena     Bump allocator for produce scratch.
  * @param[in]     src       Source image bytes to tile.
  * @param[in]     max_w     Width cap in pixels, sizing the WebP arena.
  * @param[in]     max_h     Height cap in pixels, sizing the WebP arena.
@@ -246,7 +251,8 @@ ra8_err_t ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t* src,
+static ra8_err_t fmt_jof_run_produce(ra8_arena_t*          arena,
+                                     const ra8_fmt_blob_t* src,
                                      uint16_t              max_w,
                                      uint16_t              max_h,
                                      uint16_t              tile_w,
@@ -256,15 +262,14 @@ static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t* src,
                                      ra8_jof_memstore_t*   store,
                                      ra8_jof_info_t*       out_info)
 {
-  uint8_t* work = (uint8_t*)malloc((size_t)work_cap);
+  uint8_t* work = (uint8_t*)ra8_arena_alloc(arena, work_cap, k_ra8_arena_align);
   if (work == nullptr) {
     return k_ra8_err_no_mem;
   }
   uint8_t*        webp_work = nullptr;
   size_t          webp_cap  = 0U;
-  const ra8_err_t carve_rc  = fmt_jof_carve_webp(src, max_w, max_h, &webp_work, &webp_cap);
+  const ra8_err_t carve_rc  = fmt_jof_carve_webp(arena, src, max_w, max_h, &webp_work, &webp_cap);
   if (carve_rc != k_ra8_ok) {
-    free(work);
     return carve_rc;
   }
   fmt_pull_ctx_t              pull = {.data = src->bytes, .len = src->len, .pos = 0U};
@@ -282,12 +287,11 @@ static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t* src,
                                       .webp_work     = webp_work,
                                       .webp_work_cap = webp_cap};
   const ra8_err_t             rc   = ra8_jof_produce(&cfg, out_info);
-  free(work);
-  free(webp_work);
   return rc;
 }
 
-ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
+ra8_err_t ra8_fmt_jof_produce(ra8_arena_t*          arena,
+                              const ra8_fmt_blob_t* src,
                               uint16_t              max_w,
                               uint16_t              max_h,
                               uint16_t              tile_w,
@@ -307,15 +311,22 @@ ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
   /* The atlas can expand slightly over the source for incompressible input;
    * size the sink from the decoded worst case plus the index and trailer. */
   const size_t sink_cap = ra8_fmt_jof_sink_cap(src->len);
-  uint8_t*     sink     = (uint8_t*)malloc(sink_cap);
+  uint8_t*     sink     = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sink_cap, k_ra8_arena_align);
   if (sink == nullptr) {
     return k_ra8_err_no_mem;
   }
   ra8_jof_memstore_t store = {.buf = sink, .cap = sink_cap, .len = 0U};
-  const ra8_err_t    rc =
-    fmt_jof_run_produce(src, max_w, max_h, tile_w, tile_h, codec, work_cap, &store, out_info);
+  const ra8_err_t    rc    = fmt_jof_run_produce(arena,
+                                           src,
+                                           max_w,
+                                           max_h,
+                                           tile_w,
+                                           tile_h,
+                                           codec,
+                                           work_cap,
+                                           &store,
+                                           out_info);
   if (rc != k_ra8_ok) {
-    free(sink);
     return rc;
   }
   out_atlas->bytes = sink;
@@ -323,7 +334,8 @@ ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_fmt_jof_convert(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t
+ra8_fmt_jof_convert(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
@@ -341,7 +353,8 @@ ra8_err_t ra8_fmt_jof_convert(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* o
   const uint16_t band  = (h < (uint16_t)k_fmt_jof_band_h) ? h : (uint16_t)k_fmt_jof_band_h;
   ra8_fmt_blob_t atlas = {};
   ra8_jof_info_t info  = {};
-  rc = ra8_fmt_jof_produce(src, w, h, w, band, (uint8_t)k_ra8_jof_codec_deflate, &atlas, &info);
+  rc =
+    ra8_fmt_jof_produce(arena, src, w, h, w, band, (uint8_t)k_ra8_jof_codec_deflate, &atlas, &info);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "ra8_fmt: transcode failed (rc=%d)\n", (int)rc);
     return rc;

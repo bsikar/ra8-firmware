@@ -12,8 +12,11 @@
  * that header stay backend-agnostic.
  *
  * @see mdl_net.h  The abstract seam and its dispatchers.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #pragma once
 
@@ -32,16 +35,16 @@
  * Injection seam: production wires this factory; tests wire a fake with the
  * same ::mdl_net_iface_t shape.
  *
- * @param[in] policy Session security policy, or NULL for the safe defaults
+ * @param[in] policy Session security policy, or nullptr for the safe defaults
  *                   (no private hosts, same-host redirects only, no size cap).
  *
- * @return Owned handle, or NULL on allocation/init failure, or if any
+ * @return Owned handle, or nullptr on allocation/init failure, or if any
  *         security-relevant libcurl option could not be applied.
- * @retval non-NULL A ready interface; release it with ::mdl_net_destroy.
- * @retval NULL     Global init, allocation, or option-hardening failed.
+ * @retval non-nullptr A ready interface; release it with ::mdl_net_destroy.
+ * @retval nullptr     Global init, allocation, or option-hardening failed.
  *
  * @pre libcurl is available at link time.
- * @pre `policy`, when non-NULL, describes the intended escape hatches.
+ * @pre `policy`, when non-nullptr, describes the intended escape hatches.
  * @post On success the returned handle owns a hardened libcurl easy handle.
  * @post On failure no resources are leaked.
  *
@@ -49,4 +52,6 @@
  * @since 0.1.0
  */
 RA8_DI_SLOT("net_iface")
-mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy);
+#include "ra8_host_arena.h"
+
+mdl_net_iface_t* mdl_net_curl_create(ra8_arena_t* arena, const mdl_net_policy_t* policy);

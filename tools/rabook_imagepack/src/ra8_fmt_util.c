@@ -15,6 +15,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include <stdint.h>
@@ -26,6 +29,7 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_fmt.h"
+#include "ra8_host_arena.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_fmt_util";
@@ -77,7 +81,7 @@ bool ra8_fmt_magic_is(const ra8_fmt_blob_t* src, const char* magic)
  * @brief Determine an open file's byte length via a seek to the end.
  * @details Split out of ::ra8_fmt_slurp so that entry point stays within the
  *          statement budget; leaves the cursor rewound to byte 0.
- * @param[in]  fp      Open readable stream (non-NULL).
+ * @param[in]  fp      Open readable stream (non-nullptr).
  * @param[out] out_len Receives the length in bytes.
  * @return Result code.
  * @retval k_ra8_ok               Length measured and the cursor rewound.
@@ -110,7 +114,7 @@ static ra8_err_t priv_stream_len(FILE* fp, size_t* out_len)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_fmt_slurp(const char* path, ra8_fmt_blob_t* out)
+ra8_err_t ra8_fmt_slurp(ra8_arena_t* arena, const char* path, ra8_fmt_blob_t* out)
 {
   RA8_CHECK_NULL_PTR(path, s_tag, "path must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -125,7 +129,7 @@ ra8_err_t ra8_fmt_slurp(const char* path, ra8_fmt_blob_t* out)
     (void)fclose(f);
     return rc;
   }
-  uint8_t* buf = (uint8_t*)malloc(len);
+  uint8_t* buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)len, k_ra8_arena_align);
   if (buf == nullptr) {
     (void)fclose(f);
     return k_ra8_err_no_mem;
@@ -133,7 +137,6 @@ ra8_err_t ra8_fmt_slurp(const char* path, ra8_fmt_blob_t* out)
   const size_t got = fread(buf, 1U, len, f);
   (void)fclose(f);
   if (got != len) {
-    free(buf);
     return k_ra8_err_not_found;
   }
   out->bytes = buf;
@@ -146,7 +149,6 @@ void ra8_fmt_blob_free(ra8_fmt_blob_t* blob)
   if (blob == nullptr) {
     return;
   }
-  free(blob->bytes);
   blob->bytes = nullptr;
   blob->len   = 0U;
 }
@@ -175,8 +177,8 @@ ra8_err_t ra8_fmt_write_file(const char* path, const uint8_t* buf, size_t len)
  * @brief Print one 16-byte hex + ASCII dump line.
  * @details Renders the absolute offset, the hex bytes padded to a fixed column
  *          width, then the printable-ASCII gutter with '.' for other codes.
- * @param[in] out   Report sink (non-NULL).
- * @param[in] row   Bytes for this line (non-NULL).
+ * @param[in] out   Report sink (non-nullptr).
+ * @param[in] row   Bytes for this line (non-nullptr).
  * @param[in] n     Bytes in this line (1..16).
  * @param[in] addr  Absolute offset of `row[0]`.
  * @pre @p out is an open stream.

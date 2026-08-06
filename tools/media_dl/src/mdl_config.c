@@ -1,8 +1,11 @@
 /**
  * @file mdl_config.c
  * @brief Flat key=value site-descriptor parser (host stdio).
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include "mdl_config.h"
 
@@ -194,6 +197,8 @@ ra8_err_t mdl_config_load(const char* path, mdl_site_t* out)
   FILE* fp = fopen(path, "r");
   if (fp == nullptr) {
     (void)fprintf(stderr, "media_dl: cannot open config '%s'\n", path);
+    // cppcheck-suppress resourceLeak
+    // fp is nullptr here
     return k_ra8_fail;
   }
   config_parse_stream(fp, out);

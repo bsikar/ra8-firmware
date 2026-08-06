@@ -10,8 +10,11 @@
  * the libcurl backend's pure transfer classifier and bounded write callback, and
  * the seeded jitter + injectable-clock politeness behaviour. Uses the repo's
  * `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include <curl/curl.h>
 #include <dirent.h>
@@ -26,7 +29,11 @@
 #include "mdl_net_curl.h"
 #include "mdl_net_curl_internal.h"
 #include "mdl_politeness.h"
+#include "ra8_host_arena.h"
 #include "unity_minimal.h"
+
+static uint8_t     s_test_arena_buf[4U * 1024U * 1024U];
+static ra8_arena_t s_test_arena;
 
 /* ---- #310: mdl_net vtable seam -- scripted fake backend + net tests ------ */
 
@@ -53,10 +60,10 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_err_t   rc;          /**< Result the fetch call returns.                    */
-  long        status;      /**< HTTP status reported through `resp`.              */
-  const char* body;        /**< Body copied into the buffer on ok, or NULL.       */
-  const char* retry_after; /**< Raw Retry-After surfaced through `resp`, or NULL. */
+  ra8_err_t   rc;          /**< Result the fetch call returns.                       */
+  long        status;      /**< HTTP status reported through `resp`.                 */
+  const char* body;        /**< Body copied into the buffer on ok, or nullptr.       */
+  const char* retry_after; /**< Raw Retry-After surfaced through `resp`, or nullptr. */
 } fake_reply_t;
 
 /**
@@ -175,16 +182,16 @@ static mdl_net_iface_t fake_iface(fake_net_t* f)
  *
  * @par MC/DC:
  * Decision: mdl_net_get_buf's argument guard
- * `(net->vtable==NULL) || (url==NULL) || (req==NULL) || (buf==NULL) || (cap==0)`
- * (5 conditions, OR; N+1 = 6 vectors). A separate `net==NULL` guard precedes it.
+ * `(net->vtable==nullptr) || (url==nullptr) || (req==nullptr) || (buf==nullptr) || (cap==0)`
+ * (5 conditions, OR; N+1 = 6 vectors). A separate `net==nullptr` guard precedes it.
  * - V1: vtable set, url,req,buf ok, cap>0 -> false (control: fetch dispatched, ok)
- * - V2: vtable=NULL, rest ok             -> true  (varies vtable)
- * - V3: url=NULL, rest ok                -> true  (varies url)
- * - V4: req=NULL, rest ok                -> true  (varies req)
- * - V5: buf=NULL, rest ok                -> true  (varies buf)
+ * - V2: vtable=nullptr, rest ok             -> true  (varies vtable)
+ * - V3: url=nullptr, rest ok                -> true  (varies url)
+ * - V4: req=nullptr, rest ok                -> true  (varies req)
+ * - V5: buf=nullptr, rest ok                -> true  (varies buf)
  * - V6: cap=0, rest ok                   -> true  (varies cap)
  * V1 pairs with each of V2..V6 to show that condition independently drives the
- * outcome. The preceding `net==NULL` guard is exercised by its own vector.
+ * outcome. The preceding `net==nullptr` guard is exercised by its own vector.
  */
 static void test_net_dispatch_guard(void)
 {
@@ -201,22 +208,22 @@ static void test_net_dispatch_guard(void)
               k_ra8_ok);
   TEST_ASSERT(strcmp(buf, "OK") == 0);
   TEST_ASSERT_EQ((uint16_t)2, (uint16_t)got);
-  /* V2 vtable NULL */
+  /* V2 vtable nullptr */
   TEST_ASSERT(mdl_net_get_buf(&badv, "http://h/a", &req, buf, sizeof(buf), &got, nullptr) ==
               k_ra8_err_invalid_arg);
-  /* V3 url NULL */
+  /* V3 url nullptr */
   TEST_ASSERT(mdl_net_get_buf(&good, nullptr, &req, buf, sizeof(buf), &got, nullptr) ==
               k_ra8_err_invalid_arg);
-  /* V4 req NULL */
+  /* V4 req nullptr */
   TEST_ASSERT(mdl_net_get_buf(&good, "http://h/a", nullptr, buf, sizeof(buf), &got, nullptr) ==
               k_ra8_err_invalid_arg);
-  /* V5 buf NULL */
+  /* V5 buf nullptr */
   TEST_ASSERT(mdl_net_get_buf(&good, "http://h/a", &req, nullptr, sizeof(buf), &got, nullptr) ==
               k_ra8_err_invalid_arg);
   /* V6 cap 0 */
   TEST_ASSERT(mdl_net_get_buf(&good, "http://h/a", &req, buf, 0U, &got, nullptr) ==
               k_ra8_err_invalid_arg);
-  /* Separate net==NULL guard */
+  /* Separate net==nullptr guard */
   TEST_ASSERT(mdl_net_get_buf(nullptr, "http://h/a", &req, buf, sizeof(buf), &got, nullptr) ==
               k_ra8_err_invalid_arg);
   /* Only the control vector reached the backend. */
@@ -229,14 +236,14 @@ static void test_net_dispatch_guard(void)
  *
  * @par MC/DC:
  * Decision: mdl_net_get_file's guard
- * `(net->vtable==NULL) || (url==NULL) || (req==NULL) || (out_path==NULL)`
- * (4 conditions, OR; N+1 = 5 vectors), after a separate `net==NULL` guard.
+ * `(net->vtable==nullptr) || (url==nullptr) || (req==nullptr) || (out_path==nullptr)`
+ * (4 conditions, OR; N+1 = 5 vectors), after a separate `net==nullptr` guard.
  * - V1: all ok           -> false (control: dispatched, ok)
- * - V2: vtable=NULL       -> true  (varies vtable)
- * - V3: url=NULL          -> true  (varies url)
- * - V4: req=NULL          -> true  (varies req)
- * - V5: out_path=NULL     -> true  (varies out_path)
- * V1 pairs with each to isolate one condition; `net==NULL` has its own vector.
+ * - V2: vtable=nullptr       -> true  (varies vtable)
+ * - V3: url=nullptr          -> true  (varies url)
+ * - V4: req=nullptr          -> true  (varies req)
+ * - V5: out_path=nullptr     -> true  (varies out_path)
+ * V1 pairs with each to isolate one condition; `net==nullptr` has its own vector.
  */
 static void test_net_get_file_guard(void)
 {
@@ -301,7 +308,7 @@ static void test_net_fake_scripts_and_records(void)
               k_ra8_err_busy);
   TEST_ASSERT_EQ((int64_t)k_http_unavail, resp.status);
   TEST_ASSERT(strcmp(resp.retry_after, "42") == 0);
-  /* 3rd: a scripted OK file; a NULL resp is accepted (no plumbing required). */
+  /* 3rd: a scripted OK file; a nullptr resp is accepted (no plumbing required). */
   TEST_ASSERT(mdl_net_get_file(&net, "http://cdn/img2.jpg", &r1, "/dev/null", &got, nullptr) ==
               k_ra8_ok);
 
@@ -353,17 +360,17 @@ static void test_net_classify(void)
  * @test test_net_buf_write_overflow
  *
  * @par MC/DC:
- * mdl_net_curl_buf_write has two single-condition guards (`user==NULL` and
+ * mdl_net_curl_buf_write has two single-condition guards (`user==nullptr` and
  * `(len+bytes) > cap`), not a compound decision. Vectors: a within-cap append,
  * an at-cap append, an over-cap write that returns 0 and latches overflow, and
- * a NULL sink that returns 0.
+ * a nullptr sink that returns 0.
  */
 static void test_net_buf_write_overflow(void)
 {
   TEST_BEGIN("net buf write overflow");
-  char       dst[k_net_dst];
-  char       chunk[] = "abcde";
-  buf_sink_t sink    = {.buf = dst, .cap = 4U, .len = 0U, .overflow = false};
+  char       dst[k_net_dst] = {};
+  char       chunk[]        = "abcde";
+  buf_sink_t sink           = {.buf = dst, .cap = 4U, .len = 0U, .overflow = false};
   /* within cap: 3 bytes into cap 4. */
   TEST_ASSERT_EQ((uint16_t)3, (uint16_t)mdl_net_curl_buf_write(chunk, 1U, 3U, &sink));
   TEST_ASSERT_EQ((uint16_t)3, (uint16_t)sink.len);
@@ -375,7 +382,7 @@ static void test_net_buf_write_overflow(void)
   TEST_ASSERT_EQ((uint16_t)0, (uint16_t)mdl_net_curl_buf_write(chunk + 4, 1U, 1U, &sink));
   TEST_ASSERT(sink.overflow);
   TEST_ASSERT_EQ((uint16_t)4, (uint16_t)sink.len); /* unchanged after overflow */
-  /* NULL sink -> 0. */
+  /* nullptr sink -> 0. */
   TEST_ASSERT_EQ((uint16_t)0, (uint16_t)mdl_net_curl_buf_write(chunk, 1U, 1U, nullptr));
   TEST_END("net buf write overflow");
 }
@@ -495,10 +502,10 @@ static void test_politeness_bounds(void)
  * @test test_politeness_null
  *
  * @par MC/DC:
- * Decision: `p == NULL` in mdl_politeness_wait (single condition, N+1 = 2).
- * - V1: p == NULL -> returns 0, no sleep.
- * - V2: p != NULL -> draws and sleeps (covered by the tests above).
- * Also asserts the NULL-`p` no-op init paths do not crash.
+ * Decision: `p == nullptr` in mdl_politeness_wait (single condition, N+1 = 2).
+ * - V1: p == nullptr -> returns 0, no sleep.
+ * - V2: p != nullptr -> draws and sleeps (covered by the tests above).
+ * Also asserts the nullptr-`p` no-op init paths do not crash.
  */
 static void test_politeness_null(void)
 {
@@ -533,6 +540,9 @@ static bool atom_write(const char* path, const char* body)
 {
   FILE* f = fopen(path, "wb");
   if (f == nullptr) {
+    if (f) {
+      (void)fclose(f);
+    }
     return false;
   }
   const size_t n  = strlen(body);
@@ -545,6 +555,9 @@ static long atom_read(const char* path, char* out, size_t cap)
 {
   FILE* f = fopen(path, "rb");
   if (f == nullptr) {
+    if (f) {
+      (void)fclose(f);
+    }
     return -1;
   }
   const size_t n = fread(out, 1U, cap - 1U, f);
@@ -577,11 +590,11 @@ static bool atom_has_debris(const char* dir)
  * @test test_atomic_tmp_path_shape
  *
  * @par MC/DC:
- * Decision: `(final_path == NULL) || (out == NULL) || (cap == 0)` in
+ * Decision: `(final_path == nullptr) || (out == nullptr) || (cap == 0)` in
  * mdl_atomic_tmp_path (3 conditions, N+1 = 4 vectors).
  * - V1: final="/d/f.cbz", out=buf,  cap=sizeof(buf) -> false (control)
- * - V2: final=NULL,       out=buf,  cap=sizeof(buf) -> true  (varies final)
- * - V3: final="/d/f.cbz", out=NULL, cap=sizeof(buf) -> true  (varies out)
+ * - V2: final=nullptr,       out=buf,  cap=sizeof(buf) -> true  (varies final)
+ * - V3: final="/d/f.cbz", out=nullptr, cap=sizeof(buf) -> true  (varies out)
  * - V4: final="/d/f.cbz", out=buf,  cap=0           -> true  (varies cap)
  * V1+V2 prove final_path independently drives the outcome; V1+V3 and V1+V4 do
  * the same for out and cap.
@@ -618,11 +631,11 @@ static void test_atomic_tmp_path_shape(void)
  * @test test_atomic_commit_and_abort
  *
  * @par MC/DC:
- * Decision: `(tmp_path == NULL) || (final_path == NULL)` in mdl_atomic_commit
+ * Decision: `(tmp_path == nullptr) || (final_path == nullptr)` in mdl_atomic_commit
  * (2 conditions, N+1 = 3 vectors).
  * - V1: tmp=valid, final=valid -> false (control: the real rename runs)
- * - V2: tmp=NULL,  final=valid -> true  (varies tmp)
- * - V3: tmp=valid, final=NULL  -> true  (varies final)
+ * - V2: tmp=nullptr,  final=valid -> true  (varies tmp)
+ * - V3: tmp=valid, final=nullptr  -> true  (varies final)
  * V1+V2 prove tmp_path independently drives the outcome; V1+V3 the same for
  * final_path. Also asserts the behavioural contract either side of the guard:
  * commit REPLACES the destination, abort LEAVES it exactly as it was.
@@ -657,9 +670,9 @@ static void test_atomic_commit_and_abort(void)
   TEST_ASSERT(strcmp(body, "NEWBYTES") == 0);
   TEST_ASSERT(!atom_has_debris(dir));
 
-  TEST_ASSERT(!mdl_atomic_commit(nullptr, dst)); /* V2                         */
-  TEST_ASSERT(!mdl_atomic_commit(dst, nullptr)); /* V3                         */
-  mdl_atomic_abort(nullptr);                     /* no crash on the NULL no-op */
+  TEST_ASSERT(!mdl_atomic_commit(nullptr, dst)); /* V2                            */
+  TEST_ASSERT(!mdl_atomic_commit(dst, nullptr)); /* V3                            */
+  mdl_atomic_abort(nullptr);                     /* no crash on the nullptr no-op */
 
   (void)unlink(dst);
   (void)rmdir(dir);
@@ -704,7 +717,7 @@ static void test_curl_get_file_failure_keeps_existing(void)
   const mdl_net_policy_t pol = {.allow_private_hosts       = true,
                                 .allow_cross_host_redirect = false,
                                 .max_response_bytes        = 0U};
-  mdl_net_iface_t*       net = mdl_net_curl_create(&pol);
+  mdl_net_iface_t*       net = mdl_net_curl_create(&s_test_arena, &pol);
   TEST_ASSERT(net != nullptr);
 
   const mdl_net_req_t req  = {.user_agent = "media_dl-test",
@@ -735,6 +748,7 @@ static void test_curl_get_file_failure_keeps_existing(void)
  */
 int32_t main(void)
 {
+  (void)ra8_arena_init(&s_test_arena, s_test_arena_buf, sizeof s_test_arena_buf);
   test_net_dispatch_guard();
   test_net_get_file_guard();
   test_net_fake_scripts_and_records();

@@ -9,8 +9,11 @@
  * links into the host unit tests alongside a scripted fake exactly as it links
  * into the production tool alongside the libcurl backend -- which is what makes
  * the argument-validation decisions here testable without a network.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include "mdl_net.h"
 
@@ -72,5 +75,5 @@ void mdl_net_destroy(mdl_net_iface_t* net)
   if ((net->vtable != nullptr) && (net->vtable->destroy != nullptr)) {
     net->vtable->destroy(net->ctx);
   }
-  free(net);
+  /* net is arena-allocated; lifetime is managed by arena reset. */
 }

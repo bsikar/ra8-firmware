@@ -20,6 +20,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include <stdint.h>
@@ -95,7 +98,7 @@ size_t ra8_fmt_jof_sink_cap(size_t src_len)
  * @brief FNV-1a 32-bit hash over a byte window.
  * @details Cheap content fingerprint over a tile's DECODED payload, used to
  *          spot two tiles that decode to identical pixels.
- * @param[in] buf Bytes to hash (non-NULL when @p len > 0).
+ * @param[in] buf Bytes to hash (non-nullptr when @p len > 0).
  * @param[in] len Byte count.
  * @return The 32-bit digest.
  * @retval k_fmt_fnv_basis @p len was zero (the unmixed basis).
@@ -123,8 +126,8 @@ static uint32_t priv_fnv1a(const uint8_t* buf, size_t len)
  *          bpp, codec, tile count, index offset and total size -- as a labelled
  *          block, and flags the long-strip case where a tile spans the full
  *          image width. This is the header portion of an `inspect` dump.
- * @param[in] out  Report sink (non-NULL).
- * @param[in] info Parsed atlas geometry (non-NULL).
+ * @param[in] out  Report sink (non-nullptr).
+ * @param[in] info Parsed atlas geometry (non-nullptr).
  * @param[in] len  Backing size in bytes.
  * @pre @p out is an open stream and @p info came from a successful parse.
  * @pre @p len is the real container length.
@@ -165,10 +168,10 @@ static void priv_print_geom(FILE* out, const ra8_jof_info_t* info, size_t len)
  *          colour band -- a gutter between panels -- legitimately repeats many
  *          times in a real page, so identical uniform tiles are normal and must
  *          not be reported as duplication.
- * @param[in]  atlas Container bytes (non-NULL).
- * @param[in]  info  Parsed geometry (non-NULL).
+ * @param[in]  atlas Container bytes (non-nullptr).
+ * @param[in]  info  Parsed geometry (non-nullptr).
  * @param[in]  idx   Tile index in row-major order.
- * @param[in]  buf   Reusable decode buffers (non-NULL).
+ * @param[in]  buf   Reusable decode buffers (non-nullptr).
  * @param[in,out] rec Record whose `hash` and `uniform` are filled.
  * @return Result code propagated from `ra8_jof_read_tile()`.
  * @retval k_ra8_ok Tile decoded; hash and uniformity recorded.
@@ -190,16 +193,16 @@ static ra8_err_t priv_tile_content(const ra8_fmt_blob_t*   atlas,
   uint16_t           tw    = 0U;
   uint16_t           th    = 0U;
   const ra8_err_t    rc    = ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                               &store,
-                                               info,
-                                               (uint16_t)(idx % (uint32_t)info->tile_cols),
-                                               (uint16_t)(idx / (uint32_t)info->tile_cols),
-                                               buf->scratch,
-                                               buf->scratch_cap,
-                                               buf->cell,
-                                               buf->cell_cap,
-                                               &tw,
-                                               &th);
+                                         &store,
+                                         info,
+                                         (uint16_t)(idx % (uint32_t)info->tile_cols),
+                                         (uint16_t)(idx / (uint32_t)info->tile_cols),
+                                         buf->scratch,
+                                         buf->scratch_cap,
+                                         buf->cell,
+                                         buf->cell_cap,
+                                         &tw,
+                                         &th);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -220,8 +223,8 @@ static ra8_err_t priv_tile_content(const ra8_fmt_blob_t*   atlas,
  *          geometry, and bounds-checks that the stored window lies inside the
  *          index region -- rejecting a container whose table points past its own
  *          payload.
- * @param[in]  atlas Container bytes (non-NULL).
- * @param[in]  info  Parsed geometry (non-NULL).
+ * @param[in]  atlas Container bytes (non-nullptr).
+ * @param[in]  info  Parsed geometry (non-nullptr).
  * @param[in]  idx   Tile index in row-major order.
  * @param[out] rec   Receives the entry plus its derived geometry.
  * @return Result code.
@@ -265,10 +268,10 @@ static ra8_err_t priv_tile_rec(const ra8_fmt_blob_t* atlas,
  *          table has `offset[n] == offset[n-1] + length[n-1]` throughout. Any
  *          break is a gap or an overlap; any repeated hash is duplicated
  *          content inside the file itself.
- * @param[in]  recs  Tile records (non-NULL, `count` entries).
+ * @param[in]  recs  Tile records (non-nullptr, `count` entries).
  * @param[in]  count Tile count.
  * @param[in]  first Offset the first tile must start at (header length).
- * @param[out] out   Report sink for the findings (non-NULL).
+ * @param[out] out   Report sink for the findings (non-nullptr).
  * @return Result code.
  * @retval k_ra8_ok                    Coverage exact and no duplicate payloads.
  * @retval k_ra8_err_validation_failed A gap, overlap or duplicate was found.
@@ -337,8 +340,8 @@ priv_check_table(const fmt_tile_rec_t* recs, uint32_t count, uint32_t first, FIL
  *          payload size, tile pixel dimensions and content hash -- capping the
  *          output at ::k_ra8_fmt_max_dump_rows and printing an elision note so a
  *          large atlas does not flood the report.
- * @param[in] out   Report sink (non-NULL).
- * @param[in] recs  Tile records (non-NULL).
+ * @param[in] out   Report sink (non-nullptr).
+ * @param[in] recs  Tile records (non-nullptr).
  * @param[in] count Tile count.
  * @pre @p out is an open stream and @p recs holds @p count records.
  * @pre The caller already ran the cross-checks.
@@ -376,10 +379,11 @@ static void priv_print_table(FILE* out, const fmt_tile_rec_t* recs, uint32_t cou
  * @details Owns the shared decode buffers for the whole walk so inspection
  *          allocates once rather than per tile, and releases them on every exit
  *          path including the error ones.
- * @param[in]  atlas Container bytes (non-NULL).
- * @param[in]  info  Parsed geometry (non-NULL).
- * @param[out] recs  Array of `info->tile_count` records to fill (non-NULL).
- * @param[in]  opts  Options carrying the report sink (non-NULL).
+ * @param[in,out] arena Bump allocator for decode buffers.
+ * @param[in]     atlas Container bytes (non-nullptr).
+ * @param[in]  info  Parsed geometry (non-nullptr).
+ * @param[out] recs  Array of `info->tile_count` records to fill (non-nullptr).
+ * @param[in]  opts  Options carrying the report sink (non-nullptr).
  * @return Result code.
  * @retval k_ra8_ok         Every record filled.
  * @retval k_ra8_err_no_mem A decode buffer could not be allocated.
@@ -392,20 +396,20 @@ static void priv_print_table(FILE* out, const fmt_tile_rec_t* recs, uint32_t cou
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_collect_tiles(const ra8_fmt_blob_t* atlas,
+static ra8_err_t priv_collect_tiles(ra8_arena_t*          arena,
+                                    const ra8_fmt_blob_t* atlas,
                                     const ra8_jof_info_t* info,
                                     fmt_tile_rec_t*       recs,
                                     const ra8_fmt_opts_t* opts)
 {
   const uint32_t   tmax = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
-  fmt_decode_buf_t buf  = {.cell        = (uint8_t*)malloc((size_t)tmax),
+  fmt_decode_buf_t buf  = {.cell =
+                             (uint8_t*)ra8_arena_alloc(arena, (uint32_t)tmax, k_ra8_arena_align),
                            .cell_cap    = tmax,
                            .scratch     = nullptr,
                            .scratch_cap = ra8_jof_stored_bound(tmax)};
-  buf.scratch           = (uint8_t*)malloc((size_t)buf.scratch_cap);
+  buf.scratch = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)buf.scratch_cap, k_ra8_arena_align);
   if ((buf.cell == nullptr) || (buf.scratch == nullptr)) {
-    free(buf.cell);
-    free(buf.scratch);
     return k_ra8_err_no_mem;
   }
   ra8_err_t rc = k_ra8_ok;
@@ -418,12 +422,11 @@ static ra8_err_t priv_collect_tiles(const ra8_fmt_blob_t* atlas,
       (void)fprintf(opts->report, "  tile %u could not be read or decoded\n", (unsigned)i);
     }
   }
-  free(buf.cell);
-  free(buf.scratch);
   return rc;
 }
 
-ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t
+ra8_fmt_jof_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");
@@ -441,13 +444,13 @@ ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* o
     return rc;
   }
   priv_print_geom(opts->report, &info, src->len);
-  fmt_tile_rec_t* recs = (fmt_tile_rec_t*)calloc((size_t)info.tile_count, sizeof(*recs));
+  fmt_tile_rec_t* recs =
+    (fmt_tile_rec_t*)ra8_arena_calloc(arena, (uint32_t)info.tile_count, sizeof(*recs));
   if (recs == nullptr) {
     return k_ra8_err_no_mem;
   }
-  rc = priv_collect_tiles(src, &info, recs, opts);
+  rc = priv_collect_tiles(arena, src, &info, recs, opts);
   if (rc != k_ra8_ok) {
-    free(recs);
     return rc;
   }
   if (opts->verbose) {
@@ -461,7 +464,6 @@ ra8_err_t ra8_fmt_jof_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* o
   }
   const ra8_err_t verdict =
     priv_check_table(recs, info.tile_count, (uint32_t)k_ra8_jof_hdr_bytes, opts->report);
-  free(recs);
   (void)fprintf(opts->report,
                 "verdict: %s\n",
                 (verdict == k_ra8_ok) ? "VALID (coverage exact, no duplicate tiles)"
@@ -588,16 +590,14 @@ static ra8_err_t priv_reassemble_tiles(ra8_jof_memstore_t*   store,
  * the pass, while @ref px is what the caller walks away with.
  *
  * @invariant After a successful ::priv_open_reassemble_ws all three pointers
- *            are non-NULL; after a failed one all three are NULL.
+ *            are non-nullptr; after a failed one all three are nullptr.
  * @invariant @ref raster equals @ref stride times the atlas height.
  *
  * @par Example:
  * @code
  * fmt_reassemble_ws_t ws = {};
- * if (priv_open_reassemble_ws(atlas, info, &ws)) {
+ * if (priv_open_reassemble_ws(arena, atlas, info, &ws)) {
  *   // ... use ws.px ...
- *   free(ws.cell);
- *   free(ws.scratch);
  * }
  * @endcode
  *
@@ -611,8 +611,8 @@ typedef struct {
   uint32_t           tile_max;  /**< Decoded-tile buffer size in bytes.     */
   uint32_t           scratch_c; /**< Stored-tile scratch size in bytes.     */
   uint8_t*           px;        /**< Zeroed full-page raster; caller keeps. */
-  uint8_t*           cell;      /**< One decoded tile; freed with the pass. */
-  uint8_t*           scratch;   /**< One stored tile; freed with the pass.  */
+  uint8_t*           cell;      /**< One decoded tile.                      */
+  uint8_t*           scratch;   /**< One stored tile.                       */
 } fmt_reassemble_ws_t;
 
 /**
@@ -625,15 +625,16 @@ typedef struct {
  * failed". The raster is zeroed because a decode that stops early must not
  * expose uninitialised memory as image data.
  *
- * @param[in]  atlas Container bytes the reader is opened over (non-NULL).
- * @param[in]  info  Parsed geometry the sizes come from (non-NULL).
+ * @param[in,out] arena Bump allocator for the workspace buffers.
+ * @param[in]     atlas Container bytes the reader is opened over (non-nullptr).
+ * @param[in]     info  Parsed geometry the sizes come from (non-nullptr).
  * @param[out] ws    Receives the reader, the sizes, and the three buffers.
  *
  * @return Whether the workspace is ready to use.
  * @retval true  All three buffers are allocated and @p ws is complete.
- * @retval false Nothing is allocated; @p ws holds NULL buffer pointers.
+ * @retval false Nothing is allocated; @p ws holds nullptr buffer pointers.
  *
- * @pre @p ws is non-NULL.
+ * @pre @p ws is non-nullptr.
  * @pre @p info came from a successful parse over @p atlas.
  * @post On success the caller owns `ws->px`, `ws->cell` and `ws->scratch`.
  * @post On failure no allocation outlives the call.
@@ -642,7 +643,8 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_open_reassemble_ws(const ra8_fmt_blob_t* atlas,
+static bool priv_open_reassemble_ws(ra8_arena_t*          arena,
+                                    const ra8_fmt_blob_t* atlas,
                                     const ra8_jof_info_t* info,
                                     fmt_reassemble_ws_t*  ws)
 {
@@ -652,22 +654,20 @@ static bool priv_open_reassemble_ws(const ra8_fmt_blob_t* atlas,
   ws->tile_max  = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
   ws->scratch_c = ra8_jof_stored_bound(ws->tile_max);
 
-  ws->px      = (uint8_t*)calloc(ws->raster, 1U);
-  ws->cell    = (uint8_t*)malloc((size_t)ws->tile_max);
-  ws->scratch = (uint8_t*)malloc((size_t)ws->scratch_c);
+  ws->px      = (uint8_t*)ra8_arena_calloc(arena, (uint32_t)ws->raster, 1U);
+  ws->cell    = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)ws->tile_max, k_ra8_arena_align);
+  ws->scratch = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)ws->scratch_c, k_ra8_arena_align);
   if ((ws->px != nullptr) && (ws->cell != nullptr) && (ws->scratch != nullptr)) {
     return true;
   }
-  free(ws->px);
-  free(ws->cell);
-  free(ws->scratch);
   ws->px      = nullptr;
   ws->cell    = nullptr;
   ws->scratch = nullptr;
   return false;
 }
 
-ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* atlas,
+ra8_err_t ra8_fmt_jof_reassemble(ra8_arena_t*          arena,
+                                 const ra8_fmt_blob_t* atlas,
                                  const ra8_jof_info_t* info,
                                  uint8_t**             out_px,
                                  size_t*               out_len)
@@ -678,7 +678,7 @@ ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* atlas,
   RA8_CHECK_NULL_PTR(out_len, s_tag, "out_len must not be nullptr");
   *out_px                = nullptr;
   fmt_reassemble_ws_t ws = {};
-  if (!priv_open_reassemble_ws(atlas, info, &ws)) {
+  if (!priv_open_reassemble_ws(arena, atlas, info, &ws)) {
     return k_ra8_err_no_mem;
   }
   const ra8_err_t rc = priv_reassemble_tiles(&ws.store,
@@ -689,10 +689,7 @@ ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* atlas,
                                              ws.tile_max,
                                              ws.scratch,
                                              ws.scratch_c);
-  free(ws.cell);
-  free(ws.scratch);
   if (rc != k_ra8_ok) {
-    free(ws.px);
     return rc;
   }
   *out_px  = ws.px;

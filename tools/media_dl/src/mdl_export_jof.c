@@ -26,6 +26,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 
 #include <limits.h>
@@ -81,7 +84,7 @@ static const uint8_t s_jof_webp_webp[k_jof_webp_tag_len] =
  * @details Mirrors the producer's own dispatch sniff: both fourCCs must match,
  *          so a non-WebP RIFF (WAVE, AVI) is not mistaken for a WebP page and
  *          charged the whole-frame arena.
- * @param[in] data Page bytes (non-NULL).
+ * @param[in] data Page bytes (non-nullptr).
  * @param[in] len  Readable byte count at @p data.
  * @return Whether @p data begins with a WebP container head.
  * @retval true  Both the "RIFF" and "WEBP" fourCCs are present.
@@ -138,10 +141,13 @@ RA8_INTERNAL static ra8_err_t jof_sink(void* ctx, const uint8_t* buf, size_t len
 }
 
 /** @brief Read a whole file into a malloc'd buffer. */
-RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t* out_len)
+RA8_INTERNAL static ra8_err_t
+slurp(ra8_arena_t* arena, const char* path, uint8_t** out_buf, size_t* out_len)
 {
   FILE* f = fopen(path, "rb");
   if (f == nullptr) {
+    // cppcheck-suppress resourceLeak
+    // f is nullptr here
     return k_ra8_fail;
   }
   (void)fseek(f, 0, SEEK_END);
@@ -151,9 +157,9 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t*
     (void)fclose(f);
     return k_ra8_fail;
   }
-  uint8_t* buf = (uint8_t*)malloc((size_t)sz);
+  uint8_t* buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sz, 1U);
   if ((buf == nullptr) || (fread(buf, 1U, (size_t)sz, f) != (size_t)sz)) {
-    free(buf);
+
     (void)fclose(f);
     return k_ra8_fail;
   }
@@ -169,7 +175,7 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t*
  *          compressed source, the decoded RGBA frame and libwebp's scratch at
  *          once. JPEG and PNG stream, so they would pay that whole-frame cost
  *          for nothing; the arena is carved only when the page really is a
- *          WebP. Reporting success with a NULL arena is the producer's
+ *          WebP. Reporting success with a nullptr arena is the producer's
  *          fail-closed "reject WebP" signal, correct for the other codecs.
  * @param[in]  src      Page bytes to sniff.
  * @param[in]  slen     Length of @p src in bytes.
@@ -189,7 +195,8 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t*
  * @see ra8_jof_webp_work_bytes()
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
+RA8_INTERNAL static ra8_err_t jof_carve_webp(ra8_arena_t*   arena,
+                                             const uint8_t* src,
                                              size_t         slen,
                                              uint16_t       w,
                                              uint16_t       h,
@@ -205,8 +212,9 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
   if (need == 0U) {
     return k_ra8_err_invalid_size;
   }
-  uint8_t* mem = (uint8_t*)malloc((size_t)need);
+  uint8_t* mem = (uint8_t*)ra8_arena_alloc(arena, need, 8U);
   if (mem == nullptr) {
+
     return k_ra8_err_no_mem;
   }
   *out_work = mem;
@@ -246,7 +254,8 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
  * @see jof_carve_webp()
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t* src,
+RA8_INTERNAL static ra8_err_t jof_produce_page(ra8_arena_t*   arena,
+                                               const uint8_t* src,
                                                size_t         slen,
                                                uint16_t       w,
                                                uint16_t       h,
@@ -254,15 +263,16 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t* src,
                                                uint32_t       work_cap,
                                                FILE*          out)
 {
-  uint8_t* work = (uint8_t*)malloc((size_t)work_cap);
+  uint8_t* work = (uint8_t*)ra8_arena_alloc(arena, work_cap, 8U);
   if (work == nullptr) {
+
     return k_ra8_err_no_mem;
   }
   uint8_t*        webp_work = nullptr;
   size_t          webp_cap  = 0U;
-  const ra8_err_t carve_rc  = jof_carve_webp(src, slen, w, h, &webp_work, &webp_cap);
+  const ra8_err_t carve_rc  = jof_carve_webp(arena, src, slen, w, h, &webp_work, &webp_cap);
   if (carve_rc != k_ra8_ok) {
-    free(work);
+
     return carve_rc;
   }
   jof_pull_ctx_t        pull = {.data = src, .len = slen, .pos = 0U};
@@ -281,18 +291,19 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t* src,
                                 .webp_work_cap = webp_cap};
   ra8_jof_info_t        info = {};
   const ra8_err_t       rc   = ra8_jof_produce(&cfg, &info);
-  free(work);
-  free(webp_work);
+
   return rc;
 }
 
 /** @brief Transcode one JPEG / PNG / WebP page to a `.jof` full-width-column atlas. */
-RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
+RA8_INTERNAL static ra8_err_t jof_one(ra8_arena_t* arena, const char* in_path, const char* out_path)
 {
-  uint8_t*  src  = nullptr;
-  size_t    slen = 0U;
-  ra8_err_t rc   = slurp(in_path, &src, &slen);
+  const uint32_t mark = ra8_arena_save(arena);
+  uint8_t*       src  = nullptr;
+  size_t         slen = 0U;
+  ra8_err_t      rc   = slurp(arena, in_path, &src, &slen);
   if (rc != k_ra8_ok) {
+    ra8_arena_restore(arena, mark);
     return rc;
   }
   uint16_t w = 0U;
@@ -300,13 +311,14 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
   /* Probe through the producer's own dispatch, so every format the producer can
    * decode (JPEG, PNG, WebP) is a format this exporter can size and write. */
   if (ra8_jof_probe_dims(src, slen, &w, &h) != k_ra8_ok) {
-    free(src);
+
     return k_ra8_err_not_supported;
   }
   const uint16_t tile_h   = (h < (uint16_t)k_jof_band_h) ? h : (uint16_t)k_jof_band_h;
   const uint32_t work_cap = ra8_jof_work_bytes(w, h, w, tile_h);
   if (work_cap == 0U) {
-    free(src);
+
+    ra8_arena_restore(arena, mark);
     return k_ra8_err_invalid_size;
   }
   /* Produce into a sibling temp and rename on success: re-exporting a chapter
@@ -314,27 +326,35 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
    * decode (see mdl_atomic.h). */
   char tmp[PATH_MAX];
   if (!mdl_atomic_tmp_path(out_path, tmp, sizeof(tmp))) {
-    free(src);
+
     return k_ra8_fail;
   }
   FILE* out = fopen(tmp, "wb");
   if (out == nullptr) {
-    free(src);
+
+    // cppcheck-suppress resourceLeak
+    // out is nullptr here
     return k_ra8_fail;
   }
-  rc = jof_produce_page(src, slen, w, h, tile_h, work_cap, out);
+  rc = jof_produce_page(arena, src, slen, w, h, tile_h, work_cap, out);
   if (fclose(out) != 0) {
     rc = (rc == k_ra8_ok) ? k_ra8_fail : rc;
   }
-  free(src);
+
   if (rc != k_ra8_ok) {
     mdl_atomic_abort(tmp);
+    ra8_arena_restore(arena, mark);
     return rc;
   }
-  return mdl_atomic_commit(tmp, out_path) ? k_ra8_ok : k_ra8_fail;
+  rc = mdl_atomic_commit(tmp, out_path) ? k_ra8_ok : k_ra8_fail;
+  ra8_arena_restore(arena, mark);
+  return rc;
 }
 
-RA8_PRIV ra8_err_t mdl_export_jof(const char* dir, const char names[][k_name_max], size_t count)
+RA8_PRIV ra8_err_t mdl_export_jof(ra8_arena_t* arena,
+                                  const char*  dir,
+                                  const char   names[][k_name_max],
+                                  size_t       count)
 {
   ra8_log_set_byte_sink(jof_log_sink, nullptr);
   ra8_err_t rc = k_ra8_ok;
@@ -349,7 +369,7 @@ RA8_PRIV ra8_err_t mdl_export_jof(const char* dir, const char names[][k_name_max
       *dot = '\0';
     }
     (void)snprintf(out_path, sizeof(out_path), "%s/%s.jof", dir, stem);
-    rc = jof_one(in_path, out_path);
+    rc = jof_one(arena, in_path, out_path);
   }
   return rc;
 }

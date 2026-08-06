@@ -1,8 +1,11 @@
 /**
  * @file mdl_sanitize.c
  * @brief Implementation of the untrusted-name sanitisers.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #include "mdl_sanitize.h"
 
@@ -82,8 +85,8 @@ RA8_INTERNAL static bool copy_sanitised(const char* raw, char* out, size_t cap, 
 {
   bool   clean = true;
   size_t n     = 0U;
-  size_t i     = 0U;
   if (raw != nullptr) {
+    size_t i = 0U;
     while ((raw[i] != '\0') && ((n + 1U) < cap)) {
       if (is_allowed_char(raw[i])) {
         out[n] = raw[i];
@@ -183,7 +186,7 @@ bool mdl_path_join(const char* parent, const char* seg, char* out, size_t cap)
   return true;
 }
 
-/** @brief XML entity for a metacharacter, or NULL when `c` needs no escape. */
+/** @brief XML entity for a metacharacter, or nullptr when `c` needs no escape. */
 RA8_INTERNAL static const char* xml_entity(char c)
 {
   switch (c) {

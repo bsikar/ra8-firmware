@@ -20,6 +20,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
+ *
+ *
+
  */
 #include "cache_bench.h"
 
@@ -27,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "sweep_block.h"
 #include "trace.h"
 
@@ -315,9 +319,9 @@ static uint32_t cb_replay_take_frame(const cache_policy_t* pol,
  *
  * @return bool true when everything allocated, false on OOM.
  * @retval true  @p idx and @p frames are ready for the replay loop.
- * @retval false At least one buffer is NULL; free via ::cb_replay_close.
+ * @retval false At least one buffer is nullptr; free via ::cb_replay_close.
  *
- * @pre @p idx and @p frames are non-NULL.
+ * @pre @p idx and @p frames are non-nullptr.
  * @pre @p capacity is greater than zero.
  * @post On true, every bucket head is -1 (empty resident set).
  * @post On false, any acquired buffer stays bound for ::cb_replay_close to free.
@@ -325,7 +329,9 @@ static uint32_t cb_replay_take_frame(const cache_policy_t* pol,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static bool cb_replay_open(cb_index_t* idx, cb_frame_t** frames, uint32_t capacity)
+RA8_NASA_RULE_3_OK /* host-only bench: dynamic cache arrays */
+  static bool
+  cb_replay_open(cb_index_t* idx, cb_frame_t** frames, uint32_t capacity)
 {
   const uint32_t hsize = cb_pow2_ceil(capacity * 4U);
   *frames              = (cb_frame_t*)calloc((size_t)capacity, sizeof(cb_frame_t));
@@ -347,13 +353,13 @@ static bool cb_replay_open(cb_index_t* idx, cb_frame_t** frames, uint32_t capaci
  * @details Releases the frame array and both index buffers, then zeroes @p idx
  *          so a subsequent call is a safe no-op. Called on every replay exit
  *          path, including a partial-allocation failure where some buffers may
- *          be NULL.
+ *          be nullptr.
  *
  * @param[in,out] idx    Index whose `bucket`/`next` buffers are freed+zeroed.
- * @param[in]     frames Frame array to free (NULL tolerated by `free`).
+ * @param[in]     frames Frame array to free (nullptr tolerated by `free`).
  *
- * @pre @p idx is non-NULL (its buffers may individually be NULL).
- * @pre Any non-NULL pointers came from ::cb_replay_open (not yet freed).
+ * @pre @p idx is non-nullptr (its buffers may individually be nullptr).
+ * @pre Any non-nullptr pointers came from ::cb_replay_open (not yet freed).
  * @post @p idx is all-zero and its buffers are released.
  * @post @p frames has been freed; the caller must not reuse it.
  *
@@ -467,7 +473,7 @@ static const uint32_t k_cb_sizes[] = {
  *
  * @param[in] tr Trace to report (name, key stream, footprint).
  *
- * @pre @p tr is non-NULL with `keys` valid for `n` accesses.
+ * @pre @p tr is non-nullptr with `keys` valid for `n` accesses.
  * @pre ::g_cb_policies / ::g_cb_policy_count are initialized.
  * @post One markdown table for @p tr is written to stdout.
  * @post @p tr and every policy are left unmodified (replays are self-contained).
@@ -515,7 +521,7 @@ static void cb_report_trace(const cb_trace_t* tr)
  * @param[in] traces Array of @p ntr workloads to average over.
  * @param[in] ntr    Number of traces in @p traces (> 0).
  *
- * @pre @p traces is non-NULL with @p ntr valid entries.
+ * @pre @p traces is non-nullptr with @p ntr valid entries.
  * @pre ::g_cb_policies / ::g_cb_policy_count are initialized.
  * @post One markdown summary table is written to stdout.
  * @post No trace or policy state is mutated by the reporting.
@@ -523,7 +529,7 @@ static void cb_report_trace(const cb_trace_t* tr)
  * @note Not thread-safe: writes stdout and runs replays. Benchmark thread only.
  * @since 0.1.0
  */
-static void cb_report_summary(cb_trace_t* traces, uint32_t ntr)
+static void cb_report_summary(const cb_trace_t* traces, uint32_t ntr)
 {
   const uint32_t mid_cap = (uint32_t)k_cb_mid_cap;
   (void)printf("\n## Summary at %u frames (mean over all workloads)\n\n", mid_cap);

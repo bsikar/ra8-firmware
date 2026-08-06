@@ -11,8 +11,11 @@
  * place, and so `main.c` stays a thin dispatcher. Every path is composed through
  * the guarded ::mdl_path_join, so an untrusted leaf can never escape the series
  * directory.
+ *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+
  */
 #pragma once
 
@@ -38,7 +41,7 @@
  * @retval 0U The chapter was packaged.
  * @retval 1U A path was rejected or the export failed (diagnostic printed).
  *
- * @pre @p series_dir and @p chap_id are non-NULL and NUL-terminated.
+ * @pre @p series_dir and @p chap_id are non-nullptr and NUL-terminated.
  * @pre @p series_dir names an existing directory.
  * @post On success a container (or JOF siblings) exists for the chapter.
  * @post On failure a diagnostic naming the chapter was written to stderr.
@@ -46,7 +49,10 @@
  * @note Not thread-safe (shared cwd during path resolution).
  * @since 0.1.0
  */
-size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* chap_id);
+#include "ra8_host_arena.h"
+
+size_t
+mdl_pack_one(ra8_arena_t* arena, mdl_format_t format, const char* series_dir, const char* chap_id);
 
 /**
  * @brief Package a combined page folder, refusing an incomplete archive by default.
@@ -62,13 +68,13 @@ size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* cha
  * @param[in] allow_incomplete Package (and mark) even when the run is incomplete.
  * @param[in] series_dir       Absolute, resolved series directory.
  * @param[in] combined_rel     Combined page folder leaf (relative to @p series_dir).
- * @param[in] stats            The finished run's tallies (never NULL).
+ * @param[in] stats            The finished run's tallies (never nullptr).
  *
  * @return The number of export failures (0 when packaged, skipped, or clean).
  * @retval 0U Packaged, or deliberately not packaged (nothing lost, or refused).
  * @retval 1U A path was rejected or the export itself failed.
  *
- * @pre @p series_dir, @p combined_rel, @p stats are non-NULL.
+ * @pre @p series_dir, @p combined_rel, @p stats are non-nullptr.
  * @pre @p stats was produced by ::mdl_fetch_run for this @p combined_rel.
  * @post An incomplete run is not packaged unless @p allow_incomplete is set.
  * @post A forced incomplete archive is named `.INCOMPLETE`.
@@ -77,7 +83,8 @@ size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* cha
  * @see mdl_fetch_run_incomplete
  * @since 0.1.0
  */
-size_t mdl_pack_combined(mdl_format_t             format,
+size_t mdl_pack_combined(ra8_arena_t*             arena,
+                         mdl_format_t             format,
                          bool                     allow_incomplete,
                          const char*              series_dir,
                          const char*              combined_rel,
