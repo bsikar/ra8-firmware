@@ -2,6 +2,9 @@
  * @file main.c
  * @brief ThreadX Module Manager hello-world kernel-side example.
  *
+ * @par Tag
+ * [Ring 2 / Core] {World: NS}
+ *
  * @details
  * Initialises the ThreadX Module Manager, loads a compiled-in module
  * binary in-place, and starts it. The module runs inside the MPU sandbox.
@@ -50,6 +53,9 @@ static uint8_t   s_startup_stack[2048U] __attribute__((aligned(4)));
 /**
  * @brief Startup thread - loads and starts the module.
  *
+ * @par Tag
+ * [Ring 2 / Core] {World: NS}
+ *
  * @details
  * txm_module_manager_start acquires a mutex with TX_WAIT_FOREVER, so it
  * must be called from a running thread, not from tx_application_define.
@@ -94,6 +100,9 @@ static void startup_thread_entry(ULONG input)
 
 /**
  * @brief ThreadX application entry - called from tx_kernel_enter().
+ *
+ * @par Tag
+ * [Ring 2 / Core] {World: NS}
  *
  * @param[in] first_unused_memory  First byte after kernel-owned RAM.
  */

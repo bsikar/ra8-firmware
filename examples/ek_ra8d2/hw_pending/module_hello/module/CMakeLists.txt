@@ -75,6 +75,7 @@ target_link_options(hello_module.elf PRIVATE
 
 # Generate .bin from .elf
 add_custom_command(TARGET hello_module.elf POST_BUILD
+  BYPRODUCTS hello_module.bin
   COMMAND ${CMAKE_OBJCOPY} -O binary hello_module.elf hello_module.bin
   COMMAND ${CMAKE_SIZE} hello_module.elf
   COMMENT "Generating hello_module.bin and showing size"

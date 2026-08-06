@@ -2,6 +2,9 @@
  * @file main.c
  * @brief Minimal ThreadX module - proves module isolation works.
  *
+ * @par Tag
+ * [Ring 2 / Core] {World: NS}
+ *
  * @details
  * This is the module-side entry point. It runs inside the MPU sandbox
  * managed by the kernel-side Module Manager. The module creates a single
@@ -29,6 +32,9 @@ static volatile ULONG s_tick_count;
 
 /**
  * @brief Module thread entry - sleeps in a loop, incrementing a counter.
+ *
+ * @par Tag
+ * [Ring 2 / Core] {World: NS}
  */
 static void hello_thread_entry(ULONG input)
 {
@@ -41,6 +47,9 @@ static void hello_thread_entry(ULONG input)
 
 /**
  * @brief Module entry point - called by the Module Manager when the module starts.
+ *
+ * @par Tag
+ * [Ring 2 / Core] {World: NS}
  *
  * @param[in] id  Module ID passed by the Module Manager.
  */
