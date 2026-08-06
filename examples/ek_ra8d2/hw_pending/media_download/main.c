@@ -15,7 +15,7 @@
 #include "ra8_c6link.h"
 #include "ra8_c6link_mdl.h"
 
-// TODO: Define transport and configurations properly
+/* TODO: Define transport and configurations properly */
 
 int main(void)
 {
