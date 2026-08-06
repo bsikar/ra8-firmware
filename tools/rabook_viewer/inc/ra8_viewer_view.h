@@ -31,7 +31,7 @@
 extern "C" {
 #endif
 
-#include "ra8_arena.h"
+#include "ra8_host_arena.h"
 
 /** @brief Opaque reader handle (defined in ra8_viewer_reader.h). */
 typedef struct ra8_viewer_reader ra8_viewer_reader_t;

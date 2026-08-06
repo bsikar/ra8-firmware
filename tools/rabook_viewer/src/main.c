@@ -29,7 +29,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "ra8_arena.h"
+#include "ra8_host_arena.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
 #include "ra8_viewer_reader.h"

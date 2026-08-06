@@ -52,6 +52,6 @@
  * @since 0.1.0
  */
 RA8_DI_SLOT("net_iface")
-#include "ra8_arena.h"
+#include "ra8_host_arena.h"
 
 mdl_net_iface_t* mdl_net_curl_create(ra8_arena_t* arena, const mdl_net_policy_t* policy);

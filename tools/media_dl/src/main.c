@@ -53,7 +53,7 @@
 #include "mdl_session.h"
 #include "mdl_state.h"
 #include "mdl_urlname.h"
-#include "ra8_arena.h"
+#include "ra8_host_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 

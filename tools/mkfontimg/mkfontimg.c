@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra8_arena.h"
+#include "ra8_host_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_fs.h"
 

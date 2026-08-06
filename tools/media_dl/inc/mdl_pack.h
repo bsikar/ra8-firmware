@@ -49,7 +49,7 @@
  * @note Not thread-safe (shared cwd during path resolution).
  * @since 0.1.0
  */
-#include "ra8_arena.h"
+#include "ra8_host_arena.h"
 
 size_t
 mdl_pack_one(ra8_arena_t* arena, mdl_format_t format, const char* series_dir, const char* chap_id);

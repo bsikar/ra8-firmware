@@ -27,7 +27,7 @@
 
 #include <stdint.h>
 
-#include "ra8_arena.h"
+#include "ra8_host_arena.h"
 #include "ra8_err.h"
 
 #ifdef __cplusplus

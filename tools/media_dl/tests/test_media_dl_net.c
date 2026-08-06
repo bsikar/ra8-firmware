@@ -29,7 +29,7 @@
 #include "mdl_net_curl.h"
 #include "mdl_net_curl_internal.h"
 #include "mdl_politeness.h"
-#include "ra8_arena.h"
+#include "ra8_host_arena.h"
 #include "unity_minimal.h"
 
 static uint8_t     s_test_arena_buf[4U * 1024U * 1024U];

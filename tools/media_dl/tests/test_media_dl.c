@@ -27,7 +27,7 @@
 #include "mdl_sanitize.h"
 #include "mdl_url_guard.h"
 #include "miniz.h"
-#include "ra8_arena.h"
+#include "ra8_host_arena.h"
 #include "ra8_jof.h"
 #include "tiny_jpeg_fixture.h"
 #include "unity_minimal.h"

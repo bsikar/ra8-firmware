@@ -1,5 +1,5 @@
 /**
- * @file ra8_arena.h
+ * @file ra8_host_arena.h
  * @brief A generic bump/arena allocator for device-portable tool code.
  * @ingroup grp_core
  *
@@ -39,8 +39,8 @@
 
  */
 
-#ifndef RA8_ARENA_H
-#define RA8_ARENA_H
+#ifndef RA8_HOST_ARENA_H
+#define RA8_HOST_ARENA_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -179,4 +179,4 @@ static inline uint32_t ra8_arena_remaining(const ra8_arena_t* a)
   return a->cap - a->used;
 }
 
-#endif /* RA8_ARENA_H */
+#endif /* RA8_HOST_ARENA_H */

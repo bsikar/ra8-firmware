@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "ra8_arena.h"
+#include "ra8_host_arena.h"
 #include "ra8_comic.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
