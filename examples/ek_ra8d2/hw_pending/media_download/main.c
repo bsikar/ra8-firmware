@@ -15,37 +15,37 @@
 #include "ra8_c6link.h"
 #include "ra8_c6link_mdl.h"
 
-/* TODO: Define transport and configurations properly */
+/* TODO: Define transport and configurations properly. */
 
 int main(void)
 {
   ra8_c6link_t link = {0};
-  // ra8_c6link_cfg_t cfg = { ... };
 
-  // 1. Initialize c6link
-  // ra8_err_t err = ra8_c6link_open(&link, &cfg);
-  // if (err != k_ra8_ok) { return -1; }
+  /* 1. Initialize c6link. */
+  /* ra8_c6link_cfg_t cfg = { ... }; */
+  /* ra8_err_t err = ra8_c6link_open(&link, &cfg); */
 
-  // 2. Request a book download via RPC
+  /* 2. Request a book download via RPC. */
   const char* url         = "https://example.com/book.rabook";
   const char* output_path = "/sd/book.rabook";
   ra8_err_t   err         = ra8_c6link_mdl_download(&link, url, output_path);
   if (err != k_ra8_ok) {
-    printf("Failed to start download\n");
+    (void)printf("Failed to start download\n");
     return -1;
   }
 
-  // 3. Show progress on the display & write to SD card
+  /* 3. Show progress on the display and write to SD card. */
   ra8_mdl_download_progress_t progress = {0};
-  while (progress.status == 0 /* downloading */) {
+  while (progress.status == 0U) {
     err = ra8_c6link_mdl_poll(&link, &progress);
     if (err == k_ra8_ok) {
-      printf("Progress: %lu / %lu bytes\n", progress.bytes_received, progress.total_bytes);
-      // TODO: Update display UI here
+      (void)printf("Progress: %u / %u bytes\n",
+                   (unsigned)progress.bytes_received,
+                   (unsigned)progress.total_bytes);
     }
-    // TODO: Sleep or yield
+    /* TODO: Sleep or yield. */
   }
 
-  // ra8_c6link_close(&link);
+  /* ra8_c6link_close(&link); */
   return 0;
 }
