@@ -2,6 +2,9 @@
  * @file main.c
  * @brief Test for C6 media downloader RPC client.
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

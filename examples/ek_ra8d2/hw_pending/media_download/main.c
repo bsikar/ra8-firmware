@@ -2,6 +2,9 @@
  * @file main.c
  * @brief Example application for media_dl RPC Service.
  *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
