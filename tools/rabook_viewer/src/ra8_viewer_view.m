@@ -64,10 +64,10 @@ typedef enum : uint32_t {
  * @param[in] h      Tile height.
  * @return A retained CGImageRef, or NULL on allocation failure.
  */
-static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w, uint32_t h)
+static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w, uint32_t h, ra8_arena_t* arena)
 {
   const size_t n    = (size_t)w * (size_t)h;
-  uint32_t*    argb = (uint32_t*)malloc(n * sizeof(uint32_t));
+  uint32_t*    argb = (uint32_t*)ra8_arena_alloc(arena, (uint32_t)(n * sizeof(uint32_t)));
   if (argb == nullptr) {
     return NULL;
   }
@@ -94,7 +94,6 @@ static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w
     CGContextRelease(bmp);
   }
   CGColorSpaceRelease(cs);
-  free(argb);
   return img;
 }
 
@@ -112,26 +111,28 @@ static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w
   CGFloat                                   _totalH;  /**< Laid-out document height.              */
   NSMutableDictionary<NSNumber*, NSImage*>* _cache;   /**< tile -> rendered image.                */
   NSMutableIndexSet*                        _failed;  /**< tiles that won't render.               */
+  ra8_arena_t*                              _arena;   /**< Arena allocator.                       */
 }
 @end
 
 @implementation ReaderDocumentView
 
-- (instancetype)initWithReader:(ra8_viewer_reader_t*)reader
+- (instancetype)initWithReader:(ra8_viewer_reader_t*)reader arena:(ra8_arena_t*)arena
 {
   self = [super initWithFrame:NSMakeRect(0, 0, (CGFloat)k_viewer_dflt_w, (CGFloat)k_viewer_dflt_w)];
   if (self == nil) {
     return nil;
   }
   _reader = reader;
+  _arena  = arena;
   _count  = ra8_viewer_tile_count(reader);
   _cache  = [NSMutableDictionary dictionary];
   _failed = [NSMutableIndexSet indexSet];
   if (_count > 0U) {
-    _tw   = (uint32_t*)calloc(_count, sizeof(uint32_t));
-    _th   = (uint32_t*)calloc(_count, sizeof(uint32_t));
-    _yTop = (CGFloat*)calloc(_count, sizeof(CGFloat));
-    _onH  = (CGFloat*)calloc(_count, sizeof(CGFloat));
+    _tw   = (uint32_t*)ra8_arena_calloc(arena, _count, (uint32_t)sizeof(uint32_t));
+    _th   = (uint32_t*)ra8_arena_calloc(arena, _count, (uint32_t)sizeof(uint32_t));
+    _yTop = (CGFloat*)ra8_arena_calloc(arena, _count, (uint32_t)sizeof(CGFloat));
+    _onH  = (CGFloat*)ra8_arena_calloc(arena, _count, (uint32_t)sizeof(CGFloat));
     for (uint32_t i = 0U; i < _count; i++) {
       uint32_t w = 0U;
       uint32_t h = 0U;
@@ -146,10 +147,6 @@ static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w
 
 - (void)dealloc
 {
-  free(_tw);
-  free(_th);
-  free(_yTop);
-  free(_onH);
 }
 
 /* Top-left origin, y downward: tile 0 at the top, natural reading order. */
@@ -216,12 +213,11 @@ static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w
   uint32_t  w   = 0U;
   uint32_t  h   = 0U;
   uint16_t* buf = nullptr;
-  if (ra8_viewer_render_tile565(_reader, i, &w, &h, &buf) != k_ra8_ok || buf == nullptr) {
+  if (ra8_viewer_render_tile565(_reader, i, &w, &h, &buf, _arena) != k_ra8_ok || buf == nullptr) {
     [_failed addIndex:(NSUInteger)i];
     return nil;
   }
-  CGImageRef cg = ra8_viewer_cgimage_from_565(buf, w, h);
-  free(buf);
+  CGImageRef cg = ra8_viewer_cgimage_from_565(buf, w, h, _arena);
   if (cg == NULL) {
     [_failed addIndex:(NSUInteger)i];
     return nil;
@@ -375,7 +371,7 @@ static void ra8_viewer_install_menu(void)
   [NSApp setMainMenu:menubar];
 }
 
-ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title)
+ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t* arena)
 {
   if (reader == nullptr) {
     return nullptr;
@@ -419,7 +415,7 @@ ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char*
     scroll.backgroundColor       = [NSColor colorWithWhite:0.11 alpha:1.0];
     scroll.autohidesScrollers    = YES;
 
-    ReaderDocumentView* doc = [[ReaderDocumentView alloc] initWithReader:reader];
+    ReaderDocumentView* doc = [[ReaderDocumentView alloc] initWithReader:reader arena:arena];
     scroll.documentView     = doc;
     [doc layoutForWidth:scroll.contentSize.width];
 
@@ -437,7 +433,7 @@ ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char*
     [doc scrollPoint:NSMakePoint(0.0, 0.0)];
     [NSApp activateIgnoringOtherApps:YES];
 
-    ra8_viewer_view_t* vv = (ra8_viewer_view_t*)calloc(1U, sizeof(*vv));
+    ra8_viewer_view_t* vv = (ra8_viewer_view_t*)ra8_arena_calloc(arena, 1U, (uint32_t)sizeof(*vv));
     if (vv == nullptr) {
       return nullptr;
     }
@@ -479,5 +475,4 @@ void ra8_viewer_view_close(ra8_viewer_view_t* view)
     view->scroll = nil;
     view->doc    = nil;
   }
-  free(view);
 }

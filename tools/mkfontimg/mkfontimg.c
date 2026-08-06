@@ -32,6 +32,10 @@
 #include <string.h>
 
 #include "ra8_fs.h"
+#include "ra8_arena.h"
+#include "ra8_attributes.h"
+
+enum : uint32_t { k_arena_bytes = 128U * 1024U * 1024U }; // 128 MiB — generous for disk images
 
 /** @brief FAT16 geometry + BPB field offsets (mirror of the host test). */
 typedef enum : uint32_t {
@@ -345,10 +349,10 @@ static int dump_image(const char* image_out)
  * @since 0.1.0
  */
 static int
-build_and_dump(const char* image_out, const uint8_t* font, size_t font_len, const char* dest_name)
+build_and_dump(ra8_arena_t* arena, const char* image_out, const uint8_t* font, size_t font_len, const char* dest_name)
 {
   s_disk.block_count = (uint32_t)k_blocks_fat16;
-  s_disk.bytes       = (uint8_t*)calloc(1U, (size_t)k_blocks_fat16 * (size_t)k_block_size);
+  s_disk.bytes       = (uint8_t*)ra8_arena_calloc(arena, 1U, (uint32_t)k_blocks_fat16 * (uint32_t)k_block_size);
   if (s_disk.bytes == nullptr) {
     (void)fprintf(stderr, "mkfontimg: out of memory (disk)\n");
     return 1;
@@ -365,17 +369,14 @@ build_and_dump(const char* image_out, const uint8_t* font, size_t font_len, cons
   ra8_fs_mount_t* mnt = nullptr;
   if (ra8_fs_mount(&backend, &mnt) != k_ra8_ok) {
     (void)fprintf(stderr, "mkfontimg: ra8_fs_mount failed\n");
-    free(s_disk.bytes);
     return 1;
   }
   if (write_font_file(mnt, font, font_len, dest_name) != 0) {
-    free(s_disk.bytes);
     return 1;
   }
   (void)ra8_fs_unmount(mnt);
 
   const int rc = dump_image(image_out);
-  free(s_disk.bytes);
   return rc;
 }
 
@@ -399,9 +400,9 @@ build_and_dump(const char* image_out, const uint8_t* font, size_t font_len, cons
  *
  * @note Not thread-safe; the tool is single-threaded.
  */
-static uint8_t* slurp_font(const char* font_in, size_t* font_len)
+static uint8_t* slurp_font(ra8_arena_t* arena, const char* font_in, size_t* font_len)
 {
-  uint8_t* font = (uint8_t*)malloc((size_t)k_font_cap);
+  uint8_t* font = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)k_font_cap);
   if (font == NULL) {
     (void)fprintf(stderr, "mkfontimg: out of memory\n");
     return nullptr;
@@ -409,14 +410,12 @@ static uint8_t* slurp_font(const char* font_in, size_t* font_len)
   FILE* fin = fopen(font_in, "rb");
   if (fin == NULL) {
     (void)fprintf(stderr, "mkfontimg: cannot open %s\n", font_in);
-    free(font);
     return nullptr;
   }
   const size_t len = fread(font, 1U, (size_t)k_font_cap, fin);
   (void)fclose(fin);
   if (len < (size_t)k_font_min_bytes) {
     (void)fprintf(stderr, "mkfontimg: %s too small (%zu bytes)\n", font_in, len);
-    free(font);
     return nullptr;
   }
   *font_len = len;
@@ -446,13 +445,13 @@ static uint8_t* slurp_font(const char* font_in, size_t* font_len)
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
-static int run_blank(int argc, char** argv)
+static int run_blank(ra8_arena_t* arena, int argc, char** argv)
 {
   if (argc != 3) {
     (void)fprintf(stderr, "usage: %s --blank <image-out>\n", argv[0]);
     return 2;
   }
-  if (build_and_dump(argv[2], nullptr, 0U, nullptr) != 0) {
+  if (build_and_dump(arena, argv[2], nullptr, 0U, nullptr) != 0) {
     return 1;
   }
   (void)fprintf(stderr, "mkfontimg: wrote %s (blank FAT16, no font)\n", argv[2]);
@@ -482,7 +481,7 @@ static int run_blank(int argc, char** argv)
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
-static int run_font(int argc, char** argv)
+static int run_font(ra8_arena_t* arena, int argc, char** argv)
 {
   if (argc < 3) {
     (void)fprintf(stderr, "usage: %s <font-in> <image-out> [dest-name]\n", argv[0]);
@@ -493,12 +492,11 @@ static int run_font(int argc, char** argv)
   const char* dest_name = (argc > 3) ? argv[3] : "FONT.OTF";
 
   size_t   font_len = 0U;
-  uint8_t* font     = slurp_font(font_in, &font_len);
+  const uint8_t* font     = slurp_font(arena, font_in, &font_len);
   if (font == nullptr) {
     return 1;
   }
-  const int rc = build_and_dump(image_out, font, font_len, dest_name);
-  free(font);
+  const int rc = build_and_dump(arena, image_out, font, font_len, dest_name);
   if (rc != 0) {
     return 1;
   }
@@ -506,10 +504,27 @@ static int run_font(int argc, char** argv)
   return 0;
 }
 
+RA8_NASA_RULE_3_OK
 int main(int argc, char** argv)
 {
-  if ((argc >= 2) && (strcmp(argv[1], "--blank") == 0)) {
-    return run_blank(argc, argv);
+  uint8_t* arena_buf = (uint8_t*)malloc(k_arena_bytes);
+  if (arena_buf == nullptr) {
+    (void)fprintf(stderr, "mkfontimg: out of memory for arena\n");
+    // cppcheck-suppress memleak  /* arena_buf is nullptr here */
+    return 1;
   }
-  return run_font(argc, argv);
+  ra8_arena_t arena;
+  if (ra8_arena_init(&arena, arena_buf, k_arena_bytes) != k_ra8_ok) {
+    free(arena_buf);
+    return 1;
+  }
+
+  int rc = 0;
+  if ((argc >= 2) && (strcmp(argv[1], "--blank") == 0)) {
+    rc = run_blank(&arena, argc, argv);
+  } else {
+    rc = run_font(&arena, argc, argv);
+  }
+  free(arena_buf);
+  return rc;
 }

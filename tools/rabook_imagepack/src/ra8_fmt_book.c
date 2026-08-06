@@ -247,7 +247,7 @@ static void priv_print_rabook_hdr(FILE*    out,
   (void)fprintf(out, "  reserved       : %u\n", (unsigned)reserved);
 }
 
-ra8_err_t ra8_fmt_rabook_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
+ra8_err_t ra8_fmt_rabook_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(opts, s_tag, "opts must not be nullptr");

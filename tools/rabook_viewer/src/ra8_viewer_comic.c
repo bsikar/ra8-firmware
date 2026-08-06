@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "ra8_arena.h"
 #include "ra8_comic.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
@@ -132,7 +133,7 @@ RA8_INTERNAL static void viewer_cap_render(uint32_t nw, uint32_t nh, uint32_t* r
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
-viewer_read_page_bytes(ra8_viewer_reader_t* r, uint32_t page, size_t* got)
+viewer_read_page_bytes(ra8_viewer_reader_t* r, uint32_t page, size_t* got, ra8_arena_t* arena)
 {
   uint64_t  raw_size = 0U;
   ra8_err_t rc = ra8_comic_page_info(&r->comic, page, nullptr, 0U, nullptr, &raw_size, nullptr);
@@ -148,7 +149,7 @@ viewer_read_page_bytes(ra8_viewer_reader_t* r, uint32_t page, size_t* got)
   if (rc != k_ra8_ok) {
     return rc;
   }
-  rc = viewer_reserve_page_buf(r, (size_t)raw_size);
+  rc = viewer_reserve_page_buf(r, (size_t)raw_size, arena);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -156,7 +157,7 @@ viewer_read_page_bytes(ra8_viewer_reader_t* r, uint32_t page, size_t* got)
   return ra8_comic_page_read(&r->comic, page, r->page_buf, r->page_cap, got);
 }
 
-ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped)
+ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped, ra8_arena_t* arena)
 {
   if (wrapped) {
     return ra8_comic_open_wrapped(&r->comic,
@@ -182,10 +183,10 @@ ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped)
                         (uint32_t)k_viewer_name_cap);
 }
 
-ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page)
+ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page, ra8_arena_t* arena)
 {
   size_t    got = 0U;
-  ra8_err_t rc  = viewer_read_page_bytes(r, page, &got);
+  ra8_err_t rc  = viewer_read_page_bytes(r, page, &got, arena);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -211,8 +212,8 @@ ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page)
   viewer_fit_box_t box = {.x = 0, .y = 0, .w = k_ra8_viewer_fb_width, .h = k_ra8_viewer_fb_height};
   viewer_fit_centered(src_w, src_h, &box);
 
-  ra8_img_arena_t arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
-  return ra8_img_decode_blit(&arena,
+  ra8_img_arena_t img_arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
+  return ra8_img_decode_blit(&img_arena,
                              r->page_buf,
                              got,
                              box.x,
@@ -224,7 +225,7 @@ ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page)
 }
 
 ra8_err_t
-viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out)
+viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out, ra8_arena_t* arena)
 {
   const uint32_t nw = r->tile_wpx[i];
   const uint32_t nh = r->tile_hpx[i];
@@ -236,7 +237,7 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
   viewer_cap_render(nw, nh, &rw, &rh);
 
   size_t    got = 0U;
-  ra8_err_t rc  = viewer_read_page_bytes(r, i, &got);
+  ra8_err_t rc  = viewer_read_page_bytes(r, i, &got, arena);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -247,16 +248,15 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
   if (buf_bytes > r->limits.max_output_bytes) {
     return k_ra8_err_decomp_output_cap;
   }
-  uint16_t* buf = (uint16_t*)malloc((size_t)buf_bytes);
+  uint16_t* buf = (uint16_t*)ra8_arena_alloc(arena, (uint32_t)buf_bytes);
   if (buf == nullptr) {
-    free(buf);
     return k_ra8_err_no_mem;
   }
   rc = ra8_gfx_init(buf, (uint16_t)rw, (uint16_t)rh, k_ra8_gfx_format_rgb565);
   if (rc == k_ra8_ok) {
     (void)ra8_gfx_clear((uint32_t)k_viewer_bg);
-    ra8_img_arena_t arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
-    rc                    = ra8_img_decode_blit(&arena,
+    ra8_img_arena_t img_arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
+    rc                    = ra8_img_decode_blit(&img_arena,
                                                 r->page_buf,
                                                 got,
                                                 0,
@@ -267,7 +267,6 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
                                                 nullptr);
   }
   if (rc != k_ra8_ok) {
-    free(buf);
     return rc;
   }
   *w   = rw;
@@ -276,15 +275,15 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
   return k_ra8_ok;
 }
 
-void viewer_probe_comic_tile(ra8_viewer_reader_t* r, uint32_t i, ra8_img_arena_t* arena)
+void viewer_probe_comic_tile(ra8_viewer_reader_t* r, uint32_t i, ra8_img_arena_t* img_arena, ra8_arena_t* arena)
 {
   size_t got = 0U;
-  if (viewer_read_page_bytes(r, i, &got) != k_ra8_ok) {
+  if (viewer_read_page_bytes(r, i, &got, arena) != k_ra8_ok) {
     return;
   }
   int32_t pw = 0;
   int32_t ph = 0;
-  ra8_img_arena_bind(arena);
+  ra8_img_arena_bind(img_arena);
   const ra8_err_t prc = ra8_img_probe_size(r->page_buf, got, &pw, &ph);
   ra8_img_arena_unbind();
   if ((prc == k_ra8_ok) && (pw > 0) && (ph > 0)) {

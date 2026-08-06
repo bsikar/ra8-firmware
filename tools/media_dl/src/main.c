@@ -36,6 +36,7 @@
 #include "mdl_config.h"
 #include "mdl_discover.h"
 #include "mdl_export.h"
+#include "ra8_arena.h"
 #include "mdl_extract.h"
 #include "mdl_fetch.h"
 #include "mdl_fetch_internal.h"
@@ -356,7 +357,7 @@ RA8_INTERNAL static bool state_path_of(const char* abs_dir, char* out, size_t ca
 }
 
 /** @brief Export every chapter in `sel` that completed at/after `run_start`. */
-RA8_INTERNAL static size_t export_fresh_separate(mdl_format_t          format,
+RA8_INTERNAL static size_t export_fresh_separate(ra8_arena_t*          arena, mdl_format_t          format,
                                                  const char*           abs_dir,
                                                  const mdl_url_list_t* sel,
                                                  int64_t               run_start)
@@ -367,7 +368,7 @@ RA8_INTERNAL static size_t export_fresh_separate(mdl_format_t          format,
     mdl_urlname_last_segment(sel->urls[i], id, sizeof(id));
     const mdl_chapter_rec_t* rec = mdl_state_find_chapter(&s_state, id);
     if ((rec != nullptr) && rec->complete && (rec->fetched_at >= run_start)) {
-      fails += mdl_pack_one(format, abs_dir, id);
+      fails += mdl_pack_one(arena, format, abs_dir, id);
     }
   }
   return fails;
@@ -396,6 +397,7 @@ RA8_INTERNAL static void report_stats(const char* abs_dir, const mdl_fetch_stats
  * @since 0.1.0
  */
 typedef struct {
+  ra8_arena_t*          arena;
   const char*           cfg_path;     /**< Site descriptor path.          */
   const char*           series_url;   /**< Series page URL.               */
   const char*           out_dir;      /**< Output library root.           */
@@ -453,7 +455,7 @@ RA8_INTERNAL static mdl_fetch_ctx_t make_ctx(const series_run_t* r,
 }
 
 /** @brief Package the freshly-downloaded output; returns the export-failure count. */
-RA8_INTERNAL static size_t export_after(const series_run_t*      r,
+RA8_INTERNAL static size_t export_after(const series_run_t*      r, ra8_arena_t* arena,
                                         const char*              abs_dir,
                                         mdl_fetch_layout_t       layout,
                                         const char*              combined_rel,
@@ -465,9 +467,9 @@ RA8_INTERNAL static size_t export_after(const series_run_t*      r,
     return 0U;
   }
   if (layout == k_mdl_layout_combined) {
-    return mdl_pack_combined(r->format, r->opts->allow_incomplete, abs_dir, combined_rel, stats);
+    return mdl_pack_combined(arena, r->format, r->opts->allow_incomplete, abs_dir, combined_rel, stats);
   }
-  return export_fresh_separate(r->format, abs_dir, sel, run_start);
+  return export_fresh_separate(arena, r->format, abs_dir, sel, run_start);
 }
 
 /** @brief Drive one prepared series through the fetch orchestrator + export. */
@@ -504,7 +506,7 @@ RA8_INTERNAL static int run_prepared(const series_run_t* r,
   (void)mdl_state_save(state_path, &s_state);
   report_stats(abs_dir, &stats);
   mdl_report_failures(&s_faillog);
-  const size_t efail = export_after(r, abs_dir, layout, combined_rel, sel, &stats, run_start);
+  const size_t efail = export_after(r, r->arena, abs_dir, layout, combined_rel, sel, &stats, run_start);
   return ((frc == k_ra8_ok) && (efail == 0U)) ? 0 : 1;
 }
 
@@ -520,7 +522,7 @@ RA8_INTERNAL static int run_series(const series_run_t* r)
   }
   (void)printf("site: %s (host %s, kind %s)\n", site.name, site.host, site.kind);
 
-  mdl_net_iface_t* net = mdl_net_curl_create(&r->opts->policy);
+  mdl_net_iface_t* net = mdl_net_curl_create(r->arena, &r->opts->policy);
   if (net == nullptr) {
     (void)fprintf(stderr, "media_dl: network init failed\n");
     return 1;
@@ -705,7 +707,7 @@ RA8_INTERNAL static size_t download_page_images(const char* url,
 }
 
 /** @brief page mode: fetch one URL, download its `<img>` URLs (debug path). */
-RA8_INTERNAL static int run_page(const char*           url,
+RA8_INTERNAL static int run_page(ra8_arena_t* arena, const char*           url,
                                  const char*           out_dir,
                                  const char*           attr,
                                  uint32_t              max_imgs,
@@ -713,7 +715,7 @@ RA8_INTERNAL static int run_page(const char*           url,
                                  uint32_t              timeout,
                                  const mdl_run_opts_t* opts)
 {
-  mdl_net_iface_t* net = mdl_net_curl_create(&opts->policy);
+  mdl_net_iface_t* net = mdl_net_curl_create(arena, &opts->policy);
   if (net == nullptr) {
     (void)fprintf(stderr, "media_dl: network init failed\n");
     return 1;
@@ -748,7 +750,7 @@ RA8_INTERNAL static int run_page(const char*           url,
 }
 
 /** @brief pack mode: package an existing folder of images into `format`. */
-RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
+RA8_INTERNAL static int run_pack(ra8_arena_t* arena, const char* dir, mdl_format_t format)
 {
   if ((format == k_mdl_fmt_loose) || (format == k_mdl_fmt_invalid)) {
     (void)fprintf(stderr,
@@ -765,7 +767,7 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
   if (mdl_format_is_dir_output(format)) {
     /* JOF writes per-page `.jof` siblings into the packed directory itself;
      * report that directory rather than a container file it never creates. */
-    const ra8_err_t drc = mdl_export_chapter(format, abs, abs);
+    const ra8_err_t drc = mdl_export_chapter(arena, format, abs, abs);
     if (drc != k_ra8_ok) {
       (void)
         fprintf(stderr, "media_dl: pack '%s' as .%s FAILED (err 0x%X)\n", dir, ext, (unsigned)drc);
@@ -780,7 +782,7 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
     (void)fprintf(stderr, "media_dl: output path for '%s' is too long\n", dir);
     return 1;
   }
-  const ra8_err_t rc = mdl_export_chapter(format, abs, out);
+  const ra8_err_t rc = mdl_export_chapter(arena, format, abs, out);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "media_dl: pack '%s' as .%s FAILED (err 0x%X)\n", dir, ext, (unsigned)rc);
     return 1;
@@ -791,9 +793,10 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
 
 /** @brief Assemble a ::series_run_t from parsed args + validated scalars. */
 RA8_INTERNAL static series_run_t
-build_run(const mdl_args_t* a, mdl_format_t format, const mdl_run_opts_t* opts, const mdl_nums_t* n)
+build_run(ra8_arena_t* arena, const mdl_args_t* a, mdl_format_t format, const mdl_run_opts_t* opts, const mdl_nums_t* n)
 {
-  return (series_run_t){.cfg_path     = a->cfg,
+  return (series_run_t){.arena        = arena,
+                        .cfg_path     = a->cfg,
                         .series_url   = a->series,
                         .out_dir      = a->out,
                         .format       = format,
@@ -809,7 +812,7 @@ build_run(const mdl_args_t* a, mdl_format_t format, const mdl_run_opts_t* opts, 
 
 /** @brief search/browse discovery: fetch a results page, list hits, and -- when
  *  `--pick N` selected one -- download it as a series via @p base. */
-RA8_INTERNAL static int run_discover(const mdl_args_t*     a,
+RA8_INTERNAL static int run_discover(ra8_arena_t* arena, const mdl_args_t*     a,
                                      const mdl_run_opts_t* opts,
                                      const mdl_nums_t*     n,
                                      const series_run_t*   base)
@@ -825,7 +828,7 @@ RA8_INTERNAL static int run_discover(const mdl_args_t*     a,
   if (opts->polite) {
     mdl_config_apply_polite(&site);
   }
-  mdl_net_iface_t* net = mdl_net_curl_create(&opts->policy);
+  mdl_net_iface_t* net = mdl_net_curl_create(arena, &opts->policy);
   if (net == nullptr) {
     (void)fprintf(stderr, "media_dl: network init failed\n");
     return 1;
@@ -876,7 +879,7 @@ RA8_INTERNAL static int run_library(const mdl_args_t* a, const series_run_t* run
 }
 
 /** @brief Select and run the mode implied by the parsed args; return the exit code. */
-RA8_INTERNAL static int dispatch_run(const mdl_args_t*     a,
+RA8_INTERNAL static int dispatch_run(ra8_arena_t* arena, const mdl_args_t*     a,
                                      mdl_format_t          format,
                                      const mdl_run_opts_t* opts,
                                      const mdl_nums_t*     nums,
@@ -887,10 +890,10 @@ RA8_INTERNAL static int dispatch_run(const mdl_args_t*     a,
     return run_library(a, run);
   }
   if ((a->search != nullptr) || a->browse) {
-    return run_discover(a, opts, nums, run);
+    return run_discover(arena, a, opts, nums, run);
   }
   if (a->pack != nullptr) {
-    return run_pack(a->pack, format);
+    return run_pack(arena, a->pack, format);
   }
   if (a->cfg != nullptr) {
     if (a->series == nullptr) {
@@ -900,7 +903,7 @@ RA8_INTERNAL static int dispatch_run(const mdl_args_t*     a,
     return run_series(run);
   }
   if (a->page_url != nullptr) {
-    return run_page(a->page_url, a->out, a->attr, nums->max_imgs, nums->seed, nums->timeout, opts);
+    return run_page(arena, a->page_url, a->out, a->attr, nums->max_imgs, nums->seed, nums->timeout, opts);
   }
   mdl_cli_usage(prog);
   return 2;
@@ -920,6 +923,12 @@ RA8_INTERNAL static int dispatch_run(const mdl_args_t*     a,
  */
 int main(int argc, char** argv)
 {
+  uint32_t arena_size = 64U * 1024U * 1024U;
+  uint8_t* arena_buf = (uint8_t*)malloc(arena_size);
+  ra8_arena_t main_arena;
+  ra8_arena_init(&main_arena, arena_buf, arena_size);
+  ra8_arena_t* arena = &main_arena;
+
   mdl_args_t a = {};
   a.out        = "downloads";
   a.attr       = "data-src";
@@ -948,6 +957,6 @@ int main(int argc, char** argv)
     return 2;
   }
 
-  const series_run_t run = build_run(&a, format, &opts, &nums);
-  return dispatch_run(&a, format, &opts, &nums, &run, argv[0]);
+  const series_run_t run = build_run(arena, &a, format, &opts, &nums);
+  return dispatch_run(arena, &a, format, &opts, &nums, &run, argv[0]);
 }

@@ -45,6 +45,7 @@
 #include <stdio.h>
 
 #include "ra8_err.h"
+#include "ra8_arena.h"
 
 /**
  * @enum ra8_fmt_limits_t
@@ -110,7 +111,7 @@ typedef struct {
  * @return k_ra8_ok when `opts->out_path` holds a complete container.
  * @since 0.1.0
  */
-typedef ra8_err_t (*ra8_fmt_convert_fn)(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
+typedef ra8_err_t (*ra8_fmt_convert_fn)(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
 
 /**
  * @typedef ra8_fmt_inspect_fn
@@ -121,7 +122,7 @@ typedef ra8_err_t (*ra8_fmt_convert_fn)(const ra8_fmt_blob_t* src, const ra8_fmt
  *         structurally invalid (the report states why).
  * @since 0.1.0
  */
-typedef ra8_err_t (*ra8_fmt_inspect_fn)(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
+typedef ra8_err_t (*ra8_fmt_inspect_fn)(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
 
 /**
  * @typedef ra8_fmt_verify_fn
@@ -131,7 +132,7 @@ typedef ra8_err_t (*ra8_fmt_inspect_fn)(const ra8_fmt_blob_t* src, const ra8_fmt
  * @return k_ra8_ok when the decoded result matched the source exactly.
  * @since 0.1.0
  */
-typedef ra8_err_t (*ra8_fmt_verify_fn)(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
+typedef ra8_err_t (*ra8_fmt_verify_fn)(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
 
 /**
  * @typedef ra8_fmt_sniff_fn
@@ -241,7 +242,7 @@ typedef struct {
  * @see ra8_fmt_blob_free()
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_slurp(const char* path, ra8_fmt_blob_t* out);
+[[nodiscard]] ra8_err_t ra8_fmt_slurp(ra8_arena_t* arena, const char* path, ra8_fmt_blob_t* out);
 
 /**
  * @brief Release a blob's buffer and zero it.

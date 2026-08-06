@@ -421,7 +421,7 @@ RA8_INTERNAL static void curl_destroy(void* ctx)
   if (net->curl != nullptr) {
     curl_easy_cleanup(net->curl);
   }
-  free(net);
+  
 }
 
 /** @brief The libcurl backend's immutable method table. */
@@ -432,7 +432,7 @@ static const mdl_net_vtable_t s_curl_vtable = {
 };
 
 RA8_DI_SLOT("net_iface")
-mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
+mdl_net_iface_t* mdl_net_curl_create(ra8_arena_t* arena, const mdl_net_policy_t* policy)
 {
   static bool s_global_ready = false;
   if (!s_global_ready) {
@@ -442,9 +442,9 @@ mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
     s_global_ready = true;
   }
 
-  mdl_curl_ctx_t* ctx = (mdl_curl_ctx_t*)calloc(1U, sizeof(*ctx));
+  mdl_curl_ctx_t* ctx = (mdl_curl_ctx_t*)ra8_arena_calloc(arena, 1U, (uint32_t)sizeof(*ctx));
   if (ctx == nullptr) {
-    free(ctx);
+    
     return nullptr;
   }
   if (policy != nullptr) {
@@ -454,20 +454,20 @@ mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
   }
   ctx->curl = curl_easy_init();
   if (ctx->curl == nullptr) {
-    free(ctx);
+    
     return nullptr;
   }
   if (!apply_security_opts(ctx->curl, ctx) || !apply_behavior_opts(ctx->curl)) {
     curl_easy_cleanup(ctx->curl);
-    free(ctx);
+    
     return nullptr;
   }
 
-  mdl_net_iface_t* net = (mdl_net_iface_t*)calloc(1U, sizeof(*net));
+  mdl_net_iface_t* net = (mdl_net_iface_t*)ra8_arena_calloc(arena, 1U, (uint32_t)sizeof(*net));
   if (net == nullptr) {
     curl_easy_cleanup(ctx->curl);
-    free(ctx);
-    free(net);
+    
+    
     return nullptr;
   }
   net->vtable = &s_curl_vtable;

@@ -27,10 +27,24 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <stdlib.h>
+
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fmt.h"
 #include "ra8_log.h"
+#include "ra8_arena.h"
+
+enum : uint32_t { k_arena_bytes = 4U * 1024U * 1024U };
+static uint8_t* s_arena_buf;
+static ra8_arena_t s_arena;
+
+RA8_NASA_RULE_3_OK
+static ra8_err_t init_arena(void) {
+    s_arena_buf = (uint8_t*)malloc(k_arena_bytes);
+    if (s_arena_buf == nullptr) return k_ra8_err_no_mem;
+    return ra8_arena_init(&s_arena, s_arena_buf, k_arena_bytes);
+}
 
 /**
  * @enum ra8_fmt_exit_t
@@ -234,7 +248,8 @@ priv_resolve(ra8_fmt_verb_t verb, const char* name, const ra8_fmt_blob_t* src)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_dispatch(ra8_fmt_verb_t        verb,
+static ra8_err_t priv_dispatch(ra8_arena_t*          arena,
+                               ra8_fmt_verb_t        verb,
                                const ra8_fmt_desc_t* desc,
                                const ra8_fmt_blob_t* src,
                                const ra8_fmt_opts_t* opts)
@@ -251,12 +266,17 @@ static ra8_err_t priv_dispatch(ra8_fmt_verb_t        verb,
     (void)fprintf(opts->report, "ra8_fmt: format '%s' does not support this verb\n", desc->name);
     return k_ra8_err_not_supported;
   }
-  return fn(src, opts);
+  return fn(arena, src, opts);
 }
 
 int main(int argc, char** argv)
 {
   ra8_log_set_byte_sink(fmt_log_sink, nullptr);
+  if (init_arena() != k_ra8_ok) {
+    (void)fprintf(stderr, "ra8_fmt: failed to initialize arena\n");
+    return (int)k_fmt_exit_fail;
+  }
+  
   if (argc < 2) {
     priv_usage(stderr);
     return (int)k_fmt_exit_usage;
@@ -281,7 +301,7 @@ int main(int argc, char** argv)
     return (int)k_fmt_exit_usage;
   }
   ra8_fmt_blob_t  src    = {};
-  const ra8_err_t src_rc = ra8_fmt_slurp(opts.in_path, &src);
+  const ra8_err_t src_rc = ra8_fmt_slurp(&s_arena, opts.in_path, &src);
   if (src_rc != k_ra8_ok) {
     (void)fprintf(stderr, "ra8_fmt: cannot read '%s' (rc=%d)\n", opts.in_path, (int)src_rc);
     return (int)k_fmt_exit_fail;
@@ -293,7 +313,7 @@ int main(int argc, char** argv)
     priv_usage(stderr);
     return (int)k_fmt_exit_usage;
   }
-  const ra8_err_t rc = priv_dispatch(verb, desc, &src, &opts);
+  const ra8_err_t rc = priv_dispatch(&s_arena, verb, desc, &src, &opts);
   ra8_fmt_blob_free(&src);
   return (rc == k_ra8_ok) ? (int)k_fmt_exit_ok : (int)k_fmt_exit_fail;
 }

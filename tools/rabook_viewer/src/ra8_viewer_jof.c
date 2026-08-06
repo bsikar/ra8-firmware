@@ -149,7 +149,7 @@ RA8_INTERNAL static ra8_err_t viewer_jof_blit(void*          ctx,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
+RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r, ra8_arena_t* arena)
 {
   /* The whole atlas is held resident in RAM, so a file larger than the per-unit
    * output cap is refused before allocating -- the same working-set ceiling the
@@ -159,18 +159,16 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
     return k_ra8_err_decomp_output_cap;
   }
   const size_t sz  = (size_t)r->file.size;
-  uint8_t*     buf = (uint8_t*)malloc(sz);
+  uint8_t*     buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sz);
   if (buf == nullptr) {
     // cppcheck-suppress memleak
     // buf is NULL here
     return k_ra8_err_no_mem;
   }
   if (fseeko(r->file.fp, 0, SEEK_SET) != 0) {
-    free(buf);
     return k_ra8_err_not_found;
   }
   if (fread(buf, 1U, sz, r->file.fp) != sz) {
-    free(buf);
     return k_ra8_err_not_found;
   }
   r->jof.atlas = buf;
@@ -198,14 +196,14 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
-viewer_jof_alloc_cache(viewer_jof_t* w, uint32_t cell_count, size_t band_bytes)
+viewer_jof_alloc_cache(viewer_jof_t* w, uint32_t cell_count, size_t band_bytes, ra8_arena_t* arena)
 {
-  w->scratch = (uint8_t*)malloc(band_bytes + (size_t)k_viewer_jof_scratch_pad);
-  w->cells   = (uint8_t*)malloc((size_t)cell_count * band_bytes);
-  w->meta    = (ra8_keycache_cell_t*)calloc(cell_count, sizeof(*w->meta));
-  w->keys    = (ra8_tile_key_t*)calloc(cell_count, sizeof(*w->keys));
-  w->dims    = (ra8_tile_dims_t*)calloc(cell_count, sizeof(*w->dims));
-  w->buckets = (int32_t*)calloc((size_t)k_viewer_jof_buckets, sizeof(*w->buckets));
+  w->scratch = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)(band_bytes + (size_t)k_viewer_jof_scratch_pad));
+  w->cells   = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)((size_t)cell_count * band_bytes));
+  w->meta    = (ra8_keycache_cell_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->meta));
+  w->keys    = (ra8_tile_key_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->keys));
+  w->dims    = (ra8_tile_dims_t*)ra8_arena_calloc(arena, (uint32_t)cell_count, (uint32_t)sizeof(*w->dims));
+  w->buckets = (int32_t*)ra8_arena_calloc(arena, (uint32_t)k_viewer_jof_buckets, (uint32_t)sizeof(*w->buckets));
   if ((w->scratch == nullptr) || (w->cells == nullptr) || (w->meta == nullptr) ||
       (w->keys == nullptr) || (w->dims == nullptr) || (w->buckets == nullptr)) {
     return k_ra8_err_no_mem;
@@ -311,10 +309,10 @@ RA8_INTERNAL static ra8_err_t viewer_jof_seek(viewer_jof_t* w, uint32_t page)
   return ra8_longstrip_scroll_by(&w->strip, delta);
 }
 
-ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r)
+ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r, ra8_arena_t* arena)
 {
   viewer_jof_t* w  = &r->jof;
-  ra8_err_t     rc = viewer_jof_slurp(r);
+  ra8_err_t     rc = viewer_jof_slurp(r, arena);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -360,7 +358,7 @@ ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r)
   if (cell_count > max_resident) {
     cell_count = max_resident;
   }
-  rc = viewer_jof_alloc_cache(w, cell_count, band_bytes);
+  rc = viewer_jof_alloc_cache(w, cell_count, band_bytes, arena);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -391,7 +389,7 @@ ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page)
 }
 
 ra8_err_t
-viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out)
+viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out, ra8_arena_t* arena)
 {
   viewer_jof_t*  wt = &r->jof;
   const uint32_t nw = r->tile_wpx[i];
@@ -403,7 +401,7 @@ viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, ui
    * is one viewport band (<= the fixed framebuffer height), so this product is
    * bounded by those prior policy checks and cannot wrap size_t. */
   const size_t px  = (size_t)nw * (size_t)nh;
-  uint16_t*    buf = (uint16_t*)malloc(px * sizeof(uint16_t));
+  uint16_t*    buf = (uint16_t*)ra8_arena_alloc(arena, (uint32_t)(px * sizeof(uint16_t)));
   if (buf == nullptr) {
     // cppcheck-suppress memleak
     // buf is NULL here
@@ -425,7 +423,6 @@ viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, ui
   r->rt_w  = (uint32_t)k_ra8_viewer_fb_width;
   r->rt_h  = (uint32_t)k_ra8_viewer_fb_height;
   if (rc != k_ra8_ok) {
-    free(buf);
     return rc;
   }
   *w   = nw;

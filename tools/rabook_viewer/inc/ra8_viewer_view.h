@@ -28,6 +28,8 @@
 extern "C" {
 #endif
 
+#include "ra8_arena.h"
+
 /** @brief Opaque reader handle (defined in ra8_viewer_reader.h). */
 typedef struct ra8_viewer_reader ra8_viewer_reader_t;
 
@@ -57,7 +59,7 @@ typedef struct ra8_viewer_view ra8_viewer_view_t;
  *       thread-safe; call on the main thread.
  * @since 0.1.0
  */
-ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title);
+ra8_viewer_view_t* ra8_viewer_view_open(ra8_viewer_reader_t* reader, const char* title, ra8_arena_t* arena);
 
 /**
  * @brief Drain pending window events cooperatively.
