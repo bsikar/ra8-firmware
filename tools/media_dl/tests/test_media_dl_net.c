@@ -741,7 +741,7 @@ static void test_curl_get_file_failure_keeps_existing(void)
  */
 int32_t main(void)
 {
-  ra8_arena_init(&s_test_arena, s_test_arena_buf, sizeof s_test_arena_buf);
+  (void)ra8_arena_init(&s_test_arena, s_test_arena_buf, sizeof s_test_arena_buf);
   test_net_dispatch_guard();
   test_net_get_file_guard();
   test_net_fake_scripts_and_records();

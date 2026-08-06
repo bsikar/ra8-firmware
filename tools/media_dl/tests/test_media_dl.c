@@ -825,7 +825,7 @@ static void test_robots_cache(void)
  */
 int32_t main(void)
 {
-  ra8_arena_init(&s_test_arena, s_test_arena_buf, sizeof s_test_arena_buf);
+  (void)ra8_arena_init(&s_test_arena, s_test_arena_buf, sizeof s_test_arena_buf);
   test_format_mapping();
   test_extract_images();
   test_extract_anchors();

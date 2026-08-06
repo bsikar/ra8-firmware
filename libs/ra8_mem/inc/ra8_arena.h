@@ -131,6 +131,37 @@ ra8_arena_carve(ra8_arena_t* arena, uint32_t bytes, uint32_t align, void** out_p
  */
 [[nodiscard]] ra8_err_t ra8_arena_remaining(const ra8_arena_t* arena, uint32_t* out_remaining);
 
+#include <stddef.h>
+
+static inline void* ra8_arena_alloc(ra8_arena_t* arena, uint32_t bytes, uint32_t align) {
+  void* ptr = NULL;
+  (void)ra8_arena_carve(arena, bytes, align, &ptr);
+  return ptr;
+}
+
+static inline void* ra8_arena_calloc(ra8_arena_t* arena, uint32_t count, uint32_t size) {
+  void* ptr = ra8_arena_alloc(arena, count * size, 8U);
+  if (ptr != NULL) {
+    uint8_t* dst = (uint8_t*)ptr;
+    for (uint32_t i = 0; i < count * size; ++i) {
+      dst[i] = 0;
+    }
+  }
+  return ptr;
+}
+
+static inline void ra8_arena_reset(ra8_arena_t* arena) {
+  if (arena) arena->used = 0;
+}
+
+static inline uint32_t ra8_arena_save(ra8_arena_t* arena) {
+  return arena ? arena->used : 0;
+}
+
+static inline void ra8_arena_restore(ra8_arena_t* arena, uint32_t mark) {
+  if (arena) arena->used = mark;
+}
+
 #ifdef __cplusplus
 }
 #endif
