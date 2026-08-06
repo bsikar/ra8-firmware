@@ -83,7 +83,7 @@ if(NOT TARGET test_ra8_c6link_mdl)
   add_executable(
     test_ra8_c6link_mdl
     ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c
-    ${RA8_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl.c
+    ${FW_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl.c
     $<TARGET_OBJECTS:ra8_core_hal>
   )
   target_include_directories(test_ra8_c6link_mdl PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})

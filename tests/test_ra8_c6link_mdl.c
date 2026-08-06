@@ -12,12 +12,20 @@
 #include "ra8_c6link_mdl.h"
 #include "ra8_test.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test)
+ */
 static void test_mdl_download_null_link(void)
 {
   ra8_err_t rc = ra8_c6link_mdl_download(nullptr, "https://x", "/sd/x");
   RA8_ASSERT_EQ(rc, k_ra8_err_invalid_arg);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test)
+ */
 static void test_mdl_download_null_url(void)
 {
   ra8_c6link_t link = {0};
@@ -25,6 +33,10 @@ static void test_mdl_download_null_url(void)
   RA8_ASSERT_EQ(rc, k_ra8_err_invalid_arg);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test)
+ */
 static void test_mdl_download_null_path(void)
 {
   ra8_c6link_t link = {0};
@@ -32,6 +44,10 @@ static void test_mdl_download_null_path(void)
   RA8_ASSERT_EQ(rc, k_ra8_err_invalid_arg);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test)
+ */
 static void test_mdl_download_ok(void)
 {
   ra8_c6link_t link = {0};
@@ -39,6 +55,10 @@ static void test_mdl_download_ok(void)
   RA8_ASSERT_EQ(rc, k_ra8_ok);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test)
+ */
 static void test_mdl_poll_null_link(void)
 {
   ra8_mdl_download_progress_t p  = {0};
@@ -46,6 +66,10 @@ static void test_mdl_poll_null_link(void)
   RA8_ASSERT_EQ(rc, k_ra8_err_invalid_arg);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test)
+ */
 static void test_mdl_poll_null_progress(void)
 {
   ra8_c6link_t link = {0};
@@ -53,6 +77,10 @@ static void test_mdl_poll_null_progress(void)
   RA8_ASSERT_EQ(rc, k_ra8_err_invalid_arg);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test)
+ */
 static void test_mdl_poll_ok(void)
 {
   ra8_c6link_t                link = {0};
@@ -61,12 +89,20 @@ static void test_mdl_poll_ok(void)
   RA8_ASSERT_EQ(rc, k_ra8_ok);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test)
+ */
 static void test_mdl_cancel_null_link(void)
 {
   ra8_err_t rc = ra8_c6link_mdl_cancel(nullptr);
   RA8_ASSERT_EQ(rc, k_ra8_err_invalid_arg);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test)
+ */
 static void test_mdl_cancel_ok(void)
 {
   ra8_c6link_t link = {0};
