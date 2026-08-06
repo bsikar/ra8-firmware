@@ -122,9 +122,21 @@ target_include_directories(
 
 # Vendor headers + project tx_user.h. Public so app TUs can #include
 # "tx_api.h" without re-stating the include dirs.
-target_include_directories(
-  threadx SYSTEM PUBLIC "${RA8_THREADX_ROOT}/common/inc" "${RA8_THREADX_M85_GNU}/inc"
-)
+if(RA8_USE_THREADX_MODULES)
+  target_include_directories(
+    threadx SYSTEM PUBLIC
+    "${RA8_THREADX_ROOT}/ports_module/cortex_m85/gnu/inc"
+    "${RA8_THREADX_ROOT}/common/inc"
+    "${RA8_THREADX_M85_GNU}/inc"
+  )
+else()
+  target_include_directories(
+    threadx SYSTEM PUBLIC
+    "${RA8_THREADX_ROOT}/common/inc"
+    "${RA8_THREADX_M85_GNU}/inc"
+  )
+endif()
+
 target_include_directories(threadx PUBLIC "${RA8_THREADX_PORT_DIR}/inc")
 
 # Force ThreadX to pick up our tx_user.h on every TU it compiles, and

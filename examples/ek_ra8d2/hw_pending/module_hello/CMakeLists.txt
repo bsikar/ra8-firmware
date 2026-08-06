@@ -24,6 +24,7 @@ include("${RA8_REPO_ROOT}/cmake/ra8_add_app.cmake")
 
 # Enable ThreadX and ThreadX Modules
 set(RA8_USE_THREADX ON)
+set(RA8_USE_THREADX_MODULES ON)
 include("${RA8_REPO_ROOT}/cmake/threadx.cmake")
 include("${RA8_REPO_ROOT}/cmake/threadx_modules.cmake")
 
@@ -45,7 +46,7 @@ target_link_options(module_hello.elf PRIVATE -Wl,--allow-multiple-definition)
 target_compile_definitions(module_hello.elf PRIVATE RA8_APP_UART_LOG)
 
 # ---- Embed the module binary -----------------------------------------------
-# Convert hello_module.bin → hello_module_bin.o via objcopy, then link it in.
+# Convert hello_module.bin -> hello_module_bin.o via objcopy, then link it in.
 # Run objcopy from the directory containing the .bin so symbols get short
 # names: _binary_hello_module_bin_{start,end,size}.
 set(MODULE_BIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/module/build")

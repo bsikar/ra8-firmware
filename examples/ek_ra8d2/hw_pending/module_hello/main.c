@@ -47,7 +47,7 @@ static TX_THREAD s_startup_thread;
 static uint8_t   s_startup_stack[2048U] __attribute__((aligned(4)));
 
 /**
- * @brief Startup thread — loads and starts the module.
+ * @brief Startup thread - loads and starts the module.
  *
  * @details
  * txm_module_manager_start acquires a mutex with TX_WAIT_FOREVER, so it
@@ -68,6 +68,12 @@ static void startup_thread_entry(ULONG input)
   }
   __builtin_memcpy(s_mod_aligned, _binary_hello_module_bin_start, mod_size);
 
+  /* Debug: check the preamble raw bytes in s_mod_aligned. */
+  uint32_t* preamble = (uint32_t*)s_mod_aligned;
+  ra8_log_error_val(s_tag, "preamble[0] (id)", preamble[0]);
+  ra8_log_error_val(s_tag, "preamble[10] (start_stack)", preamble[10]);
+  ra8_log_error_val(s_tag, "preamble[13] (cb_stack)", preamble[13]);
+
   /* Load the module in-place. */
   UINT st = txm_module_manager_in_place_load(&s_hello_module, "hello",
                                              (VOID*)s_mod_aligned);
@@ -83,11 +89,11 @@ static void startup_thread_entry(ULONG input)
     ra8_log_error_val(s_tag, "module_manager_start failed", (uint32_t)st);
     return;
   }
-  ra8_log_info(s_tag, "module started — running inside MPU sandbox");
+  ra8_log_info(s_tag, "module started - running inside MPU sandbox");
 }
 
 /**
- * @brief ThreadX application entry — called from tx_kernel_enter().
+ * @brief ThreadX application entry - called from tx_kernel_enter().
  *
  * @param[in] first_unused_memory  First byte after kernel-owned RAM.
  */
@@ -124,5 +130,5 @@ void tx_application_define(void* first_unused_memory)
     ra8_log_error_val(s_tag, "tx_thread_create startup failed", (uint32_t)st);
     return;
   }
-  ra8_log_info(s_tag, "startup thread created — will load module");
+  ra8_log_info(s_tag, "startup thread created - will load module");
 }
