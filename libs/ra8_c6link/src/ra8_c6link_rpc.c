@@ -72,9 +72,9 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_rpc_stage(ra8_c6link_t* link, Rpc* req)
   uint8_t*        payload = &link->tx[k_ra8_c6link_header_bytes];
   uint16_t        body_at = 0U;
   const ra8_err_t opened  = ra8_c6link_priv_tlv_open(payload,
-                                                     (uint16_t)k_ra8_c6link_max_payload,
-                                                     (uint16_t)packed,
-                                                     &body_at);
+                                                    (uint16_t)k_ra8_c6link_max_payload,
+                                                    (uint16_t)packed,
+                                                    &body_at);
   if (opened != k_ra8_ok) {
     return opened;
   }
