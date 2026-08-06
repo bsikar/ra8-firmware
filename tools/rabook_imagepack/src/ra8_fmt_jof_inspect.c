@@ -624,8 +624,9 @@ typedef struct {
  * failed". The raster is zeroed because a decode that stops early must not
  * expose uninitialised memory as image data.
  *
- * @param[in]  atlas Container bytes the reader is opened over (non-nullptr).
- * @param[in]  info  Parsed geometry the sizes come from (non-nullptr).
+ * @param[in,out] arena Bump allocator for the workspace buffers.
+ * @param[in]     atlas Container bytes the reader is opened over (non-nullptr).
+ * @param[in]     info  Parsed geometry the sizes come from (non-nullptr).
  * @param[out] ws    Receives the reader, the sizes, and the three buffers.
  *
  * @return Whether the workspace is ready to use.

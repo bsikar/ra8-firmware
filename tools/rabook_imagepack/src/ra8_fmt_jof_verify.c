@@ -245,7 +245,8 @@ static ra8_err_t priv_encode_roundtrip(ra8_arena_t*          arena,
  * @details Splits the two round-trips out of ::ra8_fmt_jof_verify so that
  *          entry point stays within the statement budget. The reference is one
  *          whole-image tile; the subject is banded at ::k_fmt_ver_band_h.
- * @param[in]  src   Source image bytes (non-nullptr).
+ * @param[in,out] arena Bump allocator for encode scratch.
+ * @param[in]     src   Source image bytes (non-nullptr).
  * @param[in]  opts  Options carrying the report sink.
  * @param[out] pair  Receives both rasters and both geometries.
  * @return Result code from the probe or either encode.
