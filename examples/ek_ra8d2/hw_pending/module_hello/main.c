@@ -24,8 +24,10 @@ static const char s_tag[] = "module_hello";
 
 /* ---- Embedded module binary ---------------------------------------------- */
 /* Linked via objcopy --binary in CMakeLists.txt. */
-extern const uint8_t _binary_hello_module_bin_start[];
-extern const uint8_t _binary_hello_module_bin_end[];
+extern const uint8_t _binary_hello_module_bin_start
+  []; // NOLINT(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
+extern const uint8_t _binary_hello_module_bin_end
+  []; // NOLINT(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 
 /* ---- Module Manager memory pools ----------------------------------------- */
 enum : uint32_t {
@@ -74,7 +76,7 @@ static void startup_thread_entry(ULONG input)
   ra8_log_error_val(s_tag, "preamble[13] (cb_stack)", preamble[13]);
 
   /* Load the module in-place. */
-  UINT st = txm_module_manager_in_place_load(&s_hello_module, "hello", (VOID*)s_mod_aligned);
+  UINT st = txm_module_manager_in_place_load(&s_hello_module, (CHAR*)"hello", (VOID*)s_mod_aligned);
   if (st != TX_SUCCESS) {
     ra8_log_error_val(s_tag, "in_place_load failed", (uint32_t)st);
     return;

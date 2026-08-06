@@ -39,8 +39,10 @@
 
 /* Include the trampoline .c files - these sit in the search path added by
  * cmake/threadx_modules.cmake (PRIVATE include of the src/ directory). */
+// NOLINTBEGIN(bugprone-suspicious-include)
 #include "txm_module_manager_event_flags_notify_trampoline.c"
 #include "txm_module_manager_queue_notify_trampoline.c"
 #include "txm_module_manager_semaphore_notify_trampoline.c"
 #include "txm_module_manager_thread_notify_trampoline.c"
 #include "txm_module_manager_timer_notify_trampoline.c"
+// NOLINTEND(bugprone-suspicious-include)

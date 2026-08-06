@@ -100,11 +100,11 @@ static bool kat_sha256(void)
   uint8_t      got[k_sha_len];
   size_t       got_len = 0U;
   psa_status_t st      = psa_hash_compute(PSA_ALG_SHA_256,
-                                          (const uint8_t*)"abc",
-                                          (size_t)k_abc_len,
-                                          got,
-                                          sizeof(got),
-                                          &got_len);
+                                     (const uint8_t*)"abc",
+                                     (size_t)k_abc_len,
+                                     got,
+                                     sizeof(got),
+                                     &got_len);
   return (st == PSA_SUCCESS) && (got_len == (size_t)k_sha_len) &&
          (memcmp(got, want, k_sha_len) == 0);
 }

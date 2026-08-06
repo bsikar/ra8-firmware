@@ -17,6 +17,7 @@
 
 #include "tx_api.h"
 
+// NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,clang-diagnostic-missing-prototypes)
 __attribute__((weak)) UINT _tx_thread_secure_mode_stack_allocate(TX_THREAD* thread_ptr,
                                                                  ULONG      stack_size)
 {
@@ -40,6 +41,7 @@ __attribute__((weak)) void _tx_thread_secure_stack_context_restore(TX_THREAD* th
 {
   (void)thread_ptr;
 }
+// NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,clang-diagnostic-missing-prototypes)
 /* ---- main() -------------------------------------------------------------- */
 /* The board's Reset_Handler calls main(). ThreadX apps enter the kernel
  * via tx_kernel_enter(), which never returns. */

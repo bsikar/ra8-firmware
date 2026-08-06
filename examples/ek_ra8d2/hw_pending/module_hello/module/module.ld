@@ -3,7 +3,6 @@
  * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
-/* SPDX-License-Identifier: MIT
  * Module linker script for RA8D2 ThreadX Modules (Cortex-M85).
  * Adapted from the upstream M7 example. The module is position-independent
  * and loaded by the Module Manager at runtime. */

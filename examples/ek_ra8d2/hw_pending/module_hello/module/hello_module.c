@@ -14,6 +14,7 @@
  * @brief The entry point for the module.
  * @param id Module ID passed by the manager.
  */
+void demo_module_start(ULONG id);
 void demo_module_start(ULONG id)
 {
   (void)id;
