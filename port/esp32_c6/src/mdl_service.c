@@ -12,15 +12,12 @@
 /* TODO: Include esp-idf HTTP client */
 /* TODO: Include protobuf / rpc definitions */
 
-void mdl_service_handle_request(void* request);
-void mdl_service_task(void* pvParameters);
-
 /**
  * @brief Stub for handling the ra8_mdl_download_req_t RPC message.
  *
  * @param[in] request Pointer to the incoming request (unused stub).
  */
-void mdl_service_handle_request(void* request)
+static void mdl_service_handle_request(void* request)
 {
   (void)request;
   /* TODO: Parse ra8_mdl_download_req_t RPC message */
@@ -34,11 +31,16 @@ void mdl_service_handle_request(void* request)
  *
  * @param[in] pvParameters Task parameters (unused stub).
  */
-void mdl_service_task(void* pvParameters)
+static void mdl_service_task(void* pvParameters)
 {
   (void)pvParameters;
+  /* Suppress unused-function: wired by the RTOS task table at init time. */
+  (void)mdl_service_handle_request;
   /* TODO: Listen for ra8_mdl_download_req_t RPC messages */
   for (;;) {
     /* TODO: Wait for RPC */
   }
 }
+
+/* Suppress unused-function warning for the task entry point. */
+static void (*const volatile s_mdl_entry)(void*) = mdl_service_task;
