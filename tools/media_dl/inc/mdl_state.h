@@ -50,6 +50,7 @@
 
 #include "mdl_config.h"
 #include "mdl_extract.h"
+#include "mdl_net.h"
 #include "ra8_err.h"
 
 /** @brief Fixed capacities and the schema version (zero dynamic allocation). */
@@ -102,6 +103,8 @@ typedef struct {
   uint64_t url_hash;                    /**< FNV-1a 64 of the source URL.     */
   uint64_t content_hash;                /**< FNV-1a 64 of the fetched bytes.  */
   char     rel_path[k_mdl_relpath_max]; /**< Path under the series directory. */
+  char     etag[k_mdl_etag_max];        /**< Cached ETag for conditional GET. */
+  char     last_modified[k_mdl_last_mod_max]; /**< Cached Last-Modified.       */
 } mdl_page_rec_t;
 
 /**
@@ -359,7 +362,9 @@ const mdl_page_rec_t* mdl_state_find_page(const mdl_state_t* st, uint64_t url_ha
 bool mdl_state_add_page(mdl_state_t* st,
                         uint64_t     url_hash,
                         uint64_t     content_hash,
-                        const char*  rel_path);
+                        const char*  rel_path,
+                        const char*  etag,
+                        const char*  last_modified);
 
 /**
  * @brief Render a one-line coverage summary (chapter span, count, gaps).

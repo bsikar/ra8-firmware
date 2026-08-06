@@ -80,6 +80,59 @@ void mdl_report_progress(void* ctx, const mdl_fetch_progress_t* ev)
                rate);
 }
 
+void mdl_report_progress_bar(void* ctx, const mdl_fetch_progress_t* ev)
+{
+  (void)ctx;
+  if (ev == nullptr) {
+    return;
+  }
+  const size_t bar_width = 20U;
+  size_t       filled    = 0U;
+  if (ev->page_total > 0U) {
+    filled = (ev->page_index * bar_width) / ev->page_total;
+    if (filled > bar_width) {
+      filled = bar_width;
+    }
+  }
+  char bar[32];
+  for (size_t i = 0U; i < bar_width; ++i) {
+    bar[i] = (i < filled) ? '=' : ' ';
+  }
+  bar[bar_width] = '\0';
+  const uint32_t pct =
+    (ev->page_total > 0U) ? (uint32_t)((ev->page_index * 100U) / ev->page_total) : 0U;
+
+  if (ev->reused) {
+    (void)printf("\r  [%s] %3u%% [ch %zu/%zu %s] page %zu/%zu (reused)",
+                 bar,
+                 (unsigned)pct,
+                 ev->chapter_index,
+                 ev->chapter_total,
+                 ev->chapter_id,
+                 ev->page_index,
+                 ev->page_total);
+  } else {
+    char size[k_human_bytes];
+    char rate[k_human_bytes];
+    fmt_size(ev->page_bytes, size, sizeof(size));
+    fmt_rate(ev->page_bytes, ev->elapsed_ms, rate, sizeof(rate));
+    (void)printf("\r  [%s] %3u%% [ch %zu/%zu %s] page %zu/%zu (%s @ %s)",
+                 bar,
+                 (unsigned)pct,
+                 ev->chapter_index,
+                 ev->chapter_total,
+                 ev->chapter_id,
+                 ev->page_index,
+                 ev->page_total,
+                 size,
+                 rate);
+  }
+  if (ev->page_index >= ev->page_total) {
+    (void)printf("\n");
+  }
+  (void)fflush(stdout);
+}
+
 void mdl_report_failures(const mdl_fetch_faillog_t* log)
 {
   if (log->total == 0U) {
