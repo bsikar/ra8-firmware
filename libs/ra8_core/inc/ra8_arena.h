@@ -31,11 +31,11 @@
  * Follows the same design as the `ra8_c6link` decode arena but is
  * decoupled from protobuf-c and usable by any library.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
 
  */
 

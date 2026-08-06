@@ -16,11 +16,11 @@
  * core shares nothing with it but plain buffers, so it stays testable and
  * dumpable without a display.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
 
  */
 #pragma once

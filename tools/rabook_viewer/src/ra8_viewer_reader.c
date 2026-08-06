@@ -25,11 +25,11 @@
  * Objective-C window backend consumes the tiles; the reader stays testable and
  * dumpable headless.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
 
  */
 

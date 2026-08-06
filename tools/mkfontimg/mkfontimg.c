@@ -22,11 +22,11 @@
  *   Writes a formatted-but-empty FAT16 image (no font) -- the "random card"
  *   case used to exercise @ref ra8_sdfont_load's self-provisioning path.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
 
  */
 #include <stdint.h>

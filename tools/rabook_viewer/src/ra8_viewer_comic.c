@@ -13,11 +13,11 @@
  * (scaled to fit and centred, for the headless dump) and a native-resolution
  * scroll tile (capped to the ra8_gfx max edge, for the desktop window).
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
 
  */
 

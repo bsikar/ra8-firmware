@@ -16,11 +16,11 @@
  * is Objective-C (ra8_viewer_view.m); this header stays pure C so the C reader and
  * `main` need no Objective-C.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
 
  */
 #pragma once

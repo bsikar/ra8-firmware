@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "ra8_arena.h"
+#include "../inc/ra8_arena.h"
 
 #include <stdint.h>
 

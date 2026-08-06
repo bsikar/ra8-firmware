@@ -15,11 +15,11 @@
  * the fixed framebuffer, and render one native-resolution scroll tile -- so the
  * dispatcher in ra8_viewer_reader.c never needs to know an engine's internals.
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
 
  */
 
