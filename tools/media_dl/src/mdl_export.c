@@ -1,5 +1,5 @@
 /**
- * @file mdl_export.c
+ * @file mdl_export.c  FILE-SIZE-OK: cohesive EPUB/JOF export pipeline
  * @brief Package a chapter folder into a reader-openable container.
  *
  * @details
