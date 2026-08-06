@@ -218,6 +218,7 @@ RA8_PRIV size_t viewer_read(void* ctx, uint64_t offset, void* buf, size_t len);
  *          caller (viewer_read_page_bytes) via `ra8_decomp_check_declared`.
  * @param[in,out] r    Reader whose scratch buffer to size (non-nullptr).
  * @param[in]     need Required capacity in bytes (archive-derived; untrusted).
+ * @param[in,out] arena Bump allocator used for buffer growth.
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                    The buffer holds at least @p need bytes.
  * @retval k_ra8_err_decomp_output_cap @p need exceeds the per-unit output cap.

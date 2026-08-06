@@ -193,7 +193,8 @@ RA8_INTERNAL static viewer_fmt_t viewer_classify(const char* path)
  *          points the JOF blit target at it (the headless default), and installs
  *          the owner's decompression policy. On any failure it releases the
  *          partial reader via viewer_free() so nothing leaks.
- * @param[out] out Receives the allocated reader on success (non-nullptr).
+ * @param[out]    out   Receives the allocated reader on success (non-nullptr).
+ * @param[in,out] arena Bump allocator for all reader memory.
  * @return ra8_err_t; ::k_ra8_err_no_mem on any allocation failure.
  * @retval k_ra8_ok         The reader and framebuffer are allocated.
  * @retval k_ra8_err_no_mem The reader or framebuffer could not be allocated.
@@ -240,6 +241,7 @@ RA8_INTERNAL static ra8_err_t viewer_alloc_core(ra8_viewer_reader_t** out, ra8_a
  *          left in place for viewer_free() to release, so the error path needs no
  *          cleanup.
  * @param[in,out] r Reader to populate (non-nullptr).
+ * @param[in,out] arena Bump allocator for dispatch resources.
  * @return ra8_err_t; ::k_ra8_err_no_mem on any allocation failure.
  * @retval k_ra8_ok         Every comic scratch buffer was allocated.
  * @retval k_ra8_err_no_mem At least one allocation failed.
@@ -341,8 +343,9 @@ RA8_INTERNAL static ra8_err_t viewer_reject_fmt(viewer_fmt_t fmt, const char* pa
  * @details Maps the classified format to its opener -- bare or wrapped comic, or
  *          JOF -- and returns ::k_ra8_err_not_supported for any format with no
  *          wired engine, so the single call site needs no per-format branching.
- * @param[in,out] r   Reader with file backing populated (non-nullptr).
- * @param[in]     fmt The document's format.
+ * @param[in,out] r     Reader with file backing populated (non-nullptr).
+ * @param[in]     fmt   The document's format.
+ * @param[in,out] arena Bump allocator for engine resources.
  * @return ra8_err_t from the selected engine opener.
  * @retval k_ra8_err_not_supported @p fmt has no wired engine.
  * @pre @p r has its file backing populated (viewer_open_file()).
@@ -371,7 +374,8 @@ viewer_dispatch_open(ra8_viewer_reader_t* r, viewer_fmt_t fmt, ra8_arena_t* aren
  * @brief Probe and cache every tile's native size for the scroll layout.
  * @details JOF bands are sized arithmetically from the parsed atlas geometry;
  *          comic pages must each be probed through the image decoder.
- * @param[in,out] r Reader with an open engine (non-nullptr).
+ * @param[in,out] r     Reader with an open engine (non-nullptr).
+ * @param[in,out] arena Bump allocator for tile dimension arrays.
  * @return ra8_err_t; ::k_ra8_err_no_mem if the size arrays cannot be allocated.
  * @retval k_ra8_ok         Tile dimensions are cached (or the document is empty).
  * @retval k_ra8_err_no_mem The per-tile size arrays could not be allocated.
