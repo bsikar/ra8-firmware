@@ -4,7 +4,7 @@
  * @ingroup grp_core
  *
  * @par Tag
- * [Ring 3 / App] {World: NS}
+ * [Ring 3 / App] {World: S}
  *
  * @details
  * Defines the API surface that third-party modules loaded via the ThreadX
