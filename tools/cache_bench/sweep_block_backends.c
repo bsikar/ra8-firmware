@@ -27,6 +27,7 @@
 #include "miniz.h"
 #include "ra8_book_chunked.h"
 #include "ra8_err.h"
+#include "ra8_attributes.h"
 #include "sweep_block_internal.h"
 
 /**
@@ -546,6 +547,7 @@ static void cbs_rbkc_teardown(cbs_backend_t* be)
  * @note Not thread-safe (binds the static ::s_cbs_rbkc).
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: dynamic cache arrays */
 static int
 cbs_rbkc_setup(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint32_t block_bytes)
 {

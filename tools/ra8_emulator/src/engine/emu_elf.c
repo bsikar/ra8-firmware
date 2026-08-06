@@ -12,6 +12,7 @@
  * @since 0.1.0
  */
 
+#include "ra8_attributes.h"
 #include "emu_elf.h"
 
 #include <stdio.h>
@@ -28,6 +29,7 @@
 #include "emu_seams.h"
 #include "emu_view.h"
 
+RA8_NASA_RULE_3_OK /* host-only emu: elf file buffer */
 uint8_t* read_file(const char* path, long* out_len)
 {
   FILE* f = fopen(path, "rb");

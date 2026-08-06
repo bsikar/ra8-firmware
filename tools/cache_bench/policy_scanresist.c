@@ -26,6 +26,7 @@
  */
 #include <stdlib.h>
 
+#include "ra8_attributes.h"
 #include "cache_bench.h"
 
 /* ------------------------------------------------------------------ SLRU -- */
@@ -160,6 +161,7 @@ static void slru_push_head(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
  * @note Not thread-safe: allocates and stores policy state.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: policy state */
 static int slru_init(cb_cache_t* c)
 {
   slru_t* l = (slru_t*)calloc(1U, sizeof(slru_t));
@@ -356,6 +358,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe: allocates and stores policy state.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: policy state */
 static int srrip_init(cb_cache_t* c)
 {
   uint32_t* hand = (uint32_t*)calloc(1U, sizeof(uint32_t));

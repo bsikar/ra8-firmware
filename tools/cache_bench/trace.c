@@ -13,6 +13,7 @@
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
+#include "ra8_attributes.h"
 #include "trace.h"
 
 #include <errno.h>
@@ -188,6 +189,7 @@ static uint32_t cb_rand_below(uint64_t* s, uint32_t span)
  * @note Not thread-safe: allocates and writes @p t.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: trace keys array */
 static bool cb_alloc(cb_trace_t* t, const char* name, uint64_t n)
 {
   t->name      = name;
@@ -514,6 +516,7 @@ static cb_trace_t cb_gen_hugebook(void)
   return t;
 }
 
+RA8_NASA_RULE_3_OK /* host-only bench: synthetic trace array */
 cb_trace_t* cb_traces_synthetic(uint32_t* out_count)
 {
   cb_trace_t (*gens[])(void) = {
@@ -593,6 +596,7 @@ static bool cb_parse_trace_line(const char* line, uint32_t* obj, uint32_t* pg)
   return true;
 }
 
+RA8_NASA_RULE_3_OK /* host-only bench: dynamic trace loading */
 cb_trace_t cb_trace_load(const char* path, const char* name)
 {
   cb_trace_t t = {.name = name};

@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_glyph_atlas.h"
 #include "ra8_keycache.h"
@@ -293,6 +294,7 @@ typedef struct {
 } gb_access_t;
 
 /** @brief Build the deterministic glyph access stream. Returns count via out_n. */
+RA8_NASA_RULE_3_OK /* host-only bench: glyph sequence array */
 static gb_access_t* gb_build_stream(uint64_t* rng, uint64_t* out_n)
 {
   const uint64_t total =
@@ -351,6 +353,7 @@ static gb_access_t* gb_build_stream(uint64_t* rng, uint64_t* out_n)
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
+RA8_NASA_RULE_3_OK /* host-only bench: dynamic atlas arrays */
 static double gb_run(const gb_access_t* seq, uint64_t n, uint32_t budget, uint32_t* out_rasters)
 {
   uint8_t*             cell_mem = (uint8_t*)malloc((size_t)budget * (size_t)k_gb_cell_bytes);
