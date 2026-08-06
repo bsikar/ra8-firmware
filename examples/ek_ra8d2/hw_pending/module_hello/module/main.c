@@ -1,6 +1,6 @@
 /**
  * @file main.c
- * @brief Minimal ThreadX module — proves module isolation works.
+ * @brief Minimal ThreadX module - proves module isolation works.
  *
  * @details
  * This is the module-side entry point. It runs inside the MPU sandbox
@@ -20,7 +20,7 @@
 /* Module-local pool for thread stacks. */
 static ULONG s_pool_space[512U / sizeof(ULONG)];
 
-/* ThreadX objects — allocated from kernel object pool via txm_module_object_allocate. */
+/* ThreadX objects - allocated from kernel object pool via txm_module_object_allocate. */
 static TX_THREAD*    s_thread;
 static TX_BYTE_POOL* s_byte_pool;
 
@@ -28,7 +28,7 @@ static TX_BYTE_POOL* s_byte_pool;
 static volatile ULONG s_tick_count;
 
 /**
- * @brief Module thread entry — sleeps in a loop, incrementing a counter.
+ * @brief Module thread entry - sleeps in a loop, incrementing a counter.
  */
 static void hello_thread_entry(ULONG input)
 {
@@ -40,7 +40,7 @@ static void hello_thread_entry(ULONG input)
 }
 
 /**
- * @brief Module entry point — called by the Module Manager when the module starts.
+ * @brief Module entry point - called by the Module Manager when the module starts.
  *
  * @param[in] id  Module ID passed by the Module Manager.
  */
@@ -54,15 +54,20 @@ void demo_module_start(ULONG id)
   txm_module_object_allocate((void**)&s_byte_pool, sizeof(TX_BYTE_POOL));
 
   /* Create a byte pool for the thread stack. */
-  tx_byte_pool_create(s_byte_pool, "mod_pool",
-                      (UCHAR*)s_pool_space, sizeof(s_pool_space));
+  tx_byte_pool_create(s_byte_pool, "mod_pool", (UCHAR*)s_pool_space, sizeof(s_pool_space));
 
   /* Allocate stack from the pool. */
   tx_byte_allocate(s_byte_pool, (VOID**)&stack_ptr, 256U, TX_NO_WAIT);
 
   /* Create the module's thread. */
-  tx_thread_create(s_thread, "mod_hello", hello_thread_entry, 0U,
-                   stack_ptr, 256U,
-                   15U, 15U,              /* Priority 15 (lower than kernel threads) */
-                   TX_NO_TIME_SLICE, TX_AUTO_START);
+  tx_thread_create(s_thread,
+                   "mod_hello",
+                   hello_thread_entry,
+                   0U,
+                   stack_ptr,
+                   256U,
+                   15U,
+                   15U, /* Priority 15 (lower than kernel threads) */
+                   TX_NO_TIME_SLICE,
+                   TX_AUTO_START);
 }

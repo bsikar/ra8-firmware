@@ -1,3 +1,10 @@
+/**
+ * @file txm_trampolines.c
+ * @brief Auto-generated description.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
 /* SPDX-License-Identifier: MIT
  * Copyright (c) 2026 Brighton Sikarskie
  *
@@ -18,10 +25,10 @@
 /* Pull in all the ThreadX headers the trampolines expect. */
 #define TX_SOURCE_CODE
 #include "tx_api.h"
-#include "tx_queue.h"
-#include "tx_thread.h"
-#include "tx_semaphore.h"
 #include "tx_event_flags.h"
+#include "tx_queue.h"
+#include "tx_semaphore.h"
+#include "tx_thread.h"
 #include "tx_timer.h"
 #include "txm_module.h"
 
@@ -30,7 +37,7 @@
 #undef TX_DISABLE_NOTIFY_CALLBACKS
 #endif
 
-/* Include the trampoline .c files — these sit in the search path added by
+/* Include the trampoline .c files - these sit in the search path added by
  * cmake/threadx_modules.cmake (PRIVATE include of the src/ directory). */
 #include "txm_module_manager_event_flags_notify_trampoline.c"
 #include "txm_module_manager_queue_notify_trampoline.c"

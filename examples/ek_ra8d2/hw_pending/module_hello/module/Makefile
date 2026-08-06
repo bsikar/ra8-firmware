@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+# SPDX-License-Identifier: MIT
 # Module-side build wrapper.
 
 RA8_REPO_ROOT := $(realpath $(CURDIR)/../../../../..)

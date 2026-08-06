@@ -443,7 +443,7 @@ static bool dispatch_armv81_seam(uc_engine* uc, uint32_t pc, const uint8_t code[
     return true; /* handled -- run loop resumes at the loop top or past the loop */
   }
 
-  /* MRS Rd, <special> — Unicorn's M33 model does not handle all Cortex-M
+  /* MRS Rd, <special> - Unicorn's M33 model does not handle all Cortex-M
    * special register reads (IPSR, CONTROL, BASEPRI, etc.).  ThreadX reads
    * IPSR to detect handler/thread mode; the Module Manager reads CONTROL.
    * Encoding (T1): hw1 = 0xF3EF, hw2 = 0x8d00 | SYSm, Rd = hw2[11:8].
@@ -454,7 +454,7 @@ static bool dispatch_armv81_seam(uc_engine* uc, uint32_t pc, const uint8_t code[
     if (hw1 == 0xF3EFU && (hw2 & 0xF000U) == 0x8000U) {
       const uint32_t rd   = (uint32_t)((hw2 >> 8U) & 0xFU);
       const uint32_t sysm = (uint32_t)(hw2 & 0xFFU);
-      uint32_t val = 0U;
+      uint32_t       val  = 0U;
       if (sysm == 0x05U) {
         /* IPSR: exception number of the currently active handler, or 0 for
          * Thread mode. Our exc_enter/exc_return track this. */

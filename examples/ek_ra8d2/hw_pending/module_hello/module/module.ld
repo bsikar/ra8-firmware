@@ -1,3 +1,8 @@
+/*
+ * Description
+ * Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
 /* SPDX-License-Identifier: MIT
  * Module linker script for RA8D2 ThreadX Modules (Cortex-M85).
  * Adapted from the upstream M7 example. The module is position-independent
@@ -5,7 +10,7 @@
 
 MEMORY
 {
-  /* Module code region — the Module Manager places us somewhere in MRAM.
+  /* Module code region - the Module Manager places us somewhere in MRAM.
    * These are placeholders; the module is position-independent. */
   FLASH (rx) : ORIGIN = 0x00030000, LENGTH = 0x00010000
   RAM   (wx) : ORIGIN = 0, LENGTH = 0x00100000

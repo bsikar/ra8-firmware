@@ -217,45 +217,67 @@ static void on_mpu_rlar_write(uc_engine*  uc,
  * (reading the corresponding RBAR_An back from PPB RAM).
  *
  * ThreadX Module Manager uses these to program up to 4 regions in one batch:
- *   RNR → RBAR/RLAR → RBAR_A1/RLAR_A1 → RBAR_A2/RLAR_A2 → RBAR_A3/RLAR_A3
+ *   RNR -> RBAR/RLAR -> RBAR_A1/RLAR_A1 -> RBAR_A2/RLAR_A2 -> RBAR_A3/RLAR_A3
  *
  * @param[in,out] uc        Unicorn engine.
  * @param[in]     rlar_val  The RLAR alias value being written.
  * @param[in]     rbar_addr The corresponding RBAR alias PPB address.
  * @param[in]     rnr_off   Offset from current RNR (1, 2, or 3).
  */
-static void mpu_capture_alias(uc_engine* uc, uint32_t rlar_val,
-                               uint64_t rbar_addr, uint32_t rnr_off)
+static void
+mpu_capture_alias(uc_engine* uc, uint32_t rlar_val, uint64_t rbar_addr, uint32_t rnr_off)
 {
-  const uint32_t rnr = (rd32(uc, (uint64_t)k_mpu_rnr) + rnr_off) & (uint32_t)k_mpu_rnr_mask;
-  const uint32_t rbar = rd32(uc, rbar_addr);
-  s_mpu_region[rnr].base  = rbar & (uint32_t)k_mpu_addr_mask;
-  s_mpu_region[rnr].limit = (rlar_val & (uint32_t)k_mpu_addr_mask) | (uint32_t)k_mpu_region_low_mask;
-  s_mpu_region[rnr].ro    = (rbar & (uint32_t)k_mpu_rbar_ap_ro_bit) != 0U;
-  s_mpu_region[rnr].en    = (rlar_val & (uint32_t)k_mpu_rlar_en_bit) != 0U;
+  const uint32_t rnr     = (rd32(uc, (uint64_t)k_mpu_rnr) + rnr_off) & (uint32_t)k_mpu_rnr_mask;
+  const uint32_t rbar    = rd32(uc, rbar_addr);
+  s_mpu_region[rnr].base = rbar & (uint32_t)k_mpu_addr_mask;
+  s_mpu_region[rnr].limit =
+    (rlar_val & (uint32_t)k_mpu_addr_mask) | (uint32_t)k_mpu_region_low_mask;
+  s_mpu_region[rnr].ro = (rbar & (uint32_t)k_mpu_rbar_ap_ro_bit) != 0U;
+  s_mpu_region[rnr].en = (rlar_val & (uint32_t)k_mpu_rlar_en_bit) != 0U;
 }
 
-/** @brief RLAR_A1 write hook — capture region RNR+1. */
-static void on_mpu_rlar_a1_write(uc_engine* uc, uc_mem_type type, uint64_t addr,
-                                  int size, int64_t value, void* user)
+/** @brief RLAR_A1 write hook - capture region RNR+1. */
+static void on_mpu_rlar_a1_write(uc_engine*  uc,
+                                 uc_mem_type type,
+                                 uint64_t    addr,
+                                 int         size,
+                                 int64_t     value,
+                                 void*       user)
 {
-  (void)type; (void)addr; (void)size; (void)user;
+  (void)type;
+  (void)addr;
+  (void)size;
+  (void)user;
   mpu_capture_alias(uc, (uint32_t)value, (uint64_t)k_mpu_rbar_a1, 1U);
 }
 
-/** @brief RLAR_A2 write hook — capture region RNR+2. */
-static void on_mpu_rlar_a2_write(uc_engine* uc, uc_mem_type type, uint64_t addr,
-                                  int size, int64_t value, void* user)
+/** @brief RLAR_A2 write hook - capture region RNR+2. */
+static void on_mpu_rlar_a2_write(uc_engine*  uc,
+                                 uc_mem_type type,
+                                 uint64_t    addr,
+                                 int         size,
+                                 int64_t     value,
+                                 void*       user)
 {
-  (void)type; (void)addr; (void)size; (void)user;
+  (void)type;
+  (void)addr;
+  (void)size;
+  (void)user;
   mpu_capture_alias(uc, (uint32_t)value, (uint64_t)k_mpu_rbar_a2, 2U);
 }
 
-/** @brief RLAR_A3 write hook — capture region RNR+3. */
-static void on_mpu_rlar_a3_write(uc_engine* uc, uc_mem_type type, uint64_t addr,
-                                  int size, int64_t value, void* user)
+/** @brief RLAR_A3 write hook - capture region RNR+3. */
+static void on_mpu_rlar_a3_write(uc_engine*  uc,
+                                 uc_mem_type type,
+                                 uint64_t    addr,
+                                 int         size,
+                                 int64_t     value,
+                                 void*       user)
 {
-  (void)type; (void)addr; (void)size; (void)user;
+  (void)type;
+  (void)addr;
+  (void)size;
+  (void)user;
   mpu_capture_alias(uc, (uint32_t)value, (uint64_t)k_mpu_rbar_a3, 3U);
 }
 

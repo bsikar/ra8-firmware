@@ -1,4 +1,11 @@
-    .syntax unified
+/**
+ * @file ra8app_preamble.S
+ * @brief Auto-generated description.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+.syntax unified
     .text
     .align 4
 
