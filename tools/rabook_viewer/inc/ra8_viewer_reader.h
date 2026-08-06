@@ -66,8 +66,9 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  *          EPUB / RABOOK return ::k_ra8_err_not_supported for now (reflow render
  *          is a TODO seam -- see the .c file).
  *
- * @param[out] out  Receives the newly allocated reader handle on success.
- * @param[in]  path NUL-terminated filesystem path to the document.
+ * @param[out]    out   Receives the newly allocated reader handle on success.
+ * @param[in]     path  NUL-terminated filesystem path to the document.
+ * @param[in,out] arena Bump allocator for all reader memory.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                Document opened; `*out` is valid.
@@ -99,8 +100,9 @@ ra8_viewer_open(ra8_viewer_reader_t** out, const char* path, ra8_arena_t* arena)
  *          encoded image bytes through the engine, then decodes and blits them
  *          scaled-to-fit and centred via `ra8_img_decode_blit`.
  *
- * @param[in,out] r    Reader from ::ra8_viewer_open (non-nullptr).
- * @param[in]     page Page index (`< ra8_viewer_page_count(r)`).
+ * @param[in,out] r     Reader from ::ra8_viewer_open (non-nullptr).
+ * @param[in]     page  Page index (`< ra8_viewer_page_count(r)`).
+ * @param[in,out] arena Bump allocator for decode scratch.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Page rasterised into the framebuffer.
@@ -155,7 +157,8 @@ ra8_viewer_tile_size(const ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint
  * @param[in]     i   Tile index (`< ra8_viewer_tile_count(r)`).
  * @param[out]    w   Receives the rendered width in pixels.
  * @param[out]    h   Receives the rendered height in pixels.
- * @param[out]    out Receives an arena-allocated `w*h` RGB565 buffer.
+ * @param[out]    out   Receives an arena-allocated `w*h` RGB565 buffer.
+ * @param[in,out] arena Bump allocator for the tile output buffer.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Tile rendered; `*out` owns `w*h` pixels.

@@ -193,7 +193,8 @@ static size_t priv_diff_rasters(const uint8_t* a,
  *          frees the intermediate container. `verify` runs this twice -- once
  *          whole-image, once banded -- and compares the two rasters, so an
  *          encoder/decoder mismatch surfaces as a pixel difference.
- * @param[in]  src    Source image bytes (non-nullptr).
+ * @param[in,out] arena Bump allocator for encode/decode scratch.
+ * @param[in]     src   Source image bytes (non-nullptr).
  * @param[in]  max_w  Width cap for the work-arena sizing.
  * @param[in]  max_h  Height cap for the work-arena sizing.
  * @param[in]  tile_w Tile width to request.
