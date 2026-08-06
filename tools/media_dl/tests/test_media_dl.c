@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "mdl_cli.h"
 #include "mdl_config.h"
 #include "mdl_export.h"
 #include "mdl_export_internal.h"
@@ -23,6 +24,7 @@
 #include "mdl_robots.h"
 #include "mdl_sanitize.h"
 #include "mdl_url_guard.h"
+#include "mdl_urlname.h"
 #include "miniz.h"
 #include "ra8_jof.h"
 #include "tiny_jpeg_fixture.h"
@@ -51,6 +53,7 @@ typedef enum : uint16_t {
   k_buf_128      = 128,  /**< Small host/path/name probe buffer.            */
   k_buf_256      = 256,  /**< Medium probe buffer.                          */
   k_buf_320      = 320,  /**< EPUB zip-entry-path probe buffer.             */
+  k_buf_512      = 512,  /**< Large probe buffer.                           */
   k_buf_2k       = 2048, /**< EPUB escaped-name / href probe buffer.        */
   k_buf_4k       = 4096, /**< robots.txt fetch scratch buffer.              */
   k_long_amp_run = 240,  /**< '&' chars in the long-filename EPUB probe.    */
@@ -219,10 +222,12 @@ static void test_export_cbz_roundtrip(void)
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
   TEST_ASSERT(mz_zip_reader_init_file(&zr, out, 0) != MZ_FALSE);
-  TEST_ASSERT_EQ(k_expect_pages, (uint16_t)mz_zip_reader_get_num_files(&zr));
+  TEST_ASSERT_EQ(k_expect_pages + 1U, (uint16_t)mz_zip_reader_get_num_files(&zr));
   char name[k_name_probe];
   (void)mz_zip_reader_get_filename(&zr, 0, name, sizeof(name));
   TEST_ASSERT(strcmp(name, "page_001.jpg") == 0);
+  (void)mz_zip_reader_get_filename(&zr, 2, name, sizeof(name));
+  TEST_ASSERT(strcmp(name, "ComicInfo.xml") == 0);
   (void)mz_zip_reader_end(&zr);
 
   (void)unlink("/tmp/mdl_test_chap/page_001.jpg");
@@ -254,7 +259,7 @@ static void test_export_skips_non_images(void)
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
   TEST_ASSERT(mz_zip_reader_init_file(&zr, out, 0) != MZ_FALSE);
-  TEST_ASSERT_EQ(k_expect_pages, (uint16_t)mz_zip_reader_get_num_files(&zr));
+  TEST_ASSERT_EQ(k_expect_pages + 1U, (uint16_t)mz_zip_reader_get_num_files(&zr));
   char name[k_name_probe];
   (void)mz_zip_reader_get_filename(&zr, 0, name, sizeof(name));
   TEST_ASSERT(strcmp(name, "page_001.jpg") == 0);
@@ -557,7 +562,7 @@ static void test_tar_rejects_long_name(void)
   char name[k_buf_256];
   memset(name, 'p', (size_t)k_longname_len);
   (void)snprintf(name + k_longname_len, sizeof(name) - (size_t)k_longname_len, ".jpg");
-  char path[k_buf_256];
+  char path[k_buf_512];
   (void)snprintf(path, sizeof(path), "%s/%s", dir, name);
   write_fixture(path, 'x');
   TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbt, dir, out) == k_ra8_err_invalid_size);
@@ -814,6 +819,274 @@ static void test_robots_cache(void)
   TEST_END("robots cache");
 }
 
+/** @test Test new CLI flags (--proxy, --socks5, --cookie-file, --progress, --verify, --init-site). */
+static void test_cli_new_flags(void)
+{
+  TEST_BEGIN("cli new flags parsing");
+  char* argv[] = {
+    "media_dl",
+    "--proxy", "http://proxy.example.com:8080",
+    "--socks5", "socks5://127.0.0.1:1080",
+    "--cookie-file", "/tmp/cookies.txt",
+    "--progress",
+    "--init-site", "https://example.com/manga/",
+    "--verify", "/tmp/downloads"
+  };
+  int argc = sizeof(argv) / sizeof(argv[0]);
+
+  mdl_args_t a = {};
+  mdl_cli_parse(argc, argv, &a);
+
+  TEST_ASSERT(!a.bad);
+  TEST_ASSERT(a.proxy != nullptr && strcmp(a.proxy, "http://proxy.example.com:8080") == 0);
+  TEST_ASSERT(a.socks5 != nullptr && strcmp(a.socks5, "socks5://127.0.0.1:1080") == 0);
+  TEST_ASSERT(a.cookie_file != nullptr && strcmp(a.cookie_file, "/tmp/cookies.txt") == 0);
+  TEST_ASSERT(a.progress == true);
+  TEST_ASSERT(a.init_site_url != nullptr && strcmp(a.init_site_url, "https://example.com/manga/") == 0);
+  TEST_ASSERT(a.verify == true);
+  TEST_ASSERT(a.verify_dir != nullptr && strcmp(a.verify_dir, "/tmp/downloads") == 0);
+
+  mdl_run_opts_t opts = mdl_cli_run_opts(&a);
+  TEST_ASSERT(opts.progress == true);
+  TEST_ASSERT(opts.policy.proxy != nullptr && strcmp(opts.policy.proxy, "http://proxy.example.com:8080") == 0);
+  TEST_ASSERT(opts.policy.socks5 != nullptr && strcmp(opts.policy.socks5, "socks5://127.0.0.1:1080") == 0);
+  TEST_ASSERT(opts.policy.cookie_file != nullptr && strcmp(opts.policy.cookie_file, "/tmp/cookies.txt") == 0);
+  TEST_END("cli new flags parsing");
+}
+
+/** @test Rich metadata init, key-value parsing, XML parsing, and dir auto-discovery. */
+static void test_meta_init_parse_load(void)
+{
+  TEST_BEGIN("metadata init, parse, and load");
+  mdl_export_meta_t meta;
+  mdl_meta_init(&meta);
+  TEST_ASSERT_EQ(-1, meta.cover_index);
+  TEST_ASSERT(meta.series_title[0] == '\0');
+
+  /* Key-value parsing */
+  static const char kv[] =
+      "series = Test Series & Saga\n"
+      "title = Chapter 12: Beginning & End\n"
+      "writer = Author & Writer\n"
+      "artist = Illustrator & Artist\n"
+      "number = 12.5\n"
+      "summary = A great story <start>\n"
+      "cover = page_002.jpg\n"
+      "cover_index = 1\n";
+  TEST_ASSERT(mdl_meta_parse(&meta, kv) == k_ra8_ok);
+  TEST_ASSERT(strcmp(meta.series_title, "Test Series & Saga") == 0);
+  TEST_ASSERT(strcmp(meta.chapter_title, "Chapter 12: Beginning & End") == 0);
+  TEST_ASSERT(strcmp(meta.writer, "Author & Writer") == 0);
+  TEST_ASSERT(strcmp(meta.artist, "Illustrator & Artist") == 0);
+  TEST_ASSERT(meta.chapter_number == 12.5);
+  TEST_ASSERT(strcmp(meta.summary, "A great story <start>") == 0);
+  TEST_ASSERT(strcmp(meta.cover_path, "page_002.jpg") == 0);
+  TEST_ASSERT_EQ(1, meta.cover_index);
+
+  /* XML ComicInfo parsing */
+  mdl_meta_init(&meta);
+  static const char xml[] =
+      "<?xml version=\"1.0\"?>\n"
+      "<ComicInfo>\n"
+      "  <Series>XML &amp; Series</Series>\n"
+      "  <Title>XML &lt;Title&gt;</Title>\n"
+      "  <Writer>XML Writer</Writer>\n"
+      "  <Artist>XML Artist</Artist>\n"
+      "  <Number>5</Number>\n"
+      "  <Summary>XML Summary &quot;Quote&quot;</Summary>\n"
+      "  <CoverImage>cover.jpg</CoverImage>\n"
+      "</ComicInfo>";
+  TEST_ASSERT(mdl_meta_parse(&meta, xml) == k_ra8_ok);
+  TEST_ASSERT(strcmp(meta.series_title, "XML & Series") == 0);
+  TEST_ASSERT(strcmp(meta.chapter_title, "XML <Title>") == 0);
+  TEST_ASSERT(strcmp(meta.writer, "XML Writer") == 0);
+  TEST_ASSERT(strcmp(meta.artist, "XML Artist") == 0);
+  TEST_ASSERT(meta.chapter_number == 5.0);
+  TEST_ASSERT(strcmp(meta.summary, "XML Summary \"Quote\"") == 0);
+  TEST_ASSERT(strcmp(meta.cover_path, "cover.jpg") == 0);
+
+  /* Load dir auto-discovery */
+  const char* dir = "/tmp/mdl_meta_dir";
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
+  write_fixture("/tmp/mdl_meta_dir/metadata.txt", 'm');
+  FILE* f = fopen("/tmp/mdl_meta_dir/metadata.txt", "w");
+  TEST_ASSERT_NOT_NULL(f);
+  (void)fputs("series: Auto Discovered Series\nwriter: Auto Writer\n", f);
+  (void)fclose(f);
+
+  mdl_meta_init(&meta);
+  TEST_ASSERT(mdl_meta_load_dir(&meta, dir) == k_ra8_ok);
+  TEST_ASSERT(strcmp(meta.series_title, "Auto Discovered Series") == 0);
+  TEST_ASSERT(strcmp(meta.writer, "Auto Writer") == 0);
+
+  (void)unlink("/tmp/mdl_meta_dir/metadata.txt");
+  (void)rmdir(dir);
+  TEST_END("metadata init, parse, and load");
+}
+
+/** @test Build ComicInfo.xml string and verify CBZ metadata insertion. */
+static void test_comicinfo_xml_generation(void)
+{
+  TEST_BEGIN("ComicInfo.xml generation & CBZ metadata");
+  mdl_export_meta_t meta;
+  mdl_meta_init(&meta);
+  (void)snprintf(meta.series_title, sizeof(meta.series_title), "Comic & Series");
+  (void)snprintf(meta.chapter_title, sizeof(meta.chapter_title), "Ch 1: <Origin>");
+  meta.chapter_number = 1.0;
+  (void)snprintf(meta.writer, sizeof(meta.writer), "Writer & Author");
+  (void)snprintf(meta.artist, sizeof(meta.artist), "Artist & Penciller");
+  (void)snprintf(meta.summary, sizeof(meta.summary), "Summary & Description");
+
+  char xml_buf[4096];
+  TEST_ASSERT(mdl_export_build_comicinfo(&meta, xml_buf, sizeof(xml_buf)) == k_ra8_ok);
+  TEST_ASSERT(strstr(xml_buf, "<Series>Comic &amp; Series</Series>") != nullptr);
+  TEST_ASSERT(strstr(xml_buf, "<Title>Ch 1: &lt;Origin&gt;</Title>") != nullptr);
+  TEST_ASSERT(strstr(xml_buf, "<Number>1</Number>") != nullptr);
+  TEST_ASSERT(strstr(xml_buf, "<Writer>Writer &amp; Author</Writer>") != nullptr);
+  TEST_ASSERT(strstr(xml_buf, "<Artist>Artist &amp; Penciller</Artist>") != nullptr);
+  TEST_ASSERT(strstr(xml_buf, "<Summary>Summary &amp; Description</Summary>") != nullptr);
+  TEST_ASSERT(strstr(xml_buf, "<ComicBookInfo>media_dl</ComicBookInfo>") != nullptr);
+
+  /* Export CBZ with metadata and verify ComicInfo.xml inside zip */
+  const char* dir = "/tmp/mdl_cbz_meta_chap";
+  const char* out = "/tmp/mdl_cbz_meta_chap.cbz";
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
+  write_fixture("/tmp/mdl_cbz_meta_chap/page_001.jpg", 'a');
+
+  TEST_ASSERT(mdl_export_chapter_meta(k_mdl_fmt_cbz, dir, out, &meta) == k_ra8_ok);
+
+  mz_zip_archive zr;
+  memset(&zr, 0, sizeof(zr));
+  TEST_ASSERT(mz_zip_reader_init_file(&zr, out, 0) != MZ_FALSE);
+  char* content = zip_entry_str(&zr, "ComicInfo.xml");
+  TEST_ASSERT_NOT_NULL(content);
+  TEST_ASSERT(strstr(content, "<Series>Comic &amp; Series</Series>") != nullptr);
+  free(content);
+  (void)mz_zip_reader_end(&zr);
+
+  (void)unlink("/tmp/mdl_cbz_meta_chap/page_001.jpg");
+  (void)unlink(out);
+  (void)rmdir(dir);
+  TEST_END("ComicInfo.xml generation & CBZ metadata");
+}
+
+/** @test EPUB metadata generation, unique UUID identifier, and cover image property. */
+static void test_epub_metadata_and_uuid(void)
+{
+  TEST_BEGIN("EPUB metadata, UUID, and cover image");
+  const char* dir = "/tmp/mdl_epub_meta_chap";
+  const char* out = "/tmp/mdl_epub_meta_chap.epub";
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
+  write_fixture("/tmp/mdl_epub_meta_chap/page_001.jpg", 'a');
+  write_fixture("/tmp/mdl_epub_meta_chap/page_002.jpg", 'b');
+
+  mdl_export_meta_t meta;
+  mdl_meta_init(&meta);
+  (void)snprintf(meta.series_title, sizeof(meta.series_title), "EPUB Series");
+  (void)snprintf(meta.chapter_title, sizeof(meta.chapter_title), "EPUB Chapter 1");
+  (void)snprintf(meta.writer, sizeof(meta.writer), "EPUB Writer");
+  (void)snprintf(meta.artist, sizeof(meta.artist), "EPUB Artist");
+  (void)snprintf(meta.summary, sizeof(meta.summary), "EPUB Summary");
+  meta.cover_index = 1; /* page_002.jpg is cover */
+
+  TEST_ASSERT(mdl_export_chapter_meta(k_mdl_fmt_epub, dir, out, &meta) == k_ra8_ok);
+
+  mz_zip_archive zr;
+  memset(&zr, 0, sizeof(zr));
+  TEST_ASSERT(mz_zip_reader_init_file(&zr, out, 0) != MZ_FALSE);
+  char* opf = zip_entry_str(&zr, "OEBPS/content.opf");
+  TEST_ASSERT_NOT_NULL(opf);
+
+  /* Check UUID identifier */
+  TEST_ASSERT(strstr(opf, "<dc:identifier id=\"bookid\">urn:uuid:") != nullptr);
+
+  /* Check metadata tags */
+  TEST_ASSERT(strstr(opf, "<dc:title>EPUB Chapter 1</dc:title>") != nullptr);
+  TEST_ASSERT(strstr(opf, "<dc:creator opf:role=\"aut\">EPUB Writer</dc:creator>") != nullptr);
+  TEST_ASSERT(strstr(opf, "<dc:creator opf:role=\"art\">EPUB Artist</dc:creator>") != nullptr);
+  TEST_ASSERT(strstr(opf, "<dc:description>EPUB Summary</dc:description>") != nullptr);
+
+  /* Check cover image property on img1 (page_002.jpg) */
+  TEST_ASSERT(strstr(opf, "id=\"img1\" href=\"images/page_002.jpg\" media-type=\"image/jpeg\" properties=\"cover-image\"") != nullptr);
+
+  free(opf);
+  (void)mz_zip_reader_end(&zr);
+
+  (void)unlink("/tmp/mdl_epub_meta_chap/page_001.jpg");
+  (void)unlink("/tmp/mdl_epub_meta_chap/page_002.jpg");
+  (void)unlink(out);
+  (void)rmdir(dir);
+  TEST_END("EPUB metadata, UUID, and cover image");
+}
+
+/**
+ * @test test_image_magic_bytes
+ * @brief Unit tests for image magic byte & Content-Type sniffing (JPEG, PNG, WebP, GIF).
+ */
+static void test_image_magic_bytes(void)
+{
+  TEST_BEGIN("image magic byte & Content-Type typing");
+  char ext[16];
+  char mime[32];
+
+  /* 1. JPEG magic bytes: FF D8 FF */
+  static const uint8_t jpeg_hdr[] = {0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10};
+  TEST_ASSERT(mdl_urlname_sniff_image_type(jpeg_hdr, sizeof(jpeg_hdr), nullptr, ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "jpg") == 0);
+  TEST_ASSERT(strcmp(mime, "image/jpeg") == 0);
+
+  /* 2. PNG magic bytes: 89 50 4E 47 */
+  static const uint8_t png_hdr[] = {0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+  TEST_ASSERT(mdl_urlname_sniff_image_type(png_hdr, sizeof(png_hdr), nullptr, ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "png") == 0);
+  TEST_ASSERT(strcmp(mime, "image/png") == 0);
+
+  /* 3. WebP magic bytes: RIFF....WEBP */
+  static const uint8_t webp_hdr[] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P'};
+  TEST_ASSERT(mdl_urlname_sniff_image_type(webp_hdr, sizeof(webp_hdr), nullptr, ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "webp") == 0);
+  TEST_ASSERT(strcmp(mime, "image/webp") == 0);
+
+  /* 4. GIF magic bytes: GIF87a / GIF89a */
+  static const uint8_t gif87_hdr[] = {'G', 'I', 'F', '8', '7', 'a', 0, 0};
+  TEST_ASSERT(mdl_urlname_sniff_image_type(gif87_hdr, sizeof(gif87_hdr), nullptr, ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "gif") == 0);
+  TEST_ASSERT(strcmp(mime, "image/gif") == 0);
+
+  static const uint8_t gif89_hdr[] = {'G', 'I', 'F', '8', '9', 'a', 0, 0};
+  TEST_ASSERT(mdl_urlname_sniff_image_type(gif89_hdr, sizeof(gif89_hdr), nullptr, ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "gif") == 0);
+  TEST_ASSERT(strcmp(mime, "image/gif") == 0);
+
+  /* 5. Fallback to Content-Type header when magic bytes are missing or unknown */
+  TEST_ASSERT(mdl_urlname_sniff_image_type(nullptr, 0, "image/jpeg", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "jpg") == 0);
+  TEST_ASSERT(strcmp(mime, "image/jpeg") == 0);
+
+  TEST_ASSERT(mdl_urlname_sniff_image_type(nullptr, 0, "image/png; charset=utf-8", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "png") == 0);
+  TEST_ASSERT(strcmp(mime, "image/png") == 0);
+
+  TEST_ASSERT(mdl_urlname_sniff_image_type(nullptr, 0, "IMAGE/WEBP", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "webp") == 0);
+  TEST_ASSERT(strcmp(mime, "image/webp") == 0);
+
+  TEST_ASSERT(mdl_urlname_sniff_image_type(nullptr, 0, "image/gif", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "gif") == 0);
+  TEST_ASSERT(strcmp(mime, "image/gif") == 0);
+
+  /* 6. Priority: Magic bytes take precedence over Content-Type header */
+  TEST_ASSERT(mdl_urlname_sniff_image_type(png_hdr, sizeof(png_hdr), "image/jpeg", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "png") == 0);
+  TEST_ASSERT(strcmp(mime, "image/png") == 0);
+
+  /* 7. Unrecognized header / invalid content type */
+  static const uint8_t junk_hdr[] = {0x00, 0x00, 0x00, 0x00};
+  TEST_ASSERT(!mdl_urlname_sniff_image_type(junk_hdr, sizeof(junk_hdr), "text/html", ext, sizeof(ext), mime, sizeof(mime)));
+
+  TEST_END("image magic byte & Content-Type typing");
+}
+
 /**
  * @brief Run every media_dl unit test in sequence.
  * @return 0 when all tests passed, non-zero on the first failure.
@@ -847,6 +1120,11 @@ int32_t main(void)
   test_robots_wildcard_anchor();
   test_robots_edge();
   test_robots_cache();
+  test_cli_new_flags();
+  test_meta_init_parse_load();
+  test_comicinfo_xml_generation();
+  test_epub_metadata_and_uuid();
+  test_image_magic_bytes();
   (void)fprintf(stderr, "[OK  ] test_media_dl.c\n");
   return 0;
 }

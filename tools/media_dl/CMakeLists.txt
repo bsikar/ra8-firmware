@@ -139,12 +139,15 @@ add_executable(
   src/mdl_atomic.c
   src/mdl_url_guard.c
   src/mdl_sanitize.c
+  src/mdl_urlname.c
   src/mdl_robots.c
   src/mdl_extract.c
   src/mdl_config.c
   src/mdl_politeness.c
   src/mdl_export.c
   src/mdl_export_jof.c
+  src/mdl_cli.c
+  src/mdl_net.c
   ${MDL_JOF_SRC}
   ${MDL_MINIZ}
 )
