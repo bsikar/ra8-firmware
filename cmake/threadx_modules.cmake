@@ -102,8 +102,30 @@ target_include_directories(
 # Enable the TX_MODULE_MANAGER_16_MPU flag for the M85's 16-region MPU.
 target_compile_definitions(threadx_modules PUBLIC TXM_MODULE_ENABLE)
 
+# The module manager requires notify callbacks (trampolines). tx_user.h
+# defines TX_DISABLE_NOTIFY_CALLBACKS which compiles out the trampoline
+# bodies in the GLOB'd sources. Exclude them and use a wrapper that
+# #undef's the macro before #include-ing the .c files.
+set(_txm_trampoline_re "txm_module_manager_.*_notify_trampoline\\.c$")
+get_target_property(_txm_all_srcs threadx_modules SOURCES)
+foreach(_src ${_txm_all_srcs})
+  if("${_src}" MATCHES "${_txm_trampoline_re}")
+    set_source_files_properties("${_src}" PROPERTIES HEADER_FILE_ONLY TRUE)
+  endif()
+endforeach()
+target_sources(threadx_modules PRIVATE
+  "${RA8_REPO_ROOT}/port/threadx/src/module/txm_trampolines.c"
+)
+# Add the source dir so the wrapper can #include the upstream .c files.
+target_include_directories(threadx_modules PRIVATE
+  "${RA8_THREADX_ROOT}/common_modules/module_manager/src"
+)
+
 # Quiet upstream warnings (same treatment as base threadx target).
 target_compile_options(threadx_modules PRIVATE $<$<COMPILE_LANGUAGE:C>:-w>)
+
+# Match the base threadx target's C standard.
+set_target_properties(threadx_modules PROPERTIES C_STANDARD 23 C_STANDARD_REQUIRED ON)
 
 message(STATUS "ThreadX Modules: threadx_modules target configured")
 message(STATUS "ThreadX Modules: M85 port = ${RA8_TXM_PORT_DIR}")

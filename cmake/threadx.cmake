@@ -148,6 +148,10 @@ target_link_options(
 # files are passed through the assembler and reject -W flags.
 target_compile_options(threadx PRIVATE $<$<COMPILE_LANGUAGE:C>:-w>)
 
+# Force C23 on the threadx library so project-tuned TUs like
+# tx_systick_retune.c can use ra8_core headers (bool, nullptr).
+set_target_properties(threadx PROPERTIES C_STANDARD 23 C_STANDARD_REQUIRED ON)
+
 message(STATUS "ThreadX: ${CMAKE_PROJECT_NAME}/threadx target configured")
 message(STATUS "ThreadX: tx_user.h     = ${RA8_THREADX_PORT_DIR}/inc/tx_user.h")
 message(STATUS "ThreadX: low-level S   = ${RA8_THREADX_PROJECT_LOW_LEVEL}")
