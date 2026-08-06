@@ -175,7 +175,7 @@ static void build_frame(uc_engine* uc, uint16_t* fb, uint16_t width_px, uint16_t
 int write_ppm(const char* path, const uint16_t* fb, uint16_t width_px, uint16_t height_px)
 {
   FILE* f = fopen(path, "wb"); /* alloc-allow: host dev tool, not firmware */
-  if (f == nullptr) {
+  if (f == NULL) {
     return -1;
   }
   (void)fprintf(f, "P6\n%u %u\n255\n", (unsigned)width_px, (unsigned)height_px);
@@ -664,7 +664,7 @@ bool load_panel(const char* path, board_panel_t* out)
 {
   (void)memset(out, 0, sizeof(*out));
   FILE* f = fopen(path, "r"); /* alloc-allow: host dev tool, not firmware */
-  if (f == nullptr) {
+  if (f == NULL) {
     (void)fprintf(stderr, "ra8_emulator: cannot open panel config %s\n", path);
     return false;
   }

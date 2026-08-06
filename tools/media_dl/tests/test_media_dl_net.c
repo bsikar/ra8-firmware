@@ -361,7 +361,7 @@ static void test_net_classify(void)
 static void test_net_buf_write_overflow(void)
 {
   TEST_BEGIN("net buf write overflow");
-  char       dst[k_net_dst];
+  char       dst[k_net_dst] = {};
   char       chunk[] = "abcde";
   buf_sink_t sink    = {.buf = dst, .cap = 4U, .len = 0U, .overflow = false};
   /* within cap: 3 bytes into cap 4. */
@@ -533,6 +533,7 @@ static bool atom_write(const char* path, const char* body)
 {
   FILE* f = fopen(path, "wb");
   if (f == nullptr) {
+    if (f) { (void)fclose(f); }
     return false;
   }
   const size_t n  = strlen(body);
@@ -545,6 +546,7 @@ static long atom_read(const char* path, char* out, size_t cap)
 {
   FILE* f = fopen(path, "rb");
   if (f == nullptr) {
+    if (f) { (void)fclose(f); }
     return -1;
   }
   const size_t n = fread(out, 1U, cap - 1U, f);

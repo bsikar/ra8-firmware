@@ -104,7 +104,7 @@ priv_write_ppm(const char* path, const uint8_t* px, uint16_t w, uint16_t h, uint
     return k_ra8_err_not_supported;
   }
   FILE* f = fopen(path, "wb");
-  if (f == nullptr) {
+  if (f == NULL) {
     return k_ra8_fail;
   }
   (void)fprintf(f,

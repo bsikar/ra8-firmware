@@ -170,7 +170,7 @@ static void cbs_cache_close(cbs_cache_t* c)
  * @since 0.1.0
  */
 static int
-cbs_cache_open(cbs_cache_t* c, cbs_backend_t* be, uint32_t blob_bytes, uint32_t block_bytes)
+cbs_cache_open(cbs_cache_t* c, const cbs_backend_t* be, uint32_t blob_bytes, uint32_t block_bytes)
 {
   if ((c == nullptr) || (be == nullptr) || (be->read == nullptr) || (block_bytes == 0U)) {
     return 1;

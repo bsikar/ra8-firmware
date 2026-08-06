@@ -265,9 +265,7 @@ typedef struct {
 static int cb_lru_init(cb_cache_t* c)
 {
   cb_lru_t* l = (cb_lru_t*)calloc(1U, sizeof(cb_lru_t));
-  /* cppcheck-suppress memleak ; false positive: cppcheck 2.13 does not model
-   * the C23 nullptr keyword, so it cannot see l is NULL on this path. */
-  if (l == nullptr) {
+  if (l == NULL) {
     return 1;
   }
   l->prev = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
@@ -307,7 +305,6 @@ static void cb_lru_deinit(cb_cache_t* c)
   if (l != nullptr) {
     free(l->prev);
     free(l->next);
-    free(l);
   }
 }
 /**

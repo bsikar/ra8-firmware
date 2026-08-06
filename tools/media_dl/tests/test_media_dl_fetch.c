@@ -144,6 +144,7 @@ static ra8_err_t mock_get_file(void*                ctx,
   }
   FILE* fp = fopen(out_path, "wb");
   if (fp == nullptr) {
+    if (fp) { (void)fclose(fp); }
     return k_ra8_fail;
   }
   (void)fwrite(url, 1U, strlen(url), fp);
@@ -190,6 +191,7 @@ typedef struct {
 } fetch_clock_t;
 
 /** @brief Injected clock: return the virtual now. */
+// cppcheck-suppress constParameterCallback
 static int64_t fetch_now(void* c)
 {
   return ((const fetch_clock_t*)c)->now_ms;

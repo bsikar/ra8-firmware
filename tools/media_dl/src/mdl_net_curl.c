@@ -84,7 +84,7 @@ RA8_INTERNAL static char ascii_lower(char c)
 RA8_INTERNAL static bool header_is(const char* line, size_t line_len, const char* prefix)
 {
   size_t i = 0U;
-  for (; (prefix[i] != '\0') && (i < line_len); ++i) {
+  for (; (i < line_len) && (prefix[i] != '\0'); ++i) {
     if (ascii_lower(line[i]) != prefix[i]) {
       return false;
     }
@@ -195,6 +195,7 @@ RA8_INTERNAL static bool redirect_host_ok(mdl_curl_ctx_t* net)
 /* The libcurl CURLOPT_PREREQFUNCTION ABI fixes these parameter types as
  * non-const `char*`; conn_local_ip is unused here but cannot be re-qualified. */
 RA8_INTERNAL static int on_prereq(void* clientp,
+                                  // cppcheck-suppress constParameterCallback
                                   char* conn_primary_ip,
                                   char* conn_local_ip, // NOLINT(readability-non-const-parameter)
                                   int   conn_primary_port,
@@ -370,6 +371,7 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
 
   FILE* fp = fopen(tmp_path, "wb");
   if (fp == nullptr) {
+    if (fp) { (void)fclose(fp); }
     return k_ra8_fail;
   }
 
@@ -442,6 +444,7 @@ mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
 
   mdl_curl_ctx_t* ctx = (mdl_curl_ctx_t*)calloc(1U, sizeof(*ctx));
   if (ctx == nullptr) {
+    free(ctx);
     return nullptr;
   }
   if (policy != nullptr) {
@@ -464,6 +467,7 @@ mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
   if (net == nullptr) {
     curl_easy_cleanup(ctx->curl);
     free(ctx);
+    free(net);
     return nullptr;
   }
   net->vtable = &s_curl_vtable;

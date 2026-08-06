@@ -414,7 +414,7 @@ gov_on_throttle(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now, uint32_t re
 }
 
 /** @brief Apply a non-throttle outcome: count success, decay, honour Retry-After. */
-RA8_INTERNAL static void gov_on_success(mdl_governor_t* g,
+RA8_INTERNAL static void gov_on_success(const mdl_governor_t* g,
                                         mdl_host_rec_t* rec,
                                         int64_t         now,
                                         bool            has_retry,

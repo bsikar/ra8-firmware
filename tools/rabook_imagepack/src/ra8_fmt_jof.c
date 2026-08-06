@@ -193,6 +193,8 @@ static ra8_err_t fmt_jof_carve_webp(const ra8_fmt_blob_t* src,
   }
   uint8_t* mem = (uint8_t*)malloc((size_t)need);
   if (mem == nullptr) {
+    // cppcheck-suppress memleak
+    // mem is NULL here
     return k_ra8_err_no_mem;
   }
   *out_work = mem;
@@ -258,6 +260,8 @@ static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t* src,
 {
   uint8_t* work = (uint8_t*)malloc((size_t)work_cap);
   if (work == nullptr) {
+    // cppcheck-suppress memleak
+    // work is NULL here
     return k_ra8_err_no_mem;
   }
   uint8_t*        webp_work = nullptr;

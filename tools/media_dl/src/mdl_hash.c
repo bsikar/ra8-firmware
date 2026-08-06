@@ -72,6 +72,7 @@ ra8_err_t mdl_hash_file(const char* path, uint64_t* out)
   }
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
+    if (fp) { (void)fclose(fp); }
     return k_ra8_fail;
   }
   uint64_t   h  = (uint64_t)k_mdl_fnv_offset;

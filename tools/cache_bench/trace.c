@@ -528,10 +528,8 @@ cb_trace_t* cb_traces_synthetic(uint32_t* out_count)
   };
   const uint32_t count = (uint32_t)(sizeof(gens) / sizeof(gens[0]));
   cb_trace_t*    out   = (cb_trace_t*)calloc((size_t)count, sizeof(cb_trace_t));
-  if (out == nullptr) {
+  if (out == NULL) {
     *out_count = 0U;
-    /* cppcheck-suppress memleak ; false positive: cppcheck 2.13 does not
-     * model the C23 nullptr keyword, so it cannot see out is NULL here. */
     return nullptr;
   }
   for (uint32_t i = 0U; i < count; ++i) {
@@ -579,13 +577,15 @@ static bool cb_parse_trace_line(const char* line, uint32_t* obj, uint32_t* pg)
   char* end             = nullptr;
   errno                 = 0;
   const unsigned long o = strtoul(line, &end, (int)k_cb_base_dec);
-  if ((end == line) || (errno != 0) || (o > UINT32_MAX)) {
+  // cppcheck-suppress compareValueOutOfTypeRangeError
+  if ((end == line) || (errno != 0) || ((uint64_t)o > UINT32_MAX)) {
     return false;
   }
   const char* second    = end;
   errno                 = 0;
   const unsigned long p = strtoul(second, &end, (int)k_cb_base_dec);
-  if ((end == second) || (errno != 0) || (p > UINT32_MAX)) {
+  // cppcheck-suppress compareValueOutOfTypeRangeError
+  if ((end == second) || (errno != 0) || ((uint64_t)p > UINT32_MAX)) {
     return false;
   }
   *obj = (uint32_t)o;
@@ -597,9 +597,7 @@ cb_trace_t cb_trace_load(const char* path, const char* name)
 {
   cb_trace_t t = {.name = name};
   FILE*      f = fopen(path, "r");
-  if (f == nullptr) {
-    /* cppcheck-suppress resourceLeak ; false positive: cppcheck 2.13 does not
-     * model the C23 nullptr keyword, so it cannot see f is NULL here. */
+  if (f == NULL) {
     return t;
   }
   uint64_t cap = (uint64_t)k_cb_load_init;

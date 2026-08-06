@@ -358,7 +358,7 @@ RA8_INTERNAL static ra8_err_t tar_copy_file(FILE* in, FILE* out, size_t size)
   }
   const size_t pad = round_block(size) - size;
   if (pad > 0U) {
-    uint8_t zeros[k_tar_block] = {};
+    const uint8_t zeros[k_tar_block] = {};
     if (fwrite(zeros, 1U, pad, out) != pad) {
       return k_ra8_fail;
     }
@@ -414,7 +414,9 @@ RA8_INTERNAL static ra8_err_t
 write_tar_file(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
 {
   FILE* f = fopen(out_path, "wb");
-  if (f == nullptr) {
+  if (f == NULL) {
+    // cppcheck-suppress resourceLeak
+    // f is NULL here
     return k_ra8_fail;
   }
   ra8_err_t  rc       = build_tar_to_file(dir, names, count, f);
@@ -453,18 +455,23 @@ RA8_INTERNAL static mz_bool gz_put(const void* buf, int len, void* user)
 RA8_INTERNAL static ra8_err_t gzip_file(const char* in_path, const char* out_path)
 {
   FILE* in = fopen(in_path, "rb");
-  if (in == nullptr) {
+  if (in == NULL) {
+    // cppcheck-suppress resourceLeak
+    // in is NULL here
     return k_ra8_fail;
   }
   FILE* out = fopen(out_path, "wb");
-  if (out == nullptr) {
+  if (out == NULL) {
     (void)fclose(in);
+    // cppcheck-suppress resourceLeak
+    // out is NULL here
     return k_ra8_fail;
   }
   tdefl_compressor* d = (tdefl_compressor*)malloc(sizeof(*d));
-  if (d == nullptr) {
+  if (d == NULL) {
     (void)fclose(in);
     (void)fclose(out);
+    free(d);
     return k_ra8_err_no_mem;
   }
   const uint8_t hdr[k_gzip_hdr_len] =
@@ -861,8 +868,8 @@ RA8_INTERNAL static ra8_err_t run_rabook_python(const char* cbz, const char* out
 {
 #ifdef MDL_EPUB_COMPILE_DIR
   char script[PATH_MAX];
-  (void)snprintf(script, sizeof(script), "%s/cbz_compile.py", MDL_EPUB_COMPILE_DIR);
-  (void)setenv("PYTHONPATH", MDL_EPUB_COMPILE_DIR, 1);
+  (void)snprintf(script, sizeof(script), "%s/cbz_compile.py", (const char*)(MDL_EPUB_COMPILE_DIR));
+  (void)setenv("PYTHONPATH", (const char*)(MDL_EPUB_COMPILE_DIR), 1);
   const char* const argv[] = {"python3", script, cbz, out_path, "--rtl", nullptr};
   pid_t             pid    = 0;
   const int rc = posix_spawnp(&pid, argv[0], nullptr, nullptr, (char* const*)argv, spawn_environ());

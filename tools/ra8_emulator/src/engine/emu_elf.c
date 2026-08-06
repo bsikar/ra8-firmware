@@ -31,7 +31,7 @@
 uint8_t* read_file(const char* path, long* out_len)
 {
   FILE* f = fopen(path, "rb");
-  if (f == nullptr) {
+  if (f == NULL) {
     return nullptr;
   }
   (void)fseek(f, 0, SEEK_END);

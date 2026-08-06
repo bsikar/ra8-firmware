@@ -113,7 +113,7 @@ ra8_err_t ra8_viewer_write_ppm565(const uint16_t* px, uint32_t w, uint32_t h, co
     return k_ra8_err_invalid_size;
   }
   FILE* fp = fopen(path, "wb");
-  if (fp == nullptr) {
+  if (fp == NULL) {
     return k_ra8_err_not_found;
   }
   (void)fprintf(fp, "P6\n%u %u\n255\n", (unsigned)w, (unsigned)h);

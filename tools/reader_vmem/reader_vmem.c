@@ -618,6 +618,8 @@ int main(int argc, char** argv)
     (void)fprintf(stderr, "reader_vmem: cannot open trace file %s\n", trace_path);
     rv_res_free(&res);
     free(s_book_backing);
+    // cppcheck-suppress memleak
+    // closed inside rv_run_and_report()
     return 1;
   }
 

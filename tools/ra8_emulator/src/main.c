@@ -432,9 +432,9 @@ static int main_load_ns(uc_engine*  uc,
  * @note Not thread-safe; single-threaded setup.
  * @since 0.1.0
  */
-static void main_resolve_symbols(uint8_t*          elf,
+static void main_resolve_symbols(const uint8_t*    elf,
                                  long              elf_len,
-                                 uint8_t*          ns_elf,
+                                 const uint8_t*    ns_elf,
                                  long              ns_len,
                                  const emu_args_t* args,
                                  uint32_t*         dump_sym_addrs,
@@ -524,7 +524,7 @@ static uint32_t main_reset_vector(uc_engine* uc)
  * @note Not thread-safe; single-threaded setup.
  * @since 0.1.0
  */
-static void main_install_core_seams(uc_engine* uc, uint8_t* elf, long elf_len)
+static void main_install_core_seams(uc_engine* uc, const uint8_t* elf, long elf_len)
 {
   emu_insn_seams_install(uc);
   emu_exc_install_core(uc);
@@ -560,7 +560,7 @@ static void main_install_core_seams(uc_engine* uc, uint8_t* elf, long elf_len)
  * @since 0.1.0
  */
 static void
-main_install_run_seams(uc_engine* uc, uint8_t* elf, long elf_len, const emu_args_t* args)
+main_install_run_seams(uc_engine* uc, const uint8_t* elf, long elf_len, const emu_args_t* args)
 {
   bool usbh_seamed = false;
   if (!args->usbhs_loop) {
