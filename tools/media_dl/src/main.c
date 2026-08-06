@@ -53,9 +53,9 @@
 #include "mdl_session.h"
 #include "mdl_state.h"
 #include "mdl_urlname.h"
-#include "ra8_host_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_host_arena.h"
 
 /** @brief Fixed sizing for the CLI (large buffers live in .bss). */
 typedef enum : uint32_t {
@@ -509,10 +509,10 @@ RA8_INTERNAL static int run_prepared(const series_run_t* r,
   const int64_t     run_start = (int64_t)time(nullptr);
   mdl_fetch_stats_t stats;
   const ra8_err_t   frc = mdl_fetch_run(&ctx,
-                                        sel,
-                                        layout,
-                                        (layout == k_mdl_layout_combined) ? combined_rel : nullptr,
-                                        &stats);
+                                      sel,
+                                      layout,
+                                      (layout == k_mdl_layout_combined) ? combined_rel : nullptr,
+                                      &stats);
   (void)mdl_state_save(state_path, &s_state);
   report_stats(abs_dir, &stats);
   mdl_report_failures(&s_faillog);

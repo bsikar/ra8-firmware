@@ -83,7 +83,7 @@ static uint64_t priv_rd_u64(const uint8_t* buf)
  *          `offset[count]` equals the remaining payload length. Each entry's
  *          byte range is printed so a malformed inventory is visible, not
  *          merely reported.
- * @param[in] src        Container bytes (non-NULL).
+ * @param[in] src        Container bytes (non-nullptr).
  * @param[in] table_off  Byte offset of `offset[0]` within the container.
  * @param[in] count      Entry count (the table holds `count + 1` offsets).
  * @param[in] payload    Byte offset where the concatenated streams begin.

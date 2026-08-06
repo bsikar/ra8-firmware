@@ -25,9 +25,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra8_host_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_fs.h"
+#include "ra8_host_arena.h"
 
 enum : uint32_t { k_arena_bytes = 128U * 1024U * 1024U }; // 128 MiB - generous for disk images
 
@@ -136,7 +136,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
  * @retval k_ra8_ok Geometry was reported (this shim cannot fail).
  *
  * @pre @p ctx points at an initialised ::mem_disk_t.
- * @pre @p block_count and @p block_size are non-NULL.
+ * @pre @p block_count and @p block_size are non-nullptr.
  * @post Both out-parameters are populated.
  * @post The backing store is left unmodified.
  *
@@ -156,7 +156,7 @@ static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
 static uint8_t* read_file(ra8_arena_t* arena, const char* path, uint32_t* out_len)
 {
   FILE* f = fopen(path, "rb");
-  if (f == NULL) {
+  if (f == nullptr) {
     return nullptr;
   }
   (void)fseek(f, 0, SEEK_END);
@@ -193,7 +193,7 @@ static uint8_t* read_file(ra8_arena_t* arena, const char* path, uint32_t* out_le
  * @retval 1 ra8_fs_format or ra8_fs_mount failed (reported on stderr).
  *
  * @pre @p backend is fully populated with the mem_* callbacks and ctx.
- * @pre @p out_mnt is non-NULL.
+ * @pre @p out_mnt is non-nullptr.
  * @post On success @p out_mnt names a mounted volume the caller must unmount.
  * @post On failure @p out_mnt is left untouched and nothing is mounted.
  *
@@ -299,7 +299,7 @@ static int write_books(ra8_arena_t* arena, ra8_fs_mount_t* mnt, char** argv, int
 static int dump_image(const char* path)
 {
   FILE* out = fopen(path, "wb");
-  if (out == NULL) {
+  if (out == nullptr) {
     (void)fprintf(stderr, "mkbookimg: cannot write %s\n", path);
     return 1;
   }

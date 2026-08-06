@@ -189,16 +189,16 @@ RA8_INTERNAL static void config_parse_stream(FILE* fp, mdl_site_t* out)
 
 ra8_err_t mdl_config_load(const char* path, mdl_site_t* out)
 {
-  if ((path == NULL) || (out == NULL)) {
+  if ((path == nullptr) || (out == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
   config_set_defaults(out);
 
   FILE* fp = fopen(path, "r");
-  if (fp == NULL) {
+  if (fp == nullptr) {
     (void)fprintf(stderr, "media_dl: cannot open config '%s'\n", path);
     // cppcheck-suppress resourceLeak
-    // fp is NULL here
+    // fp is nullptr here
     return k_ra8_fail;
   }
   config_parse_stream(fp, out);

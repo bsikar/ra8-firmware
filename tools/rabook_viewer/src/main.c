@@ -29,8 +29,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "ra8_host_arena.h"
 #include "ra8_err.h"
+#include "ra8_host_arena.h"
 #include "ra8_log.h"
 #include "ra8_viewer_reader.h"
 #include "ra8_viewer_view.h"
@@ -54,7 +54,7 @@ typedef enum : int32_t {
  */
 typedef struct {
   const char* path;      /**< Input document path (required).         */
-  const char* dump_ppm;  /**< PPM dump path, or NULL.                 */
+  const char* dump_ppm;  /**< PPM dump path, or nullptr.                 */
   uint32_t    page;      /**< Page to render for --dump-ppm.          */
   int64_t     dump_tile; /**< Tile to dump via the scroll API, or -1. */
   bool        headless;  /**< Skip opening a window when true.        */
@@ -194,7 +194,7 @@ static bool viewer_render_and_dump(ra8_viewer_reader_t* reader,
  * @brief Open the scrolling reader window and pump events until it closes.
  * @details Creates the Cocoa view over @p reader and cooperatively pumps events
  *          at ~60 Hz (::k_viewer_frame_ns), sleeping between frames, until the
- *          user closes the window. A NULL view means no window could be created
+ *          user closes the window. A nullptr view means no window could be created
  *          (a headless host), reported with the `--headless` hint.
  * @param[in] reader Open reader (the window's tile source).
  * @param[in] arena Scratch arena.

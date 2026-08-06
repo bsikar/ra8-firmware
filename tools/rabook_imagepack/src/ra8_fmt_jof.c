@@ -86,7 +86,7 @@ static const uint8_t s_fmt_webp_webp[4] = {'W', 'E', 'B', 'P'}; /* MAGIC-OK: WEB
  * @return Whether @p src begins with a WebP container head.
  * @retval true  Both the "RIFF" and "WEBP" fourCCs are present.
  * @retval false Too short, or either fourCC differs.
- * @pre @p src is non-NULL and describes `len` readable bytes at `bytes`.
+ * @pre @p src is non-nullptr and describes `len` readable bytes at `bytes`.
  * @pre @p src has been slurped whole (the sniff reads the head only).
  * @post No state is mutated.
  * @post A false result leaves the JPEG / PNG probes free to claim the source.
@@ -159,7 +159,7 @@ static ra8_err_t fmt_jof_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  *          scratch simultaneously. JPEG and PNG stream and would pay that
  *          whole-frame cost for nothing, so the arena is carved only when the
  *          source really is a WebP. For every other codec this reports success
- *          having produced a NULL arena, which is exactly the producer's
+ *          having produced a nullptr arena, which is exactly the producer's
  *          fail-closed "reject WebP" signal.
  * @param[in]  src      Encoded source blob to sniff.
  * @param[in]  max_w    Width cap in pixels used to size the arena.
@@ -316,15 +316,15 @@ ra8_err_t ra8_fmt_jof_produce(ra8_arena_t*          arena,
   }
   ra8_jof_memstore_t store = {.buf = sink, .cap = sink_cap, .len = 0U};
   const ra8_err_t    rc    = fmt_jof_run_produce(arena,
-                                                 src,
-                                                 max_w,
-                                                 max_h,
-                                                 tile_w,
-                                                 tile_h,
-                                                 codec,
-                                                 work_cap,
-                                                 &store,
-                                                 out_info);
+                                           src,
+                                           max_w,
+                                           max_h,
+                                           tile_w,
+                                           tile_h,
+                                           codec,
+                                           work_cap,
+                                           &store,
+                                           out_info);
   if (rc != k_ra8_ok) {
     return rc;
   }

@@ -127,7 +127,7 @@ void internal_ra8_log_error_val(const char* tag, const char* message, uint32_t v
  * @retval 0 Never, for a non-zero seed: xorshift64 cannot reach 0 from a
  *           non-zero state, and ::k_rv_rng_seed is non-zero.
  *
- * @pre @p s is non-NULL.
+ * @pre @p s is non-nullptr.
  * @pre @p s was seeded non-zero (::k_rv_rng_seed).
  * @post @p s holds the advanced state.
  * @post The return value equals the new @p s.
@@ -159,7 +159,7 @@ static uint64_t rv_rng(uint64_t* s)
  * @return A value in [0, @p span).
  * @retval 0 @p span was 0 (an empty range is reported as 0).
  *
- * @pre @p s is non-NULL and seeded.
+ * @pre @p s is non-nullptr and seeded.
  * @pre @p span fits the intended selection range.
  * @post @p s is advanced by exactly one step when @p span is non-zero.
  * @post The result is strictly less than @p span (or 0 when @p span is 0).
@@ -226,7 +226,7 @@ static ra8_err_t rv_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
  *
  * @param[in,out] d Driver state; the chapter table and total_frames are filled.
  *
- * @pre @p d is non-NULL with its RNG seeded.
+ * @pre @p d is non-nullptr with its RNG seeded.
  * @pre @p d->chapters has room for ::k_rv_chapters entries.
  * @post @p d->chapters holds contiguous, non-overlapping extents.
  * @post @p d->total_frames is the frame count of the whole book.
@@ -420,18 +420,18 @@ typedef struct {
 } rv_res_t;
 
 /**
- * @brief Release the vmem backing buffers (each free tolerates NULL).
+ * @brief Release the vmem backing buffers (each free tolerates nullptr).
  *
  * @details
  * Frees the four owned allocations of an ::rv_res_t -- the frame pool, the
  * per-frame metadata and key arrays, and the hash-bucket table -- so a single
- * call cleans up on every error path. Each free() tolerates a NULL member, so a
+ * call cleans up on every error path. Each free() tolerates a nullptr member, so a
  * partially-allocated ::rv_res_t is safe to release.
  *
  * @param[in,out] res Backing buffers to free; the members are left dangling.
  *
- * @pre @p res is non-NULL.
- * @pre Each member is either NULL or a live malloc/calloc pointer.
+ * @pre @p res is non-nullptr.
+ * @pre Each member is either nullptr or a live malloc/calloc pointer.
  * @post Every owned buffer is freed.
  * @post The caller must not read @p res's pointers after this returns.
  *
@@ -464,7 +464,7 @@ static void rv_res_free(rv_res_t* res)
  * @pre @p d->total_frames has been set by ::rv_layout_book.
  * @pre ::s_book_backing is not already allocated.
  * @post On success ::s_book_backing and ::s_book_bytes describe the book.
- * @post On failure ::s_book_backing is left NULL.
+ * @post On failure ::s_book_backing is left nullptr.
  *
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
@@ -506,7 +506,7 @@ RA8_NASA_RULE_3_OK /* host-only bench: mock book buffer */
  * @retval true  @p vm is initialised over the allocated buffers.
  * @retval false An allocation failed or ra8_vmem_init rejected the config.
  *
- * @pre @p vm, @p res and @p vs are non-NULL.
+ * @pre @p vm, @p res and @p vs are non-nullptr.
  * @pre @p vs has the book object registered.
  * @post On success @p vm is ready and @p res owns the backing buffers.
  * @post On failure whichever buffers were allocated remain owned by @p res.
@@ -553,7 +553,7 @@ RA8_NASA_RULE_3_OK /* host-only bench: dynamic cache arrays */
  * @param[in]     budget     Frame budget, echoed in the report.
  * @param[in]     trace_path Trace path, echoed in the report.
  *
- * @pre @p d, @p vm and @p trace_path are non-NULL and the trace is open.
+ * @pre @p d, @p vm and @p trace_path are non-nullptr and the trace is open.
  * @pre The book has been laid out and allocated.
  * @post All three phases have run and @p d->trace is closed.
  * @post The SLRU hit/miss/eviction summary has been printed to stderr.

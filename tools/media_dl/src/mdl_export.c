@@ -197,7 +197,7 @@ RA8_INTERNAL static char* const* spawn_environ(void)
  *          is present, so one source serves both without a platform guess.
  *
  * @param[in,out] actions Initialised file-actions object to extend.
- * @param[in]     dir     Directory the spawned child starts in (non-NULL).
+ * @param[in]     dir     Directory the spawned child starts in (non-nullptr).
  *
  * @return 0 on success, else an errno value from the underlying call.
  * @retval 0 The chdir action was appended.
@@ -417,9 +417,9 @@ RA8_INTERNAL static ra8_err_t
 write_tar_file(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
 {
   FILE* f = fopen(out_path, "wb");
-  if (f == NULL) {
+  if (f == nullptr) {
     // cppcheck-suppress resourceLeak
-    // f is NULL here
+    // f is nullptr here
     return k_ra8_fail;
   }
   ra8_err_t  rc       = build_tar_to_file(dir, names, count, f);
@@ -460,23 +460,23 @@ gzip_file(ra8_arena_t* arena, const char* in_path, const char* out_path)
 {
   const uint32_t mark = ra8_arena_save(arena);
   FILE*          in   = fopen(in_path, "rb");
-  if (in == NULL) {
+  if (in == nullptr) {
     // cppcheck-suppress resourceLeak
-    // in is NULL here
+    // in is nullptr here
     ra8_arena_restore(arena, mark);
     return k_ra8_fail;
   }
   FILE* out = fopen(out_path, "wb");
-  if (out == NULL) {
+  if (out == nullptr) {
     (void)fclose(in);
     // cppcheck-suppress resourceLeak
-    // out is NULL here
+    // out is nullptr here
     ra8_arena_restore(arena, mark);
     return k_ra8_fail;
   }
   tdefl_compressor* d =
     (tdefl_compressor*)ra8_arena_alloc(arena, (uint32_t)sizeof(*d), _Alignof(tdefl_compressor));
-  if (d == NULL) {
+  if (d == nullptr) {
     (void)fclose(in);
     (void)fclose(out);
 
@@ -485,8 +485,8 @@ gzip_file(ra8_arena_t* arena, const char* in_path, const char* out_path)
   }
   const uint8_t hdr[k_gzip_hdr_len] =
     {k_gz_id1, k_gz_id2, k_gz_cm, 0U, 0U, 0U, 0U, 0U, 0U, k_gz_os};
-  bool     ok    = (fwrite(hdr, 1U, sizeof(hdr), out) == sizeof(hdr)) &&
-                   (tdefl_init(d, gz_put, out, TDEFL_DEFAULT_MAX_PROBES) == TDEFL_STATUS_OKAY);
+  bool ok = (fwrite(hdr, 1U, sizeof(hdr), out) == sizeof(hdr)) &&
+            (tdefl_init(d, gz_put, out, TDEFL_DEFAULT_MAX_PROBES) == TDEFL_STATUS_OKAY);
   uint32_t crc   = (uint32_t)MZ_CRC32_INIT;
   uint32_t isize = 0U; /* ISIZE = total input length mod 2^32 */
   uint8_t  chunk[k_stream_chunk];

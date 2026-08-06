@@ -123,7 +123,7 @@ void internal_ra8_log_error_val(const char* tag, const char* message, uint32_t v
  * @retval 0 Never, for a non-zero seed: xorshift64 cannot reach 0 from a
  *           non-zero state, and ::k_gb_seed is non-zero.
  *
- * @pre @p s is non-NULL.
+ * @pre @p s is non-nullptr.
  * @pre @p s was seeded non-zero (::k_gb_seed).
  * @post @p s holds the advanced state.
  * @post The return value equals the new @p s.
@@ -155,7 +155,7 @@ static uint64_t gb_rng(uint64_t* s)
  * @return A value in [0, @p span).
  * @retval 0 @p span was 0 (an empty range is reported as 0).
  *
- * @pre @p s is non-NULL and seeded.
+ * @pre @p s is non-nullptr and seeded.
  * @pre @p span fits the intended selection range.
  * @post @p s is advanced by exactly one step when @p span is non-zero.
  * @post The result is strictly less than @p span (or 0 when @p span is 0).
@@ -183,7 +183,7 @@ static uint32_t gb_below(uint64_t* s, uint32_t span)
  * @return An ASCII lowercase codepoint in 'a'..'z'.
  * @retval 97 ('a') the frequency walk fell through (draw exceeded the table sum).
  *
- * @pre @p s is non-NULL and seeded.
+ * @pre @p s is non-nullptr and seeded.
  * @pre ::k_gb_letter_freq sums to ::k_gb_freq_total.
  * @post @p s is advanced.
  * @post The result is a valid lowercase-letter codepoint.
@@ -222,7 +222,7 @@ static const uint32_t k_gb_punct[] = {' ', '.', ',', ';', ':', '\'', '"', '-', '
  * @retval 32 (space) when the punctuation roll selected the first repertoire
  *            entry, ::k_gb_punct[0].
  *
- * @pre @p s is non-NULL and seeded.
+ * @pre @p s is non-nullptr and seeded.
  * @pre The percentage constants sum to at most ::k_gb_pct_base.
  * @post @p s is advanced by one or more steps.
  * @post The result is a printable ASCII codepoint.
@@ -267,8 +267,8 @@ static uint32_t gb_pick_codepoint(uint64_t* s)
  * @return Render status.
  * @retval k_ra8_ok Always; the stub cannot fail.
  *
- * @pre @p cell is non-NULL with at least @p cell_bytes bytes.
- * @pre @p out_w and @p out_h are non-NULL.
+ * @pre @p cell is non-nullptr with at least @p cell_bytes bytes.
+ * @pre @p out_w and @p out_h are non-nullptr.
  * @post @p cell is zeroed and @p out_w / @p out_h are set to 1.
  * @post No global state is touched.
  *
@@ -304,7 +304,7 @@ RA8_NASA_RULE_3_OK /* host-only bench: glyph sequence array */
   const uint64_t total =
     (uint64_t)k_gb_pages * (uint64_t)k_gb_reread_pages * (uint64_t)k_gb_page_glyphs;
   gb_access_t* seq = (gb_access_t*)malloc((size_t)total * sizeof(gb_access_t));
-  if (seq == NULL) {
+  if (seq == nullptr) {
     *out_n = 0U;
     return nullptr;
   }
@@ -350,7 +350,7 @@ RA8_NASA_RULE_3_OK /* host-only bench: glyph sequence array */
  * @retval 0.0 @p n was 0, or a backing allocation failed.
  *
  * @pre @p seq holds @p n valid accesses (or @p n is 0).
- * @pre @p out_rasters is non-NULL.
+ * @pre @p out_rasters is non-nullptr.
  * @post @p out_rasters holds the miss count (0 on allocation failure).
  * @post Every buffer allocated for the run is freed before returning.
  *

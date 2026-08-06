@@ -84,7 +84,7 @@
  * @param[in,out] view_h In: default height; out: panel height when adopted.
  * @return The window / sidebar caption string.
  * @retval "ra8_emulator" No named panel was loaded.
- * @pre @p args, @p view_w and @p view_h are non-NULL.
+ * @pre @p args, @p view_w and @p view_h are non-nullptr.
  * @pre @p view_w / @p view_h hold the default or --size dimensions.
  * @post @p view_w / @p view_h reflect the panel size iff adopted.
  * @post The returned pointer outlives the run (argv- or literal-backed).
@@ -118,10 +118,10 @@ static const char* main_apply_panel(const emu_args_t* args, uint16_t* view_w, ui
  * @return 0 on success, 1 on failure.
  * @retval 0 The engine, memory map and seeds are ready.
  * @retval 1 uc_open or the memory-map init failed (message printed).
- * @pre @p uc_out is non-NULL.
+ * @pre @p uc_out is non-nullptr.
  * @pre No engine is currently open in @p *uc_out.
  * @post On success @p *uc_out is a ready engine with the RA8D2 map.
- * @post On failure @p *uc_out is unchanged or NULL.
+ * @post On failure @p *uc_out is unchanged or nullptr.
  * @note Not thread-safe; single-threaded setup.
  * @since 0.1.0
  */
@@ -151,10 +151,10 @@ static int main_open_engine(uc_engine** uc_out)
  * drained frame through the genuine ra8_touch_read decode (a headless multi-tap
  * flow). Must run AFTER board_periph_init so the per-block reset does not clear it.
  *
- * @param[in] touch_seq_str The --touch-seq spec, or NULL when unset.
+ * @param[in] touch_seq_str The --touch-seq spec, or nullptr when unset.
  * @return void
  * @pre board_periph_init has already run.
- * @pre @p touch_seq_str is a valid string or NULL.
+ * @pre @p touch_seq_str is a valid string or nullptr.
  * @post With a spec, the GT911 FIFO holds the parsed points and a count printed.
  * @post Without a spec, no state changes.
  * @note Not thread-safe; single-threaded setup.
@@ -203,7 +203,7 @@ static void main_arm_touch_seq(const char* touch_seq_str)
  * @param[in] args The parsed CLI args (button / battery fields).
  * @return void
  * @pre board_periph_init has already run.
- * @pre @p args is non-NULL.
+ * @pre @p args is non-nullptr.
  * @post Any requested switch hold / battery state is applied and announced.
  * @post No state changes when neither option is given.
  * @note Not thread-safe; single-threaded setup.
@@ -242,7 +242,7 @@ static void main_apply_button_battery(const emu_args_t* args)
  * @param[in] args The parsed CLI args (input string fields).
  * @return void
  * @pre board_periph_init has already run.
- * @pre @p args is non-NULL.
+ * @pre @p args is non-nullptr.
  * @post Each provided stream is queued to its endpoint and a count announced.
  * @post No state changes for the streams left unset.
  * @note Not thread-safe; single-threaded setup.
@@ -286,7 +286,7 @@ static void main_feed_inputs(const emu_args_t* args)
  * @param[in] args The parsed CLI args.
  * @return void
  * @pre The engine is open and mapped.
- * @pre @p args is non-NULL.
+ * @pre @p args is non-nullptr.
  * @post The peripheral models are reset and all pre-boot input state applied.
  * @post The console TX sink and network model are live.
  * @note Not thread-safe; single-threaded setup.
@@ -321,7 +321,7 @@ static void main_bringup_peripherals(const emu_args_t* args)
  * @return 0 on success, 1 on failure.
  * @retval 0 The image is loaded and @p elf_out / @p len_out are set.
  * @retval 1 The file could not be read or loaded (message printed).
- * @pre @p uc is a ready engine; the out params are non-NULL.
+ * @pre @p uc is a ready engine; the out params are non-nullptr.
  * @pre @p elf_path is a valid path.
  * @post On success the image is in Unicorn memory and owned by the caller.
  * @post On failure any partial buffer is freed.
@@ -362,19 +362,19 @@ static int main_load_primary(uc_engine* uc, const char* elf_path, uint8_t** elf_
  * @details Loads the Non-Secure image of a two-image TrustZone app at its LMA so
  * the Secure boot's NS-image copy + BLXNS land on it, and records its actual
  * vector base for the world switch. A read / load failure frees the primary ELF
- * and fails. A no-op when --ns is unset (@p ns_out set to NULL).
+ * and fails. A no-op when --ns is unset (@p ns_out set to nullptr).
  *
  * @param[in]  uc          The engine to load into.
- * @param[in]  ns_elf_path The --ns path, or NULL when unset.
+ * @param[in]  ns_elf_path The --ns path, or nullptr when unset.
  * @param[in]  elf         The primary image (freed on this path's failure).
- * @param[out] ns_out      Receives the NS image buffer (or NULL).
+ * @param[out] ns_out      Receives the NS image buffer (or nullptr).
  * @param[out] ns_len_out  Receives the NS image length (or 0).
  * @return 0 on success or when --ns is unset, 1 on failure.
  * @retval 0 The NS image loaded, or --ns was not requested.
  * @retval 1 The --ns file could not be read or loaded (message printed).
- * @pre @p uc is a ready engine; the out params are non-NULL.
+ * @pre @p uc is a ready engine; the out params are non-nullptr.
  * @pre @p elf is the loaded primary image.
- * @post On success @p ns_out is the NS buffer (or NULL) and vector base set.
+ * @post On success @p ns_out is the NS buffer (or nullptr) and vector base set.
  * @post On failure @p elf has been freed.
  * @note Not thread-safe; single-threaded setup.
  * @since 0.1.0
@@ -422,13 +422,13 @@ static int main_load_ns(uc_engine*  uc,
  *
  * @param[in]  elf           The primary image buffer.
  * @param[in]  elf_len       The primary image length.
- * @param[in]  ns_elf        The NS image buffer, or NULL.
+ * @param[in]  ns_elf        The NS image buffer, or nullptr.
  * @param[in]  ns_len        The NS image length.
  * @param[in]  args          The parsed CLI args (probe names).
  * @param[out] dump_sym_addrs Receives the resolved --dump-sym addresses.
  * @param[out] stop_sym_addr  Receives the resolved --stop-sym address (0 = off).
  * @return void
- * @pre The ELF buffers are still resident and the out params non-NULL.
+ * @pre The ELF buffers are still resident and the out params non-nullptr.
  * @pre @p dump_sym_addrs has room for @p args->dump_sym_n entries.
  * @post Each probe holds its address, or 0 with a reported miss.
  * @post @p *stop_sym_addr is the watch address or 0.
@@ -583,7 +583,7 @@ main_install_run_seams(uc_engine* uc, const uint8_t* elf, long elf_len, const em
   fast_sd_seam_install(uc, elf, elf_len); /* --fast-sd whole-block serve; else inert.       */
   prof_load(elf, elf_len);                /* RA8_EMU_PROFILE FUNC symbols + code hook.      */
   emu_prof_install(uc);
-  emu_cpu1_init(elf, elf_len); /* dual-core cpu1 engine (shares SRAM); NULL for single-core. */
+  emu_cpu1_init(elf, elf_len); /* dual-core cpu1 engine (shares SRAM); nullptr for single-core. */
 }
 
 /**
@@ -608,7 +608,7 @@ main_install_run_seams(uc_engine* uc, const uint8_t* elf, long elf_len, const em
  * @return The populated run configuration (by value).
  * @retval (cfg) Every field mirrors its argument / CLI source.
  * @pre All pointer arguments outlive the returned config's use.
- * @pre @p args and @p uc are non-NULL.
+ * @pre @p args and @p uc are non-nullptr.
  * @post The returned config references, not copies, the array-backed fields.
  * @note Not thread-safe; single-threaded setup.
  * @since 0.1.0

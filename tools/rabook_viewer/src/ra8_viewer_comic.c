@@ -24,10 +24,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "ra8_host_arena.h"
 #include "ra8_comic.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
+#include "ra8_host_arena.h"
 #include "ra8_img_arena.h"
 #include "ra8_reflow_image.h"
 #include "ra8_viewer_reader.h"
@@ -53,7 +53,7 @@ typedef struct {
  *          page of any aspect lands whole and centred with white margins.
  * @param[in]  src_w Source width in pixels (>= 1).
  * @param[in]  src_h Source height in pixels (>= 1).
- * @param[out] box   Receives the centred destination rectangle (non-NULL).
+ * @param[out] box   Receives the centred destination rectangle (non-nullptr).
  * @pre @p src_w and @p src_h are each at least 1.
  * @pre @p box is writable.
  * @post `box->w` and `box->h` are clamped to at least 1 pixel.
@@ -91,8 +91,8 @@ RA8_INTERNAL static void viewer_fit_centered(int32_t src_w, int32_t src_h, viewe
  *          cost is resolution on very tall pages, not aspect.
  * @param[in]  nw Native width in pixels.
  * @param[in]  nh Native height in pixels.
- * @param[out] rw Receives the capped render width (non-NULL, >= 1).
- * @param[out] rh Receives the capped render height (non-NULL, >= 1).
+ * @param[out] rw Receives the capped render width (non-nullptr, >= 1).
+ * @param[out] rh Receives the capped render height (non-nullptr, >= 1).
  * @pre @p rw and @p rh are writable.
  * @pre @p nw and @p nh are the page's native dimensions.
  * @post `*rw` and `*rh` are each at least 1 and within ::k_ra8_gfx_max_dim.
@@ -123,9 +123,9 @@ RA8_INTERNAL static void viewer_cap_render(uint32_t nw, uint32_t nh, uint32_t* r
  *          decompression-bomb declaration before allocating
  *          (`ra8_decomp_check_declared`), grows the scratch buffer to fit, then
  *          reads the encoded image into it.
- * @param[in,out] r    Reader of a comic format (non-NULL).
+ * @param[in,out] r    Reader of a comic format (non-nullptr).
  * @param[in]     page Page index.
- * @param[out]    got  Receives the byte count read (non-NULL).
+ * @param[out]    got  Receives the byte count read (non-nullptr).
  * @return ra8_err_t from `ra8_comic_page_info` / `ra8_comic_page_read`.
  * @retval k_ra8_ok The bytes were read and `*got` holds the count.
  * @pre @p r was opened as a comic format and @p page is valid.
@@ -265,14 +265,14 @@ ra8_err_t viewer_tile_comic(ra8_viewer_reader_t* r,
     (void)ra8_gfx_clear((uint32_t)k_viewer_bg);
     ra8_img_arena_t img_arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
     rc                        = ra8_img_decode_blit(&img_arena,
-                                                    r->page_buf,
-                                                    got,
-                                                    0,
-                                                    0,
-                                                    (int32_t)rw,
-                                                    (int32_t)rh,
-                                                    nullptr,
-                                                    nullptr);
+                             r->page_buf,
+                             got,
+                             0,
+                             0,
+                             (int32_t)rw,
+                             (int32_t)rh,
+                             nullptr,
+                             nullptr);
   }
   if (rc != k_ra8_ok) {
     return rc;

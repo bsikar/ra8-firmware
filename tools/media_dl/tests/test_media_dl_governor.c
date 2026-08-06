@@ -100,8 +100,8 @@ static mdl_governor_t g_gov;
  * @test test_gov_retry_after_parse
  *
  * @par MC/DC:
- * ::mdl_retry_after_parse branches on `value==NULL || out_ms==NULL` (guard),
- * then on all-digits vs HTTP-date. Vectors: a NULL value and a NULL out (guard
+ * ::mdl_retry_after_parse branches on `value==nullptr || out_ms==nullptr` (guard),
+ * then on all-digits vs HTTP-date. Vectors: a nullptr value and a nullptr out (guard
  * true each way), a digit string (digits branch), an IMF-fixdate and an RFC-850
  * date (date branch, both formats), a past date (clamp-to-zero relational), and
  * an unparseable string (date branch false). Each single-condition branch is
@@ -338,16 +338,16 @@ static void test_gov_concurrency_cap(void)
  * @test test_gov_null_and_untracked
  *
  * @par MC/DC:
- * Decision: `g == NULL` in the governor entry points (single condition, N+1 =
- * 2 across the suite). NULL-`g` vectors here return the disabled-pacing answer;
- * the non-NULL side is exercised by every other test. Also covers the NULL-host
+ * Decision: `g == nullptr` in the governor entry points (single condition, N+1 =
+ * 2 across the suite). nullptr-`g` vectors here return the disabled-pacing answer;
+ * the non-nullptr side is exercised by every other test. Also covers the nullptr-host
  * degradation path: no per-host record, only jitter spacing, and ::mdl_governor_peek
  * reports the host as unknown.
  */
 static void test_gov_null_and_untracked(void)
 {
   TEST_BEGIN("gov null + untracked host");
-  /* NULL governor: acquire succeeds (pacing disabled); the rest are no-ops. */
+  /* nullptr governor: acquire succeeds (pacing disabled); the rest are no-ops. */
   TEST_ASSERT(mdl_governor_acquire(nullptr, "h", 0U, 0U) == k_ra8_ok);
   mdl_governor_release(nullptr, "h");
   mdl_governor_observe(nullptr, "h", (long)k_http_too_many, "120");
@@ -361,7 +361,7 @@ static void test_gov_null_and_untracked(void)
                           &clk,
                           gov_clk_sleep,
                           &clk);
-  /* NULL host: no per-host record; still spaced by the fixed jitter. */
+  /* nullptr host: no per-host record; still spaced by the fixed jitter. */
   TEST_ASSERT(
     mdl_governor_acquire(&g_gov, nullptr, (uint32_t)k_gov_jitter_5, (uint32_t)k_gov_jitter_5) ==
     k_ra8_ok);

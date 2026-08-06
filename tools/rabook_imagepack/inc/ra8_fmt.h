@@ -28,7 +28,7 @@
  *
  * Formats plug in behind ::ra8_fmt_desc_t, a function-pointer descriptor
  * (Dependency Inversion): implement the verbs the format can support, leave the
- * rest NULL, and add one row to the registry in `ra8_fmt_registry.c`. Nothing
+ * rest nullptr, and add one row to the registry in `ra8_fmt_registry.c`. Nothing
  * else changes -- CLI dispatch and the usage text are driven off the registry.
  *
  *
@@ -47,8 +47,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "ra8_host_arena.h"
 #include "ra8_err.h"
+#include "ra8_host_arena.h"
 
 /**
  * @enum ra8_fmt_limits_t
@@ -95,22 +95,22 @@ typedef struct {
  *          descriptor entry points the way this repo passes a config struct to
  *          an `*_init()`.
  *
- * @invariant `in_path` and `report` are non-NULL for every verb.
+ * @invariant `in_path` and `report` are non-nullptr for every verb.
  * @see ra8_fmt_desc_t
  * @since 0.1.0
  */
 typedef struct {
   const char* in_path;  /**< Source file path (required).                    */
-  const char* out_path; /**< Destination path, or NULL for a read-only verb. */
+  const char* out_path; /**< Destination path, or nullptr for a read-only verb. */
   bool        verbose;  /**< Print per-entry tables, not just the summary.   */
-  FILE*       report;   /**< Human-readable output sink (never NULL).        */
+  FILE*       report;   /**< Human-readable output sink (never nullptr).        */
 } ra8_fmt_opts_t;
 
 /**
  * @typedef ra8_fmt_convert_fn
  * @brief Convert one source file into one container of this format.
- * @param[in] src  Slurped source bytes (non-NULL).
- * @param[in] opts Options carrying `out_path` (non-NULL) and the report sink.
+ * @param[in] src  Slurped source bytes (non-nullptr).
+ * @param[in] opts Options carrying `out_path` (non-nullptr) and the report sink.
  * @return k_ra8_ok when `opts->out_path` holds a complete container.
  * @since 0.1.0
  */
@@ -121,7 +121,7 @@ typedef ra8_err_t (*ra8_fmt_convert_fn)(ra8_arena_t*          arena,
 /**
  * @typedef ra8_fmt_inspect_fn
  * @brief Parse a container and print its structure plus a validity verdict.
- * @param[in] src  Container bytes (non-NULL).
+ * @param[in] src  Container bytes (non-nullptr).
  * @param[in] opts Options carrying the report sink and verbosity.
  * @return k_ra8_ok when the container validated clean; an error code when it is
  *         structurally invalid (the report states why).
@@ -134,7 +134,7 @@ typedef ra8_err_t (*ra8_fmt_inspect_fn)(ra8_arena_t*          arena,
 /**
  * @typedef ra8_fmt_verify_fn
  * @brief Round-trip a source: encode, decode back, compare against the source.
- * @param[in] src  Source bytes to round-trip (non-NULL).
+ * @param[in] src  Source bytes to round-trip (non-nullptr).
  * @param[in] opts Options carrying the report sink and optional dump path.
  * @return k_ra8_ok when the decoded result matched the source exactly.
  * @since 0.1.0
@@ -146,7 +146,7 @@ typedef ra8_err_t (*ra8_fmt_verify_fn)(ra8_arena_t*          arena,
 /**
  * @typedef ra8_fmt_sniff_fn
  * @brief Report whether a blob's leading bytes match this format's magic.
- * @param[in] src Candidate container bytes (non-NULL).
+ * @param[in] src Candidate container bytes (non-nullptr).
  * @return `true` when the magic matches, else `false`.
  * @since 0.1.0
  */
@@ -157,12 +157,12 @@ typedef bool (*ra8_fmt_sniff_fn)(const ra8_fmt_blob_t* src);
  * @brief One format's capabilities -- the Dependency-Inversion seam of the tool.
  *
  * @details A descriptor declares only the verbs its format can honestly
- *          support; a NULL entry point makes the CLI report "unsupported for
+ *          support; a nullptr entry point makes the CLI report "unsupported for
  *          this format" rather than failing obscurely. `sniff` lets `inspect`
  *          auto-detect the format so `--format` becomes optional.
  *
- * @invariant `name`, `ext` and `summary` are non-NULL; at least one verb is
- *            non-NULL.
+ * @invariant `name`, `ext` and `summary` are non-nullptr; at least one verb is
+ *            non-nullptr.
  * @see ra8_fmt_registry()
  * @since 0.1.0
  */
@@ -170,10 +170,10 @@ typedef struct {
   const char*        name;    /**< CLI selector, e.g. "jof".                */
   const char*        ext;     /**< Canonical file extension, e.g. ".jof".   */
   const char*        summary; /**< One-line description for the usage text. */
-  ra8_fmt_sniff_fn   sniff;   /**< Magic test for auto-detection, or NULL.  */
-  ra8_fmt_convert_fn convert; /**< Single-unit converter, or NULL.          */
-  ra8_fmt_inspect_fn inspect; /**< Structure dumper, or NULL.               */
-  ra8_fmt_verify_fn  verify;  /**< Round-trip checker, or NULL.             */
+  ra8_fmt_sniff_fn   sniff;   /**< Magic test for auto-detection, or nullptr.  */
+  ra8_fmt_convert_fn convert; /**< Single-unit converter, or nullptr.          */
+  ra8_fmt_inspect_fn inspect; /**< Structure dumper, or nullptr.               */
+  ra8_fmt_verify_fn  verify;  /**< Round-trip checker, or nullptr.             */
 } ra8_fmt_desc_t;
 
 /**
@@ -182,10 +182,10 @@ typedef struct {
  * @details Single source of truth for CLI dispatch and the usage text; adding a
  *          format means adding one row here.
  *
- * @param[out] out_count Receives the descriptor count (non-NULL).
+ * @param[out] out_count Receives the descriptor count (non-nullptr).
  *
  * @return Pointer to the static descriptor array.
- * @retval non-NULL Always; the registry is statically initialised.
+ * @retval non-nullptr Always; the registry is statically initialised.
  *
  * @pre @p out_count is writable.
  * @pre The registry needs no initialisation call.
@@ -201,13 +201,13 @@ typedef struct {
  *
  * @param[in] name Format selector to match, e.g. "rabook".
  *
- * @return Matching descriptor, or NULL when @p name is unknown.
- * @retval NULL @p name is NULL or matches no registered format.
+ * @return Matching descriptor, or nullptr when @p name is unknown.
+ * @retval nullptr @p name is nullptr or matches no registered format.
  *
- * @pre @p name is a NUL-terminated string or NULL.
+ * @pre @p name is a NUL-terminated string or nullptr.
  * @pre The registry is statically initialised.
  * @post No state is mutated.
- * @post A non-NULL result points into the static registry.
+ * @post A non-nullptr result points into the static registry.
  * @note Thread-safe (pure over immutable data).
  * @since 0.1.0
  */
@@ -218,13 +218,13 @@ typedef struct {
  *
  * @param[in] src Candidate container bytes.
  *
- * @return The first descriptor whose magic matches, or NULL when none does.
- * @retval NULL @p src is NULL/empty, or no registered magic matched.
+ * @return The first descriptor whose magic matches, or nullptr when none does.
+ * @retval nullptr @p src is nullptr/empty, or no registered magic matched.
  *
- * @pre @p src is NULL or points at a slurped blob.
+ * @pre @p src is nullptr or points at a slurped blob.
  * @pre Every registered `sniff` tolerates a short blob.
  * @post No state is mutated.
- * @post A non-NULL result points into the static registry.
+ * @post A non-nullptr result points into the static registry.
  * @note Thread-safe (pure over immutable data).
  * @since 0.1.0
  */
@@ -233,12 +233,12 @@ typedef struct {
 /**
  * @brief Read a whole file into a heap-owned blob.
  *
- * @param[in]  path Filesystem path to read (non-NULL).
- * @param[out] out  Receives the owned blob (non-NULL).
+ * @param[in]  path Filesystem path to read (non-nullptr).
+ * @param[out] out  Receives the owned blob (non-nullptr).
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               File resident in `*out`.
- * @retval k_ra8_err_null_ptr     @p path or @p out is NULL.
+ * @retval k_ra8_err_null_ptr     @p path or @p out is nullptr.
  * @retval k_ra8_err_not_found    The file could not be opened or read.
  * @retval k_ra8_err_invalid_size The file is empty or above the input cap.
  * @retval k_ra8_err_no_mem       The buffer could not be allocated.
@@ -259,11 +259,11 @@ typedef struct {
  * @details
  * Frees the buffer ::ra8_fmt_slurp allocated and resets the blob to the empty
  * state, so a released blob reads as owning nothing and a second call is a safe
- * no-op. A NULL blob is also a no-op.
+ * no-op. A nullptr blob is also a no-op.
  *
- * @param[in,out] blob Blob to release (NULL is a no-op).
+ * @param[in,out] blob Blob to release (nullptr is a no-op).
  *
- * @pre @p blob is NULL or was filled by ::ra8_fmt_slurp.
+ * @pre @p blob is nullptr or was filled by ::ra8_fmt_slurp.
  * @pre The buffer has not already been released.
  * @post `blob->bytes == nullptr` and `blob->len == 0`.
  * @post The previously owned buffer returned to the allocator.
@@ -275,13 +275,13 @@ void ra8_fmt_blob_free(ra8_fmt_blob_t* blob);
 /**
  * @brief Write @p len bytes to @p path, replacing any existing file.
  *
- * @param[in] path Destination path (non-NULL).
- * @param[in] buf  Bytes to write (non-NULL when @p len > 0).
+ * @param[in] path Destination path (non-nullptr).
+ * @param[in] buf  Bytes to write (non-nullptr when @p len > 0).
  * @param[in] len  Byte count.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok           All @p len bytes written and the file closed.
- * @retval k_ra8_err_null_ptr @p path is NULL, or @p buf is NULL with @p len > 0.
+ * @retval k_ra8_err_null_ptr @p path is nullptr, or @p buf is nullptr with @p len > 0.
  * @retval k_ra8_fail         The file could not be opened, written or closed.
  *
  * @pre @p path names a writable location.
@@ -300,9 +300,9 @@ void ra8_fmt_blob_free(ra8_fmt_blob_t* blob);
  *          ::k_ra8_fmt_hex_row bytes per line against the absolute offset, so a
  *          reported header or index window can be read directly.
  *
- * @param[in] out   Report sink (non-NULL).
- * @param[in] label Section name printed above the dump (non-NULL).
- * @param[in] buf   Bytes to render (non-NULL when @p len > 0).
+ * @param[in] out   Report sink (non-nullptr).
+ * @param[in] label Section name printed above the dump (non-nullptr).
+ * @param[in] buf   Bytes to render (non-nullptr when @p len > 0).
  * @param[in] len   Byte count to render.
  * @param[in] base  Absolute offset of `buf[0]`, printed in the margin.
  *
@@ -346,11 +346,11 @@ void ra8_fmt_hex_dump(FILE* out, const char* label, const uint8_t* buf, size_t l
 /**
  * @brief Compare a byte window against a 4-character format magic.
  * @param[in] src   Candidate container bytes.
- * @param[in] magic 4-character magic to match (non-NULL, NUL-terminated).
+ * @param[in] magic 4-character magic to match (non-nullptr, NUL-terminated).
  * @return `true` when @p src is long enough and its first 4 bytes match.
- * @retval false @p src is NULL, shorter than 4 bytes, or does not match.
+ * @retval false @p src is nullptr, shorter than 4 bytes, or does not match.
  * @pre @p magic points at exactly 4 significant characters.
- * @pre @p src is NULL or a slurped blob.
+ * @pre @p src is nullptr or a slurped blob.
  * @post No state is mutated.
  * @post The result depends only on the first 4 bytes of @p src.
  * @note Pure; thread-safe.

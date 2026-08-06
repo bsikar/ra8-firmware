@@ -74,7 +74,7 @@ static mdl_url_list_t s_list;
  */
 typedef struct {
   int                       count;  /**< Number of fetches performed.     */
-  const char*               body;   /**< Canned robots.txt body, or NULL. */
+  const char*               body;   /**< Canned robots.txt body, or nullptr. */
   mdl_robots_fetch_result_t result; /**< Result the fetcher reports.      */
 } fake_fetch_ctx_t;
 
@@ -164,10 +164,10 @@ static void test_extract_anchors(void)
                              "<a href='/about/'>about</a>"
                              "<a href='/webtoon/x/chapter-2/'>2</a>";
   const ra8_err_t   rc     = mdl_extract_anchors(html,
-                                                 sizeof(html) - 1U,
-                                                 "https://example.net/webtoon/x/",
-                                                 "/chapter-",
-                                                 &s_list);
+                                           sizeof(html) - 1U,
+                                           "https://example.net/webtoon/x/",
+                                           "/chapter-",
+                                           &s_list);
   TEST_ASSERT(rc == k_ra8_ok);
   TEST_ASSERT_EQ((uint16_t)2, s_list.count); /* the /about/ link is dropped */
   TEST_ASSERT(strcmp(s_list.urls[0], "https://example.net/webtoon/x/chapter-1/") == 0);
@@ -497,12 +497,12 @@ static void test_path_contained(void)
  * @par MC/DC:
  * Decision A `if (out == nullptr || cap == 0U)` (2 conditions)
  * - out=buf,  cap>0  -> false (control: a normal join proceeds)
- * - out=NULL, cap>0  -> true  (varies out)
+ * - out=nullptr, cap>0  -> true  (varies out)
  * - out=buf,  cap=0  -> true  (varies cap)
  * Decision B `if (parent == nullptr || seg == nullptr)` (2 conditions)
  * - parent="/base", seg="c"    -> false (control)
- * - parent=NULL,    seg="c"    -> true  (varies parent)
- * - parent="/base", seg=NULL   -> true  (varies seg)
+ * - parent=nullptr,    seg="c"    -> true  (varies parent)
+ * - parent="/base", seg=nullptr   -> true  (varies seg)
  * Decision C `if (is_dot_segment(seg) || has_separator(seg))` (2 conditions)
  * - seg="chap-1" -> false (control: dot=F, sep=F, join succeeds)
  * - seg=".."     -> true  (varies dot: dot=T, sep=F)
@@ -527,10 +527,10 @@ static void test_path_join(void)
   TEST_ASSERT(!mdl_path_join("/base", "", out, sizeof(out)));
   TEST_ASSERT(!mdl_path_join("/base", "a/b", out, sizeof(out)));  /* separator */
   TEST_ASSERT(!mdl_path_join("/base", "/etc", out, sizeof(out))); /* absolute  */
-  /* Decision B: a NULL parent or segment fails. */
+  /* Decision B: a nullptr parent or segment fails. */
   TEST_ASSERT(!mdl_path_join(nullptr, "c", out, sizeof(out)));
   TEST_ASSERT(!mdl_path_join("/base", nullptr, out, sizeof(out)));
-  /* Decision A: a NULL destination or zero capacity fails. */
+  /* Decision A: a nullptr destination or zero capacity fails. */
   TEST_ASSERT(!mdl_path_join("/base", "c", nullptr, sizeof(out)));
   TEST_ASSERT(!mdl_path_join("/base", "c", out, 0U));
   /* Decision D: a result that would not fit is refused, never truncated. */
@@ -775,13 +775,13 @@ static void test_robots_cache(void)
                             .body   = "User-agent: *\nDisallow: /x\n",
                             .result = k_mdl_robots_fetch_ok};
   const mdl_robots_t* r  = mdl_robots_cache_consult(&s_cache,
-                                                    "https",
-                                                    "site.net",
-                                                    "media_dl",
-                                                    fake_fetch,
-                                                    &ok,
-                                                    scratch,
-                                                    sizeof(scratch));
+                                                   "https",
+                                                   "site.net",
+                                                   "media_dl",
+                                                   fake_fetch,
+                                                   &ok,
+                                                   scratch,
+                                                   sizeof(scratch));
   TEST_ASSERT_NOT_NULL(r);
   TEST_ASSERT(!mdl_robots_allows(r, "/x/y"));
   TEST_ASSERT(mdl_robots_allows(r, "/z"));
@@ -798,24 +798,24 @@ static void test_robots_cache(void)
 
   fake_fetch_ctx_t    deny = {.count = 0, .body = nullptr, .result = k_mdl_robots_fetch_denied};
   const mdl_robots_t* rd   = mdl_robots_cache_consult(&s_cache,
-                                                      "https",
-                                                      "deny.net",
-                                                      "media_dl",
-                                                      fake_fetch,
-                                                      &deny,
-                                                      scratch,
-                                                      sizeof(scratch));
+                                                    "https",
+                                                    "deny.net",
+                                                    "media_dl",
+                                                    fake_fetch,
+                                                    &deny,
+                                                    scratch,
+                                                    sizeof(scratch));
   TEST_ASSERT(rd == nullptr); /* 5xx -> disallow all */
 
   fake_fetch_ctx_t    gone = {.count = 0, .body = nullptr, .result = k_mdl_robots_fetch_absent};
   const mdl_robots_t* rg   = mdl_robots_cache_consult(&s_cache,
-                                                      "https",
-                                                      "gone.net",
-                                                      "media_dl",
-                                                      fake_fetch,
-                                                      &gone,
-                                                      scratch,
-                                                      sizeof(scratch));
+                                                    "https",
+                                                    "gone.net",
+                                                    "media_dl",
+                                                    fake_fetch,
+                                                    &gone,
+                                                    scratch,
+                                                    sizeof(scratch));
   TEST_ASSERT_NOT_NULL(rg);
   TEST_ASSERT(mdl_robots_allows(rg, "/anything")); /* absent -> allow all */
   TEST_END("robots cache");

@@ -95,7 +95,7 @@ uint64_t cbs_priv_now_ns(void)
  * @return uint64_t The updated 64-bit state (the next pseudo-random word).
  * @retval other The post-step state; never 0 given a non-zero seed.
  *
- * @pre @p s is non-NULL and was seeded non-zero.
+ * @pre @p s is non-nullptr and was seeded non-zero.
  * @pre Called on the single benchmark thread.
  * @post `*s` holds the advanced state.
  * @post The sequence is reproducible for a given initial seed.
@@ -194,7 +194,7 @@ typedef struct {
  *
  * @return ra8_err_t Read status.
  * @retval k_ra8_ok               @p len bytes were copied into @p buf.
- * @retval k_ra8_err_null_ptr     @p ctx or @p buf is NULL.
+ * @retval k_ra8_err_null_ptr     @p ctx or @p buf is nullptr.
  * @retval k_ra8_err_out_of_range `offset + len` exceeds the span length.
  *
  * @pre @p ctx points at a ::cbs_memspan_t whose `data` covers `len` bytes.
@@ -242,13 +242,13 @@ static cbs_memspan_t s_cbs_mem_span = {};
  * @param[in]     blob_bytes  Payload length in bytes (> 0).
  * @param[in]     block_bytes Swept block size (unused; one blob serves all).
  *
- * @return int 0 on success, 1 on a NULL/zero argument.
+ * @return int 0 on success, 1 on a nullptr/zero argument.
  * @retval 0 @p be serves @p blob; `backing_bytes == blob_bytes`.
- * @retval 1 @p be or @p blob was NULL, or @p blob_bytes was 0.
+ * @retval 1 @p be or @p blob was nullptr, or @p blob_bytes was 0.
  *
- * @pre @p be is a registered backend entry; @p blob is non-NULL.
+ * @pre @p be is a registered backend entry; @p blob is non-nullptr.
  * @pre No prior `mem` setup is live (teardown ran, or first use).
- * @post On 0, `be->read` is ::cbs_memspan_read and `src_bytes` is NULL.
+ * @post On 0, `be->read` is ::cbs_memspan_read and `src_bytes` is nullptr.
  * @post On 1, no binding is published.
  *
  * @note Not thread-safe: (re)binds the module-static ::s_cbs_mem_span.
@@ -274,14 +274,14 @@ cbs_mem_setup(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint3
  *
  * @details Clears the module-static ::s_cbs_mem_span and nulls the backend's
  *          `read`/`read_ctx` so a stale blob pointer cannot be dereferenced
- *          after a sweep. Idempotent and NULL-tolerant.
+ *          after a sweep. Idempotent and nullptr-tolerant.
  *
- * @param[in,out] be Backend to unbind (NULL tolerated as a partial no-op).
+ * @param[in,out] be Backend to unbind (nullptr tolerated as a partial no-op).
  *
  * @pre The backend, if bound, was set up by ::cbs_mem_setup.
  * @pre Called on the single benchmark thread.
  * @post ::s_cbs_mem_span is zeroed.
- * @post `be->read` and `be->read_ctx` are NULL when @p be is non-NULL.
+ * @post `be->read` and `be->read_ctx` are nullptr when @p be is non-nullptr.
  *
  * @note Not thread-safe: clears the module-static binding.
  * @since 0.1.0
@@ -352,7 +352,7 @@ static tinfl_decompressor s_cbs_tinfl;
  *
  * @return ra8_err_t Inflate status.
  * @retval k_ra8_ok               The stream inflated; `*out_len` is set.
- * @retval k_ra8_err_null_ptr     @p src, @p dst, or @p out_len is NULL.
+ * @retval k_ra8_err_null_ptr     @p src, @p dst, or @p out_len is nullptr.
  * @retval k_ra8_err_invalid_size The stream did not decode to a complete blob.
  *
  * @pre @p dst_cap is at least the chunk's uncompressed size.
@@ -440,10 +440,10 @@ static void cbs_rbkc_header(uint8_t* out, uint32_t block_bytes, uint64_t total, 
  *
  * @return int 0 on success, 1 on a compression failure.
  * @retval 0 A valid RBKC container was written; `*out_len` is set.
- * @retval 1 A NULL/zero argument or an `mz_compress2` call failed.
+ * @retval 1 A nullptr/zero argument or an `mz_compress2` call failed.
  *
  * @pre @p out_cap covers header + table + `count * mz_compressBound(block)`.
- * @pre @p out and @p out_len are non-NULL.
+ * @pre @p out and @p out_len are non-nullptr.
  * @post On 0, `out[0..*out_len)` is a valid RBKC container over @p blob.
  * @post On 1, @p out contents are unspecified.
  *
@@ -475,10 +475,10 @@ static int cbs_rbkc_pack(const uint8_t* blob,
     }
     mz_ulong  dst_len = (mz_ulong)(out_cap - (payload_off + cur));
     const int rc      = mz_compress2(&out[payload_off + cur],
-                                     &dst_len,
-                                     &blob[at],
-                                     (mz_ulong)span,
-                                     MZ_BEST_COMPRESSION);
+                                &dst_len,
+                                &blob[at],
+                                (mz_ulong)span,
+                                MZ_BEST_COMPRESSION);
     if (rc != MZ_OK) {
       return 1;
     }
@@ -496,15 +496,15 @@ static int cbs_rbkc_pack(const uint8_t* blob,
  *
  * @details Frees the packed container, chunk table, and staging buffer held in
  *          the module-static ::s_cbs_rbkc, zeroes it, and nulls the backend's
- *          reader and `src_bytes` pointer. Idempotent and NULL-tolerant, so it
+ *          reader and `src_bytes` pointer. Idempotent and nullptr-tolerant, so it
  *          also serves as the failure-path cleanup for ::cbs_rbkc_setup.
  *
- * @param[in,out] be Backend to unbind (NULL tolerated as a partial no-op).
+ * @param[in,out] be Backend to unbind (nullptr tolerated as a partial no-op).
  *
  * @pre The state, if live, was built by ::cbs_rbkc_setup.
  * @pre Called on the single benchmark thread.
  * @post ::s_cbs_rbkc is zeroed and its three buffers are freed.
- * @post `be->read`, `read_ctx`, and `src_bytes` are NULL when @p be is non-NULL.
+ * @post `be->read`, `read_ctx`, and `src_bytes` are nullptr when @p be is non-nullptr.
  *
  * @note Not thread-safe: clears the module-static ::s_cbs_rbkc.
  * @since 0.1.0
@@ -540,9 +540,9 @@ static void cbs_rbkc_teardown(cbs_backend_t* be)
  *
  * @return int 0 on success, 1 on allocation / pack / open failure.
  * @retval 0 The chunk reader serves the inflated blob via `be->read`.
- * @retval 1 A NULL/zero argument, or an allocation / pack / open step failed.
+ * @retval 1 A nullptr/zero argument, or an allocation / pack / open step failed.
  *
- * @pre @p be and @p blob are non-NULL.
+ * @pre @p be and @p blob are non-nullptr.
  * @pre No prior setup is live (teardown ran, or first use).
  * @post On 0, `be->read` serves the inflated flat blob via chunk reads.
  * @post On 1, all partial state is freed (safe to retry or exit).
@@ -562,11 +562,11 @@ RA8_NASA_RULE_3_OK /* host-only bench: dynamic cache arrays */
   const uint32_t count = (blob_bytes + block_bytes - 1U) / block_bytes;
   const uint64_t bound = (uint64_t)mz_compressBound((mz_ulong)block_bytes);
   const uint64_t cap   = (uint64_t)k_ra8_book_container_header_len +
-                         (((uint64_t)count + 1U) * k_ra8_book_container_entry_len) +
-                         ((uint64_t)count * bound);
-  rb->container        = (uint8_t*)malloc((size_t)cap);
-  rb->table            = (uint64_t*)malloc(((size_t)count + 1U) * sizeof(uint64_t));
-  rb->staging          = (uint8_t*)malloc((size_t)bound);
+                       (((uint64_t)count + 1U) * k_ra8_book_container_entry_len) +
+                       ((uint64_t)count * bound);
+  rb->container = (uint8_t*)malloc((size_t)cap);
+  rb->table     = (uint64_t*)malloc(((size_t)count + 1U) * sizeof(uint64_t));
+  rb->staging   = (uint8_t*)malloc((size_t)bound);
   if ((rb->container == nullptr) || (rb->table == nullptr) || (rb->staging == nullptr)) {
     cbs_rbkc_teardown(be);
     return 1;

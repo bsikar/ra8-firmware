@@ -5,7 +5,7 @@
  * @details
  * Exercises aligned carving (alignment honoured, blocks non-overlapping,
  * remaining shrinks), the over-budget no_mem path, and every validation guard
- * (NULL args, zero bytes, zero / non-power-of-two alignment).
+ * (nullptr args, zero bytes, zero / non-power-of-two alignment).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -182,7 +182,7 @@ static mdl_state_t         g_state;              /**< State under test (~2 MiB).
 static mdl_url_list_t      g_chapters;           /**< Live chapter list for a scenario.       */
 static mdl_url_list_t      g_images;             /**< Extracted-image scratch.                */
 static char                g_page[k_page_bytes]; /**< Chapter-HTML scratch.                   */
-static mdl_governor_t*     g_fetch_gov;          /**< Governor wired into run_fetch, or NULL. */
+static mdl_governor_t*     g_fetch_gov;          /**< Governor wired into run_fetch, or nullptr. */
 static mdl_fetch_faillog_t g_faillog;            /**< Failure log run_fetch fills each run.   */
 
 /**

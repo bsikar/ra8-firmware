@@ -125,7 +125,7 @@ typedef enum : uint64_t {
  * @return uint64_t The updated 64-bit state (the next pseudo-random word).
  * @retval other The post-step state; never 0 given a non-zero seed.
  *
- * @pre @p s is non-NULL and was seeded non-zero.
+ * @pre @p s is non-nullptr and was seeded non-zero.
  * @pre Called on the single benchmark thread.
  * @post `*s` holds the advanced state.
  * @post The sequence is reproducible for a given initial seed.
@@ -157,7 +157,7 @@ static uint64_t cb_rng(uint64_t* s)
  * @retval 0     @p span is 0, or the draw landed on 0.
  * @retval other A pseudo-random value below @p span.
  *
- * @pre @p s is non-NULL and seeded non-zero.
+ * @pre @p s is non-nullptr and seeded non-zero.
  * @pre Called on the single benchmark thread.
  * @post The PRNG state has advanced one step.
  * @post The result is strictly less than @p span when @p span > 0.
@@ -183,9 +183,9 @@ static uint32_t cb_rand_below(uint64_t* s, uint32_t span)
  *
  * @return bool true when the key array was allocated, false on OOM.
  * @retval true  `t->keys` holds @p n zeroed slots.
- * @retval false Allocation failed; `t->keys` is NULL (with `t->n == n`).
+ * @retval false Allocation failed; `t->keys` is nullptr (with `t->n == n`).
  *
- * @pre @p t is non-NULL and @p name has static lifetime.
+ * @pre @p t is non-nullptr and @p name has static lifetime.
  * @pre Called on the single benchmark thread.
  * @post `t->name == name` and `t->n == n` regardless of outcome.
  * @post On true, `t->keys` is a zeroed array of @p n keys.
@@ -212,7 +212,7 @@ RA8_NASA_RULE_3_OK /* host-only bench: trace keys array */
  *          which evicts a page just before it is needed again next pass.
  *
  * @return cb_trace_t The "seq-pageturn" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ * @retval other On success a filled trace; on OOM a trace with `keys == nullptr`.
  *
  * @pre Called on the single benchmark thread.
  * @pre The process can allocate `k_cb_accesses` keys.
@@ -244,7 +244,7 @@ static cb_trace_t cb_gen_sequential(void)
  *          where recency buys almost nothing and hit rate tracks cache size.
  *
  * @return cb_trace_t The "random" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ * @retval other On success a filled trace; on OOM a trace with `keys == nullptr`.
  *
  * @pre Called on the single benchmark thread.
  * @pre The process can allocate `k_cb_accesses` keys.
@@ -277,7 +277,7 @@ static cb_trace_t cb_gen_random(void)
  *          temporal locality that recency policies exploit well.
  *
  * @return cb_trace_t The "reread-locality" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ * @retval other On success a filled trace; on OOM a trace with `keys == nullptr`.
  *
  * @pre Called on the single benchmark thread.
  * @pre The process can allocate `k_cb_accesses` keys.
@@ -317,7 +317,7 @@ static cb_trace_t cb_gen_reread(void)
  *          modelling ordinary reading punctuated by navigation.
  *
  * @return cb_trace_t The "linear+jumps" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ * @retval other On success a filled trace; on OOM a trace with `keys == nullptr`.
  *
  * @pre Called on the single benchmark thread.
  * @pre The process can allocate `k_cb_accesses` keys.
@@ -355,7 +355,7 @@ static cb_trace_t cb_gen_toc_jumps(void)
  *          workload with a footprint smaller than the book.
  *
  * @return cb_trace_t The "cbz-scroll" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ * @retval other On success a filled trace; on OOM a trace with `keys == nullptr`.
  *
  * @pre Called on the single benchmark thread.
  * @pre The process can allocate `k_cb_accesses` keys.
@@ -388,7 +388,7 @@ static cb_trace_t cb_gen_scroll(void)
  *          in one trace.
  *
  * @return cb_trace_t The "mixed-session" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ * @retval other On success a filled trace; on OOM a trace with `keys == nullptr`.
  *
  * @pre Called on the single benchmark thread.
  * @pre The process can allocate `k_cb_accesses` keys.
@@ -438,7 +438,7 @@ static cb_trace_t cb_gen_mixed(void)
  *          scan-resistant policies from plain recency.
  *
  * @return cb_trace_t The "hotset+scan" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ * @retval other On success a filled trace; on OOM a trace with `keys == nullptr`.
  *
  * @pre Called on the single benchmark thread.
  * @pre The process can allocate `k_cb_accesses` keys.
@@ -486,7 +486,7 @@ static cb_trace_t cb_gen_scan_resist(void)
  *          bounded no matter how large the file grows.
  *
  * @return cb_trace_t The "hugebook-7GiB" trace (heap-owned key array).
- * @retval other On success a filled trace; on OOM a trace with `keys == NULL`.
+ * @retval other On success a filled trace; on OOM a trace with `keys == nullptr`.
  *
  * @pre Called on the single benchmark thread.
  * @pre The process can allocate `k_cb_accesses` keys.
@@ -513,7 +513,7 @@ static cb_trace_t cb_gen_hugebook(void)
     for (uint32_t s = 0U; (s < (uint32_t)k_cb_huge_scan) && (i < t.n); ++s, ++i) {
       const uint32_t page = (uint32_t)k_cb_huge_hot +
                             ((scan_pos + s) % (k_cb_huge_footprint - (uint32_t)k_cb_huge_hot));
-      t.keys[i]           = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
+      t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
     }
     scan_pos += (uint32_t)k_cb_huge_scan;
   }
@@ -537,7 +537,7 @@ RA8_NASA_RULE_3_OK /* host-only bench: synthetic trace array */
   };
   const uint32_t count = (uint32_t)(sizeof(gens) / sizeof(gens[0]));
   cb_trace_t*    out   = (cb_trace_t*)calloc((size_t)count, sizeof(cb_trace_t));
-  if (out == NULL) {
+  if (out == nullptr) {
     *out_count = 0U;
     return nullptr;
   }
@@ -573,7 +573,7 @@ typedef enum : uint8_t {
  * @retval true  @p obj and @p pg hold the two parsed values.
  * @retval false The line is malformed or a value is out of range.
  *
- * @pre @p line, @p obj, and @p pg are non-NULL.
+ * @pre @p line, @p obj, and @p pg are non-nullptr.
  * @pre @p line is NUL-terminated (from `fgets`).
  * @post On true, @p obj and @p pg hold the two parsed fields.
  * @post On false, @p obj / @p pg are unspecified (caller stops the load).
@@ -608,7 +608,7 @@ RA8_NASA_RULE_3_OK /* host-only bench: dynamic trace loading */
 {
   cb_trace_t t = {.name = name};
   FILE*      f = fopen(path, "r");
-  if (f == NULL) {
+  if (f == nullptr) {
     return t;
   }
   uint64_t cap = (uint64_t)k_cb_load_init;

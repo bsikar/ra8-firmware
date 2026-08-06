@@ -84,7 +84,7 @@ static const uint8_t s_jof_webp_webp[k_jof_webp_tag_len] =
  * @details Mirrors the producer's own dispatch sniff: both fourCCs must match,
  *          so a non-WebP RIFF (WAVE, AVI) is not mistaken for a WebP page and
  *          charged the whole-frame arena.
- * @param[in] data Page bytes (non-NULL).
+ * @param[in] data Page bytes (non-nullptr).
  * @param[in] len  Readable byte count at @p data.
  * @return Whether @p data begins with a WebP container head.
  * @retval true  Both the "RIFF" and "WEBP" fourCCs are present.
@@ -145,9 +145,9 @@ RA8_INTERNAL static ra8_err_t
 slurp(ra8_arena_t* arena, const char* path, uint8_t** out_buf, size_t* out_len)
 {
   FILE* f = fopen(path, "rb");
-  if (f == NULL) {
+  if (f == nullptr) {
     // cppcheck-suppress resourceLeak
-    // f is NULL here
+    // f is nullptr here
     return k_ra8_fail;
   }
   (void)fseek(f, 0, SEEK_END);
@@ -175,7 +175,7 @@ slurp(ra8_arena_t* arena, const char* path, uint8_t** out_buf, size_t* out_len)
  *          compressed source, the decoded RGBA frame and libwebp's scratch at
  *          once. JPEG and PNG stream, so they would pay that whole-frame cost
  *          for nothing; the arena is carved only when the page really is a
- *          WebP. Reporting success with a NULL arena is the producer's
+ *          WebP. Reporting success with a nullptr arena is the producer's
  *          fail-closed "reject WebP" signal, correct for the other codecs.
  * @param[in]  src      Page bytes to sniff.
  * @param[in]  slen     Length of @p src in bytes.
@@ -213,7 +213,7 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(ra8_arena_t*   arena,
     return k_ra8_err_invalid_size;
   }
   uint8_t* mem = (uint8_t*)ra8_arena_alloc(arena, need, 8U);
-  if (mem == NULL) {
+  if (mem == nullptr) {
 
     return k_ra8_err_no_mem;
   }
@@ -264,7 +264,7 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(ra8_arena_t*   arena,
                                                FILE*          out)
 {
   uint8_t* work = (uint8_t*)ra8_arena_alloc(arena, work_cap, 8U);
-  if (work == NULL) {
+  if (work == nullptr) {
 
     return k_ra8_err_no_mem;
   }
@@ -330,10 +330,10 @@ RA8_INTERNAL static ra8_err_t jof_one(ra8_arena_t* arena, const char* in_path, c
     return k_ra8_fail;
   }
   FILE* out = fopen(tmp, "wb");
-  if (out == NULL) {
+  if (out == nullptr) {
 
     // cppcheck-suppress resourceLeak
-    // out is NULL here
+    // out is nullptr here
     return k_ra8_fail;
   }
   rc = jof_produce_page(arena, src, slen, w, h, tile_h, work_cap, out);

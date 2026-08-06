@@ -76,7 +76,7 @@ typedef enum : uint8_t {
  * @param[in]  cfg The run configuration (panel size + rotation).
  * @param[out] st  The run state whose geometry fields are filled.
  * @return void
- * @pre @p cfg and @p st are non-NULL.
+ * @pre @p cfg and @p st are non-nullptr.
  * @pre @p cfg holds a valid panel size and rotation.
  * @post @p st panel/disp/comp dimensions are set consistently.
  * @post No allocation or engine state changes.
@@ -106,8 +106,8 @@ static void run_setup_geometry(const emu_run_cfg_t* cfg, run_loop_t* st)
  * @param[in,out] st  The run state (geometry read; view/buffers written).
  * @return void
  * @pre ::run_setup_geometry has filled @p st geometry.
- * @pre @p cfg and @p st are non-NULL.
- * @post @p st->view is a window handle or NULL (headless).
+ * @pre @p cfg and @p st are non-nullptr.
+ * @post @p st->view is a window handle or nullptr (headless).
  * @post The buffers are allocated iff an output mode needs them.
  * @note Not thread-safe; performs window open + malloc during setup.
  * @since 0.1.0
@@ -144,7 +144,7 @@ RA8_NASA_RULE_3_OK /* host-only emu: window buffers */
  * @param[in,out] st  The run state (click_was_tab / click_btn written).
  * @return void
  * @pre ::run_setup_geometry has filled @p st->disp_w.
- * @pre @p cfg and @p st are non-NULL.
+ * @pre @p cfg and @p st are non-nullptr.
  * @post @p st->click_was_tab and @p st->click_btn reflect the click target.
  * @post A tab click has already switched the active console channel.
  * @note Not thread-safe; part of single-threaded setup.
@@ -181,7 +181,7 @@ static void run_classify_click(const emu_run_cfg_t* cfg, run_loop_t* st)
  * @param[in]  cfg The setup products (see ::emu_run_cfg_t).
  * @param[out] st  The run state to initialize.
  * @return void
- * @pre @p cfg is fully populated and @p st is non-NULL.
+ * @pre @p cfg is fully populated and @p st is non-nullptr.
  * @pre The engine referenced by @p cfg is ready to run.
  * @post @p st is fully initialized for the first chunk.
  * @post The window / buffers / guards / click are all resolved.
@@ -528,7 +528,7 @@ static loop_action_t run_loop_view(run_loop_t* st)
  * @return The loop action for the driver.
  * @retval k_loop_break The settle tail expired or the wall guard fired.
  * @retval k_loop_next  Keep draining the tail.
- * @pre @p st->view is NULL and --click is active.
+ * @pre @p st->view is nullptr and --click is active.
  * @pre @p st is initialized.
  * @post On a wall-guard stop, @p st->timed_out is true.
  * @note Not thread-safe; part of the single-threaded run loop.
@@ -684,7 +684,7 @@ static bool run_stop_usb(run_loop_t* st)
  * @retval true  The stop substring appeared on a console endpoint.
  * @retval false STOP_ON is unset or the substring has not appeared.
  * @pre @p st is initialized (headless plain run).
- * @pre @p st->guards.stop_on is the substring or NULL.
+ * @pre @p st->guards.stop_on is the substring or nullptr.
  * @post @p st->usb_stopped is set true only when true is returned.
  * @note Not thread-safe; part of the single-threaded run loop.
  * @since 0.1.0
@@ -699,8 +699,8 @@ static bool run_stop_banner(run_loop_t* st)
   const char* const last_itm  = board_console_line(k_board_console_ch_itm, 0U);
   const char* const last_rtt  = board_console_line(k_board_console_ch_rtt, 0U);
   const bool        hit = ((last_uart != nullptr) && (strstr(last_uart, stop_on) != nullptr)) ||
-                          ((last_itm != nullptr) && (strstr(last_itm, stop_on) != nullptr)) ||
-                          ((last_rtt != nullptr) && (strstr(last_rtt, stop_on) != nullptr));
+                   ((last_itm != nullptr) && (strstr(last_itm, stop_on) != nullptr)) ||
+                   ((last_rtt != nullptr) && (strstr(last_rtt, stop_on) != nullptr));
   if (hit) {
     st->usb_stopped = true;
     return true;
@@ -779,7 +779,7 @@ static bool run_stop_wall(run_loop_t* st)
  * @return The loop action for the driver.
  * @retval k_loop_break An early-stop fired.
  * @retval k_loop_next  No stop fired; proceed.
- * @pre @p st->view is NULL and --click is inactive (plain headless run).
+ * @pre @p st->view is nullptr and --click is inactive (plain headless run).
  * @pre @p st is initialized.
  * @post The stop-cause flag for the firing stop is set.
  * @note Not thread-safe; part of the single-threaded run loop.

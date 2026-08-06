@@ -60,7 +60,7 @@ typedef enum : uint8_t {
  * @details Handles the four source formats the strip decoder emits: 1-byte gray
  *          (replicated to R=G=B), 2-byte little-endian RGB565 (repacked), and
  *          3-byte RGB or 4-byte RGBA (the alpha byte dropped).
- * @param[in] sp  Source pixel (non-NULL, at least @p bpp bytes readable).
+ * @param[in] sp  Source pixel (non-nullptr, at least @p bpp bytes readable).
  * @param[in] bpp Bytes per source pixel (1, 2, 3, or 4).
  * @return The packed RGB565 value; an RGBA alpha byte is dropped.
  * @retval 0 The source pixel is black.
@@ -139,7 +139,7 @@ RA8_INTERNAL static ra8_err_t viewer_jof_blit(void*          ctx,
  *          (the atlas is held wholly resident), then reads the whole file into an
  *          owned buffer and points the memstore pread at it, so tile decodes read
  *          straight from RAM.
- * @param[in,out] r Reader whose file is already open (non-NULL).
+ * @param[in,out] r Reader whose file is already open (non-nullptr).
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                    The atlas is resident and memstore wired.
  * @retval k_ra8_err_decomp_output_cap The file exceeds the per-unit output cap.
@@ -165,7 +165,7 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r, ra8_arena
   uint8_t*     buf = (uint8_t*)ra8_arena_alloc(arena, (uint32_t)sz);
   if (buf == nullptr) {
     // cppcheck-suppress memleak
-    // buf is NULL here
+    // buf is nullptr here
     return k_ra8_err_no_mem;
   }
   if (fseeko(r->file.fp, 0, SEEK_SET) != 0) {
@@ -185,13 +185,13 @@ RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r, ra8_arena
  *          scratch (one band plus slack), the cell pool, and the metadata, key,
  *          dims and bucket arrays. Partial allocations are left in place for
  *          viewer_free() to release, so there is no cleanup on the error path.
- * @param[in,out] w          JOF state to populate (non-NULL).
+ * @param[in,out] w          JOF state to populate (non-nullptr).
  * @param[in]     cell_count Resident-band count (>= 1).
  * @param[in]     band_bytes Bytes per decoded band (> 0).
  * @return ra8_err_t; ::k_ra8_err_no_mem on any allocation failure.
  * @retval k_ra8_ok         Every backing buffer was allocated.
  * @retval k_ra8_err_no_mem At least one allocation failed.
- * @pre @p w is a JOF state with NULL backing pointers.
+ * @pre @p w is a JOF state with nullptr backing pointers.
  * @pre @p cell_count >= 1 and @p band_bytes > 0.
  * @post On ::k_ra8_ok every cache backing buffer is allocated.
  * @post Partial allocations are retained for viewer_free() to release.
@@ -225,8 +225,8 @@ viewer_jof_alloc_cache(viewer_jof_t* w, uint32_t cell_count, size_t band_bytes, 
  * @details Composition happens at the strip's native width; the desktop view
  *          scales each tile to the window width, and the headless framebuffer
  *          path recentres/clips into its fixed width via `x_off` set per render.
- * @param[in,out] r          Reader whose JOF buffers are allocated (non-NULL).
- * @param[in]     info       Parsed atlas geometry (non-NULL).
+ * @param[in,out] r          Reader whose JOF buffers are allocated (non-nullptr).
+ * @param[in]     info       Parsed atlas geometry (non-nullptr).
  * @param[in]     band_bytes Bytes per decoded band.
  * @param[in]     cell_count Resident-band count for the LRU cache.
  * @return ra8_err_t from the tile-cache init / long-strip-open steps.
@@ -288,7 +288,7 @@ RA8_INTERNAL static ra8_err_t viewer_jof_wire(ra8_viewer_reader_t*  r,
  *          already showed -- visible as duplicated content with a seam.
  *          Setting the viewport to the page's real content height makes the
  *          requested position land exactly on the recomputed clamp.
- * @param[in,out] w    JOF state of an open strip (non-NULL).
+ * @param[in,out] w    JOF state of an open strip (non-nullptr).
  * @param[in]     page Vertical page index.
  * @return ra8_err_t from `ra8_longstrip_set_viewport` / `ra8_longstrip_scroll_by`.
  * @retval k_ra8_ok               The strip is positioned at page @p page.
@@ -417,7 +417,7 @@ ra8_err_t viewer_tile_jof(ra8_viewer_reader_t* r,
   uint16_t*    buf = (uint16_t*)ra8_arena_alloc(arena, (uint32_t)(px * sizeof(uint16_t)));
   if (buf == nullptr) {
     // cppcheck-suppress memleak
-    // buf is NULL here
+    // buf is nullptr here
     return k_ra8_err_no_mem;
   }
   /* Point the long-strip blit at this native-width band buffer (restored after). */

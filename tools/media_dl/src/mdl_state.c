@@ -55,7 +55,7 @@ void mdl_state_init(mdl_state_t* st)
   st->version = (uint16_t)k_mdl_state_version;
 }
 
-/** @brief Copy `val` into a bounded field when `val` is non-NULL. */
+/** @brief Copy `val` into a bounded field when `val` is non-nullptr. */
 RA8_INTERNAL static void set_opt(char* dst, size_t cap, const char* val)
 {
   if (val != nullptr) {

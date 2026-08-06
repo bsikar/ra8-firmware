@@ -214,9 +214,9 @@ RA8_INTERNAL static bool copy_file(const char* src, const char* dst)
     return false;
   }
   FILE* in = fopen(src, "rb");
-  if (in == NULL) {
+  if (in == nullptr) {
     // cppcheck-suppress resourceLeak
-    // in is NULL here
+    // in is nullptr here
     return false;
   }
   /* Same rule as every other writer here: a partial copy must not be able to
@@ -227,10 +227,10 @@ RA8_INTERNAL static bool copy_file(const char* src, const char* dst)
     return false;
   }
   FILE* out = fopen(tmp, "wb");
-  if (out == NULL) {
+  if (out == nullptr) {
     (void)fclose(in);
     // cppcheck-suppress resourceLeak
-    // out is NULL here
+    // out is nullptr here
     return false;
   }
   bool    ok = true;
@@ -297,7 +297,7 @@ try_reuse(mdl_fetch_ctx_t* ctx, uint64_t url_hash, const char* target_abs, const
   return true;
 }
 
-/** @brief Governor host key for `url`, or NULL when it cannot be parsed. */
+/** @brief Governor host key for `url`, or nullptr when it cannot be parsed. */
 RA8_INTERNAL static const char* page_host(const char* url, char* buf, size_t cap)
 {
   return mdl_url_host(url, buf, cap) ? buf : nullptr;

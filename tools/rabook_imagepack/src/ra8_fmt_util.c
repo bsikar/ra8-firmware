@@ -25,11 +25,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra8_host_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_fmt.h"
+#include "ra8_host_arena.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_fmt_util";
@@ -81,7 +81,7 @@ bool ra8_fmt_magic_is(const ra8_fmt_blob_t* src, const char* magic)
  * @brief Determine an open file's byte length via a seek to the end.
  * @details Split out of ::ra8_fmt_slurp so that entry point stays within the
  *          statement budget; leaves the cursor rewound to byte 0.
- * @param[in]  fp      Open readable stream (non-NULL).
+ * @param[in]  fp      Open readable stream (non-nullptr).
  * @param[out] out_len Receives the length in bytes.
  * @return Result code.
  * @retval k_ra8_ok               Length measured and the cursor rewound.
@@ -177,8 +177,8 @@ ra8_err_t ra8_fmt_write_file(const char* path, const uint8_t* buf, size_t len)
  * @brief Print one 16-byte hex + ASCII dump line.
  * @details Renders the absolute offset, the hex bytes padded to a fixed column
  *          width, then the printable-ASCII gutter with '.' for other codes.
- * @param[in] out   Report sink (non-NULL).
- * @param[in] row   Bytes for this line (non-NULL).
+ * @param[in] out   Report sink (non-nullptr).
+ * @param[in] row   Bytes for this line (non-nullptr).
  * @param[in] n     Bytes in this line (1..16).
  * @param[in] addr  Absolute offset of `row[0]`.
  * @pre @p out is an open stream.

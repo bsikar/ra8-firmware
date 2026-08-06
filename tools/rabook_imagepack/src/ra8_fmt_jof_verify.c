@@ -82,8 +82,8 @@ typedef struct {
  *          pixels under a P6 header would mislabel the file. The dump is a
  *          visual-inspection aid only -- the pass/fail verdict is the raster
  *          comparison, which runs on the full RGBA bytes.
- * @param[in] path Destination path (non-NULL).
- * @param[in] px   Raster bytes (non-NULL).
+ * @param[in] path Destination path (non-nullptr).
+ * @param[in] px   Raster bytes (non-nullptr).
  * @param[in] w    Image width, pixels.
  * @param[in] h    Image height, pixels.
  * @param[in] bpp  Bytes per pixel (1, 3 or 4).
@@ -107,7 +107,7 @@ priv_write_ppm(const char* path, const uint8_t* px, uint16_t w, uint16_t h, uint
     return k_ra8_err_not_supported;
   }
   FILE* f = fopen(path, "wb");
-  if (f == NULL) {
+  if (f == nullptr) {
     return k_ra8_fail;
   }
   (void)fprintf(f,
@@ -141,12 +141,12 @@ priv_write_ppm(const char* path, const uint8_t* px, uint16_t w, uint16_t h, uint
  * @details Reports differences as `(x, y)` pixel coordinates rather than flat
  *          byte offsets, because a duplication defect shows as a contiguous run
  *          of differing rows -- the row number is the diagnostic signal.
- * @param[in] a      Reference raster (non-NULL).
- * @param[in] b      Raster under test (non-NULL).
+ * @param[in] a      Reference raster (non-nullptr).
+ * @param[in] b      Raster under test (non-nullptr).
  * @param[in] len    Byte length of both rasters.
  * @param[in] stride Bytes per raster row.
  * @param[in] bpp    Bytes per pixel.
- * @param[in] out    Report sink (non-NULL).
+ * @param[in] out    Report sink (non-nullptr).
  * @return Count of differing bytes.
  * @retval 0 The rasters are byte-identical.
  * @pre @p a and @p b each hold @p len readable bytes.
@@ -193,7 +193,7 @@ static size_t priv_diff_rasters(const uint8_t* a,
  *          frees the intermediate container. `verify` runs this twice -- once
  *          whole-image, once banded -- and compares the two rasters, so an
  *          encoder/decoder mismatch surfaces as a pixel difference.
- * @param[in]  src    Source image bytes (non-NULL).
+ * @param[in]  src    Source image bytes (non-nullptr).
  * @param[in]  max_w  Width cap for the work-arena sizing.
  * @param[in]  max_h  Height cap for the work-arena sizing.
  * @param[in]  tile_w Tile width to request.
@@ -206,7 +206,7 @@ static size_t priv_diff_rasters(const uint8_t* a,
  * @pre @p src holds a decodable image.
  * @pre Every output pointer is writable.
  * @post On success `*out_px` must be released by the caller.
- * @post On any error `*out_px` is NULL.
+ * @post On any error `*out_px` is nullptr.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -223,14 +223,14 @@ static ra8_err_t priv_encode_roundtrip(ra8_arena_t*          arena,
 {
   ra8_fmt_blob_t atlas = {};
   ra8_err_t      rc    = ra8_fmt_jof_produce(arena,
-                                             src,
-                                             max_w,
-                                             max_h,
-                                             tile_w,
-                                             tile_h,
-                                             (uint8_t)k_ra8_jof_codec_deflate,
-                                             &atlas,
-                                             info);
+                                     src,
+                                     max_w,
+                                     max_h,
+                                     tile_w,
+                                     tile_h,
+                                     (uint8_t)k_ra8_jof_codec_deflate,
+                                     &atlas,
+                                     info);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -244,7 +244,7 @@ static ra8_err_t priv_encode_roundtrip(ra8_arena_t*          arena,
  * @details Splits the two round-trips out of ::ra8_fmt_jof_verify so that
  *          entry point stays within the statement budget. The reference is one
  *          whole-image tile; the subject is banded at ::k_fmt_ver_band_h.
- * @param[in]  src   Source image bytes (non-NULL).
+ * @param[in]  src   Source image bytes (non-nullptr).
  * @param[in]  opts  Options carrying the report sink.
  * @param[out] pair  Receives both rasters and both geometries.
  * @return Result code from the probe or either encode.
@@ -278,14 +278,14 @@ static ra8_err_t priv_encode_pair(ra8_arena_t*          arena,
                           ? pair->rinfo.height
                           : (uint16_t)k_fmt_ver_band_h;
   rc                  = priv_encode_roundtrip(arena,
-                                              src,
-                                              w,
-                                              h,
-                                              pair->rinfo.width,
-                                              band,
-                                              &pair->got,
-                                              &pair->gotn,
-                                              &pair->ginfo);
+                             src,
+                             w,
+                             h,
+                             pair->rinfo.width,
+                             band,
+                             &pair->got,
+                             &pair->gotn,
+                             &pair->ginfo);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "verify: banded encode failed (rc=%d)\n", (int)rc);
     pair->ref = nullptr;

@@ -28,11 +28,11 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "ra8_host_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_comic.h"
 #include "ra8_decomp_limits.h"
 #include "ra8_err.h"
+#include "ra8_host_arena.h"
 #include "ra8_img_arena.h"
 #include "ra8_jof.h"
 #include "ra8_longstrip.h"
@@ -120,7 +120,7 @@ typedef enum : uint32_t {
 /**
  * @struct viewer_file_ctx_t
  * @brief Backing context for the seek+read callback: an open file and its size.
- * @invariant @ref fp is non-NULL and @ref size is non-zero once a reader is open.
+ * @invariant @ref fp is non-nullptr and @ref size is non-zero once a reader is open.
  * @since 0.1.0
  */
 typedef struct {
@@ -135,7 +135,7 @@ typedef struct {
  *          pread reads from it); the tile cache decodes DEFLATE bands on miss
  *          into @ref cells. The strip is paginated: each viewer "page" is one
  *          @ref viewport_h -tall window scrolled down the canvas.
- * @invariant All pointers are NULL unless the document is ::k_vfmt_jof.
+ * @invariant All pointers are nullptr unless the document is ::k_vfmt_jof.
  * @since 0.1.0
  */
 typedef struct {
@@ -194,12 +194,12 @@ struct ra8_viewer_reader {
  * @brief Seek+read callback over the open document (matches ra8_comic_read_fn).
  * @details Shared by every engine so a document streams through one code path,
  *          exactly as the firmware demand-pages it off the SD card.
- * @param[in]  ctx    A ::viewer_file_ctx_t (non-NULL).
+ * @param[in]  ctx    A ::viewer_file_ctx_t (non-nullptr).
  * @param[in]  offset Absolute byte offset into the document.
- * @param[out] buf    Destination buffer (non-NULL).
+ * @param[out] buf    Destination buffer (non-nullptr).
  * @param[in]  len    Bytes requested.
- * @return Bytes read; 0 at EOF, on a seek failure, or for a NULL argument.
- * @retval 0 EOF, a seek failure, or a NULL @p ctx / @p buf.
+ * @return Bytes read; 0 at EOF, on a seek failure, or for a nullptr argument.
+ * @retval 0 EOF, a seek failure, or a nullptr @p ctx / @p buf.
  * @pre @p ctx wraps an open document stream.
  * @pre @p buf has room for @p len bytes.
  * @post At most @p len bytes were copied into @p buf.
@@ -216,7 +216,7 @@ RA8_PRIV size_t viewer_read(void* ctx, uint64_t offset, void* buf, size_t len);
  *          an archive-declared length, so a lying header must be refused rather
  *          than realloc'd. The declared/compressed-size ratio is validated by the
  *          caller (viewer_read_page_bytes) via `ra8_decomp_check_declared`.
- * @param[in,out] r    Reader whose scratch buffer to size (non-NULL).
+ * @param[in,out] r    Reader whose scratch buffer to size (non-nullptr).
  * @param[in]     need Required capacity in bytes (archive-derived; untrusted).
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                    The buffer holds at least @p need bytes.
@@ -236,7 +236,7 @@ RA8_PRIV ra8_err_t viewer_reserve_page_buf(ra8_viewer_reader_t* r, size_t need, 
  * @details Routes to `ra8_comic_open` or, when @p wrapped, `ra8_comic_open_wrapped`
  *          (which unwraps the outer gzip/xz stream into `r->unwrap` first), then
  *          parses the archive into the reader's page index.
- * @param[in,out] r       Reader with file backing populated (non-NULL).
+ * @param[in,out] r       Reader with file backing populated (non-nullptr).
  * @param[in]     wrapped true to route through `ra8_comic_open_wrapped`.
  * @return ra8_err_t from ra8_comic's open.
  * @retval k_ra8_ok The archive parsed and `r->comic` holds a page index.
@@ -255,7 +255,7 @@ RA8_PRIV ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r, bool wrapped, ra8_a
  *          bound arena, then scales it to fit the framebuffer width and centres
  *          it over a white margin. The heavy buffers are borrowed from the
  *          reader, so no large allocation happens per page.
- * @param[in,out] r    Reader of a comic format (non-NULL).
+ * @param[in,out] r    Reader of a comic format (non-nullptr).
  * @param[in]     page Page index (`< ra8_viewer_page_count(r)`).
  * @return ra8_err_t from the extract / probe / decode pipeline.
  * @retval k_ra8_ok The page was decoded and blitted into `r->fb`.
@@ -273,7 +273,7 @@ RA8_PRIV ra8_err_t viewer_render_comic(ra8_viewer_reader_t* r, uint32_t page, ra
  * @details The window's scroll path renders each page at native resolution into
  *          its own buffer (dimensions capped at the graphics maximum) rather than
  *          the fixed framebuffer, so tiles compose independently as they scroll.
- * @param[in,out] r   Reader of a comic format (non-NULL).
+ * @param[in,out] r   Reader of a comic format (non-nullptr).
  * @param[in]     i   Tile (page) index.
  * @param[out]    w   Receives the rendered width in pixels.
  * @param[out]    h   Receives the rendered height in pixels.
@@ -300,7 +300,7 @@ RA8_PRIV ra8_err_t viewer_tile_comic(ra8_viewer_reader_t* r,
  * @brief Probe one comic page's native size into the tile-size cache.
  * @details A page that fails to probe stays 0x0 and the view draws a placeholder
  *          for it, so one unreadable page never sinks the whole document.
- * @param[in,out] r     Reader of a comic format (non-NULL).
+ * @param[in,out] r     Reader of a comic format (non-nullptr).
  * @param[in]     i     Page index.
  * @param[in]     arena Bindable decode arena for the JPEG header probe.
  * @pre @p r was opened as a comic format and @p i is a valid page.
@@ -321,7 +321,7 @@ RA8_PRIV void viewer_probe_comic_tile(ra8_viewer_reader_t* r,
  *          sizes and initialises the band tile-cache, and opens the long-strip
  *          document over the memstore -- so later renders only decode bands on
  *          demand.
- * @param[in,out] r Reader with file backing populated (non-NULL).
+ * @param[in,out] r Reader with file backing populated (non-nullptr).
  * @return ra8_err_t from the parse / cache-init / long-strip-open pipeline.
  * @retval k_ra8_ok The strip opened and `r->jof.strip` is ready.
  * @pre The document classified as ::k_vfmt_jof.
@@ -338,7 +338,7 @@ RA8_PRIV ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r, ra8_arena_t* arena);
  * @details Scrolls the long-strip canvas down by @p page viewports, renders the
  *          visible band (decoding DEFLATE bands on cache miss), and composites it
  *          centred over a white margin into the fixed framebuffer.
- * @param[in,out] r    Reader of a JOF document (non-NULL).
+ * @param[in,out] r    Reader of a JOF document (non-nullptr).
  * @param[in]     page Vertical page index (window number down the strip).
  * @return ra8_err_t from the scroll / long-strip-render pipeline.
  * @retval k_ra8_ok The band was rendered into `r->fb`.
@@ -357,7 +357,7 @@ RA8_PRIV ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page);
  *          buffer, renders band @p i into it, and restores the fixed framebuffer
  *          as the target on every exit -- so the window's scroll tiles never
  *          disturb the headless framebuffer path.
- * @param[in,out] r   Reader of a JOF document (non-NULL).
+ * @param[in,out] r   Reader of a JOF document (non-nullptr).
  * @param[in]     i   Band (tile) index.
  * @param[out]    w   Receives the rendered width in pixels.
  * @param[out]    h   Receives the rendered height in pixels.
@@ -384,7 +384,7 @@ RA8_PRIV ra8_err_t viewer_tile_jof(ra8_viewer_reader_t* r,
  * @brief Populate the per-band tile-size cache for an open JOF strip.
  * @details Each tile is one viewport-height band; the last is clipped to the
  *          remaining rows so the document has no trailing white gap.
- * @param[in,out] r Reader of a JOF document (non-NULL).
+ * @param[in,out] r Reader of a JOF document (non-nullptr).
  * @param[in]     n Tile count (`ra8_viewer_page_count(r)`).
  * @pre The document was opened as ::k_vfmt_jof and its strip is open.
  * @pre @p n equals `ra8_viewer_page_count(r)`.

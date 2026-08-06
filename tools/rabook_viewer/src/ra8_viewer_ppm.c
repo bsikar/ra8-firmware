@@ -85,7 +85,7 @@ uint16_t ra8_viewer_pack565_le_pair(uint8_t lo, uint8_t hi)
  * @brief Expand one RGB565 word into three 8-bit channels.
  * @details High-bit replication, so a saturated field maps to 0xFF exactly.
  * @param[in]  px  Packed RGB565 pixel.
- * @param[out] rgb Receives {R, G, B} (non-NULL, ::k_ppm_channels bytes).
+ * @param[out] rgb Receives {R, G, B} (non-nullptr, ::k_ppm_channels bytes).
  * @pre @p rgb has room for ::k_ppm_channels bytes.
  * @pre @p px is a native-endian RGB565 word.
  * @post @p rgb holds the three expanded 8-bit channels.
@@ -116,7 +116,7 @@ ra8_err_t ra8_viewer_write_ppm565(const uint16_t* px, uint32_t w, uint32_t h, co
     return k_ra8_err_invalid_size;
   }
   FILE* fp = fopen(path, "wb");
-  if (fp == NULL) {
+  if (fp == nullptr) {
     return k_ra8_err_not_found;
   }
   (void)fprintf(fp, "P6\n%u %u\n255\n", (unsigned)w, (unsigned)h);

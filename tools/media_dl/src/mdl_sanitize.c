@@ -186,7 +186,7 @@ bool mdl_path_join(const char* parent, const char* seg, char* out, size_t cap)
   return true;
 }
 
-/** @brief XML entity for a metacharacter, or NULL when `c` needs no escape. */
+/** @brief XML entity for a metacharacter, or nullptr when `c` needs no escape. */
 RA8_INTERNAL static const char* xml_entity(char c)
 {
   switch (c) {

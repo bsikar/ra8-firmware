@@ -24,10 +24,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8_host_arena.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fmt.h"
+#include "ra8_host_arena.h"
 #include "ra8_jof.h"
 
 /**
@@ -60,7 +60,7 @@ RA8_PRIV [[nodiscard]] size_t ra8_fmt_jof_sink_cap(size_t src_len);
  *          blob into a memory sink, so the produced bytes can be written out or
  *          immediately read back without touching the filesystem.
  *
- * @param[in]  src       Encoded source image (JPEG / PNG), non-NULL.
+ * @param[in]  src       Encoded source image (JPEG / PNG), non-nullptr.
  * @param[in]  max_w     Width cap for the work-arena sizing, pixels.
  * @param[in]  max_h     Height cap for the work-arena sizing, pixels.
  * @param[in]  tile_w    Tile width to request, pixels.
@@ -71,7 +71,7 @@ RA8_PRIV [[nodiscard]] size_t ra8_fmt_jof_sink_cap(size_t src_len);
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Atlas produced into `*out_atlas`.
- * @retval k_ra8_err_null_ptr     A required pointer is NULL.
+ * @retval k_ra8_err_null_ptr     A required pointer is nullptr.
  * @retval k_ra8_err_invalid_size The work arena or sink could not be sized.
  * @retval k_ra8_err_no_mem       An allocation failed.
  * @retval other                  Propagated from the producer / decoders.
@@ -101,13 +101,13 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_produce(ra8_arena_t*          arena
  *          header scanner otherwise. This is header parsing only -- no pixel is
  *          decoded, so it is cheap enough to run before every encode.
  *
- * @param[in]  src   Encoded source image bytes (non-NULL).
+ * @param[in]  src   Encoded source image bytes (non-nullptr).
  * @param[out] out_w Receives the image width, pixels.
  * @param[out] out_h Receives the image height, pixels.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Dimensions read into the outputs.
- * @retval k_ra8_err_null_ptr     A required pointer is NULL.
+ * @retval k_ra8_err_null_ptr     A required pointer is nullptr.
  * @retval k_ra8_err_invalid_size A dimension is zero or above the format cap.
  * @retval other                  Propagated from the JPEG header scanner.
  *
@@ -130,21 +130,21 @@ ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h);
  *          against the untiled reference is what separates a producer defect
  *          from a consumer defect.
  *
- * @param[in]  atlas    Atlas container bytes (non-NULL).
- * @param[in]  info     Parsed atlas geometry (non-NULL).
+ * @param[in]  atlas    Atlas container bytes (non-nullptr).
+ * @param[in]  info     Parsed atlas geometry (non-nullptr).
  * @param[out] out_px   Receives the owned `width * height * bpp` raster.
  * @param[out] out_len  Receives the raster byte count.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok               Raster reassembled into `*out_px`.
- * @retval k_ra8_err_null_ptr     A required pointer is NULL.
+ * @retval k_ra8_err_null_ptr     A required pointer is nullptr.
  * @retval k_ra8_err_no_mem       An allocation failed.
  * @retval other                  Propagated from `ra8_jof_read_tile()`.
  *
  * @pre @p info came from a successful parse over @p atlas.
  * @pre @p out_px and @p out_len are writable.
  * @post On success `*out_px` holds `*out_len` bytes and must be freed.
- * @post On any error `*out_px` is NULL.
+ * @post On any error `*out_px` is nullptr.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -156,7 +156,7 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_fmt_jof_reassemble(ra8_arena_t*          ar
 
 /**
  * @brief JOF `convert` verb: one source image to one `.jof` atlas.
- * @param[in] src  Slurped source image (non-NULL).
+ * @param[in] src  Slurped source image (non-nullptr).
  * @param[in] opts Options carrying `out_path` and the report sink.
  * @return k_ra8_ok when the atlas was written to `opts->out_path`.
  * @since 0.1.0
@@ -166,7 +166,7 @@ ra8_fmt_jof_convert(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt
 
 /**
  * @brief JOF `inspect` verb: dump header, tile table, footer and verdict.
- * @param[in] src  Atlas container bytes (non-NULL).
+ * @param[in] src  Atlas container bytes (non-nullptr).
  * @param[in] opts Options carrying the report sink and verbosity.
  * @return k_ra8_ok when the container validated clean.
  * @since 0.1.0
@@ -176,7 +176,7 @@ ra8_fmt_jof_inspect(ra8_arena_t* arena, const ra8_fmt_blob_t* src, const ra8_fmt
 
 /**
  * @brief JOF `verify` verb: banded encode versus untiled reference raster.
- * @param[in] src  Source image to round-trip (non-NULL).
+ * @param[in] src  Source image to round-trip (non-nullptr).
  * @param[in] opts Options carrying the report sink and optional PPM dump path.
  * @return k_ra8_ok when the banded raster matched the reference exactly.
  * @since 0.1.0
@@ -202,7 +202,7 @@ RA8_PRIV [[nodiscard]] bool ra8_fmt_rabook_sniff(const ra8_fmt_blob_t* src);
 
 /**
  * @brief RABOOK `inspect` verb: dump the chunk inventory and section table.
- * @param[in] src  Container bytes (non-NULL).
+ * @param[in] src  Container bytes (non-nullptr).
  * @param[in] opts Options carrying the report sink and verbosity.
  * @return k_ra8_ok when the container validated clean.
  * @since 0.1.0

@@ -36,9 +36,9 @@
  *
  * @return int 0 on success, 1 on allocation failure.
  * @retval 0 `c->policy_data` holds a zeroed hand.
- * @retval 1 Out of memory; `c->policy_data` is NULL.
+ * @retval 1 Out of memory; `c->policy_data` is nullptr.
  *
- * @pre @p c is non-NULL and its `policy_data` is unset.
+ * @pre @p c is non-nullptr and its `policy_data` is unset.
  * @pre Called on the single benchmark thread.
  * @post On success `c->policy_data` points at a zero-initialized hand.
  * @post No frame contents are altered.
@@ -57,13 +57,13 @@ RA8_NASA_RULE_3_OK /* host-only bench: policy state */
 /**
  * @brief Release FIFO state (the insertion hand).
  *
- * @details Frees the `uint32_t` hand ::cb_fifo_init allocated; `free(NULL)` is
+ * @details Frees the `uint32_t` hand ::cb_fifo_init allocated; `free(nullptr)` is
  *          safe, so calling after a failed init is harmless.
  *
  * @param[in,out] c Cache whose `policy_data` hand is freed.
  *
- * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::cb_fifo_init hand or NULL.
+ * @pre @p c is non-nullptr.
+ * @pre `c->policy_data` is a ::cb_fifo_init hand or nullptr.
  * @post The hand memory is released.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
@@ -88,7 +88,7 @@ static void cb_fifo_deinit(cb_cache_t* c)
  * @retval <capacity The frame the hand pointed at on entry.
  *
  * @pre `c->policy_data` is a valid ::cb_fifo_init hand.
- * @pre @p scanned is non-NULL and `c->capacity > 0`.
+ * @pre @p scanned is non-nullptr and `c->capacity > 0`.
  * @post `*scanned == 1`.
  * @post The hand has advanced by one (mod capacity).
  *
@@ -154,9 +154,9 @@ typedef enum : uint8_t {
  *
  * @return int 0 on success, 1 on allocation failure.
  * @retval 0 `c->policy_data` holds the seeded PRNG state.
- * @retval 1 Out of memory; `c->policy_data` is NULL.
+ * @retval 1 Out of memory; `c->policy_data` is nullptr.
  *
- * @pre @p c is non-NULL and its `policy_data` is unset.
+ * @pre @p c is non-nullptr and its `policy_data` is unset.
  * @pre Called on the single benchmark thread.
  * @post On success `c->policy_data` points at state seeded with ::k_rand_seed.
  * @post No frame contents are altered.
@@ -178,13 +178,13 @@ RA8_NASA_RULE_3_OK /* host-only bench: policy state */
 /**
  * @brief Release Random-policy state (the PRNG seed).
  *
- * @details Frees the `uint64_t` seed ::cb_rand_init allocated; `free(NULL)` is
+ * @details Frees the `uint64_t` seed ::cb_rand_init allocated; `free(nullptr)` is
  *          safe after a failed init.
  *
  * @param[in,out] c Cache whose `policy_data` seed is freed.
  *
- * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::cb_rand_init seed or NULL.
+ * @pre @p c is non-nullptr.
+ * @pre `c->policy_data` is a ::cb_rand_init seed or nullptr.
  * @post The seed memory is released.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
@@ -209,7 +209,7 @@ static void cb_rand_deinit(cb_cache_t* c)
  * @retval <capacity A pseudo-random resident frame.
  *
  * @pre `c->policy_data` is a valid ::cb_rand_init seed.
- * @pre @p scanned is non-NULL and `c->capacity > 0`.
+ * @pre @p scanned is non-nullptr and `c->capacity > 0`.
  * @post `*scanned == 1` and the PRNG state has advanced one step.
  * @post No frame contents are altered.
  *
@@ -262,7 +262,7 @@ typedef struct {
  * @retval 0 `c->policy_data` holds an empty recency list.
  * @retval 1 Out of memory; any partial allocation was freed.
  *
- * @pre @p c is non-NULL with `capacity > 0`.
+ * @pre @p c is non-nullptr with `capacity > 0`.
  * @pre Called on the single benchmark thread.
  * @post On success `c->policy_data` is a list with head == tail == -1.
  * @post On failure `c->policy_data` is untouched (nothing is leaked).
@@ -275,7 +275,7 @@ RA8_NASA_RULE_3_OK /* host-only bench: policy state */
   cb_lru_init(cb_cache_t* c)
 {
   cb_lru_t* l = (cb_lru_t*)calloc(1U, sizeof(cb_lru_t));
-  if (l == NULL) {
+  if (l == nullptr) {
     return 1;
   }
   l->prev = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
@@ -297,12 +297,12 @@ RA8_NASA_RULE_3_OK /* host-only bench: policy state */
  * @brief Release true-LRU state (control block + index arrays).
  *
  * @details Frees the `prev`/`next` arrays and the ::cb_lru_t itself when
- *          present; a NULL `policy_data` (a failed init) is tolerated.
+ *          present; a nullptr `policy_data` (a failed init) is tolerated.
  *
  * @param[in,out] c Cache whose LRU `policy_data` is freed.
  *
- * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::cb_lru_init list or NULL.
+ * @pre @p c is non-nullptr.
+ * @pre `c->policy_data` is a ::cb_lru_init list or nullptr.
  * @post All list buffers are released.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
@@ -439,7 +439,7 @@ static void cb_lru_insert(cb_cache_t* c, uint32_t frame)
  * @retval <capacity The least-recently-used resident frame.
  *
  * @pre `c->policy_data` is a valid, non-empty ::cb_lru_init list.
- * @pre @p scanned is non-NULL.
+ * @pre @p scanned is non-nullptr.
  * @post `*scanned == 1` and the victim is unlinked from the list.
  * @post The list shrinks by one member.
  *
@@ -477,9 +477,9 @@ static const cache_policy_t s_cb_policy_lru = {
  *
  * @return int 0 on success, 1 on allocation failure.
  * @retval 0 `c->policy_data` holds a zeroed hand.
- * @retval 1 Out of memory; `c->policy_data` is NULL.
+ * @retval 1 Out of memory; `c->policy_data` is nullptr.
  *
- * @pre @p c is non-NULL and its `policy_data` is unset.
+ * @pre @p c is non-nullptr and its `policy_data` is unset.
  * @pre Called on the single benchmark thread.
  * @post On success `c->policy_data` points at a zero-initialized hand.
  * @post No frame contents are altered.
@@ -498,13 +498,13 @@ RA8_NASA_RULE_3_OK /* host-only bench: policy state */
 /**
  * @brief Release CLOCK state (the sweep hand).
  *
- * @details Frees the `uint32_t` hand ::cb_clock_init allocated; `free(NULL)` is
+ * @details Frees the `uint32_t` hand ::cb_clock_init allocated; `free(nullptr)` is
  *          safe after a failed init.
  *
  * @param[in,out] c Cache whose `policy_data` hand is freed.
  *
- * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::cb_clock_init hand or NULL.
+ * @pre @p c is non-nullptr.
+ * @pre `c->policy_data` is a ::cb_clock_init hand or nullptr.
  * @post The hand memory is released.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
@@ -525,7 +525,7 @@ static void cb_clock_deinit(cb_cache_t* c)
  * @param[in,out] c     Cache whose frame reference bit is set.
  * @param[in]     frame Frame just accessed or inserted.
  *
- * @pre @p c is non-NULL and @p frame < capacity.
+ * @pre @p c is non-nullptr and @p frame < capacity.
  * @pre @p frame is currently resident.
  * @post `frames[frame].meta[0] == 1`.
  * @post No other frame or policy state changes.
@@ -552,7 +552,7 @@ static void cb_clock_set(cb_cache_t* c, uint32_t frame)
  * @retval <capacity The first frame reached with a clear reference bit.
  *
  * @pre `c->policy_data` is a valid ::cb_clock_init hand and `capacity > 0`.
- * @pre @p scanned is non-NULL.
+ * @pre @p scanned is non-nullptr.
  * @post `*scanned` equals the frames inspected and the hand advanced past them.
  * @post Every spared frame's reference bit was cleared.
  *

@@ -41,7 +41,7 @@
  * @retval 0U The chapter was packaged.
  * @retval 1U A path was rejected or the export failed (diagnostic printed).
  *
- * @pre @p series_dir and @p chap_id are non-NULL and NUL-terminated.
+ * @pre @p series_dir and @p chap_id are non-nullptr and NUL-terminated.
  * @pre @p series_dir names an existing directory.
  * @post On success a container (or JOF siblings) exists for the chapter.
  * @post On failure a diagnostic naming the chapter was written to stderr.
@@ -68,13 +68,13 @@ mdl_pack_one(ra8_arena_t* arena, mdl_format_t format, const char* series_dir, co
  * @param[in] allow_incomplete Package (and mark) even when the run is incomplete.
  * @param[in] series_dir       Absolute, resolved series directory.
  * @param[in] combined_rel     Combined page folder leaf (relative to @p series_dir).
- * @param[in] stats            The finished run's tallies (never NULL).
+ * @param[in] stats            The finished run's tallies (never nullptr).
  *
  * @return The number of export failures (0 when packaged, skipped, or clean).
  * @retval 0U Packaged, or deliberately not packaged (nothing lost, or refused).
  * @retval 1U A path was rejected or the export itself failed.
  *
- * @pre @p series_dir, @p combined_rel, @p stats are non-NULL.
+ * @pre @p series_dir, @p combined_rel, @p stats are non-nullptr.
  * @pre @p stats was produced by ::mdl_fetch_run for this @p combined_rel.
  * @post An incomplete run is not packaged unless @p allow_incomplete is set.
  * @post A forced incomplete archive is named `.INCOMPLETE`.
