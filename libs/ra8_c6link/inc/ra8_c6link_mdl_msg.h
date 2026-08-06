@@ -14,9 +14,9 @@ extern "C" {
 
 #include <stdint.h>
 
-#define RA8_MDL_MSG_URL_MAX    256U
-#define RA8_MDL_MSG_PATH_MAX   256U
-#define RA8_MDL_CHUNK_DATA_MAX 1024U
+#define RA8_MDL_MSG_URL_MAX    (256U)
+#define RA8_MDL_MSG_PATH_MAX   (256U)
+#define RA8_MDL_CHUNK_DATA_MAX (1024U)
 
 #pragma pack(push, 1)
 
