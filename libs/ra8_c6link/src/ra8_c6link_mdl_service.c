@@ -6,32 +6,35 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <stdbool.h>
 #include <string.h>
 
 #include "ra8_c6link_mdl_msg.h"
 
 /* ESP32-C6 Service Stub */
 
-/** @brief Maximum RPC frame length in bytes. */
-#define k_mdl_svc_frame_len ((uint16_t)1600U)
-
-/** @brief Simulated download chunk size in bytes. */
-#define k_mdl_svc_chunk_size ((uint32_t)1024U)
+/** @brief Named constants for the media download service. */
+enum {
+  k_mdl_svc_frame_len  = 1600U, /**< Maximum RPC frame length in bytes. */
+  k_mdl_svc_chunk_size = 1024U, /**< Simulated download chunk size. */
+};
 
 /** @brief Simulated total download size (1 MiB). */
-#define k_mdl_svc_total_size (k_mdl_svc_chunk_size * k_mdl_svc_chunk_size)
+enum { k_mdl_svc_total_size = (k_mdl_svc_chunk_size * k_mdl_svc_chunk_size) };
 
 /** @brief RPC message IDs. */
-#define k_mdl_msg_poll     ((uint8_t)0U)
-#define k_mdl_msg_req      ((uint8_t)1U)
-#define k_mdl_msg_cancel   ((uint8_t)2U)
-#define k_mdl_msg_progress ((uint8_t)3U)
+enum {
+  k_mdl_msg_poll     = 0U, /**< Poll for download progress. */
+  k_mdl_msg_req      = 1U, /**< Start a download request. */
+  k_mdl_msg_cancel   = 2U, /**< Cancel current download. */
+  k_mdl_msg_progress = 3U, /**< Progress response. */
+};
 
 /** @brief Download status codes. */
-#define k_mdl_status_idle        ((uint8_t)0U)
-#define k_mdl_status_downloading ((uint8_t)1U)
-#define k_mdl_status_done        ((uint8_t)2U)
+enum {
+  k_mdl_status_idle        = 0U, /**< No active download. */
+  k_mdl_status_downloading = 1U, /**< Download in progress. */
+  k_mdl_status_done        = 2U, /**< Download complete. */
+};
 
 static ra8_mdl_download_progress_t s_progress;
 static bool                        s_download_active = false;
