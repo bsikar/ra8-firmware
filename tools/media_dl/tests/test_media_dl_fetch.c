@@ -80,19 +80,19 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const page_map_t* map;               /**< Chapter URL -> HTML.                 */
-  size_t            map_n;             /**< Entries in @ref map.                 */
-  size_t            get_buf_calls;     /**< Chapter-HTML fetches dispatched.     */
-  size_t            get_file_calls;    /**< Page transfers attempted.            */
-  size_t            fail_on_file_call; /**< 1-based call to fail once (0=never). */
-  size_t            busy_on_file_call; /**< 1-based call to 503+Retry (0=off).   */
-  const char*       busy_retry_after;  /**< Retry-After for the busy reply.      */
-  const char*       fail_url;          /**< URL that fails on EVERY attempt.     */
-  size_t            not_mod_on_file_call; /**< 1-based call to return 304.       */
-  const char*       resp_etag;         /**< ETag response header to return.      */
-  const char*       resp_last_modified;/**< Last-Modified response to return.   */
-  const char*       last_if_none_match;/**< Captured If-None-Match header.        */
-  const char*       last_if_mod_since; /**< Captured If-Modified-Since header.   */
+  const page_map_t* map;                  /**< Chapter URL -> HTML.                 */
+  size_t            map_n;                /**< Entries in @ref map.                 */
+  size_t            get_buf_calls;        /**< Chapter-HTML fetches dispatched.     */
+  size_t            get_file_calls;       /**< Page transfers attempted.            */
+  size_t            fail_on_file_call;    /**< 1-based call to fail once (0=never). */
+  size_t            busy_on_file_call;    /**< 1-based call to 503+Retry (0=off).   */
+  const char*       busy_retry_after;     /**< Retry-After for the busy reply.      */
+  const char*       fail_url;             /**< URL that fails on EVERY attempt.     */
+  size_t            not_mod_on_file_call; /**< 1-based call to return 304.          */
+  const char*       resp_etag;            /**< ETag response header to return.      */
+  const char*       resp_last_modified;   /**< Last-Modified response to return.    */
+  const char*       last_if_none_match;   /**< Captured If-None-Match header.       */
+  const char*       last_if_mod_since;    /**< Captured If-Modified-Since header.   */
 } mock_net_t;
 
 /** @brief Fake get_buf: serve the mapped HTML for a chapter URL. */

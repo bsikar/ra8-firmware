@@ -46,41 +46,41 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const char* cfg;              /**< --config path.                                            */
-  const char* series;           /**< --series URL.                                             */
-  const char* page_url;         /**< positional page URL (page mode).                          */
-  const char* out;              /**< --out dir.                                                */
-  const char* attr;             /**< --attr.                                                   */
-  const char* chapters;         /**< --chapters.                                               */
-  const char* from;             /**< --from: first chapter NUMBER to fetch (not an index).     */
-  const char* max;              /**< --max.                                                    */
-  const char* seed;             /**< --seed.                                                   */
-  const char* timeout;          /**< --timeout.                                                */
-  const char* format;           /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/jof/rabook).     */
-  const char* pack;             /**< --pack DIR: package an existing folder, no network.       */
-  const char* contact;          /**< --contact: operator identity for the User-Agent.          */
-  const char* max_bytes;        /**< --max-bytes: per-response size cap.                       */
-  const char* remove_series;    /**< --remove: series URL/slug to drop from the library.       */
-  const char* search;           /**< --search TERM: find series by title, no known URL.        */
-  const char* pick;             /**< --pick N: download the Nth discovery hit (1-based).       */
-  const char* proxy;            /**< --proxy URL: HTTP/HTTPS proxy URL.                        */
-  const char* socks5;           /**< --socks5 URL: SOCKS5 proxy URL.                           */
-  const char* cookie_file;      /**< --cookie-file FILE: cookie file path for libcurl.         */
-  const char* verify_dir;       /**< --verify [DIR]: directory to verify.                      */
-  const char* init_site_url;    /**< --init-site URL: generate site descriptor template.       */
-  bool        browse;           /**< --browse: list a site's latest-updates page.              */
-  bool        separate;         /**< --separate: one archive per chapter (default: combine).   */
-  bool        update;           /**< --update: fetch only chapters not already complete.       */
-  bool        list;             /**< --list: list tracked series with coverage, then exit.     */
-  bool        update_all;       /**< --update-all: incremental update of every tracked series. */
-  bool        polite;           /**< --polite: raise per-host delays.                          */
-  bool        ignore_robots;    /**< --ignore-robots: escape hatch (off by default).           */
-  bool        allow_private;    /**< --allow-private: permit loopback/private/link-local peers.           */
-  bool        cross_host;       /**< --cross-host: permit cross-host redirects.                */
-  bool        allow_incomplete; /**< --allow-incomplete: package a run with failed pages.      */
-  bool        progress;         /**< --progress: terminal progress bar during downloads.       */
-  bool        verify;           /**< --verify: verify existing downloaded archives/files.      */
-  bool        bad;              /**< An unrecognised argument was seen.                        */
+  const char* cfg;              /**< --config path.                                             */
+  const char* series;           /**< --series URL.                                              */
+  const char* page_url;         /**< positional page URL (page mode).                           */
+  const char* out;              /**< --out dir.                                                 */
+  const char* attr;             /**< --attr.                                                    */
+  const char* chapters;         /**< --chapters.                                                */
+  const char* from;             /**< --from: first chapter NUMBER to fetch (not an index).      */
+  const char* max;              /**< --max.                                                     */
+  const char* seed;             /**< --seed.                                                    */
+  const char* timeout;          /**< --timeout.                                                 */
+  const char* format;           /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/jof/rabook).      */
+  const char* pack;             /**< --pack DIR: package an existing folder, no network.        */
+  const char* contact;          /**< --contact: operator identity for the User-Agent.           */
+  const char* max_bytes;        /**< --max-bytes: per-response size cap.                        */
+  const char* remove_series;    /**< --remove: series URL/slug to drop from the library.        */
+  const char* search;           /**< --search TERM: find series by title, no known URL.         */
+  const char* pick;             /**< --pick N: download the Nth discovery hit (1-based).        */
+  const char* proxy;            /**< --proxy URL: HTTP/HTTPS proxy URL.                         */
+  const char* socks5;           /**< --socks5 URL: SOCKS5 proxy URL.                            */
+  const char* cookie_file;      /**< --cookie-file FILE: cookie file path for libcurl.          */
+  const char* verify_dir;       /**< --verify [DIR]: directory to verify.                       */
+  const char* init_site_url;    /**< --init-site URL: generate site descriptor template.        */
+  bool        browse;           /**< --browse: list a site's latest-updates page.               */
+  bool        separate;         /**< --separate: one archive per chapter (default: combine).    */
+  bool        update;           /**< --update: fetch only chapters not already complete.        */
+  bool        list;             /**< --list: list tracked series with coverage, then exit.      */
+  bool        update_all;       /**< --update-all: incremental update of every tracked series.  */
+  bool        polite;           /**< --polite: raise per-host delays.                           */
+  bool        ignore_robots;    /**< --ignore-robots: escape hatch (off by default).            */
+  bool        allow_private;    /**< --allow-private: permit loopback/private/link-local peers. */
+  bool        cross_host;       /**< --cross-host: permit cross-host redirects.                 */
+  bool        allow_incomplete; /**< --allow-incomplete: package a run with failed pages.       */
+  bool        progress;         /**< --progress: terminal progress bar during downloads.        */
+  bool        verify;           /**< --verify: verify existing downloaded archives/files.       */
+  bool        bad;              /**< An unrecognised argument was seen.                         */
 } mdl_args_t;
 
 /**
