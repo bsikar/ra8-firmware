@@ -30,51 +30,64 @@ typedef enum : uint64_t {
 
 void mdl_cli_usage(const char* a0)
 {
-  (void)fprintf(stderr,
-                "usage:\n"
-                "  series: %s --config SITE.conf --series URL [--chapters N] "
-                "[--from CHAP] [--update] [--out DIR] "
-                "[--format cbz|cbt|cbr|cbt.xz|cbt.gz|epub|jof|rabook] "
-                "[--separate] [--seed S] [--timeout MS]\n"
-                "          N chapters combine into ONE <slug>-<lo>-<hi>.<ext> by "
-                "default; --separate keeps one archive per chapter.\n"
-                "          --from CHAP starts at the chapter NUMBERED CHAP (not a "
-                "list index); --update fetches only chapters not already complete.\n"
-                "  search: %s --config SITE.conf --search TERM [--pick N ...download opts]\n"
-                "          lists title + series URL per hit; --pick N downloads hit N "
-                "(no copy-paste) using the same --format/--chapters/--out options.\n"
-                "  browse: %s --config SITE.conf --browse [--pick N ...download opts]\n"
-                "          lists the site's latest-updates page (needs browse_url in the "
-                "descriptor).\n"
-                "  library (over --out): %s --list | --update-all --config SITE.conf "
-                "| --remove URL|SLUG [--out DIR]\n"
-                "  verify: %s --verify [DIR]  verify existing downloaded archives/files\n"
-                "  init-site: %s --init-site URL  generate starter .conf site descriptor template\n"
-                "  pack:   %s --pack DIR --format FMT   "
-                "package an existing folder of page images (no network)\n"
-                "  page:   %s URL [--out DIR] [--max N] [--attr data-src|src] "
-                "[--seed S] [--timeout MS]\n"
-                "  identity/politeness/network options:\n"
-                "    --contact <email|url>  identify yourself in the User-Agent\n"
-                "    --polite               raise delays; per-host concurrency 1\n"
-                "    --progress             terminal progress bar during downloads\n"
-                "    --proxy <URL>          HTTP/HTTPS proxy URL for libcurl\n"
-                "    --socks5 <URL>         SOCKS5 proxy URL for libcurl\n"
-                "    --cookie-file <FILE>   cookie file path for libcurl\n"
-                "    --max-bytes N          per-response size cap (default 64 MiB)\n"
-                "    --ignore-robots        do NOT honour robots.txt (logged loudly)\n"
-                "    --allow-private        permit loopback/private/link-local peers\n"
-                "    --cross-host           permit redirects to a different host\n"
-                "    --allow-incomplete     package a run with failed pages; the archive\n"
-                "                           is named .INCOMPLETE so it is visibly partial\n",
-                a0,
-                a0,
-                a0,
-                a0,
-                a0,
-                a0,
-                a0,
-                a0);
+  (void)fprintf(
+      stderr,
+      "usage:\n"
+      "  series:\n"
+      "    %s --config SITE.conf --series URL [--chapters N] [--from CHAP]\n"
+      "       [--update] [--out DIR] [--format FMT] [--separate] [--seed S]\n"
+      "       [--timeout MS]\n"
+      "       Formats: cbz|cbt|cbr|cbt.xz|cbt.gz|epub|jof|rabook\n"
+      "       Default: N chapters combine into ONE <slug>-<lo>-<hi>.<ext>.\n"
+      "       --separate keeps one archive per chapter.\n"
+      "       --from CHAP starts at chapter NUMBERED CHAP (not an index).\n"
+      "       --update fetches only incomplete chapters.\n\n"
+
+      "  search:\n"
+      "    %s --config SITE.conf --search TERM [--pick N ...opts]\n"
+      "       Lists title + series URL per hit.\n"
+      "       --pick N downloads hit N directly using --series options.\n\n"
+
+      "  browse:\n"
+      "    %s --config SITE.conf --browse [--pick N ...opts]\n"
+      "       Lists site's latest updates (requires browse_url in conf).\n\n"
+
+      "  library:\n"
+      "    %s --list | --update-all --config SITE.conf | --remove URL|SLUG "
+      "[--out DIR]\n\n"
+
+      "  verify:\n"
+      "    %s --verify [DIR]\n"
+      "       Verify existing downloaded archives/files.\n\n"
+
+      "  init-site:\n"
+      "    %s --init-site URL\n"
+      "       Generate starter .conf site descriptor template.\n\n"
+
+      "  pack:\n"
+      "    %s --pack DIR --format FMT\n"
+      "       Package an existing folder of page images (no network).\n\n"
+
+      "  page:\n"
+      "    %s URL [--out DIR] [--max N] [--attr data-src|src] [--seed S]\n"
+      "       [--timeout MS]\n\n"
+
+      "  identity / politeness / network options:\n"
+      "    --contact <email|url>  Identify yourself in the User-Agent\n"
+      "    --polite               Raise delays; per-host concurrency 1\n"
+      "    --progress             Terminal progress bar during downloads\n"
+      "    --proxy <URL>          HTTP/HTTPS proxy URL for libcurl\n"
+      "    --socks5 <URL>         SOCKS5 proxy URL for libcurl\n"
+      "    --cookie-file <FILE>   Cookie file path for libcurl\n"
+      "    --max-bytes N          Per-response size cap (default 64 MiB)\n"
+      "    --ignore-robots        Do NOT honour robots.txt (logged loudly)\n"
+      "    --allow-private        Permit loopback/private/link-local "
+      "peers\n"
+      "    --cross-host           Permit redirects to a different host\n"
+      "    --allow-incomplete     Package run with failed pages; archive\n"
+      "                           is named .INCOMPLETE so it is visibly "
+      "partial\n",
+      a0, a0, a0, a0, a0, a0, a0, a0);
 }
 
 /** @brief If argv[*i] == `flag`, store its value in *dst and advance `*i`. */
