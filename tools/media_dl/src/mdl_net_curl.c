@@ -57,7 +57,7 @@ typedef struct {
   bool        allow_cross_host;               /**< Cross-host redirect opt-in.  */
   uint64_t    max_bytes;                      /**< Per-response cap (0 = none). */
   const char* proxy;                          /**< HTTP/HTTPS proxy URL.        */
-  const char* socks5;                         /**< SOCKS5 proxy URL.             */
+  const char* socks5;                         /**< SOCKS5 proxy URL.            */
   const char* cookie_file;                    /**< Cookie file path.            */
   char        origin_host[k_origin_host_max]; /**< Host of the current request. */
 } mdl_curl_ctx_t;
