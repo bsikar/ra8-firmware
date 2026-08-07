@@ -100,11 +100,11 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint64_t url_hash;                    /**< FNV-1a 64 of the source URL.     */
-  uint64_t content_hash;                /**< FNV-1a 64 of the fetched bytes.  */
-  char     rel_path[k_mdl_relpath_max]; /**< Path under the series directory. */
-  char     etag[k_mdl_etag_max];        /**< Cached ETag for conditional GET. */
-  char     last_modified[k_mdl_last_mod_max]; /**< Cached Last-Modified.       */
+  uint64_t url_hash;                          /**< FNV-1a 64 of the source URL.     */
+  uint64_t content_hash;                      /**< FNV-1a 64 of the fetched bytes.  */
+  char     rel_path[k_mdl_relpath_max];       /**< Path under the series directory. */
+  char     etag[k_mdl_etag_max];              /**< Cached ETag for conditional GET. */
+  char     last_modified[k_mdl_last_mod_max]; /**< Cached Last-Modified.            */
 } mdl_page_rec_t;
 
 /**
