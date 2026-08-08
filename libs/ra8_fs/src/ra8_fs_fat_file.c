@@ -259,13 +259,17 @@ static ra8_err_t priv_enter_subdir(const ra8_fs_mount_t* m,
                                    uint32_t              len,
                                    dir_loc_t*            out)
 {
-  if (len > (uint32_t)k_lfn_write_max) {
+  /* A BYTE bound, because the component is UTF-8 here: the unit-count limit is
+   * ::k_lfn_write_max and lands in priv_name_classify(). Bounding the bytes by
+   * the unit cap would refuse a perfectly storable name three characters into
+   * a Cyrillic directory (#606). */
+  if (len >= (uint32_t)k_lfn_utf8_cap) {
     return k_ra8_err_invalid_arg;
   }
   /* Sized for a long name, not an 8.3 one: once `mkdir` can create
    * `/Reading List`, every path THROUGH it has to resolve as well, and a
    * 13-byte buffer would have refused the component before the lookup. */
-  char namebuf[k_lfn_name_cap] = {};
+  char namebuf[k_lfn_utf8_cap] = {};
   for (uint32_t i = 0; i < len; i++) {
     namebuf[i] = comp[i];
   }

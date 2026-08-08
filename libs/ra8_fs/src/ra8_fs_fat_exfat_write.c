@@ -46,12 +46,17 @@ static uint16_t priv_exfat_csum_add(uint16_t cs, uint8_t b)
 }
 
 /* `priv_exfat_name_hash()`: see header for the documented contract. */
-uint16_t priv_exfat_name_hash(const char* path, uint32_t nlen)
+uint16_t priv_exfat_name_hash(const uint16_t* name, uint32_t nlen)
 {
   uint16_t h = 0U;
   for (uint32_t i = 0U; i < nlen; i++) {
-    h = priv_exfat_csum_add(h, (uint8_t)priv_ascii_upper(path[i]));
-    h = priv_exfat_csum_add(h, 0U);
+    /* The spec's definition exactly: fold the UP-CASED name, little-endian, one
+     * byte at a time. Up-casing with an ASCII-only rule -- which is what this
+     * did -- stored a hash no compliant reader recomputes for any name outside
+     * ASCII, so a host could list the file and then not find it (#606). */
+    const uint16_t u = priv_exfat_upcase_unit(name[i]);
+    h                = priv_exfat_csum_add(h, (uint8_t)((uint32_t)u & (uint32_t)k_utf_byte_mask));
+    h                = priv_exfat_csum_add(h, (uint8_t)((uint32_t)u >> (uint32_t)k_utf_byte_shift));
   }
   return h;
 }
@@ -401,14 +406,15 @@ ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
  *          and sets `NoFatChain` if the run is still contiguous.
  *
  * @param[out] set  Buffer (>= `k_exfat_max_set_bytes`).
- * @param[in]  path File name (ASCII).
- * @param[in]  nlen Name length in characters.
+ * @param[in]  name File name as UTF-16 code units.
+ * @param[in]  nlen Name length in UTF-16 UNITS, which is what `NameLength`
+ *                  counts and what a Name entry holds fifteen of.
  *
  * @return The total byte length of the built set.
  * @retval >0 Number of bytes written into @p set.
  *
- * @pre @p set and @p path are non-NULL; @p set is large enough.
- * @pre `priv_strlen(path) == nlen` and @p nlen >= 1.
+ * @pre @p set and @p name are non-NULL; @p set is large enough.
+ * @pre @p nlen is the unit count ::priv_utf8_to_utf16() produced, and >= 1.
  * @post @p set holds a complete entry set with a valid SetChecksum.
  * @post No volume state modified.
  *
@@ -417,7 +423,7 @@ ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_exfat_build_set(uint8_t* set, const char* path, uint32_t nlen)
+static uint32_t priv_exfat_build_set(uint8_t* set, const uint16_t* name, uint32_t nlen)
 {
   const uint32_t name_entries =
     (nlen + (uint32_t)k_exfat_name_per_entry - 1U) / (uint32_t)k_exfat_name_per_entry;
@@ -438,14 +444,18 @@ static uint32_t priv_exfat_build_set(uint8_t* set, const char* path, uint32_t nl
   strm[0]                      = (uint8_t)k_exfat_entry_stream;
   strm[k_exfat_strm_off_flags] = (uint8_t)k_exfat_secflag_poss;
   strm[k_exfat_strm_off_nlen]  = (uint8_t)nlen;
-  priv_wr16(&strm[k_exfat_off_strm_hash], priv_exfat_name_hash(path, nlen));
+  priv_wr16(&strm[k_exfat_off_strm_hash], priv_exfat_name_hash(name, nlen));
   for (uint32_t n = 0U; n < name_entries; n++) {
     uint8_t* ne = &set[(size_t)(2U + n) * (size_t)k_exfat_entry_bytes];
     ne[0]       = (uint8_t)k_exfat_entry_name;
     for (uint32_t c = 0U; c < (uint32_t)k_exfat_name_per_entry; c++) {
       const uint32_t pos = (n * (uint32_t)k_exfat_name_per_entry) + c;
       if (pos < nlen) {
-        ne[k_exfat_name_off + (c * 2U)] = (uint8_t)path[pos];
+        /* A whole UTF-16 unit, not the low byte of one: writing one unit per
+         * INPUT BYTE turned every multi-byte character into that many garbage
+         * characters and made NameLength count bytes where the format counts
+         * units (#606). */
+        priv_wr16(&ne[k_exfat_name_off + (c * 2U)], name[pos]);
       }
     }
   }
@@ -483,7 +493,7 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
 /** @brief Implementation of `priv_exfat_link()` -- one directory-slot scan, one set write. */
 ra8_err_t priv_exfat_link(ra8_fs_mount_t*    m,
                           const exfat_dir_t* dir,
-                          const char*        path,
+                          const uint16_t*    name,
                           uint32_t           nlen,
                           exfat_setpos_t*    out_head,
                           uint32_t*          out_count)
@@ -498,7 +508,7 @@ ra8_err_t priv_exfat_link(ra8_fs_mount_t*    m,
     return e;
   }
   uint8_t        set[k_exfat_max_set_bytes] = {};
-  const uint32_t bytes                      = priv_exfat_build_set(set, path, nlen);
+  const uint32_t bytes                      = priv_exfat_build_set(set, name, nlen);
   e                                         = priv_exfat_write_dir_set(m, dclus, didx, set, bytes);
   if (e != k_ra8_ok) {
     return e;

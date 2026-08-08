@@ -570,7 +570,7 @@ static ra8_err_t priv_write_locked(ra8_fs_file_t* file, const uint8_t* buf, uint
  *          different things.
  *
  * @param[in,out] handle Mounted volume.
- * @param[in]     path   Root-level file name (ASCII).
+ * @param[in]     path   Root-level file name, UTF-8.
  * @param[in]     data   File contents.
  * @param[in]     len    Byte count.
  *

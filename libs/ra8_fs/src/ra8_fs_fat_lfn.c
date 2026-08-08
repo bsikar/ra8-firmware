@@ -95,12 +95,12 @@ uint8_t priv_sfn_checksum(const uint8_t* name83)
 }
 
 /* `priv_lfn_fill_slot()`: see header for the documented contract. */
-void priv_lfn_fill_slot(uint8_t*    ent,
-                        const char* name,
-                        uint32_t    nlen,
-                        uint32_t    order,
-                        uint8_t     is_last,
-                        uint8_t     csum)
+void priv_lfn_fill_slot(uint8_t*        ent,
+                        const uint16_t* name,
+                        uint32_t        nlen,
+                        uint32_t        order,
+                        uint8_t         is_last,
+                        uint8_t         csum)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_fs_dir_entry_bytes; i++) {
     ent[i] = 0U;
@@ -115,7 +115,9 @@ void priv_lfn_fill_slot(uint8_t*    ent,
     const uint32_t pos = base + i;
     uint16_t       val = (uint16_t)k_lfn_unicode_pad;
     if (pos < nlen) {
-      val = (uint16_t)(unsigned char)name[pos];
+      /* The unit itself. Taking one byte of the caller's name per slot was
+       * correct only for ASCII, and silently wrong for everything else (#606). */
+      val = name[pos];
     } else if (pos == nlen) {
       val = 0U; /* the NUL that terminates the last populated group */
     } else {
@@ -128,8 +130,8 @@ void priv_lfn_fill_slot(uint8_t*    ent,
 /* `priv_lfn_reset()`: see header for the documented contract. */
 void priv_lfn_reset(lfn_state_t* s)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_lfn_name_cap; i++) {
-    s->name[i] = '\0';
+  for (uint32_t i = 0U; i < (uint32_t)k_lfn_write_max; i++) {
+    s->units[i] = 0U;
   }
   s->checksum = 0U;
   s->have     = 0U;
@@ -149,68 +151,38 @@ void priv_lfn_add(lfn_state_t* s, const uint8_t* ent)
     const uint32_t off = (uint32_t)s_lfn_char_off[i];
     const uint32_t val = (uint32_t)ent[off] | ((uint32_t)ent[off + 1U] << 8U);
     const uint32_t pos = base + i;
-    if (pos >= ((uint32_t)k_lfn_name_cap - 1U)) {
+    if (pos >= (uint32_t)k_lfn_write_max) {
       /* Unreachable: max pos = (k_lfn_max_entries-1)*k_lfn_chars_per_ent +
-       * (k_lfn_chars_per_ent-1) = 18*13+12 = 246 < k_lfn_name_cap-1 = 255. */
+       * (k_lfn_chars_per_ent-1) = 18*13+12 = 246 < k_lfn_write_max = 247. */
       break; /* GCOVR_EXCL_LINE */
     }
     if ((val == 0U) || (val == (uint32_t)k_lfn_unicode_pad)) {
-      s->name[pos] = '\0'; /* terminator / padding ends this group's name */
+      s->units[pos] = 0U; /* terminator / padding ends this group's name */
       break;
     }
-    s->name[pos] =
-      (char)((val <= (uint32_t)k_lfn_ascii_max) ? (unsigned char)val : (unsigned char)'?');
+    /* The unit as stored. Substituting '?' for everything above 0x7F -- which
+     * is what this did -- made the reported name one the caller could not hand
+     * back to `ra8_fs_open()`, so the file was listed and unopenable (#606). */
+    s->units[pos] = (uint16_t)val;
   }
 }
 
-/* `priv_lfn_name_for()`: see header for the documented contract. */
-const char* priv_lfn_name_for(lfn_state_t* s, const uint8_t* name83)
+/* `priv_lfn_units_for()`: see header for the documented contract. */
+const uint16_t* priv_lfn_units_for(const lfn_state_t* s, const uint8_t* name83, uint32_t* out_units)
 {
-  if ((s->have == 0U) || (s->name[0] == '\0')) {
+  *out_units = 0U;
+  if ((s->have == 0U) || (s->units[0] == 0U)) {
     return nullptr;
   }
   if (s->checksum != priv_sfn_checksum(name83)) {
     return nullptr;
   }
-  return s->name;
-}
-
-/**
- * @brief Compare two NUL-terminated ASCII names for case-insensitive equality.
- *
- * @details Walks both strings simultaneously, uppercasing each character via
- *          priv_to_upper() before comparing. Returns 1 only if both strings
- *          reach their NUL terminator at the same step (same length, same
- *          content ignoring case). A length mismatch or any differing character
- *          yields 0.
- *
- * @param[in] a First NUL-terminated name.
- * @param[in] b Second NUL-terminated name.
- *
- * @return Equality flag.
- * @retval 1U The names are equal (case-insensitive).
- * @retval 0U The names differ in length or at least one character.
- *
- * @pre @p a is non-NULL and NUL-terminated.
- * @pre @p b is non-NULL and NUL-terminated.
- * @post Neither @p a nor @p b is modified.
- * @post Return value reflects only the ASCII case-fold comparison result.
- *
- * @note Pure function; trivially thread-safe.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static uint8_t priv_name_ieq(const char* a, const char* b)
-{
-  while ((*a != '\0') && (*b != '\0')) {
-    if (priv_to_upper(*a) != priv_to_upper(*b)) {
-      return 0U;
-    }
-    a++;
-    b++;
+  uint32_t n = 0U;
+  while ((n < (uint32_t)k_lfn_write_max) && (s->units[n] != 0U)) {
+    n++;
   }
-  return ((*a == '\0') && (*b == '\0')) ? 1U : 0U;
+  *out_units = n;
+  return s->units;
 }
 
 /**
@@ -234,7 +206,8 @@ typedef enum : uint8_t {
  *          per-sector body of `priv_dir_find_long`, extracted so both the
  *          scan and the walk stay under the function-size / complexity gates.
  *
- * @param[in]     needle        Requested name (already slash-stripped).
+ * @param[in]     needle        Requested name as UTF-16 code units.
+ * @param[in]     nneedle       Number of units in @p needle.
  * @param[in]     buf           One directory sector (k_ra8_fs_bytes_per_sector).
  * @param[in]     cur_lba       LBA of @p buf (recorded into @p out_lba on hit).
  * @param[in,out] lfn           Reassembly state carried across sectors.
@@ -257,12 +230,13 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_fs_lfn_scan_t priv_dir_find_long_sector(const char*    needle,
-                                                   const uint8_t* buf,
-                                                   uint32_t       cur_lba,
-                                                   lfn_state_t*   lfn,
-                                                   uint32_t*      out_lba,
-                                                   uint32_t*      out_entry_off,
+static ra8_fs_lfn_scan_t priv_dir_find_long_sector(const uint16_t* needle,
+                                                   uint32_t        nneedle,
+                                                   const uint8_t*  buf,
+                                                   uint32_t        cur_lba,
+                                                   lfn_state_t*    lfn,
+                                                   uint32_t*       out_lba,
+                                                   uint32_t*       out_entry_off,
                                                    uint8_t out_entry[k_ra8_fs_dir_entry_bytes])
 {
   for (uint32_t e = 0; e < k_dir_entries_per_sector; e++) {
@@ -278,8 +252,13 @@ static ra8_fs_lfn_scan_t priv_dir_find_long_sector(const char*    needle,
       priv_lfn_add(lfn, ent);
       continue;
     }
-    const char* lname = priv_lfn_name_for(lfn, ent);
-    if ((lname != nullptr) && (priv_name_ieq(needle, lname) != 0U)) {
+    /* Compared as UTF-16, which is the domain the name is stored in and the
+     * domain the up-case table folds. Comparing the reassembled text meant
+     * comparing against a name the reader had already mangled, so a file whose
+     * name held an accent could not be opened by its real name (#606). */
+    uint32_t        lnunits = 0U;
+    const uint16_t* lunits  = priv_lfn_units_for(lfn, ent, &lnunits);
+    if ((lunits != nullptr) && (priv_utf16_ieq(needle, nneedle, lunits, lnunits) != 0U)) {
       *out_lba       = cur_lba;
       *out_entry_off = e * (uint32_t)k_ra8_fs_dir_entry_bytes;
       priv_byte_copy(out_entry, ent, k_ra8_fs_dir_entry_bytes);
@@ -298,9 +277,19 @@ ra8_err_t priv_dir_find_long(const ra8_fs_mount_t* m,
                              uint32_t*             out_entry_off,
                              uint8_t               out_entry[k_ra8_fs_dir_entry_bytes])
 {
-  const char* needle = want;
-  if (needle[0] == '/') {
-    needle++; /* flat root: ignore a leading slash */
+  const char* want_leaf = want;
+  if (want_leaf[0] == '/') {
+    want_leaf++; /* flat root: ignore a leading slash */
+  }
+  uint16_t  needle[k_lfn_write_max] = {};
+  uint32_t  nneedle                 = 0U;
+  ra8_err_t nerr = priv_utf8_to_utf16(want_leaf, needle, (uint32_t)k_lfn_write_max, &nneedle);
+  if (nerr == k_ra8_err_no_mem) {
+    /* Longer than any long name this format stores, so nothing here is it. */
+    return k_ra8_err_not_found;
+  }
+  if (nerr != k_ra8_ok) {
+    return nerr;
   }
   dir_walk_t w = {};
   priv_dir_walk_init_loc(m, loc, &w);
@@ -313,8 +302,14 @@ ra8_err_t priv_dir_find_long(const ra8_fs_mount_t* m,
     if (err != k_ra8_ok) {
       return err;
     }
-    const ra8_fs_lfn_scan_t scan =
-      priv_dir_find_long_sector(needle, buf, w.cur_lba, &lfn, out_lba, out_entry_off, out_entry);
+    const ra8_fs_lfn_scan_t scan = priv_dir_find_long_sector(needle,
+                                                             nneedle,
+                                                             buf,
+                                                             w.cur_lba,
+                                                             &lfn,
+                                                             out_lba,
+                                                             out_entry_off,
+                                                             out_entry);
     if (scan == k_lfn_scan_found) {
       return k_ra8_ok;
     }

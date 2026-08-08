@@ -1,6 +1,6 @@
 /**
  * @file ra8_fs_fat_exfat_upcase.c
- * @brief Canonical Microsoft exFAT up-case table + its writer for `ra8_fs`.
+ * @brief Canonical Microsoft exFAT up-case table, its writer, and its reader.
  *
  * @details
  * exFAT stores a Unicode up-case table so the file system can fold names to a
@@ -17,6 +17,28 @@
  * translation unit to keep `ra8_fs_fat_exfat_fmt.c` under the source-size cap,
  * and is written by ::priv_exfat_write_upcase across the up-case clusters of a
  * freshly formatted volume.
+ *
+ * ## Reading it back (#606)
+ *
+ * The table was write-only until name handling needed to FOLD a case, and it is
+ * the fold the exFAT specification defines `NameHash` against -- so hashing with
+ * an ASCII-only up-case, which is what the create path used to do, stored a hash
+ * a compliant host disagrees with for any name outside ASCII. ::priv_exfat_upcase_unit()
+ * answers the same question the table does, by walking the compressed form in
+ * place rather than expanding it: a full 64 Ki-entry expansion is 128 KiB of RAM
+ * on a part that has 1.6 MB in total, to answer a query that arrives a few times
+ * per file name.
+ *
+ * The compressed encoding is the specification's: a unit that is not
+ * ::k_exfat_upc_run_tag is the mapping for the next code point, and one that is
+ * introduces a run length of code points that map to themselves. The table ends
+ * with a ::k_exfat_upc_run_tag that has no length after it -- the mapping for
+ * U+FFFF, which is its own up-case -- so a walk that runs out of words while
+ * expecting a run length returns the identity, which is the right answer there.
+ *
+ * ::priv_exfat_upcase_checksum() folds the same bytes with the same rotate-add
+ * the writer uses, which is what lets a mount COMPARE this build's table against
+ * the one the volume actually carries instead of assuming they agree.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -408,6 +430,48 @@ static const uint8_t s_exfat_upcase[k_exfat_fmt_upc_std_bytes] = {
   0xF2, 0xFF, 0xF3, 0xFF, 0xF4, 0xFF, 0xF5, 0xFF, 0xF6, 0xFF, 0xF7, 0xFF, 0xF8, 0xFF, 0xF9, 0xFF,
   0xFA, 0xFF, 0xFB, 0xFF, 0xFC, 0xFF, 0xFD, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF,
 };
+
+/* `priv_exfat_upcase_unit()`: see header for the documented contract. */
+uint16_t priv_exfat_upcase_unit(uint16_t unit)
+{
+  const uint32_t want = (uint32_t)unit;
+  if (want <= (uint32_t)k_utf_ascii_max) {
+    /* Not a different rule -- the same answer, reached without the walk. The
+     * table's first 128 entries are the identity apart from a-z -> A-Z, which
+     * is what `priv_ascii_upper` does, and what
+     * `test_upcase_ascii_fast_path_is_the_table` re-derives for all 128. */
+    return (uint16_t)(uint32_t)(unsigned char)priv_ascii_upper((char)(unsigned char)want);
+  }
+  uint32_t idx = 0U;
+  uint32_t w   = 0U;
+  while (w < (uint32_t)k_exfat_upc_words) {
+    const uint32_t v = (uint32_t)priv_rd16(&s_exfat_upcase[(size_t)w * 2U]);
+    w++;
+    if (v != (uint32_t)k_exfat_upc_run_tag) {
+      if (idx == want) {
+        return (uint16_t)v;
+      }
+      idx++;
+      continue;
+    }
+    if (w >= (uint32_t)k_exfat_upc_words) {
+      break; /* the trailing tag: U+FFFF, whose up-case is itself */
+    }
+    const uint32_t run = (uint32_t)priv_rd16(&s_exfat_upcase[(size_t)w * 2U]);
+    w++;
+    if (want < (idx + run)) {
+      return unit; /* inside an identity run */
+    }
+    idx += run;
+  }
+  return unit;
+}
+
+/* `priv_exfat_upcase_checksum()`: see header for the documented contract. */
+uint32_t priv_exfat_upcase_checksum(void)
+{
+  return priv_exfat_csum32(0U, s_exfat_upcase, (uint32_t)k_exfat_fmt_upc_std_bytes);
+}
 
 /* `priv_exfat_write_upcase()`: see header for the documented contract. */
 ra8_err_t

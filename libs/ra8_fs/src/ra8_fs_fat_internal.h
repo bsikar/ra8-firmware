@@ -32,6 +32,10 @@
  *                             locations and cursors, path resolution, and the
  *                             allocate / link / retire verbs `mkdir`, `rmdir`,
  *                             `unlink` and `write_file` share.
+ * - `ra8_fs_utf_internal.h`  -- the UTF-8 <-> UTF-16LE codec and the case fold.
+ *                             Not FAT-specific -- both on-disk name formats in
+ *                             this module store UTF-16 -- so it is named for
+ *                             the encoding rather than for the filesystem.
  *
  * The last five are split by THEME rather than alphabetically, because each
  * owns a self-contained mechanism with its own on-disk vocabulary. Folding
@@ -57,3 +61,4 @@
 #include "ra8_fs_fat_protos_b_internal.h"
 #include "ra8_fs_fat_time_internal.h"
 #include "ra8_fs_fat_types_internal.h"
+#include "ra8_fs_utf_internal.h"

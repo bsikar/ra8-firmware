@@ -60,10 +60,27 @@
  *     and a zeroed cluster behind it, and no "." / ".." entries -- exFAT has
  *     none.
  *
+ * ## Names are UTF-8, on both formats
+ * Every name crossing this API is UTF-8; both on-disk formats store UTF-16LE,
+ * converted in one place so the three paths that did their own cannot disagree
+ * again (#606).
+ *
+ *   - All of Unicode is storable: a 4-byte UTF-8 character becomes a surrogate
+ *     PAIR on disk and returns as the same 4 bytes.
+ *   - Malformed UTF-8 is REFUSED, never patched: an over-long encoding, a
+ *     directly-encoded surrogate or a truncated sequence is `invalid_arg`.
+ *   - Lookup is case-insensitive across the BMP, through the canonical
+ *     up-case table this library writes at format time.
+ *   - exFAT's stored `NameHash` uses that same table, which is what the format
+ *     defines it over. A volume carrying a DIFFERENT table refuses non-ASCII
+ *     names with `k_ra8_err_not_supported` instead; ASCII is unaffected.
+ *   - Length limits are in UTF-16 UNITS: 247 on FAT, 64 on exFAT; a UTF-8
+ *     argument may be three times as many bytes. An 8.3 short name stays ASCII,
+ *     and a long name's alias maps what it cannot represent to `_`, as VFAT.
+ *
  * ## What this deliberately skips
- *   - Non-ASCII characters in a long name. The on-disk encoding is UTF-16LE
- *     and a name is read back through it, but a code point above 0x7F is
- *     rendered `?` on read and refused on write.
+ *   - exFAT names past 64 UTF-16 units (the format allows 255), and
+ *     locale-sensitive folding (Turkish dotless i, full case folding).
  *   - Long names on exFAT, which has its own (unrelated) name encoding.
  *   - GROWING a directory. A directory holds as many entry sets as fit the
  *     clusters it was created with, and reports `k_ra8_err_no_mem` past that
@@ -303,6 +320,7 @@ typedef struct {
   uint32_t         count_of_clusters;   /**< Per MS spec: data_sectors / SPC.       */
   uint32_t         partition_base_lba;  /**< MBR partition start (0 = superfloppy). */
   uint8_t          in_use;              /**< 0 = slot free, 1 = mounted.            */
+  uint8_t          exfat_upcase_ok;     /**< exFAT: volume's up-case table is ours. */
 } ra8_fs_mount_t;
 
 /**
@@ -684,7 +702,7 @@ ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_l
  * the second call's contents, with no space lost to the first.
  *
  * @param[in] handle Mounted volume.
- * @param[in] path   File path (ASCII); nested paths resolve on both
+ * @param[in] path   File path, UTF-8; nested paths resolve on both
  *                   filesystems, provided every intermediate directory exists.
  * @param[in] data   File contents.
  * @param[in] len    Byte count; 0 leaves an empty file.

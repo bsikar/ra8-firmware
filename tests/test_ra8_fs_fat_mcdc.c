@@ -245,7 +245,7 @@ static void build_fat16_volume(void)
  *
  * @details Bit-exact mirror of `priv_sfn_checksum` (MS FAT spec sec 7): a
  *          rotate-right-add fold over the 11 raw name bytes. The planted LFN
- *          entries store this in their LDIR_Chksum byte so `priv_lfn_name_for`
+ *          entries store this in their LDIR_Chksum byte so `priv_lfn_units_for`
  *          ties the chain to its 8.3 entry.
  *
  * @param[in] name11 Packed 11-byte 8.3 name (8 base + 3 ext, space padded).

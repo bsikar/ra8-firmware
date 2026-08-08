@@ -39,28 +39,30 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_lwm_ntres_base = 0x08U,   /**< DIR_NTRes: base is lower case.         */
-  k_lwm_ntres_ext  = 0x10U,   /**< DIR_NTRes: extension is lower case.    */
-  k_lwm_ntres_both = 0x18U,   /**< Both halves lower case.                */
-  k_lwm_seq_last   = 0x40U,   /**< LDIR_Ord: last logical group.          */
-  k_lwm_pad        = 0xFFFFU, /**< Slot padding past the name terminator. */
-  k_lwm_per_group  = 13U,     /**< Characters carried by one slot.        */
-  k_lwm_tail_1d    = 9U,      /**< Highest one-digit alias tail.          */
-  k_lwm_tail_2d_lo = 10U,     /**< Lowest two-digit alias tail.           */
-  k_lwm_tail_2d_hi = 99U,     /**< Highest two-digit alias tail.          */
-  k_lwm_tail_3d    = 100U,    /**< Lowest three-digit alias tail.         */
-  k_lwm_tail_4d    = 1000U,   /**< Lowest four-digit alias tail.          */
-  k_lwm_tail_5d    = 10000U,  /**< Lowest five-digit alias tail.          */
-  k_lwm_tail_6d    = 100000U, /**< Lowest six-digit alias tail.           */
-  k_lwm_tail_max   = 999999U, /**< `k_lfn_alias_tail_max`: the last tail. */
-  k_lwm_short_len  = 5U,      /**< Length of the five-character vector.   */
-  k_lwm_two_groups = 26U,     /**< Length of the two-full-group vector.   */
-  k_lwm_csum_a     = 0xABU,   /**< An arbitrary but pinned checksum byte. */
-  k_lwm_csum_b     = 0x5AU,   /**< A second one, to tell the slots apart. */
-  k_lwm_name1_0    = 1U,      /**< LDIR_Name1 char 0 (MS FAT spec sec 7). */
-  k_lwm_name2_0    = 14U,     /**< LDIR_Name2 char 0.                     */
-  k_lwm_name2_1    = 16U,     /**< LDIR_Name2 char 1.                     */
-  k_lwm_name3_1    = 30U,     /**< LDIR_Name3 char 1: the 13th character. */
+  k_lwm_ntres_base = 0x08U,   /**< DIR_NTRes: base is lower case.            */
+  k_lwm_ntres_ext  = 0x10U,   /**< DIR_NTRes: extension is lower case.       */
+  k_lwm_ntres_both = 0x18U,   /**< Both halves lower case.                   */
+  k_lwm_seq_last   = 0x40U,   /**< LDIR_Ord: last logical group.             */
+  k_lwm_pad        = 0xFFFFU, /**< Slot padding past the name terminator.    */
+  k_lwm_per_group  = 13U,     /**< Characters carried by one slot.           */
+  k_lwm_tail_1d    = 9U,      /**< Highest one-digit alias tail.             */
+  k_lwm_tail_2d_lo = 10U,     /**< Lowest two-digit alias tail.              */
+  k_lwm_tail_2d_hi = 99U,     /**< Highest two-digit alias tail.             */
+  k_lwm_tail_3d    = 100U,    /**< Lowest three-digit alias tail.            */
+  k_lwm_tail_4d    = 1000U,   /**< Lowest four-digit alias tail.             */
+  k_lwm_tail_5d    = 10000U,  /**< Lowest five-digit alias tail.             */
+  k_lwm_tail_6d    = 100000U, /**< Lowest six-digit alias tail.              */
+  k_lwm_tail_max   = 999999U, /**< `k_lfn_alias_tail_max`: the last tail.    */
+  k_lwm_short_len  = 5U,      /**< Length of the five-character vector.      */
+  k_lwm_two_groups = 26U,     /**< Length of the two-full-group vector.      */
+  k_lwm_csum_a     = 0xABU,   /**< An arbitrary but pinned checksum byte.    */
+  k_lwm_csum_b     = 0x5AU,   /**< A second one, to tell the slots apart.    */
+  k_lwm_name1_0    = 1U,      /**< LDIR_Name1 char 0 (MS FAT spec sec 7).    */
+  k_lwm_name2_0    = 14U,     /**< LDIR_Name2 char 0.                        */
+  k_lwm_name2_1    = 16U,     /**< LDIR_Name2 char 1.                        */
+  k_lwm_name3_1    = 30U,     /**< LDIR_Name3 char 1: the 13th character.    */
+  k_lwm_u8_lead2   = 0xC3U,   /**< Lead byte of the two-byte form of U+00E9. */
+  k_lwm_u8_cont_e9 = 0xA9U,   /**< Continuation byte of U+00E9.              */
 } lwm_val_t;
 
 /* ===========================================================================
@@ -88,9 +90,11 @@ typedef enum : uint32_t {
  */
 static ra8_fs_name_kind_t kind_of(const char* leaf)
 {
-  uint8_t name83[k_max_8_3_name] = {};
-  uint8_t ntres                  = 0U;
-  return priv_name_classify(leaf, name83, &ntres);
+  uint16_t units[k_lfn_write_max] = {};
+  uint32_t nunits                 = 0U;
+  uint8_t  name83[k_max_8_3_name] = {};
+  uint8_t  ntres                  = 0U;
+  return priv_name_classify(leaf, units, &nunits, name83, &ntres);
 }
 
 /**
@@ -112,9 +116,11 @@ static ra8_fs_name_kind_t kind_of(const char* leaf)
  */
 static uint8_t ntres_of(const char* leaf)
 {
-  uint8_t name83[k_max_8_3_name] = {};
-  uint8_t ntres                  = 0U;
-  (void)priv_name_classify(leaf, name83, &ntres);
+  uint16_t units[k_lfn_write_max] = {};
+  uint32_t nunits                 = 0U;
+  uint8_t  name83[k_max_8_3_name] = {};
+  uint8_t  ntres                  = 0U;
+  (void)priv_name_classify(leaf, units, &nunits, name83, &ntres);
   return ntres;
 }
 
@@ -123,23 +129,31 @@ static uint8_t ntres_of(const char* leaf)
  * @brief The empty name and the over-long name are both refused.
  *
  * @par MC/DC:
- * Decision: `if ((n == 0U) || (n > k_lfn_write_max))` in
- * `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_name_classify` (2 conditions).
- * - V1: `"OK.TXT"` (6)   -> C1=F, C2=F -> false, classification continues.
- * - V2: `""`      (0)    -> C1=T       -> true, invalid.
- * - V3: 248 characters   -> C1=F, C2=T -> true, invalid.
- * V1+V2 prove C1 independently affects the outcome; V1+V3 prove the same for
- * C2. N+1 = 3 vectors for N=2: minimal MC/DC.
+ * Decisions: the over-long arm is now the decoder's
+ * `if ((n + need) > cap)` inside `priv_utf16_put`, reported to
+ * `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_name_classify` as a failed
+ * conversion, plus that function's own `if (n == 0U)` (1 condition each).
+ * - V1: `"OK.TXT"` (6 units)  -> both false, classification continues.
+ * - V2: `""`       (0 units)  -> the emptiness test is true -> invalid.
+ * - V3: 248 units             -> the capacity test is true -> invalid.
+ * V1+V2 prove the emptiness test independently decides; V1+V3 prove the same
+ * for the capacity test. The boundary itself (247) is asserted too, which is
+ * what catches an off-by-one in either direction.
+ *
+ * The cap counts CODE UNITS, so the fourth assertion is the one that would
+ * have failed before #606: 247 two-byte characters are 494 UTF-8 bytes and
+ * still exactly one legal chain.
  *
  * @pre None; the function under test touches no volume.
- * @post Every vector's verdict matched, and 247 characters is still accepted.
+ * @post Every vector's verdict matched, and 247 units is still accepted --
+ *       whether they arrive as 247 bytes or as 494.
  *
  * @since 0.1.0
  */
 static void test_classify_length_bounds(void)
 {
   TEST_BEGIN("lfn classify MC/DC: length bounds (n==0 || n>max)");
-  char buf[k_lfn_name_cap + 8U] = {};
+  char buf[k_lfn_utf8_cap + 8U] = {};
 
   TEST_ASSERT_EQ(k_name_kind_short, kind_of("OK.TXT")); /* V1 */
   TEST_ASSERT_EQ(k_name_kind_invalid, kind_of(""));     /* V2 */
@@ -152,6 +166,20 @@ static void test_classify_length_bounds(void)
   buf[(uint32_t)k_lfn_write_max] = '\0';
   TEST_ASSERT_EQ(k_name_kind_long, kind_of(buf)); /* the boundary itself */
 
+  /* The same boundary in units rather than bytes: 247 copies of U+00E9, built
+   * from escapes because this tree's sources are 7-bit ASCII. */
+  uint32_t w = 0U;
+  for (uint32_t i = 0U; i < (uint32_t)k_lfn_write_max; i++) {
+    buf[w++] = (char)(unsigned char)k_lwm_u8_lead2;
+    buf[w++] = (char)(unsigned char)k_lwm_u8_cont_e9;
+  }
+  buf[w] = '\0';
+  TEST_ASSERT_EQ(k_name_kind_long, kind_of(buf)); /* 494 bytes, 247 units */
+  buf[w++] = (char)(unsigned char)k_lwm_u8_lead2;
+  buf[w++] = (char)(unsigned char)k_lwm_u8_cont_e9;
+  buf[w]   = '\0';
+  TEST_ASSERT_EQ(k_name_kind_invalid, kind_of(buf)); /* 248 units: one over */
+
   TEST_END("lfn classify MC/DC: length bounds (n==0 || n>max)");
 }
 
@@ -160,17 +188,21 @@ static void test_classify_length_bounds(void)
  * @brief A character no long name may hold makes the whole leaf unstorable.
  *
  * @par MC/DC:
- * Decision: `if (priv_char_is_lfn_legal(leaf[i]) == 0U)` in
+ * Decision: `if (priv_unit_is_lfn_legal(out_units[i]) == 0U)` in
  * `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_name_classify` (1 condition), and the
- * three-way ladder inside `priv_char_is_lfn_legal` itself:
- * - Control range (`u < k_lfn_space`): a tab.
- * - At or above DEL (`u >= k_lfn_ascii_max`): a 0x7F byte.
+ * three-way ladder inside `priv_unit_is_lfn_legal` itself:
+ * - Control range (`v < k_lfn_space`): a tab.
+ * - DEL exactly (`v == k_lfn_del`): a 0x7F byte.
  * - In the explicit illegal set: `?`, `*`, `|`, `:`, `<`, `>`, `"`, `\`.
  * Each is one vector; the legal control is `"Ordinary Name.txt"`, which takes
  * the false arm of all three.
  *
+ * The DEL arm is a point test now, not a range one: everything ABOVE DEL is
+ * legal since #606, which the second control asserts -- a name holding U+00E9
+ * classifies as long rather than invalid.
+ *
  * @pre None; the function under test touches no volume.
- * @post Every illegal character was refused and the control was not.
+ * @post Every illegal character was refused and neither control was.
  *
  * @since 0.1.0
  */
@@ -178,6 +210,18 @@ static void test_classify_illegal_characters(void)
 {
   TEST_BEGIN("lfn classify MC/DC: illegal characters");
   TEST_ASSERT_EQ(k_name_kind_long, kind_of("Ordinary Name.txt")); /* control */
+  /* "caf" + U+00E9 + ".txt", from escapes: sources here are 7-bit ASCII. */
+  static const char s_accented[] = {'c',
+                                    'a',
+                                    'f',
+                                    (char)(unsigned char)0xC3U,
+                                    (char)(unsigned char)0xA9U,
+                                    '.',
+                                    't',
+                                    'x',
+                                    't',
+                                    '\0'};
+  TEST_ASSERT_EQ(k_name_kind_long, kind_of(s_accented)); /* above DEL: legal */
 
   static const char* s_bad[] = {"who?.txt",
                                 "star*.txt",
@@ -290,14 +334,18 @@ static void test_classify_case_flags(void)
  * @brief Any NULL argument is refused before anything is read.
  *
  * @par MC/DC:
- * Decision: `if ((leaf == nullptr) || (out83 == nullptr) || (out_ntres ==
- * nullptr))` in `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_name_classify`
- * (3 conditions).
- * - V1: all non-NULL     -> F,F,F -> false (every other vector in this file).
- * - V2: leaf NULL        -> T     -> true.
- * - V3: out83 NULL       -> F,T   -> true.
- * - V4: out_ntres NULL   -> F,F,T -> true.
- * N+1 = 4 vectors for N=3: minimal MC/DC.
+ * Decisions: the two NULL guards of
+ * `libs/ra8_fs/src/ra8_fs_fat_name.c@priv_name_classify` -- the first over
+ * `leaf`, `out_units` and `out_nunits`, the second over `out83` and
+ * `out_ntres` (5 conditions across the pair; they are two statements only
+ * because one five-term OR trips the cognitive-complexity gate).
+ * - V1: all non-NULL   -> every condition F -> both false, classification runs.
+ * - V2: leaf NULL      -> T           -> true.
+ * - V3: out_units NULL -> F,T         -> true.
+ * - V4: out_nunits NULL-> F,F,T       -> true.
+ * - V5: out83 NULL     -> T (second)  -> true.
+ * - V6: out_ntres NULL -> F,T (second)-> true.
+ * N+1 = 6 vectors for N=5: minimal MC/DC.
  *
  * @pre None; the function under test touches no volume.
  * @post Each NULL was refused with `k_name_kind_invalid`.
@@ -307,12 +355,17 @@ static void test_classify_case_flags(void)
 static void test_classify_null_guards(void)
 {
   TEST_BEGIN("lfn classify MC/DC: NULL argument triple");
-  uint8_t name83[k_max_8_3_name] = {};
-  uint8_t ntres                  = 0U;
-  TEST_ASSERT_EQ(k_name_kind_invalid, priv_name_classify(nullptr, name83, &ntres));
-  TEST_ASSERT_EQ(k_name_kind_invalid, priv_name_classify("A.TXT", nullptr, &ntres));
-  TEST_ASSERT_EQ(k_name_kind_invalid, priv_name_classify("A.TXT", name83, nullptr));
-  TEST_ASSERT_EQ(k_name_kind_short, priv_name_classify("A.TXT", name83, &ntres));
+  uint8_t  name83[k_max_8_3_name] = {};
+  uint8_t  ntres                  = 0U;
+  uint16_t units[k_lfn_write_max] = {};
+  uint32_t nunits                 = 0U;
+  TEST_ASSERT_EQ(k_name_kind_invalid, priv_name_classify(nullptr, units, &nunits, name83, &ntres));
+  TEST_ASSERT_EQ(k_name_kind_invalid,
+                 priv_name_classify("A.TXT", nullptr, &nunits, name83, &ntres));
+  TEST_ASSERT_EQ(k_name_kind_invalid, priv_name_classify("A.TXT", units, nullptr, name83, &ntres));
+  TEST_ASSERT_EQ(k_name_kind_invalid, priv_name_classify("A.TXT", units, &nunits, nullptr, &ntres));
+  TEST_ASSERT_EQ(k_name_kind_invalid, priv_name_classify("A.TXT", units, &nunits, name83, nullptr));
+  TEST_ASSERT_EQ(k_name_kind_short, priv_name_classify("A.TXT", units, &nunits, name83, &ntres));
   TEST_END("lfn classify MC/DC: NULL argument triple");
 }
 
@@ -324,7 +377,7 @@ static void test_classify_null_guards(void)
 /**
  * @brief Generate the alias for @p leaf at @p tail and compare it to @p want.
  *
- * @param[in] leaf Long name.
+ * @param[in] leaf Long name, UTF-8.
  * @param[in] tail Sequence number.
  * @param[in] want The expected 11-byte packed alias.
  *
@@ -340,8 +393,11 @@ static void test_classify_null_guards(void)
  */
 static void expect_alias(const char* leaf, uint32_t tail, const char* want)
 {
-  uint8_t got[k_max_8_3_name] = {};
-  priv_lfn_alias_basis(leaf, tail, got);
+  uint8_t  got[k_max_8_3_name]    = {};
+  uint16_t units[k_lfn_write_max] = {};
+  uint32_t nunits                 = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, priv_utf8_to_utf16(leaf, units, (uint32_t)k_lfn_write_max, &nunits));
+  priv_lfn_alias_basis(units, nunits, tail, got);
   if (memcmp(got, want, (size_t)k_max_8_3_name) != 0) {
     TEST_FAIL_FMT("alias for \"%s\" ~%u: want \"%.11s\" got \"%.11s\"",
                   leaf,
@@ -456,8 +512,9 @@ static void test_fill_slot_shape(void)
   TEST_BEGIN("lfn slot MC/DC: fixed fields, terminator and padding");
   uint8_t ent[k_ra8_fs_dir_entry_bytes] = {};
 
+  static const uint16_t s_hello[] = {'H', 'E', 'L', 'L', 'O'};
   priv_lfn_fill_slot(ent,
-                     "HELLO",
+                     s_hello,
                      (uint32_t)k_lwm_short_len,
                      1U,
                      1U,
@@ -472,18 +529,24 @@ static void test_fill_slot_shape(void)
   TEST_ASSERT_EQ(k_lwm_pad, priv_rd16(&ent[k_lwm_name2_1])); /* V3              */
 
   /* V4: exactly one group, so every character is a real one. */
-  priv_lfn_fill_slot(ent, "THIRTEENCHARS", (uint32_t)k_lwm_per_group, 1U, 1U, 0U);
+  static const uint16_t s_thirteen[] =
+    {'T', 'H', 'I', 'R', 'T', 'E', 'E', 'N', 'C', 'H', 'A', 'R', 'S'};
+  priv_lfn_fill_slot(ent, s_thirteen, (uint32_t)k_lwm_per_group, 1U, 1U, 0U);
   TEST_ASSERT_EQ('S', priv_rd16(&ent[k_lwm_name3_1]));
 
   /* V6: not the last logical group. */
-  priv_lfn_fill_slot(ent,
-                     "TWENTYSIXCHARACTERSEXACTLY",
-                     (uint32_t)k_lwm_two_groups,
-                     1U,
-                     0U,
-                     (uint8_t)k_lwm_csum_b);
+  static const uint16_t s_twentysix[] = {'T', 'W', 'E', 'N', 'T', 'Y', 'S', 'I', 'X',
+                                         'C', 'H', 'A', 'R', 'A', 'C', 'T', 'E', 'R',
+                                         'S', 'E', 'X', 'A', 'C', 'T', 'L', 'Y'};
+  priv_lfn_fill_slot(ent, s_twentysix, (uint32_t)k_lwm_two_groups, 1U, 0U, (uint8_t)k_lwm_csum_b);
   TEST_ASSERT_EQ(1U, ent[k_lfn_off_seq]);
   TEST_ASSERT_EQ('T', priv_rd16(&ent[k_lwm_name1_0]));
+
+  /* A unit above ASCII lands whole. Written as an escape, because a literal
+   * would put a non-ASCII byte in a source file this tree keeps 7-bit. */
+  static const uint16_t s_accented[] = {0x00E9U, 'x'};
+  priv_lfn_fill_slot(ent, s_accented, 2U, 1U, 1U, 0U);
+  TEST_ASSERT_EQ(0x00E9U, priv_rd16(&ent[k_lwm_name1_0]));
   TEST_END("lfn slot MC/DC: fixed fields, terminator and padding");
 }
 
@@ -494,13 +557,15 @@ static void test_fill_slot_shape(void)
  * @details The strongest single statement about the layout: a chain is built
  *          with `priv_lfn_fill_slot()` in the physical order a directory holds
  *          it, fed to `priv_lfn_add()` in that same order, and the name that
- *          comes back has to be the name that went in. Two lengths, because
+ *          comes back has to be the name that went in. Several lengths, because
  *          the interesting failure is at a group boundary: 26 characters is two
- *          exactly-full groups with no terminator anywhere.
+ *          exactly-full groups with no terminator anywhere. The last two names
+ *          carry 2-byte and 3-byte UTF-8 characters, which is the round trip
+ *          that used to come back full of `?` (#606).
  *
  * @par MC/DC:
  * Decision: `if (s->checksum != priv_sfn_checksum(name83))` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_lfn_name_for` (1 condition).
+ * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_lfn_units_for` (1 condition).
  * - V1: the chain carries the checksum of the entry it is offered -> false ->
  *   the name is returned.
  * - V2: it is offered a different 8.3 name -> true -> NULL, the chain is not
@@ -514,28 +579,60 @@ static void test_fill_slot_shape(void)
 static void test_fill_slot_round_trips_through_the_reader(void)
 {
   TEST_BEGIN("lfn slot MC/DC: writer output survives the reader");
-  static const char* s_names[]        = {"A Perfectly Ordinary Name.txt",
-                                         "TwentySixCharsHere.picture",
-                                         "x"};
-  const uint8_t alias[k_max_8_3_name] = {'A', 'L', 'I', 'A', 'S', '~', '1', ' ', 'T', 'X', 'T'};
-  const uint8_t other[k_max_8_3_name] = {'O', 'T', 'H', 'E', 'R', '~', '1', ' ', 'T', 'X', 'T'};
-  const uint8_t csum                  = priv_sfn_checksum(alias);
+  /* Non-ASCII cases are built from escapes: "caf" + U+00E9 + ".txt", and
+   * U+4F60 U+597D + ".txt". This tree's sources are 7-bit ASCII. */
+  static const char s_accented[]          = {'c',
+                                             'a',
+                                             'f',
+                                             (char)(unsigned char)0xC3U,
+                                             (char)(unsigned char)0xA9U,
+                                             '.',
+                                             't',
+                                             'x',
+                                             't',
+                                             '\0'};
+  static const char s_cjk[]               = {(char)(unsigned char)0xE4U,
+                                             (char)(unsigned char)0xBDU,
+                                             (char)(unsigned char)0xA0U,
+                                             (char)(unsigned char)0xE5U,
+                                             (char)(unsigned char)0xA5U,
+                                             (char)(unsigned char)0xBDU,
+                                             '.',
+                                             't',
+                                             'x',
+                                             't',
+                                             '\0'};
+  const char*       s_names[]             = {"A Perfectly Ordinary Name.txt",
+                                             "TwentySixCharsHere.picture",
+                                             "x",
+                                             s_accented,
+                                             s_cjk};
+  const uint8_t     alias[k_max_8_3_name] = {'A', 'L', 'I', 'A', 'S', '~', '1', ' ', 'T', 'X', 'T'};
+  const uint8_t     other[k_max_8_3_name] = {'O', 'T', 'H', 'E', 'R', '~', '1', ' ', 'T', 'X', 'T'};
+  const uint8_t     csum                  = priv_sfn_checksum(alias);
 
   for (uint32_t n = 0U; n < (uint32_t)(sizeof(s_names) / sizeof(s_names[0])); n++) {
-    const char*    name   = s_names[n];
-    const uint32_t nlen   = (uint32_t)strlen(name);
+    const char* name                   = s_names[n];
+    uint16_t    units[k_lfn_write_max] = {};
+    uint32_t    nlen                   = 0U;
+    TEST_ASSERT_EQ(k_ra8_ok, priv_utf8_to_utf16(name, units, (uint32_t)k_lfn_write_max, &nlen));
     const uint32_t groups = ((nlen + (uint32_t)k_lwm_per_group) - 1U) / (uint32_t)k_lwm_per_group;
     lfn_state_t    st     = {};
     priv_lfn_reset(&st);
     for (uint32_t i = 0U; i < groups; i++) {
       uint8_t ent[k_ra8_fs_dir_entry_bytes] = {};
-      priv_lfn_fill_slot(ent, name, nlen, groups - i, (i == 0U) ? 1U : 0U, csum);
+      priv_lfn_fill_slot(ent, units, nlen, groups - i, (i == 0U) ? 1U : 0U, csum);
       priv_lfn_add(&st, ent);
     }
-    const char* got = priv_lfn_name_for(&st, alias); /* V1 */
+    uint32_t        got_units = 0U;
+    const uint16_t* got       = priv_lfn_units_for(&st, alias, &got_units); /* V1 */
     TEST_ASSERT_NOT_NULL(got);
-    TEST_ASSERT_EQ(0, strcmp(got, name));
-    TEST_ASSERT_NULL(priv_lfn_name_for(&st, other)); /* V2 */
+    TEST_ASSERT_EQ(nlen, got_units);
+    char back[k_lfn_utf8_cap] = {};
+    TEST_ASSERT_EQ(k_ra8_ok, priv_utf16_to_utf8(got, got_units, back, (uint32_t)k_lfn_utf8_cap));
+    TEST_ASSERT_EQ(0, strcmp(back, name));
+    uint32_t reject = 0U;
+    TEST_ASSERT_NULL(priv_lfn_units_for(&st, other, &reject)); /* V2 */
   }
   TEST_END("lfn slot MC/DC: writer output survives the reader");
 }
