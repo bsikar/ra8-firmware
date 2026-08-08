@@ -436,7 +436,7 @@ ra8_err_t priv_exfat_open_write(ra8_fs_mount_t* handle,
   uint32_t        count                        = 0U;
   uint8_t         file_e[k_exfat_entry_bytes]  = {};
   uint8_t         strm[k_exfat_entry_bytes]    = {};
-  const ra8_err_t e                            = priv_exfat_find_set(handle,
+  const ra8_err_t e = priv_exfat_find_set(handle,
                                           &parent,
                                           leaf,
                                           pos,

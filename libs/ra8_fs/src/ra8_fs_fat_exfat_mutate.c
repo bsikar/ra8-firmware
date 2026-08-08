@@ -295,7 +295,7 @@ ra8_err_t priv_exfat_unlink_at(const ra8_fs_mount_t* m, const exfat_dir_t* dir, 
   uint32_t        count                        = 0U;
   uint8_t         file_e[k_exfat_entry_bytes]  = {};
   uint8_t         strm_e[k_exfat_entry_bytes]  = {};
-  const ra8_err_t e                            = priv_exfat_find_set(m,
+  const ra8_err_t e = priv_exfat_find_set(m,
                                           dir,
                                           name,
                                           pos,
@@ -485,7 +485,7 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   exfat_setpos_t  pos[k_exfat_set_max_entries] = {};
   uint32_t        count                        = 0U;
   uint8_t         set[k_exfat_rename_bytes]    = {};
-  const ra8_err_t e                            = priv_exfat_find_set(m,
+  const ra8_err_t e = priv_exfat_find_set(m,
                                           &parent,
                                           old_name,
                                           pos,

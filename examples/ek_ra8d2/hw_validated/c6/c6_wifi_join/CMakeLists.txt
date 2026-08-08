@@ -52,7 +52,8 @@ if(TARGET c6_wifi_join.elf)
   set_source_files_properties("${_dhcp_src}" PROPERTIES COMPILE_OPTIONS "-w")
 
   # Wi-Fi credentials: read from environment / wifi.env, or auto-fetched from OpenBao
-  # (secret/ra8d2/bench-network) if configured. Empty by default so aggregate cross-builds stay green.
+  # (secret/ra8d2/bench-network) if configured. Empty by default so aggregate
+  # cross-builds stay green.
   set(_c6_ssid "")
   set(_c6_psk "")
   set(_c6_source "none")
@@ -72,10 +73,10 @@ if(TARGET c6_wifi_join.elf)
   # Fallback: query OpenBao for bench credentials if not explicitly supplied
   if(NOT _c6_psk AND EXISTS "${_d}/scripts/secrets/openbao_client.py")
     execute_process(
-      COMMAND python3 "${_d}/scripts/secrets/openbao_client.py" get secret/ra8d2/bench-network bench_psk
+      COMMAND python3 "${_d}/scripts/secrets/openbao_client.py" get secret/ra8d2/bench-network
+              bench_psk
       OUTPUT_VARIABLE _bao_psk
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
       RESULT_VARIABLE _bao_res
     )
     if(_bao_res EQUAL 0 AND _bao_psk)
@@ -90,7 +91,9 @@ if(TARGET c6_wifi_join.elf)
   if(_c6_ssid AND _c6_psk)
     message(STATUS "[Wi-Fi] Compiled credentials: SSID='${_c6_ssid}' (source: ${_c6_source})")
   else()
-    message(STATUS "[Wi-Fi] No credentials supplied (set RA8_C6_WIFI_SSID/PSK in env/wifi.env, or configure OpenBao)")
+    message(
+      STATUS "[Wi-Fi] No credentials (set RA8_C6_WIFI_SSID/PSK in wifi.env, or configure OpenBao)"
+    )
   endif()
 
   target_compile_definitions(

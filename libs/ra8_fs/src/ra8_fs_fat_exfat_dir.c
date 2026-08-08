@@ -121,12 +121,14 @@ ra8_err_t priv_exfat_resolve_parent(const ra8_fs_mount_t* m,
   exfat_dir_t cur = {};
   priv_exfat_dir_root(m, &cur);
   for (uint32_t depth = 0U; depth < (uint32_t)k_exfat_path_depth; depth++) {
-    const char* end = p;
+    const char* end  = p;
+    uint32_t    nlen = 0U;
     while (*end != '\0') {
       if (*end == '/') {
         break;
       }
       end++;
+      nlen++;
     }
     if (*end == '\0') {
       *out_parent = cur;
@@ -134,7 +136,7 @@ ra8_err_t priv_exfat_resolve_parent(const ra8_fs_mount_t* m,
       return k_ra8_ok;
     }
     exfat_dir_t     next = {};
-    const ra8_err_t e    = priv_exfat_enter(m, &cur, p, (uint32_t)(end - p), &next);
+    const ra8_err_t e    = priv_exfat_enter(m, &cur, p, nlen, &next);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -173,10 +175,8 @@ ra8_err_t priv_exfat_resolve_dir(const ra8_fs_mount_t* m, const char* path, exfa
 }
 
 /* `priv_exfat_lookup()`: see header for the documented contract. */
-ra8_err_t priv_exfat_lookup(const ra8_fs_mount_t* m,
-                            const char*           path,
-                            uint8_t*              out_strm,
-                            uint8_t*              out_attr)
+ra8_err_t
+priv_exfat_lookup(const ra8_fs_mount_t* m, const char* path, uint8_t* out_strm, uint8_t* out_attr)
 {
   exfat_dir_t     parent = {};
   const char*     leaf   = nullptr;
@@ -449,8 +449,8 @@ ra8_err_t priv_exfat_mkdir(const ra8_fs_mount_t* m, const char* path)
     return e;
   }
   uint8_t        set[k_exfat_max_set_bytes] = {};
-  const uint32_t bytes = priv_exfat_build_dir_set(m, set, leaf, nlen, newclus);
-  e                    = priv_exfat_write_dir_set(m, dclus, didx, set, bytes);
+  const uint32_t bytes                      = priv_exfat_build_dir_set(m, set, leaf, nlen, newclus);
+  e                                         = priv_exfat_write_dir_set(m, dclus, didx, set, bytes);
   if (e != k_ra8_ok) {
     (void)priv_exfat_bitmap_clear(m, bmp_lba, newclus, 1U); /* never leak the cluster */
     return e;
@@ -599,10 +599,10 @@ static ra8_err_t priv_exfat_rmdir_locate(const ra8_fs_mount_t* m,
 /* `priv_exfat_rmdir()`: see header for the documented contract. */
 ra8_err_t priv_exfat_rmdir(const ra8_fs_mount_t* m, const char* path)
 {
-  exfat_setpos_t pos[k_exfat_set_max_entries]  = {};
-  uint32_t       count                     = 0U;
-  uint8_t        strm[k_exfat_entry_bytes] = {};
-  exfat_dir_t    victim                    = {};
+  exfat_setpos_t pos[k_exfat_set_max_entries] = {};
+  uint32_t       count                        = 0U;
+  uint8_t        strm[k_exfat_entry_bytes]    = {};
+  exfat_dir_t    victim                       = {};
   ra8_err_t      e = priv_exfat_rmdir_locate(m, path, pos, &count, strm, &victim);
   if (e != k_ra8_ok) {
     return e;

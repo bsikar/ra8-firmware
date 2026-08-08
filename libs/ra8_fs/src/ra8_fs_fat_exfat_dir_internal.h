@@ -263,10 +263,8 @@ ra8_err_t priv_exfat_resolve_dir(const ra8_fs_mount_t* m, const char* path, exfa
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_exfat_lookup(const ra8_fs_mount_t* m,
-                            const char*           path,
-                            uint8_t*              out_strm,
-                            uint8_t*              out_attr);
+ra8_err_t
+priv_exfat_lookup(const ra8_fs_mount_t* m, const char* path, uint8_t* out_strm, uint8_t* out_attr);
 
 /* ===========================================================================
  * Making and unmaking a directory.
