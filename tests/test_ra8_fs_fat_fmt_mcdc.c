@@ -304,17 +304,20 @@ static void alloc_card(uint32_t blocks)
 /**
  * @test test_mcdc_label_field_copy_pad
  * @par MC/DC:
- * Decision: `if (!past_end && (label[i] == '\0'))` in
+ * Decision: `if (!past_end && (eff[i] == '\0'))` in
  * `libs/ra8_fs/src/ra8_fs_fat_fmt.c@priv_fmt_label_field` (2 conditions), driven
- * through a real FAT16 `ra8_fs_format` that lays the BS_VolLab field. `past_end`
- * latches once the label's NUL is seen, so one short label sweeps all arms:
- * - before the NUL (i=0,1 of "AB"): `!past_end`=T, `label[i]=='\0'`=F -> C1=T,C2=F.
- * - at the NUL (i=2 of "AB"):        `!past_end`=T, `label[i]=='\0'`=T -> C1=T,C2=T
+ * through a real FAT16 `ra8_fs_format` that lays the BS_VolLab field. The
+ * effective label `eff` is the caller's label, or the spec sentinel `"NO NAME"`
+ * when it is NULL/empty (#634); `past_end` latches once its NUL is seen, so one
+ * short label sweeps all arms:
+ * - before the NUL (i=0,1 of "AB"): `!past_end`=T, `eff[i]=='\0'`=F -> C1=T,C2=F.
+ * - at the NUL (i=2 of "AB"):        `!past_end`=T, `eff[i]=='\0'`=T -> C1=T,C2=T
  *   -> latches past_end.
  * - after the NUL (i=3..10):         `!past_end`=F -> short-circuit -> C1=F.
  * The i=0/1 vs i=2 pair isolates the terminator test (C2); the i=2 vs i=3 pair
- * isolates the latch (C1). A separate NULL-label format enters with past_end
- * already true, re-confirming the C1=F arm. Both formats succeed and mount.
+ * isolates the latch (C1). A separate NULL-label format resolves to "NO NAME"
+ * and latches at that sentinel's i=7 NUL, re-sweeping every arm. Both formats
+ * succeed and mount.
  */
 static void test_mcdc_label_field_copy_pad(void)
 {
@@ -332,7 +335,7 @@ static void test_mcdc_label_field_copy_pad(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
 
-  /* NULL label: enters with past_end already true (C1=F from the first byte). */
+  /* NULL label: resolves to the "NO NAME" sentinel and latches at its NUL. */
   alloc_card((uint32_t)k_disk_blocks_fat16);
   opts.label = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));

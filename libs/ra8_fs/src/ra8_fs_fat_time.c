@@ -162,6 +162,45 @@ static uint32_t priv_clamp_u32(uint32_t v, uint32_t lo, uint32_t hi)
 }
 
 /**
+ * @brief Clamp every field of a broken-down time into its on-disk range.
+ *
+ * @details The whole clamping policy in one place, applied in place: a year
+ *          before 1980 or after 2107 snaps to the nearest representable year,
+ *          month/day/hour/minute/second/centisecond snap into their legal
+ *          spans. A filesystem must not fail a write -- or a `utime` -- because
+ *          a caller (or a clock) handed over a month 13; it records the nearest
+ *          value the format can express instead. The `utc_offset_min` field is
+ *          left untouched; ::priv_utc_byte validates it at pack time.
+ *
+ * @param[in,out] t Reading to constrain in place.
+ *
+ * @return Nothing.
+ *
+ * @pre @p t is non-NULL.
+ * @pre Every field holds whatever the caller supplied, in range or not.
+ * @post `t->year` is in [1980, 2107] and `t->month`/`t->day` are at least 1.
+ * @post Every other field is inside the span the on-disk format can express.
+ *
+ * @note Pure aside from @p t; trivially thread-safe on distinct buffers.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void priv_clamp_datetime(ra8_fs_datetime_t* t)
+{
+  t->year =
+    (uint16_t)priv_clamp_u32(t->year, (uint32_t)k_fs_time_epoch_year, (uint32_t)k_fs_time_year_max);
+  t->month =
+    (uint8_t)priv_clamp_u32(t->month, (uint32_t)k_fs_time_month_min, (uint32_t)k_fs_time_month_max);
+  t->day =
+    (uint8_t)priv_clamp_u32(t->day, (uint32_t)k_fs_time_day_min, (uint32_t)k_fs_time_day_max);
+  t->hour        = (uint8_t)priv_clamp_u32(t->hour, 0U, (uint32_t)k_fs_time_hour_max);
+  t->minute      = (uint8_t)priv_clamp_u32(t->minute, 0U, (uint32_t)k_fs_time_minute_max);
+  t->second      = (uint8_t)priv_clamp_u32(t->second, 0U, (uint32_t)k_fs_time_second_max);
+  t->centisecond = (uint8_t)priv_clamp_u32(t->centisecond, 0U, (uint32_t)k_fs_time_centi_max);
+}
+
+/**
  * @brief Read the installed clock, or hand back the FAT epoch.
  *
  * @details Zero-initialises @p out to the epoch first, so every path -- no
@@ -207,18 +246,7 @@ static bool priv_now_or_epoch(ra8_fs_datetime_t* out)
       real = true;
     }
   }
-  out->year  = (uint16_t)priv_clamp_u32(out->year,
-                                        (uint32_t)k_fs_time_epoch_year,
-                                        (uint32_t)k_fs_time_year_max);
-  out->month = (uint8_t)priv_clamp_u32(out->month,
-                                       (uint32_t)k_fs_time_month_min,
-                                       (uint32_t)k_fs_time_month_max);
-  out->day =
-    (uint8_t)priv_clamp_u32(out->day, (uint32_t)k_fs_time_day_min, (uint32_t)k_fs_time_day_max);
-  out->hour        = (uint8_t)priv_clamp_u32(out->hour, 0U, (uint32_t)k_fs_time_hour_max);
-  out->minute      = (uint8_t)priv_clamp_u32(out->minute, 0U, (uint32_t)k_fs_time_minute_max);
-  out->second      = (uint8_t)priv_clamp_u32(out->second, 0U, (uint32_t)k_fs_time_second_max);
-  out->centisecond = (uint8_t)priv_clamp_u32(out->centisecond, 0U, (uint32_t)k_fs_time_centi_max);
+  priv_clamp_datetime(out);
   return real;
 }
 
@@ -300,11 +328,47 @@ static uint8_t priv_utc_byte(int16_t minutes)
 }
 
 /**
- * @brief Pack a reading into FAT's two 16-bit words plus the tenths byte.
+ * @brief Pack an already-clamped reading into FAT's two words plus the tenths.
  *
  * @details MS FAT spec sec 6: the date word is
  *          `(year - 1980) << 9 | month << 5 | day` and the time word is
- *          `hour << 11 | minute << 5 | second / 2`.
+ *          `hour << 11 | minute << 5 | second / 2`. Takes the reading as an
+ *          argument rather than reading the clock, so both the clock-driven
+ *          stamps and the caller-chosen `utime` timestamps share one packing.
+ *
+ * @param[in]  t   Reading to pack; already clamped into the on-disk ranges.
+ * @param[out] out Receives the packed fields.
+ *
+ * @return Nothing.
+ *
+ * @pre @p t and @p out are non-NULL; @p t has been clamped.
+ * @pre @p t->month and @p t->day are at least 1.
+ * @post `out->date` is a legal FAT date (month and day both non-zero).
+ * @post `out->tenth` is at most 199.
+ *
+ * @note Pure aside from @p out; trivially thread-safe on distinct buffers.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void priv_fat_pack(const ra8_fs_datetime_t* t, fat_stamp_t* out)
+{
+  const uint32_t years = (uint32_t)t->year - (uint32_t)k_fs_time_epoch_year;
+  out->date =
+    (uint16_t)((years << (uint32_t)k_fs_date_shift_year) |
+               ((uint32_t)t->month << (uint32_t)k_fs_date_shift_month) | (uint32_t)t->day);
+  out->time  = (uint16_t)(((uint32_t)t->hour << (uint32_t)k_fs_time_shift_hour) |
+                          ((uint32_t)t->minute << (uint32_t)k_fs_time_shift_minute) |
+                          ((uint32_t)t->second / (uint32_t)k_fs_time_second_div));
+  out->tenth = priv_tenths_of(t);
+}
+
+/**
+ * @brief Pack the installed clock's reading into FAT's two words plus tenths.
+ *
+ * @details Reads the clock (or the epoch) once and hands the reading to
+ *          ::priv_fat_pack. FAT has no UTC-offset field, so a real reading and
+ *          the epoch placeholder pack identically.
  *
  * @param[out] out Receives the packed fields.
  *
@@ -324,21 +388,59 @@ static void priv_fat_stamp_now(fat_stamp_t* out)
 {
   ra8_fs_datetime_t t = {};
   (void)priv_now_or_epoch(&t); /* FAT has no offset field: real or epoch, same packing */
-  const uint32_t years = (uint32_t)t.year - (uint32_t)k_fs_time_epoch_year;
-  out->date  = (uint16_t)((years << (uint32_t)k_fs_date_shift_year) |
-                          ((uint32_t)t.month << (uint32_t)k_fs_date_shift_month) | (uint32_t)t.day);
-  out->time  = (uint16_t)(((uint32_t)t.hour << (uint32_t)k_fs_time_shift_hour) |
-                          ((uint32_t)t.minute << (uint32_t)k_fs_time_shift_minute) |
-                          ((uint32_t)t.second / (uint32_t)k_fs_time_second_div));
-  out->tenth = priv_tenths_of(&t);
+  priv_fat_pack(&t, out);
 }
 
 /**
- * @brief Pack a reading into exFAT's 32-bit stamp plus its two side fields.
+ * @brief Pack an already-clamped reading into exFAT's stamp plus side fields.
  *
  * @details exFAT spec sec 7.4.8: the low 16 bits are FAT's time word and the
  *          high 16 bits are FAT's date word, which is why the shifts are
- *          shared with ::priv_fat_stamp_now.
+ *          shared with ::priv_fat_pack. Takes the reading as an argument so the
+ *          clock-driven stamps and the caller-chosen `utime` timestamps share
+ *          one packing; @p real selects whether the UtcOffset is honoured or
+ *          recorded as unknown.
+ *
+ * @param[in]  t    Reading to pack; already clamped into the on-disk ranges.
+ * @param[in]  real true when @p t is a real instant (its UtcOffset is written);
+ *                  false for the epoch placeholder (UtcOffset recorded unknown).
+ * @param[out] out  Receives the packed stamp, 10 ms increment, and UtcOffset.
+ *
+ * @return Nothing.
+ *
+ * @pre @p t and @p out are non-NULL; @p t has been clamped.
+ * @pre @p t->month and @p t->day are at least 1.
+ * @post `out->stamp`'s month and day sub-fields are non-zero.
+ * @post `out->utc` is ::k_fs_utc_unknown or has ::k_fs_utc_valid_bit set.
+ *
+ * @note Pure aside from @p out; trivially thread-safe on distinct buffers.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void priv_exfat_pack(const ra8_fs_datetime_t* t, bool real, exfat_stamp_t* out)
+{
+  const uint32_t years = (uint32_t)t->year - (uint32_t)k_fs_time_epoch_year;
+  const uint32_t date  = (years << (uint32_t)k_fs_xf_shift_year) |
+                         ((uint32_t)t->month << (uint32_t)k_fs_xf_shift_month) | (uint32_t)t->day;
+  const uint32_t time  = ((uint32_t)t->hour << (uint32_t)k_fs_time_shift_hour) |
+                         ((uint32_t)t->minute << (uint32_t)k_fs_time_shift_minute) |
+                         ((uint32_t)t->second / (uint32_t)k_fs_time_second_div);
+  out->stamp           = (date << (uint32_t)k_fs_xf_shift_date) | time;
+  out->inc10           = priv_tenths_of(t);
+  /* An offset is a claim about a real instant. The epoch placeholder is not
+   * one, so saying "this is UTC" about it would be a fabrication -- exFAT's
+   * OffsetValid-clear encoding exists for exactly that case. A caller-supplied
+   * `utime` reading IS a real instant, so its offset is honoured. */
+  out->utc = real ? priv_utc_byte(t->utc_offset_min) : (uint8_t)k_fs_utc_unknown;
+}
+
+/**
+ * @brief Pack the installed clock's reading into exFAT's stamp plus side fields.
+ *
+ * @details Reads the clock (or the epoch) once and hands the reading to
+ *          ::priv_exfat_pack, forwarding whether the reading is real so the
+ *          epoch placeholder never carries a fabricated UtcOffset.
  *
  * @param[out] out Receives the packed stamp, 10 ms increment, and UtcOffset.
  *
@@ -356,20 +458,9 @@ static void priv_fat_stamp_now(fat_stamp_t* out)
 RA8_INTERNAL
 static void priv_exfat_stamp_now(exfat_stamp_t* out)
 {
-  ra8_fs_datetime_t t     = {};
-  const bool        real  = priv_now_or_epoch(&t);
-  const uint32_t    years = (uint32_t)t.year - (uint32_t)k_fs_time_epoch_year;
-  const uint32_t    date  = (years << (uint32_t)k_fs_xf_shift_year) |
-                            ((uint32_t)t.month << (uint32_t)k_fs_xf_shift_month) | (uint32_t)t.day;
-  const uint32_t    time  = ((uint32_t)t.hour << (uint32_t)k_fs_time_shift_hour) |
-                            ((uint32_t)t.minute << (uint32_t)k_fs_time_shift_minute) |
-                            ((uint32_t)t.second / (uint32_t)k_fs_time_second_div);
-  out->stamp              = (date << (uint32_t)k_fs_xf_shift_date) | time;
-  out->inc10              = priv_tenths_of(&t);
-  /* An offset is a claim about a real instant. The epoch placeholder is not
-   * one, so saying "this is UTC" about it would be a fabrication -- exFAT's
-   * OffsetValid-clear encoding exists for exactly that case. */
-  out->utc = real ? priv_utc_byte(t.utc_offset_min) : (uint8_t)k_fs_utc_unknown;
+  ra8_fs_datetime_t t    = {};
+  const bool        real = priv_now_or_epoch(&t);
+  priv_exfat_pack(&t, real, out);
 }
 
 /* =============================================================================
@@ -442,6 +533,72 @@ void priv_exfat_file_stamp_access(uint8_t* file_entry)
   priv_exfat_stamp_now(&s);
   priv_wr32(&file_entry[k_exfat_off_file_atime], s.stamp);
   file_entry[k_exfat_off_file_autc] = s.utc;
+}
+
+/* `priv_fat_entry_set_times()`: see header for the documented contract. */
+void priv_fat_entry_set_times(uint8_t*                 entry,
+                              const ra8_fs_datetime_t* create,
+                              const ra8_fs_datetime_t* modify,
+                              const ra8_fs_datetime_t* access)
+{
+  if (create != nullptr) {
+    ra8_fs_datetime_t t = *create;
+    priv_clamp_datetime(&t);
+    fat_stamp_t s = {};
+    priv_fat_pack(&t, &s);
+    entry[k_dir_off_crt_time_tenth] = s.tenth;
+    priv_wr16(&entry[k_dir_off_crt_time], s.time);
+    priv_wr16(&entry[k_dir_off_crt_date], s.date);
+  }
+  if (modify != nullptr) {
+    ra8_fs_datetime_t t = *modify;
+    priv_clamp_datetime(&t);
+    fat_stamp_t s = {};
+    priv_fat_pack(&t, &s);
+    priv_wr16(&entry[k_dir_off_wrt_time], s.time);
+    priv_wr16(&entry[k_dir_off_wrt_date], s.date);
+  }
+  if (access != nullptr) {
+    ra8_fs_datetime_t t = *access;
+    priv_clamp_datetime(&t);
+    fat_stamp_t s = {};
+    priv_fat_pack(&t, &s);
+    priv_wr16(&entry[k_dir_off_lst_acc_date], s.date);
+  }
+}
+
+/* `priv_exfat_file_set_times()`: see header for the documented contract. */
+void priv_exfat_file_set_times(uint8_t*                 file_entry,
+                               const ra8_fs_datetime_t* create,
+                               const ra8_fs_datetime_t* modify,
+                               const ra8_fs_datetime_t* access)
+{
+  if (create != nullptr) {
+    ra8_fs_datetime_t t = *create;
+    priv_clamp_datetime(&t);
+    exfat_stamp_t s = {};
+    priv_exfat_pack(&t, true, &s);
+    priv_wr32(&file_entry[k_exfat_off_file_ctime], s.stamp);
+    file_entry[k_exfat_off_file_c10ms] = s.inc10;
+    file_entry[k_exfat_off_file_cutc]  = s.utc;
+  }
+  if (modify != nullptr) {
+    ra8_fs_datetime_t t = *modify;
+    priv_clamp_datetime(&t);
+    exfat_stamp_t s = {};
+    priv_exfat_pack(&t, true, &s);
+    priv_wr32(&file_entry[k_exfat_off_file_mtime], s.stamp);
+    file_entry[k_exfat_off_file_m10ms] = s.inc10;
+    file_entry[k_exfat_off_file_mutc]  = s.utc;
+  }
+  if (access != nullptr) {
+    ra8_fs_datetime_t t = *access;
+    priv_clamp_datetime(&t);
+    exfat_stamp_t s = {};
+    priv_exfat_pack(&t, true, &s);
+    priv_wr32(&file_entry[k_exfat_off_file_atime], s.stamp);
+    file_entry[k_exfat_off_file_autc] = s.utc;
+  }
 }
 
 /* =============================================================================

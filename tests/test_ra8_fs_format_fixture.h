@@ -238,6 +238,47 @@ typedef enum : uint8_t {
   .ctx          = &s_disk,
 };
 
+/* Fault-injection backend over the same RAM disk (for the metadata _cov tests):
+ * `s_fault_read_at` fails the Nth read after ::fault_reset (0 = never), and
+ * `s_fault_write_all` fails every write. A volume is FORMATTED through the plain
+ * backend, then MOUNTED through this one so an operation's I/O can be made to
+ * fail deterministically. */
+[[maybe_unused]] static uint32_t s_fault_read_at   = 0U;
+[[maybe_unused]] static uint32_t s_fault_read_seen = 0U;
+[[maybe_unused]] static bool     s_fault_write_all = false;
+
+[[maybe_unused]] static void fault_reset(void)
+{
+  s_fault_read_at   = 0U;
+  s_fault_read_seen = 0U;
+  s_fault_write_all = false;
+}
+
+[[maybe_unused]] static ra8_err_t fault_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+{
+  s_fault_read_seen++;
+  if ((s_fault_read_at != 0U) && (s_fault_read_seen >= s_fault_read_at)) {
+    return k_ra8_err_hw_error;
+  }
+  return mem_read(ctx, lba, count, buf);
+}
+
+[[maybe_unused]] static ra8_err_t
+fault_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+{
+  if (s_fault_write_all) {
+    return k_ra8_err_hw_error;
+  }
+  return mem_write(ctx, lba, count, buf);
+}
+
+[[maybe_unused]] static const ra8_fs_backend_t s_fault_backend = {
+  .read_block   = fault_read,
+  .write_block  = fault_write,
+  .get_capacity = mem_capacity,
+  .ctx          = &s_disk,
+};
+
 [[maybe_unused]] static void free_volume(void)
 {
   if (s_disk.bytes != nullptr) {

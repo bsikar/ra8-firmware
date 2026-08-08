@@ -364,6 +364,26 @@ void priv_free_count_gave(const ra8_fs_mount_t* m, uint32_t n)
   st->free_count        = (raised > m->count_of_clusters) ? m->count_of_clusters : raised;
 }
 
+/* `priv_free_count_peek()`: see header for the documented contract. */
+uint32_t priv_free_count_peek(const ra8_fs_mount_t* m)
+{
+  const fat_alloc_state_t* st = priv_state_for(m);
+  if (st == nullptr) {
+    return (uint32_t)k_fs_free_unknown;
+  }
+  return st->free_count;
+}
+
+/* `priv_free_count_cache()`: see header for the documented contract. */
+void priv_free_count_cache(const ra8_fs_mount_t* m, uint32_t n)
+{
+  fat_alloc_state_t* st = priv_state_for(m);
+  if (st == nullptr) {
+    return;
+  }
+  st->free_count = (n > m->count_of_clusters) ? m->count_of_clusters : n;
+}
+
 /* =============================================================================
  * FAT32 FSInfo (MS FAT spec sec 5)
  * =============================================================================

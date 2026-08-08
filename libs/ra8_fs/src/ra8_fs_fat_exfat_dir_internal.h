@@ -470,3 +470,66 @@ ra8_err_t priv_exfat_drop_set(const ra8_fs_mount_t* m, const exfat_setpos_t* pos
  */
 RA8_PRIV
 ra8_err_t priv_exfat_unlink_at(const ra8_fs_mount_t* m, const exfat_dir_t* dir, const char* name);
+
+/* ===========================================================================
+ * Volume label (the exFAT half of ra8_fs_{get,set}_label).
+ * ===========================================================================
+ */
+
+/**
+ * @brief Read an exFAT volume's label into an ASCII buffer.
+ *
+ * @details Scans the root directory for the Volume Label directory entry
+ *          (exFAT spec sec 7.7): an in-use entry (type 0x83) yields its UTF-16LE
+ *          label decoded to ASCII (low byte of each code unit), truncated to
+ *          @p out_len; a cleared entry (type 0x03) or no entry at all yields the
+ *          empty string. The exFAT half of ::ra8_fs_get_label.
+ *
+ * @param[in]  m       Mounted exFAT volume.
+ * @param[out] out     Buffer receiving the NUL-terminated label.
+ * @param[in]  out_len Capacity of @p out in bytes (at least 1).
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    @p out holds the label (possibly empty).
+ * @retval k_ra8_err_* Backend read failure, or a volume with no directory.
+ *
+ * @pre @p m and @p out are non-NULL; `m->type` is exFAT; `out_len >= 1`.
+ * @pre The mount is in use.
+ * @post @p out is NUL-terminated.
+ * @post No volume state is modified.
+ *
+ * @note Not thread-safe; callers serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t priv_exfat_get_label(const ra8_fs_mount_t* m, char* out, uint32_t out_len);
+
+/**
+ * @brief Set (or clear) an exFAT volume's label in place.
+ *
+ * @details Rewrites the root Volume Label directory entry (exFAT spec sec 7.7)
+ *          with the new UTF-16LE label and character count, creating one at the
+ *          end-of-directory position when the volume carries none. A NULL or
+ *          empty @p label writes a zero-length label entry (the unlabelled
+ *          form). The exFAT half of ::ra8_fs_set_label.
+ *
+ * @param[in] m     Mounted exFAT volume.
+ * @param[in] label New label (<= 11 characters), or NULL / "" to clear it.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok            Label written.
+ * @retval k_ra8_err_not_found The root directory could not be scanned.
+ * @retval k_ra8_err_*         Backend read/write failure.
+ *
+ * @pre @p m is non-NULL; `m->type` is exFAT; the mount is in use.
+ * @pre @p label, when non-NULL, is at most 11 characters.
+ * @post On success a later ::priv_exfat_get_label reports @p label.
+ * @post Only the Volume Label entry is modified.
+ *
+ * @note Not thread-safe; callers serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t priv_exfat_set_label(const ra8_fs_mount_t* m, const char* label);

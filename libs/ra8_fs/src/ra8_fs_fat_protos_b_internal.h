@@ -267,6 +267,34 @@ RA8_PRIV
 uint32_t priv_fmt_reserved_for(ra8_fs_type_t type);
 
 /**
+ * @brief Pad an ASCII volume label into an 11-byte BS_VolLab / label field.
+ *
+ * @details Copies @p label up to its NUL (or 11 characters) then space-fills
+ *          the remainder, matching the BS_VolLab convention. A NULL or empty
+ *          @p label resolves to the FAT specification's unlabelled sentinel
+ *          `"NO NAME    "` -- never zeros and never a bare run of spaces, both
+ *          of which `fsck.fat` treats as a corrupt label and strips (#634).
+ *          Shared by the formatter (`ra8_fs_format()`) and the runtime label
+ *          writer (`ra8_fs_set_label()`), so both lay the field identically.
+ *
+ * @param[out] dst   Destination 11-byte label field.
+ * @param[in]  label Source label, or NULL / "" for the unlabelled sentinel.
+ *
+ * @return Nothing.
+ *
+ * @pre @p dst is non-NULL and addresses at least ::k_fmt_label_len bytes.
+ * @pre @p label is NUL-terminated when non-NULL.
+ * @post @p dst holds the padded 11-byte label (or the `"NO NAME    "` sentinel).
+ * @post No byte past offset 10 of @p dst is touched.
+ *
+ * @note Bounded loop (NASA Rule 2): exactly ::k_fmt_label_len iterations.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+void priv_fmt_label_field(uint8_t* dst, const char* label);
+
+/**
  * @brief Validate a caller-pinned sectors-per-cluster value.
  *
  * @details A zero value defers to the auto-sweep. A non-zero value must be a
