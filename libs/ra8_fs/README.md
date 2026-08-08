@@ -35,7 +35,7 @@ project's marketing.
 | `mkdir` | Yes on FAT12/16/32 **and exFAT**, including nested paths, with rollback on failure. On exFAT a directory is a File+Stream+Name set with the Directory attribute over one zeroed cluster -- there are no "." / ".." entries, because exFAT has none. An existing name is refused, never replaced | Yes (`fx_directory_create`) |
 | `rmdir` | Yes on FAT12/16/32 **and exFAT**, including nested paths. Refuses the root, refuses a file, and proves the directory is empty before freeing a cluster (`k_ra8_err_not_empty` otherwise). Only remnants are discounted -- FAT's 0xE5 slots and orphaned long-name entries, exFAT's entries with the in-use bit clear -- so a directory another implementation left remnants in is still removable | Yes (`fx_directory_delete`) |
 | Create / write timestamps | Yes on FAT and exFAT -- create, modify and access fields on create, content write, truncate, close and rename, from a caller-injected clock (`ra8_fs_set_clock()`). With no clock installed every stamp is the legal FAT epoch 1980-01-01, never the zeros that made macOS show 31 Dec 1969. exFAT additionally carries the 10 ms increments and the `UtcOffset` bytes | Yes (`fx_file_date_time_set`, `fx_system_date_set` / `fx_system_time_set`) |
-| Unicode / UTF-16 name API | No | Yes -- 13 `fx_unicode_*` modules (create, rename, name get, short-name get) |
+| Non-ASCII file names | Yes -- the API is UTF-8 on both formats and the disk is UTF-16LE, converted in one place (`src/ra8_fs_utf.c`, #606). The whole of Unicode is storable, supplementary planes included: a 4-byte UTF-8 character becomes a surrogate pair on disk and comes back as the same 4 bytes. Malformed UTF-8 -- an over-long form, a raw surrogate, a truncated sequence -- is REFUSED rather than patched. Lookup folds across the BMP through the canonical Microsoft up-case table, and exFAT's `NameHash` uses that same table, so a name this library writes is one a host recomputes the hash for (proven against an independently expanded on-disk table, and `fsck.exfat`-clean). A volume carrying a DIFFERENT up-case table refuses non-ASCII names with `k_ra8_err_not_supported` rather than filing them under a hash nothing agrees with. Directory names and every component of a nested exFAT path go through the same conversion, so a folder called anything is enterable by its own name. Limits are in UTF-16 units: 247 on FAT, 64 on exFAT | Yes -- 13 `fx_unicode_*` modules (create, rename, name get, short-name get), FAT only |
 | Formatter | Yes. FAT12/16/32 as a superfloppy at LBA 0 with auto cluster-size selection; exFAT into **MBR partition 1 aligned at 1 MiB**, with the spec's compressed up-case table, validated `fsck.exfat`-clean (#568) | Yes (`fx_media_format`), FAT only. Writes no partition table |
 | Mounts a card a PC partitioned | Yes. `priv_read_boot_sector()` tries LBA 0 as a superfloppy, and on failure follows MBR partition entry 0; if that entry is the `0xEE` protective type it walks the GPT to the first Basic Data partition. Where it landed is recorded in `ra8_fs_mount_t::partition_base_lba` | Not as built here. `_fx_partition_offset_calculate` exists but nothing in the vendored tree or in `port/filex/` calls it; our media driver's `FX_DRIVER_BOOT_READ` is LBA 0 |
 | Multi-partition scanning | No -- the first partition entry only | n/a (see above) |
@@ -49,8 +49,8 @@ project's marketing.
 | `stat` | Yes -- `ra8_fs_stat()` reads the directory entry without opening it, so a directory reports as one and no file slot is spent on a metadata query | Yes (`fx_directory_information_get`) |
 | Backends in tree | Any object with the three callbacks: SD-over-SPI, native SDHI, OSPI NOR, MRAM, SDRAM, in-RAM scratch, USB MSC, plus the host-test mock | One media driver, `port/filex/src/fx_media_driver_ra8_sdhi.c`, plus the LevelX NOR adapter used by `threadx_filex_levelx_demo` |
 | Verification | First-party. Held to the 90% per-file line-coverage floor with **no allowlist** (`scripts/checks/check_coverage_floor.py`; `ra8_fs` has no row in `.github/coverage-baseline.txt` or `.github/mcdc-baseline.txt`), MC/DC vectors on its compound decisions, MISRA via `scripts/checks/misra_check.sh` (ratcheted in `.github/misra-baseline.txt`), clang-tidy, the ASCII / Doxygen / annotation gates | SOUP. Explicitly out of scope for the coverage floor (`OUT_OF_SCOPE_PREFIXES`), for MISRA (`-ilibs/third_party`), and for the first-party style rules; compiled with `-w`. Accepted on service history, Eclipse Foundation process and pre-Eclipse SGS-TUV Saar pre-certifications -- see [`docs/SOUP/filex.md`](../../docs/SOUP/filex.md). Byte-identity against the upstream pin is re-verified every CI run |
-| Host tests | 44 test binaries (`tests/test_ra8_fs*.c`) plus a libFuzzer harness (`tests/fuzz/fuzz_ra8_fs_fat.c`). The exFAT directory suites end every scenario with a structural scan of the volume -- entry-set checksums, name hashes, and the referenced clusters against the allocation bitmap in both directions -- and each scenario's image is `fsck.exfat -n` clean | None. SOUP is not re-tested here |
-| Size | 22 `.c` files | 212 `.c` files in `common/src` |
+| Host tests | 48 test binaries (`tests/test_ra8_fs*.c`) plus a libFuzzer harness (`tests/fuzz/fuzz_ra8_fs_fat.c`). The exFAT directory suites end every scenario with a structural scan of the volume -- entry-set checksums, name hashes, and the referenced clusters against the allocation bitmap in both directions -- and each scenario's image is `fsck.exfat -n` clean | None. SOUP is not re-tested here |
+| Size | 23 `.c` files | 212 `.c` files in `common/src` |
 | Apps using it | 29 example `CMakeLists.txt` reference it | 2 enable `RA8_USE_FILEX`: `threadx_filex_demo` and `threadx_filex_levelx_demo` |
 
 ## When to use which
@@ -78,9 +78,9 @@ symbol: fx_media_format
 symbol: fx_directory_delete
 users: ra8_fs = 29
 users: RA8_USE_FILEX = 2
-files: libs/ra8_fs/src/*.c = 22
+files: libs/ra8_fs/src/*.c = 23
 files: libs/third_party/filex/common/src/*.c = 212
-files: tests/test_ra8_fs*.c = 44
+files: tests/test_ra8_fs*.c = 48
 files: libs/third_party/filex/common/src/fx_fault_tolerant_*.c = 19
 files: libs/third_party/filex/common/src/fx_unicode_*.c = 13
 -->

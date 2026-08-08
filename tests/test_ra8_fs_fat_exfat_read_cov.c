@@ -11,8 +11,10 @@
  *   - `priv_exfat_next_entry`: cluster-boundary FAT-read failure (131-134),
  *     end-of-chain detection (136-137), chain follow (139-141), and sector-read
  *     failure (147).
- *   - `priv_exfat_name_chunk_eq`: non-ASCII UTF-16 high byte (165) and full
- *     15-char loop completion (171).
+ *   - `priv_exfat_name_chunk_eq`: the full 15-unit loop completion (171). The
+ *     case-fold behaviour of the same function is a fold question rather than a
+ *     read-path one, and lives with the other fold vectors in
+ *     `tests/test_ra8_fs_utf.c` (#606).
  *   - `priv_exfat_match_set`: stream I/O fail (208), wrong stream type (211),
  *     name I/O fail (221), wrong name type (224).
  *   - `priv_exfat_find`: first-read I/O fail (253), match_set I/O error
@@ -610,34 +612,6 @@ static void test_next_entry_sector_read_fail(void)
 }
 
 /**
- * @test test_name_chunk_eq_nonascii
- * @brief Non-ASCII UTF-16 high byte causes early return 0 (line 165).
- *
- * @details Sets entry byte at k_rc_name_off+1 to 1 (high byte non-zero);
- *          the first iteration of the inner loop hits line 165.
- *
- * @par MC/DC:
- * Decision: `if (entry[b+1] != 0U)` -- 1 cond.
- * V1: high_byte = 1 -> true -> return 0 (this test, line 165).
- * V2: high_byte = 0 -> false -> char compare (full-match test).
- *
- * @pre None.
- * @post priv_exfat_name_chunk_eq returns 0.
- *
- * @since 0.1.0
- */
-static void test_name_chunk_eq_nonascii(void)
-{
-  TEST_BEGIN("exfat read cov: name_chunk_eq non-ASCII high byte (line 165)");
-  uint8_t entry[(uint32_t)k_rc_entry_bytes] = {};
-  entry[(uint32_t)k_rc_name_off]            = (uint8_t)'A'; /* low byte       */
-  entry[(uint32_t)k_rc_name_off + 1U]       = 1U;           /* high byte != 0 */
-  uint8_t result                            = priv_exfat_name_chunk_eq(entry, "A", 0U, 1U);
-  TEST_ASSERT_EQ(0U, result);
-  TEST_END("exfat read cov: name_chunk_eq non-ASCII high byte (line 165)");
-}
-
-/**
  * @test test_name_chunk_eq_full_match
  * @brief Loop runs all 15 iterations without early exit (line 171).
  *
@@ -663,8 +637,11 @@ static void test_name_chunk_eq_full_match(void)
     entry[(uint32_t)k_rc_name_off + (i * 2U)] = (uint8_t)'A'; /* low byte */
     /* high byte stays 0 from zero-init */
   }
-  uint8_t result =
-    priv_exfat_name_chunk_eq(entry, "AAAAAAAAAAAAAAA", 0U, (uint32_t)k_rc_name_per_ent);
+  uint16_t want[(uint32_t)k_rc_name_per_ent] = {};
+  for (uint32_t i = 0U; i < (uint32_t)k_rc_name_per_ent; i++) {
+    want[i] = (uint16_t)'A';
+  }
+  uint8_t result = priv_exfat_name_chunk_eq(entry, want, 0U, (uint32_t)k_rc_name_per_ent);
   TEST_ASSERT_EQ(1U, result);
   TEST_END("exfat read cov: name_chunk_eq full 15-char match (line 171)");
 }
@@ -985,7 +962,6 @@ int main(void)
   test_next_entry_eoc();
   test_next_entry_follow_chain();
   test_next_entry_sector_read_fail();
-  test_name_chunk_eq_nonascii();
   test_name_chunk_eq_full_match();
   test_match_set_stream_io_fail();
   test_match_set_wrong_stream_type();

@@ -58,6 +58,7 @@
 
 #include "ra8_err.h"
 #include "ra8_fs.h"
+#include "support/fs_exfat_upcase_test_util.h"
 #include "support/fs_fat_exfat_mutate_test_util.h"
 #include "unity_minimal.h"
 
@@ -368,20 +369,29 @@ chk_set_checksum(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, uint32_t 
 /**
  * @brief Fold the exFAT NameHash over the name a set stores.
  *
- * @details Walks the Name entries, up-cases each ASCII unit and rotate-adds
- *          both of its bytes -- the hash a host computes when it looks the name
- *          up, so a set whose stored hash disagrees is one a host would miss.
+ * @details Walks the Name entries, up-cases each unit through the table the
+ *          VOLUME carries (::upc_load expands it from the volume's own
+ *          bytes) and rotate-adds both of its bytes -- the hash a host computes
+ *          when it looks the name up, so a set whose stored hash disagrees is
+ *          one a host would miss.
+ *
+ *          The fold used to up-case only 'a'..'z' of each unit's LOW byte,
+ *          which matches the specification for an ASCII name and nothing else:
+ *          once names could hold anything (#606), it reported every correctly
+ *          hashed non-ASCII name as broken. Reading the volume's table rather
+ *          than calling the driver's fold is what keeps this an independent
+ *          check of the driver rather than a restatement of it.
  *
  * @param[in] h    Mounted exFAT volume.
  * @param[in] clus Directory cluster holding the set.
  * @param[in] idx  Entry index of the File entry.
- * @param[in] nlen NameLength from the Stream entry.
+ * @param[in] nlen NameLength from the Stream entry, in UTF-16 units.
  *
  * @return The folded hash.
  * @retval 0..0xFFFF The value the Stream entry should carry.
  *
  * @pre @p h is non-NULL; the set lies inside @p clus.
- * @pre @p nlen is the set's NameLength.
+ * @pre ::upc_load has run for this volume (::exfat_scan does it).
  * @post No state is modified.
  * @post The fold visits @p nlen units.
  *
@@ -396,14 +406,19 @@ chk_name_hash(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, uint32_t nle
     const uint32_t slot  = k % (uint32_t)k_chk_name_per_entry;
     const uint32_t noff  = dir_entry_byte(h, clus, idx + 2U + which);
     const uint32_t bpos  = noff + (uint32_t)k_chk_off_name_chars + (slot * 2U);
-    uint8_t        lo    = s_disk.bytes[bpos];
-    if (lo >= (uint8_t)'a') {
-      if (lo <= (uint8_t)'z') {
-        lo = (uint8_t)(lo - ((uint8_t)'a' - (uint8_t)'A'));
-      }
-    }
-    hash = chk_csum_step(hash, lo);
-    hash = chk_csum_step(hash, s_disk.bytes[bpos + 1U]);
+    /* Folded through the table the VOLUME carries, expanded from its own bytes
+     * above -- not through the driver's fold, which is the thing this scan
+     * exists to disagree with when it is wrong. Up-casing only 'a'..'z' of the
+     * low byte, which is what this did, matches the specification for an ASCII
+     * name and nothing else: it reported every correctly-hashed non-ASCII name
+     * as broken (#605 fixture, #606). */
+    const uint32_t raw  = (uint32_t)s_disk.bytes[bpos] |
+                          ((uint32_t)s_disk.bytes[bpos + 1U] << (uint32_t)k_mut_shift_byte8);
+    const uint32_t unit = s_upc_table[raw];
+    hash                = chk_csum_step(hash, (uint8_t)(unit & (uint32_t)k_mut_mask_byte));
+    hash =
+      chk_csum_step(hash,
+                    (uint8_t)((unit >> (uint32_t)k_mut_shift_byte8) & (uint32_t)k_mut_mask_byte));
   }
   return hash;
 }
@@ -741,6 +756,7 @@ static inline void chk_compare_bitmap(exfat_chk_t* c, const ra8_fs_mount_t* h)
  */
 static inline uint8_t exfat_scan(const ra8_fs_mount_t* h, char* msg, uint32_t cap)
 {
+  upc_load(h); /* the volume's own fold, before anything is hashed */
   exfat_chk_t c = {};
   c.clusters    = h->count_of_clusters;
   c.ok          = 1U;

@@ -341,15 +341,19 @@ RA8_PRIV
 uint8_t priv_is_eoc(const ra8_fs_mount_t* m, uint32_t value);
 
 /**
- * @brief Fold one LFN directory entry's 13 UTF-16LE characters into the state.
+ * @brief Fold one LFN directory entry's 13 UTF-16LE code units into the state.
  *
  * @details Reads the sequence number from @p ent (low 5 bits of LDIR_Ord) to
- *          locate the character group within the assembled name, then copies
- *          each of the 13 chars at their VFAT byte offsets (LDIR_Name1/2/3).
- *          Characters above ASCII 0x7F are replaced with '?'. A NUL or the
- *          padding code-point (0xFFFF) terminates the group early. The stored
- *          checksum is updated from LDIR_Chksum. Out-of-range sequence numbers
- *          are silently ignored to tolerate a corrupt chain.
+ *          locate the unit group within the assembled name, then copies each of
+ *          the 13 units at their VFAT byte offsets (LDIR_Name1/2/3) VERBATIM. A
+ *          zero unit or the padding value (0xFFFF) terminates the group early.
+ *          The stored checksum is updated from LDIR_Chksum. Out-of-range
+ *          sequence numbers are silently ignored to tolerate a corrupt chain.
+ *
+ *          Units above 0x7F used to become `?`, which made the reported name
+ *          one the caller could not hand back to `ra8_fs_open()` -- the file was
+ *          listed and then unopenable, and two names differing only in an accent
+ *          collided (#606).
  *
  * @param[in,out] s   Reassembly state being accumulated.
  * @param[in]     ent 32-byte raw LFN directory entry (attribute byte == 0x0F).
@@ -358,8 +362,8 @@ uint8_t priv_is_eoc(const ra8_fs_mount_t* m, uint32_t value);
  *
  * @pre @p s is non-NULL and was initialised by priv_lfn_reset().
  * @pre @p ent is non-NULL and points to exactly 32 valid bytes.
- * @post If the sequence number is in range, @p s->name and @p s->checksum
- *       reflect the characters from this entry.
+ * @post If the sequence number is in range, @p s->units and @p s->checksum
+ *       reflect the units from this entry.
  * @post If the sequence number is out of range, @p s is unchanged.
  *
  * @note Not thread-safe; the caller serialises directory access.
@@ -370,17 +374,43 @@ RA8_PRIV
 void priv_lfn_add(lfn_state_t* s, const uint8_t* ent);
 
 /**
- * @brief Long name of the chain that precedes @p name83, or NULL if none/mismatch.
- * @details Returns the reassembled name only when a chain was accumulated and its
- *          checksum matches @p name83 (so a stray chain never aliases an entry).
+ * @brief Code units of the chain that precedes @p name83, or NULL if none.
+ *
+ * @details Returns the reassembled name only when a chain was accumulated and
+ *          its checksum matches @p name83, so a stray chain never aliases an
+ *          entry. The units are returned rather than text because that is the
+ *          domain a lookup compares in and the domain the up-case table folds;
+ *          only the listing path converts, and only at the API boundary.
+ *
+ *          The length is the run of non-zero units, exactly as the NUL used to
+ *          end the string: a group that never arrived leaves zeros, and the
+ *          name stops there instead of running into another chain's characters.
+ *
+ * @param[in]  s         Reassembly state carried across the directory walk.
+ * @param[in]  name83    The 8.3 entry the chain is claimed to belong to.
+ * @param[out] out_units Receives the unit count (0 when there is no name).
+ *
+ * @return Pointer to the units, or nullptr.
+ * @retval s->units The chain is present and binds to @p name83.
+ * @retval nullptr  No chain, an empty one, or a checksum mismatch.
+ *
+ * @pre @p s and @p out_units are non-NULL; @p name83 addresses 11 bytes.
+ * @pre @p s was initialised by priv_lfn_reset() before the walk.
+ * @post `*out_units` is written on both outcomes.
+ * @post @p s is not modified.
+ *
+ * @note Not thread-safe; the caller serialises directory access.
+ *
+ * @since 0.1.0
  */
 RA8_PRIV
-const char* priv_lfn_name_for(lfn_state_t* s, const uint8_t* name83);
+const uint16_t*
+priv_lfn_units_for(const lfn_state_t* s, const uint8_t* name83, uint32_t* out_units);
 
 /**
  * @brief Reset the LFN reassembly state so a fresh chain can start.
  *
- * @details Clears the accumulated name buffer byte-by-byte, then resets the
+ * @details Clears the accumulated unit array, then resets the
  *          stored checksum and the "have" flag to zero. Called at the start of
  *          a directory walk and whenever a deleted or consumed 8.3 entry breaks
  *          an in-progress chain.
@@ -391,7 +421,7 @@ const char* priv_lfn_name_for(lfn_state_t* s, const uint8_t* name83);
  *
  * @pre @p s is non-NULL.
  * @pre @p s was previously initialised (e.g. via zero-init or a prior reset).
- * @post @p s->name is all NUL bytes.
+ * @post @p s->units is all zero.
  * @post @p s->have and @p s->checksum are both zero.
  *
  * @note Not thread-safe; the caller serialises directory access.

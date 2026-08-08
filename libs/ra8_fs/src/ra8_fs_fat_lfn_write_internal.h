@@ -40,9 +40,14 @@
 /**
  * @brief Decide whether a leaf needs one entry, one entry plus case flags, or a chain.
  *
- * @details Rejects anything a long name may not hold at all (an empty leaf, one
- *          longer than ::k_lfn_write_max, a control character, or one of the
- *          FAT specification's illegal characters). What is left is an 8.3 name
+ * @details Decodes @p leaf from UTF-8 into the code units the on-disk chain
+ *          carries, which is where a malformed encoding is refused -- an
+ *          over-long form, a raw surrogate, a truncated sequence -- and then
+ *          rejects anything a long name may not hold at all (an empty leaf, one
+ *          longer than ::k_lfn_write_max CODE UNITS, a control character, or one
+ *          of the FAT specification's illegal characters). Characters above
+ *          ASCII are legal: the slots are UTF-16 and the reader returns them as
+ *          such. What is left is an 8.3 name
  *          if it has a 1..8 character base, a 0 or 1..3 character extension, at
  *          most one dot, and no character an 8.3 field cannot hold -- a space
  *          and a second dot are both enough to disqualify it however short it
@@ -50,18 +55,21 @@
  *          through `DIR_NTRes`; one that MIXES cases in either half does not,
  *          and is reported as needing a chain.
  *
- * @param[in]  leaf      Leaf component (no slashes), NUL-terminated.
- * @param[out] out83     Receives the packed 11-byte name on a short verdict.
- * @param[out] out_ntres Receives the `DIR_NTRes` case flags (0 unless short).
+ * @param[in]  leaf       Leaf component (no slashes), NUL-terminated UTF-8.
+ * @param[out] out_units  Receives @p leaf as UTF-16LE code units.
+ * @param[out] out_nunits Receives how many units that is.
+ * @param[out] out83      Receives the packed 11-byte name on a short verdict.
+ * @param[out] out_ntres  Receives the `DIR_NTRes` case flags (0 unless short).
  *
  * @return The on-disk shape required.
  * @retval k_name_kind_short   @p out83 and @p out_ntres are ready to write.
  * @retval k_name_kind_long    A chain plus a generated alias is required.
- * @retval k_name_kind_invalid The name cannot be stored at all.
+ * @retval k_name_kind_invalid Empty, over-long, illegal, or not valid UTF-8.
  *
- * @pre @p leaf, @p out83 and @p out_ntres are non-NULL.
- * @pre @p out83 addresses ::k_max_8_3_name writable bytes.
- * @post @p out_ntres is written on every outcome.
+ * @pre Every pointer is non-NULL.
+ * @pre @p out_units addresses ::k_lfn_write_max writable units and @p out83
+ *      addresses ::k_max_8_3_name writable bytes.
+ * @post @p out_ntres and @p out_nunits are written on every outcome.
  * @post @p leaf is not modified.
  *
  * @note Pure function; trivially thread-safe.
@@ -69,7 +77,11 @@
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_fs_name_kind_t priv_name_classify(const char* leaf, uint8_t* out83, uint8_t* out_ntres);
+ra8_fs_name_kind_t priv_name_classify(const char* leaf,
+                                      uint16_t*   out_units,
+                                      uint32_t*   out_nunits,
+                                      uint8_t*    out83,
+                                      uint8_t*    out_ntres);
 
 /**
  * @brief Derive the `LONGNA~N.TXT` 8.3 alias a long name is filed under.
@@ -81,7 +93,13 @@ ra8_fs_name_kind_t priv_name_classify(const char* leaf, uint8_t* out83, uint8_t*
  *          @p tail. A leaf that contributes no base characters at all (`"..."`)
  *          yields `_`, because an 8.3 name may not have an empty base.
  *
- * @param[in]  leaf  Long name being filed, NUL-terminated.
+ *          Every unit above ASCII maps to `_`, which is what VFAT does with a
+ *          character its OEM code page cannot express. Working from CODE UNITS
+ *          rather than UTF-8 bytes is what makes that one underscore per
+ *          character instead of one per byte.
+ *
+ * @param[in]  leaf  Long name being filed, as UTF-16 code units.
+ * @param[in]  n     Number of units in @p leaf.
  * @param[in]  tail  Sequence number, 1..::k_lfn_alias_tail_max.
  * @param[out] out11 Receives the packed, space-padded 11-byte alias.
  *
@@ -97,7 +115,7 @@ ra8_fs_name_kind_t priv_name_classify(const char* leaf, uint8_t* out83, uint8_t*
  * @since 0.1.0
  */
 RA8_PRIV
-void priv_lfn_alias_basis(const char* leaf, uint32_t tail, uint8_t* out11);
+void priv_lfn_alias_basis(const uint16_t* leaf, uint32_t n, uint32_t tail, uint8_t* out11);
 
 /* ===========================================================================
  * The entry domain: one long-name slot, and the checksum that binds the chain.
@@ -136,7 +154,7 @@ uint8_t priv_sfn_checksum(const uint8_t* name83);
 /**
  * @brief Fill one 32-byte slot with the @p order -th group of a long name.
  *
- * @details Writes the thirteen UTF-16LE characters of group @p order into the
+ * @details Writes the thirteen UTF-16LE code units of group @p order into the
  *          three character runs of an attr-0x0F entry, exactly as
  *          ::priv_lfn_add() reads them back. The group that ends the name
  *          carries the NUL terminator immediately after its last character and
@@ -147,8 +165,8 @@ uint8_t priv_sfn_checksum(const uint8_t* name83);
  *          reassembler already handles by running out of groups.
  *
  * @param[out] ent     32-byte slot to fill; zeroed by this function first.
- * @param[in]  name    The long name.
- * @param[in]  nlen    Its length in characters.
+ * @param[in]  name    The long name, as UTF-16LE code units.
+ * @param[in]  nlen    Its length in code units.
  * @param[in]  order   1-based group index (1 = the first thirteen characters).
  * @param[in]  is_last Non-zero for the LAST logical group, which is the
  *                     physically FIRST slot and carries ::k_lfn_seq_last.
@@ -166,12 +184,12 @@ uint8_t priv_sfn_checksum(const uint8_t* name83);
  * @since 0.1.0
  */
 RA8_PRIV
-void priv_lfn_fill_slot(uint8_t*    ent,
-                        const char* name,
-                        uint32_t    nlen,
-                        uint32_t    order,
-                        uint8_t     is_last,
-                        uint8_t     csum);
+void priv_lfn_fill_slot(uint8_t*        ent,
+                        const uint16_t* name,
+                        uint32_t        nlen,
+                        uint32_t        order,
+                        uint8_t         is_last,
+                        uint8_t         csum);
 
 /* ===========================================================================
  * The directory domain: reserve, commit, look up, erase.

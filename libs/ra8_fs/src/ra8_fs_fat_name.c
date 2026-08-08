@@ -30,8 +30,9 @@
  * @see priv_name_case_kind()
  * @since 0.1.0
  */
-typedef enum : uint8_t {
+typedef enum : uint16_t {
   k_lfn_space        = 0x20U, /**< Lowest character code a long name may hold. */
+  k_lfn_del          = 0x7FU, /**< DEL: a control code, not a name character.  */
   k_case_seen_upper  = 0x01U, /**< An upper-case letter was seen.              */
   k_case_seen_lower  = 0x02U, /**< A lower-case letter was seen.               */
   k_case_seen_mixed  = 0x03U, /**< Both were: no NTRes flag can express it.    */
@@ -91,6 +92,9 @@ static uint8_t priv_pack_base(const char** path_io, uint8_t* out11)
     if (base_len >= k_filename_base_len) {
       return 0U;
     }
+    if ((uint32_t)(unsigned char)*path > (uint32_t)k_lfn_del) {
+      return 0U; /* a packed 8.3 name here is ASCII; a UTF-8 byte is not one */
+    }
     out11[base_len++] = (uint8_t)priv_to_upper(*path++);
   }
   if (base_len == 0U) {
@@ -133,6 +137,9 @@ static uint8_t priv_pack_ext(const char* path, uint8_t* out11)
     if (ext_len >= (uint32_t)k_filename_ext_len) {
       return 0U;
     }
+    if ((uint32_t)(unsigned char)*path > (uint32_t)k_lfn_del) {
+      return 0U; /* as in the base: an 8.3 field never holds a UTF-8 byte */
+    }
     out11[k_filename_base_len + ext_len] = (uint8_t)priv_to_upper(*path++);
     ext_len++;
   }
@@ -157,9 +164,11 @@ uint8_t priv_path_to_83(const char* path, uint8_t* out11)
   if (priv_pack_ext(path, out11) == 0U) {
     return 0U;
   }
-  if (out11[0] == k_dir_marker_free_used) {
-    out11[0] = k_dir_marker_kanji_e5;
-  }
+  /* No kanji escape on the way IN. It used to sit here, mapping a packed 0xE5
+   * first byte to 0x05 -- but both packers now refuse every byte above DEL, so
+   * no input can produce one, and a branch nothing reaches is not a safety net.
+   * The escape still matters on the way OUT, where ::priv_83_to_str() restores
+   * it for a volume some Shift-JIS system wrote. */
   return 1U;
 }
 
@@ -246,36 +255,37 @@ void priv_83_to_str(const uint8_t* in11, uint8_t ntres, char* out13)
  */
 
 /**
- * @brief Does @p c appear in the NUL-terminated set @p set?
+ * @brief Does @p u appear in the NUL-terminated ASCII set @p set?
  *
- * @details Linear scan, bounded by ::k_lfn_name_cap so the loop has a static
+ * @details Linear scan, bounded by ::k_lfn_write_max so the loop has a static
  *          upper limit even though both call sites pass a string literal
- *          (NASA Power of 10 Rule 2).
+ *          (NASA Power of 10 Rule 2). Every set here is ASCII, so a unit above
+ *          that range simply never matches -- no widening is needed.
  *
- * @param[in] c   Character to look for.
+ * @param[in] u   Code unit to look for.
  * @param[in] set NUL-terminated set of characters.
  *
  * @return Membership flag.
- * @retval 1U @p c is in @p set.
- * @retval 0U @p c is not in @p set.
+ * @retval 1U @p u is in @p set.
+ * @retval 0U @p u is not in @p set.
  *
  * @pre @p set is non-NULL and NUL-terminated.
- * @pre @p set is shorter than ::k_lfn_name_cap characters.
- * @post Neither @p c nor @p set is modified.
- * @post The scan visits at most ::k_lfn_name_cap characters.
+ * @pre @p set is shorter than ::k_lfn_write_max characters.
+ * @post Neither @p u nor @p set is modified.
+ * @post The scan visits at most ::k_lfn_write_max characters.
  *
  * @note Pure function; trivially thread-safe.
  *
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_char_in_set(char c, const char* set)
+static uint8_t priv_unit_in_set(uint16_t u, const char* set)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_lfn_name_cap; i++) {
+  for (uint32_t i = 0U; i < (uint32_t)k_lfn_write_max; i++) {
     if (set[i] == '\0') {
       return 0U;
     }
-    if (set[i] == c) {
+    if ((uint32_t)(unsigned char)set[i] == (uint32_t)u) {
       return 1U;
     }
   }
@@ -285,30 +295,32 @@ static uint8_t priv_char_in_set(char c, const char* set)
 }
 
 /**
- * @brief Is @p c a character a VFAT long name is allowed to hold?
+ * @brief Is @p u a code unit a VFAT long name is allowed to hold?
  *
- * @details Rejects the control range, everything at or above DEL (this
- *          adapter reassembles long names into ASCII, so a byte it could not
- *          read back is a byte it must not write), and the explicit illegal
- *          set from the FAT specification.
+ * @details Rejects the control range, DEL, and the explicit illegal set from
+ *          the FAT specification. Everything above ASCII is ALLOWED: the slots
+ *          store UTF-16 and this adapter now reads them back as such, so the
+ *          old "at or above DEL" cut -- which existed only because the reader
+ *          substituted `?` for those units -- would refuse names the format and
+ *          the reader both handle (#606).
  *
- * @param[in] c Candidate character.
+ * @param[in] u Candidate code unit.
  *
  * @return Legality flag.
- * @retval 1U @p c may appear in a long name.
- * @retval 0U @p c may not; the whole leaf is rejected.
+ * @retval 1U @p u may appear in a long name.
+ * @retval 0U @p u may not; the whole leaf is rejected.
  *
- * @pre @p c is one character of a caller-supplied leaf component.
+ * @pre @p u is one code unit of a caller-supplied leaf component.
  * @pre The caller treats a 0 result as a fatal name error, not a fallback.
  * @post No state is modified.
- * @post The verdict depends only on @p c.
+ * @post The verdict depends only on @p u.
  *
  * @note Pure function; trivially thread-safe.
  *
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_char_is_lfn_legal(char c)
+static uint8_t priv_unit_is_lfn_legal(uint16_t u)
 {
   /* Microsoft FAT specification section 7 ("Long File Name Implementation"):
    * the long name inherits the short name's illegal set minus the characters
@@ -317,14 +329,14 @@ static uint8_t priv_char_is_lfn_legal(char c)
    * one function reads it (MISRA 8.9). */
   static const char s_lfn_illegal[] = "\"*/:<>?\\|";
 
-  const uint32_t u = (uint32_t)(unsigned char)c;
-  if (u < (uint32_t)k_lfn_space) {
+  const uint32_t v = (uint32_t)u;
+  if (v < (uint32_t)k_lfn_space) {
     return 0U; /* control characters, including the NUL that ends the name */
   }
-  if (u >= (uint32_t)k_lfn_ascii_max) {
-    return 0U; /* DEL and everything above it: this adapter stores ASCII only */
+  if (v == (uint32_t)k_lfn_del) {
+    return 0U; /* DEL is a control code wherever it appears */
   }
-  if (priv_char_in_set(c, s_lfn_illegal) != 0U) {
+  if (priv_unit_in_set(u, s_lfn_illegal) != 0U) {
     return 0U;
   }
   return 1U;
@@ -333,29 +345,30 @@ static uint8_t priv_char_is_lfn_legal(char c)
 /**
  * @brief Is @p c usable verbatim inside a packed 8.3 short name?
  *
- * @details Stricter than ::priv_char_is_lfn_legal() by the extra short-name
- *          exclusions and by the dot, which in an 8.3 name is a field
- *          separator rather than a character. It does NOT repeat the long-name
- *          legality test: both call sites run after that test has passed, and
- *          a duplicate here would be a branch no input could take.
+ * @details Stricter than ::priv_unit_is_lfn_legal() by the extra short-name
+ *          exclusions, by the dot -- which in an 8.3 name is a field separator
+ *          rather than a character -- and by the ASCII cut, which belongs here
+ *          rather than there: a packed 8.3 field is an OEM-code-page byte and
+ *          this adapter only writes ASCII into one, while a long name has the
+ *          whole of UTF-16 available to it.
  *
- * @param[in] c Candidate character.
+ * @param[in] u Candidate code unit.
  *
  * @return Legality flag.
- * @retval 1U @p c may appear in the base or extension field.
- * @retval 0U @p c may not; a name containing it needs a long-name chain.
+ * @retval 1U @p u may appear in the base or extension field.
+ * @retval 0U @p u may not; a name containing it needs a long-name chain.
  *
- * @pre @p c already passed ::priv_char_is_lfn_legal().
- * @pre @p c is one character of a caller-supplied leaf component.
+ * @pre @p u already passed ::priv_unit_is_lfn_legal().
+ * @pre @p u is one code unit of a caller-supplied leaf component.
  * @post No state is modified.
- * @post The verdict depends only on @p c.
+ * @post The verdict depends only on @p u.
  *
  * @note Pure function; trivially thread-safe.
  *
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_char_is_83_legal(char c)
+static uint8_t priv_unit_is_83_legal(uint16_t u)
 {
   /* Microsoft FAT specification section 6.1 ("Name Limitations"). A leaf
    * containing any of these is representable only as a long name, however
@@ -363,10 +376,13 @@ static uint8_t priv_char_is_83_legal(char c)
    * be an 8.3 name, because of the space. Block scope: one reader (MISRA 8.9). */
   static const char s_sfn_extra_illegal[] = "+,;=[] ";
 
-  if (c == '.') {
+  if ((uint32_t)u > (uint32_t)k_lfn_del) {
     return 0U;
   }
-  if (priv_char_in_set(c, s_sfn_extra_illegal) != 0U) {
+  if (u == (uint16_t)(unsigned char)'.') {
+    return 0U;
+  }
+  if (priv_unit_in_set(u, s_sfn_extra_illegal) != 0U) {
     return 0U;
   }
   return 1U;
@@ -377,31 +393,31 @@ static uint8_t priv_char_is_83_legal(char c)
  *
  * @details The LAST dot, because that is the one an extension would follow.
  *          A name holding more than one is not 8.3 anyway: the earlier dots
- *          then sit inside the base, where ::priv_char_is_83_legal() refuses
+ *          then sit inside the base, where ::priv_unit_is_83_legal() refuses
  *          them, so the rejection needs no special case here.
  *
- * @param[in] leaf Leaf component (no slashes).
- * @param[in] n    Length of @p leaf in characters.
+ * @param[in] leaf Leaf component's code units (no slashes).
+ * @param[in] n    Length of @p leaf in code units.
  *
  * @return Dot index, or @p n when there is none.
  * @retval 0..n-1 The last dot's index.
  * @retval n      There is no dot.
  *
- * @pre @p leaf is non-NULL and holds at least @p n characters.
+ * @pre @p leaf is non-NULL and holds at least @p n units.
  * @pre @p n is at most ::k_lfn_write_max.
  * @post @p leaf is not modified.
- * @post The scan visits exactly @p n characters.
+ * @post The scan visits exactly @p n units.
  *
  * @note Pure function; trivially thread-safe.
  *
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_name_dot_index(const char* leaf, uint32_t n)
+static uint32_t priv_name_dot_index(const uint16_t* leaf, uint32_t n)
 {
   uint32_t dot = n;
   for (uint32_t i = 0U; i < n; i++) {
-    if (leaf[i] == '.') {
+    if (leaf[i] == (uint16_t)(unsigned char)'.') {
       dot = i;
     }
   }
@@ -419,14 +435,14 @@ static uint32_t priv_name_dot_index(const char* leaf, uint32_t n)
  *          fails the extension test and is therefore stored as a long name,
  *          which is the only way to read it back as it was written.
  *
- * @param[in] leaf Leaf component (no slashes).
- * @param[in] n    Length of @p leaf in characters.
+ * @param[in] leaf Leaf component's code units (no slashes).
+ * @param[in] n    Length of @p leaf in code units.
  *
  * @return Representability flag.
  * @retval 1U @p leaf packs to 8.3 losslessly, up to case.
  * @retval 0U @p leaf needs a long-name chain.
  *
- * @pre @p leaf is non-NULL and holds at least @p n characters.
+ * @pre @p leaf is non-NULL and holds at least @p n units.
  * @pre @p n is non-zero and at most ::k_lfn_write_max.
  * @post @p leaf is not modified.
  * @post The verdict is independent of the volume's contents.
@@ -436,7 +452,7 @@ static uint32_t priv_name_dot_index(const char* leaf, uint32_t n)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_name_is_83(const char* leaf, uint32_t n)
+static uint8_t priv_name_is_83(const uint16_t* leaf, uint32_t n)
 {
   const uint32_t dot      = priv_name_dot_index(leaf, n);
   const uint32_t base_len = dot;
@@ -453,7 +469,7 @@ static uint8_t priv_name_is_83(const char* leaf, uint32_t n)
     if (i == dot) {
       continue;
     }
-    if (priv_char_is_83_legal(leaf[i]) == 0U) {
+    if (priv_unit_is_83_legal(leaf[i]) == 0U) {
       return 0U;
     }
   }
@@ -468,7 +484,7 @@ static uint8_t priv_name_is_83(const char* leaf, uint32_t n)
  *          neither, so `"IMG_01"` is upper-only and `"01"` is neither, which is
  *          what makes a case-flagged short name possible for both.
  *
- * @param[in]     leaf Leaf component.
+ * @param[in]     leaf Leaf component's code units.
  * @param[in]     from First index to inspect.
  * @param[in]     to   One past the last index to inspect.
  * @param[in,out] seen Bit 0 set when an upper-case letter is seen, bit 1 when
@@ -476,7 +492,7 @@ static uint8_t priv_name_is_83(const char* leaf, uint32_t n)
  *
  * @return Nothing.
  *
- * @pre @p leaf is non-NULL and holds at least @p to characters.
+ * @pre @p leaf is non-NULL and holds at least @p to units.
  * @pre @p from is at most @p to and @p seen is non-NULL.
  * @post @p seen has only bits it already had, plus the ones observed here.
  * @post @p leaf is not modified.
@@ -486,13 +502,13 @@ static uint8_t priv_name_is_83(const char* leaf, uint32_t n)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_case_observe(const char* leaf, uint32_t from, uint32_t to, uint8_t* seen)
+static void priv_case_observe(const uint16_t* leaf, uint32_t from, uint32_t to, uint8_t* seen)
 {
   for (uint32_t i = from; i < to; i++) {
-    const char c = leaf[i];
-    if ((c >= 'A') && (c <= 'Z')) {
+    const uint32_t c = (uint32_t)leaf[i];
+    if ((c >= (uint32_t)'A') && (c <= (uint32_t)'Z')) {
       *seen |= (uint8_t)k_case_seen_upper;
-    } else if ((c >= 'a') && (c <= 'z')) {
+    } else if ((c >= (uint32_t)'a') && (c <= (uint32_t)'z')) {
       *seen |= (uint8_t)k_case_seen_lower;
     } else {
       /* Digits and punctuation carry no case; they constrain nothing. */
@@ -508,8 +524,8 @@ static void priv_case_observe(const char* leaf, uint32_t from, uint32_t to, uint
  *          name then needs a long-name chain to survive. The two halves are
  *          judged independently, exactly as the two flag bits are.
  *
- * @param[in]  leaf       Leaf component, already known to pack to 8.3.
- * @param[in]  n          Length of @p leaf in characters.
+ * @param[in]  leaf       Leaf component's units, already known to pack to 8.3.
+ * @param[in]  n          Length of @p leaf in code units.
  * @param[out] out_ntres  Receives the `DIR_NTRes` byte to store.
  *
  * @return The on-disk shape required.
@@ -526,7 +542,7 @@ static void priv_case_observe(const char* leaf, uint32_t from, uint32_t to, uint
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_fs_name_kind_t priv_name_case_kind(const char* leaf, uint32_t n, uint8_t* out_ntres)
+static ra8_fs_name_kind_t priv_name_case_kind(const uint16_t* leaf, uint32_t n, uint8_t* out_ntres)
 {
   const uint32_t dot       = priv_name_dot_index(leaf, n);
   uint8_t        base_seen = 0U;
@@ -552,22 +568,37 @@ static ra8_fs_name_kind_t priv_name_case_kind(const char* leaf, uint32_t n, uint
 }
 
 /* `priv_name_classify()`: see header for the documented contract. */
-ra8_fs_name_kind_t priv_name_classify(const char* leaf, uint8_t* out83, uint8_t* out_ntres)
+ra8_fs_name_kind_t priv_name_classify(const char* leaf,
+                                      uint16_t*   out_units,
+                                      uint32_t*   out_nunits,
+                                      uint8_t*    out83,
+                                      uint8_t*    out_ntres)
 {
-  if ((leaf == nullptr) || (out83 == nullptr) || (out_ntres == nullptr)) {
+  if ((leaf == nullptr) || (out_units == nullptr) || (out_nunits == nullptr)) {
     return k_name_kind_invalid;
   }
-  *out_ntres       = 0U;
-  const uint32_t n = priv_strlen(leaf);
-  if ((n == 0U) || (n > (uint32_t)k_lfn_write_max)) {
+  if ((out83 == nullptr) || (out_ntres == nullptr)) {
+    return k_name_kind_invalid;
+  }
+  *out_ntres = 0U;
+  /* The decode is where a malformed name dies -- an over-long sequence, a raw
+   * surrogate, a truncated one -- and the unit count it produces is the length
+   * every on-disk structure below counts in. A byte count is neither (#606). */
+  uint32_t n = 0U;
+  if (priv_utf8_to_utf16(leaf, out_units, (uint32_t)k_lfn_write_max, &n) != k_ra8_ok) {
+    *out_nunits = 0U;
+    return k_name_kind_invalid;
+  }
+  *out_nunits = n;
+  if (n == 0U) {
     return k_name_kind_invalid;
   }
   for (uint32_t i = 0U; i < n; i++) {
-    if (priv_char_is_lfn_legal(leaf[i]) == 0U) {
+    if (priv_unit_is_lfn_legal(out_units[i]) == 0U) {
       return k_name_kind_invalid;
     }
   }
-  if (priv_name_is_83(leaf, n) == 0U) {
+  if (priv_name_is_83(out_units, n) == 0U) {
     return k_name_kind_long;
   }
   if (priv_path_to_83(leaf, out83) == 0U) {
@@ -577,7 +608,7 @@ ra8_fs_name_kind_t priv_name_classify(const char* leaf, uint8_t* out83, uint8_t*
      * unpacked name. */
     return k_name_kind_long; /* GCOVR_EXCL_LINE */
   }
-  return priv_name_case_kind(leaf, n, out_ntres);
+  return priv_name_case_kind(out_units, n, out_ntres);
 }
 
 /* =============================================================================
@@ -594,13 +625,15 @@ ra8_fs_name_kind_t priv_name_classify(const char* leaf, uint8_t* out83, uint8_t*
  *          it a name like `Design (final).txt` would generate an alias with a
  *          space and parentheses in it, which no 8.3 reader accepts.
  *
- * @param[in] c Character from the caller's long name.
+ * @param[in] u Code unit from the caller's long name.
  *
  * @return The character to place in the alias.
- * @retval '_' @p c is not legal in an 8.3 name.
- * @retval other The upper-cased @p c.
+ * @retval '_' @p u is not legal in an 8.3 name -- which now includes every unit
+ *             above ASCII, exactly as VFAT does for a character its OEM code
+ *             page cannot represent.
+ * @retval other The upper-cased @p u.
  *
- * @pre @p c passed ::priv_char_is_lfn_legal().
+ * @pre @p u passed ::priv_unit_is_lfn_legal().
  * @pre The caller has already discarded spaces and dots.
  * @post No state is modified.
  * @post The result is always legal in a packed 8.3 name.
@@ -610,10 +643,13 @@ ra8_fs_name_kind_t priv_name_classify(const char* leaf, uint8_t* out83, uint8_t*
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_alias_map_char(char c)
+static uint8_t priv_alias_map_unit(uint16_t u)
 {
-  const char up = priv_to_upper(c);
-  if (priv_char_is_83_legal(up) == 0U) {
+  if ((uint32_t)u > (uint32_t)k_lfn_del) {
+    return (uint8_t)'_';
+  }
+  const char up = priv_to_upper((char)(unsigned char)u);
+  if (priv_unit_is_83_legal((uint16_t)(unsigned char)up) == 0U) {
     return (uint8_t)'_';
   }
   return (uint8_t)up;
@@ -626,7 +662,7 @@ static uint8_t priv_alias_map_char(char c)
  *          specification removes them before translating -- so `My Report.v2`
  *          contributes `MYREPORT` and not `MY_REPORT`.
  *
- * @param[in]  leaf Leaf component.
+ * @param[in]  leaf Leaf component's code units.
  * @param[in]  from First index to read.
  * @param[in]  to   One past the last index to read.
  * @param[in]  cap  Maximum characters to emit.
@@ -646,15 +682,15 @@ static uint8_t priv_alias_map_char(char c)
  */
 RA8_INTERNAL
 static uint32_t
-priv_alias_collect(const char* leaf, uint32_t from, uint32_t to, uint32_t cap, uint8_t* out)
+priv_alias_collect(const uint16_t* leaf, uint32_t from, uint32_t to, uint32_t cap, uint8_t* out)
 {
   uint32_t got = 0U;
   for (uint32_t i = from; (i < to) && (got < cap); i++) {
-    const char c = leaf[i];
-    if ((c == ' ') || (c == '.')) {
+    const uint16_t u = leaf[i];
+    if ((u == (uint16_t)(unsigned char)' ') || (u == (uint16_t)(unsigned char)'.')) {
       continue;
     }
-    out[got] = priv_alias_map_char(c);
+    out[got] = priv_alias_map_unit(u);
     got++;
   }
   return got;
@@ -667,14 +703,14 @@ priv_alias_collect(const char* leaf, uint32_t from, uint32_t to, uint32_t cap, u
  *          side: a leading dot (`.profile`) names no extension, and a trailing
  *          one (`notes.`) supplies no characters for it.
  *
- * @param[in] leaf Leaf component.
- * @param[in] n    Length of @p leaf.
+ * @param[in] leaf Leaf component's code units.
+ * @param[in] n    Length of @p leaf in code units.
  *
  * @return Separator index, or @p n when the alias has no extension.
  * @retval 1..n-2 The separating dot.
  * @retval n      No usable extension.
  *
- * @pre @p leaf is non-NULL and holds at least @p n characters.
+ * @pre @p leaf is non-NULL and holds at least @p n units.
  * @pre @p n is non-zero.
  * @post @p leaf is not modified.
  * @post The result is either @p n or a valid interior index.
@@ -684,11 +720,11 @@ priv_alias_collect(const char* leaf, uint32_t from, uint32_t to, uint32_t cap, u
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_alias_ext_dot(const char* leaf, uint32_t n)
+static uint32_t priv_alias_ext_dot(const uint16_t* leaf, uint32_t n)
 {
   uint32_t dot = n;
   for (uint32_t i = 1U; (i + 1U) < n; i++) {
-    if (leaf[i] == '.') {
+    if (leaf[i] == (uint16_t)(unsigned char)'.') {
       dot = i;
     }
   }
@@ -730,12 +766,11 @@ static uint32_t priv_alias_digits(uint32_t tail)
 }
 
 /* `priv_lfn_alias_basis()`: see header for the documented contract. */
-void priv_lfn_alias_basis(const char* leaf, uint32_t tail, uint8_t* out11)
+void priv_lfn_alias_basis(const uint16_t* leaf, uint32_t n, uint32_t tail, uint8_t* out11)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_max_8_3_name; i++) {
     out11[i] = ' ';
   }
-  const uint32_t n                         = priv_strlen(leaf);
   const uint32_t dot                       = priv_alias_ext_dot(leaf, n);
   uint8_t        base[k_filename_base_len] = {};
   uint32_t       base_len = priv_alias_collect(leaf, 0U, dot, (uint32_t)k_filename_base_len, base);

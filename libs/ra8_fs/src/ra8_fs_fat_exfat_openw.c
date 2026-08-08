@@ -363,8 +363,8 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
  *
  * @param[in,out] handle   Mounted exFAT volume.
  * @param[in]     dir      Directory the name is created in.
- * @param[in]     path     Leaf name (ASCII, no leading '/').
- * @param[in]     nlen     Length of @p path.
+ * @param[in]     name     Leaf name as UTF-16 code units (no leading '/').
+ * @param[in]     nlen     Number of units in @p name.
  * @param[in]     mode     Writing mode to record on the handle.
  * @param[out]    out_file Receives the open handle.
  *
@@ -375,8 +375,8 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
  * @retval k_ra8_err_*      Backend read/write failure.
  *
  * @pre Every pointer is non-NULL; the mount is an exFAT volume.
- * @pre `priv_strlen(path) == nlen` and @p nlen is within the name cap.
- * @post On success @p dir holds a zero-length set for @p path.
+ * @pre @p nlen is at most ::k_exfat_name_cap.
+ * @post On success @p dir holds a zero-length set for that name.
  * @post On failure no file slot is left marked in use.
  *
  * @note Not thread-safe; callers serialise filesystem operations.
@@ -386,7 +386,7 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
 RA8_INTERNAL
 static ra8_err_t priv_exfat_open_created(ra8_fs_mount_t*    handle,
                                          const exfat_dir_t* dir,
-                                         const char*        path,
+                                         const uint16_t*    name,
                                          uint32_t           nlen,
                                          ra8_fs_mode_t      mode,
                                          ra8_fs_file_t**    out_file)
@@ -397,7 +397,7 @@ static ra8_err_t priv_exfat_open_created(ra8_fs_mount_t*    handle,
   }
   exfat_setpos_t  head  = {};
   uint32_t        count = 0U;
-  const ra8_err_t e     = priv_exfat_link(handle, dir, path, nlen, &head, &count);
+  const ra8_err_t e     = priv_exfat_link(handle, dir, name, nlen, &head, &count);
   if (e != k_ra8_ok) {
     f->in_use = 0U;
     f->mount  = nullptr;
@@ -425,11 +425,19 @@ ra8_err_t priv_exfat_open_write(ra8_fs_mount_t* handle,
   if (pe != k_ra8_ok) {
     return pe;
   }
-  const uint32_t nlen = priv_strlen(leaf);
-  if (nlen == 0U) {
-    return k_ra8_err_invalid_arg;
+  /* The name becomes code units once, here, and every on-disk length below
+   * counts those rather than the caller's bytes. The cap is a UNIT cap, so a
+   * UTF-8 argument three times as long is still perfectly legal (#606). */
+  uint16_t        name[k_exfat_name_cap] = {};
+  uint32_t        nlen                   = 0U;
+  const ra8_err_t ne                     = priv_exfat_name_to_units(handle, leaf, name, &nlen);
+  if (ne == k_ra8_err_no_mem) {
+    return k_ra8_err_invalid_arg; /* over the name cap: an argument, not a full disk */
   }
-  if (nlen > (uint32_t)k_exfat_name_cap) {
+  if (ne != k_ra8_ok) {
+    return ne;
+  }
+  if (nlen == 0U) {
     return k_ra8_err_invalid_arg;
   }
   exfat_setpos_t  pos[k_exfat_set_max_entries] = {};
@@ -450,5 +458,5 @@ ra8_err_t priv_exfat_open_write(ra8_fs_mount_t* handle,
   if (e != k_ra8_err_not_found) {
     return e;
   }
-  return priv_exfat_open_created(handle, &parent, leaf, nlen, mode, out_file);
+  return priv_exfat_open_created(handle, &parent, name, nlen, mode, out_file);
 }

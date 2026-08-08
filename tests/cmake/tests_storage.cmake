@@ -36,7 +36,13 @@ add_custom_target(
 # ra8_fs_fat.c was split into ra8_fs_fat*.c TUs for the 1000-line file-size cap;
 # glob them all so this standalone test still links the whole FAT driver (and
 # only the FAT driver -- no ra8_core_hal -> no ra8_time weak-extern).
+#
+# The UTF codec (ra8_fs_utf.c) is named for the ENCODING rather than for the
+# filesystem, because both on-disk name formats in this library store UTF-16 --
+# so it does not match the ra8_fs_fat* pattern and has to be named. Every FAT TU
+# that touches a name calls into it (#606).
 file(GLOB RA8_FS_FAT_TU_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/ra8_fs_fat*.c)
+list(APPEND RA8_FS_FAT_TU_SOURCES ${FW_ROOT}/libs/ra8_fs/src/ra8_fs_utf.c)
 add_executable(
   test_ra8_fs_exfat ${CMAKE_CURRENT_SOURCE_DIR}/host/exfat_fs_test.c ${RA8_FS_FAT_TU_SOURCES}
 )

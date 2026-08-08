@@ -220,8 +220,9 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
  *
  * @param[in]  m         Mounted exFAT volume.
  * @param[in]  dir       Directory the set is linked into.
- * @param[in]  path      Leaf name (ASCII, no leading '/').
- * @param[in]  nlen      Name length in characters (1..::k_exfat_name_cap).
+ * @param[in]  name      Leaf name as UTF-16 code units (no leading '/').
+ * @param[in]  nlen      Name length in UTF-16 UNITS (1..::k_exfat_name_cap),
+ *                       which is what `NameLength` counts (#606).
  * @param[out] out_head  Receives the File entry's (cluster, index).
  * @param[out] out_count Receives the entry count (1 + SecondaryCount).
  *
@@ -230,9 +231,9 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
  * @retval k_ra8_err_no_mem No run of free directory slots big enough.
  * @retval k_ra8_err_*      Backend read/write failure.
  *
- * @pre @p m, @p dir, @p path, @p out_head and @p out_count are non-NULL.
- * @pre `priv_strlen(path) == nlen` and @p nlen >= 1.
- * @post On success @p dir holds a zero-length entry set for @p path.
+ * @pre @p m, @p dir, @p name, @p out_head and @p out_count are non-NULL.
+ * @pre @p nlen is the unit count ::priv_exfat_name_to_units() produced, >= 1.
+ * @post On success @p dir holds a zero-length entry set for that name.
  * @post On success `*out_head` addresses that set's File entry.
  *
  * @note The set is kept within one directory cluster.
@@ -242,7 +243,7 @@ ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
 RA8_PRIV
 ra8_err_t priv_exfat_link(ra8_fs_mount_t*    m,
                           const exfat_dir_t* dir,
-                          const char*        path,
+                          const uint16_t*    name,
                           uint32_t           nlen,
                           exfat_setpos_t*    out_head,
                           uint32_t*          out_count);

@@ -223,40 +223,43 @@ static void plant_lfn_entry(uint8_t* ent, uint8_t order, uint8_t csum, const cha
 /**
  * @test test_mcdc_lfn_name_for_guard
  * @par MC/DC:
- * Decision: `if ((s->have == 0U) || (s->name[0] == '\0'))` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_lfn_name_for` (2 conditions). Driven
+ * Decision: `if ((s->have == 0U) || (s->units[0] == 0U))` in
+ * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_lfn_units_for` (2 conditions). Driven
  * directly against a crafted reassembly state.
- * - V1: have=1, name[0]='A' -> C1=F, C2=F -> dec F (returns the name).
- * - V2: have=0             -> C1=T short -> dec T -> nullptr.
- * - V3: have=1, name[0]='\0' -> C1=F, C2=T -> dec T -> nullptr.
+ * - V1: have=1, units[0]='A' -> C1=F, C2=F -> dec F (returns the units).
+ * - V2: have=0               -> C1=T short -> dec T -> nullptr.
+ * - V3: have=1, units[0]=0   -> C1=F, C2=T -> dec T -> nullptr.
  * V1+V2 isolate the have flag; V1+V3 isolate the empty-name test. The V1 state
  * carries the matching checksum so the following (single-condition) checksum
  * gate lets the name through. N+1 = 3 for N=2.
  */
 static void test_mcdc_lfn_name_for_guard(void)
 {
-  TEST_BEGIN("ra8_fs MC/DC: priv_lfn_name_for have/empty guard");
+  TEST_BEGIN("ra8_fs MC/DC: priv_lfn_units_for have/empty guard");
   const char    name83[11] = {'A', 'B', '1', '2', '3', '4', '5', '6', 'E', 'P', 'U'};
   const uint8_t csum       = sfn_checksum((const uint8_t*)name83);
+  uint32_t      n          = 0U;
 
   lfn_state_t s = {};
   s.have        = 1U;
   s.checksum    = csum;
-  s.name[0]     = 'A';
-  s.name[1]     = '\0';
-  TEST_ASSERT_NOT_NULL(priv_lfn_name_for(&s, (const uint8_t*)name83)); /* V1 */
+  s.units[0]    = (uint16_t)'A';
+  s.units[1]    = 0U;
+  TEST_ASSERT_NOT_NULL(priv_lfn_units_for(&s, (const uint8_t*)name83, &n)); /* V1 */
+  TEST_ASSERT_EQ(1U, n);
 
   lfn_state_t s_nohave = {};
   s_nohave.have        = 0U;
-  s_nohave.name[0]     = 'A';
-  TEST_ASSERT_NULL(priv_lfn_name_for(&s_nohave, (const uint8_t*)name83)); /* V2 */
+  s_nohave.units[0]    = (uint16_t)'A';
+  TEST_ASSERT_NULL(priv_lfn_units_for(&s_nohave, (const uint8_t*)name83, &n)); /* V2 */
+  TEST_ASSERT_EQ(0U, n);
 
   lfn_state_t s_empty = {};
   s_empty.have        = 1U;
   s_empty.checksum    = csum;
-  s_empty.name[0]     = '\0';
-  TEST_ASSERT_NULL(priv_lfn_name_for(&s_empty, (const uint8_t*)name83)); /* V3 */
-  TEST_END("ra8_fs MC/DC: priv_lfn_name_for have/empty guard");
+  s_empty.units[0]    = 0U;
+  TEST_ASSERT_NULL(priv_lfn_units_for(&s_empty, (const uint8_t*)name83, &n)); /* V3 */
+  TEST_END("ra8_fs MC/DC: priv_lfn_units_for have/empty guard");
 }
 
 /**

@@ -177,6 +177,7 @@ typedef enum : uint16_t {
   k_exfat_strm_off_dlen    = 0x18, /**< Stream-ext DataLength (low 32 used).        */
   k_exfat_strm_off_dlen_hi = 0x1C, /**< Stream-ext DataLength high word.            */
   k_exfat_name_off         = 2,    /**< File-name entry character offset.           */
+  k_exfat_upc_off_csum     = 4,    /**< Up-case-table entry TableChecksum (32-bit). */
 } ra8_fs_exfat_off_t;
 
 /**
@@ -199,8 +200,10 @@ typedef enum : uint32_t {
   k_exfat_entry_bytes    = 32U,     /**< Directory entry size.                      */
   k_exfat_bps_shift_512  = 9U,      /**< log2(512) -- the only sector size we do.   */
   k_exfat_scan_limit     = 65536U,  /**< Max dir entries scanned (P10 bound).       */
-  k_exfat_name_cap       = 64U,     /**< Longest path name we compare.              */
-  k_exfat_ascii_hi_mask  = 0xFF00U, /**< UTF-16 unit is non-ASCII if set.           */
+  k_exfat_name_cap       = 64U,     /**< Longest name we store, in UTF-16 units.    */
+  k_exfat_name_u8_cap    = 193U,    /**< That name in UTF-8: 3 * 64, plus a NUL.    */
+  k_exfat_upc_words      = 2918U,   /**< k_exfat_fmt_upc_std_bytes / 2.             */
+  k_exfat_upc_run_tag    = 0xFFFFU, /**< Up-case table: an identity run follows.    */
   k_exfat_csum_hi_bit    = 0x8000U, /**< Wrap bit for the rotate-add checksum.      */
   k_exfat_off_file_secnt = 1U,      /**< File entry: SecondaryCount.                */
   k_exfat_off_file_csum  = 2U,      /**< File entry: SetChecksum (2 bytes).         */
@@ -505,9 +508,8 @@ typedef enum : uint32_t {
   k_lfn_seq_last       = 0x40U,   /**< Set on the last logical group.              */
   k_lfn_chars_per_ent  = 13U,     /**< UTF-16 chars carried per LFN entry.         */
   k_lfn_max_entries    = 19U,     /**< Cap so 19*13 = 247 chars fits the buffer.   */
-  k_lfn_name_cap       = 256U,    /**< Reassembled-name buffer capacity.           */
+  k_lfn_utf8_cap       = 742U,    /**< A 247-unit name in UTF-8: 3 * 247, + NUL.   */
   k_lfn_unicode_pad    = 0xFFFFU, /**< Slot padding past the name terminator.      */
-  k_lfn_ascii_max      = 0x7FU,   /**< Highest code point we keep verbatim.        */
   k_sfn_csum_high_bit  = 0x80U,   /**< Rotate-in bit when the running sum is odd.  */
   k_lfn_write_max      = 247U,    /**< Longest name we WRITE (k_lfn_max_entries).  */
   k_lfn_erase_max      = 20U,     /**< Longest chain we ERASE (spec LDIR_Ord max). */
@@ -515,11 +517,31 @@ typedef enum : uint32_t {
   k_lfn_alias_base_max = 6U,      /**< Basis chars kept ahead of a one-digit `~N`. */
 } ra8_fs_lfn_t;
 
-/** @brief In-progress reassembly of one LFN chain across the directory scan. */
+/**
+ * @struct lfn_state_t
+ * @brief In-progress reassembly of one LFN chain across the directory scan.
+ *
+ * @details The name accumulates as UTF-16 CODE UNITS, which is what the slots
+ *          carry, and is converted to UTF-8 only where a caller is handed it.
+ *          Holding it as `char` was the shape that forced the old reader to
+ *          substitute `?` for every unit above 0x7F: a group writes at a fixed
+ *          UNIT offset, and no byte-indexed buffer can take a variable-width
+ *          encoding at a fixed index (#606).
+ *
+ *          A unit of zero terminates the name, exactly as the NUL did before,
+ *          which is why ::priv_lfn_reset() clears the whole array: a group that
+ *          never arrived leaves zeros, and the name stops there rather than
+ *          running on into another chain's characters.
+ *
+ * @invariant `units` holds at most ::k_lfn_write_max units, the same cap the
+ *            write side enforces, so a name that fits on disk fits here.
+ * @see priv_lfn_add()
+ * @since 0.1.0
+ */
 typedef struct {
-  char    name[k_lfn_name_cap]; /**< Reassembled name (NUL-terminated).     */
-  uint8_t checksum;             /**< 8.3 checksum the chain claims.         */
-  uint8_t have;                 /**< 1 once any group has been accumulated. */
+  uint16_t units[k_lfn_write_max]; /**< Reassembled UTF-16LE units; 0 ends it. */
+  uint8_t  checksum;               /**< 8.3 checksum the chain claims.         */
+  uint8_t  have;                   /**< 1 once any group has been accumulated. */
 } lfn_state_t;
 
 /**
@@ -611,17 +633,23 @@ typedef struct {
  *          cluster. It also means the alias probing and the free-run search --
  *          the only two parts that read the directory -- happen exactly once.
  *
+ *          The name travels as CODE UNITS rather than as a pointer to the
+ *          caller's UTF-8. Decoding once, in ::priv_dir_reserve(), is what lets
+ *          the commit fill slots without re-deriving a length -- and it removes
+ *          the old rule that the caller's buffer had to outlive the commit.
+ *
  * @invariant `lfn_entries` is 0 exactly when the name fits an 8.3 entry.
- * @invariant `leaf` stays valid until ::priv_dir_commit() returns.
+ * @invariant `nunits` is the unit count ::priv_name_classify() produced.
  * @see priv_dir_reserve()
  * @since 0.1.0
  */
 typedef struct {
-  dir_slot_t  start;                  /**< First slot of the reserved run.          */
-  const char* leaf;                   /**< Caller's name; the chain's source text.  */
-  uint8_t     name83[k_max_8_3_name]; /**< Packed 8.3 name, or the generated alias. */
-  uint8_t     ntres;                  /**< `DIR_NTRes` case flags for the entry.    */
-  uint8_t     lfn_entries;            /**< Chain slots ahead of the 8.3 entry.      */
+  dir_slot_t start;                  /**< First slot of the reserved run.          */
+  uint16_t   units[k_lfn_write_max]; /**< The name, as UTF-16LE code units.        */
+  uint32_t   nunits;                 /**< How many of `units` the name occupies.   */
+  uint8_t    name83[k_max_8_3_name]; /**< Packed 8.3 name, or the generated alias. */
+  uint8_t    ntres;                  /**< `DIR_NTRes` case flags for the entry.    */
+  uint8_t    lfn_entries;            /**< Chain slots ahead of the 8.3 entry.      */
 } dir_insert_t;
 
 /**

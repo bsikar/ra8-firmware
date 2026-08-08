@@ -40,7 +40,7 @@
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_oc_lfn_write_max = 247U, /**< 19 groups * 13 characters. */
+  k_oc_lfn_utf8_cap = 742U, /**< 3 * 247 units, plus a NUL: the UTF-8 cap. */
 } open_cov_name_cap_t;
 
 /**
@@ -261,16 +261,19 @@ static void test_open_existing_no_mem(void)
  *
  * @details
  * Since #600 a directory component is looked up as a long name as well as an
- * 8.3 one, so thirteen characters is ordinary and the ceiling moved to
- * `k_lfn_write_max` (mirrored here as ::k_oc_lfn_write_max). A component past
- * that cannot exist on any volume this driver writes, so it is refused rather
- * than searched for.
+ * 8.3 one, so thirteen characters is ordinary and the ceiling moved to the
+ * long-name limit. Since #606 that limit is expressed in UTF-8 BYTES here --
+ * `k_lfn_utf8_cap`, mirrored as ::k_oc_lfn_utf8_cap -- because the component
+ * arrives as UTF-8 and is copied into a buffer of that size; the 247-UNIT limit
+ * is enforced separately, by `priv_name_classify()`. Bounding the bytes by the
+ * unit count would have refused a perfectly storable name three characters into
+ * a Cyrillic directory.
  *
  * @par MC/DC:
- * Decision: `if (len > k_lfn_write_max)` in
+ * Decision: `if (len >= k_lfn_utf8_cap)` in
  * `libs/ra8_fs/src/ra8_fs_fat_file.c@priv_enter_subdir` (1 condition).
  * V1: len = 13  -> FALSE (the sibling multi-component tests).
- * V2: len = 248 -> TRUE  -> k_ra8_err_invalid_arg.
+ * V2: len = 742 -> TRUE  -> k_ra8_err_invalid_arg.
  * N=1 condition, 1 independent vector per DO-178C 6.4.4.3. A `len == 0`
  * guard used to sit alongside this one; it was removed rather than
  * deactivated, because `priv_resolve_parent()` skips repeated separators and
@@ -290,16 +293,19 @@ static void test_enter_subdir_name_too_long(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  /* One character past the cap: "/AAA...A/FILE.TXT". The value is restated
-   * here rather than included, because ra8_fs_fat_internal.h and this suite's
-   * own fixture header both name the BPB offsets and would collide. */
-  char path[(uint32_t)k_oc_lfn_write_max + 16U] = {};
-  path[0]                                       = '/';
-  for (uint32_t i = 0U; i <= (uint32_t)k_oc_lfn_write_max; i++) {
+  /* One BYTE past the cap: "/AAA...A/FILE.TXT". The guard in
+   * `priv_enter_subdir` bounds the UTF-8 buffer it copies the component into,
+   * so it counts bytes; the 247-UNIT limit is a separate test, in
+   * `priv_name_classify` (#606). The value is restated here rather than
+   * included, because ra8_fs_fat_internal.h and this suite's own fixture header
+   * both name the BPB offsets and would collide. */
+  char path[(uint32_t)k_oc_lfn_utf8_cap + 16U] = {};
+  path[0]                                      = '/';
+  for (uint32_t i = 0U; i < (uint32_t)k_oc_lfn_utf8_cap; i++) {
     path[1U + i] = 'A';
   }
-  (void)snprintf(&path[2U + (uint32_t)k_oc_lfn_write_max],
-                 sizeof(path) - (2U + (uint32_t)k_oc_lfn_write_max),
+  (void)snprintf(&path[1U + (uint32_t)k_oc_lfn_utf8_cap],
+                 sizeof(path) - (1U + (uint32_t)k_oc_lfn_utf8_cap),
                  "/FILE.TXT");
 
   ra8_fs_file_t* f = nullptr;

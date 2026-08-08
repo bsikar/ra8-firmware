@@ -84,14 +84,28 @@ static ra8_err_t priv_exfat_enter(const ra8_fs_mount_t* m,
                                   uint32_t              len,
                                   exfat_dir_t*          out)
 {
-  if (len > (uint32_t)k_exfat_name_cap) {
+  /* Two bounds, in two domains, and both are needed. The BYTE bound sizes the
+   * buffer, because @p comp is UTF-8 here and a 64-unit name is up to three
+   * times that many bytes. The UNIT bound below is the one the FORMAT imposes,
+   * so it is checked after conversion -- 65 ASCII characters and 65 accented
+   * ones are equally one over, and only the unit count says so (#606). */
+  if (len >= (uint32_t)k_exfat_name_u8_cap) {
     return k_ra8_err_invalid_arg;
   }
-  char namebuf[(uint32_t)k_exfat_name_cap + 1U] = {};
+  char namebuf[k_exfat_name_u8_cap] = {};
   for (uint32_t i = 0U; i < len; i++) {
     namebuf[i] = comp[i];
   }
-  namebuf[len]                              = '\0';
+  namebuf[len]                            = '\0';
+  uint16_t        units[k_exfat_name_cap] = {};
+  uint32_t        nunits                  = 0U;
+  const ra8_err_t ce                      = priv_exfat_name_to_units(m, namebuf, units, &nunits);
+  if (ce == k_ra8_err_no_mem) {
+    return k_ra8_err_invalid_arg; /* over the name cap: an argument error */
+  }
+  if (ce != k_ra8_ok) {
+    return ce;
+  }
   uint8_t         strm[k_exfat_entry_bytes] = {};
   uint8_t         attr                      = 0U;
   const ra8_err_t e                         = priv_exfat_find(m, cur, namebuf, strm, &attr);
@@ -246,15 +260,17 @@ static ra8_err_t priv_exfat_zero_cluster(const ra8_fs_mount_t* m, uint32_t clus)
  *
  * @param[in]  m     Mounted exFAT volume.
  * @param[out] set   Buffer of at least ::k_exfat_max_set_bytes bytes.
- * @param[in]  name  Leaf name (ASCII).
- * @param[in]  nlen  Name length in characters.
+ * @param[in]  name  Leaf name as UTF-16 code units.
+ * @param[in]  nlen  Name length in UTF-16 UNITS, which is what `NameLength`
+ *                   counts and what a Name entry holds fifteen of (#606).
  * @param[in]  first The directory's own first cluster.
  *
  * @return The total byte length of the built set.
  * @retval >0 Number of bytes written into @p set.
  *
  * @pre @p m, @p set and @p name are non-NULL; @p set is large enough.
- * @pre `priv_strlen(name) == nlen` and @p nlen is within ::k_exfat_name_cap.
+ * @pre @p nlen is the unit count ::priv_exfat_name_to_units() produced, and is
+ *      within ::k_exfat_name_cap.
  * @post @p set holds a complete entry set with a valid SetChecksum.
  * @post No volume state is modified.
  *
@@ -265,7 +281,7 @@ static ra8_err_t priv_exfat_zero_cluster(const ra8_fs_mount_t* m, uint32_t clus)
 RA8_INTERNAL
 static uint32_t priv_exfat_build_dir_set(const ra8_fs_mount_t* m,
                                          uint8_t*              set,
-                                         const char*           name,
+                                         const uint16_t*       name,
                                          uint32_t              nlen,
                                          uint32_t              first)
 {
@@ -296,7 +312,9 @@ static uint32_t priv_exfat_build_dir_set(const ra8_fs_mount_t* m,
     for (uint32_t c = 0U; c < (uint32_t)k_exfat_name_per_entry; c++) {
       const uint32_t pos = (n * (uint32_t)k_exfat_name_per_entry) + c;
       if (pos < nlen) {
-        ne[k_exfat_name_off + (c * 2U)] = (uint8_t)name[pos];
+        /* A whole UTF-16 unit, not the low byte of one -- the same correction
+         * the file-side builder needed (#606). */
+        priv_wr16(&ne[k_exfat_name_off + (c * 2U)], name[pos]);
       }
     }
   }
@@ -367,8 +385,8 @@ priv_exfat_dir_alloc(const ra8_fs_mount_t* m, uint32_t* out_clus, uint32_t* out_
  *
  * @param[in] m      Mounted exFAT volume.
  * @param[in] parent Directory the name would be created in.
- * @param[in] leaf   Leaf name (ASCII).
- * @param[in] nlen   Length of @p leaf.
+ * @param[in] leaf   Leaf name, UTF-8 (the existence probe converts it itself).
+ * @param[in] nlen   Length of @p leaf in UTF-16 UNITS.
  *
  * @return Error code.
  * @retval k_ra8_ok              The name is free and storable.
@@ -377,7 +395,7 @@ priv_exfat_dir_alloc(const ra8_fs_mount_t* m, uint32_t* out_clus, uint32_t* out_
  * @retval k_ra8_err_*           Backend read failure.
  *
  * @pre @p m, @p parent and @p leaf are non-NULL; the mount is exFAT.
- * @pre ``priv_strlen(leaf) == nlen``.
+ * @pre @p nlen is @p leaf's length in UTF-16 units.
  * @post No volume state is modified.
  * @post On k_ra8_ok nothing in @p parent answers to @p leaf.
  *
@@ -427,8 +445,20 @@ ra8_err_t priv_exfat_mkdir(const ra8_fs_mount_t* m, const char* path)
   if (e != k_ra8_ok) {
     return e;
   }
-  const uint32_t nlen = priv_strlen(leaf);
-  e                   = priv_exfat_mkdir_check(m, &parent, leaf, nlen);
+  /* The leaf becomes code units here, once, and every on-disk length below
+   * counts those: the slot run, `NameLength`, and the name hash. Counting the
+   * caller's BYTES instead is what made a directory whose name held one
+   * multi-byte character unopenable by that name (#606). */
+  uint16_t        units[k_exfat_name_cap] = {};
+  uint32_t        nlen                    = 0U;
+  const ra8_err_t ne                      = priv_exfat_name_to_units(m, leaf, units, &nlen);
+  if (ne == k_ra8_err_no_mem) {
+    return k_ra8_err_invalid_arg; /* over the name cap: an argument, not a full disk */
+  }
+  if (ne != k_ra8_ok) {
+    return ne;
+  }
+  e = priv_exfat_mkdir_check(m, &parent, leaf, nlen);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -449,8 +479,8 @@ ra8_err_t priv_exfat_mkdir(const ra8_fs_mount_t* m, const char* path)
     return e;
   }
   uint8_t        set[k_exfat_max_set_bytes] = {};
-  const uint32_t bytes                      = priv_exfat_build_dir_set(m, set, leaf, nlen, newclus);
-  e                                         = priv_exfat_write_dir_set(m, dclus, didx, set, bytes);
+  const uint32_t bytes = priv_exfat_build_dir_set(m, set, units, nlen, newclus);
+  e                    = priv_exfat_write_dir_set(m, dclus, didx, set, bytes);
   if (e != k_ra8_ok) {
     (void)priv_exfat_bitmap_clear(m, bmp_lba, newclus, 1U); /* never leak the cluster */
     return e;

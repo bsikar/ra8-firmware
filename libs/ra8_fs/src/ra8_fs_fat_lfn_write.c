@@ -80,7 +80,8 @@ typedef enum : uint32_t {
  *
  * @param[in]  m    Mounted FAT12/16/32 volume.
  * @param[in]  loc  Directory the entry is going into.
- * @param[in]  leaf Long name being filed.
+ * @param[in]  leaf Long name being filed, as UTF-16 code units.
+ * @param[in]  n    Number of units in @p leaf.
  * @param[out] out11 Receives the packed 11-byte alias.
  *
  * @return Error code.
@@ -89,7 +90,8 @@ typedef enum : uint32_t {
  * @retval k_ra8_err_*      Backend read error while probing.
  *
  * @pre All pointers are non-NULL; @p out11 addresses `k_max_8_3_name` bytes.
- * @pre @p leaf passed ::priv_name_classify() as `k_name_kind_long`.
+ * @pre @p leaf is the unit array ::priv_name_classify() filled, and it reported
+ *      `k_name_kind_long` for it.
  * @post On success no entry in @p loc carries the name in @p out11.
  * @post No on-disk state is modified.
  *
@@ -98,14 +100,17 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_alias_unique(const ra8_fs_mount_t* m, const dir_loc_t* loc, const char* leaf, uint8_t* out11)
+static ra8_err_t priv_alias_unique(const ra8_fs_mount_t* m,
+                                   const dir_loc_t*      loc,
+                                   const uint16_t*       leaf,
+                                   uint32_t              n,
+                                   uint8_t*              out11)
 {
   uint32_t lba                             = 0U;
   uint32_t off                             = 0U;
   uint8_t  entry[k_ra8_fs_dir_entry_bytes] = {};
   for (uint32_t tail = 1U; tail <= (uint32_t)k_lfn_alias_tail_max; tail++) {
-    priv_lfn_alias_basis(leaf, tail, out11);
+    priv_lfn_alias_basis(leaf, n, tail, out11);
     const ra8_err_t err = priv_dir_find(m, loc, out11, &lba, &off, entry);
     if (err == k_ra8_err_not_found) {
       return k_ra8_ok;
@@ -278,23 +283,26 @@ static ra8_err_t priv_dir_grow(const ra8_fs_mount_t* m, const dir_loc_t* loc)
 ra8_err_t
 priv_dir_reserve(const ra8_fs_mount_t* m, const dir_loc_t* loc, const char* leaf, dir_insert_t* out)
 {
-  out->lfn_entries              = 0U;
-  out->leaf                     = leaf;
-  const ra8_fs_name_kind_t kind = priv_name_classify(leaf, out->name83, &out->ntres);
+  out->lfn_entries = 0U;
+  out->nunits      = 0U;
+  const ra8_fs_name_kind_t kind =
+    priv_name_classify(leaf, out->units, &out->nunits, out->name83, &out->ntres);
   if (kind == k_name_kind_invalid) {
     return k_ra8_err_invalid_arg;
   }
   uint32_t need = 1U;
   if (kind == k_name_kind_long) {
-    const ra8_err_t aerr = priv_alias_unique(m, loc, leaf, out->name83);
+    const ra8_err_t aerr = priv_alias_unique(m, loc, out->units, out->nunits, out->name83);
     if (aerr != k_ra8_ok) {
       return aerr;
     }
-    out->ntres          = 0U; /* the chain carries the case; the alias is upper-case */
-    const uint32_t nlen = priv_strlen(leaf);
-    out->lfn_entries =
-      (uint8_t)(((nlen + (uint32_t)k_lfn_chars_per_ent) - 1U) / (uint32_t)k_lfn_chars_per_ent);
-    need = (uint32_t)out->lfn_entries + 1U;
+    out->ntres = 0U; /* the chain carries the case; the alias is upper-case */
+    /* Groups of THIRTEEN CODE UNITS -- the slot's capacity. Deriving this from
+     * a byte count put a 2-byte character's worth of slots on a 1-unit
+     * character, and the chain then disagreed with its own contents (#606). */
+    out->lfn_entries = (uint8_t)(((out->nunits + (uint32_t)k_lfn_chars_per_ent) - 1U) /
+                                 (uint32_t)k_lfn_chars_per_ent);
+    need             = (uint32_t)out->lfn_entries + 1U;
   }
   for (uint32_t attempt = 0U; attempt <= (uint32_t)k_lfnw_grow_max; attempt++) {
     const ra8_err_t ferr = priv_dir_find_free_run(m, loc, need, &out->start);
@@ -370,11 +378,11 @@ ra8_err_t priv_dir_commit(const ra8_fs_mount_t* m,
                           uint32_t*             out_lba,
                           uint32_t*             out_off)
 {
-  const uint32_t nlen  = (plan->lfn_entries != 0U) ? priv_strlen(plan->leaf) : 0U;
-  const uint8_t  csum  = priv_sfn_checksum(plan->name83);
-  const uint32_t total = (uint32_t)plan->lfn_entries + 1U;
-  dir_slot_t     cur   = plan->start;
-  uint32_t       lba   = cur.w.cur_lba;
+  const uint32_t nlen                           = (plan->lfn_entries != 0U) ? plan->nunits : 0U;
+  const uint8_t  csum                           = priv_sfn_checksum(plan->name83);
+  const uint32_t total                          = (uint32_t)plan->lfn_entries + 1U;
+  dir_slot_t     cur                            = plan->start;
+  uint32_t       lba                            = cur.w.cur_lba;
   uint8_t        buf[k_ra8_fs_bytes_per_sector] = {};
   ra8_err_t      err                            = priv_read_sector(m, lba, buf);
   if (err != k_ra8_ok) {
@@ -384,7 +392,7 @@ ra8_err_t priv_dir_commit(const ra8_fs_mount_t* m,
     uint8_t* slot = &buf[(size_t)cur.ent * (size_t)k_ra8_fs_dir_entry_bytes];
     if (i < (uint32_t)plan->lfn_entries) {
       priv_lfn_fill_slot(slot,
-                         plan->leaf,
+                         plan->units,
                          nlen,
                          (uint32_t)plan->lfn_entries - i,
                          (uint8_t)((i == 0U) ? 1U : 0U),

@@ -588,7 +588,14 @@ static ra8_err_t priv_mount_locked(const ra8_fs_backend_t* backend, ra8_fs_mount
   }
   m->backend            = *backend;
   m->partition_base_lba = 0U;
-  ra8_err_t err         = priv_read_boot_sector(m);
+  /* The mount table is a fixed array, so this is very likely the slot some
+   * earlier volume used. Both fields below are reset for the same reason the
+   * allocator's own state is (see ra8_fs_fat_alloc_internal.h): a slot handed
+   * out again carrying the last volume's answers hands them to this one.
+   * `exfat_upcase_ok` says "this build's up-case table is the one this VOLUME
+   * carries", and a fresh mount vouches for nothing until it has looked (#606). */
+  m->exfat_upcase_ok = 0U;
+  ra8_err_t err      = priv_read_boot_sector(m);
   if (err != k_ra8_ok) {
     return err;
   }

@@ -40,7 +40,6 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_exfat_list_name_cap  = 64U, /**< Listdir name buffer (truncated + NUL). */
   k_exfat_rename_entries = 3U,  /**< In-place rename set: File+Stream+Name. */
   k_exfat_rename_bytes   = 96U, /**< Three 32-byte entries.                 */
 } exfat_mutate_const_t;
@@ -80,12 +79,12 @@ priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus
  *
  * @param[in]     m         Mounted exFAT volume.
  * @param[in,out] cur       Directory cursor (just past the File entry).
- * @param[in]     path      Target name (ASCII, root-level).
- * @param[in]     nlen      Length of @p path.
+ * @param[in]     name      Target name as UTF-16 code units.
+ * @param[in]     nlen      Number of units in @p name.
  * @param[in]     sc        SecondaryCount from the File entry.
  * @param[out]    pos       Position array (slot 0 already holds the File).
  * @param[out]    strm_copy Receives the 32-byte Stream entry when matched.
- * @param[out]    out_match Receives 1 when the whole set matches @p path.
+ * @param[out]    out_match Receives 1 when the whole set matches @p name.
  * @return Error code.
  * @retval k_ra8_ok    All @p sc secondaries were consumed.
  * @retval k_ra8_err_* Backend read failure mid-set.
@@ -99,7 +98,7 @@ priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus
 RA8_INTERNAL
 static ra8_err_t priv_exfat_take_set(const ra8_fs_mount_t* m,
                                      exfat_cursor_t*       cur,
-                                     const char*           path,
+                                     const uint16_t*       name,
                                      uint32_t              nlen,
                                      uint32_t              sc,
                                      exfat_setpos_t*       pos,
@@ -135,12 +134,75 @@ static ra8_err_t priv_exfat_take_set(const ra8_fs_mount_t* m,
       continue;
     }
     const uint32_t cpos = (k - 1U) * (uint32_t)k_exfat_name_per_entry;
-    if (priv_exfat_name_chunk_eq(se, path, cpos, nlen) == 0U) {
+    if (priv_exfat_name_chunk_eq(se, name, cpos, nlen) == 0U) {
       matched = 0U;
     }
   }
   *out_match = matched;
   return k_ra8_ok;
+}
+
+/**
+ * @brief Test one File entry set against a needle, recording its positions.
+ *
+ * @details The per-File-entry body of ::priv_exfat_find_set, extracted so the
+ * walk stays under the statement-count gate. On a match it fills @p pos and
+ * @p out_count; otherwise it reports ::k_ra8_err_not_found so the caller keeps
+ * scanning.
+ *
+ * @param[in]     m         Mounted exFAT volume.
+ * @param[in,out] cur       Cursor positioned just after the File entry @p e.
+ * @param[in]     at        Position of @p e itself.
+ * @param[in]     e         The 32-byte File entry.
+ * @param[in]     need      Needle name as UTF-16 units.
+ * @param[in]     nlen      Number of units in @p need.
+ * @param[out]    pos       Receives the set's positions (File entry first).
+ * @param[in]     max_pos   Capacity of @p pos.
+ * @param[out]    out_count Receives the entry count on a match.
+ * @param[out]    file_copy Receives the 32-byte File entry.
+ * @param[out]    strm_copy Receives the 32-byte Stream-extension entry.
+ * @return Error code.
+ * @retval k_ra8_ok            This set matches; outputs populated.
+ * @retval k_ra8_err_not_found This set is not @p need; keep scanning.
+ * @retval k_ra8_err_no_mem    The set has more entries than @p max_pos.
+ * @retval k_ra8_err_*         Backend read failure mid-set.
+ * @pre All pointers are non-NULL; @p e[0] is ::k_exfat_entry_file.
+ * @pre @p cur sits immediately after @p e.
+ * @post @p cur sits past the set's last secondary.
+ * @post On a match @p out_count is 1 + SecondaryCount.
+ * @note Helper of ::priv_exfat_find_set (statement-count split).
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_exfat_try_set(const ra8_fs_mount_t* m,
+                                    exfat_cursor_t*       cur,
+                                    exfat_setpos_t        at,
+                                    const uint8_t*        e,
+                                    const uint16_t*       need,
+                                    uint32_t              nlen,
+                                    exfat_setpos_t*       pos,
+                                    uint32_t              max_pos,
+                                    uint32_t*             out_count,
+                                    uint8_t*              file_copy,
+                                    uint8_t*              strm_copy)
+{
+  const uint32_t sc    = (uint32_t)e[k_exfat_off_file_secnt];
+  const uint32_t total = 1U + sc;
+  if (total > max_pos) {
+    return k_ra8_err_no_mem;
+  }
+  pos[0] = at;
+  priv_byte_copy(file_copy, e, (uint32_t)k_exfat_entry_bytes);
+  uint8_t         matched = 0U;
+  const ra8_err_t r       = priv_exfat_take_set(m, cur, need, nlen, sc, pos, strm_copy, &matched);
+  if (r != k_ra8_ok) {
+    return r; /* GCOVR_EXCL_LINE */
+  }
+  if (matched == 1U) {
+    *out_count = total;
+    return k_ra8_ok;
+  }
+  return k_ra8_err_not_found;
 }
 
 /** @brief Implementation of `priv_exfat_find_set()` -- one aligned walk of a directory. */
@@ -157,9 +219,14 @@ ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
   while (*path == '/') {
     path++;
   }
+  uint16_t        need[k_exfat_name_cap] = {};
+  uint32_t        nlen                   = 0U;
+  const ra8_err_t ne = priv_exfat_needle_units(m, path, need, &nlen, k_ra8_err_not_found);
+  if (ne != k_ra8_ok) {
+    return ne;
+  }
   exfat_cursor_t cur = {};
   priv_exfat_cursor_init(dir, &cur);
-  const uint32_t nlen = priv_strlen(path);
   while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
     const exfat_setpos_t at = {.cluster = cur.cluster, .index = cur.entry_in_cluster};
     uint8_t              e[k_exfat_entry_bytes] = {};
@@ -173,21 +240,10 @@ ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
     if (e[0] != (uint8_t)k_exfat_entry_file) {
       continue;
     }
-    const uint32_t sc    = (uint32_t)e[k_exfat_off_file_secnt];
-    const uint32_t total = 1U + sc;
-    if (total > max_pos) {
-      return k_ra8_err_no_mem;
-    }
-    pos[0] = at;
-    priv_byte_copy(file_copy, e, (uint32_t)k_exfat_entry_bytes);
-    uint8_t matched = 0U;
-    r               = priv_exfat_take_set(m, &cur, path, nlen, sc, pos, strm_copy, &matched);
-    if (r != k_ra8_ok) {
-      return r; /* GCOVR_EXCL_LINE */
-    }
-    if (matched == 1U) {
-      *out_count = total;
-      return k_ra8_ok;
+    r =
+      priv_exfat_try_set(m, &cur, at, e, need, nlen, pos, max_pos, out_count, file_copy, strm_copy);
+    if (r != k_ra8_err_not_found) {
+      return r;
     }
   }
   return k_ra8_err_not_found; /* GCOVR_EXCL_LINE */
@@ -345,8 +401,8 @@ ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path)
  * @param[in]     m        Mounted exFAT volume.
  * @param[in]     pos      Positions of the set's three entries.
  * @param[in,out] set      The 96-byte set (File + Stream + Name).
- * @param[in]     new_path Replacement name (<= 15 characters).
- * @param[in]     new_len  Length of @p new_path.
+ * @param[in]     new_name Replacement name as UTF-16 units (<= 15 of them).
+ * @param[in]     new_len  Number of units in @p new_name.
  * @return Error code.
  * @retval k_ra8_ok    All three entries rewritten.
  * @retval k_ra8_err_* Backend write failure.
@@ -361,20 +417,20 @@ RA8_INTERNAL
 static ra8_err_t priv_exfat_apply_rename(const ra8_fs_mount_t* m,
                                          const exfat_setpos_t* pos,
                                          uint8_t*              set,
-                                         const char*           new_path,
+                                         const uint16_t*       new_name,
                                          uint32_t              new_len)
 {
   uint8_t* strm               = &set[k_exfat_entry_bytes];
   uint8_t* name               = &set[(size_t)2U * (size_t)k_exfat_entry_bytes];
   strm[k_exfat_strm_off_nlen] = (uint8_t)new_len;
-  priv_wr16(&strm[k_exfat_off_strm_hash], priv_exfat_name_hash(new_path, new_len));
+  priv_wr16(&strm[k_exfat_off_strm_hash], priv_exfat_name_hash(new_name, new_len));
   for (uint32_t i = 0U; i < (uint32_t)k_exfat_entry_bytes; i++) {
     name[i] = 0U;
   }
   name[0] = (uint8_t)k_exfat_entry_name;
   for (uint32_t c = 0U; c < (uint32_t)k_exfat_name_per_entry; c++) {
     if (c < new_len) {
-      name[k_exfat_name_off + (c * 2U)] = (uint8_t)new_path[c];
+      priv_wr16(&name[k_exfat_name_off + (c * 2U)], new_name[c]);
     }
   }
   /* Access stamp only, and before the checksum that covers it. Same reasoning
@@ -458,6 +514,40 @@ static ra8_err_t priv_exfat_rename_prepare(const ra8_fs_mount_t* m,
   return k_ra8_ok;
 }
 
+/**
+ * @brief Resolve one rename leaf to units, refusing a name past one Name entry.
+ *
+ * @details ::priv_exfat_needle_units plus the single-Name-entry bound both
+ * rename leaves share. Extracted so ::priv_exfat_rename stays under the
+ * statement-count gate; the bound is ::k_exfat_name_per_entry because an
+ * in-place rename rewrites exactly one Name entry (#606).
+ *
+ * @param[in]  m       Mounted exFAT volume.
+ * @param[in]  name    Leaf name, UTF-8, already parent-resolved.
+ * @param[out] out     Receives up to ::k_exfat_name_cap code units.
+ * @param[out] out_len Receives the unit count.
+ * @return Error code.
+ * @retval k_ra8_ok                Converted and within one Name entry.
+ * @retval k_ra8_err_not_supported Over one Name entry, or a foreign up-case table.
+ * @retval k_ra8_err_invalid_arg   @p name is not well-formed UTF-8.
+ * @pre All pointers (@p m, @p name, @p out, @p out_len) are non-NULL.
+ * @pre @p out has room for ::k_exfat_name_cap code units.
+ * @post On failure `*out_len` is 0.
+ * @post No volume state is modified.
+ * @note Helper of ::priv_exfat_rename (statement-count split).
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t
+priv_exfat_rename_leaf(const ra8_fs_mount_t* m, const char* name, uint16_t* out, uint32_t* out_len)
+{
+  const ra8_err_t e = priv_exfat_needle_units(m, name, out, out_len, k_ra8_err_not_supported);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  return (*out_len > (uint32_t)k_exfat_name_per_entry) ? k_ra8_err_not_supported : k_ra8_ok;
+}
+
 /* `priv_exfat_rename()`: see header for the documented contract. */
 ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const char* new_path)
 {
@@ -469,13 +559,21 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   if (pe != k_ra8_ok) {
     return pe;
   }
-  const uint32_t old_len = priv_strlen(old_name);
-  const uint32_t new_len = priv_strlen(new_name);
-  if (old_len > (uint32_t)k_exfat_name_per_entry) {
-    return k_ra8_err_not_supported;
+  /* Both leaf names in UTF-16 first: the one-Name-entry limit below bounds CODE
+   * UNITS, and a UTF-8 argument of the same unit count can be three times as
+   * many bytes (#606). The leaves come from the prepare step, which has already
+   * resolved the parent directory and stripped the path. */
+  uint16_t        new_units[k_exfat_name_cap] = {};
+  uint32_t        new_len                     = 0U;
+  const ra8_err_t nce = priv_exfat_rename_leaf(m, new_name, new_units, &new_len);
+  if (nce != k_ra8_ok) {
+    return nce;
   }
-  if (new_len > (uint32_t)k_exfat_name_per_entry) {
-    return k_ra8_err_not_supported;
+  uint16_t        old_units[k_exfat_name_cap] = {};
+  uint32_t        old_len                     = 0U;
+  const ra8_err_t oce = priv_exfat_rename_leaf(m, old_name, old_units, &old_len);
+  if (oce != k_ra8_ok) {
+    return oce;
   }
   uint8_t e_strm[k_exfat_entry_bytes] = {};
   uint8_t e_attr                      = 0U;
@@ -499,30 +597,43 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   if (count != (uint32_t)k_exfat_rename_entries) {
     return k_ra8_err_not_supported;
   }
-  return priv_exfat_apply_rename(m, pos, set, new_name, new_len);
+  return priv_exfat_apply_rename(m, pos, set, new_units, new_len);
 }
 
 /**
- * @brief Consume a set's Name entries and assemble the ASCII name.
+ * @brief Consume a set's Name entries and assemble the name as UTF-8.
  *
  * @details Reads the @p sc - 1 secondaries that follow the Stream entry,
- * copying the low byte of each UTF-16 unit into @p name until @p nlen
- * characters (or the buffer cap) are gathered. Non-Name secondaries are
- * consumed and skipped so the caller's cursor stays aligned.
+ * collecting whole UTF-16 code units, then converts the lot to UTF-8 in one
+ * step. Non-Name secondaries are consumed and skipped so the caller's cursor
+ * stays aligned.
+ *
+ * Collecting units and converting once is what makes the conversion possible at
+ * all. The old loop copied the LOW BYTE of each unit straight into the output,
+ * so U+00E9 came back as the single byte 0xE9 -- not valid UTF-8 -- and U+4F60
+ * came back as a backtick (#606). A variable-width encoding cannot be produced
+ * one fixed-width unit at a time into a byte-indexed buffer.
+ *
+ * A set whose units cannot be expressed in UTF-8 at all -- an unpaired
+ * surrogate, which no conforming writer produces -- yields an empty name, and
+ * ::priv_exfat_listdir reports nothing for that entry rather than a name that
+ * would not re-open the file.
  *
  * @param[in]     m    Mounted exFAT volume.
  * @param[in,out] cur  Directory cursor (just past the Stream entry).
  * @param[in]     sc   SecondaryCount from the File entry.
- * @param[in]     nlen NameLength from the Stream entry.
- * @param[out]    name Receives the NUL-terminated ASCII name.
+ * @param[in]     nlen NameLength from the Stream entry, in UTF-16 units.
+ * @param[out]    name Receives the NUL-terminated UTF-8 name.
  * @param[in]     cap  Capacity of @p name in bytes.
  * @return Error code.
  * @retval k_ra8_ok    All secondaries consumed; @p name terminated.
  * @retval k_ra8_err_* Backend read failure mid-set.
  * @pre @p cur sits immediately after the set's Stream entry.
  * @pre @p cap is at least 1.
- * @post @p cur sits immediately after the set's last secondary.
- * @post @p name is NUL-terminated (possibly truncated).
+ * @post @p cur sits immediately after the set's last secondary, whatever the
+ *       name turned out to be -- an unconvertible one must not desynchronise
+ *       the walk.
+ * @post @p name is NUL-terminated, and empty when the units were not UTF-8.
  * @note Helper of ::priv_exfat_listdir (complexity split).
  * @since 0.1.0
  */
@@ -534,7 +645,9 @@ static ra8_err_t priv_exfat_gather_name(const ra8_fs_mount_t* m,
                                         char*                 name,
                                         uint32_t              cap)
 {
-  uint32_t written = 0U;
+  uint16_t units[k_exfat_name_cap] = {};
+  uint32_t got                     = 0U;
+  name[0]                          = '\0';
   for (uint32_t k = 1U; k < sc; k++) {
     uint8_t         ne[k_exfat_entry_bytes] = {};
     const ra8_err_t r                       = priv_exfat_next_entry(m, cur, ne);
@@ -549,13 +662,77 @@ static ra8_err_t priv_exfat_gather_name(const ra8_fs_mount_t* m,
       if (p >= nlen) {
         break;
       }
-      if (written < (cap - 1U)) {
-        name[written] = (char)ne[k_exfat_name_off + (c * 2U)];
-        written++;
+      if (got < (uint32_t)k_exfat_name_cap) {
+        units[got] = priv_rd16(&ne[k_exfat_name_off + (c * 2U)]);
+        got++;
       }
     }
   }
-  name[written] = '\0';
+  if (priv_utf16_to_utf8(units, got, name, cap) != k_ra8_ok) {
+    name[0] = '\0';
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Emit one File entry set to the listdir callback.
+ *
+ * @details The per-set body of ::priv_exfat_listdir, extracted so the walk
+ * stays under the statement-count gate. Reads the Stream entry, decides the
+ * size a directory reports (0, not its allocation), gathers the name as UTF-8
+ * and fires @p cb -- unless the name is one no UTF-8 string encodes, which is
+ * reported as nothing rather than as mojibake (#606).
+ *
+ * @param[in]     m    Mounted exFAT volume.
+ * @param[in,out] cur  Cursor positioned just after the File entry.
+ * @param[in]     e    The 32-byte File entry.
+ * @param[in]     cb   Per-entry callback.
+ * @param[in]     ctx  Opaque pointer forwarded to @p cb.
+ * @return Error code.
+ * @retval k_ra8_ok    The set was consumed (and emitted, unless nameless).
+ * @retval k_ra8_err_* Backend read failure mid-set.
+ * @pre All pointers are non-NULL; @p cur follows @p e.
+ * @pre @p e[0] is ::k_exfat_entry_file.
+ * @post @p cur sits past the set's last secondary.
+ * @post @p cb ran at most once for this set.
+ * @note Helper of ::priv_exfat_listdir (complexity split).
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_exfat_list_emit(const ra8_fs_mount_t* m,
+                                      exfat_cursor_t*       cur,
+                                      const uint8_t*        e,
+                                      ra8_fs_listdir_cb_t   cb,
+                                      void*                 ctx)
+{
+  const uint32_t sc                        = (uint32_t)e[k_exfat_off_file_secnt];
+  const uint8_t  attr                      = e[k_exfat_off_file_attr];
+  uint8_t        strm[k_exfat_entry_bytes] = {};
+  ra8_err_t      r                         = priv_exfat_next_entry(m, cur, strm);
+  if (r != k_ra8_ok) {
+    return r; /* GCOVR_EXCL_LINE */
+  }
+  if (strm[0] != (uint8_t)k_exfat_entry_stream) {
+    return k_ra8_ok;
+  }
+  /* A directory's exFAT DataLength is its ALLOCATION, not a byte count, so
+   * reporting it as a size would tell every caller that an empty folder held
+   * a cluster's worth of bytes. FAT reports 0 for a directory and so does
+   * ra8_fs_stat(); this is the third place that has to agree (#605). */
+  uint32_t size = priv_rd32(&strm[k_exfat_strm_off_dlen]);
+  if ((attr & (uint8_t)k_exfat_attr_directory) != 0U) {
+    size = 0U;
+  }
+  const uint32_t nlen                      = (uint32_t)strm[k_exfat_strm_off_nlen];
+  char           name[k_exfat_name_u8_cap] = {};
+  r = priv_exfat_gather_name(m, cur, sc, nlen, name, (uint32_t)k_exfat_name_u8_cap);
+  if (r != k_ra8_ok) {
+    return r; /* GCOVR_EXCL_LINE */
+  }
+  if (name[0] == '\0') {
+    return k_ra8_ok; /* units no UTF-8 string encodes: report nothing, not a lie */
+  }
+  cb(name, attr, size, ctx);
   return k_ra8_ok;
 }
 
@@ -582,31 +759,10 @@ ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m,
     if (e[0] != (uint8_t)k_exfat_entry_file) {
       continue;
     }
-    const uint32_t sc                        = (uint32_t)e[k_exfat_off_file_secnt];
-    const uint8_t  attr                      = e[k_exfat_off_file_attr];
-    uint8_t        strm[k_exfat_entry_bytes] = {};
-    r                                        = priv_exfat_next_entry(m, &cur, strm);
+    r = priv_exfat_list_emit(m, &cur, e, cb, ctx);
     if (r != k_ra8_ok) {
       return r; /* GCOVR_EXCL_LINE */
     }
-    if (strm[0] != (uint8_t)k_exfat_entry_stream) {
-      continue;
-    }
-    /* A directory's exFAT DataLength is its ALLOCATION, not a byte count, so
-     * reporting it as a size would tell every caller that an empty folder held
-     * a cluster's worth of bytes. FAT reports 0 for a directory and so does
-     * ra8_fs_stat(); this is the third place that has to agree (#605). */
-    uint32_t size = priv_rd32(&strm[k_exfat_strm_off_dlen]);
-    if ((attr & (uint8_t)k_exfat_attr_directory) != 0U) {
-      size = 0U;
-    }
-    const uint32_t nlen                        = (uint32_t)strm[k_exfat_strm_off_nlen];
-    char           name[k_exfat_list_name_cap] = {};
-    r = priv_exfat_gather_name(m, &cur, sc, nlen, name, (uint32_t)k_exfat_list_name_cap);
-    if (r != k_ra8_ok) {
-      return r; /* GCOVR_EXCL_LINE */
-    }
-    cb(name, attr, size, ctx);
   }
   return k_ra8_ok; /* GCOVR_EXCL_LINE */
 }

@@ -7,7 +7,7 @@
  * The first half of the FAT/exFAT adapter's cross-TU helper prototypes. Each
  * helper is defined `static`-free in exactly one FAT/exFAT translation unit and
  * called from at least one other. This part covers the alphabetical run from
- * `priv_83_to_str()` through `priv_exfat_unlink()`; the remaining helpers live
+ * `priv_83_to_str()` through `priv_exfat_upcase_verify()`; the remaining helpers live
  * in `ra8_fs_fat_protos_b_internal.h`. Both are aggregated by the
  * `ra8_fs_fat_internal.h` umbrella, which every `ra8_fs_fat*.c` file includes.
  *
@@ -522,7 +522,7 @@ uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len);
  *
  * @param[in]  m         Mounted exFAT volume.
  * @param[in]  dir       Directory to search.
- * @param[in]  path      Target leaf name (ASCII); leading slashes are skipped.
+ * @param[in]  path      Target leaf name, UTF-8; leading slashes are skipped.
  * @param[out] out_strm  Receives the matched 32-byte Stream-extension entry --
  *                       first cluster, both lengths and the secondary flags,
  *                       so a caller decodes the fields it needs rather than
@@ -641,20 +641,26 @@ ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m,
                              void*                 ctx);
 
 /**
- * @brief Compare one file-name entry's 15 UTF-16 units against an ASCII path.
+ * @brief Compare one file-name entry's 15 UTF-16 units against a needle.
  *
- * @details Case-insensitive ASCII match; any non-ASCII unit fails the match.
- * Positions at/after @p nlen are treated as already matched (tail padding).
+ * @details Case-insensitive under the canonical up-case table
+ * (::priv_exfat_upcase_unit), which is the fold the exFAT specification defines
+ * name matching against. Positions at/after @p nlen are treated as already
+ * matched (tail padding).
+ *
+ * It used to compare the low byte of each unit with an ASCII fold and reject
+ * any unit whose high byte was set, so a name outside ASCII never matched at
+ * all (#606).
  *
  * @param[in] entry 32-byte file-name (0xC1) entry.
- * @param[in] path  Target path (ASCII).
+ * @param[in] name  Target name as UTF-16 code units.
  * @param[in] pos   Index of the first name unit this entry covers.
  * @param[in] nlen  Total name length in UTF-16 units.
  * @return 1 if this slice matches, else 0.
  * @retval 1 Slice matches.
- * @retval 0 Mismatch or non-ASCII unit.
- * @pre @p entry and @p path are non-NULL.
- * @pre ``priv_strlen(path) == nlen``.
+ * @retval 0 At least one folded unit differs.
+ * @pre @p entry and @p name are non-NULL.
+ * @pre @p name holds at least @p nlen units.
  * @post No state modified.
  * @post Inputs are unmodified.
  * @note Pure function.
@@ -662,25 +668,96 @@ ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m,
  */
 RA8_PRIV
 uint8_t
-priv_exfat_name_chunk_eq(const uint8_t* entry, const char* path, uint32_t pos, uint32_t nlen);
+priv_exfat_name_chunk_eq(const uint8_t* entry, const uint16_t* name, uint32_t pos, uint32_t nlen);
 
 /**
- * @brief Compute the exFAT NameHash for an ASCII path.
+ * @brief Compute the exFAT NameHash for a name in UTF-16 code units.
  *
- * @details Hashes the up-cased UTF-16LE name (low then high byte per unit).
- * @param[in] path File name (ASCII).
- * @param[in] nlen Name length in characters.
+ * @details Hashes the up-cased UTF-16LE name (low then high byte per unit),
+ * up-casing through ::priv_exfat_upcase_unit -- the volume's own table, which is
+ * what the specification defines the hash over.
+ *
+ * Up-casing with an ASCII-only rule, which is what this did, stored a hash no
+ * compliant reader recomputes for any name outside ASCII: the host could see
+ * the file listed and then fail to find it, because the hash is the index it
+ * probes with (#606).
+ *
+ * @param[in] name File name as UTF-16 code units.
+ * @param[in] nlen Name length in UTF-16 units.
  * @return 16-bit name hash.
  * @retval 0..0xFFFF The hash value.
- * @pre @p path is non-NULL.
- * @pre ``priv_strlen(path) == nlen``.
+ * @pre @p name is non-NULL and holds at least @p nlen units.
+ * @pre The volume's up-case table is the canonical one, or the name is ASCII.
  * @post No state modified.
  * @post Inputs unmodified.
- * @note ASCII up-casing matches the standard up-case table for a-z.
+ * @note Pure function.
  * @since 0.1.0
  */
 RA8_PRIV
-uint16_t priv_exfat_name_hash(const char* path, uint32_t nlen);
+uint16_t priv_exfat_name_hash(const uint16_t* name, uint32_t nlen);
+
+/**
+ * @brief Convert a caller's exFAT name to code units, refusing what will not fold.
+ *
+ * @details The one place an exFAT path becomes the units every on-disk
+ * structure counts in. Two refusals, both loud: a name that is not well-formed
+ * UTF-8, and a name outside ASCII on a volume whose up-case table this build
+ * cannot reproduce -- because the `NameHash` it would store is one the host
+ * disagrees with (see ::priv_exfat_upcase_verify).
+ *
+ * @param[in]  m         Mounted exFAT volume.
+ * @param[in]  path      Caller's name, NUL-terminated UTF-8, no leading slash.
+ * @param[out] out       Receives up to ::k_exfat_name_cap code units.
+ * @param[out] out_units Receives the unit count.
+ * @return Error code.
+ * @retval k_ra8_ok                Converted.
+ * @retval k_ra8_err_invalid_arg   @p path is not well-formed UTF-8.
+ * @retval k_ra8_err_no_mem        Over ::k_exfat_name_cap units.
+ * @retval k_ra8_err_not_supported Non-ASCII on a volume with a foreign table.
+ * @pre All pointers are non-NULL; @p out holds ::k_exfat_name_cap units.
+ * @pre @p m is a mounted exFAT volume.
+ * @post On failure `*out_units` is 0.
+ * @post No volume state is modified.
+ * @note Pure apart from the outputs.
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t priv_exfat_name_to_units(const ra8_fs_mount_t* m,
+                                   const char*           path,
+                                   uint16_t*             out,
+                                   uint32_t*             out_units);
+
+/**
+ * @brief Convert a leaf name to code units, mapping over-long to @p too_long.
+ *
+ * @details The exact wrapper the mutate verbs share: ::priv_exfat_name_to_units
+ * plus the one line that turns its ::k_ra8_err_no_mem -- a name past the cap --
+ * into whatever "absent" or "unsupported" code the caller reports. Factored
+ * out so find_set, rename and the create paths do not each restate it (#606).
+ *
+ * @param[in]  m         Mounted exFAT volume.
+ * @param[in]  name      Leaf name, NUL-terminated UTF-8, no leading slash.
+ * @param[out] out       Receives up to ::k_exfat_name_cap code units.
+ * @param[out] out_units Receives the unit count.
+ * @param[in]  too_long  The code returned when @p name exceeds the cap.
+ * @return Error code.
+ * @retval k_ra8_ok                Converted.
+ * @retval too_long                @p name is longer than ::k_exfat_name_cap.
+ * @retval k_ra8_err_invalid_arg   @p name is not well-formed UTF-8.
+ * @retval k_ra8_err_not_supported Non-ASCII on a volume with a foreign table.
+ * @pre All pointers are non-NULL; @p out holds ::k_exfat_name_cap units.
+ * @pre @p m is a mounted exFAT volume.
+ * @post On failure the unit count is 0.
+ * @post No volume state is modified.
+ * @note Pure apart from the outputs.
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t priv_exfat_needle_units(const ra8_fs_mount_t* m,
+                                  const char*           name,
+                                  uint16_t*             out,
+                                  uint32_t*             out_units,
+                                  ra8_err_t             too_long);
 
 /**
  * @brief Fetch the next 32-byte directory entry, following the cluster chain.
@@ -714,7 +791,7 @@ ra8_err_t priv_exfat_next_entry(const ra8_fs_mount_t* m, exfat_cursor_t* cur, ui
  * zero DataLength would otherwise describe (#604).
  *
  * @param[in]  handle   Mounted exFAT volume.
- * @param[in]  path     Flat root-level file name (ASCII).
+ * @param[in]  path     Flat root-level file name, UTF-8.
  * @param[in]  mode     Open mode; only ::k_ra8_fs_mode_read is supported.
  * @param[out] out_file Receives the open handle.
  * @return Error code.
@@ -791,7 +868,7 @@ uint16_t priv_exfat_set_checksum(const uint8_t* set, uint32_t bytes);
  * freeing a directory's run would strand every entry inside it (#604).
  *
  * @param[in] m    Mounted exFAT volume.
- * @param[in] path File path (ASCII), nested or root-level.
+ * @param[in] path File path, UTF-8, nested or root-level.
  * @return Error code.
  * @retval k_ra8_ok              File unlinked.
  * @retval k_ra8_err_invalid_arg @p path names a directory or the volume root.
@@ -806,3 +883,85 @@ uint16_t priv_exfat_set_checksum(const uint8_t* set, uint32_t bytes);
  */
 RA8_PRIV
 ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path);
+
+/**
+ * @brief Fold a UTF-16 code unit through the canonical exFAT up-case table.
+ *
+ * @details The exFAT specification defines both `NameHash` and name comparison
+ * over the UP-CASED name, using the table the volume carries. This build
+ * embeds and writes the canonical Microsoft table -- the one `mkfs.exfat` and
+ * the Windows formatter emit, checksum 0xE619D30D -- and this is the reader
+ * for it, so the hash stored on create is the hash a host recomputes.
+ *
+ * Look-up walks the compressed table rather than expanding it, because the
+ * expansion is 128 KiB. The ASCII range short-circuits to ::priv_ascii_upper,
+ * which the table agrees with for every one of those 128 units.
+ *
+ * A surrogate unit folds to itself: the table covers the BMP, and a
+ * supplementary code point has no simple case mapping inside a single unit.
+ *
+ * @param[in] unit UTF-16 code unit to fold.
+ * @return The up-cased unit.
+ * @retval unit  No mapping applies (identity run, or past the table).
+ * @retval other The table's mapping for @p unit.
+ * @pre None; every 16-bit value is a legal input.
+ * @pre The caller wants the VOLUME's fold and has checked
+ *      ::ra8_fs_mount_t::exfat_upcase_ok, or is folding a FAT long name.
+ * @post No state modified.
+ * @post The result depends only on @p unit and the embedded table.
+ * @note Pure function; trivially thread-safe.
+ * @since 0.1.0
+ */
+RA8_PRIV
+uint16_t priv_exfat_upcase_unit(uint16_t unit);
+
+/**
+ * @brief Rotate-add checksum of the up-case table this build embeds.
+ *
+ * @details The same 32-bit fold ::priv_exfat_write_upcase records in the
+ * volume's up-case directory entry, computed over the in-flash table. Having
+ * it as a function rather than a constant is the point: a constant could drift
+ * from the bytes it claims to describe, and this cannot.
+ *
+ * @return Checksum of ::k_exfat_fmt_upc_std_bytes table bytes.
+ * @retval 0xE619D30D The canonical Microsoft table, which is what is embedded.
+ * @pre None.
+ * @pre The caller compares it against a volume's `TableChecksum`.
+ * @post No state modified.
+ * @post The result is the same on every call.
+ * @note Pure function; trivially thread-safe.
+ * @since 0.1.0
+ */
+RA8_PRIV
+uint32_t priv_exfat_upcase_checksum(void);
+
+/**
+ * @brief Decide whether this build's fold matches the mounted volume's table.
+ *
+ * @details Walks the root directory for the up-case-table entry (0x82) and
+ * compares its `TableChecksum` against ::priv_exfat_upcase_checksum(). The
+ * answer lands in ::ra8_fs_mount_t::exfat_upcase_ok and decides one thing:
+ * whether a name containing anything outside ASCII may be created, renamed or
+ * looked up on this volume at all. An ASCII-only name folds identically under
+ * every conforming table, so it is never affected.
+ *
+ * Refusing the operation is the point. Hashing a name with a fold the volume
+ * does not use stores a `NameHash` the host disagrees with, and a host that
+ * cannot match the hash cannot find a file it can see listed -- a disagreement
+ * with the on-disk format rather than a limitation of this API (#606).
+ *
+ * A missing entry or a read error is treated exactly like a mismatch, so a
+ * volume this function could not interrogate degrades to ASCII-only names
+ * rather than failing to mount.
+ *
+ * @param[in,out] m Mount whose exFAT geometry is already populated.
+ * @return Nothing.
+ * @pre @p m is non-NULL and its exFAT region geometry is valid.
+ * @pre The backend is bound and ``partition_base_lba`` is final.
+ * @post ``m->exfat_upcase_ok`` is 0 or 1 and is never left unwritten.
+ * @post No volume state is modified.
+ * @note Not thread-safe; callers serialise mount operations.
+ * @since 0.1.0
+ */
+RA8_PRIV
+void priv_exfat_upcase_verify(ra8_fs_mount_t* m);

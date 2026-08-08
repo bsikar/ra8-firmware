@@ -6,7 +6,7 @@
  * Dedicated companion test executable that drives the branches in
  * ra8_fs_fat_lfn.c not yet exercised by test_ra8_fs_lfn.c:
  *
- *   - line 147: priv_lfn_name_for -- checksum mismatch path
+ *   - line 147: priv_lfn_units_for -- checksum mismatch path
  *   - lines 262, 301: priv_dir_find_long_sector k_lfn_scan_continue +
  *                     while-exit when the fixed root region is exhausted
  *   - lines 275-276: priv_dir_find_long -- leading-slash strip
@@ -21,7 +21,7 @@
  *
  * Line 129 of ra8_fs_fat_lfn.c (defensive buffer-overflow guard in
  * priv_lfn_add) is marked GCOVR_EXCL_LINE in the source because the
- * condition requires pos >= k_lfn_name_cap-1 = 255, but with
+ * condition requires pos >= k_lfn_write_max = 247, but with
  * k_lfn_max_entries=19 the maximum reachable pos is
  * (19-1)*13+12 = 246 < 255; no host input can trigger it.
  *
@@ -401,7 +401,7 @@ static void build_vol_lfn_good(void)
 /**
  * @brief Build FAT16 volume with a CORRUPTED checksum in the LFN entry.
  * @details Root dir: slot 0 = LFN (wrong checksum), slot 1 = 8.3 entry.
- *          priv_lfn_name_for will reject the chain, triggering line 147.
+ *          priv_lfn_units_for will reject the chain, triggering line 147.
  * @pre None.
  * @post s_disk contains a FAT16 image; checksum mismatch prevents LFN match.
  * @note Not thread-safe.
@@ -509,11 +509,11 @@ static void create_files_in(ra8_fs_mount_t* h, const char* dir_path, uint32_t co
 
 /**
  * @test test_lfn_cov_checksum_mismatch
- * @brief priv_lfn_name_for returns nullptr when checksum mismatches (line 147).
+ * @brief priv_lfn_units_for returns nullptr when checksum mismatches (line 147).
  *
  * @details A volume with a valid LFN entry BUT a corrupted LDIR_Chksum field
  *          is mounted. ra8_fs_open("mybook.epub") calls priv_dir_find_long,
- *          which calls priv_lfn_name_for. The checksum != computed value
+ *          which calls priv_lfn_units_for. The checksum != computed value
  *          check at line 146 is true; line 147 (return nullptr) is executed.
  *
  * @par MC/DC:

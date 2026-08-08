@@ -652,19 +652,29 @@ static void test_exfat_listdir_skip_non_stream(void)
  * byte 0) from 0xC1 to `k_mut_type_bogus` (0x42).  The Stream entry is
  * left intact (type 0xC0) so `priv_exfat_listdir` reaches `gather_name`.
  * Inside `gather_name` the patched entry fails the `ne[0] == 0xC1` check
- * and `continue` fires at line 489.  No name characters are copied, the
- * callback is still invoked with an empty name, and listdir returns
- * `k_ra8_ok` with count == 1.
+ * and `continue` fires, so no units are gathered.
  *
- * Lines targeted: 488-489 (non-name secondary skipped in gather_name).
+ * The entry is then NOT reported.  This case used to assert the opposite --
+ * one callback with an empty name -- which was the same class of defect #606
+ * is about: a listing entry the caller cannot do anything with, because `""`
+ * re-opens nothing.  A set whose name cannot be assembled has no name this
+ * library will vouch for, and the walk still consumes every secondary, so the
+ * cursor stays aligned and the entries after it are listed normally.
+ *
+ * Lines targeted: the non-name-secondary skip in gather_name, and the
+ * empty-name skip in listdir.
  *
  * @par MC/DC:
  * Decision: `if (ne[0] != k_exfat_entry_name)` -- 1 condition.
  * V1: type != 0xC1 -> T -> continue (this test).
- * V2: type == 0xC1 -> F -> copy name chars (normal gather_name path).
+ * V2: type == 0xC1 -> F -> copy name units (normal gather_name path).
+ *
+ * Decision: `if (name[0] == '\0')` in `priv_exfat_listdir` -- 1 condition.
+ * V3: no units gathered -> T -> the entry is skipped (this test).
+ * V4: a real name       -> F -> the callback fires (every sibling test).
  *
  * @pre Volume is formatted and accessible.
- * @post ra8_fs_listdir returns k_ra8_ok with count == 1.
+ * @post ra8_fs_listdir returns k_ra8_ok and reported nothing.
  *
  * @since 0.1.0
  */
@@ -682,10 +692,10 @@ static void test_exfat_gather_name_skip_non_name(void)
   const uint32_t name_off = root_byte(h, (uint32_t)k_mut_root_name0_idx);
   s_disk.bytes[name_off]  = (uint8_t)k_mut_type_bogus;
 
-  /* listdir must still fire the callback once (empty name), not error. */
+  /* listdir must walk cleanly and report nothing: there is no name here. */
   mut_list_ctx_t ctx = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
-  TEST_ASSERT_EQ(1U, ctx.count);
+  TEST_ASSERT_EQ(0U, ctx.count);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();

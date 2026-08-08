@@ -82,10 +82,22 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra8_fs_listdir_c
      * `data.log` stores `DATA    LOG` with both flags set, and reporting it as
      * `DATA.LOG` would lose the caller's own name for no reason (#600). */
     priv_83_to_str(&ent[k_dir_off_name], ent[k_dir_off_ntres], short_name);
-    /* Report the VFAT long name when the preceding chain matches; else the 8.3. */
-    const char*    lname = priv_lfn_name_for(lfn, &ent[k_dir_off_name]);
-    const uint32_t size  = priv_rd32(&ent[k_dir_off_file_size]);
-    cb((lname != nullptr) ? lname : short_name, ent[k_dir_off_attr], size, ctx);
+    /* Report the VFAT long name when the preceding chain matches; else the 8.3.
+     * The chain is UTF-16 on disk and UTF-8 at this boundary, and a chain that
+     * does not convert -- an unpaired surrogate, which nothing conforming
+     * writes -- falls back to the alias rather than being reported under a name
+     * that would not re-open it (#606). */
+    char            lname[k_lfn_utf8_cap] = {};
+    uint32_t        lnunits               = 0U;
+    const uint16_t* lunits                = priv_lfn_units_for(lfn, &ent[k_dir_off_name], &lnunits);
+    uint8_t         have_long             = 0U;
+    if (lunits != nullptr) {
+      have_long = (priv_utf16_to_utf8(lunits, lnunits, lname, (uint32_t)k_lfn_utf8_cap) == k_ra8_ok)
+                    ? 1U
+                    : 0U;
+    }
+    const uint32_t size = priv_rd32(&ent[k_dir_off_file_size]);
+    cb((have_long != 0U) ? lname : short_name, ent[k_dir_off_attr], size, ctx);
     priv_lfn_reset(lfn);
   }
   return 0U;

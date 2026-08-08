@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **240**
-- Total compound decisions in scope: **1295**
-- Decisions at 100% MC/DC (`yes`): **1115**
+- Source files with at least one decision: **241**
+- Total compound decisions in scope: **1299**
+- Decisions at 100% MC/DC (`yes`): **1119**
 - Decisions partially covered (`partial`): **74**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **86.10%**
+- Coverage rate (yes / total): **86.14%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **89**
-- Reachable-condition denominator (total - deactivated): **1206**
-- **Reachable MC/DC rate**: **92.45%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1210**
+- **Reachable MC/DC rate**: **92.48%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -272,13 +272,13 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_c6link_wifi_sta | 7 | 7 | 0 | 0 |
 | ra8_flash | 7 | 7 | 0 | 0 |
 | ra8_fs_fat_fileio | 7 | 7 | 0 | 0 |
-| ra8_fs_fat_lfn | 7 | 7 | 0 | 0 |
 | ra8_i3c | 7 | 7 | 0 | 0 |
 | ra8_mpu | 7 | 7 | 0 | 0 |
 | ra8_ota_parse | 7 | 7 | 0 | 0 |
 | ra8_tls | 7 | 7 | 0 | 0 |
 | ra8_dfu_boot | 6 | 6 | 0 | 0 |
 | ra8_epub_miniz_alloc | 6 | 6 | 0 | 0 |
+| ra8_fs_fat_lfn | 6 | 6 | 0 | 0 |
 | ra8_i2c | 6 | 6 | 0 | 0 |
 | ra8_mipi_dsi | 6 | 6 | 0 | 0 |
 | ra8_sci | 6 | 6 | 0 | 0 |
@@ -290,6 +290,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_c6link_tlv | 5 | 5 | 0 | 0 |
 | ra8_drw_draw | 5 | 5 | 0 | 0 |
 | ra8_fs_fat_fmt | 5 | 5 | 0 | 0 |
+| ra8_fs_utf | 5 | 5 | 0 | 0 |
 | ra8_gpt | 5 | 5 | 0 | 0 |
 | ra8_i2c_peripheral | 5 | 5 | 0 | 0 |
 | ra8_jof_png_chunk | 5 | 5 | 0 | 0 |

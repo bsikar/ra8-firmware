@@ -135,7 +135,7 @@ static void priv_entry_to_stat(const uint8_t* entry, ra8_fs_stat_t* out)
  *          bit that says so and the lengths come out of the same 32 bytes.
  *
  * @param[in]  m    Mounted exFAT volume.
- * @param[in]  path Path (ASCII), nested or root-level.
+ * @param[in]  path Path, UTF-8, nested or root-level.
  * @param[out] out  Receives the metadata of the entry.
  *
  * @return Error code.

@@ -112,7 +112,40 @@ static ra8_err_t priv_exfat_parse(ra8_fs_mount_t* m, const uint8_t* buf)
   m->root_entries        = 0U;
   m->first_root_lba      = 0U;
   m->total_sectors       = 0U;
+  /* Last, because it walks the root directory and so needs every field above.
+   * It cannot fail the mount: a volume it could not interrogate is simply one
+   * whose fold this build will not vouch for (#606). */
+  priv_exfat_upcase_verify(m);
   return k_ra8_ok;
+}
+
+/* `priv_exfat_upcase_verify()`: see header for the documented contract. */
+void priv_exfat_upcase_verify(ra8_fs_mount_t* m)
+{
+  m->exfat_upcase_ok = 0U;
+  exfat_cursor_t cur = {.cluster = m->root_cluster, .entry_in_cluster = 0U, .scanned = 0U};
+  while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
+    uint8_t         e[k_exfat_entry_bytes] = {};
+    const ra8_err_t r                      = priv_exfat_next_entry(m, &cur, e);
+    if (r != k_ra8_ok) {
+      return;
+    }
+    if (e[0] == (uint8_t)k_exfat_entry_eod) {
+      return;
+    }
+    if (e[0] != (uint8_t)k_exfat_entry_upcase) {
+      continue;
+    }
+    if (priv_rd32(&e[k_exfat_upc_off_csum]) == priv_exfat_upcase_checksum()) {
+      m->exfat_upcase_ok = 1U;
+    }
+    return;
+  }
+  /* Falls out of the scan loop only after 65536 directory entries ahead of the
+   * up-case one, which no volume this driver mounts has. The loop's own exits
+   * (the up-case match and the EOD marker) are the real ends; there is no
+   * trailing return, because a void function does not need one and clang-tidy
+   * flags it if it has one. */
 }
 
 /* `priv_parse_volume()`: see header for the documented contract. */
@@ -209,21 +242,54 @@ ra8_err_t priv_exfat_next_entry(const ra8_fs_mount_t* m, exfat_cursor_t* cur, ui
 
 /* `priv_exfat_name_chunk_eq()`: see header for the documented contract. */
 uint8_t
-priv_exfat_name_chunk_eq(const uint8_t* entry, const char* path, uint32_t pos, uint32_t nlen)
+priv_exfat_name_chunk_eq(const uint8_t* entry, const uint16_t* name, uint32_t pos, uint32_t nlen)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_exfat_name_per_entry; i++) {
     if ((pos + i) >= nlen) {
       return 1U;
     }
-    const uint32_t b = (uint32_t)k_exfat_name_off + (i * 2U);
-    if (entry[b + 1U] != 0U) {
-      return 0U;
-    }
-    if (priv_ascii_upper((char)entry[b]) != priv_ascii_upper(path[pos + i])) {
+    const uint32_t b    = (uint32_t)k_exfat_name_off + (i * 2U);
+    const uint16_t unit = priv_rd16(&entry[b]);
+    if (priv_exfat_upcase_unit(unit) != priv_exfat_upcase_unit(name[pos + i])) {
       return 0U;
     }
   }
   return 1U;
+}
+
+/* `priv_exfat_name_to_units()`: see header for the documented contract. */
+ra8_err_t priv_exfat_name_to_units(const ra8_fs_mount_t* m,
+                                   const char*           path,
+                                   uint16_t*             out,
+                                   uint32_t*             out_units)
+{
+  const ra8_err_t err = priv_utf8_to_utf16(path, out, (uint32_t)k_exfat_name_cap, out_units);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  /* An ASCII name folds the same way under every conforming up-case table, so
+   * it never depends on the volume carrying the one this build embeds. Anything
+   * else does, and a NameHash computed with the wrong fold is a disagreement
+   * with the on-disk format rather than a limitation of this API (#606). */
+  if (m->exfat_upcase_ok != 0U) {
+    return k_ra8_ok;
+  }
+  if (priv_utf16_all_ascii(out, *out_units) != 0U) {
+    return k_ra8_ok;
+  }
+  *out_units = 0U;
+  return k_ra8_err_not_supported;
+}
+
+/* `priv_exfat_needle_units()`: see header for the documented contract. */
+ra8_err_t priv_exfat_needle_units(const ra8_fs_mount_t* m,
+                                  const char*           name,
+                                  uint16_t*             out,
+                                  uint32_t*             out_units,
+                                  ra8_err_t             too_long)
+{
+  const ra8_err_t e = priv_exfat_name_to_units(m, name, out, out_units);
+  return (e == k_ra8_err_no_mem) ? too_long : e;
 }
 
 /**
@@ -239,14 +305,15 @@ priv_exfat_name_chunk_eq(const uint8_t* entry, const char* path, uint32_t pos, u
  *
  * @param[in]     m        Mounted exFAT volume.
  * @param[in,out] cur      Cursor (advanced past the consumed entries).
- * @param[in]     path     Target path (ASCII, flat root name).
+ * @param[in]     name     Target name as UTF-16 code units.
+ * @param[in]     nlen     Number of units in @p name.
  * @param[out]    out_strm Receives the matched 32-byte Stream-extension entry.
  * @return Error code.
  * @retval k_ra8_ok            Match; @p out_strm populated.
- * @retval k_ra8_err_not_found This set is not @p path.
+ * @retval k_ra8_err_not_found This set is not @p name.
  * @retval k_ra8_err_*         Backend read failure.
  * @pre All pointers are non-NULL; @p cur follows a 0x85 entry.
- * @pre @p path is a flat (root-level) name.
+ * @pre @p name is a flat (root-level) name, already converted to units.
  * @post On match @p out_strm mirrors the on-disk Stream entry.
  * @post On non-match @p out_strm is untouched.
  * @note Leftover name entries self-heal in ::priv_exfat_find.
@@ -255,7 +322,8 @@ priv_exfat_name_chunk_eq(const uint8_t* entry, const char* path, uint32_t pos, u
 RA8_INTERNAL
 static ra8_err_t priv_exfat_match_set(const ra8_fs_mount_t* m,
                                       exfat_cursor_t*       cur,
-                                      const char*           path,
+                                      const uint16_t*       name,
+                                      uint32_t              nlen,
                                       uint8_t*              out_strm)
 {
   uint8_t   strm[k_exfat_entry_bytes] = {};
@@ -266,8 +334,7 @@ static ra8_err_t priv_exfat_match_set(const ra8_fs_mount_t* m,
   if (strm[0] != (uint8_t)k_exfat_entry_stream) {
     return k_ra8_err_not_found;
   }
-  const uint32_t nlen = (uint32_t)strm[k_exfat_strm_off_nlen];
-  if (nlen != priv_strlen(path)) {
+  if ((uint32_t)strm[k_exfat_strm_off_nlen] != nlen) {
     return k_ra8_err_not_found;
   }
   for (uint32_t pos = 0U; pos < nlen; pos += (uint32_t)k_exfat_name_per_entry) {
@@ -279,7 +346,7 @@ static ra8_err_t priv_exfat_match_set(const ra8_fs_mount_t* m,
     if (nm[0] != (uint8_t)k_exfat_entry_name) {
       return k_ra8_err_not_found;
     }
-    if (priv_exfat_name_chunk_eq(nm, path, pos, nlen) == 0U) {
+    if (priv_exfat_name_chunk_eq(nm, name, pos, nlen) == 0U) {
       return k_ra8_err_not_found;
     }
   }
@@ -299,6 +366,17 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
   while (*path == '/') {
     path++;
   }
+  uint16_t        need[k_exfat_name_cap] = {};
+  uint32_t        nlen                   = 0U;
+  const ra8_err_t ne                     = priv_exfat_name_to_units(m, path, need, &nlen);
+  if (ne == k_ra8_err_no_mem) {
+    /* Longer than any name this volume can hold, so it is genuinely absent --
+     * a lookup says so rather than reporting a resource failure. */
+    return k_ra8_err_not_found;
+  }
+  if (ne != k_ra8_ok) {
+    return ne;
+  }
   exfat_cursor_t cur = {};
   priv_exfat_cursor_init(dir, &cur);
   while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
@@ -313,7 +391,7 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
     if (entry[0] != (uint8_t)k_exfat_entry_file) {
       continue;
     }
-    e = priv_exfat_match_set(m, &cur, path, out_strm);
+    e = priv_exfat_match_set(m, &cur, need, nlen, out_strm);
     if (e == k_ra8_ok) {
       /* FileAttributes is 16-bit but every bit we act on (directory, archive)
        * lives in the low byte, so the caller gets that byte. */
