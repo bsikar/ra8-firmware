@@ -7,7 +7,7 @@ Doxygen Documentation Requirements in `CLAUDE.md`. Scope: `libs/`,
 
 ## Summary
 
-- Total functions audited: 5702
+- Total functions audited: 5735
 - Functions with gaps: 0
 - Total missing-tag instances: 0
 
