@@ -210,34 +210,22 @@ static void priv_fmt_boot_prologue(uint8_t* sec)
   priv_byte_copy(&sec[k_fmt_off_oem], k_oem, (uint32_t)k_filename_base_len);
 }
 
-/**
- * @brief Pad an ASCII volume label into the 11-byte 8.3 label field.
- *
- * @details Copies @p label up to its NUL (or 11 chars) then space-fills the
- *          remainder, matching the BS_VolLab convention. A NULL label yields
- *          an all-spaces field.
- *
- * @param[out] dst   Destination 11-byte label field.
- * @param[in]  label Source label, or NULL for an empty (spaces) label.
- *
- * @pre @p dst is non-NULL and at least 11 bytes.
- * @pre @p label is NUL-terminated when non-NULL.
- * @post @p dst holds the padded 11-byte label.
- * @post No bytes past offset 10 of @p dst are touched.
- *
- * @note Bounded loop (NASA Rule 2): exactly 11 iterations.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void priv_fmt_label_field(uint8_t* dst, const char* label)
+/* `priv_fmt_label_field()`: see header for the documented contract. */
+void priv_fmt_label_field(uint8_t* dst, const char* label)
 {
-  bool past_end = (label == nullptr);
+  /* An unlabelled FAT volume stores the spec sentinel "NO NAME    ", never
+   * zeros and never a bare run of spaces: fsck.fat reads a blank BS_VolLab as a
+   * corrupt label and strips it on sight, which trains people to ignore fsck
+   * output on every card this firmware writes (#634). A NULL or empty label
+   * therefore resolves to that sentinel before padding. */
+  static const char k_no_name[] = "NO NAME";
+  const char*       eff         = ((label != nullptr) && (label[0] != '\0')) ? label : k_no_name;
+  bool              past_end    = false;
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_label_len; i++) {
-    if (!past_end && (label[i] == '\0')) {
+    if (!past_end && (eff[i] == '\0')) {
       past_end = true;
     }
-    dst[i] = past_end ? (uint8_t)' ' : (uint8_t)label[i];
+    dst[i] = past_end ? (uint8_t)' ' : (uint8_t)eff[i];
   }
 }
 

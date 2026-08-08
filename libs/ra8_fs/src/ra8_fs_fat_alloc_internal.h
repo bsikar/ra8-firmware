@@ -312,6 +312,64 @@ RA8_PRIV
 void priv_free_count_gave(const ra8_fs_mount_t* m, uint32_t n);
 
 /**
+ * @brief Report the tracked free-cluster count, or ::k_fs_free_unknown.
+ *
+ * @details The read half of the allocator's free count -- what
+ *          ::ra8_fs_free_space consults before deciding whether it must walk
+ *          the FAT (or the exFAT bitmap) itself. Returns ::k_fs_free_unknown
+ *          both when the count was never established (FAT12/16, or a FAT32 whose
+ *          FSInfo did not validate) and when @p m has no bound slot, so a caller
+ *          treats "unknown" as "I must count it".
+ *
+ * @param[in] m Mount to query.
+ *
+ * @return The tracked free-cluster count.
+ * @retval k_fs_free_unknown  No trusted count, or @p m has no bound slot.
+ * @retval 0..count_of_clusters The tracked count.
+ *
+ * @pre @p m is non-NULL.
+ * @pre The mount's geometry is populated.
+ * @post No state modified.
+ * @post The result is `<= m->count_of_clusters` unless it is ::k_fs_free_unknown.
+ *
+ * @note Not thread-safe; callers serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+uint32_t priv_free_count_peek(const ra8_fs_mount_t* m);
+
+/**
+ * @brief Cache a freshly counted free-cluster total in the allocator slot.
+ *
+ * @details After ::ra8_fs_free_space walks the FAT or the exFAT bitmap on a
+ *          volume that had no trusted count, it records the result here so a
+ *          second query is O(1). The value is clamped to the volume's cluster
+ *          count -- a bitmap or FAT that counts more free clusters than the
+ *          volume has is corrupt, and a free count above the disk size is
+ *          worse than a walk. It does NOT flag the volume dirty: a computed
+ *          count is a cache, not a change to write back, and a FAT32 whose
+ *          FSInfo genuinely needed this would have seeded a trusted count at
+ *          mount instead.
+ *
+ * @param[in] m Mount to update.
+ * @param[in] n Free-cluster count just measured.
+ *
+ * @return Nothing.
+ *
+ * @pre @p m is non-NULL with a bound slot (else the call is a no-op).
+ * @pre @p n was counted from the on-disk FAT or allocation bitmap.
+ * @post A later ::priv_free_count_peek returns `min(n, count_of_clusters)`.
+ * @post The FSInfo dirty flag is unchanged.
+ *
+ * @note Not thread-safe; callers serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+void priv_free_count_cache(const ra8_fs_mount_t* m, uint32_t n);
+
+/**
  * @brief Validate FAT32's FSInfo sector and seed the hint and free count.
  *
  * @details MS FAT spec sec 5. All three signatures must match -- lead

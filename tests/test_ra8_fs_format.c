@@ -338,36 +338,47 @@ typedef enum : uint32_t {
 
 /**
  * @test test_mcdc_format_label_field_pair
+ *
+ * @brief The BS_VolLab default is the spec sentinel `"NO NAME    "`, not blank (#634).
+ *
+ * @details Regression for the defect where an unlabelled format left `BS_VolLab`
+ *          blank, which `fsck.fat -n` reports as a corrupt label and strips.
+ *          `priv_fmt_label_field` now resolves a NULL/empty label to the FAT
+ *          specification's `"NO NAME    "` sentinel before padding.
+ *
  * @par MC/DC:
- * Decision: `if (!past_end && (label[i] == '\0'))` inside `priv_fmt_label_field`
+ * Decision: `if (!past_end && (eff[i] == '\0'))` inside `priv_fmt_label_field`
  * (2 conditions), reached via `ra8_fs_format` while laying the BS_VolLab field.
- * Conditions A=(!past_end), B=(label[i]=='\0').
- * - V1 NULL label -> past_end starts true so A=F -> short-circuit F; the field
- *      is all spaces. (A false leg.)
- * - V2 "AB" label, at a character position (i=0) -> A=T, B=F -> F; the char is
- *      copied. (B false leg, A true.)
- * - V3 "AB" label, at the NUL position (i=2) -> A=T, B=T -> T; past_end latches
- *      and the rest pads with spaces. (Both true.)
- * V2 vs V3 flips B with A held true (B independence); V1 vs V3 is the
- * short-circuit pair proving A drives the outcome when B would be true.
- * N+1 = 3 vectors for N=2 conditions.
+ * Conditions A=(!past_end), B=(eff[i]=='\0'). Each format below drives A and B
+ * through all three legs across the 11-byte field:
+ * - a character position (e.g. i=0)  -> A=T, B=F -> F; the char is copied.
+ * - the terminator position          -> A=T, B=T -> T; past_end latches.
+ * - a position past the terminator   -> A=F -> short-circuit F; space pad.
+ * V1 (NULL) resolves to the "NO NAME" sentinel, latching at its i=7 NUL; V2
+ * ("AB") latches at its i=2 NUL. V2 vs the pad positions flip B with A held
+ * true (B independence); the pad positions vs the character positions flip A
+ * (A independence). N+1 = 3 legs for N=2 conditions.
  */
 static void test_mcdc_format_label_field_pair(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: label_field (!past_end && NUL)");
 
-  /* V1: NULL label -> the BS_VolLab field is space-padded (A=F leg). */
+  /* The unlabelled sentinel the FAT spec mandates for an empty BS_VolLab. */
+  static const uint8_t k_no_name[k_fmt_label_width] =
+    {'N', 'O', ' ', 'N', 'A', 'M', 'E', ' ', ' ', ' ', ' '};
+
+  /* V1: NULL label -> BS_VolLab holds "NO NAME    " (#634), never blank. */
   alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   opts.label                = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_label_width; i++) {
-    TEST_ASSERT_EQ(k_fmt_ascii_space, s_disk.bytes[(uint32_t)k_fmt_f16_label_off + i]);
+    TEST_ASSERT_EQ(k_no_name[i], s_disk.bytes[(uint32_t)k_fmt_f16_label_off + i]);
   }
 
   /* V2 + V3: short "AB" label -> 'A','B' copied (A=T,B=F at chars), then the
-   * NUL latches past_end (A=T,B=T) and the tail is space-padded. */
+   * NUL latches past_end (A=T,B=T) and the tail is space-padded (A=F). */
   alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   opts.label = "AB";
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));

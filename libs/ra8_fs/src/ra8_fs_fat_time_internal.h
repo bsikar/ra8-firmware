@@ -279,6 +279,79 @@ RA8_PRIV
 void priv_exfat_file_stamp_access(uint8_t* file_entry);
 
 /**
+ * @brief Set chosen FAT directory-entry timestamps from caller-supplied readings.
+ *
+ * @details The `utime` primitive (`ra8_fs_utime()`): each non-NULL argument
+ *          overwrites its timestamp fields, each NULL one leaves them exactly as
+ *          they are. `create` writes `DIR_CrtTimeTenth` / `DIR_CrtTime` /
+ *          `DIR_CrtDate`; `modify` writes `DIR_WrtTime` / `DIR_WrtDate`;
+ *          `access` writes `DIR_LstAccDate` (FAT has no last-access *time*).
+ *          Unlike the clock-driven stampers this takes explicit readings, so a
+ *          backup/restore can put an original create/modify time back rather
+ *          than the moment of the restore. Each reading is clamped into the
+ *          on-disk range before packing, so an out-of-range field degrades to
+ *          the nearest legal one and never fails the call.
+ *
+ * @param[in,out] entry  32-byte directory entry to patch in place.
+ * @param[in]     create Create stamp to write, or NULL to leave it unchanged.
+ * @param[in]     modify Modify stamp to write, or NULL to leave it unchanged.
+ * @param[in]     access Access stamp to write, or NULL to leave it unchanged.
+ *
+ * @return Nothing.
+ *
+ * @pre @p entry is non-NULL and addresses 32 writable bytes.
+ * @pre A non-NULL reading argument points at a readable ::ra8_fs_datetime_t.
+ * @post Each non-NULL reading's fields hold that (clamped) instant.
+ * @post No timestamp whose argument was NULL is modified, nor any non-time byte.
+ *
+ * @note Not thread-safe against ::ra8_fs_set_clock is irrelevant here -- this
+ *       reads no clock; callers still serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+void priv_fat_entry_set_times(uint8_t*                 entry,
+                              const ra8_fs_datetime_t* create,
+                              const ra8_fs_datetime_t* modify,
+                              const ra8_fs_datetime_t* access);
+
+/**
+ * @brief Set chosen exFAT File-entry timestamps from caller-supplied readings.
+ *
+ * @details The exFAT counterpart of ::priv_fat_entry_set_times, with the two
+ *          side fields exFAT carries: `create` and `modify` each write their
+ *          32-bit timestamp, their 10 ms increment and their UtcOffset byte;
+ *          `access` writes `LastAccessedTimestamp` and its UtcOffset (exFAT has
+ *          no last-accessed 10 ms field). Every non-NULL reading is treated as
+ *          a real instant, so its UtcOffset is honoured (`OffsetValid` set when
+ *          the offset is a whole 15-minute step in UTC-12:00..UTC+14:00, else
+ *          recorded unknown). Each reading is clamped before packing.
+ *
+ * @param[in,out] file_entry 32-byte exFAT File (0x85) entry to patch in place.
+ * @param[in]     create     Create stamp, or NULL to leave it unchanged.
+ * @param[in]     modify     Modify stamp, or NULL to leave it unchanged.
+ * @param[in]     access     Access stamp, or NULL to leave it unchanged.
+ *
+ * @return Nothing.
+ *
+ * @pre @p file_entry is non-NULL and addresses 32 writable bytes.
+ * @pre @p file_entry is a File entry; the caller recomputes SetChecksum after.
+ * @post Each non-NULL reading's fields hold that (clamped) instant.
+ * @post No timestamp whose argument was NULL is modified.
+ *
+ * @warning The entry set's SetChecksum covers these bytes -- recompute it
+ *          after patching or the volume fails a host `fsck`.
+ * @note Callers serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+void priv_exfat_file_set_times(uint8_t*                 file_entry,
+                               const ra8_fs_datetime_t* create,
+                               const ra8_fs_datetime_t* modify,
+                               const ra8_fs_datetime_t* access);
+
+/**
  * @brief Advance an exFAT File entry's modification (and access) stamps.
  *
  * @details The exFAT counterpart of ::priv_fat_entry_stamp_write, taken by

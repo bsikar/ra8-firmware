@@ -586,6 +586,14 @@ static ra8_err_t priv_mount_locked(const ra8_fs_backend_t* backend, ra8_fs_mount
   if (m == nullptr) {
     return k_ra8_err_no_mem;
   }
+  /* Zero the whole slot on claim (#684). The mount table is a fixed array, so
+   * this ra8_fs_mount_t address has very likely served another volume already,
+   * and the FAT and exFAT parse paths each populate a DIFFERENT subset of the
+   * struct. Clearing every field here makes "repopulate everything" a structural
+   * invariant instead of something each future field author must remember: no
+   * value can survive a card-type change into a field the new parse never
+   * touches. `in_use` is set last, on success. */
+  *m                    = (ra8_fs_mount_t){};
   m->backend            = *backend;
   m->partition_base_lba = 0U;
   /* The mount table is a fixed array, so this is very likely the slot some
