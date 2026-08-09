@@ -271,33 +271,8 @@ static ra8_err_t priv_exfat_grow_one(ra8_fs_file_t* file)
   return k_ra8_ok;
 }
 
-/**
- * @brief Grow the file until it owns at least @p need clusters.
- *
- * @details The only caller is the slice resolver, which asks for the cluster
- *          the current offset lands in, so `need` exceeds the allocation by at
- *          most one on a sequential write.
- *
- * @param[in,out] file File to grow.
- * @param[in]     need Clusters the file must own on return.
- *
- * @return Error code.
- * @retval k_ra8_ok         The file owns @p need clusters or more.
- * @retval k_ra8_err_no_mem The volume ran out before reaching @p need.
- * @retval k_ra8_err_*      Bitmap, FAT, or backend failure.
- *
- * @pre @p file is non-NULL and its mount is an exFAT volume.
- * @pre @p need is at least 1.
- * @post On success `alloc_clusters >= need`.
- * @post On failure the clusters already taken stay allocated to @p file.
- *
- * @note Bounded: each iteration raises `alloc_clusters`, which cannot pass
- *       the volume's cluster count without the bitmap scan failing first.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t priv_exfat_ensure_clusters(ra8_fs_file_t* file, uint32_t need)
+/* `priv_exfat_ensure_clusters()`: see header for the documented contract. */
+ra8_err_t priv_exfat_ensure_clusters(ra8_fs_file_t* file, uint32_t need)
 {
   while (file->alloc_clusters < need) {
     const ra8_err_t e = priv_exfat_grow_one(file);
