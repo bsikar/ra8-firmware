@@ -138,6 +138,43 @@ ra8_err_t
 priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint32_t count);
 
 /**
+ * @brief Append one zeroed cluster to a directory, keeping its entry set true.
+ *
+ * @details The directory counterpart of the file grow path, reusing its
+ *          contiguous/`NoFatChain`->FAT-chain machinery (#677). Surveys the
+ *          directory's run, prefers the tail's successor to stay contiguous,
+ *          ZEROES the new cluster before linking it (a directory cluster reads
+ *          as its own contents, so a half-built one must never be reachable),
+ *          links it -- converting the run to a real FAT chain if contiguity is
+ *          broken -- and rewrites the directory's own Stream entry so a later
+ *          mount sees the larger run. The volume ROOT carries no such entry set
+ *          (`self_cluster` 0) and only has its FAT chain extended.
+ *
+ * @param[in]     m   Mounted exFAT volume.
+ * @param[in,out] dir Directory to grow; its `contig_end` is updated to reflect
+ *                    the new run (0 once it has become a FAT chain).
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                The directory owns one more zeroed cluster.
+ * @retval k_ra8_err_no_mem        The volume has no free cluster.
+ * @retval k_ra8_err_not_supported The directory's own set is larger than this
+ *                                 adapter can rewrite.
+ * @retval k_ra8_err_*             Bitmap, FAT, or backend failure.
+ *
+ * @pre @p m and @p dir are non-NULL; `m->type` is exFAT.
+ * @pre `dir->cluster` is a heap cluster and `dir->self_cluster` locates its set
+ *      (or is 0 for the root).
+ * @post On success a walk of @p dir reaches the new cluster and it reads empty.
+ * @post On failure any cluster taken is at worst leaked, never linked-but-dirty.
+ *
+ * @note Not thread-safe; callers serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t priv_exfat_grow_dir(const ra8_fs_mount_t* m, exfat_dir_t* dir);
+
+/**
  * @brief Locate a file's full directory-entry set with per-entry positions.
  *
  * @details Walks the root directory like ::priv_exfat_find but records the

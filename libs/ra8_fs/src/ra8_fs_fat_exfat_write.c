@@ -359,12 +359,40 @@ static ra8_err_t priv_exfat_space_in_cluster(const ra8_fs_mount_t* m,
   return k_ra8_err_no_mem;
 }
 
-/* `priv_exfat_find_dir_space()`: see header for the documented contract. */
-ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
-                                    const exfat_dir_t*    dir,
-                                    uint32_t              need,
-                                    uint32_t*             out_clus,
-                                    uint32_t*             out_idx)
+/**
+ * @brief Scan a directory's existing clusters for @p need consecutive free slots.
+ *
+ * @details The inner walk of ::priv_exfat_find_dir_space, split out so the grow
+ *          loop that wraps it stays small. Walks @p dir cluster by cluster and
+ *          reports ::k_ra8_err_no_mem when its CURRENT run has no room -- it
+ *          never grows the directory itself; that is the caller's job.
+ *
+ * @param[in]  m        Mounted exFAT volume.
+ * @param[in]  dir      Directory to search at its current size.
+ * @param[in]  need     Number of consecutive free entries required.
+ * @param[out] out_clus Receives the cluster holding the run.
+ * @param[out] out_idx  Receives the run's first entry index in that cluster.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok         A run was found at the current size.
+ * @retval k_ra8_err_no_mem The directory's current run has no run of @p need.
+ * @retval k_ra8_err_*      Backend read failure.
+ *
+ * @pre Every pointer argument is non-NULL; @p need >= 1.
+ * @pre `m->type` is exFAT.
+ * @post On success the run location is returned.
+ * @post No volume state is modified.
+ *
+ * @note The walk is bounded by ::k_exfat_scan_limit clusters (P10 Rule 2).
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_exfat_scan_dir_space(const ra8_fs_mount_t* m,
+                                           const exfat_dir_t*    dir,
+                                           uint32_t              need,
+                                           uint32_t*             out_clus,
+                                           uint32_t*             out_idx)
 {
   uint32_t cluster = dir->cluster;
   for (uint32_t guard = 0U; guard < (uint32_t)k_exfat_scan_limit; guard++) {
@@ -379,11 +407,7 @@ ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
     uint32_t        next = 0U;
     const ra8_err_t fe   = priv_exfat_step_cluster(m, cluster, dir->contig_end, &next);
     if (fe == k_ra8_err_not_found) {
-      /* The directory is full and this driver does not grow one yet (#605):
-       * a subdirectory here is a single-cluster NoFatChain run, and extending
-       * it means either finding the adjacent cluster free or converting the
-       * run to a FAT chain. Reported honestly rather than silently truncated. */
-      return k_ra8_err_no_mem;
+      return k_ra8_err_no_mem; /* the current run is exhausted -- the caller grows */
     }
     if (fe != k_ra8_ok) {
       return fe;
@@ -391,6 +415,33 @@ ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
     cluster = next;
   }
   return k_ra8_err_no_mem; /* GCOVR_EXCL_LINE -- 65536 directory clusters required */
+}
+
+/* `priv_exfat_find_dir_space()`: see header for the documented contract. */
+ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
+                                    const exfat_dir_t*    dir,
+                                    uint32_t              need,
+                                    uint32_t*             out_clus,
+                                    uint32_t*             out_idx)
+{
+  /* A mutable copy: ::priv_exfat_grow_dir advances `work.contig_end` (and drops
+   * it to 0 when the run converts to a FAT chain) so the rescan below reaches
+   * the cluster the grow just appended. */
+  exfat_dir_t work = *dir;
+  for (uint32_t grow = 0U; grow <= (uint32_t)k_exfat_dir_grow_max; grow++) {
+    const ra8_err_t e = priv_exfat_scan_dir_space(m, &work, need, out_clus, out_idx);
+    if (e != k_ra8_err_no_mem) {
+      return e; /* found a run, or a hard read error */
+    }
+    if (grow == (uint32_t)k_exfat_dir_grow_max) {
+      break; /* one grow already yields more than any set needs; stop */
+    }
+    const ra8_err_t ge = priv_exfat_grow_dir(m, &work);
+    if (ge != k_ra8_ok) {
+      return ge; /* the volume, not the directory, is out of room */
+    }
+  }
+  return k_ra8_err_no_mem;
 }
 
 /**

@@ -215,6 +215,7 @@ typedef enum : uint32_t {
   k_exfat_inuse_bit      = 0x80U,   /**< Directory entry type bit 7 = in use.       */
   k_exfat_max_set_bytes  = 224U,    /**< (2 + ceil(64/15)) * 32 = 7 entries.        */
   k_exfat_path_depth     = 32U,     /**< Max nested components per exFAT path.      */
+  k_exfat_dir_grow_max   = 2U,      /**< Max clusters one find-space call appends.  */
 } ra8_fs_exfat_val_t;
 
 /**
@@ -688,15 +689,29 @@ typedef struct {
  *          special case -- it is the directory whose first cluster is
  *          `m->root_cluster` and whose run is FAT-chained.
  *
+ *          `self_cluster` / `self_index` locate the directory's OWN File-entry
+ *          set inside its parent, captured while ::priv_exfat_resolve_parent
+ *          descends into it. Growing a subdirectory has to rewrite that set's
+ *          Stream entry -- `DataLength` and the `NoFatChain` flag both change --
+ *          so a directory that may need to grow carries the coordinates of the
+ *          metadata that describes its allocation (#677). The volume ROOT has
+ *          no such set (its extent is the boot sector's FAT chain), so it leaves
+ *          `self_cluster` 0, which ::priv_exfat_grow_dir reads as "no entry set
+ *          to patch -- just extend the FAT chain".
+ *
  * @invariant `cluster` is a real heap cluster (>= ::k_cluster_first_data).
  * @invariant `contig_end` is 0 (FAT-chained) or > `cluster` (contiguous run).
+ * @invariant `self_cluster` is 0 (the root, or a location never captured) or a
+ *            heap cluster holding this directory's File entry.
  * @see priv_exfat_dir_root()
  * @see priv_exfat_dir_from_set()
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t cluster;    /**< First cluster of the directory.                    */
-  uint32_t contig_end; /**< One past the run's last cluster; 0 => FAT-chained. */
+  uint32_t cluster;      /**< First cluster of the directory.                          */
+  uint32_t contig_end;   /**< One past the run's last cluster; 0 => FAT-chained.       */
+  uint32_t self_cluster; /**< Parent cluster holding this dir's File entry; 0 => root. */
+  uint32_t self_index;   /**< File-entry index within `self_cluster`.                  */
 } exfat_dir_t;
 
 /**

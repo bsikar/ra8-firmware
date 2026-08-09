@@ -563,24 +563,28 @@ static void test_create_file_table_full(void)
 /**
  * @test test_create_no_directory_space
  *
- * @brief A root directory with no room refuses the create and claims no slot.
+ * @brief A root directory with no room GROWS to hold the new create (#677).
  *
  * @details Every slot in the single root cluster is filled with an in-use Name
  *          entry, which occupies the slot without pretending to be a File set,
- *          so the lookup still reports the name absent and the create still
- *          has to find three consecutive free entries. There are none, and the
- *          root's FAT entry is end-of-chain, so there is nowhere to extend to.
+ *          so the lookup still reports the name absent and the create still has
+ *          to find three consecutive free entries. There are none in the first
+ *          cluster, so ::priv_exfat_link grows the root and lays the set down in
+ *          the fresh one -- before #677 this refused with `k_ra8_err_no_mem`, its
+ *          FAT chain being end-of-chain with nowhere to extend to.
  *
  * @par MC/DC:
  * Decision: `if (e != k_ra8_ok)` after ::priv_exfat_link in
  * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@priv_exfat_open_created`
- * (1 condition). TRUE here; FALSE on every create that finds room.
+ * (1 condition). FALSE here -- the grow succeeds; the TRUE arm (link fails
+ * because the VOLUME is full) is driven by
+ * tests/test_ra8_fs_exfat_dir_growth.c@test_volume_full_reports_no_mem.
  *
  * @since 0.1.0
  */
 static void test_create_no_directory_space(void)
 {
-  TEST_BEGIN("exfat stream cov: create with a full root directory");
+  TEST_BEGIN("exfat stream cov: a full root grows to hold a create");
   flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
   flt_mount(&h);
@@ -590,11 +594,12 @@ static void test_create_no_directory_space(void)
   }
 
   ra8_fs_file_t* f = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_open(h, "NEW.BIN", k_ra8_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "NEW.BIN", k_ra8_fs_mode_write, &f));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   flt_free_volume();
-  TEST_END("exfat stream cov: create with a full root directory");
+  TEST_END("exfat stream cov: a full root grows to hold a create");
 }
 
 /**

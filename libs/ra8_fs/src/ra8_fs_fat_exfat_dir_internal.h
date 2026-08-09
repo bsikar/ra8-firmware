@@ -372,29 +372,100 @@ ra8_err_t
 priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint32_t count);
 
 /**
+ * @brief Zero every sector of one cluster.
+ *
+ * @details An all-zero exFAT directory cluster is a valid EMPTY directory: the
+ *          first entry's type byte is 0x00, which is the end-of-directory
+ *          marker. There are no "." / ".." entries to stamp -- exFAT has none.
+ *          Used both to initialise a directory's first cluster (`mkdir`) and to
+ *          initialise each cluster growth appends to it (#677).
+ *
+ * @param[in] m    Mounted exFAT volume.
+ * @param[in] clus Cluster to clear.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    Every sector of the cluster reads as zero.
+ * @retval k_ra8_err_* Backend write failure.
+ *
+ * @pre @p m is non-NULL; @p clus is a heap cluster.
+ * @pre The cluster is not referenced by any entry set yet.
+ * @post On success the cluster is an empty exFAT directory.
+ * @post No bitmap or directory state is modified here.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t priv_exfat_zero_cluster(const ra8_fs_mount_t* m, uint32_t clus);
+
+/**
+ * @brief Replace every end-of-directory marker in a cluster with an unused one.
+ *
+ * @details The subtlety that makes directory growth correct. exFAT spec sec
+ *          6.3.1: an entry type of 0x00 is EndOfDirectory, and NO entry past the
+ *          first one may be anything else -- a reader (and `fsck.exfat`) stops
+ *          there. This driver never splits an entry set across a cluster, so the
+ *          cluster that was the directory's tail is left with a run of trailing
+ *          0x00 slots, and once a grown cluster holds live entries AFTER it those
+ *          0x00 slots are a premature end that hides everything beyond them.
+ *
+ *          Rewriting each 0x00 in the old tail to a DELETED File type (0x85 with
+ *          the in-use bit clear) keeps it a legal, skippable "unused" entry --
+ *          which the walk steps over and the free-slot scan still calls free --
+ *          while moving the one real EndOfDirectory to the trailing zeros of the
+ *          freshly appended cluster, where the format requires it to be. Paired
+ *          with ::priv_exfat_zero_cluster on the directory grow path (#677).
+ *
+ * @param[in] m    Mounted exFAT volume.
+ * @param[in] clus Cluster whose end-of-directory markers are to be retired.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    Every 0x00 slot in the cluster now reads as unused.
+ * @retval k_ra8_err_* Backend read/write failure.
+ *
+ * @pre @p m is non-NULL; @p clus is a directory cluster of this volume.
+ * @pre No live entry set follows a 0x00 slot within @p clus (this driver's
+ *      append-only invariant).
+ * @post @p clus holds no 0x00 slot; the walk continues into the next cluster.
+ * @post Only the sectors that held a 0x00 slot are rewritten.
+ *
+ * @note Not thread-safe; callers serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t priv_exfat_seal_cluster(const ra8_fs_mount_t* m, uint32_t clus);
+
+/**
  * @brief Find @p need consecutive free entry slots inside one directory cluster.
  *
  * @details Walks @p dir cluster by cluster, scanning each for a run of reusable
  *          slots -- end-of-directory markers and retired entries both qualify.
  *          A set is never split across two clusters, so the run must fit inside
- *          one. A directory with no such run reports ::k_ra8_err_no_mem rather
- *          than growing: this driver does not extend a directory yet (#605).
+ *          one. When no existing cluster has room, the directory is GROWN one
+ *          zeroed cluster at a time (::priv_exfat_grow_dir) and rescanned, so
+ *          ::k_ra8_err_no_mem now means the VOLUME is full, not merely that the
+ *          directory was (#677). One grow always yields at least
+ *          ::k_exfat_set_writable free slots -- a fresh cluster holds far more
+ *          than any set needs -- so the retry is bounded by ::k_exfat_dir_grow_max.
  *
  * @param[in]  m        Mounted exFAT volume.
- * @param[in]  dir      Directory to search.
+ * @param[in]  dir      Directory to search (its own set location grows it).
  * @param[in]  need     Number of consecutive free entries required.
  * @param[out] out_clus Receives the cluster holding the run.
  * @param[out] out_idx  Receives the run's first entry index in that cluster.
  *
  * @return Error code.
- * @retval k_ra8_ok         A run was found.
- * @retval k_ra8_err_no_mem The directory has no run of @p need slots.
- * @retval k_ra8_err_*      Backend read failure.
+ * @retval k_ra8_ok         A run was found (after growing, if it had to).
+ * @retval k_ra8_err_no_mem The volume has no free cluster to grow into.
+ * @retval k_ra8_err_*      Bitmap or backend read/write failure.
  *
  * @pre Every pointer argument is non-NULL; @p need >= 1.
  * @pre `m->type` is exFAT.
- * @post On success the run location is returned.
- * @post No volume state is modified.
+ * @post On ::k_ra8_ok the run location is returned; the directory may be one or
+ *       more clusters larger than on entry.
+ * @post On any error no directory slot is reserved.
  *
  * @note Not thread-safe; callers serialise.
  *
