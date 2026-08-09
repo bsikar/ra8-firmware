@@ -84,7 +84,7 @@ RA8_INTERNAL static char ascii_lower(char c)
 RA8_INTERNAL static bool header_is(const char* line, size_t line_len, const char* prefix)
 {
   size_t i = 0U;
-  for (; (prefix[i] != '\0') && (i < line_len); ++i) {
+  for (; (i < line_len) && (prefix[i] != '\0'); ++i) {
     if (ascii_lower(line[i]) != prefix[i]) {
       return false;
     }
@@ -194,11 +194,13 @@ RA8_INTERNAL static bool redirect_host_ok(mdl_curl_ctx_t* net)
 /** @brief libcurl prereq callback: refuse SSRF and cross-host redirect peers. */
 /* The libcurl CURLOPT_PREREQFUNCTION ABI fixes these parameter types as
  * non-const `char*`; conn_local_ip is unused here but cannot be re-qualified. */
-RA8_INTERNAL static int on_prereq(void* clientp,
-                                  char* conn_primary_ip,
-                                  char* conn_local_ip, // NOLINT(readability-non-const-parameter)
-                                  int   conn_primary_port,
-                                  int   conn_local_port)
+RA8_INTERNAL static int
+on_prereq(void* clientp,
+          /* cppcheck-suppress constParameterCallback ; CURLOPT_PREREQFUNCTION ABI fixes char* */
+          char* conn_primary_ip,
+          char* conn_local_ip, // NOLINT(readability-non-const-parameter)
+          int   conn_primary_port,
+          int   conn_local_port)
 {
   (void)conn_local_ip;
   (void)conn_primary_port;

@@ -190,6 +190,7 @@ typedef struct {
 } fetch_clock_t;
 
 /** @brief Injected clock: return the virtual now. */
+/* cppcheck-suppress constParameterCallback ; ra8_governor clock-fn ABI is void* */
 static int64_t fetch_now(void* c)
 {
   return ((const fetch_clock_t*)c)->now_ms;

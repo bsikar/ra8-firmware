@@ -361,9 +361,9 @@ static void test_net_classify(void)
 static void test_net_buf_write_overflow(void)
 {
   TEST_BEGIN("net buf write overflow");
-  char       dst[k_net_dst];
-  char       chunk[] = "abcde";
-  buf_sink_t sink    = {.buf = dst, .cap = 4U, .len = 0U, .overflow = false};
+  char       dst[k_net_dst] = {};
+  char       chunk[]        = "abcde";
+  buf_sink_t sink           = {.buf = dst, .cap = 4U, .len = 0U, .overflow = false};
   /* within cap: 3 bytes into cap 4. */
   TEST_ASSERT_EQ((uint16_t)3, (uint16_t)mdl_net_curl_buf_write(chunk, 1U, 3U, &sink));
   TEST_ASSERT_EQ((uint16_t)3, (uint16_t)sink.len);

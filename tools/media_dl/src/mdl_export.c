@@ -358,7 +358,7 @@ RA8_INTERNAL static ra8_err_t tar_copy_file(FILE* in, FILE* out, size_t size)
   }
   const size_t pad = round_block(size) - size;
   if (pad > 0U) {
-    uint8_t zeros[k_tar_block] = {};
+    const uint8_t zeros[k_tar_block] = {};
     if (fwrite(zeros, 1U, pad, out) != pad) {
       return k_ra8_fail;
     }
@@ -861,6 +861,9 @@ RA8_INTERNAL static ra8_err_t run_rabook_python(const char* cbz, const char* out
 {
 #ifdef MDL_EPUB_COMPILE_DIR
   char script[PATH_MAX];
+  /* cppcheck-suppress invalidPrintfArgType_s ; MDL_EPUB_COMPILE_DIR is a CMake
+   * string define; cppcheck explores the #ifdef-defined config with a
+   * placeholder integer value and cannot see the real string. */
   (void)snprintf(script, sizeof(script), "%s/cbz_compile.py", MDL_EPUB_COMPILE_DIR);
   (void)setenv("PYTHONPATH", MDL_EPUB_COMPILE_DIR, 1);
   const char* const argv[] = {"python3", script, cbz, out_path, "--rtl", nullptr};
