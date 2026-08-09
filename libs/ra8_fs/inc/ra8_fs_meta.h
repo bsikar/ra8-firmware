@@ -261,6 +261,42 @@ typedef struct {
                                      const ra8_fs_datetime_t* modify,
                                      const ra8_fs_datetime_t* access);
 
+/**
+ * @brief Set an open file's length to @p new_size, shrinking or growing it.
+ *
+ * @details The `ftruncate()` verb in both directions (#680), for a handle open
+ * in a writing mode. It is the only way to give a file an arbitrary length:
+ * writing extends only where bytes land, and ::ra8_fs_seek clamps to the current
+ * size, so neither can pre-size a file or trim it to N > 0 bytes. A shrink frees
+ * the tail clusters and lowers the length; a grow extends the file and the gap
+ * `[old_size, new_size)` reads back as zero -- FAT zero-fills the fresh clusters
+ * on disk, exFAT raises `DataLength` while `ValidDataLength` stays at the written
+ * prefix so the format serves the gap as zero (and converts a run that outgrows
+ * its contiguous space to a real FAT chain). The offset is left where it was,
+ * pulled down only by a shrink that lands below it. Lengths are 32-bit, so 4 GiB
+ * or more is not expressible.
+ *
+ * @param[in,out] file     Open handle in ::k_ra8_fs_mode_write or _append.
+ * @param[in]     new_size Desired length in bytes.
+ *
+ * @retval k_ra8_ok                Length set; the entry / directory reflects it.
+ * @retval k_ra8_err_null_ptr      @p file is NULL.
+ * @retval k_ra8_err_invalid_state Not open, or opened read-only.
+ * @retval k_ra8_err_no_mem        A grow ran out of free clusters.
+ * @retval k_ra8_err_*             Backend, FAT, or bitmap failure.
+ *
+ * @pre @p file is a handle from ::ra8_fs_open() in write or append mode.
+ * @post On ::k_ra8_ok ::ra8_fs_size() reports @p new_size and a re-read of the
+ *       gap returns zeros.
+ * @post On ::k_ra8_ok the offset is `min(old_offset, new_size)`.
+ *
+ * @note Not thread-safe per file; the public entry holds the library lock.
+ *
+ * @see ra8_fs_write()  Extends a file only where bytes are actually written.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_fs_truncate(ra8_fs_file_t* file, uint32_t new_size);
+
 #ifdef __cplusplus
 }
 #endif

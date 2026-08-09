@@ -359,6 +359,39 @@ RA8_PRIV
 ra8_err_t priv_exfat_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len);
 
 /**
+ * @brief Grow a file's allocation until it owns at least @p need clusters.
+ *
+ * @details Takes clusters one at a time from the allocation bitmap, preferring
+ *          the tail's successor so a run that can stay contiguous keeps its
+ *          `NoFatChain` fast path, and materialising a real FAT chain over the
+ *          run the moment it cannot. The streaming write path drives it to reach
+ *          the cluster an offset lands in; the truncate path (#680) drives it to
+ *          pre-size a file, which is why it lives in the header rather than
+ *          staying private to the stream.
+ *
+ * @param[in,out] file File to grow; `alloc_clusters`, `tail_cluster`,
+ *                     `first_cluster` and `no_fat_chain` are updated in place.
+ * @param[in]     need Clusters the file must own on return (>= 1 to have effect).
+ *
+ * @return Error code.
+ * @retval k_ra8_ok         The file owns @p need clusters or more.
+ * @retval k_ra8_err_no_mem The volume ran out before reaching @p need.
+ * @retval k_ra8_err_*      Bitmap, FAT, or backend failure.
+ *
+ * @pre @p file is non-NULL, in use, and its mount is an exFAT volume.
+ * @pre The caller holds the library lock.
+ * @post On success `alloc_clusters >= need` and `tail_cluster` names the last.
+ * @post On failure the clusters already taken stay allocated to @p file.
+ *
+ * @note Bounded: each iteration raises `alloc_clusters`, which cannot pass the
+ *       volume's cluster count without the bitmap scan failing first.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t priv_exfat_ensure_clusters(ra8_fs_file_t* file, uint32_t need);
+
+/**
  * @brief Rewrite a file's entry set from the handle, checksum last.
  *
  * @details Reads the set back through a cursor from the recorded head, patches
