@@ -85,7 +85,7 @@ static uint32_t priv_popcount8(uint8_t b)
 {
   uint32_t n = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_space_bits_per_byte; i++) {
-    n += (uint32_t)((b >> i) & 1U);
+    n += ((uint32_t)b >> i) & 1U;
   }
   return n;
 }
