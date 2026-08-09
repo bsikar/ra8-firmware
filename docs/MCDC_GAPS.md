@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **246**
-- Total compound decisions in scope: **1310**
-- Decisions at 100% MC/DC (`yes`): **1130**
+- Source files with at least one decision: **248**
+- Total compound decisions in scope: **1315**
+- Decisions at 100% MC/DC (`yes`): **1135**
 - Decisions partially covered (`partial`): **74**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **86.26%**
+- Coverage rate (yes / total): **86.31%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **89**
-- Reachable-condition denominator (total - deactivated): **1221**
-- **Reachable MC/DC rate**: **92.55%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1226**
+- **Reachable MC/DC rate**: **92.58%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -339,8 +339,10 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_usb_hmsc | 3 | 3 | 0 | 0 |
 | ra8_widget_keyboard | 3 | 3 | 0 | 0 |
 | ra8_widget_panel | 3 | 3 | 0 | 0 |
+| sh_classify | 3 | 3 | 0 | 0 |
 | usb_printer_vendor_ch9 | 3 | 3 | 0 | 0 |
 | adc | 2 | 2 | 0 | 0 |
+| mkbookimg_names | 2 | 2 | 0 | 0 |
 | ra8_agt | 2 | 2 | 0 | 0 |
 | ra8_bkup_tamper | 2 | 2 | 0 | 0 |
 | ra8_board_ek_ra8d2_audio_usb | 2 | 2 | 0 | 0 |

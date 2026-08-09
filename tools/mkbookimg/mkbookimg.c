@@ -4,13 +4,12 @@
  *
  * @details
  * Builds a raw FAT32 disk image (512-byte sectors, no MBR) containing the given
- * .rabook files under 8.3 names BOOK01.RBK, BOOK02.RBK, ... It drives the SAME
- * first-party `ra8_fs` formatter/writer the firmware reads with, so the emulator
+ * books, each stored under its own basename (e.g. `Meditations.rabook`) now that
+ * `ra8_fs` writes VFAT long names (#600/#633). It drives the SAME first-party
+ * `ra8_fs` formatter/writer the firmware reads with, so the emulator
  * (`ra8_emulator --sd image.img`) and the on-device ra8_sdmmc_spi -> ra8_fs path see
- * a byte-identical layout. The firmware reads each book's title/author/cover
- * from the .rabook header, so the 8.3 names need carry no metadata -- which is
- * why they are still 8.3 now that `ra8_fs` can write long ones (#600). #633
- * revisits that.
+ * a byte-identical layout. The firmware still reads each book's title/author/cover
+ * from its header; the card now also carries the human-readable file name.
  *
  * Usage: mkbookimg <out.img> <book1.rabook> [book2.rabook ...]
  *
@@ -22,13 +21,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "mkbookimg_names.h"
 #include "ra8_fs.h"
 
 enum : uint32_t {
   k_block_size  = 512U,    /**< FAT sector size.                       */
   k_img_sectors = 131072U, /**< 64 MiB image (FAT32 needs >= ~34 MiB). */
-  k_max_books   = 32U,     /**< BOOK01..BOOK32.                        */
-  k_name_len    = 12U,     /**< "BOOKNN.RBK" + NUL.                    */
+  k_max_books   = 32U,     /**< Max books packed into one image.       */
 };
 
 /** @brief In-memory disk for the ra8_fs backend. */
@@ -208,32 +207,59 @@ static int fs_format_mount(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out
   return 0;
 }
 
-/** @brief 8.3 extension for an input file: ".EPB" for *.epub, else ".RBK". */
-static const char* book_ext(const char* path)
+/**
+ * @brief Report whether input @p i's card name repeats an earlier input's.
+ *
+ * @details Two sources with the same basename (from different directories)
+ *          would land on the same card name and the second would replace the
+ *          first (`ra8_fs_write_file` overwrites by name). This scans the inputs
+ *          before @p i for a matching basename so a collision is refused rather
+ *          than silently dropping a book.
+ *
+ * @param[in] argv Program argv; the books start at @p argv[2].
+ * @param[in] i    Zero-based index of the input being checked (0 .. n_books-1).
+ *
+ * @return Whether an earlier input shares input @p i's basename.
+ * @retval true  Some @p j in [0, @p i) has the same basename as input @p i.
+ * @retval false Input @p i's basename is unique among the inputs before it.
+ *
+ * @pre @p argv holds valid book paths at indices [2, 2 + i].
+ * @pre @p i is a non-negative index within the input range.
+ * @post No state is modified (pure scan over @p argv).
+ * @post @p argv strings are read only, never written.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
+ */
+static bool dup_dest_name(char** argv, int i)
 {
-  const size_t n   = strlen(path);
-  const size_t ext = strlen(".epub");
-  return ((n > ext) && (strcmp(&path[n - ext], ".epub") == 0)) ? "EPB" : "RBK";
+  const char* const name = mkbookimg_basename(argv[2 + i]);
+  for (int j = 0; j < i; ++j) {
+    if (strcmp(name, mkbookimg_basename(argv[2 + j])) == 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
- * @brief Write each input book onto the mounted card under an 8.3 name.
+ * @brief Write each input book onto the mounted card under its own basename.
  *
  * @details
- * For every input path in @p argv[2 .. 2 + n_books) reads the whole file into
- * memory (::read_file), derives its 8.3 name BOOKNN.RBK or BOOKNN.EPB from the
- * one-based index and ::book_ext, and writes it through ra8_fs_write_file. The
- * firmware reads each book's title, author and cover from the .rabook header,
- * so the 8.3 names need carry no metadata. The first read or write failure
- * stops the run and returns non-zero.
+ * For every input path in @p argv[2 .. 2 + n_books) derives the on-card name
+ * from the source's basename (::mkbookimg_dest_name), refuses a name that
+ * collides with an earlier input (::dup_dest_name), reads the whole file into
+ * memory (::read_file), and writes it through ra8_fs_write_file under the
+ * human-readable long name. The first bad name, collision, read or write
+ * failure stops the run and returns non-zero.
  *
  * @param[in,out] mnt     Mounted FAT32 volume to create files on.
  * @param[in]     argv    Program argv; the books start at @p argv[2].
  * @param[in]     n_books Number of book paths, already capped at ::k_max_books.
  *
  * @return 0 when every book was written, 1 on the first failure.
- * @retval 0 All @p n_books files exist on the card.
- * @retval 1 A book could not be read or written (reported on stderr).
+ * @retval 0 All @p n_books files exist on the card under their basenames.
+ * @retval 1 A name was unusable/duplicate or a book could not be read/written.
  *
  * @pre @p mnt is a mounted volume and @p argv holds @p n_books paths at [2..].
  * @pre @p n_books is in 0 .. ::k_max_books.
@@ -246,14 +272,21 @@ static const char* book_ext(const char* path)
 static int write_books(ra8_fs_mount_t* mnt, char** argv, int n_books)
 {
   for (int i = 0; i < n_books; ++i) {
+    char name[k_mkbookimg_name_cap];
+    if (!mkbookimg_dest_name(argv[2 + i], name, sizeof name)) {
+      (void)fprintf(stderr, "mkbookimg: unusable card name for %s\n", argv[2 + i]);
+      return 1;
+    }
+    if (dup_dest_name(argv, i)) {
+      (void)fprintf(stderr, "mkbookimg: duplicate card name %s (from %s)\n", name, argv[2 + i]);
+      return 1;
+    }
     uint32_t       len  = 0U;
     uint8_t* const data = read_file(argv[2 + i], &len);
     if (data == nullptr) {
       (void)fprintf(stderr, "mkbookimg: cannot read %s\n", argv[2 + i]);
       return 1;
     }
-    char name[k_name_len];
-    (void)snprintf(name, sizeof name, "BOOK%02d.%s", i + 1, book_ext(argv[2 + i]));
     const ra8_err_t err = ra8_fs_write_file(mnt, name, data, len);
     if (err == k_ra8_ok) {
       (void)fprintf(stderr, "mkbookimg: + %s  (%u bytes)  <- %s\n", name, len, argv[2 + i]);

@@ -158,7 +158,7 @@ s_cache_bind(const ra8_rabook_import_compiler_ctx_t* ctx, import_stream_t* ss, u
  *          closes it after the compile.
  * @param[in]     ctx       Populated compiler cookie.
  * @param[in,out] mount     Mounted volume holding the source.
- * @param[in]     epub_path Root-level 8.3 path of the source `.epub`.
+ * @param[in]     epub_path Root-level path of the source `.epub`.
  * @param[in,out] ss        Zeroed streaming state; receives the open file +
  *                          stream bindings (must out-live the compile).
  * @return Error code.
@@ -247,7 +247,7 @@ ra8_err_t ra8_rabook_import_compile_adapter(void*           compile_ctx,
  *          The read error is returned in preference to the close error so a
  *          partial read is not masked.
  * @param[in]  mount   Mounted volume (non-NULL).
- * @param[in]  path    Root-level 8.3 source path (non-NULL).
+ * @param[in]  path    Root-level source path (non-NULL).
  * @param[out] buf     Destination buffer (non-NULL).
  * @param[in]  cap     Capacity of @p buf in bytes.
  * @param[out] out_len Receives the number of bytes read on success.
@@ -377,7 +377,7 @@ static bool s_is_dispatch_failure(ra8_err_t err)
  * @param[in]     ctx       Populated M33 cookie (optional fallback).
  * @param[in]     err       The non-OK offload-stage error to classify.
  * @param[in,out] mount     Mounted volume holding the source and the output.
- * @param[in]     epub_path Root-level 8.3 path of the source `.epub` (for the retry).
+ * @param[in]     epub_path Root-level path of the source `.epub` (for the retry).
  * @param[in]     out_path  Path to write the RABOOK1 body to (importer temp name).
  * @return Error code.
  * @retval k_ra8_ok    The in-core fallback compiled and wrote the blob.
@@ -412,7 +412,7 @@ static ra8_err_t s_fallback_or_propagate(const ra8_rabook_import_compiler_m33_ct
  * @param[in]     ctx      Populated M33 cookie (dispatch + optional fallback).
  * @param[in]     epub_len Source length already in @p ctx->epub_load_buf.
  * @param[in,out] mount    Mounted volume the validated blob is written to.
- * @param[in]     epub_path Root-level 8.3 path of the source `.epub` (for the retry).
+ * @param[in]     epub_path Root-level path of the source `.epub` (for the retry).
  * @param[in]     out_path Path to write the RABOOK1 body to (importer temp name).
  * @return Error code.
  * @retval k_ra8_ok    Blob produced (on the M33, or in-core on fallback) and written.

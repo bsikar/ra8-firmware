@@ -41,23 +41,8 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_crc32_bits        = 8U,      /**< Bits processed per input byte.           */
-  k_hex_shift         = 4U,      /**< Bit shift between adjacent hex nibbles.  */
-  k_hex_mask          = 0x0FU,   /**< Low-nibble mask for one hex digit.       */
   k_import_max_chunks = 131072U, /**< Loop bound: chunks streamed for the CRC. */
 } ra8_import_misc_t;
-
-/**
- * @enum ra8_import_name_idx_t
- * @brief Byte offsets inside an `XXXXXXXX.EXT` 8.3 cache name.
- * @since Version 0.1.0
- */
-typedef enum : uint8_t {
-  k_idx_dot  = 8U,  /**< '.' separator after the 8 hex digits. */
-  k_idx_ext0 = 9U,  /**< First extension character.            */
-  k_idx_ext1 = 10U, /**< Second extension character.           */
-  k_idx_ext2 = 11U, /**< Third extension character.            */
-  k_idx_nul  = 12U, /**< NUL terminator.                       */
-} ra8_import_name_idx_t;
 
 /** @brief Log tag for this module. @since Version 0.1.0 */
 static const char* const s_tag = "ra8_rabook_import";
@@ -160,7 +145,7 @@ s_crc_stream(ra8_fs_file_t* file, uint8_t* buf, uint32_t cap, uint32_t* out_size
  *          @p mount, @p epub_path, and @p buf are delegated to `ra8_fs_open` and
  *          @ref s_crc_stream respectively.
  * @param[in]  mount     Mounted volume.
- * @param[in]  epub_path Source path (root-level 8.3).
+ * @param[in]  epub_path Source path (root-level).
  * @param[in]  buf       Streaming scratch buffer (> 0 bytes).
  * @param[in]  cap       Capacity of @p buf (> 0).
  * @param[out] out_size  Receives the source byte length.
@@ -205,81 +190,133 @@ static ra8_err_t s_compute_source_key(ra8_fs_mount_t* mount,
 }
 
 /**
- * @brief Build the `XXXXXXXX.EXT` 8.3 cache name for a CRC key + extension.
- * @details Formats @p crc as 8 uppercase hex digits (most-significant nibble
- *          first) into bytes 0..7, then writes '.', @p ext0, @p ext1, @p ext2,
- *          and a NUL, yielding a fixed 12-character `XXXXXXXX.EXT` string.
- * @param[in]  crc  Source CRC-32 (its 8 hex digits name the entry).
- * @param[in]  ext0 First extension char.
- * @param[in]  ext1 Second extension char.
- * @param[in]  ext2 Third extension char.
- * @param[out] out  Destination buffer.
- * @param[in]  cap  Capacity of @p out (>= @ref k_ra8_rabook_import_name_cap).
+ * @brief Extract the cache-name stem from a source path: its basename, minus a
+ *        trailing extension.
+ * @details Takes the run after the last '/', then drops a final `.ext` when the
+ *          dot is not the basename's first character (so `.hidden` keeps its
+ *          name). The stem is copied NUL-terminated and bounded by @p cap; an
+ *          empty or oversized stem is refused rather than truncated.
+ * @param[in]  epub_path Source path (root-level; long names permitted).
+ * @param[out] out       Stem buffer.
+ * @param[in]  cap       Capacity of @p out (@ref k_ra8_rabook_import_name_cap).
+ * @return Error code.
+ * @retval k_ra8_ok               Stem written + NUL-terminated.
+ * @retval k_ra8_err_null_ptr     @p epub_path or @p out is NULL.
+ * @retval k_ra8_err_invalid_arg  The basename is empty (no usable stem).
+ * @retval k_ra8_err_invalid_size The stem does not fit @p cap.
+ * @pre @p epub_path is NUL-terminated; @p out holds @p cap bytes.
+ * @pre @p cap > 0.
+ * @post On success @p out is a NUL-terminated non-empty stem.
+ * @post On error @p out is not relied upon.
+ * @note Thread-safe: writes only @p out.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t s_derive_stem(const char* epub_path, char* out, uint32_t cap)
+{
+  RA8_CHECK_NULL_PTR(epub_path, s_tag, "epub_path");
+  RA8_CHECK_NULL_PTR(out, s_tag, "out");
+
+  size_t start = 0U;
+  size_t i     = 0U;
+  for (; epub_path[i] != '\0'; i++) {
+    if (epub_path[i] == '/') {
+      start = i + 1U;
+    }
+  }
+  size_t len = i - start;
+  for (size_t j = len; j > 1U; j--) {
+    if (epub_path[start + j - 1U] == '.') {
+      len = j - 1U;
+      break;
+    }
+  }
+  if (len == 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (len >= (size_t)cap) {
+    return k_ra8_err_invalid_size;
+  }
+  (void)memcpy(out, &epub_path[start], len);
+  out[len] = '\0';
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Build `<stem><suffix>` into @p out, bounded by @p cap.
+ * @details Concatenates the source stem and one of the fixed `.rabook*`
+ *          extensions and NUL-terminates. A combination that does not fit @p cap
+ *          is refused rather than truncated.
+ * @param[in]  stem   Source-name stem (NUL-terminated).
+ * @param[in]  suffix Extension to append (NUL-terminated, e.g. `.rabook`).
+ * @param[out] out    Destination buffer.
+ * @param[in]  cap    Capacity of @p out.
  * @return Error code.
  * @retval k_ra8_ok               Name written + NUL-terminated.
- * @retval k_ra8_err_null_ptr     @p out is NULL.
- * @retval k_ra8_err_invalid_size @p cap is too small.
- * @pre @p out is non-NULL.
- * @pre @p cap >= @ref k_ra8_rabook_import_name_cap.
- * @post On success @p out is a NUL-terminated 12-char 8.3 name.
+ * @retval k_ra8_err_null_ptr     A pointer argument is NULL.
+ * @retval k_ra8_err_invalid_size `stem` + `suffix` + NUL exceeds @p cap.
+ * @pre @p stem, @p suffix, and @p out are non-NULL.
+ * @pre @p cap > 0.
+ * @post On success @p out is `<stem><suffix>` NUL-terminated.
  * @post On error @p out is unmodified.
  * @note Thread-safe: writes only @p out.
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_make_name(uint32_t crc, char ext0, char ext1, char ext2, char* out, uint32_t cap)
+static ra8_err_t s_make_name(const char* stem, const char* suffix, char* out, uint32_t cap)
 {
+  RA8_CHECK_NULL_PTR(stem, s_tag, "stem");
+  RA8_CHECK_NULL_PTR(suffix, s_tag, "suffix");
   RA8_CHECK_NULL_PTR(out, s_tag, "out");
-  if (cap < (uint32_t)k_ra8_rabook_import_name_cap) {
+  const size_t sn = strlen(stem);
+  const size_t xn = strlen(suffix);
+  if ((sn + xn + 1U) > (size_t)cap) {
     return k_ra8_err_invalid_size;
   }
-  static const char digits[] = "0123456789ABCDEF";
-  for (uint8_t i = 0U; i < (uint8_t)k_ra8_rabook_import_key_hex_len; i++) {
-    uint8_t shift =
-      (uint8_t)(((uint8_t)k_ra8_rabook_import_key_hex_len - 1U - i) * (uint8_t)k_hex_shift);
-    out[i] = digits[(crc >> shift) & (uint32_t)k_hex_mask];
-  }
-  out[(uint8_t)k_idx_dot]  = '.';
-  out[(uint8_t)k_idx_ext0] = ext0;
-  out[(uint8_t)k_idx_ext1] = ext1;
-  out[(uint8_t)k_idx_ext2] = ext2;
-  out[(uint8_t)k_idx_nul]  = '\0';
+  (void)memcpy(out, stem, sn);
+  (void)memcpy(&out[sn], suffix, xn);
+  out[sn + xn] = '\0';
   return k_ra8_ok;
 }
 
 /**
- * @brief Derive the cache (`.RBK`), temp (`.RBT`), and marker (`.RBM`) names.
- * @details All three share the 8-hex CRC prefix and differ only in extension.
- * @param[in]  crc        Source CRC-32 cache key.
- * @param[out] cache_name Receives `XXXXXXXX.RBK` (cap @ref k_ra8_rabook_import_name_cap).
- * @param[out] tmp_name   Receives `XXXXXXXX.RBT`.
- * @param[out] mark_name  Receives `XXXXXXXX.RBM`.
+ * @brief Derive the cache (`.rabook`), temp (`.rabook.tmp`), and marker
+ *        (`.rabook.mrk`) names from the source stem.
+ * @details All three share the source stem and differ only in extension.
+ * @param[in]  stem       Source-name stem (NUL-terminated).
+ * @param[out] cache_name Receives `<stem>.rabook` (cap @ref k_ra8_rabook_import_name_cap).
+ * @param[out] tmp_name   Receives `<stem>.rabook.tmp`.
+ * @param[out] mark_name  Receives `<stem>.rabook.mrk`.
  * @return Error code from the first failing name build.
- * @retval k_ra8_ok           All three names written.
- * @retval k_ra8_err_null_ptr A destination buffer is NULL.
+ * @retval k_ra8_ok               All three names written.
+ * @retval k_ra8_err_null_ptr     A destination buffer (or @p stem) is NULL.
+ * @retval k_ra8_err_invalid_size A derived name overflows the name buffer.
  * @pre @p cache_name, @p tmp_name, @p mark_name each hold the name cap.
- * @pre @p crc is the finalised source key.
- * @post On success the three buffers hold consistent, distinct 8.3 names.
+ * @pre @p stem is the finalised source stem.
+ * @post On success the three buffers hold consistent, distinct names.
  * @post On error the buffers' contents are unspecified.
  * @note Thread-safe: writes only the destinations.
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_derive_names(uint32_t crc, char* cache_name, char* tmp_name, char* mark_name)
+static ra8_err_t s_derive_names(const char* stem, char* cache_name, char* tmp_name, char* mark_name)
 {
   RA8_CHECK_NULL_PTR(cache_name, s_tag, "cache_name");
   RA8_CHECK_NULL_PTR(tmp_name, s_tag, "tmp_name");
   RA8_CHECK_NULL_PTR(mark_name, s_tag, "mark_name");
-  const uint32_t cap = (uint32_t)k_ra8_rabook_import_name_cap;
-  ra8_err_t      err = s_make_name(crc, 'R', 'B', 'K', cache_name, cap);
+  static const char* const ext_cache = ".rabook";     /* cache blob       */
+  static const char* const ext_tmp   = ".rabook.tmp"; /* crash-safe temp  */
+  static const char* const ext_mark  = ".rabook.mrk"; /* freshness marker */
+  const uint32_t           cap       = (uint32_t)k_ra8_rabook_import_name_cap;
+  ra8_err_t                err       = s_make_name(stem, ext_cache, cache_name, cap);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = s_make_name(crc, 'R', 'B', 'T', tmp_name, cap);
+  err = s_make_name(stem, ext_tmp, tmp_name, cap);
   if (err != k_ra8_ok) {
     return err;
   }
-  return s_make_name(crc, 'R', 'B', 'M', mark_name, cap);
+  return s_make_name(stem, ext_mark, mark_name, cap);
 }
 
 /**
@@ -288,7 +325,7 @@ static ra8_err_t s_derive_names(uint32_t crc, char* cache_name, char* tmp_name, 
  *          immediately closes the handle. NULL arguments and any open failure are
  *          reported as "not present".
  * @param[in] mount Mounted volume.
- * @param[in] path  Root-level 8.3 path.
+ * @param[in] path  Root-level path.
  * @return `true` if the file exists and opens; `false` otherwise.
  * @retval true  @p path opened read-only (and was closed again).
  * @retval false @p mount or @p path is NULL, or the open failed.
@@ -323,7 +360,7 @@ static bool s_file_exists(ra8_fs_mount_t* mount, const char* path)
  *          and closes on every path; a short read (marker smaller than one stamp)
  *          is reported as @ref k_ra8_err_invalid_size.
  * @param[in]  mount Mounted volume.
- * @param[in]  path  Marker path (root-level 8.3).
+ * @param[in]  path  Marker path (root-level).
  * @param[out] out   Receives the stamp on success.
  * @return Error code.
  * @retval k_ra8_ok               Stamp read in full.
@@ -368,7 +405,7 @@ s_read_stamp(ra8_fs_mount_t* mount, const char* path, ra8_rabook_import_stamp_t*
  *          field-by-field compound boolean, so there is no compound freshness
  *          decision requiring MC/DC vectors.
  * @param[in] mount     Mounted volume.
- * @param[in] mark_path Marker path (root-level 8.3).
+ * @param[in] mark_path Marker path (root-level).
  * @param[in] want      Stamp the running firmware expects for this source.
  * @return `true` if the marker exists and exactly equals @p want.
  * @retval true  The marker read back and its bytes equal @p want exactly.
@@ -406,7 +443,7 @@ static bool s_cache_is_fresh(ra8_fs_mount_t*                  mount,
  *          #603, so the unlink is belt-and-braces: it keeps the marker
  *          absent rather than stale if the write fails partway.
  * @param[in] mount Mounted volume.
- * @param[in] path  Marker path (root-level 8.3).
+ * @param[in] path  Marker path (root-level).
  * @param[in] stamp Stamp to persist.
  * @return Error code from the write.
  * @retval k_ra8_ok           Marker written.
@@ -464,13 +501,13 @@ static ra8_err_t s_atomic_replace(ra8_fs_mount_t* mount, const char* tmp_path, c
  *          bytes the copy is abandoned with @ref k_ra8_err_invalid_size.
  * @param[out] dst Destination buffer.
  * @param[in]  cap Capacity of @p dst.
- * @param[in]  src NUL-terminated 8.3 source name.
+ * @param[in]  src NUL-terminated source name.
  * @return Error code.
  * @retval k_ra8_ok               Copied incl. terminator.
  * @retval k_ra8_err_null_ptr     A pointer argument is NULL.
  * @retval k_ra8_err_invalid_size @p src did not terminate within @p cap.
  * @pre @p dst and @p src are non-NULL.
- * @pre @p src is a NUL-terminated 8.3 name.
+ * @pre @p src is a NUL-terminated name.
  * @post On success @p dst equals @p src including the terminator.
  * @post On error @p dst contents are unspecified.
  * @note Thread-safe: writes only @p dst.
@@ -506,7 +543,7 @@ static ra8_err_t s_copy_name(char* dst, uint32_t cap, const char* src)
  * @retval k_ra8_ok    Cache + marker published.
  * @retval k_ra8_err_* Propagated compiler or filesystem error.
  * @pre @p cfg and its `compile` seam are non-NULL.
- * @pre The names are distinct 8.3 paths derived from the same source key.
+ * @pre The names are distinct paths derived from the same source stem.
  * @post On success the cache + marker are present and consistent.
  * @post On error the cache is left untouched (no partial publish).
  * @note Not thread-safe.
@@ -550,7 +587,8 @@ static ra8_err_t s_compile_and_cache(const ra8_rabook_import_cfg_t*   cfg,
  * @return Error code.
  * @retval k_ra8_ok               Arguments valid.
  * @retval k_ra8_err_null_ptr     A required pointer is NULL.
- * @retval k_ra8_err_invalid_size @p cache_path_cap is too small.
+ * @retval k_ra8_err_invalid_size @p cache_path_cap is zero. (The output buffer
+ *                                is fit-checked against the derived name later.)
  * @pre Called first from @ref ra8_rabook_import_open.
  * @pre @p cfg may be NULL (checked here before any dereference).
  * @post On `k_ra8_ok` @p cfg and @p cfg->mount are safe to dereference.
@@ -570,7 +608,7 @@ static ra8_err_t s_validate_open_args(const ra8_rabook_import_cfg_t*     cfg,
   RA8_CHECK_NULL_PTR(out_cache_path, s_tag, "out_cache_path");
   RA8_CHECK_NULL_PTR(out_outcome, s_tag, "out_outcome");
   RA8_CHECK_NULL_PTR(cfg->mount, s_tag, "cfg->mount");
-  if (cache_path_cap < (uint32_t)k_ra8_rabook_import_name_cap) {
+  if (cache_path_cap == 0U) {
     return k_ra8_err_invalid_size;
   }
   return k_ra8_ok;
@@ -591,6 +629,25 @@ ra8_err_t ra8_rabook_import_open(const ra8_rabook_import_cfg_t* cfg,
     return err;
   }
 
+  /* Derive the cache names from the source's own basename FIRST, so a bad name
+   * or a too-small output buffer is refused before the source is streamed or
+   * the compiler is invoked (a compile must never run for a doomed request). */
+  char stem[k_ra8_rabook_import_name_cap];
+  err = s_derive_stem(epub_path, stem, (uint32_t)k_ra8_rabook_import_name_cap);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  char cache_name[k_ra8_rabook_import_name_cap];
+  char tmp_name[k_ra8_rabook_import_name_cap];
+  char mark_name[k_ra8_rabook_import_name_cap];
+  err = s_derive_names(stem, cache_name, tmp_name, mark_name);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if ((strlen(cache_name) + 1U) > (size_t)cache_path_cap) {
+    return k_ra8_err_invalid_size;
+  }
+
   uint32_t src_size = 0U;
   uint32_t src_crc  = 0U;
   err               = s_compute_source_key(cfg->mount,
@@ -599,14 +656,6 @@ ra8_err_t ra8_rabook_import_open(const ra8_rabook_import_cfg_t* cfg,
                                            cfg->scratch_cap,
                                            &src_size,
                                            &src_crc);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-
-  char cache_name[k_ra8_rabook_import_name_cap];
-  char tmp_name[k_ra8_rabook_import_name_cap];
-  char mark_name[k_ra8_rabook_import_name_cap];
-  err = s_derive_names(src_crc, cache_name, tmp_name, mark_name);
   if (err != k_ra8_ok) {
     return err;
   }
