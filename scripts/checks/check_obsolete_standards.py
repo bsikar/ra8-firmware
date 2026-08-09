@@ -61,7 +61,7 @@ WHITELIST = {
     # DO-178B, framed in-text as the direct ancestor of this project's
     # DO-178C target -- not a claim that anything here targets the
     # superseded bar.
-    "docs/PHILOSOPHIES.md",
+    "PHILOSOPHIES.md",
 }
 
 
