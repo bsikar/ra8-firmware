@@ -15,10 +15,10 @@
  * `ra8_rabook_compile_from_epub`):
  *
  *   1. First open of `BOOK.EPB` is a cache MISS -> the importer streams the
- *      source through CRC-32 to key the entry, compiles the EPUB into the flat
- *      `RABOOK1` body, and writes it crash-safely (temp + rename) to the
- *      root-level 8.3 cache name `XXXXXXXX.RBK` plus a freshness marker
- *      `XXXXXXXX.RBM`. The outcome reads back `compiled`.
+ *      source through CRC-32 to stamp its freshness, compiles the EPUB into the
+ *      flat `RABOOK1` body, and writes it crash-safely (temp + rename) to the
+ *      cache named after the source, `BOOK.rabook`, plus a freshness marker
+ *      `BOOK.rabook.mrk`. The outcome reads back `compiled`.
  *   2. The app confirms the cache file now exists on the card (the `.rabook`
  *      appeared).
  *   3. A second open of the SAME source is a cache HIT -> the freshness marker
@@ -33,10 +33,10 @@
  * `import_reader: FAIL <stage>` and parks the core. The ra8_emulator headless gate
  * (and a future HIL runner) scrape for that PASS line.
  *
- * @note The cache uses the library's current v1 ROOT-level 8.3 name layout. The
- *       dedicated `/RABOOK/` subdirectory layout from the issue is BLOCKED on
- *       FAT subdirectory write (`ra8_fs_mkdir`, tracked by #151/#165) and is the
- *       next increment -- do not attempt it here.
+ * @note The cache lives in the FAT root, named after the source (`BOOK.rabook`
+ *       for `BOOK.EPB`) now that `ra8_fs` writes VFAT long names (#600/#633). A
+ *       dedicated `/RABOOK/` subdirectory layout is a possible future increment
+ *       -- do not attempt it here.
  * @note The compile working arenas live in external SDRAM (the issue's
  *       conversion-arena tenant of #147); they are sized for a small text book.
  *       A worst-case (image-heavy) book needs the larger ~24-32 MiB budget the
@@ -81,17 +81,14 @@
  * @brief Compile-time settings for the on-import compile + cache + read demo.
  */
 typedef enum : uint32_t {
-  k_imp_uart_baud        = 115200U, /**< J-Link OB CDC console baud.          */
-  k_imp_spi_channel      = 0U,      /**< Pmod2 / J25 SCI0 Simple-SPI.         */
-  k_imp_format_version   = 1U,      /**< RABOOK1 on-disk format stamp.        */
-  k_imp_importer_version = 1U,      /**< Importer/compiler version stamp.     */
-  k_imp_scratch_cap      = 4096U,   /**< Source-CRC streaming chunk (bytes).  */
-  k_imp_path_cap         = 16U,     /**< Cache-path buffer (>= name cap).     */
-  k_imp_dec_base         = 10U,     /**< Radix for integer-to-ASCII.          */
-  k_imp_hex_nibbles      = 8U,      /**< Hex digits in a 32-bit value.        */
-  k_imp_nibble_bits      = 4U,      /**< Bits per hex nibble.                 */
-  k_imp_nibble_mask      = 0x0FU,   /**< Low-nibble mask.                     */
-  k_imp_str_max          = 256U,    /**< Bound on a logged C-string (Rule 2). */
+  k_imp_uart_baud        = 115200U, /**< J-Link OB CDC console baud.              */
+  k_imp_spi_channel      = 0U,      /**< Pmod2 / J25 SCI0 Simple-SPI.             */
+  k_imp_format_version   = 1U,      /**< RABOOK1 on-disk format stamp.            */
+  k_imp_importer_version = 1U,      /**< Importer/compiler version stamp.         */
+  k_imp_scratch_cap      = 4096U,   /**< Source-CRC streaming chunk (bytes).      */
+  k_imp_path_cap         = 16U,     /**< Cache-path buffer (holds "BOOK.rabook"). */
+  k_imp_dec_base         = 10U,     /**< Radix for integer-to-ASCII.              */
+  k_imp_str_max          = 256U,    /**< Bound on a logged C-string (Rule 2).     */
 } imp_config_t;
 
 /**
@@ -495,7 +492,7 @@ static ra8_rabook_import_cfg_t imp_make_cfg(ra8_fs_mount_t* mount)
 /**
  * @brief Read the whole cached `.rabook` at @p path into @ref s_imp_readback.
  * @param[in]  mount   Mounted volume.
- * @param[in]  path    Root-level 8.3 cache path (non-NULL).
+ * @param[in]  path    Root-level cache path (non-NULL).
  * @param[out] out_len Receives the byte length read.
  * @return Error code (first failing `ra8_fs` step's code, or k_ra8_ok).
  * @retval k_ra8_ok           The cache was read fully into the buffer.

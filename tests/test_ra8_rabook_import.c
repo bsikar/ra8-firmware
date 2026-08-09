@@ -70,11 +70,11 @@ typedef enum : uint32_t {
  * @brief Buffer and payload sizing for the test.
  */
 typedef enum : size_t {
-  k_epub_cap    = 8U * 1024U, /**< In-memory ZIP buffer capacity.             */
-  k_scratch_cap = 512U,       /**< Streaming CRC chunk handed to the manager. */
-  k_path_cap    = 16U,        /**< Cache-path output buffer (>= name cap).    */
-  k_read_cap    = 8U * 1024U, /**< Cache read-back buffer.                    */
-  k_spy_len     = 8U,         /**< Bytes the compile spy writes per call.     */
+  k_epub_cap    = 8U * 1024U, /**< In-memory ZIP buffer capacity.                  */
+  k_scratch_cap = 512U,       /**< Streaming CRC chunk handed to the manager.      */
+  k_path_cap    = 16U,        /**< Cache-path output buffer (holds "BOOK.rabook"). */
+  k_read_cap    = 8U * 1024U, /**< Cache read-back buffer.                         */
+  k_spy_len     = 8U,         /**< Bytes the compile spy writes per call.          */
 } import_cap_t;
 
 /**
@@ -310,6 +310,8 @@ static void test_miss_then_hit(void)
                  ra8_rabook_import_open(&cfg, "BOOK.EPB", path1, (uint32_t)sizeof(path1), &out));
   TEST_ASSERT_EQ(k_ra8_rabook_import_compiled, out);
   TEST_ASSERT_EQ(1, s_compile_calls);
+  /* The cache is named after the source's own name, not a CRC-32 hex string. */
+  TEST_ASSERT_EQ(0, strcmp(path1, "BOOK.rabook"));
   uint8_t v1[k_spy_len];
   memcpy(v1, s_last_payload, sizeof(v1));
   assert_cache_bytes(mount, path1, v1, (uint32_t)k_spy_len);
@@ -367,17 +369,17 @@ static void test_stale_version_recompiles(void)
 }
 
 /**
- * @test test_content_change_new_key
- * @brief Editing the source bytes keys a different cache entry, so the changed
- *        book compiles fresh under a new path.
+ * @test test_content_change_rederives
+ * @brief Editing the source bytes changes the freshness stamp's CRC-32, so the
+ *        same-named cache is re-derived (fresh compile) and holds the new bytes.
  *
  * @par MC/DC:
- * No compound decision under test; proves the CRC-32 content key drives the
- * cache name.
+ * No compound decision under test; proves the CRC-32 content key still gates
+ * freshness now that it no longer names the file (the name follows the source).
  */
-static void test_content_change_new_key(void)
+static void test_content_change_rederives(void)
 {
-  TEST_BEGIN("ra8_rabook_import: changed content -> new cache key");
+  TEST_BEGIN("ra8_rabook_import: changed content -> same name, re-derived");
   ra8_fs_mount_t* mount = fresh_volume();
   s_compile_calls       = 0;
 
@@ -399,10 +401,14 @@ static void test_content_change_new_key(void)
                  ra8_rabook_import_open(&cfg, "BOOK.EPB", path_b, (uint32_t)sizeof(path_b), &out));
   TEST_ASSERT_EQ(k_ra8_rabook_import_compiled, out);
   TEST_ASSERT_EQ(2, s_compile_calls);
-  TEST_ASSERT(strcmp(path_a, path_b) != 0);
+  /* Same source name -> same cache name; the changed content forced a compile. */
+  TEST_ASSERT_EQ(0, strcmp(path_a, path_b));
+  uint8_t v2[k_spy_len];
+  memcpy(v2, s_last_payload, sizeof(v2));
+  assert_cache_bytes(mount, path_b, v2, (uint32_t)k_spy_len);
 
   teardown(mount);
-  TEST_END("ra8_rabook_import: changed content -> new cache key");
+  TEST_END("ra8_rabook_import: changed content -> same name, re-derived");
 }
 
 /**
@@ -494,7 +500,7 @@ static void test_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_rabook_import_open(&bad, "BOOK.EPB", path, (uint32_t)sizeof(path), &out));
 
-  /* Output buffer too small for an 8.3 name. */
+  /* Output buffer too small for the derived cache name. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_rabook_import_open(&cfg, "BOOK.EPB", path, 1U, &out));
 
   /* Missing source -> propagated open error, never a compile. */
@@ -506,13 +512,61 @@ static void test_guards(void)
   TEST_END("ra8_rabook_import: NULL + capacity guards");
 }
 
+/**
+ * @test test_name_derivation_edges
+ * @brief The cache name is derived from the source's basename before any
+ *        compile: a directory prefix is stripped, an empty basename is refused,
+ *        and a name too long for the fixed buffer is refused rather than
+ *        truncated.
+ *
+ * @par MC/DC:
+ * No compound decision under test; this drives the single-condition branches of
+ * the name derivation (path-separator seen, empty stem, over-cap stem) so each
+ * is exercised independently.
+ */
+static void test_name_derivation_edges(void)
+{
+  TEST_BEGIN("ra8_rabook_import: name derivation edges");
+  build_epub("<html><body><p>Edge.</p></body></html>");
+  ra8_fs_mount_t* mount = fresh_volume();
+  put_source(mount, "BOOK.EPB");
+  s_compile_calls = 0;
+
+  ra8_rabook_import_cfg_t     cfg = make_cfg(mount, (uint32_t)k_importer_version_a, spy_compile);
+  ra8_rabook_import_outcome_t out = k_ra8_rabook_import_hit;
+  char                        path[k_path_cap] = {};
+
+  /* A directory prefix is stripped to the basename before the source is read;
+   * the source under that subdir does not exist, so the source-key pass fails
+   * cleanly AFTER the stem is derived -- and never compiles. */
+  TEST_ASSERT(ra8_rabook_import_open(&cfg, "sub/BOOK.EPB", path, (uint32_t)sizeof(path), &out) !=
+              k_ra8_ok);
+  TEST_ASSERT_EQ(0, s_compile_calls);
+
+  /* A path that ends in '/' has no usable stem. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_rabook_import_open(&cfg, "sub/", path, (uint32_t)sizeof(path), &out));
+
+  /* A basename longer than the bounded name buffer is refused, not truncated. */
+  static const char k_long[] =
+    "this_source_basename_is_deliberately_far_longer_than_the_bounded_128_byte_"
+    "cache_name_buffer_so_the_derivation_must_refuse_it_rather_than_truncate.epub";
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_rabook_import_open(&cfg, k_long, path, (uint32_t)sizeof(path), &out));
+  TEST_ASSERT_EQ(0, s_compile_calls);
+
+  teardown(mount);
+  TEST_END("ra8_rabook_import: name derivation edges");
+}
+
 int32_t main(void)
 {
   ra8_log_set_byte_sink(test_log_sink, nullptr);
   test_miss_then_hit();
   test_stale_version_recompiles();
-  test_content_change_new_key();
+  test_content_change_rederives();
   test_compile_error_leaves_no_cache();
   test_guards();
+  test_name_derivation_edges();
   return 0;
 }

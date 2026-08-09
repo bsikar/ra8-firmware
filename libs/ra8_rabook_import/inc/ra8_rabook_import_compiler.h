@@ -93,7 +93,7 @@ typedef struct {
  *
  * @param[in]     compile_ctx Pointer to a @ref ra8_rabook_import_compiler_ctx_t.
  * @param[in,out] mount       Mounted volume holding the source and the output.
- * @param[in]     epub_path   Root-level 8.3 path of the source `.epub`.
+ * @param[in]     epub_path   Root-level path of the source `.epub`.
  * @param[in]     out_path    Path to write the RABOOK1 body to (the importer's
  *                            temp name).
  *
@@ -173,7 +173,7 @@ typedef struct {
  *
  * @param[in]     compile_ctx Pointer to a @ref ra8_rabook_import_compiler_m33_ctx_t.
  * @param[in,out] mount       Mounted volume holding the source and the output.
- * @param[in]     epub_path   Root-level 8.3 path of the source `.epub`.
+ * @param[in]     epub_path   Root-level path of the source `.epub`.
  * @param[in]     out_path    Path to write the RABOOK1 body to (importer temp name).
  *
  * @return Error code.

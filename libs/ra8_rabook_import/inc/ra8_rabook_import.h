@@ -10,8 +10,9 @@
  * result on the card, and takes the fast cached path on every subsequent open.
  *
  * This header is the cache manager + import state machine only. It owns:
- *   - the on-disk cache convention (a root-level 8.3 name keyed by the source's
- *     CRC-32: `XXXXXXXX.RBK` cache + `XXXXXXXX.RBM` freshness marker),
+ *   - the on-disk cache convention (the source's own name, e.g. a `.epub`
+ *     basename with `.rabook` cache + `.rabook.mrk` freshness marker beside it,
+ *     now that `ra8_fs` writes VFAT long names -- #600/#633),
  *   - the freshness / staleness gate (a sidecar marker that stores the source
  *     size + CRC-32, the `.rabook` format version, and an importer version --
  *     any mismatch forces a re-derive),
@@ -28,11 +29,11 @@
  * @ref ra8_rabook_import_compiler.h for the supplied adapter.
  *
  * @par Crash safety
- * The miss path writes `XXXXXXXX.RBT` (temp), then atomically renames it over
- * `XXXXXXXX.RBK`, then writes the marker. A power loss mid-import leaves at most
- * a stale temp (cleaned on the next retry) and never a half-written cache; the
- * `.rabook` body CRC-32 (checked by `ra8_book_open`) is a second line of defence.
- * The source `.epub` is never modified or deleted.
+ * The miss path writes `<name>.rabook.tmp` (temp), then atomically renames it
+ * over `<name>.rabook`, then writes the marker. A power loss mid-import leaves
+ * at most a stale temp (cleaned on the next retry) and never a half-written
+ * cache; the `.rabook` body CRC-32 (checked by `ra8_book_open`) is a second line
+ * of defence. The source `.epub` is never modified or deleted.
  *
  * @note Not thread-safe: one import at a time on the single reader core.
  * @see ra8_rabook_import_compiler.h  Production adapter onto the real compiler.
@@ -58,18 +59,18 @@ extern "C" {
 /**
  * @enum ra8_rabook_import_size_t
  * @brief Fixed sizing constants for the cache-name layout.
- * @details The cache entries live in the FAT root with 8.3 short names so the
- *          reader's root-only `ra8_fs_open()` can re-read them. The name is the
- *          8 uppercase-hex digits of the source CRC-32 plus a 3-char extension.
- *          The CRC keys the cache; it is not a workaround for a name limit any
- *          more, since `ra8_fs` writes long names as of #600. Putting the book's
- *          own title here instead is #633.
+ * @details The cache entry is named after the SOURCE'S OWN name -- the `.epub`
+ *          basename with `.rabook` (cache), `.rabook.tmp` (crash-safe temp) or
+ *          `.rabook.mrk` (freshness marker) appended -- now that `ra8_fs` writes
+ *          VFAT long names (#600/#633). The CRC-32 still keys freshness inside
+ *          the marker, but no longer names the file. @ref k_ra8_rabook_import_name_cap
+ *          bounds the derivation onto fixed buffers; a source whose derived name
+ *          does not fit is refused rather than truncated.
  * @since Version 0.1.0
  */
-typedef enum : uint8_t {
-  k_ra8_rabook_import_key_hex_len = 8U,  /**< Hex digits of CRC-32 in the name.   */
-  k_ra8_rabook_import_name_cap    = 13U, /**< "XXXXXXXX.EXT" + NUL (8.3 + term).  */
-  k_ra8_rabook_import_stamp_bytes = 20U, /**< Pinned size of the freshness stamp. */
+typedef enum : uint16_t {
+  k_ra8_rabook_import_name_cap    = 128U, /**< Cache/temp/marker name buffer bytes incl. NUL. */
+  k_ra8_rabook_import_stamp_bytes = 20U,  /**< Pinned size of the freshness stamp.            */
 } ra8_rabook_import_size_t;
 
 /**
@@ -96,7 +97,7 @@ typedef enum : uint8_t {
 
 /**
  * @struct ra8_rabook_import_stamp_t
- * @brief Body of the sidecar freshness marker (`XXXXXXXX.RBM`).
+ * @brief Body of the sidecar freshness marker (`<name>.rabook.mrk`).
  *
  * @details Written verbatim as raw bytes after a successful compile and read
  *          back to gate the fast path. It is an opaque self-describing record
@@ -132,8 +133,8 @@ static_assert(sizeof(ra8_rabook_import_stamp_t) == (uint32_t)k_ra8_rabook_import
  * @param[in]     compile_ctx Opaque cookie supplied in the config; carries the
  *                            EPUB handle + builder arenas in production.
  * @param[in,out] mount       Mounted volume holding the source and the output.
- * @param[in]     epub_path   Root-level 8.3 path of the source `.epub`.
- * @param[in]     out_path    Root-level 8.3 path to write the `.rabook` body to
+ * @param[in]     epub_path   Root-level path of the source `.epub`.
+ * @param[in]     out_path    Root-level path to write the `.rabook` body to
  *                            (the manager passes a temp name, then renames it).
  * @return `k_ra8_ok` on success; any non-zero @ref ra8_err_t aborts the import
  *         and the manager falls back without touching the cache.
@@ -173,21 +174,23 @@ typedef struct {
  *
  * @details
  * State machine on "open `epub_path`":
+ *  -# Derive the cache names from the source's own basename: `<name>.rabook`
+ *     (cache), `<name>.rabook.tmp` (temp) and `<name>.rabook.mrk` (marker).
  *  -# Stream the source bytes through CRC-32 to derive `(size, crc)`; the crc
- *     names the cache entry (`XXXXXXXX.RBK`), so renaming the source does not
- *     orphan its cache and a content change keys a different entry.
- *  -# If the marker `XXXXXXXX.RBM` matches the expected stamp AND the cache file
- *     is present -> **hit**: emit the cache path, do not invoke @p compile.
+ *     keys the freshness stamp (not the file name), so a content change under
+ *     the same source name still forces a re-derive.
+ *  -# If the marker `<name>.rabook.mrk` matches the expected stamp AND the cache
+ *     file is present -> **hit**: emit the cache path, do not invoke @p compile.
  *  -# Otherwise -> **miss/stale**: clear any stale temp, call @p compile to
- *     `XXXXXXXX.RBT`, atomically rename it over `XXXXXXXX.RBK`, write the fresh
- *     marker, and emit the cache path.
+ *     `<name>.rabook.tmp`, atomically rename it over `<name>.rabook`, write the
+ *     fresh marker, and emit the cache path.
  *
  * @param[in]  cfg            Injected dependencies + versioning (see struct).
- * @param[in]  epub_path      Root-level 8.3 path of the source `.epub`.
+ * @param[in]  epub_path      Root-level path of the source `.epub`.
  * @param[out] out_cache_path Receives the NUL-terminated cache `.rabook` path
- *                            (8.3) the caller then opens with `ra8_book_open`.
- * @param[in]  cache_path_cap Capacity of @p out_cache_path in bytes
- *                            (>= @ref k_ra8_rabook_import_name_cap).
+ *                            the caller then opens with `ra8_book_open`.
+ * @param[in]  cache_path_cap Capacity of @p out_cache_path in bytes; must hold
+ *                            the derived `<name>.rabook` name and its terminator.
  * @param[out] out_outcome    Receives @ref k_ra8_rabook_import_hit or
  *                            @ref k_ra8_rabook_import_compiled on success.
  *
@@ -195,15 +198,17 @@ typedef struct {
  * @retval k_ra8_ok            Cache is fresh (hit) or freshly written (compiled).
  * @retval k_ra8_err_null_ptr  A required pointer (incl. an injected dependency)
  *                            is NULL.
- * @retval k_ra8_err_invalid_size `cache_path_cap` is too small, or `scratch_cap`
- *                            is zero.
+ * @retval k_ra8_err_invalid_arg `epub_path` has no usable basename.
+ * @retval k_ra8_err_invalid_size `cache_path_cap` is too small for the derived
+ *                            name, the derived name overflows the fixed buffer,
+ *                            or `scratch_cap` is zero.
  * @retval k_ra8_err_not_found The source `.epub` does not exist.
  * @retval k_ra8_err_*         Propagated filesystem or compiler error (on a
  *                            compile error the cache is left untouched).
  *
  * @pre `cfg`, `epub_path`, `out_cache_path`, and `out_outcome` are non-NULL.
  * @pre `cfg->mount`, `cfg->compile`, and `cfg->scratch` are non-NULL.
- * @post On `k_ra8_ok`, `out_cache_path` is a NUL-terminated 8.3 path to a present
+ * @post On `k_ra8_ok`, `out_cache_path` is a NUL-terminated path to a present
  *       cache file and `*out_outcome` records hit vs compiled.
  * @post On any error the source `.epub` is unmodified and no half cache remains.
  *
