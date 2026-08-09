@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **248**
-- Total compound decisions in scope: **1315**
-- Decisions at 100% MC/DC (`yes`): **1135**
+- Source files with at least one decision: **250**
+- Total compound decisions in scope: **1326**
+- Decisions at 100% MC/DC (`yes`): **1146**
 - Decisions partially covered (`partial`): **74**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **86.31%**
+- Coverage rate (yes / total): **86.43%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **89**
-- Reachable-condition denominator (total - deactivated): **1226**
-- **Reachable MC/DC rate**: **92.58%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1237**
+- **Reachable MC/DC rate**: **92.64%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -271,6 +271,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_widget | 8 | 8 | 0 | 0 |
 | ra8_c6link_wifi_sta | 7 | 7 | 0 | 0 |
 | ra8_flash | 7 | 7 | 0 | 0 |
+| ra8_fs_fat_check | 7 | 7 | 0 | 0 |
 | ra8_fs_fat_fileio | 7 | 7 | 0 | 0 |
 | ra8_i3c | 7 | 7 | 0 | 0 |
 | ra8_mpu | 7 | 7 | 0 | 0 |
@@ -310,6 +311,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epaper | 4 | 4 | 0 | 0 |
 | ra8_epd_cal | 4 | 4 | 0 | 0 |
 | ra8_flash_config | 4 | 4 | 0 | 0 |
+| ra8_fs_fat_exfat_check | 4 | 4 | 0 | 0 |
 | ra8_fs_fat_lfn_write | 4 | 4 | 0 | 0 |
 | ra8_gfx_text_glyph | 4 | 4 | 0 | 0 |
 | ra8_lvd | 4 | 4 | 0 | 0 |
