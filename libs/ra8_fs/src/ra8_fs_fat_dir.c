@@ -238,6 +238,12 @@ static ra8_err_t priv_unlink_locate(const ra8_fs_mount_t* handle,
   if ((out->entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_directory) != 0U) {
     return k_ra8_err_invalid_arg; /* a directory: ra8_fs_rmdir() is the verb */
   }
+  /* Honor the read-only attribute (#681): a file a host marked read-only is not
+   * deletable through the ordinary path, matching DOS/Windows `del`. Refused
+   * before priv_free_chain() touches the FAT, so a denied unlink changes nothing. */
+  if ((out->entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_read_only) != 0U) {
+    return k_ra8_err_access_denied;
+  }
   *out_cluster = priv_entry_first_cluster(out->entry);
   return k_ra8_ok;
 }
@@ -426,6 +432,11 @@ priv_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const char* 
   ra8_err_t err = priv_dir_lookup_any(handle, &t.parent, ol, &t.lba, &t.off, t.entry);
   if (err != k_ra8_ok) {
     return err;
+  }
+  /* Honor the read-only attribute (#681): a read-only file is refused before any
+   * new entry is filed or the old chain is erased, so the directory is untouched. */
+  if ((t.entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_read_only) != 0U) {
+    return k_ra8_err_access_denied;
   }
   dir_insert_t plan = {};
   err               = priv_dir_reserve(handle, &t.parent, nl, &plan);

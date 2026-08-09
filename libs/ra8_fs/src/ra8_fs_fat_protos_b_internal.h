@@ -80,6 +80,34 @@ ra8_err_t
 priv_exfat_write_upcase(const ra8_fs_backend_t* backend, uint32_t abs_lba, uint32_t* out_csum);
 
 /**
+ * @brief Clear then set attribute bits in a 32-byte FAT directory entry.
+ *
+ * @details Rewrites the entry's `DIR_Attr` byte as
+ *          `(attr & ~clear_mask) | set_mask`: bits in @p clear_mask are
+ *          cleared, bits in @p set_mask are set, every other bit is left as it
+ *          was. The two masks are applied in that order, so a bit named in both
+ *          ends up set. This is the one place the attribute byte is patched --
+ *          the archive-on-write convention (`priv_truncate_existing`,
+ *          `priv_write_locked`) and `ra8_fs_set_attr()` both route through it,
+ *          so the read-modify-write cast lives once.
+ *
+ * @param[in,out] entry      32-byte directory entry to update.
+ * @param[in]     set_mask   Attribute bits to set.
+ * @param[in]     clear_mask Attribute bits to clear.
+ *
+ * @pre `entry` is non-NULL and points to 32 writable bytes.
+ * @pre Caller has staged the entry in a sector buffer to be written back.
+ * @post `entry[DIR_Attr] == (old & ~clear_mask) | set_mask`.
+ * @post No other byte of the entry is modified.
+ *
+ * @note Trivially thread-safe; not reentrant against the same buffer.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+void priv_fat_entry_apply_attr(uint8_t* entry, uint8_t set_mask, uint8_t clear_mask);
+
+/**
  * @brief Fetch the FAT entry for `cluster`, returning the next-cluster value.
  *
  * @details

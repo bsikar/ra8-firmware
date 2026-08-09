@@ -355,6 +355,11 @@ ra8_err_t priv_exfat_unlink_at(const ra8_fs_mount_t* m, const exfat_dir_t* dir, 
   if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_directory) != 0U) {
     return k_ra8_err_invalid_arg;
   }
+  /* Honor the read-only attribute (#681): a read-only file is refused before the
+   * entry set is dropped or its clusters freed, so a denied unlink is a no-op. */
+  if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_read_only) != 0U) {
+    return k_ra8_err_access_denied;
+  }
   const ra8_err_t de = priv_exfat_drop_set(m, pos, count);
   if (de != k_ra8_ok) {
     return de; /* GCOVR_EXCL_LINE */
@@ -614,6 +619,13 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
                                            strm_e);
   if (fe != k_ra8_ok) {
     return fe;
+  }
+  /* Honor the read-only attribute (#681). file_e is the File entry read back by
+   * priv_exfat_find_set above, so its FileAttributes low byte carries the
+   * read-only bit; a read-only file is refused before the rename set is rebuilt
+   * or placed. */
+  if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_read_only) != 0U) {
+    return k_ra8_err_access_denied;
   }
   uint8_t        set[k_exfat_max_set_bytes] = {};
   const uint32_t bytes = priv_exfat_build_rename_set(set, file_e, strm_e, new_units, new_len);

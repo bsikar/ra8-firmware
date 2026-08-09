@@ -40,6 +40,13 @@ void priv_entry_set_cluster_size(uint8_t* entry, uint32_t cluster, uint32_t size
   priv_wr32(&entry[k_dir_off_file_size], size);
 }
 
+/* `priv_fat_entry_apply_attr()`: see header for the documented contract. */
+void priv_fat_entry_apply_attr(uint8_t* entry, uint8_t set_mask, uint8_t clear_mask)
+{
+  const uint8_t attr    = entry[k_dir_off_attr];
+  entry[k_dir_off_attr] = (uint8_t)((uint8_t)(attr & (uint8_t)~clear_mask) | (uint8_t)set_mask);
+}
+
 /**
  * @brief Truncate an existing file's chain and zero its dir-entry size.
  *
@@ -91,6 +98,9 @@ priv_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint32_t lba, u
    * afterwards. Without this, `open(write)` + `close()` left a PC-authored
    * mtime describing contents that no longer exist (#601). */
   priv_fat_entry_stamp_write(&buf[off]);
+  /* A content change also sets the archive attribute, the FAT/exFAT convention a
+   * backup tool clears and the OS re-sets on every modification (#681). */
+  priv_fat_entry_apply_attr(&buf[off], (uint8_t)k_ra8_fs_attr_archive, 0U);
   return priv_write_sector(handle, lba, buf);
 }
 
@@ -140,6 +150,16 @@ static ra8_err_t priv_open_existing(ra8_fs_mount_t* handle,
    * file slot is allocated, so a refused open consumes nothing. */
   if ((entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_directory) != 0U) {
     return k_ra8_err_invalid_arg;
+  }
+  /* Honor the read-only attribute (#681). A writing open truncates or appends,
+   * so a file a host marked read-only must be refused BEFORE the slot is taken
+   * and BEFORE priv_truncate_existing() frees its chain -- the DOS/Windows
+   * semantics say `open(read-only, write)` is denied, not silently obeyed. A
+   * read open is untouched: reading a read-only file is exactly what the bit
+   * permits. */
+  if ((mode != k_ra8_fs_mode_read) &&
+      ((entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_read_only) != 0U)) {
+    return k_ra8_err_access_denied;
   }
   ra8_fs_file_t* f = priv_alloc_file_slot();
   if (f == nullptr) {

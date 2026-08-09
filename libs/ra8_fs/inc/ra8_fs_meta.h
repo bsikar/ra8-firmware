@@ -297,6 +297,85 @@ typedef struct {
  */
 [[nodiscard]] ra8_err_t ra8_fs_truncate(ra8_fs_file_t* file, uint32_t new_size);
 
+/* =============================================================================
+ * Per-entry attributes (chmod-style)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra8_fs_attr_settable_t
+ * @brief The attribute bits ::ra8_fs_set_attr may change.
+ *
+ * @details The FAT/exFAT attribute byte also carries the DIRECTORY, VOLUME_ID
+ *          and long-name bits, which describe what an entry IS rather than how a
+ *          host wants it treated; changing them would reclassify the entry and
+ *          corrupt the volume. So the set/clear masks are confined to the four
+ *          host-controlled bits -- read-only, hidden, system and archive -- and
+ *          a request naming any other bit is rejected.
+ *
+ * @see ra8_fs_set_attr()
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_fs_attr_settable =
+    (uint8_t)((uint8_t)k_ra8_fs_attr_read_only | (uint8_t)k_ra8_fs_attr_hidden |
+              (uint8_t)k_ra8_fs_attr_system | (uint8_t)k_ra8_fs_attr_archive),
+  /**< Union of the four settable bits (0x27). */
+} ra8_fs_attr_settable_t;
+
+/**
+ * @brief Set and/or clear a named entry's file attributes (chmod-style).
+ *
+ * @details Patches the entry's on-disk attribute byte to
+ *          `(attr & ~clear_mask) | set_mask`: bits in @p clear_mask are cleared,
+ *          bits in @p set_mask are set, every other bit is left as it was. Only
+ *          the four host-controlled bits are settable
+ *          (::k_ra8_fs_attr_settable) -- read-only, hidden, system, archive; a
+ *          mask naming DIRECTORY, VOLUME_ID or a long-name bit, or a bit that
+ *          appears in BOTH masks, is rejected without touching the volume, so a
+ *          caller cannot reclassify a directory as a file or give one
+ *          contradictory instructions.
+ *
+ *          This is how a read-only marker is PUT ON a file (so a later write /
+ *          unlink / rename is refused with ::k_ra8_err_access_denied) or taken
+ *          OFF one, and how hidden / system / archive are managed to match host
+ *          behaviour. On FAT the byte lives in the directory entry; on exFAT it
+ *          is the low byte of the File entry's FileAttributes, and the entry
+ *          set's SetChecksum is recomputed after the patch. The volume root has
+ *          no entry of its own and is rejected.
+ *
+ * @param[in,out] handle     Mount handle.
+ * @param[in]     path       Path to the entry (resolved as ::ra8_fs_stat() does).
+ * @param[in]     set_mask   Attribute bits to set (subset of
+ *                           ::k_ra8_fs_attr_settable).
+ * @param[in]     clear_mask Attribute bits to clear (subset of
+ *                           ::k_ra8_fs_attr_settable).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                Attribute byte patched (or both masks 0: a
+ *                                 no-op success).
+ * @retval k_ra8_err_null_ptr      @p handle or @p path is NULL.
+ * @retval k_ra8_err_invalid_state Mount is not in use.
+ * @retval k_ra8_err_invalid_arg   @p path names the volume root or is not a
+ *                                 valid name; or a mask names a non-settable bit
+ *                                 or a bit in both masks.
+ * @retval k_ra8_err_not_found     Nothing at @p path.
+ * @retval k_ra8_err_*             Backend read/write failure.
+ *
+ * @pre `handle` and `path` are non-NULL; the mount is in use.
+ * @pre `set_mask & ~k_ra8_fs_attr_settable == 0` and likewise for @p clear_mask.
+ * @post On ::k_ra8_ok a later ::ra8_fs_stat reports `(old & ~clear_mask) |
+ *       set_mask` for the settable bits, and no other bit changed.
+ * @post On any error the entry's attribute byte is unchanged.
+ *
+ * @note Not thread-safe unless a lock is installed (see ::ra8_fs_set_lock()).
+ *
+ * @see ra8_fs_stat()  Reports the attribute byte this patches.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_fs_set_attr(ra8_fs_mount_t* handle, const char* path, uint8_t set_mask, uint8_t clear_mask);
+
 #ifdef __cplusplus
 }
 #endif

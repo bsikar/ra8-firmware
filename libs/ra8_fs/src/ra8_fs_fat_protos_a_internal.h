@@ -439,7 +439,6 @@ uint32_t priv_entry_first_cluster(const uint8_t* entry);
  */
 RA8_PRIV
 void priv_entry_set_cluster_size(uint8_t* entry, uint32_t cluster, uint32_t size);
-
 /**
  * @brief End-of-chain value to write for this FAT type.
  *

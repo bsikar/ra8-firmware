@@ -198,6 +198,7 @@ typedef enum : uint32_t {
   k_exfat_secflag_no_fat = 0x02U,   /**< GeneralSecondaryFlags: NoFatChain.         */
   k_exfat_secflag_poss   = 0x01U,   /**< GeneralSecondaryFlags: AllocationPossible. */
   k_exfat_secflag_alloc  = 0x03U,   /**< AllocationPossible | NoFatChain.           */
+  k_exfat_attr_read_only = 0x01U,   /**< FileAttributes: read-only.                 */
   k_exfat_attr_directory = 0x10U,   /**< FileAttributes: directory.                 */
   k_exfat_attr_archive   = 0x20U,   /**< FileAttributes: archive.                   */
   k_exfat_fsname_len     = 8U,      /**< "EXFAT   " field length.                   */

@@ -646,6 +646,7 @@ static const ra8_err_name_entry_t s_ra8_err_names[] = {
   {k_ra8_err_not_initialized, "not_initialized"},
   {k_ra8_err_estop, "estop"},
   {k_ra8_err_not_empty, "not_empty"},
+  {k_ra8_err_access_denied, "access_denied"},
   {k_ra8_err_hw_init_failed, "hw_init_failed"},
   {k_ra8_err_hw_not_ready, "hw_not_ready"},
   {k_ra8_err_hw_timeout, "hw_timeout"},

@@ -314,6 +314,12 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
   if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_directory) != 0U) {
     return k_ra8_err_invalid_arg;
   }
+  /* Honor the read-only attribute (#681): both writing modes mutate the file, so
+   * a host-marked read-only file is refused before a slot is claimed or a cluster
+   * freed. A read open never reaches here (priv_exfat_open dispatches it away). */
+  if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_read_only) != 0U) {
+    return k_ra8_err_access_denied;
+  }
   ra8_err_t e = priv_exfat_writable_set(count, strm);
   if (e != k_ra8_ok) {
     return e;
