@@ -222,6 +222,10 @@ NAME_CLASS: dict[str, str] = {
     ".pylintrc": "tool-config",
     ".globalrc": "tool-config",
     ".cppcheck-suppressions": "tool-config",
+    # cppcheck-only C23 nullptr shim, force-included by the cppcheck gate; it is
+    # never compiled into any TU, so clang-tidy cannot claim it as c-family and
+    # it is classified for what it is -- configuration for a named tool.
+    "cppcheck_c23_compat.h": "tool-config",
     ".style_ignored_dirs": "tool-config",
     ".rat-excludes": "tool-config",
     ".gitignore": "vcs-metadata",

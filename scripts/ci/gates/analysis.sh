@@ -68,14 +68,36 @@ gate_cppcheck() (
     echo "  fail with unknownMacro. Update this path if the header moved." >&2
     return 1
   fi
+  # tools/ is held to the same bar as the firmware (CLAUDE.md), so it is IN
+  # scope here -- not just tools/ra8_emulator, and not behind the
+  # --error-exitcode=0 escape where a finding cannot fail anything (#596). The
+  # host tools are the only first-party code that opens files and calls malloc,
+  # so they are the only code that trips a cppcheck 2.13 blind spot: it does
+  # not model the C23 `nullptr` keyword as a null constant and reports a
+  # false-positive resourceLeak/memleak on every resource guarded by an
+  # `if (p == nullptr)` return. cppcheck_c23_compat.h maps the keyword to the
+  # classic null constant for the analyser only, force-included exactly as the
+  # annotation header is: a command-line `-Dnullptr=NULL` would disable the
+  # configuration exploration that the ra8p1 examples rely on, and a guarded
+  # `#ifdef __CPPCHECK__` would be explored both ways and re-surface the false
+  # positives. See that header for the full rationale.
+  local compat_header=scripts/checks/cppcheck_c23_compat.h
+  if [[ ! -f "$compat_header" ]]; then
+    echo "cppcheck: $compat_header not found -- the C23 nullptr keyword would" >&2
+    echo "  read as a non-null symbol and every nullptr-guarded fopen/malloc" >&2
+    echo "  in tools/ would fail with a false-positive resourceLeak. Update" >&2
+    echo "  this path if the shim moved." >&2
+    return 1
+  fi
   cppcheck --enable=warning,style,performance,portability \
     --error-exitcode=1 \
     "${suppress_args[@]}" \
     --inline-suppr \
     --include="$attrs_header" \
+    --include="$compat_header" \
     -i libs/third_party \
     --std=c23 \
-    src libs "${apps[@]}"
+    src libs tools "${apps[@]}"
 )
 
 # --- scan-build -----------------------------------------------------------
