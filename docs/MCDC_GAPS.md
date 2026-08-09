@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **250**
-- Total compound decisions in scope: **1326**
-- Decisions at 100% MC/DC (`yes`): **1146**
+- Source files with at least one decision: **251**
+- Total compound decisions in scope: **1329**
+- Decisions at 100% MC/DC (`yes`): **1149**
 - Decisions partially covered (`partial`): **74**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **86.43%**
+- Coverage rate (yes / total): **86.46%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **89**
-- Reachable-condition denominator (total - deactivated): **1237**
-- **Reachable MC/DC rate**: **92.64%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1240**
+- **Reachable MC/DC rate**: **92.66%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -332,6 +332,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_esp_hosted_spi | 3 | 3 | 0 | 0 |
 | ra8_eth_gwca_queue | 3 | 3 | 0 | 0 |
 | ra8_fs_fat_exfat_stream | 3 | 3 | 0 | 0 |
+| ra8_fs_fat_file | 3 | 3 | 0 | 0 |
 | ra8_jof | 3 | 3 | 0 | 0 |
 | ra8_jpeg_sw_stream | 3 | 3 | 0 | 0 |
 | ra8_reflow_link | 3 | 3 | 0 | 0 |
@@ -355,8 +356,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epub_img_import | 2 | 2 | 0 | 0 |
 | ra8_esp_hosted_gpio_edge | 2 | 2 | 0 | 0 |
 | ra8_esp_hosted_osi | 2 | 2 | 0 | 0 |
+| ra8_fs_fat_attr | 2 | 2 | 0 | 0 |
 | ra8_fs_fat_dir | 2 | 2 | 0 | 0 |
-| ra8_fs_fat_file | 2 | 2 | 0 | 0 |
 | ra8_gfx_dither | 2 | 2 | 0 | 0 |
 | ra8_i3c_i2c_peripheral | 2 | 2 | 0 | 0 |
 | ra8_ipc | 2 | 2 | 0 | 0 |

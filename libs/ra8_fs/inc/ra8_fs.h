@@ -376,6 +376,9 @@ ra8_fs_mount_partition(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mo
  *                                     volume allows -- 247 characters on FAT,
  *                                     64 on exFAT.
  * @retval k_ra8_err_not_found          Read mode and path doesn't exist.
+ * @retval k_ra8_err_access_denied      A writing mode (`_write` / `_append`) on
+ *                                     a file whose read-only attribute is set;
+ *                                     a read open of the same file succeeds.
  * @retval k_ra8_err_no_mem             No free file slot, no directory slot, or
  *                                     the volume has no free cluster.
  * @retval k_ra8_err_no_data            Write mode failed to allocate cluster.
@@ -389,7 +392,12 @@ ra8_fs_mount_partition(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mo
  * @post On `k_ra8_err_invalid_arg` the volume is unchanged.
  * @note Write mode TRUNCATES in place on both filesystems: the name keeps its
  *       directory entry (and its creation stamp) and only the contents go.
- * @see ra8_fs_rmdir()  The verb for removing a directory.
+ * @note The read-only attribute is honored HERE, at open time (like POSIX/DOS):
+ *       a handle already opened for writing keeps writing even if the file is
+ *       marked read-only afterwards via ::ra8_fs_set_attr(). A content write
+ *       also sets the archive attribute.
+ * @see ra8_fs_rmdir()   The verb for removing a directory.
+ * @see ra8_fs_set_attr() Sets / clears the read-only attribute this honors.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
@@ -477,6 +485,8 @@ ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_l
  * @retval k_ra8_err_null_ptr    Any pointer argument was NULL.
  * @retval k_ra8_err_invalid_arg Empty/oversized name, or @p path names an
  *                               existing directory.
+ * @retval k_ra8_err_access_denied @p path exists and its read-only attribute is
+ *                               set (it would be replaced -- refused).
  * @retval k_ra8_err_no_mem      Out of free clusters or directory slots.
  * @retval k_ra8_err_*           Backend error.
  *
@@ -606,6 +616,7 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
  * @retval k_ra8_ok               File unlinked.
  * @retval k_ra8_err_null_ptr     handle/path NULL.
  * @retval k_ra8_err_invalid_arg  `path` names a directory.
+ * @retval k_ra8_err_access_denied `path`'s read-only attribute is set.
  * @retval k_ra8_err_not_found    File doesn't exist.
  *
  * @pre `handle` and `path` are non-NULL; the mount is in use.
@@ -647,6 +658,7 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
  * @retval k_ra8_ok                File renamed.
  * @retval k_ra8_err_null_ptr      Any pointer arg is NULL.
  * @retval k_ra8_err_not_found     @p old_path does not exist.
+ * @retval k_ra8_err_access_denied @p old_path's read-only attribute is set.
  * @retval k_ra8_err_exists        @p new_path already resolves.
  * @retval k_ra8_err_not_supported exFAT name longer than 15 characters, or the
  *                                two paths are in different directories.

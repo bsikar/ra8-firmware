@@ -927,6 +927,12 @@ ra8_err_t priv_exfat_flush_set(ra8_fs_file_t* file)
   /* Stamp and patch BEFORE the checksum: it covers every byte both touch, so
    * the other order writes a set a host `fsck` rejects (#601). */
   priv_exfat_file_stamp_write(set);
+  /* A write also sets the archive attribute (#681): the convention a backup tool
+   * clears and the OS re-sets on modification. The low byte of the 16-bit
+   * FileAttributes field carries it; the other bits (read-only can never be set
+   * on a handle that reached a write) are preserved. */
+  set[k_exfat_off_file_attr] =
+    (uint8_t)(set[k_exfat_off_file_attr] | (uint8_t)k_exfat_attr_archive);
   priv_exfat_patch_stream(file, &set[k_exfat_entry_bytes]);
   priv_wr16(&set[k_exfat_off_file_csum],
             priv_exfat_set_checksum(set, file->entry_set_count * (uint32_t)k_exfat_entry_bytes));

@@ -257,6 +257,24 @@ typedef enum : uint16_t {
    */
   k_ra8_err_not_empty = 0x111,
 
+  /**
+   * @brief Operation refused because the target is protected against it.
+   * @details The POSIX `EACCES` condition, returned when a mutating request is
+   *          denied by a permission the target itself carries rather than by a
+   *          bad argument or a broken device. Its first use is the FAT/exFAT
+   *          read-only attribute: `ra8_fs_open()` for writing,
+   *          `ra8_fs_write_file()`, `ra8_fs_unlink()` and `ra8_fs_rename()`
+   *          return it rather than overwrite or delete a file a host marked
+   *          read-only. The bit is checked at OPEN time, so `ra8_fs_write()` on
+   *          a handle opened before the file became read-only is unaffected.
+   *          Distinct from `k_ra8_err_invalid_arg`, which says the
+   *          request was malformed: here the request is well-formed and the
+   *          answer is "not allowed".
+   * @par Value: 0x112
+   * @see k_ra8_err_invalid_arg  Malformed request, not a protected target.
+   */
+  k_ra8_err_access_denied = 0x112,
+
   /* =========================================================================
    * Hardware errors (0x200 -- 0x2FF)
    * Peripheral, GPIO, and hardware-interface errors

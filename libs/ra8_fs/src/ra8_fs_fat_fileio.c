@@ -550,6 +550,9 @@ static ra8_err_t priv_write_locked(ra8_fs_file_t* file, const uint8_t* buf, uint
    * mid-stream still leaves an mtime describing what is actually on the card,
    * rather than whatever a PC wrote when it created the file. */
   priv_fat_entry_stamp_write(&dirsec[file->dir_entry_idx]);
+  /* Same reason the archive attribute rides along: the file was modified, which
+   * is exactly what the bit records (#681). */
+  priv_fat_entry_apply_attr(&dirsec[file->dir_entry_idx], (uint8_t)k_ra8_fs_attr_archive, 0U);
   file->dirty = 1U;
   return priv_write_sector(m, file->dir_entry_lba, dirsec);
 }

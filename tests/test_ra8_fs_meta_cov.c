@@ -330,6 +330,49 @@ static void test_cov_label_set_deep_io(void)
   TEST_END("ra8_fs label cov: set_label deep read errors (create + clear)");
 }
 
+/**
+ * @test test_cov_setattr_io_errors
+ * @par MC/DC:
+ * (no compound decision unique to this case -- set_attr's resolve, read and
+ * write error returns on FAT, and the find-set / write error returns on exFAT;
+ * the mask-validation compound decision is driven in `test_ra8_fs_attr.c`)
+ */
+static void test_cov_setattr_io_errors(void)
+{
+  TEST_BEGIN("ra8_fs set_attr cov: FAT + exFAT resolve/read/write errors");
+  static const uint8_t body[4] = {'x', 'y', 'z', 'w'};
+  const uint8_t        arc     = (uint8_t)k_ra8_fs_attr_archive;
+
+  /* FAT: a nested path whose parent is missing -> not_found (resolve error). */
+  ra8_fs_mount_t* fat = fmt_fault_mount((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(fat, "U.BIN", body, (uint32_t)sizeof(body)));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_set_attr(fat, "/NODIR/x", arc, 0U));
+  /* read error while reading the entry's sector. */
+  s_fault_read_at = 1U;
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_attr(fat, "U.BIN", arc, 0U));
+  fault_reset();
+  /* write-back error. */
+  s_fault_write_all = true;
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_attr(fat, "U.BIN", arc, 0U));
+  fault_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(fat));
+  free_volume();
+
+  /* exFAT: a missing name (not_found), then find-set read error and write error. */
+  ra8_fs_mount_t* exf = fmt_fault_mount((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(exf, "V.BIN", body, (uint32_t)sizeof(body)));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_set_attr(exf, "NOPE.BIN", arc, 0U));
+  s_fault_read_at = 1U;
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_attr(exf, "V.BIN", arc, 0U));
+  fault_reset();
+  s_fault_write_all = true;
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_attr(exf, "V.BIN", arc, 0U));
+  fault_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(exf));
+  free_volume();
+  TEST_END("ra8_fs set_attr cov: FAT + exFAT resolve/read/write errors");
+}
+
 int32_t main(void)
 {
   test_cov_space_io_errors();
@@ -339,6 +382,7 @@ int32_t main(void)
   test_cov_label_set_deep_io();
   test_cov_exfat_label_edges();
   test_cov_utime_io_errors();
+  test_cov_setattr_io_errors();
   (void)fprintf(stderr, "[OK  ] test_ra8_fs_meta_cov.c\n");
   return 0;
 }
