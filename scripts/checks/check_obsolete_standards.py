@@ -57,6 +57,11 @@ WHITELIST = {
     "scripts/checks/check_obsolete_standards.py",
     "scripts/git/pre-commit",
     "docs/MCDC.md",
+    # Historical/explanatory reference: SQLite's test harness targeted
+    # DO-178B, framed in-text as the direct ancestor of this project's
+    # DO-178C target -- not a claim that anything here targets the
+    # superseded bar.
+    "docs/PHILOSOPHIES.md",
 }
 
 
