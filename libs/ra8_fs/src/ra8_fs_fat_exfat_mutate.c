@@ -4,7 +4,9 @@
  *
  * @details
  * Locates a directory-entry set, frees its clusters and bitmap bits, and
- * applies in-place rename, plus the exFAT directory listing.
+ * renames it -- rewriting the whole set under the new name, in place when the
+ * entry count is unchanged and by relocation when the name needs more or fewer
+ * Name entries -- plus the exFAT directory listing.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -19,30 +21,6 @@
 #include "ra8_fs_fat_internal.h"
 
 /* ---- exFAT mutation helpers (unlink / rename / listdir) ------------------ */
-
-/**
- * @enum exfat_mutate_const_t
- * @brief Sizing constants for the exFAT mutation helpers.
- *
- * @details The entry-set bounds these build on (::k_exfat_set_max_entries) and
- *          the ::exfat_setpos_t coordinates they hand around are shared with
- *          the streaming writer, so they live in
- *          `ra8_fs_fat_exfat_stream_internal.h` rather than here.
- *
- * @invariant `k_exfat_rename_bytes` is `k_exfat_rename_entries * 32`.
- *
- * @par Example:
- * @code
- * char name[k_exfat_list_name_cap] = {};
- * @endcode
- *
- * @see priv_exfat_rename()
- * @since 0.1.0
- */
-typedef enum : uint32_t {
-  k_exfat_rename_entries = 3U,  /**< In-place rename set: File+Stream+Name. */
-  k_exfat_rename_bytes   = 96U, /**< Three 32-byte entries.                 */
-} exfat_mutate_const_t;
 
 /* `priv_exfat_bitmap_clear()`: see header for the documented contract. */
 ra8_err_t
@@ -400,64 +378,71 @@ ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path)
 }
 
 /**
- * @brief Patch a 3-entry set for a new name and rewrite it in place.
+ * @brief Assemble a file's directory set under a new name, keeping its data.
  *
- * @details Updates the Stream entry's NameLength + NameHash, rebuilds the
- * single Name entry from @p new_path, recomputes the File entry's
- * SetChecksum over the whole set, and writes all three entries back at
- * their recorded positions.
+ * @details Starts from the file's current File + Stream entries, so every field
+ * that is NOT the name rides across untouched: the create / modify timestamps,
+ * the attributes, `FirstCluster`, `DataLength`, `ValidDataLength` and the
+ * secondary flags. It then overwrites exactly what a rename changes -- the File
+ * entry's `SecondaryCount`, the Stream entry's `NameLength` + `NameHash`, and a
+ * run of Name entries carrying fifteen UTF-16 units apiece. The access stamp is
+ * refreshed just before the `SetChecksum` is recomputed over the whole set.
  *
- * @param[in]     m        Mounted exFAT volume.
- * @param[in]     pos      Positions of the set's three entries.
- * @param[in,out] set      The 96-byte set (File + Stream + Name).
- * @param[in]     new_name Replacement name as UTF-16 units (<= 15 of them).
- * @param[in]     new_len  Number of units in @p new_name.
- * @return Error code.
- * @retval k_ra8_ok    All three entries rewritten.
- * @retval k_ra8_err_* Backend write failure.
- * @pre @p set holds the file's current File + Stream entries.
- * @pre @p new_len fits one Name entry.
- * @post On k_ra8_ok the on-disk set carries the new name + checksum.
- * @post @p set mirrors the on-disk bytes.
- * @note Helper of ::priv_exfat_rename (complexity split).
+ * A name of 16+ units needs more than one Name entry, so the built set can be
+ * longer OR shorter than the one on the volume. That is precisely why the old
+ * in-place patch could not do this and ::priv_exfat_place_rename has to decide
+ * where the result lands (#603).
+ *
+ * @param[out] set      Buffer of at least ::k_exfat_max_set_bytes.
+ * @param[in]  file_e   The file's current 32-byte File entry.
+ * @param[in]  strm_e   The file's current 32-byte Stream-extension entry.
+ * @param[in]  new_name Replacement name as UTF-16 code units.
+ * @param[in]  new_len  Number of units in @p new_name (1..::k_exfat_name_cap).
+ * @return The total byte length of the built set.
+ * @retval >0 Number of bytes written into @p set.
+ * @pre @p set, @p file_e, @p strm_e and @p new_name are non-NULL.
+ * @pre @p new_len is at least 1 and at most ::k_exfat_name_cap.
+ * @post @p set holds a complete entry set with a valid SetChecksum.
+ * @post No volume state is modified.
+ * @note Access stamp only; the create + modify stamps ride along in @p file_e.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_apply_rename(const ra8_fs_mount_t* m,
-                                         const exfat_setpos_t* pos,
-                                         uint8_t*              set,
-                                         const uint16_t*       new_name,
-                                         uint32_t              new_len)
+static uint32_t priv_exfat_build_rename_set(uint8_t*        set,
+                                            const uint8_t*  file_e,
+                                            const uint8_t*  strm_e,
+                                            const uint16_t* new_name,
+                                            uint32_t        new_len)
 {
+  const uint32_t name_entries =
+    (new_len + (uint32_t)k_exfat_name_per_entry - 1U) / (uint32_t)k_exfat_name_per_entry;
+  const uint32_t sec_count = 1U + name_entries;
+  const uint32_t total     = (1U + sec_count) * (uint32_t)k_exfat_entry_bytes;
+  for (uint32_t i = 0U; i < total; i++) {
+    set[i] = 0U;
+  }
+  priv_byte_copy(&set[0], file_e, (uint32_t)k_exfat_entry_bytes);
+  priv_byte_copy(&set[k_exfat_entry_bytes], strm_e, (uint32_t)k_exfat_entry_bytes);
+  set[k_exfat_off_file_secnt] = (uint8_t)sec_count;
   uint8_t* strm               = &set[k_exfat_entry_bytes];
-  uint8_t* name               = &set[(size_t)2U * (size_t)k_exfat_entry_bytes];
   strm[k_exfat_strm_off_nlen] = (uint8_t)new_len;
   priv_wr16(&strm[k_exfat_off_strm_hash], priv_exfat_name_hash(new_name, new_len));
-  for (uint32_t i = 0U; i < (uint32_t)k_exfat_entry_bytes; i++) {
-    name[i] = 0U;
-  }
-  name[0] = (uint8_t)k_exfat_entry_name;
-  for (uint32_t c = 0U; c < (uint32_t)k_exfat_name_per_entry; c++) {
-    if (c < new_len) {
-      priv_wr16(&name[k_exfat_name_off + (c * 2U)], new_name[c]);
+  for (uint32_t n = 0U; n < name_entries; n++) {
+    uint8_t* ne = &set[(size_t)(2U + n) * (size_t)k_exfat_entry_bytes];
+    ne[0]       = (uint8_t)k_exfat_entry_name;
+    for (uint32_t c = 0U; c < (uint32_t)k_exfat_name_per_entry; c++) {
+      const uint32_t p = (n * (uint32_t)k_exfat_name_per_entry) + c;
+      if (p < new_len) {
+        priv_wr16(&ne[k_exfat_name_off + (c * 2U)], new_name[p]);
+      }
     }
   }
   /* Access stamp only, and before the checksum that covers it. Same reasoning
    * as the FAT rename: the name moved, the bytes did not, so LastModified must
-   * not move or every backup tool concludes the file changed (#601). The
-   * create and modify stamps ride along untouched in `set`, which is the File
-   * entry read back off the volume. */
+   * not move or every backup tool concludes the file changed (#601). */
   priv_exfat_file_stamp_access(set);
-  priv_wr16(&set[k_exfat_off_file_csum],
-            priv_exfat_set_checksum(set, (uint32_t)k_exfat_rename_bytes));
-  for (uint32_t k = 0U; k < (uint32_t)k_exfat_rename_entries; k++) {
-    const ra8_err_t e =
-      priv_exfat_put_entry(m, &pos[k], &set[(size_t)k * (size_t)k_exfat_entry_bytes]);
-    if (e != k_ra8_ok) {
-      return e; /* GCOVR_EXCL_LINE */
-    }
-  }
-  return k_ra8_ok;
+  priv_wr16(&set[k_exfat_off_file_csum], priv_exfat_set_checksum(set, total));
+  return total;
 }
 
 /**
@@ -524,37 +509,67 @@ static ra8_err_t priv_exfat_rename_prepare(const ra8_fs_mount_t* m,
 }
 
 /**
- * @brief Resolve one rename leaf to units, refusing a name past one Name entry.
+ * @brief Write a rebuilt rename set, in place when it fits, else by relocation.
  *
- * @details ::priv_exfat_needle_units plus the single-Name-entry bound both
- * rename leaves share. Extracted so ::priv_exfat_rename stays under the
- * statement-count gate; the bound is ::k_exfat_name_per_entry because an
- * in-place rename rewrites exactly one Name entry (#606).
+ * @details When the new set has the SAME entry count as the old one, every slot
+ * is rewritten where it already sits -- the cheap path a same-length rename
+ * keeps, and the only path a checksum-and-name edit ever needed. Otherwise the
+ * set changed length: a fresh run of @p new_count free slots is located (growing
+ * the directory if it must), the whole set is written there, and only THEN is
+ * the old set retired by clearing bit 7 of each of its type bytes.
  *
- * @param[in]  m       Mounted exFAT volume.
- * @param[in]  name    Leaf name, UTF-8, already parent-resolved.
- * @param[out] out     Receives up to ::k_exfat_name_cap code units.
- * @param[out] out_len Receives the unit count.
+ * That order is the crash-safe one. The new set names the same clusters as the
+ * old, so a failure after the write but before the drop leaves two names for one
+ * file -- a transient the next scan resolves -- whereas dropping first would
+ * orphan the clusters if the write never completed (#603).
+ *
+ * @param[in] m         Mounted exFAT volume.
+ * @param[in] parent    Directory that holds the set.
+ * @param[in] pos       Positions of the OLD set's entries.
+ * @param[in] old_count Number of entries in the old set.
+ * @param[in] set       The rebuilt set bytes (File + Stream + Name entries).
+ * @param[in] bytes     Length of @p set; @p bytes / 32 is the new entry count.
  * @return Error code.
- * @retval k_ra8_ok                Converted and within one Name entry.
- * @retval k_ra8_err_not_supported Over one Name entry, or a foreign up-case table.
- * @retval k_ra8_err_invalid_arg   @p name is not well-formed UTF-8.
- * @pre All pointers (@p m, @p name, @p out, @p out_len) are non-NULL.
- * @pre @p out has room for ::k_exfat_name_cap code units.
- * @post On failure `*out_len` is 0.
- * @post No volume state is modified.
+ * @retval k_ra8_ok         The set was placed and any old set retired.
+ * @retval k_ra8_err_no_mem The directory has no room for a longer set.
+ * @retval k_ra8_err_*      Backend read / write failure.
+ * @pre @p pos came from ::priv_exfat_find_set for @p old_count entries.
+ * @pre @p bytes is a positive multiple of ::k_exfat_entry_bytes.
+ * @post On k_ra8_ok exactly one entry set answers to the new name.
+ * @post On relocation the old set's slots read as deleted.
  * @note Helper of ::priv_exfat_rename (statement-count split).
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_exfat_rename_leaf(const ra8_fs_mount_t* m, const char* name, uint16_t* out, uint32_t* out_len)
+static ra8_err_t priv_exfat_place_rename(const ra8_fs_mount_t* m,
+                                         const exfat_dir_t*    parent,
+                                         const exfat_setpos_t* pos,
+                                         uint32_t              old_count,
+                                         const uint8_t*        set,
+                                         uint32_t              bytes)
 {
-  const ra8_err_t e = priv_exfat_needle_units(m, name, out, out_len, k_ra8_err_not_supported);
-  if (e != k_ra8_ok) {
-    return e;
+  const uint32_t new_count = bytes / (uint32_t)k_exfat_entry_bytes;
+  if (new_count == old_count) {
+    for (uint32_t k = 0U; k < new_count; k++) {
+      const ra8_err_t e =
+        priv_exfat_put_entry(m, &pos[k], &set[(size_t)k * (size_t)k_exfat_entry_bytes]);
+      if (e != k_ra8_ok) {
+        return e; /* GCOVR_EXCL_LINE */
+      }
+    }
+    return k_ra8_ok;
   }
-  return (*out_len > (uint32_t)k_exfat_name_per_entry) ? k_ra8_err_not_supported : k_ra8_ok;
+  uint32_t        nclus = 0U;
+  uint32_t        nidx  = 0U;
+  const ra8_err_t se    = priv_exfat_find_dir_space(m, parent, new_count, &nclus, &nidx);
+  if (se != k_ra8_ok) {
+    return se;
+  }
+  const ra8_err_t we = priv_exfat_write_dir_set(m, nclus, nidx, set, bytes);
+  if (we != k_ra8_ok) {
+    return we; /* GCOVR_EXCL_LINE */
+  }
+  return priv_exfat_drop_set(m, pos, old_count);
 }
 
 /* `priv_exfat_rename()`: see header for the documented contract. */
@@ -568,21 +583,17 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   if (pe != k_ra8_ok) {
     return pe;
   }
-  /* Both leaf names in UTF-16 first: the one-Name-entry limit below bounds CODE
-   * UNITS, and a UTF-8 argument of the same unit count can be three times as
-   * many bytes (#606). The leaves come from the prepare step, which has already
-   * resolved the parent directory and stripped the path. */
+  /* The new leaf in UTF-16 up front: the built Name entries and the NameHash
+   * both count CODE UNITS, and a UTF-8 argument of the same unit count can be
+   * three times as many bytes (#606). A name over the cap is an argument fault,
+   * not a full disk. The old leaf stays UTF-8: ::priv_exfat_find_set converts it
+   * itself, and the entry count it reports is all the placement below needs. */
   uint16_t        new_units[k_exfat_name_cap] = {};
   uint32_t        new_len                     = 0U;
-  const ra8_err_t nce = priv_exfat_rename_leaf(m, new_name, new_units, &new_len);
-  if (nce != k_ra8_ok) {
-    return nce;
-  }
-  uint16_t        old_units[k_exfat_name_cap] = {};
-  uint32_t        old_len                     = 0U;
-  const ra8_err_t oce = priv_exfat_rename_leaf(m, old_name, old_units, &old_len);
-  if (oce != k_ra8_ok) {
-    return oce;
+  const ra8_err_t nue =
+    priv_exfat_needle_units(m, new_name, new_units, &new_len, k_ra8_err_invalid_arg);
+  if (nue != k_ra8_ok) {
+    return nue;
   }
   uint8_t e_strm[k_exfat_entry_bytes] = {};
   uint8_t e_attr                      = 0U;
@@ -591,22 +602,22 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
   }
   exfat_setpos_t  pos[k_exfat_set_max_entries] = {};
   uint32_t        count                        = 0U;
-  uint8_t         set[k_exfat_rename_bytes]    = {};
-  const ra8_err_t e = priv_exfat_find_set(m,
-                                          &parent,
-                                          old_name,
-                                          pos,
-                                          (uint32_t)k_exfat_set_max_entries,
-                                          &count,
-                                          &set[0],
-                                          &set[k_exfat_entry_bytes]);
-  if (e != k_ra8_ok) {
-    return e;
+  uint8_t         file_e[k_exfat_entry_bytes]  = {};
+  uint8_t         strm_e[k_exfat_entry_bytes]  = {};
+  const ra8_err_t fe = priv_exfat_find_set(m,
+                                           &parent,
+                                           old_name,
+                                           pos,
+                                           (uint32_t)k_exfat_set_max_entries,
+                                           &count,
+                                           file_e,
+                                           strm_e);
+  if (fe != k_ra8_ok) {
+    return fe;
   }
-  if (count != (uint32_t)k_exfat_rename_entries) {
-    return k_ra8_err_not_supported;
-  }
-  return priv_exfat_apply_rename(m, pos, set, new_units, new_len);
+  uint8_t        set[k_exfat_max_set_bytes] = {};
+  const uint32_t bytes = priv_exfat_build_rename_set(set, file_e, strm_e, new_units, new_len);
+  return priv_exfat_place_rename(m, &parent, pos, count, set, bytes);
 }
 
 /**

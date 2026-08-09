@@ -567,6 +567,7 @@ static uint32_t priv_exfat_label_utf16(uint8_t* dst, const char* label)
  * @pre @p backend and @p backend->write_block are non-NULL.
  * @pre @p g was filled by a successful priv_exfat_geometry() call.
  * @post On k_ra8_ok, the root cluster contains the three mandatory directory entries.
+ * @post Every sector of the root cluster past the first reads as zero.
  * @post The label entry holds the UTF-16LE encoding of @p label (or zero length if NULL).
  *
  * @note Not thread-safe; part of single-threaded format.
@@ -581,6 +582,16 @@ static ra8_err_t priv_exfat_write_root(const ra8_fs_backend_t* backend,
 {
   const uint32_t lba =
     g->heap_offset + ((g->root_cluster - (uint32_t)k_exfat_fmt_first_clus) * g->spc);
+  /* Zero the WHOLE root cluster, not just the sector the three system entries
+   * land in. The rest must read as end-of-directory (0x00), or a directory that
+   * fills past the first sector -- or a rename that relocates an entry set into
+   * it -- runs the scan straight into whatever the device held before the format
+   * (#603). Directory growth already zeroes every cluster it appends; the initial
+   * root cluster was the one spot that skipped it. */
+  const ra8_err_t ze = priv_fmt_clear_region(backend, g->part_lba + lba, g->spc);
+  if (ze != k_ra8_ok) {
+    return ze;
+  }
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_fs_bytes_per_sector; i++) {
     s_scratch[i] = 0U;
   }

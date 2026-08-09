@@ -458,7 +458,7 @@ Source: ``examples/ek_ra8d2/hw_pending/i3c_i2c_peripheral_demo/main.c``
 
 Source: ``examples/ek_ra8d2/hw_pending/import_reader/main.c``
 
-- L670: ra8_log_init  (rank 100)
+- L667: ra8_log_init  (rank 100)
 
 ### imu_lsm6dso_demo
 

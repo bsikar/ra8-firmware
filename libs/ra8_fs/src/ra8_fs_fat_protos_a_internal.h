@@ -814,13 +814,17 @@ ra8_err_t priv_exfat_open(ra8_fs_mount_t* handle,
                           ra8_fs_file_t** out_file);
 
 /**
- * @brief Rename a root-level file on an exFAT volume (in place).
+ * @brief Rename a root-level file on an exFAT volume, at any storable length.
  *
- * @details Supported when both names fit a single Name entry (<= 15
- * characters), which keeps the entry-set length unchanged: the Stream
- * entry's NameLength + NameHash are patched, the Name entry is rebuilt,
- * and the File entry's SetChecksum is recomputed; all three entries are
- * rewritten at their original positions.
+ * @details Rewrites the whole entry set under the new name: the Stream entry's
+ * NameLength + NameHash, a run of one Name entry per fifteen UTF-16 units, the
+ * File entry's SecondaryCount, and the recomputed SetChecksum. When the new
+ * name keeps the entry count the set is rewritten in place; when it needs more
+ * or fewer Name entries the set is relocated to a fresh run of slots (growing
+ * the directory if needed) and the old set is then retired, so names up to
+ * ::k_exfat_name_cap units -- the same range ra8_fs_write_file() writes -- all
+ * rename. The data itself never moves: FirstCluster, DataLength and the
+ * timestamps ride across untouched.
  *
  * @param[in] m        Mounted exFAT volume.
  * @param[in] old_path Existing root-level name.
@@ -828,8 +832,12 @@ ra8_err_t priv_exfat_open(ra8_fs_mount_t* handle,
  * @return Error code.
  * @retval k_ra8_ok                File renamed.
  * @retval k_ra8_err_not_found     @p old_path does not exist.
- * @retval k_ra8_err_exists       @p new_path already resolves.
- * @retval k_ra8_err_not_supported A name needs more than one Name entry.
+ * @retval k_ra8_err_exists        @p new_path already resolves.
+ * @retval k_ra8_err_invalid_arg   @p new_path is empty, over the name cap, or
+ *                                 not well-formed UTF-8.
+ * @retval k_ra8_err_not_supported The paths cross directories, or a non-ASCII
+ *                                 name on a volume with a foreign up-case table.
+ * @retval k_ra8_err_no_mem        The directory cannot grow to hold a longer set.
  * @pre @p m and both paths are non-NULL; mount is exFAT.
  * @pre The file is not open.
  * @post @p new_path resolves to the same data; @p old_path is gone.
