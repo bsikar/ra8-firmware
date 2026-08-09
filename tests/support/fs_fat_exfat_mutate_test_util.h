@@ -448,6 +448,37 @@ static inline uint32_t alloc_bitmap_used(const ra8_fs_mount_t* h)
 }
 
 /**
+ * @brief Mark every cluster of the exFAT allocation bitmap as used.
+ *
+ * @details The direct way to present a driver with a volume that has no free
+ *          cluster left, so directory growth (#677) has nowhere to extend to and
+ *          must report ::k_ra8_err_no_mem. Sets every bit of the bitmap region
+ *          the formatter laid down; the on-disk structure is deliberately
+ *          inconsistent afterwards (the bitmap claims clusters no entry set
+ *          references), so a test that calls this must not also run the
+ *          structural scan.
+ *
+ * @param[in] h Mounted exFAT volume.
+ *
+ * @pre @p h is non-NULL and mounted; s_disk.bytes holds the image.
+ * @pre The bitmap is contiguous (true for a freshly formatted volume).
+ * @post Every allocation-bitmap bit for the volume's clusters reads as 1.
+ *
+ * @since 0.1.0
+ */
+static inline void alloc_bitmap_fill(const ra8_fs_mount_t* h)
+{
+  const uint32_t entry_off = root_byte(h, (uint32_t)k_mut_root_bitmap_idx);
+  const uint32_t bmp_clus  = disk_get_u32le(entry_off + (uint32_t)k_mut_strm_off_clus);
+  const uint32_t bmp_lba   = h->partition_base_lba + h->first_data_lba +
+                             ((bmp_clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
+  const uint32_t base      = bmp_lba * (uint32_t)k_mut_block_size;
+  const uint32_t bytes =
+    (h->count_of_clusters + (uint32_t)k_mut_bits_per_byte - 1U) / (uint32_t)k_mut_bits_per_byte;
+  memset(&s_disk.bytes[base], (int)k_mut_mask_byte, (size_t)bytes);
+}
+
+/**
  * @brief Stamp the directory attribute onto the first user File entry.
  *
  * @details The library has no exFAT `mkdir`, so the only way to present the

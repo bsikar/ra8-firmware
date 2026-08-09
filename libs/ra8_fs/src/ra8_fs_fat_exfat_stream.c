@@ -104,44 +104,52 @@ priv_exfat_pick_cluster(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t pref
 }
 
 /**
- * @brief Write a real FAT chain over a run that was contiguous until now.
+ * @brief Write a real FAT chain over a contiguous run, ending at @p next.
  *
- * @details The one-way half of the `NoFatChain` transition. Links every
- *          already-allocated cluster to its successor and the tail to @p next,
- *          which is what makes the run readable once the flag comes off. The
- *          caller clears the flag only after this returns, so an interrupted
- *          transition leaves a set that still says "contiguous" over clusters
- *          that still are.
+ * @details The reusable core of the `NoFatChain` conversion, on explicit run
+ *          coordinates rather than a file handle, so both the file streaming
+ *          path (::priv_exfat_link_cluster) and the directory growth path
+ *          (::priv_exfat_dir_link, #677) drive the identical logic. Links every
+ *          already-allocated cluster of the run to its successor -- the run is
+ *          contiguous, so a cluster's successor is the next integer -- and the
+ *          tail to @p next. The caller writes @p next's end-of-chain marker and
+ *          clears the flag afterwards.
  *
- * @param[in] file File whose contiguous run is being converted.
- * @param[in] next The newly allocated cluster the tail must point at.
+ * @param[in] m     Mounted exFAT volume.
+ * @param[in] first First cluster of the contiguous run.
+ * @param[in] alloc Cluster count of the run (>= 1).
+ * @param[in] tail  Last cluster of the run (`first + alloc - 1`).
+ * @param[in] next  The newly allocated cluster the tail must point at.
  *
  * @return Error code.
  * @retval k_ra8_ok    The chain now spans the run and reaches @p next.
  * @retval k_ra8_err_* FAT write failure; the transition is incomplete.
  *
- * @pre @p file is non-NULL with `no_fat_chain != 0` and `alloc_clusters >= 1`.
- * @pre The run is `[first_cluster, first_cluster + alloc_clusters)`.
- * @post On success `FAT[tail_cluster]` is @p next and every earlier cluster
- *       points at its successor.
+ * @pre @p m is non-NULL; the run `[first, first + alloc)` is contiguous.
+ * @pre @p tail is `first + alloc - 1`.
+ * @post On success `FAT[tail]` is @p next and every earlier cluster points at
+ *       its successor.
  * @post The allocation bitmap is untouched.
  *
- * @note O(alloc_clusters) FAT writes, paid once per file that fragments.
+ * @note O(alloc) FAT writes, paid once per run that fragments.
  *
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_materialize_chain(const ra8_fs_file_t* file, uint32_t next)
+static ra8_err_t priv_exfat_materialize_run(const ra8_fs_mount_t* m,
+                                            uint32_t              first,
+                                            uint32_t              alloc,
+                                            uint32_t              tail,
+                                            uint32_t              next)
 {
-  const ra8_fs_mount_t* m = file->mount;
-  for (uint32_t i = 0U; (i + 1U) < file->alloc_clusters; i++) {
-    const uint32_t  here = file->first_cluster + i;
+  for (uint32_t i = 0U; (i + 1U) < alloc; i++) {
+    const uint32_t  here = first + i;
     const ra8_err_t e    = priv_fat_set(m, here, here + 1U);
     if (e != k_ra8_ok) {
       return e;
     }
   }
-  return priv_fat_set(m, file->tail_cluster, next);
+  return priv_fat_set(m, tail, next);
 }
 
 /**
@@ -184,7 +192,11 @@ static ra8_err_t priv_exfat_link_cluster(ra8_fs_file_t* file, uint32_t next)
     return k_ra8_ok;
   }
   if (file->no_fat_chain != 0U) {
-    const ra8_err_t e = priv_exfat_materialize_chain(file, next);
+    const ra8_err_t e = priv_exfat_materialize_run(file->mount,
+                                                   file->first_cluster,
+                                                   file->alloc_clusters,
+                                                   file->tail_cluster,
+                                                   next);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -293,6 +305,315 @@ static ra8_err_t priv_exfat_ensure_clusters(ra8_fs_file_t* file, uint32_t need)
       return e;
     }
   }
+  return k_ra8_ok;
+}
+
+/* =============================================================================
+ * Directory growth: the same allocation, one directory-specific rewrite (#677)
+ * =============================================================================
+ *
+ * A directory's on-disk allocation is structurally a file's: a run of clusters
+ * that carries `NoFatChain` while it is contiguous and becomes a real FAT chain
+ * the moment it is not. So directory growth reuses the machinery above --
+ * ::priv_exfat_pick_cluster to prefer the tail's successor, and
+ * ::priv_exfat_materialize_run for the conversion -- and adds only the two
+ * things a directory needs that a mid-write file does not: the new cluster is
+ * ZEROED before it is linked (a directory cluster reads as its own contents, so
+ * a half-built one must never be reachable), and the directory's OWN Stream
+ * entry in its parent is rewritten so `DataLength` and the `NoFatChain` flag
+ * keep describing the run after the mount that grew it is gone.
+ */
+
+/**
+ * @brief Survey a directory's current allocation into run coordinates.
+ *
+ * @details Fills @p first / @p alloc / @p tail / @p nofat the way an append
+ *          survey fills a file handle, but from an ::exfat_dir_t: a contiguous
+ *          run (`contig_end != 0`) is pure arithmetic, and a FAT-chained one
+ *          (the root, or a run some earlier growth already converted) is walked
+ *          to its tail. A directory always owns at least one cluster, so unlike
+ *          the file survey there is no owns-nothing case to guard.
+ *
+ * @param[in]  m        Mounted exFAT volume.
+ * @param[in]  dir      Directory whose allocation is surveyed.
+ * @param[out] out_alloc Receives the cluster count of the run.
+ * @param[out] out_tail  Receives the last cluster of the run.
+ * @param[out] out_nofat Receives 1 when the run is contiguous, else 0.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                 The coordinates are populated.
+ * @retval k_ra8_err_protocol_error The FAT chain points below the heap.
+ * @retval k_ra8_err_*              FAT read failure.
+ *
+ * @pre Every pointer is non-NULL; `dir->cluster` is a heap cluster.
+ * @pre `m->type` is exFAT.
+ * @post On success `out_tail` is the run's last cluster and `*out_alloc >= 1`.
+ * @post No volume state is modified.
+ *
+ * @note The chain walk is bounded by the volume's cluster count (P10 Rule 2).
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_exfat_dir_survey(const ra8_fs_mount_t* m,
+                                       const exfat_dir_t*    dir,
+                                       uint32_t*             out_alloc,
+                                       uint32_t*             out_tail,
+                                       uint8_t*              out_nofat)
+{
+  if (dir->contig_end != 0U) {
+    *out_nofat = 1U;
+    *out_alloc = dir->contig_end - dir->cluster;
+    *out_tail  = dir->contig_end - 1U;
+    return k_ra8_ok;
+  }
+  *out_nofat    = 0U;
+  uint32_t clus = dir->cluster;
+  uint32_t held = 1U;
+  for (uint32_t guard = 0U; guard < m->count_of_clusters; guard++) {
+    uint32_t        next = 0U;
+    const ra8_err_t e    = priv_fat_get(m, clus, &next);
+    if (e != k_ra8_ok) {
+      return e;
+    }
+    if (priv_is_eoc(m, next) != 0U) {
+      break;
+    }
+    if (next < (uint32_t)k_cluster_first_data) {
+      return k_ra8_err_protocol_error;
+    }
+    clus = next;
+    held++;
+  }
+  *out_alloc = held;
+  *out_tail  = clus;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Attach @p next to a directory's run, converting to a chain if needed.
+ *
+ * @details The directory counterpart of ::priv_exfat_link_cluster, and the home
+ *          of the `NoFatChain`-vs-chain decision growth turns on. Three
+ *          outcomes: the run is contiguous and @p next continues it (nothing to
+ *          write -- the run stays `NoFatChain`), the run is contiguous and
+ *          @p next does NOT continue it (materialise a real FAT chain over the
+ *          run, then clear the flag), or the run is already a chain (link the
+ *          tail on). In every case @p next is capped with an end-of-chain
+ *          marker once it is reachable.
+ *
+ * @param[in]     m     Mounted exFAT volume.
+ * @param[in]     first First cluster of the directory's run.
+ * @param[in]     alloc Cluster count of the run (>= 1).
+ * @param[in]     tail  Last cluster of the run.
+ * @param[in,out] nofat 1 on entry when the run is contiguous; cleared here when
+ *                      the run is converted to a FAT chain.
+ * @param[in]     next  The newly allocated, already-zeroed cluster to attach.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    @p next is reachable from @p first.
+ * @retval k_ra8_err_* FAT write failure.
+ *
+ * @pre @p m is non-NULL; `[first, first + alloc)` is the directory's run.
+ * @pre @p next is marked allocated in the bitmap already.
+ * @post On success a walker reaches @p next from @p first.
+ * @post `*nofat` is 0 whenever the run is no longer one contiguous span.
+ *
+ * @note The stay-contiguous test is one compound decision of two conditions;
+ *       its vectors live with the tests that drive it, cited as
+ *       `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_dir_link`.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_exfat_dir_link(const ra8_fs_mount_t* m,
+                                     uint32_t              first,
+                                     uint32_t              alloc,
+                                     uint32_t              tail,
+                                     uint8_t*              nofat,
+                                     uint32_t              next)
+{
+  if ((*nofat != 0U) && (next == (tail + 1U))) {
+    return k_ra8_ok; /* the run stays contiguous; NoFatChain is still true */
+  }
+  if (*nofat != 0U) {
+    const ra8_err_t e = priv_exfat_materialize_run(m, first, alloc, tail, next);
+    if (e != k_ra8_ok) {
+      return e;
+    }
+    *nofat = 0U;
+  } else {
+    const ra8_err_t e = priv_fat_set(m, tail, next);
+    if (e != k_ra8_ok) {
+      return e;
+    }
+  }
+  return priv_fat_set(m, next, priv_eoc_write(m));
+}
+
+/**
+ * @brief Rewrite a grown directory's own Stream entry to describe its new run.
+ *
+ * @details Reads the directory's File-entry set back from its parent, patches
+ *          the Stream entry's `GeneralSecondaryFlags`, `ValidDataLength` and
+ *          `DataLength` -- a directory's ValidDataLength equals its DataLength,
+ *          and both equal the ALLOCATION -- recomputes the SetChecksum over the
+ *          patched bytes, and writes the set back. The set is guaranteed to sit
+ *          in one cluster (::priv_exfat_find_dir_space never splits one), so it
+ *          is gathered by a straight cursor walk from the recorded head.
+ *
+ * @param[in] m         Mounted exFAT volume.
+ * @param[in] dir       Directory whose own entry set is rewritten.
+ * @param[in] new_bytes The run's new byte length (`clusters * cluster bytes`).
+ * @param[in] nofat     1 when the run is still contiguous, else 0.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                 The Stream entry now describes the run.
+ * @retval k_ra8_err_not_supported  The set is larger than this adapter rewrites.
+ * @retval k_ra8_err_*              Backend read/write failure.
+ *
+ * @pre @p m is non-NULL; `dir->self_cluster` holds this directory's File entry.
+ * @pre The set fits within `dir->self_cluster`.
+ * @post On success `DataLength` and `ValidDataLength` equal @p new_bytes.
+ * @post On success the flag byte carries NoFatChain exactly when @p nofat is 1.
+ *
+ * @note Not thread-safe; callers serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_exfat_dir_relen(const ra8_fs_mount_t* m,
+                                      const exfat_dir_t*    dir,
+                                      uint32_t              new_bytes,
+                                      uint8_t               nofat)
+{
+  uint8_t        set[k_exfat_max_set_bytes] = {};
+  exfat_cursor_t cur                        = {.cluster          = dir->self_cluster,
+                                               .entry_in_cluster = dir->self_index,
+                                               .scanned          = 0U,
+                                               .contig_end       = 0U};
+  ra8_err_t      e                          = priv_exfat_next_entry(m, &cur, &set[0]);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  const uint32_t count = 1U + (uint32_t)set[k_exfat_off_file_secnt];
+  if (count > (uint32_t)k_exfat_set_writable) {
+    return k_ra8_err_not_supported;
+  }
+  for (uint32_t k = 1U; k < count; k++) {
+    e = priv_exfat_next_entry(m, &cur, &set[(size_t)k * (size_t)k_exfat_entry_bytes]);
+    if (e != k_ra8_ok) {
+      return e;
+    }
+  }
+  uint8_t* strm = &set[k_exfat_entry_bytes];
+  strm[k_exfat_strm_off_flags] =
+    (nofat != 0U) ? (uint8_t)k_exfat_secflag_alloc : (uint8_t)k_exfat_secflag_poss;
+  priv_wr32(&strm[k_exfat_off_strm_valid], new_bytes);
+  priv_wr32(&strm[k_exfat_strm_off_vlen_hi], 0U);
+  priv_wr32(&strm[k_exfat_strm_off_dlen], new_bytes);
+  priv_wr32(&strm[k_exfat_strm_off_dlen_hi], 0U);
+  priv_wr16(&set[k_exfat_off_file_csum],
+            priv_exfat_set_checksum(set, count * (uint32_t)k_exfat_entry_bytes));
+  return priv_exfat_write_dir_set(m,
+                                  dir->self_cluster,
+                                  dir->self_index,
+                                  set,
+                                  count * (uint32_t)k_exfat_entry_bytes);
+}
+
+/**
+ * @brief Allocate one cluster, zero it, link it to the run, seal the old tail.
+ *
+ * @details The on-disk half of a directory grow, split out so ::priv_exfat_grow_dir
+ *          stays inside the function-size gate. Picks a cluster (preferring the
+ *          tail's successor to stay contiguous), ZEROES it before anything links
+ *          it -- a directory cluster reads as its own contents, so a half-built
+ *          one must never be reachable -- marks it used, links it (converting the
+ *          run to a FAT chain if contiguity broke, which clears @p nofat), and
+ *          retires the old tail cluster's trailing end-of-directory markers so the
+ *          walk crosses into the fresh cluster (#677).
+ *
+ * @param[in]     m     Mounted exFAT volume.
+ * @param[in]     dir   Directory being grown (its `cluster` is the run head).
+ * @param[in]     alloc Cluster count of the run before this call.
+ * @param[in]     tail  Last cluster of the run before this call.
+ * @param[in,out] nofat 1 when the run is contiguous; cleared if it converts.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok         The run owns one more zeroed, reachable cluster.
+ * @retval k_ra8_err_no_mem The volume has no free cluster.
+ * @retval k_ra8_err_*      Bitmap, FAT, or backend failure.
+ *
+ * @pre @p m and @p dir are non-NULL; `[dir->cluster, dir->cluster+alloc)` is the run.
+ * @pre @p tail is the run's last cluster and @p alloc >= 1.
+ * @post On success a walk of the run reaches the new cluster and it reads empty.
+ * @post On failure any cluster taken is at worst leaked, never linked-but-dirty.
+ *
+ * @note Not thread-safe; callers serialise filesystem operations.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_exfat_dir_append(const ra8_fs_mount_t* m,
+                                       const exfat_dir_t*    dir,
+                                       uint32_t              alloc,
+                                       uint32_t              tail,
+                                       uint8_t*              nofat)
+{
+  uint32_t  bmp_lba = 0U;
+  ra8_err_t e       = priv_exfat_bitmap_lba(m, &bmp_lba);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  uint32_t next = 0U;
+  e             = priv_exfat_pick_cluster(m, bmp_lba, tail + 1U, &next);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  e = priv_exfat_zero_cluster(m, next);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  e = priv_exfat_bitmap_mark(m, bmp_lba, next, 1U);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  priv_alloc_hint_set(m, next + 1U);
+  e = priv_exfat_dir_link(m, dir->cluster, alloc, tail, nofat, next);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  return priv_exfat_seal_cluster(m, tail);
+}
+
+/* `priv_exfat_grow_dir()`: see header for the documented contract. */
+ra8_err_t priv_exfat_grow_dir(const ra8_fs_mount_t* m, exfat_dir_t* dir)
+{
+  uint32_t  alloc = 0U;
+  uint32_t  tail  = 0U;
+  uint8_t   nofat = 0U;
+  ra8_err_t e     = priv_exfat_dir_survey(m, dir, &alloc, &tail, &nofat);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  e = priv_exfat_dir_append(m, dir, alloc, tail, &nofat);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  const uint32_t new_alloc = alloc + 1U;
+  const uint32_t cbytes    = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
+  /* The volume root has no entry set to patch -- its extent is the boot-sector
+   * FAT chain, which ::priv_exfat_dir_link just extended. A subdirectory carries
+   * the location of its own set and must update it, or the next mount reads the
+   * old length and cannot see the cluster this call added (#677). */
+  if (dir->self_cluster >= (uint32_t)k_cluster_first_data) {
+    e = priv_exfat_dir_relen(m, dir, new_alloc * cbytes, nofat);
+    if (e != k_ra8_ok) {
+      return e;
+    }
+  }
+  dir->contig_end = (nofat != 0U) ? (dir->cluster + new_alloc) : 0U;
   return k_ra8_ok;
 }
 

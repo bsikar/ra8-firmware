@@ -59,6 +59,10 @@
  *     File + Stream + Name entry set a file gets, with the Directory attribute
  *     and a zeroed cluster behind it, and no "." / ".." entries -- exFAT has
  *     none.
+ *   - GROWING a directory. A full directory takes another cluster out of the
+ *     allocation bitmap, so its ceiling is free space, not one cluster: FAT
+ *     subdirectories and the FAT32 root grow their chains, and an exFAT
+ *     directory grows as its files do -- contiguous, then a FAT chain (#677).
  *
  * ## Names are UTF-8, on both formats
  * Every name crossing this API is UTF-8; both on-disk formats store UTF-16LE,
@@ -82,11 +86,6 @@
  *   - exFAT names past 64 UTF-16 units (the format allows 255), and
  *     locale-sensitive folding (Turkish dotless i, full case folding).
  *   - Long names on exFAT, which has its own (unrelated) name encoding.
- *   - GROWING a directory. A directory holds as many entry sets as fit the
- *     clusters it was created with, and reports `k_ra8_err_no_mem` past that
- *     rather than extending itself. On exFAT the run is contiguous and carries
- *     NoFatChain, so extending it means either finding the adjacent cluster
- *     free or converting the run to a FAT chain.
  *   - Multi-partition MBR scanning (only partition 0 is followed; a
  *     superfloppy BPB at LBA 0 is still supported transparently).
  *

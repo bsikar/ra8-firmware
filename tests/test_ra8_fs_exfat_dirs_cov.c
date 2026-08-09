@@ -466,54 +466,53 @@ static void test_mkdir_read_failure_propagates(void)
 
 /**
  * @test test_mkdir_fills_a_directory
- * @brief A full directory reports no_mem rather than growing or truncating.
+ * @brief A directory filled past one cluster GROWS through `mkdir` (#677).
  *
- * @details A directory this driver creates is ONE cluster, and this driver does
- *          not extend one, so its capacity is exactly the entry slots that
- *          cluster holds divided by the three a short-named set occupies. The
- *          test creates that many subdirectories, asserts every one succeeded,
- *          and asserts the next reports ::k_ra8_err_no_mem -- an honest refusal,
- *          not a silently dropped entry. It also drives the walk to the END of a
- *          contiguous single-cluster run, which is the arm that decides a
- *          NoFatChain directory has no next cluster.
+ * @details A directory is born owning one cluster, whose capacity is the entry
+ *          slots it holds divided by the three a short-named set occupies. This
+ *          creates that many subdirectories -- exactly filling the first cluster
+ *          -- and then several MORE, each of which used to report
+ *          ::k_ra8_err_no_mem and now succeeds by extending the parent. The
+ *          listing is asserted to hold every child, so a grown cluster whose
+ *          entries a walk could not reach would show up as a short count.
  *
  * @par MC/DC:
  * No compound decision lies on this path. The vectors it contributes are
  * `run >= need` (libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@priv_exfat_space_in_cluster)
- * -> false for every slot of a full cluster, and
- * `fe == k_ra8_err_not_found`
- * (libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@priv_exfat_find_dir_space) -> true,
- * the end of a contiguous run reported as an honest no_mem.
+ * -> false for every slot of a full cluster, and `fe == k_ra8_err_not_found`
+ * (libs/ra8_fs/src/ra8_fs_fat_exfat_write.c@priv_exfat_scan_dir_space) -> true,
+ * the end of a contiguous run that now drives a grow-and-retry rather than a
+ * refusal.
  *
  * @pre A freshly formatted 64 MiB exFAT volume.
- * @post The predicted number of children exist and are listed.
- * @post The next creation reports ::k_ra8_err_no_mem and the scan is clean.
+ * @post Every child, past the single-cluster ceiling, exists and is listed.
+ * @post The volume passes the structural scan.
  *
  * @since 0.1.0
  */
 static void test_mkdir_fills_a_directory(void)
 {
-  TEST_BEGIN("exfat dirs cov: a full directory reports no_mem");
+  TEST_BEGIN("exfat dirs cov: a directory grows past one cluster via mkdir");
   build_exfat_volume();
   ra8_fs_mount_t* h = mount_fixture();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/FULL"));
-  const uint32_t fits = entries_per_cluster(h) / (uint32_t)k_dcov_set_entries;
-  for (uint32_t i = 0U; i < fits; i++) {
+  const uint32_t fits  = entries_per_cluster(h) / (uint32_t)k_dcov_set_entries;
+  const uint32_t total = fits + (uint32_t)k_dcov_two;
+  for (uint32_t i = 0U; i < total; i++) {
     char path[k_dcov_path_cap] = {};
     (void)snprintf(path, sizeof(path), "/FULL/D%u", i);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, path));
   }
-  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_mkdir(h, "/FULL/OVER"));
 
   mut_list_ctx_t counted = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/FULL", count_cb, &counted));
-  TEST_ASSERT_EQ(fits, counted.count);
+  TEST_ASSERT_EQ(total, counted.count);
 
-  exfat_verify(h, "mkdir_fills_a_directory");
+  exfat_verify(h, "mkdir_grows_a_directory");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
-  TEST_END("exfat dirs cov: a full directory reports no_mem");
+  TEST_END("exfat dirs cov: a directory grows past one cluster via mkdir");
 }
 
 /* ---- the two shapes of a directory run ---------------------------------- */

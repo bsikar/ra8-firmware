@@ -96,7 +96,10 @@ static ra8_err_t priv_exfat_enter(const ra8_fs_mount_t* m,
   for (uint32_t i = 0U; i < len; i++) {
     namebuf[i] = comp[i];
   }
-  namebuf[len]                            = '\0';
+  namebuf[len] = '\0';
+  /* Validate the component converts within the exFAT unit cap and is well-formed
+   * UTF-8 before searching -- the byte bound above cannot see a name short in
+   * bytes yet over the 64-UNIT cap (#606). */
   uint16_t        units[k_exfat_name_cap] = {};
   uint32_t        nunits                  = 0U;
   const ra8_err_t ce                      = priv_exfat_name_to_units(m, namebuf, units, &nunits);
@@ -106,19 +109,35 @@ static ra8_err_t priv_exfat_enter(const ra8_fs_mount_t* m,
   if (ce != k_ra8_ok) {
     return ce;
   }
-  uint8_t         strm[k_exfat_entry_bytes] = {};
-  uint8_t         attr                      = 0U;
-  const ra8_err_t e                         = priv_exfat_find(m, cur, namebuf, strm, &attr);
+  /* ::priv_exfat_find_set rather than ::priv_exfat_find, because a directory
+   * that fills up has to REWRITE its own File-entry set to grow (#677), and only
+   * find_set reports where that set lives. `pos[0]` is the File entry; carrying
+   * it in the descendant is what lets ::priv_exfat_grow_dir patch the right
+   * metadata without a second walk of the parent. */
+  exfat_setpos_t  pos[k_exfat_set_max_entries] = {};
+  uint32_t        count                        = 0U;
+  uint8_t         file_e[k_exfat_entry_bytes]  = {};
+  uint8_t         strm[k_exfat_entry_bytes]    = {};
+  const ra8_err_t e = priv_exfat_find_set(m,
+                                          cur,
+                                          namebuf,
+                                          pos,
+                                          (uint32_t)k_exfat_set_max_entries,
+                                          &count,
+                                          file_e,
+                                          strm);
   if (e != k_ra8_ok) {
     return e;
   }
-  if ((attr & (uint8_t)k_exfat_attr_directory) == 0U) {
+  if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_directory) == 0U) {
     return k_ra8_err_invalid_arg; /* a file cannot be an intermediate component */
   }
   if (priv_rd32(&strm[k_exfat_strm_off_clus]) < (uint32_t)k_cluster_first_data) {
     return k_ra8_err_protocol_error; /* a directory always owns a cluster */
   }
   priv_exfat_dir_from_set(m, strm, out);
+  out->self_cluster = pos[0].cluster;
+  out->self_index   = pos[0].index;
   return k_ra8_ok;
 }
 
@@ -209,31 +228,8 @@ priv_exfat_lookup(const ra8_fs_mount_t* m, const char* path, uint8_t* out_strm, 
  * =============================================================================
  */
 
-/**
- * @brief Zero every sector of one cluster.
- *
- * @details An all-zero exFAT directory cluster is a valid EMPTY directory: the
- *          first entry's type byte is 0x00, which is the end-of-directory
- *          marker. There are no "." / ".." entries to stamp -- exFAT has none.
- *
- * @param[in] m    Mounted exFAT volume.
- * @param[in] clus Cluster to clear.
- *
- * @return Error code.
- * @retval k_ra8_ok    Every sector of the cluster reads as zero.
- * @retval k_ra8_err_* Backend write failure.
- *
- * @pre @p m is non-NULL; @p clus is a heap cluster.
- * @pre The cluster is not referenced by any entry set yet.
- * @post On success the cluster is an empty exFAT directory.
- * @post No bitmap or directory state is modified here.
- *
- * @note Not thread-safe; callers serialise.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t priv_exfat_zero_cluster(const ra8_fs_mount_t* m, uint32_t clus)
+/* `priv_exfat_zero_cluster()`: see header for the documented contract. */
+ra8_err_t priv_exfat_zero_cluster(const ra8_fs_mount_t* m, uint32_t clus)
 {
   const uint8_t  zero[k_ra8_fs_bytes_per_sector] = {};
   const uint32_t base                            = priv_cluster_to_lba(m, clus);
@@ -241,6 +237,36 @@ static ra8_err_t priv_exfat_zero_cluster(const ra8_fs_mount_t* m, uint32_t clus)
     const ra8_err_t e = priv_write_sector(m, base + s, zero);
     if (e != k_ra8_ok) {
       return e;
+    }
+  }
+  return k_ra8_ok;
+}
+
+/* `priv_exfat_seal_cluster()`: see header for the documented contract. */
+ra8_err_t priv_exfat_seal_cluster(const ra8_fs_mount_t* m, uint32_t clus)
+{
+  const uint8_t unused =
+    (uint8_t)((uint8_t)k_exfat_entry_file & (uint8_t)~(uint8_t)k_exfat_inuse_bit);
+  const uint32_t base = priv_cluster_to_lba(m, clus);
+  for (uint32_t s = 0U; s < m->sectors_per_cluster; s++) {
+    uint8_t   sec[k_ra8_fs_bytes_per_sector] = {};
+    ra8_err_t e                              = priv_read_sector(m, base + s, sec);
+    if (e != k_ra8_ok) {
+      return e;
+    }
+    uint8_t dirty = 0U;
+    for (uint32_t off = 0U; off < (uint32_t)k_ra8_fs_bytes_per_sector;
+         off += (uint32_t)k_exfat_entry_bytes) {
+      if (sec[off] == (uint8_t)k_exfat_entry_eod) {
+        sec[off] = unused;
+        dirty    = 1U;
+      }
+    }
+    if (dirty != 0U) {
+      e = priv_write_sector(m, base + s, sec);
+      if (e != k_ra8_ok) {
+        return e;
+      }
     }
   }
   return k_ra8_ok;

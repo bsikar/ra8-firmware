@@ -229,33 +229,33 @@ static void test_read_entry_fail(void)
 
 /**
  * @test test_dir_space_full_root_eoc
- * @brief `priv_exfat_find_dir_space` reaches the FAT chain check and returns
- *        `k_ra8_err_no_mem` when FAT[root] is EOC (lines 356-358, 361, 362, 531).
+ * @brief A full root reaches the FAT-chain end and GROWS rather than refusing.
  *
- * @details Patches root entries 3-127 to type 0x85 (in-use).  Entries 0-2
- *          are system entries (also in-use); entries 16-127 are already 0xA5
- *          (bit 7 set) from the pre-fill.  With all 128 entries in-use,
- *          `priv_exfat_find_dir_space` scans the entire cluster, then calls
- *          `priv_fat_get` (lines 356-357).  The FAT entry for the root cluster
- *          is EOC on a fresh volume, so `priv_is_eoc` returns true and the
- *          function returns `k_ra8_err_no_mem` at line 362.  `priv_exfat_link`
- *          propagates at line 531.
- *
- * Lines targeted: 356, 357, 358, 361, 362, 531.
+ * @details Patches root entries 3-127 to type 0x85 (in-use). Entries 0-2 are
+ *          system entries (also in-use); entries 16-127 are already 0xA5 (bit 7
+ *          set) from the pre-fill. With all 128 entries in-use,
+ *          `priv_exfat_scan_dir_space` scans the whole cluster, follows the root
+ *          through `priv_fat_get`, and finds it end-of-chain -- the arm that
+ *          drives ::priv_exfat_find_dir_space to GROW the root (#677). Before
+ *          #677 that arm returned `k_ra8_err_no_mem`; now the root's FAT chain is
+ *          extended by a fresh cluster and the write succeeds. The root here is
+ *          deliberately corrupted with bare in-use bytes, so the file is not read
+ *          back; the success of the write is the whole assertion.
  *
  * @par MC/DC:
- * Decision: `if (priv_is_eoc(m, next) != 0U)` -- 1 condition.
- * V1: next=EOC -> T -> return no_mem (this test).
- * V2: next=valid_cluster -> F -> follow chain (test_dir_space_chain).
+ * Decision: `if (priv_is_eoc(m, next) != 0U)`
+ * (libs/ra8_fs/src/ra8_fs_fat_exfat_read.c@priv_exfat_step_cluster) -- 1 condition.
+ * V1: next=EOC -> T -> the run has no next cluster, so the directory grows (this
+ * test). V2: next=valid_cluster -> F -> follow chain (test_dir_space_chain).
  *
  * @pre Volume is formatted and accessible.
- * @post ra8_fs_write_file returns k_ra8_err_no_mem.
+ * @post ra8_fs_write_file returns k_ra8_ok, having grown the root.
  *
  * @since 0.1.0
  */
 static void test_dir_space_full_root_eoc(void)
 {
-  TEST_BEGIN("exfat write cov: full root + FAT EOC -> no_mem (lines 356-362,531)");
+  TEST_BEGIN("exfat write cov: a full root grows on the FAT-EOC arm");
   build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
@@ -263,11 +263,11 @@ static void test_dir_space_full_root_eoc(void)
   patch_root_full(h, (uint32_t)k_wc_patch_start);
 
   const uint8_t dummy = (uint8_t)'X';
-  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_write_file(h, "X.TXT", &dummy, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "X.TXT", &dummy, 1U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
-  TEST_END("exfat write cov: full root + FAT EOC -> no_mem (lines 356-362,531)");
+  TEST_END("exfat write cov: a full root grows on the FAT-EOC arm");
 }
 
 /**

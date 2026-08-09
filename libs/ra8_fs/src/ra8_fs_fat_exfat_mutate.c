@@ -107,13 +107,19 @@ static ra8_err_t priv_exfat_take_set(const ra8_fs_mount_t* m,
 {
   uint8_t matched = 1U;
   for (uint32_t k = 0U; k < sc; k++) {
-    const exfat_setpos_t sp = {.cluster = cur->cluster, .index = cur->entry_in_cluster};
-    uint8_t              se[k_exfat_entry_bytes] = {};
-    const ra8_err_t      r                       = priv_exfat_next_entry(m, cur, se);
+    uint8_t         se[k_exfat_entry_bytes] = {};
+    const ra8_err_t r                       = priv_exfat_next_entry(m, cur, se);
     if (r != k_ra8_ok) {
       return r; /* GCOVR_EXCL_LINE */
     }
-    pos[1U + k] = sp;
+    /* AFTER the read: ::priv_exfat_next_entry may cross a cluster boundary before
+     * reading, so the entry lives at the cursor's CURRENT cluster, one slot back
+     * (it has already advanced past what it read). Capturing before the call
+     * records (old cluster, one-past-end) for the first entry of a new cluster --
+     * harmless while directories were one cluster, a mis-retired slot once they
+     * grow (#677). */
+    const exfat_setpos_t sp = {.cluster = cur->cluster, .index = cur->entry_in_cluster - 1U};
+    pos[1U + k]             = sp;
     if (k == 0U) {
       if (se[0] != (uint8_t)k_exfat_entry_stream) {
         matched = 0U;
@@ -228,12 +234,15 @@ ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
   exfat_cursor_t cur = {};
   priv_exfat_cursor_init(dir, &cur);
   while (cur.scanned < (uint32_t)k_exfat_scan_limit) {
-    const exfat_setpos_t at = {.cluster = cur.cluster, .index = cur.entry_in_cluster};
-    uint8_t              e[k_exfat_entry_bytes] = {};
-    ra8_err_t            r                      = priv_exfat_next_entry(m, &cur, e);
+    uint8_t   e[k_exfat_entry_bytes] = {};
+    ra8_err_t r                      = priv_exfat_next_entry(m, &cur, e);
     if (r != k_ra8_ok) {
       return r; /* GCOVR_EXCL_LINE */
     }
+    /* AFTER the read (see ::priv_exfat_take_set): the File entry lives at the
+     * cursor's current cluster, one slot back, so a set whose File entry is the
+     * first of a grown cluster is recorded where it truly is (#677). */
+    const exfat_setpos_t at = {.cluster = cur.cluster, .index = cur.entry_in_cluster - 1U};
     if (e[0] == (uint8_t)k_exfat_entry_eod) {
       return k_ra8_err_not_found;
     }

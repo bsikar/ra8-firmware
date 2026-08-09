@@ -162,6 +162,11 @@ void priv_exfat_dir_root(const ra8_fs_mount_t* m, exfat_dir_t* out)
 {
   out->cluster    = m->root_cluster;
   out->contig_end = 0U; /* the root is always FAT-chained; the format has no other shape */
+  /* The root owns no File-entry set: its extent is the boot sector's FAT chain,
+   * not a Stream entry, so ::priv_exfat_grow_dir extends the chain and patches
+   * no metadata. 0 is the "no entry set" sentinel (#677). */
+  out->self_cluster = 0U;
+  out->self_index   = 0U;
 }
 
 /* `priv_exfat_dir_from_set()`: see header for the documented contract. */

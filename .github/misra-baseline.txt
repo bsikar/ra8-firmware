@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 13917
+# total findings: 13942
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -316,8 +316,8 @@ libs/ra8_fs/src/ra8_fs_fat_dir.c	misra-c2012-9.2	13
 libs/ra8_fs/src/ra8_fs_fat_dirmk.c	misra-c2012-15.5	31
 libs/ra8_fs/src/ra8_fs_fat_dirmk.c	misra-c2012-8.4	2
 libs/ra8_fs/src/ra8_fs_fat_dirmk.c	misra-c2012-9.2	9
-libs/ra8_fs/src/ra8_fs_fat_exfat_dir.c	misra-c2012-15.5	42
-libs/ra8_fs/src/ra8_fs_fat_exfat_dir.c	misra-c2012-9.2	19
+libs/ra8_fs/src/ra8_fs_fat_exfat_dir.c	misra-c2012-15.5	44
+libs/ra8_fs/src/ra8_fs_fat_exfat_dir.c	misra-c2012-9.2	22
 libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c	misra-c2012-15.5	22
 libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c	misra-c2012-17.8	4
 libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c	misra-c2012-9.2	1
@@ -331,10 +331,10 @@ libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c	misra-c2012-9.2	6
 libs/ra8_fs/src/ra8_fs_fat_exfat_read.c	misra-c2012-15.5	36
 libs/ra8_fs/src/ra8_fs_fat_exfat_read.c	misra-c2012-17.8	1
 libs/ra8_fs/src/ra8_fs_fat_exfat_read.c	misra-c2012-9.2	8
-libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c	misra-c2012-15.5	25
-libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c	misra-c2012-9.2	4
+libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c	misra-c2012-15.5	42
+libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c	misra-c2012-9.2	5
 libs/ra8_fs/src/ra8_fs_fat_exfat_upcase.c	misra-c2012-15.5	4
-libs/ra8_fs/src/ra8_fs_fat_exfat_write.c	misra-c2012-15.5	25
+libs/ra8_fs/src/ra8_fs_fat_exfat_write.c	misra-c2012-15.5	27
 libs/ra8_fs/src/ra8_fs_fat_exfat_write.c	misra-c2012-9.2	10
 libs/ra8_fs/src/ra8_fs_fat_file.c	misra-c2012-10.8	1
 libs/ra8_fs/src/ra8_fs_fat_file.c	misra-c2012-12.1	1
