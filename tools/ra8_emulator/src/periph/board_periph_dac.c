@@ -114,11 +114,11 @@ static void dac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
     /* Console DAC tab: anti-flood -- the first update and then every Nth update
      * (a continuous waveform writes per-sample, so one line per N keeps the ring
      * readable while still showing the channel is active). */
-    bool dac_report = (s_dac[inst].writes == 1U);
+    bool should_report = (s_dac[inst].writes == 1U);
     if ((s_dac[inst].writes % (uint32_t)k_dac_console_every) == 0U) {
-      dac_report = true;
+      should_report = true;
     }
-    if (dac_report) {
+    if (should_report) {
       char ln[k_dac_console_line_cap];
       (void)snprintf(ln,
                      sizeof(ln),
