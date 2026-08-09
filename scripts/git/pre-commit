@@ -371,18 +371,20 @@ fi
 # Python, shell, CMake, YAML, Make and linker scripts as well as C/C++.
 # Honours an in-file @generated / FILE-SIZE-OK waiver marker.
 #
-# Selftest enforced; the tree-wide scan is not yet -- 8 files are over the cap.
-# See the matching note in scripts/ci/gates/checks.sh.
+# Selftest AND the tree-wide scan, matching scripts/ci/gates/checks.sh. The
+# file-size campaign brought the tree to zero over-cap, so the scan CI already
+# enforces belongs here too: a selftest-only hook let a 1019-line file reach
+# CI (#689, #690).
 if ! python3 scripts/checks/check_file_size.py --selftest; then
   echo "[FAIL] check_file_size.py selftest failed."
   echo "   The derived scope or the cap logic is broken; verdict untrustworthy."
   error_found=1
 fi
-# if ! python3 scripts/checks/check_file_size.py; then
-#   echo "[FAIL] file-size violation(s) above the 1000-line cap."
-#   echo "   Split along responsibilities or extract a shared helper."
-#   error_found=1
-# fi
+if ! python3 scripts/checks/check_file_size.py; then
+  echo "[FAIL] file-size violation(s) above the 1000-line cap."
+  echo "   Split along responsibilities or extract a shared helper."
+  error_found=1
+fi
 
 # Header placement: a header under a src/ dir must be module-private
 # (*_internal.h).  A non-internal src/ header is either a misfiled public

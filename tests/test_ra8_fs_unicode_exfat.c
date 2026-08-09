@@ -25,28 +25,6 @@
  *
  * All three could agree with the driver only by both being right.
  *
- * @par Out-of-band `fsck.exfat` evidence:
- * Setting `RA8_FS606X_DUMP` writes the PARTITION out (not the whole RAM disk --
- * `ra8_fs_format()` lays exFAT inside an MBR partition, and a checker handed
- * the disk reads the MBR and says so):
- * @code
- *   RA8_FS606X_DUMP=/tmp/x606 ./test_ra8_fs_unicode_exfat
- *   /usr/sbin/fsck.exfat -n -v /tmp/x606.unicode   # three non-ASCII names
- *   /usr/sbin/fsck.exfat -n -v /tmp/x606.badhash   # the PRE-#606 NameHash
- * @endcode
- * Confirmed 2026-08-04 on the Linux verification host, exfatprogs 1.2.0:
- * @verbatim
- * unicode -> /tmp/x606.unicode: clean. directories 1, files 3
- * badhash -> ERROR: /: the name hash of a file is wrong at 0x15c60.
- *            /tmp/x606.badhash: corrupted. directories 1, files 2
- * @endverbatim
- * The second line is the whole argument in one sentence, from a checker that
- * has never seen this codebase: the hash the PRE-#606 code stored for
- * `Caf<U+00E9>.txt` is one `fsck.exfat` calls wrong. The control repairs the
- * `SetChecksum` around the edit, so what is reported is the defect and not an
- * artefact of a clumsy patch -- and without it a clean report on the first
- * image would only prove `fsck.exfat` ran.
- *
  * @par Pure-ASCII sources:
  * Every non-ASCII name is a `static const char[]` of byte escapes, and every
  * expected unit array a `uint16_t[]`. No non-ASCII literal appears here.
@@ -65,129 +43,8 @@
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
 #include "support/fs_fat_exfat_mutate_test_util.h"
+#include "support/fs_unicode_exfat_test_util.h"
 #include "unity_minimal.h"
-
-/**
- * @enum ux_val_t
- * @brief Offsets, sizes and expected values for these cases.
- *
- * @details The directory-entry offsets restate the exFAT specification's own
- *          field positions, so the raw inspection below can be checked against
- *          the document rather than against the driver's header.
- *
- * @invariant `k_ux_upcase_csum` is the published checksum of the canonical
- *            Microsoft up-case table; it is an EXTERNAL reference, which is
- *            what makes asserting it worth anything.
- * @see test_upcase_table_is_the_canonical_one()
- * @since 0.1.0
- */
-typedef enum : uint32_t {
-  k_ux_path_cap      = 320U,        /**< Scratch path buffer.                        */
-  k_ux_units_cap     = 64U,         /**< Units in a scratch name buffer.             */
-  k_ux_bmp_units     = 65536U,      /**< Code units in the Basic Multilingual Plane. */
-  k_ux_upc_off_csum  = 4U,          /**< Up-case entry: TableChecksum (32-bit).      */
-  k_ux_strm_off_len  = 3U,          /**< Stream entry: NameLength (units).           */
-  k_ux_strm_off_hsh  = 4U,          /**< Stream entry: NameHash (16-bit).            */
-  k_ux_name_off      = 2U,          /**< Name entry: first UTF-16 unit.              */
-  k_ux_per_entry     = 15U,         /**< UTF-16 units per Name entry.                */
-  k_ux_type_upcase   = 0x82U,       /**< Up-case-table entry type byte.              */
-  k_ux_run_tag       = 0xFFFFU,     /**< Compressed table: an identity run.          */
-  k_ux_csum_hi_bit   = 0x8000U,     /**< Rotate-add wrap bit (16-bit).               */
-  k_ux_upcase_csum   = 0xE619D30DU, /**< Published checksum of the MS table.         */
-  k_ux_payload       = 64U,         /**< Bytes written into each test file.          */
-  k_ux_scan_slots    = 64U,         /**< Root slots any raw scan here visits.        */
-  k_ux_mapped_floor  = 800U,        /**< Non-vacuity floor: 874 units really map.    */
-  k_ux_file_off_csum = 2U,          /**< File entry: SetChecksum (2 bytes).          */
-  k_ux_csum_mask     = 0xFFFFU,     /**< Keep a rotate-add checksum 16-bit.          */
-} ux_val_t;
-
-/* ===========================================================================
- * The names, spelled out in bytes, and their units spelled out separately
- * ===========================================================================
- */
-
-/** @var s_acc_u8
- *  @brief "Caf" U+00E9 ".txt" -- two-byte UTF-8, eight units, nine bytes.
- *  @details The unit and byte counts differ, which is the discrepancy the old
- *           writer collapsed by emitting one unit per byte.
- *  @note Read-only.
- *  @since 0.1.0
- */
-static const char s_acc_u8[] =
-  {'C', 'a', 'f', (char)(unsigned char)0xC3U, (char)(unsigned char)0xA9U, '.', 't', 'x', 't', '\0'};
-
-/** @var s_acc_units
- *  @brief ::s_acc_u8 as UTF-16, written out by hand.
- *  @details Independent of the codec under test on purpose: it is the value the
- *           conversion is CHECKED against, so deriving it from the conversion
- *           would make the check vacuous.
- *  @note Read-only.
- *  @since 0.1.0
- */
-static const uint16_t s_acc_units[] = {(uint16_t)'C',
-                                       (uint16_t)'a',
-                                       (uint16_t)'f',
-                                       0x00E9U,
-                                       (uint16_t)'.',
-                                       (uint16_t)'t',
-                                       (uint16_t)'x',
-                                       (uint16_t)'t'};
-
-/** @var s_cjk_u8
- *  @brief U+4F60 U+597D ".txt" -- three-byte UTF-8, seven units, ten bytes.
- *  @note Read-only.
- *  @since 0.1.0
- */
-static const char s_cjk_u8[] = {(char)(unsigned char)0xE4U,
-                                (char)(unsigned char)0xBDU,
-                                (char)(unsigned char)0xA0U,
-                                (char)(unsigned char)0xE5U,
-                                (char)(unsigned char)0xA5U,
-                                (char)(unsigned char)0xBDU,
-                                '.',
-                                't',
-                                'x',
-                                't',
-                                '\0'};
-
-/** @var s_cjk_units
- *  @brief ::s_cjk_u8 as UTF-16, written out by hand.
- *  @note Read-only.
- *  @since 0.1.0
- */
-static const uint16_t s_cjk_units[] =
-  {0x4F60U, 0x597DU, (uint16_t)'.', (uint16_t)'t', (uint16_t)'x', (uint16_t)'t'};
-
-/** @var s_emoji_u8
- *  @brief U+1F600 ".txt" -- four-byte UTF-8, SIX units (a surrogate pair + 4).
- *  @note Read-only.
- *  @since 0.1.0
- */
-static const char s_emoji_u8[] = {(char)(unsigned char)0xF0U,
-                                  (char)(unsigned char)0x9FU,
-                                  (char)(unsigned char)0x98U,
-                                  (char)(unsigned char)0x80U,
-                                  '.',
-                                  't',
-                                  'x',
-                                  't',
-                                  '\0'};
-
-/** @var s_emoji_units
- *  @brief ::s_emoji_u8 as UTF-16: the surrogate pair, then ".txt".
- *  @note Read-only.
- *  @since 0.1.0
- */
-static const uint16_t s_emoji_units[] =
-  {0xD83DU, 0xDE00U, (uint16_t)'.', (uint16_t)'t', (uint16_t)'x', (uint16_t)'t'};
-
-/** @var s_acc_upper_u8
- *  @brief "CAF" U+00C9 ".TXT" -- the upper-case spelling of ::s_acc_u8.
- *  @note Read-only.
- *  @since 0.1.0
- */
-static const char s_acc_upper_u8[] =
-  {'C', 'A', 'F', (char)(unsigned char)0xC3U, (char)(unsigned char)0x89U, '.', 'T', 'X', 'T', '\0'};
 
 /* ===========================================================================
  * Reading the volume's own up-case table
@@ -228,29 +85,6 @@ static uint32_t cluster_byte(const ra8_fs_mount_t* h, uint32_t cluster)
   const uint32_t lba =
     h->partition_base_lba + h->first_data_lba + ((cluster - 2U) * h->sectors_per_cluster);
   return lba * (uint32_t)k_mut_block_size;
-}
-
-/**
- * @brief Read a little-endian 16-bit value out of the RAM disk.
- *
- * @param[in] off Byte offset within `s_disk.bytes`.
- *
- * @return The value.
- * @retval 0..0xFFFF Whatever the two bytes hold.
- *
- * @pre `s_disk.bytes` is allocated and @p off + 1 is inside it.
- * @pre The caller wants the on-disk byte order, which is little-endian.
- * @post No state is modified.
- * @post Written here rather than reused from the driver, so the inspection is
- *       independent of the code it inspects.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static uint32_t disk_rd16(uint32_t off)
-{
-  return (uint32_t)s_disk.bytes[off] |
-         ((uint32_t)s_disk.bytes[off + 1U] << (uint32_t)k_mut_shift_byte8);
 }
 
 /**
@@ -396,120 +230,6 @@ static uint32_t expected_name_hash(const uint16_t* units, uint32_t n)
                         (uint32_t)k_ux_csum_mask;
   }
   return h;
-}
-
-/**
- * @brief The NameHash `priv_exfat_name_hash()` produced BEFORE #606.
- *
- * @details The old body, reproduced: fold the caller's UTF-8 BYTES with an
- *          ASCII-only up-case, one byte plus a zero byte each. For a pure-ASCII
- *          name that happens to equal the correct answer, which is exactly why
- *          the defect survived so long; for anything else it does not.
- *
- * @param[in] path Caller's name, NUL-terminated UTF-8.
- *
- * @return The hash the pre-#606 code would have stored.
- * @retval 0..0xFFFF The folded value.
- *
- * @pre @p path is non-NULL.
- * @pre The caller is building a negative control, not a real volume.
- * @post No state is modified.
- * @post The result depends only on @p path.
- *
- * @note Not thread-safe (no shared state, but the harness's counter is).
- * @since 0.1.0
- */
-static uint32_t legacy_name_hash(const char* path)
-{
-  uint32_t h = 0U;
-  for (uint32_t i = 0U; path[i] != '\0'; i++) {
-    uint32_t c = (uint32_t)(unsigned char)path[i];
-    if ((c >= (uint32_t)'a') && (c <= (uint32_t)'z')) {
-      c -= ((uint32_t)'a' - (uint32_t)'A');
-    }
-    h = ((((h & 1U) != 0U) ? (uint32_t)k_ux_csum_hi_bit : 0U) + (h >> 1U) + c) &
-        (uint32_t)k_ux_csum_mask;
-    h =
-      ((((h & 1U) != 0U) ? (uint32_t)k_ux_csum_hi_bit : 0U) + (h >> 1U)) & (uint32_t)k_ux_csum_mask;
-  }
-  return h;
-}
-
-/**
- * @brief Recompute a 3-entry set's SetChecksum straight from the specification.
- *
- * @details Rotate-add over every byte of the set except the two the checksum
- *          itself occupies. Written here rather than called into, because the
- *          point of using it is to leave a volume in which ONLY the NameHash is
- *          wrong -- if the checksum were also wrong, a checker would stop at
- *          that and never look at the hash.
- *
- * @param[in] file_off Byte offset of the set's File entry in the RAM disk.
- *
- * @return The checksum the File entry should carry.
- * @retval 0..0xFFFF The folded value.
- *
- * @pre `s_disk.bytes` is allocated and holds a File + Stream + Name set there.
- * @pre The caller has already made whatever edit it is repairing around.
- * @post No state is modified by this function.
- * @post The result covers exactly the 96 bytes of the three entries.
- *
- * @note Not thread-safe (reads the fixture singleton).
- * @since 0.1.0
- */
-static uint32_t set_checksum_of(uint32_t file_off)
-{
-  uint32_t cs = 0U;
-  for (uint32_t i = 0U; i < ((uint32_t)k_mut_entry_bytes * 3U); i++) {
-    if ((i == (uint32_t)k_ux_file_off_csum) || (i == ((uint32_t)k_ux_file_off_csum + 1U))) {
-      continue;
-    }
-    const uint32_t b = (uint32_t)s_disk.bytes[file_off + i];
-    cs               = ((((cs & 1U) != 0U) ? (uint32_t)k_ux_csum_hi_bit : 0U) + (cs >> 1U) + b) &
-                       (uint32_t)k_ux_csum_mask;
-  }
-  return cs;
-}
-
-/**
- * @brief Write the PARTITION out when `RA8_FS606X_DUMP` is set.
- *
- * @details The partition rather than the whole RAM disk, because `ra8_fs_format()`
- *          lays exFAT inside an MBR partition at 1 MiB and `fsck.exfat` expects
- *          to be pointed at a volume, not at a disk. Handing it the disk gets
- *          "Bad fs_name in boot sector", which is the checker reading the MBR
- *          and being right about it.
- *
- * @param[in] tag      Suffix distinguishing this dump from the others.
- * @param[in] base_lba The volume's partition start, from the mount handle.
- *
- * @return Nothing.
- *
- * @pre @p tag is non-NULL; `s_disk.bytes` is allocated.
- * @pre The caller has finished mutating the volume.
- * @post A file exists at `$RA8_FS606X_DUMP.<tag>` when the variable is set.
- * @post Nothing is written when it is not.
- *
- * @note Not thread-safe (reads the fixture singleton).
- * @since 0.1.0
- */
-static void maybe_dump_image(const char* tag, uint32_t base_lba)
-{
-  const char* base = getenv("RA8_FS606X_DUMP");
-  if (base == nullptr) {
-    return;
-  }
-  char path[k_ux_path_cap] = {};
-  (void)snprintf(path, sizeof(path), "%s.%s", base, tag);
-  FILE* o = fopen(path, "wb");
-  if (o == nullptr) {
-    return;
-  }
-  const size_t off = (size_t)base_lba * (size_t)k_mut_block_size;
-  const size_t all = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
-  (void)fwrite(&s_disk.bytes[off], 1U, all - off, o);
-  (void)fclose(o);
-  (void)printf("  [dump] %s\n", path);
 }
 
 /**
@@ -931,67 +651,6 @@ static void test_foreign_upcase_table_refuses_non_ascii(void)
 }
 
 /**
- * @test test_exfat_dump_images_for_fsck
- * @brief Build the images the out-of-band `fsck.exfat` evidence is taken from.
- *
- * @details Two states, because a clean report on its own only proves the
- *          checker ran: a volume holding three non-ASCII names written through
- *          the public API, and a control in which one Stream entry's `NameHash`
- *          is corrupted -- exactly the disagreement the ASCII-only up-casing
- *          used to produce for every non-ASCII name.
- *
- * @par MC/DC:
- * No decision this file does not already cover; this case exists for the
- * artefacts.
- *
- * @pre exfatprogs is available on the host for the out-of-band step (optional).
- * @pre `RA8_FS606X_DUMP` is set for the dumps to appear.
- * @post The clean image is `fsck.exfat`-clean; the control is not.
- *
- * @since 0.1.0
- */
-static void test_exfat_dump_images_for_fsck(void)
-{
-  TEST_BEGIN("exfat unicode: images for the out-of-band fsck.exfat run");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = nullptr;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-
-  const uint8_t payload = (uint8_t)'x';
-  const char*   names[] = {s_acc_u8, s_cjk_u8, s_emoji_u8};
-  for (uint32_t i = 0U; i < (uint32_t)(sizeof(names) / sizeof(names[0])); i++) {
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, names[i], &payload, 1U));
-  }
-  const uint32_t base = h->partition_base_lba;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  maybe_dump_image("unicode", base);
-
-  /* The control, and it is the specific one worth having: put back the hash the
-   * PRE-#606 code stored for this name -- an ASCII-only fold over UTF-8 bytes --
-   * and repair the SetChecksum around it, so the set is well-formed in every
-   * other respect. What a real checker then reports is the defect itself, not
-   * an artefact of a clumsy edit. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t file = root_byte(h, (uint32_t)k_mut_root_file0_idx);
-  const uint32_t strm = root_byte(h, (uint32_t)k_mut_root_strm0_idx);
-  const uint32_t old  = legacy_name_hash(s_acc_u8);
-  /* It has to actually differ, or the control proves nothing. */
-  TEST_ASSERT(old != disk_rd16(strm + (uint32_t)k_ux_strm_off_hsh));
-  s_disk.bytes[strm + (uint32_t)k_ux_strm_off_hsh] = (uint8_t)(old & (uint32_t)k_mut_mask_byte);
-  s_disk.bytes[strm + (uint32_t)k_ux_strm_off_hsh + 1U] =
-    (uint8_t)((old >> (uint32_t)k_mut_shift_byte8) & (uint32_t)k_mut_mask_byte);
-  const uint32_t cs                                 = set_checksum_of(file);
-  s_disk.bytes[file + (uint32_t)k_ux_file_off_csum] = (uint8_t)(cs & (uint32_t)k_mut_mask_byte);
-  s_disk.bytes[file + (uint32_t)k_ux_file_off_csum + 1U] =
-    (uint8_t)((cs >> (uint32_t)k_mut_shift_byte8) & (uint32_t)k_mut_mask_byte);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  maybe_dump_image("badhash", base);
-
-  free_volume();
-  TEST_END("exfat unicode: images for the out-of-band fsck.exfat run");
-}
-
-/**
  * @brief Run every case in this suite.
  *
  * @return Process exit status.
@@ -1013,7 +672,6 @@ int32_t main(void)
   test_upcase_table_is_the_canonical_one();
   test_exfat_mixed_case_lookup();
   test_foreign_upcase_table_refuses_non_ascii();
-  test_exfat_dump_images_for_fsck();
   (void)fprintf(stderr, "[OK  ] test_ra8_fs_unicode_exfat.c\n");
   return 0;
 }
