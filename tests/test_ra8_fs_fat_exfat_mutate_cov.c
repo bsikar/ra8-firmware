@@ -9,14 +9,16 @@
  * and patching raw directory entries / FAT entries directly in the sector
  * store after the normal filesystem API creates the baseline state.
  *
+ * This suite owns the corruption-injection and error paths -- a mistyped
+ * secondary, an over-long SecondaryCount, a broken FAT chain, a missing source.
+ * The rename SUCCESS paths (short<->long resize, entry-set relocation, the data
+ * surviving the move) and the `fsck.exfat` evidence live in
+ * `test_ra8_fs_exfat_rename_long.c`, which is the functional companion to the
+ * long-name rename work (#603).
+ *
  * Every uncovered line is handled exactly once: either a positive test
  * exercises it, or a `GCOVR_EXCL_LINE` tag marks it as an I/O-failure /
  * scan-limit path that cannot be injected without a failing backend.
- *
- * @par Target lines
- * 132-133, 146-147, 151-152, 206, 214, 284, 287, 303-306, 309-311,
- * 314-315, 317-318, 332, 420, 423, 429, 442, 445, 489, 530.
- * (Remaining uncovered lines are GCOVR_EXCL in the source file.)
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -67,73 +69,6 @@ static void test_exfat_unlink_not_found(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat mutate cov: unlink nonexistent file -> not_found (line 206)");
-}
-
-/**
- * @test test_exfat_rename_old_too_long
- * @brief `ra8_fs_rename` rejects a 16-char old name immediately.
- *
- * @details
- * The exFAT spec limits a single Name entry to 15 UTF-16 units.  When the
- * caller passes a 16-char old path `priv_exfat_rename` returns
- * `k_ra8_err_not_supported` at line 420 before touching the directory.
- *
- * Lines targeted: 420.
- *
- * @par MC/DC:
- * Decision: `if (old_len > k_exfat_name_per_entry)` -- 1 condition.
- * V1: old_len == 16 > 15 -> T -> not_supported (this test).
- * V2: old_len == 5 <= 15 -> F -> proceeds (covered by success-path tests).
- *
- * @pre Volume is formatted and accessible.
- * @post ra8_fs_rename returns k_ra8_err_not_supported.
- *
- * @since 0.1.0
- */
-static void test_exfat_rename_old_too_long(void)
-{
-  TEST_BEGIN("exfat mutate cov: rename old name 16 chars -> not_supported (line 420)");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = nullptr;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  /* 16 chars: one over the 15-char per-entry limit. */
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_rename(h, "ABCDEFGHIJKLMNOP", "NEWNAME.TXT"));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
-  TEST_END("exfat mutate cov: rename old name 16 chars -> not_supported (line 420)");
-}
-
-/**
- * @test test_exfat_rename_new_too_long
- * @brief `ra8_fs_rename` rejects a 16-char new name immediately.
- *
- * @details
- * When the old name is valid but the new name is 16 chars,
- * `priv_exfat_rename` returns `k_ra8_err_not_supported` at line 423.
- *
- * Lines targeted: 423.
- *
- * @par MC/DC:
- * Decision: `if (new_len > k_exfat_name_per_entry)` -- 1 condition.
- * V1: new_len == 16 > 15 -> T -> not_supported (this test).
- * V2: new_len == 5 <= 15 -> F -> proceeds (success-path tests).
- *
- * @pre Volume is formatted and accessible.
- * @post ra8_fs_rename returns k_ra8_err_not_supported.
- *
- * @since 0.1.0
- */
-static void test_exfat_rename_new_too_long(void)
-{
-  TEST_BEGIN("exfat mutate cov: rename new name 16 chars -> not_supported (line 423)");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = nullptr;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  /* Old name is 5 chars (fits), new name is 16 chars (too long). */
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_rename(h, "A.TXT", "ABCDEFGHIJKLMNOP"));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
-  TEST_END("exfat mutate cov: rename new name 16 chars -> not_supported (line 423)");
 }
 
 /**
@@ -549,52 +484,6 @@ static void test_exfat_fat_chain_free(void)
 }
 
 /**
- * @test test_exfat_rename_count_not_three
- * @brief `priv_exfat_rename` returns `k_ra8_err_not_supported` when the found
- *        set does not have exactly 3 entries (line 444-445).
- *
- * @details
- * Writes "A.TXT" (SecondaryCount = 2, set size = 3) then patches the
- * SecondaryCount byte to 1 (set size = 2).  After `priv_exfat_find_set`
- * reports count = 2, the check `count != 3` fires and rename returns
- * `k_ra8_err_not_supported` at line 445.
- *
- * Lines targeted: 444-445.
- *
- * @par MC/DC:
- * Decision: `if (count != k_exfat_rename_set_entries)` in priv_exfat_rename
- * (1 condition).
- * V1: patched SecondaryCount 1 -> set size 2 != 3 -> TRUE -> not_supported.
- * V2: normal 3-entry set -> FALSE (rename success siblings).
- * N=1 condition, 1 independent vector per DO-178C 6.4.4.3.
- *
- * @pre Volume is formatted and accessible.
- * @post ra8_fs_rename returns k_ra8_err_not_supported.
- *
- * @since 0.1.0
- */
-static void test_exfat_rename_count_not_three(void)
-{
-  TEST_BEGIN("exfat mutate cov: entry count != 3 -> not_supported (lines 444-445)");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = nullptr;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-
-  const uint8_t dummy = (uint8_t)'A';
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "A.TXT", &dummy, 1U));
-
-  /* Patch SecondaryCount to 1 -> set size becomes 2 (File + Stream only). */
-  const uint32_t file_off = root_byte(h, (uint32_t)k_mut_root_file0_idx);
-  s_disk.bytes[file_off + (uint32_t)k_mut_file_secnt_off] = 1U;
-
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_rename(h, "A.TXT", "C.TXT"));
-
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
-  TEST_END("exfat mutate cov: entry count != 3 -> not_supported (lines 444-445)");
-}
-
-/**
  * @test test_exfat_listdir_skip_non_stream
  * @brief `priv_exfat_listdir` skips a file set whose first secondary is not a
  *        Stream-extension entry (line 529-530).
@@ -707,8 +596,6 @@ static void test_exfat_gather_name_skip_non_name(void)
 int32_t main(void)
 {
   test_exfat_unlink_not_found();
-  test_exfat_rename_old_too_long();
-  test_exfat_rename_new_too_long();
   test_exfat_rename_new_exists();
   test_exfat_rename_not_found();
   test_exfat_stream_type_mismatch();
@@ -718,7 +605,6 @@ int32_t main(void)
   test_exfat_free_clusters_zero_size();
   test_exfat_fat_chain_free();
   test_exfat_too_many_secondary();
-  test_exfat_rename_count_not_three();
   test_exfat_listdir_skip_non_stream();
   test_exfat_gather_name_skip_non_name();
   (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_exfat_mutate_cov.c\n");
