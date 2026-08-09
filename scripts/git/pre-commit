@@ -306,12 +306,13 @@ if [[ -n "$c_files" ]]; then
   # drift was not cosmetic: it failed commits over findings no gate has an
   # opinion about. It diverged from gate_cppcheck in two separate ways.
   #
-  # WHERE it looks. The gate covers src/, libs/ and the example apps. tools/
-  # is reached only by scripts/checks/cppcheck.sh under --error-exitcode=0,
-  # where a finding CANNOT fail anything, so the first commit to stage
-  # tools/*.c met 65 findings nothing had ever gated -- two of them verified
-  # false positives (a custom deallocator, and an fclose one call deeper)
-  # whose "fix" would have been a double free.
+  # WHERE it looks. The gate covers src/, libs/, tools/ and the example apps.
+  # tools/ came under the gate in #596: before that it was reached only by
+  # scripts/checks/cppcheck.sh under --error-exitcode=0, where a finding
+  # CANNOT fail anything, so the first commit to stage tools/*.c met 65
+  # findings nothing had ever gated. This step mirrors the gate's scope, so it
+  # analyses staged tools/ TUs too, with the same C23 nullptr shim the gate
+  # force-includes (cppcheck 2.13 does not model the keyword).
   #
   # WHAT it analyses. cppcheck analyses TRANSLATION UNITS. The gate passes
   # DIRECTORIES, so a header is analysed in the context of a .c that includes
@@ -323,8 +324,8 @@ if [[ -n "$c_files" ]]; then
   # of the invocation rather than defects in the headers.
   #
   # So: the gate's scope, and .c translation units. Headers stay covered
-  # through the TUs that include them, exactly as in CI. Bringing tools/ under
-  # the gate is real work tracked as its own issue.
+  # through the TUs that include them, exactly as in CI. tools/ is now part of
+  # that scope (#596), which is why the grep below includes it.
   #
   # WHICH INCLUDES it resolves -- the third divergence, and the same defect one
   # level down. The gate passes an include list; this step passed none, so
@@ -336,7 +337,7 @@ if [[ -n "$c_files" ]]; then
   # scripts/checks/cppcheck.sh was green on the identical tree. The list now
   # comes from that script, which is the one place that defines it.
   if command -v cppcheck &>/dev/null; then
-    prod_files=$(echo "$c_files" | grep -E "^(src|libs|examples)/" | grep -E "[.]c$" || true)
+    prod_files=$(echo "$c_files" | grep -E "^(src|libs|examples|tools)/" | grep -E "[.]c$" || true)
     if [[ -n "$prod_files" ]]; then
       mapfile -t prod_file_list <<<"$prod_files"
       mapfile -t cppcheck_include_dirs < <(bash scripts/checks/cppcheck.sh --print-include-dirs)
@@ -344,6 +345,7 @@ if [[ -n "$c_files" ]]; then
         --error-exitcode=1 \
         --suppressions-list=.cppcheck-suppressions \
         --inline-suppr \
+        --include=scripts/checks/cppcheck_c23_compat.h \
         --std=c23 \
         --quiet \
         "${cppcheck_include_dirs[@]}" \
