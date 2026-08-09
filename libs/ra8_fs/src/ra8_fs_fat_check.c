@@ -833,7 +833,7 @@ static ra8_err_t priv_check_locked(ra8_fs_mount_t*        handle,
                                    uint32_t               bitmap_bytes,
                                    ra8_fs_check_report_t* report)
 {
-  if (handle == nullptr || report == nullptr) {
+  if ((handle == nullptr) || (report == nullptr)) {
     return k_ra8_err_null_ptr;
   }
   if (handle->in_use == 0U) {
