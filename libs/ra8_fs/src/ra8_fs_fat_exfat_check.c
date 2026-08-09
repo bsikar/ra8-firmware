@@ -617,18 +617,23 @@ priv_exchk_scan_dir(ra8_fs_check_ctx_t* ctx, const exfat_dir_t* dir, exfat_dir_s
 RA8_INTERNAL
 static ra8_err_t priv_exchk_tree(ra8_fs_check_ctx_t* ctx)
 {
-  exfat_dir_stack_t stack = {};
-  priv_exfat_dir_root(ctx->m, &stack.items[0]);
-  stack.top = 1U;
-  while (stack.top > 0U) {
-    stack.top--;
-    const exfat_dir_t dir = stack.items[stack.top];
+  /* Explicit DFS worklist (~2 KiB) kept in module-static storage so this frame
+   * stays within the stack-usage budget; the walk is iterative (no recursion)
+   * and single-threaded under the fs lock, so the shared buffer never overlaps. */
+  static exfat_dir_stack_t s_worklist;
+  s_worklist.top       = 0U;
+  s_worklist.truncated = 0U;
+  priv_exfat_dir_root(ctx->m, &s_worklist.items[0]);
+  s_worklist.top = 1U;
+  while (s_worklist.top > 0U) {
+    s_worklist.top--;
+    const exfat_dir_t dir = s_worklist.items[s_worklist.top];
     ctx->rep->dirs_visited++;
     ra8_err_t err = priv_exchk_mark_dir_alloc(ctx, &dir);
     if (err != k_ra8_ok) {
       return err;
     }
-    err = priv_exchk_scan_dir(ctx, &dir, &stack);
+    err = priv_exchk_scan_dir(ctx, &dir, &s_worklist);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -671,9 +676,10 @@ static void priv_exchk_diff_byte(ra8_fs_check_ctx_t* ctx, uint8_t b, uint32_t ba
     if (idx >= ctx->rep->clusters_total) {
       return;
     }
-    const uint8_t alloc = (uint8_t)((b >> j) & 1U);
+    const uint8_t alloc = (uint8_t)(((uint32_t)b >> j) & 1U);
     const uint8_t refd =
-      (uint8_t)((ctx->bitmap[idx >> k_exchk_byte_shift] >> (idx & k_exchk_bit_mask)) & 1U);
+      (uint8_t)(((uint32_t)ctx->bitmap[idx >> k_exchk_byte_shift] >> (idx & k_exchk_bit_mask)) &
+                1U);
     if ((alloc != 0U) && (refd == 0U)) {
       ctx->rep->clusters_lost++;
       priv_check_fault(ctx,
