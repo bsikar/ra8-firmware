@@ -119,11 +119,16 @@ typedef enum : uint8_t {
  *
  * @details A standard SD card is MBR-partitioned: LBA 0 holds a partition
  * table (four 16-byte entries starting at 0x1BE) and the FAT boot sector
- * lives at the partition's first LBA. Only partition 0 is consulted.
+ * lives at the partition's first LBA. Entry 0's type and first-LBA are named
+ * directly; entries 1-3 are reached by adding ::k_mbr_part_entry_stride, so
+ * the auto path (partition 0) and ::ra8_fs_mount_partition (any of 0-3) share
+ * one set of offsets.
  */
 typedef enum : uint16_t {
-  k_mbr_off_part0_type = 0x1C2U, /**< Partition 0 type byte (0 = unused).  */
-  k_mbr_off_part0_lba  = 0x1C6U, /**< Partition 0 first-LBA (4 bytes, LE). */
+  k_mbr_off_part0_type    = 0x1C2U, /**< Partition 0 type byte (0 = unused).      */
+  k_mbr_off_part0_lba     = 0x1C6U, /**< Partition 0 first-LBA (4 bytes, LE).     */
+  k_mbr_part_entry_stride = 16U,    /**< Bytes between primary partition entries. */
+  k_mbr_part_entry_count  = 4U,     /**< Primary partition entries in an MBR.     */
 } ra8_fs_mbr_off_t;
 
 /**

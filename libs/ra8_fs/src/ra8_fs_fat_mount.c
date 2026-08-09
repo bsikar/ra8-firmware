@@ -373,30 +373,33 @@ priv_gpt_scan_entries(ra8_fs_mount_t* m, uint32_t entry_lba, uint32_t count, uin
 }
 
 /**
- * @brief Locate the mountable partition on a GPT disk.
+ * @brief Read and validate the GPT header, returning the entry-array geometry.
  *
- * @details Validates the "EFI PART" header at LBA 1, bounds-checks the
- * entry-array geometry (128-byte entries, 32-bit array LBA), then scans the
- * entries via ::priv_gpt_scan_entries.
+ * @details Reads the "EFI PART" header at LBA 1, checks the signature, rejects
+ * an entry-array LBA above 32 bits or a non-standard entry size, and clamps the
+ * entry count to the bounded scan cap. Shared by the auto locator
+ * (::priv_gpt_locate_volume) and the indexed one (::priv_gpt_locate_partition)
+ * so the two agree byte-for-byte on what a usable GPT is.
  *
- * @param[in,out] m        Mount whose backend supplies the sectors.
- * @param[out]    out_base Receives the chosen partition's first LBA.
+ * @param[in,out] m             Mount whose backend supplies the sectors.
+ * @param[out]    out_entry_lba First LBA of the partition entry array.
+ * @param[out]    out_count     Entry count, clamped to ::k_gpt_entry_scan_max.
  * @return Error code.
- * @retval k_ra8_ok                    @p out_base holds the volume base.
- * @retval k_ra8_err_validation_failed No "EFI PART" header at LBA 1.
- * @retval k_ra8_err_not_supported     Non-standard entry size or array LBA.
- * @retval k_ra8_err_*                 Backend read failure or no entry found.
+ * @retval k_ra8_ok                    Geometry read and validated.
+ * @retval k_ra8_err_validation_failed No "EFI PART" header, or entry_lba is 0.
+ * @retval k_ra8_err_not_supported     Non-standard entry size or 64-bit array LBA.
+ * @retval k_ra8_err_*                 Backend read failure.
  * @pre ``m->partition_base_lba`` is still 0 (reads are absolute).
- * @pre @p out_base is non-NULL.
- * @post On k_ra8_ok @p out_base holds a non-zero LBA.
- * @post ::s_scratch is overwritten (callers must re-read their sector).
+ * @pre @p out_entry_lba and @p out_count are non-NULL.
+ * @post On k_ra8_ok both outputs are set; ::s_scratch holds the GPT header.
+ * @post On failure the outputs are unchanged.
  * @note Not thread-safe -- uses module-level scratch.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_gpt_locate_volume(ra8_fs_mount_t* m, uint32_t* out_base)
+static ra8_err_t priv_gpt_read_geom(ra8_fs_mount_t* m, uint32_t* out_entry_lba, uint32_t* out_count)
 {
-  ra8_err_t err = priv_read_sector(m, (uint32_t)k_gpt_header_lba, s_scratch);
+  const ra8_err_t err = priv_read_sector(m, (uint32_t)k_gpt_header_lba, s_scratch);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -420,7 +423,222 @@ static ra8_err_t priv_gpt_locate_volume(ra8_fs_mount_t* m, uint32_t* out_base)
   if (count > (uint32_t)k_gpt_entry_scan_max) {
     count = (uint32_t)k_gpt_entry_scan_max;
   }
+  *out_entry_lba = entry_lba;
+  *out_count     = count;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Locate the first mountable partition on a GPT disk (auto-select).
+ *
+ * @details Reads the header geometry via ::priv_gpt_read_geom, then scans the
+ * entries via ::priv_gpt_scan_entries (Microsoft Basic Data preferred, else the
+ * first allocated entry of any type).
+ *
+ * @param[in,out] m        Mount whose backend supplies the sectors.
+ * @param[out]    out_base Receives the chosen partition's first LBA.
+ * @return Error code.
+ * @retval k_ra8_ok                    @p out_base holds the volume base.
+ * @retval k_ra8_err_validation_failed No "EFI PART" header at LBA 1.
+ * @retval k_ra8_err_not_supported     Non-standard entry size or array LBA.
+ * @retval k_ra8_err_*                 Backend read failure or no entry found.
+ * @pre ``m->partition_base_lba`` is still 0 (reads are absolute).
+ * @pre @p out_base is non-NULL.
+ * @post On k_ra8_ok @p out_base holds a non-zero LBA.
+ * @post ::s_scratch is overwritten (callers must re-read their sector).
+ * @note Not thread-safe -- uses module-level scratch.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_gpt_locate_volume(ra8_fs_mount_t* m, uint32_t* out_base)
+{
+  uint32_t        entry_lba = 0U;
+  uint32_t        count     = 0U;
+  const ra8_err_t err       = priv_gpt_read_geom(m, &entry_lba, &count);
+  if (err != k_ra8_ok) {
+    return err;
+  }
   return priv_gpt_scan_entries(m, entry_lba, count, out_base);
+}
+
+/**
+ * @brief Extract the first LBA of one explicitly selected GPT entry.
+ *
+ * @details The indexed counterpart of ::priv_gpt_entry_first_lba: rather than
+ * skipping an unusable entry it reports why. An all-zero type GUID is an empty
+ * slot; a first LBA above 32 bits is unaddressable by this 512-byte-block,
+ * 32-bit-LBA backend; a zero first LBA is a malformed allocated entry.
+ *
+ * @param[in]  entry    One 128-byte partition entry.
+ * @param[out] out_base Receives the entry's first LBA on success.
+ * @return Error code.
+ * @retval k_ra8_ok                    @p out_base holds the entry's first LBA.
+ * @retval k_ra8_err_not_found         The entry is an empty (zero-GUID) slot.
+ * @retval k_ra8_err_not_supported     First LBA is above 32 bits.
+ * @retval k_ra8_err_validation_failed Allocated entry with a zero first LBA.
+ * @pre @p entry is non-NULL and holds ::k_gpt_entry_bytes bytes.
+ * @pre @p out_base is non-NULL.
+ * @post No state modified.
+ * @post @p entry is unmodified.
+ * @note Pure function.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_gpt_entry_select(const uint8_t* entry, uint32_t* out_base)
+{
+  uint32_t nonzero = 0U;
+  for (uint32_t i = 0U; i < (uint32_t)k_gpt_guid_len; i++) {
+    if (entry[i] != 0U) {
+      nonzero = 1U;
+    }
+  }
+  if (nonzero == 0U) {
+    return k_ra8_err_not_found;
+  }
+  if (priv_rd32(&entry[(uint32_t)k_gpt_entry_off_first_lba + (uint32_t)k_gpt_u64_hi_off]) != 0U) {
+    return k_ra8_err_not_supported;
+  }
+  const uint32_t base = priv_rd32(&entry[k_gpt_entry_off_first_lba]);
+  if (base == 0U) {
+    return k_ra8_err_validation_failed;
+  }
+  *out_base = base;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Locate a GPT partition chosen by entry-array index.
+ *
+ * @details Reads the header geometry via ::priv_gpt_read_geom, bounds-checks
+ * @p index against the (clamped) entry count, reads the sector holding that
+ * entry, and validates it via ::priv_gpt_entry_select.
+ *
+ * @param[in,out] m        Mount whose backend supplies the sectors.
+ * @param[in]     index    Zero-based GPT entry-array index.
+ * @param[out]    out_base Receives the selected partition's first LBA.
+ * @return Error code.
+ * @retval k_ra8_ok                    @p out_base holds the volume base.
+ * @retval k_ra8_err_out_of_range      @p index is past the entry count.
+ * @retval k_ra8_err_not_found         The selected entry is empty.
+ * @retval k_ra8_err_not_supported     Entry-array geometry, or an entry LBA,
+ *                                     this backend cannot address.
+ * @retval k_ra8_err_validation_failed No header, or a malformed entry.
+ * @retval k_ra8_err_*                 Backend read failure.
+ * @pre ``m->partition_base_lba`` is still 0 (reads are absolute).
+ * @pre @p out_base is non-NULL.
+ * @post On k_ra8_ok @p out_base holds a non-zero LBA.
+ * @post ::s_scratch is overwritten (callers must re-read their sector).
+ * @note Not thread-safe -- uses module-level scratch.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_gpt_locate_partition(ra8_fs_mount_t* m, uint8_t index, uint32_t* out_base)
+{
+  uint32_t        entry_lba = 0U;
+  uint32_t        count     = 0U;
+  const ra8_err_t err       = priv_gpt_read_geom(m, &entry_lba, &count);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if ((uint32_t)index >= count) {
+    return k_ra8_err_out_of_range;
+  }
+  const uint32_t sector = (uint32_t)index / (uint32_t)k_gpt_entries_per_sector;
+  const uint32_t offset =
+    ((uint32_t)index % (uint32_t)k_gpt_entries_per_sector) * (uint32_t)k_gpt_entry_bytes;
+  const ra8_err_t rerr = priv_read_sector(m, entry_lba + sector, s_scratch);
+  if (rerr != k_ra8_ok) {
+    return rerr;
+  }
+  return priv_gpt_entry_select(&s_scratch[offset], out_base);
+}
+
+/**
+ * @brief Return the first LBA of MBR primary entry @p index.
+ *
+ * @details Enumerates the four 16-byte primary entries. The type byte and
+ * first-LBA of entry @p index are read at ::k_mbr_off_part0_type and
+ * ::k_mbr_off_part0_lba plus @p index times ::k_mbr_part_entry_stride. Unlike
+ * the auto path (::priv_mbr_part0_lba), an out-of-range index, an empty slot,
+ * or a zero first-LBA are reported distinctly rather than folded to 0.
+ *
+ * @param[in]  buf      Sector-0 (MBR) contents (>= 512 bytes).
+ * @param[in]  index    Zero-based primary-entry index.
+ * @param[out] out_base Receives the entry's first LBA on success.
+ * @return Error code.
+ * @retval k_ra8_ok                    @p out_base holds the entry's first LBA.
+ * @retval k_ra8_err_out_of_range      @p index is 4 or greater.
+ * @retval k_ra8_err_not_found         The selected entry is unused (type 0).
+ * @retval k_ra8_err_validation_failed Allocated entry with a zero first LBA.
+ * @pre @p buf is non-NULL and holds at least one sector.
+ * @pre @p out_base is non-NULL.
+ * @post No state modified.
+ * @post @p buf is unmodified.
+ * @note Pure function.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_mbr_select_entry(const uint8_t* buf, uint8_t index, uint32_t* out_base)
+{
+  if ((uint32_t)index >= (uint32_t)k_mbr_part_entry_count) {
+    return k_ra8_err_out_of_range;
+  }
+  const uint32_t slot     = (uint32_t)index * (uint32_t)k_mbr_part_entry_stride;
+  const uint32_t type_off = (uint32_t)k_mbr_off_part0_type + slot;
+  const uint32_t lba_off  = (uint32_t)k_mbr_off_part0_lba + slot;
+  if (buf[type_off] == 0U) {
+    return k_ra8_err_not_found;
+  }
+  const uint32_t base = priv_rd32(&buf[lba_off]);
+  if (base == 0U) {
+    return k_ra8_err_validation_failed;
+  }
+  *out_base = base;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Resolve an explicit partition index to its first LBA.
+ *
+ * @details Dispatches on the sector-0 partition-table type: a GPT disk
+ * (protective MBR type ::k_gpt_part_type_protective) selects GPT entry
+ * @p index, any other 0xAA55 MBR selects primary entry @p index. A sector 0
+ * that carries no boot signature is not a partition table at all, so an
+ * explicit index has nothing to select and the caller's superfloppy request is
+ * refused. The signature bytes are tested separately (not as one compound
+ * decision) to mirror ::priv_mbr_part0_lba.
+ *
+ * @param[in,out] m        Mount with sector 0 already in ::s_scratch.
+ * @param[in]     index    Zero-based partition index.
+ * @param[out]    out_base Receives the selected partition's first LBA.
+ * @return Error code.
+ * @retval k_ra8_ok                    @p out_base holds the volume base.
+ * @retval k_ra8_err_not_found         No partition table, or an empty entry.
+ * @retval k_ra8_err_out_of_range      @p index is past the table.
+ * @retval k_ra8_err_not_supported     Unaddressable GPT geometry.
+ * @retval k_ra8_err_validation_failed Malformed entry or GPT header.
+ * @retval k_ra8_err_*                 Backend read failure.
+ * @pre ::s_scratch holds the contents of LBA 0.
+ * @pre ``m->partition_base_lba`` is still 0 (reads are absolute).
+ * @pre @p out_base is non-NULL.
+ * @post On k_ra8_ok @p out_base holds a non-zero LBA.
+ * @post ::s_scratch may be overwritten (GPT path re-reads the entry array).
+ * @note Not thread-safe -- uses module-level scratch.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_locate_indexed(ra8_fs_mount_t* m, uint8_t index, uint32_t* out_base)
+{
+  if (s_scratch[k_bpb_off_signature_lo] != (uint8_t)k_bpb_sig_lo) {
+    return k_ra8_err_not_found;
+  }
+  if (s_scratch[k_bpb_off_signature_hi] != (uint8_t)k_bpb_sig_hi) {
+    return k_ra8_err_not_found;
+  }
+  if (s_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
+    return priv_gpt_locate_partition(m, index, out_base);
+  }
+  return priv_mbr_select_entry(s_scratch, index, out_base);
 }
 
 /**
@@ -497,14 +715,18 @@ static ra8_err_t priv_format_locked(const ra8_fs_backend_t*     backend,
 /**
  * @brief Read + parse the boot sector, transparently following MBR or GPT.
  *
- * @details Tries the BPB/VBR at the current base (LBA 0 for a superfloppy).
- * If that parse fails and sector 0 is an MBR, retargets the mount: for a
- * plain MBR to partition 0's start LBA, for a protective MBR (type 0xEE) to
- * the partition chosen from the GPT entry array (Basic Data preferred), and
- * re-parses. Leaves the original error in force when sector 0 is neither a
- * volume, an MBR, nor a usable GPT.
+ * @details When @p index is ::k_ra8_fs_partition_auto this tries the BPB/VBR at
+ * the current base (LBA 0 for a superfloppy); if that parse fails and sector 0
+ * is an MBR it retargets to partition 0's start LBA, or -- for a protective MBR
+ * (type 0xEE) -- to the GPT partition the entry array selects (Basic Data
+ * preferred), then re-parses, leaving the original error in force when sector 0
+ * is neither a volume, an MBR, nor a usable GPT. For any other @p index the
+ * superfloppy attempt is skipped and the chosen primary/GPT entry supplies the
+ * base directly (::priv_locate_indexed); an unaddressable or empty entry fails
+ * cleanly.
  *
- * @param[in,out] m Mount with backend bound and ``partition_base_lba == 0``.
+ * @param[in,out] m     Mount with backend bound and ``partition_base_lba == 0``.
+ * @param[in]     index Partition selector, or ::k_ra8_fs_partition_auto.
  * @return Error code from the (re-)parse.
  * @retval k_ra8_ok ``m`` holds the volume's BPB fields and base LBA.
  * @retval k_ra8_err_* The backend read failed or no volume was found.
@@ -516,24 +738,32 @@ static ra8_err_t priv_format_locked(const ra8_fs_backend_t*     backend,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m)
+static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m, uint8_t index)
 {
   ra8_err_t err = priv_read_sector(m, 0, s_scratch);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = priv_parse_volume(m);
-  if (err == k_ra8_ok) {
-    return k_ra8_ok;
-  }
-  uint32_t base = priv_mbr_part0_lba(s_scratch);
-  if (base == 0U) {
-    return err;
-  }
-  if (s_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
-    const ra8_err_t gpt_err = priv_gpt_locate_volume(m, &base);
-    if (gpt_err != k_ra8_ok) {
-      return gpt_err;
+  uint32_t base = 0U;
+  if (index != (uint8_t)k_ra8_fs_partition_auto) {
+    const ra8_err_t lerr = priv_locate_indexed(m, index, &base);
+    if (lerr != k_ra8_ok) {
+      return lerr;
+    }
+  } else {
+    err = priv_parse_volume(m);
+    if (err == k_ra8_ok) {
+      return k_ra8_ok;
+    }
+    base = priv_mbr_part0_lba(s_scratch);
+    if (base == 0U) {
+      return err;
+    }
+    if (s_scratch[k_mbr_off_part0_type] == (uint8_t)k_gpt_part_type_protective) {
+      const ra8_err_t gpt_err = priv_gpt_locate_volume(m, &base);
+      if (gpt_err != k_ra8_ok) {
+        return gpt_err;
+      }
     }
   }
   m->partition_base_lba = base;
@@ -545,12 +775,15 @@ static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m)
 }
 
 /**
- * @brief Mount a volume -- the guarded body of ::ra8_fs_mount().
+ * @brief Mount a volume -- the guarded body of ::ra8_fs_mount() and
+ *        ::ra8_fs_mount_partition().
  *
- * @details Allocates a mount slot, reads the boot sector, parses the
- *          BPB, and computes the geometry.
+ * @details Allocates a mount slot, reads the boot sector for the requested
+ *          @p index (::k_ra8_fs_partition_auto for first-partition auto-select),
+ *          parses the BPB, and computes the geometry.
  *
  * @param[in]  backend    Block-device backend to drive.
+ * @param[in]  index      Partition selector, or ::k_ra8_fs_partition_auto.
  * @param[out] out_handle On success, opaque mount handle.
  *
  * @return Error code.
@@ -558,6 +791,8 @@ static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m)
  * @retval k_ra8_err_null_ptr           NULL `backend` or `out_handle`.
  * @retval k_ra8_err_invalid_arg        Backend missing required callbacks.
  * @retval k_ra8_err_no_mem             Mount table is full.
+ * @retval k_ra8_err_out_of_range       `index` is past the partition table.
+ * @retval k_ra8_err_not_found          Selected entry empty, or no table.
  * @retval k_ra8_err_validation_failed  Not a recognisable FAT volume.
  * @retval k_ra8_err_*                  Backend read failure.
  *
@@ -573,7 +808,8 @@ static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m)
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_mount_locked(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_handle)
+static ra8_err_t
+priv_mount_locked(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mount_t** out_handle)
 {
   if (backend == nullptr || out_handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -603,7 +839,7 @@ static ra8_err_t priv_mount_locked(const ra8_fs_backend_t* backend, ra8_fs_mount
    * `exfat_upcase_ok` says "this build's up-case table is the one this VOLUME
    * carries", and a fresh mount vouches for nothing until it has looked (#606). */
   m->exfat_upcase_ok = 0U;
-  ra8_err_t err      = priv_read_boot_sector(m);
+  ra8_err_t err      = priv_read_boot_sector(m, index);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -696,7 +932,17 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_mount(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_handle)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_mount_locked(backend, out_handle);
+  const ra8_err_t err = priv_mount_locked(backend, (uint8_t)k_ra8_fs_partition_auto, out_handle);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t
+ra8_fs_mount_partition(const ra8_fs_backend_t* backend, uint8_t index, ra8_fs_mount_t** out_handle)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_mount_locked(backend, index, out_handle);
   priv_lock_release();
   return err;
 }
