@@ -88,7 +88,7 @@ target_include_directories(
 target_link_libraries(esp_hosted_port_ra8_spi INTERFACE esp_hosted threadx)
 
 # Track the source list as a property so apps can splice it into their
-# own add_executable() globs. Same pattern as port/nimble and port/filex.
+# own add_executable() globs. Same pattern as port/nimble and port/usbx.
 set_property(
   GLOBAL
   PROPERTY RA8_ESP_HOSTED_PORT_SOURCES

@@ -28,8 +28,8 @@
  *
  *   - On the host unit-test build, `media` points at an
  *     `ra8_epub_mem_media_t` describing an in-memory `.epub` blob.
- *   - On the target firmware, the FileX adapter (Phase 4.2) wraps an
- *     `FX_FILE` and reads the entire file into a caller-owned buffer
+ *   - On the target firmware, the caller reads the entire `.epub` off the
+ *     mounted filesystem (`ra8_fs_read()`) into a caller-owned buffer
  *     before handing it to `ra8_epub_open()`.
  *
  * ## Static-allocation footprint

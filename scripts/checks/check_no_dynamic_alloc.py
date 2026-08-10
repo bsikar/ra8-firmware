@@ -32,8 +32,8 @@ Flags two classes of violation:
 Scope:
 
   Only firmware code under libs/ra8_*/, src/, and examples/<app>/ where
-  <app> has main.c + CMakeLists.txt. Vendored libs (libs/third_party/,
-  libs/threadx, libs/filex, ...), build outputs, and host-side tests/
+  <app> has main.c + CMakeLists.txt. Vendored libs (libs/third_party/...),
+  build outputs, and host-side tests/
   are exempt -- those are allowed to allocate.
 
 Inline suppression:

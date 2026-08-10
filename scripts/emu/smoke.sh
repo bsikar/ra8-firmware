@@ -311,9 +311,9 @@ if [ "${#apps[@]}" -eq 0 ]; then
   # they run on a newer Unicorn (macOS / a source build) -- pass them
   # explicitly there (e.g. `ra8_emulator_smoke.sh usb_cdc_echo`).
   #
-  # The Octo-SPI LevelX/FileX apps (threadx_levelx_demo,
-  # threadx_filex_levelx_demo) exercise the xSPI flash model
-  # (board_periph_xspi.c) -- LevelX format/open + sector R/W, and FileX FAT
+  # The Octo-SPI LevelX/ra8_fs apps (threadx_levelx_demo,
+  # threadx_fs_levelx_demo) exercise the xSPI flash model
+  # (board_periph_xspi.c) -- LevelX format/open + sector R/W, and ra8_fs FAT
   # file write+readback round-trip. They are ThreadX, so the same Unicorn
   # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
   apps=(blink lcd_color_cycle display_pal_animation ereader_ui

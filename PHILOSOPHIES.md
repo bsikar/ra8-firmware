@@ -81,8 +81,8 @@ overwhelming majority of the register-level code.
 
 Third-party "software of unknown provenance" that was written elsewhere to be
 freestanding, vendored into the tree, and adapted to this hardware by a small
-piece of glue. ThreadX (the RTOS), FileX and LevelX (filesystem and flash
-wear-levelling, the former being retired), NetX Duo and mbedTLS and tf-psa-crypto
+piece of glue. ThreadX (the RTOS), LevelX (flash
+wear-levelling), NetX Duo and mbedTLS and tf-psa-crypto
 (networking and cryptography), miniz and xz-embedded (compression), stb and
 libwebp (image decoding), USBX and NimBLE (USB and Bluetooth stacks), esp-hosted
 (the Wi-Fi co-processor link), and the machine-learning runtimes for the

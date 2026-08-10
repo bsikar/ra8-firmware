@@ -193,6 +193,12 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_psa_real_kat.
 # than through the ra8_add_test() auto-glob.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_cache_store.c)
 
+# test_lx_fs_backend.c (#611) compiles the vendored LevelX NOR sources + the
+# RAM NOR fake + the port/levelx ra8_fs backend shim with LX_STANDALONE_ENABLE,
+# so it is registered by hand (tests/cmake/tests_storage.cmake) rather than
+# through the ra8_add_test() auto-glob.
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_lx_fs_backend.c)
+
 # test_cache_store_demo.c (issue #257) compiles the ra8_cache_store_demo example
 # core + RAM NOR driver from examples/ plus the vendored LevelX NOR sources with
 # LX_STANDALONE_ENABLE, so it is registered by hand below rather than through the

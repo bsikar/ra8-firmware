@@ -43,17 +43,14 @@ lands -- or fails this script loudly if it cannot be configured at all.
 
 TUs THAT NOTHING BUILDS
 -----------------------
-Two first-party TUs are compiled by no configure at all, for reasons that are
-facts about the tree rather than defects in the enumeration above:
+One first-party TU is compiled by no configure at all, for a reason that is a
+fact about the tree rather than a defect in the enumeration above:
 
-  * ``port/filex/src/fx_media_driver_ra8_sdhi.c`` -- the FileX-over-SDHI bridge
-    is spliced into an app only when that app declares ``USES filex``, and both
-    FileX apps in the tree deliberately take the LevelX FileX port instead.
   * ``examples/.../dfu_copy_to_run/payload.c`` -- a freestanding image linked at
     a fixed SRAM base by its own ``build_payload.sh``, never by CMake.
 
-Being unbuilt is not a licence to go unlinted: they are first-party firmware and
-CLAUDE.md holds them to the same bar. So a command is DERIVED from the nearest
+Being unbuilt is not a licence to go unlinted: it is first-party firmware and
+CLAUDE.md holds it to the same bar. So a command is DERIVED from the nearest
 already-covered sibling TU -- same directory subtree, therefore the same
 middleware, the same board layer and the same include set -- and then VERIFIED
 by actually running the cross-compiler over the file with it.

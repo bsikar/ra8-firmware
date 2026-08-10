@@ -134,8 +134,8 @@ From `docs/MISRA.md` and `docs/MISRA_GAPS.csv`:
 
 ### SOUP / third-party register
 
-- **13 components catalogued** under `docs/SOUP/` with one
-  Markdown justification each: ThreadX, NetX Duo, FileX, USBX,
+- **12 components catalogued** under `docs/SOUP/` with one
+  Markdown justification each: ThreadX, NetX Duo, USBX,
   LevelX, Mbed TLS, TF-PSA-Crypto, Apache NimBLE,
   litehtml, miniz, stb (image + truetype), TinyXML-2.
 - Every component has a written qualification basis citing

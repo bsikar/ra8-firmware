@@ -858,8 +858,8 @@ static void priv_set_link_state(NX_IP_DRIVER* driver_req, UCHAR link_up)
 /* Nx ether driver ra eth -- see implementation for details. */
 void nx_ether_driver_ra8_eth(NX_IP_DRIVER* driver_req)
 {
-  /* NetX never invokes the driver with NULL but mirror the FileX
-   * pattern and the upstream nx_link reference driver. */
+  /* NetX never invokes the driver with NULL but mirror the upstream
+   * nx_link reference driver and guard anyway. */
   if (driver_req == NX_NULL) {
     return;
   }

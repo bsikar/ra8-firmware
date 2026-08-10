@@ -73,7 +73,7 @@ typedef enum : uint32_t {
 } lx_log_pace_t;
 
 typedef enum : uint32_t {
-  /** @brief Console baud (matches uart_hello / threadx_filex_demo). */
+  /** @brief Console baud (matches uart_hello / threadx_fs_demo). */
   k_demo_baud = 115200U,
 
   /** @brief Worker-thread stack size in bytes. */

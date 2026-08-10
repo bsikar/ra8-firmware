@@ -1136,15 +1136,15 @@ Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_canfd_demo/main.c``
 - L305: ra8_board_led_init  (rank 100)
 - L311: ra8_canfd_init  (rank 100)
 
-### threadx_filex_demo
+### threadx_fs_demo
 
-Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_filex_demo/main.c``
+Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_fs_demo/main.c``
 
 - (no init calls detected)
 
-### threadx_filex_levelx_demo
+### threadx_fs_levelx_demo
 
-Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_filex_levelx_demo/main.c``
+Source: ``examples/ek_ra8d2/hw_validated/hil/threadx_fs_levelx_demo/main.c``
 
 - (no init calls detected)
 

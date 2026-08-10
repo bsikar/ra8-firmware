@@ -46,7 +46,7 @@ appears within the per-app timeout its `hil.conf` declares.
 | eth_loopback | `etha: loopback ok` | 20 s |
 | iwdt_demo | `iwdt: refresh in window` | 15 s |
 | sdram_benchmark | `sdram: w=` | 20 s |
-| threadx_filex_demo | `ospi FAT roundtrip ok` | 20 s |
+| threadx_fs_demo | `ospi FAT roundtrip ok` | 20 s |
 | threadx_ipc_demo | `[ipc_demo]` | 15 s |
 | timer_capture_demo | `gpt: period=` | 15 s |
 | tz_secure_only_sd | `sd: roundtrip ok` | 20 s |

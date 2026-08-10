@@ -27,16 +27,16 @@ firmware as Software Of Unknown Provenance (SOUP).
 ## Use case in this firmware
 
 - NOR-flash wear-levelling layer over the on-board Octo-SPI flash. It is
-  built in two mutually exclusive modes and both are consumed, so "under
-  FileX" describes only half of it:
+  built in two mutually exclusive modes and both are consumed:
   - **ThreadX-coupled** (`cmake/levelx.cmake`). `threadx_levelx_demo` drives
     the LevelX NOR API directly with no filesystem above it, while
-    `threadx_filex_demo` and `threadx_filex_levelx_demo` mount a FAT volume on
-    LevelX through `fx_media_driver_ra8_levelx`
-    (`port/levelx/src/lx_filex_adapter.c`). All three live under
-    `examples/ek_ra8d2/hw_validated/hil/`.
+    `threadx_fs_demo` and `threadx_fs_levelx_demo` mount a first-party
+    `ra8_fs` FAT volume on LevelX through the block-device backend
+    (`port/levelx/src/lx_fs_backend.c`). All three live under
+    `examples/ek_ra8d2/hw_validated/hil/`. (Until #611 the two storage demos
+    mounted the vendored FileX here instead; FileX is retired.)
   - **Standalone** (`cmake/levelx_standalone.cmake`, built with
-    `LX_STANDALONE_ENABLE`): no ThreadX and no FileX in the graph at all. The
+    `LX_STANDALONE_ENABLE`): no ThreadX in the graph at all. The
     first-party `libs/ra8_cache_store/` (#201) is built on this mode, and
     `examples/ek_ra8d2/hil_needs_revalidation/ra8_cache_store_demo` exercises
     it against a RAM-backed NOR driver.
@@ -62,14 +62,15 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 ## Risk mitigation
 
 - The underlying flash driver shim is `port/levelx/src/lx_nor_driver_ra8_xspi.c`
-  (with `port/levelx/src/lx_filex_adapter.c` bridging FileX above it where a
+  (with `port/levelx/src/lx_fs_backend.c` bridging `ra8_fs` above it where a
   filesystem is used), so LevelX sees a single block-device interface and the
   whole hardware-facing surface is first-party code held to the full project
   bar. It is **not** in `libs/ra8_fs/`, which contains no LevelX code.
 - No longer demo-only: `libs/ra8_cache_store/` is a production-intent
   first-party library sitting on the standalone build. The demos remain the
   hardware-verification vehicle -- `threadx_levelx_demo` (`[lx] sector rw
-  verified readback=1`) and `threadx_filex_levelx_demo` were both verified
+  verified readback=1`) and the FAT-on-LevelX demo (now `threadx_fs_levelx_demo`,
+  ported from FileX to `ra8_fs` by #611) were both verified
   live on 2026-06-10 per their `hil.conf` records -- and no safety-critical
   data is committed to NOR flash.
 

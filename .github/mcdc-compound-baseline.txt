@@ -625,8 +625,6 @@ libs/ra8_widget/src/ra8_widget_panel.c	internal_panel_on_input	1
 libs/ra8_widget/src/ra8_widget_panel.c	internal_panel_render	1
 libs/ra8_widget/src/ra8_widget_reflow_view.c	internal_rv_link	1
 libs/ra8_widget/src/ra8_widget_reflow_view.c	internal_rv_render	1
-port/levelx/src/lx_filex_adapter.c	priv_read_sectors	1
-port/levelx/src/lx_filex_adapter.c	priv_write_sectors	1
 port/levelx/src/lx_nor_driver_ra8_xspi.c	priv_capture_xspi_pin_state	1
 port/levelx/src/lx_nor_driver_ra8_xspi.c	priv_nor_read	1
 port/levelx/src/lx_nor_driver_ra8_xspi.c	priv_nor_write	1

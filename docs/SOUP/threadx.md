@@ -40,14 +40,14 @@ firmware as Software Of Unknown Provenance (SOUP).
   `tx_kernel_enter()`), and the first-party `libs/ra8_wdt_supervisor/` creates
   a ThreadX thread.
 - The applications actually NAMED `threadx_*` are ten in the supported tiers:
-  `threadx_blink`, `threadx_canfd_demo`, `threadx_filex_demo`,
-  `threadx_filex_levelx_demo`, `threadx_ipc_demo`, `threadx_levelx_demo`,
+  `threadx_blink`, `threadx_canfd_demo`, `threadx_fs_demo`,
+  `threadx_fs_levelx_demo`, `threadx_ipc_demo`, `threadx_levelx_demo`,
   `threadx_mpu_partition_demo`, `threadx_netx_tcp_echo` and
   `threadx_systick_retune` under `hw_validated/hil/`, plus
   `threadx_usbx_cdc_demo` under `hw_validated/manual/` (three more sit under
   `examples/_unsupported/`). `threadx_ota_demo` was deleted in `d38587e80` and
   no longer exists anywhere in the tree.
-- Provides scheduler, synchronization primitives, and timing for FileX,
+- Provides scheduler, synchronization primitives, and timing for
   NetX Duo and USBX. LevelX is NOT in that set unconditionally:
   `cmake/levelx_standalone.cmake` exists precisely to build it with
   `LX_STANDALONE_ENABLE` and no ThreadX dependency, which is the mode

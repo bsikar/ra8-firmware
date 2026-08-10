@@ -50,7 +50,7 @@ sd: roundtrip ok
 ## HIL plan
 
 **Requires physical stim -- needs MicroSD card on Pmod2 (J25).** Same
-hardware gap as `threadx_filex_demo`: the bench has no MicroSD card
+hardware gap the old SD-card FileX demo had: the bench has no MicroSD card
 installed (out of scope for the user).
 
 If a card were installed, the success banner sequence above is a

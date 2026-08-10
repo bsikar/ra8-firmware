@@ -118,7 +118,7 @@ shipped in this tree; the long-term option to write one in
 
 Pre-existing software is catalogued in [`../SOUP/`](../SOUP/) per
 IEC 61508-3 Clause 7.4.2.12 and DO-178C Section 12.1.4. The current
-register holds 12 components (ThreadX, NetX Duo, FileX, USBX,
+register holds 11 components (ThreadX, NetX Duo, USBX,
 LevelX, Mbed TLS, TF-PSA-Crypto, Apache NimBLE, litehtml,
 miniz, stb, TinyXML-2). Each entry carries a written qualification
 basis and a 12-month re-review cadence.
