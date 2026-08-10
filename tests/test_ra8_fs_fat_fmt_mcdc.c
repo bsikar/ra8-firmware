@@ -67,7 +67,7 @@ static void seed_valid_bpb(void)
   memset(s_scratch, 0, sizeof s_scratch);
   s_scratch[(uint32_t)k_bpb_off_signature_lo] = (uint8_t)k_bpb_sig_lo;
   s_scratch[(uint32_t)k_bpb_off_signature_hi] = (uint8_t)k_bpb_sig_hi;
-  scratch_put16((uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_ra8_fs_bytes_per_sector);
+  scratch_put16((uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_ra8_fs_sector_min);
   s_scratch[(uint32_t)k_bpb_off_sec_per_clus] = 1U;
   s_scratch[(uint32_t)k_bpb_off_num_fats]     = 2U;
 }
@@ -83,10 +83,11 @@ static void seed_valid_bpb(void)
  * - V2: sig_lo!=0x55            -> C1=T short      -> validation_failed.
  * - V3: sig_lo=0x55, sig_hi!=0xAA -> C1=F,C2=T     -> validation_failed.
  *
- * Field guard `if (bytes_per_sector != 512 || sectors_per_cluster == 0 ||
- * num_fats == 0)` (3 conditions), reached only once the signature is valid:
- * - V4: 512, spc=1, fats=2 -> F,F,F -> dec F (returns ok).
- * - V5: bps!=512           -> C1=T short          -> validation_failed.
+ * Field guard `if (bpb_bps != m->bytes_per_sector || sectors_per_cluster == 0 ||
+ * num_fats == 0)` (3 conditions; the BPB size must equal the DEVICE size seeded
+ * at mount, #683), reached only once the signature is valid:
+ * - V4: bps match, spc=1, fats=2 -> F,F,F -> dec F (returns ok).
+ * - V5: bps mismatch       -> C1=T short          -> validation_failed.
  * - V6: spc==0 (bps ok)    -> C1=F,C2=T short      -> validation_failed.
  * - V7: fats==0 (bps,spc ok) -> C1=F,C2=F,C3=T     -> validation_failed.
  */
@@ -94,6 +95,9 @@ static void test_mcdc_parse_bpb_guards(void)
 {
   TEST_BEGIN("ra8_fs MC/DC: priv_parse_bpb_into_mount signature + field guards");
   ra8_fs_mount_t m = {};
+  /* The parse validates the BPB against the DEVICE sector size, which the
+   * mount seeds from get_capacity before parsing (#683). */
+  m.bytes_per_sector = (uint32_t)k_ra8_fs_sector_min;
 
   /* Signature guard. */
   seed_valid_bpb();
@@ -163,7 +167,7 @@ typedef struct {
   bool     erase_ok;    /**< What the erase hook returns.         */
 } clr_ctx_t;
 
-static ra8_err_t clr_erase(void* ctx, uint32_t lba, uint32_t count)
+static ra8_err_t clr_erase(void* ctx, uint64_t lba, uint64_t count)
 {
   (void)lba;
   (void)count;
@@ -172,7 +176,7 @@ static ra8_err_t clr_erase(void* ctx, uint32_t lba, uint32_t count)
   return c->erase_ok ? k_ra8_ok : k_ra8_err_out_of_range;
 }
 
-static ra8_err_t clr_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t clr_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)lba;
   (void)count;
@@ -209,7 +213,10 @@ static void test_mcdc_clear_region_erase_hook(void)
   c.erase_ok     = true;
   b.erase_blocks = clr_erase;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 priv_fmt_clear_region(&b, (uint32_t)k_clear_lba, (uint32_t)k_clear_count));
+                 priv_fmt_clear_region(&b,
+                                       (uint64_t)k_clear_lba,
+                                       (uint64_t)k_clear_count,
+                                       (uint32_t)k_ra8_fs_sector_min));
   TEST_ASSERT_EQ(1U, c.erase_calls);
   TEST_ASSERT_EQ(0U, c.write_calls);
 
@@ -218,7 +225,10 @@ static void test_mcdc_clear_region_erase_hook(void)
   c.write_calls  = 0U;
   b.erase_blocks = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 priv_fmt_clear_region(&b, (uint32_t)k_clear_lba, (uint32_t)k_clear_count));
+                 priv_fmt_clear_region(&b,
+                                       (uint64_t)k_clear_lba,
+                                       (uint64_t)k_clear_count,
+                                       (uint32_t)k_ra8_fs_sector_min));
   TEST_ASSERT_EQ(0U, c.erase_calls);
   TEST_ASSERT(c.write_calls >= 1U);
 
@@ -228,7 +238,10 @@ static void test_mcdc_clear_region_erase_hook(void)
   c.erase_ok     = false;
   b.erase_blocks = clr_erase;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 priv_fmt_clear_region(&b, (uint32_t)k_clear_lba, (uint32_t)k_clear_count));
+                 priv_fmt_clear_region(&b,
+                                       (uint64_t)k_clear_lba,
+                                       (uint64_t)k_clear_count,
+                                       (uint32_t)k_ra8_fs_sector_min));
   TEST_ASSERT_EQ(1U, c.erase_calls);
   TEST_ASSERT(c.write_calls >= 1U);
   TEST_END("ra8_fs MC/DC: priv_fmt_clear_region erase-hook fast path");
@@ -244,7 +257,7 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -256,7 +269,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -268,7 +281,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;

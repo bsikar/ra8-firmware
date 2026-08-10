@@ -263,7 +263,7 @@ ra8_err_t priv_close_locked(ra8_fs_file_t* file);
  * @since 0.1.0
  */
 RA8_PRIV
-uint32_t priv_cluster_to_lba(const ra8_fs_mount_t* m, uint32_t cluster);
+uint64_t priv_cluster_to_lba(const ra8_fs_mount_t* m, uint32_t cluster);
 
 /**
  * @brief Find a directory entry by 8.3 name within a given directory.
@@ -297,7 +297,7 @@ RA8_PRIV
 ra8_err_t priv_dir_find(const ra8_fs_mount_t* m,
                         const dir_loc_t*      loc,
                         const uint8_t*        name83,
-                        uint32_t*             out_lba,
+                        uint64_t*             out_lba,
                         uint32_t*             out_entry_off,
                         uint8_t               out_entry[k_ra8_fs_dir_entry_bytes]);
 
@@ -339,7 +339,7 @@ RA8_PRIV
 ra8_err_t priv_dir_find_long(const ra8_fs_mount_t* m,
                              const dir_loc_t*      loc,
                              const char*           want,
-                             uint32_t*             out_lba,
+                             uint64_t*             out_lba,
                              uint32_t*             out_entry_off,
                              uint8_t               out_entry[k_ra8_fs_dir_entry_bytes]);
 
@@ -485,7 +485,7 @@ uint32_t priv_eoc_write(const ra8_fs_mount_t* m);
  */
 RA8_PRIV
 ra8_err_t
-priv_exfat_bmp_switch(const ra8_fs_mount_t* m, uint32_t lba, uint32_t* loaded, uint8_t* sec);
+priv_exfat_bmp_switch(const ra8_fs_mount_t* m, uint64_t lba, uint64_t* loaded, uint8_t* sec);
 
 /**
  * @brief exFAT 32-bit rotate-right-add checksum (boot region + up-case table).
@@ -586,15 +586,18 @@ ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, ui
  *          repair; ::ra8_fs_mount follows the MBR back to the partition.
  *
  * @param[in] backend       Block-device backend.
- * @param[in] total_sectors Device capacity in 512-byte blocks.
+ * @param[in] total_sectors Device capacity in device sectors.
+ * @param[in] bps           Device sector size in bytes (a power of two,
+ *                          512..4096, validated by the format entry point).
  * @param[in] label         Optional volume label (<= 11 chars), may be NULL.
  *
  * @return Error code.
  * @retval k_ra8_ok                A mountable partitioned exFAT volume was written.
  * @retval k_ra8_err_invalid_size  Partition too small for an exFAT volume.
- * @retval k_ra8_err_not_supported Below the exFAT minimum plus the partition offset
- *                                (@ref k_exfat_fmt_part_lba + @ref k_exfat_fmt_min_sectors)
- *                                or system cluster chains exceed FAT sector 0.
+ * @retval k_ra8_err_not_supported Below the exFAT minimum plus the 1 MiB
+ *                                partition alignment, past the MBR's 32-bit
+ *                                fields (2 TiB at 512-byte sectors), or system
+ *                                cluster chains exceed FAT sector 0.
  * @retval k_ra8_err_*             Backend write failure.
  *
  * @pre @p backend and @p backend->write_block are non-NULL.
@@ -607,8 +610,10 @@ ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, ui
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t
-priv_exfat_format(const ra8_fs_backend_t* backend, uint32_t total_sectors, const char* label);
+ra8_err_t priv_exfat_format(const ra8_fs_backend_t* backend,
+                            uint64_t                total_sectors,
+                            uint32_t                bps,
+                            const char*             label);
 
 /**
  * @brief Enumerate ONE directory of an exFAT volume.

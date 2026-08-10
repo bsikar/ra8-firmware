@@ -83,7 +83,7 @@ static uint16_t s_volume_upcase[k_ux_bmp_units];
 static uint32_t cluster_byte(const ra8_fs_mount_t* h, uint32_t cluster)
 {
   const uint32_t lba =
-    h->partition_base_lba + h->first_data_lba + ((cluster - 2U) * h->sectors_per_cluster);
+    h->partition_base_lba + h->first_data_lba + ((uint64_t)(cluster - 2U) * h->sectors_per_cluster);
   return lba * (uint32_t)k_mut_block_size;
 }
 
@@ -251,7 +251,7 @@ static uint32_t expected_name_hash(const uint16_t* units, uint32_t n)
  * @note Not thread-safe against the same @p ctx.
  * @since 0.1.0
  */
-static void seen_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static void seen_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;

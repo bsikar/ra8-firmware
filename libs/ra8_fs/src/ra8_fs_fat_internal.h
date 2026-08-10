@@ -15,6 +15,10 @@
  *
  * - `ra8_fs_fat_types_internal.h`    -- on-disk-layout enums, cross-TU typedefs,
  *                             and the shared `s_scratch` extern.
+ * - `ra8_fs_fat_bytes_internal.h`    -- the little-endian byte codec and the
+ *                             runtime sector-geometry accessors (#683).
+ * - `ra8_fs_fat_gpt_internal.h`      -- the GPT partition locators (64-bit
+ *                             LBAs, #683).
  * - `ra8_fs_fat_protos_a_internal.h` -- cross-TU helper prototypes, part A of 2.
  * - `ra8_fs_fat_protos_b_internal.h` -- cross-TU helper prototypes, part B of 2.
  * - `ra8_fs_fat_time_internal.h`     -- timestamp field offsets, the FAT/exFAT
@@ -54,8 +58,10 @@
 #pragma once
 
 #include "ra8_fs_fat_alloc_internal.h"
+#include "ra8_fs_fat_bytes_internal.h"
 #include "ra8_fs_fat_exfat_dir_internal.h"
 #include "ra8_fs_fat_exfat_stream_internal.h"
+#include "ra8_fs_fat_gpt_internal.h"
 #include "ra8_fs_fat_lfn_write_internal.h"
 #include "ra8_fs_fat_protos_a_internal.h"
 #include "ra8_fs_fat_protos_b_internal.h"

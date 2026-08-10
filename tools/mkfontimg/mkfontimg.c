@@ -93,7 +93,7 @@ static mem_disk_t s_disk;
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -130,7 +130,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -165,7 +165,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
  * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
-static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_cap(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;

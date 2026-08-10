@@ -33,7 +33,8 @@
  *          "." / ".." directory entries. Stops on the end-of-directory marker
  *          (0x00).
  *
- * @param[in]     buf 512-byte sector buffer holding directory entries.
+ * @param[in]     m   Mounted volume (supplies the entries-per-sector bound).
+ * @param[in]     buf Whole-sector buffer holding directory entries.
  * @param[in,out] lfn LFN reassembly state carried across sectors.
  * @param[in]     cb  Caller-supplied per-entry callback.
  * @param[in]     ctx Opaque pointer forwarded to `cb`.
@@ -52,10 +53,13 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t
-priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra8_fs_listdir_cb_t cb, void* ctx)
+static uint8_t priv_listdir_visit_sector(const ra8_fs_mount_t* m,
+                                         const uint8_t*        buf,
+                                         lfn_state_t*          lfn,
+                                         ra8_fs_listdir_cb_t   cb,
+                                         void*                 ctx)
 {
-  for (uint32_t e = 0; e < (uint32_t)k_dir_entries_per_sector; e++) {
+  for (uint32_t e = 0; e < priv_dir_eps(m); e++) {
     const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes];
     if (ent[k_dir_off_name] == k_dir_marker_free_perm) {
       return 1U;
@@ -167,14 +171,14 @@ priv_listdir_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_
   priv_dir_walk_init_loc(handle, &loc, &w);
   lfn_state_t lfn = {}; /* persists across sectors -- LFN chains can straddle them */
   priv_lfn_reset(&lfn);
-  uint8_t eod                            = 0;
-  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
+  uint8_t        eod = 0;
+  uint8_t* const buf = priv_sec_walk();
   while (eod == 0U) {
     ra8_err_t err = priv_read_sector(handle, w.cur_lba, buf);
     if (err != k_ra8_ok) {
       return err;
     }
-    if (priv_listdir_visit_sector(buf, &lfn, cb, ctx) != 0U) {
+    if (priv_listdir_visit_sector(handle, buf, &lfn, cb, ctx) != 0U) {
       return k_ra8_ok;
     }
     err = priv_dir_walk_next_sector(handle, &w, &eod);
@@ -423,7 +427,7 @@ priv_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const char* 
   if (perr != k_ra8_ok) {
     return perr;
   }
-  uint32_t dup_lba                       = 0U;
+  uint64_t dup_lba                       = 0U;
   uint32_t dup_off                       = 0U;
   uint8_t  dup[k_ra8_fs_dir_entry_bytes] = {};
   if (priv_dir_lookup_any(handle, &t.parent, nl, &dup_lba, &dup_off, dup) == k_ra8_ok) {
@@ -451,7 +455,7 @@ priv_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const char* 
    * the template BEFORE the commit, because since #600 a rename writes a new
    * entry rather than editing the old one in place. */
   priv_fat_entry_stamp_access(t.entry);
-  uint32_t new_lba = 0U;
+  uint64_t new_lba = 0U;
   uint32_t new_off = 0U;
   err              = priv_dir_commit(handle, &plan, t.entry, &new_lba, &new_off);
   if (err != k_ra8_ok) {

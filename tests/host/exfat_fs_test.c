@@ -121,7 +121,7 @@ static uint32_t g_blocks;
 static int      g_found_hello;
 static int      g_fail;
 
-static ra8_err_t be_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t be_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   memcpy(buf,
@@ -129,7 +129,7 @@ static ra8_err_t be_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
          (size_t)count * (size_t)k_exfat_test_block_bytes);
   return k_ra8_ok;
 }
-static ra8_err_t be_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t be_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   memcpy(g_img + ((size_t)lba * (size_t)k_exfat_test_block_bytes),
@@ -137,7 +137,7 @@ static ra8_err_t be_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t
          (size_t)count * (size_t)k_exfat_test_block_bytes);
   return k_ra8_ok;
 }
-static ra8_err_t be_cap(void* ctx, uint32_t* bc, uint32_t* bs)
+static ra8_err_t be_cap(void* ctx, uint64_t* bc, uint32_t* bs)
 {
   (void)ctx;
   *bc = g_blocks;
@@ -146,7 +146,7 @@ static ra8_err_t be_cap(void* ctx, uint32_t* bc, uint32_t* bs)
 }
 
 static char g_names[k_exfat_names_cap];
-static void on_entry(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static void on_entry(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;

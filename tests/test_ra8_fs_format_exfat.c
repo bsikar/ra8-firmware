@@ -276,7 +276,7 @@ static void test_format_exfat_partition_roundtrip(void)
  *          identity mapping of code points 0x0000 and 0x0001), unlike the MBR,
  *          boot, FAT, bitmap, root, or all-zero clear-region writes -- so this
  *          fails ``ra8_fs_write_file``'s format at exactly the up-case write. */
-static ra8_err_t upcase_fail_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t upcase_fail_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   if (count >= 1U && buf[0] == 0x00U && buf[1] == 0x00U && buf[2] == 0x01U && buf[3] == 0x00U) {
     return k_ra8_err_hw_error;

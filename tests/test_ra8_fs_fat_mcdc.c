@@ -69,7 +69,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_fs_block_size_unsupported =
-    4096U, /**< A block size other than 512, which the formatter must reject. */
+    8192U, /**< Past ::k_ra8_fs_sector_max -- the formatter must reject it. */
 } fs_fat_mcdc_fixture2_t;
 
 /**
@@ -152,7 +152,7 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -164,7 +164,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -176,7 +176,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -655,23 +655,23 @@ static void test_mcdc_format_type_unsupported(void)
 /**
  * @brief Capacity stub reporting a non-512 block size to drive the format guard.
  */
-static ra8_err_t cap_bad_block_size(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t cap_bad_block_size(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = (uint32_t)k_disk_blocks_fat16;
-  *block_size  = k_fs_block_size_unsupported; /* not 512 -> formatter must reject */
+  *block_size  = k_fs_block_size_unsupported; /* past 4096 -> formatter must reject */
   return k_ra8_ok;
 }
 
 /**
  * @test test_mcdc_format_block_size_guard
  * @par MC/DC:
- * Decision: `if (block_size != 512 || block_count == 0U)` in
+ * Decision: `if ((priv_bps_valid(block_size) == 0U) || (block_count == 0U))` in
  * `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_format_locked` (2 conditions), after
- * `get_capacity`.
+ * `get_capacity`; sizes 512..4096 are all supported since #683.
  * - control: a valid 512-byte card -> C1=F, C2=F -> the format proceeds (the
  *   FAT16 round-trips in sibling tests). Re-asserted here as the both-false leg.
- * - C1=T: a backend reporting 4096-byte sectors -> rejected with invalid_arg
+ * - C1=T: a backend reporting 8192-byte sectors -> rejected with invalid_arg
  *   (block-size independence; this is the previously-uncovered arm).
  * - C2 (block_count == 0) is unreachable through a real card: a zero-sector card
  *   cannot be allocated and every backend here reports a non-zero count, so it
@@ -680,7 +680,7 @@ static ra8_err_t cap_bad_block_size(void* ctx, uint32_t* block_count, uint32_t* 
  */
 static void test_mcdc_format_block_size_guard(void)
 {
-  TEST_BEGIN("ra8_fs format MC/DC: block-size guard (block_size!=512)");
+  TEST_BEGIN("ra8_fs format MC/DC: block-size guard (bps past 4096)");
   alloc_card((uint32_t)k_disk_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
@@ -691,7 +691,7 @@ static void test_mcdc_format_block_size_guard(void)
   bad.get_capacity     = cap_bad_block_size;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&bad, &opts));
   free_volume();
-  TEST_END("ra8_fs format MC/DC: block-size guard (block_size!=512)");
+  TEST_END("ra8_fs format MC/DC: block-size guard (bps past 4096)");
 }
 
 /**

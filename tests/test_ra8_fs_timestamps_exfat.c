@@ -227,8 +227,8 @@ set_clock(int32_t y, int32_t mo, int32_t d, int32_t h, int32_t mi, int32_t s, in
  */
 static uint32_t root_cluster_byte(const ra8_fs_mount_t* h)
 {
-  const uint32_t lba =
-    h->partition_base_lba + h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
+  const uint32_t lba = h->partition_base_lba + h->first_data_lba +
+                       ((uint64_t)(h->root_cluster - 2U) * h->sectors_per_cluster);
   return lba * (uint32_t)k_geo_blk_sz;
 }
 

@@ -64,7 +64,7 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -76,7 +76,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -88,7 +88,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -200,7 +200,7 @@ static void fat_reflow_write_read_font(void)
   /* 3. Read it back off the card into the font buffer ra8_reflow will use. */
   ra8_fs_file_t* rf = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mnt, "FONT.OTF", k_ra8_fs_mode_read, &rf));
-  uint32_t sz = 0U;
+  uint64_t sz = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(rf, &sz));
   TEST_ASSERT_EQ(s_font_len, sz);
   uint32_t got = 0U;

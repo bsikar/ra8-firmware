@@ -83,7 +83,7 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -95,7 +95,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -107,7 +107,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -420,7 +420,7 @@ static void test_mcdc_tell_args_pair(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "T.TXT", k_ra8_fs_mode_write, &f));
-  uint32_t pos = k_fat_poison_out;
+  uint64_t pos = k_fat_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &pos));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_tell(nullptr, &pos));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_tell(f, nullptr));
@@ -444,7 +444,7 @@ static void test_mcdc_size_args_pair(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "Z.TXT", k_ra8_fs_mode_write, &f));
-  uint32_t sz = k_fat_poison_out;
+  uint64_t sz = k_fat_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &sz));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_size(nullptr, &sz));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_size(f, nullptr));
@@ -454,7 +454,7 @@ static void test_mcdc_size_args_pair(void)
   TEST_END("ra8_fs MC/DC: size (file||out) NULL pair");
 }
 
-static void mcdc_listdir_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static void mcdc_listdir_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)name;
   (void)attr;

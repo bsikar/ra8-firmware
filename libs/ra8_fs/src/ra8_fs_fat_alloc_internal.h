@@ -54,22 +54,35 @@
  * @enum ra8_fs_alloc_const_t
  * @brief Sentinels and bounds for the per-mount allocator state.
  *
- * @details `k_fs_cache_empty` doubles as "no sector loaded" and as an LBA no
- *          volume can address, which is why it is `UINT32_MAX` rather than 0
- *          (LBA 0 is the boot sector and a perfectly real address).
- *
  * @invariant `k_fs_alloc_slots` equals ::k_ra8_fs_max_mounts, so a bind can
  *            never fail while a mount slot is available.
  * @see priv_alloc_state_bind()
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_fs_cache_empty    = 0xFFFFFFFFU, /**< Cache holds no sector.               */
-  k_fs_free_unknown   = 0xFFFFFFFFU, /**< MS FAT spec sec 5: count not known.  */
-  k_fs_alloc_slots    = 2U,          /**< One state slot per mount slot.       */
-  k_fs_fsinfo_absent  = 0U,          /**< No usable FSInfo sector on this vol. */
-  k_fs_bitmap_unknown = 0xFFFFFFFFU, /**< exFAT bitmap LBA not resolved yet.   */
+  k_fs_free_unknown  = 0xFFFFFFFFU, /**< MS FAT spec sec 5: count not known.  */
+  k_fs_alloc_slots   = 2U,          /**< One state slot per mount slot.       */
+  k_fs_fsinfo_absent = 0U,          /**< No usable FSInfo sector on this vol. */
 } ra8_fs_alloc_const_t;
+
+/**
+ * @enum ra8_fs_alloc_lba_const_t
+ * @brief 64-bit LBA sentinels for the per-mount allocator state.
+ *
+ * @details These double as "not resolved" and as an LBA no volume can address,
+ *          which is why they are `UINT64_MAX` rather than 0 (LBA 0 is the boot
+ *          sector and a perfectly real address). They are 64-bit because LBAs
+ *          are: on beyond-2-TiB media the old 32-bit sentinel value
+ *          `0xFFFFFFFF` is an ordinary addressable sector (#683).
+ *
+ * @invariant Both values are above any LBA a supported medium can carry.
+ * @see priv_exfat_bitmap_lba()
+ * @since 0.1.0
+ */
+typedef enum : uint64_t {
+  k_fs_cache_empty    = 0xFFFFFFFFFFFFFFFFU, /**< Cache holds no sector.             */
+  k_fs_bitmap_unknown = 0xFFFFFFFFFFFFFFFFU, /**< exFAT bitmap LBA not resolved yet. */
+} ra8_fs_alloc_lba_const_t;
 
 /**
  * @brief Claim and reset the allocator state slot for a freshly mounted volume.
@@ -140,7 +153,7 @@ void priv_alloc_state_release(const ra8_fs_mount_t* m);
  *
  * @param[in]  m   Mount providing the backend and the FAT geometry.
  * @param[in]  lba Volume-relative sector to read.
- * @param[out] buf Destination of at least ::k_ra8_fs_bytes_per_sector bytes.
+ * @param[out] buf Destination of at least `m->bytes_per_sector` bytes.
  *
  * @return Error code.
  * @retval k_ra8_ok    @p buf holds the sector (from the cache or the backend).
@@ -156,7 +169,7 @@ void priv_alloc_state_release(const ra8_fs_mount_t* m);
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_fat_sector_read(const ra8_fs_mount_t* m, uint32_t lba, uint8_t* buf);
+ra8_err_t priv_fat_sector_read(const ra8_fs_mount_t* m, uint64_t lba, uint8_t* buf);
 
 /**
  * @brief Tell the cache that @p lba has just been written with @p buf.
@@ -183,7 +196,7 @@ ra8_err_t priv_fat_sector_read(const ra8_fs_mount_t* m, uint32_t lba, uint8_t* b
  * @since 0.1.0
  */
 RA8_PRIV
-void priv_fat_sector_wrote(const ra8_fs_mount_t* m, const uint8_t* buf, uint32_t lba);
+void priv_fat_sector_wrote(const ra8_fs_mount_t* m, const uint8_t* buf, uint64_t lba);
 
 /**
  * @brief Report the cluster a free-space scan should start from.
@@ -468,4 +481,4 @@ ra8_err_t priv_fsinfo_flush(const ra8_fs_mount_t* m);
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_exfat_bitmap_lba(const ra8_fs_mount_t* m, uint32_t* out_lba);
+ra8_err_t priv_exfat_bitmap_lba(const ra8_fs_mount_t* m, uint64_t* out_lba);

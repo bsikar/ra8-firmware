@@ -36,20 +36,46 @@ extern "C" {
  * @brief Static-allocation limits for the FAT filesystem adapter.
  */
 typedef enum : uint8_t {
-  k_ra8_fs_max_files      = 4,  /**< Max concurrent open file handles.         */
-  k_ra8_fs_max_mounts     = 2,  /**< Max concurrent mount points.              */
-  k_ra8_fs_sector_size    = 64, /**< Reserved -- not used as bytes; see below. */
-  k_ra8_fs_short_name_len = 12, /**< 8.3 short name "AAAAAAAA.EXT" + NUL.      */
+  k_ra8_fs_max_files      = 4,  /**< Max concurrent open file handles.    */
+  k_ra8_fs_max_mounts     = 2,  /**< Max concurrent mount points.         */
+  k_ra8_fs_short_name_len = 12, /**< 8.3 short name "AAAAAAAA.EXT" + NUL. */
 } ra8_fs_limits_t;
 
 /**
  * @enum ra8_fs_byte_sizes_t
  * @brief Byte-size constants used by the FAT layout.
+ *
+ * @details The sector size is a RUNTIME property of the mounted medium
+ *          (`ra8_fs_mount_t::bytes_per_sector`), taken from the backend's
+ *          reported block size and cross-checked against the volume's BPB /
+ *          VBR at mount. These two constants bound it: every supported size
+ *          is a power of two in `[k_ra8_fs_sector_min, k_ra8_fs_sector_max]`
+ *          (512, 1024, 2048, 4096), which is exactly the range the FAT
+ *          specification allows for `BPB_BytsPerSec` and exFAT allows for
+ *          `BytesPerSectorShift` (9..12). Static sector buffers are sized to
+ *          the maximum so a 4Kn medium needs no allocation the 512-byte path
+ *          did not already have.
  */
 typedef enum : uint16_t {
-  k_ra8_fs_bytes_per_sector = 512, /**< Only sector size we accept.          */
-  k_ra8_fs_dir_entry_bytes  = 32,  /**< MS FAT spec sec 6 "Directory Entry". */
+  k_ra8_fs_sector_min      = 512,  /**< Smallest supported sector size.      */
+  k_ra8_fs_sector_max      = 4096, /**< Largest supported sector size (4Kn). */
+  k_ra8_fs_dir_entry_bytes = 32,   /**< MS FAT spec sec 6 "Directory Entry". */
 } ra8_fs_byte_sizes_t;
+
+/**
+ * @enum ra8_fs_fat_limit_t
+ * @brief The FAT12/16/32 per-file size ceiling.
+ *
+ * @details `DIR_FileSize` is a 32-bit field (MS FAT spec sec 6), so no FAT
+ *          file can exceed 4 GiB - 1 bytes. The ceiling is inherent to the
+ *          format, not to this driver: a write or truncate that would push a
+ *          FAT file past it fails with ::k_ra8_err_invalid_size at the FAT
+ *          boundary. exFAT files carry 64-bit lengths and are not subject to
+ *          this cap.
+ */
+typedef enum : uint32_t {
+  k_ra8_fs_fat_max_file_bytes = 0xFFFFFFFFU, /**< 4 GiB - 1: max DIR_FileSize. */
+} ra8_fs_fat_limit_t;
 
 /* =============================================================================
  * File-mode + attribute enums
@@ -105,30 +131,41 @@ typedef enum : uint8_t {
  * Three function pointers + a context cookie. Each implementation (SDHI,
  * USB MSC, mock) fills these in and passes the struct to `ra8_fs_mount()`.
  *
+ * LBAs and the block count are 64-bit so media past the 32-bit-LBA reach
+ * (2 TiB at 512-byte blocks) are addressable end to end -- through the mount's
+ * partition base, the GPT parser and every cluster computation (#683). The
+ * block size is the medium's real sector size: 512-byte and 4096-byte-native
+ * (4Kn) devices are both supported, 1024/2048 included.
+ *
+ * @warning The 4Kn and beyond-2-TiB paths are verified by host-side simulation
+ *          against fake backends only -- no such medium has been on the bench.
+ *          The 512-byte, sub-2-TiB path is the hardware-proven one.
+ *
  * @invariant `read_block`, `write_block`, `get_capacity` are non-NULL for
  *            a usable backend. `erase_blocks` and `ctx` may be NULL.
  */
 typedef struct {
   /**
-   * @brief Read `count` consecutive 512-byte blocks starting at `lba`.
+   * @brief Read `count` consecutive blocks starting at `lba`.
    * @param[in]  ctx   Backend cookie.
    * @param[in]  lba   Logical block address (0 = BPB).
    * @param[in]  count Number of blocks to read.
-   * @param[out] buf   Destination buffer of at least `count*512` bytes.
+   * @param[out] buf   Destination buffer of at least `count * block_size` bytes.
    */
-  ra8_err_t (*read_block)(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf);
+  ra8_err_t (*read_block)(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf);
 
   /**
-   * @brief Write `count` consecutive 512-byte blocks starting at `lba`.
+   * @brief Write `count` consecutive blocks starting at `lba`.
    */
-  ra8_err_t (*write_block)(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf);
+  ra8_err_t (*write_block)(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf);
 
   /**
    * @brief Report the device size.
    * @param[out] block_count Total blocks (sectors).
-   * @param[out] block_size  Bytes per block (must equal 512).
+   * @param[out] block_size  Bytes per block: a power of two in
+   *                         `k_ra8_fs_sector_min..k_ra8_fs_sector_max`.
    */
-  ra8_err_t (*get_capacity)(void* ctx, uint32_t* block_count, uint32_t* block_size);
+  ra8_err_t (*get_capacity)(void* ctx, uint64_t* block_count, uint32_t* block_size);
 
   /**
    * @brief OPTIONAL: bulk-erase `count` blocks at `lba` to all-zero bytes.
@@ -144,7 +181,7 @@ typedef struct {
    * @param[in] lba   First block to erase.
    * @param[in] count Number of blocks to erase.
    */
-  ra8_err_t (*erase_blocks)(void* ctx, uint32_t lba, uint32_t count);
+  ra8_err_t (*erase_blocks)(void* ctx, uint64_t lba, uint64_t count);
 
   /** @brief Caller-owned context passed back into the function pointers. */
   void* ctx;
@@ -203,23 +240,23 @@ typedef struct {
  * the fields as read-only.
  */
 typedef struct {
-  ra8_fs_backend_t backend;             /**< Block-device backend.                  */
-  ra8_fs_type_t    type;                /**< FAT12 / FAT16 / FAT32.                 */
-  uint32_t         bytes_per_sector;    /**< BPB BPB_BytsPerSec.                    */
-  uint32_t         sectors_per_cluster; /**< BPB BPB_SecPerClus.                    */
-  uint32_t         reserved_sectors;    /**< BPB BPB_RsvdSecCnt.                    */
-  uint32_t         num_fats;            /**< BPB BPB_NumFATs.                       */
-  uint32_t         root_entries;        /**< BPB BPB_RootEntCnt (FAT12/16).         */
-  uint32_t         total_sectors;       /**< BPB BPB_TotSec16 / BPB_TotSec32.       */
-  uint32_t         fat_size_sectors;    /**< BPB BPB_FATSz16 / BPB_FATSz32.         */
-  uint32_t         root_cluster;        /**< BPB BPB_RootClus (FAT32 only).         */
-  uint32_t         first_fat_lba;       /**< Computed: first FAT sector.            */
-  uint32_t         first_root_lba;      /**< FAT12/16 fixed root-dir start.         */
-  uint32_t         first_data_lba;      /**< First sector of the data region.       */
-  uint32_t         count_of_clusters;   /**< Per MS spec: data_sectors / SPC.       */
-  uint32_t         partition_base_lba;  /**< MBR partition start (0 = superfloppy). */
-  uint8_t          in_use;              /**< 0 = slot free, 1 = mounted.            */
-  uint8_t          exfat_upcase_ok;     /**< exFAT: volume's up-case table is ours. */
+  ra8_fs_backend_t backend;             /**< Block-device backend.                      */
+  ra8_fs_type_t    type;                /**< FAT12 / FAT16 / FAT32.                     */
+  uint32_t         bytes_per_sector;    /**< Sector size (BPB / VBR == backend).        */
+  uint32_t         sectors_per_cluster; /**< BPB BPB_SecPerClus.                        */
+  uint32_t         reserved_sectors;    /**< BPB BPB_RsvdSecCnt.                        */
+  uint32_t         num_fats;            /**< BPB BPB_NumFATs.                           */
+  uint32_t         root_entries;        /**< BPB BPB_RootEntCnt (FAT12/16).             */
+  uint64_t         total_sectors;       /**< BPB TotSec / exFAT VolumeLength.           */
+  uint32_t         fat_size_sectors;    /**< BPB BPB_FATSz16 / BPB_FATSz32.             */
+  uint32_t         root_cluster;        /**< BPB BPB_RootClus (FAT32 only).             */
+  uint64_t         first_fat_lba;       /**< Computed: first FAT sector.                */
+  uint64_t         first_root_lba;      /**< FAT12/16 fixed root-dir start.             */
+  uint64_t         first_data_lba;      /**< First sector of the data region.           */
+  uint32_t         count_of_clusters;   /**< Per MS spec: data_sectors / SPC.           */
+  uint64_t         partition_base_lba;  /**< MBR/GPT partition start (0 = superfloppy). */
+  uint8_t          in_use;              /**< 0 = slot free, 1 = mounted.                */
+  uint8_t          exfat_upcase_ok;     /**< exFAT: volume's up-case table is ours.     */
 } ra8_fs_mount_t;
 
 /**
@@ -235,10 +272,17 @@ typedef struct {
  * the bytes actually written (`ValidDataLength`) from the file's length
  * (`DataLength`).
  *
+ * The three byte lengths are 64-bit because exFAT's on-disk `DataLength` /
+ * `ValidDataLength` are (#676): a file past 4 GiB is exactly what exFAT
+ * exists to carry. On FAT12/16/32 the same fields never exceed
+ * ::k_ra8_fs_fat_max_file_bytes -- `DIR_FileSize` is 32-bit -- and the write
+ * and truncate paths enforce that cap rather than wrapping.
+ *
  * @invariant `valid_bytes <= size_bytes` on an exFAT handle.
  * @invariant `alloc_clusters * cluster_bytes >= size_bytes` on an exFAT handle.
  * @invariant `no_fat_chain != 0` implies the allocation is the contiguous run
  *            `[first_cluster, first_cluster + alloc_clusters)`.
+ * @invariant `size_bytes <= k_ra8_fs_fat_max_file_bytes` on a FAT handle.
  * @see ra8_fs_open()
  * @since 0.1.0
  */
@@ -248,11 +292,11 @@ typedef struct {
   uint32_t        cur_cluster;        /**< Cluster the offset currently points into.  */
   uint32_t        walk_cache_idx;     /**< Chain index whose cluster is cached below. */
   uint32_t        walk_cache_cluster; /**< Cluster at walk_cache_idx; < 2 = no cache. */
-  uint32_t        size_bytes;         /**< File size (DIR_FileSize / DataLength).     */
-  uint32_t        offset;             /**< Current read/write offset.                 */
-  uint32_t        dir_entry_lba;      /**< FAT: sector containing the dir entry.      */
+  uint64_t        size_bytes;         /**< File size (DIR_FileSize / DataLength).     */
+  uint64_t        offset;             /**< Current read/write offset.                 */
+  uint64_t        dir_entry_lba;      /**< FAT: sector containing the dir entry.      */
   uint32_t        dir_entry_idx;      /**< FAT: byte offset of the entry in it.       */
-  uint32_t        valid_bytes;        /**< exFAT ValidDataLength (bytes written).     */
+  uint64_t        valid_bytes;        /**< exFAT ValidDataLength (bytes written).     */
   uint32_t        entry_set_cluster;  /**< exFAT: dir cluster of the File entry.      */
   uint32_t        entry_set_index;    /**< exFAT: entry index of the File entry.      */
   uint32_t        entry_set_count;    /**< exFAT: 1 + SecondaryCount.                 */
@@ -291,7 +335,7 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t size_bytes;    /**< File length in bytes; 0 for a directory.        */
+  uint64_t size_bytes;    /**< File length in bytes; 0 for a directory.        */
   uint32_t first_cluster; /**< Head of the entry's cluster chain (0 if empty). */
   uint8_t  attr;          /**< The entry's own FAT attribute byte.             */
   bool     is_directory;  /**< true => the ATTR_DIRECTORY bit is set.          */
@@ -309,10 +353,11 @@ typedef struct {
  * @param[in] name NUL-terminated file name (8.3 on FAT volumes; the
  *                 exFAT name, truncated to the driver buffer).
  * @param[in] attr `ra8_fs_attr_t` attribute byte.
- * @param[in] size File size in bytes (0 for directories).
+ * @param[in] size File size in bytes (0 for directories; 64-bit because an
+ *                 exFAT entry may exceed 4 GiB).
  * @param[in] ctx  Caller-provided cookie.
  */
-typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint32_t size, void* ctx);
+typedef void (*ra8_fs_listdir_cb_t)(const char* name, uint8_t attr, uint64_t size, void* ctx);
 
 /* =============================================================================
  * Partition selector

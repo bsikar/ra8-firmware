@@ -52,7 +52,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_fs_block_size_unsupported =
-    1024U, /**< A block size other than 512, which the formatter must reject. */
+    8192U, /**< Past ::k_ra8_fs_sector_max -- the formatter must reject it. */
 } fs_format_fixture2_t;
 
 /**
@@ -104,7 +104,7 @@ typedef struct {
 
 [[maybe_unused]] static mem_disk_t s_disk = {};
 
-[[maybe_unused]] static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+[[maybe_unused]] static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -117,7 +117,7 @@ typedef struct {
 }
 
 [[maybe_unused]] static ra8_err_t
-mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -130,7 +130,7 @@ mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 }
 
 [[maybe_unused]] static ra8_err_t
-mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -161,7 +161,7 @@ typedef enum : uint32_t {
 [[maybe_unused]] static uint8_t  s_sink_vbr[k_fmt_block_size]  = {};
 [[maybe_unused]] static uint32_t s_sink_blocks                 = 0U;
 
-[[maybe_unused]] static ra8_err_t sink_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+[[maybe_unused]] static ra8_err_t sink_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   (void)lba;
@@ -170,7 +170,7 @@ typedef enum : uint32_t {
 }
 
 [[maybe_unused]] static ra8_err_t
-sink_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+sink_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   if (lba == 0U && count >= 1U) {
@@ -183,7 +183,7 @@ sink_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 }
 
 [[maybe_unused]] static ra8_err_t
-sink_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+sink_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = s_sink_blocks;
@@ -211,7 +211,7 @@ typedef enum : uint8_t {
 [[maybe_unused]] static erase_mode_t s_erase_mode  = k_erase_mode_zero;
 [[maybe_unused]] static uint32_t     s_erase_calls = 0U;
 
-[[maybe_unused]] static ra8_err_t mem_erase(void* ctx, uint32_t lba, uint32_t count)
+[[maybe_unused]] static ra8_err_t mem_erase(void* ctx, uint64_t lba, uint64_t count)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   s_erase_calls++;
@@ -254,7 +254,7 @@ typedef enum : uint8_t {
   s_fault_write_all = false;
 }
 
-[[maybe_unused]] static ra8_err_t fault_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+[[maybe_unused]] static ra8_err_t fault_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   s_fault_read_seen++;
   if ((s_fault_read_at != 0U) && (s_fault_read_seen >= s_fault_read_at)) {
@@ -264,7 +264,7 @@ typedef enum : uint8_t {
 }
 
 [[maybe_unused]] static ra8_err_t
-fault_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+fault_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   if (s_fault_write_all) {
     return k_ra8_err_hw_error;
@@ -305,7 +305,7 @@ fault_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
   memset(s_disk.bytes, k_fmt_fill_unformatted, (size_t)blocks * (size_t)k_fmt_block_size);
 }
 
-[[maybe_unused]] static void count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+[[maybe_unused]] static void count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;

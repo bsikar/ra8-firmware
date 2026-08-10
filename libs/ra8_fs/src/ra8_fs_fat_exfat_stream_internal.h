@@ -71,7 +71,7 @@
  */
 RA8_PRIV
 ra8_err_t
-priv_exfat_bitmap_test(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint8_t* out_free);
+priv_exfat_bitmap_test(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus, uint8_t* out_free);
 
 /**
  * @brief Find a contiguous free run, starting from the mount's next-free hint.
@@ -103,7 +103,7 @@ priv_exfat_bitmap_test(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus,
  */
 RA8_PRIV
 ra8_err_t priv_exfat_bitmap_scan(const ra8_fs_mount_t* m,
-                                 uint32_t              bmp_lba,
+                                 uint64_t              bmp_lba,
                                  uint32_t              need,
                                  uint32_t*             out_clus);
 
@@ -135,7 +135,7 @@ ra8_err_t priv_exfat_bitmap_scan(const ra8_fs_mount_t* m,
  */
 RA8_PRIV
 ra8_err_t
-priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint32_t count);
+priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus, uint32_t count);
 
 /**
  * @brief Append one zeroed cluster to a directory, keeping its entry set true.

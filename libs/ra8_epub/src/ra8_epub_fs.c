@@ -94,8 +94,11 @@ static size_t priv_fs_stream_read(void* ctx, uint64_t offset, void* buf, size_t 
    * just returned (in_use set, both out-params non-NULL); on any future contract
    * change `size` stays 0 and ra8_epub_open_streamed rejects it as invalid_arg,
    * so no separate (untestable) error branch is needed here. */
-  uint32_t size = 0U;
-  (void)ra8_fs_size(file, &size);
+  uint64_t size64 = 0U;
+  (void)ra8_fs_size(file, &size64);
+  /* The EPUB pipeline sizes archives in 32 bits; an over-4-GiB file is not a
+   * plausible EPUB and is clamped to the reject path (0 -> invalid_arg). */
+  const uint32_t size = (size64 <= (uint64_t)UINT32_MAX) ? (uint32_t)size64 : 0U;
 
   io->file                            = file;
   const ra8_epub_stream_media_t media = {

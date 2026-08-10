@@ -157,7 +157,7 @@ static void expect_contents(ra8_fs_mount_t* h, const char* path, const uint8_t* 
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, path, k_ra8_fs_mode_read, &f));
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(len, size);
   uint8_t* got = (uint8_t*)malloc(len);

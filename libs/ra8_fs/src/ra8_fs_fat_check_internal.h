@@ -106,7 +106,7 @@ RA8_PRIV
 void priv_check_fault(ra8_fs_check_ctx_t*       ctx,
                       ra8_fs_check_fault_kind_t kind,
                       uint32_t                  cluster,
-                      uint32_t                  lba,
+                      uint64_t                  lba,
                       uint32_t                  entry_off);
 
 /**

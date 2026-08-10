@@ -229,7 +229,7 @@ static inline void flt_arm_write(flt_region_t region)
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static inline ra8_err_t flt_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static inline ra8_err_t flt_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   if ((lba + count) > s_flt.block_count) {
@@ -265,7 +265,7 @@ static inline ra8_err_t flt_read(void* ctx, uint32_t lba, uint32_t count, uint8_
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static inline ra8_err_t flt_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static inline ra8_err_t flt_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   if ((lba + count) > s_flt.block_count) {
@@ -299,7 +299,7 @@ static inline ra8_err_t flt_write(void* ctx, uint32_t lba, uint32_t count, const
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static inline ra8_err_t flt_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static inline ra8_err_t flt_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = s_flt.block_count;

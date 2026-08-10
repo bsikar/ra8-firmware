@@ -116,12 +116,14 @@ bool sh_sd_mount(void)
 }
 
 /** @brief ra8_fs_listdir callback: append each root book file as an SD entry. */
-static void sh_sd_listdir_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static void sh_sd_listdir_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)ctx;
   const uint8_t skip = (uint8_t)k_ra8_fs_attr_directory | (uint8_t)k_ra8_fs_attr_volume_id;
   sh_book_fmt_t fmt  = k_sh_fmt_rabook;
-  if (((attr & skip) != 0U) || !sh_book_classify(name, &fmt) ||
+  /* An exFAT entry may exceed 4 GiB (#676); a book that large is not loadable
+   * on this device, so it is skipped rather than filed with a wrapped size. */
+  if (((attr & skip) != 0U) || (size > (uint64_t)UINT32_MAX) || !sh_book_classify(name, &fmt) ||
       (strlen(name) >= (size_t)k_sh_name_cap) || (g_sh.book_count >= (uint16_t)k_sh_max_books)) {
     return;
   }
@@ -129,7 +131,7 @@ static void sh_sd_listdir_cb(const char* name, uint8_t attr, uint32_t size, void
   *e            = (sh_entry_t){};
   e->from_sd    = true;
   e->fmt        = fmt;
-  e->blob_len   = size;
+  e->blob_len   = (uint32_t)size;
   (void)strncpy(e->sd_name, name, sizeof e->sd_name - 1U);
   /* Placeholder until first open populates real title/author/cover (reading +
    * parsing a whole book over SPI at boot is too slow). */
@@ -158,16 +160,16 @@ bool sh_sd_book_open(const char* name, uint32_t* out_len)
     s_book = nullptr;
     return false;
   }
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   if (ra8_fs_size(s_book, &size) != k_ra8_ok) {
     sh_sd_book_close();
     return false;
   }
-  if (size == 0U) {
+  if ((size == 0U) || (size > (uint64_t)UINT32_MAX)) {
     sh_sd_book_close();
     return false;
   }
-  *out_len = size;
+  *out_len = (uint32_t)size;
   return true;
 }
 

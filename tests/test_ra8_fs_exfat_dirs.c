@@ -154,7 +154,7 @@ static void expect_seeded(ra8_fs_mount_t* h, const char* path, uint32_t len, uin
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, path, k_ra8_fs_mode_read, &f));
-  uint32_t sz = 0U;
+  uint64_t sz = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &sz));
   TEST_ASSERT_EQ(len, sz);
   uint8_t* got  = (uint8_t*)malloc((size_t)len);

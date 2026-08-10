@@ -98,17 +98,17 @@ RA8_INTERNAL
 static ra8_err_t
 priv_dir_cluster_init(const ra8_fs_mount_t* m, uint32_t new_cluster, uint32_t parent_cluster)
 {
-  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
+  uint8_t* const buf = priv_sec_walk();
+  priv_byte_fill(buf, 0U, priv_bps(m));
   priv_pack_dot_entry(&buf[0], 1U, new_cluster);
   priv_pack_dot_entry(&buf[k_ra8_fs_dir_entry_bytes], 2U, parent_cluster);
-  const uint32_t base = priv_cluster_to_lba(m, new_cluster);
+  const uint64_t base = priv_cluster_to_lba(m, new_cluster);
   ra8_err_t      err  = priv_write_sector(m, base, buf);
   if (err != k_ra8_ok) {
     return err;
   }
-  const uint8_t zero[k_ra8_fs_bytes_per_sector] = {};
   for (uint32_t s = 1; s < m->sectors_per_cluster; s++) {
-    err = priv_write_sector(m, base + s, zero);
+    err = priv_write_sector(m, base + s, k_zero_sector);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -153,7 +153,7 @@ static ra8_err_t priv_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
   if (rerr != k_ra8_ok) {
     return rerr;
   }
-  uint32_t lba                             = 0;
+  uint64_t lba                             = 0;
   uint32_t off                             = 0;
   uint8_t  entry[k_ra8_fs_dir_entry_bytes] = {};
   /* By long name as well as by 8.3: a second `mkdir("/Reading List")` has to
@@ -267,7 +267,8 @@ typedef enum : uint8_t {
  *          LFN chain is always followed by its own 8.3 entry in the same
  *          directory, so nothing real is missed by skipping it.
  *
- * @param[in] buf 512-byte sector buffer holding directory entries.
+ * @param[in] m   Mounted volume (supplies the entries-per-sector bound).
+ * @param[in] buf Whole-sector buffer holding directory entries.
  *
  * @return The sector's verdict.
  * @retval k_dir_scan_used  A non-skippable entry was seen.
@@ -275,18 +276,18 @@ typedef enum : uint8_t {
  * @retval k_dir_scan_more  Sector exhausted with only skippable slots.
  *
  * @pre `buf` is non-NULL and holds a sector loaded from disk.
- * @pre `buf` addresses at least `k_ra8_fs_bytes_per_sector` readable bytes.
+ * @pre `buf` addresses at least one whole directory sector.
  * @post No state is modified; `buf` is unchanged.
- * @post The scan visits at most `k_dir_entries_per_sector` slots.
+ * @post The scan visits at most one sector's worth of slots.
  *
  * @note Pure function; trivially thread-safe.
  *
  * @since 0.1.0
  */
 RA8_INTERNAL
-static dir_scan_t priv_rmdir_scan_sector(const uint8_t* buf)
+static dir_scan_t priv_rmdir_scan_sector(const ra8_fs_mount_t* m, const uint8_t* buf)
 {
-  for (uint32_t e = 0; e < (uint32_t)k_dir_entries_per_sector; e++) {
+  for (uint32_t e = 0; e < priv_dir_eps(m); e++) {
     const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes];
     if (ent[k_dir_off_name] == k_dir_marker_free_perm) {
       return k_dir_scan_empty;
@@ -338,14 +339,14 @@ static ra8_err_t priv_dir_is_empty(const ra8_fs_mount_t* m, uint32_t cluster, ui
   const dir_loc_t loc = {.is_root = 0U, .cluster = cluster};
   dir_walk_t      w   = {};
   priv_dir_walk_init_loc(m, &loc, &w);
-  uint8_t eod                            = 0;
-  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
+  uint8_t        eod = 0;
+  uint8_t* const buf = priv_sec_walk();
   while (eod == 0U) {
     ra8_err_t err = priv_read_sector(m, w.cur_lba, buf);
     if (err != k_ra8_ok) {
       return err;
     }
-    const dir_scan_t verdict = priv_rmdir_scan_sector(buf);
+    const dir_scan_t verdict = priv_rmdir_scan_sector(m, buf);
     if (verdict == k_dir_scan_used) {
       *out_empty = 0U;
       return k_ra8_ok;

@@ -68,7 +68,7 @@ typedef enum : uint8_t {
  * @invariant `used_clusters + free_clusters == total_clusters`.
  * @invariant `total_bytes == (uint64_t)total_clusters * bytes_per_cluster` (and
  *            likewise for `free_bytes` / `used_bytes`).
- * @invariant `bytes_per_cluster == sectors_per_cluster * 512`.
+ * @invariant `bytes_per_cluster == sectors_per_cluster * bytes_per_sector`.
  *
  * @par Example:
  * @code
@@ -273,8 +273,11 @@ typedef struct {
  * on disk, exFAT raises `DataLength` while `ValidDataLength` stays at the written
  * prefix so the format serves the gap as zero (and converts a run that outgrows
  * its contiguous space to a real FAT chain). The offset is left where it was,
- * pulled down only by a shrink that lands below it. Lengths are 32-bit, so 4 GiB
- * or more is not expressible.
+ * pulled down only by a shrink that lands below it. Lengths are 64-bit: an
+ * exFAT file truncates to any size the volume can hold, past 4 GiB included
+ * (#676). On FAT12/16/32 a @p new_size above ::k_ra8_fs_fat_max_file_bytes is
+ * refused with ::k_ra8_err_invalid_size -- `DIR_FileSize` is 32-bit, so the
+ * format itself cannot express it.
  *
  * @param[in,out] file     Open handle in ::k_ra8_fs_mode_write or _append.
  * @param[in]     new_size Desired length in bytes.
@@ -282,6 +285,7 @@ typedef struct {
  * @retval k_ra8_ok                Length set; the entry / directory reflects it.
  * @retval k_ra8_err_null_ptr      @p file is NULL.
  * @retval k_ra8_err_invalid_state Not open, or opened read-only.
+ * @retval k_ra8_err_invalid_size  FAT volume and @p new_size exceeds 4 GiB - 1.
  * @retval k_ra8_err_no_mem        A grow ran out of free clusters.
  * @retval k_ra8_err_*             Backend, FAT, or bitmap failure.
  *
@@ -295,7 +299,7 @@ typedef struct {
  * @see ra8_fs_write()  Extends a file only where bytes are actually written.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fs_truncate(ra8_fs_file_t* file, uint32_t new_size);
+[[nodiscard]] ra8_err_t ra8_fs_truncate(ra8_fs_file_t* file, uint64_t new_size);
 
 /* =============================================================================
  * Per-entry attributes (chmod-style)

@@ -55,8 +55,8 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
  *
  * @details Streams the 5836-byte Microsoft up-case table
  * (::k_exfat_fmt_upc_std_bytes, embedded in `ra8_fs_fat_exfat_upcase.c`) to the
- * device starting at absolute LBA @p abs_lba, one sector at a time across
- * ::k_exfat_fmt_upc_std_secs sectors, zero-padding the final partial sector.
+ * device starting at absolute LBA @p abs_lba, one @p bps-byte sector at a
+ * time, zero-padding the final partial sector.
  * The rotate-add checksum (::priv_exfat_csum32) is accumulated over exactly the
  * table bytes -- not the pad -- so it equals the well-known 0xE619D30D and can
  * be stamped into the root Up-case directory entry.
@@ -64,6 +64,7 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
  * @param[in]  backend  Block-device backend with a non-NULL `write_block`.
  * @param[in]  abs_lba  Absolute (partition-adjusted) first LBA of the up-case
  *                      table's cluster run.
+ * @param[in]  bps      Device sector size in bytes (a power of two, 512..4096).
  * @param[out] out_csum Receives the table checksum on success.
  * @return Error code from the backend.
  * @retval k_ra8_ok    Table written; @p out_csum populated.
@@ -76,8 +77,10 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t
-priv_exfat_write_upcase(const ra8_fs_backend_t* backend, uint32_t abs_lba, uint32_t* out_csum);
+ra8_err_t priv_exfat_write_upcase(const ra8_fs_backend_t* backend,
+                                  uint64_t                abs_lba,
+                                  uint32_t                bps,
+                                  uint32_t*               out_csum);
 
 /**
  * @brief Clear then set attribute bits in a 32-byte FAT directory entry.
@@ -211,6 +214,7 @@ ra8_err_t priv_fmt_choose_geometry(ra8_fs_fmt_geom_t* g, uint32_t spc_hint);
  * @param[in] backend Block-device backend.
  * @param[in] lba     First block to clear.
  * @param[in] count   Number of blocks to clear.
+ * @param[in] bps     Device sector size in bytes (sizes each zero write).
  *
  * @return Error code.
  * @retval k_ra8_ok    The range now reads back as all-zero bytes.
@@ -218,6 +222,7 @@ ra8_err_t priv_fmt_choose_geometry(ra8_fs_fmt_geom_t* g, uint32_t spc_hint);
  *
  * @pre @p backend is non-NULL with a non-NULL `write_block`.
  * @pre @p count blocks starting at @p lba lie within the device.
+ * @pre @p bps is the device's real sector size (used to size each write).
  * @post On success `[lba, lba+count)` reads back as zero.
  * @post No metadata is written; caller seeds the FAT afterwards.
  *
@@ -236,7 +241,8 @@ ra8_err_t priv_fmt_choose_geometry(ra8_fs_fmt_geom_t* g, uint32_t spc_hint);
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_fmt_clear_region(const ra8_fs_backend_t* backend, uint32_t lba, uint32_t count);
+ra8_err_t
+priv_fmt_clear_region(const ra8_fs_backend_t* backend, uint64_t lba, uint64_t count, uint32_t bps);
 
 /**
  * @brief Lay down the boot sector, FAT seeds, FSInfo, and the empty root.
@@ -642,58 +648,13 @@ RA8_PRIV
 uint8_t priv_path_to_83(const char* path, uint8_t* out11);
 
 /**
- * @brief Decode a little-endian uint16_t from a byte buffer.
- *
- * @details Trivial little-endian byte assembler. Avoids `memcpy` so
- *          clang-tidy's strict-alias check stays happy.
- *
- * @param[in] p Pointer to two bytes.
- *
- * @return The decoded value.
- * @retval 0..UINT16_MAX  Value assembled from `p[0]` and `p[1]`.
- *
- * @pre `p` is non-NULL and points to at least 2 readable bytes.
- * @pre Caller has bounds-checked `p`.
- * @post No state modified.
- * @post Result equals `p[0] | (p[1] << 8)`.
- *
- * @note Pure function; trivially thread-safe.
- *
- * @since 0.1.0
- */
-RA8_PRIV
-uint16_t priv_rd16(const uint8_t* p);
-
-/**
- * @brief Decode a little-endian uint32_t from a byte buffer.
- *
- * @details Trivial little-endian byte assembler for 4 bytes.
- *
- * @param[in] p Pointer to four bytes.
- *
- * @return The decoded value.
- * @retval 0..UINT32_MAX  Value assembled from `p[0..3]`.
- *
- * @pre `p` is non-NULL and points to at least 4 readable bytes.
- * @pre Caller has bounds-checked `p`.
- * @post No state modified.
- * @post Result equals `p[0] | (p[1]<<8) | (p[2]<<16) | (p[3]<<24)`.
- *
- * @note Pure function; trivially thread-safe.
- *
- * @since 0.1.0
- */
-RA8_PRIV
-uint32_t priv_rd32(const uint8_t* p);
-
-/**
  * @brief Read a single sector into the module scratch buffer.
  *
  * @details Forwards to the mount's `backend.read_block` callback.
  *
  * @param[in]  m   Mount whose backend to use.
  * @param[in]  lba Logical block address to read.
- * @param[out] buf Destination of `k_ra8_fs_bytes_per_sector` bytes.
+ * @param[out] buf Destination of `m->bytes_per_sector` bytes.
  *
  * @return Backend-supplied error code.
  * @retval k_ra8_ok    Sector read successfully.
@@ -709,7 +670,7 @@ uint32_t priv_rd32(const uint8_t* p);
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_read_sector(const ra8_fs_mount_t* m, uint32_t lba, uint8_t* buf);
+ra8_err_t priv_read_sector(const ra8_fs_mount_t* m, uint64_t lba, uint8_t* buf);
 
 /**
  * @brief Resolve a whole path to the directory it names.
@@ -817,46 +778,6 @@ RA8_PRIV
 char priv_to_upper(char c);
 
 /**
- * @brief Encode a little-endian uint16_t into a byte buffer.
- *
- * @details Inverse of `priv_rd16`. Writes the low byte first.
- *
- * @param[out] p Pointer to two writable bytes.
- * @param[in]  v Value to encode.
- *
- * @pre `p` is non-NULL and points to at least 2 writable bytes.
- * @pre Caller has bounds-checked `p`.
- * @post `p[0]` and `p[1]` reflect the little-endian encoding of `v`.
- * @post No other state modified.
- *
- * @note Trivially thread-safe; not reentrant against the same buffer.
- *
- * @since 0.1.0
- */
-RA8_PRIV
-void priv_wr16(uint8_t* p, uint16_t v);
-
-/**
- * @brief Encode a little-endian uint32_t into a byte buffer.
- *
- * @details Inverse of `priv_rd32`. Writes lowest byte first.
- *
- * @param[out] p Pointer to four writable bytes.
- * @param[in]  v Value to encode.
- *
- * @pre `p` is non-NULL and points to at least 4 writable bytes.
- * @pre Caller has bounds-checked `p`.
- * @post `p[0..3]` reflect the little-endian encoding of `v`.
- * @post No other state modified.
- *
- * @note Trivially thread-safe; not reentrant against the same buffer.
- *
- * @since 0.1.0
- */
-RA8_PRIV
-void priv_wr32(uint8_t* p, uint32_t v);
-
-/**
  * @brief Merge @p put bytes into one sector at @p lba, at @p off_in_sector.
  *
  * @details Read-modify-write of a single sector. Every partial-sector update in
@@ -876,7 +797,7 @@ void priv_wr32(uint8_t* p, uint32_t v);
  * @retval k_ra8_err_* Backend read or write failure.
  *
  * @pre `m` and `src` are non-NULL.
- * @pre `off_in_sector + put <= k_ra8_fs_bytes_per_sector`.
+ * @pre `off_in_sector + put <= m->bytes_per_sector`.
  * @post On success the sector reflects the merged content.
  * @post On failure the sector content is implementation-defined.
  *
@@ -886,7 +807,7 @@ void priv_wr32(uint8_t* p, uint32_t v);
  */
 RA8_PRIV
 ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
-                                 uint32_t              lba,
+                                 uint64_t              lba,
                                  uint32_t              off_in_sector,
                                  const uint8_t*        src,
                                  uint32_t              put);
@@ -898,7 +819,7 @@ ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
  *
  * @param[in] m   Mount whose backend to use.
  * @param[in] lba Logical block address to write.
- * @param[in] buf Source of `k_ra8_fs_bytes_per_sector` bytes.
+ * @param[in] buf Source of `m->bytes_per_sector` bytes.
  *
  * @return Backend-supplied error code.
  * @retval k_ra8_ok    Sector written successfully.
@@ -914,4 +835,4 @@ ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_write_sector(const ra8_fs_mount_t* m, uint32_t lba, const uint8_t* buf);
+ra8_err_t priv_write_sector(const ra8_fs_mount_t* m, uint64_t lba, const uint8_t* buf);

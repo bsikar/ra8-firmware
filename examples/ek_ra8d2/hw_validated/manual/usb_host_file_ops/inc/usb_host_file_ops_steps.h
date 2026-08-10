@@ -63,7 +63,7 @@ typedef enum : uint16_t {
 typedef enum : uint8_t {
   k_fileops_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".        */
   k_fileops_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".    */
-  k_fileops_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count. */
+  k_fileops_dec_chars_u64   = 20U, /**< Max digits for a 64-bit count. */
   k_fileops_nibble_bits     = 4U,  /**< Bits per hex nibble.           */
   k_fileops_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'. */
 } usb_fileops_hex_t;
@@ -122,7 +122,7 @@ typedef enum : uint32_t {
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t fileops_print_dec(uint32_t value);
+[[nodiscard]] ra8_err_t fileops_print_dec(uint64_t value);
 
 /**
  * @brief Print a value as fixed-width uppercase hex.

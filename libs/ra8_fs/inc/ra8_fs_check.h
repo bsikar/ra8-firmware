@@ -129,7 +129,7 @@ typedef enum : uint8_t {
 typedef struct {
   ra8_fs_check_fault_kind_t kind;      /**< Category of the first finding.                   */
   uint32_t                  cluster;   /**< Cluster the finding concerns (0 if n/a).         */
-  uint32_t                  lba;       /**< Volume-relative sector of the entry (0 if n/a).  */
+  uint64_t                  lba;       /**< Volume-relative sector of the entry (0 if n/a).  */
   uint32_t                  entry_off; /**< Byte offset of the entry in that sector (0 n/a). */
 } ra8_fs_check_fault_t;
 

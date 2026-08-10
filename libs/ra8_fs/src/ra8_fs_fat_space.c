@@ -171,19 +171,19 @@ static ra8_err_t priv_space_exfat_free(const ra8_fs_mount_t* m, uint32_t* out_fr
   if (ferr != k_ra8_ok) {
     return ferr;
   }
-  const uint32_t bmp_lba    = priv_cluster_to_lba(m, bmp_clus);
+  const uint64_t bmp_lba    = priv_cluster_to_lba(m, bmp_clus);
   const uint32_t total      = m->count_of_clusters;
   const uint32_t full_bytes = total >> (uint32_t)k_space_byte_shift;
   const uint32_t rem_bits   = total & (uint32_t)k_space_bit_mask;
   /* One byte per full group of 8 clusters, plus one partial byte for the tail.
    * The tail byte is masked to the volume's last cluster so any bits the spec
    * leaves 0 past the heap cannot inflate the used count. */
-  const uint32_t nbytes                         = full_bytes + ((rem_bits != 0U) ? 1U : 0U);
-  uint32_t       used                           = 0U;
-  uint32_t       loaded                         = UINT32_MAX;
-  uint8_t        sec[k_ra8_fs_bytes_per_sector] = {};
+  const uint32_t nbytes = full_bytes + ((rem_bits != 0U) ? 1U : 0U);
+  uint32_t       used   = 0U;
+  uint64_t       loaded = UINT64_MAX;
+  uint8_t* const sec    = priv_sec_io();
   for (uint32_t bi = 0U; bi < nbytes; bi++) {
-    const uint32_t lba = bmp_lba + (bi / (uint32_t)k_ra8_fs_bytes_per_sector);
+    const uint64_t lba = bmp_lba + (bi / priv_bps(m));
     if (lba != loaded) {
       const ra8_err_t err = priv_read_sector(m, lba, sec);
       if (err != k_ra8_ok) {
@@ -191,7 +191,7 @@ static ra8_err_t priv_space_exfat_free(const ra8_fs_mount_t* m, uint32_t* out_fr
       }
       loaded = lba;
     }
-    uint8_t b = sec[bi % (uint32_t)k_ra8_fs_bytes_per_sector];
+    uint8_t b = sec[bi % priv_bps(m)];
     /* The loop only reaches `bi == full_bytes` when `rem_bits != 0` (that is the
      * only case `nbytes` includes the partial byte), so masking it here needs no
      * second condition -- and adding one would be an MC/DC hole nothing can flip. */
@@ -304,18 +304,17 @@ static ra8_err_t priv_space_locked(ra8_fs_mount_t* handle, ra8_fs_space_t* out)
    * counts among exactly `count_of_clusters` entries, the bitmap popcount masks
    * to the last cluster, and the cached count is clamped on the way in. So no
    * clamp is needed here. */
-  const uint32_t total = handle->count_of_clusters;
-  const uint32_t bytes_per_cluster =
-    handle->sectors_per_cluster * (uint32_t)k_ra8_fs_bytes_per_sector;
-  const uint32_t used    = total - free_clusters;
-  *out                   = (ra8_fs_space_t){};
-  out->bytes_per_cluster = bytes_per_cluster;
-  out->total_clusters    = total;
-  out->free_clusters     = free_clusters;
-  out->used_clusters     = used;
-  out->total_bytes       = (uint64_t)total * (uint64_t)bytes_per_cluster;
-  out->free_bytes        = (uint64_t)free_clusters * (uint64_t)bytes_per_cluster;
-  out->used_bytes        = (uint64_t)used * (uint64_t)bytes_per_cluster;
+  const uint32_t total             = handle->count_of_clusters;
+  const uint32_t bytes_per_cluster = priv_cluster_bytes(handle);
+  const uint32_t used              = total - free_clusters;
+  *out                             = (ra8_fs_space_t){};
+  out->bytes_per_cluster           = bytes_per_cluster;
+  out->total_clusters              = total;
+  out->free_clusters               = free_clusters;
+  out->used_clusters               = used;
+  out->total_bytes                 = (uint64_t)total * (uint64_t)bytes_per_cluster;
+  out->free_bytes                  = (uint64_t)free_clusters * (uint64_t)bytes_per_cluster;
+  out->used_bytes                  = (uint64_t)used * (uint64_t)bytes_per_cluster;
   return k_ra8_ok;
 }
 

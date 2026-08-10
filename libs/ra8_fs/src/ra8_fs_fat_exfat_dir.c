@@ -231,10 +231,9 @@ priv_exfat_lookup(const ra8_fs_mount_t* m, const char* path, uint8_t* out_strm, 
 /* `priv_exfat_zero_cluster()`: see header for the documented contract. */
 ra8_err_t priv_exfat_zero_cluster(const ra8_fs_mount_t* m, uint32_t clus)
 {
-  const uint8_t  zero[k_ra8_fs_bytes_per_sector] = {};
-  const uint32_t base                            = priv_cluster_to_lba(m, clus);
+  const uint64_t base = priv_cluster_to_lba(m, clus);
   for (uint32_t s = 0U; s < m->sectors_per_cluster; s++) {
-    const ra8_err_t e = priv_write_sector(m, base + s, zero);
+    const ra8_err_t e = priv_write_sector(m, base + s, k_zero_sector);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -247,16 +246,15 @@ ra8_err_t priv_exfat_seal_cluster(const ra8_fs_mount_t* m, uint32_t clus)
 {
   const uint8_t unused =
     (uint8_t)((uint8_t)k_exfat_entry_file & (uint8_t)~(uint8_t)k_exfat_inuse_bit);
-  const uint32_t base = priv_cluster_to_lba(m, clus);
+  const uint64_t base = priv_cluster_to_lba(m, clus);
   for (uint32_t s = 0U; s < m->sectors_per_cluster; s++) {
-    uint8_t   sec[k_ra8_fs_bytes_per_sector] = {};
-    ra8_err_t e                              = priv_read_sector(m, base + s, sec);
+    uint8_t* const sec = priv_sec_io();
+    ra8_err_t      e   = priv_read_sector(m, base + s, sec);
     if (e != k_ra8_ok) {
       return e;
     }
     uint8_t dirty = 0U;
-    for (uint32_t off = 0U; off < (uint32_t)k_ra8_fs_bytes_per_sector;
-         off += (uint32_t)k_exfat_entry_bytes) {
+    for (uint32_t off = 0U; off < priv_bps(m); off += (uint32_t)k_exfat_entry_bytes) {
       if (sec[off] == (uint8_t)k_exfat_entry_eod) {
         sec[off] = unused;
         dirty    = 1U;
@@ -323,7 +321,7 @@ static uint32_t priv_exfat_build_dir_set(const ra8_fs_mount_t* m,
   priv_wr16(&set[k_exfat_off_file_attr], (uint16_t)k_exfat_attr_directory);
   /* Before the SetChecksum below, which covers these bytes (#601). */
   priv_exfat_file_stamp_create(set);
-  const uint32_t cbytes        = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
+  const uint32_t cbytes        = priv_cluster_bytes(m);
   uint8_t*       strm          = &set[k_exfat_entry_bytes];
   strm[0]                      = (uint8_t)k_exfat_entry_stream;
   strm[k_exfat_strm_off_flags] = (uint8_t)k_exfat_secflag_alloc;
@@ -376,7 +374,7 @@ static uint32_t priv_exfat_build_dir_set(const ra8_fs_mount_t* m,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_exfat_dir_alloc(const ra8_fs_mount_t* m, uint32_t* out_clus, uint32_t* out_bmp)
+priv_exfat_dir_alloc(const ra8_fs_mount_t* m, uint32_t* out_clus, uint64_t* out_bmp)
 {
   uint32_t  bclus = 0U;
   uint32_t  blen  = 0U;
@@ -499,7 +497,7 @@ ra8_err_t priv_exfat_mkdir(const ra8_fs_mount_t* m, const char* path)
     return e;
   }
   uint32_t newclus = 0U;
-  uint32_t bmp_lba = 0U;
+  uint64_t bmp_lba = 0U;
   e                = priv_exfat_dir_alloc(m, &newclus, &bmp_lba);
   if (e != k_ra8_ok) {
     return e;

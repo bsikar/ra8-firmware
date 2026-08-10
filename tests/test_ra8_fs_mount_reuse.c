@@ -72,10 +72,13 @@ static void test_reuse_fat_then_exfat(void)
   ra8_fs_mount_t* exf = format_and_mount(k_ra8_fs_type_exfat, "SECONDEXF");
   TEST_ASSERT_EQ(fat, exf); /* the very same slot was handed back */
   /* No FAT geometry survived: the exFAT parse leaves these zero, and the
-   * slot-clear guarantees no earlier FAT value can leak through. */
+   * slot-clear guarantees no earlier FAT value can leak through.
+   * `total_sectors` is no longer zero on exFAT -- the parse records the VBR's
+   * 64-bit VolumeLength (#683) -- so the stale-field proof for it is that the
+   * value is the exFAT partition's own span, not the FAT card's total. */
   TEST_ASSERT_EQ(0U, exf->root_entries);
   TEST_ASSERT_EQ(0U, exf->first_root_lba);
-  TEST_ASSERT_EQ(0U, exf->total_sectors);
+  TEST_ASSERT_EQ(k_reuse_blocks - exf->partition_base_lba, exf->total_sectors);
   /* exFAT geometry is present and sane. */
   TEST_ASSERT(exf->root_cluster >= 2U);
   TEST_ASSERT(exf->count_of_clusters != 0U);

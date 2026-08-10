@@ -75,7 +75,7 @@ static uint32_t indep_fat_free(const ra8_fs_mount_t* h)
 static uint32_t clus_byte(const ra8_fs_mount_t* h, uint32_t cluster)
 {
   const uint32_t lba = h->partition_base_lba + h->first_data_lba +
-                       ((cluster - (uint32_t)k_sp_first_clus) * h->sectors_per_cluster);
+                       ((uint64_t)(cluster - (uint32_t)k_sp_first_clus) * h->sectors_per_cluster);
   return lba * (uint32_t)k_fmt_block_size;
 }
 

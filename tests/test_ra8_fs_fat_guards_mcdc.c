@@ -87,7 +87,7 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -99,7 +99,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -111,7 +111,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -192,7 +192,7 @@ static ra8_fs_file_t* mount_with_data_file(ra8_fs_mount_t** out_h)
 }
 
 /** @brief Directory-listing sink that counts entries (control-arm observation). */
-static void count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static void count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)name;
   (void)attr;
@@ -436,8 +436,8 @@ static void test_mcdc_tell_and_size_null_guards(void)
   TEST_BEGIN("ra8_fs MC/DC: ra8_fs_tell + ra8_fs_size null guards");
   ra8_fs_mount_t* h   = nullptr;
   ra8_fs_file_t*  f   = mount_with_data_file(&h);
-  uint32_t        pos = k_poison;
-  uint32_t        sz  = 0U;
+  uint64_t        pos = k_poison;
+  uint64_t        sz  = 0U;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &pos)); /* V1 */
   TEST_ASSERT_EQ(0U, pos);

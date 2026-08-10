@@ -354,7 +354,7 @@ static uint32_t root_dir_byte(const ra8_fs_mount_t* h)
 static uint32_t cluster_byte(const ra8_fs_mount_t* h, uint32_t cluster)
 {
   const uint32_t lba =
-    h->partition_base_lba + h->first_data_lba + ((cluster - 2U) * h->sectors_per_cluster);
+    h->partition_base_lba + h->first_data_lba + ((uint64_t)(cluster - 2U) * h->sectors_per_cluster);
   return lba * (uint32_t)k_geo_blk_sz;
 }
 

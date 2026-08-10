@@ -318,6 +318,39 @@ static void test_fs_bridge_erase_value_gate(void)
   TEST_END("fs bridge erase-value gate");
 }
 
+/**
+ * @test test_mcdc_fs_bridge_erase_64bit_guard
+ * @brief The bridge refuses erase coordinates past the fabric's 32-bit reach.
+ *
+ * @par MC/DC:
+ * Decision: `(lba > UINT32_MAX) || (count > UINT32_MAX)` (2 conditions) in
+ * `libs/ra8_io/src/ra8_io_blockdev.c@internal_fs_erase` -- the honest boundary
+ * between the 64-bit `ra8_fs` backend interface (#683) and the fabric's
+ * 32-bit LBAs.
+ * - V1: lba small, count small -> F,F -> falls through to the real erase (ok).
+ * - V2: lba = 2^32, count = 1  -> T (short-circuit) -> out_of_range.
+ * - V3: lba = 0, count = 2^32  -> F,T -> out_of_range.
+ * Vectors 1+2 prove lba's independence; 1+3 prove count's. N+1 = 3 vectors
+ * for N=2 conditions: minimal MC/DC.
+ */
+static void test_mcdc_fs_bridge_erase_64bit_guard(void)
+{
+  TEST_BEGIN("fs bridge MC/DC: 64-bit erase coordinates past 32 bits refused");
+  ra8_io_blockdev_t           bd    = {};
+  ra8_io_blockdev_ram_state_t state = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_io_blockdev_ram_init(&bd, &state, s_disk, k_test_disk_blocks, false));
+  ra8_fs_backend_t be = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_as_fs_backend(&bd, &be));
+  TEST_ASSERT_NOT_NULL(be.erase_blocks);
+  /* V1: both in range -- the guard falls through and the RAM erase runs. */
+  TEST_ASSERT_EQ(k_ra8_ok, be.erase_blocks(be.ctx, 0U, 1U));
+  /* V2 / V3: either coordinate past 32 bits is refused, never truncated. */
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, be.erase_blocks(be.ctx, (uint64_t)UINT32_MAX + 1U, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, be.erase_blocks(be.ctx, 0U, (uint64_t)UINT32_MAX + 1U));
+  TEST_END("fs bridge MC/DC: 64-bit erase coordinates past 32 bits refused");
+}
+
 /* =============================================================================
  * End-to-end: real FAT on a RAM block device through the bridge
  * =============================================================================
@@ -376,6 +409,7 @@ int32_t main(void)
   test_unbound_handle();
   test_dispatch_optional_callbacks();
   test_fs_bridge_erase_value_gate();
+  test_mcdc_fs_bridge_erase_64bit_guard();
   test_fs_bridge_fat_roundtrip();
   (void)fprintf(stderr, "[OK  ] test_ra8_io_blockdev.c\n");
   return 0;

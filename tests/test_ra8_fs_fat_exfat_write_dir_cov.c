@@ -357,8 +357,8 @@ static void test_dir_space_chain(void)
 
   const uint32_t cluster_g = h->root_cluster + (uint32_t)k_wc_chain_offset;
   /* first_data_lba is partition-relative; s_disk.bytes is indexed absolutely. */
-  const uint32_t cluster_g_lba =
-    h->partition_base_lba + h->first_data_lba + ((cluster_g - 2U) * h->sectors_per_cluster);
+  const uint32_t cluster_g_lba = h->partition_base_lba + h->first_data_lba +
+                                 ((uint64_t)(cluster_g - 2U) * h->sectors_per_cluster);
 
   /* Zero cluster cluster_g so all entries appear as EOD (free). */
   for (uint32_t s = 0U; s < h->sectors_per_cluster; s++) {

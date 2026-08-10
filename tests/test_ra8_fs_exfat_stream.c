@@ -171,7 +171,7 @@ static void test_stream_append_extends(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "LOG.TXT", k_ra8_fs_mode_append, &f));
-  uint32_t at = 0U;
+  uint64_t at = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &at));
   TEST_ASSERT_EQ(k_xs_sub_sector, at);
   stream_write_pattern(f,
@@ -235,7 +235,7 @@ static void test_stream_truncate_in_place(void)
   TEST_ASSERT(big_used > empty_used);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "DATA.BIN", k_ra8_fs_mode_write, &f));
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(0U, size);
   stream_write_pattern(f,

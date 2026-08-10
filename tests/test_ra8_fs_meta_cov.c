@@ -53,7 +53,7 @@ static ra8_fs_mount_t* fmt_fault_mount(uint32_t blocks, ra8_fs_type_t type)
 static uint32_t exfat_root_byte(const ra8_fs_mount_t* h)
 {
   return (h->partition_base_lba + h->first_data_lba +
-          ((h->root_cluster - (uint32_t)k_mc_first_clus) * h->sectors_per_cluster)) *
+          ((uint64_t)(h->root_cluster - (uint32_t)k_mc_first_clus) * h->sectors_per_cluster)) *
          (uint32_t)k_fmt_block_size;
 }
 

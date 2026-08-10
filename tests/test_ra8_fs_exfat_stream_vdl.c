@@ -39,6 +39,7 @@
 
 #include "ra8_err.h"
 #include "ra8_fs.h"
+#include "ra8_fs_meta.h"
 #include "support/fs_exfat_stream_test_util.h"
 #include "unity_minimal.h"
 
@@ -176,7 +177,7 @@ static void test_stream_read_past_valid_is_zero(void)
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "VDL.BIN", k_ra8_fs_mode_read, &f));
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(k_xs_multi_cluster, size);
 
@@ -416,27 +417,30 @@ static void test_stream_oversized_set_refused(void)
 }
 
 /**
- * @test test_stream_over_4gib_refused
+ * @test test_stream_over_4gib_accepted
  *
- * @brief A file above 4 GiB is refused for writing rather than truncated.
+ * @brief A file above 4 GiB opens for writing -- the length model is 64-bit.
  *
- * @details Every length in this API is 32 bits, and exFAT's are 64. A file
- *          whose `DataLength` high word is non-zero therefore cannot be
- *          described by a handle, and the first flush would write the LOW word
- *          back -- turning somebody's 5 GB file into a 700 MB one without an
- *          error anywhere. The guard makes that impossible.
+ * @details The old adapter refused a `DataLength` whose high word was non-zero
+ *          because every handle length was 32 bits and the first flush would
+ *          have written the LOW word back. The length model is 64-bit now
+ *          (#676): the same fixture opens, reports its real size, and a
+ *          truncate DOWN through the 4 GiB boundary lands exactly where it was
+ *          told to. The volume behind the fixture is far smaller than the
+ *          claimed length, so nothing is read or written through the fictional
+ *          clusters -- only the metadata paths run, which is precisely what
+ *          this case pins.
  *
  * @par MC/DC:
- * Decision: `priv_rd32(&strm[k_exfat_strm_off_dlen_hi]) != 0` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@priv_exfat_writable_set`
- * (1 condition). This case is the TRUE vector; every other streaming case is
- * the FALSE one.
+ * (no compound decision -- the old one-condition guard in
+ * `priv_exfat_writable_set` is deleted; this is the behavioral pin that the
+ * high word round-trips instead of being refused)
  *
  * @since 0.1.0
  */
-static void test_stream_over_4gib_refused(void)
+static void test_stream_over_4gib_accepted(void)
 {
-  TEST_BEGIN("exfat stream: a file above 4 GiB is refused for writing");
+  TEST_BEGIN("exfat stream: a file above 4 GiB opens and reports its real size");
   build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
@@ -450,19 +454,34 @@ static void test_stream_over_4gib_refused(void)
                        (uint8_t)k_xs_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  stream_dump_image("stream_over_4gib_refused");
+  stream_dump_image("stream_over_4gib_accepted");
 
-  /* A 4 GiB+ length is a fixture, not something this driver can produce. */
+  /* A 4 GiB+ length as another implementation would record it. */
   const uint32_t strm = stream_strm0_off(h);
   disk_set_u32le(strm + (uint32_t)k_xs_off_dlen_hi, (uint32_t)k_xsv_over_4gib);
   repair_checksum(h);
 
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_fs_open(h, "HUGE.BIN", k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_fs_open(h, "HUGE.BIN", k_ra8_fs_mode_append, &f));
+  /* Read-open: the full 64-bit DataLength comes back. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "HUGE.BIN", k_ra8_fs_mode_read, &f));
+  uint64_t size = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
+  TEST_ASSERT_EQ(((uint64_t)k_xsv_over_4gib << 32U) | (uint64_t)k_xs_sub_sector, size);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
+
+  /* Append-open (the survey runs); then truncate back below 4 GiB, through
+   * the boundary, and confirm the recorded length followed. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "HUGE.BIN", k_ra8_fs_mode_append, &f));
+  uint64_t pos = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &pos));
+  TEST_ASSERT_EQ(size, pos);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(f, (uint64_t)k_xs_sub_sector));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
+  TEST_ASSERT_EQ(k_xs_sub_sector, size);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
-  TEST_END("exfat stream: a file above 4 GiB is refused for writing");
+  TEST_END("exfat stream: a file above 4 GiB opens and reports its real size");
 }
 
 /**
@@ -536,7 +555,7 @@ int32_t main(void)
   test_stream_append_fills_the_gap();
   test_stream_inverted_lengths_clamped();
   test_stream_oversized_set_refused();
-  test_stream_over_4gib_refused();
+  test_stream_over_4gib_accepted();
   test_stream_write_over_directory_refused();
   (void)fprintf(stderr, "[OK  ] test_ra8_fs_exfat_stream_vdl.c\n");
   return 0;

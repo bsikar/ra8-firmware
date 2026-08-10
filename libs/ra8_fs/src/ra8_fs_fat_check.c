@@ -109,7 +109,7 @@ typedef struct {
 void priv_check_fault(ra8_fs_check_ctx_t*       ctx,
                       ra8_fs_check_fault_kind_t kind,
                       uint32_t                  cluster,
-                      uint32_t                  lba,
+                      uint64_t                  lba,
                       uint32_t                  entry_off)
 {
   if (ctx->rep->faults_total == 0U) {
@@ -406,7 +406,7 @@ RA8_INTERNAL
 static ra8_err_t priv_fat_entry(ra8_fs_check_ctx_t* ctx,
                                 fat_dir_stack_t*    stack,
                                 const uint8_t*      ent,
-                                uint32_t            lba,
+                                uint64_t            lba,
                                 uint32_t            entry_off,
                                 uint8_t*            out_eod)
 {
@@ -466,17 +466,17 @@ static ra8_err_t priv_fat_entry(ra8_fs_check_ctx_t* ctx,
  * @pre No filesystem operation runs concurrently on the mount (single-threaded by contract).
  * @post `*out_eod` is 1 iff the walk should stop.
  * @post No volume state is modified.
- * @note Bounded loop (NASA Rule 2): `k_dir_entries_per_sector` iterations.
+ * @note Bounded loop (NASA Rule 2): one sector's worth of entries.
  * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t priv_fat_visit_sector(ra8_fs_check_ctx_t* ctx,
                                        fat_dir_stack_t*    stack,
                                        const uint8_t*      buf,
-                                       uint32_t            lba,
+                                       uint64_t            lba,
                                        uint8_t*            out_eod)
 {
-  for (uint32_t e = 0U; e < (uint32_t)k_dir_entries_per_sector; e++) {
+  for (uint32_t e = 0U; e < priv_dir_eps(ctx->m); e++) {
     const uint32_t  off = e * (uint32_t)k_ra8_fs_dir_entry_bytes;
     uint8_t         eod = 0U;
     const ra8_err_t err = priv_fat_entry(ctx, stack, &buf[off], lba, off, &eod);
@@ -512,12 +512,11 @@ static ra8_err_t priv_fat_visit_sector(ra8_fs_check_ctx_t* ctx,
 RA8_INTERNAL
 static ra8_err_t priv_fat_scan_fixed_root(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack)
 {
-  const uint32_t secs = (ctx->m->root_entries + (uint32_t)k_dir_entries_per_sector - 1U) /
-                        (uint32_t)k_dir_entries_per_sector;
+  const uint32_t secs = (ctx->m->root_entries + (priv_dir_eps(ctx->m) - 1U)) / priv_dir_eps(ctx->m);
   for (uint32_t s = 0U; s < secs; s++) {
-    const uint32_t lba                            = ctx->m->first_root_lba + s;
-    uint8_t        buf[k_ra8_fs_bytes_per_sector] = {};
-    ra8_err_t      err                            = priv_read_sector(ctx->m, lba, buf);
+    const uint64_t lba = ctx->m->first_root_lba + s;
+    uint8_t* const buf = priv_sec_walk();
+    ra8_err_t      err = priv_read_sector(ctx->m, lba, buf);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -567,10 +566,10 @@ priv_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, fat_dir_stack_t* stack, uint3
     if (priv_check_visit(ctx, c, k_ra8_fs_check_fault_bad_dir_entry)) {
       return k_ra8_ok;
     }
-    const uint32_t base = priv_cluster_to_lba(ctx->m, c);
+    const uint64_t base = priv_cluster_to_lba(ctx->m, c);
     for (uint32_t s = 0U; s < ctx->m->sectors_per_cluster; s++) {
-      uint8_t   buf[k_ra8_fs_bytes_per_sector] = {};
-      ra8_err_t err                            = priv_read_sector(ctx->m, base + s, buf);
+      uint8_t* const buf = priv_sec_walk();
+      ra8_err_t      err = priv_read_sector(ctx->m, base + s, buf);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -708,8 +707,8 @@ static ra8_err_t priv_fat_fsinfo(ra8_fs_check_ctx_t* ctx)
   if (ctx->m->type != k_ra8_fs_type_fat32) {
     return k_ra8_ok;
   }
-  uint8_t         boot[k_ra8_fs_bytes_per_sector] = {};
-  const ra8_err_t be                              = priv_read_sector(ctx->m, 0U, boot);
+  uint8_t* const  boot = priv_sec_walk();
+  const ra8_err_t be   = priv_read_sector(ctx->m, 0U, boot);
   if (be != k_ra8_ok) {
     return be; /* GCOVR_EXCL_LINE -- boot-sector read failure */
   }
@@ -717,8 +716,8 @@ static ra8_err_t priv_fat_fsinfo(ra8_fs_check_ctx_t* ctx)
   if ((lba == 0U) || (lba >= ctx->m->reserved_sectors)) {
     return k_ra8_ok;
   }
-  uint8_t         sec[k_ra8_fs_bytes_per_sector] = {};
-  const ra8_err_t se                             = priv_read_sector(ctx->m, lba, sec);
+  uint8_t* const  sec = priv_sec_walk();
+  const ra8_err_t se  = priv_read_sector(ctx->m, lba, sec);
   if (se != k_ra8_ok) {
     return se; /* GCOVR_EXCL_LINE -- FSInfo-sector read failure */
   }

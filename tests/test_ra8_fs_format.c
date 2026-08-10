@@ -207,31 +207,33 @@ static void test_mcdc_format_spc_valid_pair(void)
   TEST_END("ra8_fs format MC/DC: spc (==0 || (<=64 && pow2)) guard");
 }
 
-static ra8_err_t bad_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t bad_cap(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = (uint32_t)k_fmt_blocks_fat16;
-  *block_size  = k_fs_block_size_unsupported; /* not 512 -> formatter must reject */
+  *block_size  = k_fs_block_size_unsupported; /* past 4096 -> formatter must reject */
   return k_ra8_ok;
 }
 
 /**
  * @test test_mcdc_format_block_guard_pair
  * @par MC/DC:
- * Decision: `if (block_size != 512 || block_count == 0)` (2 conditions,
- * function `ra8_fs_format`, after `get_capacity`). The mem backend always
- * reports block_size == 512, and a zero-block card cannot be allocated, so the
+ * Decision: `if ((priv_bps_valid(block_size) == 0U) || (block_count == 0U))`
+ * (2 conditions, function `ra8_fs_format`, after `get_capacity`; sizes
+ * 512..4096 are all supported since #683). The mem backend always reports a
+ * supported block size, and a zero-block card cannot be allocated, so the
  * independent influence of each condition is structurally constrained to one
- * reachable input each: a valid 512-byte card flips the decision false, while a
- * backend reporting a non-512 block size flips it true. C2 (block_count == 0)
- * is unreachable through this backend and is deactivated under DO-178C 6.4.4.3.
+ * reachable input each: a valid 512-byte card flips the decision false, while
+ * a backend reporting an 8192-byte block size flips it true. C2
+ * (block_count == 0) is unreachable through this backend and is deactivated
+ * under DO-178C 6.4.4.3.
  * - V1 valid 512 B card -> C1=F, C2=F -> F (format proceeds).
- * - V2 backend reports 1024 B sectors -> C1=T -> T (rejected).
+ * - V2 backend reports 8192 B sectors -> C1=T -> T (rejected).
  * N+1 (for the one observable condition) = 2 vectors.
  */
 static void test_mcdc_format_block_guard_pair(void)
 {
-  TEST_BEGIN("ra8_fs format MC/DC: (block_size!=512 || block_count==0) guard");
+  TEST_BEGIN("ra8_fs format MC/DC: (!bps_valid || block_count==0) guard");
   alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
@@ -240,7 +242,7 @@ static void test_mcdc_format_block_guard_pair(void)
   wrong_bs.get_capacity     = bad_cap;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&wrong_bs, &opts));
   free_volume();
-  TEST_END("ra8_fs format MC/DC: (block_size!=512 || block_count==0) guard");
+  TEST_END("ra8_fs format MC/DC: (!bps_valid || block_count==0) guard");
 }
 
 /**

@@ -838,8 +838,7 @@ static void priv_dir_walk_init_root(const ra8_fs_mount_t* m, dir_walk_t* w)
     w->cur_lba           = priv_cluster_to_lba(m, w->cluster);
   } else {
     const uint32_t root_dir_sectors =
-      ((m->root_entries * k_ra8_fs_dir_entry_bytes) + (k_ra8_fs_bytes_per_sector - 1U)) /
-      k_ra8_fs_bytes_per_sector;
+      ((m->root_entries * k_ra8_fs_dir_entry_bytes) + (priv_bps(m) - 1U)) / priv_bps(m);
     w->is_root_fixed     = 1;
     w->fixed_remaining   = root_dir_sectors;
     w->cluster           = 0;
@@ -912,20 +911,20 @@ ra8_err_t priv_dir_walk_next_sector(const ra8_fs_mount_t* m, dir_walk_t* w, uint
 ra8_err_t priv_dir_find(const ra8_fs_mount_t* m,
                         const dir_loc_t*      loc,
                         const uint8_t*        name83,
-                        uint32_t*             out_lba,
+                        uint64_t*             out_lba,
                         uint32_t*             out_entry_off,
                         uint8_t               out_entry[k_ra8_fs_dir_entry_bytes])
 {
   dir_walk_t w = {};
   priv_dir_walk_init_loc(m, loc, &w);
-  uint8_t eod                            = 0;
-  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
+  uint8_t        eod = 0;
+  uint8_t* const buf = priv_sec_walk();
   while (eod == 0U) {
     ra8_err_t err = priv_read_sector(m, w.cur_lba, buf);
     if (err != k_ra8_ok) {
       return err;
     }
-    for (uint32_t e = 0; e < k_dir_entries_per_sector; e++) {
+    for (uint32_t e = 0; e < priv_dir_eps(m); e++) {
       uint8_t* ent = &buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes];
       if (ent[k_dir_off_name] == k_dir_marker_free_perm) {
         return k_ra8_err_not_found;

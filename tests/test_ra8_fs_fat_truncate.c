@@ -85,7 +85,7 @@ static ftr_disk_t s_disk = {};
  * @note Trivially thread-safe for the single-threaded fixture.
  * @since 0.1.0
  */
-static ra8_err_t ftr_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t ftr_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   const ftr_disk_t* d = (const ftr_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -112,7 +112,7 @@ static ra8_err_t ftr_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  * @note Trivially thread-safe for the single-threaded fixture.
  * @since 0.1.0
  */
-static ra8_err_t ftr_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t ftr_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   ftr_disk_t* d = (ftr_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -138,7 +138,7 @@ static ra8_err_t ftr_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
  * @note Trivially thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ftr_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t ftr_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const ftr_disk_t* d = (const ftr_disk_t*)ctx;
   *block_count        = d->block_count;
@@ -360,7 +360,7 @@ expect_pattern_then_zero(ra8_fs_mount_t* h, const char* name, uint32_t total, ui
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_read, &f));
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(total, size);
   static uint8_t s_buf[k_ftr_block_size];
@@ -659,8 +659,8 @@ static void test_fat_truncate_offset_follows(void)
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "OFF.BIN", k_ra8_fs_mode_append, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, cb + 10U));
-  uint32_t off = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(f, 5U * cb)); /* grow past the cursor */
+  uint64_t off = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(f, (uint64_t)5U * cb)); /* grow past the cursor */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &off));
   TEST_ASSERT_EQ(cb + 10U, off);                         /* offset unmoved  */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(f, cb / 2U)); /* shrink below it */
@@ -713,7 +713,7 @@ static void test_fat_truncate_rejects(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "RO.BIN", k_ra8_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_truncate(f, 0U)); /* read-only */
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(cb, size); /* the refused call changed nothing */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
