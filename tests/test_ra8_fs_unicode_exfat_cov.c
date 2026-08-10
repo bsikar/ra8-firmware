@@ -9,19 +9,24 @@
  * `fsck.exfat`, so the argument does not rest on this codebase alone.
  *
  * @par Out-of-band `fsck.exfat` evidence:
- * Setting `RA8_FS606X_DUMP` writes the PARTITION out (not the whole RAM disk --
- * `ra8_fs_format()` lays exFAT inside an MBR partition, and a checker handed
- * the disk reads the MBR and says so):
+ * `unicode_dump_image()` from the shared fixture writes the PARTITION out under
+ * `RA8_EXFAT_DUMP_DIR` (not the whole RAM disk -- `ra8_fs_format()` lays exFAT
+ * inside an MBR partition, and a checker handed the disk reads the MBR and says
+ * so). This file used to carry a private dumper on a private variable; it now
+ * uses the shared one, so one directory collects the evidence of every exFAT
+ * unicode suite instead of three conventions collecting three piles:
  * @code
- *   RA8_FS606X_DUMP=/tmp/x606 ./test_ra8_fs_unicode_exfat
- *   /usr/sbin/fsck.exfat -n -v /tmp/x606.unicode   # three non-ASCII names
- *   /usr/sbin/fsck.exfat -n -v /tmp/x606.badhash   # the PRE-#606 NameHash
+ *   RA8_EXFAT_DUMP_DIR=/tmp/xuni ./test_ra8_fs_unicode_exfat_cov
+ *   /usr/sbin/fsck.exfat -n -v /tmp/xuni/unicode_files_three.img  # three names
+ *   /usr/sbin/fsck.exfat -n -v /tmp/xuni/unicode_files_badhash.img # PRE-#606
  * @endcode
- * Confirmed 2026-08-04 on the Linux verification host, exfatprogs 1.2.0:
+ * Confirmed 2026-08-10 on the Linux verification host, exfatprogs 1.2.0 (and
+ * on 2026-08-04, byte for byte, under the private variable this file used to
+ * carry -- moving the hook changed where the images land, not what is in them):
  * @verbatim
- * unicode -> /tmp/x606.unicode: clean. directories 1, files 3
+ * three   -> unicode_files_three.img: clean. directories 1, files 3
  * badhash -> ERROR: /: the name hash of a file is wrong at 0x15c60.
- *            /tmp/x606.badhash: corrupted. directories 1, files 2
+ *            unicode_files_badhash.img: corrupted. directories 1, files 2
  * @endverbatim
  * The second line is the whole argument in one sentence, from a checker that
  * has never seen this codebase: the hash the PRE-#606 code stored for
@@ -124,47 +129,6 @@ static uint32_t set_checksum_of(uint32_t file_off)
   return cs;
 }
 
-/**
- * @brief Write the PARTITION out when `RA8_FS606X_DUMP` is set.
- *
- * @details The partition rather than the whole RAM disk, because `ra8_fs_format()`
- *          lays exFAT inside an MBR partition at 1 MiB and `fsck.exfat` expects
- *          to be pointed at a volume, not at a disk. Handing it the disk gets
- *          "Bad fs_name in boot sector", which is the checker reading the MBR
- *          and being right about it.
- *
- * @param[in] tag      Suffix distinguishing this dump from the others.
- * @param[in] base_lba The volume's partition start, from the mount handle.
- *
- * @return Nothing.
- *
- * @pre @p tag is non-NULL; `s_disk.bytes` is allocated.
- * @pre The caller has finished mutating the volume.
- * @post A file exists at `$RA8_FS606X_DUMP.<tag>` when the variable is set.
- * @post Nothing is written when it is not.
- *
- * @note Not thread-safe (reads the fixture singleton).
- * @since 0.1.0
- */
-static void maybe_dump_image(const char* tag, uint32_t base_lba)
-{
-  const char* base = getenv("RA8_FS606X_DUMP");
-  if (base == nullptr) {
-    return;
-  }
-  char path[k_ux_path_cap] = {};
-  (void)snprintf(path, sizeof(path), "%s.%s", base, tag);
-  FILE* o = fopen(path, "wb");
-  if (o == nullptr) {
-    return;
-  }
-  const size_t off = (size_t)base_lba * (size_t)k_mut_block_size;
-  const size_t all = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
-  (void)fwrite(&s_disk.bytes[off], 1U, all - off, o);
-  (void)fclose(o);
-  (void)printf("  [dump] %s\n", path);
-}
-
 /* ===========================================================================
  * Tests
  * ===========================================================================
@@ -185,7 +149,7 @@ static void maybe_dump_image(const char* tag, uint32_t base_lba)
  * artefacts.
  *
  * @pre exfatprogs is available on the host for the out-of-band step (optional).
- * @pre `RA8_FS606X_DUMP` is set for the dumps to appear.
+ * @pre `RA8_EXFAT_DUMP_DIR` is set for the dumps to appear.
  * @post The clean image is `fsck.exfat`-clean; the control is not.
  *
  * @since 0.1.0
@@ -204,7 +168,7 @@ static void test_exfat_dump_images_for_fsck(void)
   }
   const uint32_t base = h->partition_base_lba;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  maybe_dump_image("unicode", base);
+  unicode_dump_image("unicode_files_three", base);
 
   /* The control, and it is the specific one worth having: put back the hash the
    * PRE-#606 code stored for this name -- an ASCII-only fold over UTF-8 bytes --
@@ -225,7 +189,7 @@ static void test_exfat_dump_images_for_fsck(void)
   s_disk.bytes[file + (uint32_t)k_ux_file_off_csum + 1U] =
     (uint8_t)((cs >> (uint32_t)k_mut_shift_byte8) & (uint32_t)k_mut_mask_byte);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  maybe_dump_image("badhash", base);
+  unicode_dump_image("unicode_files_badhash", base);
 
   free_volume();
   TEST_END("exfat unicode: images for the out-of-band fsck.exfat run");

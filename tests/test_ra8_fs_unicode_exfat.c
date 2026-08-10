@@ -29,6 +29,13 @@
  * Every non-ASCII name is a `static const char[]` of byte escapes, and every
  * expected unit array a `uint16_t[]`. No non-ASCII literal appears here.
  *
+ * @par Out-of-band evidence:
+ * Every case that leaves a non-ASCII name on the volume ends by calling
+ * `unicode_dump_image()` from the shared fixture, so `RA8_EXFAT_DUMP_DIR=<dir>`
+ * turns this suite into a set of mountable exFAT volumes -- one per UTF-8 form
+ * -- and a real operating system can be asked the question no assertion in this
+ * file can: whether it DISPLAYS the name we stored. Unset, nothing is written.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -320,7 +327,8 @@ static void test_exfat_non_ascii_round_trip(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  const char* names[]               = {s_acc_u8, s_cjk_u8, s_emoji_u8};
+  const char* names[] = {s_acc_u8, s_cjk_u8, s_emoji_u8};
+  const char* tags[]  = {"unicode_name_2byte", "unicode_name_3byte", "unicode_name_4byte"};
   uint8_t     payload[k_ux_payload] = {};
   for (uint32_t i = 0U; i < (uint32_t)k_ux_payload; i++) {
     payload[i] = (uint8_t)(i + 1U);
@@ -329,6 +337,11 @@ static void test_exfat_non_ascii_round_trip(void)
   for (uint32_t i = 0U; i < (uint32_t)(sizeof(names) / sizeof(names[0])); i++) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, names[i], payload, (uint32_t)k_ux_payload));
     TEST_ASSERT_EQ(1U, listing_holds(h, names[i]));
+    /* One image per UTF-8 form, dumped while the name is still on the volume:
+     * the rename and unlink below take it away again, and an image of an empty
+     * root proves nothing about how a host renders anything. Separate tags so a
+     * host that mis-renders exactly one form names which one. */
+    unicode_dump_image(tags[i], h->partition_base_lba);
 
     /* Re-open by the same name and read the bytes back. */
     ra8_fs_file_t* f                  = nullptr;
@@ -395,6 +408,8 @@ static void test_exfat_name_entries_hold_real_units(void)
   }
   /* The slots past the name stay zero, which is what a reader uses to stop. */
   TEST_ASSERT_EQ(0U, disk_rd16(name + (uint32_t)k_ux_name_off + (want * 2U))); /* V2 */
+
+  unicode_dump_image("unicode_name_units", h->partition_base_lba);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
@@ -577,6 +592,8 @@ static void test_exfat_mixed_case_lookup(void)
 
   /* Reported as written, not as matched. */
   TEST_ASSERT_EQ(1U, listing_holds(h, s_acc_u8));
+
+  unicode_dump_image("unicode_mixed_case", h->partition_base_lba);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();

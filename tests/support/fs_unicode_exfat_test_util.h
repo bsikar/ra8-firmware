@@ -3,19 +3,44 @@
  * @brief Shared fixtures for the exFAT non-ASCII name suites (#606).
  *
  * @details
- * The two exFAT unicode suites -- the round-trip/hash suite in
- * `test_ra8_fs_unicode_exfat.c` and the out-of-band `fsck.exfat` image suite
- * in `test_ra8_fs_unicode_exfat_cov.c` -- both reach for the same three
- * things: the specification field offsets in ::ux_val_t, the names spelled
- * out by hand as UTF-8 bytes and UTF-16 units, and a little-endian reader
- * over the fixture's RAM disk. They live here rather than in either suite so
- * neither file crosses the 1000-line cap and neither owns data the other
- * borrows -- the same reason `fs_exfat_upcase_test_util.h` factored out the
+ * The exFAT unicode suites -- the round-trip/hash suite in
+ * `test_ra8_fs_unicode_exfat.c`, the directory suite in
+ * `test_ra8_fs_unicode_exfat_dirs.c` and the out-of-band image suite in
+ * `test_ra8_fs_unicode_exfat_cov.c` -- all reach for the same four things: the
+ * specification field offsets in ::ux_val_t, the names spelled out by hand as
+ * UTF-8 bytes and UTF-16 units, a little-endian reader over the fixture's RAM
+ * disk, and ::unicode_dump_image below. They live here rather than in any one
+ * suite so no file crosses the 1000-line cap and none owns data the others
+ * borrow -- the same reason `fs_exfat_upcase_test_util.h` factored out the
  * up-case expansion.
  *
  * The vectors carry `[[maybe_unused]]` because the image suite exercises only
  * the three names it dumps, not the hand-written unit arrays the hash suite
  * checks against.
+ *
+ * @par Out-of-band evidence:
+ * ::unicode_dump_image writes the volume out as `<tag>.img` when
+ * `RA8_EXFAT_DUMP_DIR` names a directory, the same hook and the same variable
+ * `fs_exfat_stream_test_util.h` carries for the streaming suites. That is how
+ * this suite's evidence stops being a claim about our own byte assertions and
+ * becomes something a third party can re-derive -- `fsck.exfat`, or an
+ * operating system asked to DISPLAY the names, which is the one question a
+ * byte assertion cannot answer:
+ * @code
+ *   RA8_EXFAT_DUMP_DIR=/tmp/xuni ./test_ra8_fs_unicode_exfat_dirs
+ *   fsck.exfat -n /tmp/xuni/unicode_showcase.img       # Linux
+ *   hdiutil attach -imagekey diskimage-class=CRawDiskImage \
+ *           /tmp/xuni/unicode_showcase.img             # macOS, then look
+ * @endcode
+ * With the variable unset -- which is how CI runs -- it costs one `getenv` per
+ * scenario and touches no filesystem, so the suites keep no dependency on
+ * exfatprogs or on anything else being installed.
+ *
+ * What is written is the PARTITION, not the whole RAM disk: `ra8_fs_format()`
+ * lays exFAT down inside an MBR partition at 1 MiB, and a checker handed the
+ * disk reads the MBR and says `Bad fs_name in boot sector`, which is it being
+ * right. Hence the @p base_lba parameter, which the caller takes from the
+ * mount handle.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -25,8 +50,11 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "support/fs_fat_exfat_mutate_test_util.h"
+#include "unity_minimal.h"
 
 /**
  * @enum ux_val_t
@@ -171,4 +199,58 @@ static inline uint32_t disk_rd16(uint32_t off)
 {
   return (uint32_t)s_disk.bytes[off] |
          ((uint32_t)s_disk.bytes[off + 1U] << (uint32_t)k_mut_shift_byte8);
+}
+
+/**
+ * @brief Write the volume to `$RA8_EXFAT_DUMP_DIR/<tag>.img`.
+ *
+ * @details The reproducible half of this suite's out-of-band evidence, and the
+ *          only part of it that can answer "does a real operating system SHOW
+ *          this name": every other assertion here is this codebase reading back
+ *          bytes it wrote itself. A no-op unless the environment names a
+ *          directory, so CI never touches the filesystem and the suites depend
+ *          on no host tooling; a developer who wants the evidence sets the
+ *          variable and gets one image per scenario, ready to hand to
+ *          `fsck.exfat` or to mount.
+ *
+ *          The bytes written start at @p base_lba, so the file is a bare exFAT
+ *          volume rather than the partitioned disk the fixture holds -- see the
+ *          file header for why handing a checker the disk is a mistake.
+ *
+ * @param[in] tag      Scenario name; becomes the file's basename.
+ * @param[in] base_lba The volume's partition start, from `partition_base_lba`
+ *                     on the mount handle. Captured before an unmount when the
+ *                     caller dumps afterwards.
+ *
+ * @return Nothing. A dump that cannot be written fails the test, because a
+ *         silently skipped dump is worse than no dump at all.
+ *
+ * @pre `s_disk.bytes` holds a formatted volume.
+ * @pre @p tag contains no path separators.
+ * @post With the variable set, the image is on disk and closed.
+ * @post With it unset, nothing is written and no state changes.
+ *
+ * @note Not thread-safe; the fixture is single-threaded.
+ * @since 0.1.0
+ */
+static inline void unicode_dump_image(const char* tag, uint32_t base_lba)
+{
+  const char* dir = getenv("RA8_EXFAT_DUMP_DIR");
+  if ((dir == nullptr) || (s_disk.bytes == nullptr)) {
+    return;
+  }
+  char path[k_ux_path_cap] = {};
+  (void)snprintf(path, sizeof(path), "%s/%s.img", dir, tag);
+  FILE* fp = fopen(path, "wb");
+  if (fp == nullptr) {
+    TEST_FAIL_FMT("cannot open dump file %s", path);
+    return;
+  }
+  const size_t base  = (size_t)base_lba * (size_t)k_mut_block_size;
+  const size_t total = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
+  const size_t wrote = fwrite(&s_disk.bytes[base], 1U, total - base, fp);
+  (void)fclose(fp);
+  if (wrote != (total - base)) {
+    TEST_FAIL_FMT("short dump write to %s", path);
+  }
 }
