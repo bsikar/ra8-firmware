@@ -90,7 +90,7 @@ static uint16_t s_upc_table[k_upc_bmp_units];
 static inline uint32_t upc_clus_byte(const ra8_fs_mount_t* h, uint32_t clus)
 {
   const uint32_t lba = h->partition_base_lba + h->first_data_lba +
-                       ((clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
+                       ((uint64_t)(clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
   return lba * (uint32_t)k_mut_block_size;
 }
 

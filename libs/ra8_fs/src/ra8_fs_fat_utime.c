@@ -86,7 +86,7 @@ static ra8_err_t priv_utime_fat(const ra8_fs_mount_t*    m,
   }
   uint8_t       name83[k_max_8_3_name]          = {};
   const uint8_t have83                          = priv_path_to_83(leaf, name83);
-  uint32_t      lba                             = 0U;
+  uint64_t      lba                             = 0U;
   uint32_t      off                             = 0U;
   uint8_t       entry[k_ra8_fs_dir_entry_bytes] = {};
   ra8_err_t     err                             = k_ra8_err_not_found;
@@ -99,8 +99,8 @@ static ra8_err_t priv_utime_fat(const ra8_fs_mount_t*    m,
   if (err != k_ra8_ok) {
     return err;
   }
-  uint8_t sec[k_ra8_fs_bytes_per_sector] = {};
-  err                                    = priv_read_sector(m, lba, sec);
+  uint8_t* const sec = priv_sec_walk();
+  err                = priv_read_sector(m, lba, sec);
   if (err != k_ra8_ok) {
     return err;
   }

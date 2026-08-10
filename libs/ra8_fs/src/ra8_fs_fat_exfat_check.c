@@ -273,9 +273,9 @@ RA8_INTERNAL
 static void priv_exchk_system_run(ra8_fs_check_ctx_t* ctx, const uint8_t* e)
 {
   const uint32_t first  = priv_rd32(&e[k_exfat_strm_off_clus]);
-  const uint32_t bytes  = priv_rd32(&e[k_exfat_strm_off_dlen]);
-  const uint32_t cbytes = ctx->m->sectors_per_cluster * (uint32_t)k_ra8_fs_bytes_per_sector;
-  const uint32_t nclus  = (bytes + cbytes - 1U) / cbytes;
+  const uint64_t bytes  = priv_rd64(&e[k_exfat_strm_off_dlen]);
+  const uint32_t cbytes = priv_cluster_bytes(ctx->m);
+  const uint32_t nclus  = (uint32_t)((bytes + cbytes - 1U) / cbytes);
   if (first == 0U) {
     return; /* GCOVR_EXCL_LINE -- a system entry that names no cluster */
   }
@@ -350,7 +350,7 @@ RA8_INTERNAL
 static void priv_exchk_verify_set(ra8_fs_check_ctx_t* ctx,
                                   const uint8_t*      set,
                                   uint32_t            count,
-                                  uint32_t            lba,
+                                  uint64_t            lba,
                                   uint32_t            off)
 {
   const uint16_t stored_cs = priv_rd16(&set[k_exfat_off_file_csum]);
@@ -445,12 +445,12 @@ static ra8_err_t priv_exchk_set_clusters(ra8_fs_check_ctx_t* ctx,
                                          const uint8_t*      set,
                                          const uint8_t*      file,
                                          exfat_dir_stack_t*  stack,
-                                         uint32_t            lba,
+                                         uint64_t            lba,
                                          uint32_t            off)
 {
   const uint8_t* strm  = &set[k_exfat_entry_bytes];
   const uint32_t first = priv_rd32(&strm[k_exfat_strm_off_clus]);
-  const uint32_t dlen  = priv_rd32(&strm[k_exfat_strm_off_dlen]);
+  const uint64_t dlen  = priv_rd64(&strm[k_exfat_strm_off_dlen]);
   const uint8_t  is_dir =
     ((file[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_directory) != 0U) ? 1U : 0U;
   if (first == 0U) {
@@ -471,8 +471,8 @@ static ra8_err_t priv_exchk_set_clusters(ra8_fs_check_ctx_t* ctx,
     return k_ra8_ok;
   }
   ctx->rep->files_visited++;
-  const uint32_t cbytes = ctx->m->sectors_per_cluster * (uint32_t)k_ra8_fs_bytes_per_sector;
-  const uint32_t nclus  = (dlen == 0U) ? 1U : ((dlen + cbytes - 1U) / cbytes);
+  const uint32_t cbytes = priv_cluster_bytes(ctx->m);
+  const uint32_t nclus  = (dlen == 0U) ? 1U : (uint32_t)((dlen + cbytes - 1U) / cbytes);
   if ((strm[k_exfat_strm_off_flags] & (uint8_t)k_exfat_secflag_no_fat) != 0U) {
     priv_exchk_mark_run(ctx, first, nclus);
     return k_ra8_ok;
@@ -517,9 +517,8 @@ static ra8_err_t priv_exchk_set(ra8_fs_check_ctx_t* ctx,
 {
   const uint32_t count = 1U + (uint32_t)file[k_exfat_off_file_secnt];
   const uint32_t bic   = (cur->entry_in_cluster - 1U) * (uint32_t)k_exfat_entry_bytes;
-  const uint32_t lba =
-    priv_cluster_to_lba(ctx->m, cur->cluster) + (bic / k_ra8_fs_bytes_per_sector);
-  const uint32_t off = bic % (uint32_t)k_ra8_fs_bytes_per_sector;
+  const uint64_t lba   = priv_cluster_to_lba(ctx->m, cur->cluster) + (bic / priv_bps(ctx->m));
+  const uint32_t off   = bic % priv_bps(ctx->m);
   if ((count < 2U) || (count > (uint32_t)k_exfat_set_max_entries)) {
     ctx->rep->entries_bad++;
     priv_check_fault(ctx, k_ra8_fs_check_fault_bad_dir_entry, 0U, lba, off);
@@ -723,17 +722,17 @@ static void priv_exchk_diff_byte(ra8_fs_check_ctx_t* ctx, uint8_t b, uint32_t ba
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exchk_bitmap_pass(ra8_fs_check_ctx_t* ctx, uint32_t bmp_lba)
+static ra8_err_t priv_exchk_bitmap_pass(ra8_fs_check_ctx_t* ctx, uint64_t bmp_lba)
 {
-  const uint32_t total                          = ctx->rep->clusters_total;
-  const uint32_t full_bytes                     = total >> (uint32_t)k_exchk_byte_shift;
-  const uint32_t rem_bits                       = total & (uint32_t)k_exchk_bit_mask;
-  const uint32_t nbytes                         = full_bytes + ((rem_bits != 0U) ? 1U : 0U);
-  uint32_t       used                           = 0U;
-  uint32_t       loaded                         = UINT32_MAX;
-  uint8_t        sec[k_ra8_fs_bytes_per_sector] = {};
+  const uint32_t total      = ctx->rep->clusters_total;
+  const uint32_t full_bytes = total >> (uint32_t)k_exchk_byte_shift;
+  const uint32_t rem_bits   = total & (uint32_t)k_exchk_bit_mask;
+  const uint32_t nbytes     = full_bytes + ((rem_bits != 0U) ? 1U : 0U);
+  uint32_t       used       = 0U;
+  uint64_t       loaded     = UINT64_MAX;
+  uint8_t* const sec        = priv_sec_io();
   for (uint32_t bi = 0U; bi < nbytes; bi++) {
-    const uint32_t lba = bmp_lba + (bi / (uint32_t)k_ra8_fs_bytes_per_sector);
+    const uint64_t lba = bmp_lba + (bi / priv_bps(ctx->m));
     if (lba != loaded) {
       const ra8_err_t err = priv_read_sector(ctx->m, lba, sec);
       if (err != k_ra8_ok) {
@@ -741,7 +740,7 @@ static ra8_err_t priv_exchk_bitmap_pass(ra8_fs_check_ctx_t* ctx, uint32_t bmp_lb
       }
       loaded = lba;
     }
-    uint8_t b = sec[bi % (uint32_t)k_ra8_fs_bytes_per_sector];
+    uint8_t b = sec[bi % priv_bps(ctx->m)];
     if (bi == full_bytes) {
       b = (uint8_t)(b & (uint8_t)((1U << rem_bits) - 1U));
     }
@@ -769,7 +768,7 @@ ra8_err_t priv_check_exfat(ra8_fs_check_ctx_t* ctx)
   if (fe != k_ra8_ok) {
     return fe;
   }
-  const uint32_t bmp_lba = priv_cluster_to_lba(ctx->m, bclus);
+  const uint64_t bmp_lba = priv_cluster_to_lba(ctx->m, bclus);
   if (ctx->bitmap != nullptr) {
     priv_check_zero_bitmap(ctx);
     const ra8_err_t te = priv_exchk_tree(ctx);

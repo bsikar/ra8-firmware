@@ -369,7 +369,7 @@ ra8_err_t priv_exfat_rmdir(const ra8_fs_mount_t* m, const char* path);
  */
 RA8_PRIV
 ra8_err_t
-priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint32_t count);
+priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus, uint32_t count);
 
 /**
  * @brief Zero every sector of one cluster.

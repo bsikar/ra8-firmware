@@ -617,7 +617,7 @@ static void test_stream_volume_full(void)
   TEST_ASSERT_EQ(k_ra8_err_no_mem, last);
   TEST_ASSERT(wrote > 0U);
 
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT(size >= wrote);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));

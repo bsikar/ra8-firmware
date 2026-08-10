@@ -106,7 +106,7 @@ static void test_pipeline_text_only_no_cover(void)
   /* Read the emitted blob back off the FAT volume. */
   ra8_fs_file_t* file = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, "OUT.RAB", k_ra8_fs_mode_read, &file));
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(file, &size));
   TEST_ASSERT(size > 0U && (size_t)size <= sizeof(s_readback));
   uint32_t got = 0U;

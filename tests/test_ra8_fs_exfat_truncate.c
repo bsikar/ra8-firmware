@@ -170,7 +170,7 @@ static void expect_pat_then_zero(ra8_fs_mount_t* h,
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_read, &f));
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(total, size);
   static uint8_t s_buf[k_xs_big_chunk];
@@ -396,7 +396,7 @@ static void test_exfat_grow_chain_transition(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BLK.BIN", s_blk, (uint32_t)k_xt_blk_len));
 
   /* Grow A: it cannot stay contiguous, so it becomes a real FAT chain. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(fa, 2U * cb));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(fa, (uint64_t)2U * cb));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fa));
 
   TEST_ASSERT_EQ(0U, xt_is_contig(h)); /* NoFatChain cleared */
@@ -457,7 +457,7 @@ static void test_exfat_shrink_chained(void)
   static uint8_t s_blk[k_xt_blk_len];
   memset(s_blk, (int)k_xt_blk_fill, sizeof s_blk);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BLK.BIN", s_blk, (uint32_t)k_xt_blk_len));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(fa, 3U * cb));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(fa, (uint64_t)3U * cb));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fa));
   TEST_ASSERT_EQ(0U, xt_is_contig(h)); /* now a FAT chain */
   const uint32_t used_before = alloc_bitmap_used(h);

@@ -682,7 +682,7 @@ static void test_survey_zero_length_with_cluster(void)
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  uint32_t at = 1U;
+  uint64_t at = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &at));
   TEST_ASSERT_EQ(0U, at);
   const uint8_t one = 'z';
@@ -768,7 +768,7 @@ static void test_survey_length_without_cluster(void)
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "E.BIN", k_ra8_fs_mode_append, &f));
-  uint32_t at = 1U;
+  uint64_t at = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &at));
   TEST_ASSERT_EQ(k_flt_small, at);
   const uint8_t one = 'y';

@@ -572,7 +572,7 @@ fs_fmt_rename_and_verify(ra8_fs_mount_t* mount, const char* from, const char* to
 static uint32_t s_exfat_listed = 0U;
 
 /** @brief `ra8_fs_listdir` callback: tally visible entries for the exFAT trial. */
-static void fs_fmt_count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static void fs_fmt_count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)name;
   (void)attr;

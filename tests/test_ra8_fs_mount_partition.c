@@ -103,7 +103,7 @@ typedef struct {
   uint32_t sectors; /**< Partition length in sectors.      */
 } sub_dev_t;
 
-static ra8_err_t sub_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t sub_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   const sub_dev_t* d = (const sub_dev_t*)ctx;
   if (lba + count > d->sectors) {
@@ -112,7 +112,7 @@ static ra8_err_t sub_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return mc_read((void*)&s_disk, lba + d->base, count, buf);
 }
 
-static ra8_err_t sub_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t sub_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   const sub_dev_t* d = (const sub_dev_t*)ctx;
   if (lba + count > d->sectors) {
@@ -121,7 +121,7 @@ static ra8_err_t sub_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return mc_write((void*)&s_disk, lba + d->base, count, buf);
 }
 
-static ra8_err_t sub_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t sub_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const sub_dev_t* d = (const sub_dev_t*)ctx;
   *block_count       = d->sectors;
@@ -139,7 +139,7 @@ typedef struct {
   int      saw_p1; /**< "P1.TXT" / "G1.TXT" was listed. */
 } names_t;
 
-static void names_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static void names_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;
@@ -379,10 +379,12 @@ static void test_gpt_select_second_basic_data(void)
  *          past the count.
  *
  * @par MC/DC:
- * Covers priv_gpt_locate_partition `index >= count` (V-true = 4) and the three
- * priv_gpt_entry_select decisions -- null GUID (not_found), high-word set
- * (not_supported), zero LBA (validation_failed) -- each against the valid
- * entry 0 control.
+ * Covers priv_gpt_locate_partition `index >= count` (V-true = 4) and the two
+ * priv_gpt_entry_select decisions -- null GUID (not_found), zero LBA
+ * (validation_failed) -- each against the valid entry 0 control. An entry
+ * whose 64-bit first LBA exceeds 32 bits is no longer a select error (#683):
+ * the address is followed, and on this small fake the backend's own
+ * out_of_range comes back, proving the LBA reached it un-truncated.
  *
  * @pre s_disk is nullptr.
  * @post s_disk freed.
@@ -406,7 +408,9 @@ static void test_gpt_index_errors(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount_partition(&s_backend, 4U, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_mount_partition(&s_backend, 1U, &h));
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_mount_partition(&s_backend, 2U, &h));
+  /* Entry 2's first LBA is past 2 TiB: followed to the backend (#683), whose
+   * fake medium answers out_of_range -- not refused at the parser. */
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount_partition(&s_backend, 2U, &h));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_fs_mount_partition(&s_backend, 3U, &h));
   free_disk();
   TEST_END("ra8_fs_mount_partition: GPT index errors");

@@ -73,7 +73,7 @@ typedef struct {
   uint32_t              next_free;  /**< Cluster the next scan starts at.        */
   uint32_t              free_count; /**< Free clusters, or ::k_fs_free_unknown.  */
   uint32_t              fsinfo_lba; /**< FSInfo sector, or ::k_fs_fsinfo_absent. */
-  uint32_t              bitmap_lba; /**< exFAT bitmap LBA, or unknown.           */
+  uint64_t              bitmap_lba; /**< exFAT bitmap LBA, or unknown.           */
   uint8_t               dirty;      /**< 1 = FSInfo needs a writeback.           */
 } fat_alloc_state_t;
 
@@ -100,17 +100,17 @@ static_assert((uint32_t)k_fs_alloc_slots == (uint32_t)k_ra8_fs_max_mounts,
  * @warning Never read directly; go through ::priv_fat_sector_read.
  * @since 0.1.0
  */
-static uint8_t s_fat_cache[k_ra8_fs_bytes_per_sector] = {};
+static uint8_t s_fat_cache[k_ra8_fs_sector_max] = {};
 
 /**
  * @var s_fat_cache_lba
  * @brief Volume-relative LBA held in ::s_fat_cache, or ::k_fs_cache_empty.
- * @details `UINT32_MAX` is the empty sentinel because LBA 0 is a real address.
+ * @details `UINT64_MAX` is the empty sentinel because LBA 0 is a real address.
  * @note Not reentrant; the adapter is single-threaded by contract.
  * @warning Never modify directly.
  * @since 0.1.0
  */
-static uint32_t s_fat_cache_lba = k_fs_cache_empty;
+static uint64_t s_fat_cache_lba = k_fs_cache_empty;
 
 /**
  * @var s_fat_cache_owner
@@ -176,12 +176,12 @@ void priv_alloc_state_bind(const ra8_fs_mount_t* m)
   st->next_free  = (uint32_t)k_cluster_first_data;
   st->free_count = (uint32_t)k_fs_free_unknown;
   st->fsinfo_lba = (uint32_t)k_fs_fsinfo_absent;
-  st->bitmap_lba = (uint32_t)k_fs_bitmap_unknown;
+  st->bitmap_lba = (uint64_t)k_fs_bitmap_unknown;
   st->dirty      = 0U;
 }
 
 /* `priv_exfat_bitmap_lba()`: see header for the documented contract. */
-ra8_err_t priv_exfat_bitmap_lba(const ra8_fs_mount_t* m, uint32_t* out_lba)
+ra8_err_t priv_exfat_bitmap_lba(const ra8_fs_mount_t* m, uint64_t* out_lba)
 {
   /* Nested rather than joined: a mount with no bound slot is not a mount with
    * a cold cache, and there is no input that can produce the first -- every
@@ -190,7 +190,7 @@ ra8_err_t priv_exfat_bitmap_lba(const ra8_fs_mount_t* m, uint32_t* out_lba)
    * condition nothing can vary, which is a permanent MC/DC hole. */
   fat_alloc_state_t* st = priv_state_for(m);
   if (st != nullptr) {
-    if (st->bitmap_lba != (uint32_t)k_fs_bitmap_unknown) {
+    if (st->bitmap_lba != (uint64_t)k_fs_bitmap_unknown) {
       *out_lba = st->bitmap_lba;
       return k_ra8_ok;
     }
@@ -201,7 +201,7 @@ ra8_err_t priv_exfat_bitmap_lba(const ra8_fs_mount_t* m, uint32_t* out_lba)
   if (e != k_ra8_ok) {
     return e;
   }
-  const uint32_t lba = priv_cluster_to_lba(m, clus);
+  const uint64_t lba = priv_cluster_to_lba(m, clus);
   if (st != nullptr) {
     st->bitmap_lba = lba;
   }
@@ -217,7 +217,7 @@ void priv_alloc_state_release(const ra8_fs_mount_t* m)
     *st = (fat_alloc_state_t){};
   }
   if (s_fat_cache_owner == m) {
-    s_fat_cache_lba   = (uint32_t)k_fs_cache_empty;
+    s_fat_cache_lba   = (uint64_t)k_fs_cache_empty;
     s_fat_cache_owner = nullptr;
   }
 }
@@ -262,38 +262,38 @@ void priv_alloc_state_release(const ra8_fs_mount_t* m)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_lba_is_cacheable(const ra8_fs_mount_t* m, uint32_t lba)
+static bool priv_lba_is_cacheable(const ra8_fs_mount_t* m, uint64_t lba)
 {
   return (lba - m->first_fat_lba) < m->fat_size_sectors;
 }
 
 /* `priv_fat_sector_read()`: see header for the documented contract. */
-ra8_err_t priv_fat_sector_read(const ra8_fs_mount_t* m, uint32_t lba, uint8_t* buf)
+ra8_err_t priv_fat_sector_read(const ra8_fs_mount_t* m, uint64_t lba, uint8_t* buf)
 {
   if (!priv_lba_is_cacheable(m, lba)) {
     return priv_read_sector(m, lba, buf);
   }
   if ((s_fat_cache_owner == m) && (s_fat_cache_lba == lba)) {
-    priv_byte_copy(buf, s_fat_cache, (uint32_t)k_ra8_fs_bytes_per_sector);
+    priv_byte_copy(buf, s_fat_cache, priv_bps(m));
     return k_ra8_ok;
   }
   const ra8_err_t err = priv_read_sector(m, lba, buf);
   if (err != k_ra8_ok) {
     return err;
   }
-  priv_byte_copy(s_fat_cache, buf, (uint32_t)k_ra8_fs_bytes_per_sector);
+  priv_byte_copy(s_fat_cache, buf, priv_bps(m));
   s_fat_cache_lba   = lba;
   s_fat_cache_owner = m;
   return k_ra8_ok;
 }
 
 /* `priv_fat_sector_wrote()`: see header for the documented contract. */
-void priv_fat_sector_wrote(const ra8_fs_mount_t* m, const uint8_t* buf, uint32_t lba)
+void priv_fat_sector_wrote(const ra8_fs_mount_t* m, const uint8_t* buf, uint64_t lba)
 {
   if (!priv_lba_is_cacheable(m, lba)) {
     return;
   }
-  priv_byte_copy(s_fat_cache, buf, (uint32_t)k_ra8_fs_bytes_per_sector);
+  priv_byte_copy(s_fat_cache, buf, priv_bps(m));
   s_fat_cache_lba   = lba;
   s_fat_cache_owner = m;
 }
@@ -417,8 +417,8 @@ void priv_free_count_cache(const ra8_fs_mount_t* m, uint32_t n)
 RA8_INTERNAL
 static ra8_err_t priv_fsinfo_locate(const ra8_fs_mount_t* m, uint32_t* out_lba)
 {
-  uint8_t         boot[k_ra8_fs_bytes_per_sector] = {};
-  const ra8_err_t err                             = priv_read_sector(m, 0U, boot);
+  uint8_t* const  boot = priv_sec_walk();
+  const ra8_err_t err  = priv_read_sector(m, 0U, boot);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -441,7 +441,7 @@ static ra8_err_t priv_fsinfo_locate(const ra8_fs_mount_t* m, uint32_t* out_lba)
  *          believed; two of three is a sector that happens to start with
  *          "RRaA" and is not an FSInfo sector.
  *
- * @param[in] sec The candidate sector's 512 bytes.
+ * @param[in] sec The candidate sector's contents.
  *
  * @return Whether the sector is a valid FSInfo sector.
  * @retval true  Lead, struct and trailing signatures all match.
@@ -486,8 +486,8 @@ ra8_err_t priv_fsinfo_seed(const ra8_fs_mount_t* m)
   if (lba == (uint32_t)k_fs_fsinfo_absent) {
     return k_ra8_ok;
   }
-  uint8_t sec[k_ra8_fs_bytes_per_sector] = {};
-  err                                    = priv_read_sector(m, lba, sec);
+  uint8_t* const sec = priv_sec_walk();
+  err                = priv_read_sector(m, lba, sec);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -521,8 +521,8 @@ ra8_err_t priv_fsinfo_flush(const ra8_fs_mount_t* m)
   if (st->dirty == 0U) {
     return k_ra8_ok;
   }
-  uint8_t   sec[k_ra8_fs_bytes_per_sector] = {};
-  ra8_err_t err                            = priv_read_sector(m, st->fsinfo_lba, sec);
+  uint8_t* const sec = priv_sec_walk();
+  ra8_err_t      err = priv_read_sector(m, st->fsinfo_lba, sec);
   if (err != k_ra8_ok) {
     return err;
   }

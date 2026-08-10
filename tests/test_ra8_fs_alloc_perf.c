@@ -139,7 +139,7 @@ static uint32_t s_writes = 0U;
  * @note Not thread-safe; the suite is single-threaded.
  * @since 0.1.0
  */
-static ra8_err_t cnt_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t cnt_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   s_reads++;
@@ -170,7 +170,7 @@ static ra8_err_t cnt_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  * @note Not thread-safe; the suite is single-threaded.
  * @since 0.1.0
  */
-static ra8_err_t cnt_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t cnt_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   s_writes++;
@@ -199,7 +199,7 @@ static ra8_err_t cnt_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
  * @note Not thread-safe; the suite is single-threaded.
  * @since 0.1.0
  */
-static ra8_err_t cnt_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t cnt_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = s_disk.block_count;
@@ -813,7 +813,7 @@ static void test_mcdc_fat_sector_cache(void)
   TEST_ASSERT_EQ(miss - 1U, hit);
 
   /* V3: walking past cluster 255 leaves FAT sector 0 for sector 1. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, (uint32_t)k_ap_far_index * (uint32_t)k_ap_clus_bytes));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, (uint64_t)k_ap_far_index * (uint32_t)k_ap_clus_bytes));
   TEST_ASSERT(read_one_cluster_cost(f) > hit);
   /* ... and coming back is a miss again, because sector 1 is what is cached. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, (uint32_t)k_ap_clus_bytes));

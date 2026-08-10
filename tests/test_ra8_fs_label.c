@@ -211,7 +211,7 @@ static void test_label_exfat_roundtrip(void)
    * CREATE one at the end-of-directory slot on the next set. */
   const uint32_t root_byte =
     (h->partition_base_lba + h->first_data_lba +
-     ((h->root_cluster - (uint32_t)k_lb_first_clus) * h->sectors_per_cluster)) *
+     ((uint64_t)(h->root_cluster - (uint32_t)k_lb_first_clus) * h->sectors_per_cluster)) *
     (uint32_t)k_fmt_block_size;
   memset(&s_disk.bytes[root_byte + (uint32_t)k_lb_xf_lbl_off], 0, (size_t)k_lb_entry_size);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_label(h, "MADE"));
@@ -372,11 +372,12 @@ static void test_mcdc_set_label_fat(void)
 static void test_mcdc_exfat_get_label(void)
 {
   TEST_BEGIN("ra8_fs label MC/DC: exfat_get_label (!present || not-0x83)");
-  ra8_fs_mount_t* h   = fmt_mount((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, "PRESENT");
-  const uint32_t  lbl = (h->partition_base_lba + h->first_data_lba +
-                         ((h->root_cluster - (uint32_t)k_lb_first_clus) * h->sectors_per_cluster)) *
-                          (uint32_t)k_fmt_block_size +
-                        (uint32_t)k_lb_xf_lbl_off;
+  ra8_fs_mount_t* h = fmt_mount((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat, "PRESENT");
+  const uint32_t  lbl =
+    (h->partition_base_lba + h->first_data_lba +
+     ((uint64_t)(h->root_cluster - (uint32_t)k_lb_first_clus) * h->sectors_per_cluster)) *
+      (uint32_t)k_fmt_block_size +
+    (uint32_t)k_lb_xf_lbl_off;
 
   /* V1: the formatted 0x83 label entry decodes. */
   assert_label(h, "PRESENT");

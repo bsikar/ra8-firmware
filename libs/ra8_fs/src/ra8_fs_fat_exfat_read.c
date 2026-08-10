@@ -79,28 +79,38 @@ static uint8_t priv_exfat_is_volume(const uint8_t* buf)
  *
  * @details Maps exFAT's sector-relative region offsets + log2 geometry onto
  * the shared FAT fields so ::priv_cluster_to_lba / ::priv_fat_get (FAT32 path)
- * serve the data + FAT regions unchanged. Only 512-byte sectors are supported.
+ * serve the data + FAT regions unchanged. `BytesPerSectorShift` values 9..12
+ * (512..4096 bytes) are accepted, and the shift must agree with the DEVICE's
+ * block size seeded into `m->bytes_per_sector` at mount -- a volume formatted
+ * for a different sector size than the medium presents is unmountable, not
+ * reinterpretable (#683).
  *
- * @param[in,out] m   Mount with backend bound and base LBA set.
+ * @param[in,out] m   Mount with backend bound, base LBA set, and
+ *                    `bytes_per_sector` seeded from the backend.
  * @param[in]     buf VBR contents (sector 0 at the volume base).
  * @return Error code.
  * @retval k_ra8_ok                exFAT geometry stored; ``m->type`` set.
- * @retval k_ra8_err_not_supported BytesPerSectorShift is not 9 (512 B).
+ * @retval k_ra8_err_not_supported BytesPerSectorShift outside 9..12, or it
+ *                                 disagrees with the device's block size.
  * @pre @p m and @p buf are non-NULL.
  * @pre @p buf is a validated exFAT VBR (::priv_exfat_is_volume true).
  * @post On success ``m`` carries the exFAT region geometry.
  * @post On failure ``m`` is left unmounted.
  * @note Not thread-safe; serialize mount operations.
+ * @note The shift guard is one compound decision of three conditions; its
+ *       vectors live with the tests that drive it, cited as
+ *       `libs/ra8_fs/src/ra8_fs_fat_exfat_read.c@priv_exfat_parse`.
  * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t priv_exfat_parse(ra8_fs_mount_t* m, const uint8_t* buf)
 {
-  if (buf[k_exfat_off_bps_shift] != (uint8_t)k_exfat_bps_shift_512) {
+  const uint8_t shift = buf[k_exfat_off_bps_shift];
+  if ((shift < (uint8_t)k_exfat_bps_shift_min) || (shift > (uint8_t)k_exfat_bps_shift_max) ||
+      ((1UL << shift) != (unsigned long)m->bytes_per_sector)) {
     return k_ra8_err_not_supported;
   }
   m->type                = k_ra8_fs_type_exfat;
-  m->bytes_per_sector    = k_ra8_fs_bytes_per_sector;
   m->sectors_per_cluster = 1U << buf[k_exfat_off_spc_shift];
   m->num_fats            = (uint32_t)buf[k_exfat_off_num_fats];
   m->fat_size_sectors    = priv_rd32(&buf[k_exfat_off_fat_len]);
@@ -111,7 +121,7 @@ static ra8_err_t priv_exfat_parse(ra8_fs_mount_t* m, const uint8_t* buf)
   m->reserved_sectors    = 0U;
   m->root_entries        = 0U;
   m->first_root_lba      = 0U;
-  m->total_sectors       = 0U;
+  m->total_sectors       = priv_rd64(&buf[k_exfat_foff_vol_len]);
   /* Last, because it walks the root directory and so needs every field above.
    * It cannot fail the mount: a volume it could not interrogate is simply one
    * whose fold this build will not vouch for (#606). */
@@ -177,9 +187,9 @@ void priv_exfat_dir_from_set(const ra8_fs_mount_t* m, const uint8_t* strm, exfat
   if ((strm[k_exfat_strm_off_flags] & (uint8_t)k_exfat_secflag_no_fat) == 0U) {
     return;
   }
-  const uint32_t cbytes = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
-  const uint32_t size   = priv_rd32(&strm[k_exfat_strm_off_dlen]);
-  out->contig_end       = out->cluster + ((size + cbytes - 1U) / cbytes);
+  const uint32_t cbytes = priv_cluster_bytes(m);
+  const uint64_t size   = priv_rd64(&strm[k_exfat_strm_off_dlen]);
+  out->contig_end       = out->cluster + (uint32_t)((size + cbytes - 1U) / cbytes);
 }
 
 /* `priv_exfat_cursor_init()`: see header for the documented contract. */
@@ -220,8 +230,7 @@ ra8_err_t priv_exfat_step_cluster(const ra8_fs_mount_t* m,
 /* `priv_exfat_next_entry()`: see header for the documented contract. */
 ra8_err_t priv_exfat_next_entry(const ra8_fs_mount_t* m, exfat_cursor_t* cur, uint8_t* out)
 {
-  const uint32_t per_cluster =
-    (m->sectors_per_cluster * k_ra8_fs_bytes_per_sector) / (uint32_t)k_exfat_entry_bytes;
+  const uint32_t per_cluster = priv_cluster_bytes(m) / (uint32_t)k_exfat_entry_bytes;
   if (cur->entry_in_cluster >= per_cluster) {
     uint32_t        next = 0U;
     const ra8_err_t se   = priv_exfat_step_cluster(m, cur->cluster, cur->contig_end, &next);
@@ -232,14 +241,13 @@ ra8_err_t priv_exfat_next_entry(const ra8_fs_mount_t* m, exfat_cursor_t* cur, ui
     cur->entry_in_cluster = 0U;
   }
   const uint32_t byte_off = cur->entry_in_cluster * (uint32_t)k_exfat_entry_bytes;
-  const uint32_t lba =
-    priv_cluster_to_lba(m, cur->cluster) + (byte_off / k_ra8_fs_bytes_per_sector);
-  uint8_t   sec[k_ra8_fs_bytes_per_sector] = {};
-  ra8_err_t e                              = priv_read_sector(m, lba, sec);
+  const uint64_t lba      = priv_cluster_to_lba(m, cur->cluster) + (byte_off / priv_bps(m));
+  uint8_t* const sec      = priv_sec_io();
+  ra8_err_t      e        = priv_read_sector(m, lba, sec);
   if (e != k_ra8_ok) {
     return e;
   }
-  priv_byte_copy(out, &sec[byte_off % k_ra8_fs_bytes_per_sector], (uint32_t)k_exfat_entry_bytes);
+  priv_byte_copy(out, &sec[byte_off % priv_bps(m)], (uint32_t)k_exfat_entry_bytes);
   cur->entry_in_cluster++;
   cur->scanned++;
   return k_ra8_ok;
@@ -444,11 +452,11 @@ static void priv_exfat_seed_read(ra8_fs_file_t* file, ra8_fs_mount_t* handle, co
   file->cur_cluster        = first;
   file->walk_cache_idx     = 0U; /* read accelerator seeded at the chain head */
   file->walk_cache_cluster = first;
-  file->size_bytes         = priv_rd32(&strm[k_exfat_strm_off_dlen]);
+  file->size_bytes         = priv_rd64(&strm[k_exfat_strm_off_dlen]);
   file->offset             = 0U;
   file->dir_entry_lba      = 0U;
   file->dir_entry_idx      = 0U;
-  file->valid_bytes        = priv_rd32(&strm[k_exfat_off_strm_valid]);
+  file->valid_bytes        = priv_rd64(&strm[k_exfat_off_strm_valid]);
   file->entry_set_cluster  = 0U;
   file->entry_set_index    = 0U;
   file->entry_set_count    = 0U;

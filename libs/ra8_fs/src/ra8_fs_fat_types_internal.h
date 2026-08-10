@@ -149,11 +149,9 @@ typedef enum : uint16_t {
   k_gpt_off_entry_count      = 0x50U, /**< Number of partition entries.        */
   k_gpt_off_entry_size       = 0x54U, /**< Bytes per partition entry.          */
   k_gpt_entry_bytes          = 128U,  /**< Standard entry size supported.      */
-  k_gpt_entries_per_sector   = 4U,    /**< 512 / 128 entries per sector.       */
   k_gpt_entry_scan_max       = 128U,  /**< Bounded entry walk (UEFI minimum).  */
   k_gpt_entry_off_first_lba  = 0x20U, /**< Entry: first LBA (8 bytes LE).      */
   k_gpt_guid_len             = 16U,   /**< Type-GUID length in an entry.       */
-  k_gpt_u64_hi_off           = 4U,    /**< High-word offset inside a u64.      */
 } ra8_fs_gpt_t;
 
 /**
@@ -204,7 +202,8 @@ typedef enum : uint32_t {
   k_exfat_fsname_len     = 8U,      /**< "EXFAT   " field length.                   */
   k_exfat_name_per_entry = 15U,     /**< UTF-16 units per file-name entry.          */
   k_exfat_entry_bytes    = 32U,     /**< Directory entry size.                      */
-  k_exfat_bps_shift_512  = 9U,      /**< log2(512) -- the only sector size we do.   */
+  k_exfat_bps_shift_min  = 9U,      /**< log2(512): smallest BytesPerSectorShift.   */
+  k_exfat_bps_shift_max  = 12U,     /**< log2(4096): largest BytesPerSectorShift.   */
   k_exfat_scan_limit     = 65536U,  /**< Max dir entries scanned (P10 bound).       */
   k_exfat_name_cap       = 64U,     /**< Longest name we store, in UTF-16 units.    */
   k_exfat_name_u8_cap    = 193U,    /**< That name in UTF-8: 3 * 64, plus a NUL.    */
@@ -258,44 +257,46 @@ typedef enum : uint16_t {
  * @brief Magic values + geometry constants used by the exFAT formatter.
  */
 typedef enum : uint32_t {
-  k_exfat_entry_upcase      = 0x82U,       /**< Up-case Table directory entry.         */
-  k_exfat_entry_label       = 0x83U,       /**< Volume Label directory entry.          */
-  k_exfat_fmt_jump0         = 0xEBU,       /**< JumpBoot byte 0.                       */
-  k_exfat_fmt_jump1         = 0x76U,       /**< JumpBoot byte 1.                       */
-  k_exfat_fmt_jump2         = 0x90U,       /**< JumpBoot byte 2.                       */
-  k_exfat_fmt_fs_rev        = 0x0100U,     /**< FileSystemRevision = 1.00.             */
-  k_exfat_fmt_drive         = 0x80U,       /**< DriveSelect (first fixed disk).        */
-  k_exfat_fmt_percent       = 0U,          /**< PercentInUse = 0% (fresh volume).      */
-  k_exfat_fmt_boot_sig      = 0xAA55U,     /**< BootSignature (sector 0).              */
-  k_exfat_fmt_ext_sig       = 0xAA550000U, /**< ExtendedBootSignature (sectors 1-8).   */
-  k_exfat_fmt_fat_media     = 0xFFFFFFF8U, /**< FatEntry[0] media descriptor.          */
-  k_exfat_fmt_fat_eoc       = 0xFFFFFFFFU, /**< FatEntry end-of-chain.                 */
-  k_exfat_fmt_first_clus    = 2U,          /**< First cluster of the heap.             */
-  k_exfat_fmt_num_fats      = 1U,          /**< exFAT uses a single FAT.               */
-  k_exfat_fmt_boot_secs     = 24U,         /**< 12 main + 12 backup boot sectors.      */
-  k_exfat_fmt_backup_lba    = 12U,         /**< Backup boot region start.              */
-  k_exfat_fmt_ext_first     = 1U,          /**< First extended boot sector.            */
-  k_exfat_fmt_ext_count     = 8U,          /**< Extended boot sector count.            */
-  k_exfat_fmt_oem_lba       = 9U,          /**< OEM Parameters sector.                 */
-  k_exfat_fmt_resv_lba      = 10U,         /**< Reserved sector.                       */
-  k_exfat_fmt_csum_lba      = 11U,         /**< Boot Checksum sector.                  */
-  k_exfat_fmt_csum_skip0    = 106U,        /**< Checksum-excluded byte: VolumeFlags.   */
-  k_exfat_fmt_csum_skip1    = 107U,        /**< Checksum-excluded byte: VolumeFlags.   */
-  k_exfat_fmt_csum_skip2    = 112U,        /**< Checksum-excluded byte: PercentInUse.  */
-  k_exfat_fmt_csum_hibit    = 0x80000000U, /**< Rotate-right wrap bit (32-bit).        */
-  k_exfat_fmt_csum_copies   = 128U,        /**< 512 / 4 checksum words per sector.     */
+  k_exfat_entry_upcase   = 0x82U,       /**< Up-case Table directory entry.        */
+  k_exfat_entry_label    = 0x83U,       /**< Volume Label directory entry.         */
+  k_exfat_fmt_jump0      = 0xEBU,       /**< JumpBoot byte 0.                      */
+  k_exfat_fmt_jump1      = 0x76U,       /**< JumpBoot byte 1.                      */
+  k_exfat_fmt_jump2      = 0x90U,       /**< JumpBoot byte 2.                      */
+  k_exfat_fmt_fs_rev     = 0x0100U,     /**< FileSystemRevision = 1.00.            */
+  k_exfat_fmt_drive      = 0x80U,       /**< DriveSelect (first fixed disk).       */
+  k_exfat_fmt_percent    = 0U,          /**< PercentInUse = 0% (fresh volume).     */
+  k_exfat_fmt_boot_sig   = 0xAA55U,     /**< BootSignature (sector 0).             */
+  k_exfat_fmt_ext_sig    = 0xAA550000U, /**< ExtendedBootSignature (sectors 1-8).  */
+  k_exfat_fmt_fat_media  = 0xFFFFFFF8U, /**< FatEntry[0] media descriptor.         */
+  k_exfat_fmt_fat_eoc    = 0xFFFFFFFFU, /**< FatEntry end-of-chain.                */
+  k_exfat_fmt_first_clus = 2U,          /**< First cluster of the heap.            */
+  k_exfat_fmt_num_fats   = 1U,          /**< exFAT uses a single FAT.              */
+  k_exfat_fmt_boot_secs  = 24U,         /**< 12 main + 12 backup boot sectors.     */
+  k_exfat_fmt_backup_lba = 12U,         /**< Backup boot region start.             */
+  k_exfat_fmt_ext_first  = 1U,          /**< First extended boot sector.           */
+  k_exfat_fmt_ext_count  = 8U,          /**< Extended boot sector count.           */
+  k_exfat_fmt_oem_lba    = 9U,          /**< OEM Parameters sector.                */
+  k_exfat_fmt_resv_lba   = 10U,         /**< Reserved sector.                      */
+  k_exfat_fmt_csum_lba   = 11U,         /**< Boot Checksum sector.                 */
+  k_exfat_fmt_csum_skip0 = 106U,        /**< Checksum-excluded byte: VolumeFlags.  */
+  k_exfat_fmt_csum_skip1 = 107U,        /**< Checksum-excluded byte: VolumeFlags.  */
+  k_exfat_fmt_csum_skip2 = 112U,        /**< Checksum-excluded byte: PercentInUse. */
+  k_exfat_fmt_csum_hibit = 0x80000000U, /**< Rotate-right wrap bit (32-bit).       */
+  /* The three size thresholds and the volume minimum below are counts of
+   * 512-BYTE-EQUIVALENT sectors: a 4Kn device's sector count is scaled by
+   * bytes_per_sector / 512 before the comparison, so the byte thresholds the
+   * table encodes hold on every sector size. */
   k_exfat_fmt_min_sectors   = 65536U,      /**< Smallest exFAT volume: 32 MiB.         */
   k_exfat_fmt_thr_256m      = 524288U,     /**< <= 256 MB -> 4 KB clusters.            */
   k_exfat_fmt_thr_32g       = 67108864U,   /**< <= 32 GB -> 32 KB clusters.            */
   k_exfat_fmt_thr_256g      = 536870912U,  /**< <= 256 GB -> 128 KB clusters.          */
-  k_exfat_fmt_spc_4k        = 3U,          /**< SectorsPerClusterShift for 4 KB.       */
-  k_exfat_fmt_spc_32k       = 6U,          /**< ... 32 KB.                             */
-  k_exfat_fmt_spc_128k      = 8U,          /**< ... 128 KB.                            */
-  k_exfat_fmt_spc_256k      = 9U,          /**< ... 256 KB (> 256 GB cards).           */
+  k_exfat_fmt_clus_4k       = 12U,         /**< log2 cluster BYTES for 4 KB clusters.  */
+  k_exfat_fmt_clus_32k      = 15U,         /**< ... 32 KB.                             */
+  k_exfat_fmt_clus_128k     = 17U,         /**< ... 128 KB.                            */
+  k_exfat_fmt_clus_256k     = 18U,         /**< ... 256 KB (> 256 GB cards).           */
   k_exfat_fmt_geom_iters    = 4U,          /**< Fixed-point geometry passes.           */
   k_exfat_fmt_upc_std_bytes = 5836U,       /**< Canonical Microsoft up-case table len. */
-  k_exfat_fmt_upc_std_secs  = 12U,         /**< ceil(5836 / 512): table sector span.   */
-  k_exfat_fmt_part_lba      = 2048U,       /**< exFAT partition start (1 MiB aligned). */
+  k_exfat_fmt_part_align    = 1048576U,    /**< exFAT partition alignment: 1 MiB.      */
   k_exfat_fmt_serial        = 0x52A8E47AU, /**< Arbitrary volume-serial base.          */
   k_exfat_fmt_label_max     = 11U,         /**< Volume-label cap (UTF-16 units).       */
   k_exfat_fmt_byte_bits     = 8U,          /**< Bits per bitmap byte.                  */
@@ -404,46 +405,49 @@ typedef enum : uint16_t {
  * @brief Magic values + geometry limits used by the formatter (`ra8_fs_format`).
  */
 typedef enum : uint32_t {
-  k_fmt_jmp_byte0       = 0xEBU,       /**< Short jump opcode.                    */
-  k_fmt_jmp_byte1       = 0x58U,       /**< Jump displacement (to +0x5A).         */
-  k_fmt_jmp_byte2       = 0x90U,       /**< NOP padding.                          */
-  k_fmt_media_fixed     = 0xF8U,       /**< Media descriptor: non-removable.      */
-  k_fmt_drvnum_hd       = 0x80U,       /**< BS_DrvNum: first fixed disk.          */
-  k_fmt_ext_bootsig     = 0x29U,       /**< Extended boot signature present.      */
-  k_fmt_sec_per_trk     = 63U,         /**< Conventional CHS sectors/track.       */
-  k_fmt_num_heads       = 255U,        /**< Conventional CHS heads.               */
-  k_fmt_num_fats        = 2U,          /**< Two FAT copies, like every mkfs.      */
-  k_fmt_root_ents_f16   = 512U,        /**< FAT12/16 root-directory entries.      */
-  k_fmt_resv_f16        = 1U,          /**< FAT12/16 reserved (boot) sectors.     */
-  k_fmt_resv_f32        = 32U,         /**< FAT32 reserved sectors.               */
-  k_fmt_root_clus_f32   = 2U,          /**< FAT32 root directory cluster.         */
-  k_fmt_fsinfo_sector   = 1U,          /**< FAT32 FSInfo sector LBA.              */
-  k_fmt_bkboot_sector   = 6U,          /**< FAT32 backup boot sector LBA.         */
-  k_fmt_volid_base      = 0x52A8D200U, /**< Arbitrary volume-serial base.         */
-  k_fmt_fsi_lead_sig    = 0x41615252U, /**< FSInfo lead signature "RRaA".         */
-  k_fmt_fsi_struct_sig  = 0x61417272U, /**< FSInfo struct signature "rrAa".       */
-  k_fmt_fsi_trail_sig   = 0xAA550000U, /**< FSInfo trailing signature.            */
-  k_fmt_label_len       = 11U,         /**< Volume-label field width (bytes).     */
-  k_fmt_spc_max         = 64U,         /**< Largest sectors-per-cluster we set.   */
-  k_fmt_zero_chunk_secs = 32U,         /**< Sectors zeroed per multi-block write. */
-  k_fmt_fat16_entry_cap = 256U,        /**< 512-byte sector / 2-byte FAT16 ent.   */
-  k_fmt_fat32_entry_cap = 128U,        /**< 512-byte sector / 4-byte FAT32 ent.   */
-  k_fmt_fat32_clus_cap  = 0x0FFFFFF0U, /**< Max FAT32 cluster count we accept.    */
-  k_fmt_fsi_unknown     = 0xFFFFFFFFU, /**< FSInfo free-count "unknown".          */
-  k_fmt_fat32_nxt_free  = 3U,          /**< First allocatable FAT32 cluster.      */
+  k_fmt_jmp_byte0         = 0xEBU,       /**< Short jump opcode.                        */
+  k_fmt_jmp_byte1         = 0x58U,       /**< Jump displacement (to +0x5A).             */
+  k_fmt_jmp_byte2         = 0x90U,       /**< NOP padding.                              */
+  k_fmt_media_fixed       = 0xF8U,       /**< Media descriptor: non-removable.          */
+  k_fmt_drvnum_hd         = 0x80U,       /**< BS_DrvNum: first fixed disk.              */
+  k_fmt_ext_bootsig       = 0x29U,       /**< Extended boot signature present.          */
+  k_fmt_sec_per_trk       = 63U,         /**< Conventional CHS sectors/track.           */
+  k_fmt_num_heads         = 255U,        /**< Conventional CHS heads.                   */
+  k_fmt_num_fats          = 2U,          /**< Two FAT copies, like every mkfs.          */
+  k_fmt_root_ents_f16     = 512U,        /**< FAT12/16 root-directory entries.          */
+  k_fmt_resv_f16          = 1U,          /**< FAT12/16 reserved (boot) sectors.         */
+  k_fmt_resv_f32          = 32U,         /**< FAT32 reserved sectors.                   */
+  k_fmt_root_clus_f32     = 2U,          /**< FAT32 root directory cluster.             */
+  k_fmt_fsinfo_sector     = 1U,          /**< FAT32 FSInfo sector LBA.                  */
+  k_fmt_bkboot_sector     = 6U,          /**< FAT32 backup boot sector LBA.             */
+  k_fmt_volid_base        = 0x52A8D200U, /**< Arbitrary volume-serial base.             */
+  k_fmt_fsi_lead_sig      = 0x41615252U, /**< FSInfo lead signature "RRaA".             */
+  k_fmt_fsi_struct_sig    = 0x61417272U, /**< FSInfo struct signature "rrAa".           */
+  k_fmt_fsi_trail_sig     = 0xAA550000U, /**< FSInfo trailing signature.                */
+  k_fmt_label_len         = 11U,         /**< Volume-label field width (bytes).         */
+  k_fmt_spc_max           = 64U,         /**< Largest sectors-per-cluster we set.       */
+  k_fmt_zero_chunk_bytes  = 16384U,      /**< Zero-fill bounce buffer size.             */
+  k_fmt_fat32_entry_bytes = 4U,          /**< Bytes per FAT32 FAT entry.                */
+  k_fmt_fat16_entry_bytes = 2U,          /**< Bytes per FAT16 (and FAT12-sizing) entry. */
+  k_fmt_fat32_clus_cap    = 0x0FFFFFF0U, /**< Max FAT32 cluster count we accept.        */
+  k_fmt_fsi_unknown       = 0xFFFFFFFFU, /**< FSInfo free-count "unknown".              */
+  k_fmt_fat32_nxt_free    = 3U,          /**< First allocatable FAT32 cluster.          */
   /* Microsoft FAT spec "DskSzToSecPerClus" table (fatgen103 sec 3.3), in
-   * 512-byte sectors. Picking the cluster size by disk size keeps the FAT
-   * small: a 128 GB card at spc=1 would need a ~1 GB FAT per copy, but at
-   * spc=64 (32 KB clusters) only ~15 MB. */
-  k_fmt_f32_thr_260m = 532480U,   /**< <= 260 MB  -> spc 1  (512 B). */
-  k_fmt_f32_thr_8g   = 16777216U, /**< <= 8 GB    -> spc 8  (4 KB).  */
-  k_fmt_f32_thr_16g  = 33554432U, /**< <= 16 GB   -> spc 16 (8 KB).  */
-  k_fmt_f32_thr_32g  = 67108864U, /**< <= 32 GB   -> spc 32 (16 KB). */
-  k_fmt_f32_spc_512b = 1U,        /**< spc for <= 260 MB cards.      */
-  k_fmt_f32_spc_4k   = 8U,        /**< spc for <= 8 GB cards.        */
-  k_fmt_f32_spc_8k   = 16U,       /**< spc for <= 16 GB cards.       */
-  k_fmt_f32_spc_16k  = 32U,       /**< spc for <= 32 GB cards.       */
-  k_fmt_f32_spc_32k  = 64U,       /**< spc for > 32 GB cards.        */
+   * 512-BYTE-EQUIVALENT sectors (a 4Kn device's count is scaled by
+   * bytes_per_sector / 512 before comparing, so the byte thresholds hold on
+   * every sector size). Picking the cluster size by disk size keeps the FAT
+   * small: a 128 GB card at 512-byte clusters would need a ~1 GB FAT per
+   * copy, but at 32 KB clusters only ~15 MB. The cluster picks are log2
+   * cluster BYTES; sectors-per-cluster is that divided by the sector size.  */
+  k_fmt_f32_thr_260m  = 532480U,   /**< <= 260 MB  -> 512 B clusters. */
+  k_fmt_f32_thr_8g    = 16777216U, /**< <= 8 GB    -> 4 KB clusters.  */
+  k_fmt_f32_thr_16g   = 33554432U, /**< <= 16 GB   -> 8 KB clusters.  */
+  k_fmt_f32_thr_32g   = 67108864U, /**< <= 32 GB   -> 16 KB clusters. */
+  k_fmt_f32_clus_512b = 9U,        /**< log2(512): <= 260 MB cards.   */
+  k_fmt_f32_clus_4k   = 12U,       /**< log2(4 KB): <= 8 GB cards.    */
+  k_fmt_f32_clus_8k   = 13U,       /**< log2(8 KB): <= 16 GB cards.   */
+  k_fmt_f32_clus_16k  = 14U,       /**< log2(16 KB): <= 32 GB cards.  */
+  k_fmt_f32_clus_32k  = 15U,       /**< log2(32 KB): > 32 GB cards.   */
 } ra8_fs_fmt_val_t;
 
 /**
@@ -451,20 +455,20 @@ typedef enum : uint32_t {
  * @brief Misc small constants used by parsing/formatting code.
  */
 typedef enum : uint16_t {
-  k_byte_mask              = 0xFFU,   /**< Byte mask.                                */
-  k_shift_byte             = 8,       /**< Shift byte.                               */
-  k_shift_two_bytes        = 16,      /**< Shift two bytes.                          */
-  k_shift_three_bytes      = 24,      /**< Shift three bytes.                        */
-  k_shift_nibble           = 4,       /**< Shift nibble.                             */
-  k_nibble_mask            = 0x0F,    /**< Nibble mask.                              */
-  k_byte_mask_full         = 0xFF,    /**< Byte mask full.                           */
-  k_word_mask              = 0xFFFFU, /**< Word mask.                                */
-  k_max_8_3_name           = 11,      /**< 8.3 packed length without dot.            */
-  k_dot_pos                = 8,       /**< In an 8.3 packed name, dot would go here. */
-  k_filename_base_len      = 8,       /**< Filename base length.                     */
-  k_filename_ext_len       = 3,       /**< Filename ext length.                      */
-  k_dir_entries_per_sector = 16,      /**< 512 / 32                                  */
-  k_path_max               = 64,      /**< Path maximum.                             */
+  k_byte_mask         = 0xFFU,   /**< Byte mask.                                */
+  k_shift_byte        = 8,       /**< Shift byte.                               */
+  k_shift_two_bytes   = 16,      /**< Shift two bytes.                          */
+  k_shift_three_bytes = 24,      /**< Shift three bytes.                        */
+  k_shift_nibble      = 4,       /**< Shift nibble.                             */
+  k_shift_word32      = 32,      /**< Shift a whole 32-bit word (u64 halves).   */
+  k_nibble_mask       = 0x0F,    /**< Nibble mask.                              */
+  k_byte_mask_full    = 0xFF,    /**< Byte mask full.                           */
+  k_word_mask         = 0xFFFFU, /**< Word mask.                                */
+  k_max_8_3_name      = 11,      /**< 8.3 packed length without dot.            */
+  k_dot_pos           = 8,       /**< In an 8.3 packed name, dot would go here. */
+  k_filename_base_len = 8,       /**< Filename base length.                     */
+  k_filename_ext_len  = 3,       /**< Filename ext length.                      */
+  k_path_max          = 64,      /**< Path maximum.                             */
 } ra8_fs_misc_t;
 
 /* ===========================================================================
@@ -482,7 +486,7 @@ typedef struct {
   uint32_t fixed_remaining;   /**< Sectors left in fixed region.           */
   uint32_t cluster;           /**< Current cluster (FAT32 root case).      */
   uint32_t sector_in_cluster; /**< 0..SPC-1 inside cluster.                */
-  uint32_t cur_lba;           /**< Currently loaded LBA.                   */
+  uint64_t cur_lba;           /**< Currently loaded LBA.                   */
   uint32_t entry_idx;         /**< Byte offset within the loaded sector.   */
   uint32_t cluster_hops;      /**< FAT-chain follows so far (cycle guard). */
 } dir_walk_t;
@@ -585,7 +589,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t lba; /**< Sector holding the slot.                */
+  uint64_t lba; /**< Sector holding the slot.                */
   uint32_t off; /**< Byte offset of the slot in that sector. */
 } dir_pos_t;
 
@@ -624,7 +628,7 @@ typedef struct {
  */
 typedef struct {
   dir_loc_t parent;                          /**< Directory the entry lives in.   */
-  uint32_t  lba;                             /**< Sector holding the entry.       */
+  uint64_t  lba;                             /**< Sector holding the entry.       */
   uint32_t  off;                             /**< Byte offset within that sector. */
   uint8_t   entry[k_ra8_fs_dir_entry_bytes]; /**< The entry as read from disk.    */
 } dir_target_t;
@@ -780,14 +784,16 @@ typedef struct {
  *
  * @details Filled by `priv_fmt_choose_geometry()` from the requested type and
  *          the backend capacity, then consumed by the BPB / FAT writers. All
- *          counts are in 512-byte sectors.
+ *          counts are in DEVICE sectors of `bytes_per_sector` bytes.
  *
  * @invariant `sectors_per_cluster` is a power of two in 1..`k_fmt_spc_max`.
  * @invariant `count_of_clusters` lands in the band valid for `type`.
+ * @invariant `bytes_per_sector` is a power of two in 512..4096.
  */
 typedef struct {
   ra8_fs_type_t type;                /**< Resolved FAT variant.                */
-  uint32_t      total_sectors;       /**< Whole-device sector count.           */
+  uint64_t      total_sectors;       /**< Whole-device sector count.           */
+  uint32_t      bytes_per_sector;    /**< Device sector size in bytes.         */
   uint32_t      sectors_per_cluster; /**< Chosen cluster size (sectors).       */
   uint32_t      reserved_sectors;    /**< Boot + (FAT32) FSInfo/backup region. */
   uint32_t      fat_size_sectors;    /**< Sectors per FAT copy.                */
@@ -797,12 +803,34 @@ typedef struct {
 } ra8_fs_fmt_geom_t;
 
 /**
+ * @enum ra8_fs_sec_role_t
+ * @brief Index of each fixed-role sector buffer in the arena (#683).
+ *
+ * @details One row per role in the discipline documented in
+ *          `ra8_fs_fat_bytes_internal.h`; ::k_fs_sec_roles sizes the backing
+ *          array.
+ *
+ * @invariant `k_fs_sec_roles` is the count of role rows above it.
+ * @see priv_sec_walk()
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_fs_sec_role_walk = 0U, /**< Directory scans and entry read-modify-write. */
+  k_fs_sec_role_fat  = 1U, /**< The sector holding a FAT entry.              */
+  k_fs_sec_role_fat2 = 2U, /**< FAT12 straddle: the following sector.        */
+  k_fs_sec_role_io   = 3U, /**< Leaf data / bitmap sector transfers.         */
+  k_fs_sec_roles     = 4U, /**< Arena row count.                             */
+} ra8_fs_sec_role_t;
+
+/**
  * @var s_scratch
- * @brief Single 512-byte sector scratch buffer reused across all I/O.
+ * @brief Single max-sector scratch buffer reused across all I/O.
  * @details One module-wide bounce buffer for every BPB, FAT, directory, and
- *          data-sector access. Defined once in `ra8_fs_fat_mount.c`.
+ *          data-sector access. Sized to ::k_ra8_fs_sector_max so a 4Kn medium
+ *          fits; a 512-byte mount simply uses the first quarter. Defined once
+ *          in `ra8_fs_fat_mount.c`.
  * @note Not reentrant; the adapter is single-threaded by contract.
  * @warning Do not access concurrently; callers serialise all FS operations.
  * @since 0.1.0
  */
-extern uint8_t s_scratch[k_ra8_fs_bytes_per_sector];
+extern uint8_t s_scratch[k_ra8_fs_sector_max];

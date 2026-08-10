@@ -312,7 +312,7 @@ RA8_PRIV
 ra8_err_t priv_dir_commit(const ra8_fs_mount_t* m,
                           const dir_insert_t*   plan,
                           const uint8_t*        tmpl,
-                          uint32_t*             out_lba,
+                          uint64_t*             out_lba,
                           uint32_t*             out_off);
 
 /**
@@ -349,7 +349,7 @@ RA8_PRIV
 ra8_err_t priv_dir_lookup_any(const ra8_fs_mount_t* m,
                               const dir_loc_t*      loc,
                               const char*           leaf,
-                              uint32_t*             out_lba,
+                              uint64_t*             out_lba,
                               uint32_t*             out_off,
                               uint8_t               out_entry[k_ra8_fs_dir_entry_bytes]);
 
@@ -388,6 +388,6 @@ ra8_err_t priv_dir_lookup_any(const ra8_fs_mount_t* m,
 RA8_PRIV
 ra8_err_t priv_dir_erase_chain(const ra8_fs_mount_t* m,
                                const dir_loc_t*      loc,
-                               uint32_t              lba,
+                               uint64_t              lba,
                                uint32_t              off,
                                const uint8_t*        name83);

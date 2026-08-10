@@ -86,7 +86,7 @@
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_exfat_pick_cluster(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t prefer, uint32_t* out)
+priv_exfat_pick_cluster(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t prefer, uint32_t* out)
 {
   const uint32_t past_end = (uint32_t)k_cluster_first_data + m->count_of_clusters;
   if ((prefer >= (uint32_t)k_cluster_first_data) && (prefer < past_end)) {
@@ -240,7 +240,7 @@ RA8_INTERNAL
 static ra8_err_t priv_exfat_grow_one(ra8_fs_file_t* file)
 {
   ra8_fs_mount_t* m       = file->mount;
-  uint32_t        bmp_lba = 0U;
+  uint64_t        bmp_lba = 0U;
   ra8_err_t       e       = priv_exfat_bitmap_lba(m, &bmp_lba);
   if (e != k_ra8_ok) {
     return e;
@@ -459,7 +459,7 @@ static ra8_err_t priv_exfat_dir_link(const ra8_fs_mount_t* m,
 RA8_INTERNAL
 static ra8_err_t priv_exfat_dir_relen(const ra8_fs_mount_t* m,
                                       const exfat_dir_t*    dir,
-                                      uint32_t              new_bytes,
+                                      uint64_t              new_bytes,
                                       uint8_t               nofat)
 {
   uint8_t        set[k_exfat_max_set_bytes] = {};
@@ -484,10 +484,8 @@ static ra8_err_t priv_exfat_dir_relen(const ra8_fs_mount_t* m,
   uint8_t* strm = &set[k_exfat_entry_bytes];
   strm[k_exfat_strm_off_flags] =
     (nofat != 0U) ? (uint8_t)k_exfat_secflag_alloc : (uint8_t)k_exfat_secflag_poss;
-  priv_wr32(&strm[k_exfat_off_strm_valid], new_bytes);
-  priv_wr32(&strm[k_exfat_strm_off_vlen_hi], 0U);
-  priv_wr32(&strm[k_exfat_strm_off_dlen], new_bytes);
-  priv_wr32(&strm[k_exfat_strm_off_dlen_hi], 0U);
+  priv_wr64(&strm[k_exfat_off_strm_valid], new_bytes);
+  priv_wr64(&strm[k_exfat_strm_off_dlen], new_bytes);
   priv_wr16(&set[k_exfat_off_file_csum],
             priv_exfat_set_checksum(set, count * (uint32_t)k_exfat_entry_bytes));
   return priv_exfat_write_dir_set(m,
@@ -536,7 +534,7 @@ static ra8_err_t priv_exfat_dir_append(const ra8_fs_mount_t* m,
                                        uint32_t              tail,
                                        uint8_t*              nofat)
 {
-  uint32_t  bmp_lba = 0U;
+  uint64_t  bmp_lba = 0U;
   ra8_err_t e       = priv_exfat_bitmap_lba(m, &bmp_lba);
   if (e != k_ra8_ok) {
     return e;
@@ -577,13 +575,13 @@ ra8_err_t priv_exfat_grow_dir(const ra8_fs_mount_t* m, exfat_dir_t* dir)
     return e;
   }
   const uint32_t new_alloc = alloc + 1U;
-  const uint32_t cbytes    = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
+  const uint32_t cbytes    = priv_cluster_bytes(m);
   /* The volume root has no entry set to patch -- its extent is the boot-sector
    * FAT chain, which ::priv_exfat_dir_link just extended. A subdirectory carries
    * the location of its own set and must update it, or the next mount reads the
    * old length and cannot see the cluster this call added (#677). */
   if (dir->self_cluster >= (uint32_t)k_cluster_first_data) {
-    e = priv_exfat_dir_relen(m, dir, new_alloc * cbytes, nofat);
+    e = priv_exfat_dir_relen(m, dir, (uint64_t)new_alloc * cbytes, nofat);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -668,7 +666,7 @@ static ra8_err_t priv_exfat_cluster_at(ra8_fs_file_t* file, uint32_t idx, uint32
  *          it is about to write exists.
  *
  * @param[in,out] file     Open exFAT handle.
- * @param[in]     pos      Byte position within the file.
+ * @param[in]     pos      Byte position within the file (64-bit, #676).
  * @param[out]    out_lba  Receives the volume-relative sector holding @p pos.
  * @param[out]    out_off  Receives the byte offset of @p pos inside it.
  * @param[out]    out_room Receives the bytes from @p pos to the sector's end.
@@ -680,7 +678,7 @@ static ra8_err_t priv_exfat_cluster_at(ra8_fs_file_t* file, uint32_t idx, uint32
  *
  * @pre Every pointer is non-NULL and the handle's mount is an exFAT volume.
  * @pre The caller holds the library lock.
- * @post On success `*out_room` is in 1..512 and `*out_off + *out_room == 512`.
+ * @post On success `*out_room >= 1` and `*out_off + *out_room` is the sector size.
  * @post On success `file->cur_cluster` is the cluster holding @p pos.
  *
  * @note Not thread-safe; callers serialise filesystem operations.
@@ -689,14 +687,14 @@ static ra8_err_t priv_exfat_cluster_at(ra8_fs_file_t* file, uint32_t idx, uint32
  */
 RA8_INTERNAL
 static ra8_err_t priv_exfat_slice_at(ra8_fs_file_t* file,
-                                     uint32_t       pos,
-                                     uint32_t*      out_lba,
+                                     uint64_t       pos,
+                                     uint64_t*      out_lba,
                                      uint32_t*      out_off,
                                      uint32_t*      out_room)
 {
   const ra8_fs_mount_t* m      = file->mount;
-  const uint32_t        cbytes = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
-  const uint32_t        idx    = pos / cbytes;
+  const uint32_t        cbytes = priv_cluster_bytes(m);
+  const uint32_t        idx    = (uint32_t)(pos / cbytes);
   ra8_err_t             e      = priv_exfat_ensure_clusters(file, idx + 1U);
   if (e != k_ra8_ok) {
     return e;
@@ -707,10 +705,10 @@ static ra8_err_t priv_exfat_slice_at(ra8_fs_file_t* file,
     return e;
   }
   file->cur_cluster         = cur;
-  const uint32_t in_cluster = pos % cbytes;
-  *out_lba  = priv_cluster_to_lba(m, cur) + (in_cluster / k_ra8_fs_bytes_per_sector);
-  *out_off  = in_cluster % k_ra8_fs_bytes_per_sector;
-  *out_room = (uint32_t)k_ra8_fs_bytes_per_sector - *out_off;
+  const uint32_t in_cluster = (uint32_t)(pos % cbytes);
+  *out_lba                  = priv_cluster_to_lba(m, cur) + (in_cluster / priv_bps(m));
+  *out_off                  = in_cluster % priv_bps(m);
+  *out_room                 = priv_bps(m) - *out_off;
   return k_ra8_ok;
 }
 
@@ -744,26 +742,20 @@ static ra8_err_t priv_exfat_slice_at(ra8_fs_file_t* file,
 RA8_INTERNAL
 static ra8_err_t priv_exfat_close_gap(ra8_fs_file_t* file)
 {
-  /* One sector of zero bytes, the source every hole is filled from. At BLOCK
-   * scope because it is used in this function and nowhere else (MISRA C:2012
-   * Rule 8.9), and a PLAIN comment because Doxygen cannot attach a symbol to a
-   * function-local and mis-files a doc block here as the function's own.
-   * `static const` keeps it in .rodata rather than costing a 512-byte stack
-   * frame on a call path that already carries a sector buffer of its own. */
-  static const uint8_t s_zeros[k_ra8_fs_bytes_per_sector] = {};
   while (file->valid_bytes < file->offset) {
-    uint32_t  lba  = 0U;
+    uint64_t  lba  = 0U;
     uint32_t  off  = 0U;
     uint32_t  room = 0U;
     ra8_err_t e    = priv_exfat_slice_at(file, file->valid_bytes, &lba, &off, &room);
     if (e != k_ra8_ok) {
       return e;
     }
-    uint32_t n = file->offset - file->valid_bytes;
-    if (n > room) {
-      n = room;
+    const uint64_t gap = file->offset - file->valid_bytes;
+    uint32_t       n   = room;
+    if (gap < (uint64_t)room) {
+      n = (uint32_t)gap;
     }
-    e = priv_write_into_sector(file->mount, lba, off, s_zeros, n);
+    e = priv_write_into_sector(file->mount, lba, off, k_zero_sector, n);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -781,7 +773,7 @@ ra8_err_t priv_exfat_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint3
   }
   uint32_t consumed = 0U;
   while (consumed < len) {
-    uint32_t lba  = 0U;
+    uint64_t lba  = 0U;
     uint32_t off  = 0U;
     uint32_t room = 0U;
     e             = priv_exfat_slice_at(file, file->offset, &lba, &off, &room);
@@ -817,9 +809,9 @@ ra8_err_t priv_exfat_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint3
  * @brief Patch a Stream-extension entry to describe the handle's current state.
  *
  * @details Writes the four fields a stream changes -- `GeneralSecondaryFlags`,
- *          `FirstCluster`, `ValidDataLength` and `DataLength` -- and zeroes the
- *          high words of the two 64-bit lengths, which matters when the set was
- *          written by an implementation that had a use for them. `NoFatChain`
+ *          `FirstCluster`, `ValidDataLength` and `DataLength` -- as the full
+ *          64-bit lengths the format defines, so a file past 4 GiB records its
+ *          real size (#676). `NoFatChain`
  *          is asserted only for a file that actually owns clusters: exFAT spec
  *          sec 7.4.4 requires `FirstCluster` 0 on an empty file, and a flag
  *          claiming a contiguous run of nothing is a claim `fsck` checks.
@@ -855,10 +847,8 @@ static void priv_exfat_patch_stream(const ra8_fs_file_t* file, uint8_t* strm)
   }
   strm[k_exfat_strm_off_flags] = flags;
   priv_wr32(&strm[k_exfat_strm_off_clus], first);
-  priv_wr32(&strm[k_exfat_off_strm_valid], file->valid_bytes);
-  priv_wr32(&strm[k_exfat_strm_off_vlen_hi], 0U);
-  priv_wr32(&strm[k_exfat_strm_off_dlen], file->size_bytes);
-  priv_wr32(&strm[k_exfat_strm_off_dlen_hi], 0U);
+  priv_wr64(&strm[k_exfat_off_strm_valid], file->valid_bytes);
+  priv_wr64(&strm[k_exfat_strm_off_dlen], file->size_bytes);
 }
 
 /**

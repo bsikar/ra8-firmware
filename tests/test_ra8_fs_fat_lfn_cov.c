@@ -126,7 +126,7 @@ typedef struct {
  */
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -138,7 +138,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -150,7 +150,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -193,7 +193,7 @@ typedef struct {
  */
 static inject_disk_t s_inject = {};
 
-static ra8_err_t inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->reads_left == 0U) {
@@ -211,7 +211,7 @@ static ra8_err_t inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t inj_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->writes_fail != 0U) {
@@ -226,7 +226,7 @@ static ra8_err_t inj_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t inj_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   *block_count     = d->block_count;
@@ -563,7 +563,7 @@ static void test_lfn_cov_leading_slash(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   dir_loc_t root_loc                      = {.is_root = 1U, .cluster = 0U};
-  uint32_t  lba                           = 0U;
+  uint64_t  lba                           = 0U;
   uint32_t  off                           = 0U;
   uint8_t   ent[k_ra8_fs_dir_entry_bytes] = {};
   /* want="/mybook.epub": needle[0]=='/' -> needle++ (lines 275-276),

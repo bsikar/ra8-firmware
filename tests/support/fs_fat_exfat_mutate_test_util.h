@@ -161,7 +161,7 @@ static int32_t s_mut_wr_fail_in = (int32_t)k_mut_fault_never;
  *
  * @since 0.1.0
  */
-static inline ra8_err_t mut_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static inline ra8_err_t mut_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   if (s_mut_rd_fail_in == 0) {
     s_mut_rd_fail_in = (int32_t)k_mut_fault_never;
@@ -197,7 +197,7 @@ static inline ra8_err_t mut_read(void* ctx, uint32_t lba, uint32_t count, uint8_
  *
  * @since 0.1.0
  */
-static inline ra8_err_t mut_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static inline ra8_err_t mut_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   if (s_mut_wr_fail_in == 0) {
     s_mut_wr_fail_in = (int32_t)k_mut_fault_never;
@@ -231,7 +231,7 @@ static inline ra8_err_t mut_write(void* ctx, uint32_t lba, uint32_t count, const
  *
  * @since 0.1.0
  */
-static inline ra8_err_t mut_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static inline ra8_err_t mut_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const mut_disk_t* d = (const mut_disk_t*)ctx;
   *block_count        = d->block_count;
@@ -311,7 +311,7 @@ static inline void build_exfat_volume(void)
  *
  * @since 0.1.0
  */
-static inline void count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static inline void count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)name;
   (void)attr;
@@ -341,8 +341,8 @@ static inline void count_cb(const char* name, uint8_t attr, uint32_t size, void*
  */
 static inline uint32_t root_byte(const ra8_fs_mount_t* h, uint32_t idx)
 {
-  const uint32_t root_lba =
-    h->partition_base_lba + h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
+  const uint32_t root_lba = h->partition_base_lba + h->first_data_lba +
+                            ((uint64_t)(h->root_cluster - 2U) * h->sectors_per_cluster);
   return (root_lba * (uint32_t)k_mut_block_size) + (idx * (uint32_t)k_mut_entry_bytes);
 }
 
@@ -363,7 +363,8 @@ static inline uint32_t root_byte(const ra8_fs_mount_t* h, uint32_t idx)
  */
 static inline uint32_t fat_byte(const ra8_fs_mount_t* h, uint32_t clus)
 {
-  return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_mut_block_size) + (clus * 4U);
+  return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_mut_block_size) +
+         ((uint64_t)clus * 4U);
 }
 
 /**
@@ -434,10 +435,11 @@ static inline uint32_t alloc_bitmap_used(const ra8_fs_mount_t* h)
   /* Partition-adjusted for the same reason as root_byte(): the formatter lays
    * the volume down inside an MBR partition, so a census that forgets the base
    * counts the pre-partition gap instead of the bitmap. */
-  const uint32_t bmp_lba = h->partition_base_lba + h->first_data_lba +
-                           ((bmp_clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
-  const uint32_t base    = bmp_lba * (uint32_t)k_mut_block_size;
-  uint32_t       used    = 0U;
+  const uint32_t bmp_lba =
+    h->partition_base_lba + h->first_data_lba +
+    ((uint64_t)(bmp_clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
+  const uint32_t base = bmp_lba * (uint32_t)k_mut_block_size;
+  uint32_t       used = 0U;
   for (uint32_t i = 0U; i < h->count_of_clusters; i++) {
     const uint8_t byte = s_disk.bytes[base + (i / (uint32_t)k_mut_bits_per_byte)];
     if (((byte >> (i % (uint32_t)k_mut_bits_per_byte)) & 1U) != 0U) {
@@ -470,9 +472,10 @@ static inline void alloc_bitmap_fill(const ra8_fs_mount_t* h)
 {
   const uint32_t entry_off = root_byte(h, (uint32_t)k_mut_root_bitmap_idx);
   const uint32_t bmp_clus  = disk_get_u32le(entry_off + (uint32_t)k_mut_strm_off_clus);
-  const uint32_t bmp_lba   = h->partition_base_lba + h->first_data_lba +
-                             ((bmp_clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
-  const uint32_t base      = bmp_lba * (uint32_t)k_mut_block_size;
+  const uint32_t bmp_lba =
+    h->partition_base_lba + h->first_data_lba +
+    ((uint64_t)(bmp_clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
+  const uint32_t base = bmp_lba * (uint32_t)k_mut_block_size;
   const uint32_t bytes =
     (h->count_of_clusters + (uint32_t)k_mut_bits_per_byte - 1U) / (uint32_t)k_mut_bits_per_byte;
   memset(&s_disk.bytes[base], (int)k_mut_mask_byte, (size_t)bytes);

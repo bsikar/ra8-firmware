@@ -73,7 +73,7 @@ void priv_fat_entry_apply_attr(uint8_t* entry, uint8_t set_mask, uint8_t clear_m
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint32_t lba, uint32_t off)
+priv_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint64_t lba, uint32_t off)
 {
   if (f->first_cluster >= k_cluster_first_data) {
     ra8_err_t err = priv_free_chain(handle, f->first_cluster);
@@ -81,14 +81,14 @@ priv_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint32_t lba, u
       return err;
     }
   }
-  f->first_cluster                         = 0;
-  f->cur_cluster                           = 0;
-  f->walk_cache_idx                        = 0;
-  f->walk_cache_cluster                    = 0; /* < 2: no read cache for a fresh file */
-  f->size_bytes                            = 0;
-  f->offset                                = 0;
-  uint8_t   buf[k_ra8_fs_bytes_per_sector] = {};
-  ra8_err_t err                            = priv_read_sector(handle, lba, buf);
+  f->first_cluster      = 0;
+  f->cur_cluster        = 0;
+  f->walk_cache_idx     = 0;
+  f->walk_cache_cluster = 0; /* < 2: no read cache for a fresh file */
+  f->size_bytes         = 0;
+  f->offset             = 0;
+  uint8_t* const buf    = priv_sec_walk();
+  ra8_err_t      err    = priv_read_sector(handle, lba, buf);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -137,7 +137,7 @@ priv_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint32_t lba, u
 RA8_INTERNAL
 static ra8_err_t priv_open_existing(ra8_fs_mount_t* handle,
                                     const uint8_t*  entry,
-                                    uint32_t        lba,
+                                    uint64_t        lba,
                                     uint32_t        off,
                                     ra8_fs_mode_t   mode,
                                     ra8_fs_file_t** out_file)
@@ -220,7 +220,7 @@ RA8_INTERNAL
 static void priv_init_new_file(ra8_fs_file_t*  f,
                                ra8_fs_mount_t* handle,
                                ra8_fs_mode_t   mode,
-                               uint32_t        free_lba,
+                               uint64_t        free_lba,
                                uint32_t        free_off)
 {
   f->mount              = handle;
@@ -294,7 +294,7 @@ static ra8_err_t priv_enter_subdir(const ra8_fs_mount_t* m,
     namebuf[i] = comp[i];
   }
   namebuf[len]                              = '\0';
-  uint32_t  lba                             = 0;
+  uint64_t  lba                             = 0;
   uint32_t  off                             = 0;
   uint8_t   entry[k_ra8_fs_dir_entry_bytes] = {};
   ra8_err_t err = priv_dir_lookup_any(m, cur, namebuf, &lba, &off, entry);
@@ -438,7 +438,7 @@ static ra8_err_t priv_create_new(ra8_fs_mount_t*  handle,
    * `priv_dir_commit()` because that same commit re-files an EXISTING entry for
    * `rename`, which must keep the creation date it already has. */
   priv_fat_entry_stamp_create(tmpl);
-  uint32_t lba = 0;
+  uint64_t lba = 0;
   uint32_t off = 0;
   err          = priv_dir_commit(handle, &plan, tmpl, &lba, &off);
   if (err != k_ra8_ok) {
@@ -470,7 +470,7 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
   if (rerr != k_ra8_ok) {
     return rerr;
   }
-  uint32_t        lba                             = 0;
+  uint64_t        lba                             = 0;
   uint32_t        off                             = 0;
   uint8_t         entry[k_ra8_fs_dir_entry_bytes] = {};
   const ra8_err_t err = priv_dir_lookup_any(handle, &parent, leaf, &lba, &off, entry);
@@ -524,8 +524,8 @@ static ra8_err_t priv_close_stamp(ra8_fs_file_t* file)
   if (m->type == k_ra8_fs_type_exfat) {
     return priv_exfat_flush_set(file);
   }
-  uint8_t   sec[k_ra8_fs_bytes_per_sector] = {};
-  ra8_err_t err                            = priv_read_sector(m, file->dir_entry_lba, sec);
+  uint8_t* const sec = priv_sec_walk();
+  ra8_err_t      err = priv_read_sector(m, file->dir_entry_lba, sec);
   if (err != k_ra8_ok) {
     return err;
   }

@@ -75,10 +75,11 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t size_bytes;   /**< File size in bytes (0 for directories). */
-  uint8_t  attr;         /**< The entry's own FAT attribute byte.     */
-  bool     is_directory; /**< true => path names a directory.         */
-  bool     exists;       /**< true => the path resolves to an entry.  */
+  uint64_t size_bytes;   /**< File size in bytes (0 for directories); 64-bit
+                              because an exFAT entry may exceed 4 GiB (#676). */
+  uint8_t  attr;         /**< The entry's own FAT attribute byte.    */
+  bool     is_directory; /**< true => path names a directory.        */
+  bool     exists;       /**< true => the path resolves to an entry. */
 } ra8_io_vfs_stat_t;
 
 /**

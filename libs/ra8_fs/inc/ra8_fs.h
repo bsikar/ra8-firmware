@@ -95,9 +95,18 @@
  * Limits (compile-time):
  *   - 4 concurrent open file handles (`k_ra8_fs_max_files`).
  *   - 2 concurrent mount points (`k_ra8_fs_max_mounts`).
- *   - File size up to 4 GiB - 1 (FAT32 maximum).
- *   - Sector size: 512 bytes (the only size we test against; BPB is
- *     validated to enforce this).
+ *   - File size: 64-bit on exFAT (#676) -- a file past 4 GiB is exactly what
+ *     exFAT exists for. FAT12/16/32 files stay capped at 4 GiB - 1
+ *     (`DIR_FileSize` is 32-bit; the format's own ceiling), enforced with
+ *     `k_ra8_err_invalid_size` at the FAT boundary.
+ *   - Sector size: 512 / 1024 / 2048 / 4096 bytes, taken from the backend's
+ *     reported block size and cross-checked against the BPB / VBR (#683).
+ *   - Media size: 64-bit LBAs end to end -- backend interface, partition
+ *     base, GPT entries -- so volumes past 2 TiB are addressable (#683).
+ *
+ * The 4Kn-sector and beyond-2-TiB paths are SIMULATION-VERIFIED ONLY (host
+ * tests over fake backends); no such medium has been on the bench. 512-byte
+ * sub-2-TiB media remain the hardware-proven configuration.
  *
  * ## Concurrency
  * The library owns three pieces of shared mutable state -- the file-handle
@@ -189,9 +198,9 @@ extern "C" {
  * @retval k_ra8_ok                    Volume formatted; ready to mount.
  * @retval k_ra8_err_null_ptr          `backend` or `opts` is NULL.
  * @retval k_ra8_err_invalid_arg       Backend has NULL callbacks, the reported
- *                                    block size is not 512, or
- *                                    `sectors_per_cluster` is non-zero and not
- *                                    a power of two in 1..128.
+ *                                    block size is not a power of two in
+ *                                    512..4096, or `sectors_per_cluster` is
+ *                                    non-zero and not a power of two in 1..128.
  * @retval k_ra8_err_not_supported     `opts->type` is unknown / not a writable
  *                                    filesystem, or the device is too small to
  *                                    hold a partitioned exFAT volume (the 1 MiB
@@ -454,6 +463,9 @@ ra8_fs_read(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_l
  * @retval k_ra8_ok                Wrote all bytes; size + dir entry updated.
  * @retval k_ra8_err_null_ptr      file or buf NULL.
  * @retval k_ra8_err_invalid_state file not opened for writing.
+ * @retval k_ra8_err_invalid_size  FAT volume and the write would push the file
+ *                                past 4 GiB - 1 (`DIR_FileSize` is 32-bit);
+ *                                exFAT files have no such cap (#676).
  * @retval k_ra8_err_no_mem        Volume out of free clusters.
  * @post On success the entry's `DIR_WrtTime` / `DIR_WrtDate` name this write.
  * @since 0.1.0
@@ -502,17 +514,18 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
 
 /**
  * @brief Move the file offset to `offset_bytes` (clamped to size).
+ * @details 64-bit so any position in a >4 GiB exFAT file is reachable (#676).
  * @retval k_ra8_ok            Seek committed.
  * @retval k_ra8_err_null_ptr  file is NULL.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fs_seek(ra8_fs_file_t* file, uint32_t offset_bytes);
+[[nodiscard]] ra8_err_t ra8_fs_seek(ra8_fs_file_t* file, uint64_t offset_bytes);
 
-/** @brief Report the current offset. @since 0.1.0 */
-[[nodiscard]] ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint32_t* out_offset);
+/** @brief Report the current offset (64-bit; see ::ra8_fs_seek). @since 0.1.0 */
+[[nodiscard]] ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint64_t* out_offset);
 
-/** @brief Report the file's size in bytes. @since 0.1.0 */
-[[nodiscard]] ra8_err_t ra8_fs_size(const ra8_fs_file_t* file, uint32_t* out_bytes);
+/** @brief Report the file's size in bytes (64-bit on exFAT, #676). @since 0.1.0 */
+[[nodiscard]] ra8_err_t ra8_fs_size(const ra8_fs_file_t* file, uint64_t* out_bytes);
 
 /* =============================================================================
  * Public API -- metadata

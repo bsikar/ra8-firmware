@@ -114,7 +114,7 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -126,7 +126,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -138,7 +138,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -180,7 +180,7 @@ typedef struct {
 
 static inject_disk_t s_inject = {};
 
-static ra8_err_t inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->fail_read_lba != (uint32_t)k_fio_lba_none && lba == d->fail_read_lba) {
@@ -201,7 +201,7 @@ static ra8_err_t inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t inj_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->writes_fail != 0U) {
@@ -219,7 +219,7 @@ static ra8_err_t inj_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t inj_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   *block_count     = d->block_count;
@@ -396,9 +396,9 @@ static void test_read_seek_tell_size_not_in_use(void)
   uint32_t got         = k_fio_poison_out;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_read(&closed, buf, sizeof(buf), &got)); /* 188 */
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_seek(&closed, 0U));                     /* 495 */
-  uint32_t pos = k_fio_poison_out;
+  uint64_t pos = k_fio_poison_out;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_tell(&closed, &pos)); /* 533 */
-  uint32_t sz = k_fio_poison_out;
+  uint64_t sz = k_fio_poison_out;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_size(&closed, &sz)); /* 567 */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -432,7 +432,7 @@ static void test_write_zero_length(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "ZERO.TXT", k_ra8_fs_mode_write, &f));
   uint8_t byte = (uint8_t)'0';
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, &byte, 0U)); /* 419 */
-  uint32_t sz = k_fio_poison_out;
+  uint64_t sz = k_fio_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &sz));
   TEST_ASSERT_EQ(0, sz);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));

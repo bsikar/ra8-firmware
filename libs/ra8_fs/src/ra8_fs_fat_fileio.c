@@ -97,8 +97,8 @@ RA8_INTERNAL
 static ra8_err_t
 priv_read_one_chunk(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* out_take)
 {
-  const uint32_t cluster_bytes   = file->mount->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
-  const uint32_t cluster_idx_now = file->offset / cluster_bytes;
+  const uint32_t cluster_bytes   = priv_cluster_bytes(file->mount);
+  const uint32_t cluster_idx_now = (uint32_t)(file->offset / cluster_bytes);
   uint32_t       target          = 0;
   /* exFAT contiguous files (NoFatChain) have no valid FAT chain: clusters are
    * sequential from the first. FAT files (no_fat_chain == 0) walk the chain. */
@@ -136,16 +136,16 @@ priv_read_one_chunk(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint3
     file->walk_cache_cluster = target;
   }
   file->cur_cluster                 = target;
-  const uint32_t  off_in_cluster    = file->offset % cluster_bytes;
-  const uint32_t  sector_in_cluster = off_in_cluster / k_ra8_fs_bytes_per_sector;
-  const uint32_t  off_in_sector     = off_in_cluster % k_ra8_fs_bytes_per_sector;
-  const uint32_t  lba = priv_cluster_to_lba(file->mount, file->cur_cluster) + sector_in_cluster;
-  uint8_t         sec[k_ra8_fs_bytes_per_sector] = {};
-  const ra8_err_t err                            = priv_read_sector(file->mount, lba, sec);
+  const uint32_t  off_in_cluster    = (uint32_t)(file->offset % cluster_bytes);
+  const uint32_t  sector_in_cluster = off_in_cluster / priv_bps(file->mount);
+  const uint32_t  off_in_sector     = off_in_cluster % priv_bps(file->mount);
+  const uint64_t  lba = priv_cluster_to_lba(file->mount, file->cur_cluster) + sector_in_cluster;
+  uint8_t* const  sec = priv_sec_io();
+  const ra8_err_t err = priv_read_sector(file->mount, lba, sec);
   if (err != k_ra8_ok) {
     return err;
   }
-  uint32_t take = k_ra8_fs_bytes_per_sector - off_in_sector;
+  uint32_t take = priv_bps(file->mount) - off_in_sector;
   if (take > remaining) {
     take = remaining;
   }
@@ -194,7 +194,7 @@ RA8_INTERNAL
 static ra8_err_t
 priv_read_span(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* out_take)
 {
-  const uint32_t valid =
+  const uint64_t valid =
     (file->mount->type == k_ra8_fs_type_exfat) ? file->valid_bytes : file->size_bytes;
   if (file->offset >= valid) {
     for (uint32_t i = 0U; i < remaining; i++) {
@@ -204,9 +204,9 @@ priv_read_span(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* 
     return k_ra8_ok;
   }
   uint32_t       want = remaining;
-  const uint32_t cap  = valid - file->offset;
-  if (want > cap) {
-    want = cap;
+  const uint64_t cap  = valid - file->offset;
+  if ((uint64_t)want > cap) {
+    want = (uint32_t)cap;
   }
   return priv_read_one_chunk(file, buf, want, out_take);
 }
@@ -254,9 +254,10 @@ priv_read_locked(ra8_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* 
   if (file->offset >= file->size_bytes || max_len == 0U) {
     return k_ra8_ok;
   }
-  uint32_t remaining = file->size_bytes - file->offset;
-  if (remaining > max_len) {
-    remaining = max_len;
+  const uint64_t left      = file->size_bytes - file->offset;
+  uint32_t       remaining = max_len;
+  if ((uint64_t)max_len > left) {
+    remaining = (uint32_t)left;
   }
   uint32_t produced = 0;
   while (remaining > 0U) {
@@ -338,13 +339,13 @@ priv_walk_grow(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* 
 
 /** @brief Implementation of `priv_write_into_sector()` -- one read-modify-write. */
 ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
-                                 uint32_t              lba,
+                                 uint64_t              lba,
                                  uint32_t              off_in_sector,
                                  const uint8_t*        src,
                                  uint32_t              put)
 {
-  uint8_t   sec[k_ra8_fs_bytes_per_sector] = {};
-  ra8_err_t err                            = priv_read_sector(m, lba, sec);
+  uint8_t* const sec = priv_sec_io();
+  ra8_err_t      err = priv_read_sector(m, lba, sec);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -453,24 +454,24 @@ RA8_INTERNAL
 static ra8_err_t priv_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
 {
   ra8_fs_mount_t* m             = file->mount;
-  const uint32_t  cluster_bytes = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
+  const uint32_t  cluster_bytes = priv_cluster_bytes(m);
   uint32_t        consumed      = 0;
   /* A write may allocate/grow the chain, invalidating any cached read waypoint. */
   file->walk_cache_cluster = 0;
   write_walk_t way         = {.cluster = file->first_cluster, .index = 0U};
   while (consumed < len) {
-    const uint32_t cluster_idx_now = file->offset / cluster_bytes;
+    const uint32_t cluster_idx_now = (uint32_t)(file->offset / cluster_bytes);
     uint32_t       cur             = 0;
     ra8_err_t      err             = priv_write_position(file, &way, cluster_idx_now, &cur);
     if (err != k_ra8_ok) {
       return err;
     }
     file->cur_cluster                = cur;
-    const uint32_t off_in_cluster    = file->offset % cluster_bytes;
-    const uint32_t sector_in_cluster = off_in_cluster / k_ra8_fs_bytes_per_sector;
-    const uint32_t off_in_sector     = off_in_cluster % k_ra8_fs_bytes_per_sector;
-    const uint32_t lba = priv_cluster_to_lba(m, file->cur_cluster) + sector_in_cluster;
-    uint32_t       put = k_ra8_fs_bytes_per_sector - off_in_sector;
+    const uint32_t off_in_cluster    = (uint32_t)(file->offset % cluster_bytes);
+    const uint32_t sector_in_cluster = off_in_cluster / priv_bps(m);
+    const uint32_t off_in_sector     = off_in_cluster % priv_bps(m);
+    const uint64_t lba = priv_cluster_to_lba(m, file->cur_cluster) + sector_in_cluster;
+    uint32_t       put = priv_bps(m) - off_in_sector;
     if (put > (len - consumed)) {
       put = len - consumed;
     }
@@ -534,17 +535,26 @@ static ra8_err_t priv_write_locked(ra8_fs_file_t* file, const uint8_t* buf, uint
     file->dirty = 1U;
     return priv_exfat_flush_set(file);
   }
+  /* The FAT boundary of #676: `DIR_FileSize` is 32-bit, so a write that would
+   * push the file past 4 GiB - 1 cannot be recorded and is refused whole --
+   * truncating the count silently would corrupt the entry on the next flush.
+   * exFAT never reaches this test (its branch returned above). */
+  if (len > ((uint64_t)k_ra8_fs_fat_max_file_bytes - file->offset)) {
+    return k_ra8_err_invalid_size;
+  }
   ra8_err_t err = priv_write_stream(file, buf, len);
   if (err != k_ra8_ok) {
     return err;
   }
-  ra8_fs_mount_t* m                                 = file->mount;
-  uint8_t         dirsec[k_ra8_fs_bytes_per_sector] = {};
-  err = priv_read_sector(m, file->dir_entry_lba, dirsec);
+  ra8_fs_mount_t* m      = file->mount;
+  uint8_t* const  dirsec = priv_sec_walk();
+  err                    = priv_read_sector(m, file->dir_entry_lba, dirsec);
   if (err != k_ra8_ok) {
     return err;
   }
-  priv_entry_set_cluster_size(&dirsec[file->dir_entry_idx], file->first_cluster, file->size_bytes);
+  priv_entry_set_cluster_size(&dirsec[file->dir_entry_idx],
+                              file->first_cluster,
+                              (uint32_t)file->size_bytes);
   /* The contents just changed, so the modification time has to move with them
    * (#601). Doing it here as well as at close means a writer that is cut off
    * mid-stream still leaves an mtime describing what is actually on the card,
@@ -647,7 +657,7 @@ priv_write_file_locked(ra8_fs_mount_t* handle, const char* path, const uint8_t* 
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_seek_locked(ra8_fs_file_t* file, uint32_t offset_bytes)
+static ra8_err_t priv_seek_locked(ra8_fs_file_t* file, uint64_t offset_bytes)
 {
   if (file == nullptr) {
     return k_ra8_err_null_ptr;
@@ -655,7 +665,7 @@ static ra8_err_t priv_seek_locked(ra8_fs_file_t* file, uint32_t offset_bytes)
   if (file->in_use == 0U) {
     return k_ra8_err_invalid_state;
   }
-  uint32_t target = offset_bytes;
+  uint64_t target = offset_bytes;
   if (target > file->size_bytes) {
     target = file->size_bytes;
   }
@@ -688,7 +698,7 @@ static ra8_err_t priv_seek_locked(ra8_fs_file_t* file, uint32_t offset_bytes)
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_tell_locked(const ra8_fs_file_t* file, uint32_t* out_offset)
+static ra8_err_t priv_tell_locked(const ra8_fs_file_t* file, uint64_t* out_offset)
 {
   if (file == nullptr || out_offset == nullptr) {
     return k_ra8_err_null_ptr;
@@ -725,7 +735,7 @@ static ra8_err_t priv_tell_locked(const ra8_fs_file_t* file, uint32_t* out_offse
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_size_locked(const ra8_fs_file_t* file, uint32_t* out_bytes)
+static ra8_err_t priv_size_locked(const ra8_fs_file_t* file, uint64_t* out_bytes)
 {
   if (file == nullptr || out_bytes == nullptr) {
     return k_ra8_err_null_ptr;
@@ -771,7 +781,7 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
 }
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_seek(ra8_fs_file_t* file, uint32_t offset_bytes)
+ra8_err_t ra8_fs_seek(ra8_fs_file_t* file, uint64_t offset_bytes)
 {
   priv_lock_acquire();
   const ra8_err_t err = priv_seek_locked(file, offset_bytes);
@@ -780,7 +790,7 @@ ra8_err_t ra8_fs_seek(ra8_fs_file_t* file, uint32_t offset_bytes)
 }
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint32_t* out_offset)
+ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint64_t* out_offset)
 {
   priv_lock_acquire();
   const ra8_err_t err = priv_tell_locked(file, out_offset);
@@ -789,7 +799,7 @@ ra8_err_t ra8_fs_tell(const ra8_fs_file_t* file, uint32_t* out_offset)
 }
 
 RA8_OWNS_RESOURCE("ra8_fs_lock")
-ra8_err_t ra8_fs_size(const ra8_fs_file_t* file, uint32_t* out_bytes)
+ra8_err_t ra8_fs_size(const ra8_fs_file_t* file, uint64_t* out_bytes)
 {
   priv_lock_acquire();
   const ra8_err_t err = priv_size_locked(file, out_bytes);

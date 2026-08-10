@@ -166,7 +166,7 @@ static int32_t s_wr_remaining = (int32_t)k_wc_wr_never;
  *
  * @since 0.1.0
  */
-static inline ra8_err_t wc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static inline ra8_err_t wc_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   if (s_rd_remaining == 0) {
     return k_ra8_err_out_of_range;
@@ -201,7 +201,7 @@ static inline ra8_err_t wc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t
  *
  * @since 0.1.0
  */
-static inline ra8_err_t wc_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static inline ra8_err_t wc_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   if (s_wr_remaining == 0) {
     return k_ra8_err_out_of_range;
@@ -234,7 +234,7 @@ static inline ra8_err_t wc_write(void* ctx, uint32_t lba, uint32_t count, const 
  *
  * @since 0.1.0
  */
-static inline ra8_err_t wc_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static inline ra8_err_t wc_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const wc_disk_t* d = (const wc_disk_t*)ctx;
   *block_count       = d->block_count;
@@ -324,8 +324,8 @@ static inline void build_exfat_volume(void)
  */
 static inline uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
 {
-  const uint32_t root_lba =
-    h->partition_base_lba + h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
+  const uint32_t root_lba = h->partition_base_lba + h->first_data_lba +
+                            ((uint64_t)(h->root_cluster - 2U) * h->sectors_per_cluster);
   return (root_lba * (uint32_t)k_wc_block_size) + (idx * (uint32_t)k_wc_entry_bytes);
 }
 
@@ -346,7 +346,8 @@ static inline uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
  */
 static inline uint32_t fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
-  return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_wc_block_size) + (clus * 4U);
+  return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_wc_block_size) +
+         ((uint64_t)clus * 4U);
 }
 
 /**

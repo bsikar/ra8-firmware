@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **251**
-- Total compound decisions in scope: **1329**
-- Decisions at 100% MC/DC (`yes`): **1149**
+- Source files with at least one decision: **253**
+- Total compound decisions in scope: **1333**
+- Decisions at 100% MC/DC (`yes`): **1153**
 - Decisions partially covered (`partial`): **74**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **86.46%**
+- Coverage rate (yes / total): **86.50%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **89**
-- Reachable-condition denominator (total - deactivated): **1240**
-- **Reachable MC/DC rate**: **92.66%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1244**
+- **Reachable MC/DC rate**: **92.68%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -262,8 +262,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_mipi_dsi_cmd | 10 | 10 | 0 | 0 |
 | ra8_zoom | 10 | 10 | 0 | 0 |
 | ra8_esp_hosted_osi_absent | 9 | 9 | 0 | 0 |
+| ra8_fs_fat_mount | 9 | 9 | 0 | 0 |
 | ra8_epaper_geom | 8 | 8 | 0 | 0 |
-| ra8_fs_fat_mount | 8 | 8 | 0 | 0 |
 | ra8_pdg | 8 | 8 | 0 | 0 |
 | ra8_reflow_layout | 8 | 8 | 0 | 0 |
 | ra8_rsip_asym | 8 | 8 | 0 | 0 |
@@ -276,6 +276,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_i3c | 7 | 7 | 0 | 0 |
 | ra8_mpu | 7 | 7 | 0 | 0 |
 | ra8_ota_parse | 7 | 7 | 0 | 0 |
+| ra8_sdmmc_spi_io | 7 | 7 | 0 | 0 |
 | ra8_tls | 7 | 7 | 0 | 0 |
 | ra8_dfu_boot | 6 | 6 | 0 | 0 |
 | ra8_epub_miniz_alloc | 6 | 6 | 0 | 0 |
@@ -284,7 +285,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_i2c | 6 | 6 | 0 | 0 |
 | ra8_mipi_dsi | 6 | 6 | 0 | 0 |
 | ra8_sci | 6 | 6 | 0 | 0 |
-| ra8_sdmmc_spi_io | 6 | 6 | 0 | 0 |
 | ra8_ssie | 6 | 6 | 0 | 0 |
 | ra8_usb_pal | 6 | 6 | 0 | 0 |
 | ra8_usb_paud | 6 | 6 | 0 | 0 |
@@ -415,6 +415,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_fs_fat_exfat_fmt | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_exfat_label | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_exfat_openw | 1 | 1 | 0 | 0 |
+| ra8_fs_fat_exfat_read | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_lock | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_space | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_truncate | 1 | 1 | 0 | 0 |
@@ -422,6 +423,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_gfx_blit_gray4 | 1 | 1 | 0 | 0 |
 | ra8_glcdc_layer | 1 | 1 | 0 | 0 |
 | ra8_img_arena | 1 | 1 | 0 | 0 |
+| ra8_io_blockdev | 1 | 1 | 0 | 0 |
 | ra8_isr | 1 | 1 | 0 | 0 |
 | ra8_lvd_runtime | 1 | 1 | 0 | 0 |
 | ra8_mipi_csi | 1 | 1 | 0 | 0 |

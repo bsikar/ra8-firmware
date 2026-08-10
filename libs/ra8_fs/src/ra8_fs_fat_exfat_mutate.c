@@ -24,14 +24,14 @@
 
 /* `priv_exfat_bitmap_clear()`: see header for the documented contract. */
 ra8_err_t
-priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint32_t count)
+priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus, uint32_t count)
 {
-  uint32_t loaded                         = UINT32_MAX;
-  uint8_t  sec[k_ra8_fs_bytes_per_sector] = {};
+  uint64_t       loaded = UINT64_MAX;
+  uint8_t* const sec    = priv_sec_io();
   for (uint32_t k = 0U; k < count; k++) {
     const uint32_t idx  = (clus - k_cluster_first_data) + k;
-    const uint32_t lba  = bmp_lba + ((idx >> k_exfat_bit_shift) / k_ra8_fs_bytes_per_sector);
-    const uint32_t byte = (idx >> k_exfat_bit_shift) % k_ra8_fs_bytes_per_sector;
+    const uint64_t lba  = bmp_lba + ((idx >> k_exfat_bit_shift) / priv_bps(m));
+    const uint32_t byte = (idx >> k_exfat_bit_shift) % priv_bps(m);
     const uint32_t bit  = idx & k_exfat_bit_mask;
     ra8_err_t      e    = priv_exfat_bmp_switch(m, lba, &loaded, sec);
     if (e != k_ra8_ok) {
@@ -269,23 +269,25 @@ priv_exfat_put_entry(const ra8_fs_mount_t* m, const exfat_setpos_t* where, const
 ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
 {
   const uint32_t first = priv_rd32(&strm[k_exfat_strm_off_clus]);
-  const uint32_t size  = priv_rd32(&strm[k_exfat_strm_off_dlen]);
+  /* The full 64-bit DataLength: reading only the low word here under-counted a
+   * >4 GiB file's clusters and leaked the rest on unlink/truncate (#676). */
+  const uint64_t size = priv_rd64(&strm[k_exfat_strm_off_dlen]);
   if (first < k_cluster_first_data) {
     return k_ra8_ok;
   }
   if (size == 0U) {
     return k_ra8_ok;
   }
-  uint32_t  bmp_lba = 0U;
+  uint64_t  bmp_lba = 0U;
   ra8_err_t e       = priv_exfat_bitmap_lba(m, &bmp_lba);
   if (e != k_ra8_ok) {
     return e; /* GCOVR_EXCL_LINE */
   }
-  const uint32_t cluster_bytes = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
+  const uint32_t cluster_bytes = priv_cluster_bytes(m);
   const uint8_t  nofat =
     ((strm[k_exfat_strm_off_flags] & (uint8_t)k_exfat_secflag_no_fat) != 0U) ? 1U : 0U;
   if (nofat == 1U) {
-    const uint32_t count = (size + cluster_bytes - 1U) / cluster_bytes;
+    const uint32_t count = (uint32_t)((size + cluster_bytes - 1U) / cluster_bytes);
     return priv_exfat_bitmap_clear(m, bmp_lba, first, count);
   }
   uint32_t clus = first;
@@ -751,7 +753,7 @@ static ra8_err_t priv_exfat_list_emit(const ra8_fs_mount_t* m,
    * reporting it as a size would tell every caller that an empty folder held
    * a cluster's worth of bytes. FAT reports 0 for a directory and so does
    * ra8_fs_stat(); this is the third place that has to agree (#605). */
-  uint32_t size = priv_rd32(&strm[k_exfat_strm_off_dlen]);
+  uint64_t size = priv_rd64(&strm[k_exfat_strm_off_dlen]);
   if ((attr & (uint8_t)k_exfat_attr_directory) != 0U) {
     size = 0U;
   }

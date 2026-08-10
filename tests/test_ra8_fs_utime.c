@@ -111,9 +111,10 @@ static uint32_t fat_file_off(const ra8_fs_mount_t* h)
 /** @brief Byte offset of the exFAT File entry (0x85) in the root cluster. */
 static uint32_t exfat_file_off(const ra8_fs_mount_t* h)
 {
-  const uint32_t root = (h->partition_base_lba + h->first_data_lba +
-                         ((h->root_cluster - (uint32_t)k_ut_first_clus) * h->sectors_per_cluster)) *
-                        (uint32_t)k_fmt_block_size;
+  const uint32_t root =
+    (h->partition_base_lba + h->first_data_lba +
+     ((uint64_t)(h->root_cluster - (uint32_t)k_ut_first_clus) * h->sectors_per_cluster)) *
+    (uint32_t)k_fmt_block_size;
   const uint32_t per =
     (h->sectors_per_cluster * (uint32_t)k_fmt_block_size) / (uint32_t)k_ut_entry_size;
   for (uint32_t e = 0U; e < per; e++) {

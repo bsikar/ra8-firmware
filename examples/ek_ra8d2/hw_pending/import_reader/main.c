@@ -513,13 +513,13 @@ imp_read_cache(ra8_fs_mount_t* mount, const char* path, uint32_t* out_len)
   if (err != k_ra8_ok) {
     return err;
   }
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   err           = ra8_fs_size(file, &size);
   if (err != k_ra8_ok) {
     (void)ra8_fs_close(file);
     return err;
   }
-  if (size > (uint32_t)sizeof(s_imp_readback)) {
+  if (size > (uint64_t)sizeof(s_imp_readback)) {
     (void)ra8_fs_close(file);
     return k_ra8_err_no_mem;
   }

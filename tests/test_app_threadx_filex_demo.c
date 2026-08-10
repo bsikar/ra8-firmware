@@ -71,7 +71,7 @@ static void reset_world(void)
  * shape, not a full FAT image).
  * ------------------------------------------------------------------------- */
 
-static ra8_err_t mock_read_block(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mock_read_block(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   (void)lba;
@@ -82,7 +82,7 @@ static ra8_err_t mock_read_block(void* ctx, uint32_t lba, uint32_t count, uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mock_write_block(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mock_write_block(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   (void)lba;
@@ -91,7 +91,7 @@ static ra8_err_t mock_write_block(void* ctx, uint32_t lba, uint32_t count, const
   return k_ra8_ok;
 }
 
-static ra8_err_t mock_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mock_get_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   if ((block_count == nullptr) || (block_size == nullptr)) {

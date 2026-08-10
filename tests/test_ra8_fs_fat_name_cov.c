@@ -120,7 +120,7 @@ static ncov_mem_disk_t s_ncov_disk = {};
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t ncov_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   ncov_mem_disk_t* d = (ncov_mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -149,7 +149,7 @@ static ra8_err_t ncov_mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t*
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t ncov_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   ncov_mem_disk_t* d = (ncov_mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -175,7 +175,7 @@ static ra8_err_t ncov_mem_write(void* ctx, uint32_t lba, uint32_t count, const u
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t ncov_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   ncov_mem_disk_t* d = (ncov_mem_disk_t*)ctx;
   *block_count       = d->block_count;
@@ -236,7 +236,7 @@ static ncov_inject_disk_t s_ncov_inject = {};
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t ncov_inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   ncov_inject_disk_t* d = (ncov_inject_disk_t*)ctx;
   if (d->reads_left == 0U) {
@@ -271,7 +271,7 @@ static ra8_err_t ncov_inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_t*
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_inj_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t ncov_inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   ncov_inject_disk_t* d = (ncov_inject_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -297,7 +297,7 @@ static ra8_err_t ncov_inj_write(void* ctx, uint32_t lba, uint32_t count, const u
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_inj_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t ncov_inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   ncov_inject_disk_t* d = (ncov_inject_disk_t*)ctx;
   *block_count          = d->block_count;

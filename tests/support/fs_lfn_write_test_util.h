@@ -323,7 +323,7 @@ typedef struct {
  * @note Not thread-safe against the same @p ctx.
  * @since 0.1.0
  */
-static inline void collect_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static inline void collect_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;

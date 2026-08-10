@@ -99,7 +99,7 @@ static uint8_t    s_scratch[k_scratch_cap];
 static uint8_t    s_epub[k_epub_cap];
 static size_t     s_epub_len;
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -111,7 +111,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -123,7 +123,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   *block_count     = disk->block_count;
@@ -249,7 +249,7 @@ assert_cache_bytes(ra8_fs_mount_t* mount, const char* path, const uint8_t* want,
 {
   ra8_fs_file_t* file = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, path, k_ra8_fs_mode_read, &file));
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(file, &size));
   TEST_ASSERT_EQ(len, size);
   uint8_t  got_buf[k_read_cap];
@@ -440,7 +440,7 @@ static void test_compile_error_leaves_no_cache(void)
   /* Source still readable, unmodified. */
   ra8_fs_file_t* src = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, "BOOK.EPB", k_ra8_fs_mode_read, &src));
-  uint32_t src_size = 0U;
+  uint64_t src_size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(src, &src_size));
   TEST_ASSERT_EQ(s_epub_len, src_size);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(src));

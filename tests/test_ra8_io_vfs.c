@@ -189,7 +189,7 @@ static void test_rename_unlink(void)
 }
 
 /** @brief listdir callback: count entries. */
-static void count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static void count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)name;
   (void)attr;

@@ -111,7 +111,7 @@ static void test_reopen_write_truncates(void)
 
   /* Re-open in write mode: exercises priv_open_existing -> priv_truncate_existing. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "DATA.TXT", k_ra8_fs_mode_write, &f));
-  uint32_t sz = (uint32_t)k_stale_sentinel;
+  uint64_t sz = (uint32_t)k_stale_sentinel;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &sz));
   TEST_ASSERT_EQ(0U, sz); /* truncated to empty */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -166,7 +166,7 @@ static void test_open_append_mode(void)
 
   /* Append mode: covers line 148 (f->offset = f->size_bytes). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "APND.TXT", k_ra8_fs_mode_append, &f));
-  uint32_t pos = 0U;
+  uint64_t pos = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &pos));
   TEST_ASSERT_EQ(4U, pos);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));

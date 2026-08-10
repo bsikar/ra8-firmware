@@ -137,7 +137,7 @@ static void disk_wr32(uint32_t off, uint32_t v)
 static uint32_t fat16_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
   return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_fmt_block_size) +
-         (clus * (uint32_t)k_chk_fat16_ent);
+         ((uint64_t)clus * (uint32_t)k_chk_fat16_ent);
 }
 
 /** @brief Absolute byte offset of the root-dir entry named @p n11, or 0. */
@@ -163,7 +163,7 @@ static uint32_t fat_root_entry(const ra8_fs_mount_t* h, const char* n11)
 static uint32_t exfat_clus_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
   const uint32_t vlba =
-    h->first_data_lba + ((clus - (uint32_t)k_chk_first_clus) * h->sectors_per_cluster);
+    h->first_data_lba + ((uint64_t)(clus - (uint32_t)k_chk_first_clus) * h->sectors_per_cluster);
   return (h->partition_base_lba + vlba) * (uint32_t)k_fmt_block_size;
 }
 

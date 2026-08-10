@@ -149,7 +149,7 @@ static int32_t s_rd_remaining = (int32_t)k_rc_rd_never;
  *
  * @since 0.1.0
  */
-static ra8_err_t rc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t rc_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   if (s_rd_remaining == (int32_t)k_rc_rd_at_0) {
     return k_ra8_err_out_of_range;
@@ -184,7 +184,7 @@ static ra8_err_t rc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  *
  * @since 0.1.0
  */
-static ra8_err_t rc_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t rc_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   rc_disk_t* d = (rc_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -211,7 +211,7 @@ static ra8_err_t rc_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t
  *
  * @since 0.1.0
  */
-static ra8_err_t rc_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t rc_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const rc_disk_t* d = (const rc_disk_t*)ctx;
   *block_count       = d->block_count;
@@ -324,8 +324,8 @@ static uint32_t part_base_lba(void)
  */
 static uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
 {
-  const uint32_t root_lba =
-    h->partition_base_lba + h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
+  const uint32_t root_lba = h->partition_base_lba + h->first_data_lba +
+                            ((uint64_t)(h->root_cluster - 2U) * h->sectors_per_cluster);
   return (root_lba * (uint32_t)k_rc_block_size) + (idx * (uint32_t)k_rc_entry_bytes);
 }
 
@@ -346,7 +346,8 @@ static uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
  */
 static uint32_t fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
-  return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_rc_block_size) + (clus * 4U);
+  return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_rc_block_size) +
+         ((uint64_t)clus * 4U);
 }
 
 /**
@@ -880,7 +881,7 @@ static void test_open_write_mode_dispatches(void)
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "X.TXT", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_NOT_NULL(f);
-  uint32_t size = 1U;
+  uint64_t size = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(0U, size);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));

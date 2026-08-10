@@ -79,7 +79,7 @@ static ter_disk_t s_disk = {};
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static ra8_err_t ter_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t ter_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   ter_disk_t* d = (ter_disk_t*)ctx;
   d->reads++;
@@ -110,7 +110,7 @@ static ra8_err_t ter_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static ra8_err_t ter_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t ter_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   ter_disk_t* d = (ter_disk_t*)ctx;
   d->writes++;
@@ -140,7 +140,7 @@ static ra8_err_t ter_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
  * @note Trivially thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ter_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t ter_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const ter_disk_t* d = (const ter_disk_t*)ctx;
   *block_count        = d->block_count;

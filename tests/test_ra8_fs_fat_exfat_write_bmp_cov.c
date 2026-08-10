@@ -231,7 +231,7 @@ static void test_bmp_switch_write_fails(void)
   /* Arm: fail the very next write. */
   s_wr_remaining = (int32_t)k_wc_wr_at_w1;
 
-  uint32_t        loaded               = h->first_fat_lba;
+  uint64_t        loaded               = h->first_fat_lba;
   uint8_t         sec[k_wc_block_size] = {};
   const ra8_err_t r = priv_exfat_bmp_switch(h, h->first_fat_lba + 1U, &loaded, sec);
   TEST_ASSERT(r != k_ra8_ok);
@@ -273,7 +273,7 @@ static void test_bmp_switch_sector_change(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
   /* No faults -- both write (flush old) and read (load new) must succeed. */
-  uint32_t loaded               = h->first_fat_lba;
+  uint64_t loaded               = h->first_fat_lba;
   uint8_t  sec[k_wc_block_size] = {};
   TEST_ASSERT_EQ(k_ra8_ok, priv_exfat_bmp_switch(h, h->first_fat_lba + 1U, &loaded, sec));
 

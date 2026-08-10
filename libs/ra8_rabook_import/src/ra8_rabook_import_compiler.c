@@ -185,9 +185,12 @@ static ra8_err_t s_stream_open(const ra8_rabook_import_compiler_ctx_t* ctx,
   /* ra8_fs_size cannot fail on the handle ra8_fs_open just returned (in_use
    * set, both out-params non-NULL); on any future contract change `size`
    * stays 0 and s_cache_bind rejects it as invalid_size. */
-  uint32_t size = 0U;
-  (void)ra8_fs_size(ss->file, &size);
-  err = s_cache_bind(ctx, ss, size);
+  uint64_t size64 = 0U;
+  (void)ra8_fs_size(ss->file, &size64);
+  /* Import sources are sized in 32 bits; an over-4-GiB source is clamped to
+   * the reject path (0 -> invalid_size in the bind below). */
+  const uint32_t size = (size64 <= (uint64_t)UINT32_MAX) ? (uint32_t)size64 : 0U;
+  err                 = s_cache_bind(ctx, ss, size);
   if (err == k_ra8_ok) {
     const ra8_epub_stream_media_t media = {
       .read = ra8_vmem_stream_read,
@@ -275,8 +278,9 @@ static ra8_err_t s_read_whole_file(ra8_fs_mount_t* mount,
   }
   /* ra8_fs_size cannot fail on a just-opened handle; a lying 0 simply reads 0
    * bytes below and the dispatch rejects the empty source. */
-  uint32_t size = 0U;
-  (void)ra8_fs_size(file, &size);
+  uint64_t size64 = 0U;
+  (void)ra8_fs_size(file, &size64);
+  const uint32_t size = (size64 <= (uint64_t)UINT32_MAX) ? (uint32_t)size64 : UINT32_MAX;
   if (size > cap) {
     /* Transport overflow: the source cannot fit the cross-core buffer. Report
      * no_mem (an offload-failure class) so the streamed in-core fallback --

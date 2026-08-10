@@ -93,7 +93,7 @@ static uint8_t s_cov_exfat_blk[(size_t)k_ra8_io_block_size_bytes];
  *
  * @since 0.1.0
  */
-static ra8_err_t mock_read_first_fail(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mock_read_first_fail(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   (void)lba;

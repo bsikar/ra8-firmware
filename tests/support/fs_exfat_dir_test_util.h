@@ -141,7 +141,7 @@ typedef struct {
 static inline uint32_t clus_byte(const ra8_fs_mount_t* h, uint32_t clus)
 {
   const uint32_t lba = h->partition_base_lba + h->first_data_lba +
-                       ((clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
+                       ((uint64_t)(clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
   return lba * (uint32_t)k_mut_block_size;
 }
 
@@ -892,7 +892,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
-static inline void name_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static inline void name_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   name_ctx_t* n = (name_ctx_t*)ctx;
   if (n->count < (uint32_t)k_chk_list_cap) {

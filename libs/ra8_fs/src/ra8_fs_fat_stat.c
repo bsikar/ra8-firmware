@@ -165,7 +165,7 @@ static ra8_err_t priv_stat_exfat(const ra8_fs_mount_t* m, const char* path, ra8_
   out->attr          = attr;
   out->is_directory  = (attr & (uint8_t)k_ra8_fs_attr_directory) != 0U;
   out->first_cluster = priv_rd32(&strm[k_exfat_strm_off_clus]);
-  out->size_bytes    = priv_rd32(&strm[k_exfat_strm_off_dlen]);
+  out->size_bytes    = priv_rd64(&strm[k_exfat_strm_off_dlen]);
   if (out->is_directory) {
     out->size_bytes = 0U;
   }
@@ -211,7 +211,7 @@ static ra8_err_t priv_stat_fat(const ra8_fs_mount_t* handle, const char* path, r
   }
   uint8_t       name83[k_max_8_3_name]          = {};
   const uint8_t have83                          = priv_path_to_83(leaf, name83);
-  uint32_t      lba                             = 0U;
+  uint64_t      lba                             = 0U;
   uint32_t      off                             = 0U;
   uint8_t       entry[k_ra8_fs_dir_entry_bytes] = {};
   ra8_err_t     err                             = k_ra8_err_not_found;

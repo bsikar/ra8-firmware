@@ -206,9 +206,10 @@ typedef enum : uint8_t {
  *          per-sector body of `priv_dir_find_long`, extracted so both the
  *          scan and the walk stay under the function-size / complexity gates.
  *
+ * @param[in]     m             Mounted volume (entries-per-sector bound).
  * @param[in]     needle        Requested name as UTF-16 code units.
  * @param[in]     nneedle       Number of units in @p needle.
- * @param[in]     buf           One directory sector (k_ra8_fs_bytes_per_sector).
+ * @param[in]     buf           One whole directory sector.
  * @param[in]     cur_lba       LBA of @p buf (recorded into @p out_lba on hit).
  * @param[in,out] lfn           Reassembly state carried across sectors.
  * @param[out]    out_lba       Sector of the matched 8.3 entry (on found).
@@ -230,16 +231,17 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_fs_lfn_scan_t priv_dir_find_long_sector(const uint16_t* needle,
-                                                   uint32_t        nneedle,
-                                                   const uint8_t*  buf,
-                                                   uint32_t        cur_lba,
-                                                   lfn_state_t*    lfn,
-                                                   uint32_t*       out_lba,
-                                                   uint32_t*       out_entry_off,
+static ra8_fs_lfn_scan_t priv_dir_find_long_sector(const ra8_fs_mount_t* m,
+                                                   const uint16_t*       needle,
+                                                   uint32_t              nneedle,
+                                                   const uint8_t*        buf,
+                                                   uint64_t              cur_lba,
+                                                   lfn_state_t*          lfn,
+                                                   uint64_t*             out_lba,
+                                                   uint32_t*             out_entry_off,
                                                    uint8_t out_entry[k_ra8_fs_dir_entry_bytes])
 {
-  for (uint32_t e = 0; e < k_dir_entries_per_sector; e++) {
+  for (uint32_t e = 0; e < priv_dir_eps(m); e++) {
     const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes];
     if (ent[k_dir_off_name] == k_dir_marker_free_perm) {
       return k_lfn_scan_eod;
@@ -273,7 +275,7 @@ static ra8_fs_lfn_scan_t priv_dir_find_long_sector(const uint16_t* needle,
 ra8_err_t priv_dir_find_long(const ra8_fs_mount_t* m,
                              const dir_loc_t*      loc,
                              const char*           want,
-                             uint32_t*             out_lba,
+                             uint64_t*             out_lba,
                              uint32_t*             out_entry_off,
                              uint8_t               out_entry[k_ra8_fs_dir_entry_bytes])
 {
@@ -295,14 +297,15 @@ ra8_err_t priv_dir_find_long(const ra8_fs_mount_t* m,
   priv_dir_walk_init_loc(m, loc, &w);
   lfn_state_t lfn = {};
   priv_lfn_reset(&lfn);
-  uint8_t eod                            = 0;
-  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
+  uint8_t        eod = 0;
+  uint8_t* const buf = priv_sec_walk();
   while (eod == 0U) {
     ra8_err_t err = priv_read_sector(m, w.cur_lba, buf);
     if (err != k_ra8_ok) {
       return err;
     }
-    const ra8_fs_lfn_scan_t scan = priv_dir_find_long_sector(needle,
+    const ra8_fs_lfn_scan_t scan = priv_dir_find_long_sector(m,
+                                                             needle,
                                                              nneedle,
                                                              buf,
                                                              w.cur_lba,

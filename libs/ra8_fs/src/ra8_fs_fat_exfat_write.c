@@ -129,17 +129,17 @@ ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, ui
  */
 RA8_INTERNAL
 static ra8_err_t priv_exfat_bitmap_window(const ra8_fs_mount_t* m,
-                                          uint32_t              bmp_lba,
+                                          uint64_t              bmp_lba,
                                           uint32_t              from,
                                           uint32_t              need,
                                           uint32_t*             out_clus)
 {
-  uint32_t run                            = 0U;
-  uint32_t start                          = 0U;
-  uint32_t loaded                         = UINT32_MAX;
-  uint8_t  sec[k_ra8_fs_bytes_per_sector] = {};
+  uint32_t       run    = 0U;
+  uint32_t       start  = 0U;
+  uint64_t       loaded = UINT64_MAX;
+  uint8_t* const sec    = priv_sec_io();
   for (uint32_t idx = from; idx < m->count_of_clusters; idx++) {
-    const uint32_t lba = bmp_lba + ((idx >> k_exfat_bit_shift) / k_ra8_fs_bytes_per_sector);
+    const uint64_t lba = bmp_lba + ((idx >> k_exfat_bit_shift) / priv_bps(m));
     if (lba != loaded) {
       ra8_err_t e = priv_read_sector(m, lba, sec);
       if (e != k_ra8_ok) {
@@ -147,7 +147,7 @@ static ra8_err_t priv_exfat_bitmap_window(const ra8_fs_mount_t* m,
       }
       loaded = lba;
     }
-    const uint32_t byte = (idx >> k_exfat_bit_shift) % k_ra8_fs_bytes_per_sector;
+    const uint32_t byte = (idx >> k_exfat_bit_shift) % priv_bps(m);
     const uint32_t bit  = idx & k_exfat_bit_mask;
     if ((((uint32_t)sec[byte] >> bit) & 1U) != 0U) {
       run = 0U;
@@ -167,7 +167,7 @@ static ra8_err_t priv_exfat_bitmap_window(const ra8_fs_mount_t* m,
 
 /** @brief Implementation of `priv_exfat_bitmap_scan()` -- hinted pass, then a full rescan. */
 ra8_err_t
-priv_exfat_bitmap_scan(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t need, uint32_t* out_clus)
+priv_exfat_bitmap_scan(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t need, uint32_t* out_clus)
 {
   const uint32_t hint = priv_alloc_hint_get(m);
   uint32_t       from = 0U;
@@ -189,12 +189,12 @@ priv_exfat_bitmap_scan(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t need,
 
 /* `priv_exfat_bmp_switch()`: see header for the documented contract. */
 ra8_err_t
-priv_exfat_bmp_switch(const ra8_fs_mount_t* m, uint32_t lba, uint32_t* loaded, uint8_t* sec)
+priv_exfat_bmp_switch(const ra8_fs_mount_t* m, uint64_t lba, uint64_t* loaded, uint8_t* sec)
 {
   if (lba == *loaded) {
     return k_ra8_ok;
   }
-  if (*loaded != UINT32_MAX) {
+  if (*loaded != UINT64_MAX) {
     ra8_err_t we = priv_write_sector(m, *loaded, sec);
     if (we != k_ra8_ok) {
       return we;
@@ -210,14 +210,14 @@ priv_exfat_bmp_switch(const ra8_fs_mount_t* m, uint32_t lba, uint32_t* loaded, u
 
 /** @brief Implementation of `priv_exfat_bitmap_mark()` -- one read-modify-write per sector. */
 ra8_err_t
-priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint32_t count)
+priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus, uint32_t count)
 {
-  uint32_t loaded                         = UINT32_MAX;
-  uint8_t  sec[k_ra8_fs_bytes_per_sector] = {};
+  uint64_t       loaded = UINT64_MAX;
+  uint8_t* const sec    = priv_sec_io();
   for (uint32_t k = 0U; k < count; k++) {
     const uint32_t idx  = (clus - k_cluster_first_data) + k;
-    const uint32_t lba  = bmp_lba + ((idx >> k_exfat_bit_shift) / k_ra8_fs_bytes_per_sector);
-    const uint32_t byte = (idx >> k_exfat_bit_shift) % k_ra8_fs_bytes_per_sector;
+    const uint64_t lba  = bmp_lba + ((idx >> k_exfat_bit_shift) / priv_bps(m));
+    const uint32_t byte = (idx >> k_exfat_bit_shift) % priv_bps(m);
     const uint32_t bit  = idx & k_exfat_bit_mask;
     ra8_err_t      e    = priv_exfat_bmp_switch(m, lba, &loaded, sec);
     if (e != k_ra8_ok) {
@@ -230,15 +230,15 @@ priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus,
 
 /** @brief Implementation of `priv_exfat_bitmap_test()` -- one sector read, one bit. */
 ra8_err_t
-priv_exfat_bitmap_test(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint8_t* out_free)
+priv_exfat_bitmap_test(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus, uint8_t* out_free)
 {
   const uint32_t idx  = clus - (uint32_t)k_cluster_first_data;
-  const uint32_t lba  = bmp_lba + ((idx >> k_exfat_bit_shift) / k_ra8_fs_bytes_per_sector);
-  const uint32_t byte = (idx >> k_exfat_bit_shift) % k_ra8_fs_bytes_per_sector;
+  const uint64_t lba  = bmp_lba + ((idx >> k_exfat_bit_shift) / priv_bps(m));
+  const uint32_t byte = (idx >> k_exfat_bit_shift) % priv_bps(m);
   const uint32_t bit  = idx & k_exfat_bit_mask;
 
-  uint8_t         sec[k_ra8_fs_bytes_per_sector] = {};
-  const ra8_err_t e                              = priv_read_sector(m, lba, sec);
+  uint8_t* const  sec = priv_sec_io();
+  const ra8_err_t e   = priv_read_sector(m, lba, sec);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -270,13 +270,13 @@ static ra8_err_t
 priv_exfat_read_entry(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t idx, uint8_t* out)
 {
   const uint32_t byte_off = idx * (uint32_t)k_exfat_entry_bytes;
-  const uint32_t lba = priv_cluster_to_lba(m, cluster) + (byte_off / k_ra8_fs_bytes_per_sector);
-  uint8_t        sec[k_ra8_fs_bytes_per_sector] = {};
-  ra8_err_t      e                              = priv_read_sector(m, lba, sec);
+  const uint64_t lba      = priv_cluster_to_lba(m, cluster) + (byte_off / priv_bps(m));
+  uint8_t* const sec      = priv_sec_io();
+  ra8_err_t      e        = priv_read_sector(m, lba, sec);
   if (e != k_ra8_ok) {
     return e;
   }
-  priv_byte_copy(out, &sec[byte_off % k_ra8_fs_bytes_per_sector], (uint32_t)k_exfat_entry_bytes);
+  priv_byte_copy(out, &sec[byte_off % priv_bps(m)], (uint32_t)k_exfat_entry_bytes);
   return k_ra8_ok;
 }
 
@@ -335,9 +335,8 @@ static ra8_err_t priv_exfat_space_in_cluster(const ra8_fs_mount_t* m,
                                              uint32_t              need,
                                              uint32_t*             out_idx)
 {
-  const uint32_t per_cluster =
-    (m->sectors_per_cluster * k_ra8_fs_bytes_per_sector) / (uint32_t)k_exfat_entry_bytes;
-  uint32_t run = 0U;
+  const uint32_t per_cluster = priv_cluster_bytes(m) / (uint32_t)k_exfat_entry_bytes;
+  uint32_t       run         = 0U;
   for (uint32_t i = 0U; i < per_cluster; i++) {
     uint8_t         e[k_exfat_entry_bytes] = {};
     const ra8_err_t r                      = priv_exfat_read_entry(m, cluster, i, e);
@@ -524,13 +523,13 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
   const uint32_t count = bytes / (uint32_t)k_exfat_entry_bytes;
   for (uint32_t k = 0U; k < count; k++) {
     const uint32_t byte_off = (idx + k) * (uint32_t)k_exfat_entry_bytes;
-    const uint32_t lba = priv_cluster_to_lba(m, cluster) + (byte_off / k_ra8_fs_bytes_per_sector);
-    uint8_t        sec[k_ra8_fs_bytes_per_sector] = {};
-    ra8_err_t      e                              = priv_read_sector(m, lba, sec);
+    const uint64_t lba      = priv_cluster_to_lba(m, cluster) + (byte_off / priv_bps(m));
+    uint8_t* const sec      = priv_sec_io();
+    ra8_err_t      e        = priv_read_sector(m, lba, sec);
     if (e != k_ra8_ok) {
       return e;
     }
-    priv_byte_copy(&sec[byte_off % k_ra8_fs_bytes_per_sector],
+    priv_byte_copy(&sec[byte_off % priv_bps(m)],
                    &set[(size_t)k * (size_t)k_exfat_entry_bytes],
                    (uint32_t)k_exfat_entry_bytes);
     e = priv_write_sector(m, lba, sec);

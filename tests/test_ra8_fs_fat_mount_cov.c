@@ -507,24 +507,26 @@ static void test_gpt_bad_signature(void)
 }
 
 /* ===========================================================================
- * Test: GPT entry_lba hi word nonzero (lines 427, 524)
+ * Test: GPT entry_lba beyond 32 bits is FOLLOWED (#683)
  * ===========================================================================
  */
 
 /**
  * @test test_gpt_entry_lba_hi_nonzero
- * @brief A GPT header with the high 32 bits of entry_lba set triggers line 427.
+ * @brief A GPT entry array past 2 TiB is addressed, not refused (#683).
  *
  * @details
- * The partition entry array starts beyond 2 TiB (hi word != 0), which this
- * backend cannot address.  priv_gpt_locate_volume returns
- * k_ra8_err_not_supported at line 427; priv_read_boot_sector propagates at
- * line 524.
+ * The partition entry array starts beyond 2 TiB (the 64-bit field's high word
+ * is non-zero). The old parser refused such geometry with not_supported; the
+ * 64-bit backend interface addresses it, so the locate now READS at that LBA.
+ * On this three-sector fake the address is far past the medium, so what comes
+ * back is the backend's own out_of_range -- proof the full 64-bit address
+ * reached the backend instead of being masked or rejected early.
  *
  * @par MC/DC:
- * Decision: `if (priv_rd32(&s_scratch[0x4C]) != 0U)` (1 cond, line 426).
- * V1: hi == 0 -> false -> entry_lba accepted (normal path).
- * V2: hi != 0 -> true -> k_ra8_err_not_supported (covered here).
+ * Decision: none removed-guard coverage remains; the 64-bit read is a single
+ * data path (no compound decision). The sibling GPT tests keep the in-range
+ * control vector.
  *
  * @pre s_disk is nullptr.
  * @post s_disk freed.
@@ -534,15 +536,17 @@ static void test_gpt_bad_signature(void)
  */
 static void test_gpt_entry_lba_hi_nonzero(void)
 {
-  TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry_lba hi nonzero returns not_supported");
+  TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry_lba past 2 TiB reaches the backend");
   alloc_disk(3U);
   write_protective_mbr(s_disk.bytes, 1U);
   uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
-  write_gpt_header(lba1, 2U, 1U, 4U, (uint32_t)k_gpt_entry_size); /* entry_lba_hi = 1 (nonzero) */
+  write_gpt_header(lba1, 2U, 1U, 4U, (uint32_t)k_gpt_entry_size); /* entry_lba_hi = 1 */
   ra8_fs_mount_t* h = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_mount(&s_backend, &h));
+  /* The 64-bit LBA (2^32 + 2) is handed to the backend, whose fake medium is
+   * three sectors long -- its own bounds check answers. */
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount(&s_backend, &h));
   free_disk();
-  TEST_END("ra8_fs_fat_mount cov: GPT entry_lba hi nonzero returns not_supported");
+  TEST_END("ra8_fs_fat_mount cov: GPT entry_lba past 2 TiB reaches the backend");
 }
 
 /* ===========================================================================
@@ -676,22 +680,19 @@ static void test_gpt_count_clamped_scan_fails(void)
 
 /**
  * @test test_gpt_entry_hi_first_lba
- * @brief A GPT entry whose first_lba has a nonzero high word is rejected by
- *        priv_gpt_entry_first_lba (line 279); no candidate is found (line 391).
+ * @brief A GPT entry whose first_lba exceeds 32 bits is FOLLOWED (#683).
  *
  * @details
- * Entry 0 has a non-zero type GUID (so it appears allocated) but its
- * first_lba high word (at entry offset 0x24) is 1, indicating a > 2 TiB
- * start LBA.  priv_gpt_entry_first_lba returns 0 at line 279 for that entry.
- * Entries 1-3 have null GUIDs and also return 0.  After the full scan
- * basic_lba == 0 and any_lba == 0, so priv_gpt_scan_entries returns
- * k_ra8_err_not_found at line 391, which priv_read_boot_sector propagates at
- * line 524.
+ * Entry 0 has a non-zero type GUID (so it appears allocated) and a first LBA
+ * of exactly 2^32 (high word 1, low word 0). The old parser treated the
+ * entry as unusable and reported not_found; the 64-bit backend interface
+ * addresses it, so the mount retargets to that LBA and READS there. On this
+ * four-sector fake the address is far past the medium, and the backend's own
+ * out_of_range comes back -- proof the untruncated 64-bit LBA reached it.
  *
  * @par MC/DC:
- * Decision: `if (priv_rd32(&entry[0x24]) != 0U)` (1 cond, line 278).
- * V1: hi == 0 -> false -> low word returned (normal path).
- * V2: hi != 0 -> true -> return 0 at line 279 (covered here).
+ * (no compound decision -- the old one-condition high-word guard is deleted;
+ * this is the behavioral pin that the full 64-bit LBA is used)
  *
  * @pre s_disk is nullptr.
  * @post s_disk freed.
@@ -701,7 +702,7 @@ static void test_gpt_count_clamped_scan_fails(void)
  */
 static void test_gpt_entry_hi_first_lba(void)
 {
-  TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry hi first_lba nonzero -> not_found");
+  TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry first_lba past 2 TiB reaches the backend");
   alloc_disk(4U);
   write_protective_mbr(s_disk.bytes, 1U);
   uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
@@ -709,17 +710,19 @@ static void test_gpt_entry_hi_first_lba(void)
   /* Entry 0 in LBA 2: non-zero GUID (bytes 0-15 = 1) + hi first_lba = 1. */
   uint8_t* lba2   = &s_disk.bytes[(size_t)2U * (uint32_t)k_mc_blk];
   uint8_t* entry0 = lba2;
-  /* Type GUID: all bytes 1 (non-zero -> priv_gpt_entry_first_lba skips null check). */
+  /* Type GUID: all bytes 1 (a live, non-Basic-Data entry). */
   for (uint32_t i = 0U; i < 16U; i++) {
     entry0[i] = 1U;
   }
-  /* first_lba low (offset 0x20) = 0, high (offset 0x24) = 1 -> line 279. */
+  /* first_lba = 2^32 exactly: low word 0, high word 1. */
   entry0[k_gpt_ent_off_lba_hi] = 1U;
   /* Entries 1-3 remain all-zero (null GUIDs). */
   ra8_fs_mount_t* h = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_mount(&s_backend, &h));
+  /* The 64-bit LBA is handed to the backend, whose four-sector fake medium
+   * answers with its own bounds error rather than the parser refusing. */
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount(&s_backend, &h));
   free_disk();
-  TEST_END("ra8_fs_fat_mount cov: GPT entry hi first_lba nonzero -> not_found");
+  TEST_END("ra8_fs_fat_mount cov: GPT entry first_lba past 2 TiB reaches the backend");
 }
 
 /* ===========================================================================

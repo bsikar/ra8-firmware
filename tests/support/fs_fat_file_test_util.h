@@ -96,7 +96,7 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static inline ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static inline ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   const mem_disk_t* d = (const mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -108,7 +108,7 @@ static inline ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_
   return k_ra8_ok;
 }
 
-static inline ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static inline ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -120,7 +120,7 @@ static inline ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const
   return k_ra8_ok;
 }
 
-static inline ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static inline ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const mem_disk_t* d = (const mem_disk_t*)ctx;
   *block_count        = d->block_count;
@@ -159,7 +159,7 @@ typedef struct {
 
 static inject_disk_t s_inject = {};
 
-static inline ra8_err_t inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static inline ra8_err_t inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->reads_left == 0U) {
@@ -177,7 +177,7 @@ static inline ra8_err_t inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_
   return k_ra8_ok;
 }
 
-static inline ra8_err_t inj_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static inline ra8_err_t inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->writes_fail != 0U) {
@@ -192,7 +192,7 @@ static inline ra8_err_t inj_write(void* ctx, uint32_t lba, uint32_t count, const
   return k_ra8_ok;
 }
 
-static inline ra8_err_t inj_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static inline ra8_err_t inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const inject_disk_t* d = (const inject_disk_t*)ctx;
   *block_count           = d->block_count;
@@ -325,7 +325,7 @@ static inline void free_volume(void)
  * @note Trivially thread-safe.
  * @since 0.1.0
  */
-static inline void count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static inline void count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)name;
   (void)attr;

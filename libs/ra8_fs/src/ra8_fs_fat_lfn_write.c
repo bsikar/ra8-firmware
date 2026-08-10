@@ -106,7 +106,7 @@ static ra8_err_t priv_alias_unique(const ra8_fs_mount_t* m,
                                    uint32_t              n,
                                    uint8_t*              out11)
 {
-  uint32_t lba                             = 0U;
+  uint64_t lba                             = 0U;
   uint32_t off                             = 0U;
   uint8_t  entry[k_ra8_fs_dir_entry_bytes] = {};
   for (uint32_t tail = 1U; tail <= (uint32_t)k_lfn_alias_tail_max; tail++) {
@@ -172,16 +172,16 @@ ra8_err_t priv_dir_find_free_run(const ra8_fs_mount_t* m,
 {
   dir_walk_t w = {};
   priv_dir_walk_init_loc(m, loc, &w);
-  dir_slot_t start                          = {};
-  uint32_t   run                            = 0U;
-  uint8_t    eod                            = 0U;
-  uint8_t    buf[k_ra8_fs_bytes_per_sector] = {};
+  dir_slot_t     start = {};
+  uint32_t       run   = 0U;
+  uint8_t        eod   = 0U;
+  uint8_t* const buf   = priv_sec_walk();
   while (eod == 0U) {
     ra8_err_t err = priv_read_sector(m, w.cur_lba, buf);
     if (err != k_ra8_ok) {
       return err;
     }
-    for (uint32_t e = 0U; e < (uint32_t)k_dir_entries_per_sector; e++) {
+    for (uint32_t e = 0U; e < priv_dir_eps(m); e++) {
       if (priv_slot_is_free(&buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes]) == 0U) {
         run = 0U;
         continue;
@@ -257,10 +257,9 @@ static ra8_err_t priv_dir_grow(const ra8_fs_mount_t* m, const dir_loc_t* loc)
   if (err != k_ra8_ok) {
     return err;
   }
-  const uint8_t  zero[k_ra8_fs_bytes_per_sector] = {};
-  const uint32_t base                            = priv_cluster_to_lba(m, fresh);
+  const uint64_t base = priv_cluster_to_lba(m, fresh);
   for (uint32_t s = 0U; s < m->sectors_per_cluster; s++) {
-    err = priv_write_sector(m, base + s, zero);
+    err = priv_write_sector(m, base + s, k_zero_sector);
     if (err != k_ra8_ok) {
       (void)priv_free_chain(m, fresh);
       return err;
@@ -348,10 +347,10 @@ priv_dir_reserve(const ra8_fs_mount_t* m, const dir_loc_t* loc, const char* leaf
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_slot_advance(const ra8_fs_mount_t* m, dir_slot_t* cur, uint8_t* buf, uint32_t* lba_io)
+priv_slot_advance(const ra8_fs_mount_t* m, dir_slot_t* cur, uint8_t* buf, uint64_t* lba_io)
 {
   cur->ent++;
-  if (cur->ent < (uint32_t)k_dir_entries_per_sector) {
+  if (cur->ent < priv_dir_eps(m)) {
     return k_ra8_ok;
   }
   ra8_err_t err = priv_write_sector(m, *lba_io, buf);
@@ -375,16 +374,16 @@ priv_slot_advance(const ra8_fs_mount_t* m, dir_slot_t* cur, uint8_t* buf, uint32
 ra8_err_t priv_dir_commit(const ra8_fs_mount_t* m,
                           const dir_insert_t*   plan,
                           const uint8_t*        tmpl,
-                          uint32_t*             out_lba,
+                          uint64_t*             out_lba,
                           uint32_t*             out_off)
 {
-  const uint32_t nlen                           = (plan->lfn_entries != 0U) ? plan->nunits : 0U;
-  const uint8_t  csum                           = priv_sfn_checksum(plan->name83);
-  const uint32_t total                          = (uint32_t)plan->lfn_entries + 1U;
-  dir_slot_t     cur                            = plan->start;
-  uint32_t       lba                            = cur.w.cur_lba;
-  uint8_t        buf[k_ra8_fs_bytes_per_sector] = {};
-  ra8_err_t      err                            = priv_read_sector(m, lba, buf);
+  const uint32_t nlen  = (plan->lfn_entries != 0U) ? plan->nunits : 0U;
+  const uint8_t  csum  = priv_sfn_checksum(plan->name83);
+  const uint32_t total = (uint32_t)plan->lfn_entries + 1U;
+  dir_slot_t     cur   = plan->start;
+  uint64_t       lba   = cur.w.cur_lba;
+  uint8_t* const buf   = priv_sec_walk();
+  ra8_err_t      err   = priv_read_sector(m, lba, buf);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -444,7 +443,7 @@ ra8_err_t priv_dir_commit(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_run_push(dir_pos_t* run, uint32_t* len_io, uint32_t lba, uint32_t off)
+static void priv_run_push(dir_pos_t* run, uint32_t* len_io, uint64_t lba, uint32_t off)
 {
   uint32_t len = *len_io;
   if (len == (uint32_t)k_lfn_erase_max) {
@@ -492,7 +491,7 @@ static void priv_run_push(dir_pos_t* run, uint32_t* len_io, uint32_t lba, uint32
 RA8_INTERNAL
 static ra8_err_t priv_dir_collect_chain(const ra8_fs_mount_t* m,
                                         const dir_loc_t*      loc,
-                                        uint32_t              tlba,
+                                        uint64_t              tlba,
                                         uint32_t              toff,
                                         uint8_t               csum,
                                         dir_pos_t*            run,
@@ -500,15 +499,15 @@ static ra8_err_t priv_dir_collect_chain(const ra8_fs_mount_t* m,
 {
   dir_walk_t w = {};
   priv_dir_walk_init_loc(m, loc, &w);
-  uint32_t len                            = 0U;
-  uint8_t  eod                            = 0U;
-  uint8_t  buf[k_ra8_fs_bytes_per_sector] = {};
+  uint32_t       len = 0U;
+  uint8_t        eod = 0U;
+  uint8_t* const buf = priv_sec_walk();
   while (eod == 0U) {
     ra8_err_t err = priv_read_sector(m, w.cur_lba, buf);
     if (err != k_ra8_ok) {
       return err;
     }
-    for (uint32_t e = 0U; e < (uint32_t)k_dir_entries_per_sector; e++) {
+    for (uint32_t e = 0U; e < priv_dir_eps(m); e++) {
       const uint32_t off = e * (uint32_t)k_ra8_fs_dir_entry_bytes;
       if ((w.cur_lba == tlba) && (off == toff)) {
         *out_len = len;
@@ -560,9 +559,9 @@ RA8_INTERNAL
 static ra8_err_t
 priv_dir_erase_positions(const ra8_fs_mount_t* m, const dir_pos_t* pos, uint32_t count)
 {
-  uint8_t   buf[k_ra8_fs_bytes_per_sector] = {};
-  uint32_t  cur                            = pos[0].lba;
-  ra8_err_t err                            = priv_read_sector(m, cur, buf);
+  uint8_t* const buf = priv_sec_walk();
+  uint64_t       cur = pos[0].lba;
+  ra8_err_t      err = priv_read_sector(m, cur, buf);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -586,7 +585,7 @@ priv_dir_erase_positions(const ra8_fs_mount_t* m, const dir_pos_t* pos, uint32_t
 /* `priv_dir_erase_chain()`: see header for the documented contract. */
 ra8_err_t priv_dir_erase_chain(const ra8_fs_mount_t* m,
                                const dir_loc_t*      loc,
-                               uint32_t              lba,
+                               uint64_t              lba,
                                uint32_t              off,
                                const uint8_t*        name83)
 {
@@ -606,7 +605,7 @@ ra8_err_t priv_dir_erase_chain(const ra8_fs_mount_t* m,
 ra8_err_t priv_dir_lookup_any(const ra8_fs_mount_t* m,
                               const dir_loc_t*      loc,
                               const char*           leaf,
-                              uint32_t*             out_lba,
+                              uint64_t*             out_lba,
                               uint32_t*             out_off,
                               uint8_t               out_entry[k_ra8_fs_dir_entry_bytes])
 {

@@ -134,7 +134,7 @@ RA8_INTERNAL
 static ra8_err_t priv_exfat_survey_alloc(ra8_fs_file_t* file)
 {
   const ra8_fs_mount_t* m      = file->mount;
-  const uint32_t        cbytes = m->sectors_per_cluster * k_ra8_fs_bytes_per_sector;
+  const uint32_t        cbytes = priv_cluster_bytes(m);
   if ((file->first_cluster < (uint32_t)k_cluster_first_data) || (file->size_bytes == 0U)) {
     file->first_cluster  = 0U;
     file->alloc_clusters = 0U;
@@ -143,7 +143,7 @@ static ra8_err_t priv_exfat_survey_alloc(ra8_fs_file_t* file)
     return k_ra8_ok;
   }
   if (file->no_fat_chain != 0U) {
-    file->alloc_clusters = (file->size_bytes + cbytes - 1U) / cbytes;
+    file->alloc_clusters = (uint32_t)((file->size_bytes + cbytes - 1U) / cbytes);
     file->tail_cluster   = file->first_cluster + file->alloc_clusters - 1U;
     return k_ra8_ok;
   }
@@ -215,7 +215,7 @@ static ra8_err_t priv_exfat_truncate(ra8_fs_file_t* file, const uint8_t* strm)
 /**
  * @brief Reject an entry set this adapter cannot correctly rewrite.
  *
- * @details Three refusals, all of them honest limits rather than guesses.
+ * @details Two refusals, both honest limits rather than guesses.
  *
  *          A set SHORTER than ::k_exfat_set_min_entries is not a file: exFAT
  *          spec sec 7.4 requires a File entry, a Stream entry and at least one
@@ -228,40 +228,35 @@ static ra8_err_t priv_exfat_truncate(ra8_fs_file_t* file, const uint8_t* strm)
  *          adapter's cap, and rewriting only the part that fits would leave a
  *          SetChecksum computed over the wrong number of entries.
  *
- *          A `DataLength` whose high word is non-zero is a file above 4 GiB,
- *          which every length in this API is too narrow to carry -- silently
- *          taking the low word would truncate somebody's file on the first
- *          flush.
+ *          A `DataLength` above 4 GiB is no longer one of the refusals: the
+ *          whole length model is 64-bit now, so a file past 4 GiB opens,
+ *          appends and truncates like any other -- carrying such files is the
+ *          reason exFAT exists (#676).
  *
  * @param[in] count Entry count of the set (1 + SecondaryCount).
- * @param[in] strm  The file's 32-byte Stream-extension entry.
  *
  * @return Error code.
  * @retval k_ra8_ok                 The set is one this adapter can own.
  * @retval k_ra8_err_protocol_error The set is too short to be a file.
  * @retval k_ra8_err_not_supported  The set has more entries than it can rewrite.
- * @retval k_ra8_err_invalid_size   The file is larger than 4 GiB - 1.
  *
- * @pre @p strm is non-NULL and holds a Stream-extension entry.
  * @pre @p count came from the File entry's SecondaryCount.
+ * @pre The caller read the set off the volume, not from a guess.
  * @post No state is modified on any path.
- * @post A success means the shape, the rewrite and the length all fit.
+ * @post A success means both the shape and the rewrite fit.
  *
  * @note Pure function; trivially thread-safe.
  *
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_writable_set(uint32_t count, const uint8_t* strm)
+static ra8_err_t priv_exfat_writable_set(uint32_t count)
 {
   if (count < (uint32_t)k_exfat_set_min_entries) {
     return k_ra8_err_protocol_error;
   }
   if (count > (uint32_t)k_exfat_set_writable) {
     return k_ra8_err_not_supported;
-  }
-  if (priv_rd32(&strm[k_exfat_strm_off_dlen_hi]) != 0U) {
-    return k_ra8_err_invalid_size;
   }
   return k_ra8_ok;
 }
@@ -289,7 +284,6 @@ static ra8_err_t priv_exfat_writable_set(uint32_t count, const uint8_t* strm)
  * @retval k_ra8_err_invalid_arg   The name is a directory.
  * @retval k_ra8_err_no_mem        The file table is full.
  * @retval k_ra8_err_not_supported The set is larger than this adapter rewrites.
- * @retval k_ra8_err_invalid_size  The file is larger than 4 GiB - 1.
  * @retval k_ra8_err_*             Bitmap, FAT, or backend failure.
  *
  * @pre Every pointer is non-NULL; the mount is an exFAT volume.
@@ -320,7 +314,7 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
   if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_read_only) != 0U) {
     return k_ra8_err_access_denied;
   }
-  ra8_err_t e = priv_exfat_writable_set(count, strm);
+  ra8_err_t e = priv_exfat_writable_set(count);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -330,8 +324,8 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
   }
   priv_exfat_seed_handle(f, handle, head, count, mode);
   f->first_cluster = priv_rd32(&strm[k_exfat_strm_off_clus]);
-  f->size_bytes    = priv_rd32(&strm[k_exfat_strm_off_dlen]);
-  f->valid_bytes   = priv_rd32(&strm[k_exfat_off_strm_valid]);
+  f->size_bytes    = priv_rd64(&strm[k_exfat_strm_off_dlen]);
+  f->valid_bytes   = priv_rd64(&strm[k_exfat_off_strm_valid]);
   f->no_fat_chain =
     ((strm[k_exfat_strm_off_flags] & (uint8_t)k_exfat_secflag_no_fat) != 0U) ? 1U : 0U;
   /* exFAT spec sec 7.4.5 makes ValidDataLength a PREFIX of DataLength, and the

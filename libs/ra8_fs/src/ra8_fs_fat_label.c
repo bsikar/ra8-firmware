@@ -150,21 +150,21 @@ static void priv_label_from_raw(const uint8_t* raw11, char* out, uint32_t out_le
  */
 RA8_INTERNAL
 static ra8_err_t priv_fat_find_vol_id(const ra8_fs_mount_t* m,
-                                      uint32_t*             out_lba,
+                                      uint64_t*             out_lba,
                                       uint32_t*             out_off,
                                       uint8_t*              out_entry)
 {
   const dir_loc_t loc = {.is_root = 1U, .cluster = 0U};
   dir_walk_t      w   = {};
   priv_dir_walk_init_loc(m, &loc, &w);
-  uint8_t eod                            = 0U;
-  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
+  uint8_t        eod = 0U;
+  uint8_t* const buf = priv_sec_walk();
   while (eod == 0U) {
     ra8_err_t err = priv_read_sector(m, w.cur_lba, buf);
     if (err != k_ra8_ok) {
       return err;
     }
-    for (uint32_t e = 0U; e < (uint32_t)k_dir_entries_per_sector; e++) {
+    for (uint32_t e = 0U; e < priv_dir_eps(m); e++) {
       const uint32_t off   = e * (uint32_t)k_ra8_fs_dir_entry_bytes;
       const uint8_t  name0 = buf[off + (uint32_t)k_dir_off_name];
       const uint8_t  attr  = buf[off + (uint32_t)k_dir_off_attr];
@@ -219,19 +219,19 @@ static ra8_err_t priv_fat_find_vol_id(const ra8_fs_mount_t* m,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_fat_find_free_root(const ra8_fs_mount_t* m, uint32_t* out_lba, uint32_t* out_off)
+priv_fat_find_free_root(const ra8_fs_mount_t* m, uint64_t* out_lba, uint32_t* out_off)
 {
   const dir_loc_t loc = {.is_root = 1U, .cluster = 0U};
   dir_walk_t      w   = {};
   priv_dir_walk_init_loc(m, &loc, &w);
-  uint8_t eod                            = 0U;
-  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
+  uint8_t        eod = 0U;
+  uint8_t* const buf = priv_sec_walk();
   while (eod == 0U) {
     ra8_err_t err = priv_read_sector(m, w.cur_lba, buf);
     if (err != k_ra8_ok) {
       return err;
     }
-    for (uint32_t e = 0U; e < (uint32_t)k_dir_entries_per_sector; e++) {
+    for (uint32_t e = 0U; e < priv_dir_eps(m); e++) {
       const uint32_t off   = e * (uint32_t)k_ra8_fs_dir_entry_bytes;
       const uint8_t  name0 = buf[off + (uint32_t)k_dir_off_name];
       if ((name0 == (uint8_t)k_dir_marker_free_perm) ||
@@ -276,8 +276,8 @@ priv_fat_find_free_root(const ra8_fs_mount_t* m, uint32_t* out_lba, uint32_t* ou
 RA8_INTERNAL
 static ra8_err_t priv_fat_boot_set_label(const ra8_fs_mount_t* m, const char* label)
 {
-  uint8_t         boot[k_ra8_fs_bytes_per_sector] = {};
-  const ra8_err_t err                             = priv_read_sector(m, 0U, boot);
+  uint8_t* const  boot = priv_sec_walk();
+  const ra8_err_t err  = priv_read_sector(m, 0U, boot);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -309,10 +309,10 @@ static ra8_err_t priv_fat_boot_set_label(const ra8_fs_mount_t* m, const char* la
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_del_entry(const ra8_fs_mount_t* m, uint32_t lba, uint32_t off)
+static ra8_err_t priv_fat_del_entry(const ra8_fs_mount_t* m, uint64_t lba, uint32_t off)
 {
-  uint8_t         sec[k_ra8_fs_bytes_per_sector] = {};
-  const ra8_err_t err                            = priv_read_sector(m, lba, sec);
+  uint8_t* const  sec = priv_sec_walk();
+  const ra8_err_t err = priv_read_sector(m, lba, sec);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -349,13 +349,13 @@ static ra8_err_t priv_fat_del_entry(const ra8_fs_mount_t* m, uint32_t lba, uint3
  */
 RA8_INTERNAL
 static ra8_err_t priv_fat_put_vol_id(const ra8_fs_mount_t* m,
-                                     uint32_t              lba,
+                                     uint64_t              lba,
                                      uint32_t              off,
                                      const char*           label,
                                      bool                  fresh)
 {
-  uint8_t         sec[k_ra8_fs_bytes_per_sector] = {};
-  const ra8_err_t err                            = priv_read_sector(m, lba, sec);
+  uint8_t* const  sec = priv_sec_walk();
+  const ra8_err_t err = priv_read_sector(m, lba, sec);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -403,15 +403,15 @@ RA8_INTERNAL
 static ra8_err_t priv_get_label_fat(const ra8_fs_mount_t* m, char* out, uint32_t out_len)
 {
   uint8_t         raw[k_fmt_label_len]            = {};
-  uint32_t        lba                             = 0U;
+  uint64_t        lba                             = 0U;
   uint32_t        off                             = 0U;
   uint8_t         entry[k_ra8_fs_dir_entry_bytes] = {};
   const ra8_err_t ferr                            = priv_fat_find_vol_id(m, &lba, &off, entry);
   if (ferr == k_ra8_ok) {
     priv_byte_copy(raw, &entry[k_dir_off_name], (uint32_t)k_fmt_label_len);
   } else if (ferr == k_ra8_err_not_found) {
-    uint8_t         boot[k_ra8_fs_bytes_per_sector] = {};
-    const ra8_err_t berr                            = priv_read_sector(m, 0U, boot);
+    uint8_t* const  boot = priv_sec_walk();
+    const ra8_err_t berr = priv_read_sector(m, 0U, boot);
     if (berr != k_ra8_ok) {
       return berr;
     }
@@ -457,7 +457,7 @@ static ra8_err_t priv_set_label_fat(const ra8_fs_mount_t* m, const char* label)
   if (berr != k_ra8_ok) {
     return berr;
   }
-  uint32_t        lba                             = 0U;
+  uint64_t        lba                             = 0U;
   uint32_t        off                             = 0U;
   uint8_t         entry[k_ra8_fs_dir_entry_bytes] = {};
   const ra8_err_t ferr                            = priv_fat_find_vol_id(m, &lba, &off, entry);

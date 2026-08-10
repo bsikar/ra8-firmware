@@ -121,7 +121,7 @@ typedef struct {
  */
 static mc_disk_t s_disk = {};
 
-static inline ra8_err_t mc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static inline ra8_err_t mc_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   const mc_disk_t* d = (const mc_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -131,7 +131,7 @@ static inline ra8_err_t mc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t
   return k_ra8_ok;
 }
 
-static inline ra8_err_t mc_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static inline ra8_err_t mc_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mc_disk_t* d = (mc_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -141,7 +141,7 @@ static inline ra8_err_t mc_write(void* ctx, uint32_t lba, uint32_t count, const 
   return k_ra8_ok;
 }
 
-static inline ra8_err_t mc_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static inline ra8_err_t mc_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const mc_disk_t* d = (const mc_disk_t*)ctx;
   *block_count       = d->block_count;
@@ -167,7 +167,7 @@ static const ra8_fs_backend_t s_backend = {
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
 // NOLINTNEXTLINE(readability-non-const-parameter)
-static inline ra8_err_t always_fail_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static inline ra8_err_t always_fail_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   (void)lba;
@@ -176,7 +176,7 @@ static inline ra8_err_t always_fail_read(void* ctx, uint32_t lba, uint32_t count
   return k_ra8_err_hw_error;
 }
 
-static inline ra8_err_t dummy_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static inline ra8_err_t dummy_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   (void)lba;
@@ -185,7 +185,7 @@ static inline ra8_err_t dummy_write(void* ctx, uint32_t lba, uint32_t count, con
   return k_ra8_ok;
 }
 
-static inline ra8_err_t dummy_capacity_ok(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static inline ra8_err_t dummy_capacity_ok(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = (uint32_t)k_mc_fat16;
@@ -198,7 +198,7 @@ static inline ra8_err_t dummy_capacity_ok(void* ctx, uint32_t* block_count, uint
  * fixed by the typedef it is assigned to -- adding const changes the
  * function type and the assignment stops compiling. */
 // NOLINTNEXTLINE(readability-non-const-parameter)
-static inline ra8_err_t fail_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static inline ra8_err_t fail_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   (void)block_count;
@@ -206,7 +206,7 @@ static inline ra8_err_t fail_capacity(void* ctx, uint32_t* block_count, uint32_t
   return k_ra8_err_hw_error;
 }
 
-static inline ra8_err_t zero_count_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static inline ra8_err_t zero_count_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = 0U; /* well-formed sector size, no sectors */
