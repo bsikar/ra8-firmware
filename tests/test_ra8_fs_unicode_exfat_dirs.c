@@ -29,6 +29,16 @@
  * `RA8_FS_EXFAT_DUMP`, exactly as #605's own suites do, so these images join
  * that evidence set rather than inventing a second convention.
  *
+ * @par Evidence a real operating system can read:
+ * Each scenario also calls `unicode_dump_image()` under `RA8_EXFAT_DUMP_DIR`,
+ * the hook the exFAT unicode suites share, and
+ * ::test_unicode_showcase_volume() exists for that hook alone: it builds ONE
+ * volume carrying non-ASCII names from four scripts, as both files and
+ * directories, because the question it answers is not structural. Every other
+ * assertion in this tree is this codebase reading back bytes it wrote itself;
+ * whether a host DISPLAYS `Caf<U+00E9>` as `Caf<U+00E9>` can only be settled by
+ * mounting the volume somewhere else. Unset, the hook writes nothing.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -42,6 +52,7 @@
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_exfat_dir_test_util.h"
+#include "support/fs_unicode_exfat_test_util.h"
 #include "unity_minimal.h"
 
 /**
@@ -177,6 +188,7 @@ static void test_mkdir_non_ascii_round_trip(void)
   }
   /* The scan recomputes every SetChecksum and NameHash off the volume. */
   exfat_verify(h, "unicode_dirs_created");
+  unicode_dump_image("unicode_dirs_created", h->partition_base_lba);
 
   for (uint32_t i = 0U; i < (uint32_t)(sizeof(names) / sizeof(names[0])); i++) {
     char path[k_udir_path_cap] = {};
@@ -252,7 +264,7 @@ static void test_nested_non_ascii_path(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   exfat_verify(h, "unicode_dirs_nested");
-  exfat_dump(h, "unicode_dirs_nested");
+  unicode_dump_image("unicode_dirs_nested", h->partition_base_lba);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
@@ -308,9 +320,161 @@ static void test_non_ascii_folder_and_file_do_not_collide(void)
   TEST_ASSERT_EQ(k_ra8_err_exists, ra8_fs_mkdir(h, upper));
 
   exfat_verify(h, "unicode_dirs_no_collision");
+  unicode_dump_image("unicode_dirs_no_collision", h->partition_base_lba);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat unicode dirs: an accent distinguishes two folders");
+}
+
+/** @var s_showcase_dirs
+ *  @brief The folder names ::test_unicode_showcase_volume() puts in the root.
+ *  @details Cyrillic and CJK, so the folders and the files below between them
+ *           span four scripts on one volume.
+ *  @note Read-only.
+ *  @since 0.1.0
+ */
+static const char* const s_showcase_dirs[] = {s_dir_cyr, s_dir_cjk};
+
+/** @var s_showcase_files
+ *  @brief The file names ::test_unicode_showcase_volume() puts in the root.
+ *  @details Borrowed from the shared fixture rather than spelled out again:
+ *           two-, three- and four-byte UTF-8, the last a surrogate pair.
+ *  @note Read-only.
+ *  @since 0.1.0
+ */
+static const char* const s_showcase_files[] = {s_acc_u8, s_cjk_u8, s_emoji_u8};
+
+/**
+ * @brief Create the showcase volume's folders, files and one nested file.
+ *
+ * @details Split out of ::test_unicode_showcase_volume() to keep both halves
+ *          inside the function-size gate. Everything goes through the public
+ *          API, so what lands on the volume is what a caller would get.
+ *
+ * @param[in,out] h Mounted exFAT volume, empty on entry.
+ *
+ * @return Nothing; every step is asserted as it happens.
+ *
+ * @pre @p h is a freshly formatted, mounted volume.
+ * @pre Nothing is open on it.
+ * @post The root holds ::s_showcase_dirs and ::s_showcase_files.
+ * @post The first folder holds one non-ASCII file.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void showcase_populate(ra8_fs_mount_t* h)
+{
+  for (uint32_t i = 0U; i < (uint32_t)(sizeof(s_showcase_dirs) / sizeof(s_showcase_dirs[0])); i++) {
+    char path[k_udir_path_cap] = {};
+    (void)snprintf(path, sizeof(path), "/%s", s_showcase_dirs[i]);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, path));
+  }
+
+  uint8_t payload[k_udir_payload] = {};
+  for (uint32_t i = 0U; i < (uint32_t)k_udir_payload; i++) {
+    payload[i] = (uint8_t)(i + 1U);
+  }
+  for (uint32_t i = 0U; i < (uint32_t)(sizeof(s_showcase_files) / sizeof(s_showcase_files[0]));
+       i++) {
+    char path[k_udir_path_cap] = {};
+    (void)snprintf(path, sizeof(path), "/%s", s_showcase_files[i]);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, path, payload, (uint32_t)k_udir_payload));
+  }
+
+  char nested[k_udir_path_cap] = {};
+  (void)snprintf(nested, sizeof(nested), "/%s/%s", s_dir_cyr, s_file_acc);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, nested, payload, (uint32_t)k_udir_payload));
+}
+
+/**
+ * @brief Assert the showcase volume lists every name, on the right side of the
+ *        file / directory split.
+ *
+ * @details The half of the case that is not about the image. A root holding
+ *          both kinds of non-ASCII name is the only place a scan that matched
+ *          the right NAME against the wrong ENTRY KIND would show up, so each
+ *          folder is asserted to list as a directory and each file to list as
+ *          one and NOT as a directory.
+ *
+ * @param[in,out] h Mounted exFAT volume, populated by ::showcase_populate().
+ *
+ * @return Nothing; every expectation is asserted as it is checked.
+ *
+ * @pre ::showcase_populate() has run on @p h.
+ * @pre Nothing is open on it.
+ * @post No on-disk state is modified.
+ * @post Every name was reported under the exact spelling it was created with.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void showcase_assert_listings(ra8_fs_mount_t* h)
+{
+  name_ctx_t listing = {};
+  TEST_ASSERT_EQ(5U, list_names(h, "/", &listing));
+  for (uint32_t i = 0U; i < (uint32_t)(sizeof(s_showcase_dirs) / sizeof(s_showcase_dirs[0])); i++) {
+    TEST_ASSERT_EQ(1U, has_dir(&listing, s_showcase_dirs[i]));
+  }
+  for (uint32_t i = 0U; i < (uint32_t)(sizeof(s_showcase_files) / sizeof(s_showcase_files[0]));
+       i++) {
+    TEST_ASSERT_EQ(1U, has_file(&listing, s_showcase_files[i]));
+    TEST_ASSERT_EQ(0U, has_dir(&listing, s_showcase_files[i]));
+  }
+
+  char folder[k_udir_path_cap] = {};
+  (void)snprintf(folder, sizeof(folder), "/%s", s_dir_cyr);
+  name_ctx_t inside = {};
+  TEST_ASSERT_EQ(1U, list_names(h, folder, &inside));
+  TEST_ASSERT_EQ(0, strcmp(inside.names[0], s_file_acc));
+}
+
+/**
+ * @test test_unicode_showcase_volume
+ * @brief One volume carrying non-ASCII names from four scripts, files and folders.
+ *
+ * @details The image a human looks at. Every other case here holds one KIND of
+ *          non-ASCII name at a time -- three folders, or one nested file --
+ *          because each was written to isolate one defect. A host asked to
+ *          render the names does not care which defect a volume isolates; it
+ *          needs a root directory that looks like a real one, so this builds
+ *          exactly that: accented Latin, CJK, an astral emoji and Cyrillic,
+ *          appearing as both files and directories, plus a non-ASCII file
+ *          nested inside a non-ASCII folder.
+ *
+ *          The assertions are not decoration either. This is the only case in
+ *          the suite where files and directories with non-ASCII names share one
+ *          root, so it is the only one that would catch a scan that matched the
+ *          right NAME against the wrong ENTRY KIND, and `exfat_verify()`
+ *          recomputes every SetChecksum and NameHash on a root of six sets
+ *          rather than of one.
+ *
+ * @par MC/DC:
+ * No decision the sibling cases do not already drive; the composition of them
+ * on one volume, and the artefact the out-of-band check is taken from.
+ *
+ * @pre A formatted exFAT volume; nothing open.
+ * @post Root lists five entries, two of them directories, each under the exact
+ *       spelling it was created with.
+ * @post The nested file lists under its own spelling inside its folder.
+ *
+ * @since 0.1.0
+ */
+static void test_unicode_showcase_volume(void)
+{
+  TEST_BEGIN("exfat unicode dirs: one volume, four scripts, files and folders");
+  build_exfat_volume();
+  ra8_fs_mount_t* h = mount_fixture();
+
+  showcase_populate(h);
+  showcase_assert_listings(h);
+
+  exfat_verify(h, "unicode_showcase");
+  unicode_dump_image("unicode_showcase", h->partition_base_lba);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
+  free_volume();
+  TEST_END("exfat unicode dirs: one volume, four scripts, files and folders");
 }
 
 /**
@@ -332,6 +496,7 @@ int32_t main(void)
   test_mkdir_non_ascii_round_trip();
   test_nested_non_ascii_path();
   test_non_ascii_folder_and_file_do_not_collide();
+  test_unicode_showcase_volume();
   (void)fprintf(stderr, "[OK  ] test_ra8_fs_unicode_exfat_dirs.c\n");
   return 0;
 }

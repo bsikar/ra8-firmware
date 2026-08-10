@@ -954,3 +954,36 @@ static inline uint8_t has_dir(const name_ctx_t* ctx, const char* name)
   }
   return 0U;
 }
+
+/**
+ * @brief 1 when the listing holds @p name with the directory bit CLEAR.
+ *
+ * @details The mirror of ::has_dir, and it exists for the same reason the
+ *          directory bit is checked there rather than the name alone: a root
+ *          holding both kinds is where a scan that matched the right name
+ *          against the wrong entry kind would otherwise pass unnoticed.
+ *
+ * @param[in] ctx  Recorded listing.
+ * @param[in] name Name to look for.
+ *
+ * @return 1 when present as a plain file, else 0.
+ * @retval 1 Found, with ::k_chk_attr_directory clear.
+ * @retval 0 Absent, or present as a directory.
+ *
+ * @pre @p ctx and @p name are non-NULL.
+ * @pre @p ctx came from ::list_names.
+ * @post No state is modified.
+ * @post The search visits at most `ctx->count` entries.
+ *
+ * @since 0.1.0
+ */
+static inline uint8_t has_file(const name_ctx_t* ctx, const char* name)
+{
+  for (uint32_t i = 0U; i < ctx->count; i++) {
+    if (strcmp(ctx->names[i], name) != 0) {
+      continue;
+    }
+    return ((ctx->attrs[i] & (uint8_t)k_chk_attr_directory) == 0U) ? 1U : 0U;
+  }
+  return 0U;
+}
