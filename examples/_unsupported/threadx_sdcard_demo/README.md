@@ -51,8 +51,9 @@ override the weak aliases automatically.
 
 Despite the `sdcard_demo` directory name, the current `main.c` is a
 straight copy of `examples/threadx_blink` (two LED-blink threads). No
-SDHI / FileX / SD-card code is present in this app today. For a real
-SD-card demo see `examples/threadx_filex_demo`.
+SDHI / SD-card code is present in this app today. For a real SD-backed
+filesystem demo see `examples/ek_ra8d2/hw_validated/hil/tz_secure_only_sd`
+or the OSPI-backed `examples/ek_ra8d2/hw_validated/hil/threadx_fs_demo`.
 
 ## BSP usage
 

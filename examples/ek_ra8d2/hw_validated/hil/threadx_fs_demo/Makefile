@@ -1,23 +1,23 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# Per-app Makefile for the `threadx_filex_demo` firmware.
+# Per-app Makefile for the `threadx_fs_demo` firmware.
 #
 # Standalone:
-#   cd examples/threadx_filex_demo/
-#   make             # configure + build (auto-enables ThreadX + FileX)
+#   cd examples/threadx_fs_demo/
+#   make             # configure + build (auto-enables ThreadX + LevelX)
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make clean
 #
-# This wraps the per-app CMakeLists.txt with -DRA8_USE_THREADX=ON
-# -DRA8_USE_FILEX=ON forced on, since the demo cannot build without
-# them.
+# This wraps the per-app CMakeLists.txt with -DRA8_USE_THREADX=ON forced
+# on (LevelX defaults ON via USES in the standalone build); the demo
+# cannot build without ThreadX + LevelX.
 #
 #
 
 SHELL     := /bin/bash
 
-APP        := threadx_filex_demo
+APP        := threadx_fs_demo
 ROOT       := $(shell git -C "$(CURDIR)" rev-parse --show-toplevel)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build
@@ -49,8 +49,7 @@ $(ELF): $(wildcard $(HERE)/*.c) $(wildcard $(HERE)/*.h) $(wildcard $(HERE)/linke
 	    -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) \
 	    -DCMAKE_BUILD_TYPE=$(or $(BUILD_TYPE),RelWithDebInfo) \
 	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-	    -DRA8_USE_THREADX=ON \
-	    -DRA8_USE_FILEX=ON
+	    -DRA8_USE_THREADX=ON
 	$(CMAKE) --build $(BUILD_DIR)
 
 clean:

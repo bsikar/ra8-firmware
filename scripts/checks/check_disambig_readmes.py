@@ -15,12 +15,17 @@ block, and this gate re-derives every one of them from the tree::
 
     <!-- disambig
     this: libs/ra8_fs
-    that: libs/third_party/filex
+    that: libs/ra8_io
     symbol: ra8_fs_format
-    symbol: fx_media_format
-    users: ra8_fs = 29
-    users: RA8_USE_FILEX = 2
+    symbol: ra8_io_vfs_open
+    users: ra8_fs = 31
+    users: ra8_io = 15
+    files: libs/ra8_fs/src/*.c = 32
     -->
+
+(abridged -- the real block carries more ``symbol`` rows, and the counts
+shown are whatever the tree held when this was written. Only the block in
+the README is checked; this one is here to show the syntax.)
 
 ``this``    the directory this README lives in and speaks for. Exactly one.
 ``that``    the thing it is being distinguished FROM. One or more.

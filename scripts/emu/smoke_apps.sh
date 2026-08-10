@@ -79,7 +79,7 @@ periodic_tick_apps="agt_periodic rtc_alarm elc_event_demo"
 # + USBFS DCD register model. For these apps we assert the device reaches
 # CONFIGURED with its class active -- i.e. enumeration completed end to end, with
 # no hardware: CDC-ACM, HID (boot mouse), and MSC (BOT/SCSI + a sector read).
-# They are ThreadX/USBX, so (like the LevelX/FileX apps) they need a newer Unicorn
+# They are ThreadX/USBX, so (like the LevelX apps) they need a newer Unicorn
 # than the CI runner's 2.0.1 and a bounded budget; pass them explicitly, e.g.
 # `scripts/emu/smoke.sh usb_cdc_echo usb_msc_device`.
 #

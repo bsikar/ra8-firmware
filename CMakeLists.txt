@@ -100,12 +100,11 @@ set(CMAKE_ASM_FLAGS_RELWITHDEBINFO "-g3")
 # __cmse_nonsecure_entry attributes.
 option(RA8_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" OFF)
 
-# Vendored OS / FS integrations. OFF by default so the bare-metal-only
+# Vendored OS integrations. OFF by default so the bare-metal-only
 # top-level build keeps working without dragging the third_party trees
-# in. Per-app builds (e.g. examples/threadx_filex_demo) flip these on
+# in. Per-app builds (e.g. the threadx_* demos) flip these on
 # explicitly through their own Makefile.
 option(RA8_USE_THREADX "Enable the vendored ThreadX RTOS" OFF)
-option(RA8_USE_FILEX "Enable the vendored FileX FAT file system" OFF)
 
 # Default app for top-level builds. `cmake --build build --target firmware`
 # builds the default; `cmake --build build` builds every discovered app.
@@ -114,11 +113,10 @@ set(RA8_DEFAULT_APP
     CACHE STRING "Default app target alias"
 )
 
-# Pull in the optional integrations early so per-app subdirectories
-# can reference the `threadx` / `filex` interface targets directly.
-# Both files are no-ops when their option is OFF.
+# Pull in the optional integration early so per-app subdirectories
+# can reference the `threadx` interface target directly. The file is a
+# no-op when its option is OFF.
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/threadx.cmake OPTIONAL)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/filex.cmake)
 
 #############################################################################
 # Auto-discover apps up to 4 levels deep:

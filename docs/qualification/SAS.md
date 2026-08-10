@@ -146,9 +146,9 @@ acceptance gate met.
 
 ### 4.5 SOUP inventory
 
-14 SOUP components are catalogued under `docs/SOUP/`, each with a
+13 SOUP components are catalogued under `docs/SOUP/`, each with a
 written qualification basis citing IEC 61508-3 sec. 7.4.2.12 and
-DO-178C sec. 12.1.4: ThreadX, NetX Duo, FileX, USBX, LevelX,
+DO-178C sec. 12.1.4: ThreadX, NetX Duo, USBX, LevelX,
 Mbed TLS, TF-PSA-Crypto, lwIP, Apache NimBLE, litehtml, miniz, stb,
 TinyXML-2. Re-review cadence is at most 12 months from each doc's
 "Last review" stamp. The behavioural-boundary verification basis

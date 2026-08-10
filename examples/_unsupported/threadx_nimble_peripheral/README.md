@@ -87,7 +87,7 @@ blocker away from working."
   bring-up, NimBLE port init, battery loop.
 - `vector_table.c`, `system_init.c`, `secure_exception.c`,
   `trustzone_init.{c,h}` -- per-app boot files (copied from
-  `examples/threadx_filex_demo`).
+  `examples/ek_ra8d2/hw_validated/hil/threadx_fs_demo`).
 - `linker_script.ld` -- per-app memory map.
 - `CMakeLists.txt`, `Makefile` -- per-app build wrappers.
 

@@ -5,9 +5,9 @@
  *
  * @details
  * `ra8_fs` is a self-contained, pure-C FAT filesystem implementation that sits
- * on top of an arbitrary block-device backend (`ra8_fs_backend_t`). It mirrors
- * the public shape of Renesas FSP's `rm_filex` / FileX adapter but does not
- * carry the FileX or FSP dependencies.
+ * on top of an arbitrary block-device backend (`ra8_fs_backend_t`), with no
+ * RTOS and no vendor-SDK dependencies. It is the platform's only filesystem:
+ * the vendored FileX it once coexisted with was retired by #611.
  *
  * Two backends are intended for production use:
  *   1. `ra8_sdhi` -- on-board SD/MMC card (sweep 1).
@@ -85,7 +85,6 @@
  * ## What this deliberately skips
  *   - exFAT names past 64 UTF-16 units (the format allows 255), and
  *     locale-sensitive folding (Turkish dotless i, full case folding).
- *   - Long names on exFAT, which has its own (unrelated) name encoding.
  *   - Extended / logical MBR partition chains: the four MBR primary entries
  *     and the GPT entry array are addressable by index through
  *     `ra8_fs_mount_partition()` (with `ra8_fs_mount()` auto-selecting the

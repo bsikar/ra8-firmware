@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 14080
+# total findings: 14086
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -1590,8 +1590,8 @@ port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h	misra-c2012-11.5	2
 port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h	misra-c2012-15.5	32
 port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h	misra-c2012-8.4	1
 port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h	misra-c2012-15.5	32
-port/filex/src/fx_media_driver_ra8_sdhi.c	misra-c2012-15.5	2
-port/levelx/src/lx_filex_adapter.c	misra-c2012-15.5	9
+port/levelx/src/lx_fs_backend.c	misra-c2012-15.5	16
+port/levelx/src/lx_fs_backend.c	misra-c2012-8.4	1
 port/levelx/src/lx_nor_driver_ra8_xspi.c	misra-c2012-15.5	20
 port/levelx/src/lx_nor_driver_ra8_xspi.c	misra-c2012-17.3	3
 port/levelx/src/lx_nor_driver_ra8_xspi.c	misra-c2012-8.4	2

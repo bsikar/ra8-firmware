@@ -64,7 +64,6 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 |-----------|---------|----------------|--------------|----------|
 | Eclipse ThreadX | 6.5.0 | MIT | `libs/third_party/threadx/` | <https://github.com/eclipse-threadx/threadx> |
 | Eclipse NetX Duo | 6.5.0 | MIT | `libs/third_party/netxduo/` | <https://github.com/eclipse-threadx/netxduo> |
-| Eclipse FileX | 6.5.0 | MIT | `libs/third_party/filex/` | <https://github.com/eclipse-threadx/filex> |
 | Eclipse USBX | 6.5.0 | MIT | `libs/third_party/usbx/` | <https://github.com/eclipse-threadx/usbx> |
 | Eclipse LevelX | 6.5.0 | MIT | `libs/third_party/levelx/` | <https://github.com/eclipse-threadx/levelx> |
 | Mbed TLS | 4.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/mbedtls/` | <https://github.com/Mbed-TLS/mbedtls> |
@@ -84,10 +83,10 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | protobuf-c (nested in esp-hosted) | 1.4.1 (git `abc67a11`) | BSD-2-Clause | `libs/third_party/esp-hosted/common/protobuf-c/` | <https://github.com/protobuf-c/protobuf-c> |
 | Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/ra8_fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
 
-Counts: **20 vendored source components** + **1 bundled font asset**. One of
-the twenty (protobuf-c) is *nested*: upstream esp-hosted carries it as a git
+Counts: **19 vendored source components** + **1 bundled font asset**. One of
+the nineteen (protobuf-c) is *nested*: upstream esp-hosted carries it as a git
 submodule, so it is pinned and licensed in its own right rather than folded
-into its parent. Ten of the twenty-one carry a declared deviation from
+into its parent. Nine of the twenty carry a declared deviation from
 their upstream pin -- TinyXML-2, libwebp and stb each an in-tree code patch, the
 five Eclipse ThreadX trees a `.gitattributes` edit, and Mbed TLS /
 TF-PSA-Crypto their build-generated sources -- so those are *modified* SOUP;
@@ -102,7 +101,7 @@ linked into nothing -- see the build-tools note below and
 
 ## Provenance and integrity
 
-**All twenty-one vendored components are now pinned to an upstream revision and
+**All twenty vendored components are now pinned to an upstream revision and
 verified against it file by file.** Ten of them had no upstream pin at all
 until #548 -- their version was read out of a header in our own tree, which
 says what the code calls itself, not where it came from. Each was resolved by
@@ -119,7 +118,6 @@ permitted to differ.
 |-----------|-------------------|----------|------------|
 | ThreadX | tag `v6.5.0.202601_rel` `3726d7906b4808bfec7855fc088e073199df9120` | 4757/4758 | 1 patched (`.gitattributes`) |
 | NetX Duo | tag `v6.5.0.202601_rel` `8b6e03ac30ab688bec02c69d42f2304b7f72a202` | 1226/1227 | 1 patched (`.gitattributes`) |
-| FileX | tag `v6.5.0.202601_rel` `bb6e295af079f3cd903272982106b0ddd9537422` | 266/267 | 1 patched (`.gitattributes`) |
 | USBX | tag `v6.5.0.202601_rel` `6dc0cf233d5b7ee6e1a7434581964975f8d8d37b` | 1035/1036 | 1 patched (`.gitattributes`) |
 | LevelX | tag `v6.5.0.202601_rel` `a46b74fb8aa133796ccbc13e7902cb8bb818e12f` | 89/90 | 1 patched (`.gitattributes`) |
 | Mbed TLS | `development` `d12fbb991c0822f347bbc569badef904629ce605` | 252/256 | 1 patched, 3 generated |
@@ -139,8 +137,8 @@ permitted to differ.
 | protobuf-c (nested) | `abc67a11c6db271bedbb9f58be85d6f4e2ea8389` | 3/3 | none |
 | Literata | tag `3.103` `0c2761b727a1b3a7cffd313c37f0f5163dfc7a63` | 1/1 | none (1 relocated) |
 
-**Totals: 21 components, 9420 vendored files, 9401 byte-identical to their
-pinned upstream revision, 19 declared deviations.**
+**Totals: 20 components, 9153 vendored files, 9135 byte-identical to their
+pinned upstream revision, 18 declared deviations.**
 
 ### Why there are no hash values in this table
 
@@ -184,7 +182,7 @@ remains is enumerated above and justified per component.
 Each component's full license text ships beside its source (path column
 below); this section reproduces the copyright line and points to that text.
 
-- **ThreadX, NetX Duo, FileX, USBX, LevelX** -- MIT.
+- **ThreadX, NetX Duo, USBX, LevelX** -- MIT.
   "Copyright (c) 2024 - present Microsoft Corporation." Text:
   `libs/third_party/<component>/LICENSE.txt`. Origin: Eclipse Foundation
   (Eclipse ThreadX).

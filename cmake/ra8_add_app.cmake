@@ -47,7 +47,7 @@
 #                       cmake/<m>.cmake (interface lib target <m>) and, when a
 #                       global property RA8_<M>_PORT_SOURCES exists, that
 #                       property's bridge sources. Recognised: threadx usbx
-#                       netxduo filex levelx nimble mbedtls. In standalone
+#                       netxduo levelx nimble mbedtls. In standalone
 #                       builds RA8_USE_<M> defaults ON; in the aggregate build it
 #                       stays as the top-level set it, and an app whose
 #                       middleware is OFF skips itself.
@@ -371,7 +371,6 @@ macro(ra8_add_app)
   set(_ra8_port_lib_usbx usbx_port_ra8_usb)
   set(_ra8_port_lib_netxduo netxduo_port_ra8_eth)
   set(_ra8_port_lib_mbedtls mbedtls_port_ra8_config)
-  set(_ra8_port_lib_filex filex_port_ra8_sdhi)
   set(_ra8_port_lib_levelx levelx_port_ra8_xspi)
   set(_ra8_port_lib_nimble nimble_port_threadx)
   set(_ra8_port_lib_esp_hosted esp_hosted_port_ra8_spi)

@@ -6,14 +6,15 @@ medium** and by **who wrote them**.
 `ra8_ftl` is first-party and serves the **on-chip** extra MRAM: it wraps an
 erase-before-write `ra8_io_blockdev_t` and presents a free-overwrite one upward,
 so `ra8_fs` can rewrite a FAT entry in place. LevelX is vendored SOUP and serves
-the **external Octo-SPI NOR** (`lx_nor_flash_open()`), reached through FileX's
-`fx_media_driver_ra8_levelx` in `port/levelx/`.
+the **external Octo-SPI NOR** (`lx_nor_flash_open()`), reached through the
+`ra8_fs` block-device backend `lx_fs_backend_bind()` in `port/levelx/` (or
+driven raw, as `libs/ra8_cache_store/` does).
 
 | | `ra8_ftl` | LevelX |
 |---|---|---|
 | Medium | on-chip MRAM / data flash | external MX25LM512 Octo-SPI NOR |
 | Provenance | first-party, gated like the rest of `libs/` | vendored SOUP, exempt (`docs/SOUP/levelx.md`) |
-| Sits under | `ra8_io` / `ra8_fs` | FileX |
+| Sits under | `ra8_io` / `ra8_fs` | `ra8_fs` (via `port/levelx/`) or raw (`ra8_cache_store`) |
 | Needs ThreadX | no | yes, unless built via `RA8_USE_LEVELX_STANDALONE` |
 
 **Which do I use?** It follows from the medium, not from preference: on-chip

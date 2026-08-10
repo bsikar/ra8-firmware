@@ -337,7 +337,7 @@ files but a single REQ-DRV ID applies.
 | ID               | Requirement                                                                                                                          | Source                                          | Test                                          |
 |------------------|--------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|-----------------------------------------------|
 | REQ-HAL-001      | A graphics-text rendering layer SHALL provide ASCII string draw primitives over a framebuffer.                                       | `libs/ra8_gfx/src/ra8_gfx_text.c`, `ra8_gfx_font_8x16.c` | `tests/test_ra8_gfx.c`, `tests/test_ra8_gfx_text.c` |
-| REQ-HAL-002      | A FAT-filesystem facade SHALL wrap FileX with project error semantics (`ra8_err_t` translation).                                       | `libs/ra8_fs/src/ra8_fs_fat.c`                    | `tests/test_ra8_fs.c`, `tests/test_ra8_fs_fat.c` |
+| REQ-HAL-002      | A first-party FAT12/16/32 + exFAT filesystem SHALL run on a swappable block-device backend with project error semantics (`ra8_err_t`). | `libs/ra8_fs/src/ra8_fs_fat.c`                    | `tests/test_ra8_fs.c`, `tests/test_ra8_fs_fat.c` |
 | REQ-HAL-003      | An MPU configuration helper SHALL build region tables for the bus MMPU and Cortex-M85 core MPU.                                       | `libs/ra8_mpu/src/ra8_mpu.c`                      | `tests/test_ra8_mpu.c`                         |
 | REQ-HAL-004      | A watchdog supervisor SHALL refresh IWDT/WDT from a single bottleneck monitored against task heartbeats.                               | `libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c`| `tests/test_ra8_wdt_supervisor.c`              |
 | REQ-HAL-005      | A power-profile module SHALL select between "Run", "Sleep", "Standby", "Deep Standby" with explicit transitions through `ra8_lpm`.       | `libs/ra8_power_profile/src/ra8_power_profile.c` | `tests/test_ra8_power_profile.c`               |
@@ -400,8 +400,8 @@ verification for these.
 | REQ-APP-007      | ra8_bootloader                     | `examples/ek_ra8d2/ra8_bootloader/main.c`                | `tests/test_app_ra8_bootloader.c`           |
 | REQ-APP-008      | threadx_blink                     | `examples/ek_ra8d2/threadx_blink/main.c`                | `tests/test_app_threadx_blink.c`           |
 | REQ-APP-009      | threadx_canfd_demo                | `examples/ek_ra8d2/threadx_canfd_demo/main.c`           | `tests/test_app_threadx_canfd_demo.c`      |
-| REQ-APP-010      | threadx_filex_demo                | `examples/ek_ra8d2/threadx_filex_demo/main.c`           | `tests/test_app_threadx_filex_demo.c`      |
-| REQ-APP-011      | threadx_filex_levelx_demo         | `examples/ek_ra8d2/threadx_filex_levelx_demo/main.c`    | `tests/test_app_threadx_filex_levelx_demo.c` |
+| REQ-APP-010      | threadx_fs_demo                   | `examples/ek_ra8d2/threadx_fs_demo/main.c`              | `tests/test_app_threadx_fs_demo.c`         |
+| REQ-APP-011      | threadx_fs_levelx_demo            | `examples/ek_ra8d2/threadx_fs_levelx_demo/main.c`       | `tests/test_app_threadx_fs_levelx_demo.c`  |
 | REQ-APP-013      | threadx_ipc_demo                  | `examples/ek_ra8d2/threadx_ipc_demo/main.c`             | `tests/test_app_threadx_ipc_demo.c`        |
 | REQ-APP-014      | threadx_levelx_demo               | `examples/ek_ra8d2/threadx_levelx_demo/main.c`          | `tests/test_app_threadx_levelx_demo.c`     |
 | REQ-APP-015      | threadx_lwip_tcp_echo             | `examples/ek_ra8d2/threadx_lwip_tcp_echo/main.c`        | `tests/test_app_threadx_lwip_tcp_echo.c`   |

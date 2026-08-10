@@ -122,7 +122,7 @@ IDENT_TERM_RE: re.Pattern[str] = re.compile(r"(?:^|_)(?:master|slave)", re.IGNOR
 VENDOR_IDENT_RE: re.Pattern[str] = re.compile(
     r"^(?:_?ux_|r_iic|r_sce|_?nx_|ble_|mynewt|mbedtls|tls_|pre_?master"
     r"|premaster|resumption_master|_?lx_|_?tx_|_?gx_|_?fx_|netx|threadx"
-    r"|usbx|filex|levelx|esp_hosted|dcd_sim_slave|hcd_sim_host)",
+    r"|usbx|levelx|esp_hosted|dcd_sim_slave|hcd_sim_host)",
     re.IGNORECASE,
 )
 # Hardware register-bit names that spell a legacy token verbatim (Renesas

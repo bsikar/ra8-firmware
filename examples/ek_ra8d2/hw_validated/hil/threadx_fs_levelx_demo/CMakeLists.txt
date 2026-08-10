@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# Per-app CMake stub for `threadx_filex_levelx_demo`. Build logic lives in
+# Per-app CMake stub for `threadx_fs_levelx_demo`. Build logic lives in
 # the shared cmake/ra8_add_app.cmake recipe; this file names the app + deps.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
@@ -19,7 +19,7 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-  project(threadx_filex_levelx_demo LANGUAGES C ASM)
+  project(threadx_fs_levelx_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
@@ -29,30 +29,19 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-# This demo pairs FileX with LevelX-on-xSPI flash (no SD/MMC), so it links
-# the FileX *core* plus the LevelX flash port -- not the FileX SDHI port.
-# ra8_add_app's USES covers ThreadX + LevelX; FileX is enabled + guarded
-# here so its core can be linked without dragging in the SDHI bridge.
-get_directory_property(_ra8_p PARENT_DIRECTORY)
-if(NOT _ra8_p)
-  option(RA8_USE_FILEX "Enable the vendored FileX FAT file system" ON)
-  include("${_d}/cmake/filex.cmake")
-endif()
-if(NOT RA8_USE_FILEX)
-  message(STATUS "threadx_filex_levelx_demo: skipped (RA8_USE_FILEX is OFF)")
-  return()
-endif()
-
+# This demo pairs ra8_fs with LevelX-on-xSPI flash (no SD/MMC): ra8_add_app's
+# USES covers ThreadX + LevelX, LIBS pulls the first-party filesystem, and the
+# LevelX -> ra8_fs block-device backend (port/levelx/src/lx_fs_backend.c) is
+# spliced in below.
 ra8_add_app(
-  NAME threadx_filex_levelx_demo
+  NAME threadx_fs_levelx_demo
   STACK_BYTES 2200
-  DESCRIPTION "ThreadX + FileX-on-LevelX wear-levelled FAT demo for RA8D2"
-  LIBS ra8_board_ek_ra8d2
+  DESCRIPTION "ThreadX + ra8_fs-on-LevelX wear-levelled FAT demo for RA8D2"
+  LIBS ra8_board_ek_ra8d2 ra8_fs
   USES threadx levelx
 )
 
-target_link_libraries(threadx_filex_levelx_demo.elf PRIVATE filex)
-get_property(_ra8_lvfx GLOBAL PROPERTY RA8_LEVELX_FILEX_PORT_SOURCES)
-if(_ra8_lvfx)
-  target_sources(threadx_filex_levelx_demo.elf PRIVATE ${_ra8_lvfx})
+get_property(_ra8_lvfs GLOBAL PROPERTY RA8_LEVELX_FS_PORT_SOURCES)
+if(_ra8_lvfs)
+  target_sources(threadx_fs_levelx_demo.elf PRIVATE ${_ra8_lvfs})
 endif()

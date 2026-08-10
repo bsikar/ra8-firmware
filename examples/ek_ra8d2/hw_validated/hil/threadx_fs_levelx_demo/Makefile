@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# Per-app Makefile for the `threadx_filex_levelx_demo` firmware.
+# Per-app Makefile for the `threadx_fs_levelx_demo` firmware.
 #
 # Standalone:
-#   cd examples/threadx_filex_levelx_demo/
-#   make             # configure + build (auto-enables ThreadX + FileX + LevelX)
+#   cd examples/threadx_fs_levelx_demo/
+#   make             # configure + build (auto-enables ThreadX + LevelX)
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make clean
 #
-# This wraps the per-app CMakeLists.txt with -DRA8_USE_THREADX=ON
-# -DRA8_USE_FILEX=ON -DRA8_USE_LEVELX=ON forced on, since the demo
-# cannot build without them. The demo formats and mounts a FAT
+# This wraps the per-app CMakeLists.txt with -DRA8_USE_THREADX=ON forced
+# on (LevelX defaults ON via USES in the standalone build); the demo
+# cannot build without ThreadX + LevelX. The demo formats and mounts a FAT
 # volume on top of LevelX wear-levelling on top of the on-board
 # octal-SPI NOR flash, then writes / reads /levelx_test.txt.
 #
@@ -19,7 +19,7 @@
 
 SHELL     := /bin/bash
 
-APP        := threadx_filex_levelx_demo
+APP        := threadx_fs_levelx_demo
 ROOT       := $(shell git -C "$(CURDIR)" rev-parse --show-toplevel)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build
@@ -52,7 +52,6 @@ $(ELF): $(wildcard $(HERE)/*.c) $(wildcard $(HERE)/*.h) $(wildcard $(HERE)/linke
 	    -DCMAKE_BUILD_TYPE=$(or $(BUILD_TYPE),RelWithDebInfo) \
 	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
 	    -DRA8_USE_THREADX=ON \
-	    -DRA8_USE_FILEX=ON \
 	    -DRA8_USE_LEVELX=ON
 	$(CMAKE) --build $(BUILD_DIR)
 

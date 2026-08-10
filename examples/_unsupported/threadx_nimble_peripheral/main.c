@@ -10,7 +10,7 @@
  * demo. The bring-up path is:
  *
  *   1. Bare-metal init (CGC + SCI8 + SysTick) -- identical to
- *      ``examples/threadx_filex_demo``.
+ *      ``examples/ek_ra8d2/hw_validated/hil/threadx_fs_demo``.
  *   2. ``ra8_ble_init`` clocks the radio block and opens the HCI
  *      mailbox.
  *   3. ``tx_kernel_enter`` hands the CPU over to ThreadX.

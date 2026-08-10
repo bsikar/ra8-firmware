@@ -17,7 +17,6 @@ basis.
 | --------------- | -------- | --------------------------- | ---------------------------------- |
 | ThreadX         | 6.5.0 tag `v6.5.0.202601_rel` | Eclipse Foundation  | [threadx.md](threadx.md)           |
 | NetX Duo        | 6.5.0 tag `v6.5.0.202601_rel` | Eclipse Foundation  | [netxduo.md](netxduo.md)           |
-| FileX           | 6.5.0 tag `v6.5.0.202601_rel` | Eclipse Foundation  | [filex.md](filex.md)               |
 | USBX            | 6.5.0 tag `v6.5.0.202601_rel` | Eclipse Foundation  | [usbx.md](usbx.md)                 |
 | LevelX          | 6.5.0 tag `v6.5.0.202601_rel` | Eclipse Foundation  | [levelx.md](levelx.md)             |
 | Mbed TLS        | 4.1.0+dev git `d12fbb99` | TrustedFirmware.org     | [mbedtls.md](mbedtls.md)           |
@@ -53,12 +52,10 @@ see [esp-hosted-host.md](esp-hosted-host.md) for how the two halves differ.
 - **NetX Duo** -- Dual IPv4/IPv6 TCP/IP stack over wired Ethernet and over the
   ESP32-C6 Wi-Fi link. TCP/IP core only: NetX Secure is compiled by nothing
   and TLS comes from Mbed TLS.
-- **FileX** -- FAT12/16/32 file system used by two demo applications. No
-  exFAT: the vendored snapshot ships none, and this firmware's exFAT is the
-  first-party `libs/ra8_fs/`.
 - **USBX** -- USB host / device stack for the CDC, HID, and MSC demos.
-- **LevelX** -- NOR-flash wear-levelling on Octo-SPI, both under FileX and
-  standalone (no ThreadX, no FileX) beneath `libs/ra8_cache_store/`.
+- **LevelX** -- NOR-flash wear-levelling on Octo-SPI: standalone (no ThreadX)
+  beneath `libs/ra8_cache_store/`, and under `ra8_fs` in the ThreadX storage
+  demos via `port/levelx/src/lx_fs_backend.c`.
 - **Mbed TLS** -- TLS record layer and X.509 handling consumed via
   `libs/ra8_tls/` and `libs/ra8_ota/`.
 - **TF-PSA-Crypto** -- PSA Crypto API implementation backing TLS, OTA
@@ -156,8 +153,9 @@ Deliberate deviations are declared in the registry (`patched_files`,
 `local_files`) with a justification, and `--refresh` REFUSES to record a
 deviation the registry has not declared -- otherwise a corrupted file would be
 quietly re-recorded as "modified on purpose" and the gate would go green having
-absorbed it. As of 2026-08-04: 21 components, 9420 vendored files, 9401
-byte-identical to their pinned upstream revision, 19 declared deviations.
+absorbed it. As of 2026-08-10: 20 components, 9153 vendored files, 9135
+byte-identical to their pinned upstream revision, 18 declared deviations
+(the vendored FileX snapshot, retired by #611, left with its deviation).
 
 Applying that check for the first time found five undeclared deviations that
 this catalog described as "unmodified": the `[attr]` edit to all five Eclipse

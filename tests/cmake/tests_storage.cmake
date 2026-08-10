@@ -102,6 +102,38 @@ set_source_files_properties(${RA8_LEVELX_NOR_STANDALONE} PROPERTIES COMPILE_OPTI
 add_test(NAME test_ra8_cache_store COMMAND test_ra8_cache_store)
 
 # ---------------------------------------------------------------------------
+# test_lx_fs_backend (#611): the LevelX -> ra8_fs block-device backend that the
+# threadx_fs_demo / threadx_fs_levelx_demo HIL apps mount through. Compiles the
+# REAL vendored LevelX NOR core (LX_STANDALONE_ENABLE, no ThreadX) over the RAM
+# NOR fake plus the port shim under test (port/levelx/src/lx_fs_backend.c);
+# ra8_fs and ra8_log come from the shared ra8_core_hal objects -- so the host
+# runs the demos' whole storage stack minus only the xSPI silicon. Registered
+# by hand (vendored LevelX + the fake driver put it outside the ra8_add_test()
+# auto-glob).
+# ---------------------------------------------------------------------------
+add_executable(
+  test_lx_fs_backend
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_lx_fs_backend.c
+  ${FW_ROOT}/port/levelx/src/lx_fs_backend.c
+  ${RA8_LEVELX_NOR_STANDALONE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/lx_nor_fake_ram.c
+  $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_lx_fs_backend PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_definitions(test_lx_fs_backend PRIVATE LX_STANDALONE_ENABLE)
+target_compile_options(test_lx_fs_backend PRIVATE -Wall -Wextra)
+target_include_directories(
+  test_lx_fs_backend
+  PRIVATE ${FW_ROOT}/port/levelx/inc
+          ${FW_ROOT}/libs/ra8_fs/inc
+          ${FW_ROOT}/libs/ra8_core/inc
+          ${FW_ROOT}/libs/ra8_hal/inc
+          ${FW_ROOT}/libs/third_party/levelx/common/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+)
+add_test(NAME test_lx_fs_backend COMMAND test_lx_fs_backend)
+
+# ---------------------------------------------------------------------------
 # test_cache_store_demo (#257): the ra8_cache_store_demo example core on the host.
 # Compiles the SAME demo core (cache_store_demo.c) and RAM NOR driver
 # (lx_nor_ram.c) the ARM example runs, so the host test and the ra8_emulator gate

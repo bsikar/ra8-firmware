@@ -133,7 +133,7 @@ Cross-cutting design points:
 | Module              | Public API (`libs/<mod>/inc/`)                                                                | Depends on (Ring 3 drivers)                                | Implements      |
 |---------------------|-----------------------------------------------------------------------------------------------|------------------------------------------------------------|-----------------|
 | ra8_gfx              | `ra8_gfx.h`, `ra8_gfx_font.h`                                                                   | `ra8_glcdc`                                                  | REQ-HAL-001     |
-| ra8_fs               | `ra8_fs.h`                                                                                     | FileX (SOUP), `ra8_xspi`, `ra8_sdhi`                          | REQ-HAL-002     |
+| ra8_fs               | `ra8_fs.h`                                                                                     | block-device backends (`ra8_sdhi`, `ra8_sdmmc_spi`, `ra8_xspi`, LevelX via `port/levelx/`) | REQ-HAL-002     |
 | ra8_mpu              | `ra8_mpu.h`                                                                                    | core MPU regs (Ring 2)                                       | REQ-HAL-003     |
 | ra8_wdt_supervisor   | `ra8_wdt_supervisor.h`                                                                         | `ra8_iwdt`, `ra8_wdt`                                          | REQ-HAL-004     |
 | ra8_power_profile    | `ra8_power_profile.h`                                                                          | `ra8_lpm`, `ra8_pwr`, `ra8_vreg`                                | REQ-HAL-005     |
@@ -221,8 +221,8 @@ exceeds its declared bucket (REQ-PERF-008).
 | Wrapped key blobs           | Last MRAM block, S-only                  | `src/secure_app/key_import.c` + `key_vault.c`            |
 | OFS bytes                   | MRAM offset per HUM Ch 6                 | `libs/ra8_hal/src/ra8_ofs.c` + per-app linker script        |
 | TSN factory cal             | `0x02C1EDA0`                             | `libs/ra8_hal/src/ra8_tsn.c`                                |
-| External NOR (LevelX-backed) | xSPI memory window                       | LevelX SOUP via `libs/ra8_fs/`                             |
-| External SD card data       | FAT volume on SD-card via SDHI            | FileX SOUP via `libs/ra8_fs/src/ra8_fs_fat.c`              |
+| External NOR (LevelX-backed) | xSPI memory window                       | LevelX SOUP via `port/levelx/` + `libs/ra8_cache_store/`     |
+| External SD card data       | FAT volume on SD-card via SDHI            | first-party `libs/ra8_fs/src/ra8_fs_fat.c`                  |
 
 ### 3.4 Configuration data
 
@@ -369,10 +369,11 @@ SHALL NOT ship in a certified build (PSAC Section 7.2).
 
 ### 6.3 Filesystem algorithm choices
 
-`libs/ra8_fs/` wraps FileX (FAT) for SD-card volumes and LevelX (NOR
-flash translation layer) for the EK-RA8D2 64 MiB Octo-SPI NOR. Both
-are SOUP per [`../SOUP/filex.md`](../SOUP/filex.md) and
-[`../SOUP/levelx.md`](../SOUP/levelx.md).
+`libs/ra8_fs/` is the first-party FAT12/16/32 + exFAT implementation
+(the vendored FileX was retired by #611); it mounts any block-device
+backend, including the EK-RA8D2 64 MiB Octo-SPI NOR through LevelX (NOR
+flash translation layer, SOUP per [`../SOUP/levelx.md`](../SOUP/levelx.md))
+via `port/levelx/src/lx_fs_backend.c`.
 
 ### 6.4 Network algorithm choices
 

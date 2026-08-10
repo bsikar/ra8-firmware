@@ -1,85 +1,69 @@
-# libs/ra8_fs -- the filesystem for the bare-metal world
+# libs/ra8_fs -- the platform's filesystem
 
 `ra8_fs` is a hand-written FAT12/FAT16/FAT32 + exFAT implementation sitting on a
 three-callback block-device seam (`ra8_fs_backend_t`: `read_block`,
 `write_block`, `get_capacity`, plus an optional `erase_blocks`). It needs no
-RTOS, no heap and no vendor SDK, which is why it is the filesystem the default
-world of this firmware uses -- everything from the e-reader shelf to the USB
-mass-storage selftests reaches storage through it, and `ra8_io`'s VFS and
-formatter seams are built on it.
+RTOS, no heap and no vendor SDK. Everything in this firmware reaches storage
+through it -- from the e-reader shelf to the USB mass-storage selftests to the
+ThreadX demos -- and `ra8_io`'s VFS and formatter seams are built on it.
 
-The vendored Eclipse FileX under [`libs/third_party/filex/`](../third_party/filex/)
-is the *other* filesystem in this tree, and it is the ThreadX-world one:
-`cmake/filex.cmake` refuses to configure unless `RA8_USE_THREADX=ON`, because
-FileX's protection macros call `tx_mutex_*`. The two coexist on purpose.
+It is the ONLY filesystem in this tree. The vendored Eclipse FileX that used to
+sit beside it was retired by #611: its whole first-party consumer surface was
+two ThreadX HIL demos doing create / list / read-back / delete on OSPI NOR via
+LevelX -- a subset `ra8_fs` already implemented -- so the demos were ported onto
+`ra8_fs` (over `port/levelx/src/lx_fs_backend.c`, with the `ra8_fs_set_lock()`
+seam bound to a ThreadX mutex) and the ~50.9k-line FileX snapshot was deleted.
+LevelX stays: `cmake/levelx_standalone.cmake` builds it with no ThreadX and no
+filesystem above it, `libs/ra8_cache_store/` consumes that mode, and the two
+ported demos mount `ra8_fs` on it.
 
-What used to separate them was not a feature list, it was whether an RTOS was
-present at all. That is no longer quite true: `ra8_fs_set_lock()` (#608) is a
-two-callback seam an RTOS-world caller binds to its own mutex, so one verified
-filesystem can serve both worlds. The seam is optional and the default is still
-no lock, so the bare-metal path is unchanged -- but "you need a scheduler, so
-you need the other filesystem" has stopped being a reason on its own.
+## Capabilities
 
-## Comparison
+Every line below was read out of the code in this tree at the time of writing.
 
-Every row below was read out of the code in this tree at the time of writing --
-`libs/ra8_fs/` and the vendored FileX 6.5.0 snapshot -- not from either
-project's marketing.
+| Capability | `ra8_fs` |
+|---|---|
+| FAT12 / FAT16 / FAT32, read + write | Yes |
+| exFAT | Yes -- mount, streaming read AND streaming write (open / append / truncate through the same seam as FAT; the entry set keeps `NoFatChain` while the run is contiguous and materialises a real FAT chain when it is not), rename, unlink, format, and a real DIRECTORY TREE: `mkdir`, `rmdir`, nested path resolution and per-directory listing |
+| Long file names | Read: LFN chains reassembled and matched (`src/ra8_fs_fat_lfn.c`). Write: up to 247 characters (19 VFAT groups) behind a generated `LONGNA~1.TXT` alias, on create, `mkdir` and `rename`; `unlink` / `rmdir` take the chain away with the entry (#600). A name differing from 8.3 only in case travels in the `DIR_NTRes` flags instead |
+| `mkdir` / `rmdir` | Yes on FAT12/16/32 **and exFAT**, including nested paths, with rollback on failure. Directories GROW when full (#677). `rmdir` refuses the root, refuses a file, and proves the directory is empty before freeing a cluster (`k_ra8_err_not_empty` otherwise) |
+| Timestamps | Create, modify and access fields on create, content write, truncate, close and rename, from a caller-injected clock (`ra8_fs_set_clock()`). With no clock installed every stamp is the legal FAT epoch 1980-01-01, never the zeros that made macOS show 31 Dec 1969. exFAT additionally carries the 10 ms increments and the `UtcOffset` bytes |
+| Non-ASCII file names | The API is UTF-8 on both formats and the disk is UTF-16LE, converted in one place (`src/ra8_fs_utf.c`, #606). All of Unicode is storable, supplementary planes included. Malformed UTF-8 is REFUSED rather than patched. Lookup folds across the BMP through the canonical Microsoft up-case table; exFAT's `NameHash` uses that same table. Limits are in UTF-16 units: 247 on FAT, 64 on exFAT |
+| Formatter | FAT12/16/32 as a superfloppy at LBA 0 with auto cluster-size selection; exFAT into MBR partition 1 aligned at 1 MiB, with the spec's compressed up-case table, validated `fsck.exfat`-clean (#568) |
+| Partitioned media | `ra8_fs_mount()` tries LBA 0 as a superfloppy, then MBR partition entry 0, following a `0xEE` protective entry into the GPT. `ra8_fs_mount_partition()` selects any MBR primary entry (0-3) or GPT entry-array index. Extended/logical MBR chains are not walked |
+| Streaming file I/O | open / seek / read / write on FAT12/16/32 and exFAT (#602); an exFAT file grows a cluster at a time out of the allocation bitmap, `ValidDataLength` tracked apart from `DataLength` |
+| Files past 4 GiB | Yes on exFAT (#676): the whole length model is 64-bit. FAT12/16/32 keep the format's own 4 GiB - 1 ceiling, enforced with `k_ra8_err_invalid_size` |
+| Sector sizes | 512 / 1024 / 2048 / 4096 (#683), cross-checked against the BPB / VBR at mount. SIMULATION-VERIFIED ONLY past 512: no 4Kn medium has been on the bench (`tests/test_ra8_fs_4kn.c`) |
+| Media past 2 TiB | 64-bit LBAs end to end (#683). SIMULATION-VERIFIED ONLY: `tests/test_ra8_fs_large_media.c` drives a volume planted past LBA 2^32 on a 3 TiB sparse fake |
+| Truncate / extend | `ra8_fs_truncate()` (#680) in either direction, `fsck`-clean across shrink, grow and the chain transition |
+| FAT32 FSInfo | Validated at mount, seeds the free count and next-free hint, written back on close/unmount; the allocator scans from the hint through a one-sector FAT cache |
+| Media check | `ra8_fs_check()` (#610), a read-only fsck on both formats. No REPAIR: fixing a volume already known inconsistent, in a firmware with no journal, is how a recoverable card becomes an empty one |
+| Free space | `ra8_fs_free_space()` (#678): total / free / used clusters and 64-bit byte totals; O(1) on FAT32 via FSInfo |
+| Volume label / utime / attributes | `ra8_fs_get_label()` / `ra8_fs_set_label()` / `ra8_fs_utime()` (#682); read-only / hidden / system / archive both ENFORCED and MUTABLE via `ra8_fs_set_attr()` (#681) |
+| RTOS required | No. Single-threaded by default; `ra8_fs_set_lock()` (#608) installs a caller-supplied acquire/release pair taken across every public entry point. No lock primitive, RTOS header or scheduler concept in the library |
+| Dynamic allocation | None. Static state only: the 4 KiB scratch sector, a four-buffer fixed-role sector arena (16 KiB), a one-sector FAT cache, 4 file slots, 2 mount slots |
+| Backends in tree | Any object with the three callbacks: SD-over-SPI, native SDHI, OSPI NOR (raw via `ra8_io`, or wear-levelled via LevelX through `port/levelx/src/lx_fs_backend.c`), MRAM, SDRAM, in-RAM scratch, USB MSC, plus the host-test mock |
+| Verification | Held to the 90% per-file line-coverage floor with **no allowlist** (`scripts/checks/check_coverage_floor.py`; `ra8_fs` has no row in `.github/coverage-baseline.txt` or `.github/mcdc-baseline.txt`), MC/DC vectors on its compound decisions, MISRA via `scripts/checks/misra_check.sh` (ratcheted in `.github/misra-baseline.txt`), clang-tidy, the ASCII / Doxygen / annotation gates |
+| Host tests | 66 test binaries (`tests/test_ra8_fs*.c`) plus a libFuzzer harness (`tests/fuzz/fuzz_ra8_fs_fat.c`), plus the LevelX-backed stack twin `tests/test_lx_fs_backend.c`. The exFAT directory suites end every scenario with a structural scan of the volume, and each scenario's image is `fsck.exfat -n` clean |
 
-| Capability | `ra8_fs` | FileX 6.5.0 (vendored) |
-|---|---|---|
-| FAT12 / FAT16 / FAT32, read + write | Yes | Yes |
-| exFAT | Yes -- mount, streaming read AND streaming write (open / append / truncate through the same seam as FAT; the entry set keeps `NoFatChain` while the run is contiguous and materialises a real FAT chain when it is not), rename, unlink, format, and a real DIRECTORY TREE: `mkdir`, `rmdir`, nested path resolution and per-directory listing | **No.** The vendored snapshot ships no exFAT source at all; the only occurrences of the word are historical entries in `docs/revision_history.txt` |
-| Long file names, read | Yes -- LFN chains are reassembled and matched (`src/ra8_fs_fat_lfn.c`) | Yes |
-| Long file names, write | Yes -- up to 247 characters (19 VFAT groups) behind a generated `LONGNA~1.TXT` alias, on create, `mkdir` and `rename`; `unlink` / `rmdir` take the chain away with the entry (`src/ra8_fs_fat_lfn_write.c`, #600). A name differing from 8.3 only in case travels in the `DIR_NTRes` flags instead | Yes, up to `FX_MAX_LONG_NAME_LEN` (256), written by `fx_directory_entry_write` |
-| `mkdir` | Yes on FAT12/16/32 **and exFAT**, including nested paths, with rollback on failure. On exFAT a directory is a File+Stream+Name set with the Directory attribute over one zeroed cluster -- there are no "." / ".." entries, because exFAT has none. It GROWS when full: FAT subdirectories and the FAT32 root extend their chains, and an exFAT directory extends the same way its files do (contiguous with `NoFatChain` while it can, a real FAT chain when it fragments), so a folder's ceiling is the free space rather than one cluster (#677). An existing name is refused, never replaced | Yes (`fx_directory_create`) |
-| `rmdir` | Yes on FAT12/16/32 **and exFAT**, including nested paths. Refuses the root, refuses a file, and proves the directory is empty before freeing a cluster (`k_ra8_err_not_empty` otherwise). Only remnants are discounted -- FAT's 0xE5 slots and orphaned long-name entries, exFAT's entries with the in-use bit clear -- so a directory another implementation left remnants in is still removable | Yes (`fx_directory_delete`) |
-| Create / write timestamps | Yes on FAT and exFAT -- create, modify and access fields on create, content write, truncate, close and rename, from a caller-injected clock (`ra8_fs_set_clock()`). With no clock installed every stamp is the legal FAT epoch 1980-01-01, never the zeros that made macOS show 31 Dec 1969. exFAT additionally carries the 10 ms increments and the `UtcOffset` bytes | Yes (`fx_file_date_time_set`, `fx_system_date_set` / `fx_system_time_set`) |
-| Non-ASCII file names | Yes -- the API is UTF-8 on both formats and the disk is UTF-16LE, converted in one place (`src/ra8_fs_utf.c`, #606). The whole of Unicode is storable, supplementary planes included: a 4-byte UTF-8 character becomes a surrogate pair on disk and comes back as the same 4 bytes. Malformed UTF-8 -- an over-long form, a raw surrogate, a truncated sequence -- is REFUSED rather than patched. Lookup folds across the BMP through the canonical Microsoft up-case table, and exFAT's `NameHash` uses that same table, so a name this library writes is one a host recomputes the hash for (proven against an independently expanded on-disk table, and `fsck.exfat`-clean). A volume carrying a DIFFERENT up-case table refuses non-ASCII names with `k_ra8_err_not_supported` rather than filing them under a hash nothing agrees with. Directory names and every component of a nested exFAT path go through the same conversion, so a folder called anything is enterable by its own name. Limits are in UTF-16 units: 247 on FAT, 64 on exFAT | Yes -- 13 `fx_unicode_*` modules (create, rename, name get, short-name get), FAT only |
-| Formatter | Yes. FAT12/16/32 as a superfloppy at LBA 0 with auto cluster-size selection; exFAT into **MBR partition 1 aligned at 1 MiB**, with the spec's compressed up-case table, validated `fsck.exfat`-clean (#568) | Yes (`fx_media_format`), FAT only. Writes no partition table |
-| Mounts a card a PC partitioned | Yes. `ra8_fs_mount()` tries LBA 0 as a superfloppy, and on failure follows MBR partition entry 0; if that entry is the `0xEE` protective type it walks the GPT to the first Basic Data partition. Where it landed is recorded in `ra8_fs_mount_t::partition_base_lba` | Not as built here. `_fx_partition_offset_calculate` exists but nothing in the vendored tree or in `port/filex/` calls it; our media driver's `FX_DRIVER_BOOT_READ` is LBA 0 |
-| Multi-partition scanning | Yes -- `ra8_fs_mount_partition()` selects any MBR primary entry (0-3) or GPT entry-array index, validating the index against the table (empty / out-of-range / unaddressable entries error). `ra8_fs_mount()` keeps the auto-select-first default. Extended/logical MBR chains are not walked | n/a (see above) |
-| Streaming file I/O (open / seek / read / write) | Yes on FAT12/16/32 and on exFAT (#602). An exFAT file grows a cluster at a time out of the allocation bitmap, so its size is bounded by free space rather than by RAM, and `ValidDataLength` is tracked apart from `DataLength` so bytes past the written prefix read as zero | Yes |
-| Files past 4 GiB | Yes on exFAT (#676) -- the whole length model (`size_bytes` / `offset` / `valid_bytes`, `seek` / `tell` / `size` / `truncate`) is 64-bit, matching the on-disk `DataLength` / `ValidDataLength`, so the thing exFAT exists for actually works: write, read, seek and truncate across the 4 GiB line are pinned by `tests/test_ra8_fs_exfat_large_file.c` over a sparse fake backend, boundary offsets `0xFFFFFFFF +/- 1` included. FAT12/16/32 keep the format's own 4 GiB - 1 ceiling (`DIR_FileSize` is 32-bit), enforced with `k_ra8_err_invalid_size` at the FAT boundary rather than wrapped | No exFAT at all; FAT caps at 4 GiB - 1 by format |
-| Sector sizes | 512 / 1024 / 2048 / 4096 (#683). The sector size is the backend's reported block size, cross-checked against the BPB / VBR at mount (a 512e image on a 4Kn device is refused, not reinterpreted), and the formatter lays FAT and exFAT geometry at any of the four sizes. SIMULATION-VERIFIED ONLY: no 4Kn medium has been on the bench; `tests/test_ra8_fs_4kn.c` (format + mount + round-trips on FAT16/FAT32/exFAT, `fsck.exfat`-clean image) is the evidence it ships with | Multiple sector sizes read from the BPB (FAT only); the one in-tree media driver is 512-byte |
-| Media past 2 TiB | Yes (#683) -- LBAs and capacities are 64-bit through the whole stack: the backend interface, `partition_base_lba`, the GPT parser (entry-array and entry LBAs past 32 bits are followed, not refused) and every cluster computation. SIMULATION-VERIFIED ONLY: no such medium has been on the bench; `tests/test_ra8_fs_large_media.c` mounts and drives a volume planted at absolute LBA 2^32 on a 3 TiB sparse fake. The exFAT FORMATTER still refuses a partition its 32-bit MBR fields cannot record (past-2-TiB media arrive GPT-partitioned; mounting them is the supported half) | 32-bit sector addresses (`ULONG` LBA math in the vendored snapshot) |
-| Truncate / extend (`ftruncate`) | Yes -- `ra8_fs_truncate()` (#680) sets an open, writable file to any length in either direction. A shrink frees the tail clusters and lowers the length; a grow zero-fills the gap -- on FAT the fresh clusters and the last cluster's slack are written zero, on exFAT `DataLength` rises while `ValidDataLength` stays at the written prefix so the format serves the gap as zero, and a grow past the contiguous space converts the run to a real FAT chain. Both filesystems are `fsck`-clean across shrink, grow and the chain transition | Yes (`fx_file_truncate` / `fx_file_extended_truncate` / `fx_file_allocate`) |
-| FAT32 FSInfo free-cluster cache | Yes -- all three signatures validated at mount, then used to seed a per-mount free count and next-free hint, and written back when a file is closed or the volume unmounted. A count that cannot be trusted is written as the format's `0xFFFFFFFF` "unknown" rather than guessed. The allocator scans from the hint through a one-sector FAT cache instead of rescanning from cluster 2 | Read and validated at `fx_media_open`, written back at flush and close |
-| Fault-tolerant journaling | **No** | Yes -- 19 `fx_fault_tolerant_*` modules, opt-in behind `FX_ENABLE_FAULT_TOLERANT`, which this tree's build does not define |
-| Media check | Yes, CHECK only -- `ra8_fs_check()` (#610) is a read-only fsck. On FAT it classifies every FAT entry, walks the directory tree marking referenced clusters into a caller-supplied bitmap, and reports lost clusters, cross-linked chains, out-of-range directory entries, bad FAT values and (FAT32) an FSInfo free count that disagrees; on exFAT it verifies each entry set's SetChecksum and NameHash and diffs the allocation bitmap against the referenced clusters in both directions. No REPAIR: fixing a volume already known inconsistent, in a firmware with no journal, is how a recoverable card becomes an empty one | Yes (`fx_media_check`), which also repairs |
-| RTOS required | **No.** Bare-metal; nothing in the library references a scheduler | **Yes.** `cmake/filex.cmake` raises a `FATAL_ERROR` when `RA8_USE_FILEX=ON` without `RA8_USE_THREADX=ON` |
-| Dynamic allocation | None. Static state only: the 4 KiB scratch sector, a four-buffer fixed-role sector arena (16 KiB -- sector buffers left the stack when they grew to 4 KiB for 4Kn, #683), a one-sector FAT cache, 4 file slots, 2 mount slots | None in the library; the caller supplies the `FX_MEDIA` control block and a sector-cache buffer to `fx_media_open` (the demo passes 512 bytes) plus a ThreadX thread and stack |
-| Concurrency model | Single-threaded by default; `ra8_fs_set_lock()` installs a caller-supplied acquire/release pair taken across every public entry point (one lock per library -- the file table, mount table and scratch sector are shared). No lock primitive, RTOS header or scheduler concept in the library | A `TX_MUTEX` per media (`FX_SINGLE_THREAD` is not defined in this build) |
-| `stat` | Yes -- `ra8_fs_stat()` reads the directory entry without opening it, so a directory reports as one and no file slot is spent on a metadata query | Yes (`fx_directory_information_get`) |
-| Free-space query (statvfs) | Yes -- `ra8_fs_free_space()` (#678) reports total / free / used clusters and 64-bit byte totals. FAT32 answers in O(1) from the cached FSInfo count; FAT12/16 and exFAT count once from the FAT / allocation bitmap (through the one-sector FAT cache) and cache the result | Yes (`fx_media_space_available` / `fx_media_extended_space_available`) |
-| Volume label, read + set | Yes -- `ra8_fs_get_label()` / `ra8_fs_set_label()` (#682). On FAT the boot `BS_VolLab` and the root `ATTR_VOLUME_ID` entry are kept in step (an unlabelled volume is the spec sentinel `"NO NAME    "`, #634); on exFAT the Volume Label directory entry is rewritten in place | Yes (`fx_media_volume_get` / `fx_media_volume_set`) |
-| Set arbitrary timestamps (`utime`) | Yes -- `ra8_fs_utime()` (#682) sets a named entry's create / modify / access times to caller-chosen values (any NULL left unchanged), so a backup/restore preserves original times rather than stamping the restore moment; exFAT's entry-set SetChecksum is recomputed | Yes (`fx_file_date_time_set`) |
-| File attributes, honored + set | Yes -- the read-only / hidden / system / archive bits are both ENFORCED and MUTABLE (#681). A read-only file refuses `open` for writing, `write_file`, `unlink` and `rename` with `k_ra8_err_access_denied` while still opening to READ; a content write re-sets the archive bit per convention. `ra8_fs_set_attr()` sets/clears the four host-controlled bits (structural DIRECTORY / VOLUME_ID / long-name bits are rejected), patching the FAT directory entry or the exFAT File entry (SetChecksum recomputed). `ra8_fs_stat()` reports them | Yes -- read-only honored, `fx_file_attributes_set` / `fx_directory_attributes_set` |
-| Backends in tree | Any object with the three callbacks: SD-over-SPI, native SDHI, OSPI NOR, MRAM, SDRAM, in-RAM scratch, USB MSC, plus the host-test mock | One media driver, `port/filex/src/fx_media_driver_ra8_sdhi.c`, plus the LevelX NOR adapter used by `threadx_filex_levelx_demo` |
-| Verification | First-party. Held to the 90% per-file line-coverage floor with **no allowlist** (`scripts/checks/check_coverage_floor.py`; `ra8_fs` has no row in `.github/coverage-baseline.txt` or `.github/mcdc-baseline.txt`), MC/DC vectors on its compound decisions, MISRA via `scripts/checks/misra_check.sh` (ratcheted in `.github/misra-baseline.txt`), clang-tidy, the ASCII / Doxygen / annotation gates | SOUP. Explicitly out of scope for the coverage floor (`OUT_OF_SCOPE_PREFIXES`), for MISRA (`-ilibs/third_party`), and for the first-party style rules; compiled with `-w`. Accepted on service history, Eclipse Foundation process and pre-Eclipse SGS-TUV Saar pre-certifications -- see [`docs/SOUP/filex.md`](../../docs/SOUP/filex.md). Byte-identity against the upstream pin is re-verified every CI run |
-| Host tests | 66 test binaries (`tests/test_ra8_fs*.c`) plus a libFuzzer harness (`tests/fuzz/fuzz_ra8_fs_fat.c`). The exFAT directory suites end every scenario with a structural scan of the volume -- entry-set checksums, name hashes, and the referenced clusters against the allocation bitmap in both directions -- and each scenario's image is `fsck.exfat -n` clean | None. SOUP is not re-tested here |
-| Size | 32 `.c` files | 212 `.c` files in `common/src` |
-| Apps using it | 29 example `CMakeLists.txt` reference it | 2 enable `RA8_USE_FILEX`: `threadx_filex_demo` and `threadx_filex_levelx_demo` |
-
-## When to use which
-
-**Bare-metal app -> `ra8_fs`.** That is nearly every app here, and it is the
-only option without a scheduler. **ThreadX app -> either**: FileX is already in
-that world and brings long-name writes and optional journalling with it, but
-`ra8_fs` plus a ten-line `tx_mutex_*` binding over `ra8_fs_set_lock()` is now a
-real alternative, and the only one of the two that does exFAT. Reaching a file
-through `ra8_io`'s VFS
-(`ra8_io_vfs_open()`) is still `ra8_fs` underneath -- `ra8_io` adds mount
-points, caching and format probing, not a second filesystem.
-
-The bold **No** cells are a scoping decision, not an oversight, and the
+Deliberately not implemented: fault-tolerant journaling (no journal, hence no
+repair -- see the media-check row) and exFAT names past 64 UTF-16 units. The
 authoritative copy of that list is the header's "What this deliberately skips"
-section. If a consumer needs one of them, that is an issue against `ra8_fs`,
-not a reason to drag ThreadX into a bare-metal app.
+section. If a consumer needs one of them, that is an issue against `ra8_fs`.
+
+## ra8_fs or ra8_io?
+
+Call `ra8_fs` when you hold a block device and want a filesystem on it. Reach
+storage through `ra8_io`'s VFS (`ra8_io_vfs_open()`) when you want mount
+points, caching and format probing -- it is still `ra8_fs` underneath, not a
+second filesystem, and `ra8_io_blockdev_as_fs_backend()` bridges any `ra8_io`
+block device into an `ra8_fs_backend_t`. In an RTOS world, bind
+`ra8_fs_set_lock()` to your mutex once at init (the ThreadX demos show the
+ten-line adapter).
 
 <!-- disambig
 this: libs/ra8_fs
-that: libs/third_party/filex
+that: libs/ra8_io
 symbol: ra8_fs_format
 symbol: ra8_fs_mount_partition
 symbol: ra8_fs_write_file
@@ -90,14 +74,11 @@ symbol: ra8_fs_set_label
 symbol: ra8_fs_utime
 symbol: ra8_fs_set_attr
 symbol: ra8_fs_check
-symbol: fx_media_format
-symbol: fx_directory_delete
-users: ra8_fs = 29
-users: RA8_USE_FILEX = 2
+symbol: ra8_fs_set_lock
+symbol: ra8_io_vfs_open
+symbol: ra8_io_blockdev_as_fs_backend
+users: ra8_fs = 31
+users: ra8_io = 15
 files: libs/ra8_fs/src/*.c = 32
-files: libs/third_party/filex/common/src/*.c = 212
 files: tests/test_ra8_fs*.c = 66
-files: libs/third_party/filex/common/src/fx_fault_tolerant_*.c = 19
-files: libs/third_party/filex/common/src/fx_unicode_*.c = 13
 -->
-

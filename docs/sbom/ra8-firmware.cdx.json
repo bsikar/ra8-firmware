@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:12150840-2d60-51e5-8a23-d804962cae2e",
+  "serialNumber": "urn:uuid:0a8798ac-dba5-59d7-b6ec-a8bea50679f1",
   "version": 1,
   "metadata": {
     "tools": [
@@ -149,65 +149,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "filex",
-      "name": "Eclipse FileX",
-      "group": "eclipse-threadx",
-      "version": "6.5.0",
-      "description": "FAT12/16/32 file system used by the two FileX demos (snapshot has no exFAT).",
-      "scope": "required",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "purl": "pkg:github/eclipse-threadx/filex@6.5.0",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "bc2aa14516888a70ac28970ec87f0a85748f094d23a8638a84d4cf26bfa5b345"
-        }
-      ],
-      "externalReferences": [
-        {
-          "type": "vcs",
-          "url": "https://github.com/eclipse-threadx/filex"
-        }
-      ],
-      "properties": [
-        {
-          "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
-        },
-        {
-          "name": "ra8:path",
-          "value": "libs/third_party/filex"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "267"
-        },
-        {
-          "name": "ra8:upstreamCommit",
-          "value": "bb6e295af079f3cd903272982106b0ddd9537422"
-        },
-        {
-          "name": "ra8:upstreamRef",
-          "value": "v6.5.0.202601_rel"
-        },
-        {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/filex/LICENSE.txt"
-        },
-        {
-          "name": "ra8:modified",
-          "value": "true"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "usbx",
       "name": "Eclipse USBX",
       "group": "eclipse-threadx",
@@ -271,7 +212,7 @@
       "name": "Eclipse LevelX",
       "group": "eclipse-threadx",
       "version": "6.5.0",
-      "description": "NOR-flash wear-levelling on Octo-SPI: under FileX, and standalone.",
+      "description": "NOR-flash wear-levelling on Octo-SPI: under ra8_fs, and standalone.",
       "scope": "required",
       "licenses": [
         {
