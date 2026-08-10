@@ -164,7 +164,7 @@ Source: ``examples/ek_ra8d2/hil_needs_revalidation/mpu_partition_simple/main.c``
 
 Source: ``examples/ek_ra8d2/hil_needs_revalidation/pagecache/main.c``
 
-- L473: ra8_log_init  (rank 100)
+- L474: ra8_log_init  (rank 100)
 
 ### pdg_delay_demo
 
