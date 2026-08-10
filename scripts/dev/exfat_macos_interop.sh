@@ -12,30 +12,32 @@
 # implementations then agree, and non-ASCII filenames are proved to survive all
 # the way to a user-visible listing.
 #
-# The host test binaries cannot run on macOS (they mmap peripheral RAM with
-# MAP_FIXED below 4 GiB, which macOS arm64 refuses), so image GENERATION runs on
-# the Linux dev box over ssh and the images are copied here for VERIFICATION.
+# Everything happens on THIS machine and nothing is borrowed. The image is made
+# by tools/exfat_mkimage, a host tool that links the real ra8_fs driver and
+# nothing else -- no MMIO, no RTOS, no board -- formats a RAM card, creates a
+# known set of files (see its k_entries table, which names every one), and
+# writes the card out verbatim. So the image is exactly the bytes our driver
+# produced, and what you mount is ra8_fs's own work, not a re-encoding of it.
 #
 # Usage:
-#   scripts/dev/exfat_macos_interop.sh                 # verify images already in the dir
-#   scripts/dev/exfat_macos_interop.sh --generate      # regenerate on the dev box, then verify
-#   scripts/dev/exfat_macos_interop.sh --dir /tmp/x    # use a different image directory
+#   scripts/dev/exfat_macos_interop.sh                 # build the tool, make an image, verify it
+#   scripts/dev/exfat_macos_interop.sh --dir /tmp/x    # also verify any *.img already in a dir
+#   scripts/dev/exfat_macos_interop.sh --keep          # leave the generated image behind
 #
 # Environment:
-#   RA8_DEV_HOST   ssh host that builds the images (default: dev)
-#   RA8_IMAGE_DIR  where images live on this Mac    (default: /tmp/ra8-exfat-interop)
+#   RA8_IMAGE_DIR  where the image is written (default: /tmp/ra8-exfat-interop)
 #
 # Exit status: 0 when every image mounts, reads and passes fsck_exfat; 1 otherwise.
 
 set -euo pipefail
 
-DEV_HOST="${RA8_DEV_HOST:-dev}"
 IMAGE_DIR="${RA8_IMAGE_DIR:-/tmp/ra8-exfat-interop}"
-GENERATE=0
+KEEP=0
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --generate) GENERATE=1 ;;
+    --keep) KEEP=1 ;;
     --dir)
       shift
       IMAGE_DIR="${1:?--dir needs a path}"
@@ -75,37 +77,36 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # --------------------------------------------------------------------------
-# Optionally regenerate the evidence images on the dev box.
+# Build the generator and make the image, right here.
+#
+# exfat_mkimage links the ra8_fs driver ALONE -- no ra8_core_hal, so no MMIO
+# and nothing that needs a board -- which is precisely why a filesystem written
+# for a Cortex-M85 compiles and runs on this laptop.
 # --------------------------------------------------------------------------
-if [ "$GENERATE" -eq 1 ]; then
-  echo "== generating images on ${DEV_HOST} =="
-  ssh "$DEV_HOST" 'set -e
-    cd ~/ra8-firmware
-    git fetch -q origin
-    rm -rf ~/ra8-ws/exfat-interop
-    git worktree add --detach ~/ra8-ws/exfat-interop origin/dev >/dev/null 2>&1
-    cd ~/ra8-ws/exfat-interop
-    bash tests/build_tests.sh >/dev/null 2>&1
-    rm -rf /tmp/ra8-exfat-interop && mkdir -p /tmp/ra8-exfat-interop
-    cd tests/build
-    for t in test_ra8_fs_unicode_exfat test_ra8_fs_unicode_exfat_dirs \
-             test_ra8_fs_unicode_exfat_cov test_ra8_fs_exfat_stream \
-             test_ra8_fs_format_exfat; do
-      [ -x "./$t" ] && RA8_EXFAT_DUMP_DIR=/tmp/ra8-exfat-interop "./$t" >/dev/null 2>&1 || true
-    done
-    ls /tmp/ra8-exfat-interop/*.img 2>/dev/null | wc -l' | sed 's/^/  images built: /'
+TOOL_DIR="${REPO_ROOT}/tools/exfat_mkimage"
+BUILD_DIR="${IMAGE_DIR}/build"
+mkdir -p "$IMAGE_DIR"
 
-  mkdir -p "$IMAGE_DIR"
-  rm -f "${IMAGE_DIR:?}"/*.img
-  scp -q "${DEV_HOST}:/tmp/ra8-exfat-interop/*.img" "$IMAGE_DIR/"
-  echo "  copied to ${IMAGE_DIR}"
+echo "== building exfat_mkimage from ${TOOL_DIR} =="
+if ! cmake -S "$TOOL_DIR" -B "$BUILD_DIR" >/dev/null 2>&1 ||
+  ! cmake --build "$BUILD_DIR" >/dev/null 2>&1; then
+  echo "FATAL: could not build exfat_mkimage -- rerun the two cmake commands by hand:" >&2
+  echo "  cmake -S ${TOOL_DIR} -B ${BUILD_DIR} && cmake --build ${BUILD_DIR}" >&2
+  exit 1
 fi
+
+GENERATED="${IMAGE_DIR}/ra8_showcase.img"
+echo "== creating the volume with ra8_fs =="
+"${BUILD_DIR}/exfat_mkimage" "$GENERATED" || {
+  echo "FATAL: exfat_mkimage could not build the volume" >&2
+  exit 1
+}
 
 shopt -s nullglob
 images=("$IMAGE_DIR"/*.img)
 shopt -u nullglob
 [ "${#images[@]}" -gt 0 ] || {
-  echo "FATAL: no .img files in ${IMAGE_DIR} -- run with --generate first" >&2
+  echo "FATAL: exfat_mkimage produced no .img in ${IMAGE_DIR}" >&2
   exit 1
 }
 
@@ -117,6 +118,7 @@ printf '%.0s-' $(seq 1 100)
 echo
 
 failures=0
+controls=0
 for img in "${images[@]}"; do
   name="$(basename "$img" .img)"
   out="$(hdiutil attach -readonly -imagekey diskimage-class=CRawDiskImage "$img" 2>&1 || true)"
@@ -171,6 +173,7 @@ for img in "${images[@]}"; do
   else
     if [ "$expect_bad" -eq 1 ]; then
       fsck=ctrl-ok # control fired, exactly as intended
+      controls=$((controls + 1))
     else
       fsck=FAIL
       failures=$((failures + 1))
@@ -188,11 +191,19 @@ for img in "${images[@]}"; do
   ATTACHED="${ATTACHED/ $dev/}"
 done
 
+if [ "$KEEP" -eq 0 ] && [ -f "$GENERATED" ]; then
+  rm -f "$GENERATED"
+  rm -rf "${BUILD_DIR:?}"
+fi
+
 echo
 if [ "$failures" -eq 0 ]; then
-  echo "PASS: ${#images[@]} image(s) -- macOS mounted every volume ra8_fs wrote and read"
-  echo "      every file back. Apple's fsck_exfat passed each real volume and FIRED on"
-  echo "      each deliberately-corrupt control (ctrl-ok), so the check is not vacuous."
+  echo "PASS: ${#images[@]} image(s) -- macOS mounted every volume ra8_fs wrote, read"
+  echo "      every file back, and Apple's fsck_exfat passed each volume."
+  if [ "$controls" -gt 0 ]; then
+    echo "      ${controls} deliberately-corrupt control(s) FIRED as intended (ctrl-ok), so"
+    echo "      the check is demonstrably not vacuous."
+  fi
   exit 0
 fi
 echo "FAIL: ${failures} check(s) failed across ${#images[@]} image(s)" >&2
