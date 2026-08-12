@@ -21,7 +21,6 @@ scripts/checks/check_coverage.py
 scripts/checks/check_header_file_placement.py
 scripts/checks/check_hil_alive_policy.py
 scripts/checks/check_hil_eil_parity.py
-scripts/checks/check_inclusive_terminology_commits.py
 scripts/checks/check_magic_numbers.py
 scripts/checks/check_no_driver_asm_guard.py
 scripts/checks/check_no_dynamic_alloc.py
