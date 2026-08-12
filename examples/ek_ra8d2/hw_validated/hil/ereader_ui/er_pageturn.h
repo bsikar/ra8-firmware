@@ -14,11 +14,11 @@
  * Header-only `static inline` (no TU to link): both the app and the test include
  * it and get their own copies. Pure logic -- no MMIO, no heap, no globals.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

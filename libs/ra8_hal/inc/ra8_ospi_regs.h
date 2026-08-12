@@ -140,35 +140,35 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  volatile uint32_t WRAPCFG;                  /**< +0x000 Wrapper config (CK/DS shift).    */
-  volatile uint32_t COMCFG;                   /**< +0x004 Channel arbitration + INT en.    */
-  volatile uint32_t BMCFGCH[2];               /**< +0x008..+0x00C Bridge map config.       */
-  volatile uint32_t CMCFGCS[8];               /**< +0x010..+0x02C Command map (2 x 4 u32). */
-  volatile uint32_t _r0[8];                   /**< +0x030 Reserved (32 bytes).             */
-  volatile uint32_t LIOCFGCS[2];              /**< +0x050..+0x054 Link I/O per target.     */
-  volatile uint32_t ABMCFG;                   /**< +0x058 AXI bridge map config.           */
-  volatile uint32_t _r1;                      /**< +0x05C Reserved.                        */
-  volatile uint32_t BMCTL0;                   /**< +0x060 Bridge map control 0.            */
-  volatile uint32_t BMCTL1;                   /**< +0x064 Bridge map control 1 (WO).       */
-  volatile uint32_t CMCTLCH[2];               /**< +0x068..+0x06C XiP command control.     */
-  volatile uint32_t CDCTL0;                   /**< +0x070 Manual cmd ctl 0 (TRREQ/CSSEL).  */
-  volatile uint32_t CDCTL1;                   /**< +0x074 Manual cmd ctl 1.                */
-  volatile uint32_t CDCTL2;                   /**< +0x078 Manual cmd ctl 2.                */
-  volatile uint32_t _r2;                      /**< +0x07C Reserved.                        */
-  volatile uint32_t CDBUF[16];                /**< +0x080..+0x0BC Command buf (4 x 4 u32). */
-  volatile uint32_t _r3[16];                  /**< +0x0C0 Reserved (64 bytes).             */
-  volatile uint32_t LPCTL0;                   /**< +0x100 Link pattern control 0.          */
-  volatile uint32_t LPCTL1;                   /**< +0x104 Link pattern control 1.          */
-  volatile uint32_t LIOCTL;                   /**< +0x108 Link I/O control (WP/RST).       */
-  volatile uint32_t _r4[k_ra8_xspi_r4_words]; /**< +0x10C Reserved.                        */
-  volatile uint32_t CCCTLCS[k_ra8_xspi_ccctlcs_words]; /**< +0x130 Calib 2x8.    */
-  volatile uint32_t _r5[k_ra8_xspi_r5_words];          /**< +0x170 Reserved.     */
-  volatile uint32_t VERSTT;                            /**< +0x180 Version (RO). */
+  volatile uint32_t WRAPCFG;                           /**< +0x000 Wrapper config (CK/DS shift).  */
+  volatile uint32_t COMCFG;                            /**< +0x004 Channel arbitration + INT en.  */
+  volatile uint32_t BMCFGCH[2];                        /**< +0x008..+0x00C Bridge map config.     */
+  volatile uint32_t CMCFGCS[8];                        /**< +0x010..+0x02C Command map (2x4 u32). */
+  volatile uint32_t _r0[8];                            /**< +0x030 Reserved (32 bytes).           */
+  volatile uint32_t LIOCFGCS[2];                       /**< +0x050..+0x054 Link I/O per target.   */
+  volatile uint32_t ABMCFG;                            /**< +0x058 AXI bridge map config.         */
+  volatile uint32_t _r1;                               /**< +0x05C Reserved.                      */
+  volatile uint32_t BMCTL0;                            /**< +0x060 Bridge map control 0.          */
+  volatile uint32_t BMCTL1;                            /**< +0x064 Bridge map control 1 (WO).     */
+  volatile uint32_t CMCTLCH[2];                        /**< +0x068..+0x06C XiP command control.   */
+  volatile uint32_t CDCTL0;                            /**< +0x070 Manual cmd ctl 0 (TRREQ/CSSEL) */
+  volatile uint32_t CDCTL1;                            /**< +0x074 Manual cmd ctl 1.              */
+  volatile uint32_t CDCTL2;                            /**< +0x078 Manual cmd ctl 2.              */
+  volatile uint32_t _r2;                               /**< +0x07C Reserved.                      */
+  volatile uint32_t CDBUF[16];                         /**< +0x080..+0x0BC Command buf (4x4 u32). */
+  volatile uint32_t _r3[16];                           /**< +0x0C0 Reserved (64 bytes).           */
+  volatile uint32_t LPCTL0;                            /**< +0x100 Link pattern control 0.        */
+  volatile uint32_t LPCTL1;                            /**< +0x104 Link pattern control 1.        */
+  volatile uint32_t LIOCTL;                            /**< +0x108 Link I/O control (WP/RST).     */
+  volatile uint32_t _r4[k_ra8_xspi_r4_words];          /**< +0x10C Reserved.                      */
+  volatile uint32_t CCCTLCS[k_ra8_xspi_ccctlcs_words]; /**< +0x130 Calib 2x8.                     */
+  volatile uint32_t _r5[k_ra8_xspi_r5_words];          /**< +0x170 Reserved.                      */
+  volatile uint32_t VERSTT;                            /**< +0x180 Version (RO).                  */
   volatile uint32_t COMSTT;                            /**< +0x184 Common status (MEMACC/PBUFNE). */
-  volatile uint32_t CASTTCS[2];                        /**< +0x188..+0x18C Calibration status.   */
-  volatile uint32_t INTS;                              /**< +0x190 Interrupt status (CMDCMP=b0). */
-  volatile uint32_t INTC;                              /**< +0x194 Interrupt clear (W1C).        */
-  volatile uint32_t INTE;                              /**< +0x198 Interrupt enable.             */
+  volatile uint32_t CASTTCS[2];                        /**< +0x188..+0x18C Calibration status.    */
+  volatile uint32_t INTS;                              /**< +0x190 Interrupt status (CMDCMP=b0).  */
+  volatile uint32_t INTC;                              /**< +0x194 Interrupt clear (W1C).         */
+  volatile uint32_t INTE;                              /**< +0x198 Interrupt enable.              */
 } r_xspi_regs_t;
 
 static_assert(sizeof(r_xspi_regs_t) == (uint32_t)k_ra8_xspi_regs_size,

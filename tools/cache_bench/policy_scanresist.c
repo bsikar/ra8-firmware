@@ -17,11 +17,11 @@
  *   re-referenced ones; a hit predicts immediate re-reference (RRPV = 0).
  *   Eviction picks an RRPV == max frame, aging all frames until one appears.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include <stdlib.h>
@@ -68,7 +68,27 @@ typedef struct {
   uint32_t pt_cap;   /**< Protected-segment capacity.                    */
 } slru_t;
 
-/** @brief Detach @p f from the list whose head/tail pointers are given. */
+/**
+ * @brief Detach @p f from the list whose head/tail pointers are given.
+ *
+ * @details The generic unlink used for both SLRU segments: it repairs the
+ *          neighbours' `prev`/`next` links and advances @p head / @p tail
+ *          inward when @p f is an endpoint, so one routine serves the
+ *          probationary and protected lists sharing the frame arrays.
+ *
+ * @param[in,out] l    Segment pair holding the shared `prev`/`next` arrays.
+ * @param[in]     f    Frame index to detach (a member of *head..*tail).
+ * @param[in,out] head The segment's head endpoint, updated if @p f was head.
+ * @param[in,out] tail The segment's tail endpoint, updated if @p f was tail.
+ *
+ * @pre @p f is currently linked in the segment named by @p head / @p tail.
+ * @pre @p head and @p tail are non-NULL and @p f < capacity.
+ * @post @p f is absent from that segment; neighbour links stay consistent.
+ * @post `*head`/`*tail` still name real members (or -1 if the segment emptied).
+ *
+ * @note Not thread-safe: mutates the shared segment lists.
+ * @since 0.1.0
+ */
 static void slru_unlink(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
 {
   if (l->prev[f] != -1) {
@@ -83,7 +103,26 @@ static void slru_unlink(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
   }
 }
 
-/** @brief Push @p f to the MRU head of the list. */
+/**
+ * @brief Push @p f to the MRU head of the segment.
+ *
+ * @details The generic head-insert for both SLRU segments: sets @p f as the new
+ *          head, links the former head behind it, and initializes @p tail when
+ *          the segment was empty. @p f must already be detached.
+ *
+ * @param[in,out] l    Segment pair holding the shared `prev`/`next` arrays.
+ * @param[in]     f    Frame index to insert at the head (currently detached).
+ * @param[in,out] head The segment's head endpoint, set to @p f.
+ * @param[in,out] tail The segment's tail endpoint, set to @p f if it was empty.
+ *
+ * @pre @p f is detached and @p f < capacity.
+ * @pre @p head and @p tail are non-NULL.
+ * @post `*head == f` and @p f precedes the former head.
+ * @post `*tail == f` iff the segment was previously empty.
+ *
+ * @note Not thread-safe: mutates the shared segment lists.
+ * @since 0.1.0
+ */
 static void slru_push_head(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
 {
   l->prev[f] = -1;
@@ -97,6 +136,30 @@ static void slru_push_head(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
   }
 }
 
+/**
+ * @brief Allocate SLRU state: two LRU segments over shared frame arrays.
+ *
+ * @details Allocates the ::slru_t control block and the shared `prev`/`next`
+ *          index arrays, empties both segments, and sizes the protected
+ *          segment at ::k_slru_protected_pct percent of capacity. On a partial
+ *          allocation it frees what it took, since a failed init is never
+ *          deinited by the harness.
+ *
+ * @param[in,out] c Cache whose `policy_data` receives the segments; capacity
+ *                  sizes the index arrays and the protected cap.
+ *
+ * @return int 0 on success, 1 on allocation failure.
+ * @retval 0 `c->policy_data` holds empty probationary + protected segments.
+ * @retval 1 Out of memory; any partial allocation was freed.
+ *
+ * @pre @p c is non-NULL with `capacity > 0`.
+ * @pre Called on the single benchmark thread.
+ * @post On success both segment heads/tails are -1 and `pt_cap` is set.
+ * @post On failure `c->policy_data` is untouched (nothing is leaked).
+ *
+ * @note Not thread-safe: allocates and stores policy state.
+ * @since 0.1.0
+ */
 static int slru_init(cb_cache_t* c)
 {
   slru_t* l = (slru_t*)calloc(1U, sizeof(slru_t));
@@ -124,6 +187,22 @@ static int slru_init(cb_cache_t* c)
   return 0;
 }
 
+/**
+ * @brief Release SLRU state (control block + shared index arrays).
+ *
+ * @details Frees the `prev`/`next` arrays and the ::slru_t when present; a NULL
+ *          `policy_data` (a failed init) is tolerated.
+ *
+ * @param[in,out] c Cache whose SLRU `policy_data` is freed.
+ *
+ * @pre @p c is non-NULL.
+ * @pre `c->policy_data` is a ::slru_init state or NULL.
+ * @post All segment buffers are released.
+ * @post `c->policy_data` is left dangling; the caller discards the cache.
+ *
+ * @note Not thread-safe: frees policy state.
+ * @since 0.1.0
+ */
 static void slru_deinit(cb_cache_t* c)
 {
   slru_t* l = (slru_t*)c->policy_data;
@@ -134,6 +213,24 @@ static void slru_deinit(cb_cache_t* c)
   }
 }
 
+/**
+ * @brief SLRU insert hook: admit a fresh @p frame to the probationary segment.
+ *
+ * @details Tags @p frame `k_slru_probation` in `meta[0]` and pushes it to the
+ *          probationary MRU head. New pages always enter probationary, so a
+ *          one-time scan churns only that segment. Bound as `on_insert`.
+ *
+ * @param[in,out] c     Cache holding the SLRU segments in `policy_data`.
+ * @param[in]     frame Frame that was just (re)populated.
+ *
+ * @pre `c->policy_data` is a valid ::slru_init state.
+ * @pre @p frame is detached and @p frame < capacity.
+ * @post @p frame is the probationary-segment head, tagged probationary.
+ * @post The protected segment is unchanged.
+ *
+ * @note Not thread-safe: mutates the shared segment lists.
+ * @since 0.1.0
+ */
 static void slru_insert(cb_cache_t* c, uint32_t frame)
 {
   slru_t* l                = (slru_t*)c->policy_data;
@@ -141,6 +238,26 @@ static void slru_insert(cb_cache_t* c, uint32_t frame)
   slru_push_head(l, (int32_t)frame, &l->pb_head, &l->pb_tail);
 }
 
+/**
+ * @brief SLRU hit hook: promote or refresh @p frame on re-reference.
+ *
+ * @details A protected-segment hit moves the frame to the protected MRU head.
+ *          A probationary hit promotes the frame to protected; if the protected
+ *          segment is full, its LRU is first demoted back to probationary, so a
+ *          second touch is what earns scan-resistant residency. Bound as
+ *          `on_access`.
+ *
+ * @param[in,out] c     Cache holding the SLRU segments in `policy_data`.
+ * @param[in]     frame Frame that was just hit.
+ *
+ * @pre `c->policy_data` is a valid ::slru_init state.
+ * @pre @p frame is currently resident and linked in a segment.
+ * @post @p frame is at the protected MRU head, tagged protected.
+ * @post `pt_count <= pt_cap` (a demotion restored the bound if needed).
+ *
+ * @note Not thread-safe: mutates the shared segment lists.
+ * @since 0.1.0
+ */
 static void slru_access(cb_cache_t* c, uint32_t frame)
 {
   slru_t*       l = (slru_t*)c->policy_data;
@@ -164,6 +281,28 @@ static void slru_access(cb_cache_t* c, uint32_t frame)
   l->pt_count++;
 }
 
+/**
+ * @brief Choose the SLRU victim: probationary LRU first, else protected LRU.
+ *
+ * @details Evicts the probationary-segment tail when it exists (scan traffic
+ *          lands here), falling back to the protected tail only when the
+ *          probationary segment is empty. Reports a scan depth of one -- the
+ *          victim is always an O(1) tail lookup.
+ *
+ * @param[in,out] c       Cache holding the SLRU segments in `policy_data`.
+ * @param[out]    scanned Receives the frames examined (always 1).
+ *
+ * @return uint32_t The victim frame index (< capacity).
+ * @retval <capacity The probationary LRU, or the protected LRU if none.
+ *
+ * @pre `c->policy_data` is a valid ::slru_init state with a resident frame.
+ * @pre @p scanned is non-NULL.
+ * @post `*scanned == 1` and the victim is unlinked from its segment.
+ * @post `pt_count` drops by one only when a protected frame was evicted.
+ *
+ * @note Not thread-safe: mutates the shared segment lists.
+ * @since 0.1.0
+ */
 static uint32_t slru_victim(cb_cache_t* c, uint32_t* scanned)
 {
   slru_t* l = (slru_t*)c->policy_data;
@@ -198,25 +337,120 @@ typedef enum : uint8_t {
   k_rrip_max  = 3U, /**< Furthest -- the eviction candidate.  */
 } rrip_rrpv_t;
 
-/** @brief SRRIP state: a sweep hand over the frame ring. */
+/**
+ * @brief Allocate SRRIP state: a sweep hand over the frame ring.
+ *
+ * @details Allocates one zeroed `uint32_t` aging hand in `c->policy_data`; each
+ *          frame's 2-bit re-reference prediction value (RRPV) lives in
+ *          `meta[0]`, set on insert/access and aged toward the max during
+ *          eviction.
+ *
+ * @param[in,out] c Cache whose `policy_data` receives the hand pointer.
+ *
+ * @return int 0 on success, 1 on allocation failure.
+ * @retval 0 `c->policy_data` holds a zeroed hand.
+ * @retval 1 Out of memory; `c->policy_data` is NULL.
+ *
+ * @pre @p c is non-NULL and its `policy_data` is unset.
+ * @pre Called on the single benchmark thread.
+ * @post On success `c->policy_data` points at a zero-initialized hand.
+ * @post No frame contents are altered.
+ *
+ * @note Not thread-safe: allocates and stores policy state.
+ * @since 0.1.0
+ */
 static int srrip_init(cb_cache_t* c)
 {
   uint32_t* hand = (uint32_t*)calloc(1U, sizeof(uint32_t));
   c->policy_data = hand;
   return (hand == nullptr) ? 1 : 0;
 }
+/**
+ * @brief Release SRRIP state (the sweep hand).
+ *
+ * @details Frees the `uint32_t` hand ::srrip_init allocated; `free(NULL)` is
+ *          safe after a failed init.
+ *
+ * @param[in,out] c Cache whose `policy_data` hand is freed.
+ *
+ * @pre @p c is non-NULL.
+ * @pre `c->policy_data` is a ::srrip_init hand or NULL.
+ * @post The hand memory is released.
+ * @post `c->policy_data` is left dangling; the caller discards the cache.
+ *
+ * @note Not thread-safe: frees policy state.
+ * @since 0.1.0
+ */
 static void srrip_deinit(cb_cache_t* c)
 {
   free(c->policy_data);
 }
+/**
+ * @brief SRRIP insert hook: predict a distant re-reference for @p frame.
+ *
+ * @details Sets @p frame's RRPV to ::k_rrip_long (max-1) in `meta[0]`, so a
+ *          scanned-once page sits one aging step from eviction and is reclaimed
+ *          before any re-referenced page. Bound as `on_insert`.
+ *
+ * @param[in,out] c     Cache whose frame RRPV is set.
+ * @param[in]     frame Frame that was just (re)populated.
+ *
+ * @pre @p c is non-NULL and @p frame < capacity.
+ * @pre @p frame is currently resident.
+ * @post `frames[frame].meta[0] == k_rrip_long`.
+ * @post No other frame or policy state changes.
+ *
+ * @note Not thread-safe: writes shared frame metadata.
+ * @since 0.1.0
+ */
 static void srrip_insert(cb_cache_t* c, uint32_t frame)
 {
   c->frames[frame].meta[0] = (uint8_t)k_rrip_long;
 }
+/**
+ * @brief SRRIP hit hook: predict an immediate re-reference for @p frame.
+ *
+ * @details Resets @p frame's RRPV to ::k_rrip_near (0) in `meta[0]`, marking a
+ *          re-referenced page as the furthest from eviction. Bound as
+ *          `on_access`.
+ *
+ * @param[in,out] c     Cache whose frame RRPV is reset.
+ * @param[in]     frame Frame that was just hit.
+ *
+ * @pre @p c is non-NULL and @p frame < capacity.
+ * @pre @p frame is currently resident.
+ * @post `frames[frame].meta[0] == k_rrip_near`.
+ * @post No other frame or policy state changes.
+ *
+ * @note Not thread-safe: writes shared frame metadata.
+ * @since 0.1.0
+ */
 static void srrip_access(cb_cache_t* c, uint32_t frame)
 {
   c->frames[frame].meta[0] = (uint8_t)k_rrip_near;
 }
+/**
+ * @brief Choose the SRRIP victim by aging RRPVs to the maximum.
+ *
+ * @details Sweeps the hand around the ring: the first frame at RRPV
+ *          ::k_rrip_max is evicted; every frame below max is aged up by one on
+ *          the way. Because inserts start at max-1, a victim is guaranteed
+ *          within two ring passes. Reports the frames examined.
+ *
+ * @param[in,out] c       Cache holding the sweep hand in `policy_data`.
+ * @param[out]    scanned Receives the frames examined this call (>= 1).
+ *
+ * @return uint32_t The victim frame index (< capacity).
+ * @retval <capacity The first frame reached at RRPV ::k_rrip_max.
+ *
+ * @pre `c->policy_data` is a valid ::srrip_init hand and `capacity > 0`.
+ * @pre @p scanned is non-NULL.
+ * @post `*scanned` equals the frames inspected and the hand advanced past them.
+ * @post Frames passed over below max had their RRPV incremented.
+ *
+ * @note Not thread-safe: advances the hand and ages RRPVs.
+ * @since 0.1.0
+ */
 static uint32_t srrip_victim(cb_cache_t* c, uint32_t* scanned)
 {
   uint32_t* hand = (uint32_t*)c->policy_data;

@@ -40,7 +40,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -59,9 +58,11 @@
  * @brief Absolute window the block owns (the contiguous R-Switch cluster).
  *
  * @details Spans MFWD (the lowest base) through the end of the GWCA register
- * bank. The ESWM media-mux sub-block (MIIRR / MIICR at @c 0x403E1400) and
- * GPTP (@c 0x403E0000) sit outside this window and fall to the sparse
- * fallback -- they are config-reflect only, so that is faithful.
+ * bank. The ESWM media-mux sub-block (MIIRR / MIICR at @c 0x403E1400) sits
+ * outside this window and falls to the sparse fallback -- it is config-reflect
+ * only, so that is faithful. GPTP (@c 0x403E0000) sits outside this window too
+ * but is modelled by its own block (board_periph_gptp.c), whose free-running
+ * counter really advances.
  */
 typedef enum : uint64_t {
   k_eth_win_base = (uint64_t)k_ra8_mfwd_base_addr, /**< MFWD base = window base. */
@@ -603,7 +604,7 @@ static uint64_t eth_read(uc_engine* uc, uint64_t addr, unsigned size)
   }
   if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwms) {
     /* GWMS.OPS mirrors the commanded GWMC.OPC. */
-    /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1798 */
+    /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1792 */
     const uint64_t gwmc = off - ((uint64_t)k_ra8_gwca_off_gwms - (uint64_t)k_ra8_gwca_off_gwmc);
     return eth_shadow_u32(gwmc) & (uint32_t)k_ra8_gwmc_opc_mask;
   }

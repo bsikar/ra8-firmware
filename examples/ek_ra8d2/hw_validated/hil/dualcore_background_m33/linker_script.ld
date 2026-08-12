@@ -56,7 +56,7 @@ MEMORY
      * Non-Secure aliases. With RA8_TRUSTZONE_ENABLE off the linker
      * is allowed to place sections in either region freely. */
     NS_MRAM (rx) : ORIGIN = 0x02080000, LENGTH = 512K
-    NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 1024K
+    NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 640K   /* SRAM1 upper half; unused placeholder w/ TrustZone off */
 }
 
 /*
@@ -71,7 +71,7 @@ g_ra8_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
  * accidental malloc() call from newlib. */
 
 /*
- * Option-setting region fixed addresses (HUM section 4).
+ * Option-setting region fixed addresses (HUM Ch 7 "Option-Setting Memory" Figure 7.1 p 279).
  *
  * Every entry is PROVIDE()-d so it can be overridden with
  * `--defsym=OFS0_ADDR=0x...` from the cmake toolchain file or the

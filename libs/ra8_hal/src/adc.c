@@ -80,7 +80,8 @@ typedef struct {
   void*                 ctx;        /**< Callback context.                        */
   ra8_adc_resolution_t  resolution; /**< Last-applied resolution selection.       */
   bool                  configured; /**< True after first successful init.        */
-  ra8_adc_group_cache_t groups[k_ra8_adc_b_scan_groups]; /**< Per-group channel cache. */
+  /** Per-group channel cache. */
+  ra8_adc_group_cache_t groups[k_ra8_adc_b_scan_groups];
 } ra8_adc_state_t;
 
 static ra8_adc_state_t s_adc_state;

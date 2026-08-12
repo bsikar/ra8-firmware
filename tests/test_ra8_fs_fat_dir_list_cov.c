@@ -79,63 +79,71 @@ static void test_listdir_not_mounted(void)
 }
 
 /**
- * @test test_listdir_exfat_no_slash
- * @brief exFAT listdir with path not starting with '/' returns not_supported (line 128).
+ * @test test_listdir_exfat_relative_name
+ * @brief exFAT listdir resolves a leading-slash-free path like any other.
  *
- * @details Mounts an exFAT volume and passes a path whose first byte is not
- *          '/'. The guard at line 127-128 fires.
+ * @details This used to be a `k_ra8_err_not_supported` guard: exFAT listing was
+ *          root-only, so anything that was not exactly `"/"` was declined before
+ *          a lookup happened. With the namespace no longer flat (#605) a path is
+ *          RESOLVED, and a name that is not there is a lookup failure like it
+ *          always was on FAT -- the two filesystems no longer disagree about
+ *          what "list this path" means.
  *
  * @par MC/DC:
- * Decision: `if (path[0] != '/')` (line 127, 1 condition).
- * V1: path[0]='/' -> false (continued, tested at line 131).
- * V2: path[0]!='/' -> true -> line 128.
+ * No compound decision lies on this path. The vector it contributes is
+ * `handle->type == k_ra8_fs_type_exfat`
+ * (libs/ra8_fs/src/ra8_fs_fat_dir.c@priv_listdir_locked) -> true, followed by
+ * the not-found arm of
+ * libs/ra8_fs/src/ra8_fs_fat_exfat_dir.c@priv_exfat_resolve_dir.
  *
  * @pre exFAT volume is formatted and mounted.
- * @post Result is k_ra8_err_not_supported.
+ * @post Result is k_ra8_err_not_found, not a blanket refusal.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_listdir_exfat_no_slash(void)
+static void test_listdir_exfat_relative_name(void)
 {
-  TEST_BEGIN("listdir: exFAT no-slash path -> not_supported (line 128)");
+  TEST_BEGIN("listdir: exFAT relative name -> not_found");
   build_exfat_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_listdir(h, "noslash", count_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_listdir(h, "noslash", count_cb, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_vol();
-  TEST_END("listdir: exFAT no-slash path -> not_supported (line 128)");
+  TEST_END("listdir: exFAT relative name -> not_found");
 }
 
 /**
- * @test test_listdir_exfat_non_root
- * @brief exFAT listdir with path "/subdir" returns not_supported (line 131).
+ * @test test_listdir_exfat_missing_subdir
+ * @brief exFAT listdir of a subdirectory that does not exist reports not_found.
  *
- * @details Mounts an exFAT volume and passes path="/sub" (starts with '/'
- *          but path[1] != NUL). The guard at line 130-131 fires.
+ * @details The companion to test_listdir_exfat_relative_name(): a non-root path
+ *          is no longer refused for BEING non-root, so the only thing left to
+ *          report is that nothing answers to that name. A volume that does hold
+ *          the directory lists it, which `test_ra8_fs_exfat_dirs.c` asserts.
  *
  * @par MC/DC:
- * Decision: `if (path[1] != '\\0')` (line 130, 1 condition).
- * V1: path="/\\0" -> false (root path, passes to exfat_listdir).
- * V2: path="/sub" -> true -> line 131.
+ * No compound decision lies on this path. Same dispatch vector as
+ * test_listdir_exfat_relative_name, reached with a rooted path instead of a
+ * relative one -- both now resolve rather than being refused for their shape.
  *
  * @pre exFAT volume is formatted and mounted.
- * @post Result is k_ra8_err_not_supported.
+ * @post Result is k_ra8_err_not_found.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_listdir_exfat_non_root(void)
+static void test_listdir_exfat_missing_subdir(void)
 {
-  TEST_BEGIN("listdir: exFAT non-root path -> not_supported (line 131)");
+  TEST_BEGIN("listdir: exFAT missing subdirectory -> not_found");
   build_exfat_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_listdir(h, "/sub", count_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_listdir(h, "/sub", count_cb, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_vol();
-  TEST_END("listdir: exFAT non-root path -> not_supported (line 131)");
+  TEST_END("listdir: exFAT missing subdirectory -> not_found");
 }
 
 /**
@@ -200,6 +208,12 @@ static void test_listdir_walk_fail(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   create_empty_files(h, "/SUB", (uint32_t)k_fill_subdir_files);
+  /* Remount so the FAT sector cache is cold (#607): creating those files
+   * walked the FAT, and a cached sector never reaches the backend, so read 3
+   * below would be served from memory and the walk would not fail. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
+  h = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_backend_t saved = h->backend;
   swap_to_inject(h, 2U, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_listdir(h, "/SUB", count_cb, nullptr));
@@ -280,30 +294,40 @@ static void test_mkdir_not_mounted(void)
 }
 
 /**
- * @test test_mkdir_exfat
- * @brief mkdir on an exFAT volume returns k_ra8_err_not_supported (line 358).
+ * @test test_mkdir_exfat_dispatches
+ * @brief mkdir on an exFAT volume reaches the exFAT creator, not a refusal.
+ *
+ * @details The dispatch vector for `priv_mkdir_locked`: this used to answer
+ *          `k_ra8_err_not_supported` before touching the volume, and now takes
+ *          the exFAT branch and creates a directory (#605). The behaviour of
+ *          that creator is exercised in `test_ra8_fs_exfat_dirs.c`; what this
+ *          asserts is that the exFAT arm is TAKEN.
  *
  * @par MC/DC:
- * Decision: `if (handle->type == k_ra8_fs_type_exfat)` (line 357, 1 condition).
- * V1: type!=exfat -> false (FAT path, tested by sibling tests).
- * V2: type==exfat -> true -> line 358.
+ * Decision: `if (handle->type == k_ra8_fs_type_exfat)`
+ * (libs/ra8_fs/src/ra8_fs_fat_dirmk.c@priv_mkdir_locked, 1 condition).
+ * V1: type != exfat -> false -> priv_fat_mkdir (the sibling tests here).
+ * V2: type == exfat -> true  -> priv_exfat_mkdir (this test).
  *
  * @pre exFAT volume is formatted and mounted.
- * @post Result is k_ra8_err_not_supported.
+ * @post The directory exists and reports itself as one.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_mkdir_exfat(void)
+static void test_mkdir_exfat_dispatches(void)
 {
-  TEST_BEGIN("mkdir: exFAT volume -> not_supported (line 358)");
+  TEST_BEGIN("mkdir: exFAT volume -> the exFAT creator");
   build_exfat_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_mkdir(h, "/DIR"));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/DIR"));
+  ra8_fs_stat_t st = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(h, "/DIR", &st));
+  TEST_ASSERT_EQ(true, st.is_directory);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_vol();
-  TEST_END("mkdir: exFAT volume -> not_supported (line 358)");
+  TEST_END("mkdir: exFAT volume -> the exFAT creator");
 }
 
 /* ===========================================================================
@@ -313,15 +337,20 @@ static void test_mkdir_exfat(void)
 
 /**
  * @test test_mkdir_bad_leaf
- * @brief mkdir with a non-8.3 leaf name returns k_ra8_err_invalid_arg (line 283).
+ * @brief mkdir with a name no encoding can hold returns k_ra8_err_invalid_arg.
  *
- * @details The leaf "bad name!" contains a space and '!' which are not valid
- *          8.3 characters. priv_path_to_83 returns 0 -> line 283.
+ * @details `"bad?name"` carries a `?`, which is illegal in a long name as well
+ *          as in an 8.3 one, so ::priv_name_classify() reports
+ *          `k_name_kind_invalid` and `priv_dir_reserve()` refuses. The sibling
+ *          case `"bad name!"` -- illegal in 8.3 only, because of the space --
+ *          is created as a long name since #600 and is covered in
+ *          test_ra8_fs_lfn_write.c.
  *
  * @par MC/DC:
- * Decision: `if (priv_path_to_83(leaf, name83) == 0U)` (line 282, 1 condition).
- * V1: valid 8.3 -> false (continues to dir_find).
- * V2: invalid 8.3 -> true -> line 283.
+ * Decision: `if (kind == k_name_kind_invalid)` in `priv_dir_reserve()`
+ * (1 condition).
+ * V1: a storable name -> false (every other mkdir case here).
+ * V2: `"bad?name"`     -> true  -> k_ra8_err_invalid_arg.
  *
  * @pre FAT16 volume is mounted.
  * @post Result is k_ra8_err_invalid_arg.
@@ -331,14 +360,14 @@ static void test_mkdir_exfat(void)
  */
 static void test_mkdir_bad_leaf(void)
 {
-  TEST_BEGIN("mkdir: non-8.3 leaf -> invalid_arg (line 283)");
+  TEST_BEGIN("mkdir: unstorable leaf -> invalid_arg");
   build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_mkdir(h, "/bad name!"));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_mkdir(h, "/bad?name"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_vol();
-  TEST_END("mkdir: non-8.3 leaf -> invalid_arg (line 283)");
+  TEST_END("mkdir: unstorable leaf -> invalid_arg");
 }
 
 /**
@@ -572,14 +601,14 @@ static void test_mkdir_spc2_second_fail(void)
 int main(void)
 {
   test_listdir_not_mounted();
-  test_listdir_exfat_no_slash();
-  test_listdir_exfat_non_root();
+  test_listdir_exfat_relative_name();
+  test_listdir_exfat_missing_subdir();
   test_listdir_read_error();
   test_listdir_walk_fail();
   test_listdir_full_no_eod();
 
   test_mkdir_not_mounted();
-  test_mkdir_exfat();
+  test_mkdir_exfat_dispatches();
   test_mkdir_bad_leaf();
   test_mkdir_dir_full();
   test_mkdir_alloc_fail();

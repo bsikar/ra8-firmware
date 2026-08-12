@@ -229,13 +229,13 @@ static void test_init_cmd8_classifies_v1_card(void)
    * C_SIZE_MULT=7 -> ~1 GiB. */
   uint8_t csd_v1[k_ra8_sdmmc_spi_csd_response_len];
   memset(csd_v1, 0, sizeof(csd_v1));
-  csd_v1[0]                          = 0x00U;               /* CSD_STRUCTURE = 0               */
-  csd_v1[k_sd_csd_idx_bl_len]        = k_sd_csd_bl_len_512; /* READ_BL_LEN = 9 (low nibble)    */
-  csd_v1[6]                          = 0x03U;               /* C_SIZE bits 11:10 = 0b11        */
-  csd_v1[k_sd_csd_idx_csize_mid]     = k_sd_test_ff;        /* C_SIZE bits 9:2 = 0xFF          */
-  csd_v1[8]                          = k_sd_csd_csize_low;  /* C_SIZE bits 1:0 (C_SIZE = 1023) */
-  csd_v1[k_sd_csd_idx_csize_mult_hi] = 0x03U;               /* C_SIZE_MULT bits 2:1 = 0b11     */
-  csd_v1[k_sd_test_ten]              = k_sd_csd_csize_mult_low; /* C_SIZE_MULT bit 0 = 1 */
+  csd_v1[0]                          = 0x00U;                   /* CSD_STRUCTURE = 0             */
+  csd_v1[k_sd_csd_idx_bl_len]        = k_sd_csd_bl_len_512;     /* READ_BL_LEN = 9 (low nibble)  */
+  csd_v1[6]                          = 0x03U;                   /* C_SIZE bits 11:10 = 0b11      */
+  csd_v1[k_sd_csd_idx_csize_mid]     = k_sd_test_ff;            /* C_SIZE bits 9:2 = 0xFF        */
+  csd_v1[8]                          = k_sd_csd_csize_low;      /* C_SIZE bits 1:0 (C_SIZE=1023) */
+  csd_v1[k_sd_csd_idx_csize_mult_hi] = 0x03U;                   /* C_SIZE_MULT bits 2:1 = 0b11   */
+  csd_v1[k_sd_test_ten]              = k_sd_csd_csize_mult_low; /* C_SIZE_MULT bit 0 = 1         */
   queue_csd_read(csd_v1);
   /* CMD16 -> R1 ready. */
   queue_command_response_r1((uint8_t)k_test_r1_ready);
@@ -264,7 +264,7 @@ static void test_bind_fs_backend_populates_struct(void)
   TEST_ASSERT_NOT_NULL((void*)(uintptr_t)backend.get_capacity);
   TEST_ASSERT_NOT_NULL((void*)(uintptr_t)backend.erase_blocks);
 
-  uint32_t blocks = 0U;
+  uint64_t blocks = 0U;
   uint32_t bsize  = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, backend.get_capacity(backend.ctx, &blocks, &bsize));
   TEST_ASSERT_EQ(k_ra8_sdmmc_spi_block_size, bsize);
@@ -370,7 +370,7 @@ static void test_mcdc_fs_get_capacity_null_or(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_init(&s_mock_transport));
   ra8_fs_backend_t backend = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_bind_fs_backend(&backend));
-  uint32_t bc = 0U;
+  uint64_t bc = 0U;
   uint32_t bs = 0U;
   /* V1. */
   TEST_ASSERT_EQ(k_ra8_ok, backend.get_capacity(backend.ctx, &bc, &bs));
@@ -559,8 +559,17 @@ static void test_capacity_type_query_guards(void)
 
 /**
  * @par MC/DC:
- * No new compound decision -- exercises the ra8_fs backend shims through the
- * bound descriptor:
+ * Decision: `(lba > UINT32_MAX) || (count > UINT32_MAX)` (2 conditions) in
+ * `libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c@internal_fs_erase_block` -- SD
+ * block numbers are 32-bit, so the 64-bit `ra8_fs` coordinates (#683) are
+ * range-checked, never truncated.
+ * - V1: lba small, count small (the count == 0 passthrough below) -> F,F ->
+ *   the guard falls through to the class layer.
+ * - V2: lba = 2^32, count = 1 -> T (short-circuit) -> out_of_range.
+ * - V3: lba = 0, count = 2^32 -> F,T -> out_of_range.
+ * Vectors 1+2 prove lba's independence; 1+3 prove count's. N+1 = 3 vectors.
+ *
+ * The remaining shims are single-condition guards, exercised as before:
  *   - read_block NULL buf            -> null_ptr.
  *   - read_block over-range forward  -> propagated out_of_range.
  *   - read_block one-block forward   -> success (queued CMD17 read).
@@ -601,12 +610,18 @@ static void test_fs_backend_shims(void)
   queue_write_block_tail((uint8_t)k_test_data_response_accept, 1U);
   TEST_ASSERT_EQ(k_ra8_ok, backend.write_block(backend.ctx, 3U, 1U, block));
 
-  /* erase_blocks shim: count == 0 passes through to invalid_arg. */
+  /* erase_blocks shim: count == 0 passes through to invalid_arg (V1: the
+   * 64-bit guard falls through), and either coordinate past 32 bits is
+   * refused before the card is touched (V2 / V3). */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, backend.erase_blocks(backend.ctx, 0U, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 backend.erase_blocks(backend.ctx, (uint64_t)UINT32_MAX + 1U, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 backend.erase_blocks(backend.ctx, 0U, (uint64_t)UINT32_MAX + 1U));
 
   /* get_capacity shim after deinit -> invalid_state (descriptor outlives init). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_deinit());
-  uint32_t bc = 0U;
+  uint64_t bc = 0U;
   uint32_t bs = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, backend.get_capacity(backend.ctx, &bc, &bs));
   TEST_END("ra8_fs backend shims");

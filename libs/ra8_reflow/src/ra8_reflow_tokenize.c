@@ -21,12 +21,12 @@
  * propagates down a bounded explicit stack -- no recursion (NASA P10
  * Rule 1) and bounded loops (Rule 2).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
@@ -50,26 +50,26 @@
  * @brief Mutable tokenizer state threaded through the scan helpers.
  */
 typedef struct {
-  ra8_reflow_t*     engine;      /**< Target engine pools.                */
-  uint8_t           style;       /**< Current inline-style bits.          */
-  uint8_t           active_link; /**< 1-based link id (0 = none).         */
-  uint32_t          color;       /**< Current CSS colour / inherit.       */
-  uint16_t          css_font_px; /**< Inherited CSS font px (0=none).     */
-  uint16_t          family_off;  /**< Inherited font-family slice off.    */
-  uint16_t          family_len;  /**< Inherited font-family len (0=none). */
-  uint8_t           face_slot;   /**< Resolved embedded face (0=default). */
-  ra8_css_element_t stack_el
-    [k_priv_max_depth]; /**< Open-element identities (tag+id+class) for the cascade + descendant match. */
-  uint8_t  stack_style[k_priv_max_depth];   /**< Style to restore on pop.            */
-  uint8_t  stack_link[k_priv_max_depth];    /**< Link id to restore on pop.          */
-  uint32_t stack_color[k_priv_max_depth];   /**< Colour to restore on pop.           */
-  uint16_t stack_font[k_priv_max_depth];    /**< CSS font px to restore on pop.      */
-  uint16_t stack_fam_off[k_priv_max_depth]; /**< font-family off to restore.         */
-  uint16_t stack_fam_len[k_priv_max_depth]; /**< font-family len to restore.         */
-  uint8_t  stack_face[k_priv_max_depth];    /**< Face slot to restore on pop.        */
-  uint32_t sp;                              /**< Stack depth.                        */
-  uint32_t suppress_sp;                     /**< display:none subtree depth (0=off). */
-  bool     saw_element;                     /**< At least one element seen.          */
+  ra8_reflow_t* engine;      /**< Target engine pools.                */
+  uint8_t       style;       /**< Current inline-style bits.          */
+  uint8_t       active_link; /**< 1-based link id (0 = none).         */
+  uint32_t      color;       /**< Current CSS colour / inherit.       */
+  uint16_t      css_font_px; /**< Inherited CSS font px (0=none).     */
+  uint16_t      family_off;  /**< Inherited font-family slice off.    */
+  uint16_t      family_len;  /**< Inherited font-family len (0=none). */
+  uint8_t       face_slot;   /**< Resolved embedded face (0=default). */
+  /** Open-element identities (tag+id+class) for the cascade + descendant match. */
+  ra8_css_element_t stack_el[k_priv_max_depth];
+  uint8_t           stack_style[k_priv_max_depth];   /**< Style to restore on pop.            */
+  uint8_t           stack_link[k_priv_max_depth];    /**< Link id to restore on pop.          */
+  uint32_t          stack_color[k_priv_max_depth];   /**< Colour to restore on pop.           */
+  uint16_t          stack_font[k_priv_max_depth];    /**< CSS font px to restore on pop.      */
+  uint16_t          stack_fam_off[k_priv_max_depth]; /**< font-family off to restore.         */
+  uint16_t          stack_fam_len[k_priv_max_depth]; /**< font-family len to restore.         */
+  uint8_t           stack_face[k_priv_max_depth];    /**< Face slot to restore on pop.        */
+  uint32_t          sp;                              /**< Stack depth.                        */
+  uint32_t          suppress_sp;                     /**< display:none subtree depth (0=off). */
+  bool              saw_element;                     /**< At least one element seen.          */
 } tok_ctx_t;
 
 /* ===========================================================================

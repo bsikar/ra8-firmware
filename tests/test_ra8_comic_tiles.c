@@ -53,20 +53,20 @@
  * @since Version 0.1.0
  */
 typedef enum : uint32_t {
-  k_big_w        = 700U,                        /**< Big page width (not tile-aligned).    */
-  k_big_h        = 480U,                        /**< Big page height (not tile-aligned).   */
-  k_small_w      = 96U,                         /**< Small page width (fits the arena).    */
-  k_small_h      = 64U,                         /**< Small page height.                    */
-  k_tile         = 128U,                        /**< Square tile edge.                     */
-  k_rgb_bpp      = 3U,                          /**< Source / atlas bytes per pixel (RGB). */
-  k_cell_bytes   = k_tile * k_tile * k_rgb_bpp, /**< Bytes per cache cell.                 */
-  k_cells        = 8U,           /**< Cache cell budget (< the tile count).           */
-  k_buckets      = 16U,          /**< Cache hash buckets.                             */
-  k_budget_bytes = 256U * 1024U, /**< Resident decode budget (threshold).             */
-  k_small_arena  = 256U * 1024U, /**< Whole-decode arena the cap is measured against. */
-  k_probe_w      = 64U,          /**< Off-screen framebuffer width.                   */
-  k_probe_h      = 64U,          /**< Off-screen framebuffer height.                  */
-  k_tiny_cell    = 64U,          /**< Undersized cell to force a no_mem tile decode.  */
+  k_big_w        = 700U,                        /**< Big page width (not tile-aligned).           */
+  k_big_h        = 480U,                        /**< Big page height (not tile-aligned).          */
+  k_small_w      = 96U,                         /**< Small page width (fits the arena).           */
+  k_small_h      = 64U,                         /**< Small page height.                           */
+  k_tile         = 128U,                        /**< Square tile edge.                            */
+  k_rgb_bpp      = 3U,                          /**< Source / atlas bytes per pixel (RGB).        */
+  k_cell_bytes   = k_tile * k_tile * k_rgb_bpp, /**< Bytes per cache cell.                        */
+  k_cells        = 8U,                          /**< Cache cell budget (< the tile count).        */
+  k_buckets      = 16U,                         /**< Cache hash buckets.                          */
+  k_budget_bytes = 256U * 1024U,                /**< Resident decode budget (threshold).          */
+  k_small_arena  = 256U * 1024U,                /**< Whole-decode arena measured against the cap. */
+  k_probe_w      = 64U,                         /**< Off-screen framebuffer width.                */
+  k_probe_h      = 64U,                         /**< Off-screen framebuffer height.               */
+  k_tiny_cell    = 64U,                         /**< Cell too small; forces a no_mem tile decode. */
 } comic_tiles_geom_t;
 
 /**

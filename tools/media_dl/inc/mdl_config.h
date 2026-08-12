@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_config.h
  * @brief Per-site descriptor loaded from a flat key=value config file.
@@ -13,6 +9,8 @@
  * fixed-size struct -- zero dynamic allocation, every field bounded, so the
  * same descriptor model ports to the RA8 unchanged. The richer TOML schema is a
  * later milestone; this proves the data-driven approach end to end.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

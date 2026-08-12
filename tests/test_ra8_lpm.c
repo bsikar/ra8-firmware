@@ -27,16 +27,15 @@
  * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint8_t {
-  k_lpm_probe_dpsifr3 =
-    0x55U, /**< Planted in DPSIFR3; the complement of the DPSIFR0 value, so a swap between the two is unmistakable. */
-  k_lpm_probe_dpsifr0  = 0xAAU, /**< Planted in DPSIFR0.                                       */
-  k_lpm_probe_lpscr    = 0x05U, /**< Planted in LPSCR, and reused for SSCR1.                   */
-  k_lpm_probe_dpsier0  = 0x11U, /**< Planted in DPSIER0.                                       */
-  k_lpm_probe_dpsier1  = 0x22U, /**< Planted in DPSIER1.                                       */
-  k_lpm_probe_dpsiegr0 = 0x33U, /**< Planted in DPSIEGR0.                                      */
-  k_lpm_probe_sbycr    = 0x40U, /**< Planted in SBYCR.                                         */
-  k_lpm_probe_dpsbycr  = 0x54U, /**< Planted in DPSBYCR.                                       */
-  k_lpm_probe_top_bit  = 0x80U, /**< A single high bit, planted where only one flag must move. */
+  k_lpm_probe_dpsifr3  = 0x55U, /**< DPSIFR3: complement of DPSIFR0; a swap is unmistakable.      */
+  k_lpm_probe_dpsifr0  = 0xAAU, /**< Planted in DPSIFR0.                                          */
+  k_lpm_probe_lpscr    = 0x05U, /**< Planted in LPSCR, and reused for SSCR1.                      */
+  k_lpm_probe_dpsier0  = 0x11U, /**< Planted in DPSIER0.                                          */
+  k_lpm_probe_dpsier1  = 0x22U, /**< Planted in DPSIER1.                                          */
+  k_lpm_probe_dpsiegr0 = 0x33U, /**< Planted in DPSIEGR0.                                         */
+  k_lpm_probe_sbycr    = 0x40U, /**< Planted in SBYCR.                                            */
+  k_lpm_probe_dpsbycr  = 0x54U, /**< Planted in DPSBYCR.                                          */
+  k_lpm_probe_top_bit  = 0x80U, /**< A single high bit, planted where only one flag must move.    */
   k_lpm_all_ones       = 0xFFU, /**< All flags set, so a clear that missed a bit leaves evidence. */
 } lpm_fixture_t;
 

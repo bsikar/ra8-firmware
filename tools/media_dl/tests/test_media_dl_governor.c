@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file test_media_dl_governor.c
  * @brief Host unit tests for the #301 per-host politeness governor.
@@ -22,6 +18,8 @@
  *     enforced independently per host --
  * plus the pure ::mdl_retry_after_parse helper for both header forms. Uses the
  * repo's `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -76,6 +74,7 @@ typedef struct {
 } gov_clock_t;
 
 /** @brief Injected clock: return the virtual now. */
+/* cppcheck-suppress constParameterCallback ; ra8_governor clock-fn ABI is void* */
 static int64_t gov_clk_now(void* ctx)
 {
   return ((const gov_clock_t*)ctx)->now_ms;

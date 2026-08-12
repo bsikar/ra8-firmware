@@ -1,6 +1,7 @@
-# shellcheck shell=bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/gates/build.sh -- Things that have to compile, link or generate cleanly.
 #
@@ -16,7 +17,8 @@
 
 # --- tools-build ----------------------------------------------------------
 # #335/#309: COMPILES AND LINKS every first-party CMake host tool -- media_dl,
-# rabook_viewer, rabook_imagepack, mkbookimg, mkfontimg. They were linted (#296 widened
+# rabook_viewer, rabook_imagepack, mkbookimg, mkfontimg, exfat_mkimage. They were
+# linted (#296 widened
 # clang-tidy to tools/) and NONE was ever built by a job, so a change that
 # parsed and linted cleanly could break the build or the link with nothing
 # going red -- and media_dl could not build on Linux at all, which is the only
@@ -116,12 +118,12 @@ _tb_rabook_viewer() (
 # The remaining first-party CMake tools no job built. #335 asked for these to
 # be enumerated rather than fixing media_dl alone. They have no test binary of
 # their own, so building and linking them IS the check: each pulls a different
-# slice of the firmware (rabook_imagepack the JOF/JPEG stack, mkbookimg and mkfontimg
-# the whole FAT/exFAT driver) host-side.
+# slice of the firmware (rabook_imagepack the JOF/JPEG stack, mkbookimg, mkfontimg
+# and exfat_mkimage the whole FAT/exFAT driver) host-side.
 _tb_other_tools() (
   set -e
   local cc="$1" root="$2" jobs="$3" tool
-  for tool in rabook_imagepack mkbookimg mkfontimg; do
+  for tool in rabook_imagepack mkbookimg mkfontimg exfat_mkimage; do
     echo "tools-build[$cc]: $tool"
     CC="$cc" cmake -S "$PWD/tools/$tool" -B "$root/$tool" \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -166,6 +168,7 @@ gate_tools_build() (
       "$root/rabook_imagepack/compile_commands.json"
       "$root/mkbookimg/compile_commands.json"
       "$root/mkfontimg/compile_commands.json"
+      "$root/exfat_mkimage/compile_commands.json"
     )
   done
 

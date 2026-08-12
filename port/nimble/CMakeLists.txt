@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/nimble/CMakeLists.txt
 #
@@ -29,8 +31,6 @@
 # `nimble_port_threadx` therefore stays under `examples/_unsupported/`
 # until a NimBLE app is driven to real hardware validation and promoted.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)
@@ -45,7 +45,7 @@ target_link_libraries(nimble_port_threadx INTERFACE nimble threadx)
 
 # Track the source list as a property so apps can splice it into
 # their own add_executable() globs. Same pattern used by
-# port/filex/CMakeLists.txt.
+# port/usbx/CMakeLists.txt.
 set_property(
   GLOBAL PROPERTY RA8_NIMBLE_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/ble_hci_ra8_ble.c
                   ${CMAKE_CURRENT_SOURCE_DIR}/src/nimble_npl_threadx.c

@@ -8,8 +8,8 @@
 # on any INCREASE, so the debt is frozen and can only be burned down; a
 # newly-added uncovered decision raises a count and fails.
 #
-# Total at this baseline: 967 uncovered compound decision(s)
-# across 193 file(s).
+# Total at this baseline: 912 uncovered compound decision(s)
+# across 182 file(s).
 #
 # Burn one down: add a `test_mcdc_<decision>` function with N+1 vectors
 # to the matching tests/test_<module>.c whose `@par MC/DC:` block cites
@@ -107,32 +107,6 @@ libs/ra8_epub/src/ra8_epub_open.c	priv_finish_open	1
 libs/ra8_epub/src/ra8_epub_open.c	priv_stream_read	1
 libs/ra8_epub/src/ra8_epub_open.c	ra8_epub_open	2
 libs/ra8_epub/src/ra8_epub_open.c	ra8_epub_open_streamed	2
-libs/ra8_fs/src/ra8_fs_fat_dir.c	ra8_fs_listdir	1
-libs/ra8_fs/src/ra8_fs_fat_dir.c	ra8_fs_unlink	1
-libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c	priv_exfat_label_utf16	1
-libs/ra8_fs/src/ra8_fs_fat_file.c	ra8_fs_open	1
-libs/ra8_fs/src/ra8_fs_fat_fileio.c	priv_read_one_chunk	2
-libs/ra8_fs/src/ra8_fs_fat_fileio.c	ra8_fs_read	2
-libs/ra8_fs/src/ra8_fs_fat_fileio.c	ra8_fs_size	1
-libs/ra8_fs/src/ra8_fs_fat_fileio.c	ra8_fs_tell	1
-libs/ra8_fs/src/ra8_fs_fat_fileio.c	ra8_fs_write	2
-libs/ra8_fs/src/ra8_fs_fat_fmt.c	priv_fmt_choose_geometry	1
-libs/ra8_fs/src/ra8_fs_fat_fmt.c	priv_fmt_clear_region	1
-libs/ra8_fs/src/ra8_fs_fat_fmt.c	priv_fmt_count_in_band	2
-libs/ra8_fs/src/ra8_fs_fat_fmt.c	priv_fmt_label_field	1
-libs/ra8_fs/src/ra8_fs_fat_lfn.c	priv_dir_find_free	1
-libs/ra8_fs/src/ra8_fs_fat_lfn.c	priv_dir_find_long_sector	1
-libs/ra8_fs/src/ra8_fs_fat_lfn.c	priv_free_chain	1
-libs/ra8_fs/src/ra8_fs_fat_lfn.c	priv_lfn_add	2
-libs/ra8_fs/src/ra8_fs_fat_lfn.c	priv_lfn_name_for	1
-libs/ra8_fs/src/ra8_fs_fat_lfn.c	priv_name_ieq	2
-libs/ra8_fs/src/ra8_fs_fat_mount.c	priv_parse_bpb_into_mount	2
-libs/ra8_fs/src/ra8_fs_fat_mount.c	ra8_fs_format	5
-libs/ra8_fs/src/ra8_fs_fat_mount.c	ra8_fs_mount	2
-libs/ra8_fs/src/ra8_fs_fat_name.c	priv_83_to_str	1
-libs/ra8_fs/src/ra8_fs_fat_name.c	priv_pack_base	1
-libs/ra8_fs/src/ra8_fs_fat_name.c	priv_path_to_83	1
-libs/ra8_fs/src/ra8_fs_fat_name.c	priv_to_upper	1
 libs/ra8_gfx/src/ra8_gfx_dither.c	ra8_gfx_blit_gray8_dither	1
 libs/ra8_gfx/src/ra8_gfx_dither.c	ra8_gfx_dither_gray8_to_gray4	1
 libs/ra8_gfx/src/ra8_gfx_text.c	internal_fill_rect_565	1
@@ -160,7 +134,6 @@ libs/ra8_hal/src/ra8_ble.c	ra8_ble_hci_send_command	1
 libs/ra8_hal/src/ra8_ble.c	ra8_ble_scan_start	2
 libs/ra8_hal/src/ra8_ble.c	ra8_ble_set_advertising_data	1
 libs/ra8_hal/src/ra8_ble.c	ra8_ble_test_inject_rx	1
-libs/ra8_hal/src/ra8_cache.c	ra8_cache_dcache_invalidate_all	1
 libs/ra8_hal/src/ra8_canfd_frame.c	internal_validate_frame	1
 libs/ra8_hal/src/ra8_canfd_timing.c	internal_solve_timing	2
 libs/ra8_hal/src/ra8_canfd_timing.c	ra8_canfd_set_bitrate	1
@@ -624,11 +597,6 @@ libs/ra8_tls/src/ra8_tls.c	ra8_tls_handshake	1
 libs/ra8_tls/src/ra8_tls.c	ra8_tls_mss_clamp	1
 libs/ra8_tls/src/ra8_tls.c	ra8_tls_recv	2
 libs/ra8_tls/src/ra8_tls.c	ra8_tls_send	2
-libs/ra8_touch_cal/src/ra8_touch_cal.c	ra8_touch_cal_apply	2
-libs/ra8_touch_cal/src/ra8_touch_cal.c	ra8_touch_cal_compute	3
-libs/ra8_touch_cal/src/ra8_touch_cal.c	ra8_touch_cal_load	6
-libs/ra8_touch_cal/src/ra8_touch_cal.c	ra8_touch_cal_run	4
-libs/ra8_touch_cal/src/ra8_touch_cal.c	ra8_touch_cal_save	1
 libs/ra8_unarch/src/ra8_unarch_tar_fields.c	ra8_unarch_tar_checksum_ok	1
 libs/ra8_unarch/src/ra8_unarch_tar_fields.c	ra8_unarch_tar_magic_ok	1
 libs/ra8_unarch/src/ra8_unarch_tar_fields.c	s_pax_apply	2
@@ -657,8 +625,6 @@ libs/ra8_widget/src/ra8_widget_panel.c	internal_panel_on_input	1
 libs/ra8_widget/src/ra8_widget_panel.c	internal_panel_render	1
 libs/ra8_widget/src/ra8_widget_reflow_view.c	internal_rv_link	1
 libs/ra8_widget/src/ra8_widget_reflow_view.c	internal_rv_render	1
-port/levelx/src/lx_filex_adapter.c	priv_read_sectors	1
-port/levelx/src/lx_filex_adapter.c	priv_write_sectors	1
 port/levelx/src/lx_nor_driver_ra8_xspi.c	priv_capture_xspi_pin_state	1
 port/levelx/src/lx_nor_driver_ra8_xspi.c	priv_nor_read	1
 port/levelx/src/lx_nor_driver_ra8_xspi.c	priv_nor_write	1

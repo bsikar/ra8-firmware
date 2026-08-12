@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # libs/ra8_c6link/CMakeLists.txt
 #
 # Intentionally a no-op, like ra8_io / ra8_display_pal / ra8_net_pal.
@@ -10,5 +12,3 @@
 #     tests/cmake/tests_c6link.cmake, because the vendored protobuf codec has
 #     to be compiled alongside them and ra8_core_hal does not carry it.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT

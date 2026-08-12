@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file test_media_dl_net.c
  * @brief Host unit tests for the mdl_net vtable seam and the politeness clock.
@@ -14,6 +10,8 @@
  * the libcurl backend's pure transfer classifier and bounded write callback, and
  * the seeded jitter + injectable-clock politeness behaviour. Uses the repo's
  * `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <curl/curl.h>
 #include <dirent.h>
@@ -363,9 +361,9 @@ static void test_net_classify(void)
 static void test_net_buf_write_overflow(void)
 {
   TEST_BEGIN("net buf write overflow");
-  char       dst[k_net_dst];
-  char       chunk[] = "abcde";
-  buf_sink_t sink    = {.buf = dst, .cap = 4U, .len = 0U, .overflow = false};
+  char       dst[k_net_dst] = {};
+  char       chunk[]        = "abcde";
+  buf_sink_t sink           = {.buf = dst, .cap = 4U, .len = 0U, .overflow = false};
   /* within cap: 3 bytes into cap 4. */
   TEST_ASSERT_EQ((uint16_t)3, (uint16_t)mdl_net_curl_buf_write(chunk, 1U, 3U, &sink));
   TEST_ASSERT_EQ((uint16_t)3, (uint16_t)sink.len);

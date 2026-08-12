@@ -156,14 +156,14 @@ static ra8_err_t internal_run_acmd41(uint8_t instance, uint32_t* out_ocr)
   uint32_t ocr    = 0U;
   uint8_t  done   = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdcard_init_retry_max; ++i) {
-    /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3125 */
+    /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3123 */
     /* CMD55 prefix is required before every ACMDxx. */
     const ra8_err_t e55 =
       ra8_sdhi_send_command(instance, (uint32_t)k_ra8_sdcard_cmd55_app_cmd, 0U, rsp);
     if (e55 != k_ra8_ok) {
       return e55;
     }
-    /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument" p 3128 */
+    /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument" p 3124 */
     /* HCS=1 (host supports SDHC/SDXC) | voltage window 2.7-3.6 V. */
     const uint32_t arg =
       (uint32_t)k_ra8_sdcard_acmd41_hcs | (uint32_t)k_ra8_sdcard_acmd41_voltage_win;
@@ -276,7 +276,7 @@ static ra8_err_t internal_sdcard_identify(uint8_t instance)
 {
   uint32_t rsp[4] = {0U, 0U, 0U, 0U};
 
-  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3125 */
+  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3123 */
   /* CMD0 GO_IDLE_STATE -- no response, but send_command still polls
    * RSPEND so the host stays in lockstep with the bus state machine. */
   const ra8_err_t e0 =
@@ -551,7 +551,7 @@ ra8_err_t ra8_sdcard_init(const ra8_sdcard_cfg_t* cfg)
    * at the identification clock, before the default-speed clock bump. */
   internal_sdcard_negotiate_width(cfg->instance, cfg->bus_width, rca);
 
-  /* HUM Ch 47.2.18 "SD_CLK_CTRL : SD Clock Control Register" p 3145 */
+  /* HUM Ch 47.2.18 "SD_CLK_CTRL : SD Clock Control Register" p 3138 */
   /* Bump the bus from the 400 kHz identification rate to default
    * speed. The SDR50 / DDR50 negotiation lives in the future
    * ::ra8_sdcard_set_speed extension. */

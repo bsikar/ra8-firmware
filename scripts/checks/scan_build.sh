@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scan_build.sh -- Run clang's scan-build static analyzer against the
 # host unit-test build of ra8-firmware.
@@ -10,10 +12,10 @@
 # pattern) by finding null-deref, use-after-free, dead-store and
 # logic-error paths through symbolic execution.
 #
-# We point it at the host test build (tests/build-scan/) rather than
-# the cross-compile firmware build because clang cannot consume the
-# arm-none-eabi sysroot reliably. The host build covers the same first-
-# party libs/, src/, port/ TUs.
+# We point it at the host test build (built OUT of the source tree; see
+# BUILD_DIR below) rather than the cross-compile firmware build because clang
+# cannot consume the arm-none-eabi sysroot reliably. The host build covers the
+# same first-party libs/, src/, port/ TUs.
 #
 # Findings under libs/third_party/ are filtered out (SOUP -- see
 # CLAUDE.md, docs/SOUP/). First-party findings are recorded in
@@ -58,13 +60,15 @@
 #     because moving the pin brings ~683 findings back at once.
 #
 # Environment overrides:
-#     CMAKE                 -- cmake binary (default: cmake on PATH)
-#     SCAN_BUILD            -- analyzer binary (default: scan-build-18, else
-#                              scan-build)
-#     MIN_TRANSLATION_UNITS -- vacuity floor on the analysed TU count
+#     CMAKE                  -- cmake binary (default: cmake on PATH)
+#     SCAN_BUILD             -- analyzer binary (default: scan-build-18, else
+#                               scan-build)
+#     USE_CC / USE_CXX       -- compiler scan-build drives (default: the clang
+#                               major derived from $SCAN_BUILD, e.g. clang-18)
+#     RA8_SCAN_BUILD_OUT_DIR -- out-of-tree dir holding the build + report trees
+#                               (default: a per-checkout dir under $TMPDIR)
+#     MIN_TRANSLATION_UNITS  -- vacuity floor on the analysed TU count
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -uo pipefail
 
@@ -84,6 +88,30 @@ if [[ -z "${SCAN_BUILD:-}" ]] && command -v scan-build-18 >/dev/null 2>&1; then
   SCAN_BUILD=scan-build-18
 fi
 SCAN_BUILD="${SCAN_BUILD:-scan-build}"
+
+# Pin the COMPILER scan-build drives to the same clang major as the analyzer
+# driver, DERIVED from $SCAN_BUILD so the pin cannot drift in halves.
+#
+# scan-build reasons about the language dialect its --use-cc compiler accepts;
+# scan-build-18 paired with a clang that predates C23 typed enums is analysing
+# a different language than the one being compiled. There is no unversioned
+# `clang` on the dev box or the CI image (clang-tools-18 ships scan-build-18 and
+# clang-18 but no bare symlink), and scan-build SILENTLY falls back to the
+# system default compiler -- gcc-12 here -- when --use-cc names a binary that
+# does not exist. gcc-12 cannot parse this tree's C23, so the analysed build died
+# 1356 errors deep for a reason with nothing to do with the tree under test
+# (#559). The existence of the derived compiler is asserted (fail-loud) below,
+# once the analyzer itself is known to be present.
+_sb_base="$(basename -- "$SCAN_BUILD")"
+_sb_ver="${_sb_base##*-}"
+if [[ "$_sb_ver" =~ ^[0-9]+$ ]]; then
+  USE_CC="${USE_CC:-clang-$_sb_ver}"
+  USE_CXX="${USE_CXX:-clang++-$_sb_ver}"
+else
+  USE_CC="${USE_CC:-clang}"
+  USE_CXX="${USE_CXX:-clang++}"
+fi
+unset _sb_base _sb_ver
 
 # Vacuity floor: the compile database must list, and the build must produce,
 # at least this many translation units before a clean report means anything.
@@ -249,8 +277,36 @@ if ! command -v "$SCAN_BUILD" >/dev/null 2>&1; then
   exit 2
 fi
 
-BUILD_DIR="$REPO_ROOT/tests/build-scan"
-REPORT_DIR="$REPO_ROOT/build/scan-build-reports"
+# The clang that scan-build must DRIVE has to exist too, or scan-build silently falls
+# back to the system default (gcc) and "analyses" a build that cannot even parse
+# C23 (#559). Turn that silent fallback into a loud failure -- the same contract
+# as the missing-analyzer check above.
+if ! command -v "$USE_CC" >/dev/null 2>&1; then
+  echo "scan_build.sh: FATAL -- the analyzer $SCAN_BUILD is present but the" >&2
+  echo "  clang it must drive ($USE_CC) is not on PATH. scan-build would fall" >&2
+  echo "  back to the system default compiler (gcc), which cannot parse this" >&2
+  echo "  tree's C23, so nothing meaningful would be analysed." >&2
+  echo "  Install the matching clang, or point SCAN_BUILD at a driver whose" >&2
+  echo "  clang major is installed (scan-build-18 pairs with clang-18)." >&2
+  exit 2
+fi
+
+# scan-build writes NOTHING under the source tree. An in-tree build tree
+# (tests/build-scan) left clang-instrumented `.gcno` files under the checkout,
+# and the `coverage` gate that runs later in the same snapshot -- gcovr walks
+# the FILESYSTEM, not the git index, so .gitignore does not hide them -- died
+# parsing a clang profile version its gcc-14 gcov rejects (#558). Building out of
+# tree removes the contamination at the source: gcovr cannot discover what is
+# not in the tree it scans.
+#
+# The path is per-checkout (a cksum of REPO_ROOT) so concurrent worktrees on the
+# shared box do not collide, and stable so the top-of-run wipe below reclaims the
+# previous run's tree instead of leaking one temp dir per run.
+_sb_tag="$(printf '%s' "$REPO_ROOT" | cksum | cut -d' ' -f1)"
+SCAN_OUT_DIR="${RA8_SCAN_BUILD_OUT_DIR:-${TMPDIR:-/tmp}/ra8-scan-build-$(id -u)-${_sb_tag}}"
+unset _sb_tag
+BUILD_DIR="$SCAN_OUT_DIR/build"
+REPORT_DIR="$SCAN_OUT_DIR/reports"
 
 # BOTH directories are wiped first, and neither is an optimisation to reclaim.
 #
@@ -277,7 +333,7 @@ echo "==> scan-build: configuring host test build at $BUILD_DIR"
 # A failed configure is fatal. It used to fall through: cmake died, no TU was
 # ever compiled, and the summary below still printed "first-party bugs : 0"
 # and exited 0 -- a clean verdict over an analysis that never happened.
-if ! "$SCAN_BUILD" --use-cc=clang --use-c++=clang++ \
+if ! "$SCAN_BUILD" --use-cc="$USE_CC" --use-c++="$USE_CXX" \
   "$CMAKE" -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   -Wno-dev >/dev/null; then
@@ -307,7 +363,7 @@ echo "==> scan-build: analyzing $TU_COUNT translation units (several minutes)...
 # it. That makes this exit status the BUILD's, so a non-zero one means the
 # compile failed and nothing downstream is trustworthy.
 BUILD_RC=0
-"$SCAN_BUILD" --use-cc=clang --use-c++=clang++ \
+"$SCAN_BUILD" --use-cc="$USE_CC" --use-c++="$USE_CXX" \
   -o "$REPORT_DIR" \
   -disable-checker deadcode.DeadStores \
   -disable-checker security.insecureAPI.DeprecatedOrUnsafeBufferHandling \
@@ -315,8 +371,21 @@ BUILD_RC=0
   >"$REPORT_DIR/scan-build.log" 2>&1 || BUILD_RC=$?
 if [[ "$BUILD_RC" -ne 0 ]]; then
   echo "scan_build.sh: FATAL -- the analyzed build FAILED (exit $BUILD_RC)." >&2
-  echo "  Tail of $REPORT_DIR/scan-build.log:" >&2
-  tail -n 40 "$REPORT_DIR/scan-build.log" >&2 || true
+  echo "  It compiled nothing analysable; no verdict downstream is trustworthy." >&2
+  # Surface the actual COMPILER error, not the last screenful. On this build the
+  # tail is trailing scan-build "N bugs found" chatter and vendored
+  # tf-psa-crypto analyzer warnings that say nothing about why the build died
+  # (#558). Real diagnostics carry an `error:`; show the first cluster of them
+  # and fall back to a tail only when the failure produced none (a link or
+  # generator error).
+  if grep -nE 'error:' "$REPORT_DIR/scan-build.log" >/dev/null 2>&1; then
+    echo "  First compile errors in $REPORT_DIR/scan-build.log:" >&2
+    grep -nE 'error:' "$REPORT_DIR/scan-build.log" | head -n 20 >&2
+  else
+    echo "  No 'error:' diagnostic found (a link or generator failure?);" >&2
+    echo "  tail of $REPORT_DIR/scan-build.log:" >&2
+    tail -n 40 "$REPORT_DIR/scan-build.log" >&2 || true
+  fi
   exit 2
 fi
 

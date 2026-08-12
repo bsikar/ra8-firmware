@@ -1,6 +1,7 @@
-# shellcheck shell=bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/lib/snapshot.sh -- materialise the tree a suite run is gating, and
 # run the suite inside it.
@@ -43,8 +44,9 @@
 #
 #   * `git archive` honours `export-ignore` in the NESTED .gitattributes of
 #     vendored trees. The ThreadX family ships one, so 37 files (every
-#     `.github/`, `.gitattributes` and `.gitignore` under filex, levelx,
-#     netxduo, usbx and threadx) never reached the tarball at all.
+#     `.github/`, `.gitattributes` and `.gitignore` under levelx,
+#     netxduo, usbx and threadx) never reached the tarball at all (counts
+#     measured while the since-retired FileX snapshot was still vendored).
 #   * the following `git add -A` then respected .gitignore, dropping a further
 #     404 tracked files -- the ThreadX `example_build/` IDE projects, which are
 #     tracked in HEAD but match an ignore pattern.

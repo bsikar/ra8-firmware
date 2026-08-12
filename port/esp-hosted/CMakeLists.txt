@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/esp-hosted/CMakeLists.txt
 #
@@ -58,8 +60,6 @@
 # directly and reaches none of this code -- which is why the port needed
 # its own proof.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)
@@ -88,7 +88,7 @@ target_include_directories(
 target_link_libraries(esp_hosted_port_ra8_spi INTERFACE esp_hosted threadx)
 
 # Track the source list as a property so apps can splice it into their
-# own add_executable() globs. Same pattern as port/nimble and port/filex.
+# own add_executable() globs. Same pattern as port/nimble and port/usbx.
 set_property(
   GLOBAL
   PROPERTY RA8_ESP_HOSTED_PORT_SOURCES

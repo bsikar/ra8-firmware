@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Prepare a WSL2 Ubuntu distro on a Windows machine to host a CI runner.
 #

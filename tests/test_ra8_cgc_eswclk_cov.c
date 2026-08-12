@@ -27,7 +27,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -47,7 +46,7 @@
  */
 typedef enum : uint8_t {
   k_cgc_divider_settings =
-    255U, /**< Divider settings swept: every value the field can hold, so no encoding goes untried. */
+    255U, /**< Divider settings swept: every value the field can hold; no encoding goes untried. */
 } cgc_eswclk_cov_fixture_t;
 
 /**

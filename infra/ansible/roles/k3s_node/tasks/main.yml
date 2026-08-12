@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Bring a bare host up as the single-node k3s server the ARC runner pool runs
 # on, with helm present system-wide. Idempotent: an already-correct node is a

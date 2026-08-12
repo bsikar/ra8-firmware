@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/levelx.cmake
 #
@@ -17,8 +19,6 @@
 # levelx levelx_port_ra8_xspi)`. Everything else (include dirs,
 # preprocessor defines) flows through the interface.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Idempotency guard. The same per-app build can include this file

@@ -1,8 +1,8 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # tools/glyph_bench/Makefile -- host build of the #147/#164 glyph-cache budget
 # sweep. Links the REAL Layer-3 glyph atlas (ra8_glyph_atlas + ra8_keycache) so
 # the measured hit rate is the production cache's behaviour.
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2026 Brighton Sikarskie
 
 CC      ?= cc
 CFLAGS  ?= -std=gnu23 -O2 -g -Wall -Wextra -Werror -Wno-unused-parameter

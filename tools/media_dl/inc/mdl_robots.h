@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_robots.h
  * @brief robots.txt parser, path matcher, and per-host cache.
@@ -18,6 +14,8 @@
  * The parser and matcher are pure and unit-tested directly. The per-host cache
  * takes a fetch callback (dependency injection) so the network stays out of
  * this translation unit and a fake fetcher drives the cache in tests.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -147,7 +147,7 @@ static volatile r_ipc_channel_regs_t* internal_ra8_ipc_get_regs(uint8_t channel)
     return nullptr;
   }
 #ifdef RA8_BUILD_FOR_CPU1
-  /* CPU1 (M33) has SECEXT disabled and runs as a permanent NS bus    */ /* LEGACY-OK: ARMv8-M bus-architecture term */
+  /* CPU1 (M33) has SECEXT disabled and runs as a permanent NS bus    */ /* LEGACY-OK: ARMv8-M */
   /* controller. The IPC channels CPU1 owns (ch0 + ch2) are
    * NS-attributed via IPCSAR=0x00050000 set by CPU0's secure-boot.
    * The chip routes NS IPC accesses through the bit-28-set NS alias

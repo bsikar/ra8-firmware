@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_url_guard.h
  * @brief Pure URL / address safety predicates for the libcurl backend.
@@ -18,6 +14,8 @@
  * them, and the tests call them directly. Address classification uses the
  * host's `inet_pton` rather than a hand-rolled parser -- this is host tooling,
  * not firmware, so the platform's battle-tested parser is the right choice.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

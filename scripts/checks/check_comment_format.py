@@ -19,6 +19,18 @@ pass runs *after* clang-format and owns the interior, normalising three things:
    start column, or where padding would reach the column limit (which would make
    clang-format collapse its leading alignment).  Standalone full-line comments
    are spacing-normalised but never end-aligned.
+4. **One block, one alignment.**  Rule 3 *accommodates* a torn block; this rule
+   forbids one.  ``AlignTrailingComments`` aligns a run to its widest code plus
+   one space but abandons that column when the longest comment would cross the
+   limit, leaving one struct with two ``/**<`` columns and two ``*/`` columns.
+   That is canonical clang-format output, so neither tool objects to it, and
+   ragged blocks accumulated in the tree unremarked.  A run must therefore align
+   as a single unit.  This rule is REPORTED, never fixed: the remedy is to
+   shorten the comment or move it to its own ``/** ... */`` block above the line
+   it documents, and neither is a rewrite a formatter may make on its own.  A
+   reported block IS exempted from rule 3, though -- end-padding is a grouping
+   hint clang-format honours, so padding a torn block to its two sub-widths
+   would keep it torn even after the author shortened the comment that tore it.
 
 The text in front of each comment -- code plus clang-format's leading alignment
 -- is preserved verbatim, so the two tools never fight: clang owns the start
@@ -93,11 +105,27 @@ _ST_NORMAL = 0
 _ST_BLOCK = 1  # inside a multi-line /* ... */ block comment
 _ST_RAW = 2  # inside a C++ raw string R"delim( ... )delim"
 
-# Must match .clang-format ColumnLimit. End-alignment never pads a comment up to
-# this column: a run splits instead, because a trailing comment that reaches the
+# Must match .clang-format ColumnLimit. End-alignment never pads a comment PAST
+# this column: a run splits instead, because a trailing comment that overruns the
 # limit makes clang-format collapse its (clang-owned) leading alignment to fit,
-# which would fight this pass. It preserves alignment only strictly under it.
+# which would fight this pass.
+#
+# The bound is inclusive. ColumnLimit permits a line of exactly this width --
+# clang-format-22 leaves a 100-column trailing comment alone and only wraps the
+# declaration at 101 -- so a guard that stopped one short of it tore blocks in
+# two for no reason, which is how 47 of them ended up in the tree.
 _COLUMN_LIMIT = 100
+
+# How many offending lines a split-run finding names before eliding the rest.
+_MAX_NAMED_LINES = 6
+
+# A line opening with one of these is never part of clang-format's trailing
+# comment alignment sequence: a scope-closing brace, or a preprocessor
+# directive.
+_OUT_OF_SEQUENCE = ("}", "#")
+
+# One trailing comment is a run of one, and a run of one always aligns.
+_MIN_RUN = 2
 
 
 class _Comment(NamedTuple):
@@ -257,6 +285,202 @@ def _body_len(c: _Comment) -> int:
     return len(c.opener) + 1 + len(c.content) + 1 + 2
 
 
+def _scan_trailing(
+    lines: list[str],
+) -> tuple[list[_Comment | None], list[str], list[int], list[tuple[int, str]]]:
+    """Classify every line's last block comment as trailing, standalone, or neither.
+
+    Returns four parallel results: per line, the trailing comment (``None`` when
+    the line has none), the verbatim text in front of it (code plus
+    clang-format's leading alignment), and the column that comment opens at
+    (``-1`` when there is none); plus a list of ``(index, rendered)`` pairs for
+    full-line standalone comments, which are spacing-normalised but never
+    aligned.
+
+    A line whose last comment is a banner or an empty ``/**/``, or which has
+    code after the ``*/``, yields no trailing comment: neither this pass nor
+    clang-format's ``AlignTrailingComments`` treats those as alignable, so both
+    end an alignment run there.
+    """
+    trailing: list[_Comment | None] = [None] * len(lines)
+    prefix: list[str] = [""] * len(lines)
+    start_col: list[int] = [-1] * len(lines)
+    standalone: list[tuple[int, str]] = []
+
+    state, raw_delim = _ST_NORMAL, ""
+    for i, line in enumerate(lines):
+        comments, state, raw_delim = _scan_line(line, state, raw_delim)
+        if not comments:
+            continue
+        last = comments[-1]
+        if not last.processable or line[last.end :].strip() != "":
+            continue  # banner/empty, or code follows -> leave the line untouched
+        before = line[: last.start]
+        if before.strip() == "":
+            standalone.append((i, before + _render(last.opener, last.content, 1)))
+        else:
+            if not before[-1].isspace():
+                before += " "  # rule 3: >=1 space before a trailing comment
+            trailing[i] = last
+            prefix[i] = before  # preserve code + clang's start-column alignment
+            start_col[i] = len(before)
+    return trailing, prefix, start_col, standalone
+
+
+def _clang_format_off(lines: list[str]) -> set[int]:
+    """Return the indices of lines clang-format has been told to leave alone.
+
+    Everything from a ``clang-format off`` marker up to the matching ``on`` (or
+    end of file) is emitted verbatim, so no alignment rule can be read off it:
+    the columns there are whatever the author typed. Reporting a torn block
+    inside such a region asks for a repair clang-format would never make -- and
+    in one case for a comment whose budget was NEGATIVE, since the author had
+    switched the formatter off precisely to keep an over-long marker on its
+    line.
+    """
+    off: set[int] = set()
+    active = False
+    for i, line in enumerate(lines):
+        marker = _fmt_toggle(line)
+        if marker == "off":
+            active = True
+        elif marker == "on":
+            active = False
+            continue
+        if active:
+            off.add(i)
+    return off
+
+
+def _fmt_toggle(line: str) -> str | None:
+    """Return ``"off"`` / ``"on"`` when `line` is a clang-format toggle comment.
+
+    Both delimiters count, and so does the ``clang-format off: why`` form --
+    clang-format honours a trailing explanation, and this tree uses it, so a
+    matcher demanding the bare spelling would read a live marker as ordinary
+    prose and police a region the formatter never touched.
+    """
+    stripped = line.strip()
+    if stripped.startswith("//"):
+        body = stripped[2:].strip()
+    elif stripped.startswith("/*") and stripped.endswith("*/"):
+        body = stripped[2:-2].strip()
+    else:
+        return None
+    for word in ("off", "on"):
+        if body == f"clang-format {word}" or body.startswith(f"clang-format {word}:"):
+            return word
+    return None
+
+
+class _SplitRun(NamedTuple):
+    """A block of trailing comments that cannot be aligned as a single unit.
+
+    `first`/`last` are the 1-based line numbers bounding the run.  `cols` holds
+    the distinct 1-based columns its ``/**<`` openers start at -- more than one
+    means clang-format gave up and split the block.  `over` lists the 1-based
+    lines whose minimal comment is too wide to sit at `col`, and `excess` is how
+    many characters the widest of them must lose.
+    """
+
+    first: int
+    last: int
+    cols: tuple[int, ...]
+    col: int
+    over: tuple[int, ...]
+    excess: int
+
+
+def find_split_runs(text: str) -> list[_SplitRun]:
+    """Report every trailing-comment block the column limit tore in two.
+
+    A *run* is a maximal stretch of consecutive lines that each end in a
+    single-line trailing comment.  A blank line, a code-only line, a standalone
+    comment, or an inline mid-code comment ends one -- and ends clang-format's
+    alignment sequence too, so a run is exactly the unit clang-format tries to
+    align.
+
+    ``AlignTrailingComments`` aligns a run to its widest code plus one space,
+    but abandons that column and starts a fresh group when it would push the
+    longest comment past ``ColumnLimit``.  The result reads as ragged: one
+    struct, two ``/**<`` columns and two ``*/`` columns.  This pass cannot
+    repair it -- shortening prose is the author's call -- so it reports.
+
+    A run is reported when its comments open at more than one column, or when
+    the widest one, placed at the run's rightmost column, would reach the limit
+    (which is what splits the closing ``*/`` alignment on the next run of the
+    formatter).  Both are the same defect measured before and after
+    clang-format has reacted to it.
+    """
+    lines = text.removesuffix("\n").split("\n")
+    trailing, _prefix, start_col, _standalone = _scan_trailing(lines)
+    for i in _clang_format_off(lines):
+        trailing[i] = None  # clang-format aligns nothing here, so neither do we
+
+    found: list[_SplitRun] = []
+    for run in _alignment_runs(lines, trailing):
+        cols = sorted({start_col[k] for k in run})
+        col = cols[-1]
+        over = tuple(k + 1 for k in run if col + _body_len(trailing[k]) > _COLUMN_LIMIT)
+        if len(cols) > 1 or over:
+            widest = max(_body_len(trailing[k]) for k in run)
+            found.append(
+                _SplitRun(
+                    first=run[0] + 1,
+                    last=run[-1] + 1,
+                    cols=tuple(c + 1 for c in cols),
+                    col=col + 1,
+                    over=over,
+                    excess=max(0, col + widest - _COLUMN_LIMIT),
+                )
+            )
+    return found
+
+
+def _alignment_runs(lines: list[str], trailing: list[_Comment | None]) -> list[list[int]]:
+    """Group line indices into the blocks clang-format aligns as one.
+
+    A block is a maximal stretch of consecutive trailing-comment lines at ONE
+    indentation, and it excludes two kinds of line that clang-format keeps out
+    of an alignment sequence regardless of how wide anything is:
+
+    * a line that CLOSES a scope (``}``, ``};``, ``} while (x);``) -- with
+      ``int a; /* a */`` inside a block and ``} /* done */`` after it,
+      clang-format leaves the two comments in unrelated columns;
+    * a preprocessor directive.
+
+    Modelling the unit matters more than it sounds. Judging a whole struct as
+    one block, when clang-format was aligning its members and its anonymous
+    union's closing ``};`` separately all along, reports a tear that is not
+    there and asks for a repair no formatter would ever make. Blocks at
+    different indentation are likewise judged apart: clang-format sometimes
+    aligns across an indent change, so treating them as one unit could only
+    manufacture findings.
+    """
+    runs: list[list[int]] = []
+    cur: list[int] = []
+    indent = -1
+    for i, line in enumerate(lines):
+        stripped = line.lstrip()
+        breaks = (
+            trailing[i] is None
+            or stripped.startswith(_OUT_OF_SEQUENCE)
+            or (cur and len(line) - len(stripped) != indent)
+        )
+        if breaks:
+            if len(cur) >= _MIN_RUN:
+                runs.append(cur)
+            cur = []
+            if trailing[i] is None or stripped.startswith(_OUT_OF_SEQUENCE):
+                continue
+        if not cur:
+            indent = len(line) - len(stripped)
+        cur.append(i)
+    if len(cur) >= _MIN_RUN:
+        runs.append(cur)
+    return runs
+
+
 def fix_text(text: str) -> str:
     """Return `text` with the comment-format rules applied. Pure; idempotent.
 
@@ -280,34 +504,27 @@ def fix_text(text: str) -> str:
     lines = body.split("\n")
     out = list(lines)
 
-    # Per line: the trailing comment (or None), the verbatim text in front of it
-    # (code + clang's leading alignment), and the column the comment opens at.
-    trailing: list[_Comment | None] = [None] * len(lines)
-    prefix: list[str] = [""] * len(lines)
-    start_col: list[int] = [-1] * len(lines)
+    trailing, prefix, start_col, standalone = _scan_trailing(lines)
+    for i, rendered in standalone:
+        out[i] = rendered
 
-    state, raw_delim = _ST_NORMAL, ""
-    for i, line in enumerate(lines):
-        comments, state, raw_delim = _scan_line(line, state, raw_delim)
-        if not comments:
-            continue
-        last = comments[-1]
-        if not last.processable or line[last.end :].strip() != "":
-            continue  # banner/empty, or code follows -> leave the line untouched
-        before = line[: last.start]
-        if before.strip() == "":
-            out[i] = before + _render(last.opener, last.content, 1)  # standalone
-        else:
-            if not before[-1].isspace():
-                before += " "  # rule 3: >=1 space before a trailing comment
-            trailing[i] = last
-            prefix[i] = before  # preserve code + clang's start-column alignment
-            start_col[i] = len(before)
+    # Never cement a block this pass is REPORTING as torn (rule 4). End-padding
+    # is a grouping hint clang-format honours, so a block padded to its two
+    # sub-widths stays in two groups even after the comment that split it has
+    # been shortened -- the author does as the finding asks, runs `make format`,
+    # and nothing moves. Rendering a reported block at one space instead lets
+    # the next clang-format round see the minimal form and re-merge it.
+    cemented = {k for run in find_split_runs(text) for k in range(run.first - 1, run.last)}
 
     # End-align consecutive trailing comments clang put in the same start column.
     i = 0
     while i < len(lines):
         if trailing[i] is None:
+            i += 1
+            continue
+        if i in cemented:
+            c = trailing[i]
+            out[i] = prefix[i] + _render(c.opener, c.content, 1)
             i += 1
             continue
         j = i
@@ -316,7 +533,7 @@ def fix_text(text: str) -> str:
             j + 1 < len(lines) and trailing[j + 1] is not None and start_col[j + 1] == start_col[i]
         ):
             nbody = max(body_hi, _body_len(trailing[j + 1]))
-            if start_col[i] + nbody >= _COLUMN_LIMIT:  # padding would reach the limit
+            if start_col[i] + nbody > _COLUMN_LIMIT:  # padding would overrun the limit
                 break
             body_hi = nbody
             j += 1
@@ -420,6 +637,7 @@ def main(argv: list[str]) -> int:
         return 0
 
     bad: list[Path] = []
+    split: list[tuple[Path, _SplitRun]] = []
     fixed = 0
     for path in sorted(targets):
         try:
@@ -427,32 +645,67 @@ def main(argv: list[str]) -> int:
         except (OSError, UnicodeDecodeError):
             continue
         updated = fix_text(original)
-        if updated == original:
-            continue
-        if do_fix:
-            path.write_text(updated, encoding="utf-8")
-            fixed += 1
-        else:
-            bad.append(path)
+        if updated != original:
+            if do_fix:
+                path.write_text(updated, encoding="utf-8")
+                fixed += 1
+            else:
+                bad.append(path)
+        split.extend((path, run) for run in find_split_runs(updated))
 
     if do_fix:
         print(f"check_comment_format.py: reformatted {fixed} file(s).")
-        return 0
+    elif bad:
+        _report_rewrites(bad)
 
-    if not bad:
-        print(f"check_comment_format.py: {len(targets)} file(s) scanned, comments well-formed.")
-        return 0
+    if split:
+        _report_split_runs(split)
+    if bad or split:
+        return 1
+    print(f"check_comment_format.py: {len(targets)} file(s) scanned, comments well-formed.")
+    return 0
 
+
+def _report_rewrites(bad: list[Path]) -> None:
+    """Write the first few lines this pass would rewrite in each file, to stderr."""
     sys.stderr.write("check_comment_format.py: comment-format finding(s):\n")
     for path in bad:
         rel = _rel(path)
-        updated = fix_text(path.read_text(encoding="utf-8"))
-        for lineno, old, new in _first_diff_lines(path.read_text(encoding="utf-8"), updated):
+        original = path.read_text(encoding="utf-8")
+        for lineno, old, new in _first_diff_lines(original, fix_text(original)):
             sys.stderr.write(
                 f"  {rel}:{lineno}\n      have: {old.rstrip()}\n      want: {new.rstrip()}\n"
             )
     sys.stderr.write("\nRun: make format  (or check_comment_format.py --fix)\n")
-    return 1
+
+
+def _report_split_runs(split: list[tuple[Path, _SplitRun]]) -> None:
+    """Write the split-run findings, and how to clear them, to stderr."""
+    sys.stderr.write(
+        f"check_comment_format.py: {len(split)} trailing-comment block(s) too wide to align:\n"
+    )
+    for path, run in split:
+        rel = _rel(path)
+        where = f"  {rel}:{run.first}-{run.last}"
+        if len(run.cols) > 1:
+            cols = ", ".join(str(c) for c in run.cols)
+            sys.stderr.write(f"{where}: /**< opens at columns {cols} -- clang-format split it\n")
+        else:
+            sys.stderr.write(f"{where}: at column {run.col} the */ alignment splits\n")
+        if run.over:
+            lines = ", ".join(str(line) for line in run.over[:_MAX_NAMED_LINES])
+            more = ", ..." if len(run.over) > _MAX_NAMED_LINES else ""
+            sys.stderr.write(
+                f"      too wide at column {run.col}: line(s) {lines}{more}"
+                f" -- shed {run.excess} char(s)\n"
+            )
+    sys.stderr.write(
+        "\nOne block of trailing comments must align as one: a single /**< column and\n"
+        "a single */ column. clang-format abandons the alignment when the widest code\n"
+        f"plus the longest comment would reach column {_COLUMN_LIMIT}, and this pass\n"
+        "cannot shorten prose for you. Either tighten the comments named above, or\n"
+        "move the long one to its own /** ... */ block above the line it documents.\n"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -516,6 +769,12 @@ _LONG_C = "x" * 84
 _CAP_IN = f"  a = 1, /**< short.        */\n  b = 2, /**< {_LONG_C}. */\n"
 _CAP_OUT = f"  a = 1, /**< short. */\n  b = 2, /**< {_LONG_C}. */\n"
 
+# A block rule 4 reports is rendered at one space, never padded to its two
+# sub-widths: padding is a grouping hint, and cementing the split would keep
+# clang-format from re-merging the block once the long comment is shortened.
+_CEMENT_IN = "  ra8_mount_t* aa; /**< short.       */\n  uint32_t bb;   /**< " + "x" * 78 + ". */\n"
+_CEMENT_OUT = "  ra8_mount_t* aa; /**< short. */\n  uint32_t bb;   /**< " + "x" * 78 + ". */\n"
+
 # Safety: multi-line block comment interior untouched.
 _MULTI = "/**\n * @brief foo.*/bar\n * body\n */\nint x;\n"
 
@@ -536,6 +795,7 @@ _SELFTEST_CASES: tuple[tuple[str, str, str], ...] = (
     ("leading preserved, columns separate", _SEP_IN, _SEP_OUT),
     ("code line breaks run", _BREAK_IN, _BREAK_OUT),
     ("column-limit splits run", _CAP_IN, _CAP_OUT),
+    ("a reported block is left un-padded", _CEMENT_IN, _CEMENT_OUT),
     # Safety: never touch text inside string literals.
     ("string with /* */", 'const char* s = "/*x*/";\n', 'const char* s = "/*x*/";\n'),
     ("string with */", 'puts("a*/b");\n', 'puts("a*/b");\n'),
@@ -562,6 +822,89 @@ _SELFTEST_CASES: tuple[tuple[str, str, str], ...] = (
 )
 
 
+# --- split-run detector fixtures -------------------------------------------
+# Must-fire: one struct, two /**< columns, because `b`'s comment is too long to
+# sit at the column the wider declaration above it would impose.
+_SPLIT_TWO_COLS = (
+    f"struct s {{\n  ra8_mount_t* aa; /**< short. */\n  uint32_t bb;   /**< {'x' * 78}. */\n}};\n"
+)
+# Must-fire on the column clause ALONE: two /**< columns, every comment short.
+# This is `_SEP_IN` above, seen from the other side -- fix_text refuses to
+# cross-align the two, and this rule is what says the tree should not contain
+# them in the first place.
+_SPLIT_COLS_ONLY = "  k_a = 1,   /**< x. */\n  k_bb = 2, /**< yy. */\n"
+# Must-fire on the width clause ALONE: one column, but the widest comment
+# reaches the limit, so the */ alignment (not the /**< alignment) is what splits.
+_SPLIT_ONE_COL = f"  a = 1, /**< short. */\n  b = 2, /**< {'x' * 88}. */\n"
+
+# Must stay quiet: a plain aligned block.
+_QUIET_RUN = "struct s {\n  uint32_t a; /**< one. */\n  uint32_t b; /**< two. */\n};\n"
+# Must stay quiet: the columns differ, but a code-only line sits between them,
+# which ends clang-format's alignment sequence as well as this pass's run.
+_QUIET_BREAK = (
+    "struct s {\n"
+    "  const paint_t* a; /**< one. */\n"
+    "  void (*cb)(int x, int y);\n"
+    "  uint32_t b; /**< two. */\n"
+    "};\n"
+)
+# Must stay quiet: a blank line ends the run just as firmly.
+_QUIET_BLANK = "struct s {\n  const paint_t* a; /**< one. */\n\n  uint32_t b; /**< two. */\n};\n"
+# Must stay quiet: a lone trailing comment is a run of one and always aligns.
+_QUIET_SINGLE = f"  uint32_t a; /**< {'x' * 60}. */\n"
+# Must stay quiet: clang-format was told to leave the region alone, so its
+# columns are the author's, not an alignment clang-format gave up on.
+_QUIET_FMT_OFF = "// clang-format off\n" + _SPLIT_TWO_COLS + "// clang-format on\n"
+# The `off: why` form is live in this tree and clang-format honours it.
+_QUIET_FMT_OFF_WHY = (
+    "// clang-format off: the marker must stay on the call line.\n" + _SPLIT_TWO_COLS
+)
+# ...but the exemption must END at the `on` marker, or one `off` anywhere in a
+# file would silence the rest of it.
+_SPLIT_AFTER_ON = "// clang-format off\nint x; /* a */\n// clang-format on\n" + _SPLIT_TWO_COLS
+
+# Must stay quiet: clang-format keeps a scope-closing brace out of the alignment
+# sequence, so its comment column says nothing about the members above it.
+# Each of the three fixtures below isolates ONE reason a run ends, so that
+# dropping that one reason is what makes it fire.
+_QUIET_BRACE = "  } /* close */\n  return; /* ret */\n"
+# Must stay quiet: a preprocessor directive is out of the sequence too. Same
+# indent as its neighbour, so only the directive itself can end the run.
+_QUIET_PREPROC = "int aaaaaa; /* one */\n#endif /* end */\n"
+# Must stay quiet: a change of indentation is judged apart, because
+# clang-format sometimes aligns across one and sometimes does not.
+_QUIET_INDENT = "  int a; /* one */\n    int bb; /* two */\n"
+
+_SPLIT_CASES: tuple[tuple[str, str, int], ...] = (
+    ("two /**< columns reported", _SPLIT_TWO_COLS, 1),
+    ("two columns alone are enough", _SPLIT_COLS_ONLY, 1),
+    ("one column, */ alignment splits", _SPLIT_ONE_COL, 1),
+    ("aligned block stays quiet", _QUIET_RUN, 0),
+    ("code line ends the run", _QUIET_BREAK, 0),
+    ("blank line ends the run", _QUIET_BLANK, 0),
+    ("single comment stays quiet", _QUIET_SINGLE, 0),
+    ("clang-format off exempts the region", _QUIET_FMT_OFF, 0),
+    ("the off: why spelling exempts too", _QUIET_FMT_OFF_WHY, 0),
+    ("a scope-closing brace is out of the run", _QUIET_BRACE, 0),
+    ("a preprocessor directive is out of the run", _QUIET_PREPROC, 0),
+    ("an indent change is judged apart", _QUIET_INDENT, 0),
+    ("the exemption ends at clang-format on", _SPLIT_AFTER_ON, 1),
+)
+
+
+def _check_split_case(name: str, src: str, want: int) -> int:
+    """Run one detector case; return the number of failures it produced (0 or 1).
+
+    The detector is run on this pass's own output, which is how `main` drives
+    it: a finding that only survives on unformatted input would be noise.
+    """
+    got = len(find_split_runs(fix_text(src)))
+    if got != want:
+        sys.stderr.write(f"[FAIL] {name}: want {want} finding(s), got {got}\n")
+        return 1
+    return 0
+
+
 def _check_case(name: str, src: str, want: str) -> int:
     """Run one rewrite case; return the number of failures it produced (0 or 1).
 
@@ -581,10 +924,12 @@ def _check_case(name: str, src: str, want: str) -> int:
 
 def _selftest() -> int:
     failures = sum(_check_case(*case) for case in _SELFTEST_CASES)
+    failures += sum(_check_split_case(*case) for case in _SPLIT_CASES)
+    total = len(_SELFTEST_CASES) + len(_SPLIT_CASES)
     if failures:
         sys.stderr.write(f"check_comment_format.py: selftest FAILED ({failures} case(s)).\n")
         return 2
-    print(f"check_comment_format.py: selftest passed ({len(_SELFTEST_CASES)} cases).")
+    print(f"check_comment_format.py: selftest passed ({total} cases).")
     return 0
 
 

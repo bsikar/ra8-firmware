@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # CMakeLists.txt for the main e-reader application (src/app).
 #
@@ -7,15 +9,13 @@
 #          and flashing tools boot the Secure entry.
 # 2. ra8d2-ereader_ns.elf (Non-Secure UI + ThreadX + Graphics)
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)
 
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-  project(ra8d2-ereader LANGUAGES C ASM)
+  project(ra8d2-ereader LANGUAGES C CXX ASM)
 endif()
 
 # Dynamically resolve repository root directory

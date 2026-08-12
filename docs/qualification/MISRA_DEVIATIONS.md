@@ -106,6 +106,8 @@ gap-closure plan in `docs/MISRA.md`:
 | D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 |
 | D-007 | misra-c2012-14.2 | Required  | Tooling gap       | Active   | 2026-11-02 |
 | D-008 | misra-c2012-17.1 | Required  | Project deviation | Active   | 2027-07-27 |
+| D-009 | misra-c2012-9.5  | Required  | Tooling gap       | Active   | 2026-11-02 |
+| D-010 | misra-c2012-11.5 | Advisory  | Project deviation | Active   | 2027-08-03 |
 
 `MAR` = mandatory annual review date (or earlier review trigger when
 the underlying tooling assumption changes).
@@ -805,3 +807,168 @@ hardware, the diagnostics are the bring-up instrument.
 If the vendored driver is ever re-vendored with a non-variadic logging
 seam, or if the port stops carrying the driver's diagnostics, this
 deviation is withdrawn rather than renewed.
+
+---
+
+## D-009: Rule 9.5 -- array size explicit under designated initializers
+
+- **Rule ID**: misra-c2012-9.5.
+- **Rule text (paraphrased per MISRA licence)**: where designated
+  initializers are used to initialize an array object, the size of
+  the array shall be specified explicitly.
+- **Category**: Required.
+- **Disposition**: Tooling gap (false positive).
+- **Scope**: cppcheck 2.13.0 audit baseline only.
+- **Files affected**: 4 spurious violations, in
+  `libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2.c` (3),
+  `libs/ra8_hal/src/ra8_lvd.c` (1), `libs/ra8_hal/src/ra8_ssie.c` (1)
+  and `libs/ra8_mpu/src/ra8_mpu.c` (1).
+
+### Root cause
+
+Every affected array *does* specify its size explicitly -- but as a
+typed-enum constant rather than a numeric literal, e.g.
+
+```c
+static const ra8_mpu_region_t s_ra8_mpu_boot_regions[k_ra8_mpu_boot_region_count] = { ... };
+```
+
+cppcheck 2.13.0's MISRA addon resolves the size expression only when
+it is a literal token, so an enum-named extent reads to the addon as
+"no explicit size". The size is explicit, and the compiler resolves
+it at translation time; the auditor simply cannot see it.
+
+The construct is not incidental. `CLAUDE.md` makes typed enums
+**mandatory** for every integer constant and forbids `#define` for
+the purpose, so every fixed-size table in first-party code is
+declared exactly this way. The rule as implemented therefore fires
+on the house style rather than on a defect.
+
+### Negative control
+
+`libs/ra8_hal/src/ra8_ssie.c` proves the addon is not reacting to
+designated initializers at all:
+
+```c
+static const ra8_mstp_t s_ssie_mstp_table[k_ra8_ssie_channel_count] = {
+  k_ra8_mstp_ssie0,
+  k_ra8_mstp_ssie1,
+};
+```
+
+There is no designator anywhere in that initializer, so Rule 9.5
+cannot apply by its own wording -- yet the addon reports it. The
+common factor across all reported sites is the enum-named extent,
+not the initializer form.
+
+### Alternative verification
+
+- arm-none-eabi-gcc `-std=gnu23 -Wall -Wextra -Werror` (cross build)
+  and host gcc / clang in the unit-test build reject any array whose
+  initializer overruns its declared extent, which is the hazard Rule
+  9.5 exists to prevent.
+- `scripts/checks/check_magic_numbers.py` independently forbids a
+  numeric-literal extent, so the literal form the addon wants is not
+  reachable in this codebase.
+
+### Standards basis
+
+Same as D-002. Per IEC 61508-3:2010 section 7.4.4.4 the qualified
+compiler is the authoritative checker for declaration-form rules;
+the unqualified open-source audit tool is supplementary.
+
+### Risk assessment
+
+- **Likelihood of escape**: zero. An array whose declared extent
+  disagrees with its initializer is a cross-build error.
+- **Severity of escape**: not applicable (likelihood is zero).
+- **Net residual risk**: acceptable for IEC 61508 SIL 3 / DO-178C
+  DAL B.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-08-03.
+- **Mandatory annual review**: 2026-11-02.
+- **Trigger for early review**: cppcheck's MISRA addon learns to
+  resolve enum-named array extents.
+
+---
+
+## D-010: Rule 11.5 -- conversion from pointer to void
+
+- **Rule ID**: misra-c2012-11.5.
+- **Rule text (paraphrased per MISRA licence)**: a conversion should
+  not be performed from pointer to void into pointer to object.
+- **Category**: Advisory.
+- **Disposition**: Project deviation.
+- **Scope**: first-party code implementing a dependency-injection
+  seam; 74 files carry findings of this shape.
+
+### Root cause
+
+This is the Dependency-Inversion seam the project is built on, not
+an accident. `CLAUDE.md` records NASA Power of 10 Rule 9 as an
+**intentional deviation** precisely so interfaces can be expressed
+as function-pointer tables, and a C vtable can only carry its
+instance as `void*`:
+
+```c
+RA8_INTERNAL static ra8_err_t ra8_wifi_c6link_op_close(void* ctx)
+{
+  ra8_wifi_c6link_t* self = (ra8_wifi_c6link_t*)ctx;
+  RA8_CHECK_NULL_PTR(self, RA8_WIFI_C6_TAG, "ctx");
+```
+
+Every backend row must share one signature or it cannot sit in the
+table, so the concrete type can only be recovered on entry. The
+alternative -- a distinct signature per implementation -- is exactly
+the coupling the seam exists to remove, and would forbid the mock
+backends that make these modules testable on the host.
+
+### Why this is not a real defect
+
+- The cast is always back to the type the *same* module handed to
+  the vtable when it built the table, so it is a round trip rather
+  than a reinterpretation. Ownership never crosses a module.
+- Every such entry point immediately null-checks the recovered
+  pointer (`RA8_CHECK_NULL_PTR`) before dereferencing it, so a
+  miswired table fails closed at the first call instead of
+  corrupting memory.
+- The seams are marked `RA8_DI_SLOT(role)` and checked by
+  `scripts/checks/check_annotations.py`, which fails a build where a
+  slot is called directly rather than through the pointer -- so the
+  indirection cannot silently decay.
+
+### Alternative verification
+
+- Host unit tests substitute a mock backend through the identical
+  table, which exercises the round trip on every run.
+- `-Wall -Wextra -Werror` on both the cross and host builds rejects
+  an incompatible function-pointer assignment into a table row,
+  which is the failure mode this rule guards against.
+
+### Standards basis
+
+MISRA C:2012 Rule 11.5 is Advisory, and Directive 4.6 permits a
+documented project-wide deviation where a design idiom requires it.
+IEC 61508-3:2010 section 7.4.4 accepts a justified deviation
+supported by an alternative measure; the null-check and the
+annotation gate are those measures.
+
+### Risk assessment
+
+- **Likelihood of escape**: low. A wrong-type round trip requires
+  building a table with mismatched rows, which the compiler rejects.
+- **Severity of escape**: high in principle, but bounded by the
+  null-check at every entry point.
+- **Net residual risk**: acceptable for IEC 61508 SIL 3 / DO-178C
+  DAL B.
+
+### Review
+
+- **Author**: Brighton Sikarskie.
+- **Approved**: 2026-08-03.
+- **Mandatory annual review**: 2027-08-03.
+- **Trigger for early review**: the project abandons function-pointer
+  interfaces, or NASA Rule 9 stops being deviated.

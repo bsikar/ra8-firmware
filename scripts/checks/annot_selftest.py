@@ -172,6 +172,66 @@ void free(void* p);
   free(p);
 }
 """,
+    # --- RA8_EXPECTS_LOCK: the three caller shapes ------------------------
+    # The rule used to demand a preceding call to `RA8_TAKE_LOCK`, which does
+    # not exist in this tree in any form -- so it could not be satisfied and
+    # had zero uses. All three shapes below are asserted, because "made
+    # satisfiable" and "defanged" look identical from one direction.
+    "libs/mod_lock/src/lock.c": """
+[[clang::annotate("ra8_priv")]] void lock_take(void);
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_releases_resource:bus")]] void lock_drop(void);
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_expects_lock:bus")]] void lock_guarded_body(void);
+
+void lock_take(void) {}
+void lock_drop(void) {}
+void lock_guarded_body(void) {}
+
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_releases_resource:other")]] void lock_drop_other(void);
+
+void lock_drop_other(void) {}
+
+/* PASSES: takes the lock for its whole body and discharges it. */
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_owns_resource:bus")]] void lock_owner_caller(void);
+
+void lock_owner_caller(void)
+{
+  lock_take();
+  lock_guarded_body();
+  lock_drop();
+}
+
+/* PASSES: entered under the lock, propagating the contract upward. */
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_expects_lock:bus")]] void lock_nested_body(void);
+
+void lock_nested_body(void)
+{
+  lock_guarded_body();
+}
+
+/* FAILS: reaches the guarded body holding nothing. */
+[[clang::annotate("ra8_priv")]] void lock_bare_caller(void);
+
+void lock_bare_caller(void)
+{
+  lock_guarded_body();
+}
+
+/* FAILS: owns a DIFFERENT lock. The name has to match, or one mutex would
+   silently discharge another mutex's contract. */
+[[clang::annotate("ra8_priv")]]
+[[clang::annotate("ra8_owns_resource:other")]] void lock_wrong_name_caller(void);
+
+void lock_wrong_name_caller(void)
+{
+  lock_guarded_body();
+  lock_drop_other();
+}
+""",
     # --- tools/ is in scope, and is host-only -----------------------------
     # This fixture carries the whole point of widening SCAN_DIRS to tools/,
     # in both directions at once. `host_unpublished` proves the linkage rule
@@ -225,6 +285,10 @@ _SELFTEST_LINKAGE_EXPECTED = frozenset(
     {"link_internal_declared", "link_undeclared", "handler_untabled", "host_unpublished"}
 )
 
+#: What run_selftest() expects the RA8_EXPECTS_LOCK rule to report, by the
+#: CALLER's name -- the finding is located at the call site, not the callee.
+_SELFTEST_LOCK_EXPECTED = frozenset({"lock_bare_caller", "lock_wrong_name_caller"})
+
 #: Definitions the linkage rule must leave alone -- one per passing shape,
 #: plus the un-tabled handler's twin that proves the exemption is keyed on
 #: table membership rather than on what the function looks like.
@@ -235,6 +299,9 @@ _SELFTEST_LINKAGE_CLEAN = (
     "link_file_local",
     "main",
     "handler_tabled",
+    "lock_guarded_body",
+    "lock_owner_caller",
+    "lock_nested_body",
 )
 
 #: What _selftest_parse() returns: the symbol table, the call list and the
@@ -345,6 +412,31 @@ def _check_linkage(violations: list[Violation]) -> list[str]:
     return failures
 
 
+def _check_expects_lock(violations: list[Violation]) -> list[str]:
+    """RA8_EXPECTS_LOCK must fire on an unheld call and stay quiet on a held one.
+
+    The "quiet" direction is the one that matters here: the rule shipped for
+    the life of the tree keyed on a ``RA8_TAKE_LOCK`` call that no first-party
+    file could produce, so EVERY caller of an annotated function was a
+    violation and the annotation had to go unused to keep the gate green. A
+    rule nobody can satisfy and a rule nobody wrote are indistinguishable from
+    the gate's output.
+    """
+    callers = _names_matching(violations, "ra8_expects_lock", r"from '([^']+)'")
+    failures = [
+        f"ra8_expects_lock went toothless: '{name}' reaches a guarded body "
+        f"without holding the named lock and was not reported"
+        for name in sorted(_SELFTEST_LOCK_EXPECTED - callers)
+    ]
+    failures.extend(
+        f"ra8_expects_lock false positive: '{name}' holds the named lock "
+        f"(RA8_OWNS_RESOURCE) or was entered under it (RA8_EXPECTS_LOCK), "
+        f"which is exactly how the macro says the contract is met"
+        for name in sorted(callers - _SELFTEST_LOCK_EXPECTED)
+    )
+    return failures
+
+
 def _check_rule3(violations: list[Violation]) -> list[str]:
     """NASA P10 Rule 3, both axes: the waiver and the firmware/host boundary."""
     allocators = _names_matching(violations, "ra8_nasa_rule_3_ok", r"from '([^']+)'")
@@ -398,6 +490,11 @@ def run_selftest() -> int:
       pins the scope from inside the rules rather than by reading the
       constant: ``host_unpublished`` is only reachable if is_first_party()
       accepts the root.
+    * **A rule that cannot be satisfied.** ``RA8_EXPECTS_LOCK`` demanded a
+      ``RA8_TAKE_LOCK`` call that exists nowhere in this tree and could not,
+      since callee names resolve after macro expansion -- so the annotation
+      was unusable and went unused, and the gate looked clean because nobody
+      could adopt the rule. The lock fixture asserts both directions.
     * **NASA P10 Rule 3 scope and waiver.** Rule 3 is a claim about firmware,
       so it is asserted along both axes -- untagged firmware allocation
       fires, the documented waiver does not, and host-only code under
@@ -413,6 +510,7 @@ def run_selftest() -> int:
     failures = [
         *_check_priv_namesakes(violations, symbols),
         *_check_linkage(violations),
+        *_check_expects_lock(violations),
         *_check_rule3(violations),
         *_check_fixtures_parsed(symbols),
         # The loop-bound scan is textual and libclang-free, so it self-tests on
@@ -428,7 +526,9 @@ def run_selftest() -> int:
         "check_annotations selftest: OK (namesakes resolved by USR; linkage rule "
         "catches both gap shapes, reaches tools/, and exempts only tabled handlers; "
         "NASA rule 3 fires on untagged firmware allocation and stays quiet on the "
-        "documented waiver and on host-only code; loop-bound scan fires on a "
+        "documented waiver and on host-only code; RA8_EXPECTS_LOCK fires on an "
+        "unheld call and stays quiet on RA8_OWNS_RESOURCE / propagated holders; "
+        "loop-bound scan fires on a "
         "mis-attached marker and a stale RA8_BOUNDED_LOOP statement, stays quiet on "
         "correct markers and on #define/comment/string mentions)"
     )

@@ -15,11 +15,11 @@
  * `verify` passes, the bytes on disk are right and a wrong render is the
  * reader's fault.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
@@ -185,6 +185,11 @@ static size_t priv_diff_rasters(const uint8_t* a,
 
 /**
  * @brief Encode @p src with the given tiling and reassemble it to a raster.
+ * @details Produces a deflate-coded JOF atlas from @p src at the requested tile
+ *          size, then reassembles that atlas straight back to a flat raster and
+ *          frees the intermediate container. `verify` runs this twice -- once
+ *          whole-image, once banded -- and compares the two rasters, so an
+ *          encoder/decoder mismatch surfaces as a pixel difference.
  * @param[in]  src    Source image bytes (non-NULL).
  * @param[in]  max_w  Width cap for the work-arena sizing.
  * @param[in]  max_h  Height cap for the work-arena sizing.

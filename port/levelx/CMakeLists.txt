@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/levelx/CMakeLists.txt
 #
@@ -12,8 +14,6 @@
 # globbed `ra8_hal` sources, so this shim only needs to surface the
 # include directory and the one source file the app must compile.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)
@@ -26,12 +26,12 @@ target_include_directories(levelx_port_ra8_xspi INTERFACE ${CMAKE_CURRENT_SOURCE
 
 # Track the source list as a global property so per-app builds can
 # splice it into their own add_executable() globs. The raw LevelX <->
-# xSPI bridge is the always-on entry; the FAT-on-LevelX adapter is
-# tracked separately because it pulls in FileX headers and is only
-# wanted by apps that link both FileX and LevelX.
+# xSPI bridge is the always-on entry; the ra8_fs block-device backend is
+# tracked separately because it pulls in ra8_fs headers and is only
+# wanted by apps that mount ra8_fs on the LevelX partition.
 set_property(
   GLOBAL PROPERTY RA8_LEVELX_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/lx_nor_driver_ra8_xspi.c
 )
 set_property(
-  GLOBAL PROPERTY RA8_LEVELX_FILEX_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/lx_filex_adapter.c
+  GLOBAL PROPERTY RA8_LEVELX_FS_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/lx_fs_backend.c
 )

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake stub for `npu_vela` -- the RA8P1 Ethos-U55 .npub container loader
 # end-to-end demo (on the way to issue #227).
@@ -17,8 +19,6 @@
 # includes the committed, generated model header under tools/vela/generated/, so
 # the include path is extended to that directory after the app is defined.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

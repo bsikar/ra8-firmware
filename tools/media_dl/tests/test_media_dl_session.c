@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file test_media_dl_session.c
  * @brief Host unit tests for the session identity + robots.txt gating, driven
@@ -22,6 +18,8 @@
  *   - a robots.txt `5xx` is treated as "disallow all" while an absent file
  *     imposes no restriction.
  * Uses the repo's `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <stddef.h>
 #include <stdint.h>

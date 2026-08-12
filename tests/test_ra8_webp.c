@@ -14,12 +14,12 @@
  * bytes are embedded inline here (they are tiny) so the test needs no runtime
  * file I/O. See tests/fixtures/webp/README.md for their provenance.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / WebP]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

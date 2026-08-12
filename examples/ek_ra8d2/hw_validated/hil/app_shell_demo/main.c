@@ -58,11 +58,11 @@
  *       (`ra8_app_uninstall` runs an unmounted app's `deinit` once); a core app's
  *       `deinit` never fires because a core app can never be uninstalled.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / APP] {World: S}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

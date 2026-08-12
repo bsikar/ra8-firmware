@@ -45,7 +45,8 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_arena_bytes_large =
     128U, /**< Arena big enough that it succeeds, so the failure above is attributable to size. */
-  k_arena_bytes_small = 64U, /**< Arena small enough that the second allocation must fail. */
+  /** Arena small enough that the second allocation must fail. */
+  k_arena_bytes_small = 64U,
 } img_arena_cov_fixture_t;
 
 /**

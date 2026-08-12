@@ -1,9 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # mk/hil.mk -- hardware: local J-Link flash/debug/ozone, remote Pi HIL, OpenOCD.
 # The RA8_FLASH/RA8_DEBUG/RA8_OZONE app lists come from the top Makefile.
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
-.PHONY: $(RA8_FLASH) $(RA8_DEBUG) $(RA8_OZONE) flash-help debug-help ozone-help \
+.PHONY: $(RA8_FLASH) $(RA8_DEBUG) $(RA8_OZONE) $(RA8_MONITOR) monitor monitor-help flash-help debug-help ozone-help \
         hil hil-help hil-flash hil-recover hil-flash-retry hil-erase hil-dlm-reset \
         hil-reflash hil-probe hil-find-jlink hil-all hil-c6 hil-tapo hil-ppps \
         flash-ocd debug-ocd bench-status bench-selftest bench-hold bench-free \
@@ -35,6 +35,12 @@ $(RA8_DEBUG): debug-%: %
 $(RA8_OZONE): ozone-%: %
 	$(MAKE) -C $(RA8_APP_DIR_$*) ozone
 
+monitor:
+	@bash scripts/dev/monitor.sh
+
+$(RA8_MONITOR): monitor-%: flash-%
+	@bash scripts/dev/monitor.sh
+
 # Per-family help (explicit targets win over the flash-%/debug-%/ozone-% rules).
 flash-help:
 	@echo "make flash-<app>  -- build APP, then flash it to a board on THIS machine via J-Link"
@@ -64,6 +70,13 @@ ozone-help:
 	@echo "Related:"
 	@echo "  make debug-<app>             plain gdb via J-Link (see make debug-help)"
 	@echo "  list apps:  make apps"
+
+monitor-help:
+	@echo "make monitor      -- attach to live UART serial console of board on THIS machine"
+	@echo "make monitor-<app> -- build + flash APP, then attach to live UART serial console"
+	@echo ""
+	@echo "  e.g. make monitor-uart_hello"
+
 
 # Bench mutual exclusion (#497). One kernel flock on the bench host covers the
 # whole target assembly -- board, C6, J-Link, hub ports, Tapo plug -- because

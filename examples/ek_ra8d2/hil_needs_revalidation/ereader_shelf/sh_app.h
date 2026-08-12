@@ -17,11 +17,11 @@
  *   - ::k_sh_screen_reader -- full-book pagination across every chapter.
  *   - ::k_sh_screen_comic  -- full-page image reader for a CBZ / CBR comic.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once
@@ -34,6 +34,7 @@
 #include "ra8_book_paged.h"
 #include "ra8_ui.h"
 #include "ra8_vsource.h"
+#include "sh_classify.h"
 
 /**
  * @enum sh_const_t
@@ -41,34 +42,34 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_sh_fb_w        = 1024U,       /**< Panel width in pixels.                */
-  k_sh_fb_h        = 600U,        /**< Panel height in pixels.               */
-  k_sh_fb_align    = 64U,         /**< AXI framebuffer alignment.            */
-  k_sh_glyph_w     = 8U,          /**< Bitmap font cell width.               */
-  k_sh_glyph_h     = 16U,         /**< Bitmap font cell height.              */
-  k_sh_line_h      = 22U,         /**< Reader text line height.              */
-  k_sh_bar_h       = 56U,         /**< Header / title-bar height.            */
-  k_sh_pad         = 24U,         /**< Outer margin / content inset.         */
-  k_sh_gap         = 24U,         /**< Gap between shelf cards.              */
-  k_sh_card_pad    = 14U,         /**< Inner card inset.                     */
-  k_sh_thumb_w     = 130U,        /**< Shelf cover-thumbnail box width.      */
-  k_sh_thumb_h     = 195U,        /**< Shelf cover-thumbnail box height.     */
-  k_sh_grid_cols   = 4U,          /**< Shelf grid columns.                   */
-  k_sh_toc_row_h   = 40U,         /**< TOC list row height.                  */
-  k_sh_linebuf     = 160U,        /**< Per-line draw buffer bytes.           */
-  k_sh_text_cap    = 48U * 1024U, /**< Per-chapter plain-text buffer bytes.  */
-  k_sh_max_lines   = 6144U,       /**< Max wrapped reader lines per chapter. */
-  k_sh_max_books   = 12U,         /**< Shelf / thumbnail-cache capacity.     */
-  k_sh_thumb_bytes = 150U * 225U, /**< gray8 bytes per cached thumbnail.     */
-  k_sh_name_cap    = 16U,         /**< SD 8.3 file-name buffer bytes.        */
-  k_sh_title_cap   = 72U,         /**< Entry title buffer bytes.             */
-  k_sh_author_cap  = 56U,         /**< Entry author buffer bytes.            */
-  k_sh_uart_chan   = 8U,          /**< SCI8 J-Link OB console channel.       */
-  k_sh_uart_baud   = 115200U,     /**< Console baud.                         */
-  k_sh_gt911_addr  = 0x5DU,       /**< GT911 touch 7-bit I2C address.        */
-  k_sh_poll_pts    = 5U,          /**< Touch points polled per read.         */
-  k_sh_poll_ms     = 30U,         /**< Input poll period in ms.              */
-  k_sh_dec_base    = 10U,         /**< Decimal formatting base.              */
+  k_sh_fb_w        = 1024U,       /**< Panel width in pixels.                 */
+  k_sh_fb_h        = 600U,        /**< Panel height in pixels.                */
+  k_sh_fb_align    = 64U,         /**< AXI framebuffer alignment.             */
+  k_sh_glyph_w     = 8U,          /**< Bitmap font cell width.                */
+  k_sh_glyph_h     = 16U,         /**< Bitmap font cell height.               */
+  k_sh_line_h      = 22U,         /**< Reader text line height.               */
+  k_sh_bar_h       = 56U,         /**< Header / title-bar height.             */
+  k_sh_pad         = 24U,         /**< Outer margin / content inset.          */
+  k_sh_gap         = 24U,         /**< Gap between shelf cards.               */
+  k_sh_card_pad    = 14U,         /**< Inner card inset.                      */
+  k_sh_thumb_w     = 130U,        /**< Shelf cover-thumbnail box width.       */
+  k_sh_thumb_h     = 195U,        /**< Shelf cover-thumbnail box height.      */
+  k_sh_grid_cols   = 4U,          /**< Shelf grid columns.                    */
+  k_sh_toc_row_h   = 40U,         /**< TOC list row height.                   */
+  k_sh_linebuf     = 160U,        /**< Per-line draw buffer bytes.            */
+  k_sh_text_cap    = 48U * 1024U, /**< Per-chapter plain-text buffer bytes.   */
+  k_sh_max_lines   = 6144U,       /**< Max wrapped reader lines per chapter.  */
+  k_sh_max_books   = 12U,         /**< Shelf / thumbnail-cache capacity.      */
+  k_sh_thumb_bytes = 150U * 225U, /**< gray8 bytes per cached thumbnail.      */
+  k_sh_name_cap    = 128U,        /**< SD file-name buffer bytes (VFAT long). */
+  k_sh_title_cap   = 72U,         /**< Entry title buffer bytes.              */
+  k_sh_author_cap  = 56U,         /**< Entry author buffer bytes.             */
+  k_sh_uart_chan   = 8U,          /**< SCI8 J-Link OB console channel.        */
+  k_sh_uart_baud   = 115200U,     /**< Console baud.                          */
+  k_sh_gt911_addr  = 0x5DU,       /**< GT911 touch 7-bit I2C address.         */
+  k_sh_poll_pts    = 5U,          /**< Touch points polled per read.          */
+  k_sh_poll_ms     = 30U,         /**< Input poll period in ms.               */
+  k_sh_dec_base    = 10U,         /**< Decimal formatting base.               */
 } sh_const_t;
 
 /**
@@ -131,42 +132,6 @@ typedef struct {
 } sh_line_t;
 
 /**
- * @enum sh_book_fmt_t
- * @brief Book container format behind a shelf entry / the open book.
- * @details Both formats render through the same screens via the sh_book.c
- *          backend: `.rabook` is the pre-parsed ra8_book blob, demand-paged
- *          through the chunked reader (baked or on SD); `.epub` is parsed
- *          on-device by ra8_epub (SD only).
- * @since 0.1.0
- */
-typedef enum : uint8_t {
-  k_sh_fmt_rabook = 0U, /**< ra8_book RBKC container (demand-paged chunks). */
-  k_sh_fmt_epub   = 1U, /**< EPUB parsed on-device by ra8_epub.             */
-  k_sh_fmt_cbz    = 2U, /**< Comic archive: ZIP of page images (`.cbz`).    */
-  k_sh_fmt_cbr    = 3U, /**< Comic archive: RAR of page images (`.cbr`).    */
-  k_sh_fmt_cbt    = 4U, /**< Comic archive: tar of page images (`.cbt`).    */
-} sh_book_fmt_t;
-
-/**
- * @brief True if @p fmt is a comic-archive container (CBZ, CBR, or CBT).
- * @details Both route through sh_comic.c (::ra8_comic) rather than the
- *          text-book screens, so this predicate is the single dispatch test
- *          the shelf/open path branches on.
- * @param[in] fmt Container format from a shelf entry / the open book.
- * @return true for ::k_sh_fmt_cbz, ::k_sh_fmt_cbr, or ::k_sh_fmt_cbt.
- * @retval true  @p fmt is a comic archive (image-page reader).
- * @retval false @p fmt is a text book (rabook / epub).
- * @pre @p fmt is a valid ::sh_book_fmt_t.
- * @post No state is modified (pure predicate).
- * @note Thread-safe: pure function of its argument.
- * @since 0.1.0
- */
-static inline bool sh_fmt_is_comic(sh_book_fmt_t fmt)
-{
-  return (fmt == k_sh_fmt_cbz) || (fmt == k_sh_fmt_cbr) || (fmt == k_sh_fmt_cbt);
-}
-
-/**
  * @struct sh_entry_t
  * @brief One shelf book, sourced from MRAM (baked) or the SD card, in either
  *        the `.rabook` or `.epub` format.
@@ -182,7 +147,7 @@ typedef struct {
   const uint8_t* thumb;                   /**< Pre-baked gray8 cover thumbnail, or NULL.        */
   uint16_t       thumb_w;                 /**< Pre-baked thumbnail width.                       */
   uint16_t       thumb_h;                 /**< Pre-baked thumbnail height.                      */
-  char           sd_name[k_sh_name_cap];  /**< SD 8.3 file name (e.g. "BOOK01.RBK").            */
+  char           sd_name[k_sh_name_cap];  /**< SD file name, e.g. "Meditations.rabook".         */
   char           title[k_sh_title_cap];   /**< Display title.                                   */
   char           author[k_sh_author_cap]; /**< Display author.                                  */
 } sh_entry_t;
@@ -397,7 +362,7 @@ void sh_sd_scan(void);
  * @details Closes any previously held book file first. The handle stays open
  *          until ::sh_sd_book_close (or the next open), so ::sh_sd_book_read
  *          can serve chunk reads on demand -- the file is never slurped whole.
- * @param[in]  name    8.3 root file name (e.g. "BOOK01.RBK").
+ * @param[in]  name    Root file name (e.g. "Meditations.rabook").
  * @param[out] out_len Receives the file size in bytes.
  * @return true if the file is open and non-empty.
  * @since 0.1.0
@@ -445,7 +410,7 @@ size_t sh_sd_comic_read(void* ctx, uint64_t offset, void* buf, size_t len);
  *          this module and every ZIP entry (chapter, cover, resource) is
  *          seek+read on demand, so there is no book-size ceiling below the
  *          `ra8_fs` 4 GiB offset limit. Release with ::sh_sd_close_epub.
- * @param[in]  name     8.3 root file name.
+ * @param[in]  name     Root file name (e.g. "Pride and Prejudice.epub").
  * @param[out] out_book ra8_epub_book_t* (void* to keep ra8_epub out of this header).
  * @return true if the EPUB opened (the source file is now held open).
  * @since 0.1.0

@@ -15,20 +15,56 @@
  *
  * - `ra8_fs_fat_types_internal.h`    -- on-disk-layout enums, cross-TU typedefs,
  *                             and the shared `s_scratch` extern.
+ * - `ra8_fs_fat_bytes_internal.h`    -- the little-endian byte codec and the
+ *                             runtime sector-geometry accessors (#683).
+ * - `ra8_fs_fat_gpt_internal.h`      -- the GPT partition locators (64-bit
+ *                             LBAs, #683).
  * - `ra8_fs_fat_protos_a_internal.h` -- cross-TU helper prototypes, part A of 2.
  * - `ra8_fs_fat_protos_b_internal.h` -- cross-TU helper prototypes, part B of 2.
+ * - `ra8_fs_fat_time_internal.h`     -- timestamp field offsets, the FAT/exFAT
+ *                             date-time packing, and the entry stampers.
+ * - `ra8_fs_fat_alloc_internal.h`    -- the per-mount allocator state: next-free
+ *                             hint, free-cluster count, FAT sector cache, and
+ *                             the FAT32 FSInfo seed/writeback.
+ * - `ra8_fs_fat_lfn_write_internal.h` -- the VFAT long-name WRITE seam: name
+ *                             classification, alias generation, and the
+ *                             reserve / commit / erase directory verbs.
+ * - `ra8_fs_fat_exfat_stream_internal.h` -- the exFAT streaming-write mechanism:
+ *                             entry-set coordinates, the allocation-bitmap
+ *                             primitives, and the grow/flush engine.
+ * - `ra8_fs_fat_exfat_dir_internal.h` -- the exFAT DIRECTORY seam: directory
+ *                             locations and cursors, path resolution, and the
+ *                             allocate / link / retire verbs `mkdir`, `rmdir`,
+ *                             `unlink` and `write_file` share.
+ * - `ra8_fs_utf_internal.h`  -- the UTF-8 <-> UTF-16LE codec and the case fold.
+ *                             Not FAT-specific -- both on-disk name formats in
+ *                             this module store UTF-16 -- so it is named for
+ *                             the encoding rather than for the filesystem.
+ *
+ * The last five are split by THEME rather than alphabetically, because each
+ * owns a self-contained mechanism with its own on-disk vocabulary. Folding
+ * them into the alphabetical `protos_a` / `protos_b` pair would scatter one
+ * mechanism's constants across two files and push all of them past the
+ * 1000-line source cap.
  *
  * This header is included by every `ra8_fs_fat*.c` file and by nothing outside
  * this module.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
 #pragma once
 
+#include "ra8_fs_fat_alloc_internal.h"
+#include "ra8_fs_fat_bytes_internal.h"
+#include "ra8_fs_fat_exfat_dir_internal.h"
+#include "ra8_fs_fat_exfat_stream_internal.h"
+#include "ra8_fs_fat_gpt_internal.h"
+#include "ra8_fs_fat_lfn_write_internal.h"
 #include "ra8_fs_fat_protos_a_internal.h"
 #include "ra8_fs_fat_protos_b_internal.h"
+#include "ra8_fs_fat_time_internal.h"
 #include "ra8_fs_fat_types_internal.h"
+#include "ra8_fs_utf_internal.h"

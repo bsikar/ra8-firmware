@@ -10,11 +10,11 @@
  * within a single rasterisation. The arena is provisioned at 3x that so a
  * heavier face or a larger glyph still fits with margin.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

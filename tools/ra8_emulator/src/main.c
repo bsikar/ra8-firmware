@@ -26,7 +26,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -486,8 +485,10 @@ static uint32_t main_reset_vector(uc_engine* uc)
 {
   uint32_t sp = 0U;
   uint32_t pc = 0U;
-  (void)uc_mem_read(uc, emu_memmap_mram_base() + 0U, &sp, 4); /* MRAM[0]                 */
-  (void)uc_mem_read(uc, emu_memmap_mram_base() + 4U, &pc, 4); /* MRAM[4] (Thumb: bit0=1) */
+  /* MRAM[0] */
+  (void)uc_mem_read(uc, emu_memmap_mram_base() + 0U, &sp, 4);
+  /* MRAM[4] (Thumb: bit0=1) */
+  (void)uc_mem_read(uc, emu_memmap_mram_base() + 4U, &pc, 4);
   pc |= 1U;                               /* M-profile is always Thumb (EPSR.T must be 1). */
   uint32_t xpsr = (uint32_t)k_xpsr_t_bit; /* xPSR.T                                        */
   (void)uc_reg_write(uc, UC_ARM_REG_SP, &sp);

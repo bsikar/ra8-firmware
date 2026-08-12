@@ -102,7 +102,7 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -112,7 +112,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -122,7 +122,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -344,7 +344,7 @@ static void build_volume(ra8_fs_type_t target)
 static uint32_t s_listdir_count         = 0;
 static char     s_listdir_last_name[16] = {};
 
-static void listdir_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static void listdir_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;
@@ -445,7 +445,7 @@ static void test_write_then_read(void)
     payload[i] = (uint8_t)(i & k_byte_mask);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, payload, sizeof payload));
-  uint32_t sz = 0;
+  uint64_t sz = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &sz));
   TEST_ASSERT_EQ(sizeof payload, sz);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -519,7 +519,7 @@ static void test_seek_tell(void)
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, buf, sizeof buf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, 10));
-  uint32_t pos = 0;
+  uint64_t pos = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &pos));
   TEST_ASSERT_EQ(10, pos);
   /* Out-of-range seek clamps to size. */

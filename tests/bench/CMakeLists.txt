@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # tests/bench/CMakeLists.txt -- host-side performance microbenchmarks.
 #
@@ -13,8 +15,6 @@
 #     cmake --build tests/build-bench --target ra8_bench_all
 #     make bench       # convenience wrapper
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 if(NOT RA8_BENCH)

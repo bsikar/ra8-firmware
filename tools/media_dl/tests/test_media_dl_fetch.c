@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file test_media_dl_fetch.c
  * @brief Host unit tests for the #305 resumable/incremental/deduping download
@@ -22,6 +18,8 @@
  *     re-fetched (content-hash dedup);
  *   - a corrupt state file degrades to a clean rebuild rather than a crash.
  * Uses the repo's `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <limits.h>
 #include <stdint.h>
@@ -192,6 +190,7 @@ typedef struct {
 } fetch_clock_t;
 
 /** @brief Injected clock: return the virtual now. */
+/* cppcheck-suppress constParameterCallback ; ra8_governor clock-fn ABI is void* */
 static int64_t fetch_now(void* c)
 {
   return ((const fetch_clock_t*)c)->now_ms;

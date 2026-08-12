@@ -8,7 +8,7 @@ their maturity.
 Run the whole tier with:
 
 ```sh
-make hil-c6              # all four, in order
+make hil-c6              # all five, in order
 make hil-c6 APP=c6_spi_probe
 ```
 
@@ -49,6 +49,8 @@ grows a co-processor model.
 | `c6_hosted_init` | `port/esp-hosted/` on silicon. Brings the RA8D2 + ThreadX port up, prints the pin map and interrupt routing it resolved, and clocks one full-duplex transaction at 5 MHz. | `c6_hosted_init: PASS link up` |
 | `c6_fw_version` | The **protocol**. A real RPC request goes up, the co-processor parses it, and a populated response comes back whose fields are checked. Built by hand inside the app. | `c6_fwver: PASS esp-hosted RPC round-trip` |
 | `c6_wifi_link` | The **facade** (`libs/ra8_c6link`), and the co-processor's acceptance of a real `Req_WifiInit` configuration -- the one part of the control plane no host test can settle. Takes the station up, reads its MAC, tears it down. | `c6_wifi: PASS ra8_c6link drove the coprocessor station up` |
+| `c6_wifi_join` | The **network** (#492). Associates the station with a bench AP, runs a NetX Duo DHCP client over the `nx_ether_driver_c6` link driver to get a lease, and pings the gateway. Needs credentials compiled in (env / `coprocessor/esp32c6/wifi.env`) and an AP in range. | `c6_join: PASS ra8_c6link joined the bench Wi-Fi and DHCP leased an address` |
+| `wifi_hal_join` | The **facade** (`libs/ra8_wifi`). The same association + DHCP as `c6_wifi_join`, but every Wi-Fi step goes through `ra8_wifi_init` / `ra8_wifi_connect` / `ra8_wifi_wait_ip` instead of `ra8_c6link` directly -- a side-by-side of how much the HAL hides. Same credentials and AP requirement. | `wifi_hal: PASS ra8_wifi joined the bench Wi-Fi and DHCP leased an address` |
 
 They form a ladder: when the top one fails, the one below separates "the wire
 is wrong" from "the firmware is wrong". `c6_spi_probe` is the bench's negative

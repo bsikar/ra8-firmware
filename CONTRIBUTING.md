@@ -302,5 +302,5 @@ on the architectural ring + TrustZone world tagging system see
 [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md); for the qualification
 roadmap see [`docs/QUALIFICATION_ROADMAP.md`](docs/QUALIFICATION_ROADMAP.md);
 for the running list of vendored third-party blobs (mbedTLS, ThreadX,
-NetX Duo, FileX, USBX, NimBLE) see
+NetX Duo, USBX, NimBLE) see
 [`docs/SOUP/`](docs/SOUP/).

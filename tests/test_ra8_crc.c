@@ -21,7 +21,7 @@ typedef enum : uint32_t {
   k_crc_probe_crcdor =
     0x12345678UL, /**< Planted in CRCDOR to prove the result read reaches the register. */
   k_crc_poison_out =
-    0xDEADBEEFUL, /**< Poison written into the result out-parameter, so a call that fails without setting it is detectable. */
+    0xDEADBEEFUL, /**< Poison in the out-parameter; a call failing to set it is detectable. */
 } crc_fixture_t;
 
 /**

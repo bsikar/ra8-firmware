@@ -172,14 +172,18 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_esp_hosted_thread_slot_t threads[k_ra8_esp_hosted_max_threads];     /**< Threads.          */
-  bool                         thread_used[k_ra8_esp_hosted_max_threads]; /**< Thread occupancy. */
-  ra8_esp_hosted_timer_slot_t  timers[k_ra8_esp_hosted_max_timers];       /**< Timers.           */
-  bool                         timer_used[k_ra8_esp_hosted_max_timers];   /**< Timer occupancy.  */
-  uint32_t                     cpu_hz;     /**< Cached core rate used to size the spin loop. */
-  uint32_t                     last_ticks; /**< Most recent 32-bit tick reading.             */
-  uint64_t                     tick_epoch; /**< Accumulated rollovers, in ticks.             */
-  bool                         ready;      /**< True while the substrate is initialised.     */
+  /** Threads. */
+  ra8_esp_hosted_thread_slot_t threads[k_ra8_esp_hosted_max_threads];
+  /** Thread occupancy. */
+  bool thread_used[k_ra8_esp_hosted_max_threads];
+  /** Timers. */
+  ra8_esp_hosted_timer_slot_t timers[k_ra8_esp_hosted_max_timers];
+  /** Timer occupancy. */
+  bool     timer_used[k_ra8_esp_hosted_max_timers];
+  uint32_t cpu_hz;     /**< Cached core rate used to size the spin loop. */
+  uint32_t last_ticks; /**< Most recent 32-bit tick reading.             */
+  uint64_t tick_epoch; /**< Accumulated rollovers, in ticks.             */
+  bool     ready;      /**< True while the substrate is initialised.     */
 } ra8_esp_hosted_rtos_state_t;
 
 /**

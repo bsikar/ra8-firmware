@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_ui -- bounded UI interaction core for the e-reader.
 #
@@ -15,8 +17,6 @@
 # in ra8_add_app(LIBS ...) and the host unit-test build folds
 # libs/ra8_ui/src/*.c into the ra8_core_hal object library.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Header-and-source library; no standalone build target. See the note above.

@@ -371,8 +371,9 @@ typedef enum : uint8_t {
   k_ra8_lpm_dpsier_idx_1 = 1U, /**< DPSIER1 / DPSIFR1 / DPSIEGR1. */
   k_ra8_lpm_dpsier_idx_2 = 2U, /**< DPSIER2 / DPSIFR2 / DPSIEGR2. */
   k_ra8_lpm_dpsier_idx_3 =
-    3U, /**< DPSIER3 / DPSIFR3 (HUM Ch 11.2.25 p 461 -- DPSIEGR3 exists at offset 0xA34 but is not exposed by this driver). */
-  k_ra8_lpm_dpsier_idx_count = 4U, /**< RA8 lpm dpsier index count. */
+    3U, /**< DPSIER3 / DPSIFR3 (HUM Ch 11.2.25 p 461 -- DPSIEGR3 @ 0xA34 exists, unexposed here). */
+  /** RA8 lpm dpsier index count. */
+  k_ra8_lpm_dpsier_idx_count = 4U,
 } ra8_lpm_dpsier_idx_t;
 
 /**

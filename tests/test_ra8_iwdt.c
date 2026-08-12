@@ -21,9 +21,9 @@
  */
 typedef enum : uint8_t {
   k_iwdt_refresh_rounds =
-    5U, /**< Refresh rounds driven back to back, proving the sequence is repeatable and not a one-shot. */
+    5U, /**< Refresh rounds driven back to back, proving the sequence repeats, not a one-shot. */
   k_iwdt_refresh_second =
-    0x5AU, /**< Second half of the IWDT refresh sequence; the counter only reloads when 0x00 is followed by 0xFF, so a driver writing one byte is caught. */
+    0x5AU, /**< Second half of IWDT refresh; needs 0x00 then 0xFF, catching a one-byte write. */
 } iwdt_fixture_t;
 
 /**
@@ -32,7 +32,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_iwdt_status_counter =
-    0x1234U, /**< Counter bits planted alongside the underflow flag, so the status decode must mask rather than compare whole. */
+    0x1234U, /**< Counter bits beside the underflow flag; decode must mask, not compare whole. */
 } iwdt_status_t;
 
 /**

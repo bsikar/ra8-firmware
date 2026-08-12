@@ -29,7 +29,8 @@
 typedef enum : uint8_t {
   k_journal_seq_small =
     42U, /**< A small journal sequence number, so the packer's short-value path is taken. */
-  k_byte_mask = 0xFFU, /**< Truncates each generated RGB channel back into a byte. */
+  /** Truncates each generated RGB channel back into a byte. */
+  k_byte_mask = 0xFFU,
 } app_flash_journal_fixture_t;
 
 /**

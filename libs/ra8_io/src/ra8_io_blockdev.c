@@ -166,11 +166,18 @@ ra8_err_t ra8_io_blockdev_sync(const ra8_io_blockdev_t* bd)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_fs_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t internal_fs_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx (blockdev) must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  return ra8_io_blockdev_read((const ra8_io_blockdev_t*)ctx, lba, count, buf);
+  /* The io fabric addresses 32-bit LBAs -- every backend it fronts (SD, XSPI,
+   * SDRAM, MRAM) fits comfortably -- so an address past that reach is refused
+   * here rather than truncated. The 64-bit `ra8_fs` interface (#683) stays
+   * fully honest: media needing it use a 64-bit-native backend. */
+  if (lba > (uint64_t)UINT32_MAX) {
+    return k_ra8_err_out_of_range;
+  }
+  return ra8_io_blockdev_read((const ra8_io_blockdev_t*)ctx, (uint32_t)lba, count, buf);
 }
 
 /**
@@ -200,11 +207,14 @@ static ra8_err_t internal_fs_read(void* ctx, uint32_t lba, uint32_t count, uint8
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_fs_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t internal_fs_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx (blockdev) must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  return ra8_io_blockdev_write((const ra8_io_blockdev_t*)ctx, lba, count, buf);
+  if (lba > (uint64_t)UINT32_MAX) {
+    return k_ra8_err_out_of_range; /* fabric LBAs are 32-bit; see internal_fs_read */
+  }
+  return ra8_io_blockdev_write((const ra8_io_blockdev_t*)ctx, (uint32_t)lba, count, buf);
 }
 
 /**
@@ -233,7 +243,7 @@ static ra8_err_t internal_fs_write(void* ctx, uint32_t lba, uint32_t count, cons
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_fs_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t internal_fs_get_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx (blockdev) must not be nullptr");
   RA8_CHECK_NULL_PTR(block_count, s_tag, "block_count must not be nullptr");
@@ -276,7 +286,7 @@ static ra8_err_t internal_fs_get_capacity(void* ctx, uint32_t* block_count, uint
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_fs_erase(void* ctx, uint32_t lba, uint32_t count)
+static ra8_err_t internal_fs_erase(void* ctx, uint64_t lba, uint64_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx (blockdev) must not be nullptr");
   const ra8_io_blockdev_t* bd   = (const ra8_io_blockdev_t*)ctx;
@@ -288,7 +298,10 @@ static ra8_err_t internal_fs_erase(void* ctx, uint32_t lba, uint32_t count)
   if (caps.erase_value != (uint8_t)k_ra8_io_erase_value_zero) {
     return k_ra8_err_not_supported;
   }
-  return ra8_io_blockdev_erase(bd, lba, count);
+  if ((lba > (uint64_t)UINT32_MAX) || (count > (uint64_t)UINT32_MAX)) {
+    return k_ra8_err_out_of_range; /* fabric LBAs are 32-bit; see internal_fs_read */
+  }
+  return ra8_io_blockdev_erase(bd, (uint32_t)lba, (uint32_t)count);
 }
 
 ra8_err_t ra8_io_blockdev_as_fs_backend(const ra8_io_blockdev_t* bd, ra8_fs_backend_t* out)

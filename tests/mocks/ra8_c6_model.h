@@ -43,7 +43,7 @@
  *
  * @par Example:
  * @code
- * TEST_ASSERT_EQ((int32_t)k_c6m_fw_major, (int32_t)fw.major);
+ * TEST_ASSERT_EQ(k_c6m_fw_major, fw.major);
  * @endcode
  *
  * @see ra8_c6_model_t
@@ -83,7 +83,7 @@ typedef enum : uint32_t {
  *
  * @par Example:
  * @code
- * TEST_ASSERT_EQ((int32_t)k_c6m_esp_fail, fault.resp);
+ * TEST_ASSERT_EQ(k_c6m_esp_fail, fault.resp);
  * @endcode
  *
  * @see ra8_c6_model_t
@@ -123,6 +123,8 @@ typedef struct ra8_c6_model {
   bool     mute;                             /**< Answer nothing at all.                     */
   bool     silent_boot;                      /**< Do not answer the announcement.            */
   uint16_t transfers;                        /**< Transactions the host has clocked.         */
+  uint32_t delays;                           /**< Times the host asked the seam to wait.     */
+  uint16_t last_delay_ms;                    /**< Milliseconds the newest wait asked for.    */
   uint32_t seen[k_c6m_seen];                 /**< Request ids observed, in order.            */
   uint8_t  seen_n;                           /**< Entries in `seen`.                         */
   char     ssid[k_ra8_c6link_ssid_max + 1U]; /**< SSID the host configured.                  */
@@ -134,9 +136,12 @@ typedef struct ra8_c6_model {
   uint8_t  caps_len;                         /**< Octets of `caps` the host sent.            */
   uint16_t eth_tx_len;                       /**< Length of the last 802.3 frame sent up.    */
   uint8_t  eth_tx[k_c6m_eth_len];            /**< Its leading octets.                        */
-  uint8_t  queue[k_c6m_queue][k_ra8_c6link_frame_bytes]; /**< Frames to send.              */
-  uint8_t  head;                                         /**< Next queue slot to transmit. */
-  uint8_t  tail;                                         /**< Next free queue slot.        */
+  /** Frames to send. */
+  uint8_t queue[k_c6m_queue][k_ra8_c6link_frame_bytes];
+  /** Next queue slot to transmit. */
+  uint8_t head;
+  /** Next free queue slot. */
+  uint8_t tail;
 } ra8_c6_model_t;
 
 /**

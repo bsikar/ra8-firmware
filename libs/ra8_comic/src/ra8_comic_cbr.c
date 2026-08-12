@@ -20,10 +20,10 @@
  * streams STORE members through the caller's buffer, and inflates compressed members
  * through the comic's caller-owned RAR5 scratch pool.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include <stddef.h>
 #include <stdint.h>

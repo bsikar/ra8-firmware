@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Gate: every first-party shebang uses the ``#!/usr/bin/env <interp>`` form.
+"""Gate: every first-party shell script carries an ``#!/usr/bin/env <interp>``.
 
 Why
 ---
@@ -14,8 +14,25 @@ is the same discipline ``scripts/ci/lib/tool_env.sh`` applies to every other
 tool this project runs: decide the interpreter by resolution, not by a literal
 path baked into 15 files.
 
-Three defect shapes are rejected, all of which this tree has carried:
+Two questions, two scopes
+-------------------------
+* **Presence** -- is there a shebang at all?  Required of every first-party
+  *shell script* (``*.sh`` / ``*.bash``, and the extensionless files whose own
+  shebang already declares them shell -- the ``scripts/git/*`` hooks).  The
+  scope is :func:`lint_targets.files_for`'s ``shell`` set, the one definition
+  this repo shares.  A ``.sh`` with no shebang is a real gap even when the file
+  is only ever *sourced*: the shebang is what tells an editor and ShellCheck
+  the dialect, and the moment someone runs it directly the interpreter is
+  whatever the parent shell happens to be.
+* **Form** -- is the shebang, if present, the env form?  Asked of *any*
+  in-scope file that opens with ``#!`` (a Python or Perl helper as much as a
+  shell one), because a hardcoded path is wrong wherever it appears.
 
+Four defect shapes are rejected, all of which this tree has carried:
+
+* **missing** -- a first-party shell script with no shebang on line 1.  The
+  gate bodies under ``scripts/ci/gates/`` and the sourced libs under
+  ``scripts/ci/lib/`` were exactly this until they were normalised.
 * **non-env** -- ``#!/bin/bash``, ``#!/bin/sh``, ``#!/usr/bin/python3``.
 * **malformed** -- ``# !/bin/bash``.  A space between ``#`` and ``!`` means the
   kernel never sees a shebang at all; the file is a comment followed by code,
@@ -31,23 +48,23 @@ Scope is derived, not hardcoded
 ``git ls-files --cached --others --exclude-standard`` enumerates every tracked
 path AND every untracked-but-not-ignored one, and each is judged on its own
 first line.  So a script cannot escape by living in a directory nobody listed,
-by having no extension (the ``scripts/git/*`` hooks are exactly that shape), or
-by not being committed yet -- which is the moment a wrong shebang is actually
-introduced, and the moment the pre-commit hook asks.  Vendored SOUP, generated
-font tables, the ThreadX port and build output are excluded, matching
-:mod:`check_shell`'s scope.
+by having no extension, or by not being committed yet -- which is the moment a
+wrong shebang is actually introduced, and the moment the pre-commit hook asks.
+Vendored SOUP, generated font tables, the ThreadX port and build output are
+excluded, matching :mod:`check_shell`'s scope.
 
-A shebang on a non-executable file is deliberately NOT a finding: the sourced
-libraries under ``scripts/hil/lib/`` and ``scripts/builders/`` carry one so
-editors and ShellCheck know the dialect, and they are correctly not executable
-because nothing execs them.
+The presence rule does NOT require the executable bit: a sourced-only library
+correctly carries a shebang and is correctly not executable, because nothing
+execs it.  The shebang is a dialect declaration here, not a promise the file
+is a program.
 
 Non-vacuity
 -----------
 ``--selftest`` asserts both directions over crafted fixtures -- every rejected
 shape must fire and every accepted shape must stay silent -- and the scan
-enforces a floor on how many shebang-bearing files it found, because a scope
-that collapses reports a clean tree having examined almost nothing.
+enforces a floor on both how many shebang-bearing files and how many shell
+scripts it found, because a scope that collapses reports a clean tree having
+examined almost nothing.
 
 Run::
 
@@ -66,7 +83,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lint_targets import is_build_output_path
+from lint_targets import files_for, is_build_output_path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -80,11 +97,17 @@ EXCLUDE_FRAGMENTS = (
     "port/threadx/",
 )
 
-# Floor on shebang-bearing first-party files. The tree has 200 today. This is
+# Floor on shebang-bearing first-party files. The tree has 270 today. This is
 # not kept in step file by file -- it is a trip-wire for a scope that collapses
 # wholesale (a broken `git ls-files`, a runaway exclusion). Lower it
 # deliberately, with a reason, if first-party scripting genuinely shrinks.
 SHEBANG_FLOOR = 150
+
+# Floor on first-party shell scripts subject to the PRESENCE rule. Measured
+# 2026-08-02: 128. Same trip-wire, for the other scope: if the `shell` set
+# collapses, the presence rule silently stops requiring anything and the gate
+# reports a clean tree having demanded a shebang of almost nothing.
+SHELL_FLOOR = 100
 
 # The one accepted form: `#!/usr/bin/env` plus exactly one interpreter token.
 # The trailing `$` is load-bearing -- it is what rejects `env bash -x`.
@@ -156,19 +179,25 @@ def _first_line(path: Path) -> str | None:
     return raw.decode("utf-8", errors="replace").rstrip("\r\n")
 
 
-def classify(line: str) -> str | None:
+def classify(line: str, *, require_shebang: bool) -> str | None:
     """Judge one first line, returning a violation reason or None when clean.
 
     Args:
         line: The file's first line, newline stripped.
+        require_shebang: True for a first-party shell script, where the absence
+            of a shebang is itself a finding. False elsewhere, where a file
+            with no ``#!`` is simply not a script and is left alone.
 
     Returns:
-        A short reason when the line is a bad shebang, else None. A line that
-        is not a shebang at all (and is not a malformed near-shebang) is clean.
+        A short reason when the line is a bad (or, for a shell script, missing)
+        shebang, else None. A malformed near-shebang fires regardless of
+        `require_shebang`, because it is never a legitimate first line.
     """
     if _MALFORMED_RE.match(line):
         return "malformed: a space between '#' and '!' is not a shebang at all"
     if not line.startswith("#!"):
+        if require_shebang:
+            return "no shebang: a shell script must start with `#!/usr/bin/env <interp>`"
         return None
     if _GOOD_RE.match(line):
         return None
@@ -179,27 +208,39 @@ def classify(line: str) -> str | None:
     return "hardcoded interpreter path: use `#!/usr/bin/env <interp>`"
 
 
-def scan() -> tuple[list[tuple[str, str, str]], int]:
+def scan() -> tuple[list[tuple[str, str, str]], int, int]:
     """Judge every in-scope tracked file.
 
+    The presence rule applies only to the first-party ``shell`` set from
+    :func:`lint_targets.files_for` -- the single shared definition of "this is
+    a shell script". The form rule applies to any in-scope file that opens with
+    a ``#!``.
+
     Returns:
-        A ``(findings, shebang_count)`` pair, where each finding is
-        ``(path, line, reason)``.
+        A ``(findings, shebang_count, shell_count)`` triple, where each finding
+        is ``(path, line, reason)``.
     """
+    shell_set = set(files_for(("shell",))["shell"])
     findings: list[tuple[str, str, str]] = []
     shebangs = 0
+    shell_seen = 0
     for rel in _git_ls():
         if not _in_scope(rel):
             continue
+        require = rel in shell_set
+        if require:
+            shell_seen += 1
         line = _first_line(REPO_ROOT / rel)
         if line is None:
+            if require:
+                findings.append((rel, "<unreadable>", "shell script with an unreadable first line"))
             continue
         if line.startswith("#!"):
             shebangs += 1
-        reason = classify(line)
+        reason = classify(line, require_shebang=require)
         if reason is not None:
             findings.append((rel, line, reason))
-    return findings, shebangs
+    return findings, shebangs, shell_seen
 
 
 # ---------------------------------------------------------------------------
@@ -208,26 +249,34 @@ def scan() -> tuple[list[tuple[str, str, str]], int]:
 # picked up by this gate's own scan and fail it.
 # ---------------------------------------------------------------------------
 
-MUST_FIRE: tuple[tuple[str, str], ...] = (
-    ("plain bash path", "#!/bin/bash"),
-    ("plain sh path", "#!/bin/sh"),
-    ("usr-bin python path", "#!/usr/bin/python3"),
-    ("space after the bang", "#! /bin/bash"),
-    ("space before the bang", "# !/bin/bash"),
-    ("env with a flag", "#!/usr/bin/env bash -x"),
-    ("env with nothing after it", "#!/usr/bin/env"),
-    ("env with a pathful interpreter", "#!/usr/bin/env /bin/bash"),
+# Each case is (label, first_line, require_shebang): the third field is the
+# scope flag the scan would pass, True where the line stands for a shell script.
+MUST_FIRE: tuple[tuple[str, str, bool], ...] = (
+    # form -- a bad shebang fires whether or not a shebang was required
+    ("plain bash path", "#!/bin/bash", False),
+    ("plain sh path", "#!/bin/sh", False),
+    ("usr-bin python path", "#!/usr/bin/python3", False),
+    ("space after the bang", "#! /bin/bash", False),
+    ("space before the bang", "# !/bin/bash", False),
+    ("env with a flag", "#!/usr/bin/env bash -x", False),
+    ("env with nothing after it", "#!/usr/bin/env", False),
+    ("env with a pathful interpreter", "#!/usr/bin/env /bin/bash", False),
+    # presence -- a shell script with no shebang at all
+    ("shell script missing its shebang", "# shellcheck shell=bash", True),
+    ("shell script that opens with code", "echo hi", True),
+    ("shell script with an empty first line", "", True),
 )
 
-MUST_STAY_QUIET: tuple[tuple[str, str], ...] = (
-    ("env bash", "#!/usr/bin/env bash"),
-    ("env sh", "#!/usr/bin/env sh"),
-    ("env python3", "#!/usr/bin/env python3"),
-    ("env perl", "#!/usr/bin/env perl"),
-    ("not a script at all", "# SPDX-License-Identifier: MIT"),
-    ("a C comment", "// SPDX-License-Identifier: MIT"),
-    ("a markdown heading", "# Title"),
-    ("an empty first line", ""),
+MUST_STAY_QUIET: tuple[tuple[str, str, bool], ...] = (
+    ("env bash", "#!/usr/bin/env bash", False),
+    ("env sh", "#!/usr/bin/env sh", False),
+    ("env python3", "#!/usr/bin/env python3", False),
+    ("env perl", "#!/usr/bin/env perl", False),
+    ("env bash where a shebang was required", "#!/usr/bin/env bash", True),
+    ("a non-script file with no shebang", "# SPDX-License-Identifier: MIT", False),
+    ("a C comment", "// SPDX-License-Identifier: MIT", False),
+    ("a markdown heading", "# Title", False),
+    ("an empty first line off the shell scope", "", False),
 )
 
 
@@ -265,13 +314,13 @@ def selftest() -> int:
     """
     failures = [
         f"  must-fire: {label} was accepted: {line!r}"
-        for label, line in MUST_FIRE
-        if classify(line) is None
+        for label, line, req in MUST_FIRE
+        if classify(line, require_shebang=req) is None
     ]
     failures += [
-        f"  must-stay-quiet: {label} was rejected ({classify(line)}): {line!r}"
-        for label, line in MUST_STAY_QUIET
-        if classify(line) is not None
+        f"  must-stay-quiet: {label} was rejected ({classify(line, require_shebang=req)}): {line!r}"
+        for label, line, req in MUST_STAY_QUIET
+        if classify(line, require_shebang=req) is not None
     ]
     failures += _selftest_scope()
 
@@ -290,35 +339,39 @@ def selftest() -> int:
 
 
 def main(argv: list[str]) -> int:
-    """Run the selftest or scan the tree for non-env shebangs.
+    """Run the selftest or scan the tree for missing / non-env shebangs.
 
     Returns:
         EXIT_OK when clean, EXIT_FAIL on any finding or a failing selftest,
-        EXIT_CONFIG when the scan collapsed below its non-vacuity floor.
+        EXIT_CONFIG when either scan scope collapsed below its non-vacuity floor.
     """
     if "--selftest" in argv[1:]:
         return selftest()
 
-    findings, shebangs = scan()
+    findings, shebangs, shell_seen = scan()
 
-    if shebangs < SHEBANG_FLOOR:
+    if shebangs < SHEBANG_FLOOR or shell_seen < SHELL_FLOOR:
         sys.stderr.write(
-            f"check_shebangs.py: FATAL -- only {shebangs} shebang(s) in scope, "
-            f"floor is {SHEBANG_FLOOR}.\n"
+            f"check_shebangs.py: FATAL -- {shebangs} shebang(s) (floor {SHEBANG_FLOOR}) "
+            f"and {shell_seen} shell script(s) (floor {SHELL_FLOOR}) in scope.\n"
             "  A collapsed scope reports a clean tree because it checked nothing.\n"
         )
         return EXIT_CONFIG
 
     if not findings:
-        print(f"check_shebangs.py: {shebangs} shebang(s) scanned, all use the env form.")
+        print(
+            f"check_shebangs.py: {shell_seen} shell script(s) all carry a shebang; "
+            f"{shebangs} shebang(s) all use the env form."
+        )
         return EXIT_OK
 
     sys.stderr.write(f"check_shebangs.py: {len(findings)} bad shebang(s):\n")
     for rel, line, reason in findings:
         sys.stderr.write(f"  {rel}: {line!r}\n      {reason}\n")
     sys.stderr.write(
-        "\nUse `#!/usr/bin/env bash` (or sh / python3). The interpreter must be a\n"
-        "bare name resolved through PATH, with no arguments on the shebang line.\n"
+        "\nEvery shell script needs `#!/usr/bin/env bash` (or sh) on line 1. The\n"
+        "interpreter must be a bare name resolved through PATH, with no arguments\n"
+        "on the shebang line.\n"
     )
     return EXIT_FAIL
 

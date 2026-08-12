@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/ra8_shared_libs.cmake -- prebuilt "universal" first-party library set.
 #
@@ -24,8 +26,6 @@
 # apps select subsets (NSC_SRCS), exclude them (NO_NSC), or compile them under
 # -mcmse (TrustZone), so they stay per-app.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Canonical universal first-party source list. MUST stay in lockstep with the

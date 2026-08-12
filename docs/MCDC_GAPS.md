@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **233**
-- Total compound decisions in scope: **1271**
-- Decisions at 100% MC/DC (`yes`): **1094**
-- Decisions partially covered (`partial`): **71**
+- Source files with at least one decision: **253**
+- Total compound decisions in scope: **1333**
+- Decisions at 100% MC/DC (`yes`): **1153**
+- Decisions partially covered (`partial`): **74**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **86.07%**
-- Deactivated gap conditions (DO-178C 6.4.4.3): **90**
-- Reachable-condition denominator (total - deactivated): **1181**
-- **Reachable MC/DC rate**: **92.63%** -- this is the gate threshold (100% required).
+- Coverage rate (yes / total): **86.50%**
+- Deactivated gap conditions (DO-178C 6.4.4.3): **89**
+- Reachable-condition denominator (total - deactivated): **1244**
+- **Reachable MC/DC rate**: **92.68%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -43,6 +43,10 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c | 2 | ez_scene_init | `if ((cfg->fb_w <= (int32_t)k_ez_lens_edge) \|\|` | partial |
 | examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c | 2 | ez_scene_render | `if (lens_plan->present && s->lens_on) {` | partial |
 | examples/ek_ra8d2/hw_pending/ereader_zoom/src/ez_scene.c | 3 | ez_scene_tick | `return page_due \|\| (lens_due && s->lens_on);` | partial |
+| examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c | 2 | wifi_hal_settle | `if ((ra8_wifi_status(wifi, &st) == k_ra8_ok) && st.associated) {` | partial |
+| examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c | 2 | wifi_hal_settle | `return (ra8_wifi_status(wifi, &st) == k_ra8_ok) && st.associated;` | no |
+| examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c | 4 | wifi_hal_join_run | `if ((cfg == nullptr) \|\| (cfg->wifi == nullptr) \|\| (cfg->wifi_cfg == nullp...` | partial |
+| examples/ek_ra8d2/hw_validated/c6/wifi_hal_join/src/wifi_hal_core.c | 2 | wifi_hal_join_run | `if ((out->ip_err != k_ra8_ok) \|\| !out->lease.bound) {` | partial |
 | port/esp-hosted/src/ra8_esp_hosted_fmt.c | 2 | internal_put | `if ((cur == nullptr) \|\| (cur->out == nullptr)) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_gpio.c | 2 | internal_isr_trampoline | `if ((row == nullptr) \|\| (row->handler == nullptr)) {` | no |
 | port/esp-hosted/src/ra8_esp_hosted_rtos.c | 2 | internal_copy_name | `if ((dst == nullptr) \|\| (cap == 0U)) {` | no |
@@ -85,11 +89,7 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_flush | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_flush | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
 | port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_send | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_send | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_receive | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_internal.h | 2 | tx_queue_receive | `if ((queue_ptr == nullptr) \|\| (queue_ptr->magic != (uint32_t)k_ra8_esp_host...` | no |
-| port/esp-hosted/src/ra8_esp_hosted_tx_shim_sync_internal.h | 2 | tx_semaphore_delete | `if ((semaphore_ptr == nullptr) \|\|` | no |
-| ... | | | | *(27 more rows in CSV)* | |
+| ... | | | | *(31 more rows in CSV)* | |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -127,8 +127,7 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 3 | (file scope) | `if (meta_name != nullptr && meta_content != nullptr && st...` | Annotated deactivation: TU-local helper find_cover_by_met... |
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `if (elem == nullptr \|\| local == nullptr) {` | TU-local static helper `elem_local_is` -- defensive NULL ... |
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 2 | (file scope) | `if (elem == nullptr \|\| local == nullptr) {` | TU-local static helper `elem_local_is` -- defensive NULL ... |
-| libs/ra8_fs/src/ra8_fs_fat_lfn.c | 2 | priv_free_chain | `while (cur >= k_cluster_first_data && (cur - k_cluster_fi...` | Annotated deactivation: loop bound; `cur < k_cluster_firs...` |
-| libs/ra8_fs/src/ra8_fs_fat_name.c | 3 | priv_83_to_str | `if (j > 0 && (uint8_t)out12[0] == k_dir_marker_kanji_e5 &...` | Annotated deactivation: 3-condition AND on Shift-JIS kanj... |
+| libs/ra8_fs/src/ra8_fs_fat_name.c | 3 | priv_83_to_str | `if (j > 0 && (uint8_t)out13[0] == k_dir_marker_kanji_e5 &...` | Annotated deactivation: 3-condition AND on Shift-JIS kanj... |
 | libs/ra8_hal/src/ra8_ble.c | 2 | internal_dispatch_event | `if ((internal_rx_byte(&code) == 0U) \|\| (internal_rx_byt...` | Annotated deactivation: TU-local helper internal_dispatch... |
 | libs/ra8_hal/src/ra8_ble.c | 4 | internal_dispatch_acl | `if ((internal_rx_byte(&hdl_lo) == 0U) \|\| (internal_rx_b...` | Annotated deactivation: TU-local helper internal_dispatch... |
 | libs/ra8_hal/src/ra8_canfd_timing.c | 2 | (file scope) | `if ((bitrate_bps == 0U) \|\| (clock_hz == 0U)) {` | Annotated deactivation: both args are validated by ra8_ca... |
@@ -203,6 +202,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_jof_produce | 19 | 15 | 1 | 3 |
 | ra8_jpeg_sw_decode | 16 | 12 | 4 | 0 |
 | ez_scene | 7 | 3 | 4 | 0 |
+| wifi_hal_core | 4 | 0 | 3 | 1 |
 | ra8_reflow_svg_shape | 15 | 12 | 3 | 0 |
 | ra8_epub_open | 7 | 4 | 0 | 3 |
 | ra8_jof_png | 7 | 4 | 1 | 2 |
@@ -217,12 +217,12 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_canfd_timing | 3 | 1 | 2 | 0 |
 | ra8_reflow_image | 3 | 1 | 2 | 0 |
 | ra8_reflow_svg_doc | 20 | 19 | 1 | 0 |
+| ra8_fs_fat_name | 14 | 13 | 1 | 0 |
 | ra8_vin | 14 | 13 | 1 | 0 |
 | ra8_touch_cal | 13 | 12 | 1 | 0 |
 | ra8_flash_irq | 9 | 8 | 1 | 0 |
 | ra8_reflow_svg_path | 9 | 8 | 1 | 0 |
 | ra8_esp_hosted_fmt | 8 | 7 | 0 | 1 |
-| ra8_fs_fat_lfn | 8 | 7 | 0 | 1 |
 | ra8_i3c_i2c | 7 | 6 | 0 | 1 |
 | ra8_spi_b | 7 | 6 | 0 | 1 |
 | ra8_app | 6 | 5 | 1 | 0 |
@@ -233,7 +233,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_rot | 6 | 5 | 0 | 1 |
 | ra8_longstrip | 5 | 4 | 1 | 0 |
 | ra8_box | 4 | 3 | 1 | 0 |
-| ra8_fs_fat_name | 4 | 3 | 1 | 0 |
 | ra8_reflow_render | 4 | 3 | 1 | 0 |
 | ra8_usb_cdc | 4 | 3 | 0 | 1 |
 | ra8_ceu | 3 | 2 | 1 | 0 |
@@ -263,8 +262,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_mipi_dsi_cmd | 10 | 10 | 0 | 0 |
 | ra8_zoom | 10 | 10 | 0 | 0 |
 | ra8_esp_hosted_osi_absent | 9 | 9 | 0 | 0 |
+| ra8_fs_fat_mount | 9 | 9 | 0 | 0 |
 | ra8_epaper_geom | 8 | 8 | 0 | 0 |
-| ra8_fs_fat_mount | 8 | 8 | 0 | 0 |
 | ra8_pdg | 8 | 8 | 0 | 0 |
 | ra8_reflow_layout | 8 | 8 | 0 | 0 |
 | ra8_rsip_asym | 8 | 8 | 0 | 0 |
@@ -272,24 +271,28 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_widget | 8 | 8 | 0 | 0 |
 | ra8_c6link_wifi_sta | 7 | 7 | 0 | 0 |
 | ra8_flash | 7 | 7 | 0 | 0 |
+| ra8_fs_fat_check | 7 | 7 | 0 | 0 |
 | ra8_fs_fat_fileio | 7 | 7 | 0 | 0 |
 | ra8_i3c | 7 | 7 | 0 | 0 |
 | ra8_mpu | 7 | 7 | 0 | 0 |
 | ra8_ota_parse | 7 | 7 | 0 | 0 |
+| ra8_sdmmc_spi_io | 7 | 7 | 0 | 0 |
 | ra8_tls | 7 | 7 | 0 | 0 |
 | ra8_dfu_boot | 6 | 6 | 0 | 0 |
 | ra8_epub_miniz_alloc | 6 | 6 | 0 | 0 |
+| ra8_fs_fat_fmt | 6 | 6 | 0 | 0 |
+| ra8_fs_fat_lfn | 6 | 6 | 0 | 0 |
 | ra8_i2c | 6 | 6 | 0 | 0 |
 | ra8_mipi_dsi | 6 | 6 | 0 | 0 |
 | ra8_sci | 6 | 6 | 0 | 0 |
-| ra8_sdmmc_spi_io | 6 | 6 | 0 | 0 |
 | ra8_ssie | 6 | 6 | 0 | 0 |
 | ra8_usb_pal | 6 | 6 | 0 | 0 |
 | ra8_usb_paud | 6 | 6 | 0 | 0 |
 | ra8_usb_phid | 6 | 6 | 0 | 0 |
 | ra8_c6link_tlv | 5 | 5 | 0 | 0 |
 | ra8_drw_draw | 5 | 5 | 0 | 0 |
-| ra8_fs_fat_fmt | 5 | 5 | 0 | 0 |
+| ra8_fs_fat_label | 5 | 5 | 0 | 0 |
+| ra8_fs_utf | 5 | 5 | 0 | 0 |
 | ra8_gpt | 5 | 5 | 0 | 0 |
 | ra8_i2c_peripheral | 5 | 5 | 0 | 0 |
 | ra8_jof_png_chunk | 5 | 5 | 0 | 0 |
@@ -308,6 +311,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epaper | 4 | 4 | 0 | 0 |
 | ra8_epd_cal | 4 | 4 | 0 | 0 |
 | ra8_flash_config | 4 | 4 | 0 | 0 |
+| ra8_fs_fat_exfat_check | 4 | 4 | 0 | 0 |
+| ra8_fs_fat_lfn_write | 4 | 4 | 0 | 0 |
 | ra8_gfx_text_glyph | 4 | 4 | 0 | 0 |
 | ra8_lvd | 4 | 4 | 0 | 0 |
 | ra8_rabook_gray4 | 4 | 4 | 0 | 0 |
@@ -326,6 +331,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_esp_hosted_port | 3 | 3 | 0 | 0 |
 | ra8_esp_hosted_spi | 3 | 3 | 0 | 0 |
 | ra8_eth_gwca_queue | 3 | 3 | 0 | 0 |
+| ra8_fs_fat_exfat_stream | 3 | 3 | 0 | 0 |
+| ra8_fs_fat_file | 3 | 3 | 0 | 0 |
 | ra8_jof | 3 | 3 | 0 | 0 |
 | ra8_jpeg_sw_stream | 3 | 3 | 0 | 0 |
 | ra8_reflow_link | 3 | 3 | 0 | 0 |
@@ -335,8 +342,10 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_usb_hmsc | 3 | 3 | 0 | 0 |
 | ra8_widget_keyboard | 3 | 3 | 0 | 0 |
 | ra8_widget_panel | 3 | 3 | 0 | 0 |
+| sh_classify | 3 | 3 | 0 | 0 |
 | usb_printer_vendor_ch9 | 3 | 3 | 0 | 0 |
 | adc | 2 | 2 | 0 | 0 |
+| mkbookimg_names | 2 | 2 | 0 | 0 |
 | ra8_agt | 2 | 2 | 0 | 0 |
 | ra8_bkup_tamper | 2 | 2 | 0 | 0 |
 | ra8_board_ek_ra8d2_audio_usb | 2 | 2 | 0 | 0 |
@@ -347,6 +356,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epub_img_import | 2 | 2 | 0 | 0 |
 | ra8_esp_hosted_gpio_edge | 2 | 2 | 0 | 0 |
 | ra8_esp_hosted_osi | 2 | 2 | 0 | 0 |
+| ra8_fs_fat_attr | 2 | 2 | 0 | 0 |
 | ra8_fs_fat_dir | 2 | 2 | 0 | 0 |
 | ra8_gfx_dither | 2 | 2 | 0 | 0 |
 | ra8_i3c_i2c_peripheral | 2 | 2 | 0 | 0 |
@@ -401,11 +411,19 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_etha_stats | 1 | 1 | 0 | 0 |
 | ra8_ether_phy | 1 | 1 | 0 | 0 |
 | ra8_ethosu_shim | 1 | 1 | 0 | 0 |
+| ra8_fs_fat_alloc | 1 | 1 | 0 | 0 |
 | ra8_fs_fat_exfat_fmt | 1 | 1 | 0 | 0 |
-| ra8_fs_fat_file | 1 | 1 | 0 | 0 |
+| ra8_fs_fat_exfat_label | 1 | 1 | 0 | 0 |
+| ra8_fs_fat_exfat_openw | 1 | 1 | 0 | 0 |
+| ra8_fs_fat_exfat_read | 1 | 1 | 0 | 0 |
+| ra8_fs_fat_lock | 1 | 1 | 0 | 0 |
+| ra8_fs_fat_space | 1 | 1 | 0 | 0 |
+| ra8_fs_fat_truncate | 1 | 1 | 0 | 0 |
+| ra8_fs_fat_utime | 1 | 1 | 0 | 0 |
 | ra8_gfx_blit_gray4 | 1 | 1 | 0 | 0 |
 | ra8_glcdc_layer | 1 | 1 | 0 | 0 |
 | ra8_img_arena | 1 | 1 | 0 | 0 |
+| ra8_io_blockdev | 1 | 1 | 0 | 0 |
 | ra8_isr | 1 | 1 | 0 | 0 |
 | ra8_lvd_runtime | 1 | 1 | 0 | 0 |
 | ra8_mipi_csi | 1 | 1 | 0 | 0 |
@@ -421,6 +439,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_sci_lin | 1 | 1 | 0 | 0 |
 | ra8_smbus | 1 | 1 | 0 | 0 |
 | ra8_sram | 1 | 1 | 0 | 0 |
+| ra8_systick | 1 | 1 | 0 | 0 |
 | ra8_tz_secure_boot | 1 | 1 | 0 | 0 |
 | ra8_unarch_tar | 1 | 1 | 0 | 0 |
 | ra8_usb_pmsc | 1 | 1 | 0 | 0 |
@@ -441,13 +460,13 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epub_open | 3 | 0 | 4 | 7 |
 | ra8_jof_png | 2 | 1 | 4 | 7 |
 | ra8_ble | 2 | 0 | 6 | 8 |
+| wifi_hal_core | 1 | 3 | 0 | 4 |
 | ra8_rabook_xml_shim | 1 | 1 | 3 | 5 |
 | ra8_reflow_css | 1 | 1 | 24 | 26 |
 | ra8_dotf | 1 | 0 | 5 | 6 |
 | ra8_epub_fs | 1 | 0 | 2 | 3 |
 | ra8_esp_hosted_fmt | 1 | 0 | 7 | 8 |
 | ra8_esp_hosted_gpio | 1 | 0 | 2 | 3 |
-| ra8_fs_fat_lfn | 1 | 0 | 7 | 8 |
 | ra8_i3c_i2c | 1 | 0 | 6 | 7 |
 | ra8_net_pal | 1 | 0 | 1 | 2 |
 | ra8_rmac_mgmt | 1 | 0 | 1 | 2 |

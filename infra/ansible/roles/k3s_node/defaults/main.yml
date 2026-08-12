@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # k3s_node role defaults -- the cluster substrate the ARC runner pool needs.
 #

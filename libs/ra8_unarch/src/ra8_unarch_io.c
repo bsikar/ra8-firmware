@@ -12,10 +12,10 @@
  * length arguments, so the wrapped-open paths can point it at a decompressed
  * arena without further guarding.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include "ra8_unarch_io.h"
 

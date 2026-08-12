@@ -26,11 +26,11 @@
  *   - `host/drivers/transport/spi/spi_drv.c` -- reference host pacing and
  *     receive validation.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: S}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

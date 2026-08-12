@@ -34,12 +34,12 @@
  * @see ra8_rabook_gray4.h     Image transcode stage.
  * @see ra8_rabook_xml_shim.h  XHTML -> DOM stage.
  * @see ra8_epub.h             EPUB reader the pipeline drives.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  *
  * [Ring 4 / EPUB Compiler] {World: NS}
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

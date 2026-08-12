@@ -21,11 +21,11 @@
  * across those translation units. Nothing here is part of the tool's public
  * surface: `cache_bench.c` consumes only `sweep_block.h`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once
@@ -149,9 +149,12 @@ typedef struct {
  *          with two calls and reports the difference.
  *
  * @return uint64_t Monotonic time in nanoseconds since an arbitrary epoch.
+ * @retval other The current CLOCK_MONOTONIC reading folded to nanoseconds.
  *
  * @pre The host provides `CLOCK_MONOTONIC` (POSIX; true on macOS + Linux).
+ * @pre No argument is required; the call takes none.
  * @post The returned value never decreases across calls in one process.
+ * @post No argument or global state is read or written.
  *
  * @note Thread-safe (stateless syscall wrapper).
  * @since 0.1.0
@@ -173,7 +176,9 @@ RA8_PRIV uint64_t cbs_priv_now_ns(void);
  * @return void.
  *
  * @pre @p blob covers @p len writable bytes when non-NULL.
+ * @pre Called on the single benchmark thread.
  * @post On a non-NULL @p blob, all @p len bytes are printable ASCII text.
+ * @post The output is byte-identical for a given @p len across runs and hosts.
  *
  * @note Not thread-safe with itself on the same buffer (caller-owned buffer).
  * @since 0.1.0
@@ -197,7 +202,9 @@ RA8_PRIV void cbs_priv_fill_text(uint8_t* blob, uint32_t len);
  * @retval k_ra8_err_null_ptr @p ctx or its wrapped reader is NULL.
  *
  * @pre @p ctx points at a ::cbs_meter_t with a live `inner` reader.
+ * @pre @p buf covers @p len writable bytes for the wrapped reader.
  * @post On success, `calls` grew by one and `bytes` by @p len.
+ * @post The wrapped reader's result is returned unchanged to the caller.
  *
  * @note Not thread-safe (unsynchronized counters; single-threaded tool).
  * @since 0.1.0
@@ -235,7 +242,9 @@ RA8_PRIV cbs_backend_t* cbs_priv_backends(uint32_t* out_count);
  * @return void.
  *
  * @pre Stdout is writable.
+ * @pre @p r, when non-NULL, is a finished row (its counters are final).
  * @post One `sweep-block ...` line was printed for a non-empty row.
+ * @post No row data is modified (pure reader).
  *
  * @note Not thread-safe (stdout).
  * @since 0.1.0

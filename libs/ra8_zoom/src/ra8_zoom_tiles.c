@@ -12,11 +12,11 @@
  *          The whole TU is guarded on `ra8_tile_cache.h` being reachable, the
  *          same pattern `ra8_comic_tiles.c` uses.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

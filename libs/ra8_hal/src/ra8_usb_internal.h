@@ -318,7 +318,7 @@ RA8_PRIV ra8_err_t internal_dcp_push_chunk(volatile r_usb_regs_t* reg,
  * @pre ``pipe_num`` is in the 1..9 range (caller-checked).
  * @pre ``max_packet`` is the pipe's MPS (caller validated <= 1024).
  * @post No global state is touched; the helper is pure.
- * @post Returned word satisfies HUM Ch 36.2.25 PIPEBUF layout.
+ * @post Returned word satisfies HUM Ch 37.2.35 PIPEBUF layout.
  * @note Pure / thread-safe.
  * @since 0.1.0
  */

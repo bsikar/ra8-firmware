@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # emu_render_gate.sh -- ra8_emulator CRC gate for the ereader_m33 dual-core demo.
 #
@@ -20,8 +22,6 @@
 #
 # Exit status: 0 = PASS (banner + golden CRC seen, no fault), 1 = FAIL.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 set -euo pipefail
 

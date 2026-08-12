@@ -16,7 +16,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -48,7 +47,8 @@ typedef struct {
   const ra8_io_blockdev_t* bd;   /**< Target device (private). */
   uint32_t                 lba;  /**< Next LBA to write.       */
   uint32_t                 fill; /**< Bytes in the sector buf. */
-  uint8_t                  sector[(uint32_t)k_ra8_io_block_size_bytes]; /**< Sector buffer. */
+  /** Sector buffer. */
+  uint8_t sector[(uint32_t)k_ra8_io_block_size_bytes];
 } ra8_io_stream_blockdev_state_t;
 
 /**

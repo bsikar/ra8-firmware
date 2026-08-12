@@ -15,11 +15,11 @@
  * core inline-flow helpers it reuses (line height, glyph advance/push, line
  * wrap, page flush) are shared via `ra8_reflow_layout_internal.h`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
@@ -448,7 +448,8 @@ static uint32_t priv_layout_row(ra8_reflow_t*         engine,
     engine->glyph_count = glyphs_before; /* roll the row back ... */
     (void)ra8_reflow_layout_finish_page(engine,
                                         cur); /* ... flush the page (cur->y -> margin) ... */
-    row_lines = priv_row_cells(engine, font, tr_start, tr_end, col_w, cur->y); /* ... re-lay it */
+    /* ... re-lay it */
+    row_lines = priv_row_cells(engine, font, tr_start, tr_end, col_w, cur->y);
     row_h     = (int32_t)row_lines * line_h;
   }
   cur->y += row_h + (int32_t)k_priv_row_gap_px;

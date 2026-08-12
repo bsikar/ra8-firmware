@@ -43,10 +43,10 @@
  * @see ra8_book_paged.h  Binds the paged object as a book source.
  * @see ra8_vsource.h     The registry ::ra8_book_chunked_read plugs into.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

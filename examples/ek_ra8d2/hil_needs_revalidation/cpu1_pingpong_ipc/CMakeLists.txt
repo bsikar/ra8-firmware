@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake stub for `cpu1_pingpong_ipc`. The Cortex-M85 (CPU0) image is
 # built by the shared cmake/ra8_add_app.cmake recipe; the Cortex-M33 (CPU1)
@@ -10,8 +12,6 @@
 # excluded (NO_NSC): several existing NSC veneers take struct-by-pointer
 # arguments that gcc rejects under -mcmse, and this app uses none of them.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 
@@ -60,7 +60,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
   add_executable(
     ${CPU1_NAME}.elf
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu1_main.c ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
-    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c
+    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_scb.c
   )
   target_compile_definitions(${CPU1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1)
   target_compile_options(

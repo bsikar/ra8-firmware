@@ -37,13 +37,23 @@ as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
-- TLS record layer and X.509 handling consumed via `libs/ra8_tls/` and
-  the OTA verification path in `libs/ra8_ota/`.
+- TLS record layer and X.509 handling, consumed via `libs/ra8_tls/` by
+  `examples/ek_ra8d2/hw_pending/tls_client`, and driven raw (no facade) by
+  `examples/_unsupported/threadx_https_client`.
+- **Not** consumed by `libs/ra8_ota/`. The OTA module takes a
+  dependency-injected crypto interface and never links `ra8_tls` or Mbed TLS;
+  `libs/ra8_ota/inc/ra8_ota.h` states this at its seam. The only wiring today
+  uses `ra8_rsip` SHA with a TODO for a tf-psa ECDSA backend.
+- **Nothing TLS runs on hardware.** Both consumers cross-compile in CI (the
+  `build-cross` gate builds every app that has a `main.c` and a `Makefile`,
+  and both per-app Makefiles force `-DRA8_USE_MBEDTLS=ON`), but neither
+  carries a `hil.conf`: `tls_client` is `hw_pending` and
+  `threadx_https_client` is `_unsupported`. The C6 Wi-Fi path is DHCP + ICMP
+  only and has no TCP, so it has no transport for TLS either.
 - Crypto primitives live in the sibling `tf-psa-crypto` package
   (separated upstream as of 4.x); see `docs/SOUP/tf-psa-crypto.md`.
 - Integrity claim category: data-handling (TLS framing, certificate
-  parsing) and control-flow (signature-verification gate on OTA
-  acceptance).
+  parsing).
 
 ## Qualification basis
 
@@ -65,10 +75,17 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- All TLS calls are wrapped in `libs/ra8_tls/` so policy (cipher suites,
-  certificate pinning) is centrally enforced.
-- OTA signature checks are verified against keys held in the
-  ring-5 secure-side key vault under `src/secure_app/`.
+- `libs/ra8_tls/` is the intended policy chokepoint and `tls_client` uses
+  it. Note the limits of that claim as it stands: the facade does not
+  implement certificate pinning and never calls
+  `mbedtls_ssl_conf_ciphersuites`, so "cipher suites and pinning are
+  centrally enforced" would be false today -- it centralises session
+  lifecycle and BIO wiring, not suite or trust policy. Nor is it the only
+  door: `threadx_https_client` calls `mbedtls_ssl_*` directly.
+- Exposure is bounded by the fact that no TLS code executes on hardware (see
+  "Use case" above), not by a mitigation. Before any TLS consumer is
+  hardware-validated, suite and trust policy have to be enforced somewhere
+  real and every consumer routed through it.
 
 ## Deviations / patches
 

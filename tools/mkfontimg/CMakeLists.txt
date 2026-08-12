@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # mkfontimg -- build a FAT16 SD-card image carrying a font file, written
 # through the real ra8_fs so the firmware (sd_font_render / ra8_emulator --sd)
@@ -8,8 +10,6 @@
 #
 # Standalone host dev tool under tools/, outside the firmware cross-build.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 project(ra8d2_mkfontimg LANGUAGES C)
@@ -26,6 +26,10 @@ get_filename_component(_repo "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 # no ra8_time weak-extern), so this standalone tool builds on macOS and Linux
 # alike. Matches the same glob in tests/CMakeLists.txt (test_ra8_fs_exfat).
 file(GLOB _ra8_fs_fat_tu_sources CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/ra8_fs_fat*.c)
+# The UTF codec is named for the encoding, not the ra8_fs_fat* family, so
+# the glob above misses it; the ra8_fs_fat*.c TUs call into it, so name it
+# explicitly -- the same append tests/cmake/tests_storage.cmake makes.
+list(APPEND _ra8_fs_fat_tu_sources ${_repo}/libs/ra8_fs/src/ra8_fs_utf.c)
 
 add_executable(mkfontimg ${CMAKE_CURRENT_SOURCE_DIR}/mkfontimg.c ${_ra8_fs_fat_tu_sources})
 

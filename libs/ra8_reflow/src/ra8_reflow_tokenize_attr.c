@@ -18,12 +18,12 @@
  * ra8_reflow_tokenize_internal.h. Pure forward-pass scanning -- no recursion
  * (NASA P10 Rule 1) and bounded loops (Rule 2).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

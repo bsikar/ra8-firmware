@@ -116,7 +116,7 @@ static void internal_ra8_mipi_dsi_decode_rx(uint32_t raw, ra8_mipi_dsi_rx_result
   reg->VMSET1R = (((uint32_t)vcfg->video_mode_delay) << k_ra8_mipi_dsi_vmset1_dly_shift) &
                  k_ra8_mipi_dsi_vmset1_dly_mask;
 
-  /* HUM Ch 65.2 "VMPPSETR : Video Mode Pixel Packet Setting", p 3895 */
+  /* HUM Ch 65.2 "VMPPSETR : Video Mode Pixel Packet Setting", p 3896 */
   uint32_t vmpp =
     (((uint32_t)vcfg->pixel_format) << k_ra8_mipi_dsi_vmpp_dt_shift) & k_ra8_mipi_dsi_vmpp_dt_mask;
   vmpp |= (((uint32_t)vcfg->virtual_channel) << k_ra8_mipi_dsi_vmpp_vc_shift) &
@@ -150,7 +150,7 @@ static void internal_ra8_mipi_dsi_decode_rx(uint32_t raw, ra8_mipi_dsi_rx_result
   }
   reg->VMHSSETR = vmhs;
 
-  /* HUM Ch 65.2 "VMHPSETR : Video Mode Horizontal Porch Setting", p 3900 */
+  /* HUM Ch 65.2 "VMHPSETR : Video Mode Horizontal Porch Setting", p 3899 */
   uint32_t vmhp = ((uint32_t)vcfg->horizontal_back_porch) & k_ra8_mipi_dsi_vmhp_hbp_mask;
   vmhp |= (((uint32_t)vcfg->horizontal_front_porch) << k_ra8_mipi_dsi_vmhp_hfp_shift) &
           k_ra8_mipi_dsi_vmhp_hfp_mask;
@@ -190,7 +190,7 @@ static void internal_ra8_mipi_dsi_decode_rx(uint32_t raw, ra8_mipi_dsi_rx_result
   const ra8_err_t err =
     ra8_mipi_dsi_internal_wait_eq(&reg->VMSR, k_ra8_mipi_dsi_vmsr_stop, k_ra8_mipi_dsi_vmsr_stop);
   if (err == k_ra8_ok) {
-    /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3893 */
+    /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3894 */
     reg->VMSCR = k_ra8_mipi_dsi_vmsr_clear_all;
   }
   return err;
@@ -226,27 +226,27 @@ static void internal_ra8_mipi_dsi_decode_rx(uint32_t raw, ra8_mipi_dsi_rx_result
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
   if ((mask & k_ra8_mipi_dsi_isr_sq0) != 0U) {
-    /* HUM Ch 65.2 "SQCH0SCR : Sequence Channel 0 Status Clear", p 3934 */
+    /* HUM Ch 65.2 "SQCH0SCR : Sequence Channel 0 Status Clear", p 3902 */
     reg->SQCH0SCR = k_ra8_mipi_dsi_sqch_clear_all;
   }
   if ((mask & k_ra8_mipi_dsi_isr_sq1) != 0U) {
-    /* HUM Ch 65.2 "SQCH1SCR : Sequence Channel 1 Status Clear", p 3934 */
+    /* HUM Ch 65.2 "SQCH1SCR : Sequence Channel 1 Status Clear", p 3907 */
     reg->SQCH1SCR = k_ra8_mipi_dsi_sqch_clear_all;
   }
   if ((mask & k_ra8_mipi_dsi_isr_vm) != 0U) {
-    /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3893 */
+    /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3894 */
     reg->VMSCR = k_ra8_mipi_dsi_vmsr_clear_all;
   }
   if ((mask & k_ra8_mipi_dsi_isr_rcv) != 0U) {
-    /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3870 */
+    /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3855 */
     reg->RXSCR = k_ra8_mipi_dsi_rxsr_clear_all;
   }
   if ((mask & k_ra8_mipi_dsi_isr_ferr) != 0U) {
-    /* HUM Ch 65.2 "FERRSCR : Fatal Error Status Clear", p 3884 */
+    /* HUM Ch 65.2 "FERRSCR : Fatal Error Status Clear", p 3878 */
     reg->FERRSCR = k_ra8_mipi_dsi_ferrsr_clear_all;
   }
   if ((mask & k_ra8_mipi_dsi_isr_ppi) != 0U) {
-    /* HUM Ch 65.2 "PLSCR : PHY Lane Status Clear", p 3889 */
+    /* HUM Ch 65.2 "PLSCR : PHY Lane Status Clear", p 3887 */
     reg->PLSCR = k_ra8_mipi_dsi_plsr_clear_all;
   }
   return k_ra8_ok;
@@ -256,13 +256,13 @@ static void internal_ra8_mipi_dsi_decode_rx(uint32_t raw, ra8_mipi_dsi_rx_result
 {
   RA8_CHECK_NULL_PTR(out_err, s_tag, "out_err must not be nullptr");
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "AKEPACMSR : Ack/Error Report Accumulated Status", p 3877 */
+  /* HUM Ch 65.2 "AKEPACMSR : Ack/Error Report Accumulated Status", p 3864 */
   const uint32_t v      = reg->AKEPACMSR;
   out_err->error_report = (uint16_t)(v & k_ra8_mipi_dsi_akep_erep_mask);
   out_err->virtual_channel =
     (ra8_mipi_dsi_vc_t)(((v & k_ra8_mipi_dsi_akep_vc_mask) >> (uint32_t)k_akep_vc_shift) &
                         k_ra8_mipi_dsi_vc_mask);
-  /* HUM Ch 65.2 "AKEPSCR : Ack/Error Report Status Clear", p 3878 */
+  /* HUM Ch 65.2 "AKEPSCR : Ack/Error Report Status Clear", p 3865 */
   reg->AKEPSCR = v;
   return k_ra8_ok;
 }
@@ -275,7 +275,7 @@ static void internal_ra8_mipi_dsi_decode_rx(uint32_t raw, ra8_mipi_dsi_rx_result
     return k_ra8_err_invalid_arg;
   }
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "RXRSSR : Receive Result Save Status Register", p 3878 */
+  /* HUM Ch 65.2 "RXRSSR : Receive Result Save Status Register", p 3866 */
   const uint32_t valid_bit = (1U << slot);
   if ((reg->RXRSSR & valid_bit) == 0U) {
     return k_ra8_err_no_data;
@@ -298,9 +298,9 @@ static void internal_ra8_mipi_dsi_decode_rx(uint32_t raw, ra8_mipi_dsi_rx_result
       break;
   }
   internal_ra8_mipi_dsi_decode_rx(raw, out_result);
-  /* HUM Ch 65.2 "RXRSSCR : Receive Result Save Status Clear", p 3878 */
+  /* HUM Ch 65.2 "RXRSSCR : Receive Result Save Status Clear", p 3867 */
   reg->RXRSSCR = valid_bit;
-  /* HUM Ch 65.2 "RXRINFOOWSCR : Receive Result Info-Overwrite Clear", p 3879 */
+  /* HUM Ch 65.2 "RXRINFOOWSCR : Receive Result Info-Overwrite Clear", p 3869 */
   reg->RXRINFOOWSCR = valid_bit;
   return k_ra8_ok;
 }
@@ -328,7 +328,7 @@ ra8_mipi_dsi_rx_payload_read(uint8_t* dest, uint16_t max_len, uint16_t* out_len)
 [[nodiscard]] ra8_err_t ra8_mipi_dsi_te_event_pending(bool* out_pending)
 {
   RA8_CHECK_NULL_PTR(out_pending, s_tag, "out_pending must not be nullptr");
-  /* HUM Ch 65.2 "RXSR : Receive Status Register", p 3868 */
+  /* HUM Ch 65.2 "RXSR : Receive Status Register", p 3852 */
   const uint32_t v       = ra8_mipi_dsi()->RXSR;
   const uint32_t te_mask = k_ra8_mipi_dsi_rxsr_rxte | k_ra8_mipi_dsi_rxsr_extedet;
   *out_pending           = ((v & te_mask) != 0U);
@@ -337,7 +337,7 @@ ra8_mipi_dsi_rx_payload_read(uint8_t* dest, uint16_t max_len, uint16_t* out_len)
 
 [[nodiscard]] ra8_err_t ra8_mipi_dsi_te_event_clear(void)
 {
-  /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3870 */
+  /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3855 */
   ra8_mipi_dsi()->RXSCR = k_ra8_mipi_dsi_rxsr_rxte | k_ra8_mipi_dsi_rxsr_extedet;
   return k_ra8_ok;
 }
@@ -349,23 +349,23 @@ ra8_mipi_dsi_irq_enable(ra8_mipi_dsi_event_t event, uint32_t mask, bool enable)
   volatile uint32_t*          ier = nullptr;
   switch (event) {
     case k_ra8_mipi_dsi_event_seq0:
-      /* HUM Ch 65.2 "SQCH0IER : Sequence Channel 0 Interrupt Enable", p 3934 */
+      /* HUM Ch 65.2 "SQCH0IER : Sequence Channel 0 Interrupt Enable", p 3903 */
       ier = &reg->SQCH0IER;
       break;
     case k_ra8_mipi_dsi_event_seq1:
-      /* HUM Ch 65.2 "SQCH1IER : Sequence Channel 1 Interrupt Enable", p 3934 */
+      /* HUM Ch 65.2 "SQCH1IER : Sequence Channel 1 Interrupt Enable", p 3909 */
       ier = &reg->SQCH1IER;
       break;
     case k_ra8_mipi_dsi_event_video:
-      /* HUM Ch 65.2 "VMIER : Video Mode Interrupt Enable", p 3893 */
+      /* HUM Ch 65.2 "VMIER : Video Mode Interrupt Enable", p 3895 */
       ier = &reg->VMIER;
       break;
     case k_ra8_mipi_dsi_event_receive:
-      /* HUM Ch 65.2 "RXIER : Receive Interrupt Enable", p 3870 */
+      /* HUM Ch 65.2 "RXIER : Receive Interrupt Enable", p 3858 */
       ier = &reg->RXIER;
       break;
     case k_ra8_mipi_dsi_event_fatal:
-      /* HUM Ch 65.2 "FERRIER : Fatal Error Interrupt Enable", p 3884 */
+      /* HUM Ch 65.2 "FERRIER : Fatal Error Interrupt Enable", p 3879 */
       ier = &reg->FERRIER;
       break;
     case k_ra8_mipi_dsi_event_phy:
@@ -423,9 +423,9 @@ RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch_seq0(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "SQCH0SR : Sequence Channel 0 Status Register", p 3933 */
+  /* HUM Ch 65.2 "SQCH0SR : Sequence Channel 0 Status Register", p 3900 */
   const uint32_t bits = reg->SQCH0SR;
-  /* HUM Ch 65.2 "SQCH0SCR : Sequence Channel 0 Status Clear", p 3934 */
+  /* HUM Ch 65.2 "SQCH0SCR : Sequence Channel 0 Status Clear", p 3902 */
   reg->SQCH0SCR = bits & k_ra8_mipi_dsi_sqch_clear_all;
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_seq0, bits);
 }
@@ -434,9 +434,9 @@ RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch_seq1(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "SQCH1SR : Sequence Channel 1 Status Register", p 3933 */
+  /* HUM Ch 65.2 "SQCH1SR : Sequence Channel 1 Status Register", p 3905 */
   const uint32_t bits = reg->SQCH1SR;
-  /* HUM Ch 65.2 "SQCH1SCR : Sequence Channel 1 Status Clear", p 3934 */
+  /* HUM Ch 65.2 "SQCH1SCR : Sequence Channel 1 Status Clear", p 3907 */
   reg->SQCH1SCR = bits & k_ra8_mipi_dsi_sqch_clear_all;
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_seq1, bits);
 }
@@ -447,13 +447,13 @@ void ra8_mipi_dsi_dispatch_video(void)
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
   /* HUM Ch 65.2 "VMSR : Video Mode Status Register", p 3893 */
   const uint32_t bits = reg->VMSR;
-  /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3893 */
+  /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3894 */
   reg->VMSCR = bits & k_ra8_mipi_dsi_vmsr_clear_all;
   /* If buffer over/underflow, FSP recommends a soft reset; mirror that. */
   if ((bits & (k_ra8_mipi_dsi_vmsr_vbufovf | k_ra8_mipi_dsi_vmsr_vbufudf)) != 0U) {
-    /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
+    /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3845 */
     reg->RSTCR = k_ra8_mipi_dsi_rstcr_swrst;
-    /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
+    /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3845 */
     reg->RSTCR = 0U;
   }
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_video, bits);
@@ -463,9 +463,9 @@ RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch_receive(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "RXSR : Receive Status Register", p 3868 */
+  /* HUM Ch 65.2 "RXSR : Receive Status Register", p 3852 */
   const uint32_t bits = reg->RXSR;
-  /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3870 */
+  /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3855 */
   reg->RXSCR = bits & k_ra8_mipi_dsi_rxsr_clear_all;
   /* If a response packet arrived, copy RXPPD into the pending buffer. */
   if ((bits & k_ra8_mipi_dsi_rxsr_rxresp) != 0U) {
@@ -479,7 +479,7 @@ void ra8_mipi_dsi_dispatch_receive(void)
       s_mipi_dsi_pending_rx_len    = 0U;
     }
   }
-  /* HUM Ch 65.2 "RXRINFOOWSCR : Receive Result Info-Overwrite Clear", p 3879 */
+  /* HUM Ch 65.2 "RXRINFOOWSCR : Receive Result Info-Overwrite Clear", p 3869 */
   reg->RXRINFOOWSCR = k_ra8_mipi_dsi_rxrinfoow_sl0;
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_receive, bits);
 }
@@ -488,9 +488,9 @@ RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch_fatal(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "FERRSR : Fatal Error Status Register", p 3882 */
+  /* HUM Ch 65.2 "FERRSR : Fatal Error Status Register", p 3876 */
   const uint32_t bits = reg->FERRSR;
-  /* HUM Ch 65.2 "FERRSCR : Fatal Error Status Clear", p 3884 */
+  /* HUM Ch 65.2 "FERRSCR : Fatal Error Status Clear", p 3878 */
   reg->FERRSCR = bits & k_ra8_mipi_dsi_ferrsr_clear_all;
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_fatal, bits);
 }
@@ -499,9 +499,9 @@ RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch_phy(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3888 */
+  /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3884 */
   const uint32_t bits = reg->PLSR;
-  /* HUM Ch 65.2 "PLSCR : PHY Lane Status Clear", p 3889 */
+  /* HUM Ch 65.2 "PLSCR : PHY Lane Status Clear", p 3887 */
   reg->PLSCR = bits & k_ra8_mipi_dsi_plsr_clear_all;
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_phy, bits);
 }

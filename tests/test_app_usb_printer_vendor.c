@@ -38,9 +38,9 @@
 typedef enum : uint8_t {
   k_usb_printer_get_port_status = 0x09U, /**< Printer-class request 0x09, GET_PORT_STATUS. */
   k_usb_req_set_interface =
-    0x0BU, /**< Standard request 0x0B, SET_INTERFACE, sent to an interface rather than the device. */
+    0x0BU, /**< Standard request 0x0B, SET_INTERFACE, sent to an interface, not the device. */
   k_usb_assigned_address =
-    7U, /**< Address assigned by SET_ADDRESS; non-zero, so a device that ignored it stays visible at address 0. */
+    7U, /**< Assigned by SET_ADDRESS; non-zero, so a device ignoring it stays visible at 0. */
 } app_usb_printer_vendor_fixture_t;
 
 /* =============================================================================

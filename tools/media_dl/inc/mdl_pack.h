@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_pack.h
  * @brief Archive packaging of downloaded page folders for the media_dl CLI.
@@ -15,6 +11,8 @@
  * place, and so `main.c` stays a thin dispatcher. Every path is composed through
  * the guarded ::mdl_path_join, so an untrusted leaf can never escape the series
  * directory.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

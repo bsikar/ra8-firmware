@@ -57,10 +57,10 @@
  * @see ra8_unarch_xz.h    XZ/LZMA2 decoder built on this policy.
  * @see ra8_comic.h        Comic facade whose CBZ/CBR/CBT backends charge it.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 
@@ -94,12 +94,12 @@ extern "C" {
  * @since Version 0.1.0
  */
 typedef enum : uint64_t {
-  k_ra8_decomp_def_output_bytes = 64ULL * 1024ULL * 1024ULL, /**< Per-unit output cap (64 MiB). */
-  k_ra8_decomp_def_max_ratio    = 1024U,                     /**< Output:input ratio bound.     */
-  k_ra8_decomp_def_ratio_grace  = 64U * 1024U, /**< Additive ratio grace (64 KiB).    */
-  k_ra8_decomp_def_max_entries  = 4096U,       /**< Per-archive entry cap.            */
-  k_ra8_decomp_def_max_iters    = 1048576U,    /**< Per-loop iteration budget (1 Mi). */
-  k_ra8_decomp_def_max_depth    = 2U,          /**< Stacked decode-layer cap.         */
+  k_ra8_decomp_def_output_bytes = 64ULL * 1024ULL * 1024ULL, /**< Per-unit output cap (64 MiB).  */
+  k_ra8_decomp_def_max_ratio    = 1024U,                     /**< Output:input ratio bound.      */
+  k_ra8_decomp_def_ratio_grace  = 64U * 1024U,               /**< Additive ratio grace (64 KiB). */
+  k_ra8_decomp_def_max_entries  = 4096U,                     /**< Per-archive entry cap.         */
+  k_ra8_decomp_def_max_iters    = 1048576U,                  /**< Loop iteration budget (1 Mi).  */
+  k_ra8_decomp_def_max_depth    = 2U,                        /**< Stacked decode-layer cap.      */
 } ra8_decomp_defaults_t;
 
 /**

@@ -1,6 +1,7 @@
-# shellcheck shell=bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/lib/container.sh -- HOST MODE for scripts/ci.sh: pick a container
 # runtime, make sure the toolchain image exists, and re-enter that same script

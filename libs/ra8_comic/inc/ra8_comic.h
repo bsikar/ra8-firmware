@@ -54,10 +54,10 @@
  * @see ra8_epub.h               The streaming ZIP open this mirrors for CBZ.
  * @see ra8_reflow_image.h       `ra8_img_decode_blit`, the page rasteriser.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

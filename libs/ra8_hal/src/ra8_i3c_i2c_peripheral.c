@@ -54,11 +54,11 @@ typedef enum : uint32_t {
  * @brief Local register-bit positions / masks used by this driver.
  */
 typedef enum : uint32_t {
-  k_ra8_i3c_i2c_peripheral_msk_ntst_tdbef0   = (uint32_t)(1U << 0U), /**< NTST.TDBEF0. */
-  k_ra8_i3c_i2c_peripheral_msk_ntst_rdbff0   = (uint32_t)(1U << 1U), /**< NTST.RDBFF0. */
-  k_ra8_i3c_i2c_peripheral_msk_svctl_gcae    = (uint32_t)(1U << 0U), /**< SVCTL.GCAE.  */
-  k_ra8_i3c_i2c_peripheral_msdvad_shift_dvad = 1U,    /**< Address shifted left 1.   */
-  k_ra8_i3c_i2c_peripheral_byte_mask         = 0xFFU, /**< Low-byte mask of NTDTBP0. */
+  k_ra8_i3c_i2c_peripheral_msk_ntst_tdbef0   = (uint32_t)(1U << 0U), /**< NTST.TDBEF0.            */
+  k_ra8_i3c_i2c_peripheral_msk_ntst_rdbff0   = (uint32_t)(1U << 1U), /**< NTST.RDBFF0.            */
+  k_ra8_i3c_i2c_peripheral_msk_svctl_gcae    = (uint32_t)(1U << 0U), /**< SVCTL.GCAE.             */
+  k_ra8_i3c_i2c_peripheral_msdvad_shift_dvad = 1U,                   /**< Address shifted left 1. */
+  k_ra8_i3c_i2c_peripheral_byte_mask         = 0xFFU,                /**< NTDTBP0 low-byte mask.  */
 } ra8_i3c_i2c_peripheral_bits_t;
 
 /**

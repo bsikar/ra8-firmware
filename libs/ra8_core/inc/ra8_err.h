@@ -244,6 +244,37 @@ typedef enum : uint16_t {
    */
   k_ra8_err_estop = 0x110,
 
+  /**
+   * @brief Container still holds members -- the operation requires it empty.
+   * @details The exact inverse of `k_ra8_err_empty`: that one reports "nothing
+   *          to retrieve", this one reports "something is still in there".
+   *          Returned by `ra8_fs_rmdir()` for a directory that still has
+   *          entries, the POSIX `ENOTEMPTY` condition. Distinct from
+   *          `k_ra8_err_invalid_arg` on purpose: a caller that wants to remove
+   *          a tree must be able to tell "you named the wrong thing" from
+   *          "empty it first and retry".
+   * @par Value: 0x111
+   */
+  k_ra8_err_not_empty = 0x111,
+
+  /**
+   * @brief Operation refused because the target is protected against it.
+   * @details The POSIX `EACCES` condition, returned when a mutating request is
+   *          denied by a permission the target itself carries rather than by a
+   *          bad argument or a broken device. Its first use is the FAT/exFAT
+   *          read-only attribute: `ra8_fs_open()` for writing,
+   *          `ra8_fs_write_file()`, `ra8_fs_unlink()` and `ra8_fs_rename()`
+   *          return it rather than overwrite or delete a file a host marked
+   *          read-only. The bit is checked at OPEN time, so `ra8_fs_write()` on
+   *          a handle opened before the file became read-only is unaffected.
+   *          Distinct from `k_ra8_err_invalid_arg`, which says the
+   *          request was malformed: here the request is well-formed and the
+   *          answer is "not allowed".
+   * @par Value: 0x112
+   * @see k_ra8_err_invalid_arg  Malformed request, not a protected target.
+   */
+  k_ra8_err_access_denied = 0x112,
+
   /* =========================================================================
    * Hardware errors (0x200 -- 0x2FF)
    * Peripheral, GPIO, and hardware-interface errors

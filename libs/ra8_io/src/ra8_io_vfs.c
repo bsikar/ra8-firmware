@@ -381,25 +381,25 @@ ra8_err_t ra8_io_vfs_stat(const char* path, ra8_io_vfs_stat_t* out)
   if (e != k_ra8_ok) {
     return e;
   }
-  ra8_fs_file_t*  f  = nullptr;
-  const ra8_err_t oe = ra8_fs_open(m, sub, k_ra8_fs_mode_read, &f);
-  if (oe == k_ra8_err_not_found) {
+  /* This used to be open(read) + size() + close(), which answered a different
+   * question: opening a directory succeeds and its DIR_FileSize is 0, so every
+   * directory came back as an existing zero-byte file with a hardcoded
+   * `archive` attribute. ra8_fs_stat() reads the directory entry instead, so
+   * the attribute byte is the entry's own and `is_directory` is the bit that
+   * says so -- and no file-table slot is spent on a read-only query. */
+  ra8_fs_stat_t   st = {};
+  const ra8_err_t se = ra8_fs_stat(m, sub, &st);
+  if (se == k_ra8_err_not_found) {
     out->exists = false;
     return k_ra8_ok;
   }
-  if (oe != k_ra8_ok) {
-    return oe;
-  }
-  uint32_t        sz = 0;
-  const ra8_err_t se = ra8_fs_size(f, &sz);
-  (void)ra8_fs_close(f);
   if (se != k_ra8_ok) {
     return se;
   }
   out->exists       = true;
-  out->size_bytes   = sz;
-  out->attr         = (uint8_t)k_ra8_fs_attr_archive;
-  out->is_directory = false;
+  out->size_bytes   = st.size_bytes;
+  out->attr         = st.attr;
+  out->is_directory = st.is_directory;
   return k_ra8_ok;
 }
 
@@ -426,4 +426,16 @@ ra8_err_t ra8_io_vfs_mkdir(const char* path)
     return e;
   }
   return ra8_fs_mkdir(m, sub);
+}
+
+ra8_err_t ra8_io_vfs_rmdir(const char* path)
+{
+  RA8_CHECK_NULL_PTR(path, s_tag, "path must not be nullptr");
+  ra8_fs_mount_t* m   = nullptr;
+  const char*     sub = nullptr;
+  const ra8_err_t e   = internal_resolve(path, &m, &sub);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  return ra8_fs_rmdir(m, sub);
 }

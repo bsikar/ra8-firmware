@@ -1,14 +1,16 @@
 /**
  * @file ra8_fs_fat_dir.c
- * @brief FAT listdir / mkdir / unlink / rename directory operations.
+ * @brief FAT listdir / unlink / rename directory-entry operations.
  *
  * @details
- * Directory listing, subdirectory creation, and the unlink/rename
- * operations dispatched across FAT and exFAT volumes.
+ * The verbs that read and rewrite entries in a directory that already exists:
+ * listing it, deleting a file from it, and renaming one in place, dispatched
+ * across FAT and exFAT volumes. `unlink` refuses a directory -- freeing the
+ * cluster chain behind one orphans every file inside it (#604); removing a
+ * directory is `rmdir`'s job, in `ra8_fs_fat_dirmk.c`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -31,7 +33,8 @@
  *          "." / ".." directory entries. Stops on the end-of-directory marker
  *          (0x00).
  *
- * @param[in]     buf 512-byte sector buffer holding directory entries.
+ * @param[in]     m   Mounted volume (supplies the entries-per-sector bound).
+ * @param[in]     buf Whole-sector buffer holding directory entries.
  * @param[in,out] lfn LFN reassembly state carried across sectors.
  * @param[in]     cb  Caller-supplied per-entry callback.
  * @param[in]     ctx Opaque pointer forwarded to `cb`.
@@ -50,10 +53,13 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t
-priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra8_fs_listdir_cb_t cb, void* ctx)
+static uint8_t priv_listdir_visit_sector(const ra8_fs_mount_t* m,
+                                         const uint8_t*        buf,
+                                         lfn_state_t*          lfn,
+                                         ra8_fs_listdir_cb_t   cb,
+                                         void*                 ctx)
 {
-  for (uint32_t e = 0; e < (uint32_t)k_dir_entries_per_sector; e++) {
+  for (uint32_t e = 0; e < priv_dir_eps(m); e++) {
     const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes];
     if (ent[k_dir_off_name] == k_dir_marker_free_perm) {
       return 1U;
@@ -66,7 +72,7 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra8_fs_listdir_c
       priv_lfn_add(lfn, ent);
       continue;
     }
-    if (ent[k_dir_off_name] == '.') {
+    if (ent[k_dir_off_name] == k_dir_marker_dot) {
       priv_lfn_reset(lfn); /* synthetic "." / ".." -- not reported to the caller */
       continue;
     }
@@ -76,26 +82,42 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra8_fs_listdir_c
      * mismatching the LFN checksum so the long name is dropped (matches the
      * `+ 1U` sizing already used in ra8_fs_fat_file.c). */
     char short_name[(uint32_t)k_ra8_fs_short_name_len + 1U] = {};
-    priv_83_to_str(&ent[k_dir_off_name], short_name);
-    /* Report the VFAT long name when the preceding chain matches; else the 8.3. */
-    const char*    lname = priv_lfn_name_for(lfn, &ent[k_dir_off_name]);
-    const uint32_t size  = priv_rd32(&ent[k_dir_off_file_size]);
-    cb((lname != nullptr) ? lname : short_name, ent[k_dir_off_attr], size, ctx);
+    /* The NTRes case flags come along: an entry this driver wrote for
+     * `data.log` stores `DATA    LOG` with both flags set, and reporting it as
+     * `DATA.LOG` would lose the caller's own name for no reason (#600). */
+    priv_83_to_str(&ent[k_dir_off_name], ent[k_dir_off_ntres], short_name);
+    /* Report the VFAT long name when the preceding chain matches; else the 8.3.
+     * The chain is UTF-16 on disk and UTF-8 at this boundary, and a chain that
+     * does not convert -- an unpaired surrogate, which nothing conforming
+     * writes -- falls back to the alias rather than being reported under a name
+     * that would not re-open it (#606). */
+    char            lname[k_lfn_utf8_cap] = {};
+    uint32_t        lnunits               = 0U;
+    const uint16_t* lunits                = priv_lfn_units_for(lfn, &ent[k_dir_off_name], &lnunits);
+    uint8_t         have_long             = 0U;
+    if (lunits != nullptr) {
+      have_long = (priv_utf16_to_utf8(lunits, lnunits, lname, (uint32_t)k_lfn_utf8_cap) == k_ra8_ok)
+                    ? 1U
+                    : 0U;
+    }
+    const uint32_t size = priv_rd32(&ent[k_dir_off_file_size]);
+    cb((have_long != 0U) ? lname : short_name, ent[k_dir_off_attr], size, ctx);
     priv_lfn_reset(lfn);
   }
   return 0U;
 }
 
 /**
- * @brief Enumerate the entries in a directory (root or a subdirectory).
+ * @brief Enumerate a directory -- the guarded body of ::ra8_fs_listdir().
  *
- * @details Resolves @p path to a directory via `priv_resolve_dir` and walks it,
- *          invoking @p cb once per visible entry. FAT12/16/32 support any path
- *          (`"/"` or nested); exFAT remains root-only. The synthetic "." and
- *          ".." entries are not reported.
+ * @details Resolves @p path to a directory -- `priv_resolve_dir` on FAT,
+ *          `priv_exfat_resolve_dir` on exFAT -- and walks it, invoking @p cb
+ *          once per visible entry. Both filesystems take `"/"` or a nested
+ *          path. FAT's synthetic "." and ".." entries are not reported; exFAT
+ *          has none to report.
  *
  * @param[in,out] handle Mount handle.
- * @param[in]     path   Directory path (`"/"` or a nested path on FAT).
+ * @param[in]     path   Directory path (`"/"` or a nested path).
  * @param[in]     cb     Per-entry callback.
  * @param[in]     ctx    Opaque pointer forwarded to `cb`.
  *
@@ -104,9 +126,10 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra8_fs_listdir_c
  * @retval k_ra8_err_null_ptr        Any required pointer was NULL.
  * @retval k_ra8_err_invalid_state   Mount not in use.
  * @retval k_ra8_err_not_found       A path component does not exist.
- * @retval k_ra8_err_not_supported   exFAT path other than `"/"`.
+ * @retval k_ra8_err_invalid_arg     A path component names a file.
  * @retval k_ra8_err_*               Backend error.
  *
+ * @pre The library lock is held (or none is installed).
  * @pre `handle`, `path`, and `cb` are non-NULL.
  * @pre Mount is in use.
  * @post `cb` invoked once per visible directory entry.
@@ -116,8 +139,10 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra8_fs_listdir_c
  *
  * @since 0.1.0
  */
-ra8_err_t
-ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx)
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t
+priv_listdir_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx)
 {
   if (handle == nullptr || cb == nullptr || path == nullptr) {
     return k_ra8_err_null_ptr;
@@ -126,14 +151,16 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
     return k_ra8_err_invalid_state;
   }
   if (handle->type == k_ra8_fs_type_exfat) {
-    /* exFAT directory listing is root-only for now. */
-    if (path[0] != '/') {
-      return k_ra8_err_not_supported;
+    /* Any exFAT directory, not just the root (#605). A path that names nothing
+     * reports not_found and one that names a FILE reports invalid_arg, which is
+     * what the FAT side has always answered -- the two filesystems no longer
+     * disagree about what "list this path" means. */
+    exfat_dir_t     dir  = {};
+    const ra8_err_t xerr = priv_exfat_resolve_dir(handle, path, &dir);
+    if (xerr != k_ra8_ok) {
+      return xerr;
     }
-    if (path[1] != '\0') {
-      return k_ra8_err_not_supported;
-    }
-    return priv_exfat_listdir(handle, cb, ctx);
+    return priv_exfat_listdir(handle, &dir, cb, ctx);
   }
   dir_loc_t       loc  = {};
   const ra8_err_t rerr = priv_resolve_dir(handle, path, &loc);
@@ -144,14 +171,14 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
   priv_dir_walk_init_loc(handle, &loc, &w);
   lfn_state_t lfn = {}; /* persists across sectors -- LFN chains can straddle them */
   priv_lfn_reset(&lfn);
-  uint8_t eod                            = 0;
-  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
+  uint8_t        eod = 0;
+  uint8_t* const buf = priv_sec_walk();
   while (eod == 0U) {
     ra8_err_t err = priv_read_sector(handle, w.cur_lba, buf);
     if (err != k_ra8_ok) {
       return err;
     }
-    if (priv_listdir_visit_sector(buf, &lfn, cb, ctx) != 0U) {
+    if (priv_listdir_visit_sector(handle, buf, &lfn, cb, ctx) != 0U) {
       return k_ra8_ok;
     }
     err = priv_dir_walk_next_sector(handle, &w, &eod);
@@ -163,214 +190,74 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
 }
 
 /**
- * @brief Pack a "." or ".." dot entry into a 32-byte directory slot.
+ * @brief Resolve a path to a deletable FILE's entry and first cluster.
  *
- * @details Writes the FAT self/parent link: a space-padded name of @p dots
- *          dots, the directory attribute, and @p cluster as the first cluster
- *          (size 0). A parent that is the volume root is recorded as cluster 0
- *          per the FAT specification.
+ * @details Resolves the parent, packs the leaf to 8.3, looks it up, and
+ *          requires the matched entry NOT to carry `k_ra8_fs_attr_directory`.
+ *          The mirror image of priv_rmdir_locate(): each verb refuses the kind
+ *          of entry the other owns, and both refuse before anything is freed.
+ *          Split out of `ra8_fs_unlink` so it stays inside the function-size
+ *          gate.
  *
- * @param[out] ent     32-byte slot to populate (zeroed by this function).
- * @param[in]  dots    1 for ".", 2 for "..".
- * @param[in]  cluster Self cluster ("."), or parent cluster ("..", 0 if root).
- *
- * @return Nothing.
- *
- * @pre `ent` addresses 32 writable bytes.
- * @pre `dots` is 1 or 2.
- * @post `ent` holds a directory dot entry pointing at `cluster`.
- * @post Bytes after the name/attr/cluster fields are zero.
- *
- * @note Trivially thread-safe; not reentrant against the same buffer.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void priv_pack_dot_entry(uint8_t* ent, uint32_t dots, uint32_t cluster)
-{
-  for (uint32_t i = 0; i < (uint32_t)k_ra8_fs_dir_entry_bytes; i++) {
-    ent[i] = 0;
-  }
-  for (uint32_t i = 0; i < (uint32_t)k_dir_name_field_len; i++) {
-    ent[i] = ' ';
-  }
-  for (uint32_t i = 0; i < dots; i++) {
-    ent[i] = '.';
-  }
-  ent[k_dir_off_attr] = k_ra8_fs_attr_directory;
-  priv_entry_set_cluster_size(ent, cluster, 0U);
-}
-
-/**
- * @brief Initialise a freshly allocated directory cluster ("." + ".." + zeros).
- *
- * @details Writes the self ("."), parent ("..") links into the first sector and
- *          zeroes every remaining sector of the cluster so the directory has a
- *          clean end-of-directory marker for subsequent entries.
- *
- * @param[in] m              Mount providing geometry and backend.
- * @param[in] new_cluster    The directory's own first cluster.
- * @param[in] parent_cluster Parent's first cluster (0 when the parent is root).
+ * @param[in]  handle      Mounted FAT12/16/32 volume.
+ * @param[in]  path        File path to delete.
+ * @param[out] out         Receives the parent, the entry position and the entry.
+ * @param[out] out_cluster The file's first cluster (0 when it has none).
  *
  * @return Error code.
- * @retval k_ra8_ok    Cluster initialised on disk.
- * @retval k_ra8_err_* Backend write error.
+ * @retval k_ra8_ok              Located; outputs populated.
+ * @retval k_ra8_err_invalid_arg `path` is unstorable, or names a directory.
+ * @retval k_ra8_err_not_found   No such entry.
+ * @retval k_ra8_err_*           Backend error.
  *
- * @pre `m` is non-NULL; `new_cluster >= k_cluster_first_data`.
- * @pre `m->sectors_per_cluster >= 1`.
- * @post On success the cluster holds "." and ".." then zeros.
- * @post On failure the cluster may be partially written.
+ * @pre All pointers are non-NULL; `handle` is a mounted FAT volume.
+ * @pre `handle->type` is not exFAT (the caller has dispatched already).
+ * @post On success the outputs address a file entry on disk.
+ * @post No on-disk state is modified.
  *
  * @note Not thread-safe; callers serialise.
  *
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_dir_cluster_init(const ra8_fs_mount_t* m, uint32_t new_cluster, uint32_t parent_cluster)
+static ra8_err_t priv_unlink_locate(const ra8_fs_mount_t* handle,
+                                    const char*           path,
+                                    dir_target_t*         out,
+                                    uint32_t*             out_cluster)
 {
-  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
-  priv_pack_dot_entry(&buf[0], 1U, new_cluster);
-  priv_pack_dot_entry(&buf[k_ra8_fs_dir_entry_bytes], 2U, parent_cluster);
-  const uint32_t base = priv_cluster_to_lba(m, new_cluster);
-  ra8_err_t      err  = priv_write_sector(m, base, buf);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const uint8_t zero[k_ra8_fs_bytes_per_sector] = {};
-  for (uint32_t s = 1; s < m->sectors_per_cluster; s++) {
-    err = priv_write_sector(m, base + s, zero);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Implementation of `priv_fat_mkdir()` -- create one FAT directory.
- *
- * @details Resolves the parent, rejects an existing name, finds a free parent
- *          slot, allocates and initialises a directory cluster ("." / ".."),
- *          then writes the parent's directory entry. On any post-allocation
- *          failure the new cluster is freed so the volume is not leaked.
- *
- * @param[in,out] handle Mounted FAT12/16/32 volume.
- * @param[in]     path   NUL-terminated directory path to create.
- *
- * @return Error code.
- * @retval k_ra8_ok                Directory created.
- * @retval k_ra8_err_invalid_arg   Leaf is not an 8.3 name.
- * @retval k_ra8_err_exists        The name already exists in the parent.
- * @retval k_ra8_err_no_mem        Parent directory full or volume full.
- * @retval k_ra8_err_not_found     An intermediate path component is missing.
- * @retval k_ra8_err_*             Backend / FAT error.
- *
- * @pre `handle` and `path` are non-NULL; mount is a FAT volume.
- * @pre The parent path exists.
- * @post On success the new directory has "." and ".." and an empty body.
- * @post On failure no cluster is leaked (a partial allocation is freed).
- *
- * @note Not thread-safe; callers serialise.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static ra8_err_t priv_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
-{
-  dir_loc_t       parent = {};
-  const char*     leaf   = nullptr;
-  const ra8_err_t rerr   = priv_resolve_parent(handle, path, &parent, &leaf);
+  const char*     leaf = nullptr;
+  const ra8_err_t rerr = priv_resolve_parent(handle, path, &out->parent, &leaf);
   if (rerr != k_ra8_ok) {
     return rerr;
   }
-  uint8_t name83[k_max_8_3_name] = {};
-  if (priv_path_to_83(leaf, name83) == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  uint32_t lba                             = 0;
-  uint32_t off                             = 0;
-  uint8_t  entry[k_ra8_fs_dir_entry_bytes] = {};
-  if (priv_dir_find(handle, &parent, name83, &lba, &off, entry) == k_ra8_ok) {
-    return k_ra8_err_exists;
-  }
-  uint32_t  free_lba = 0;
-  uint32_t  free_off = 0;
-  ra8_err_t err      = priv_dir_find_free(handle, &parent, &free_lba, &free_off);
+  const ra8_err_t err =
+    priv_dir_lookup_any(handle, &out->parent, leaf, &out->lba, &out->off, out->entry);
   if (err != k_ra8_ok) {
     return err;
   }
-  uint32_t new_cluster = 0;
-  err                  = priv_alloc_eoc_cluster(handle, &new_cluster);
-  if (err != k_ra8_ok) {
-    return err;
+  /* The lookup matches on the name alone, so a directory matches like any
+   * other entry. Freeing its chain orphans every file inside it -- their
+   * clusters stay allocated in the FAT with nothing referencing them, which
+   * fsck.fat reports as lost clusters (#604). */
+  if ((out->entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_directory) != 0U) {
+    return k_ra8_err_invalid_arg; /* a directory: ra8_fs_rmdir() is the verb */
   }
-  const uint32_t parent_cluster = (parent.is_root != 0U) ? 0U : parent.cluster;
-  err                           = priv_dir_cluster_init(handle, new_cluster, parent_cluster);
-  if (err != k_ra8_ok) {
-    (void)priv_free_chain(handle, new_cluster);
-    return err;
+  /* Honor the read-only attribute (#681): a file a host marked read-only is not
+   * deletable through the ordinary path, matching DOS/Windows `del`. Refused
+   * before priv_free_chain() touches the FAT, so a denied unlink changes nothing. */
+  if ((out->entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_read_only) != 0U) {
+    return k_ra8_err_access_denied;
   }
-  err = priv_write_new_dir_entry(handle,
-                                 name83,
-                                 k_ra8_fs_attr_directory,
-                                 new_cluster,
-                                 free_lba,
-                                 free_off);
-  if (err != k_ra8_ok) {
-    (void)priv_free_chain(handle, new_cluster);
-    return err;
-  }
+  *out_cluster = priv_entry_first_cluster(out->entry);
   return k_ra8_ok;
 }
 
 /**
- * @brief Create a directory on a mounted volume (public API).
- *
- * @details Validates arguments and the mount, then dispatches to the FAT
- *          directory creator. exFAT directory creation is not yet supported.
- *
- * @param[in,out] handle Mount handle.
- * @param[in]     path   NUL-terminated directory path to create.
- *
- * @return Error code.
- * @retval k_ra8_ok                Directory created.
- * @retval k_ra8_err_null_ptr      `handle` or `path` was NULL.
- * @retval k_ra8_err_invalid_state Mount not in use.
- * @retval k_ra8_err_not_supported The volume is exFAT.
- * @retval k_ra8_err_*             See `priv_fat_mkdir`.
- *
- * @pre `handle` and `path` are non-NULL.
- * @pre Mount is in use.
- * @post On success a new empty directory exists at `path`.
- * @post On failure the volume is unchanged (a partial alloc is rolled back).
- *
- * @note Not thread-safe; callers serialise.
- *
- * @since 0.1.0
- */
-ra8_err_t ra8_fs_mkdir(ra8_fs_mount_t* handle, const char* path)
-{
-  if (handle == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (path == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (handle->in_use == 0U) {
-    return k_ra8_err_invalid_state;
-  }
-  if (handle->type == k_ra8_fs_type_exfat) {
-    return k_ra8_err_not_supported;
-  }
-  return priv_fat_mkdir(handle, path);
-}
-
-/**
- * @brief Delete a file from the root directory.
+ * @brief Delete a file -- the guarded body of ::ra8_fs_unlink().
  *
  * @details Frees the cluster chain (if any) and marks the dir entry
  *          deleted by writing 0xE5 to the first byte of the name field.
+ *          Refuses a directory: use `ra8_fs_rmdir()` for those.
  *
  * @param[in,out] handle Mount handle.
  * @param[in]     path   NUL-terminated path; only flat root names supported.
@@ -379,20 +266,25 @@ ra8_err_t ra8_fs_mkdir(ra8_fs_mount_t* handle, const char* path)
  * @retval k_ra8_ok                File deleted.
  * @retval k_ra8_err_null_ptr      Any pointer was NULL.
  * @retval k_ra8_err_invalid_state Mount not in use.
- * @retval k_ra8_err_invalid_arg   Path is not a valid 8.3 name.
+ * @retval k_ra8_err_invalid_arg   Path is not a valid 8.3 name, or it names a
+ *                                 directory.
  * @retval k_ra8_err_not_found     No such file.
  * @retval k_ra8_err_*             Backend or FAT error.
  *
+ * @pre The library lock is held (or none is installed).
  * @pre `handle` and `path` are non-NULL.
  * @pre Mount is in use; no file handle currently references this entry.
  * @post On success, file's clusters are free and dir entry is deleted.
  * @post On failure, on-disk state may be partially updated.
+ * @post A path naming a directory leaves the volume untouched.
  *
  * @note Not thread-safe; callers serialise.
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_fs_unlink(ra8_fs_mount_t* handle, const char* path)
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t priv_unlink_locked(ra8_fs_mount_t* handle, const char* path)
 {
   if (handle == nullptr || path == nullptr) {
     return k_ra8_err_null_ptr;
@@ -403,63 +295,48 @@ ra8_err_t ra8_fs_unlink(ra8_fs_mount_t* handle, const char* path)
   if (handle->type == k_ra8_fs_type_exfat) {
     return priv_exfat_unlink(handle, path);
   }
-  dir_loc_t       parent = {};
-  const char*     leaf   = nullptr;
-  const ra8_err_t rerr   = priv_resolve_parent(handle, path, &parent, &leaf);
-  if (rerr != k_ra8_ok) {
-    return rerr;
+  dir_target_t    t       = {};
+  uint32_t        cluster = 0;
+  const ra8_err_t lerr    = priv_unlink_locate(handle, path, &t, &cluster);
+  if (lerr != k_ra8_ok) {
+    return lerr;
   }
-  uint8_t name83[k_max_8_3_name] = {};
-  if (priv_path_to_83(leaf, name83) == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  uint32_t  lba                             = 0;
-  uint32_t  off                             = 0;
-  uint8_t   entry[k_ra8_fs_dir_entry_bytes] = {};
-  ra8_err_t err = priv_dir_find(handle, &parent, name83, &lba, &off, entry);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const uint32_t first_cluster = priv_entry_first_cluster(entry);
-  if (first_cluster >= k_cluster_first_data) {
-    err = priv_free_chain(handle, first_cluster);
-    if (err != k_ra8_ok) {
-      return err;
+  if (cluster >= (uint32_t)k_cluster_first_data) {
+    const ra8_err_t ferr = priv_free_chain(handle, cluster);
+    if (ferr != k_ra8_ok) {
+      return ferr;
     }
   }
-  uint8_t buf[k_ra8_fs_bytes_per_sector] = {};
-  err                                    = priv_read_sector(handle, lba, buf);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  buf[off + k_dir_off_name] = k_dir_marker_free_used;
-  return priv_write_sector(handle, lba, buf);
+  /* The whole chain, not only the 8.3 entry: clearing one slot left the file's
+   * long-name entries on disk with a checksum nothing matched, which fsck.fat
+   * and chkdsk both report as orphans (#600). */
+  return priv_dir_erase_chain(handle, &t.parent, t.lba, t.off, &t.entry[k_dir_off_name]);
 }
 
 /**
- * @brief Resolve a rename's old/new paths to a shared parent + packed names.
+ * @brief Resolve a rename's old/new paths to a shared parent and two leaves.
  *
- * @details Resolves both parents, requires they are the same directory (an
- *          in-place rename cannot move an entry between directories), then packs
- *          both leaf components to 8.3. Extracted from `priv_fat_rename` so that
- *          function stays under the size/complexity gate.
+ * @details Resolves both parents and requires them to be the same directory: an
+ *          in-place rename cannot move an entry between directories. The leaf
+ *          components are handed back unpacked, because whether either of them
+ *          is an 8.3 name is no longer the rename's business -- the reservation
+ *          decides that, and both sides may be long names.
  *
- * @param[in]  handle   Mounted FAT volume.
- * @param[in]  old_path Existing path.
- * @param[in]  new_path Replacement path (same directory).
+ * @param[in]  handle     Mounted FAT volume.
+ * @param[in]  old_path   Existing path.
+ * @param[in]  new_path   Replacement path (same directory).
  * @param[out] out_parent Receives the shared parent directory location.
- * @param[out] old83    Packed 8.3 name of the existing leaf.
- * @param[out] new83    Packed 8.3 name of the replacement leaf.
+ * @param[out] out_old    Receives a pointer into @p old_path at its leaf.
+ * @param[out] out_new    Receives a pointer into @p new_path at its leaf.
  *
  * @return Error code.
  * @retval k_ra8_ok                Resolved; outputs populated.
  * @retval k_ra8_err_not_supported The two paths are in different directories.
- * @retval k_ra8_err_invalid_arg   A leaf is not an 8.3 name.
  * @retval k_ra8_err_*             Resolution / backend error.
  *
  * @pre All pointer arguments are non-NULL.
- * @pre `old83` and `new83` each address `k_max_8_3_name` bytes.
- * @post On success both names are packed and `out_parent` is set.
+ * @pre Both paths outlive the outputs, which point into them.
+ * @post On success both leaves and `out_parent` are set.
  * @post On failure the outputs are unspecified.
  *
  * @note Not thread-safe; callers serialise.
@@ -471,8 +348,8 @@ static ra8_err_t priv_rename_prepare(const ra8_fs_mount_t* handle,
                                      const char*           old_path,
                                      const char*           new_path,
                                      dir_loc_t*            out_parent,
-                                     uint8_t               old83[k_max_8_3_name],
-                                     uint8_t               new83[k_max_8_3_name])
+                                     const char**          out_old,
+                                     const char**          out_new)
 {
   dir_loc_t   op = {};
   const char* ol = nullptr;
@@ -494,42 +371,46 @@ static ra8_err_t priv_rename_prepare(const ra8_fs_mount_t* handle,
       return k_ra8_err_not_supported;
     }
   }
-  if (priv_path_to_83(ol, old83) == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (priv_path_to_83(nl, new83) == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
   *out_parent = op;
+  *out_old    = ol;
+  *out_new    = nl;
   return k_ra8_ok;
 }
 
 /**
- * @brief Rename a file on a FAT12/16/32 volume by rewriting the 8.3 name in place.
+ * @brief Rename by writing the new entry first, then taking the old one away.
  *
- * @details Prepares both paths via priv_rename_prepare() (resolves parents, requires
- *          same-directory, packs both names to 8.3). Checks that @p new_path does not
- *          already exist (priv_dir_find() on new83 must fail). Locates the existing
- *          entry for @p old_path via priv_dir_find(), reads the sector, overwrites the
- *          11-byte name field with the new packed name, and writes the sector back.
- *          Cluster chains, file sizes, and attributes are not modified.
+ * @details Rewriting the 11-byte name field in place, which is what this used
+ *          to do, cannot be right once long names exist: the entry may be the
+ *          tail of a VFAT chain that still spells the OLD name, and the new
+ *          name may not fit eleven bytes at all. So the entry is re-filed --
+ *          the old 32 bytes are carried across verbatim as the template, so
+ *          the cluster, the size and the attributes survive, and only the name
+ *          and its `DIR_NTRes` flags change.
+ *
+ *          The order is deliberate. Committing the new entry BEFORE erasing
+ *          the old one means a failure between them leaves the file reachable
+ *          under both names -- untidy, but nothing is lost. The reverse order
+ *          would put a window in the middle of the operation where the file
+ *          has no name at all.
  *
  * @param[in] handle   Mounted FAT12/16/32 volume.
- * @param[in] old_path Existing path (must resolve to an 8.3-named entry).
- * @param[in] new_path Replacement path (must not yet exist; same directory as old_path).
+ * @param[in] old_path Existing path.
+ * @param[in] new_path Replacement path (must not exist; same directory).
  *
  * @return Error code.
- * @retval k_ra8_ok                File renamed; old name is gone, new name resolves.
- * @retval k_ra8_err_invalid_arg   A leaf component does not convert to 8.3 format.
+ * @retval k_ra8_ok                Renamed; the old name is gone, the new resolves.
+ * @retval k_ra8_err_invalid_arg   The new leaf cannot be stored under any encoding.
  * @retval k_ra8_err_not_found     @p old_path does not exist.
  * @retval k_ra8_err_exists        @p new_path already resolves to an entry.
  * @retval k_ra8_err_not_supported The two paths are in different directories.
+ * @retval k_ra8_err_no_mem        The directory has no room for the new entry.
  * @retval k_ra8_err_*             Backend read/write error.
  *
  * @pre @p handle and both path pointers are non-NULL; @p handle is a mounted FAT volume.
  * @pre Neither @p old_path nor @p new_path is currently held open.
- * @post On k_ra8_ok, @p new_path resolves to the same directory entry as @p old_path did.
- * @post On k_ra8_ok, @p old_path no longer resolves; no cluster or FAT data is changed.
+ * @post On k_ra8_ok, @p new_path resolves to the same cluster, size and attributes.
+ * @post On k_ra8_ok, @p old_path no longer resolves and its chain is gone with it.
  *
  * @note Not thread-safe; callers serialise access to the mount.
  *
@@ -539,52 +420,70 @@ RA8_INTERNAL
 static ra8_err_t
 priv_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
 {
-  dir_loc_t parent                = {};
-  uint8_t   old83[k_max_8_3_name] = {};
-  uint8_t   new83[k_max_8_3_name] = {};
-  ra8_err_t perr = priv_rename_prepare(handle, old_path, new_path, &parent, old83, new83);
+  dir_target_t t    = {};
+  const char*  ol   = nullptr;
+  const char*  nl   = nullptr;
+  ra8_err_t    perr = priv_rename_prepare(handle, old_path, new_path, &t.parent, &ol, &nl);
   if (perr != k_ra8_ok) {
     return perr;
   }
-  uint32_t dup_lba                       = 0U;
+  uint64_t dup_lba                       = 0U;
   uint32_t dup_off                       = 0U;
   uint8_t  dup[k_ra8_fs_dir_entry_bytes] = {};
-  if (priv_dir_find(handle, &parent, new83, &dup_lba, &dup_off, dup) == k_ra8_ok) {
+  if (priv_dir_lookup_any(handle, &t.parent, nl, &dup_lba, &dup_off, dup) == k_ra8_ok) {
     return k_ra8_err_exists;
   }
-  uint32_t  lba                             = 0U;
-  uint32_t  off                             = 0U;
-  uint8_t   entry[k_ra8_fs_dir_entry_bytes] = {};
-  ra8_err_t err = priv_dir_find(handle, &parent, old83, &lba, &off, entry);
+  ra8_err_t err = priv_dir_lookup_any(handle, &t.parent, ol, &t.lba, &t.off, t.entry);
   if (err != k_ra8_ok) {
     return err;
   }
-  uint8_t sec[k_ra8_fs_bytes_per_sector] = {};
-  err                                    = priv_read_sector(handle, lba, sec);
+  /* Honor the read-only attribute (#681): a read-only file is refused before any
+   * new entry is filed or the old chain is erased, so the directory is untouched. */
+  if ((t.entry[k_dir_off_attr] & (uint8_t)k_ra8_fs_attr_read_only) != 0U) {
+    return k_ra8_err_access_denied;
+  }
+  dir_insert_t plan = {};
+  err               = priv_dir_reserve(handle, &t.parent, nl, &plan);
   if (err != k_ra8_ok) {
     return err;
   }
-  priv_byte_copy(&sec[off], new83, (uint32_t)k_max_8_3_name);
-  return priv_write_sector(handle, lba, sec);
+  /* Access date only, deliberately. A rename changes the name, not the bytes,
+   * so advancing DIR_WrtDate would tell every rsync, backup and "newest image"
+   * OTA heuristic that the contents changed -- the same class of false signal
+   * #601 exists to remove, only inverted. FAT has no metadata-change field, so
+   * the access date is the honest record that the entry was touched. It goes on
+   * the template BEFORE the commit, because since #600 a rename writes a new
+   * entry rather than editing the old one in place. */
+  priv_fat_entry_stamp_access(t.entry);
+  uint64_t new_lba = 0U;
+  uint32_t new_off = 0U;
+  err              = priv_dir_commit(handle, &plan, t.entry, &new_lba, &new_off);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return priv_dir_erase_chain(handle, &t.parent, t.lba, t.off, &t.entry[k_dir_off_name]);
 }
 
 /**
- * @brief Implementation of `ra8_fs_rename()`.
+ * @brief Rename -- the guarded body of ::ra8_fs_rename().
  * @details See the public header for the documented contract; dispatches
- *          to the in-place FAT 8.3 rewrite or the exFAT entry-set rewrite.
+ *          to the FAT re-filing path or the exFAT entry-set rewrite.
  * @param[in] handle See header.
  * @param[in] old_path See header.
  * @param[in] new_path See header.
  * @return Result code.
  * @retval k_ra8_ok File renamed.
- * @pre Module state is consistent.
+ * @pre The library lock is held (or none is installed).
  * @pre The volume is mounted.
  * @post On success the new name resolves to the same data.
  * @post On failure the directory is unchanged.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t
+priv_rename_locked(ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -602,4 +501,37 @@ ra8_err_t ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char
     return priv_exfat_rename(handle, old_path, new_path);
   }
   return priv_fat_rename(handle, old_path, new_path);
+}
+
+/* =============================================================================
+ * Public entry points -- the lock brackets
+ * =============================================================================
+ */
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t
+ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_listdir_locked(handle, path, cb, ctx);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_unlink(ra8_fs_mount_t* handle, const char* path)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_unlink_locked(handle, path);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_rename(ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_rename_locked(handle, old_path, new_path);
+  priv_lock_release();
+  return err;
 }

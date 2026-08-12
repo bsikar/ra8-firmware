@@ -45,9 +45,11 @@
  *   - **No POSIX BSD socket adapter** -- NetX Duo is the transport;
  *     the example app supplies its own ``mbedtls_ssl_set_bio``
  *     callbacks.
- *   - **No POSIX timing helpers** -- ``MBEDTLS_TIMING_ALT`` is set
- *     and the project supplies its own monotonic-time hook from
- *     ra8_time later.
+ *   - **No POSIX timing helpers** -- ``MBEDTLS_TIMING_C`` and
+ *     ``MBEDTLS_TIMING_ALT`` are BOTH left undefined (see the timing
+ *     section below); the SSL layer falls back to its generation-counter
+ *     heuristic. Wiring ra8_time in as a ``TIMING_ALT`` hook is future
+ *     work, not the current state.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

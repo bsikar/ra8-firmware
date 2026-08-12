@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """tidy_ratchet.py -- clang-tidy ratchet gate (compare vs committed baseline).
 
 WHY THIS EXISTS

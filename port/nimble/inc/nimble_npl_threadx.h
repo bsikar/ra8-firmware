@@ -13,7 +13,7 @@
  * FreeRTOS, Mynewt, Linux, NuttX, RIOT and "dummy". We provide a
  * ThreadX-backed implementation here so NimBLE's host stack runs
  * on the same kernel that powers ``threadx_blink`` and
- * ``threadx_filex_demo``.
+ * ``threadx_fs_demo``.
  *
  * Mapping:
  *

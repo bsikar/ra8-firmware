@@ -52,12 +52,15 @@ typedef enum : uint8_t {
   k_bpb_sig_hi          = 0xAAU, /**< Its high byte.                              */
   k_lfn_chars_per_entry = 13U,   /**< UCS-2 characters one long-name entry holds. */
   k_fs_pattern_stride =
-    17U, /**< Stride of the payload generator, `i * 17 + 3`; coprime with 256 so the pattern does not repeat inside a sector. */
+    17U, /**< Payload stride `i * 17 + 3`, coprime with 256: never repeats in a sector. */
   k_lfn_seq_max =
-    20U, /**< Highest long-name sequence number, so the chain under test is the longest one the format allows. */
-  k_sfn_name_len = 11,    /**< A packed 8.3 name: 8 base + 3 extension.                          */
-  k_shift_byte3  = 24,    /**< Shift to the most significant byte, which goes on the wire first. */
-  k_byte_mask    = 0xFFU, /**< Low-byte mask used when clocking a word out a byte at a time.     */
+    20U, /**< Highest long-name sequence number: test chain is the longest the format allows. */
+  /** A packed 8.3 name: 8 base + 3 extension. */
+  k_sfn_name_len = 11,
+  /** Shift to the most significant byte, which goes on the wire first. */
+  k_shift_byte3 = 24,
+  /** Low-byte mask used when clocking a word out a byte at a time. */
+  k_byte_mask = 0xFFU,
 } fs_fat_mcdc_fixture_t;
 
 /**
@@ -66,7 +69,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_fs_block_size_unsupported =
-    4096U, /**< A block size other than 512, which the formatter must reject. */
+    8192U, /**< Past ::k_ra8_fs_sector_max -- the formatter must reject it. */
 } fs_fat_mcdc_fixture2_t;
 
 /**
@@ -149,7 +152,7 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -161,7 +164,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -173,7 +176,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -242,7 +245,7 @@ static void build_fat16_volume(void)
  *
  * @details Bit-exact mirror of `priv_sfn_checksum` (MS FAT spec sec 7): a
  *          rotate-right-add fold over the 11 raw name bytes. The planted LFN
- *          entries store this in their LDIR_Chksum byte so `priv_lfn_name_for`
+ *          entries store this in their LDIR_Chksum byte so `priv_lfn_units_for`
  *          ties the chain to its 8.3 entry.
  *
  * @param[in] name11 Packed 11-byte 8.3 name (8 base + 3 ext, space padded).
@@ -314,11 +317,11 @@ static void plant_lfn_entry(uint8_t*    ent,
 /**
  * @test test_mcdc_lfn_name_compare_lengths
  * @par MC/DC:
- * Two decisions in `priv_name_ieq` (libs/ra8_fs/src/ra8_fs_fat.c lines 1583, 1590),
+ * Two decisions in `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_name_ieq`,
  * reached when `ra8_fs_open` falls back to the long-name lookup
  * (`priv_dir_find_long`) for a non-8.3 name.
  *
- * Loop head `while ((*a != '\0') && (*b != '\0'))` (L1583, 2 conditions):
+ * Loop head `while ((*a != '\0') && (*b != '\0'))` (2 conditions):
  * - exact match "AB.EPUB" == "AB.EPUB": loop runs to the shared NUL, exiting on
  *   C1=F (`*a == '\0'`); C2 is true on every iteration -- C1 false arm.
  * - shorter needle "AB.EPU" (a strict prefix) vs lname "AB.EPUB": loop exits on
@@ -326,7 +329,7 @@ static void plant_lfn_entry(uint8_t*    ent,
  * - shorter lname: needle "AB.EPUBX" vs lname "AB.EPUB": loop exits on C2=F
  *   (`*b == '\0'`) with C1 still true -- C2 false arm.
  *
- * Return `((*a == '\0') && (*b == '\0'))` (L1590, 2 conditions):
+ * Return `((*a == '\0') && (*b == '\0'))` (2 conditions):
  * - exact match -> both NUL -> T -> 1 (the open succeeds; control vector).
  * - needle longer ("AB.EPUBX"): loop stops on C2=F, so at the return *a != '\0'
  *   -> C1=F -> 0 (needle independence).
@@ -367,8 +370,8 @@ static void test_mcdc_lfn_name_compare_lengths(void)
 /**
  * @test test_mcdc_lfn_terminator_vs_pad
  * @par MC/DC:
- * Decision: `if ((val == 0U) || (val == k_lfn_unicode_pad))` in `priv_lfn_add`
- * (libs/ra8_fs/src/ra8_fs_fat.c line 1555, 2 conditions), reached while
+ * Decision: `if ((val == 0U) || (val == k_lfn_unicode_pad))` in
+ * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_lfn_add` (2 conditions), reached while
  * reassembling a planted LFN chain through the `ra8_fs_open` long-name fallback.
  * - control: a long-name char slot ("AB.EPUB" chars) -> both F (char kept).
  * - C1=T: the UTF-16 NUL terminator (0x0000) follows the 7-char name -> ends
@@ -416,8 +419,9 @@ static void test_mcdc_lfn_terminator_vs_pad(void)
 /**
  * @test test_mcdc_lfn_order_range_guard
  * @par MC/DC:
- * Decision: `if ((order < 1U) || (order > k_lfn_max_entries))` in `priv_lfn_add`
- * (libs/ra8_fs/src/ra8_fs_fat.c line 1542, 2 conditions). `k_lfn_max_entries` is
+ * Decision: `if ((order < 1U) || (order > k_lfn_max_entries))` in
+ * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_lfn_add` (2 conditions).
+ * `k_lfn_max_entries` is
  * 19. Reached by planting an LFN sub-entry with an out-of-range order byte and
  * resolving the directory through the `ra8_fs_open` long-name fallback.
  * - control: a valid chain with order 1 -> both F -> the entry is folded and the
@@ -488,8 +492,8 @@ typedef enum : uint32_t {
  * @test test_mcdc_read_walk_cache_resume
  * @par MC/DC:
  * Decision: `(walk_cache_cluster >= k_cluster_first_data) && (cluster_idx_now >=
- * walk_cache_idx)` in `priv_read_one_chunk` (libs/ra8_fs/src/ra8_fs_fat.c line
- * 5747, 2 conditions) -- the read accelerator's "resume from waypoint" guard.
+ * walk_cache_idx)` in `libs/ra8_fs/src/ra8_fs_fat_fileio.c@priv_read_one_chunk`
+ * (2 conditions) -- the read accelerator's "resume from waypoint" guard.
  * - forward sequential read: the cache is set (C1=T) and each chunk's cluster
  *   index is at or ahead of the cached index (C2=T) -> resume from the waypoint.
  * - backward seek to offset 0 then read: the cache is still set (C1=T) but the
@@ -553,8 +557,9 @@ static void test_mcdc_read_walk_cache_resume(void)
  * @test test_mcdc_format_fat16_band_upper
  * @par MC/DC:
  * Decision: FAT16 band `(count >= k_cluster_count_fat12_max) && (count <
- * k_cluster_count_fat16_max)` in `priv_fmt_count_in_band`
- * (libs/ra8_fs/src/ra8_fs_fat.c line 4059, 2 conditions; the FAT12 boundary is
+ * k_cluster_count_fat16_max)` in
+ * `libs/ra8_fs/src/ra8_fs_fat_fmt.c@priv_fmt_count_in_band`
+ * (2 conditions; the FAT12 boundary is
  * 4085, the FAT16 boundary 65525). The sibling format test covers the lower
  * bound (a too-small card makes `count >= 4085` false); this case drives the
  * previously-uncovered upper-bound arm.
@@ -588,8 +593,9 @@ static void test_mcdc_format_fat16_band_upper(void)
  * @test test_mcdc_format_fat32_band_lower
  * @par MC/DC:
  * Decision: FAT32 band `(count >= k_cluster_count_fat16_max) && (count <=
- * k_fmt_fat32_clus_cap)` in `priv_fmt_count_in_band`
- * (libs/ra8_fs/src/ra8_fs_fat.c line 4062, 2 conditions). The FAT16 boundary is
+ * k_fmt_fat32_clus_cap)` in
+ * `libs/ra8_fs/src/ra8_fs_fat_fmt.c@priv_fmt_count_in_band`
+ * (2 conditions). The FAT16 boundary is
  * 65525; the FAT32 cluster cap is 0x0FFFFFF0.
  * - 36 MiB card formatted as FAT32: the cluster count is well above 65525 and
  *   well below the cap, so both conditions are TRUE and the format succeeds
@@ -622,7 +628,7 @@ static void test_mcdc_format_fat32_band_lower(void)
  * @test test_mcdc_format_type_unsupported
  * @par MC/DC:
  * Decision: `if (opts->type != FAT12 && != FAT16 && != FAT32 && != exFAT)` in
- * `ra8_fs_format` (libs/ra8_fs/src/ra8_fs_fat.c line 5082, 4 conditions). The guard
+ * `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_format_locked` (4 conditions). The guard
  * rejects with not_supported only when the type is NONE of the four writable
  * variants -- i.e. all four inequalities are TRUE.
  * - V1 unknown (0): A=T(!=12), B=T(!=16), C=T(!=32), D=T(!=exFAT) -> rejected.
@@ -649,22 +655,23 @@ static void test_mcdc_format_type_unsupported(void)
 /**
  * @brief Capacity stub reporting a non-512 block size to drive the format guard.
  */
-static ra8_err_t cap_bad_block_size(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t cap_bad_block_size(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = (uint32_t)k_disk_blocks_fat16;
-  *block_size  = k_fs_block_size_unsupported; /* not 512 -> formatter must reject */
+  *block_size  = k_fs_block_size_unsupported; /* past 4096 -> formatter must reject */
   return k_ra8_ok;
 }
 
 /**
  * @test test_mcdc_format_block_size_guard
  * @par MC/DC:
- * Decision: `if (block_size != 512 || block_count == 0U)` in `ra8_fs_format`
- * (libs/ra8_fs/src/ra8_fs_fat.c line 5095, 2 conditions), after `get_capacity`.
+ * Decision: `if ((priv_bps_valid(block_size) == 0U) || (block_count == 0U))` in
+ * `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_format_locked` (2 conditions), after
+ * `get_capacity`; sizes 512..4096 are all supported since #683.
  * - control: a valid 512-byte card -> C1=F, C2=F -> the format proceeds (the
  *   FAT16 round-trips in sibling tests). Re-asserted here as the both-false leg.
- * - C1=T: a backend reporting 4096-byte sectors -> rejected with invalid_arg
+ * - C1=T: a backend reporting 8192-byte sectors -> rejected with invalid_arg
  *   (block-size independence; this is the previously-uncovered arm).
  * - C2 (block_count == 0) is unreachable through a real card: a zero-sector card
  *   cannot be allocated and every backend here reports a non-zero count, so it
@@ -673,7 +680,7 @@ static ra8_err_t cap_bad_block_size(void* ctx, uint32_t* block_count, uint32_t* 
  */
 static void test_mcdc_format_block_size_guard(void)
 {
-  TEST_BEGIN("ra8_fs format MC/DC: block-size guard (block_size!=512)");
+  TEST_BEGIN("ra8_fs format MC/DC: block-size guard (bps past 4096)");
   alloc_card((uint32_t)k_disk_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
@@ -684,7 +691,7 @@ static void test_mcdc_format_block_size_guard(void)
   bad.get_capacity     = cap_bad_block_size;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&bad, &opts));
   free_volume();
-  TEST_END("ra8_fs format MC/DC: block-size guard (block_size!=512)");
+  TEST_END("ra8_fs format MC/DC: block-size guard (bps past 4096)");
 }
 
 /**
@@ -700,7 +707,7 @@ typedef enum : uint32_t {
  * @test test_mcdc_exfat_label_pack_terminator_and_cap
  * @par MC/DC:
  * Decision: `for (; (n < k_exfat_fmt_label_max) && (label[n] != '\0'); n++)` in
- * `priv_exfat_label_utf16` (libs/ra8_fs/src/ra8_fs_fat.c line 4975, 2 conditions),
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_fmt.c@priv_exfat_label_utf16` (2 conditions),
  * reached when `ra8_fs_format` lays the exFAT root volume-label entry.
  * - short label "RAEXFAT" (7 chars): the loop runs while `n < 11` (C1=T) and
  *   stops when `label[n] == '\0'` (C2=F) -- the terminator arm. C1 stays TRUE

@@ -98,19 +98,19 @@ ra8_err_t ra8_rmac_get_status(ra8_rmac_port_t port, ra8_rmac_status_t* out)
   }
 
   volatile r_rmac_regs_t* reg = ra8_rmac(port);
-  /* HUM Ch 33.4 "MEIS : MAC Error Interrupt Status Register" p 1706 */
+  /* HUM Ch 33.4 "MEIS : MAC Error Interrupt Status Register" p 1745 */
   out->err_status = reg->MEIS;
-  /* HUM Ch 33.4 "MMIS0 : MAC Monitoring Interrupt Status Register 0" p 1706 */
+  /* HUM Ch 33.4 "MMIS0 : MAC Monitoring Interrupt Status Register 0" p 1756 */
   out->mon_status[0] = reg->MMIS0;
-  /* HUM Ch 33.4 "MMIS1 : MAC Monitoring Interrupt Status Register 1" p 1706 */
+  /* HUM Ch 33.4 "MMIS1 : MAC Monitoring Interrupt Status Register 1" p 1758 */
   out->mon_status[1] = reg->MMIS1;
-  /* HUM Ch 33.4 "MMIS2 : MAC Monitoring Interrupt Status Register 2" p 1706 */
+  /* HUM Ch 33.4 "MMIS2 : MAC Monitoring Interrupt Status Register 2" p 1761 */
   out->mon_status[2] = reg->MMIS2;
-  /* HUM Ch 33.4 "MPIM : PHY Interfaces Monitoring Register" p 1707 */
+  /* HUM Ch 33.4 "MPIM : PHY Interfaces Monitoring Register" p 1710 */
   out->phy_monitor = reg->MPIM;
-  /* HUM Ch 33.4 "MRMAC0 : MAC Reception MAC Address Configuration Register 0" p 1707 */
+  /* HUM Ch 33.4 "MRMAC0 : MAC Reception MAC Address Configuration Register 0" p 1716 */
   out->mrmac0 = reg->MRMAC0;
-  /* HUM Ch 33.4 "MRMAC1 : MAC Reception MAC Address Configuration Register 1" p 1707 */
+  /* HUM Ch 33.4 "MRMAC1 : MAC Reception MAC Address Configuration Register 1" p 1717 */
   out->mrmac1 = reg->MRMAC1;
   return k_ra8_ok;
 }
@@ -131,21 +131,21 @@ ra8_err_t ra8_rmac_clear_status(ra8_rmac_port_t port,
    * in MEIS / MMIS{0,1,2}. The driver also writes the explicit
    * masked-out value so fake backings (which lack RW1C) end up
    * in the same observable state as real hardware. */
-  /* HUM Ch 33.4 "MEID : MAC Error Interrupt Disable Register" p 1706 */
+  /* HUM Ch 33.4 "MEID : MAC Error Interrupt Disable Register" p 1754 */
   reg->MEID = err_mask;
-  /* HUM Ch 33.4 "MMID0 : MAC Monitoring Interrupt Disable Register 0" p 1706 */
+  /* HUM Ch 33.4 "MMID0 : MAC Monitoring Interrupt Disable Register 0" p 1758 */
   reg->MMID0 = mon0_mask;
-  /* HUM Ch 33.4 "MMID1 : MAC Monitoring Interrupt Disable Register 1" p 1706 */
+  /* HUM Ch 33.4 "MMID1 : MAC Monitoring Interrupt Disable Register 1" p 1760 */
   reg->MMID1 = mon1_mask;
-  /* HUM Ch 33.4 "MMID2 : MAC Monitoring Interrupt Disable Register 2" p 1706 */
+  /* HUM Ch 33.4 "MMID2 : MAC Monitoring Interrupt Disable Register 2" p 1763 */
   reg->MMID2 = mon2_mask;
-  /* HUM Ch 33.4 "MEIS : MAC Error Interrupt Status Register" p 1706 */
+  /* HUM Ch 33.4 "MEIS : MAC Error Interrupt Status Register" p 1745 */
   reg->MEIS = reg->MEIS & ~err_mask;
-  /* HUM Ch 33.4 "MMIS0 : MAC Monitoring Interrupt Status Register 0" p 1706 */
+  /* HUM Ch 33.4 "MMIS0 : MAC Monitoring Interrupt Status Register 0" p 1756 */
   reg->MMIS0 = reg->MMIS0 & ~mon0_mask;
-  /* HUM Ch 33.4 "MMIS1 : MAC Monitoring Interrupt Status Register 1" p 1706 */
+  /* HUM Ch 33.4 "MMIS1 : MAC Monitoring Interrupt Status Register 1" p 1758 */
   reg->MMIS1 = reg->MMIS1 & ~mon1_mask;
-  /* HUM Ch 33.4 "MMIS2 : MAC Monitoring Interrupt Status Register 2" p 1706 */
+  /* HUM Ch 33.4 "MMIS2 : MAC Monitoring Interrupt Status Register 2" p 1761 */
   reg->MMIS2 = reg->MMIS2 & ~mon2_mask;
   return k_ra8_ok;
 }

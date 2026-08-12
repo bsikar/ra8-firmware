@@ -38,10 +38,10 @@
  * @note Not thread-safe: a builder context is single-owner, mutated in place.
  * @see ra8_book.h  The format definition + the reader this emitter targets.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

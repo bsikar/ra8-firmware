@@ -32,7 +32,7 @@
  */
 typedef enum : uint8_t {
   k_adc_second_channel =
-    5U, /**< Channel driven in the middle scan slot, not adjacent to the first, so a slot mix-up cannot land on it. */
+    5U, /**< Middle-slot channel, not adjacent to the first, so a slot mix-up cannot land on it. */
 } adc_scan_channel_t;
 
 /**
@@ -43,7 +43,7 @@ typedef enum : uint16_t {
   k_adc_code_ch0 = 0x0111U, /**< Conversion result planted for the first channel. */
   k_adc_code_ch1 = 0x0222U, /**< For the second.                                  */
   k_adc_code_ch2 =
-    0x0333U, /**< For the third; the three differ so a scan that read the wrong slot fails a specific assertion. */
+    0x0333U, /**< For the third; three differ so a scan of the wrong slot fails an assertion. */
 } adc_scan_code_t;
 
 typedef enum : uint8_t {

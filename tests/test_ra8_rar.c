@@ -337,7 +337,7 @@ static void tr_build_rar5(void)
     tr5_file(&s_arc[p], s_imgs[1].name, s_imgs[1].png, s_imgs[1].plen, 0U, false); /* img02 store */
   p +=
     tr5_file(&s_arc[p], s_imgs[0].name, s_imgs[0].png, s_imgs[0].plen, 0U, false); /* img01 store */
-  p += tr5_file(&s_arc[p], "emptydir/", nullptr, 0U, 0U, true);                    /* directory */
+  p += tr5_file(&s_arc[p], "emptydir/", nullptr, 0U, 0U, true);                    /* directory   */
   p +=
     tr5_file(&s_arc[p], s_imgs[2].name, s_imgs[2].png, s_imgs[2].plen, 0U, false); /* img03 store */
   p += tr5_file(&s_arc[p],

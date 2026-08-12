@@ -35,11 +35,11 @@
  */
 typedef enum : uint32_t {
   k_crashlog_cfsr_usage_fault =
-    0x02000000UL, /**< A CFSR value with a usage-fault bit set, so the decoded record names a specific cause rather than an empty one. */
+    0x02000000UL, /**< A CFSR value with a usage-fault bit, naming a specific cause, not empty. */
   k_crashlog_crc_flip_mask =
-    0xFFFFFFFFUL, /**< XORed into a valid CRC to corrupt every bit of it, so the integrity check cannot pass by chance. */
+    0xFFFFFFFFUL, /**< XORed into a valid CRC to corrupt every bit; check cannot pass by chance. */
   k_crashlog_magic_wrong =
-    0xDEADBEEFUL, /**< A magic value the reader does not recognise, so a stale or foreign record is rejected. */
+    0xDEADBEEFUL, /**< Magic value the reader rejects; a stale or foreign record won't pass. */
 } crashlog_fixture_t;
 
 static jmp_buf s_fatal_jmp;

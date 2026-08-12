@@ -15,13 +15,13 @@
  *
  * @note Not thread-safe: ra8_cache_store serialises access (one reader core).
  * @see cache_store_demo_run  The single entry point.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file test_media_dl_search.c
  * @brief Host unit tests for the #304 search/discovery parse + policy path.
@@ -15,6 +11,8 @@
  * names -- matched hits with title/URL pairs, a genuine zero-result page, and a
  * markup-changed page with no links -- is asserted here. Uses the repo's
  * `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <stdint.h>
 #include <stdio.h>

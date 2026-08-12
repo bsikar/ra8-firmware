@@ -50,10 +50,16 @@
  * Every call returned ``k_ra8_ok`` throughout, which is precisely why a
  * verdict built only out of return codes was worth nothing.
  *
- * hw_pending: ``tools/ra8_emulator`` has no ETHA shaper or GPTP timer model
- * (both windows fall to the sparse config-reflect fallback, where a counter
- * cannot advance), and the EK-RA8D2 Ethernet wire is marginal (#21), so this
- * is compile-gated in CI and asserted on the bench.
+ * hw_pending: ``tools/ra8_emulator`` now models the HUM Ch 35 GPTP timer
+ * (``board_periph_gptp.c``), so the gPTP time-base half of this verdict runs
+ * under emulation (the counter advances by the SysTick-measured window). The
+ * ETHA shaper half does not: the TAS gate RAM learn/read (``EATASGL*`` /
+ * ``EATASGR*``, HUM Ch 32) and the CBS state are indirect-RAM registers the
+ * emulator leaves to config-reflect, so ``ra8_etha_read_tas_entry`` reads back
+ * zero and the entry-match check fails -- modelling that RAM is #539 / #292
+ * territory. The EK-RA8D2 Ethernet wire is also marginal (#21). So the whole-app
+ * verdict is compile-gated in CI and asserted on the bench, while
+ * ``eth_gptp_timestamp_demo`` carries the emulator-gated counter-advance check.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

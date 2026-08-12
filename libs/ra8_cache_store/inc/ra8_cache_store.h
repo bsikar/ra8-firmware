@@ -51,13 +51,13 @@
  * @see ra8_cache_store_put   Seal a new entry.
  * @see ra8_cache_store_get   Open an entry for streaming reads.
  * @see ra8_cache_store_evict Drop an entry and reclaim its sectors.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  * @par Tag
  * [Ring 4 / Storage] {World: NS}
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  */
 #pragma once
 

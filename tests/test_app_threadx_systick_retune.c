@@ -15,8 +15,9 @@
  *     full range/validity coverage incl. the MC/DC vectors for its compound
  *     zero-input guard.
  *   - ra8_threadx_systick_retune() -- the end-to-end path over the live CGC
- *     published-clock table (SYST_RVR writes compile out under
- *     RA8_OFF_TARGET, so only the clock-query + arithmetic run here).
+ *     published-clock table. It now programs SYST_RVR through the shared
+ *     ra8_hal SysTick primitive (ra8_systick_set_reload), whose writes land in
+ *     the fake MMIO map on host, so the retune runs end-to-end here.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -38,7 +39,7 @@
  */
 typedef enum : uint8_t {
   k_sys_oscsf_all_ready =
-    0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready. */
+    0xFFU, /**< Every oscillator-stabilisation flag set, so bring-up sees all sources ready. */
 } app_threadx_systick_retune_fixture_t;
 
 /** @brief Per-test constants (no magic numbers). */
@@ -233,8 +234,9 @@ static void test_retune_matches_live_clock(void)
   reset_world();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_init());
 
-  /* The retune reads the live table + programs SYST_RVR (write compiles
-   * out on host); it must succeed for a valid clock. */
+  /* The retune reads the live table + programs SYST_RVR through the HAL
+   * primitive (writes land in the fake MMIO map on host); it must succeed for
+   * a valid clock. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_threadx_systick_retune());
 
   /* Confirm the live clock the retune saw is CPUCLK0 = 1 GHz and that the

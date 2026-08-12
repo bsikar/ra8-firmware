@@ -70,9 +70,9 @@ extern "C" {
  * @brief Block-I/O size constants.
  */
 typedef enum : uint16_t {
-  k_ra8_sdmmc_spi_block_size = 512U, /**< Fixed 512-byte block (SD spec PHY v9 section 7.2.2). */
-  k_ra8_sdmmc_spi_cmd_frame_bytes  = 6U,  /**< 1 cmd-byte + 4 arg-bytes + 1 CRC-byte. */
-  k_ra8_sdmmc_spi_csd_response_len = 16U, /**< CMD9 CSD register payload bytes.       */
+  k_ra8_sdmmc_spi_block_size       = 512U, /**< 512-byte block (SD spec PHY v9 section 7.2.2). */
+  k_ra8_sdmmc_spi_cmd_frame_bytes  = 6U,   /**< 1 cmd-byte + 4 arg-bytes + 1 CRC-byte.         */
+  k_ra8_sdmmc_spi_csd_response_len = 16U,  /**< CMD9 CSD register payload bytes.               */
 } ra8_sdmmc_spi_limits_t;
 
 /**

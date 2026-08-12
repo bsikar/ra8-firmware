@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # port/usbx/CMakeLists.txt
 #
@@ -14,10 +16,8 @@
 # enable USBX link against `usbx_port_ra8_usb`; that target propagates
 # the bridge include directory and tracks the source list as a global
 # property so per-app builds can splice it into their `add_executable`
-# globs (mirrors how `port/filex/` exposes its sources).
+# globs (mirrors how `port/nimble/` exposes its sources).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)

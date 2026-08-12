@@ -18,10 +18,10 @@
  * malformed tar header rejects the archive: tar's block grammar leaves no
  * legitimate reason for an undecodable header mid-chain.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include <stddef.h>
 #include <stdint.h>

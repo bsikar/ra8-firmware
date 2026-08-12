@@ -195,7 +195,7 @@ static void internal_ielsr_write(uint16_t slot, ra8_elc_event_t event)
 {
   volatile uint32_t* ielsr = ra8_icu_ielsr(slot);
   if (ielsr != nullptr) { /* GCOVR_EXCL_BR_LINE -- slot bounds already validated */
-    /* HUM Ch 14.2 "IELSRn : ICU Event Link Setting Register n", p 524 */
+    /* HUM Ch 14.2 "IELSRn : ICU Event Link Setting Register n", p 547 */
     *ielsr = (uint32_t)event & k_ra8_ielsr_iels_mask;
   }
 }
@@ -409,6 +409,30 @@ ra8_err_t ra8_isr_lookup_slot(ra8_elc_event_t event, uint16_t* out_slot)
 {
   RA8_CHECK_NULL_PTR(out_slot, s_tag, "out_slot must not be NULL");
   *out_slot = internal_find_event(event);
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_isr_set_dtc(uint16_t slot, bool enable)
+{
+  if (slot >= k_ra8_isr_slot_count) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (!s_slots[slot].in_use) {
+    return k_ra8_err_not_found;
+  }
+  volatile uint32_t* ielsr = ra8_icu_ielsr(slot);
+  if (ielsr == nullptr) {      /* GCOVR_EXCL_BR_LINE -- slot bounds already validated */
+    return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE                                     */
+  }
+  /* HUM Ch 14.2.17 "IELSRn : ICU Event Link Setting Register n", p 547: DTCE[24]
+   * enables DTC activation. The read-modify-write touches only DTCE -- the IELS
+   * event field ra8_isr_register wrote is preserved, and the write-0-to-clear IR
+   * status flag is retained by writing back its own read value (ORing/ANDing the
+   * DTCE mask leaves bit 16 unchanged; see ra8_isr_dispatch and issue #170). */
+  const uint32_t cur = *ielsr;
+  const uint32_t next =
+    enable ? (cur | (uint32_t)k_ra8_ielsr_dtce_mask) : (cur & ~(uint32_t)k_ra8_ielsr_dtce_mask);
+  *ielsr = next;
   return k_ra8_ok;
 }
 

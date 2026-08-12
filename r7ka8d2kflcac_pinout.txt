@@ -58,8 +58,8 @@ IIC0 I2C:
 
 SPI0:
     RSPCK -- P1_02
-    MOSI  -- P1_01
-    MISO  -- P1_00
+    MOSI  -- P1_01   # LEGACY-OK: Renesas datasheet SPI pin label (COPI)
+    MISO  -- P1_00   # LEGACY-OK: Renesas datasheet SPI pin label (CIPO)
     CS    -- P1_03
 
 CANFD0:

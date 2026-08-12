@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """The .rabook on-disk constants, kept in lockstep with libs/ra8_book/inc/ra8_book.h.
 
 Everything here is a contract with the FIRMWARE, not with this tool: a value

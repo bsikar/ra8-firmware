@@ -1,8 +1,8 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # mk/quality.mk -- format, lint, tests, coverage, MISRA, static analysis, CI.
 # Shared vars (TESTS_DIR, TESTS_BUILD*, EK_APPS, CLANG_FORMAT, ...) come from the
 # top Makefile.
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 .PHONY: format check tidy cppcheck magic ascii version \
         test test-docker ubsan test-cov ctest coverage mcdc \
@@ -66,8 +66,21 @@ coverage:
 	bash scripts/report/coverage_report.sh
 	python3 scripts/checks/check_coverage.py
 
+# Use the SAME mcdc_report.sh invocation the `mcdc` CI gate uses
+# (scripts/ci/gates/tests.sh), so "run the documented target" and "run what CI
+# runs" cannot diverge (#556). Two pins matter, both taken from the gate:
+#   CC=clang-18 CXX=clang++-18 -- mcdc_report.sh needs clang >= 18 for
+#     -fcoverage-mcdc; bare `make mcdc` would inherit the ambient `cc` (gcc-12
+#     on the shared dev box), which cannot produce MC/DC data at all.
+#   RA8_MCDC_THRESHOLD=0 -- disables mcdc_report.sh's own 100%-reachable
+#     aggregate gate. That is NOT the project's quality bar (the gate states so
+#     and applies the .github/mcdc-baseline.txt comparison instead); leaving it
+#     on makes `make mcdc` FAIL on a tree CI reports green, the exact dev-box
+#     red #557 warns people learn to ignore.
+# llvm-profdata-18 / llvm-cov-18 resolve beside clang-18. macOS has no clang-18
+# and cannot run the host suite regardless.
 mcdc:
-	bash scripts/report/mcdc_report.sh
+	CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 bash scripts/report/mcdc_report.sh
 
 # MISRA-C 2012 audit (see docs/MISRA.md).
 misra:

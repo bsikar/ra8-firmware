@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh.
 #
 # Every step below is a thin `bash scripts/ci.sh --gate <name>` driver. This
@@ -405,6 +407,11 @@ jobs:
         with:
           fetch-depth: 0
       - run: bash scripts/ci.sh --gate pre-commit-checks
+      - run: bash scripts/ci.sh --gate shebangs
+      - run: bash scripts/ci.sh --gate tests-readme
+      - run: bash scripts/ci.sh --gate disambig-readmes
+      - run: bash scripts/ci.sh --gate init-order-freshness
+      - run: bash scripts/ci.sh --gate roadmap-dashboard-freshness
       - run: bash scripts/ci.sh --gate bench-lock
       - name: Install ruff, shellcheck and shfmt
         run: |

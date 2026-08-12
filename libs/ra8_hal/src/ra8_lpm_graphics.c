@@ -91,7 +91,7 @@ RA8_INTERNAL static void internal_graphics_enable_moco(void)
 {
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
   {
-    /* HUM Ch 9.2.18 "MOCOCR : MOCO Control Register", p 346 */
+    /* HUM Ch 9.2.18 "MOCOCR : MOCO Control Register", p 341 */
     volatile uint8_t* mococr = ra8_lpm_sysc_reg8(k_ra8_lpm_mococr_off);
     *mococr                  = (uint8_t)(*mococr & (uint8_t)~k_ra8_lpm_clock_stop_mask);
   }

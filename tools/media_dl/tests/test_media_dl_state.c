@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file test_media_dl_state.c
  * @brief Host unit tests for the #305 library-state store, its content-identity
@@ -16,6 +12,8 @@
  *   - the state store round-trips through disk, survives as an atomic write,
  *     handles a corrupt or absent file cleanly, and reports coverage/gaps.
  * Uses the repo's `unity_minimal.h` harness, mirroring `tests/test_*.c`.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include <stdint.h>
 #include <stdio.h>

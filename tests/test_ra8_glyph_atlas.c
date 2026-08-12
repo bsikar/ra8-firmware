@@ -25,7 +25,8 @@
 typedef enum : uint8_t {
   k_ga_pixel_size =
     12U, /**< Pixel size shared by the keys, so lookups must discriminate on the code point. */
-  k_ga_codepoint = 0x41U, /**< Code point of the first glyph key. */
+  /** Code point of the first glyph key. */
+  k_ga_codepoint = 0x41U,
   k_ga_codepoint_absent =
     99U, /**< A code point no glyph was cached under, so the lookup must miss. */
 } glyph_atlas_fixture_t;

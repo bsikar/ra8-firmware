@@ -52,6 +52,13 @@ DOCS_REFERENCE_RE = re.compile(r"\bdocs/reference/")
 #: Vendored code is not ours to re-cite.
 THIRD_PARTY_RE = re.compile(r"\blibs/third_party/")
 
+#: The annotation macro whose reason string is DO-178C 6.4.4.3 deactivation
+#: evidence. Its argument is a string LITERAL, so find_comment_spans -- which
+#: deliberately skips string literals -- never reaches it; find_mcdc_reason_spans
+#: does, so the in-tree line-citation ban covers a deactivation reason as
+#: docs/ANNOTATIONS.md says it does (#547).
+MCDC_REASON_MACRO = "RA8_MCDC_DEACTIVATED"
+
 
 def all_tracked_files() -> list[str]:
     """Every tracked path, for the whole-tree sweep.
@@ -145,6 +152,94 @@ def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # 
                 spans.append((start, i))
                 continue
         i += 1
+    return spans
+
+
+def _reason_end(text: str, start: int) -> int:
+    """Offset of the ``)`` closing a reason that opened just after ``start``.
+
+    ``start`` is the index one past the macro's opening ``(``. The walk is
+    string- and paren-aware -- a ``)`` inside the reason string does not close
+    the call, and a nested ``(`` is balanced -- and a single ``quote`` variable
+    handles both ``"`` and ``'`` literals so the two are not duplicated.
+
+    Args:
+        text: The full source text.
+        start: Offset one past the opening parenthesis.
+
+    Returns:
+        The offset of the matching close parenthesis, or ``len(text)`` when the
+        call is unterminated.
+    """
+    n = len(text)
+    depth = 1
+    p = start
+    quote = ""  # empty outside a literal, else the active quote character
+    while p < n and depth > 0:
+        ch = text[p]
+        if quote:
+            if ch == "\\":
+                p += 2
+                continue
+            if ch == quote:
+                quote = ""
+        elif ch in "\"'":
+            quote = ch
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return p
+        p += 1
+    return p
+
+
+def find_mcdc_reason_spans(text: str) -> list[tuple[int, int]]:
+    """Byte spans of the reason argument of each ``RA8_MCDC_DEACTIVATED(...)``.
+
+    The macro records WHY an MC/DC condition is deactivated -- DO-178C 6.4.4.3
+    evidence -- and its reason is a string literal (often several adjacent
+    literals across lines). :func:`find_comment_spans` deliberately skips string
+    literals, so without this the in-tree line-citation ban would never reach a
+    deactivation reason, though ``docs/ANNOTATIONS.md`` promises it does. This
+    returns the ``(start, end)`` offsets of the text BETWEEN the macro's outer
+    parentheses so the caller can scan it for a rot-prone ``file.ext:line`` token
+    exactly as it scans a comment.
+
+    A whole-token match is required, so a longer identifier merely ending in the
+    macro name is skipped; the macro's own ``#define`` site yields the parameter
+    name ``reason`` as its span, which carries no citation and is inert.
+
+    Args:
+        text: The full source text to scan.
+
+    Returns:
+        A list of ``(start, end)`` byte offsets, one per macro call.
+    """
+    spans: list[tuple[int, int]] = []
+    n = len(text)
+    mlen = len(MCDC_REASON_MACRO)
+    i = 0
+    while True:
+        idx = text.find(MCDC_REASON_MACRO, i)
+        if idx == -1:
+            break
+        i = idx + mlen
+        # Whole-token match: the preceding char must not be part of an
+        # identifier, or this is a longer name that only ends with the macro.
+        if idx > 0 and (text[idx - 1].isalnum() or text[idx - 1] == "_"):
+            continue
+        # The next non-space character must be the opening parenthesis.
+        k = i
+        while k < n and text[k] in " \t\r\n":
+            k += 1
+        if k >= n or text[k] != "(":
+            continue
+        start = k + 1
+        end = _reason_end(text, start)
+        spans.append((start, end))
+        i = end + 1
     return spans
 
 

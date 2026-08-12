@@ -35,11 +35,11 @@
  * (the full 1024x600 panel needs SDRAM, a separate task) and composites top-left
  * over the GLCDC background plane.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / APP] {World: S}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

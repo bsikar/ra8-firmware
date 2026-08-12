@@ -276,9 +276,9 @@ def _third_party_dirs() -> set[str]:
 def _catalogued_top_dirs() -> set[str]:
     """Return the direct-child dir names of libs/third_party/ the registry covers.
 
-    A nested key such as ``fsp_blobs/r_sce_AMC`` catalogues the ``fsp_blobs``
-    top-level directory, so a blob tree with sub-components does not read as
-    uncatalogued.
+    A nested path such as ``esp-hosted/common/protobuf-c`` catalogues the
+    ``esp-hosted`` top-level directory, so a tree carrying a separately
+    pinned sub-component does not read as uncatalogued.
     """
     prefix = THIRD_PARTY_DIR.parts
     dirs: set[str] = set()

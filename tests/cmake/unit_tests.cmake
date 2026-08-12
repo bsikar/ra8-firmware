@@ -69,6 +69,7 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/ra8_ota/inc
             ${FW_ROOT}/libs/ra8_dfu/inc
             ${FW_ROOT}/libs/ra8_devcfg/inc
+            ${FW_ROOT}/libs/ra8_wifi/inc
             ${FW_ROOT}/libs/ra8_display_pal/inc
             ${FW_ROOT}/libs/ra8_power_profile/inc
             ${FW_ROOT}/libs/ra8_epub/inc
@@ -121,6 +122,7 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/ra8_ota/src
             ${FW_ROOT}/libs/ra8_dfu/src
             ${FW_ROOT}/libs/ra8_devcfg/src
+            ${FW_ROOT}/libs/ra8_wifi/src
             ${FW_ROOT}/libs/ra8_display_pal/src
             ${FW_ROOT}/libs/ra8_power_profile/src
             ${FW_ROOT}/libs/ra8_touch_cal/src
@@ -191,6 +193,12 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_psa_real_kat.
 # than through the ra8_add_test() auto-glob.
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_cache_store.c)
 
+# test_lx_fs_backend.c (#611) compiles the vendored LevelX NOR sources + the
+# RAM NOR fake + the port/levelx ra8_fs backend shim with LX_STANDALONE_ENABLE,
+# so it is registered by hand (tests/cmake/tests_storage.cmake) rather than
+# through the ra8_add_test() auto-glob.
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_lx_fs_backend.c)
+
 # test_cache_store_demo.c (issue #257) compiles the ra8_cache_store_demo example
 # core + RAM NOR driver from examples/ plus the vendored LevelX NOR sources with
 # LX_STANDALONE_ENABLE, so it is registered by hand below rather than through the
@@ -247,6 +255,18 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_emulator_
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_wire.c)
 
+# test_ra8_wifi_c6link.c drives the ESP32-C6 ra8_wifi backend, which -- like the
+# c6link tests above -- links libs/ra8_c6link + the vendored codec against the
+# co-processor model, none of which ra8_core_hal carries. It is registered by
+# hand in tests_wifi.cmake. (The pure facade test, test_ra8_wifi.c, stays in the
+# auto-glob: it needs only ra8_core_hal and its own mock backend.)
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_wifi_c6link.c)
+
+# test_app_wifi_hal_join.c drives the wifi_hal_join example's core on the host.
+# It compiles the example's src/wifi_hal_core.c and adds the example include
+# dir, so it is registered by hand in tests_wifi.cmake rather than the auto-glob.
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_app_wifi_hal_join.c)
+
 foreach(src ${RA8_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)
   ra8_add_test(${name})
@@ -283,5 +303,19 @@ if(TARGET test_app_ereader_zoom)
   )
   target_include_directories(
     test_app_ereader_zoom PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_zoom/inc
+  )
+endif()
+
+# ---------------------------------------------------------------------------
+# test_app_blink_m33_hal: the blink_m33_hal host twin drives the example's own
+# blink_m33_hal.h step (the exact function the CPU1 firmware loop calls), so the
+# LED1 PCNTR1 effect it asserts comes out of the PRODUCTION step rather than a
+# re-implementation. ra8_pcntr.h / the PORT layer already come from the
+# ra8_core_hal object library the auto-glob linked; only the app's include dir
+# is added so blink_m33_hal.h resolves (issue #580).
+# ---------------------------------------------------------------------------
+if(TARGET test_app_blink_m33_hal)
+  target_include_directories(
+    test_app_blink_m33_hal PRIVATE ${FW_ROOT}/examples/ek_ra8d2/hw_pending/blink_m33_hal
   )
 endif()

@@ -37,7 +37,7 @@
  * callbacks below, where we re-derive the byte offset by subtracting
  * this base.
  *
- * Copyright (c) 2026 Brighton Sikarskie
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 

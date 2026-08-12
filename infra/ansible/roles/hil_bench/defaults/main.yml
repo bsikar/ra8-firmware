@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # hil_bench role defaults -- provisions the hardware-in-the-loop bench host
 # (the Raspberry Pi with the EK-RA8D2 + J-Link attached) to a known, current,
@@ -65,7 +67,7 @@ hil_bench_linuxptp_version: "4.0-1ubuntu1.1"
 # Binaries the bench scripts invoke. Asserted individually after the install so
 # a partially-unpacked package cannot pass as a provisioned bench.
 hil_bench_linuxptp_binaries:
-  - ptp4l    # the PTP port state machine (grandmaster or slave)
+  - ptp4l    # PTP port state machine  # LEGACY-OK: IEEE 1588 / linuxptp port-state names, verbatim
   - phc2sys  # moves time between the NIC's PHC and CLOCK_REALTIME
   - pmc      # management client: queries a running ptp4l over its UDS socket
 # The distro ships system-wide units for all three. They are NOT enabled by

@@ -32,7 +32,7 @@
  */
 typedef enum : uint8_t {
   k_board_poison_len =
-    0xAAU, /**< Poison written into a length out-parameter, so a call that fails without setting it is detectable. */
+    0xAAU, /**< Poison in a length out-parameter, so a failing call that skips it is detectable. */
 } board_ek_ra8d2_fixture_t;
 
 static void reset_board_hal_state(void)

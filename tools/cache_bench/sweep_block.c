@@ -11,11 +11,11 @@
  * back by the cache is verified against the source blob. Row printing and
  * the summary report live in sweep_block_report.c.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include "sweep_block.h"
@@ -59,7 +59,28 @@ void internal_ra8_log_error_val(const char* tag, const char* message, uint32_t v
   (void)fprintf(stderr, "[ra8_log] %s: %s =%u\n", tag, message, value);
 }
 
-/** @brief Round @p v up to a power of two (>= 1). */
+/**
+ * @brief Round @p v up to a power of two (>= 1).
+ *
+ * @details Starts at 1 and left-shifts until the running value reaches or
+ *          exceeds @p v, yielding the smallest power of two not less than
+ *          @p v. Used to size the ::ra8_vmem hash-bucket table for a swept
+ *          frame count.
+ *
+ * @param[in] v Target to round up; both 0 and 1 map to 1.
+ *
+ * @return uint32_t The smallest power of two that is >= @p v (never 0).
+ * @retval 1     @p v was 0 or 1.
+ * @retval other The next power of two at or above @p v.
+ *
+ * @pre @p v <= 2^31 so the next power of two fits in 32 bits.
+ * @pre Called on the single benchmark thread.
+ * @post The result is an exact power of two.
+ * @post The result is >= @p v and >= 1; no shared state is touched.
+ *
+ * @note Thread-safe: a pure function of @p v with no shared state.
+ * @since 0.1.0
+ */
 static uint32_t cbs_pow2_ceil(uint32_t v)
 {
   uint32_t p = 1U;
@@ -93,7 +114,23 @@ typedef struct {
   uint32_t          object_id; /**< Registered object id.                */
 } cbs_cache_t;
 
-/** @brief Release a ::cbs_cache_t's heap carvings (idempotent). */
+/**
+ * @brief Release a ::cbs_cache_t's heap carvings (idempotent).
+ *
+ * @details Frees the frame storage, per-frame metadata, key-storage, and bucket
+ *          arrays, then zeroes the bundle so a repeat call is a safe no-op.
+ *          Called on every leg exit and on any partial ::cbs_cache_open failure.
+ *
+ * @param[in,out] c Cache bundle to release (NULL tolerated as a no-op).
+ *
+ * @pre @p c is NULL, or its buffers came from ::cbs_cache_open.
+ * @pre Called on the single benchmark thread.
+ * @post All four heap carvings are freed and @p c is all-zero.
+ * @post The embedded ::ra8_vmem is no longer usable until reopened.
+ *
+ * @note Not thread-safe: frees shared bundle buffers.
+ * @since 0.1.0
+ */
 static void cbs_cache_close(cbs_cache_t* c)
 {
   if (c == nullptr) {
@@ -121,6 +158,8 @@ static void cbs_cache_close(cbs_cache_t* c)
  * @param[in]  block_bytes Swept frame size in bytes.
  *
  * @return int 0 on success, 1 on allocation or init failure.
+ * @retval 0 @p c is cold and ready for ::ra8_vmem_get.
+ * @retval 1 A NULL/zero argument, or an allocation / init step failed.
  *
  * @pre `be->setup` succeeded for this block size.
  * @pre @p c is writable.
@@ -201,6 +240,8 @@ cbs_cache_open(cbs_cache_t* c, cbs_backend_t* be, uint32_t blob_bytes, uint32_t 
  * @param[out]    row        Row receiving reads / stats / wall time.
  *
  * @return int 0 on success, 1 on any get/put/verify failure.
+ * @retval 0 Every request hit correct bytes; @p row is fully filled.
+ * @retval 1 A NULL argument, a get/put error, or a byte mismatch occurred.
  *
  * @pre @p c was opened by ::cbs_cache_open and is unused (cold).
  * @pre @p wrap_bytes is a non-zero multiple of ::k_cbs_req_bytes.
@@ -288,6 +329,8 @@ static const char* const s_cbs_leg_names[k_cbs_leg_count] = {"seq", "hot"};
  * @param[in,out] nrows       Row count; incremented per finished leg.
  *
  * @return int 0 on success, 1 on any setup / leg failure.
+ * @retval 0 Both legs ran; ::k_cbs_leg_count rows were appended and printed.
+ * @retval 1 A NULL argument, a backend setup, an open, or a drive failed.
  *
  * @pre @p rows has space for ::k_cbs_leg_count more rows.
  * @pre @p be has `setup` and `teardown` bound.

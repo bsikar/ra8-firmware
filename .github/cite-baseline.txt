@@ -7,8 +7,8 @@
 # detector for it (cite_check.py --require-cites) ran in no gate at all, so
 # the rule was aspirational and the debt went unmeasured (#534).
 #
-# Total at this baseline: 2869 uncited access(es)
-# across 251 file(s).
+# Total at this baseline: 2857 uncited access(es)
+# across 248 file(s).
 #
 # The gate fails on any INCREASE, so the debt is frozen and can only be
 # burned down; a newly-added uncited access raises a count and fails.
@@ -66,9 +66,7 @@ examples/ek_ra8d2/hw_validated/hil/fault_div0_hil/main.c	1
 examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_steps.c	3
 libs/ra8_board_ek_ra8d2/inc/ra8_boot_intrinsics.h	2
 libs/ra8_board_ra8p1/inc/ra8_boot_intrinsics.h	2
-libs/ra8_core/src/ra8_exception.c	1
-libs/ra8_core/src/ra8_log.c	2
-libs/ra8_dfu/src/ra8_dfu_launch.c	1
+libs/ra8_core/src/ra8_log.c	1
 libs/ra8_hal/inc/ra8_iwdt_regs.h	2
 libs/ra8_hal/inc/ra8_pdm_regs.h	1
 libs/ra8_hal/inc/ra8_usb_regs.h	1
@@ -177,7 +175,6 @@ tests/test_ra8_cnecc_isr.c	20
 tests/test_ra8_crc.c	15
 tests/test_ra8_dac_b.c	37
 tests/test_ra8_display_pal.c	4
-tests/test_ra8_dmac.c	9
 tests/test_ra8_doc.c	12
 tests/test_ra8_doc_window.c	11
 tests/test_ra8_dotf.c	18

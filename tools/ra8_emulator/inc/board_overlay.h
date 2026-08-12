@@ -20,7 +20,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -104,7 +103,8 @@ typedef struct {
   /* Console window: console[0] is the newest *visible* line (the firmware ring
    * is deeper -- see console_total -- and console_scroll says how far back this
    * window starts). Unused rows are empty strings. */
-  char     console[k_overlay_console_rows][k_overlay_line_cap]; /**< Visible lines (active tab). */
+  /** Visible lines (active tab). */
+  char     console[k_overlay_console_rows][k_overlay_line_cap];
   uint32_t console_count;      /**< Visible lines populated (<= rows).        */
   uint32_t console_scroll;     /**< Lines scrolled back from newest (0=live). */
   uint32_t console_total;      /**< Total lines in the active channel ring.   */
@@ -112,16 +112,20 @@ typedef struct {
   /* Tabbed-console bar: one tab per board_console channel. console_active_ch is
    * the channel the console body shows; the names + per-tab line counts caption
    * the bar. Borrowed name pointers valid for the compose call only. */
-  uint32_t    console_ch_count;                                   /**< Tabs to draw (<= max). */
-  uint32_t    console_active_ch;                                  /**< Active tab index.      */
-  const char* console_ch_name[k_overlay_console_tabs_max];        /**< Per-tab caption.       */
-  uint32_t    console_ch_count_lines[k_overlay_console_tabs_max]; /**< Per-tab line count.    */
-  uint32_t    pc;            /**< Current emulated program counter.             */
-  uint32_t    chunks;        /**< Emulation chunks run so far.                  */
-  uint32_t    mmio_reads;    /**< Modelled-peripheral MMIO reads served.        */
-  uint32_t    mmio_writes;   /**< Modelled-peripheral MMIO writes served.       */
-  uint32_t    uart_tx_total; /**< Total UART TX bytes the firmware emitted.     */
-  bool        running;       /**< True while the run loop is live (not parked). */
+  /** Tabs to draw (<= max). */
+  uint32_t console_ch_count;
+  /** Active tab index. */
+  uint32_t console_active_ch;
+  /** Per-tab caption. */
+  const char* console_ch_name[k_overlay_console_tabs_max];
+  /** Per-tab line count. */
+  uint32_t console_ch_count_lines[k_overlay_console_tabs_max];
+  uint32_t pc;            /**< Current emulated program counter.             */
+  uint32_t chunks;        /**< Emulation chunks run so far.                  */
+  uint32_t mmio_reads;    /**< Modelled-peripheral MMIO reads served.        */
+  uint32_t mmio_writes;   /**< Modelled-peripheral MMIO writes served.       */
+  uint32_t uart_tx_total; /**< Total UART TX bytes the firmware emitted.     */
+  bool     running;       /**< True while the run loop is live (not parked). */
 } board_status_t;
 
 /**

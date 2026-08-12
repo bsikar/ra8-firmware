@@ -8,7 +8,7 @@
  * "fill CDBUF, set CDCTL0.TRREQ, poll INTS.CMDCMP, read CDBUF" sequence
  * actually round-trips data. Without this block the xSPI MMIO was unmodeled:
  * flash_journal reached its run budget only because it tolerates the failed
- * ops, while threadx_levelx_demo / threadx_filex_levelx_demo panic-halted
+ * ops, while threadx_levelx_demo / threadx_fs_levelx_demo panic-halted
  * inside lx_nor_flash_format (LevelX needs the flash to truly read back what
  * it wrote).
  *
@@ -27,7 +27,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 

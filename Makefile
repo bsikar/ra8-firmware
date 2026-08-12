@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Top-level Makefile for ra8-firmware.
 #
@@ -24,8 +26,6 @@
 #   make tools      -- build every host developer tool
 #   make help       -- grouped reference of every top-level target
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL := /bin/bash
@@ -79,6 +79,7 @@ RA8_APP_DIR_ra8d2-ereader := $(ROOT)/src/app
 RA8_FLASH := $(addprefix flash-,$(RA8_APPS))
 RA8_DEBUG := $(addprefix debug-,$(RA8_APPS))
 RA8_OZONE := $(addprefix ozone-,$(RA8_APPS))
+RA8_MONITOR := $(addprefix monitor-,$(RA8_APPS))
 RA8_EMU   := $(addprefix emu-,$(RA8_APPS))
 # The e-reader / dual-core / tz-threadx runs need dedicated Debug recipes (see
 # mk/emu.mk); drop them from the generic single-image emulator rule.
@@ -128,10 +129,12 @@ help:
 	@echo "  make viewer            build the native reader viewer (tools/rabook_viewer)"
 	@echo "  make view FILE=<doc>   open a document in the viewer (arrows page; HEADLESS=1 dumps a PPM)"
 	@echo ""
-	@echo "HARDWARE -- flash / debug (board on THIS machine, local J-Link)  [make flash-help / debug-help / ozone-help]"
+	@echo "HARDWARE -- flash / debug / monitor (board on THIS machine)  [make flash-help / debug-help / ozone-help / monitor-help]"
 	@echo "  make flash-<app>       build + flash an app  (e.g. make flash-blink)"
 	@echo "  make debug-<app>       build + gdb via J-Link"
 	@echo "  make ozone-<app>       build + open in Ozone"
+	@echo "  make monitor           open live serial console stream for attached board"
+	@echo "  make monitor-<app>     build + flash <app>, then open live serial console"
 	@echo ""
 	@echo "HIL -- hardware-in-the-loop (board on the Pi rig, driven over SSH)        [make hil-help]"
 	@echo "  make hil               full HIL suite from this machine (build+flash+verify)"

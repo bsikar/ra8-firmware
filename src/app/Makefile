@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Makefile for the main e-reader application (src/app).
 #
@@ -7,8 +9,6 @@
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make clean       # rm -rf src/app/build
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 SHELL     := /bin/bash
 

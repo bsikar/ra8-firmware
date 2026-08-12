@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/netxduo.cmake
 #
@@ -28,8 +30,6 @@
 # netxduo netxduo_port_ra8_eth)` -- everything else (include dirs,
 # preprocessor defines) flows through the interface targets.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Idempotency guard.
@@ -63,7 +63,6 @@ set(_RA8_NETXDUO_VENDOR_DIR "${_RA8_NETXDUO_REPO_ROOT}/libs/third_party/netxduo"
 set(_RA8_NETXDUO_COMMON_INC "${_RA8_NETXDUO_VENDOR_DIR}/common/inc")
 set(_RA8_NETXDUO_COMMON_SRC "${_RA8_NETXDUO_VENDOR_DIR}/common/src")
 set(_RA8_NETXDUO_CRYPTO_INC "${_RA8_NETXDUO_VENDOR_DIR}/crypto_libraries/inc")
-set(_RA8_NETXDUO_CRYPTO_SRC "${_RA8_NETXDUO_VENDOR_DIR}/crypto_libraries/src")
 set(_RA8_NETXDUO_PORT_INC "${_RA8_NETXDUO_VENDOR_DIR}/ports/cortex_m85/gnu/inc")
 
 if(NOT EXISTS "${_RA8_NETXDUO_COMMON_INC}/nx_api.h")
@@ -73,28 +72,32 @@ if(NOT EXISTS "${_RA8_NETXDUO_COMMON_INC}/nx_api.h")
 endif()
 
 # ---------------------------------------------------------------------------
-# Common NetX Duo + NetX Crypto sources.
+# NetX Duo core sources.
+#
+# The core TCP/IP stack only. `crypto_libraries/src` is deliberately NOT
+# compiled and neither is `nx_secure/`: TLS in this tree is Mbed TLS behind
+# `libs/ra8_tls`, and nothing first-party calls a single `nx_crypto_*` or
+# `nx_secure_*` symbol (#621). Compiling all 56 crypto TUs bought nothing --
+# only `--gc-sections` kept them out of every image -- while presenting a
+# second, unqualified crypto implementation inside a component whose SOUP
+# record has to state what it contains.
+#
+# The one file that made this obvious was `nx_crypto_generic_ciphersuites.c`:
+# it includes `nx_secure_tls.h`, so it had to be surgically excluded for the
+# other 55 to link at all. A crypto library whose TLS-aware half cannot be
+# built is not being used as a crypto library.
+#
+# `crypto_libraries/inc` STAYS on the include path: `common/inc/nx_api.h`
+# includes the crypto headers for the `NX_CRYPTO_METHOD` struct definition, so
+# the core does not compile without them. Struct layout is all it needs -- the
+# core references only the `nx_crypto_algorithm` / `nx_crypto_block_size_in_bytes`
+# FIELDS, never a crypto function.
 # ---------------------------------------------------------------------------
 file(GLOB _RA8_NETXDUO_COMMON_SOURCES CONFIGURE_DEPENDS "${_RA8_NETXDUO_COMMON_SRC}/*.c")
-file(GLOB _RA8_NETXDUO_CRYPTO_SOURCES CONFIGURE_DEPENDS "${_RA8_NETXDUO_CRYPTO_SRC}/*.c")
-
-# `nx_crypto_generic_ciphersuites.c` includes `nx_secure_tls.h`,
-# which we do not pull into the build. The TLS-aware ciphersuite
-# tables are not needed by NetX core or the AES / SHA-256 crypto
-# methods themselves -- the file just packages them for nx_secure
-# consumers. Drop it so we don't have to drag the entire NetX Secure
-# tree in for the TCP-echo demo.
-list(
-  FILTER
-  _RA8_NETXDUO_CRYPTO_SOURCES
-  EXCLUDE
-  REGEX
-  ".*/nx_crypto_generic_ciphersuites\\.c$"
-)
 
 set(_RA8_NETXDUO_SECURE_INC "${_RA8_NETXDUO_VENDOR_DIR}/nx_secure/inc")
 
-add_library(netxduo_objs OBJECT ${_RA8_NETXDUO_COMMON_SOURCES} ${_RA8_NETXDUO_CRYPTO_SOURCES})
+add_library(netxduo_objs OBJECT ${_RA8_NETXDUO_COMMON_SOURCES})
 
 target_include_directories(
   netxduo_objs PUBLIC ${_RA8_NETXDUO_COMMON_INC} ${_RA8_NETXDUO_CRYPTO_INC}

@@ -57,14 +57,16 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_sdspi_pattern_stride =
-    5U, /**< Stride of the block generator, `i * 5 + 1`, so neighbouring blocks never share a byte pattern. */
+    5U, /**< Generator stride `i * 5 + 1`; neighbouring blocks never share a byte pattern. */
   k_sdspi_wakeup_clocks =
-    10U, /**< Idle bytes clocked out before the first command; the card needs at least 74 clocks, which these supply. */
+    10U, /**< Idle bytes before the first command; needs >= 74 clocks, which these supply. */
   k_sdspi_csd_v2_byte0 =
-    0x40U, /**< CSD byte 0 with CSD_STRUCTURE = 1, selecting the version-2 (SDHC) layout. */
-  k_shift_byte3 = 24U, /**< Shift to the most significant byte, which goes on the wire first. */
-  k_sdspi_csd_off_c_size_hi = 7, /**< CSD byte holding the top of the version-2 C_SIZE field. */
-  k_sdspi_csd_off_c_size_lo = 9, /**< The byte holding its low half.                          */
+    0x40U,             /**< CSD byte 0, CSD_STRUCTURE = 1, selecting the version-2 (SDHC) layout. */
+  k_shift_byte3 = 24U, /**< Shift to the most significant byte, which goes on the wire first.     */
+  /** CSD byte holding the top of the version-2 C_SIZE field. */
+  k_sdspi_csd_off_c_size_hi = 7,
+  /** The byte holding its low half. */
+  k_sdspi_csd_off_c_size_lo = 9,
   k_byte_mask = 0xFFU, /**< Low-byte mask used when clocking a word out a byte at a time. */
 } io_blockdev_sdspi_cov_fixture_t;
 

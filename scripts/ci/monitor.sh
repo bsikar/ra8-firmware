@@ -36,6 +36,18 @@
 #      workflows locally, so GitHub is confirmation, not discovery. `wait`
 #      exists for the rare case that genuinely needs it and is bounded.
 #
+# The daemon corrects its OWN stalls rather than waiting to be noticed (#560).
+# Three layers, because a poller that silently stops is the "does nothing" bug
+# (#190) one level up:
+#   - every gh call is capped by `timeout` (RA8_CI_GH_TIMEOUT), so a hung
+#     request can never freeze the poll loop -- the wedge that went dark in #560;
+#   - the loop pings a systemd watchdog (WatchdogSec in the unit) every cycle, so
+#     a daemon wedged for ANY reason is SIGABRTed and Restart=always brings it
+#     back -- Restart alone cannot, since a hung process never exits;
+#   - a freshness self-check exits the daemon after a few cycles that produced no
+#     state file (a reaped state dir, a full disk), so a live-but-useless daemon
+#     restarts instead of persisting.
+#
 # Exit codes are the contract, and there are exactly three:
 #   0  PASS      every run for the sha completed successfully
 #   1  FAIL      at least one run for the sha failed / timed out / was cancelled
@@ -102,6 +114,32 @@ if [[ ! "$RA8_CI_STALL_MIN" =~ ^[0-9]+$ ]]; then
   RA8_CI_STALL_MIN=15
 fi
 
+# Hard cap on every network-bound `gh` call. A gh api request with NO timeout is
+# exactly how the daemon went dark (#560): the request hung, poll_once never
+# returned, the loop never wrote another state file, and Restart=always could do
+# nothing because a hung process never exits. A bounded call guarantees the loop
+# always makes progress; a killed call surfaces as a failed command, which every
+# caller here already scores as UNKNOWN.
+RA8_CI_GH_TIMEOUT="${RA8_CI_GH_TIMEOUT:-60}"
+if [[ ! "$RA8_CI_GH_TIMEOUT" =~ ^[0-9]+$ ]]; then
+  log "warning: RA8_CI_GH_TIMEOUT='$RA8_CI_GH_TIMEOUT' is not an integer -- using 60"
+  RA8_CI_GH_TIMEOUT=60
+fi
+# systemd watchdog deadline. It must comfortably exceed the worst case a HEALTHY
+# poll_once can take -- two gh calls, each capped at RA8_CI_GH_TIMEOUT -- so a
+# merely slow poll never trips it and only a genuine wedge does. The default
+# derives from the gh timeout so the two stay consistent if either is retuned.
+RA8_CI_WATCHDOG_SEC="${RA8_CI_WATCHDOG_SEC:-$((RA8_CI_GH_TIMEOUT * 4 + 60))}"
+if [[ ! "$RA8_CI_WATCHDOG_SEC" =~ ^[0-9]+$ ]]; then
+  log "warning: RA8_CI_WATCHDOG_SEC='$RA8_CI_WATCHDOG_SEC' is not an integer -- using 300"
+  RA8_CI_WATCHDOG_SEC=300
+fi
+# Resolved once: GNU coreutils `timeout` (Linux daemon box) or `gtimeout`
+# (Homebrew, for interactive `quota` on a Mac). Absent on neither path in
+# practice, but if it were, gh_api falls back to an unbounded call rather than
+# refusing to run.
+RA8_CI_TIMEOUT_BIN="$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || true)"
+
 need_gh() {
   command -v gh >/dev/null 2>&1 || {
     log "error: gh CLI not on PATH"
@@ -150,68 +188,57 @@ need_jq() {
 # does not apply is normal, and failing on it would cry wolf; the skipped names
 # are printed as evidence by `skipped-count` and `lines-sha` instead.
 #
-# One reader, one place: every field and every rendered view comes from here.
+# CANCELLED IS NOT FAILURE -- the verdict depends on it too. A run is `cancelled`
+# when superseded (a newer push cancels the in-flight one) or stopped, NOT when a
+# gate failed. Scoring it FAIL read 91eef75dd -- 6/6 success on main, its dev
+# firmware/emulator-smoke superseded -- as red (#561). So a sha is judged per
+# workflow by that workflow's LATEST decisive (success/failure) run; a cancelled
+# or skipped sibling never overrides it, and a cancelled/skipped-only workflow is
+# a NON-result (unlike `in_progress`, which keeps the sha UNDECIDED).
+#
+# One reader, one place: every field and rendered view comes from here. The
+# reader lives in scripts/ci/ci_status.py (a lintable, testable module) beside
+# monitor.sh; the daemon never calls this path, so its stand-alone copy omits it.
 _status_read() {
-  python3 - "$RA8_CI_STATE" "$@" <<'PY'
-import json
-import sys
+  python3 "$(dirname "${BASH_SOURCE[0]}")/ci_status.py" "$RA8_CI_STATE" "$@"
+}
 
-path, mode = sys.argv[1], sys.argv[2]
-arg = sys.argv[3] if len(sys.argv) > 3 else ""
-with open(path) as fh:
-    doc = json.load(fh)
-runs = doc.get("runs") or []
+# Every network-bound gh call goes through here so none can hang the daemon.
+# See the RA8_CI_GH_TIMEOUT note above for why an unbounded call is dangerous.
+# `-k 5` force-kills a call that ignores the initial SIGTERM; the exit status is
+# passed straight back so callers keep treating a failed/killed call as UNKNOWN.
+gh_api() {
+  if [[ -n "$RA8_CI_TIMEOUT_BIN" ]]; then
+    "$RA8_CI_TIMEOUT_BIN" -k 5 "$RA8_CI_GH_TIMEOUT" gh api "$@"
+  else
+    gh api "$@"
+  fi
+}
 
-
-def matching(sha):
-    return [r for r in runs if str(r.get("sha") or "").startswith(sha)]
-
-
-def line(run, with_sha=False):
-    tail = "  " + str(run.get("sha") or "")[:9] if with_sha else ""
-    return "  %s: %s/%s%s" % (
-        run.get("name"),
-        run.get("status"),
-        run.get("conclusion") or "-",
-        tail,
-    )
-
-
-if mode == "field":
-    print(doc.get(arg) or "")
-elif mode == "count":
-    print(len(matching(arg)))
-elif mode == "verdict":
-    # A sha's verdict comes from that sha's runs and nothing else, and an
-    # all-skipped set is UNKNOWN. See the SKIPPED IS NOT SUCCESS note above
-    # this function.
-    got = matching(arg)
-    unfinished = {"failure", "timed_out", "cancelled"}
-    if any(r.get("conclusion") in unfinished for r in got):
-        print("FAIL")
-    elif any(r.get("status") != "completed" for r in got):
-        print("UNKNOWN")
-    elif got and all(r.get("conclusion") == "skipped" for r in got):
-        print("UNKNOWN")
-    else:
-        print("PASS")
-elif mode == "skipped-count":
-    print(sum(1 for r in matching(arg) if r.get("conclusion") == "skipped"))
-elif mode == "lines-sha":
-    for r in matching(arg):
-        print(line(r))
-elif mode == "lines-head":
-    for r in runs[:6]:
-        print(line(r, with_sha=True))
-else:
-    sys.exit("unknown mode: " + mode)
-PY
+# systemd watchdog integration. Both are no-ops when the daemon is started by
+# hand (no NOTIFY_SOCKET / WATCHDOG_USEC in the environment), so
+# `monitor.sh daemon` still runs standalone. Under the unit written by
+# install-service they are what makes a STALL self-correcting: the unit declares
+# WatchdogSec, and if the daemon wedges it stops pinging, so systemd -- promised
+# a ping every WatchdogSec -- kills and restarts it. Restart=always alone cannot
+# do this, because a hung process never exits and so never triggers a restart.
+# That is precisely how the daemon went dark in #560.
+sd_notify() {
+  [[ -n "${NOTIFY_SOCKET:-}" ]] || return 0
+  command -v systemd-notify >/dev/null 2>&1 || return 0
+  systemd-notify "$@" 2>/dev/null || true
+}
+sd_watchdog_ping() {
+  # WATCHDOG_USEC is set by systemd only when WatchdogSec is configured, so this
+  # stays silent unless a watchdog is actually watching.
+  [[ -n "${WATCHDOG_USEC:-}" ]] || return 0
+  sd_notify WATCHDOG=1
 }
 
 # rate_limit does not itself count against the REST quota, so this is safe to
 # call every cycle.
 quota_remaining() {
-  gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown"
+  gh_api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown"
 }
 
 # Assert the exit-code contract, in both directions, against a synthetic state
@@ -249,12 +276,11 @@ _ci_selftest_says() {
   return 0
 }
 
-cmd_selftest() {
-  local d fails=0
-  d="$(mktemp -d)"
-  export RA8_CI_STATE_DIR="$d"
-  export RA8_CI_SELF="$0"
-  cat >"$d/status.json" <<JSON
+# The synthetic status document the selftest asserts against. Split out of
+# cmd_selftest to keep it within the per-function line budget; `date` is
+# evaluated per call so the file reads as freshly polled.
+_selftest_fixture() {
+  cat <<JSON
 {"overall":"PASS","reason":"","polled_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","runs":[
  {"name":"firmware","status":"completed","conclusion":"success","sha":"aaaaaaaaa1"},
  {"name":"firmware","status":"completed","conclusion":"failure","sha":"bbbbbbbbb2"},
@@ -262,9 +288,27 @@ cmd_selftest() {
  {"name":"firmware","status":"completed","conclusion":"skipped","sha":"ddddddddd4"},
  {"name":"docs","status":"completed","conclusion":"skipped","sha":"ddddddddd4"},
  {"name":"firmware","status":"completed","conclusion":"success","sha":"eeeeeeeee5"},
- {"name":"hil","status":"completed","conclusion":"skipped","sha":"eeeeeeeee5"}]}
+ {"name":"hil","status":"completed","conclusion":"skipped","sha":"eeeeeeeee5"},
+ {"name":"firmware","status":"completed","conclusion":"success","sha":"fff1111a1"},
+ {"name":"coverage","status":"completed","conclusion":"success","sha":"fff1111a1"},
+ {"name":"emulator-smoke","status":"completed","conclusion":"cancelled","sha":"fff1111a1"},
+ {"name":"hil","status":"completed","conclusion":"cancelled","sha":"fff1111a1"},
+ {"name":"firmware","status":"completed","conclusion":"cancelled","sha":"ggg2222b2"},
+ {"name":"docs","status":"completed","conclusion":"cancelled","sha":"ggg2222b2"},
+ {"name":"firmware","status":"completed","conclusion":"failure","sha":"hhh3333c3"},
+ {"name":"docs","status":"completed","conclusion":"cancelled","sha":"hhh3333c3"},
+ {"name":"firmware","status":"completed","conclusion":"failure","sha":"iii4444d4","created":"2026-08-01T00:00:00Z"},
+ {"name":"firmware","status":"completed","conclusion":"success","sha":"iii4444d4","created":"2026-08-02T00:00:00Z"},
+ {"name":"firmware","status":"completed","conclusion":"success","sha":"jjj5555e5","created":"2026-08-01T00:00:00Z"},
+ {"name":"firmware","status":"completed","conclusion":"failure","sha":"jjj5555e5","created":"2026-08-02T00:00:00Z"},
+ {"name":"firmware","status":"completed","conclusion":"success","sha":"kkk6666f6"},
+ {"name":"firmware","status":"completed","conclusion":"cancelled","sha":"kkk6666f6"}]}
 JSON
+}
 
+# Every per-sha verdict rule, asserted in both directions. Uses the
+# dynamically-scoped `fails` counter of its cmd_selftest caller.
+_selftest_verdict_cases() {
   _ci_selftest_case 0 "healthy branch head is PASS" status || fails=$((fails + 1))
   _ci_selftest_case 1 "failing sha is FAIL even when the branch head passed" \
     status --sha bbbbbbbbb2 || fails=$((fails + 1))
@@ -284,9 +328,36 @@ JSON
   _ci_selftest_says eeeeeeeee5 '^note:.*skipped' \
     "a partially skipped sha names the jobs that did not execute" || fails=$((fails + 1))
 
+  # #561: cancelled is not failure. A superseded run must not read as red, must
+  # not mask a real failure, and a cancelled-only sha is a non-result (UNKNOWN).
+  # Each direction is asserted so the fix can neither cry wolf nor go quiet.
+  _ci_selftest_case 0 "success workflows + cancelled-only workflows is PASS (the 91eef75dd case)" \
+    status --sha fff1111a1 || fails=$((fails + 1))
+  _ci_selftest_case 3 "an ALL-CANCELLED sha is UNKNOWN, not FAIL (superseded, nothing concluded)" \
+    status --sha ggg2222b2 || fails=$((fails + 1))
+  _ci_selftest_case 1 "a real failure still FAILs next to a cancelled sibling" \
+    status --sha hhh3333c3 || fails=$((fails + 1))
+  _ci_selftest_case 0 "FAILED then a re-run SUCCEEDED is PASS (latest decisive wins)" \
+    status --sha iii4444d4 || fails=$((fails + 1))
+  _ci_selftest_case 1 "SUCCEEDED then a re-run FAILED is FAIL (latest decisive wins)" \
+    status --sha jjj5555e5 || fails=$((fails + 1))
+  _ci_selftest_case 0 "a success run is not overridden by a cancelled sibling in the same workflow" \
+    status --sha kkk6666f6 || fails=$((fails + 1))
+  _ci_selftest_says fff1111a1 '^note:.*cancelled/superseded, not counted' \
+    "a PASS-with-cancelled sha names the superseded runs" || fails=$((fails + 1))
+}
+
+cmd_selftest() {
+  local d fails=0 hits
+  d="$(mktemp -d)"
+  export RA8_CI_STATE_DIR="$d"
+  export RA8_CI_SELF="$0"
+  _selftest_fixture >"$d/status.json"
+
+  _selftest_verdict_cases
+
   # The precise trap that burned two agents: an `until` loop grepping for a
   # settled verdict must not match anything while the sha has no runs.
-  local hits
   hits="$(bash "$0" status --sha deadbeef9 2>&1 | grep -cE '^overall: (PASS|FAIL)' || true)"
   if [[ "$hits" != "0" ]]; then
     echo "FAIL  unrecorded sha still emits a settled-looking 'overall:' line ($hits)"
@@ -311,7 +382,7 @@ cmd_quota() {
   need_gh
   local r reset
   r="$(quota_remaining)"
-  reset="$(gh api rate_limit --jq '.resources.core.reset' 2>/dev/null || echo 0)"
+  reset="$(gh_api rate_limit --jq '.resources.core.reset' 2>/dev/null || echo 0)"
   echo "core quota remaining: $r"
   if [[ "$reset" != "0" && "$reset" != "" ]]; then
     echo "resets at: $(date -d "@$reset" 2>/dev/null || date -r "$reset" 2>/dev/null || echo "$reset")"
@@ -319,13 +390,25 @@ cmd_quota() {
   echo "reserve threshold: $RA8_CI_QUOTA_RESERVE (poller backs off below this)"
 }
 
+# Returns non-zero when the file could not be written, so the daemon's
+# freshness self-check can tell "we produced a verdict" from "we ran but wrote
+# nothing". mkdir every call so a state dir reaped out from under a long-lived
+# daemon (systemd-tmpfiles sweeps /var/tmp) is recreated rather than leaving the
+# daemon writing into the void -- a live process producing no file, which every
+# reader correctly reports as UNKNOWN but nothing was correcting.
 write_state() {
   local payload="$1"
+  mkdir -p "$RA8_CI_STATE_DIR" 2>/dev/null || true
   local tmp="$RA8_CI_STATE.tmp.$$"
-  printf '%s\n' "$payload" >"$tmp" 2>/dev/null && mv -f "$tmp" "$RA8_CI_STATE" 2>/dev/null
-  # World-writable on purpose: several agents run as different accounts on the
-  # shared box and any of them may be the one that restarts the daemon.
-  chmod 666 "$RA8_CI_STATE" 2>/dev/null || true
+  if printf '%s\n' "$payload" >"$tmp" 2>/dev/null && mv -f "$tmp" "$RA8_CI_STATE" 2>/dev/null; then
+    # World-writable on purpose: several agents run as different accounts on the
+    # shared box and any of them may be the one that restarts the daemon.
+    chmod 666 "$RA8_CI_STATE" 2>/dev/null || true
+    return 0
+  fi
+  rm -f "$tmp" 2>/dev/null || true
+  log "error: could not write state file $RA8_CI_STATE (state dir gone or disk full?)"
+  return 1
 }
 
 # Stall hint for the newest sha, emitted as a JSON string so poll_once can
@@ -363,6 +446,34 @@ stall_hint() {
   printf '%s' "$hint"
 }
 
+# The head-sha verdict, as a module-level constant so poll_once stays within the
+# per-function line budget. Same semantics as the python `verdict` mode (the
+# CANCELLED / SKIPPED notes): group by workflow, honour each workflow's latest
+# decisive (success/failure) run, treat cancelled/skipped as non-results so a
+# superseded run is not read as FAIL, and keep the head RUNNING while any run is
+# still in flight. $s is bound with `--arg s` to the head sha.
+RA8_OVERALL_JQ="$(
+  cat <<'JQ'
+[ .[] | select(.sha==$s) ] as $cur
+| if ($cur|length)==0 then "UNKNOWN"
+  else
+    ( $cur | group_by(.name) | map(
+        ( [ .[] | select(.conclusion=="success" or .conclusion=="failure"
+                         or .conclusion=="timed_out") ] | sort_by(.created) ) as $dec
+        | if ($dec|length) > 0 then
+            (if $dec[-1].conclusion=="success" then "PASS" else "FAIL" end)
+          elif any(.[]; .status != "completed") then "RUNNING"
+          else "NORESULT" end
+      ) ) as $wf
+    | if   any($wf[]; . == "FAIL")    then "FAIL"
+      elif any($wf[]; . == "RUNNING") then "RUNNING"
+      elif any($wf[]; . == "PASS")    then "PASS"
+      else "UNKNOWN" end
+  end
+JQ
+)"
+readonly RA8_OVERALL_JQ
+
 poll_once() {
   local remaining
   remaining="$(quota_remaining)"
@@ -383,7 +494,7 @@ poll_once() {
   # enqueue time -- `updated` moves for reasons unrelated to being picked up,
   # so it cannot measure how long a job has been waiting for a runner.
   local runs
-  runs="$(gh api "/repos/$RA8_CI_REPO/actions/runs?branch=$RA8_CI_BRANCH&per_page=30" \
+  runs="$(gh_api "/repos/$RA8_CI_REPO/actions/runs?branch=$RA8_CI_BRANCH&per_page=30" \
     --jq '[.workflow_runs[] | {name:.name, sha:.head_sha, status:.status, conclusion:.conclusion, url:.html_url, created:.created_at, updated:.updated_at}]' \
     2>/dev/null)"
   if [[ -z "$runs" ]]; then
@@ -401,15 +512,13 @@ poll_once() {
   # as PASS. Nothing ran, so there is no verdict: that is UNKNOWN. A partially
   # skipped run still passes; a conditional job that does not apply is normal
   # and failing on it would cry wolf.
+  # Same semantics as the python `verdict` mode (see the CANCELLED / SKIPPED
+  # notes): group by workflow, honour each workflow's latest decisive run, and
+  # treat cancelled/skipped as non-results so a superseded run is not read as
+  # FAIL. `in_progress` is not terminal and keeps the head RUNNING.
   local head_sha overall
   head_sha="$(printf '%s' "$runs" | jq -r 'if length>0 then .[0].sha else "" end')"
-  overall="$(printf '%s' "$runs" | jq -r --arg s "$head_sha" '
-      [ .[] | select(.sha==$s) ] as $cur
-      | if ($cur|length)==0 then "UNKNOWN"
-        elif any($cur[]; .conclusion=="failure" or .conclusion=="timed_out" or .conclusion=="cancelled") then "FAIL"
-        elif all($cur[]; .status=="completed") and all($cur[]; .conclusion=="skipped") then "UNKNOWN"
-        elif all($cur[]; .status=="completed") and all($cur[]; .conclusion=="success" or .conclusion=="skipped") then "PASS"
-        else "RUNNING" end')"
+  overall="$(printf '%s' "$runs" | jq -r --arg s "$head_sha" "$RA8_OVERALL_JQ")"
 
   # Evidence, not verdict: `overall` above is untouched by the hint.
   local warning
@@ -424,12 +533,48 @@ poll_once() {
   return 0
 }
 
+# Age in seconds of the state file, or a large sentinel if it is missing. Used
+# by the daemon's freshness self-check and by cmd_status's staleness gate.
+state_age_seconds() {
+  local m now
+  m="$(stat -c %Y "$RA8_CI_STATE" 2>/dev/null || stat -f %m "$RA8_CI_STATE" 2>/dev/null)"
+  [[ -z "$m" ]] && {
+    echo 999999
+    return
+  }
+  now="$(date +%s)"
+  echo $((now - m))
+}
+
+# sleep for $1 seconds, but in bounded chunks with a watchdog ping between each,
+# so a long (backoff) sleep never trips the watchdog -- the watchdog must fire
+# on a real wedge, not on a deliberate wait.
+watchdog_sleep() {
+  local remaining="$1" step
+  while [[ "$remaining" -gt 0 ]]; do
+    step=30
+    [[ "$remaining" -lt 30 ]] && step="$remaining"
+    sleep "$step"
+    remaining=$((remaining - step))
+    sd_watchdog_ping
+  done
+}
+
 cmd_daemon() {
   need_gh
   need_jq
   log "starting shared poller: repo=$RA8_CI_REPO branch=$RA8_CI_BRANCH interval=${RA8_CI_INTERVAL}s"
-  log "state file: $RA8_CI_STATE"
+  log "state file: $RA8_CI_STATE (gh timeout ${RA8_CI_GH_TIMEOUT}s, watchdog ${RA8_CI_WATCHDOG_SEC}s)"
+  sd_notify --ready
+  sd_watchdog_ping
   local backoff="$RA8_CI_INTERVAL"
+  # poll_once ALWAYS writes state (a verdict on success, an UNKNOWN document on
+  # failure), so right after it returns the file must be seconds old. If it is
+  # not, write_state failed -- a vanished state dir, a full disk -- and the
+  # daemon is running while producing nothing. Count those dead cycles and exit
+  # so systemd restarts a clean daemon (issue #190: never silently do nothing).
+  local stale_cycles=0
+  local fresh_limit=$((RA8_CI_GH_TIMEOUT * 2 + 30))
   while true; do
     if poll_once; then
       backoff="$RA8_CI_INTERVAL"
@@ -439,7 +584,22 @@ cmd_daemon() {
       [[ "$backoff" -gt 900 ]] && backoff=900
       log "backing off to ${backoff}s"
     fi
-    sleep "$backoff"
+    # A completed poll cycle is proof of life -- feed the watchdog before the
+    # long sleep, then again from inside watchdog_sleep.
+    sd_watchdog_ping
+    local age
+    age="$(state_age_seconds)"
+    if [[ "$age" -le "$fresh_limit" ]]; then
+      stale_cycles=0
+    else
+      stale_cycles=$((stale_cycles + 1))
+      log "warning: state file not refreshed this cycle (age ${age}s > ${fresh_limit}s), stale_cycles=$stale_cycles"
+      if [[ "$stale_cycles" -ge 3 ]]; then
+        log "error: state file stale for $stale_cycles cycles -- exiting so systemd restarts a clean daemon"
+        exit "$RA8_CI_EXIT_FAIL"
+      fi
+    fi
+    watchdog_sleep "$backoff"
   done
 }
 
@@ -477,6 +637,11 @@ _status_for_sha() {
     else
       echo "note:    $skipped of $seen run(s) skipped and did not execute (listed below)"
     fi
+  fi
+  local cancelled
+  cancelled="$(_status_read cancelled-count "$want_sha")"
+  if [[ "$cancelled" != "0" ]]; then
+    echo "note:    $cancelled of $seen run(s) cancelled/superseded, not counted (listed below)"
   fi
   _status_read lines-sha "$want_sha"
   [[ -n "$warning" ]] && echo "$warning"
@@ -579,6 +744,44 @@ cmd_wait() {
   exit "$RA8_CI_EXIT_UNKNOWN"
 }
 
+# Write the systemd user unit that runs the daemon. Extracted from
+# cmd_install_service to keep that function within the NASA Rule 4 line budget.
+# The WatchdogSec / NotifyAccess / Restart trio here is the contract that makes
+# a stall self-correcting (#560) -- keep them together.
+write_service_unit() {
+  local unitfile="$1" self="$2"
+  cat >"$unitfile" <<EOF
+[Unit]
+Description=Shared GitHub Actions status poller for the RA8 agent fleet
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=RA8_CI_REPO=$RA8_CI_REPO
+Environment=RA8_CI_BRANCH=$RA8_CI_BRANCH
+Environment=RA8_CI_INTERVAL=$RA8_CI_INTERVAL
+Environment=RA8_CI_QUOTA_RESERVE=$RA8_CI_QUOTA_RESERVE
+Environment=RA8_CI_STALL_MIN=$RA8_CI_STALL_MIN
+Environment=RA8_CI_STATE_DIR=$RA8_CI_STATE_DIR
+Environment=RA8_CI_GH_TIMEOUT=$RA8_CI_GH_TIMEOUT
+Environment=RA8_CI_WATCHDOG_SEC=$RA8_CI_WATCHDOG_SEC
+ExecStart=/usr/bin/env bash $self daemon
+Restart=always
+RestartSec=30
+# A hung daemon never exits, so Restart=always alone cannot recover it -- that
+# is how #560 stayed dark. The watchdog closes that gap: the daemon pings
+# WATCHDOG=1 every cycle (sd_watchdog_ping), and if the pings stop -- wedged in a
+# call, deadlocked -- systemd SIGABRTs it once WatchdogSec elapses and
+# Restart=always brings it straight back. NotifyAccess=all is required because
+# the ping is sent by a systemd-notify CHILD of the daemon, not its main PID.
+WatchdogSec=$RA8_CI_WATCHDOG_SEC
+NotifyAccess=all
+
+[Install]
+WantedBy=default.target
+EOF
+}
+
 cmd_install_service() {
   local unitdir="$HOME/.config/systemd/user"
   local self
@@ -600,26 +803,7 @@ cmd_install_service() {
   self="$stable"
 
   mkdir -p "$unitdir"
-  cat >"$unitdir/ra8-ci-monitor.service" <<EOF
-[Unit]
-Description=Shared GitHub Actions status poller for the RA8 agent fleet
-After=network-online.target
-
-[Service]
-Type=simple
-Environment=RA8_CI_REPO=$RA8_CI_REPO
-Environment=RA8_CI_BRANCH=$RA8_CI_BRANCH
-Environment=RA8_CI_INTERVAL=$RA8_CI_INTERVAL
-Environment=RA8_CI_QUOTA_RESERVE=$RA8_CI_QUOTA_RESERVE
-Environment=RA8_CI_STALL_MIN=$RA8_CI_STALL_MIN
-Environment=RA8_CI_STATE_DIR=$RA8_CI_STATE_DIR
-ExecStart=/usr/bin/env bash $self daemon
-Restart=always
-RestartSec=30
-
-[Install]
-WantedBy=default.target
-EOF
+  write_service_unit "$unitdir/ra8-ci-monitor.service" "$self"
   systemctl --user daemon-reload
   systemctl --user enable ra8-ci-monitor.service
   # RESTART, not `enable --now`. `--now` starts a stopped unit and does nothing

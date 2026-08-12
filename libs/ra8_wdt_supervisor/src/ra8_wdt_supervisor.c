@@ -57,9 +57,9 @@ typedef struct {
  * @brief Module state -- entirely static.
  */
 typedef struct {
-  bool                 initialized; /**< True after successful init.          */
-  bool                 started;     /**< True after start spawned the thread. */
-  ra8_wdt_sup_cfg_t    cfg;         /**< Cached configuration.                */
+  bool                 initialized;                      /**< True after successful init.      */
+  bool                 started;                          /**< True once the thread is spawned. */
+  ra8_wdt_sup_cfg_t    cfg;                              /**< Cached configuration.            */
   ra8_wdt_sup_slot_t   slots[k_ra8_wdt_sup_max_threads]; /**< Registry.                        */
   TX_MUTEX             mutex;                            /**< Guards ``slots``.                */
   TX_THREAD            thread;                           /**< Supervisor thread control block. */

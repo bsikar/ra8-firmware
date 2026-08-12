@@ -28,7 +28,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -225,7 +224,7 @@ RA8_INTERNAL
 static void
 internal_afl_write_slot(volatile r_canfd_t* reg, uint8_t slot, const ra8_canfd_afl_rule_t* rule)
 {
-  /* HUM Ch 41.2.19 "CFDGAFLID : Acceptance Filter List ID Register" p 2731 */
+  /* HUM Ch 41.2.19 "CFDGAFLID : Acceptance Filter List ID Register" p 2735 */
   reg->CFDGAFL[slot].ID = internal_afl_id_word(rule);
   /* HUM Ch 41.2.20 "CFDGAFLM : Acceptance Filter List ID Mask Register" p 2736 */
   reg->CFDGAFL[slot].M = internal_afl_mask_word(rule);

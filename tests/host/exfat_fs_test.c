@@ -18,7 +18,8 @@
  *   4. open("HELLO.TXT") -- without a slash -- also succeeds,
  *   5. the file content reads back byte-for-byte.
  *
- * It then exercises the exFAT write path (#104) on the same mounted volume:
+ * It then exercises the exFAT write path (#104, now the streaming writer behind
+ * `ra8_fs_write_file()`) on the same mounted volume:
  *   6. write_file + read-back + rename + unlink of a single-cluster file,
  *   7. the same cycle for a multi-cluster file (a payload spanning four 4 KiB
  *      clusters), proving the bitmap allocation, the read cluster-walk, and the
@@ -27,13 +28,14 @@
  *      the matcher's mismatch branches both ways.
  *
  * @par MC/DC:
- * Every decision in the exFAT section of ra8_fs_fat.c (priv_exfat_create /
- * _alloc_write / _build_set / _take_set / _find_set / _free_clusters and the
- * name-hash / set-checksum helpers) is single-condition -- there is not one
- * ``&&`` / ``||`` compound decision in the whole exFAT body -- so MC/DC for it
- * collapses to branch coverage: each decision must be taken both ways. The
- * cases above drive the match / mismatch and single- / multi-cluster branches
- * accordingly.
+ * Every decision this harness reaches -- the entry-set builders, matchers and
+ * the cluster-free walk -- is single-condition, so MC/DC for them collapses to
+ * branch coverage: each must be taken both ways, and the cases above drive the
+ * match / mismatch and single- / multi-cluster branches accordingly. The
+ * compound decisions the streaming writer added in #602 (contiguity probe,
+ * `NoFatChain` transition, chain walk, allocation survey) carry their vectors
+ * in the Unity suite, cited by `path@function`; this harness deliberately
+ * exercises the whole-file round trip, not those.
  *
  * The fixture holds HELLO.TXT (the expected string below) + NOTES.TXT, made
  * with a real exFAT formatter so the on-disk up-case table / name hashes /
@@ -119,7 +121,7 @@ static uint32_t g_blocks;
 static int      g_found_hello;
 static int      g_fail;
 
-static ra8_err_t be_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t be_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   memcpy(buf,
@@ -127,7 +129,7 @@ static ra8_err_t be_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
          (size_t)count * (size_t)k_exfat_test_block_bytes);
   return k_ra8_ok;
 }
-static ra8_err_t be_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t be_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   memcpy(g_img + ((size_t)lba * (size_t)k_exfat_test_block_bytes),
@@ -135,7 +137,7 @@ static ra8_err_t be_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t
          (size_t)count * (size_t)k_exfat_test_block_bytes);
   return k_ra8_ok;
 }
-static ra8_err_t be_cap(void* ctx, uint32_t* bc, uint32_t* bs)
+static ra8_err_t be_cap(void* ctx, uint64_t* bc, uint32_t* bs)
 {
   (void)ctx;
   *bc = g_blocks;
@@ -144,7 +146,7 @@ static ra8_err_t be_cap(void* ctx, uint32_t* bc, uint32_t* bs)
 }
 
 static char g_names[k_exfat_names_cap];
-static void on_entry(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static void on_entry(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;
@@ -309,6 +311,55 @@ static void check_multicluster_path(ra8_fs_mount_t* mnt)
 /* #104: drive the name-matcher's mismatch branches in priv_exfat_take_set --
  * one wrong name of the SAME length (the byte-compare fails) and one of a
  * DIFFERENT length (the length pre-filter fails). Both must report not_found. */
+/**
+ * @brief exFAT `stat` on the fixture's real directory, file, and a missing name (#609).
+ *
+ * @details The fixture was written by a real exFAT formatter and carries
+ * `.fseventsd` -- a genuine DIRECTORY entry (FileAttributes 0x12: hidden |
+ * directory) -- alongside two ordinary files. That is the case the old
+ * VFS `stat` got wrong and could not have got right: it opened the path and
+ * reported `is_directory = false` unconditionally, so a folder came back as an
+ * existing zero-byte file. Nothing else in the suite can assert it, because
+ * exFAT directory CREATION is out of scope here (#611), so this image is the
+ * only real exFAT directory the tests have.
+ *
+ * @param[in] mnt The mounted fixture volume.
+ *
+ * @return Nothing; failures are recorded through ::check.
+ *
+ * @pre @p mnt is a mounted exFAT volume.
+ * @pre The fixture still carries `.fseventsd` and HELLO.TXT.
+ * @post No volume state is modified.
+ * @post Every assertion has been recorded in ``g_fail``.
+ *
+ * @note Reads only; the write-path checks run after this one.
+ *
+ * @since 0.1.0
+ */
+static void check_stat_paths(ra8_fs_mount_t* mnt)
+{
+  ra8_fs_stat_t dir = {};
+  check(ra8_fs_stat(mnt, "/.fseventsd", &dir) == k_ra8_ok, "stat finds the fixture's directory");
+  check(dir.is_directory, "a real exFAT directory reports is_directory");
+  check(dir.size_bytes == 0U, "a directory reports length 0");
+  check((dir.attr & (uint8_t)k_ra8_fs_attr_directory) != 0U, "its attr carries the directory bit");
+  check((dir.attr & (uint8_t)k_ra8_fs_attr_hidden) != 0U,
+        "and its hidden bit survives -- the attr is the entry's, not a constant");
+
+  ra8_fs_stat_t file = {};
+  check(ra8_fs_stat(mnt, "/HELLO.TXT", &file) == k_ra8_ok, "stat finds an ordinary file");
+  check(!file.is_directory, "a file does not report is_directory");
+  check(file.size_bytes == (uint32_t)strlen(k_expect), "a file reports its real length");
+
+  ra8_fs_stat_t gone = {};
+  check(ra8_fs_stat(mnt, "/NOPE.TXT", &gone) == k_ra8_err_not_found,
+        "a missing name is not-found, not an empty file");
+
+  ra8_fs_stat_t root = {};
+  check(ra8_fs_stat(mnt, "/", &root) == k_ra8_ok, "stat resolves the volume root");
+  check(root.is_directory, "the root reports as a directory");
+}
+
 static void check_lookup_mismatch_branches(ra8_fs_mount_t* mnt)
 {
   ra8_fs_file_t* nf = nullptr;
@@ -410,6 +461,7 @@ int main(int argc, char** argv)
   check(ra8_fs_open(mnt, "/NOPE.TXT", k_ra8_fs_mode_read, &nf) == k_ra8_err_not_found,
         "missing file -> not_found");
 
+  check_stat_paths(mnt);
   check_write_path(mnt);
   check_multicluster_path(mnt);
   check_lookup_mismatch_branches(mnt);

@@ -1,10 +1,10 @@
-/* SPDX-License-Identifier: MIT */
-/* Copyright (c) 2026 Brighton Sikarskie */
 
 /**
  * \file tf_psa_crypto_config.h
  * \brief PSA crypto configuration options (set of defines)
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 /**
  * This file determines which cryptographic mechanisms are enabled

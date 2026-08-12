@@ -47,11 +47,11 @@ typedef enum : uint8_t {
 typedef enum : uint16_t {
   k_log_val_positive_decimal = 12345, /**< A positive decimal exercising the multi-digit path. */
   k_log_val_hex_small =
-    0x1234U, /**< A small hex value: two significant nibbles, so leading-zero suppression is visible. */
+    0x1234U, /**< Small hex value: two significant nibbles; leading-zero suppression is visible. */
   k_log_val_hex_mid =
-    0x5678U, /**< A second hex value, distinct from the first, so the two sinks cannot be confused. */
+    0x5678U, /**< Second hex value, distinct from the first, so the two sinks cannot be confused. */
   k_log_err_code_unknown =
-    0xFFFFU, /**< An error code no ra8_err_t enumerator uses, so ra8_err_to_str must fall back to its unknown-code string. */
+    0xFFFFU, /**< Code no ra8_err_t enumerator uses; ra8_err_to_str returns its unknown string. */
 } log_mid_value_t;
 
 /**
@@ -61,13 +61,14 @@ typedef enum : uint16_t {
 typedef enum : uint32_t {
   k_log_val_mid_decimal =
     1234567U, /**< A mid-width decimal, between the single digit and the 32-bit extremes. */
-  k_log_val_hex_full = 0xDEADBEEFU, /**< A hex value using all eight nibbles, including letters. */
+  /** A hex value using all eight nibbles, including letters. */
+  k_log_val_hex_full = 0xDEADBEEFU,
   k_log_val_u32_max =
-    0xFFFFFFFFU, /**< UINT32_MAX: the widest unsigned value the formatter must render without truncating. */
+    0xFFFFFFFFU, /**< UINT32_MAX: the widest unsigned value the formatter must render intact. */
   k_log_all_ones =
-    0xFFFFFFFFUL, /**< All-ones, used both as an ITM stimulus-port ready state and as the widest unsigned log value. */
+    0xFFFFFFFFUL, /**< All-ones: ITM stimulus-port ready state and widest unsigned log value. */
   k_log_val_i32_max =
-    2147483647, /**< INT32_MAX; `-k_log_val_i32_max - 1` gives INT32_MIN without an unrepresentable literal, covering both signed extremes. */
+    2147483647, /**< INT32_MAX; `-k_log_val_i32_max - 1` gives INT32_MIN: both signed extremes. */
 } log_fixture_t;
 
 /*
@@ -356,6 +357,8 @@ static const test_err_entry_t s_all_err_codes[] = {
   {k_ra8_err_cancelled, "cancelled"},
   {k_ra8_err_not_initialized, "not_initialized"},
   {k_ra8_err_estop, "estop"},
+  {k_ra8_err_not_empty, "not_empty"},
+  {k_ra8_err_access_denied, "access_denied"},
   {k_ra8_err_hw_init_failed, "hw_init_failed"},
   {k_ra8_err_hw_not_ready, "hw_not_ready"},
   {k_ra8_err_hw_timeout, "hw_timeout"},

@@ -27,7 +27,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -179,9 +178,12 @@ static void test_range_decision_mcdc(void)
 {
   TEST_BEGIN("mstp_gate: in-range decision MC/DC");
   board_mstp_reset(); /* CAC starts stopped, so an in-range hit reports true. */
-  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_cac));          /* base       */
-  TEST_ASSERT(!board_mstp_addr_stopped((uint64_t)k_t_cac - 4U));    /* below base */
-  TEST_ASSERT(!board_mstp_addr_stopped((uint64_t)k_t_cac + 0x10U)); /* base+span  */
+  /* base */
+  TEST_ASSERT(board_mstp_addr_stopped((uint64_t)k_t_cac));
+  /* below base */
+  TEST_ASSERT(!board_mstp_addr_stopped((uint64_t)k_t_cac - 4U));
+  /* base+span */
+  TEST_ASSERT(!board_mstp_addr_stopped((uint64_t)k_t_cac + 0x10U));
   TEST_END("mstp_gate: in-range decision MC/DC");
 }
 

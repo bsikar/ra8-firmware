@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # actionlint configuration -- actionlint 1.7.7, the pin the lint-yaml gate,
 # the devcontainer image and the CI runners all install.
 #

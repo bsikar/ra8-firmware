@@ -74,7 +74,7 @@ static ra8_err_t s_source_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_
   RA8_CHECK_NULL_PTR(ctx, s_tag, "source_read: ctx");
   RA8_CHECK_NULL_PTR(buf, s_tag, "source_read: buf");
   if (offset > (uint64_t)UINT32_MAX) {
-    return k_ra8_err_out_of_range; /* GCOVR_EXCL_LINE -- the object size is an ra8_fs_size result (32-bit) and the loader clamps offsets within it */
+    return k_ra8_err_out_of_range; /* GCOVR_EXCL_LINE -- ra8_fs_size is 32-bit, so offsets fit */
   }
   ra8_fs_file_t* file = (ra8_fs_file_t*)ctx;
   ra8_err_t      err  = ra8_fs_seek(file, (uint32_t)offset);
@@ -87,7 +87,7 @@ static ra8_err_t s_source_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_
     return err; /* corrupt FAT chain / backend fault mid-stream */
   }
   if (got != len) {
-    return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE -- defensive: ra8_fs_read reports ok only after producing every requested in-bounds byte */
+    return k_ra8_err_hw_error; /* GCOVR_EXCL_LINE -- ra8_fs_read reports ok only when fully read */
   }
   return k_ra8_ok;
 }
@@ -122,7 +122,7 @@ s_cache_bind(const ra8_rabook_import_compiler_ctx_t* ctx, import_stream_t* ss, u
   RA8_CHECK_NULL_PTR(ss->file, s_tag, "file");
   ra8_err_t err = ra8_vsource_init(&ss->vsrc, &ss->obj, 1U);
   if (err != k_ra8_ok) {
-    return err; /* GCOVR_EXCL_LINE -- registry storage is this frame's own struct, never NULL/zero */
+    return err; /* GCOVR_EXCL_LINE -- registry storage is the frame's own struct, never NULL/zero */
   }
   uint32_t oid = 0U;
   err = ra8_vsource_add_paged(&ss->vsrc, s_source_read, ss->file, 0U, (uint64_t)size, &oid);
@@ -158,7 +158,7 @@ s_cache_bind(const ra8_rabook_import_compiler_ctx_t* ctx, import_stream_t* ss, u
  *          closes it after the compile.
  * @param[in]     ctx       Populated compiler cookie.
  * @param[in,out] mount     Mounted volume holding the source.
- * @param[in]     epub_path Root-level 8.3 path of the source `.epub`.
+ * @param[in]     epub_path Root-level path of the source `.epub`.
  * @param[in,out] ss        Zeroed streaming state; receives the open file +
  *                          stream bindings (must out-live the compile).
  * @return Error code.
@@ -185,9 +185,12 @@ static ra8_err_t s_stream_open(const ra8_rabook_import_compiler_ctx_t* ctx,
   /* ra8_fs_size cannot fail on the handle ra8_fs_open just returned (in_use
    * set, both out-params non-NULL); on any future contract change `size`
    * stays 0 and s_cache_bind rejects it as invalid_size. */
-  uint32_t size = 0U;
-  (void)ra8_fs_size(ss->file, &size);
-  err = s_cache_bind(ctx, ss, size);
+  uint64_t size64 = 0U;
+  (void)ra8_fs_size(ss->file, &size64);
+  /* Import sources are sized in 32 bits; an over-4-GiB source is clamped to
+   * the reject path (0 -> invalid_size in the bind below). */
+  const uint32_t size = (size64 <= (uint64_t)UINT32_MAX) ? (uint32_t)size64 : 0U;
+  err                 = s_cache_bind(ctx, ss, size);
   if (err == k_ra8_ok) {
     const ra8_epub_stream_media_t media = {
       .read = ra8_vmem_stream_read,
@@ -247,7 +250,7 @@ ra8_err_t ra8_rabook_import_compile_adapter(void*           compile_ctx,
  *          The read error is returned in preference to the close error so a
  *          partial read is not masked.
  * @param[in]  mount   Mounted volume (non-NULL).
- * @param[in]  path    Root-level 8.3 source path (non-NULL).
+ * @param[in]  path    Root-level source path (non-NULL).
  * @param[out] buf     Destination buffer (non-NULL).
  * @param[in]  cap     Capacity of @p buf in bytes.
  * @param[out] out_len Receives the number of bytes read on success.
@@ -275,8 +278,9 @@ static ra8_err_t s_read_whole_file(ra8_fs_mount_t* mount,
   }
   /* ra8_fs_size cannot fail on a just-opened handle; a lying 0 simply reads 0
    * bytes below and the dispatch rejects the empty source. */
-  uint32_t size = 0U;
-  (void)ra8_fs_size(file, &size);
+  uint64_t size64 = 0U;
+  (void)ra8_fs_size(file, &size64);
+  const uint32_t size = (size64 <= (uint64_t)UINT32_MAX) ? (uint32_t)size64 : UINT32_MAX;
   if (size > cap) {
     /* Transport overflow: the source cannot fit the cross-core buffer. Report
      * no_mem (an offload-failure class) so the streamed in-core fallback --
@@ -377,7 +381,7 @@ static bool s_is_dispatch_failure(ra8_err_t err)
  * @param[in]     ctx       Populated M33 cookie (optional fallback).
  * @param[in]     err       The non-OK offload-stage error to classify.
  * @param[in,out] mount     Mounted volume holding the source and the output.
- * @param[in]     epub_path Root-level 8.3 path of the source `.epub` (for the retry).
+ * @param[in]     epub_path Root-level path of the source `.epub` (for the retry).
  * @param[in]     out_path  Path to write the RABOOK1 body to (importer temp name).
  * @return Error code.
  * @retval k_ra8_ok    The in-core fallback compiled and wrote the blob.
@@ -412,7 +416,7 @@ static ra8_err_t s_fallback_or_propagate(const ra8_rabook_import_compiler_m33_ct
  * @param[in]     ctx      Populated M33 cookie (dispatch + optional fallback).
  * @param[in]     epub_len Source length already in @p ctx->epub_load_buf.
  * @param[in,out] mount    Mounted volume the validated blob is written to.
- * @param[in]     epub_path Root-level 8.3 path of the source `.epub` (for the retry).
+ * @param[in]     epub_path Root-level path of the source `.epub` (for the retry).
  * @param[in]     out_path Path to write the RABOOK1 body to (importer temp name).
  * @return Error code.
  * @retval k_ra8_ok    Blob produced (on the M33, or in-core on fallback) and written.

@@ -185,7 +185,7 @@ static ra8_err_t internal_run_bist(void)
   return k_ra8_ok;
 }
 
-#ifdef RA8_RSIP_HASH_HARDWARE /* retained RSIP HASH register model -- never compiled (see backend note above) */
+#ifdef RA8_RSIP_HASH_HARDWARE /* retained RSIP HASH model, never compiled (see note above) */
 
 /* Stream the SHA-256 message body into the HASH input port -- see surrounding code and HUM citations. */
 RA8_INTERNAL

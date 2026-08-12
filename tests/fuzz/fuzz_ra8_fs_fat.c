@@ -29,7 +29,7 @@ enum : uint32_t {
 static const uint8_t* s_blob;
 static size_t         s_blob_len;
 
-static ra8_err_t fuzz_fat_read_block(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t fuzz_fat_read_block(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   if (buf == nullptr) {
@@ -45,7 +45,7 @@ static ra8_err_t fuzz_fat_read_block(void* ctx, uint32_t lba, uint32_t count, ui
   return k_ra8_ok;
 }
 
-static ra8_err_t fuzz_fat_write_block(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t fuzz_fat_write_block(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   (void)lba;
@@ -54,7 +54,7 @@ static ra8_err_t fuzz_fat_write_block(void* ctx, uint32_t lba, uint32_t count, c
   return k_ra8_ok;
 }
 
-static ra8_err_t fuzz_fat_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t fuzz_fat_get_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   if (block_count != nullptr) {

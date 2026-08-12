@@ -28,11 +28,11 @@
  *
  *   `ereader-rabook-hil: chapters=<N> ch0 p=<P> crc=<8hex> ch1 p=<P> crc=<8hex> img <W>x<H> gray8 ok`
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

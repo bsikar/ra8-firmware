@@ -158,8 +158,6 @@ libs/ra8_core/inc/ra8_err.h	clang-diagnostic-error	1
 libs/ra8_dfu/src/ra8_dfu_device.c	bugprone-casting-through-void	1
 libs/ra8_dfu/src/ra8_dfu_device.c	clang-diagnostic-cast-qual	1
 libs/third_party/tflite-micro/tensorflow/lite/core/c/common.h	clang-diagnostic-error	1
-port/filex/src/fx_media_driver_ra8_sdhi.c	bugprone-branch-clone	1
-port/levelx/src/lx_filex_adapter.c	bugprone-branch-clone	1
 port/levelx/src/lx_nor_driver_ra8_xspi.c	readability-non-const-parameter	1
 port/mbedtls/inc/tf_psa_crypto_config.h	clang-diagnostic-error	1
 port/mbedtls/inc/tf_psa_crypto_config_platform.h	clang-diagnostic-error	1

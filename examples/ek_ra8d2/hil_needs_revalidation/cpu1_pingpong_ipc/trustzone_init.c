@@ -126,7 +126,7 @@ volatile uint32_t g_cpu1_pingpong_ipc_cpu1_release_err = 0xFFFFFFFFU;
  * value written and CPU1ACTCSR.ACT staying clear so CPU1 never came
  * out of reset.
  *
- * HUM Ch 9.2.4 "PRCR_S" p 397 + Ch 2.9.1.7 "CPU1INITVTOR" p 128-129 +
+ * HUM Ch 13.2.1 "PRCR_S" p 521 + Ch 2.9.1.7 "CPU1INITVTOR" p 128-129 +
  * Ch 2.9.1.9 "CPU1ACTCSR" p 129-130.
  *
  * @pre security_init has already run (PRC4 was opened then relocked).

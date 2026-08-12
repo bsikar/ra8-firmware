@@ -164,12 +164,15 @@ check_formatting() {
   # It runs AFTER the clang-format check above so it sees start-aligned
   # comments. See scripts/checks/check_comment_format.py.
   local comment_ok=true
-  if command -v python3 &>/dev/null; then
-    if ! python3 scripts/checks/check_comment_format.py "${files[@]}"; then
-      comment_ok=false
-    fi
-  else
-    print_warning "python3 not found -- comment-format check SKIPPED."
+  if ! command -v python3 &>/dev/null; then
+    # A gate whose dependency is absent must FAIL, not wave the tree through.
+    # This arm used to warn and continue, so a runner without python3 reported
+    # "properly formatted" having checked no comment in the tree at all.
+    print_error "python3 not found -- the comment-format check cannot run."
+    return 1
+  fi
+  if ! python3 scripts/checks/check_comment_format.py "${files[@]}"; then
+    comment_ok=false
   fi
 
   if [ "$issues_found" = true ]; then
