@@ -43,7 +43,8 @@ typedef enum : uint8_t {
   k_gwca_frame_fill_len = 64U, /**< Bytes of that buffer the generator fills, which is all of it. */
   k_gwca_frame_seed =
     0xA5U, /**< Seed of the frame generator, `seed ^ i`, giving a payload with no repeated byte. */
-  k_gwca_frame_bytes = 64, /**< Frame buffer capacity. */
+  /** Frame buffer capacity. */
+  k_gwca_frame_bytes = 64,
 } eth_gwca_queue_cov_fixture_t;
 
 /**

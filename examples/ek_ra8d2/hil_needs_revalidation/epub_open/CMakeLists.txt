@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake stub for `epub_open`. It joins the SD storage stack
 # (ra8_fs FAT layer over the ra8_sdmmc_spi SPI-mode driver) to the EPUB parse
@@ -5,8 +7,6 @@
 # ra8_epub special-case in ra8_add_app.cmake, ra8_reflow supplies the stb_truetype
 # glyph glue ra8_epub links against, and ra8_gfx backs ra8_reflow's render path.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

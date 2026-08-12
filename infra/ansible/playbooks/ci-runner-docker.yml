@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Deploy (or remove) a plain self-hosted runner in Docker on a host that is not
 # the k3s node -- a second build host, so CI and the dev container stop

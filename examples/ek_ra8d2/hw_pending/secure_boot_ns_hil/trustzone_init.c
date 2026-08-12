@@ -205,7 +205,7 @@ static void tz_sau_set_ns_region(uint8_t region, uint32_t base, uint32_t limit)
 static void tz_sram_ns_boundary(void)
 {
   /* Open PRC4 so the CPSCU SRAMSABAR writes below land. */
-  /* HUM Ch 9.2.4 "PRCR_S" p 397 */
+  /* HUM Ch 13.2.1 "PRCR_S" p 521 */
   *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_open;
 
   /* HUM Ch 58.2 "SRAMSABARn : SRAM Security Attribute Boundary Address
@@ -217,7 +217,7 @@ static void tz_sram_ns_boundary(void)
   tz_write32(k_tz_sramsabar0_addr + (3U * sizeof(uint32_t)), (uint32_t)k_tz_sramsabar3_val);
 
   /* Re-lock PRC4 (restore CPSCU write-protect). */
-  /* HUM Ch 9.2.4 "PRCR_S" p 397 */
+  /* HUM Ch 13.2.1 "PRCR_S" p 521 */
   *(volatile uint16_t*)k_tz_prcr_s_addr = (uint16_t)k_tz_prcr_s_close;
 }
 

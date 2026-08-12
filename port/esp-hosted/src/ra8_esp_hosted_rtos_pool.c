@@ -155,9 +155,10 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  TX_BYTE_POOL                transport;  /**< Transport buffer pool.      */
-  TX_BYTE_POOL                queue_pool; /**< Queue message-storage pool. */
-  ra8_esp_hosted_queue_slot_t queues[k_ra8_esp_hosted_max_queues]; /**< Table. */
+  TX_BYTE_POOL transport;  /**< Transport buffer pool.      */
+  TX_BYTE_POOL queue_pool; /**< Queue message-storage pool. */
+  /** Table. */
+  ra8_esp_hosted_queue_slot_t queues[k_ra8_esp_hosted_max_queues];
   bool                        ready; /**< True while both pools live. */
 } ra8_esp_hosted_pool_state_t;
 

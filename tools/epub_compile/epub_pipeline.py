@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """The compile pipeline: one EPUB in, one .rabook blob out.
 
 Apart from the CLI so the selftest can drive the real pipeline rather than a

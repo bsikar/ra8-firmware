@@ -48,11 +48,11 @@
  * single-condition `if (err ...)` or `RA8_CHECK_NULL_PTR` guard, covered by driving
  * its one condition both ways across the cases above.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB Import] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  */
 
@@ -114,7 +114,7 @@ static mem_disk_t s_disk = {};
 /* RAM block backend (4 MiB -> FAT16 via ra8_fs_format) */
 /* -------------------------------------------------------------------------- */
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -126,7 +126,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -138,7 +138,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   *block_count     = disk->block_count;

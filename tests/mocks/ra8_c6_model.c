@@ -660,13 +660,15 @@ static bool c6m_handshake(void* ctx)
 }
 
 /**
- * @brief The seam's delay row; the model's clock is instantaneous.
+ * @brief The seam's delay row; the model's clock is instantaneous but counted.
+ * @details It records the request and returns, so a test can assert that a
+ *        caller paced itself without any test paying the wall time for it.
  * @param[in] ctx Unused.
- * @param[in] ms Unused.
+ * @param[in] ms Milliseconds the caller asked to wait for; recorded, not slept.
  * @return Nothing.
  * @pre The caller tolerates a delay that does not actually delay.
  * @pre The model has been reset.
- * @post No model state is modified.
+ * @post ::ra8_c6_model_t::delays counted this call.
  * @post The call returns immediately, so a bounded wait costs no wall time.
  * @note A real backend sleeps here; a host test must not.
  * @since 0.1.0
@@ -674,7 +676,8 @@ static bool c6m_handshake(void* ctx)
 static void c6m_delay(void* ctx, uint16_t ms)
 {
   (void)ctx;
-  (void)ms;
+  s_c6.delays        = s_c6.delays + 1U;
+  s_c6.last_delay_ms = ms;
 }
 
 void ra8_c6_model_bind(ra8_c6link_transport_t* out)

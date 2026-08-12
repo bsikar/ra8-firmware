@@ -14,10 +14,10 @@
  * and the documented GNU tar base-256 numeric extension. Clean-room:
  * no code from GNU tar / libarchive / busybox.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include <string.h>
 

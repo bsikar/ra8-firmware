@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # mk/infra.mk -- the rig itself: dev box, CI runner hosts, the bench, the vault.
 #
 # Thin wrappers over scripts/dev/infra.sh so provisioning is discoverable from
@@ -6,8 +8,6 @@
 # is declared in infra/fleet.yml; the runbooks are docs/CI_FLEET.md and the
 # estate as a whole is docs/INFRASTRUCTURE.md.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 .PHONY: infra-help infra-setup infra-list infra-doctor infra-status \
         infra-check infra-apply infra-remove infra-scale infra-show \

@@ -42,9 +42,11 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_ceu_h_scale_unity =
-    0x800U, /**< Horizontal scale fraction for 1:1: the field is a fixed-point ratio, and 0x800 is its unity value. */
-  k_ceu_out_width        = 320U,  /**< Captured image width in pixels (QVGA).          */
-  k_ceu_image_area_bytes = 4096U, /**< Capture buffer size the configuration declares. */
+    0x800U, /**< Horizontal scale fraction for 1:1; fixed-point ratio, 0x800 = unity. */
+  /** Captured image width in pixels (QVGA). */
+  k_ceu_out_width = 320U,
+  /** Capture buffer size the configuration declares. */
+  k_ceu_image_area_bytes = 4096U,
   k_ceu_v_scale_half =
     0x400U, /**< Vertical scale fraction for 1:2, half the horizontal unity value. */
 } ceu_capture_fixture2_t;

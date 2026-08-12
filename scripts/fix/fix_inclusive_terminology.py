@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """fix_inclusive_terminology.py -- conservative auto-fix for legacy spellings.
 
 Companion to check_inclusive_terminology.py. Walks tracked source/docs and
@@ -136,7 +138,6 @@ SKIP_PATTERNS = frozenset(
         "tests/test_ra8_mipi_phy_init.c",
         "tests/test_ra8_mipi_phy_lanes.c",
         "docs/SOUP/nimble.md",
-        "docs/SOUP/r_sce_AMC_firmware.md",
     }
 )
 

@@ -67,10 +67,9 @@ Out of scope:
   Section "Development Approach").
 - The Cortex-M33 secondary core (not currently built; reserved for
   future work).
-- Vendor binary blobs (RSIP-E50D firmware image, BLE controller patch
-  image) -- vendored under
-  [`../../libs/third_party/fsp_blobs/`](../../libs/third_party/fsp_blobs/)
-  and tracked under SOUP per `docs/SOUP/`.
+- The RSIP-E50D protected firmware image -- not vendored in this tree;
+  obtainable from public FSP under BSD-3-Clause, with the degradation it
+  causes recorded in [`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md).
 
 ### 1.3 Target assurance levels
 
@@ -338,7 +337,7 @@ files but a single REQ-DRV ID applies.
 | ID               | Requirement                                                                                                                          | Source                                          | Test                                          |
 |------------------|--------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|-----------------------------------------------|
 | REQ-HAL-001      | A graphics-text rendering layer SHALL provide ASCII string draw primitives over a framebuffer.                                       | `libs/ra8_gfx/src/ra8_gfx_text.c`, `ra8_gfx_font_8x16.c` | `tests/test_ra8_gfx.c`, `tests/test_ra8_gfx_text.c` |
-| REQ-HAL-002      | A FAT-filesystem facade SHALL wrap FileX with project error semantics (`ra8_err_t` translation).                                       | `libs/ra8_fs/src/ra8_fs_fat.c`                    | `tests/test_ra8_fs.c`, `tests/test_ra8_fs_fat.c` |
+| REQ-HAL-002      | A first-party FAT12/16/32 + exFAT filesystem SHALL run on a swappable block-device backend with project error semantics (`ra8_err_t`). | `libs/ra8_fs/src/ra8_fs_fat.c`                    | `tests/test_ra8_fs.c`, `tests/test_ra8_fs_fat.c` |
 | REQ-HAL-003      | An MPU configuration helper SHALL build region tables for the bus MMPU and Cortex-M85 core MPU.                                       | `libs/ra8_mpu/src/ra8_mpu.c`                      | `tests/test_ra8_mpu.c`                         |
 | REQ-HAL-004      | A watchdog supervisor SHALL refresh IWDT/WDT from a single bottleneck monitored against task heartbeats.                               | `libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c`| `tests/test_ra8_wdt_supervisor.c`              |
 | REQ-HAL-005      | A power-profile module SHALL select between "Run", "Sleep", "Standby", "Deep Standby" with explicit transitions through `ra8_lpm`.       | `libs/ra8_power_profile/src/ra8_power_profile.c` | `tests/test_ra8_power_profile.c`               |
@@ -401,8 +400,8 @@ verification for these.
 | REQ-APP-007      | ra8_bootloader                     | `examples/ek_ra8d2/ra8_bootloader/main.c`                | `tests/test_app_ra8_bootloader.c`           |
 | REQ-APP-008      | threadx_blink                     | `examples/ek_ra8d2/threadx_blink/main.c`                | `tests/test_app_threadx_blink.c`           |
 | REQ-APP-009      | threadx_canfd_demo                | `examples/ek_ra8d2/threadx_canfd_demo/main.c`           | `tests/test_app_threadx_canfd_demo.c`      |
-| REQ-APP-010      | threadx_filex_demo                | `examples/ek_ra8d2/threadx_filex_demo/main.c`           | `tests/test_app_threadx_filex_demo.c`      |
-| REQ-APP-011      | threadx_filex_levelx_demo         | `examples/ek_ra8d2/threadx_filex_levelx_demo/main.c`    | `tests/test_app_threadx_filex_levelx_demo.c` |
+| REQ-APP-010      | threadx_fs_demo                   | `examples/ek_ra8d2/threadx_fs_demo/main.c`              | `tests/test_app_threadx_fs_demo.c`         |
+| REQ-APP-011      | threadx_fs_levelx_demo            | `examples/ek_ra8d2/threadx_fs_levelx_demo/main.c`       | `tests/test_app_threadx_fs_levelx_demo.c`  |
 | REQ-APP-013      | threadx_ipc_demo                  | `examples/ek_ra8d2/threadx_ipc_demo/main.c`             | `tests/test_app_threadx_ipc_demo.c`        |
 | REQ-APP-014      | threadx_levelx_demo               | `examples/ek_ra8d2/threadx_levelx_demo/main.c`          | `tests/test_app_threadx_levelx_demo.c`     |
 | REQ-APP-015      | threadx_lwip_tcp_echo             | `examples/ek_ra8d2/threadx_lwip_tcp_echo/main.c`        | `tests/test_app_threadx_lwip_tcp_echo.c`   |
@@ -528,7 +527,7 @@ Section 6.5 (Traceability Data).
 |-------------------------|-------|----------------|-----------------|----------------|
 | REQ-CHIP                | 7     | 7              | 0               | 0              |
 | REQ-CORE                | 14    | 13             | 1               | 0              |
-| REQ-DRV                 | 93    | 90             | 0               | 3 (BLE patch + 2 RSIP) |
+| REQ-DRV                 | 93    | 90             | 0               | 3 (RSIP)        |
 | REQ-HAL                 | 16    | 15             | 0               | 1 (BLE host end-to-end) |
 | REQ-BSP                 | 4     | 3              | 1               | 0              |
 | REQ-PORT                | 13    | 11             | 2               | 0              |

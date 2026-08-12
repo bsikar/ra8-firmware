@@ -1,8 +1,10 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/usbx.cmake
 #
 # Top-level integration of the vendored USBX USB stack
-# (libs/third_party/usbx). Mirrors the shape of cmake/filex.cmake +
+# (libs/third_party/usbx). Mirrors the shape of
 # cmake/threadx.cmake: declares an interface `usbx` library that
 # bundles the USBX core sources, exposes the include dirs, and pulls
 # in the project's `port/usbx/` shim.
@@ -33,8 +35,6 @@
 # Requires `RA8_USE_THREADX=ON` because USBX's tx_api.h dependency
 # (memory pools, semaphores, threads) cannot be satisfied otherwise.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 if(DEFINED _RA8_USBX_INCLUDED)

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/checks/init_fuzz_corpora.sh -- seed the libFuzzer corpus
 # directories under tests/fuzz/corpus/<target>/ with known-good

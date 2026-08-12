@@ -15,11 +15,11 @@
  * only required where the input is a source file rather than a container
  * (`convert`, `verify`).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Domain] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
@@ -57,7 +57,26 @@ typedef enum : uint8_t {
   k_fmt_verb_verify  = 3U, /**< Round-trip comparison.    */
 } ra8_fmt_verb_t;
 
-/** @brief ra8_log byte sink -> stderr (host-safe; avoids the ITM MMIO write). */
+/**
+ * @brief ra8_log byte sink -> stderr (host-safe; avoids the ITM MMIO write).
+ *
+ * @details
+ * Registered with ::ra8_log_set_byte_sink so the shared ra8_log backend emits
+ * to stderr on the host instead of the on-target ITM stimulus port, whose MMIO
+ * write would fault under this command-line tool. One byte per call, matching
+ * the byte-sink contract.
+ *
+ * @param[in] ctx  Unused sink context (the sink keeps no state).
+ * @param[in] byte The log byte to emit.
+ *
+ * @pre ra8_log has been pointed at this sink via ::ra8_log_set_byte_sink.
+ * @pre stderr is open.
+ * @post @p byte has been written to stderr.
+ * @post No other state is mutated.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static void fmt_log_sink(void* ctx, uint8_t byte)
 {
@@ -101,6 +120,9 @@ static void priv_usage(FILE* out)
 
 /**
  * @brief Map the first argument to a ::ra8_fmt_verb_t.
+ * @details Exact string match against the three verb spellings; anything else
+ *          (including a flag given where a verb is expected) yields
+ *          ::k_fmt_verb_none so the caller falls through to printing usage.
  * @param[in] arg Argument to match (non-NULL).
  * @return The matching verb, or ::k_fmt_verb_none.
  * @retval k_fmt_verb_none @p arg is not a recognised verb.
@@ -194,6 +216,10 @@ priv_resolve(ra8_fmt_verb_t verb, const char* name, const ra8_fmt_blob_t* src)
 
 /**
  * @brief Invoke the verb's entry point on the descriptor, or report absence.
+ * @details Selects the descriptor's convert / inspect / verify function pointer
+ *          for @p verb and calls it; a NULL slot means this format does not
+ *          implement the verb, which is reported to `opts->report` and returned
+ *          as ::k_ra8_err_not_supported rather than dereferenced.
  * @param[in] verb Selected verb.
  * @param[in] desc Resolved format descriptor (non-NULL).
  * @param[in] src  Slurped input.

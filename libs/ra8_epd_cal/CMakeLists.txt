@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_epd_cal -- per-device e-paper panel calibration (VCOM).
 #
@@ -18,8 +20,6 @@
 # is intentionally a no-op so the existing per-app CMakeLists.txt +
 # tests/CMakeLists.txt patterns keep working.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

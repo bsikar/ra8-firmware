@@ -105,7 +105,7 @@ static void internal_read_raw(ra8_reset_raw_t* out)
   out->rstsr1 = *ra8_reset_rstsr1();
   /* HUM Ch 6.2.4 "RSTSR2 : Reset Status Register 2", p 261 */
   out->rstsr2 = *ra8_reset_rstsr2();
-  /* HUM Ch 6.2.5 "RSTSR3 : Reset Status Register 3", p 261 */
+  /* HUM Ch 6.2.5 "RSTSR3 : Reset Status Register 3", p 262 */
   out->rstsr3 = *ra8_reset_rstsr3();
 }
 

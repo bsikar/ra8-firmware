@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Emit a minimal baseline JPEG to seed the libFuzzer corpus.
 
 This generator only needs to satisfy the parser in libs/ra8_hal/src/

@@ -12,6 +12,7 @@ board, plus the gate that keeps them honest.
 |----------------|-----|-----|
 | Run a firmware **`.elf`** with no board: boot it, drive the panel, preview its UI | **`tools/ra8_emulator`** (Unicorn CPU emulator) | `make emu-<app> [PANEL=<name>]` |
 | Build a FAT **SD-card image** carrying a font (for `ra8_emulator --sd` or a real card) | **`tools/mkfontimg`** | `cmake -S tools/mkfontimg -B tools/mkfontimg/build && cmake --build tools/mkfontimg/build` |
+| Build an **exFAT volume image** through the real `ra8_fs` and hand it to a real OS to mount, so the on-disk names are judged by someone other than us | **`tools/exfat_mkimage`** | `cmake -S tools/exfat_mkimage -B tools/exfat_mkimage/build && cmake --build tools/exfat_mkimage/build`; `scripts/dev/exfat_macos_interop.sh` drives it end to end on macOS |
 | Give an **MCP-aware assistant** live repo context (app catalogue, build/test/HIL workflows, code search, project docs) | **`tools/mcp`** (zero-dependency MCP server) | `make mcp` self-tests it; an MCP client auto-loads it via the repo `.mcp.json` |
 | Compare **page-cache eviction policies** for the #147 memory hierarchy (the SLRU decision record) | **`tools/cache_bench`** | `make -C tools/cache_bench run` |
 | Measure the **block/frame/chunk size** for the chunked `.rabook` container / `ra8_vmem` `frame_bytes` (#208) | **`tools/cache_bench`** (`--sweep-block`) | `make -C tools/cache_bench sweep` |

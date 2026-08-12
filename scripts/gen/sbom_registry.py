@@ -144,7 +144,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/eclipse-threadx/threadx",
         path="libs/third_party/threadx",
         provenance=PROV_COMMIT_PINNED,
-        description="Preemptive RTOS kernel under every threadx_* example.",
+        description="Preemptive RTOS kernel: 45 example apps, vendored middleware, NS image.",
         purl="pkg:github/eclipse-threadx/threadx@6.5.0",
         upstream_commit="3726d7906b4808bfec7855fc088e073199df9120",
         upstream_ref="v6.5.0.202601_rel",
@@ -165,7 +165,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/eclipse-threadx/netxduo",
         path="libs/third_party/netxduo",
         provenance=PROV_COMMIT_PINNED,
-        description="Dual IPv4/IPv6 TCP/IP + TLS stack (NetX echo / OTA path).",
+        description="Dual IPv4/IPv6 TCP/IP stack (wired eth + C6 Wi-Fi); NetX Secure not compiled.",
         purl="pkg:github/eclipse-threadx/netxduo@6.5.0",
         upstream_commit="8b6e03ac30ab688bec02c69d42f2304b7f72a202",
         upstream_ref="v6.5.0.202601_rel",
@@ -180,27 +180,6 @@ REGISTRY: tuple[Component, ...] = (
             "CVE tracking is manual: netxduo.md hand-records "
             "CVE-2025-2258/2259/2260 as fixed (see T5-09 / SOUP-3).",
         ),
-    ),
-    Component(
-        key="filex",
-        name="Eclipse FileX",
-        version="6.5.0",
-        ctype="library",
-        group="eclipse-threadx",
-        url="https://github.com/eclipse-threadx/filex",
-        path="libs/third_party/filex",
-        provenance=PROV_COMMIT_PINNED,
-        description="FAT / exFAT file system (FileX demos + OTA staging).",
-        purl="pkg:github/eclipse-threadx/filex@6.5.0",
-        upstream_commit="bb6e295af079f3cd903272982106b0ddd9537422",
-        upstream_ref="v6.5.0.202601_rel",
-        modified=True,
-        patched_files=((".gitattributes", GITATTRIBUTES_PATCH),),
-        spdx="MIT",
-        license_file="libs/third_party/filex/LICENSE.txt",
-        probe_file="common/inc/fx_api.h",
-        probe_prefix="FILEX",
-        expected_version="6.5.0",
     ),
     Component(
         key="usbx",
@@ -232,7 +211,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/eclipse-threadx/levelx",
         path="libs/third_party/levelx",
         provenance=PROV_COMMIT_PINNED,
-        description="NOR-flash wear-leveling layer under FileX on Octo-SPI.",
+        description="NOR-flash wear-levelling on Octo-SPI: under ra8_fs, and standalone.",
         purl="pkg:github/eclipse-threadx/levelx@6.5.0",
         upstream_commit="a46b74fb8aa133796ccbc13e7902cb8bb818e12f",
         upstream_ref="v6.5.0.202601_rel",
@@ -253,7 +232,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/Mbed-TLS/mbedtls",
         path="libs/third_party/mbedtls",
         provenance=PROV_COMMIT_PINNED,
-        description="TLS record layer + X.509, consumed via ra8_tls / ra8_ota.",
+        description="TLS record layer + X.509 via ra8_tls; two demo apps, none on hardware.",
         purl="pkg:github/Mbed-TLS/mbedtls@4.1.0",
         upstream_commit="d12fbb991c0822f347bbc569badef904629ce605",
         modified=True,
@@ -299,7 +278,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/Mbed-TLS/TF-PSA-Crypto",
         path="libs/third_party/tf-psa-crypto",
         provenance=PROV_COMMIT_PINNED,
-        description="PSA Crypto API backing TLS, OTA signatures, key vault.",
+        description="PSA Crypto API; RoT secure-boot ECDSA-P256 verify engine.",
         purl="pkg:github/Mbed-TLS/TF-PSA-Crypto@1.1.0",
         upstream_commit="bbf1eaf5f4a72bcc3e0cfe854e0313c93b75cd77",
         local_files=(
@@ -405,7 +384,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/richgel999/miniz",
         path="libs/third_party/miniz",
         provenance=PROV_ARCHIVE_PINNED,
-        description="Deflate / inflate / ZIP support for EPUB unpacking.",
+        description="Deflate / inflate / ZIP behind EPUB, CBZ, PNG, gzip and the ra8_io seam.",
         purl="pkg:github/richgel999/miniz@11.0.2",
         upstream_transport=UPSTREAM_ARCHIVE,
         upstream_ref="3.0.2",
@@ -469,7 +448,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/nothings/stb",
         path="libs/third_party/stb",
         provenance=PROV_COMMIT_PINNED,
-        description="PNG/JPEG decode (stb_image) + TTF/OTF raster (stb_truetype).",
+        description="JPEG/PNG/GIF/BMP decode (stb_image) + TTF/OTF raster (stb_truetype).",
         purl="pkg:github/nothings/stb",
         upstream_commit="31c1ad37456438565541f4919958214b6e762fb4",
         upstream_ref="31c1ad37456438565541f4919958214b6e762fb4",
@@ -682,28 +661,6 @@ REGISTRY: tuple[Component, ...] = (
         ),
     ),
     Component(
-        key="fsp_blobs/r_sce_AMC",
-        name="Renesas RSIP-E50D firmware (r_sce_AMC)",
-        version="FSP default branch @ 40bbaa11 (2026-05-02); no tag pinned",
-        ctype="firmware",
-        group="renesas",
-        url="https://github.com/renesas/fsp",
-        path="libs/third_party/fsp_blobs/r_sce_AMC",
-        provenance=PROV_COMMIT_PINNED,
-        description="RSIP-E50D protected crypto procedures (key install/wrap).",
-        purl="pkg:github/renesas/fsp@40bbaa11b1a1b87e0ee0675e401aea6351f90d14",
-        spdx="BSD-3-Clause",
-        license_note="Per-file SPDX-BSD-3-Clause; upstream LICENSE.md mirrored.",
-        license_file="libs/third_party/fsp_blobs/r_sce_AMC/UPSTREAM_LICENSE.md",
-        upstream_commit="40bbaa11b1a1b87e0ee0675e401aea6351f90d14",
-        upstream_ref="40bbaa11b1a1b87e0ee0675e401aea6351f90d14",
-        extra_notes=(
-            "Gold-standard provenance: commit pin + aggregate SHA-256 of the "
-            "sorted per-file hashes (excludes UPSTREAM_LICENSE.md). See "
-            "docs/SOUP/r_sce_AMC_firmware.md.",
-        ),
-    ),
-    Component(
         key="esp-hosted",
         name="Espressif esp-hosted-mcu (host driver)",
         version="2.12.11 (host driver) @ git 949bb30",
@@ -736,9 +693,11 @@ REGISTRY: tuple[Component, ...] = (
             "NOT vendored: a first-party RA8/ThreadX port supplies the same 10 "
             "port_esp_hosted_host_*.h header contracts and fills the 72-entry "
             "hosted_osi_funcs_t vtable. See docs/SOUP/esp-hosted-host.md.",
-            "Not compiled by any target yet: the sources cannot build until the "
-            "first-party port under port/esp-hosted/ lands (the follow-on "
-            "change), which is also when the CMake wiring is added.",
+            "Compiled: cmake/esp_hosted.cmake builds 8 of the vendored TUs into "
+            "esp_hosted_objs behind RA8_USE_ESP_HOSTED, consumed by five "
+            "applications under examples/ek_ra8d2/hw_validated/c6/. The "
+            "first-party port (port/esp-hosted/) and driver (libs/ra8_c6link/) "
+            "have landed and the protocol round-trip is proven on silicon.",
         ),
     ),
     Component(

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # tools/rabook_viewer -- native macOS reader viewer (direct-call, not an emulator).
 #
@@ -17,8 +19,6 @@
 # left as TODO seams (see src/ra8_viewer_reader.c). macOS only -- the window
 # backend is Cocoa; other hosts are not a target for this dev tool.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 cmake_minimum_required(VERSION 3.20)
@@ -218,7 +218,9 @@ ra8_viewer_read_path(
        ra8_pin_validator.c
        ra8_rand_stub.c
        ra8_sbrk_trap.c
+       ra8_scb.c
        ra8_secure.c
+       ra8_systick.c
        ra8_time.c
 )
 

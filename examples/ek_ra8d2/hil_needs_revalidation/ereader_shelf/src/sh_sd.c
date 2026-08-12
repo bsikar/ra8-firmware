@@ -4,23 +4,23 @@
  *
  * @details
  * Brings up the Pmod2 microSD over SCI0 Simple-SPI -> ra8_sdmmc_spi -> ra8_fs
- * (mirroring the pagecache / epub_open path), scans the FAT root for *.RBK
- * files, and serves demand-paged byte-range reads out of the selected file.
- * Each .RBK is the same compressed RBKC container the baked books use, so the
- * rest of the app is source-agnostic. The opened book's file handle stays held
- * (::sh_sd_book_open) and ::sh_sd_book_read seeks + reads single compressed
- * chunks on demand -- the whole container is never resident. `.EPB` books use
- * the same discipline (#230): ::sh_sd_open_epub holds the source file open and
- * `ra8_epub` seeks + reads each ZIP entry on demand, so no whole-file buffer
- * exists for EPUBs either. Mounting is best-effort: with no card (ra8_emulator
+ * (mirroring the pagecache / epub_open path), scans the FAT root for book files
+ * (sh_classify.h), and serves demand-paged byte-range reads out of the selected
+ * file. Each `.rabook` is the same compressed RBKC container the baked books
+ * use, so the rest of the app is source-agnostic. The opened book's file handle
+ * stays held (::sh_sd_book_open) and ::sh_sd_book_read seeks + reads single
+ * compressed chunks on demand -- the whole container is never resident. `.epub`
+ * books use the same discipline (#230): ::sh_sd_open_epub holds the source file
+ * open and `ra8_epub` seeks + reads each ZIP entry on demand, so no whole-file
+ * buffer exists for EPUBs either. Mounting is best-effort: with no card (ra8_emulator
  * run without `--sd`) ra8_sdmmc_spi_init() times out and the shelf stays
  * baked-only.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include <string.h>
@@ -38,10 +38,9 @@
 #include "ra8_spi.h"
 #include "sh_app.h"
 
-/** @enum sh_sd_const_t @brief SD bus + name constants. */
+/** @enum sh_sd_const_t @brief SD bus constants. */
 typedef enum : uint32_t {
   k_sd_spi_chan = 0U, /**< Pmod2 / J25 SCI0 Simple-SPI channel. */
-  k_sd_ext_len  = 4U, /**< Length of the ".RBK" extension.      */
 } sh_sd_const_t;
 
 static const ra8_port_pin_t k_sd_pin_sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
@@ -116,57 +115,23 @@ bool sh_sd_mount(void)
   return ra8_fs_mount(&s_backend, &s_mount) == k_ra8_ok;
 }
 
-/** @brief Case-sensitive @p ext (e.g. ".RBK") suffix test on an 8.3 name. */
-static bool sh_sd_has_ext(const char* name, const char* ext)
-{
-  const size_t n = strlen(name);
-  return (n > (size_t)k_sd_ext_len) && (strcmp(&name[n - (size_t)k_sd_ext_len], ext) == 0);
-}
-
-/** @brief Classify an 8.3 name into a book format; true if it is a book. */
-static bool sh_sd_classify(const char* name, sh_book_fmt_t* out_fmt)
-{
-  if (sh_sd_has_ext(name, ".RBK")) {
-    *out_fmt = k_sh_fmt_rabook;
-    return true;
-  }
-  if (sh_sd_has_ext(name, ".EPB")) { /* .epub truncates to the 3-char 8.3 ext .EPB */
-    *out_fmt = k_sh_fmt_epub;
-    return true;
-  }
-  /* .cbz / .cbr / .cbt are already 3-char exts, so they keep their name on
-   * FAT 8.3 (no truncation, unlike .epub -> .EPB). Comics route through
-   * sh_comic.c; the ra8_comic magic detect picks the container. */
-  if (sh_sd_has_ext(name, ".CBZ")) {
-    *out_fmt = k_sh_fmt_cbz;
-    return true;
-  }
-  if (sh_sd_has_ext(name, ".CBR")) {
-    *out_fmt = k_sh_fmt_cbr;
-    return true;
-  }
-  if (sh_sd_has_ext(name, ".CBT")) {
-    *out_fmt = k_sh_fmt_cbt;
-    return true;
-  }
-  return false;
-}
-
-/** @brief ra8_fs_listdir callback: append each root *.RBK / *.EPB as an SD entry. */
-static void sh_sd_listdir_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+/** @brief ra8_fs_listdir callback: append each root book file as an SD entry. */
+static void sh_sd_listdir_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)ctx;
   const uint8_t skip = (uint8_t)k_ra8_fs_attr_directory | (uint8_t)k_ra8_fs_attr_volume_id;
   sh_book_fmt_t fmt  = k_sh_fmt_rabook;
-  if (((attr & skip) != 0U) || !sh_sd_classify(name, &fmt) ||
-      (g_sh.book_count >= (uint16_t)k_sh_max_books)) {
+  /* An exFAT entry may exceed 4 GiB (#676); a book that large is not loadable
+   * on this device, so it is skipped rather than filed with a wrapped size. */
+  if (((attr & skip) != 0U) || (size > (uint64_t)UINT32_MAX) || !sh_book_classify(name, &fmt) ||
+      (strlen(name) >= (size_t)k_sh_name_cap) || (g_sh.book_count >= (uint16_t)k_sh_max_books)) {
     return;
   }
   sh_entry_t* e = &g_sh.entry[g_sh.book_count];
   *e            = (sh_entry_t){};
   e->from_sd    = true;
   e->fmt        = fmt;
-  e->blob_len   = size;
+  e->blob_len   = (uint32_t)size;
   (void)strncpy(e->sd_name, name, sizeof e->sd_name - 1U);
   /* Placeholder until first open populates real title/author/cover (reading +
    * parsing a whole book over SPI at boot is too slow). */
@@ -195,16 +160,16 @@ bool sh_sd_book_open(const char* name, uint32_t* out_len)
     s_book = nullptr;
     return false;
   }
-  uint32_t size = 0U;
+  uint64_t size = 0U;
   if (ra8_fs_size(s_book, &size) != k_ra8_ok) {
     sh_sd_book_close();
     return false;
   }
-  if (size == 0U) {
+  if ((size == 0U) || (size > (uint64_t)UINT32_MAX)) {
     sh_sd_book_close();
     return false;
   }
-  *out_len = size;
+  *out_len = (uint32_t)size;
   return true;
 }
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # c6_toolchain role defaults -- provisions the ESP-IDF build environment used to
 # build + flash the ESP32-C6 wireless co-processor firmware (esp-hosted-mcu).

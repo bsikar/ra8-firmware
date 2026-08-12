@@ -92,7 +92,7 @@ g_ra8_ls_ns_stack_top = ORIGIN(NS_SRAM) + LENGTH(NS_SRAM);
  * accidental malloc() call from newlib. */
 
 /*
- * Option-setting region fixed addresses (HUM section 4).
+ * Option-setting region fixed addresses (HUM Ch 7 "Option-Setting Memory" Figure 7.1 p 279).
  *
  * Every entry is PROVIDE()-d so it can be overridden with
  * `--defsym=OFS0_ADDR=0x...` from the cmake toolchain file or the

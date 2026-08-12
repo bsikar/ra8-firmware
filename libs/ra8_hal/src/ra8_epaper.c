@@ -304,7 +304,7 @@ RA8_INTERNAL
 {
   ra8_err_t err = internal_ra8_epaper_wait_ready();
   if (err != k_ra8_ok) {
-    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready timeout re-raise; seam-driven, tested. */
   }
   err = internal_ra8_epaper_send16((uint16_t)k_ra8_epaper_preamble_cmd);
   if (err != k_ra8_ok) {
@@ -312,7 +312,7 @@ RA8_INTERNAL
   }
   err = internal_ra8_epaper_wait_ready();
   if (err != k_ra8_ok) {
-    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready timeout re-raise; seam-driven, tested. */
   }
   return internal_ra8_epaper_send16(cmd);
 }
@@ -328,7 +328,7 @@ RA8_INTERNAL
 {
   ra8_err_t err = internal_ra8_epaper_wait_ready();
   if (err != k_ra8_ok) {
-    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready timeout re-raise; seam-driven, tested. */
   }
   err = internal_ra8_epaper_send16((uint16_t)k_ra8_epaper_preamble_wr);
   if (err != k_ra8_ok) {
@@ -336,7 +336,7 @@ RA8_INTERNAL
   }
   err = internal_ra8_epaper_wait_ready();
   if (err != k_ra8_ok) {
-    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready timeout re-raise; seam-driven, tested. */
   }
   return internal_ra8_epaper_send16(word);
 }
@@ -352,7 +352,7 @@ RA8_INTERNAL
 {
   ra8_err_t err = internal_ra8_epaper_wait_ready();
   if (err != k_ra8_ok) {
-    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready timeout re-raise; seam-driven, tested. */
   }
   err = internal_ra8_epaper_send16((uint16_t)k_ra8_epaper_preamble_rd);
   if (err != k_ra8_ok) {
@@ -360,7 +360,7 @@ RA8_INTERNAL
   }
   err = internal_ra8_epaper_wait_ready();
   if (err != k_ra8_ok) {
-    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready timeout re-raise; seam-driven, tested. */
   }
   /* IT8951 inserts one dummy word after the read preamble (DS 3.4). */
   uint16_t dummy = 0U;
@@ -675,7 +675,7 @@ RA8_INTERNAL
   internal_ra8_epaper_pulse_reset();
   err = internal_ra8_epaper_wait_ready();
   if (err != k_ra8_ok) {
-    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready timeout re-raise; seam-driven, tested. */
   }
   err = internal_ra8_epaper_write_cmd((uint16_t)k_ra8_epaper_cmd_sys_run);
   if (err != k_ra8_ok) {

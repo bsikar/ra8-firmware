@@ -72,10 +72,10 @@
  * @see ra8_epub_img_tiles.h     The EPUB tile binder this mirrors.
  * @see ra8_comic.h              The CBZ/CBR page reader that supplies the bytes.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

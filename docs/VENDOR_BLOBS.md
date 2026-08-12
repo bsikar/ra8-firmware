@@ -1,10 +1,8 @@
 # Vendor Blobs (Renesas-Only, Not Shipped)
 
-This document tracks Renesas-distributed binary artifacts that the
-`ra8-firmware` tree intentionally does NOT include. They are
-license-restricted (Renesas NDA / OEM agreement) and therefore
-cannot be redistributed in this open-source
-repository. Each entry below describes:
+This document tracks Renesas-controlled artifacts that the
+`ra8-firmware` tree intentionally does NOT include. Each entry below
+describes:
 
 1. What the blob is.
 2. What functionality it enables.
@@ -12,10 +10,10 @@ repository. Each entry below describes:
 4. What runtime behavior degrades / fails without it.
 5. Which source files / functions are directly affected.
 
-If you need any of these, consult your Renesas FAE or the RA SDK
-distribution channel you have a license for. This document does not
-list URLs or NDA terms because we have no authoritative public source
-for them.
+"Not shipped" is not the same as "not obtainable", and the distinction
+matters: the one entry below is **publicly downloadable under
+BSD-3-Clause**. It is absent because a partial copy is worse than none
+(see "Where it would go"), not because a licence forbids it.
 
 ---
 
@@ -23,12 +21,15 @@ for them.
 
 ### What it is
 
-Signed firmware blobs for the Renesas Secure IP block (RSIP-E50D)
-that ships inside the RA8D2 silicon (Hardware User's Manual Ch 52,
-"Renesas Secure IP (RSIP-E50D)", pp 3302-3307). In Renesas' FSP tree
-these are the `hw_sce_*.c` files; they implement the OEM-provisioned
-key-handling, key-wrap and key-unwrap state machines that the bare
-RSIP register interface alone does not expose.
+The vendor-controlled implementation of the Renesas Secure IP block
+(RSIP-E50D) that ships inside the RA8D2 silicon (Hardware User's
+Manual Ch 52, "Renesas Secure IP (RSIP-E50D)", pp 3302-3307). In
+current FSP these are the obfuscated `r_rsip_*.c` procedure sources
+under `ra/fsp/src/r_rsip_protected/` (in older FSP releases, the
+`hw_sce_*.c` files); they implement the OEM-provisioned key-handling,
+key-wrap and key-unwrap state machines that the bare RSIP register
+interface alone does not expose. "Blob" here means "opaque,
+vendor-controlled implementation", not literally a binary file.
 
 ### What it enables
 
@@ -44,14 +45,24 @@ RSIP register interface alone does not expose.
 
 ### Where it would go
 
-Suggested drop-in path (gitignored, never committed):
+Nowhere yet, and that is deliberate. A snapshot of the FSP RSIP-E50D
+primitives *was* vendored under `libs/third_party/fsp_blobs/r_sce_AMC/`
+from 2026-05-02 until 2026-08, and it was deleted (#614) having never
+been built: no `cmake/` recipe referenced it, no first-party call site
+named a symbol in it, and 284 of its 287 translation units included
+`r_rsip_reg.h` / `r_rsip_util.h`, headers that were never copied into
+the tree. It could not have compiled if something had tried.
 
-```
-libs/third_party/renesas-rsip-blobs/
-```
-
-This directory does not exist in the tree. Create it locally if you
-have the blobs; do not check it in.
+The lesson is that a *partial* vendoring of this component is dead
+weight, not a head start. Whoever brings hardware RSIP up should
+vendor a complete, **tag-pinned** snapshot -- the `ra_rsip_e50d`
+primitives *plus* the `r_rsip_protected` driver and the util/reg layer
+they include -- add a `cmake/rsip_blob.cmake` behind an option that is
+OFF by default, and register the component in
+`scripts/gen/sbom_registry.py` so the sbom / soup-upstream / osv gates
+cover it. Anything less will not compile, and an in-tree copy that
+compiles for nobody is what this section already cost the project
+once.
 
 ### What fails without them
 
@@ -107,28 +118,29 @@ the failure mode is "not Renesas-signed".
 
 ---
 
-## 2. How to obtain (general guidance)
+## 2. How to obtain
 
-We deliberately do NOT publish URLs, contact emails, or NDA terms
-here -- we have no authoritative public source for any of them and
-they change. If you need this blob:
-
-- Contact your Renesas Field Application Engineer (FAE).
-- Check the Renesas RA SDK distribution channel for which you hold a
-  license.
-
-If unsure which package applies: **consult Renesas FAE / RA SDK
-distribution.**
+From the public FSP repository, <https://github.com/renesas/fsp>: the
+RSIP-E50D procedure sources live under
+`ra/fsp/src/r_rsip_protected/` and carry per-file SPDX
+`BSD-3-Clause` notices. No FAE, no NDA, no SDK licence is involved.
+Check out a **release tag** rather than a branch head, so the pin is a
+thing that cannot move underneath the provenance record.
 
 ---
 
 ## 3. Policy
 
-- This blob MUST NEVER be committed to this repository.
-- The suggested `libs/third_party/renesas-rsip-blobs/` path exists as
-  a local drop-in location only; add it to your local `.gitignore` if
-  you populate it.
-- The software-backend / stub-with-warning code paths are the
-  open-source baseline and are tested on the host. They are
-  intentionally NOT a substitute for the real blob on production
-  silicon.
+- Vendor this component from `renesas/fsp` only -- never from e2 studio
+  installer payloads, leaked OEM packages, or third-party
+  redistributors.
+- Vendor it **whole or not at all**, at a release tag, with a build
+  option that compiles it and an `sbom_registry.py` row that gates it.
+  A snapshot that nothing builds is accretion; the tree carried one for
+  three months and deleted it (#614).
+- Every vendored file must appear verbatim. If a patch is required,
+  write a separate integration shim and declare the deviation in the
+  component's `docs/SOUP/*.md`.
+- The software-backend code paths are the open-source baseline and are
+  tested on the host. They are intentionally NOT a substitute for the
+  real vendor implementation on production silicon.

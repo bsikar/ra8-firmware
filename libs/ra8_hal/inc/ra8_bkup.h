@@ -198,8 +198,9 @@ typedef struct {
  * cppcheck cannot see tests/ so it flags every field as unused.
  */
 typedef struct {
-  ra8_bkup_nc_width_t        nc_width; /**< VINCW noise-sampling clock. */
-  ra8_bkup_tamper_chan_cfg_t channels[(uint8_t)k_ra8_bkup_chan_count]; /**< Channels. */
+  ra8_bkup_nc_width_t nc_width; /**< VINCW noise-sampling clock. */
+  /** Channels. */
+  ra8_bkup_tamper_chan_cfg_t channels[(uint8_t)k_ra8_bkup_chan_count];
 } ra8_bkup_tamper_config_t;
 
 /**

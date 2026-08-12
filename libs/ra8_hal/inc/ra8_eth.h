@@ -107,6 +107,73 @@ void ra8_eth_dispatch(void);
  */
 [[nodiscard]] ra8_err_t ra8_eth_exit_stop(void);
 
+/**
+ * @enum ra8_eth_mii_port_t
+ * @brief ESWM media-interface port selector (m = 0, 1).
+ *
+ * @details
+ * The RA8 ESWM wraps each MAC pin group with a media-interface mux. Port
+ * ``m`` maps 1:1 to RMAC``m`` / ETHA``m`` and to the ESWM ``MIICR``m
+ * control register plus the ``MIIRR.RGRST``m per-port enable bit. Passed
+ * to ::ra8_eth_rgmii_select to route a given port's pins to RGMII.
+ *
+ * @see ra8_eth_rgmii_select
+ */
+typedef enum : uint8_t {
+  k_ra8_eth_mii_port_0     = 0U, /**< ESWM media port 0 (RMAC0 / ETHA0). */
+  k_ra8_eth_mii_port_1     = 1U, /**< ESWM media port 1 (RMAC1 / ETHA1). */
+  k_ra8_eth_mii_port_count = 2U, /**< Number of media-interface ports.   */
+} ra8_eth_mii_port_t;
+
+/**
+ * @brief Select RGMII on a port's ESWM media-interface mux and enable it.
+ *
+ * @details
+ * The chip-generic ESWM RGMII media-select every RA8 RGMII board runs once
+ * during Ethernet bring-up. After power-on reset ``MIICR``m.MIISEL reads 0
+ * (GMII/MII) and ``MIIRR.RGRST``m reads 0 (RGMII block held in reset), so
+ * the RGMII data path is dead until the driver explicitly:
+ *
+ *   1. Sets ``MIICR``m = MIISEL = RGMII (01b) | TXCIDE (on-chip TX clock
+ *      delay), matching the FSP "RGMII + 2 ns TX skew" board profile.
+ *   2. Sets ``MIIRR.RGRST``m = 1. HUM Ch 29.2.1.2: RGRSTm is 1 = Enable,
+ *      0 = Reset -- an ENABLE bit, not an active-high reset. Without it TXC
+ *      is never generated and the RMAC RX state machine is unclocked, so
+ *      every RMAC RX counter stays at 0.
+ *
+ * It previously lived open-coded in the EK-RA8D2 board Ethernet bring-up;
+ * the accesses are chip-generic, so they belong here in the HAL. Which port
+ * is wired, and any board TX/RX skew choices in the PHY, remain board
+ * concerns.
+ *
+ * @param[in] port ESWM media-interface port to route to RGMII. Must be a
+ *                 valid ::ra8_eth_mii_port_t (< ::k_ra8_eth_mii_port_count).
+ *
+ * @return ::ra8_err_t Result code.
+ * @retval k_ra8_ok              Port routed to RGMII and its block enabled.
+ * @retval k_ra8_err_invalid_arg ``port`` is out of range.
+ *
+ * @pre The ESWM module-stop gate (::k_ra8_mstp_eswm) has been released.
+ * @pre COMA has been brought up (::ra8_eth_coma_bringup) so the media
+ *      window is accessible.
+ * @post On success ``MIICR``port = TXCIDE | RGMII and ``MIIRR.RGRST``port = 1.
+ * @post On k_ra8_err_invalid_arg no register was written.
+ *
+ * @note Not thread-safe; call from a single-threaded init context.
+ * @note eth is HW-blocked on silicon (issue #21); this path is host-tested
+ *       and sim-modeled, not hardware-validated.
+ *
+ * @par Example:
+ * @code
+ * (void)ra8_eth_coma_bringup();
+ * (void)ra8_eth_rgmii_select(k_ra8_eth_mii_port_1);  // EK-RA8D2 RJ45 = port 1
+ * @endcode
+ *
+ * @see ra8_eth_coma_bringup
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_eth_rgmii_select(ra8_eth_mii_port_t port);
+
 /* -----------------------------------------------------------------------
  * Frame-level NIC API (FSP r_ether shape).
  * -------------------------------------------------------------------- */

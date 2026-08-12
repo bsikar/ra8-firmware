@@ -99,15 +99,15 @@ ra8_err_t ra8_cac_init(uint16_t upper, uint16_t lower)
    * r_cac_hw_configure() does the same, then waits on CACR0 readback). */
   reg->CACR0 = 0U;
   internal_cac_wait_cfme(reg, 0U);
-  /* HUM Ch 10.2.4 "CAICR" p 423 */ /* clear all stale W1C status flags. */
+  /* HUM Ch 10.2.4 "CAICR" p 424 */ /* clear all stale W1C status flags. */
   reg->CAICR = (uint8_t)(k_ra8_cac_status_mask_all << (uint8_t)k_ra8_cac_castr_to_caicr_shift);
-  /* HUM Ch 10.2.2 "CACR1 : CAC Control Register 1" p 421 */
+  /* HUM Ch 10.2.2 "CACR1 : CAC Control Register 1" p 422 */
   reg->CACR1 = 0U;
-  /* HUM Ch 10.2.3 "CACR2 : CAC Control Register 2" p 422 */
+  /* HUM Ch 10.2.3 "CACR2 : CAC Control Register 2" p 423 */
   reg->CACR2 = 0U;
-  /* HUM Ch 10.2.6 "CAULVR : CAC Upper Limit Value Register" p 425 */
+  /* HUM Ch 10.2.6 "CAULVR : CAC Upper Limit Value Register" p 426 */
   reg->CAULVR = upper;
-  /* HUM Ch 10.2.7 "CALLVR : CAC Lower Limit Value Register" p 425 */
+  /* HUM Ch 10.2.7 "CALLVR : CAC Lower Limit Value Register" p 426 */
   reg->CALLVR = lower;
   ra8_log_info(s_tag, "cac_init");
   return k_ra8_ok;
@@ -127,9 +127,9 @@ ra8_err_t ra8_cac_measure(uint16_t* out_count)
   internal_cac_wait_cfme(reg, cfme_set);
 
   for (uint32_t i = 0U; i < k_ra8_cac_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 10.2.5 "CASTR : CAC Status Register" p 424 */
+    /* HUM Ch 10.2.5 "CASTR : CAC Status Register" p 425 */
     if ((reg->CASTR & (uint8_t)(1U << k_ra8_castr_mendf)) != 0U) { /* GCOVR_EXCL_BR_LINE */
-      /* HUM Ch 10.2.4 "CACNTBR : CAC Counter Buffer Register" p 423 */
+      /* HUM Ch 10.2.8 "CACNTBR : CAC Counter Buffer Register" p 426 */
       *out_count = reg->CACNTBR;
       reg->CACR0 = 0U;
       internal_cac_wait_cfme(reg, 0U);
@@ -182,7 +182,7 @@ ra8_err_t ra8_cac_get_status(uint8_t* out_mask)
 ra8_err_t ra8_cac_clear_status(uint8_t mask)
 {
   volatile r_cac_regs_t* reg = ra8_cac();
-  /* HUM Ch 10.2.4 "CAICR : CAC Interrupt Control Register" p 423 -- the
+  /* HUM Ch 10.2.4 "CAICR : CAC Interrupt Control Register" p 424 -- the
    * write-1-to-clear bits are FERRFCL=bit4, MENDFCL=bit5, OVFFCL=bit6,
    * which sit `k_ra8_cac_castr_to_caicr_shift` (= 4) bits above the
    * matching CASTR FERRF/MENDF/OVFF flags. Cross-verified against FSP
@@ -204,7 +204,7 @@ void ra8_cac_dispatch(void)
 {
   volatile r_cac_regs_t* reg  = ra8_cac();
   const uint8_t          mask = (uint8_t)(reg->CASTR & k_ra8_cac_status_mask_all);
-  /* HUM Ch 10.2.4 "CAICR" p 423 -- write 1 to FERRFCL/MENDFCL/OVFFCL
+  /* HUM Ch 10.2.4 "CAICR" p 424 -- write 1 to FERRFCL/MENDFCL/OVFFCL
    * (bits 4/5/6) to clear the matching CASTR flag, mirroring the FSP
    * ISR pattern `R_CAC->CAICR |= CAC_PRV_CAICR_*FCL_MASK`. */
   reg->CAICR                   = (uint8_t)(mask << (uint8_t)k_ra8_cac_castr_to_caicr_shift);

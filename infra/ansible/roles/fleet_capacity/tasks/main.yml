@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Install the drain-aware capacity script on a runner host, and the systemd
 # timer that converges the host to its declared capacity unattended -- honouring

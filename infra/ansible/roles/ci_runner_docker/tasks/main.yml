@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Deploy ONE plain (non-ARC) self-hosted GitHub Actions runner as a Docker
 # container, on a host that is not the k3s node -- see defaults/main.yml for

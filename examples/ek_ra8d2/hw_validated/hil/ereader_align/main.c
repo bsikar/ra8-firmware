@@ -17,11 +17,11 @@
  * every boot and matches the host / ra8_emulator run, so any drift in the
  * alignment offsets or the justification slack changes the hash.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

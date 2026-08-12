@@ -31,7 +31,7 @@
  * Every other command returns ``NX_NOT_SUCCESSFUL`` -- the firmware
  * does not support multicast filtering, IP-level offload, or 6LowPAN.
  *
- * Copyright (c) 2026 Brighton Sikarskie
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/emu/matrix_triage.sh -- group the ra8_emulator matrix failures by CAUSE.
 #
@@ -18,8 +20,6 @@
 #   bash scripts/emu/matrix_triage.sh     # group what it found
 #   bash scripts/emu/matrix_triage.sh --selftest
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 # Shell options: -u and -o pipefail, deliberately NOT -e -- like matrix.sh this
 # is a report that must run to completion across per-app oddities rather than

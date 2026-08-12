@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_pathfs.h
  * @brief Guarded filesystem directory joins for the media downloader.
@@ -16,6 +12,8 @@
  * series tree). It is kept out of the CLI's translation unit so the pure
  * lexical predicates in mdl_sanitize stay filesystem-free and this filesystem
  * policy has exactly one home.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

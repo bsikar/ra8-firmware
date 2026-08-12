@@ -3,16 +3,22 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Verify the NSC Secure-Gateway veneer slot offsets in a linked ELF.
 
-The tz_nsc_cgc_usb Non-Secure image reaches each NSC CGC veneer by ADDRESS
-(``g_ra8_ls_sgstubs_start + <slot offset>``) rather than by symbol, because
-GNU ld rewrites every reference to a ``cmse_nonsecure_entry`` symbol inside
-one secure image onto the secure body ``__acle_se_*`` -- so the bare veneer
-symbol cannot be used, and a linker ``ASSERT`` sees the wrong value too.
+The tz_nsc_cgc_usb Non-Secure image reaches each NSC CGC veneer by NAME, not by
+address: ``ns_main.c`` declares the bare ``ra8_nsc_cgc_*`` prototypes and calls
+them, and the CMSE import library the Secure link emits (``--cmse-implib
+--out-implib``, on this image's link line) binds those names to the
+Secure-Gateway stub addresses. That import library is derived FROM the Secure
+ELF, so the byte offset of each veneer inside the ``.gnu.sgstubs`` region IS the
+ABI contract between the two worlds: reorder the stubs and every bound
+NS->Secure call lands on a different entry point, with no diagnostic.
 
-This post-build check reads the FINAL symbol table (where ``nm`` reports the
-real SG-stub addresses) and fails the build if any veneer has drifted from the
-offset hard-coded in ``ns_main.c`` (the ``k_sg_off_*`` enum). If it fires,
-update both the enum and this table together.
+This post-build check reads the FINAL Secure symbol table (where ``nm`` reports
+the real SG-stub addresses) and fails the build if any veneer has drifted from
+its pinned offset in ``EXPECTED_OFFSETS`` below. A drift means the Secure ELF no
+longer matches the offsets this table records -- and therefore no longer matches
+the import library the NS image was bound against; re-derive the offsets from
+the link and update the table. (There is no ``k_sg_off_*`` enum to keep in step
+any more: the NS side gave up hard-coded offsets for the import library.)
 
 The veneer set is REQUIRED, not optional, once the ELF has an NSC region. Both
 callers -- the ``tz_nsc_cgc_usb.elf`` POST_BUILD command and the ``sg-offsets``
@@ -146,7 +152,7 @@ def main() -> int:
         print("check_sg_offsets: FATAL -- NSC SG-veneer slot drift detected.", file=sys.stderr)
         print("\n".join(drift), file=sys.stderr)
         print(
-            "Update k_sg_off_* in ns_main.c and EXPECTED_OFFSETS here in step.",
+            "Re-derive the offsets from the Secure link and update EXPECTED_OFFSETS here.",
             file=sys.stderr,
         )
         return 1

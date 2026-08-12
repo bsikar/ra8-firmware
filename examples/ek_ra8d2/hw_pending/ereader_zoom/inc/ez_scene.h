@@ -39,7 +39,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -164,10 +163,12 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ez_cell_bytes        = k_ez_tile_edge * k_ez_tile_edge, /**< One gray8 tile, bytes. */
-  k_ez_view_cols         = 6U, /**< 1:1 tile columns a frame straddles, plus one. */
-  k_ez_view_rows         = 4U, /**< 1:1 tile rows a frame straddles, plus one.    */
-  k_ez_cells             = (k_ez_view_cols + 1U) * (k_ez_view_rows + 1U), /**< Cells. */
+  /** One gray8 tile, bytes. */
+  k_ez_cell_bytes = k_ez_tile_edge * k_ez_tile_edge,
+  k_ez_view_cols  = 6U, /**< 1:1 tile columns a frame straddles, plus one. */
+  k_ez_view_rows  = 4U, /**< 1:1 tile rows a frame straddles, plus one.    */
+  /** Cells. */
+  k_ez_cells             = (k_ez_view_cols + 1U) * (k_ez_view_rows + 1U),
   k_ez_buckets           = 64U,                /**< Cache hash buckets (>= cells). */
   k_ez_cell_budget_bytes = 4U * 1024U * 1024U, /**< SDRAM the cache may claim.     */
   k_ez_prefetch_max      = 6U,                 /**< Lead-edge tiles per pan.       */

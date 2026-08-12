@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Re-read unit files after this role writes or removes any of them. Without it
 # `systemctl enable` acts on whatever systemd last parsed, which on a first

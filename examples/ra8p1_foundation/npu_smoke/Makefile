@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app Makefile for the RA8P1 Ethos-U55 NPU foundation `npu_smoke`.
 #
@@ -12,8 +14,6 @@
 # makes ra8_device.h define RA8_HAS_NPU and compiles the Ethos-U55 driver ra8_npu.c.
 # The CPU flags, compiler, and linker flags are shared with the RA8D2 toolchain.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL     := /bin/bash

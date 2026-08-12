@@ -1,5 +1,3 @@
-/* SPDX-License-Identifier: MIT */
-/* Copyright (c) 2026 Brighton Sikarskie */
 
 /**
  * @file port/mbedtls/inc/tf_psa_crypto_config_platform.h
@@ -18,9 +16,9 @@
  * original Mbed TLS license header for the moved content is preserved
  * verbatim below.
  *
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 

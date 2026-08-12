@@ -165,7 +165,7 @@ hardware-validate on the stock EVM:
 | Path                            | Meaning                                                                 |
 |---------------------------------|-------------------------------------------------------------------------|
 | `examples/ek_ra8d2/<app>/`      | Validates on a stock EK-RA8D2 v1 with no extra peripherals (or only a $5 USB device for the host-port demos). The pre-commit hook and CI smoke-test apps from this tier. |
-| `examples/_unsupported/<app>/`  | Requires extra hardware we do not have (audio amp, BLE radio + vendor patch image, RSIP BIST blob, PTP switch, MCK motor board, SD card slot). Cross-builds in CI but is not flashed; expect bit-rot until somebody acquires the hardware. |
+| `examples/_unsupported/<app>/`  | Requires extra hardware we do not have (audio amp, an off-chip BLE controller, RSIP BIST firmware, PTP switch, MCK motor board, SD card slot). Cross-builds in CI but is not flashed; expect bit-rot until somebody acquires the hardware. |
 
 The build-target name is just the bare app directory name; the tier
 directory is purely organisational. `make blink` builds
@@ -323,6 +323,12 @@ Results across 27 testable apps:
 5. **BLE apps fault** -- threadx_nimble_peripheral prints "[nimble] boot"
    then crashes. Renesas BLE patch image (vendor blob) required for
    radio init; documented in VENDOR_BLOBS.md.
+   *[Later correction: this diagnosis was wrong. Commit `6f6209a95`
+   (2026-07-10) established that the RA8D2 has no on-chip BLE radio at
+   all, so no patch image exists to obtain -- the apps faulted because
+   they drove a controller that is not in the silicon. BLE now runs on
+   the ESP32-C6 companion across the HCI transport seam, and
+   VENDOR_BLOBS.md no longer carries a BLE section.]*
 6. **threadx_https_client** -- stuck in main init at line 239. Needs
    network up (so depends on lwIP echo working too).
 7. **ra8_bootloader** -- stuck in system_init.c. Boot stub design
@@ -347,6 +353,9 @@ inside newlib's rand()/srand() now boot cleanly:
 - **5 BLE apps** (ble_peripheral, threadx_nimble_peripheral, threadx_ble_central,
   threadx_ble_mesh_node) -- radio init panics. **Renesas BLE patch image required**
   (vendor blob, documented in VENDOR_BLOBS.md). Cannot fix without the blob.
+  *[Later correction, `6f6209a95` (2026-07-10): there is no such blob. The
+  RA8D2 has no on-chip BLE radio, so the phantom controller these apps
+  drove was deleted; the controller now lives on the ESP32-C6 companion.]*
 - **2 LevelX/XSPI apps** (threadx_levelx_demo, threadx_filex_levelx_demo) -- both
   panic in lx_nor_flash_format. **XSPI NOR driver bring-up incomplete** for the
   IS25LX512M-JHLE chip on EK-RA8D2 v1.

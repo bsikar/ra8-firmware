@@ -11,12 +11,12 @@
  * public inline-declaration entry point ::ra8_css_parse_inline. No MMIO, no heap;
  * every buffer is a fixed-size field of the caller-owned ::ra8_css_sheet_t.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

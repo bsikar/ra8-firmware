@@ -53,7 +53,7 @@
  */
 typedef enum : uint32_t {
   k_flash_poison_out =
-    0xFFFFFFFFUL, /**< Poison written into a count out-parameter, so a call that fails without setting it is detectable. */
+    0xFFFFFFFFUL, /**< Poison for a count out-param; a failing call that skips it is detectable. */
 } flash_config_cov_fixture_t;
 
 /**

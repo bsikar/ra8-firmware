@@ -54,6 +54,7 @@ from line_citation_lex import (
     THIRD_PARTY_RE,
     all_tracked_files,
     find_comment_spans,
+    find_mcdc_reason_spans,
     is_exempt,
     line_of_offset,
 )
@@ -221,19 +222,30 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
     except OSError:
         return []
     violations: list[tuple[int, str, str]] = []
-    spans = find_comment_spans(text)
+    seen: set[tuple[int, str]] = set()
+    # Two citation-bearing regions: C/C++ comments, and the string reason of an
+    # RA8_MCDC_DEACTIVATED(...) annotation. The reason is a string literal that
+    # find_comment_spans skips, but docs/ANNOTATIONS.md promises this gate scans
+    # it -- a deactivation reason anchored to a line number is DO-178C evidence
+    # that rots silently (#547). Both regions share one exemption cascade, so a
+    # CITES-OK on the line excuses either; dedup keeps a reason that happens to
+    # sit inside a doc comment from being reported twice.
+    spans = find_comment_spans(text) + find_mcdc_reason_spans(text)
     for start, end in spans:
-        comment = text[start:end]
+        region = text[start:end]
         # Per-line check: walk each match, validate against the
         # specific physical line it sits on (so CITES-OK: on the same
         # line excuses it).
-        for m in CITATION_RE.finditer(comment):
+        for m in CITATION_RE.finditer(region):
             abs_off = start + m.start()
             line_no = line_of_offset(text, abs_off)
             matched = m.group(0)
             line = line_text(text, line_no)
             if is_exempt(matched, line):
                 continue
+            if (line_no, matched) in seen:
+                continue
+            seen.add((line_no, matched))
             snippet = line.strip()
             if len(snippet) > MAX_SNIPPET_LEN:
                 snippet = snippet[:SNIPPET_TRUNCATE_LEN] + "..."
@@ -282,10 +294,62 @@ def _report_violations(
     return total
 
 
+def _selftest_scope(failures: list[str]) -> None:
+    """Assert SCAN_ROOTS scope: tools/ (source + docs) in, vendored SOUP out (#358)."""
+    expect(
+        is_in_scope("tools/ra8_emulator/src/main.c"),
+        "tools/ C is in scope (SCAN_ROOTS omitted it before #358)",
+        failures,
+    )
+    expect(is_doc_in_scope("tools/mcp/README.md"), "tools/ docs are in scope", failures)
+    expect(
+        not is_in_scope("libs/third_party/miniz/miniz.c"),
+        "vendored SOUP stays out of scope",
+        failures,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Selftest -- both directions, for source AND docs, plus scope assertions under
 # tools/ (source and docs), silently omitted until #358.
 # ---------------------------------------------------------------------------
+def _selftest_mcdc_reason_cases(tmp: Path, failures: list[str]) -> None:
+    """Assert both directions of the RA8_MCDC_DEACTIVATED reason scan (#547).
+
+    Extracted from :func:`selftest` so that function stays under the NASA Rule 4
+    line cap; the assertions are unchanged. The macro's reason is a string
+    literal, outside comment spans, so this proves a file:line inside one fires
+    and that a symbol-only or CITES-OK reason stays quiet -- the enforcement
+    docs/ANNOTATIONS.md promises.
+
+    Args:
+        tmp: A writable temporary directory for the fixture files.
+        failures: The accumulator each assertion records into.
+    """
+    bad_mcdc = tmp / "bad_mcdc.c"
+    bad_mcdc.write_text(
+        'RA8_MCDC_DEACTIVATED("guard justified in libs/foo.c:123")\n'
+        "static inline bool internal_guard(const void* p);\n",
+        encoding="utf-8",
+    )
+    expect(
+        bool(scan_file(bad_mcdc)),
+        "a file:line inside an RA8_MCDC_DEACTIVATED reason fires (#547)",
+        failures,
+    )
+    good_mcdc = tmp / "good_mcdc.c"
+    good_mcdc.write_text(
+        'RA8_MCDC_DEACTIVATED("guard: ra8_pin_validator_check asserts non-null")\n'
+        'RA8_MCDC_DEACTIVATED("legacy libs/foo.c:1 CITES-OK: historical note")\n',
+        encoding="utf-8",
+    )
+    expect(
+        not scan_file(good_mcdc),
+        "a symbol-only reason and a CITES-OK reason stay quiet (source)",
+        failures,
+    )
+
+
 def selftest() -> int:
     """Prove a file:line citation fires, legal forms stay quiet, and scope holds."""
     print("check_line_citations.py --selftest")
@@ -305,6 +369,7 @@ def selftest() -> int:
             "symbol ref / moved-from / CITES-OK stays quiet (source)",
             failures,
         )
+        _selftest_mcdc_reason_cases(Path(tmp), failures)
         bad_doc = Path(tmp) / "bad.md"
         bad_doc.write_text("See `ra8_ipc_regs.h:267` for the bit.\n", encoding="utf-8")
         expect(bool(scan_doc_file(bad_doc)), "a file:line citation in a doc fires", failures)
@@ -315,17 +380,7 @@ def selftest() -> int:
         )
         expect(not scan_doc_file(good_doc), "doc CITES-OK stays quiet", failures)
 
-    expect(
-        is_in_scope("tools/ra8_emulator/src/main.c"),
-        "tools/ C is in scope (SCAN_ROOTS omitted it before #358)",
-        failures,
-    )
-    expect(is_doc_in_scope("tools/mcp/README.md"), "tools/ docs are in scope", failures)
-    expect(
-        not is_in_scope("libs/third_party/miniz/miniz.c"),
-        "vendored SOUP stays out of scope",
-        failures,
-    )
+    _selftest_scope(failures)
     return report(failures)
 
 

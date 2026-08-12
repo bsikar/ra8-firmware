@@ -29,7 +29,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -150,18 +149,18 @@ typedef enum : uint8_t {
  * model answers); supply a stub for it.
  */
 typedef struct {
-  uint64_t               base;    /**< Absolute window base address.             */
-  uint64_t               span;    /**< Window length in bytes.                   */
-  uint32_t               order;   /**< Ascending tick order (lower ticks first). */
-  board_periph_read_fn   read;    /**< MMIO read handler (required).             */
-  board_periph_write_fn  write;   /**< MMIO write handler (required).            */
-  board_periph_tick_fn   tick;    /**< Per-chunk advance, or NULL.               */
-  board_periph_reset_fn  reset;   /**< Power-on reset, or NULL.                  */
-  board_periph_report_fn report;  /**< End-of-run summary section, or NULL.      */
-  const char*            name;    /**< Short label (diagnostics only).           */
-  bool                   observe; /**< Observe-only: snoop, do not own the MMIO. */
-  board_block_device_t   device;  /**< Device gate: which chip(s) expose it.     */
-  bool loop_only; /**< Only own the window when --usbhs-loop is set (else sparse). */
+  uint64_t               base;      /**< Absolute window base address.                           */
+  uint64_t               span;      /**< Window length in bytes.                                 */
+  uint32_t               order;     /**< Ascending tick order (lower ticks first).               */
+  board_periph_read_fn   read;      /**< MMIO read handler (required).                           */
+  board_periph_write_fn  write;     /**< MMIO write handler (required).                          */
+  board_periph_tick_fn   tick;      /**< Per-chunk advance, or NULL.                             */
+  board_periph_reset_fn  reset;     /**< Power-on reset, or NULL.                                */
+  board_periph_report_fn report;    /**< End-of-run summary section, or NULL.                    */
+  const char*            name;      /**< Short label (diagnostics only).                         */
+  bool                   observe;   /**< Observe-only: snoop, do not own the MMIO.               */
+  board_block_device_t   device;    /**< Device gate: which chip(s) expose it.                   */
+  bool                   loop_only; /**< Only own window when --usbhs-loop is set (else sparse). */
 } board_periph_block_t;
 
 /**

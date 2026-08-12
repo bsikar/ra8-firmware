@@ -29,9 +29,9 @@
 typedef enum : uint8_t {
   k_i3c_dynamic_addr = 0x11U, /**< Dynamic address assigned to the fixture target. */
   k_i3c_payload_byte =
-    0xA5U, /**< A recognizable single-byte payload; neither 0x00 nor 0xFF, so a bus left idle cannot fake it. */
+    0xA5U, /**< Recognizable single-byte payload; not 0x00 or 0xFF, so idle bus cannot fake it. */
   k_i3c_ibi_id =
-    0x84U, /**< IBI identifier placed in the queue word's upper bits, with a zero length below it. */
+    0x84U, /**< IBI identifier placed in queue word's upper bits, with a zero length below it. */
 } i3c_fixture_t;
 
 /**
@@ -44,7 +44,7 @@ typedef enum : uint16_t {
   k_i3c_probe_inst_a =
     0xCAFEU, /**< Planted in INST to prove the status read reaches the register. */
   k_i3c_probe_half_word =
-    0x0000BEEFU, /**< A value whose upper half is zero, catching a driver that sign-extends or reuses stale high bytes. */
+    0x0000BEEFU, /**< Upper half zero, catching sign-extension or reused stale high bytes. */
 } i3c_fixture2_t;
 
 /**
@@ -53,9 +53,9 @@ typedef enum : uint16_t {
  */
 typedef enum : uint32_t {
   k_i3c_probe_word =
-    0xDEADBEEFU, /**< A full 32-bit value, planted in INST and in the command queue, proving no field is truncated. */
+    0xDEADBEEFU, /**< Full 32-bit value in INST and the command queue; no field is truncated. */
   k_i3c_probe_word_alt =
-    0xCAFEBABEU, /**< A second full-width value, so command-queue and data-buffer writes cannot be confused. */
+    0xCAFEBABEU, /**< Second full-width value, so command queue and buffer writes stay distinct. */
   k_i3c_probe_ascending =
     0x11223344U, /**< Ascending bytes: a byte-order slip in the data buffer shows up directly. */
   k_i3c_probe_descending =

@@ -54,13 +54,14 @@ typedef enum : uint8_t {
   k_rar5_enc_fixture_exp_copy_33 =
     33U, /**< Expected-output copy distance base for the low-distance arm. */
   k_rar5_enc_fixture_exp_copy_65 =
-    65U, /**< Expected-output copy distance base for the high-distance arm. */
-  k_rar5_enc_fixture_i_10 = 10U, /**< Block-declaration table: symbols 0..9 carry length 5. */
-  k_rar5_enc_fixture_i_20 = 20U, /**< Block-declaration table entry count.                  */
-  k_rar5_enc_fixture_i_34 = 34U, /**< Literal-table entry count written by the fixture.     */
-  k_rar5_enc_fixture_i_44 = 44U, /**< Repeat-distance table: 44 entries of length 6.        */
-  k_rar5_enc_fixture_i_64 = 64U, /**< Distance table: 64 entries of length 6.               */
-  k_rar5_enc_fixture_sentinel_5a = 0x5AU, /**< Header checksum seed for the crafted RAR5 block. */
+    65U,                         /**< Expected copy-distance base for the high-distance arm. */
+  k_rar5_enc_fixture_i_10 = 10U, /**< Block-declaration table: symbols 0..9 carry length 5.  */
+  k_rar5_enc_fixture_i_20 = 20U, /**< Block-declaration table entry count.                   */
+  k_rar5_enc_fixture_i_34 = 34U, /**< Literal-table entry count written by the fixture.      */
+  k_rar5_enc_fixture_i_44 = 44U, /**< Repeat-distance table: 44 entries of length 6.         */
+  k_rar5_enc_fixture_i_64 = 64U, /**< Distance table: 64 entries of length 6.                */
+  /** Header checksum seed for the crafted RAR5 block. */
+  k_rar5_enc_fixture_sentinel_5a = 0x5AU,
   k_rar5_enc_fixture_msb_bit =
     7U, /**< Index of the most-significant bit in a byte (MSB-first writer). */
 } rar5_enc_fixture_uint8_const_t;
@@ -208,7 +209,8 @@ static inline void enc_tables_bdzero(bitw_t* w)
   }
   bw_put(w, k_rar5_enc_fixture_bw_put_15, 4U); /* escape                                 */
   bw_put(w, 3U, 4U);                           /* zero count 3 -> 3+2 = 5 zeros (10..14) */
-  for (uint32_t i = 0U; i < k_rar5_enc_fixture_bw_put_5; ++i) { /* BD symbols 15..19 length 5 */
+  /* BD symbols 15..19 length 5 */
+  for (uint32_t i = 0U; i < k_rar5_enc_fixture_bw_put_5; ++i) {
     bw_put(w, k_rar5_enc_fixture_bw_put_5, 4U);
   }
   enc_table_body(w);

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_zoom -- the reader's tap-to-zoom image viewer (#478).
 #
@@ -32,8 +34,6 @@
 # directly: the host unit-test build globs it in tests/cmake/, and apps list
 # `ra8_zoom` in their ra8_add_app(... LIBS ...).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

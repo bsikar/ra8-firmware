@@ -165,6 +165,28 @@ Spacing inside single-line block comments is enforced by
   uint8_t  clock_keep_time;       /**< CLSTPTSETR.CLKKPT[31:24].  */
   ```
 
+- **One block, one alignment.** A run of trailing comments must align as a
+  single unit: one `/**<` column and one `*/` column. clang-format aligns a run
+  to its widest code plus one space, but when that column would push the
+  longest comment past column 100 it abandons the run and starts a fresh group
+  mid-block, leaving one struct with two of each:
+
+  ```c
+  /* WRONG -- one struct, two alignment groups */
+  ra8_fs_mount_t* mount;         /**< Owning mount point.                       */
+  uint32_t        cur_cluster;   /**< Cluster the offset currently points into. */
+  uint32_t walk_cache_idx;     /**< Read accelerator: chain index whose cluster is cached below. */
+  uint32_t size_bytes;         /**< File size (DIR_FileSize).                                    */
+  ```
+
+  That is canonical clang-format output, so the formatter will not object; the
+  pass reports it instead. It cannot repair it -- shortening prose is the
+  author's call -- so the remedy is yours: **tighten the long comment**, or
+  **move it to its own `/** ... */` block above the line it documents**, which
+  ends the run there and stops one over-long declaration dragging the whole
+  block right. A run ends at a blank line, a code-only line, a standalone
+  comment, or an inline mid-code comment.
+
 Division of labour: **clang-format owns the comment _start_ column**
 (`AlignTrailingComments: true` aligns each `/**<` to the widest code in the
 block + one space) and never touches the comment interior

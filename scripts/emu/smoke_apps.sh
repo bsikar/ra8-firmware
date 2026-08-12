@@ -1,6 +1,7 @@
-# shellcheck shell=bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/emu/smoke_apps.sh -- the app catalogue: what each app IS, and what it needs.
 
@@ -78,7 +79,7 @@ periodic_tick_apps="agt_periodic rtc_alarm elc_event_demo"
 # + USBFS DCD register model. For these apps we assert the device reaches
 # CONFIGURED with its class active -- i.e. enumeration completed end to end, with
 # no hardware: CDC-ACM, HID (boot mouse), and MSC (BOT/SCSI + a sector read).
-# They are ThreadX/USBX, so (like the LevelX/FileX apps) they need a newer Unicorn
+# They are ThreadX/USBX, so (like the LevelX apps) they need a newer Unicorn
 # than the CI runner's 2.0.1 and a bounded budget; pass them explicitly, e.g.
 # `scripts/emu/smoke.sh usb_cdc_echo usb_msc_device`.
 #
@@ -382,6 +383,7 @@ uart_banner_apps="
   ereader_jpeg ereader_longstrip ereader_zoom epub_parse epub_stress
   widget_app widget_app_demo glcdc_render bscan_selftest keyboard
   smbus_demo crc_demo adc_b_demo agt_periodic i2c_loopback eth_loopback
+  eth_gptp_timestamp_demo
   crypto_aes_demo dma_memcopy_demo rtc_alarm elc_event_demo timer_capture_demo
   drw_fill_demo drw_blend_demo dtc_transfer_demo cac_accuracy_demo
   lvd_monitor_demo pdg_delay_demo dotf_selftest_demo ecc_monitor_demo

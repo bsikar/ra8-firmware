@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # build_docs.sh -- generate the ra8-firmware Doxygen HTML documentation.
 #
@@ -16,8 +18,6 @@
 # Auto-detects whether `dot` (graphviz) is on PATH. If absent, falls
 # back to text-only output (HAVE_DOT=NO) so the build still succeeds.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

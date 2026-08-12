@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # ra8-firmware - cppcheck Static Analysis Script
 #
-# Runs cppcheck across libs/ and examples/ (excluding libs/third_party/) with
+# Runs cppcheck across libs/, examples/, and tools/ (excluding libs/third_party/) with
 # the firmware-wide suppression list and, when available, the MISRA-C and
 # CERT-C addons. By default findings are reported as warnings (exit 0). Pass
 # --check to escalate any growth above the pinned baseline into a non-zero
@@ -17,8 +19,6 @@
 #   cppcheck >= 2.10 (macOS: brew install cppcheck;
 #                     Ubuntu: sudo apt-get install cppcheck)
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 set +H
@@ -42,7 +42,32 @@ FIRMWARE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # Any --check run that exceeds this baseline is flagged as a regression.
 # Update intentionally in the same commit that fixes/adds findings.
 # ---------------------------------------------------------------------------
-BASELINE_TOTAL=${BASELINE_TOTAL:-CPPCHECK_BASELINE_PLACEHOLDER}
+BASELINE_TOTAL=${BASELINE_TOTAL:-8}
+
+# ---------------------------------------------------------------------------
+# The include scope, and the ONLY definition of it.
+#
+# cppcheck analyses translation units, and a TU whose includes do not resolve
+# is not the TU that ships: the annotation macros in ra8_attributes.h go
+# unresolved, and a function-like one at file scope --
+# `RA8_OWNS_RESOURCE("...")` before a definition -- stops looking like an
+# annotation and starts looking like a call, which cppcheck reports as
+# `unknownMacro`. The pre-commit hook re-derived its own (empty) include list
+# and hit exactly that on the first such annotation to land, while this gate
+# was green on the identical tree. So the list is published through
+# --print-include-dirs and the hook consumes it rather than keeping a second
+# copy that can drift again.
+# ---------------------------------------------------------------------------
+INCLUDE_DIRS=(
+  -Ilibs/ra8_core/inc
+  -Ilibs/ra8_hal/inc
+  -Ilibs/ra8_nsc/inc
+  -Isrc/inc
+  -Itools/ra8_emulator/inc
+  -Itools/media_dl/inc
+  -Itools/rabook_viewer/inc
+  -Itools/rabook_imagepack/inc
+)
 
 CHECK_MODE=false
 VERBOSE=false
@@ -55,6 +80,7 @@ usage() {
   echo "Options:"
   echo "  --check    Treat findings above the baseline as errors"
   echo "  --verbose  Verbose cppcheck output"
+  echo "  --print-include-dirs  Print the include scope, one -I per line, and exit"
   echo "  --help     Show this help"
   echo ""
   echo "Default: report findings, exit 0."
@@ -69,6 +95,10 @@ while [[ $# -gt 0 ]]; do
     --verbose)
       VERBOSE=true
       shift
+      ;;
+    --print-include-dirs)
+      printf '%s\n' "${INCLUDE_DIRS[@]}"
+      exit 0
       ;;
     --help | -h)
       usage
@@ -127,19 +157,12 @@ if $VERBOSE; then
   VERBOSE_ARGS+=(--verbose)
 fi
 
-INCLUDE_DIRS=(
-  -Ilibs/ra8_core/inc
-  -Ilibs/ra8_hal/inc
-  -Ilibs/ra8_nsc/inc
-  -Isrc/inc
-  -Itools/ra8_emulator/inc
-)
-
-print_status "Running cppcheck on libs/, examples/, tools/ra8_emulator/ (excluding libs/third_party/) ..."
+print_status "Running cppcheck on libs/, examples/, tools/ (excluding libs/third_party/) ..."
 set +e
 cppcheck \
   --enable=warning,style,performance,portability \
   --inline-suppr \
+  --include=scripts/checks/cppcheck_c23_compat.h \
   --suppressions-list="$SUPPRESSIONS" \
   --suppress=missingIncludeSystem \
   --suppress=unmatchedSuppression \
@@ -147,13 +170,12 @@ cppcheck \
   -ilibs/third_party \
   --std=c11 \
   --platform=unix32 \
-  --language=c \
   --quiet \
-  --error-exitcode=0 \
+  --error-exitcode=1 \
   "${ADDON_ARGS[@]}" \
   "${VERBOSE_ARGS[@]}" \
   "${INCLUDE_DIRS[@]}" \
-  libs examples tools/ra8_emulator \
+  libs examples tools \
   2>"$REPORT"
 RC=$?
 set -e
@@ -177,8 +199,10 @@ if $CHECK_MODE; then
     print_error "cppcheck regression: $TOTAL > baseline $BASELINE_TOTAL"
     exit 1
   fi
-  if [[ "$RC" -ne 0 ]]; then
-    print_error "cppcheck exited non-zero ($RC)"
+  if [[ "$TOTAL" -eq 0 ]] && [[ "$RC" -ne 0 ]]; then
+    # Safety net: if we expect zero findings but cppcheck still errored,
+    # something is wrong with the scan itself.
+    print_error "cppcheck exited non-zero ($RC) despite zero findings"
     exit "$RC"
   fi
   print_success "cppcheck check passed (<= baseline)"

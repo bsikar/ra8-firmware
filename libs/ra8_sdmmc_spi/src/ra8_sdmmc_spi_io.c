@@ -696,39 +696,51 @@ ra8_err_t ra8_sdmmc_spi_get_card_type(ra8_sdmmc_spi_card_type_t* out_type)
  */
 
 /* ``read_block`` shim glue used by the ra8_fs backend descriptor -- see implementation for details. */
-static ra8_err_t internal_fs_read_block(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t internal_fs_read_block(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   if (buf == nullptr) {
     return k_ra8_err_null_ptr;
   }
+  /* SD block numbers are 32-bit (SDXC tops out at 2 TiB), so an address past
+   * that reach is refused rather than truncated -- the 64-bit `ra8_fs`
+   * backend interface (#683) simply exceeds what this medium can hold. */
+  if (lba > (uint64_t)UINT32_MAX) {
+    return k_ra8_err_out_of_range;
+  }
   /* One CMD18 multi-block transaction for the whole run (fast); the single-block
    * path is used only for a lone block. */
-  return ra8_sdmmc_spi_read_blocks(lba, buf, count);
+  return ra8_sdmmc_spi_read_blocks((uint32_t)lba, buf, count);
 }
 
 /* ``write_block`` shim glue used by the ra8_fs backend descriptor -- see implementation for details. */
 static ra8_err_t
-internal_fs_write_block(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+internal_fs_write_block(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   if (buf == nullptr) {
     return k_ra8_err_null_ptr;
   }
+  if (lba > (uint64_t)UINT32_MAX) {
+    return k_ra8_err_out_of_range; /* SD block numbers are 32-bit; see the read shim */
+  }
   /* One CMD25 multi-block transaction for the whole run (fast); the single-block
    * path is used only for a lone block. */
-  return ra8_sdmmc_spi_write_blocks(lba, buf, count);
+  return ra8_sdmmc_spi_write_blocks((uint32_t)lba, buf, count);
 }
 
 /* ``erase_blocks`` shim glue used by the ra8_fs backend descriptor -- see implementation for details. */
-static ra8_err_t internal_fs_erase_block(void* ctx, uint32_t lba, uint32_t count)
+static ra8_err_t internal_fs_erase_block(void* ctx, uint64_t lba, uint64_t count)
 {
   (void)ctx;
-  return ra8_sdmmc_spi_erase_blocks(lba, count);
+  if ((lba > (uint64_t)UINT32_MAX) || (count > (uint64_t)UINT32_MAX)) {
+    return k_ra8_err_out_of_range; /* SD block numbers are 32-bit; see the read shim */
+  }
+  return ra8_sdmmc_spi_erase_blocks((uint32_t)lba, (uint32_t)count);
 }
 
 /* ``get_capacity`` shim glue used by the ra8_fs backend descriptor -- see implementation for details. */
-static ra8_err_t internal_fs_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t internal_fs_get_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   if ((block_count == nullptr) || (block_size == nullptr)) {

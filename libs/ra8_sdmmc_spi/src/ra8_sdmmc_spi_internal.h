@@ -115,15 +115,15 @@ typedef enum : uint32_t {
   k_sd_ocr_ccs_bit  = 0x40000000UL, /**< SD ocr ccs bit.  */
   k_sd_ocr_busy_bit = 0x80000000UL, /**< SD ocr busy bit. */
   /* Retry budgets -- bounded loops, NASA P10 Rule 2. */
-  k_sd_max_r1_wait_bytes    = 16U, /**< R1 must appear within 8 bytes per spec; allow 2x slack. */
-  k_sd_max_data_token_polls = 50000U,  /**< ~500 ms at 100 us / poll.                           */
-  k_sd_max_busy_poll_bytes  = 100000U, /**< Worst-case write timeout.                           */
-  k_sd_max_acmd41_attempts  = 1000U,   /**< 1 s at 1 ms / attempt.                              */
-  k_sd_init_dummy_clocks    = 80U,     /**< 80 clocks = 10 bytes of 0xFF (>=74 required).       */
-  k_sd_recover_flush_bytes  = 530U,    /**< >= 512 data + 2 CRC + token to flush a stuck write. */
-  k_sd_recover_idle_bytes   = 64U,     /**< 512 CS-released clocks to drain busy + reset framing. */
-  k_sd_max_recover_attempts = 4U,      /**< Re-flush + retry CMD0 this many times before failing. */
-  k_sd_max_erase_poll_bytes = 5000000U, /**< Busy ceiling for a bulk CMD38 erase (seconds). */
+  k_sd_max_r1_wait_bytes    = 16U,      /**< R1 must appear within 8 bytes per spec; 2x slack.   */
+  k_sd_max_data_token_polls = 50000U,   /**< ~500 ms at 100 us / poll.                           */
+  k_sd_max_busy_poll_bytes  = 100000U,  /**< Worst-case write timeout.                           */
+  k_sd_max_acmd41_attempts  = 1000U,    /**< 1 s at 1 ms / attempt.                              */
+  k_sd_init_dummy_clocks    = 80U,      /**< 80 clocks = 10 bytes of 0xFF (>=74 required).       */
+  k_sd_recover_flush_bytes  = 530U,     /**< >= 512 data + 2 CRC + token to flush a stuck write. */
+  k_sd_recover_idle_bytes   = 64U,      /**< 512 CS-released clocks drain busy + reset framing.  */
+  k_sd_max_recover_attempts = 4U,       /**< Re-flush + retry CMD0 before failing.               */
+  k_sd_max_erase_poll_bytes = 5000000U, /**< Busy ceiling for a bulk CMD38 erase (seconds).      */
 } sd_protocol_const_t;
 
 /**

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app Makefile for the `c6_fw_version` firmware.
 #
@@ -11,8 +13,6 @@
 # -DRA8_USE_ESP_HOSTED=ON forced on, since the demo
 # cannot build without them.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL     := /bin/bash

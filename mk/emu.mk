@@ -1,8 +1,8 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # mk/emu.mk -- ra8_emulator: emu-<app>, profile-<app>, ereader GUI, EIL,
 # and the e-reader chrome golden gate. RA8_EMU_DIR + the RA8_EMU*/RA8_PROFILE
 # app lists come from the top Makefile.
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 # Panel descriptor used by emu-<app>: tools/ra8_emulator/panels/<PANEL>.toml.
 EMU_PANEL ?= ek_ra8d2

@@ -1,11 +1,9 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file tiny_jpeg_fixture.h
  * @brief A tiny 16x9 baseline JPEG (generated, no network) for the JOF
  *        export round-trip test.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

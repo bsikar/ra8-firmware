@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/mbedtls.cmake
 #
@@ -33,8 +35,6 @@
 # ``mbedtls_port_ra8_config``; everything else (include dirs, defines,
 # wrap link options) flows through the interface targets.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Idempotency guard.

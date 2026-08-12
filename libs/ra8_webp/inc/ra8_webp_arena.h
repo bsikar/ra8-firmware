@@ -29,11 +29,11 @@
  * NASA Power-of-10 Rule 3 (no dynamic allocation after init): the backing
  * store is caller-owned static/SRAM/SDRAM storage, never `malloc`.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / WebP] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

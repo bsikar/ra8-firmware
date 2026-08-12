@@ -15,11 +15,11 @@
  * to gray4 for ra8_gfx_blit_gray4_zoom(). The pixels are byte-identical to the
  * previous open-coded pool walk -- only the addressing owner changed.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include "ra8_check.h"

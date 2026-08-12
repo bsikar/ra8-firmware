@@ -186,7 +186,7 @@ static inline volatile uint32_t* ra8_icu_wupen1(void)
  */
 static inline volatile uint32_t* ra8_icu_delsr(uint8_t index)
 {
-  enum : uint8_t {
+  enum ra8_icu_delsr_bound : uint8_t {
     k_ra8_icu_num_delsr = 8U, /**< RA8 icu number delsr. */
   };
   if (index >= k_ra8_icu_num_delsr) {
@@ -257,7 +257,7 @@ static inline volatile uint8_t* ra8_icu_irqcr(uint8_t irq_num)
  * Cross-checked against FSP ``R_ICU_Type::IELSR_b[96]`` in
  * ``R7KA8D2KF_core0.h``: ``IELS`` is a 10-bit field at [9:0],
  * ``IR`` (interrupt status flag, RW1C) at [16], ``DTCE`` at [24].
- * HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n",
+ * HUM Ch 14.2.17 "IELSRn : ICU Event Link Setting Register n",
  * p 524.
  */
 typedef enum : uint8_t {
@@ -267,7 +267,7 @@ typedef enum : uint8_t {
 } ra8_ielsr_bit_t;
 
 typedef enum : uint32_t {
-  /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n", p 524:
+  /* HUM Ch 14.2.17 "IELSRn : ICU Event Link Setting Register n", p 547:
    * IELS occupies bits [9:0] -- 10-bit field, mask 0x3FF.  RA8 has
    * hundreds of ELC event sources so the FSP layout uses 10 bits. */
   k_ra8_ielsr_iels_mask = 0x000003FFUL, /**< IELS field mask (10 bits). */

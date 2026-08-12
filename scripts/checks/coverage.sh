@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # coverage.sh -- run the host unit tests with gcov instrumentation
 # and produce an HTML + text coverage report.
 #
@@ -6,8 +8,6 @@
 #   ./scripts/checks/coverage.sh
 #   ./scripts/checks/coverage.sh --gate   # exit non-zero if below 90% line / 80% branch
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

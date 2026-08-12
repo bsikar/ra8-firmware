@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_net.h
  * @brief Streaming HTTP(S) GET seam (a real function-pointer vtable) for the
@@ -28,6 +24,8 @@
  * not a rewrite.
  *
  * @see mdl_net_curl.h  The concrete libcurl backend factory (composition root).
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

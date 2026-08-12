@@ -1,10 +1,8 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_url_guard.c
  * @brief Implementation of the pure URL / address safety predicates.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_url_guard.h"
 

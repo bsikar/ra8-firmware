@@ -8,26 +8,26 @@
  * host unit-test context by pre-claiming a board pin before the call
  * so the underlying GPIO / PFS validator returns a conflict:
  *
- *   - Source line 134 + 770:
+ *   - internal_eth_phy_hw_reset:
  *       Pre-claim the PHY RSTN pin (P7.8) so ra8_gpio_output_init inside
- *       internal_eth_phy_hw_reset returns k_ra8_err_gpio_conflict.
- *       ra8_board_ethernet_init propagates the error at line 770.
+ *       internal_eth_phy_hw_reset returns k_ra8_err_gpio_conflict, which
+ *       ra8_board_ethernet_init then propagates from its Step 0 guard.
  *
- *   - Source line 199 + 775:
+ *   - internal_eth_route_alt_pins:
  *       Pre-claim the MDC pin (P4.15) so ra8_pfs_route_peripheral inside
  *       internal_eth_route_alt_pins returns k_ra8_err_gpio_conflict on the
- *       second non-RSTN pin.  ra8_board_ethernet_init propagates the error
- *       at line 775.
+ *       second non-RSTN pin, which ra8_board_ethernet_init then propagates
+ *       from its Step 1 guard.
  *
  * All other uncovered branches in the module are error-return paths where
  * the called HAL function cannot fail under RA8_OFF_TARGET given the
  * fixed, valid arguments that the ethernet module always passes; those
  * lines carry GCOVR_EXCL_LINE in the source with a justification comment.
- *
- * @par Coverage delta
- * Lines newly covered: 134, 199, 770, 775 (+4 executable lines).
- * Lines excluded in source: 141, 217, 408, 412, 416, 453, 462 (7 lines).
- * Estimated coverage: 141 / 156 = 90.4 %.
+ * The chip-generic COMA / RGMII register work moved to the ETH HAL in
+ * issue #581, so the CABPIRM.BPR timeout leg is now covered in
+ * test_ra8_eth_coma.c and the RGMII media-select in test_ra8_eth.c; the
+ * board happy path (which drives both HAL primitives) stays covered by
+ * test_board_ethernet_init in test_ra8_board_ek_ra8d2.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -69,7 +69,7 @@ static void reset_state(void)
 }
 
 /* -------------------------------------------------------------------------
- * Test 1 -- internal_eth_phy_hw_reset gpio conflict (lines 134 + 770)
+ * Test 1 -- internal_eth_phy_hw_reset gpio conflict
  * -------------------------------------------------------------------------
  */
 
@@ -85,16 +85,16 @@ static void reset_state(void)
  *   1. internal_eth_phy_hw_reset():
  *      ra8_gpio_output_init(P7.8, LOW) -> ra8_pin_validator_claim(P7.8, ...)
  *      fails with k_ra8_err_gpio_conflict (P7.8 already claimed).
- *      -> return err at source line 134.
+ *      -> return err from internal_eth_phy_hw_reset.
  *   2. ra8_board_ethernet_init:
- *      err != k_ra8_ok -> return err at source line 770.
+ *      err != k_ra8_ok -> propagate err from the Step 0 guard.
  *
  * The test verifies that the returned error is non-zero.  The exact
  * value (k_ra8_err_gpio_conflict) is asserted to confirm the conflict
  * path, not a different failure mode.
  *
  * @par MC/DC:
- * Decision: `if (err != k_ra8_ok)` in internal_eth_phy_hw_reset (line 133)
+ * Decision: `if (err != k_ra8_ok)` in internal_eth_phy_hw_reset
  *   1 condition.
  * - Vector A: err=k_ra8_ok (happy path, covered by test_board_ethernet_init
  *   in test_ra8_board_ek_ra8d2.c)
@@ -102,7 +102,7 @@ static void reset_state(void)
  * Vectors A+B prove the condition independently affects the outcome;
  * N+1=2 vectors for N=1 condition: minimal MC/DC.
  *
- * Decision: `if (err != k_ra8_ok)` in ra8_board_ethernet_init (line 769)
+ * Decision: `if (err != k_ra8_ok)` in ra8_board_ethernet_init (Step 0 guard)
  *   1 condition.
  * - Vector A: err=k_ra8_ok (happy path, existing test)
  * - Vector B: err=k_ra8_err_gpio_conflict (this test)
@@ -117,7 +117,7 @@ static void reset_state(void)
  */
 static void test_eth_phy_hw_reset_gpio_conflict(void)
 {
-  TEST_BEGIN("eth_phy_hw_reset: gpio conflict on RSTN pin (lines 134+770)");
+  TEST_BEGIN("eth_phy_hw_reset: gpio conflict on RSTN pin");
   reset_state();
 
   /* Pre-claim the RSTN pin so ra8_gpio_output_init sees a conflict. */
@@ -129,11 +129,11 @@ static void test_eth_phy_hw_reset_gpio_conflict(void)
   const ra8_err_t err = ra8_board_ethernet_init();
   TEST_ASSERT_EQ(k_ra8_err_gpio_conflict, err);
 
-  TEST_END("eth_phy_hw_reset: gpio conflict on RSTN pin (lines 134+770)");
+  TEST_END("eth_phy_hw_reset: gpio conflict on RSTN pin");
 }
 
 /* -------------------------------------------------------------------------
- * Test 2 -- internal_eth_route_alt_pins pfs conflict (lines 199 + 775)
+ * Test 2 -- internal_eth_route_alt_pins pfs conflict
  * -------------------------------------------------------------------------
  */
 
@@ -152,20 +152,20 @@ static void test_eth_phy_hw_reset_gpio_conflict(void)
  *   2. internal_eth_route_alt_pins():
  *      s_eth_routes index 0  = MDINT (P1.7): free -> pfs_route_peripheral ok.
  *      s_eth_routes index 1  = MDC   (P4.15): pre-claimed -> conflict.
- *      -> return err at source line 199.
+ *      -> return err from internal_eth_route_alt_pins.
  *
  *   3. ra8_board_ethernet_init:
- *      err != k_ra8_ok -> return err at source line 775.
+ *      err != k_ra8_ok -> propagate err from the Step 1 guard.
  *
  * @par MC/DC:
- * Decision: `if (err != k_ra8_ok)` in internal_eth_route_alt_pins (line 198)
+ * Decision: `if (err != k_ra8_ok)` in internal_eth_route_alt_pins
  *   1 condition.
  * - Vector A: err=k_ra8_ok (MDINT at index 0 routed successfully; also the
  *   full happy-path in test_ra8_board_ek_ra8d2.c)
  * - Vector B: err=k_ra8_err_gpio_conflict (MDC at index 1, this test)
  * Vectors A+B: minimal MC/DC for a single-condition decision.
  *
- * Decision: `if (err != k_ra8_ok)` in ra8_board_ethernet_init (line 774)
+ * Decision: `if (err != k_ra8_ok)` in ra8_board_ethernet_init (Step 1 guard)
  *   1 condition.
  * - Vector A: err=k_ra8_ok (happy path, existing test)
  * - Vector B: err=k_ra8_err_gpio_conflict (this test)
@@ -180,7 +180,7 @@ static void test_eth_phy_hw_reset_gpio_conflict(void)
  */
 static void test_eth_route_alt_pins_pfs_conflict(void)
 {
-  TEST_BEGIN("eth_route_alt_pins: pfs conflict on MDC pin (lines 199+775)");
+  TEST_BEGIN("eth_route_alt_pins: pfs conflict on MDC pin");
   reset_state();
 
   /* Pre-claim MDC (P4.15, index 1 in s_eth_routes) while leaving RSTN
@@ -193,7 +193,7 @@ static void test_eth_route_alt_pins_pfs_conflict(void)
   const ra8_err_t err = ra8_board_ethernet_init();
   TEST_ASSERT_EQ(k_ra8_err_gpio_conflict, err);
 
-  TEST_END("eth_route_alt_pins: pfs conflict on MDC pin (lines 199+775)");
+  TEST_END("eth_route_alt_pins: pfs conflict on MDC pin");
 }
 
 /* -------------------------------------------------------------------------

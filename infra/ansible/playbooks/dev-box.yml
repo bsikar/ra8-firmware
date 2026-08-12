@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Provision a shared verification box -- the machine agents run `make ci` /
 # `make ci-native` on -- from nothing to full toolchain parity.

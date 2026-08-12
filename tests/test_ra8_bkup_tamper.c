@@ -25,7 +25,7 @@
  */
 typedef enum : uint8_t {
   k_bkup_field_invalid =
-    0xFFU, /**< A field value outside every enumeration it is assigned to, so each configuration guard must reject it. */
+    0xFFU, /**< A value outside every enumeration it is assigned to; each guard must reject it. */
 } bkup_tamper_fixture_t;
 
 /**
@@ -345,7 +345,7 @@ static void test_tamper_init_happy(void)
                                             (uint8_t)k_ra8_bkup_vbtictlr2_mask_vch1eg);
   TEST_ASSERT_EQ(expected_ictlr2, *ra8_bkup_vbtictlr2());
 
-  /* HUM Ch 12.2.18 "VBTNCWCR : VBATT Noise Canceler Width Control Register", p 511 */
+  /* HUM Ch 12.2.18 "VBTNCWCR : VBATT Noise Canceler Width Control Register", p 512 */
   TEST_ASSERT_EQ(((uint8_t)k_ra8_bkup_nc_width_64hz), *ra8_bkup_vbtncwcr());
 
   /* HUM Ch 12.2.15 "VBTADCR1 : VBATT Tamper Detection Control Register 1", p 510
@@ -726,7 +726,7 @@ static void test_all_nc_widths(void)
     ra8_bkup_tamper_config_t cfg = make_tamper_cfg();
     cfg.nc_width                 = (ra8_bkup_nc_width_t)i;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_bkup_tamper_init(&cfg));
-    /* HUM Ch 12.2.18 "VBTNCWCR : VBATT Noise Canceler Width Control Register", p 511 */
+    /* HUM Ch 12.2.18 "VBTNCWCR : VBATT Noise Canceler Width Control Register", p 512 */
     TEST_ASSERT_EQ(i, *ra8_bkup_vbtncwcr());
   }
   TEST_END("bkup all nc widths accepted");

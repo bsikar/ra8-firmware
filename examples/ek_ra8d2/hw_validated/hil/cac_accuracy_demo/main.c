@@ -205,10 +205,10 @@ static void cac_demo_setup_or_halt(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  /* HUM Ch 10.2.2 "CACR1 : CAC Control Register 1" p 421 -- target =
+  /* HUM Ch 10.2.2 "CACR1 : CAC Control Register 1" p 422 -- target =
    * main osc (FMCS=000), no division, rising edge. Valid while CFME=0. */
   ra8_cac()->CACR1 = (uint8_t)k_cac_demo_cacr1_main;
-  /* HUM Ch 10.2.3 "CACR2 : CAC Control Register 2" p 422 -- internal
+  /* HUM Ch 10.2.3 "CACR2 : CAC Control Register 2" p 423 -- internal
    * reference = LOCO (RSCS=100) divided by 32 (RCDS=00), no filter. */
   ra8_cac()->CACR2 = (uint8_t)k_cac_demo_cacr2_loco;
   return k_ra8_ok;

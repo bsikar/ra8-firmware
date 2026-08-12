@@ -15,7 +15,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -50,6 +49,66 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
                                    uint32_t              idx,
                                    const uint8_t*        set,
                                    uint32_t              bytes);
+
+/**
+ * @brief Write the canonical exFAT up-case table and return its checksum.
+ *
+ * @details Streams the 5836-byte Microsoft up-case table
+ * (::k_exfat_fmt_upc_std_bytes, embedded in `ra8_fs_fat_exfat_upcase.c`) to the
+ * device starting at absolute LBA @p abs_lba, one @p bps-byte sector at a
+ * time, zero-padding the final partial sector.
+ * The rotate-add checksum (::priv_exfat_csum32) is accumulated over exactly the
+ * table bytes -- not the pad -- so it equals the well-known 0xE619D30D and can
+ * be stamped into the root Up-case directory entry.
+ *
+ * @param[in]  backend  Block-device backend with a non-NULL `write_block`.
+ * @param[in]  abs_lba  Absolute (partition-adjusted) first LBA of the up-case
+ *                      table's cluster run.
+ * @param[in]  bps      Device sector size in bytes (a power of two, 512..4096).
+ * @param[out] out_csum Receives the table checksum on success.
+ * @return Error code from the backend.
+ * @retval k_ra8_ok    Table written; @p out_csum populated.
+ * @retval k_ra8_err_* Backend `write_block` failure; @p out_csum unspecified.
+ * @pre @p backend and @p backend->write_block are non-NULL.
+ * @pre @p out_csum is non-NULL; @p abs_lba's cluster run holds the table span.
+ * @post On k_ra8_ok the up-case cluster run holds the canonical table.
+ * @post On k_ra8_ok @p out_csum holds the checksum for the root Up-case entry.
+ * @note Not thread-safe; uses the module scratch buffer.
+ * @since 0.1.0
+ */
+RA8_PRIV
+ra8_err_t priv_exfat_write_upcase(const ra8_fs_backend_t* backend,
+                                  uint64_t                abs_lba,
+                                  uint32_t                bps,
+                                  uint32_t*               out_csum);
+
+/**
+ * @brief Clear then set attribute bits in a 32-byte FAT directory entry.
+ *
+ * @details Rewrites the entry's `DIR_Attr` byte as
+ *          `(attr & ~clear_mask) | set_mask`: bits in @p clear_mask are
+ *          cleared, bits in @p set_mask are set, every other bit is left as it
+ *          was. The two masks are applied in that order, so a bit named in both
+ *          ends up set. This is the one place the attribute byte is patched --
+ *          the archive-on-write convention (`priv_truncate_existing`,
+ *          `priv_write_locked`) and `ra8_fs_set_attr()` both route through it,
+ *          so the read-modify-write cast lives once.
+ *
+ * @param[in,out] entry      32-byte directory entry to update.
+ * @param[in]     set_mask   Attribute bits to set.
+ * @param[in]     clear_mask Attribute bits to clear.
+ *
+ * @pre `entry` is non-NULL and points to 32 writable bytes.
+ * @pre Caller has staged the entry in a sector buffer to be written back.
+ * @post `entry[DIR_Attr] == (old & ~clear_mask) | set_mask`.
+ * @post No other byte of the entry is modified.
+ *
+ * @note Trivially thread-safe; not reentrant against the same buffer.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+void priv_fat_entry_apply_attr(uint8_t* entry, uint8_t set_mask, uint8_t clear_mask);
 
 /**
  * @brief Fetch the FAT entry for `cluster`, returning the next-cluster value.
@@ -155,6 +214,7 @@ ra8_err_t priv_fmt_choose_geometry(ra8_fs_fmt_geom_t* g, uint32_t spc_hint);
  * @param[in] backend Block-device backend.
  * @param[in] lba     First block to clear.
  * @param[in] count   Number of blocks to clear.
+ * @param[in] bps     Device sector size in bytes (sizes each zero write).
  *
  * @return Error code.
  * @retval k_ra8_ok    The range now reads back as all-zero bytes.
@@ -162,6 +222,7 @@ ra8_err_t priv_fmt_choose_geometry(ra8_fs_fmt_geom_t* g, uint32_t spc_hint);
  *
  * @pre @p backend is non-NULL with a non-NULL `write_block`.
  * @pre @p count blocks starting at @p lba lie within the device.
+ * @pre @p bps is the device's real sector size (used to size each write).
  * @post On success `[lba, lba+count)` reads back as zero.
  * @post No metadata is written; caller seeds the FAT afterwards.
  *
@@ -180,7 +241,8 @@ ra8_err_t priv_fmt_choose_geometry(ra8_fs_fmt_geom_t* g, uint32_t spc_hint);
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_fmt_clear_region(const ra8_fs_backend_t* backend, uint32_t lba, uint32_t count);
+ra8_err_t
+priv_fmt_clear_region(const ra8_fs_backend_t* backend, uint64_t lba, uint64_t count, uint32_t bps);
 
 /**
  * @brief Lay down the boot sector, FAT seeds, FSInfo, and the empty root.
@@ -237,6 +299,34 @@ ra8_err_t priv_fmt_emit_volume(const ra8_fs_backend_t*  backend,
  */
 RA8_PRIV
 uint32_t priv_fmt_reserved_for(ra8_fs_type_t type);
+
+/**
+ * @brief Pad an ASCII volume label into an 11-byte BS_VolLab / label field.
+ *
+ * @details Copies @p label up to its NUL (or 11 characters) then space-fills
+ *          the remainder, matching the BS_VolLab convention. A NULL or empty
+ *          @p label resolves to the FAT specification's unlabelled sentinel
+ *          `"NO NAME    "` -- never zeros and never a bare run of spaces, both
+ *          of which `fsck.fat` treats as a corrupt label and strips (#634).
+ *          Shared by the formatter (`ra8_fs_format()`) and the runtime label
+ *          writer (`ra8_fs_set_label()`), so both lay the field identically.
+ *
+ * @param[out] dst   Destination 11-byte label field.
+ * @param[in]  label Source label, or NULL / "" for the unlabelled sentinel.
+ *
+ * @return Nothing.
+ *
+ * @pre @p dst is non-NULL and addresses at least ::k_fmt_label_len bytes.
+ * @pre @p label is NUL-terminated when non-NULL.
+ * @post @p dst holds the padded 11-byte label (or the `"NO NAME    "` sentinel).
+ * @post No byte past offset 10 of @p dst is touched.
+ *
+ * @note Bounded loop (NASA Rule 2): exactly ::k_fmt_label_len iterations.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+void priv_fmt_label_field(uint8_t* dst, const char* label);
 
 /**
  * @brief Validate a caller-pinned sectors-per-cluster value.
@@ -313,15 +403,19 @@ RA8_PRIV
 uint8_t priv_is_eoc(const ra8_fs_mount_t* m, uint32_t value);
 
 /**
- * @brief Fold one LFN directory entry's 13 UTF-16LE characters into the state.
+ * @brief Fold one LFN directory entry's 13 UTF-16LE code units into the state.
  *
  * @details Reads the sequence number from @p ent (low 5 bits of LDIR_Ord) to
- *          locate the character group within the assembled name, then copies
- *          each of the 13 chars at their VFAT byte offsets (LDIR_Name1/2/3).
- *          Characters above ASCII 0x7F are replaced with '?'. A NUL or the
- *          padding code-point (0xFFFF) terminates the group early. The stored
- *          checksum is updated from LDIR_Chksum. Out-of-range sequence numbers
- *          are silently ignored to tolerate a corrupt chain.
+ *          locate the unit group within the assembled name, then copies each of
+ *          the 13 units at their VFAT byte offsets (LDIR_Name1/2/3) VERBATIM. A
+ *          zero unit or the padding value (0xFFFF) terminates the group early.
+ *          The stored checksum is updated from LDIR_Chksum. Out-of-range
+ *          sequence numbers are silently ignored to tolerate a corrupt chain.
+ *
+ *          Units above 0x7F used to become `?`, which made the reported name
+ *          one the caller could not hand back to `ra8_fs_open()` -- the file was
+ *          listed and then unopenable, and two names differing only in an accent
+ *          collided (#606).
  *
  * @param[in,out] s   Reassembly state being accumulated.
  * @param[in]     ent 32-byte raw LFN directory entry (attribute byte == 0x0F).
@@ -330,8 +424,8 @@ uint8_t priv_is_eoc(const ra8_fs_mount_t* m, uint32_t value);
  *
  * @pre @p s is non-NULL and was initialised by priv_lfn_reset().
  * @pre @p ent is non-NULL and points to exactly 32 valid bytes.
- * @post If the sequence number is in range, @p s->name and @p s->checksum
- *       reflect the characters from this entry.
+ * @post If the sequence number is in range, @p s->units and @p s->checksum
+ *       reflect the units from this entry.
  * @post If the sequence number is out of range, @p s is unchanged.
  *
  * @note Not thread-safe; the caller serialises directory access.
@@ -342,17 +436,43 @@ RA8_PRIV
 void priv_lfn_add(lfn_state_t* s, const uint8_t* ent);
 
 /**
- * @brief Long name of the chain that precedes @p name83, or NULL if none/mismatch.
- * @details Returns the reassembled name only when a chain was accumulated and its
- *          checksum matches @p name83 (so a stray chain never aliases an entry).
+ * @brief Code units of the chain that precedes @p name83, or NULL if none.
+ *
+ * @details Returns the reassembled name only when a chain was accumulated and
+ *          its checksum matches @p name83, so a stray chain never aliases an
+ *          entry. The units are returned rather than text because that is the
+ *          domain a lookup compares in and the domain the up-case table folds;
+ *          only the listing path converts, and only at the API boundary.
+ *
+ *          The length is the run of non-zero units, exactly as the NUL used to
+ *          end the string: a group that never arrived leaves zeros, and the
+ *          name stops there instead of running into another chain's characters.
+ *
+ * @param[in]  s         Reassembly state carried across the directory walk.
+ * @param[in]  name83    The 8.3 entry the chain is claimed to belong to.
+ * @param[out] out_units Receives the unit count (0 when there is no name).
+ *
+ * @return Pointer to the units, or nullptr.
+ * @retval s->units The chain is present and binds to @p name83.
+ * @retval nullptr  No chain, an empty one, or a checksum mismatch.
+ *
+ * @pre @p s and @p out_units are non-NULL; @p name83 addresses 11 bytes.
+ * @pre @p s was initialised by priv_lfn_reset() before the walk.
+ * @post `*out_units` is written on both outcomes.
+ * @post @p s is not modified.
+ *
+ * @note Not thread-safe; the caller serialises directory access.
+ *
+ * @since 0.1.0
  */
 RA8_PRIV
-const char* priv_lfn_name_for(lfn_state_t* s, const uint8_t* name83);
+const uint16_t*
+priv_lfn_units_for(const lfn_state_t* s, const uint8_t* name83, uint32_t* out_units);
 
 /**
  * @brief Reset the LFN reassembly state so a fresh chain can start.
  *
- * @details Clears the accumulated name buffer byte-by-byte, then resets the
+ * @details Clears the accumulated unit array, then resets the
  *          stored checksum and the "have" flag to zero. Called at the start of
  *          a directory walk and whenever a deleted or consumed 8.3 entry breaks
  *          an in-progress chain.
@@ -363,7 +483,7 @@ const char* priv_lfn_name_for(lfn_state_t* s, const uint8_t* name83);
  *
  * @pre @p s is non-NULL.
  * @pre @p s was previously initialised (e.g. via zero-init or a prior reset).
- * @post @p s->name is all NUL bytes.
+ * @post @p s->units is all zero.
  * @post @p s->have and @p s->checksum are both zero.
  *
  * @note Not thread-safe; the caller serialises directory access.
@@ -372,6 +492,90 @@ const char* priv_lfn_name_for(lfn_state_t* s, const uint8_t* name83);
  */
 RA8_PRIV
 void priv_lfn_reset(lfn_state_t* s);
+
+/**
+ * @brief Take the library lock, if the caller installed one.
+ *
+ * @details Invokes the installed ::ra8_fs_lock_t::acquire with its cookie. With
+ *          no binding installed -- the bare-metal default -- this is a load and
+ *          a branch and nothing else, which is why the seam costs the default
+ *          world nothing. Called only by the public entry-point wrappers: an
+ *          internal helper taking it a second time would deadlock a
+ *          non-recursive mutex, and the `RA8_EXPECTS_LOCK("ra8_fs_lock")` tag
+ *          on every guarded implementation is what enforces that.
+ *
+ * @return Nothing.
+ *
+ * @pre The calling thread does not already hold the lock.
+ * @pre The installed binding (if any) is complete -- guaranteed by
+ *      ::ra8_fs_set_lock, which rejects a half-filled one.
+ * @post The lock is held, or no binding is installed.
+ * @post No library state other than the caller's lock is touched.
+ *
+ * @note Pairs 1:1 with ::priv_lock_release on every return path.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+void priv_lock_acquire(void);
+
+/**
+ * @brief Drop the library lock taken by ::priv_lock_acquire.
+ *
+ * @details Invokes the installed ::ra8_fs_lock_t::release with its cookie, or
+ *          does nothing when no binding is installed. This is the release half
+ *          the annotation checker looks for when it decides whether a public
+ *          wrapper discharged the ownership it took.
+ *
+ * @return Nothing.
+ *
+ * @pre A matching ::priv_lock_acquire ran on this thread.
+ * @pre The binding has not changed since that call.
+ * @post The lock is no longer held.
+ * @post No library state other than the caller's lock is touched.
+ *
+ * @note Called on the success path and every error path of each wrapper.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+RA8_RELEASES_RESOURCE("ra8_fs_lock")
+void priv_lock_release(void);
+
+/**
+ * @brief Open a file by path -- the guarded body of ::ra8_fs_open().
+ *
+ * @details Carries the whole contract documented for ::ra8_fs_open() in
+ *          `ra8_fs.h`; the public symbol is the wrapper that brackets this
+ *          call with ::priv_lock_acquire / ::priv_lock_release. Exposed across
+ *          translation units because ::ra8_fs_write_file()'s guarded body has
+ *          to reach it without taking the lock a second time.
+ *
+ * @param[in]  handle   Mount handle.
+ * @param[in]  path     NUL-terminated path.
+ * @param[in]  mode     Open mode.
+ * @param[out] out_file Receives the open file handle.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok            File opened.
+ * @retval k_ra8_err_null_ptr  Any pointer argument was NULL.
+ * @retval k_ra8_err_*         As documented for ::ra8_fs_open().
+ *
+ * @pre The library lock is held (or none is installed).
+ * @pre `handle`, `path`, and `out_file` are non-NULL.
+ * @post On success `*out_file` is a valid open handle.
+ * @post On failure no file slot is marked in use.
+ *
+ * @note Never call this from outside `ra8_fs`; it is the unlocked half.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
+                           const char*     path,
+                           ra8_fs_mode_t   mode,
+                           ra8_fs_file_t** out_file);
 
 /**
  * @brief Parse the BPB layout fields out of `s_scratch` into `m`.
@@ -444,58 +648,13 @@ RA8_PRIV
 uint8_t priv_path_to_83(const char* path, uint8_t* out11);
 
 /**
- * @brief Decode a little-endian uint16_t from a byte buffer.
- *
- * @details Trivial little-endian byte assembler. Avoids `memcpy` so
- *          clang-tidy's strict-alias check stays happy.
- *
- * @param[in] p Pointer to two bytes.
- *
- * @return The decoded value.
- * @retval 0..UINT16_MAX  Value assembled from `p[0]` and `p[1]`.
- *
- * @pre `p` is non-NULL and points to at least 2 readable bytes.
- * @pre Caller has bounds-checked `p`.
- * @post No state modified.
- * @post Result equals `p[0] | (p[1] << 8)`.
- *
- * @note Pure function; trivially thread-safe.
- *
- * @since 0.1.0
- */
-RA8_PRIV
-uint16_t priv_rd16(const uint8_t* p);
-
-/**
- * @brief Decode a little-endian uint32_t from a byte buffer.
- *
- * @details Trivial little-endian byte assembler for 4 bytes.
- *
- * @param[in] p Pointer to four bytes.
- *
- * @return The decoded value.
- * @retval 0..UINT32_MAX  Value assembled from `p[0..3]`.
- *
- * @pre `p` is non-NULL and points to at least 4 readable bytes.
- * @pre Caller has bounds-checked `p`.
- * @post No state modified.
- * @post Result equals `p[0] | (p[1]<<8) | (p[2]<<16) | (p[3]<<24)`.
- *
- * @note Pure function; trivially thread-safe.
- *
- * @since 0.1.0
- */
-RA8_PRIV
-uint32_t priv_rd32(const uint8_t* p);
-
-/**
  * @brief Read a single sector into the module scratch buffer.
  *
  * @details Forwards to the mount's `backend.read_block` callback.
  *
  * @param[in]  m   Mount whose backend to use.
  * @param[in]  lba Logical block address to read.
- * @param[out] buf Destination of `k_ra8_fs_bytes_per_sector` bytes.
+ * @param[out] buf Destination of `m->bytes_per_sector` bytes.
  *
  * @return Backend-supplied error code.
  * @retval k_ra8_ok    Sector read successfully.
@@ -511,7 +670,7 @@ uint32_t priv_rd32(const uint8_t* p);
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_read_sector(const ra8_fs_mount_t* m, uint32_t lba, uint8_t* buf);
+ra8_err_t priv_read_sector(const ra8_fs_mount_t* m, uint64_t lba, uint8_t* buf);
 
 /**
  * @brief Resolve a whole path to the directory it names.
@@ -619,81 +778,39 @@ RA8_PRIV
 char priv_to_upper(char c);
 
 /**
- * @brief Encode a little-endian uint16_t into a byte buffer.
+ * @brief Merge @p put bytes into one sector at @p lba, at @p off_in_sector.
  *
- * @details Inverse of `priv_rd16`. Writes the low byte first.
+ * @details Read-modify-write of a single sector. Every partial-sector update in
+ *          this adapter goes through it, so a write that does not start or end
+ *          on a sector boundary cannot destroy the neighbouring bytes -- which,
+ *          inside a cluster, belong to the same file, and at a cluster edge may
+ *          belong to another.
  *
- * @param[out] p Pointer to two writable bytes.
- * @param[in]  v Value to encode.
- *
- * @pre `p` is non-NULL and points to at least 2 writable bytes.
- * @pre Caller has bounds-checked `p`.
- * @post `p[0]` and `p[1]` reflect the little-endian encoding of `v`.
- * @post No other state modified.
- *
- * @note Trivially thread-safe; not reentrant against the same buffer.
- *
- * @since 0.1.0
- */
-RA8_PRIV
-void priv_wr16(uint8_t* p, uint16_t v);
-
-/**
- * @brief Encode a little-endian uint32_t into a byte buffer.
- *
- * @details Inverse of `priv_rd32`. Writes lowest byte first.
- *
- * @param[out] p Pointer to four writable bytes.
- * @param[in]  v Value to encode.
- *
- * @pre `p` is non-NULL and points to at least 4 writable bytes.
- * @pre Caller has bounds-checked `p`.
- * @post `p[0..3]` reflect the little-endian encoding of `v`.
- * @post No other state modified.
- *
- * @note Trivially thread-safe; not reentrant against the same buffer.
- *
- * @since 0.1.0
- */
-RA8_PRIV
-void priv_wr32(uint8_t* p, uint32_t v);
-
-/**
- * @brief Write a fresh 8.3 directory entry into a free slot on disk.
- *
- * @details Reads the sector holding the free slot, zeroes the 32-byte entry,
- *          stamps the packed 8.3 name, the attribute byte, and the first
- *          cluster (size left 0), and writes the sector back. Shared by file
- *          creation (`priv_create_new`, archive attr, cluster 0) and directory
- *          creation (`ra8_fs_mkdir`, directory attr, the new dir cluster).
- *
- * @param[in] handle        Mount providing the backend.
- * @param[in] name83        Packed 11-byte 8.3 short name.
- * @param[in] attr          Attribute byte (archive for files, directory for dirs).
- * @param[in] first_cluster First cluster to record (0 for an empty new file).
- * @param[in] free_lba      Sector containing the free slot.
- * @param[in] free_off      Byte offset of the free slot within the sector.
+ * @param[in] m             Mount providing the backend.
+ * @param[in] lba           Volume-relative sector to update.
+ * @param[in] off_in_sector Byte offset within the sector.
+ * @param[in] src           Source bytes.
+ * @param[in] put           Number of bytes to write.
  *
  * @return Error code.
- * @retval k_ra8_ok    Entry written to disk.
- * @retval k_ra8_err_* Backend read/write error.
+ * @retval k_ra8_ok    Sector updated.
+ * @retval k_ra8_err_* Backend read or write failure.
  *
- * @pre @p handle and @p name83 are non-NULL; @p handle is a mounted volume.
- * @pre @p free_off is a valid byte offset for a 32-byte directory entry slot.
- * @post On success, the 32-byte slot at @p free_lba:@p free_off holds the new entry.
- * @post No other bytes of the sector are modified.
+ * @pre `m` and `src` are non-NULL.
+ * @pre `off_in_sector + put <= m->bytes_per_sector`.
+ * @post On success the sector reflects the merged content.
+ * @post On failure the sector content is implementation-defined.
  *
- * @note Not thread-safe; callers serialise.
+ * @note Thread-safety inherited from the backend.
  *
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_write_new_dir_entry(ra8_fs_mount_t* handle,
-                                   const uint8_t*  name83,
-                                   uint8_t         attr,
-                                   uint32_t        first_cluster,
-                                   uint32_t        free_lba,
-                                   uint32_t        free_off);
+ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
+                                 uint64_t              lba,
+                                 uint32_t              off_in_sector,
+                                 const uint8_t*        src,
+                                 uint32_t              put);
 
 /**
  * @brief Write a single sector from a caller-provided buffer.
@@ -702,7 +819,7 @@ ra8_err_t priv_write_new_dir_entry(ra8_fs_mount_t* handle,
  *
  * @param[in] m   Mount whose backend to use.
  * @param[in] lba Logical block address to write.
- * @param[in] buf Source of `k_ra8_fs_bytes_per_sector` bytes.
+ * @param[in] buf Source of `m->bytes_per_sector` bytes.
  *
  * @return Backend-supplied error code.
  * @retval k_ra8_ok    Sector written successfully.
@@ -718,4 +835,4 @@ ra8_err_t priv_write_new_dir_entry(ra8_fs_mount_t* handle,
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t priv_write_sector(const ra8_fs_mount_t* m, uint32_t lba, const uint8_t* buf);
+ra8_err_t priv_write_sector(const ra8_fs_mount_t* m, uint64_t lba, const uint8_t* buf);

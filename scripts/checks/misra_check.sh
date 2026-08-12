@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # ra8-firmware - MISRA-C 2023 Static Analysis Script
 #
 # Runs cppcheck with the MISRA addon configured for the MISRA-C 2023 rule
@@ -18,8 +20,6 @@
 # Prerequisites:
 #   cppcheck >= 2.10 with the misra.py addon
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 set +H

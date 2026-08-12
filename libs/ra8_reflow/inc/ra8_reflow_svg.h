@@ -30,12 +30,12 @@
  * The parser is pure string scanning over the caller's byte buffer (no DOM, no
  * heap); ::ra8_svg_render's only side effect is drawing through ra8_gfx.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

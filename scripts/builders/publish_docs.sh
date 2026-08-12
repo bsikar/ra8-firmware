@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # publish_docs.sh -- publish the generated Doxygen HTML to the gh-pages branch.
 #
@@ -17,8 +19,6 @@
 # One-time repo setup (owner): Settings -> Pages -> Build and deployment ->
 # Source = "Deploy from a branch", Branch = gh-pages / (root).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

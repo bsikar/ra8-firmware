@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Provision the hardware-in-the-loop bench host (the Pi with the EK-RA8D2 +
 # J-Link attached) to a known, current, board-reachable state.

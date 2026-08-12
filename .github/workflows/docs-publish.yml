@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # SCHEDULING ONLY -- the body lives in scripts/ci.sh (gate: docs-publish).
 # See .github/workflows/firmware.yml for the design note.
 #

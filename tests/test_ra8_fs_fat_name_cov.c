@@ -8,7 +8,7 @@
  *
  *   - priv_path_to_83 null-pointer guard (line 123)
  *   - priv_path_to_83 leading-slash strip (line 126)
- *   - priv_path_to_83 kanji-escape encoding (lines 138-139)
+ *   - priv_path_to_83 refusing a byte above DEL in either field
  *   - priv_83_to_str kanji-escape restore (lines 157-158)
  *   - priv_83_to_str extension trailing-space break (line 170)
  *   - priv_dir_walk_next_sector fixed-root EOD (lines 244-246)
@@ -55,12 +55,12 @@ typedef enum : uint16_t {
   k_ncov_sfn_name_len = 11U, /**< A packed 8.3 name: 8 base + 3 extension.     */
   k_ncov_sfn_str_cap  = 13U, /**< Its printable form, "NAME.EXT" plus the NUL. */
   k_ncov_files_per_sub =
-    14U,                     /**< Files created in the subdirectory: enough for its entries to spill
+    14U, /**< Files created in the subdirectory: enough for its entries to spill
               past one sector.                                                     */
-  k_ncov_fat16_ent2_hi = 5U, /**< High byte of FAT16 entry 2, which sits at offset 4 within FAT1. */
-  k_ncov_walk_entry_idx = 7U,   /**< Entry index the walker must reset to 0. */
-  k_ncov_walk_lba_sub   = 50U,  /**< Parked LBA for the subdirectory walk.   */
-  k_ncov_walk_lba_root  = 100U, /**< Parked LBA for the fixed-root walk.     */
+  k_ncov_fat16_ent2_hi  = 5U,   /**< High byte of FAT16 entry 2, sitting at offset 4 within FAT1. */
+  k_ncov_walk_entry_idx = 7U,   /**< Entry index the walker must reset to 0.                      */
+  k_ncov_walk_lba_sub   = 50U,  /**< Parked LBA for the subdirectory walk.                        */
+  k_ncov_walk_lba_root  = 100U, /**< Parked LBA for the fixed-root walk.                          */
   k_ncov_fat1_byte_off =
     512U, /**< Byte offset of FAT1: it starts at LBA 1 of a 512-byte-sector volume. */
 } ncov_fixture_t;
@@ -120,7 +120,7 @@ static ncov_mem_disk_t s_ncov_disk = {};
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t ncov_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   ncov_mem_disk_t* d = (ncov_mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -149,7 +149,7 @@ static ra8_err_t ncov_mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t*
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t ncov_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   ncov_mem_disk_t* d = (ncov_mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -175,7 +175,7 @@ static ra8_err_t ncov_mem_write(void* ctx, uint32_t lba, uint32_t count, const u
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t ncov_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   ncov_mem_disk_t* d = (ncov_mem_disk_t*)ctx;
   *block_count       = d->block_count;
@@ -236,7 +236,7 @@ static ncov_inject_disk_t s_ncov_inject = {};
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t ncov_inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   ncov_inject_disk_t* d = (ncov_inject_disk_t*)ctx;
   if (d->reads_left == 0U) {
@@ -271,7 +271,7 @@ static ra8_err_t ncov_inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_t*
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_inj_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t ncov_inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   ncov_inject_disk_t* d = (ncov_inject_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -297,7 +297,7 @@ static ra8_err_t ncov_inj_write(void* ctx, uint32_t lba, uint32_t count, const u
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t ncov_inj_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t ncov_inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   ncov_inject_disk_t* d = (ncov_inject_disk_t*)ctx;
   *block_count          = d->block_count;
@@ -503,32 +503,45 @@ static void test_ncov_path_to_83_leading_slash(void)
 }
 
 /**
- * @test test_ncov_path_to_83_kanji_escape
- * @brief priv_path_to_83 replaces 0xE5 first byte with 0x05 (lines 138-139).
+ * @test test_ncov_path_to_83_rejects_non_ascii
+ * @brief A packed 8.3 name is ASCII, so a byte above DEL is refused.
  *
- * @details Passes a path whose first byte is 0xE5 (k_dir_marker_free_used).
- *          After packing the base, out11[0] == 0xE5 triggers the guard at
- *          line 137-138 and is replaced with k_dir_marker_kanji_e5 (0x05).
+ * @details This case used to assert the opposite -- that a leading 0xE5 was
+ *          rewritten to the 0x05 kanji escape. That mattered when a name was a
+ *          bag of OEM bytes. It cannot happen now: names cross this API as
+ *          UTF-8, 0xE5 is a lead byte rather than a character, and an 8.3 field
+ *          in this driver holds ASCII (#606). Both packers therefore refuse
+ *          anything above DEL, and the escape on the way IN was deleted rather
+ *          than left as a branch no input reaches.
+ *
+ *          The refusal is load-bearing, not cosmetic: `priv_dir_lookup_any()`
+ *          packs the caller's leaf before it knows whether the name is 8.3, so
+ *          a UTF-8 sequence that packed into eleven plausible bytes could
+ *          FALSE-MATCH a real directory entry. Refusing sends it down the
+ *          long-name path instead, which is where it belongs.
  *
  * @par MC/DC:
- * Decision: `if (out11[0] == k_dir_marker_free_used)` (1 condition).
- * V1: out11[0]=0xE5 -> true -> line 138 (replacement) executed.
- * The false arm (normal name) is covered by sibling tests.
+ * Decision: `if ((unsigned char)*path > k_lfn_del)` in `priv_pack_base` and the
+ * matching one in `priv_pack_ext` (1 condition each).
+ * V1: a 0xE5 base byte      -> true  -> 0 (this test).
+ * V2: a 0xC3 extension byte -> true  -> 0 (this test).
+ * V3: plain ASCII           -> false -> 1 (this test, and every sibling).
  *
  * @pre None.
- * @post out11[0] == k_dir_marker_kanji_e5 (0x05).
+ * @post A non-ASCII byte in either field is refused; ASCII still packs.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void test_ncov_path_to_83_kanji_escape(void)
+static void test_ncov_path_to_83_rejects_non_ascii(void)
 {
-  TEST_BEGIN("priv_path_to_83: kanji-escape replacement (lines 138-139)");
+  TEST_BEGIN("priv_path_to_83: a byte above DEL is not an 8.3 character");
   uint8_t out11[k_ncov_sfn_name_len] = {};
-  /* '\xe5' is byte 0xE5 -- the k_dir_marker_free_used value. */
-  TEST_ASSERT_EQ(1, priv_path_to_83("\xe5NAME.TXT", out11));
-  TEST_ASSERT_EQ(k_dir_marker_kanji_e5, out11[0]);
-  TEST_END("priv_path_to_83: kanji-escape replacement (lines 138-139)");
+  /* '\xe5' is byte 0xE5 -- also the k_dir_marker_free_used value. */
+  TEST_ASSERT_EQ(0, priv_path_to_83("\xe5NAME.TXT", out11));  /* V1 */
+  TEST_ASSERT_EQ(0, priv_path_to_83("NAME.\xc3\xa9", out11)); /* V2 */
+  TEST_ASSERT_EQ(1, priv_path_to_83("NAME.TXT", out11));      /* V3 */
+  TEST_END("priv_path_to_83: a byte above DEL is not an 8.3 character");
 }
 
 /* ===========================================================================
@@ -566,7 +579,7 @@ static void test_ncov_83_to_str_kanji_restore(void)
     in11[i] = ' ';
   }
   char out12[k_ncov_sfn_str_cap] = {};
-  priv_83_to_str(in11, out12);
+  priv_83_to_str(in11, 0U, out12);
   /* out12[0] is a signed char; read the restored 0xE5 marker in the
    * unsigned byte domain so it compares as 229, not -27. */
   const uint8_t out12_marker = (uint8_t)out12[0];
@@ -600,7 +613,7 @@ static void test_ncov_83_to_str_ext_trailing_space(void)
   /* "AA      TX " packed: base='A','A',' '...' '; ext='T','X',' ' */
   const uint8_t in11[11]                  = {'A', 'A', ' ', ' ', ' ', ' ', ' ', ' ', 'T', 'X', ' '};
   char          out12[k_ncov_sfn_str_cap] = {};
-  priv_83_to_str(in11, out12);
+  priv_83_to_str(in11, 0U, out12);
   TEST_ASSERT_EQ(0, strcmp(out12, "AA.TX"));
   TEST_END("priv_83_to_str: extension trailing-space break (line 170)");
 }
@@ -939,7 +952,7 @@ int32_t main(void)
 {
   test_ncov_path_to_83_null_guards();
   test_ncov_path_to_83_leading_slash();
-  test_ncov_path_to_83_kanji_escape();
+  test_ncov_path_to_83_rejects_non_ascii();
   test_ncov_83_to_str_kanji_restore();
   test_ncov_83_to_str_ext_trailing_space();
   test_ncov_walk_fixed_root_eod();

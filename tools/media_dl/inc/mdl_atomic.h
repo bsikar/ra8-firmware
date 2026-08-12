@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_atomic.h
  * @brief Write-to-temp-then-rename so a failed re-fetch cannot destroy good data.
@@ -40,6 +36,8 @@
  *
  * @see mdl_state_save() The pattern these calls generalise; it has always been
  *      correct and is what the rest of the tool now matches.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

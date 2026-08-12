@@ -30,9 +30,9 @@
  * @brief The payload generators and their seeds, plus the byte-level helpers.
  */
 typedef enum : uint8_t {
-  k_vsrc_pattern_stride = 13U, /**< Stride of the golden generator, `i * 13 + 7`. */
-  k_vsrc_pattern_bias   = 7U,  /**< Its bias, so index 0 is not byte 0.           */
-  k_byte_mask = 0xFFU, /**< Low-byte mask used to split the connection handle little-endian. */
+  k_vsrc_pattern_stride = 13U, /**< Stride of the golden generator, `i * 13 + 7`.                */
+  k_vsrc_pattern_bias   = 7U,  /**< Its bias, so index 0 is not byte 0.                          */
+  k_byte_mask = 0xFFU,         /**< Low-byte mask splitting the connection handle little-endian. */
 } io_blockdev_vsource_fixture_t;
 
 /**
@@ -41,7 +41,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint32_t {
   k_vsrc_oid_poison =
-    0xFFFFFFFFU, /**< Poison object id written before a registration, so a call that fails without assigning one is detectable. */
+    0xFFFFFFFFU, /**< Poison id before registration; a call skipping assignment is detectable. */
 } io_blockdev_vsource_fixture2_t;
 
 /**

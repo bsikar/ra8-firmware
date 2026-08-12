@@ -10,6 +10,12 @@
 # the peripheral-side app with a pinned esp-idf. See docs/SOUP/esp-hosted.md and
 # docs/design/c6_wireless_architecture.md.
 #
+# Three things are ASSERTED rather than assumed, because each can drift while
+# the build still succeeds:
+#   - the esp-idf release is exactly ESP_IDF_VERSION (not merely its series),
+#   - sdkconfig.defaults still agrees with pins.env (check_c6_pin_config.py),
+#   - the component set the registry resolved matches components-lock.txt.
+#
 # Usage:
 #   ./coprocessor/esp32c6/build.sh
 #
@@ -38,13 +44,36 @@ if ! command -v idf.py >/dev/null 2>&1; then
 fi
 
 idf_version="$(idf.py --version 2>/dev/null || true)"
-case "${idf_version}" in
-  *v5.5.*) : ;;
-  *)
-    echo "ERROR: esp-idf ${ESP_IDF_VERSION} required; idf.py reports: ${idf_version:-unknown}" >&2
-    exit 1
-    ;;
-esac
+
+# Assert the EXACT pin, not the minor series. This test used to be `*v5.5.*`,
+# which accepted every v5.5.x -- so ESP_IDF_VERSION was decorative here, and the
+# c6_toolchain role's claim that this script "refuses to run under any other
+# v5.5.x" was simply not true. The pin is derived from pins.env; there is no
+# second copy of the version in this file.
+#
+# The comparison is against a whitespace-delimited TOKEN ("ESP-IDF v5.5.4"), so
+# v5.5.41 and a v5.5.4-268-g<sha> development checkout are both rejected:
+# neither is the release the bench proved end to end.
+idf_pinned=0
+if [[ -n "${idf_version}" ]]; then
+  read -ra idf_words <<<"${idf_version}"
+  for word in "${idf_words[@]}"; do
+    if [[ "${word}" == "${ESP_IDF_VERSION}" ]]; then
+      idf_pinned=1
+      break
+    fi
+  done
+fi
+if ((idf_pinned == 0)); then
+  echo "ERROR: esp-idf ${ESP_IDF_VERSION} required (pinned in coprocessor/esp32c6/pins.env)." >&2
+  echo "       idf.py reports: ${idf_version:-unknown}" >&2
+  echo "       Fix: check out ${ESP_IDF_VERSION} in \${IDF_PATH}, re-run its install.sh," >&2
+  echo "       then re-export (get_idf, or . \"\${IDF_PATH}/export.sh\")." >&2
+  echo "       Provisioning is declared in infra/ansible/roles/c6_toolchain/." >&2
+  echo "       NOTE: v5.4.1 does NOT build esp-hosted-mcu -- the component-manager" >&2
+  echo "       pull of tf-psa-crypto fails to compile p256-m under that release." >&2
+  exit 1
+fi
 echo "==> idf.py: ${idf_version}"
 
 # ---- 1b. assert sdkconfig.defaults still agrees with pins.env ----
@@ -93,7 +122,101 @@ echo "==> idf.py set-target ${ESP_TARGET} && idf.py build"
   idf.py build
 )
 
-# ---- 5. print artifact paths ----
+# ---- 5. verify the component set that actually resolved ----
+# Step 4 deletes dependencies.lock, so the esp-idf component manager re-resolves
+# from the registry on every run. That makes this build RECIPE-reproducible but
+# not BIT-reproducible: the registry can hand back a different component version
+# tomorrow, from an unchanged recipe, and nothing would say so.
+#
+# Committing the generated lock is not available to us. It records a
+# HOST-SPECIFIC ABSOLUTE PATH for the local cmd_system component
+# (${IDF_PATH}/examples/system/console/advanced/components/cmd_system), so a
+# committed copy would be wrong on every machine except the one that produced
+# it. What IS portable is the resolved SET -- kinds, names, versions and the
+# registry component hashes -- and that is what components-lock.txt records,
+# taken from the bench build whose network_adapter.bin is the flashed, proven
+# image. The path is deliberately not compared; the local component is checked
+# on its kind and version only.
+COMPONENT_RECORD="${SCRIPT_DIR}/components-lock.txt"
+GENERATED_LOCK="${PERIPHERAL_DIR}/dependencies.lock"
+
+# Normalise dependencies.lock (YAML) to "kind<TAB>name<TAB>version<TAB>hash".
+# INDENTATION is the discriminator and the reason this is not a grep: a
+# component is a 2-space key under "dependencies:", its own version and
+# component_hash sit at 4 spaces, and the version CONSTRAINTS of its
+# requirements sit at 6 -- so a plain search for "version:" collects both and
+# compares the wrong number.
+lock_to_records() {
+  awk '
+    function emit() {
+      if (name == "") { return }
+      printf "%s\t%s\t%s\t%s\n", (kind == "" ? "?" : kind), name,
+                                 (ver  == "" ? "?" : ver),
+                                 (hash == "" ? "-" : hash)
+    }
+    /^dependencies:[[:space:]]*$/ { in_deps = 1; next }
+    /^[A-Za-z_]/                  { emit(); name = ""; in_deps = 0; next }
+    in_deps == 0                  { next }
+    /^  [^ ].*:[[:space:]]*$/ {
+      emit()
+      name = $1; sub(/:$/, "", name)
+      ver = ""; hash = ""; kind = ""
+      next
+    }
+    /^    component_hash:[[:space:]]/ { hash = $2; next }
+    # Keep only the characters a version can legitimately contain, which drops
+    # the quoting the emitter puts around a bare wildcard version.
+    /^    version:[[:space:]]/ { ver = $2; gsub(/[^A-Za-z0-9._*+-]/, "", ver); next }
+    /^      type:[[:space:]]/  { kind = $2; next }
+    END { emit() }
+  ' "$1" | LC_ALL=C sort
+}
+
+# The committed record: four whitespace-separated columns, '#' comments.
+record_to_records() {
+  awk '!/^[[:space:]]*#/ && NF >= 4 { printf "%s\t%s\t%s\t%s\n", $1, $2, $3, $4 }' "$1" |
+    LC_ALL=C sort
+}
+
+if [[ ! -f "${COMPONENT_RECORD}" ]]; then
+  echo "ERROR: ${COMPONENT_RECORD} missing -- the committed component record is gone," >&2
+  echo "       so nothing can be said about which component versions were used." >&2
+  exit 1
+fi
+if [[ ! -f "${GENERATED_LOCK}" ]]; then
+  echo "ERROR: the build produced no ${GENERATED_LOCK}." >&2
+  echo "       Either the component manager did not run or upstream changed shape;" >&2
+  echo "       either way the resolved component set cannot be verified." >&2
+  exit 1
+fi
+
+echo "==> verifying resolved components against components-lock.txt"
+
+# Each normalisation is its own statement so it runs under a normal errexit
+# context: masking a first-party function's status with `||` swallows a failure
+# part-way through its body and leaves the caller reading only the last
+# command's status. Only the diff -- an external command whose exit 1 is the
+# expected "they differ" answer -- is allowed to fail here.
+recorded_components="$(record_to_records "${COMPONENT_RECORD}")"
+resolved_components="$(lock_to_records "${GENERATED_LOCK}")"
+
+if [[ "${recorded_components}" != "${resolved_components}" ]]; then
+  echo "ERROR: the esp-idf component manager resolved a DIFFERENT component set" >&2
+  echo "       than the one this firmware was proven with. '-' lines are what" >&2
+  echo "       coprocessor/esp32c6/components-lock.txt records; '+' lines are what" >&2
+  echo "       this build actually resolved." >&2
+  diff -u --label committed --label resolved \
+    <(printf '%s\n' "${recorded_components}") \
+    <(printf '%s\n' "${resolved_components}") >&2 || true
+  echo >&2
+  echo "       This is not a warning to click past: the recipe is unchanged, so a" >&2
+  echo "       difference here means the registry handed back something else. Either" >&2
+  echo "       re-pin deliberately (update components-lock.txt AND reflash and" >&2
+  echo "       re-qualify the C6), or find out why the resolution moved." >&2
+  exit 1
+fi
+
+# ---- 6. print artifact paths ----
 echo "build.sh: OK -- flash these with ./coprocessor/esp32c6/flash.sh:"
 for artifact in \
   "bootloader/bootloader.bin" \

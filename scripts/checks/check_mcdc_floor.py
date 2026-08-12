@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """check_mcdc_floor.py -- per-file MC/DC FLOOR gate (no allowlist).
 
 Per CLAUDE.md "IEC 61508 SIL 3 / DO-178C Level B" every compound boolean

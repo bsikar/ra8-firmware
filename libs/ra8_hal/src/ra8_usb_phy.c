@@ -243,7 +243,7 @@ static void internal_usb_delay_1us(void)
 RA8_INTERNAL
 static void internal_usbhs_enable_syscfg(volatile r_usb_regs_t* reg)
 {
-  /* HUM Ch 37.2.1 "SYSCFG : System Configuration Control Register", p 2060 */
+  /* HUM Ch 37.2.1 "SYSCFG : System Configuration Control Register", p 2061 */
   reg->SYSCFG = (uint16_t)(reg->SYSCFG & (uint16_t)~(uint16_t)(1U << k_ra8_syscfg_bit_drpd));
   reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra8_syscfg_bit_usbe));
 
@@ -470,7 +470,7 @@ ra8_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
   internal_usbhs_enable_syscfg(reg);
   s_phy_step_probe = (uint8_t)k_ra8_usbhs_phy_step_usbe_set;
 
-  /* HUM Ch 37.2.2 "BUSWAIT : CPU Bus Wait Register", p 2062 */
+  /* HUM Ch 37.2.2 "BUSWAIT : CPU Bus Wait Register", p 2063 */
   reg->BUSWAIT = (uint16_t)k_ra8_buswait_default;
   *physet      = (uint16_t)(*physet | (uint16_t)k_ra8_physet_repsel_16);
   return k_ra8_ok;
@@ -500,7 +500,7 @@ void internal_usb_init_common(volatile r_usb_regs_t* reg)
   reg->D0FIFOSEL = k_ra8_fifosel_mbw_16;
   reg->D1FIFOSEL = k_ra8_fifosel_mbw_16;
 
-  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1990 */
+  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1999 */
   /* HUM Ch 37.2.30 "DCPMAXP : DCP Max Packet Size Register", p 2092 */
   reg->DCPCFG  = 0U;
   reg->DCPMAXP = k_ra8_usb_dcp_max_packet;
@@ -565,7 +565,7 @@ void internal_usb_init_common(volatile r_usb_regs_t* reg)
  */
 ra8_err_t internal_usbfs_module_bringup(volatile r_usb_regs_t* reg)
 {
-  /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1966 */
+  /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1967 */
   reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra8_syscfg_bit_scke));
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_usbhs_scke_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     if ((reg->SYSCFG & (uint16_t)(1U << k_ra8_syscfg_bit_scke)) != 0U) {  /* GCOVR_EXCL_BR_LINE */

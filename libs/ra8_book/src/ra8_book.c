@@ -6,10 +6,10 @@
  * The only non-inline part of `ra8_book` is integrity/bounds validation. Walking
  * a validated blob is pure offset arithmetic and lives entirely in the header.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include "ra8_book.h"
 

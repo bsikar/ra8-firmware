@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Provision the HIL bench Pi to a known, current, board-reachable state.
 # Idempotent: safe to re-run; converges the checkout + toolchain + permissions.

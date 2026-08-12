@@ -39,7 +39,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_fuzz_input_cap =
-    256U, /**< Largest input this harness accepts; longer cases are dropped so a run stays bounded. */
+    256U, /**< Largest input accepted; longer cases are dropped so a run stays bounded. */
 } decomp_limits_fixture_t;
 
 /** @brief Read one little-endian uint64 from the input (zero-padded). */

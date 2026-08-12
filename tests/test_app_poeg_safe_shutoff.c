@@ -36,7 +36,7 @@
  */
 typedef enum : uint32_t {
   k_poeg_poison_out =
-    0xFFFFFFFFU, /**< Poison written into a count out-parameter, so a call that fails without setting it is detectable. */
+    0xFFFFFFFFU, /**< Poison in a count out-param; a call failing to set it is detectable. */
 } app_poeg_safe_shutoff_fixture_t;
 
 /** @brief Mirror of the demo's app-local unit selection. */

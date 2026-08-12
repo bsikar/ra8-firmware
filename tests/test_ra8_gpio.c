@@ -26,7 +26,7 @@
  */
 typedef enum : uint8_t {
   k_gpio_poison_irqcr =
-    0xFFU, /**< Poison written into the IRQCR out-parameter, so a read that fails without setting it is detectable. */
+    0xFFU, /**< Poison in the IRQCR out-parameter, so a failing read that skips it is detectable. */
 } gpio_fixture_t;
 
 /**

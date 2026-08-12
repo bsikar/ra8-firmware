@@ -19,12 +19,12 @@
  * engine-specific work lives on-target in the app, and the pure page-state /
  * routing logic is host-testable with a recording mock seam.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

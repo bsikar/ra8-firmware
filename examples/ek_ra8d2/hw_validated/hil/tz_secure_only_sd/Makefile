@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app Makefile for the `tz_secure_only_sd` firmware.
 #
@@ -8,8 +10,6 @@
 #   make ozone       # SEGGER Ozone GUI debugger
 #   make clean       # rm -rf ./build
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL     := /bin/bash

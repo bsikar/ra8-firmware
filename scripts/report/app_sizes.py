@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Per-app size visualizer for ra8-firmware.
 
 Walks every examples/ek_ra8d2/<app>/build/<app>.elf, runs

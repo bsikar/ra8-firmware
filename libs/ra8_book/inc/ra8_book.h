@@ -63,10 +63,10 @@
  * @see tools/epub_compile  Host compiler that emits `.rabook` blobs.
  * @see ra8_reflow.h         Renderer that consumes the walked DOM.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 
@@ -213,7 +213,8 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_ra8_book_pixfmt_gray4 =
     0U, /**< 4bpp packed grayscale, 2px/byte (default; every pre-field blob). */
-  k_ra8_book_pixfmt_gray8 = 1U, /**< 8bpp grayscale, 1px/byte (lossless against any grey panel). */
+  /** 8bpp grayscale, 1px/byte (lossless against any grey panel). */
+  k_ra8_book_pixfmt_gray8 = 1U,
 } ra8_book_image_pixfmt_t;
 
 /**

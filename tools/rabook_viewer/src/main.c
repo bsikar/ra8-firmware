@@ -17,7 +17,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -58,7 +57,15 @@ typedef struct {
 
 /**
  * @brief Print the one-line usage banner to stderr.
+ * @details Lists the accepted container extensions and the headless dump flags,
+ *          and names the scroll bindings the window honours. Printed on a usage
+ *          error just before the process exits with code 2.
  * @param[in] argv0 Program name (argv[0]).
+ * @pre @p argv0 is a NUL-terminated string.
+ * @pre stderr is open.
+ * @post The banner has been written to stderr.
+ * @post No state other than the stream is mutated.
+ * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
 static void viewer_usage(const char* argv0)
@@ -73,10 +80,22 @@ static void viewer_usage(const char* argv0)
 
 /**
  * @brief Parse argv into @p opts.
+ * @details Takes argv[1] as the document path, then walks the remaining flags:
+ *          `--page N`, `--dump-ppm PATH`, `--dump-tile N` and `--headless`. An
+ *          unknown flag, or a value-taking flag with no value, is rejected so
+ *          the caller prints usage. @p opts is zeroed first and dump_tile
+ *          defaults to -1 (no tile dump).
  * @param[in]  argc Argument count.
  * @param[in]  argv Argument vector.
  * @param[out] opts Receives the parsed options.
  * @return true on a valid command line; false to print usage and exit.
+ * @retval true  Every argument was recognised; @p opts is populated.
+ * @retval false Too few arguments, or an unrecognised / incomplete flag.
+ * @pre @p argv holds @p argc entries and @p opts is writable.
+ * @pre @p argc reflects the length of @p argv.
+ * @post On success @p opts->path names the document.
+ * @post On failure the caller prints usage and exits.
+ * @note Not thread-safe (writes @p opts).
  * @since 0.1.0
  */
 static bool viewer_parse_args(int argc, char** argv, viewer_opts_t* opts)
@@ -105,9 +124,18 @@ static bool viewer_parse_args(int argc, char** argv, viewer_opts_t* opts)
 
 /**
  * @brief Clamp @p page into `[0, count)`, guarding an empty document.
+ * @details A `--page` value past the end is pinned to the last page rather than
+ *          rejected, and a zero-page document yields page 0 so the caller never
+ *          indexes an empty range.
  * @param[in] page  Requested page.
  * @param[in] count Page count.
  * @return A valid page index (0 when @p count is 0).
+ * @retval 0 @p count is 0, or @p page is already 0.
+ * @pre @p count is the document's true page count.
+ * @pre @p page came from the parsed command line.
+ * @post The result is less than @p count whenever @p count > 0.
+ * @post No state is mutated.
+ * @note Pure; thread-safe.
  * @since 0.1.0
  */
 static uint32_t viewer_clamp_page(uint32_t page, uint32_t count)
@@ -120,10 +148,20 @@ static uint32_t viewer_clamp_page(uint32_t page, uint32_t count)
 
 /**
  * @brief Render @p page into the framebuffer and write the requested PPM dump.
+ * @details Renders the page through the reader's fixed framebuffer path, then --
+ *          when `--dump-ppm` was given -- writes that framebuffer out as a PPM.
+ *          A render or write failure is reported on stderr and returns false.
  * @param[in]  reader Open reader.
  * @param[in]  opts   Parsed options.
  * @param[in]  page   Page to render.
  * @return true on success.
+ * @retval true  The page rendered and any requested dump was written.
+ * @retval false Rendering or the PPM write failed (reported on stderr).
+ * @pre @p reader is an open document and @p opts is populated.
+ * @pre @p page is within the document's page range.
+ * @post On success the framebuffer holds @p page and any dump file exists.
+ * @post On failure nothing is written to the dump path.
+ * @note Not thread-safe (drives the shared framebuffer).
  * @since 0.1.0
  */
 static bool
@@ -146,8 +184,19 @@ viewer_render_and_dump(ra8_viewer_reader_t* reader, const viewer_opts_t* opts, u
 
 /**
  * @brief Open the scrolling reader window and pump events until it closes.
+ * @details Creates the Cocoa view over @p reader and cooperatively pumps events
+ *          at ~60 Hz (::k_viewer_frame_ns), sleeping between frames, until the
+ *          user closes the window. A NULL view means no window could be created
+ *          (a headless host), reported with the `--headless` hint.
  * @param[in] reader Open reader (the window's tile source).
  * @return 0 on clean exit; 1 if no window could be created (headless host).
+ * @retval 0 The window opened and was closed by the user.
+ * @retval 1 No window could be created on this host.
+ * @pre @p reader is an open document.
+ * @pre A window system is available for a non-headless run.
+ * @post On success the view has been closed and freed.
+ * @post On failure no view is left open.
+ * @note Not thread-safe; must run on the main thread (Cocoa requirement).
  * @since 0.1.0
  */
 static int viewer_run_window(ra8_viewer_reader_t* reader)
@@ -172,6 +221,11 @@ static int viewer_run_window(ra8_viewer_reader_t* reader)
  *          host (a bus fault) -- the host-safe path the tests also use.
  * @param[in] ctx  Unused cookie.
  * @param[in] byte Log byte to emit.
+ * @pre ra8_log has been pointed at this sink via ::ra8_log_set_byte_sink.
+ * @pre stderr is open.
+ * @post @p byte has been written to stderr.
+ * @post No other state is mutated.
+ * @note Not thread-safe; the tool is single-threaded.
  * @since 0.1.0
  */
 static void viewer_log_sink(void* ctx, uint8_t byte)
@@ -188,6 +242,13 @@ static void viewer_log_sink(void* ctx, uint8_t byte)
  * @param[in] tile   Tile index.
  * @param[in] path   Output PPM path.
  * @return true on success.
+ * @retval true  The tile rendered and its PPM was written.
+ * @retval false Tile render or the PPM write failed (reported on stderr).
+ * @pre @p reader is an open document and @p path is writable.
+ * @pre @p tile is a valid scroll-tile index.
+ * @post On success @p path holds the tile as a P6 PPM and the buffer is freed.
+ * @post On failure the render buffer is still freed.
+ * @note Not thread-safe (drives the shared reader).
  * @since 0.1.0
  */
 static bool viewer_dump_tile(ra8_viewer_reader_t* reader, uint32_t tile, const char* path)

@@ -292,7 +292,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 
   /* HUM Ch 67.2.15 "IE: Interrupt Enable Register" p 3987 */
   *ra8_vin_reg32(k_ra8_vin_off_ie) = cfg->interrupt_enable;
-  /* HUM Ch 67.2.17 "SI: Scanline Interrupt Register" p 3990 */
+  /* HUM Ch 67.2.17 "SI: Scanline Interrupt Register" p 3991 */
   *ra8_vin_reg32(k_ra8_vin_off_si) = (uint32_t)cfg->scanline_compare;
   /* HUM Ch 67.2.16 "INTS: Interrupt Status Register" p 3989
  * Clear all latched W1C bits left over from a previous run. */
@@ -436,7 +436,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
       (scale->h_fraction > k_ra8_vin_uds_max_frac)) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 67.2.22 "UDS_SCALE: Scaling Factor Register" p 3997 */
+  /* HUM Ch 67.2.22 "UDS_SCALE: Scaling Factor Register" p 3998 */
   uint32_t v =
     ((uint32_t)scale->v_fraction << k_ra8_vin_uds_scale_shift_vfrac) & k_ra8_vin_uds_scale_vfrac;
   v |= ((uint32_t)scale->v_mantissa << k_ra8_vin_uds_scale_shift_vmant) & k_ra8_vin_uds_scale_vmant;
@@ -451,7 +451,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   if ((v_bwidth > (uint8_t)k_ra8_vin_uds_max_bw) || (h_bwidth > (uint8_t)k_ra8_vin_uds_max_bw)) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 67.2.23 "UDS_PASS_BWIDTH: Passband Register" p 3998 */
+  /* HUM Ch 67.2.23 "UDS_PASS_BWIDTH: Passband Register" p 4001 */
   uint32_t v = ((uint32_t)v_bwidth << k_ra8_vin_uds_bwidth_shift_v) & k_ra8_vin_uds_bwidth_v;
   v |= ((uint32_t)h_bwidth << k_ra8_vin_uds_bwidth_shift_h) & k_ra8_vin_uds_bwidth_h;
   *ra8_vin_reg32(k_ra8_vin_off_uds_pass_bwidth) = v;
@@ -463,7 +463,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   if ((v_size > k_ra8_vin_uds_max_clip) || (h_size > k_ra8_vin_uds_max_clip)) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 67.2.24 "UDS_CLIP_SIZE: Output Size Clipping Register" p 3999 */
+  /* HUM Ch 67.2.24 "UDS_CLIP_SIZE: Output Size Clipping Register" p 4002 */
   uint32_t v = ((uint32_t)v_size << k_ra8_vin_uds_clip_shift_v) & k_ra8_vin_uds_clip_v;
   v |= ((uint32_t)h_size << k_ra8_vin_uds_clip_shift_h) & k_ra8_vin_uds_clip_h;
   *ra8_vin_reg32(k_ra8_vin_off_uds_clip_size) = v;
@@ -473,7 +473,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 [[nodiscard]] ra8_err_t ra8_vin_set_uds_ctrl(const ra8_vin_uds_ctrl_t* ctrl)
 {
   RA8_CHECK_NULL_PTR(ctrl, s_tag, "ctrl must not be nullptr");
-  /* HUM Ch 67.2.21 "UDS_CTRL: Scaling Control Register" p 3996 */
+  /* HUM Ch 67.2.21 "UDS_CTRL: Scaling Control Register" p 3997 */
   uint32_t v = 0UL;
   if (ctrl->b_cb_nearest) {
     v |= k_ra8_vin_uds_ctrl_ne_bcb;
@@ -517,13 +517,13 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   const uint8_t* cr = (cr_table != nullptr) ? cr_table : y_table;
 
   for (uint16_t i = 0U; i < k_ra8_vin_lut_entries; ++i) {
-    /* HUM Ch 67.2.25 "LUTP: Look Up Table Pointer Register" p 4000 */
+    /* HUM Ch 67.2.25 "LUTP: Look Up Table Pointer Register" p 4003 */
     uint32_t lutp = ((uint32_t)i << k_ra8_vin_lutp_shift_ltypr) & k_ra8_vin_lutp_ltypr;
     lutp |= ((uint32_t)i << k_ra8_vin_lutp_shift_ltcbpr) & k_ra8_vin_lutp_ltcbpr;
     lutp |= ((uint32_t)i << k_ra8_vin_lutp_shift_ltcrpr) & k_ra8_vin_lutp_ltcrpr;
     *ra8_vin_reg32(k_ra8_vin_off_lutp) = lutp;
 
-    /* HUM Ch 67.2.26 "LUTD: Look Up Table Data Register" p 4001 */
+    /* HUM Ch 67.2.26 "LUTD: Look Up Table Data Register" p 4004 */
     uint32_t lutd = ((uint32_t)y_table[i] << k_ra8_vin_lutd_shift_ltydt) & k_ra8_vin_lutd_ltydt;
     lutd |= ((uint32_t)cb[i] << k_ra8_vin_lutd_shift_ltcbdt) & k_ra8_vin_lutd_ltcbdt;
     lutd |= ((uint32_t)cr[i] << k_ra8_vin_lutd_shift_ltcrdt) & k_ra8_vin_lutd_ltcrdt;
@@ -541,24 +541,24 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 [[nodiscard]] ra8_err_t ra8_vin_set_yc_to_rgb(const ra8_vin_yc_to_rgb_t* coeffs)
 {
   RA8_CHECK_NULL_PTR(coeffs, s_tag, "coeffs must not be nullptr");
-  /* HUM Ch 67.2.36 "CSCE1" p 4011 */
+  /* HUM Ch 67.2.36 "CSCE1" p 3995 */
   uint32_t csce1 = (uint32_t)coeffs->y_multiplier & k_ra8_vin_csce1_ymul2;
   if (coeffs->enable_round) {
     csce1 |= k_ra8_vin_csce1_round;
   }
   *ra8_vin_reg32(k_ra8_vin_off_csce1) = csce1;
 
-  /* HUM Ch 67.2.37 "CSCE2" p 4012 */
+  /* HUM Ch 67.2.37 "CSCE2" p 3995 */
   uint32_t csce2 = (uint32_t)coeffs->cbcr_sub & k_ra8_vin_csce2_csub2;
   csce2 |= ((uint32_t)coeffs->y_sub << k_ra8_vin_csce2_shift_ysub2) & k_ra8_vin_csce2_ysub2;
   *ra8_vin_reg32(k_ra8_vin_off_csce2) = csce2;
 
-  /* HUM Ch 67.2.38 "CSCE3" p 4013 */
+  /* HUM Ch 67.2.38 "CSCE3" p 3996 */
   uint32_t csce3 = (uint32_t)coeffs->cr_mul_lo & k_ra8_vin_csce_mul_lo;
   csce3 |= ((uint32_t)coeffs->cr_mul_hi << k_ra8_vin_csce_shift_mul_hi) & k_ra8_vin_csce_mul_hi;
   *ra8_vin_reg32(k_ra8_vin_off_csce3) = csce3;
 
-  /* HUM Ch 67.2.39 "CSCE4" p 4014 */
+  /* HUM Ch 67.2.39 "CSCE4" p 3996 */
   uint32_t csce4 = (uint32_t)coeffs->cb_mul_lo & k_ra8_vin_csce_mul_lo;
   csce4 |= ((uint32_t)coeffs->cb_mul_hi << k_ra8_vin_csce_shift_mul_hi) & k_ra8_vin_csce_mul_hi;
   *ra8_vin_reg32(k_ra8_vin_off_csce4) = csce4;
@@ -834,7 +834,7 @@ internal_yc_offsets(uint8_t channel, ra8_vin_off_t* off1, ra8_vin_off_t* off2, r
   if (line > (uint16_t)k_ra8_vin_si_mask) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 67.2.17 "SI: Scanline Interrupt Register" p 3990 */
+  /* HUM Ch 67.2.17 "SI: Scanline Interrupt Register" p 3991 */
   *ra8_vin_reg32(k_ra8_vin_off_si) = (uint32_t)line;
   return k_ra8_ok;
 }

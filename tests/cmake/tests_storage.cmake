@@ -36,7 +36,13 @@ add_custom_target(
 # ra8_fs_fat.c was split into ra8_fs_fat*.c TUs for the 1000-line file-size cap;
 # glob them all so this standalone test still links the whole FAT driver (and
 # only the FAT driver -- no ra8_core_hal -> no ra8_time weak-extern).
+#
+# The UTF codec (ra8_fs_utf.c) is named for the ENCODING rather than for the
+# filesystem, because both on-disk name formats in this library store UTF-16 --
+# so it does not match the ra8_fs_fat* pattern and has to be named. Every FAT TU
+# that touches a name calls into it (#606).
 file(GLOB RA8_FS_FAT_TU_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_fs/src/ra8_fs_fat*.c)
+list(APPEND RA8_FS_FAT_TU_SOURCES ${FW_ROOT}/libs/ra8_fs/src/ra8_fs_utf.c)
 add_executable(
   test_ra8_fs_exfat ${CMAKE_CURRENT_SOURCE_DIR}/host/exfat_fs_test.c ${RA8_FS_FAT_TU_SOURCES}
 )
@@ -94,6 +100,38 @@ target_include_directories(
 # LevelX SOUP: silence its warnings (matches cmake/levelx.cmake handling).
 set_source_files_properties(${RA8_LEVELX_NOR_STANDALONE} PROPERTIES COMPILE_OPTIONS "-w")
 add_test(NAME test_ra8_cache_store COMMAND test_ra8_cache_store)
+
+# ---------------------------------------------------------------------------
+# test_lx_fs_backend (#611): the LevelX -> ra8_fs block-device backend that the
+# threadx_fs_demo / threadx_fs_levelx_demo HIL apps mount through. Compiles the
+# REAL vendored LevelX NOR core (LX_STANDALONE_ENABLE, no ThreadX) over the RAM
+# NOR fake plus the port shim under test (port/levelx/src/lx_fs_backend.c);
+# ra8_fs and ra8_log come from the shared ra8_core_hal objects -- so the host
+# runs the demos' whole storage stack minus only the xSPI silicon. Registered
+# by hand (vendored LevelX + the fake driver put it outside the ra8_add_test()
+# auto-glob).
+# ---------------------------------------------------------------------------
+add_executable(
+  test_lx_fs_backend
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_lx_fs_backend.c
+  ${FW_ROOT}/port/levelx/src/lx_fs_backend.c
+  ${RA8_LEVELX_NOR_STANDALONE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/lx_nor_fake_ram.c
+  $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_lx_fs_backend PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_definitions(test_lx_fs_backend PRIVATE LX_STANDALONE_ENABLE)
+target_compile_options(test_lx_fs_backend PRIVATE -Wall -Wextra)
+target_include_directories(
+  test_lx_fs_backend
+  PRIVATE ${FW_ROOT}/port/levelx/inc
+          ${FW_ROOT}/libs/ra8_fs/inc
+          ${FW_ROOT}/libs/ra8_core/inc
+          ${FW_ROOT}/libs/ra8_hal/inc
+          ${FW_ROOT}/libs/third_party/levelx/common/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+)
+add_test(NAME test_lx_fs_backend COMMAND test_lx_fs_backend)
 
 # ---------------------------------------------------------------------------
 # test_cache_store_demo (#257): the ra8_cache_store_demo example core on the host.

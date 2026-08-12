@@ -3,11 +3,13 @@
 """Which files ``doxy_audit.py`` reads, in each of its two scopes.
 
 The auditor deliberately has two: the function gate covers ``libs/``, ``src/``
-and ``port/``, while the member gate is repo-wide.  That difference is a
-recorded decision, not an oversight -- see the KNOWN SCOPE GAP note in
-``doxy_audit``'s docstring, which measures what closing it would cost -- so
-both lists live here, side by side, where the asymmetry is visible rather than
-buried 800 lines apart.
+and ``port/`` plus the tools/ subtrees in :data:`FUNCTION_TOOL_SUBTREES`, while
+the member gate is repo-wide.  That difference is a recorded decision, not an
+oversight -- see the KNOWN SCOPE GAP note in ``doxy_audit``'s docstring, which
+measures what closing it would cost -- so both lists live here, side by side,
+where the asymmetry is visible rather than buried 800 lines apart.  The tools/
+gap is being closed one fully-documented tool at a time (#332): each subtree in
+:data:`FUNCTION_TOOL_SUBTREES` is at zero function-doc gaps and is gated now.
 
 Each scope also owns its own vacuity floor, and :func:`function_files` /
 :func:`member_files` are the materialising accessors every caller must use.
@@ -59,7 +61,31 @@ def override_repo_root(root: Path) -> Iterator[None]:
 
 
 SCAN_DIRS = ["libs", "src", "port"]
-EXCLUDE_PARTS = {"third_party", "build", ".git"}
+
+# The function gate is being extended over tools/ one fully-documented tool at a
+# time (#332). Every subtree listed here has ZERO function-doc gaps and is
+# therefore gated NOW; a .c/.h newly added under one is gated the moment it
+# lands, so the gate never sits green over code it does not read. This is an
+# include-list of clean subtrees, not a skip-list of dirty files: a tool that is
+# not yet documented is simply absent here (its backlog is tracked in #332),
+# never scanned-and-excused. When the final tools/ subtree is documented these
+# collapse into a single ``"tools"`` entry in SCAN_DIRS and this list is deleted.
+FUNCTION_TOOL_SUBTREES = [
+    "tools/cache_bench",
+    "tools/glyph_bench",
+    "tools/mkbookimg",
+    "tools/mkfontimg",
+    "tools/rabook_imagepack",
+    "tools/rabook_viewer",
+    "tools/reader_vmem",
+]
+
+# ``generated`` joins the exclusions so machine-emitted tool code (e.g.
+# tools/vela/generated/) is exempt exactly as vendored SOUP is: it is not
+# hand-authored, so the hand-documentation bar does not apply to it. No
+# directory named ``generated`` exists under libs/, src/ or port/, so adding it
+# here changes only what the tools/ subtrees above contribute.
+EXCLUDE_PARTS = {"third_party", "generated", "build", ".git"}
 
 # Top-level dirs scanned by the report-only member audit (--members). Wider
 # than SCAN_DIRS on purpose: the member/enum/macro documentation bar is
@@ -88,9 +114,12 @@ def iter_function_files() -> Iterator[Path]:
 
     Both the strict gate and the report generator walked this identically
     inline; sharing one iterator means the report can never describe a
-    different set of files than the gate enforces over.
+    different set of files than the gate enforces over. The tools/ subtrees in
+    :data:`FUNCTION_TOOL_SUBTREES` are walked alongside the top-level roots as
+    the incremental #332 extension; ``repo_root() / "tools/<tool>"`` is a valid
+    ``os.walk`` root just like a top-level one.
     """
-    for top in SCAN_DIRS:
+    for top in SCAN_DIRS + FUNCTION_TOOL_SUBTREES:
         root = repo_root() / top
         if not root.is_dir():
             continue

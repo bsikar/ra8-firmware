@@ -148,17 +148,17 @@ static bool fileops_name_eq(const char* a, const char* b)
   return fileops_sci_write((const uint8_t*)text, fileops_str_len(text));
 }
 
-[[nodiscard]] ra8_err_t fileops_print_dec(uint32_t value)
+[[nodiscard]] ra8_err_t fileops_print_dec(uint64_t value)
 {
-  uint8_t  scratch[k_fileops_dec_chars_u32] = {};
-  uint8_t  out[k_fileops_dec_chars_u32]     = {};
+  uint8_t  scratch[k_fileops_dec_chars_u64] = {};
+  uint8_t  out[k_fileops_dec_chars_u64]     = {};
   uint8_t  count                            = 0U;
-  uint32_t v                                = value;
+  uint64_t v                                = value;
   if (v == 0U) {
     out[0] = (uint8_t)'0';
     return fileops_sci_write(out, 1U);
   }
-  while ((v != 0U) && (count < (uint8_t)k_fileops_dec_chars_u32)) {
+  while ((v != 0U) && (count < (uint8_t)k_fileops_dec_chars_u64)) {
     scratch[count] = (uint8_t)((uint8_t)'0' + (uint8_t)(v % k_fileops_dec_radix));
     v              = v / k_fileops_dec_radix;
     count++;
@@ -226,13 +226,18 @@ static bool fileops_name_eq(const char* a, const char* b)
  * @since 0.1.0
  */
 [[nodiscard]] static ra8_err_t
-fileops_backend_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+fileops_backend_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   if (count > (uint32_t)k_fileops_max_blocks) {
     return k_ra8_err_invalid_arg;
   }
-  return ra8_usb_hmsc_read10((uint8_t)k_fileops_target_lun, lba, (uint16_t)count, buf);
+  if (lba > (uint64_t)UINT32_MAX) {
+    /* SCSI READ(10)/WRITE(10) carry 32-bit LBAs; past-2-TiB addressing is a
+     * 64-bit-native-backend capability this transport cannot reach (#683). */
+    return k_ra8_err_out_of_range;
+  }
+  return ra8_usb_hmsc_read10((uint8_t)k_fileops_target_lun, (uint32_t)lba, (uint16_t)count, buf);
 }
 
 /**
@@ -252,13 +257,18 @@ fileops_backend_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  * @since 0.1.0
  */
 [[nodiscard]] static ra8_err_t
-fileops_backend_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+fileops_backend_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   if (count > (uint32_t)k_fileops_max_blocks) {
     return k_ra8_err_invalid_arg;
   }
-  return ra8_usb_hmsc_write10((uint8_t)k_fileops_target_lun, lba, (uint16_t)count, buf);
+  if (lba > (uint64_t)UINT32_MAX) {
+    /* SCSI READ(10)/WRITE(10) carry 32-bit LBAs; past-2-TiB addressing is a
+     * 64-bit-native-backend capability this transport cannot reach (#683). */
+    return k_ra8_err_out_of_range;
+  }
+  return ra8_usb_hmsc_write10((uint8_t)k_fileops_target_lun, (uint32_t)lba, (uint16_t)count, buf);
 }
 
 /**
@@ -277,10 +287,17 @@ fileops_backend_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* bu
  * @since 0.1.0
  */
 [[nodiscard]] static ra8_err_t
-fileops_backend_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+fileops_backend_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
-  return ra8_usb_hmsc_read_capacity((uint8_t)k_fileops_target_lun, block_count, block_size);
+  uint32_t        blocks32 = 0U;
+  const ra8_err_t err =
+    ra8_usb_hmsc_read_capacity((uint8_t)k_fileops_target_lun, &blocks32, block_size);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  *block_count = blocks32;
+  return k_ra8_ok;
 }
 
 /**
@@ -376,7 +393,7 @@ typedef struct {
  * @note Print errors are swallowed -- the walk must finish.
  * @since 0.1.0
  */
-static void fileops_listdir_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
+static void fileops_listdir_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   fileops_listdir_ctx_t* c = (fileops_listdir_ctx_t*)ctx;
   c->count++;

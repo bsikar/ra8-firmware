@@ -54,18 +54,18 @@ typedef enum : uint8_t {
  * against a realistic request rather than a zeroed one.
  */
 typedef enum : uint16_t {
-  k_t_req_class     = 0x2106U, /**< USBREQ: bRequest 0x21, bmRequestType 0x06 -- a class request. */
-  k_t_req_get_desc  = 0x8006U, /**< USBREQ: the standard GET_DESCRIPTOR request.        */
-  k_t_val_arbitrary = 0x1234U, /**< USBVAL for the class request; opaque to the driver. */
-  k_t_val_device_desc = 0x0100U, /**< USBVAL 0x0100: descriptor type 1, index 0. */
-  k_t_indx_arbitrary  = 0x5678U, /**< USBINDX for the class request; opaque.     */
-  k_t_leng_short      = 0x000AU, /**< USBLENG: a 10-byte control data stage.     */
-  k_t_leng_max_packet = 0x0040U, /**< USBLENG: a 64-byte control data stage.     */
-  k_t_intsts_fs_a  = 0xABCDU, /**< INTSTS0 pattern proving the FS read path returns the register. */
-  k_t_intsts_fs_b  = 0xCAFEU, /**< A second, distinct FS pattern.               */
-  k_t_intsts_hs    = 0xBABEU, /**< The high-speed counterpart.                  */
-  k_t_cfifo_word_a = 0xBBAAU, /**< CFIFO half-word staged for the first drain.  */
-  k_t_cfifo_word_b = 0xDDCCU, /**< CFIFO half-word staged for the second drain. */
+  k_t_req_class       = 0x2106U, /**< USBREQ: bRequest 0x21, bmRequestType 0x06 -- class request. */
+  k_t_req_get_desc    = 0x8006U, /**< USBREQ: the standard GET_DESCRIPTOR request.                */
+  k_t_val_arbitrary   = 0x1234U, /**< USBVAL for the class request; opaque to the driver.         */
+  k_t_val_device_desc = 0x0100U, /**< USBVAL 0x0100: descriptor type 1, index 0.                  */
+  k_t_indx_arbitrary  = 0x5678U, /**< USBINDX for the class request; opaque.                      */
+  k_t_leng_short      = 0x000AU, /**< USBLENG: a 10-byte control data stage.                      */
+  k_t_leng_max_packet = 0x0040U, /**< USBLENG: a 64-byte control data stage.                      */
+  k_t_intsts_fs_a     = 0xABCDU, /**< INTSTS0 pattern proving the FS read reaches the register.   */
+  k_t_intsts_fs_b     = 0xCAFEU, /**< A second, distinct FS pattern.                              */
+  k_t_intsts_hs       = 0xBABEU, /**< The high-speed counterpart.                                 */
+  k_t_cfifo_word_a    = 0xBBAAU, /**< CFIFO half-word staged for the first drain.                 */
+  k_t_cfifo_word_b    = 0xDDCCU, /**< CFIFO half-word staged for the second drain.                */
 } t_usb_setup_t;
 
 /**

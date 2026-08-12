@@ -55,10 +55,14 @@
 
 /** @enum bm_consts_t @brief Console / bus / fuel-gauge knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_bm_uart_baud  = 115200U,                                      /**< Console baud.      */
-  k_bm_bus_hz     = 100000U,                                      /**< IIC_B bit rate.    */
-  k_bm_iic_chan   = (uint32_t)k_ra8_board_mikrobus_iic_b_channel, /**< IIC_B channel (0). */
-  k_bm_period_ms  = 1000U,                                        /**< Poll period.       */
+  /** Console baud. */
+  k_bm_uart_baud = 115200U,
+  /** IIC_B bit rate. */
+  k_bm_bus_hz = 100000U,
+  /** IIC_B channel (0). */
+  k_bm_iic_chan = (uint32_t)k_ra8_board_mikrobus_iic_b_channel,
+  /** Poll period. */
+  k_bm_period_ms  = 1000U,
   k_bm_fg_addr    = 0x36U, /**< MAX17048 7-bit I2C address.                 */
   k_bm_reg_soc    = 0x04U, /**< SOC register (high byte = integer percent). */
   k_bm_reg_crate  = 0x16U, /**< CRATE register (signed charge rate).        */

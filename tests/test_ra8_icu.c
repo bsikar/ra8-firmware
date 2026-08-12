@@ -29,9 +29,9 @@ typedef enum : uint32_t {
   k_icu_probe_wupen0 =
     0xCAFEBABEUL, /**< Planted in WUPEN0 to prove the write reaches the register. */
   k_icu_probe_wupen1 =
-    0xDEADBEEFUL, /**< Planted in WUPEN1; different from the WUPEN0 value so the two cannot be confused. */
+    0xDEADBEEFUL, /**< Planted in WUPEN1; differs from WUPEN0, so the two are not confused. */
   k_icu_nmisr_mixed =
-    0x1F007AUL, /**< An NMISR value with a scattered mix of set and clear bits, so a mask applied to the wrong field changes the result. */
+    0x1F007AUL, /**< NMISR: scattered set/clear bit mix, so a wrong mask changes the result. */
   k_icu_nmier_all_sources =
     0x1FFFFFUL, /**< Every implemented NMIER enable bit, the widest legal value for the register. */
 } icu_fixture2_t;

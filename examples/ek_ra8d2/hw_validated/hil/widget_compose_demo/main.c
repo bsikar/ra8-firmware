@@ -43,11 +43,11 @@
  * advances the frame counter and partial-composes the status bar live, so the
  * panel visibly updates only its top band (the damage-tracked A2 path).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / APP] {World: S}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

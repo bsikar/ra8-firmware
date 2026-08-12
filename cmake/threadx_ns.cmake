@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/threadx_ns.cmake
 #
@@ -13,8 +15,6 @@
 #     include(${RA8_REPO_ROOT}/cmake/threadx_ns.cmake)
 #     target_link_libraries(<app>.elf PRIVATE threadx_ns)
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 if(TARGET threadx_ns)

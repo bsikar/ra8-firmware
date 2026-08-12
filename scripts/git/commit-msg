@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/git/commit-msg -- enforce commit-message policy: zero AI
 # attribution AND inclusive terminology.
@@ -23,8 +25,6 @@
 # is what the local hook does so a developer sees every problem at commit
 # time.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

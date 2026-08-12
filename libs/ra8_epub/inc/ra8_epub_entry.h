@@ -18,13 +18,13 @@
  * header. A translation unit that needs the entry cursor includes this header
  * directly (`ra8_epub.h` alone is not sufficient for the entry API).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB]
  * {World: NS}
  *
  * @see ra8_epub.h
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
@@ -96,7 +96,8 @@ typedef struct {
   uint64_t         total;    /**< Entry uncompressed size, bytes.                               */
   uint64_t         consumed; /**< Bytes delivered to the caller so far.                         */
   uint8_t          done;     /**< 1 once EOF has been reached / reported.                       */
-  uint8_t          reserved[k_ra8_epub_entry_reader_reserved_bytes]; /**< Padding; keep zero. */
+  /** Padding; keep zero. */
+  uint8_t reserved[k_ra8_epub_entry_reader_reserved_bytes];
 } ra8_epub_entry_reader_t;
 
 /**

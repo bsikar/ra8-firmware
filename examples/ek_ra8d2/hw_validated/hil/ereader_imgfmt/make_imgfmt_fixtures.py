@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Generate imgfmt_fixtures.h: deterministic BMP and GIF images for the gate.
 
 These close a coverage hole. The firmware links four stb_image formats, and

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/tflite_micro.cmake
 #
@@ -39,8 +41,6 @@
 # libs/ra8_hal ra8_npu driver (ra8_npu_submit / ra8_npu_run / ra8_npu_wait) instead
 # of the Arm ethos-u-core-driver. See docs/SOUP/tflite-micro.md.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Idempotency guard.

@@ -153,7 +153,7 @@ RA8_INTERNAL
 static ra8_err_t internal_wait_idle(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_ceu_reset_spin; i++) {
-    /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3672 */
+    /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3673 */
     const uint32_t cstsr = *ra8_ceu_reg32(k_ra8_ceu_off_cstsr);
     /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 */
     const uint32_t capsr = *ra8_ceu_reg32(k_ra8_ceu_off_capsr);
@@ -312,7 +312,7 @@ ra8_err_t ra8_ceu_init(const ra8_ceu_config_t* cfg)
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_ceu);
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "ceu_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 60.2.23 "CSTSR" p 3672 */ /* + HUM Ch 60.2.1 "CAPSR" p 3630 */
+  /* HUM Ch 60.2.23 "CSTSR" p 3673 */ /* + HUM Ch 60.2.1 "CAPSR" p 3630 */
   const ra8_err_t idle_err = internal_wait_idle();
   RA8_RETURN_ON_ERROR(idle_err, s_tag, "ceu_init: wait idle");
 
@@ -324,7 +324,7 @@ ra8_err_t ra8_ceu_init(const ra8_ceu_config_t* cfg)
   s_ceu_image_area     = cfg->image_area_size;
   s_ceu_capture_format = cfg->capture_format;
 
-  /* HUM Ch 60.2.21 "CEIER : Capture Event Interrupt Enable Register" p 3663 */
+  /* HUM Ch 60.2.21 "CEIER : Capture Event Interrupt Enable Register" p 3668 */
   *ra8_ceu_reg32(k_ra8_ceu_off_ceier) = s_ceu_int_enable;
 
   ra8_log_info_val(s_tag, "ceu_init width", (uint32_t)cfg->width_px);
@@ -333,7 +333,7 @@ ra8_err_t ra8_ceu_init(const ra8_ceu_config_t* cfg)
 
 ra8_err_t ra8_ceu_deinit(void)
 {
-  /* HUM Ch 60.2.21 "CEIER : Capture Event Interrupt Enable Register" p 3663 */
+  /* HUM Ch 60.2.21 "CEIER : Capture Event Interrupt Enable Register" p 3668 */
   *ra8_ceu_reg32(k_ra8_ceu_off_ceier) = 0U;
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 */
   /* Abort any active capture on the way out. */
@@ -360,14 +360,14 @@ ra8_err_t ra8_ceu_reset(void)
 ra8_err_t ra8_ceu_get_status(uint32_t* out_mask)
 {
   RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664 */
+  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3669 */
   *out_mask = *ra8_ceu_reg32(k_ra8_ceu_off_cetcr);
   return k_ra8_ok;
 }
 
 ra8_err_t ra8_ceu_clear_status(uint32_t mask)
 {
-  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664
+  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3669
    * CETCR bits clear when 0 is written; preserve bits not in `mask`
    * by writing back a value that is `current & ~mask`. The hardware
    * never resets a CETCR bit on a 1 write, so 1s leave the existing
@@ -382,11 +382,11 @@ ra8_err_t ra8_ceu_status_snapshot(ra8_ceu_status_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
 
-  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664 */
+  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3669 */
   out->events = *ra8_ceu_reg32(k_ra8_ceu_off_cetcr);
   /* HUM Ch 60.2.24 "CDSSR : Capture Data Size Register" p 3674 */
   out->data_size = *ra8_ceu_reg32(k_ra8_ceu_off_cdssr);
-  /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3672 */
+  /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3673 */
   const uint32_t cstsr = *ra8_ceu_reg32(k_ra8_ceu_off_cstsr);
   out->capturing       = ((cstsr & k_ra8_ceu_cstsr_mask_cpton) != 0U);
   out->top_field       = ((cstsr & k_ra8_ceu_cstsr_mask_cpfld) != 0U);
@@ -409,7 +409,7 @@ ra8_err_t ra8_ceu_data_size_get(uint32_t* out_bytes)
 ra8_err_t ra8_ceu_interrupts_set(uint32_t mask)
 {
   s_ceu_int_enable = mask;
-  /* HUM Ch 60.2.21 "CEIER : Capture Event Interrupt Enable Register" p 3663 */
+  /* HUM Ch 60.2.21 "CEIER : Capture Event Interrupt Enable Register" p 3668 */
   *ra8_ceu_reg32(k_ra8_ceu_off_ceier) = mask;
   return k_ra8_ok;
 }
@@ -424,7 +424,7 @@ ra8_err_t ra8_ceu_attach_handler(ra8_ceu_event_fn_t fn, void* ctx)
 RA8_ISR_SAFE
 void ra8_ceu_dispatch(void)
 {
-  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664
+  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3669
    * CETCR bits clear when 0 is written; preserve bits not observed by
    * re-reading and writing back `current & ~pending`. Writing a 1 to a
    * CETCR bit leaves that flag asserted, so the prior observed bits
@@ -475,7 +475,7 @@ ra8_err_t ra8_ceu_exit_stop(void)
 RA8_INTERNAL
 static ra8_err_t internal_arm_capture(const ra8_ceu_buffers_t* bufs)
 {
-  /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3672 -- a
+  /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3673 -- a
    * non-zero CPTON means a capture is already running. */
   const uint32_t cstsr = *ra8_ceu_reg32(k_ra8_ceu_off_cstsr);
   if ((cstsr & k_ra8_ceu_cstsr_mask_cpton) != 0U) {
@@ -504,7 +504,7 @@ static ra8_err_t internal_arm_capture(const ra8_ceu_buffers_t* bufs)
     *ra8_ceu_reg32(k_ra8_ceu_off_cfwcr) = 0U;
   }
 
-  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664 */
+  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3669 */
   *ra8_ceu_reg32(k_ra8_ceu_off_cetcr) = 0U;
 
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 -- arm the
@@ -696,7 +696,7 @@ ra8_err_t ra8_ceu_plane_b_program(const ra8_ceu_buffers_t* bufs)
 
 ra8_err_t ra8_ceu_plane_swap_force(void)
 {
-  /* HUM Ch 60.2.9 "CRCMPR : CEU Register Forcible Control Register" p 3649 */
+  /* HUM Ch 60.2.9 "CRCMPR : CEU Register Forcible Control Register" p 3650 */
   *ra8_ceu_reg32(k_ra8_ceu_off_crcmpr) = k_ra8_ceu_crcmpr_mask_ra;
   return k_ra8_ok;
 }
@@ -742,7 +742,7 @@ ra8_err_t ra8_ceu_bundle_size_set(uint32_t size_bytes)
 
 ra8_err_t ra8_ceu_low_pass_set(bool enable)
 {
-  /* HUM Ch 60.2.19 "CLFCR : Capture Low-Pass Filter Control" p 3661 */
+  /* HUM Ch 60.2.19 "CLFCR : Capture Low-Pass Filter Control" p 3662 */
   uint32_t value = 0U;
   if (enable) {
     value = k_ra8_ceu_clfcr_mask_lpf;

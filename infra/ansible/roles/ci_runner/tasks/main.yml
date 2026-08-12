@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Deploy ARC (Actions Runner Controller) + the ra8-ci runner scale set into an
 # existing k3s cluster. Run against the k3s node (see playbooks/ci-runner.yml).

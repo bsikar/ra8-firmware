@@ -15,7 +15,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -45,10 +44,17 @@ typedef struct {
 
 /**
  * @brief Fit a source image into the framebuffer preserving aspect, centred.
+ * @details Scales @p src_w x @p src_h to fill the framebuffer width, drops to a
+ *          height fit if that would overflow, then centres the result -- so a
+ *          page of any aspect lands whole and centred with white margins.
  * @param[in]  src_w Source width in pixels (>= 1).
  * @param[in]  src_h Source height in pixels (>= 1).
  * @param[out] box   Receives the centred destination rectangle (non-NULL).
+ * @pre @p src_w and @p src_h are each at least 1.
+ * @pre @p box is writable.
  * @post `box->w` and `box->h` are clamped to at least 1 pixel.
+ * @post `box->x` / `box->y` centre the box within the framebuffer.
+ * @note Pure; thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static void viewer_fit_centered(int32_t src_w, int32_t src_h, viewer_fit_box_t* box)
@@ -83,6 +89,11 @@ RA8_INTERNAL static void viewer_fit_centered(int32_t src_w, int32_t src_h, viewe
  * @param[in]  nh Native height in pixels.
  * @param[out] rw Receives the capped render width (non-NULL, >= 1).
  * @param[out] rh Receives the capped render height (non-NULL, >= 1).
+ * @pre @p rw and @p rh are writable.
+ * @pre @p nw and @p nh are the page's native dimensions.
+ * @post `*rw` and `*rh` are each at least 1 and within ::k_ra8_gfx_max_dim.
+ * @post The capped box preserves the source aspect ratio.
+ * @note Pure; thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static void viewer_cap_render(uint32_t nw, uint32_t nh, uint32_t* rw, uint32_t* rh)
@@ -104,11 +115,20 @@ RA8_INTERNAL static void viewer_cap_render(uint32_t nw, uint32_t nh, uint32_t* r
 
 /**
  * @brief Read page @p page's encoded bytes into the reader's scratch buffer.
+ * @details Queries the archive for the page's declared size, rejects a lying or
+ *          decompression-bomb declaration before allocating
+ *          (`ra8_decomp_check_declared`), grows the scratch buffer to fit, then
+ *          reads the encoded image into it.
  * @param[in,out] r    Reader of a comic format (non-NULL).
  * @param[in]     page Page index.
  * @param[out]    got  Receives the byte count read (non-NULL).
  * @return ra8_err_t from `ra8_comic_page_info` / `ra8_comic_page_read`.
+ * @retval k_ra8_ok The bytes were read and `*got` holds the count.
+ * @pre @p r was opened as a comic format and @p page is valid.
+ * @pre @p got is writable.
  * @post On ::k_ra8_ok `r->page_buf` holds `*got` encoded image bytes.
+ * @post A rejected declaration returns before any allocation.
+ * @note Not thread-safe (drives the shared scratch buffer).
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t

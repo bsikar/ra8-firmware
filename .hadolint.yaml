@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # hadolint configuration -- hadolint 2.14.0, the pin the lint-devcontainer
 # gate, the devcontainer image and the CI runners all install.
 #

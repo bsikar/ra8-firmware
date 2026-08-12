@@ -36,11 +36,11 @@
  * `if (err != k_ra8_ok)` / `RA8_CHECK_NULL_PTR` early return, each driven both
  * ways across the happy-path and guard cases below.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB Import] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  */
 
@@ -149,7 +149,7 @@ static mem_disk_t s_disk = {};
 /* -------------------------------------------------------------------------- */
 
 /** @brief ra8_fs_backend_t::read_block over the RAM disk. */
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -162,7 +162,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 }
 
 /** @brief ra8_fs_backend_t::write_block over the RAM disk. */
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -175,7 +175,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
 }
 
 /** @brief ra8_fs_backend_t::get_capacity over the RAM disk. */
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   *block_count     = disk->block_count;
@@ -690,6 +690,12 @@ static void test_streamed_compile_corrupt_fat(void)
   TEST_BEGIN("rabook_import_streamed: corrupt FAT chain -> open fails, no output");
   ra8_fs_mount_t* mount =
     fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
+  /* Unmount before corrupting and mount again after. Corruption arrives on
+   * real media between sessions, not under a live mount, and the driver caches
+   * one FAT sector (#607) -- poking the FAT behind a mounted volume would be
+   * masked by the copy already in memory. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
+  mount = nullptr;
 
   /* Point cluster 2 (the file's first cluster) at an off-disk cluster in every
    * FAT copy, so any chain walk past the first sector faults in mem_read. */
@@ -705,6 +711,7 @@ static void test_streamed_compile_corrupt_fat(void)
     s_disk.bytes[ent + 1U] =
       (uint8_t)(((uint32_t)k_st_offdisk_clus >> k_st_byte_shift) & k_st_byte_mask);
   }
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
 
   ra8_rabook_import_compiler_ctx_t ctx = {};
   make_ctx(&ctx);

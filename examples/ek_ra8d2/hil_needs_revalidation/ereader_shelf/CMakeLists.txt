@@ -1,9 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake stub for `ereader_shelf`. All build logic lives in the shared
 # cmake/ra8_add_app.cmake recipe; this file only names the app + its deps.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 

@@ -59,12 +59,12 @@
  *       continue to include `ra8_reflow.h` directly -- it pulls in both
  *       sub-headers so the public surface is unchanged.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

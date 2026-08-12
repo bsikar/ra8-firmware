@@ -26,7 +26,7 @@
  */
 typedef enum : uint8_t {
   k_gfx_fill_sentinel =
-    0xAA, /**< Value the framebuffer is pre-filled with, so any pixel the blit failed to touch is still recognisable. */
+    0xAA, /**< Framebuffer pre-fill value, so any untouched pixel is still recognisable. */
 } gfx_fill_t;
 
 /**

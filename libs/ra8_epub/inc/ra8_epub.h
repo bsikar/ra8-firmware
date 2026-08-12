@@ -28,8 +28,8 @@
  *
  *   - On the host unit-test build, `media` points at an
  *     `ra8_epub_mem_media_t` describing an in-memory `.epub` blob.
- *   - On the target firmware, the FileX adapter (Phase 4.2) wraps an
- *     `FX_FILE` and reads the entire file into a caller-owned buffer
+ *   - On the target firmware, the caller reads the entire `.epub` off the
+ *     mounted filesystem (`ra8_fs_read()`) into a caller-owned buffer
  *     before handing it to `ra8_epub_open()`.
  *
  * ## Static-allocation footprint
@@ -93,7 +93,7 @@ typedef enum : uint16_t {
   k_ra8_epub_id_len       = 64,  /**< Max manifest item id length (incl. NUL).            */
   k_ra8_epub_media_len    = 48,  /**< Max `media-type` length (incl. NUL).                */
   k_ra8_epub_zip_archive_bytes =
-    256, /**< Inline storage for `mz_zip_archive` (sizeof on miniz 3.0.2 is 112; cushion for upstream growth; static_assert in .c). */
+    256, /**< Storage for `mz_zip_archive` (miniz 3.0.2 sizeof=112; margin; static_assert in .c). */
 } ra8_epub_limits_t;
 
 /**
@@ -317,8 +317,9 @@ typedef struct {
                               [k_ra8_epub_max_path_len]; /**< Font hrefs (rel. to OPF dir). */
 
   /* --- Manifest (document order, #151) -------------------------------- */
-  uint16_t                 manifest_count; /**< `<manifest>` `<item>` entries stored (<= cap). */
-  ra8_epub_manifest_item_t manifest[k_ra8_epub_max_manifest]; /**< Items, OPF order. */
+  uint16_t manifest_count; /**< `<manifest>` `<item>` entries stored (<= cap). */
+  /** Items, OPF order. */
+  ra8_epub_manifest_item_t manifest[k_ra8_epub_max_manifest];
 
   /* --- OPF base directory --------------------------------------------- */
   char opf_dir[k_ra8_epub_max_path_len]; /**< Directory portion of the OPF. */

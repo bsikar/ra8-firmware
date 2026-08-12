@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # yamllint configuration -- yamllint 1.37.1, the pin the lint-yaml gate, the
 # devcontainer image and the CI runners all install.
 #

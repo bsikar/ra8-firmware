@@ -40,7 +40,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_jpeg_poison_out =
-    0xFFFFU, /**< Poison written into the produced-bytes out-parameter, so an encode that fails without setting it is detectable. */
+    0xFFFFU, /**< Poison in the produced-bytes out-param; an encode that skips it is detectable. */
 } jpeg_sw_fixture2_t;
 
 /**

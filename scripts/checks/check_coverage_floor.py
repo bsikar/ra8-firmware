@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """check_coverage_floor.py -- per-file line-coverage FLOOR gate (no allowlist).
 
 Per CLAUDE.md "IEC 61508 SIL 3 / DO-178C Level B" and the project's

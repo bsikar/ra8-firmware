@@ -1,10 +1,8 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_robots.c
  * @brief Implementation of the robots.txt parser, matcher, and per-host cache.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_robots.h"
 

@@ -18,7 +18,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 #pragma once
@@ -238,7 +237,15 @@ ra8_viewer_write_ppm565(const uint16_t* px, uint32_t w, uint32_t h, const char* 
 
 /**
  * @brief Release a reader and all of its owned buffers.
+ * @details Frees the format-specific backing (comic archive or JOF cache), the
+ *          framebuffer and the reader struct itself. Safe to call with NULL,
+ *          which is a no-op.
  * @param[in,out] r Reader from ::ra8_viewer_open (NULL is ignored).
+ * @pre @p r came from ::ra8_viewer_open, or is NULL.
+ * @pre @p r is not used again after this call.
+ * @post Every buffer the reader owned is freed and @p r is invalid.
+ * @post No resource borrowed from outside the reader is touched.
+ * @note Not thread-safe (mutates and frees the reader).
  * @since 0.1.0
  */
 void ra8_viewer_close(ra8_viewer_reader_t* r);

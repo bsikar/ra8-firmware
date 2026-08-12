@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Generate epub_stress_fixture.h, a synthetic large-STRUCTURE EPUB3.
 
 Reproduces the on-device miniz+tinyxml2 shared-arena pressure of a big

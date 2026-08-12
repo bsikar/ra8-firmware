@@ -20,11 +20,11 @@
  * `--click X Y` drives it, `--sd img` attaches the card, and `--ppm` captures
  * a frame.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include <string.h>

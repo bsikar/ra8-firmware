@@ -230,7 +230,7 @@ ra8_err_t ra8_eth_gwca_set_operation_mode(ra8_gwmc_opc_t mode)
   if ((uint32_t)mode > (uint32_t)k_ra8_gwmc_opc_mask) {
     return k_ra8_err_invalid_arg;
   }
-  /* HUM Ch 34.3.1 "GWMC : Mode Configuration Register" p 1797 */
+  /* HUM Ch 34.3.1 "GWMC : Mode Configuration Register" p 1792 */
   volatile uint32_t* const gwmc =
     (volatile uint32_t*)(k_ra8_gwca0_base_addr + (uintptr_t)k_ra8_gwca_off_gwmc);
 
@@ -238,7 +238,7 @@ ra8_err_t ra8_eth_gwca_set_operation_mode(ra8_gwmc_opc_t mode)
   const uint32_t cur = *gwmc & ~(uint32_t)k_ra8_gwmc_opc_mask;
   *gwmc              = cur | opc;
 
-  /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1798 */
+  /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1792 */
   volatile uint32_t* const gwms =
     (volatile uint32_t*)(k_ra8_gwca0_base_addr + (uintptr_t)k_ra8_gwca_off_gwms);
   /* GWMS.OPS converges to a specific 2-bit value (opc), not a single-mask

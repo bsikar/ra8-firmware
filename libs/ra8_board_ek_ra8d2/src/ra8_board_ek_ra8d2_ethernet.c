@@ -34,11 +34,11 @@
 #include "ra8_cgc.h"
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
+#include "ra8_eth.h"
+#include "ra8_eth_coma.h"
 #include "ra8_etha.h"
 #include "ra8_etha_regs.h"
-#include "ra8_ether_regs.h"
 #include "ra8_gpio_constants.h"
-#include "ra8_hw_err.h"
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
 #include "ra8_port_constants.h"
@@ -226,155 +226,18 @@ RA8_INTERNAL static ra8_err_t internal_eth_route_alt_pins(void)
 }
 
 /**
- * @enum ra8_board_eth_coma_delay_t
- * @brief Busy-wait iteration counts for the COMA bring-up sequence.
+ * @enum ra8_board_eth_etha_delay_t
+ * @brief Busy-wait iteration count for the ETHA mode-walk settle delay.
  *
  * @details
- * Cortex-M85 at ~1 GHz, ~3 cycles per ``nop`` -> 3,000,000 iters lands
- * around 9 ms (FSP r_layer3_switch_reset_coma uses
- * ``R_BSP_SoftwareDelay(1, BSP_DELAY_UNITS_MILLISECONDS)`` for the
- * same purpose, so ~1 ms is sufficient -- we keep ~3 ms for margin).
- * 200_000 iters is the equivalent of the FSP 1-us settle delay used
- * between the ETHA EAMC writes. ``bpr_poll_max`` bounds the
- * CABPIRM.BPR poll: HUM Ch 31.3.2.7 says BPR sets at clk_period x 512
- * from the start of buffer-pool init -- well under a microsecond --
- * so 1,000,000 register-read iterations is a multi-millisecond
- * safety ceiling that satisfies NASA P10 Rule 2.
+ * Cortex-M85 at ~1 GHz, ~3 cycles per ``nop``. 200_000 iters is the
+ * equivalent of the FSP 1-us settle delay used between the ETHA EAMC
+ * writes (r_rmac_phy_set_operation_mode). The chip-generic COMA bring-up
+ * delays now live in ``ra8_eth_coma`` (::ra8_eth_coma_bringup).
  */
 typedef enum : uint32_t {
-  k_ra8_board_eth_coma_delay_iters  = 3000000UL, /**< ~1-3 ms busy wait between COMA writes.  */
-  k_ra8_board_eth_etha_step_iters   = 200000UL,  /**< ~50 us settle between ETHA mode writes. */
-  k_ra8_board_eth_coma_bpr_poll_max = 1000000UL, /**< CABPIRM.BPR poll upper bound.           */
-} ra8_board_eth_coma_delay_t;
-
-/**
- * @brief Bring the COMA (Common Agent) IP out of reset, initialise the
- *        buffer pool, and enable per-agent clock fan-out.
- *
- * @details
- * Faithful port of FSP r_layer3_switch_reset_coma. Two effects are
- * essential and were both bench-confirmed on EK-RA8D2:
- *  - Without the switch + agent clocks the per-port RMAC / ETHA
- *    register windows read back 0 and writes are silently dropped.
- *  - Without the CABPIRM.BPIOG -> BPR buffer-pool init the shared
- *    MFAB pointer pool stays non-operational: the RMAC cannot obtain
- *    a buffer for an inbound frame, so every RX frame overflows
- *    (MEIS.REOES, MROVFC climbs) and MRGFCE stays 0.
- *
- * Sequence (HUM Ch 31.4 software flows):
- *   1. Pulse COMA.RRC.RR (1 then 0): reset the ESWM IP.
- *   2. Set COMA.RCEC.RCE: enable the switch clock alone.
- *   3. Write COMA.CABPIRM.BPIOG = 1, poll until CABPIRM.BPR == 1.
- *   4. Set COMA.RCEC = RCE | ACE[6:0]: fan every per-agent clock out.
- *
- * @return Result code.
- * @retval k_ra8_ok             COMA out of reset, buffer pool ready.
- * @retval k_ra8_err_hw_timeout CABPIRM.BPR never asserted.
- *
- * @pre ESWM MSTP gates released (MSTPC30 + MSTPC28).
- * @pre PDCTRESWM.PDDE = 0 (peripheral domain powered).
- * @post COMA.RCEC.RCE = 1, ACE[6:0] = all-ones, CABPIRM.BPR = 1.
- * @post Per-port RMAC / ETHA register windows are accessible.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_eth_coma_reset(void)
-{
-  /* Faithful port of FSP r_layer3_switch_reset_coma. */
-
-  /* Step 1: RRC pulse + ~1 ms delay. */
-  *ra8_coma_rrc() = (uint32_t)k_ra8_coma_rrc_rr;
-  *ra8_coma_rrc() = 0U;
-  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_board_eth_coma_delay_iters; ++i) {
-    __asm__ volatile("nop");
-  }
-
-  /* Step 2: enable the switch clock (RCE) alone, then settle. */
-  *ra8_coma_rcec() = (uint32_t)k_ra8_coma_rcec_rce;
-  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_board_eth_coma_delay_iters; ++i) {
-    __asm__ volatile("nop");
-  }
-
-  /* Step 3: kick the COMA buffer-pool init and wait for BPR.
-   * HUM Ch 31.3.2.7 "CABPIRM" p 1599: writing BPIOG=1 starts the pool
-   * reset; BPR self-sets clk_period x 512 later. On the host build the
-   * CABPIRM register is mmap'd RAM with no hardware to self-set BPR, so
-   * the shared bounded waiter consults the ra8_fake_mmio fault seam --
-   * first-poll success unless a test arms a timeout on this register. */
-  *ra8_coma_cabpirm() = (uint32_t)k_ra8_coma_cabpirm_bpiog;
-  /* HUM Ch 31.3.2.7 "CABPIRM" p 1599 */
-  const ra8_err_t bpr_err = ra8_hw_wait_flag_set32(ra8_coma_cabpirm(),
-                                                   (uint32_t)k_ra8_coma_cabpirm_bpr,
-                                                   (uint32_t)k_ra8_board_eth_coma_bpr_poll_max);
-  if (bpr_err != k_ra8_ok) {
-    return bpr_err;
-  }
-
-  /* Step 4: fan out every per-agent clock (RCE | ACE[6:0]=ALL) so
-   * RMAC0/1 + ETHA0/1 + GWCA + MFWD + GPTP all become accessible. */
-  *ra8_coma_rcec() = (uint32_t)k_ra8_coma_rcec_rce | (uint32_t)k_ra8_coma_rcec_ace_mask;
-  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_board_eth_coma_delay_iters; ++i) {
-    __asm__ volatile("nop");
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Programme ESWM.MIICR1 + MIIRR for RGMII operation on port 1.
- *
- * @details
- * The EK-RA8D2 wires its PEF7071 / GPY111 PHY to RMAC port **1** -- the
- * canonical FSP example project ``ethernet_ek_ra8d2_ep`` confirms this:
- * every Ethernet pin is configured as ``eswm_rgmii1`` (note the trailing
- * "1") in the pincfg, and the r_rmac module is instantiated on
- * Channel 1 (ra8_cfg.txt "Channel: 1"). RMAC0 / ETHA0 is left unused on
- * this evaluation board.
- *
- * The Ethernet Switch Module wraps the per-port MAC pins with a media-
- * interface multiplexer. After power-on reset MIIRR.RGRST1 reads 0
- * (RGMII1 block held in reset) and MIICR1.MIISEL reads 0 (GMII/MII),
- * so the RGMII data path is dead until the driver explicitly:
- *
- *   1. Sets MIICR1.MIISEL = 1 (RGMII) plus TXCIDE = 1 (on-chip TX
- *      delay), matching the FSP "RGMII + 2 ns TX skew" board profile.
- *   2. Sets MIIRR.RGRST1 = 1 (HUM 29.2.1.2: 1 = Enable, 0 = Reset --
- *      this is an enable bit, not an active-high reset).
- *
- * Without the RGRST1 enable, TXC is never generated and the RMAC RX
- * state machine is unclocked -- every RMAC RX counter stays at 0.
- *
- * @return ::k_ra8_ok. Two MMIO writes; no failure paths.
- * @retval k_ra8_ok Always returned -- no error path.
- * @pre  ESWM module-stop has been released (the RMAC and ESWM share
- *       MSTPCRC.MSTPCESWM; ra8_rmac_init takes the ref-count up).
- * @pre  COMA has been brought out of reset (internal_eth_coma_reset).
- * @post MIICR1 = TXCIDE | RGMII, MIIRR.RGRST1 = 1 (RGMII1 enabled).
- * @post RMAC1 / ETHA1 data pins ready to clock.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t internal_eth_eswm_select_rgmii(void)
-{
-  /* HUM Ch 29 "ESWM" + FSP r_rmac_phy_set_mii_type_configuration:
-   * write MIICR before enabling the per-port RGMII block so the pin
-   * mux is in the correct mode the instant the data pins go live.
-   * MIICR / MIIRR live at the +0x19400 sub-block of the ESWM window
-   * (see ra8_ether_regs.h ra8_eswm_off_miicr1 / ra8_eswm_off_miirr). */
-  *ra8_eswm_miicr1() = (uint32_t)k_ra8_eswm_miicr_txcide | (uint32_t)k_ra8_eswm_miicr_miisel_rgmii;
-
-  /* HUM Ch 29.2.1.2 "MIIRR : Media-independent Interface Reset
-   * Register" p 1289: RGRST1 is **0 = Reset, 1 = Enable** -- it is an
-   * enable, not an active-high reset. Bench-confirmed on EK-RA8D2:
-   * with RGRST1 = 0 the RGMII1 block stays in reset, TXC is never
-   * generated, the RMAC RX state machine is unclocked, and every
-   * RMAC RX counter (MRFC, MRGFCE ...) stays at 0. FSP's
-   * r_rmac_phy_set_mii_type_configuration sets this bit with the
-   * comment "Enable TXC generation". SET it. */
-  uint32_t miirr = *ra8_eswm_miirr();
-  miirr |= (uint32_t)k_ra8_eswm_miirr_rgrst1;
-  *ra8_eswm_miirr() = miirr;
-  return k_ra8_ok;
-}
+  k_ra8_board_eth_etha_step_iters = 200000UL, /**< ~50 us settle between ETHA mode writes. */
+} ra8_board_eth_etha_delay_t;
 
 /**
  * @brief Bring the ESWM subsystem live: clocks + power + MSTP + COMA reset.
@@ -384,9 +247,10 @@ RA8_INTERNAL static ra8_err_t internal_eth_eswm_select_rgmii(void)
  * the project's NASA Rule 4 / clang-tidy function-size threshold. Runs
  * the four upstream gates the RMAC / ETHA register windows hang off:
  * ESWCLK / ESWPHYCLK, PDCTRESWM power-on, MSTPC30 (ESWM) MSTP release,
- * MSTPC28 (ETHPHYCLK) MSTP release, and finally the COMA RRC/RCEC
- * bring-up. ``out_eswclk_hz`` receives the live ESWCLK frequency so
- * the caller can plumb it into ``ra8_rmac_config_t``.
+ * MSTPC28 (ETHPHYCLK) MSTP release, and finally the chip-generic COMA
+ * RRC/RCEC/CABPIRM bring-up via ::ra8_eth_coma_bringup. ``out_eswclk_hz``
+ * receives the live ESWCLK frequency so the caller can plumb it into
+ * ``ra8_rmac_config_t``.
  *
  * @param[out] out_eswclk_hz Live ESWCLK frequency in Hz on success.
  *
@@ -418,7 +282,9 @@ RA8_INTERNAL static ra8_err_t internal_eth_eswm_bring_up(uint32_t* out_eswclk_hz
     /* ra8_mstp_enable returns k_ra8_ok in RA8_OFF_TARGET (readback poll excluded on host). */
     return err; /* GCOVR_EXCL_LINE */
   }
-  return internal_eth_coma_reset();
+  /* Chip-generic COMA bring-up (RRC pulse + RCEC clock fan-out + CABPIRM
+   * buffer-pool init with BPR poll) now lives in the ETH HAL. */
+  return ra8_eth_coma_bringup();
 }
 
 /**
@@ -531,7 +397,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
 {
   /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- OR-combined MRAFC flags and the board RMAC port are valid values outside the enumerator lists. */
   /* HUM Ch 33.4 "MRAFC : MAC Reception Address Filter Configuration
-   * Register" p 1707: each frame class has an ENABLE bit (UCENE/BCENE
+   * Register" p 1717: each frame class has an ENABLE bit (UCENE/BCENE
    * /MCENE in the [10:0] half + matching UCENP/BCENP/MCENP in the
    * [26:16] half) AND a separate ACCEPT bit (BCACE bit 6, MCACE bit 5)
    * that controls whether the MAC actually forwards the matched frame
@@ -794,10 +660,20 @@ ra8_err_t ra8_board_ethernet_init(void)
     return err;
   }
   /* Step 4: select RGMII on the media-interface mux + release the
-   * per-port reset. */
-  err = internal_eth_eswm_select_rgmii();
+   * per-port reset, via the chip-generic ETH HAL primitive. The EK-RA8D2
+   * wires its PEF7071 / GPY111 PHY to RMAC port 1 -- the canonical FSP
+   * example ``ethernet_ek_ra8d2_ep`` configures every Ethernet pin as
+   * ``eswm_rgmii1`` and instantiates r_rmac on Channel 1; RMAC0 / ETHA0
+   * is unused on this board. ra8_eth_rgmii_select programs MIICR1 =
+   * TXCIDE | RGMII and sets MIIRR.RGRST1 = 1 (HUM 29.2.1.2: an enable,
+   * not an active-high reset). Without the RGRST1 enable, TXC is never
+   * generated, the RMAC RX state machine is unclocked, and every RMAC RX
+   * counter stays at 0 (bench-confirmed on EK-RA8D2). */
+  err = ra8_eth_rgmii_select((ra8_eth_mii_port_t)k_ra8_board_eth_rmac_port);
   if (err != k_ra8_ok) {
-    return err;
+    /* ra8_eth_rgmii_select only fails on an out-of-range port; the board
+     * RMAC port constant is always valid. */
+    return err; /* GCOVR_EXCL_LINE */
   }
   /* Step 5: RMAC1 bring-up. Programs MPIC (PSMCS / PIS / LSC / PIPP),
    * MAC address filter, and IRQ block. */

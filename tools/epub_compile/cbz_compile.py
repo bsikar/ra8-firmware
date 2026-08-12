@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Compile a CBZ (a ZIP of comic/manga page images) into a .rabook blob.
 
 CBZ is the manga interchange format: page order is the filename sort of the

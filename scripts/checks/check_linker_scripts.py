@@ -42,6 +42,14 @@ mechanically checkable about a linker script without linking it:
                                 word the HUM lists, with the matching output
                                 section for each; and it may not place an
                                 `.option_setting_*` section outside that family.
+  LD009  fits the silicon    -- no MEMORY region declared inside the on-chip
+                                SRAM window (0x22000000 .. 0x221A0000, i.e.
+                                k_ra8_mem_sram_size = 1664 KiB) may extend past
+                                that end. LD003/LD004 prove a region is declared
+                                and closed; only this proves it is real memory,
+                                the one enforcement a 0-byte placeholder no CI
+                                job links can have (an ASSERT there never fires,
+                                #544).
 
 The REVERSE direction (a script defines a g_ra8_ls_* nothing in C names) is
 deliberately NOT a finding, and that is a statement about what is enforceable
@@ -96,6 +104,10 @@ import re
 import subprocess
 import sys
 import tempfile
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+from linker_script_fixtures import MALFORMED, OFS_BAD, OFS_GOOD, TRICKY
 
 SYMBOL_PREFIX = "g_ra8_ls_"
 EXCLUDED_PREFIXES = ("libs/third_party/", "libs/ra8_fonts/")
@@ -244,6 +256,80 @@ def _check_region_closure(path: pathlib.Path, code: str, regions: set[str]) -> l
         findings.append(
             Finding(path, line, "LD004", f"output section placed in undeclared region '{name}'")
         )
+    return findings
+
+
+# On-chip system SRAM extent, identical on RA8D2 and RA8P1 and mirrored by
+# k_ra8_mem_sram_size (libs/ra8_core/inc/ra8_device.h): 1664 KiB = SRAM0 1024 KiB
+# + SRAM1 640 KiB, so SRAM_WINDOW_END is the first address past the array.
+SRAM_WINDOW_BASE = 0x22000000
+SRAM_WINDOW_SIZE = 0x001A0000  # k_ra8_mem_sram_size: 1664 KiB, both parts.
+SRAM_WINDOW_END = SRAM_WINDOW_BASE + SRAM_WINDOW_SIZE
+
+_SIZE_UNIT = {"": 1, "K": 1024, "M": 1024 * 1024}
+# A size/address expression this checker can evaluate statically: one or more
+# `<number><K|M?>` terms joined by + or -, e.g. `1024K - 256`, `640K`, `0x22100000`.
+_SIZE_TERM = re.compile(r"([+-]?)\s*(0x[0-9A-Fa-f_]+|\d+)\s*([KM]?)")
+_SIZE_WHOLE = re.compile(r"(0x[0-9A-Fa-f_]+|\d+)\s*[KM]?(\s*[+-]\s*(0x[0-9A-Fa-f_]+|\d+)\s*[KM]?)*")
+
+
+def eval_size(expr: str) -> int | None:
+    """Evaluate an ORIGIN/LENGTH literal, or None when it is not static.
+
+    Handles hex, decimal and K/M suffixes joined by + or - (``1024K - 256``). A
+    symbolic ``ORIGIN()`` reference fails the whole-string match and returns
+    None, so LD009 skips a region it cannot bound rather than guessing.
+    """
+    text = expr.strip()
+    if not text or not _SIZE_WHOLE.fullmatch(text):
+        return None
+    total = 0
+    for sign, num, unit in _SIZE_TERM.findall(text):
+        total += (-1 if sign == "-" else 1) * int(num.replace("_", ""), 0) * _SIZE_UNIT[unit]
+    return total
+
+
+def _check_sram_fit(path: pathlib.Path, code: str, regions: set[str]) -> list[Finding]:
+    """LD009 -- a region inside the SRAM window may not run past the array end.
+
+    Only a region whose ORIGIN is statically evaluable AND lands inside
+    [SRAM_WINDOW_BASE, SRAM_WINDOW_END) is judged -- SRAM, the NOINIT slice, and
+    the NS_SRAM placeholder. The 0x32.. non-secure alias and every off-SRAM
+    region fall outside the window and keep their own ASSERTs.
+    """
+    findings: list[Finding] = []
+    for name in sorted(regions):
+        decl = re.search(
+            rf"^\s*{re.escape(name)}\s*(\([rwxail!]+\))?\s*:([^\n]*)$",
+            code,
+            re.MULTILINE,
+        )
+        if not decl:
+            continue
+        om = re.search(r"ORIGIN\s*=\s*([^,\n]+)", decl.group(2))
+        lm = re.search(r"LENGTH\s*=\s*([^,\n]+)", decl.group(2))
+        if not (om and lm):
+            continue  # LD003 already reports a region missing ORIGIN/LENGTH.
+        origin = eval_size(om.group(1))
+        length = eval_size(lm.group(1))
+        if origin is None or length is None:
+            continue
+        if not (SRAM_WINDOW_BASE <= origin < SRAM_WINDOW_END):
+            continue
+        end = origin + length
+        if end > SRAM_WINDOW_END:
+            line = code[: decl.start()].count("\n") + 1
+            findings.append(
+                Finding(
+                    path,
+                    line,
+                    "LD009",
+                    f"region '{name}' spans 0x{origin:08X}..0x{end:08X}, "
+                    f"{end - SRAM_WINDOW_END} bytes past the end of on-chip SRAM "
+                    f"(0x{SRAM_WINDOW_END:08X}); the array is 1664 KiB "
+                    f"(k_ra8_mem_sram_size)",
+                )
+            )
     return findings
 
 
@@ -411,8 +497,8 @@ def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     """Every linker-script rule, one function per finding code.
 
     The rule list is the call sequence below: LD005 formatting, LD001 licence,
-    LD002 ENTRY, LD003 MEMORY, LD004 region closure, LD007 option-setting
-    addresses, LD008 option-setting completeness.
+    LD002 ENTRY, LD003 MEMORY, LD004 region closure, LD009 SRAM fit, LD007
+    option-setting addresses, LD008 option-setting completeness.
     """
     findings, text = _check_formatting(path, raw)
     findings += _check_licence(path, text.splitlines())
@@ -421,6 +507,7 @@ def check_file(path: pathlib.Path, raw: bytes) -> list[Finding]:
     memory_findings, regions = _check_memory(path, code)
     findings += memory_findings
     findings += _check_region_closure(path, code, regions)
+    findings += _check_sram_fit(path, code, regions)
     findings += _check_option_setting(path, code)
     findings += _check_option_completeness(path, code)
     return findings
@@ -498,99 +585,6 @@ def check_symbol_closure(root: pathlib.Path) -> list[str]:
 # ---------------------------------------------------------------------------
 # selftest
 # ---------------------------------------------------------------------------
-MALFORMED = """\
-/* A linker script with no licence header. */
-MEMORY
-{
-    FLASH (rx) : ORIGIN = 0x00000000
-    RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 64K
-}
-SECTIONS
-{
-\t.text : { *(.text) } > FLSAH
-    .data : { *(.data) } > RAM
-}
-"""
-
-# Legal but deliberately awkward: ENTRY and a bogus region name appear inside
-# comments, a region name is a substring of another, and the header sits below
-# a long banner. Nothing here is a real finding.
-TRICKY = """\
-/*
- * A perfectly legal script that mentions ENTRY(bogus_reset) and a
- * region called NOWHERE inside this comment, and places nothing in
- * either. It also talks about > NOWHERE as prose.
- *
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
-
-ENTRY(Reset_Handler)
-
-MEMORY
-{
-    RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 64K
-    RAM_EXT (rwx) : ORIGIN = 0x60000000, LENGTH = 8M
-}
-
-SECTIONS
-{
-    .text : { *(.text) } > RAM_EXT
-    .data : { *(.data) } > RAM AT> RAM_EXT
-}
-"""
-
-
-# Option-setting layout: a phantom data-flash region plus a wrong OFS0 address
-# (both must draw LD007), and a correct-address twin that must stay silent.
-OFS_BAD = """\
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
-
-ENTRY(Reset_Handler)
-
-MEMORY
-{
-    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 1024K
-    DATA_FLASH (rw) : ORIGIN = 0x27000000, LENGTH = 16K
-    OFS_CFG (r) : ORIGIN = 0x02C9F000, LENGTH = 2K
-}
-
-PROVIDE(OFS0_ADDR = 0x0300A100);
-
-SECTIONS
-{
-    .text : { *(.text) } > MRAM
-    .option_setting_ofs0 OFS0_ADDR : { KEEP(*(.option_setting_ofs0)) } > OFS_CFG
-}
-"""
-
-OFS_GOOD = """\
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
-
-ENTRY(Reset_Handler)
-
-MEMORY
-{
-    MRAM (rx) : ORIGIN = 0x02000000, LENGTH = 1024K
-    OFS_CFG (r) : ORIGIN = 0x02C9F000, LENGTH = 2K
-}
-
-PROVIDE(OFS0_ADDR = 0x02C9F040);
-
-SECTIONS
-{
-    .text : { *(.text) } > MRAM
-    .option_setting_ofs0 OFS0_ADDR : { KEEP(*(.option_setting_ofs0)) } > OFS_CFG
-}
-"""
-
-
 def _selftest_option_setting() -> int:
     """LD007 fires on the phantom region and a wrong OFS0 address, quiet on the twin."""
     rc = 0
@@ -782,11 +776,62 @@ def _selftest_closure(got_def: set[str], got_ref: set[str]) -> int:
     return rc
 
 
+def _sram_fixture(ns_sram_len: str) -> str:
+    """A board-shaped script whose NS_SRAM placeholder is sized `ns_sram_len`.
+
+    The other rows are load-bearing: SRAM ``1024K - 256`` exercises subtraction,
+    NOINIT sits at the top of SRAM (must stay silent), and NS_SRAM_RUN at 0x32..
+    is the non-secure alias that must fall OUTSIDE the window LD009 judges.
+    """
+    return (
+        "/*\n * Copyright (c) 2026 Brighton Sikarskie\n"
+        " * SPDX-License-Identifier: MIT\n */\n\n"
+        "ENTRY(Reset_Handler)\n\n"
+        "MEMORY\n{\n"
+        "    SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K - 256\n"
+        "    NOINIT (rw) : ORIGIN = 0x220FFF00, LENGTH = 256\n"
+        f"    NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = {ns_sram_len}\n"
+        "    NS_SRAM_RUN (rwx) : ORIGIN = 0x32100000, LENGTH = 512K\n}\n"
+    )
+
+
+def _selftest_sram_fit() -> int:
+    """LD009 fires on a region past the SRAM end, silent when every region fits."""
+    rc = 0
+    # Anchor: a collapsed evaluator or a zeroed window constant would make every
+    # case below vacuous. Compare only named constants and eval_size results,
+    # never a bare literal, encoding the real bank arithmetic (1M + 640K = 1664K).
+    if eval_size("1664K") != SRAM_WINDOW_SIZE or eval_size("1024K") != eval_size("1M"):
+        print("SELFTEST FAIL: eval_size unit / SRAM-window anchor is wrong")
+        return 1
+    if eval_size("1M - 384K") != eval_size("640K") or eval_size("ORIGIN(SRAM)") is not None:
+        print("SELFTEST FAIL: eval_size mis-handled subtraction or a symbolic expr")
+        return 1
+
+    with tempfile.TemporaryDirectory() as td:
+        # 1024K overruns to 0x22200000 (the #544 defect); 640K lands exactly on
+        # 0x221A0000, proving the bound is inclusive.
+        for tag, ns_len, want in (("overrun.ld", "1024K", True), ("fits.ld", "640K", False)):
+            p = pathlib.Path(td) / tag
+            p.write_bytes(_sram_fixture(ns_len).encode())
+            ld009 = [f for f in check_file(p, p.read_bytes()) if f.code == "LD009"]
+            if want and (len(ld009) != 1 or "NS_SRAM" not in ld009[0].msg):
+                print(f"SELFTEST FAIL: {tag} expected one LD009 on NS_SRAM, got {ld009}")
+                rc = 1
+            elif not want and ld009:
+                print(f"SELFTEST FAIL: {tag} should have no LD009 but reported {ld009}")
+                rc = 1
+            else:
+                print(f"selftest: {tag} -> {'LD009 on NS_SRAM' if want else 'no LD009'} OK")
+    return rc
+
+
 def selftest() -> int:
     """Assert every finding code fires, and that none of them over-fires."""
     rc = _selftest_fixtures()
     rc |= _selftest_option_setting()
     rc |= _selftest_option_completeness()
+    rc |= _selftest_sram_fit()
     scan_rc, got_def, got_ref = _selftest_symbol_scan()
     return rc | scan_rc | _selftest_closure(got_def, got_ref)
 

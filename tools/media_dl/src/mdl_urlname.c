@@ -1,10 +1,8 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_urlname.c
  * @brief Pure URL-to-name helpers (last segment, chapter number, extension).
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_urlname.h"
 

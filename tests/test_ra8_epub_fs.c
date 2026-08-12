@@ -50,9 +50,11 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_epub_chapter_buf_bytes =
-    2048, /**< Chapter read-back buffer; larger than any fixture chapter, so a truncation is visible. */
-  k_bpb_off_sig_lo = 510, /**< Offset of the 0xAA55 boot signature's low byte. */
-  k_bpb_off_sig_hi = 511, /**< Offset of its high byte.                        */
+    2048, /**< Chapter read-back buffer; larger than any fixture chapter, truncation would show. */
+  /** Offset of the 0xAA55 boot signature's low byte. */
+  k_bpb_off_sig_lo = 510,
+  /** Offset of its high byte. */
+  k_bpb_off_sig_hi = 511,
 } epub_fs_fixture2_t;
 
 /* --- RAM block device + minimal FAT16 volume (mirrors test_ra8_fs_fat.c) --- */
@@ -70,7 +72,7 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -82,7 +84,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -94,7 +96,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -254,6 +256,12 @@ static void test_epub_fs_read_error_corrupt_fat(void)
   ra8_fs_mount_t* mount = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
   write_epub(mount, "BOOK.EPB");
+  /* Unmount before corrupting, and mount again after. Corruption arrives on
+   * real media between sessions, not under a live mount, and the driver caches
+   * one FAT sector (#607) -- so poking the FAT behind a mounted volume would
+   * be masked by the copy already in memory and prove nothing. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
+  mount = nullptr;
 
   /* Point cluster 2 at an off-disk cluster in both FAT copies so the chain walk
    * past the first sector faults. FAT-relative byte = cluster*2 = 4. */
@@ -263,6 +271,7 @@ static void test_epub_fs_read_error_corrupt_fat(void)
   put16(s_disk.bytes,
         (k_fat16_fat1_lba * (uint32_t)k_disk_block_size) + (uint32_t)k_fat16_clus2_ent_byte,
         (uint16_t)k_fat16_offdisk_clus);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
 
   ra8_epub_stream_fs_ctx_t io   = {};
   ra8_epub_book_t          book = {};
@@ -298,7 +307,7 @@ static void check_fs_byte_roundtrip(ra8_fs_mount_t* mount)
 {
   ra8_fs_file_t* rf = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, "BOOK.EPB", k_ra8_fs_mode_read, &rf));
-  uint32_t sz = 0U;
+  uint64_t sz = 0U;
   uint32_t gt = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(rf, &sz));
   TEST_ASSERT_EQ(s_epub_len, sz);

@@ -5,7 +5,7 @@ A one-paragraph guided tour of every first-party library under
 "main entry points" -- every public function carries the project's
 mandatory Doxygen tag set (see `CLAUDE.md`).
 
-Vendored third-party libraries (mbedTLS, ThreadX, NetX Duo, FileX,
+Vendored third-party libraries (mbedTLS, ThreadX, NetX Duo,
 USBX, NimBLE, miniz, stb, litehtml, gumbo) live under
 `libs/third_party/` and are documented as SOUP under
 [`docs/SOUP/`](SOUP/) -- they are not enumerated here.
@@ -173,9 +173,10 @@ plane inside NASA Power of 10 Rule 3.
 
 ## ra8_fs
 
-Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write) backed
-by a swappable block-device interface. Used by the ereader app to
-walk EPUBs off an SD card without pulling in FileX.
+First-party FAT12/FAT16/FAT32 + exFAT filesystem (read + write) backed
+by a swappable block-device interface. The platform's only filesystem
+since the vendored FileX was retired (#611); used by the ereader app to
+walk EPUBs off an SD card, and by the ThreadX demos over LevelX.
 
 * Header: `libs/ra8_fs/inc/ra8_fs.h`
 * Main entry points: `ra8_fs_mount()`, `ra8_fs_open()`,

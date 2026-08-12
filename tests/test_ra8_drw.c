@@ -35,8 +35,9 @@ typedef enum : uint16_t {
  */
 typedef enum : uint32_t {
   k_drw_probe_perfcount2 =
-    0xCAFEBABEUL, /**< Planted in PERFCOUNT2; different from PERFCOUNT1 so the two cannot be confused. */
-  k_drw_probe_perfcount1 = 0xDEADBEEFUL, /**< Planted in PERFCOUNT1. */
+    0xCAFEBABEUL, /**< Planted in PERFCOUNT2, unlike PERFCOUNT1, so the two are never confused. */
+  /** Planted in PERFCOUNT1. */
+  k_drw_probe_perfcount1 = 0xDEADBEEFUL,
 } drw_fixture2_t;
 
 /**

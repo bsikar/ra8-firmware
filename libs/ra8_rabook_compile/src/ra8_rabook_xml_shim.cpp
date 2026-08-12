@@ -21,11 +21,11 @@
  * @par NASA Rule 1 (no recursion): RA8_NO_RECURSION documented below.
  * @par NASA Rule 3 deviation: tinyxml2 XMLDocument heap (bounded, local).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / EPUB Compiler] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
  */
 
@@ -48,10 +48,21 @@
 /**
  * @enum ra8_xhtml_limits_t
  * @brief Static bounds for the iterative DFS to satisfy NASA Rule 2.
- * @details The DFS stack holds at most one next_sibling frame plus one
- *          first_child frame per depth level, so the worst-case stack depth
- *          is 2 * max_tree_depth.  @ref k_xhtml_max_stack = 512 handles trees
- *          up to ~256 deep with any branching factor.
+ * @details Every turn of @ref s_walk_body_subtree pops one frame and pushes at
+ *          most two (next_sibling, then first_child), so the stack grows by one
+ *          frame only where the walk descends into a first_child whose parent
+ *          also had a next_sibling.  A pure sibling step is net zero: it pops
+ *          one frame and pushes one.  The high-water mark is therefore the
+ *          node-depth of the deepest node measured from `<body>` -- depth + 1,
+ *          NOT 2 * depth.
+ *
+ *          tinyxml2 bounds that depth: it aborts the parse once the tracked
+ *          nesting reaches @c TINYXML2_MAX_ELEMENT_DEPTH, so the deepest node it
+ *          admits sits at absolute depth @c TINYXML2_MAX_ELEMENT_DEPTH - 1 and
+ *          `<body>` itself occupies absolute depth >= 1.  The reachable
+ *          high-water mark is thus at most @c TINYXML2_MAX_ELEMENT_DEPTH - 2
+ *          frames -- 498 against the vendored cap of 500, measured exactly by
+ *          @c test_deep_at_tinyxml2_cap.
  * @since Version 0.1.0
  */
 typedef enum : uint16_t {
@@ -59,6 +70,14 @@ typedef enum : uint16_t {
   k_xhtml_max_attrs    = 32U,  /**< Max attributes collected per element.    */
   k_xhtml_max_siblings = 256U, /**< Limit for the root-level sibling search. */
 } ra8_xhtml_limits_t;
+
+/* The frame stack must cover every document tinyxml2 hands us: a full stack
+ * drops a frame, and a dropped frame silently truncates a whole subtree of the
+ * chapter.  Bind the capacity to the vendored cap so a tinyxml2 re-vendor that
+ * raises TINYXML2_MAX_ELEMENT_DEPTH fails the BUILD rather than quietly
+ * shipping a parser that truncates deep chapters (#625). */
+static_assert(TINYXML2_MAX_ELEMENT_DEPTH - 2 <= (int)k_xhtml_max_stack,
+              "k_xhtml_max_stack must cover tinyxml2's element-depth cap");
 
 static const char* const s_tag = "ra8_rabook_xml_shim";
 
@@ -203,9 +222,14 @@ uint32_t s_emit_node(ra8_rabook_ctx_t* ctx, const XMLNode* node)
 
 /**
  * @brief Push one DFS frame onto @p stack if @p node exists and capacity remains.
- * @details A no-op when @p node is nullptr or the stack is full; the full-stack
- *          case is the bounded-loop safety valve (NASA Rule 2) and cannot occur
- *          for documents tinyxml2 accepts (its nesting cap is below the stack).
+ * @details A no-op when @p node is nullptr -- a leaf or a last sibling simply
+ *          ends that branch.  The full-stack case is the bounded-loop safety
+ *          valve (NASA Rule 2) and cannot occur for any document tinyxml2
+ *          accepts: the walk's frame high-water mark is
+ *          @c TINYXML2_MAX_ELEMENT_DEPTH - 2 == 498 against a capacity of 512.
+ *          That premise is not prose -- the static_assert beside
+ *          @ref ra8_xhtml_limits_t fails the build if a tinyxml2 update ever
+ *          invalidates it.
  * @param[in,out] stack        DFS frame stack of @ref k_xhtml_max_stack entries.
  * @param[in]     top          Current frame count (next free slot index).
  * @param[in]     node         Node to push, or nullptr to skip.
@@ -225,7 +249,7 @@ uint16_t s_push_frame(ra8_xhtml_frame_t* stack,
                       uint32_t           parent_idx,
                       uint32_t           prev_sib_idx)
 {
-  // mcdc-deactivated: DO-178C 6.4.4.3 -- C2 (top < k_xhtml_max_stack) is invariantly true: this DFS never pushes a nil frame (see the node != nullptr guard), so the stack depth is bounded by 2 * tree_depth, and tinyxml2 rejects any document deeper than its element-depth cap (100) before the walk begins. 100 * 2 < k_xhtml_max_stack (512), so no document tinyxml2 accepts can fill the stack -- C2 is the NASA Rule 2 safety valve and cannot flip on any reachable input. C1 (node != nullptr) is the live condition and both its arms are covered.
+  // mcdc-deactivated: DO-178C 6.4.4.3 -- C2 (top < k_xhtml_max_stack) is invariantly true. Each turn of the walk pops one frame and pushes at most two, so the stack grows only where the DFS descends into a first_child whose parent also had a next_sibling; a sibling step is net zero. The high-water mark is therefore the node-depth of the deepest node measured from `<body>` (depth + 1), NOT 2 * depth. tinyxml2 aborts the parse once nesting reaches TINYXML2_MAX_ELEMENT_DEPTH -- 500 in the vendored 11.0.0 snapshot, not the 100 this rationale claimed before #625 -- so the deepest node it admits is at absolute depth 499 and `<body>` occupies absolute depth >= 1, bounding top at 499 - 1 = 498 < k_xhtml_max_stack (512). The bound is measured, not asserted: test_deep_at_tinyxml2_cap compiles the deepest document tinyxml2 accepts in the shape that maximises the stack (top == 498) and checks all 996 nodes are emitted, and test_deep_beyond_tinyxml2_cap confirms one level deeper is rejected by the parser, so the shim reports an error instead of truncating. The static_assert on ra8_xhtml_limits_t binds this premise to the vendored constant, failing the build if a re-vendor raises the cap. C1 (node != nullptr) is the live condition and both its arms are covered.
   if (node != nullptr && top < (uint16_t)k_xhtml_max_stack) {
     stack[top] = {node, parent_idx, prev_sib_idx};
     return (uint16_t)(top + 1U);

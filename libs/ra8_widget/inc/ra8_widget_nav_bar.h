@@ -13,12 +13,12 @@
  * `on_input` maps a touch to the cell it landed in, records it in `selected`, and
  * fires the optional `on_select` callback; a button event is declined.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
@@ -66,7 +66,8 @@ extern "C" {
 typedef struct ra8_widget_nav_bar {
   const ra8_widget_paint_t* paint; /**< Draw backend (NULL -> draws nothing). */
   const char* const*        items; /**< Array of `count` label strings.       */
-  void (*on_select)(struct ra8_widget* w, uint16_t index); /**< Tap callback (opt/NULL). */
+  /** Tap callback (opt/NULL). */
+  void (*on_select)(struct ra8_widget* w, uint16_t index);
   uint32_t bg;        /**< Strip background colour, 0xRRGGBB.   */
   uint32_t fg_active; /**< Active-item text colour, 0xRRGGBB.   */
   uint32_t fg_muted;  /**< Inactive-item text colour, 0xRRGGBB. */

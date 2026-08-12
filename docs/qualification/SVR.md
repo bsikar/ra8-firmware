@@ -297,8 +297,8 @@ Acceptance gate (zero functions with gaps) **met**. Phase 3 closed.
 | OP-001 | Major  | USB-FS DCD chapter-9       | Open / deferred                          |
 | OP-002 | Major  | LevelX xSPI NOR (LX_NOR)   | Open / deferred                          |
 | OP-003 | Major  | 4 EVM apps in WIP panic    | Open / deferred                          |
-| OP-004 | Critical | BLE controller patch     | Open / blocked (vendor blob)             |
-| OP-005 | Critical | RSIP-E BIST              | Open / blocked (vendor blob)             |
+| OP-004 | Critical | BLE controller patch     | CLOSED INVALID (`6f6209a95`): no on-chip BLE radio, no such patch image |
+| OP-005 | Critical | RSIP-E BIST              | Open / blocked (not vendored; public FSP, BSD-3-Clause) |
 | OP-006 | Minor  | Doxygen completeness       | CLOSED (0 gaps, 2747 audited)            |
 | OP-007 | Major  | MC/DC under threshold      | CLOSED reachable (100.00%); absolute 92.29% tracked informationally |
 | OP-008 | Minor  | `make smoke` hang in bench | Mitigated: HIL is developer-laptop pre-push (`docs/HIL_DEVELOPER_WORKFLOW.md`) |

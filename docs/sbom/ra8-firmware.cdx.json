@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:d14c3ccd-1947-5ed8-95c6-357e0bbf6b19",
+  "serialNumber": "urn:uuid:0a8798ac-dba5-59d7-b6ec-a8bea50679f1",
   "version": 1,
   "metadata": {
     "tools": [
@@ -31,7 +31,7 @@
       "name": "Eclipse ThreadX",
       "group": "eclipse-threadx",
       "version": "6.5.0",
-      "description": "Preemptive RTOS kernel under every threadx_* example.",
+      "description": "Preemptive RTOS kernel: 45 example apps, vendored middleware, NS image.",
       "scope": "required",
       "licenses": [
         {
@@ -90,7 +90,7 @@
       "name": "Eclipse NetX Duo",
       "group": "eclipse-threadx",
       "version": "6.5.0",
-      "description": "Dual IPv4/IPv6 TCP/IP + TLS stack (NetX echo / OTA path).",
+      "description": "Dual IPv4/IPv6 TCP/IP stack (wired eth + C6 Wi-Fi); NetX Secure not compiled.",
       "scope": "required",
       "licenses": [
         {
@@ -144,65 +144,6 @@
         {
           "name": "ra8:note0",
           "value": "CVE tracking is manual: netxduo.md hand-records CVE-2025-2258/2259/2260 as fixed (see T5-09 / SOUP-3)."
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "filex",
-      "name": "Eclipse FileX",
-      "group": "eclipse-threadx",
-      "version": "6.5.0",
-      "description": "FAT / exFAT file system (FileX demos + OTA staging).",
-      "scope": "required",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "purl": "pkg:github/eclipse-threadx/filex@6.5.0",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "bc2aa14516888a70ac28970ec87f0a85748f094d23a8638a84d4cf26bfa5b345"
-        }
-      ],
-      "externalReferences": [
-        {
-          "type": "vcs",
-          "url": "https://github.com/eclipse-threadx/filex"
-        }
-      ],
-      "properties": [
-        {
-          "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
-        },
-        {
-          "name": "ra8:path",
-          "value": "libs/third_party/filex"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "267"
-        },
-        {
-          "name": "ra8:upstreamCommit",
-          "value": "bb6e295af079f3cd903272982106b0ddd9537422"
-        },
-        {
-          "name": "ra8:upstreamRef",
-          "value": "v6.5.0.202601_rel"
-        },
-        {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/filex/LICENSE.txt"
-        },
-        {
-          "name": "ra8:modified",
-          "value": "true"
         }
       ]
     },
@@ -271,7 +212,7 @@
       "name": "Eclipse LevelX",
       "group": "eclipse-threadx",
       "version": "6.5.0",
-      "description": "NOR-flash wear-leveling layer under FileX on Octo-SPI.",
+      "description": "NOR-flash wear-levelling on Octo-SPI: under ra8_fs, and standalone.",
       "scope": "required",
       "licenses": [
         {
@@ -330,7 +271,7 @@
       "name": "Mbed TLS",
       "group": "Mbed-TLS",
       "version": "4.1.0",
-      "description": "TLS record layer + X.509, consumed via ra8_tls / ra8_ota.",
+      "description": "TLS record layer + X.509 via ra8_tls; two demo apps, none on hardware.",
       "scope": "required",
       "licenses": [
         {
@@ -394,7 +335,7 @@
       "name": "TF-PSA-Crypto",
       "group": "Mbed-TLS",
       "version": "1.1.0",
-      "description": "PSA Crypto API backing TLS, OTA signatures, key vault.",
+      "description": "PSA Crypto API; RoT secure-boot ECDSA-P256 verify engine.",
       "scope": "required",
       "licenses": [
         {
@@ -605,7 +546,7 @@
       "name": "miniz",
       "group": "richgel999",
       "version": "11.0.2",
-      "description": "Deflate / inflate / ZIP support for EPUB unpacking.",
+      "description": "Deflate / inflate / ZIP behind EPUB, CBZ, PNG, gzip and the ra8_io seam.",
       "scope": "required",
       "licenses": [
         {
@@ -741,7 +682,7 @@
       "name": "stb (stb_image + stb_truetype)",
       "group": "nothings",
       "version": "stb_image 2.30 / stb_truetype 1.26",
-      "description": "PNG/JPEG decode (stb_image) + TTF/OTF raster (stb_truetype).",
+      "description": "JPEG/PNG/GIF/BMP decode (stb_image) + TTF/OTF raster (stb_truetype).",
       "scope": "required",
       "licenses": [
         {
@@ -1205,70 +1146,6 @@
       ]
     },
     {
-      "type": "firmware",
-      "bom-ref": "fsp_blobs/r_sce_AMC",
-      "name": "Renesas RSIP-E50D firmware (r_sce_AMC)",
-      "group": "renesas",
-      "version": "FSP default branch @ 40bbaa11 (2026-05-02); no tag pinned",
-      "description": "RSIP-E50D protected crypto procedures (key install/wrap).",
-      "scope": "required",
-      "licenses": [
-        {
-          "license": {
-            "id": "BSD-3-Clause"
-          }
-        }
-      ],
-      "copyright": "Per-file SPDX-BSD-3-Clause; upstream LICENSE.md mirrored.",
-      "purl": "pkg:github/renesas/fsp@40bbaa11b1a1b87e0ee0675e401aea6351f90d14",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "89a659441fd2f84f871382dd7a48b1bcca3cf8ad9fc5b305820a64ea70890e92"
-        }
-      ],
-      "externalReferences": [
-        {
-          "type": "vcs",
-          "url": "https://github.com/renesas/fsp"
-        }
-      ],
-      "properties": [
-        {
-          "name": "ra8:provenance",
-          "value": "commit-pinned-sha256"
-        },
-        {
-          "name": "ra8:path",
-          "value": "libs/third_party/fsp_blobs/r_sce_AMC"
-        },
-        {
-          "name": "ra8:fileCount",
-          "value": "315"
-        },
-        {
-          "name": "ra8:upstreamCommit",
-          "value": "40bbaa11b1a1b87e0ee0675e401aea6351f90d14"
-        },
-        {
-          "name": "ra8:upstreamRef",
-          "value": "40bbaa11b1a1b87e0ee0675e401aea6351f90d14"
-        },
-        {
-          "name": "ra8:licenseFile",
-          "value": "libs/third_party/fsp_blobs/r_sce_AMC/UPSTREAM_LICENSE.md"
-        },
-        {
-          "name": "ra8:modified",
-          "value": "false"
-        },
-        {
-          "name": "ra8:note0",
-          "value": "Gold-standard provenance: commit pin + aggregate SHA-256 of the sorted per-file hashes (excludes UPSTREAM_LICENSE.md). See docs/SOUP/r_sce_AMC_firmware.md."
-        }
-      ]
-    },
-    {
       "type": "library",
       "bom-ref": "esp-hosted",
       "name": "Espressif esp-hosted-mcu (host driver)",
@@ -1336,7 +1213,7 @@
         },
         {
           "name": "ra8:note3",
-          "value": "Not compiled by any target yet: the sources cannot build until the first-party port under port/esp-hosted/ lands (the follow-on change), which is also when the CMake wiring is added."
+          "value": "Compiled: cmake/esp_hosted.cmake builds 8 of the vendored TUs into esp_hosted_objs behind RA8_USE_ESP_HOSTED, consumed by five applications under examples/ek_ra8d2/hw_validated/c6/. The first-party port (port/esp-hosted/) and driver (libs/ra8_c6link/) have landed and the protocol round-trip is proven on silicon."
         }
       ]
     },

@@ -40,11 +40,11 @@
  *      is reported unavailable rather than blowing the budget (the tile
  *      binder is the path for those).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @see ra8_jof.h          The JOF atlas format + reader.
  * @see ra8_jof_produce.h  The import-time transcode producer.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
@@ -86,7 +86,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_epub_book_t* book; /**< Owning book, or NULL for an external atlas. */
+  ra8_epub_book_t* book;                          /**< Owning book, or NULL for external atlas. */
   char             path[k_ra8_epub_max_path_len]; /**< Entry path (book-backed only).           */
   ra8_jof_pread_fn pread;                         /**< External atlas read seam, or NULL.       */
   void*            pread_ctx;                     /**< Context for `pread`.                     */
@@ -107,11 +107,13 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_tile_cache_t       cache; /**< Owned tile cache (decode wired to the binder). */
-  ra8_epub_tile_source_t sources[k_ra8_epub_tile_max_sources]; /**< Registered images.      */
-  uint8_t                source_count;                         /**< Registered image count. */
-  uint8_t*               scratch;     /**< Stored-tile staging for deflate atlases. */
-  uint32_t               scratch_cap; /**< Capacity of `scratch`.                   */
+  ra8_tile_cache_t cache; /**< Owned tile cache (decode wired to the binder). */
+  /** Registered images. */
+  ra8_epub_tile_source_t sources[k_ra8_epub_tile_max_sources];
+  /** Registered image count. */
+  uint8_t  source_count;
+  uint8_t* scratch;     /**< Stored-tile staging for deflate atlases. */
+  uint32_t scratch_cap; /**< Capacity of `scratch`.                   */
 } ra8_epub_tile_binder_t;
 
 /**

@@ -111,27 +111,38 @@ typedef enum : uint8_t {
  * begin/end pair instead of per-member annotations.
  */
 typedef struct {
-  volatile uint32_t PRTS;                              /**< +0x000 Protocol Selection Register. */
-  volatile uint32_t _r_prts[k_ra8_i3c_pad_after_prts]; /**< Reserved.                           */
+  /** +0x000 Protocol Selection Register. */
+  volatile uint32_t PRTS;
+  /** Reserved. */
+  volatile uint32_t _r_prts[k_ra8_i3c_pad_after_prts];
   volatile uint32_t CECTL;  /**< +0x010 Clock Enable Control Register.      */
   volatile uint32_t BCTL;   /**< +0x014 Bus Control Register.               */
   volatile uint32_t MSDVAD; /**< +0x018 Controller Device Address Register. */
-  volatile uint32_t _r_msdvad[k_ra8_i3c_pad_after_msdvad]; /**< Reserved.                      */
-  volatile uint32_t RSTCTL;                                /**< +0x020 Reset Control Register. */
-  volatile uint32_t PRSST;                                 /**< +0x024 Present State Register. */
-  volatile uint32_t _r_prsst[k_ra8_i3c_pad_after_prsst];   /**< Reserved.                      */
+  /** Reserved. */
+  volatile uint32_t _r_msdvad[k_ra8_i3c_pad_after_msdvad];
+  /** +0x020 Reset Control Register. */
+  volatile uint32_t RSTCTL;
+  /** +0x024 Present State Register. */
+  volatile uint32_t PRSST;
+  /** Reserved. */
+  volatile uint32_t _r_prsst[k_ra8_i3c_pad_after_prsst];
   volatile uint32_t INST;   /**< +0x030 Internal Status Register.           */
   volatile uint32_t INSTE;  /**< +0x034 Internal Status Enable Register.    */
   volatile uint32_t INIE;   /**< +0x038 Internal Interrupt Enable Register. */
   volatile uint32_t INSTFC; /**< +0x03C Internal Status Force Register.     */
-  volatile uint32_t _r_instfc[k_ra8_i3c_pad_after_instfc]; /**< Reserved. */
+  /** Reserved. */
+  volatile uint32_t _r_instfc[k_ra8_i3c_pad_after_instfc];
   volatile uint32_t DVCT; /**< +0x044 Device Characteristic Table Register. */
-  volatile uint32_t _r_dvct[k_ra8_i3c_pad_after_dvct]; /**< Reserved.                           */
-  volatile uint32_t IBINCTL;                           /**< +0x058 IBI Notify Control Register. */
-  volatile uint32_t _r_ibinctl[k_ra8_i3c_pad_after_ibinctl]; /**< Reserved. */
+  /** Reserved. */
+  volatile uint32_t _r_dvct[k_ra8_i3c_pad_after_dvct];
+  /** +0x058 IBI Notify Control Register. */
+  volatile uint32_t IBINCTL;
+  /** Reserved. */
+  volatile uint32_t _r_ibinctl[k_ra8_i3c_pad_after_ibinctl];
   volatile uint32_t BFCTL; /**< +0x060 Bus Function Control Register. */
   volatile uint32_t SVCTL; /**< +0x064 Peripheral Control Register.   */
-  volatile uint32_t _r_svctl[k_ra8_i3c_pad_after_svctl]; /**< Reserved. */
+  /** Reserved. */
+  volatile uint32_t _r_svctl[k_ra8_i3c_pad_after_svctl];
   volatile uint32_t REFCKCTL; /**< +0x070 Reference Clock Control Register.                */
   volatile uint32_t STDBR;    /**< +0x074 Standard Bit Rate Register.                      */
   volatile uint32_t EXTBR;    /**< +0x078 Extended Bit Rate Register.                      */
@@ -141,12 +152,15 @@ typedef struct {
   volatile uint32_t OUTCTL;   /**< +0x088 Output Control Register.                         */
   volatile uint32_t INCTL;    /**< +0x08C Input Control Register.                          */
   volatile uint32_t TMOCTL;   /**< +0x090 Timeout Control Register.                        */
-  volatile uint32_t _r_tmoctl[k_ra8_i3c_pad_after_tmoctl]; /**< Reserved. */
+  /** Reserved. */
+  volatile uint32_t _r_tmoctl[k_ra8_i3c_pad_after_tmoctl];
   volatile uint32_t WUCTL; /**< +0x098 Wake-Up Unit Control Register. */
-  volatile uint32_t _r_wuctl[k_ra8_i3c_pad_after_wuctl]; /**< Reserved. */
+  /** Reserved. */
+  volatile uint32_t _r_wuctl[k_ra8_i3c_pad_after_wuctl];
   volatile uint32_t ACKCTL;   /**< +0x0A0 Acknowledge Control Register. */
   volatile uint32_t SCSTRCTL; /**< +0x0A4 SCL Stretch Control Register. */
-  volatile uint32_t _r_scstr[k_ra8_i3c_pad_after_scstr]; /**< Reserved. */
+  /** Reserved. */
+  volatile uint32_t _r_scstr[k_ra8_i3c_pad_after_scstr];
   volatile uint32_t SCSTLCTL;  /**< +0x0B0 SCL Stalling Control Register. */
   volatile uint32_t NSDVAD;    /**< +0x0B4 Peripheral Device Address Register
                                     (peripheral-mode dynamic address + valid).
@@ -156,14 +170,17 @@ typedef struct {
                                     (peripheral-side IBI queue valid count).
                                     See HUM Ch 40 "IBI Valid Control"
                                     pp 2445-2701. */
-  volatile uint32_t _r_scstlctl[k_ra8_i3c_pad_after_scstlctl]; /**< Reserved. */
+  /** Reserved. */
+  volatile uint32_t _r_scstlctl[k_ra8_i3c_pad_after_scstlctl];
   volatile uint32_t NCMDQP;  /**< +0x150 Normal Command Queue Port Register.          */
   volatile uint32_t NRSPQP;  /**< +0x154 Normal Response Queue Port Register.         */
   volatile uint32_t NTDTBP0; /**< +0x158 Normal Transfer Data Buffer Port Register 0. */
-  volatile uint32_t _r_ntdtbp0[k_ra8_i3c_pad_after_ntdtbp0]; /**< 0x15C..0x17B reserved gap. */
+  /** 0x15C..0x17B reserved gap. */
+  volatile uint32_t _r_ntdtbp0[k_ra8_i3c_pad_after_ntdtbp0];
   volatile uint32_t NIBIQP; /**< +0x17C Normal IBI Queue Port Register.            */
   volatile uint32_t NRSQP;  /**< +0x180 Normal Receive Status Queue Port Register. */
-  volatile uint32_t _r_nrsqp[k_ra8_i3c_pad_after_nrsqp]; /**< 0x184..0x1DF reserved gap. */
+  /** 0x184..0x1DF reserved gap. */
+  volatile uint32_t _r_nrsqp[k_ra8_i3c_pad_after_nrsqp];
   volatile uint32_t NTST; /**< +0x1E0 Normal Transfer Status Register. */
 } r_i3c_regs_t;
 

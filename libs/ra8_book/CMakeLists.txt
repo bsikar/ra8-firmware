@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_book -- flat, execute-in-place container for a compiled e-book.
 #
@@ -26,8 +28,6 @@
 # ra8_add_app(LIBS ...); the host test build folds libs/ra8_book/src/*.c into
 # the ra8_core_hal object library (see tests/CMakeLists.txt).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Header-and-source library; no standalone build target. See the note above.

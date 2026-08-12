@@ -42,12 +42,16 @@ into this firmware as Software Of Unknown Provenance (SOUP).
 - Integrity claim category: data-handling. The decoder consumes fully
   attacker-controlled initial-access content (a WebP inside a downloaded
   book), so it cannot rely on trusted input.
-- **Scope note (#290 vs #289)**: as of #290 the decoder is vendored, built,
-  standalone-tested and fuzzed, but is **not** yet wired into the
-  `ra8_reflow` / `ra8_img` raster decode dispatch. Normalising a decoded WebP
-  into the band-tile format and routing render-time decodes through one codec
-  is #289's job once the band-tile format lands; `ra8_webp.c` carries a
-  `TODO(#289)` seam.
+- **Scope note -- where the decoder is wired, and where it is not.** The
+  decoder is vendored, built, standalone-tested and fuzzed (that was #290).
+  Render-time decodes reach it through the band-tile producer:
+  `libs/ra8_jof/src/ra8_jof_produce_webp.c` normalises a decoded WebP into the
+  band-tile format, so comic and EPUB **tiles** take WebP. That is the half of
+  #289 that landed before it closed on 2026-07-20. The other half did not: the
+  `ra8_reflow` **inline small-image** path
+  (`libs/ra8_reflow/src/ra8_reflow_image.c`) is still `stb_image`-only and
+  fails a WebP closed. That residual arm is tracked by #637, which also owns
+  the `TODO(#289)` seam comments left in `ra8_webp.c` / `ra8_webp.h`.
 
 ## Qualification basis
 
@@ -100,16 +104,21 @@ the parser), and without the define the unmodified libc path is used (for host
 tooling with no arena bound). This mirrors how `stb_image` is fronted by
 `ra8_img_arena` (`libs/third_party/stb/stb_image_impl.c`); a **separate**
 sibling arena is used rather than reusing `ra8_img_arena` to keep the WebP
-decoder decoupled from `libs/ra8_reflow` until #289, and because the WebP path
-additionally needs a zeroing `ra8_webp_arena_calloc`. The arena is a
+decoder decoupled from `libs/ra8_reflow` (still true: see #637), and because
+the WebP path additionally needs a zeroing `ra8_webp_arena_calloc`. The arena is a
 reference-counted bump allocator that fully drains after each decode; on
 exhaustion the hook returns `NULL` and libwebp propagates a clean decode
 failure. On-target proof: `examples/.../webp_decode_demo` links **no** libc
 `malloc` / `calloc` / `free` -- `WebPSafe*` resolve to `ra8_webp_arena_*`.
 
 **Build flags (not source edits).** The vendored decoder is compiled with a
-blanket `-w -fno-strict-aliasing` (in both `tests/CMakeLists.txt` and
-`cmake/ra8_add_app.cmake`). Unlike the narrow `-Wno-<class>` set used for
+blanket `-w -fno-strict-aliasing` (plus `-DRA8_WEBP_USE_ARENA`), applied by
+`ra8_webp_apply_soup_flags()` in `cmake/ra8_webp_vendor.cmake` -- the one
+module that owns the vendored-source recipe, called from
+`cmake/ra8_app/vendored.cmake` for firmware apps and from
+`tests/cmake/core_hal.cmake` for the host tests. (It lived inline in
+`tests/CMakeLists.txt` and `cmake/ra8_add_app.cmake` until `1171d656d`; neither
+file mentions WebP now.) Unlike the narrow `-Wno-<class>` set used for
 `stb` / `miniz` (issue #179), per-TU warning tuning is not tractable across
 libwebp's 60+ decoder + per-arch SIMD-stub TUs; the libFuzzer/ASan/UBSan
 harness is the memory-safety net instead. `-fno-strict-aliasing` matches the
@@ -123,4 +132,6 @@ baseline SIMD, which is bit-identical for the lossless (VP8L) path.
 
 - Reviewed: 2026-07-15
 - Vendored at upstream `v1.5.0` (`a4d7a715`).
+- Build-flag location and wiring scope re-verified against the tree and
+  corrected (#617): 2026-08-04.
 - Expected re-review by: 2027-07-15

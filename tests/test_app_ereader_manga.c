@@ -56,9 +56,11 @@ enum : uint32_t {
    * k_mg_cells (#338): the 1:1 frame's tile span (ceil(extent/tile) + 1 for the
    * viewport not being tile-aligned) plus one tile of pan margin on each axis. */
   k_t_view_cols = ((k_t_fb_w + k_t_tile_edge - 1U) / k_t_tile_edge) + 1U, /**< 1:1 cols. */
-  k_t_view_rows = (((k_t_fb_h - (uint32_t)k_mg_statusbar_h) + k_t_tile_edge - 1U) / k_t_tile_edge) +
-                  1U,                                          /**< 1:1 content rows.   */
-  k_t_cells     = (k_t_view_cols + 1U) * (k_t_view_rows + 1U), /**< Frame + pan margin. */
+  /** 1:1 content rows. */
+  k_t_view_rows =
+    (((k_t_fb_h - (uint32_t)k_mg_statusbar_h) + k_t_tile_edge - 1U) / k_t_tile_edge) + 1U,
+  /** Frame + pan margin. */
+  k_t_cells            = (k_t_view_cols + 1U) * (k_t_view_rows + 1U),
   k_t_stress_cells     = 4U,                 /**< Old sub-frame budget: eviction-stress case. */
   k_t_buckets          = 64U,                /**< Cache hash buckets (>= cells).              */
   k_t_pan_cycles       = 4U,                 /**< right/left oscillations in the thrash test. */

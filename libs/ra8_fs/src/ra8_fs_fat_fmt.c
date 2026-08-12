@@ -8,7 +8,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -45,7 +44,8 @@ uint32_t priv_fmt_reserved_for(ra8_fs_type_t type)
  *
  * @return Resulting data-cluster count, or 0 if the device is too small.
  * @retval 0            Reserved + FAT + root already exceed the device.
- * @retval 1..UINT32_MAX Cluster count for @p spc.
+ * @retval 1..UINT64_MAX Cluster count for @p spc (band checks reject any
+ *                       value FAT itself cannot express).
  *
  * @pre @p g and @p out_fatsz are non-NULL.
  * @pre @p spc is non-zero.
@@ -57,20 +57,23 @@ uint32_t priv_fmt_reserved_for(ra8_fs_type_t type)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_fmt_clusters_for(const ra8_fs_fmt_geom_t* g, uint32_t spc, uint32_t* out_fatsz)
+static uint64_t priv_fmt_clusters_for(const ra8_fs_fmt_geom_t* g, uint32_t spc, uint32_t* out_fatsz)
 {
-  const uint32_t entry_cap = (g->type == k_ra8_fs_type_fat32) ? (uint32_t)k_fmt_fat32_entry_cap
-                                                              : (uint32_t)k_fmt_fat16_entry_cap;
-  const uint32_t overhead  = g->reserved_sectors + g->root_sectors;
+  /* FAT entries per DEVICE sector: 4-byte FAT32 entries or 2-byte FAT16 ones
+   * (FAT12 sizes its FAT with the FAT16 figure, a deliberate overestimate). */
+  const uint32_t entry_bytes = (g->type == k_ra8_fs_type_fat32) ? (uint32_t)k_fmt_fat32_entry_bytes
+                                                                : (uint32_t)k_fmt_fat16_entry_bytes;
+  const uint32_t entry_cap   = g->bytes_per_sector / entry_bytes;
+  const uint64_t overhead    = (uint64_t)g->reserved_sectors + g->root_sectors;
   if (g->total_sectors <= overhead) {
     *out_fatsz = 0U;
     return 0U;
   }
-  const uint32_t avail     = g->total_sectors - overhead;
-  const uint32_t denom     = (entry_cap * spc) + (uint32_t)k_fmt_num_fats;
-  const uint32_t fatsz     = (avail + denom - 1U) / denom;
-  *out_fatsz               = fatsz;
-  const uint32_t fat_total = (uint32_t)k_fmt_num_fats * fatsz;
+  const uint64_t avail     = g->total_sectors - overhead;
+  const uint64_t denom     = ((uint64_t)entry_cap * spc) + (uint32_t)k_fmt_num_fats;
+  const uint64_t fatsz     = (avail + denom - 1U) / denom;
+  *out_fatsz               = (uint32_t)fatsz;
+  const uint64_t fat_total = (uint64_t)k_fmt_num_fats * fatsz;
   if (avail <= fat_total) {
     return 0U;
   }
@@ -101,7 +104,7 @@ static uint32_t priv_fmt_clusters_for(const ra8_fs_fmt_geom_t* g, uint32_t spc, 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_fmt_count_in_band(ra8_fs_type_t type, uint32_t count)
+static bool priv_fmt_count_in_band(ra8_fs_type_t type, uint64_t count)
 {
   if (type == k_ra8_fs_type_fat12) {
     return count < (uint32_t)k_cluster_count_fat12_max;
@@ -115,24 +118,62 @@ static bool priv_fmt_count_in_band(ra8_fs_type_t type, uint32_t count)
 }
 
 /**
+ * @brief log2 of a power-of-two value.
+ *
+ * @details Loop-counted rather than a compiler builtin, so the host tests and
+ *          every cross toolchain agree byte-for-byte. Bounded by the width of
+ *          the input (NASA Rule 2).
+ *
+ * @param[in] v A power of two, >= 1.
+ *
+ * @return log2(@p v).
+ * @retval 0..31 The shift that reproduces @p v.
+ *
+ * @pre @p v is a power of two (callers validated it).
+ * @pre @p v is non-zero.
+ * @post No state modified.
+ * @post `1U << result == v`.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static uint32_t priv_fmt_log2(uint32_t v)
+{
+  uint32_t r = 0U;
+  uint32_t w = v;
+  while (w > 1U) {
+    w >>= 1U;
+    r++;
+  }
+  return r;
+}
+
+/**
  * @brief Default FAT32 cluster size for a device, per the Microsoft table.
  *
  * @details Implements the `DskSzToSecPerClus` tiers from the MS FAT spec
  *          (fatgen103 sec 3.3). Used as the *starting* cluster size for the
- *          FAT32 auto-sweep so a large card does not land on `spc=1` (which the
- *          cluster cap technically allows but which produces a multi-hundred-MB
- *          FAT that takes minutes to zero over SPI). The sweep can still grow
- *          `spc` further for cards above the table's range.
+ *          FAT32 auto-sweep so a large card does not land on the minimum
+ *          cluster (which the cluster cap technically allows but which
+ *          produces a multi-hundred-MB FAT that takes minutes to zero over
+ *          SPI). The sweep can still grow `spc` further for cards above the
+ *          table's range. The table's thresholds are counts of 512-byte
+ *          sectors and its picks are cluster BYTES, so both are converted
+ *          through the device's real sector size -- a 4Kn card lands on the
+ *          same cluster byte size a 512-byte card of equal capacity does.
  *
- * @param[in] total_sectors Whole-device 512-byte sector count.
+ * @param[in] total_sectors Whole-device sector count (device sectors).
+ * @param[in] bps           Device sector size in bytes (power of two, 512..4096).
  *
- * @return Sectors-per-cluster (power of two in 1..`k_fmt_spc_max`).
- * @retval 1  Device is <= 260 MB.
- * @retval 64 Device is > 32 GB.
+ * @return Sectors-per-cluster (power of two >= 1).
+ * @retval 1  Device is <= 260 MB (or the cluster equals one sector).
+ * @retval 64 512-byte device above 32 GB.
  *
- * @pre @p total_sectors is the card capacity in 512-byte blocks.
- * @pre @p total_sectors represents the actual device capacity, not a user hint.
- * @post Return value is a power of two in the range [1, k_fmt_spc_max].
+ * @pre @p total_sectors is the card capacity in device sectors.
+ * @pre @p bps is a power of two in 512..4096.
+ * @post Return value is a power of two >= 1.
  * @post No state is modified (pure function, no side effects).
  *
  * @note Pure function; trivially thread-safe.
@@ -140,40 +181,55 @@ static bool priv_fmt_count_in_band(ra8_fs_type_t type, uint32_t count)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_fmt_fat32_default_spc(uint32_t total_sectors)
+static uint32_t priv_fmt_fat32_default_spc(uint64_t total_sectors, uint32_t bps)
 {
-  if (total_sectors <= (uint32_t)k_fmt_f32_thr_260m) {
-    return (uint32_t)k_fmt_f32_spc_512b;
+  const uint32_t bps_shift  = priv_fmt_log2(bps);
+  const uint64_t total_512  = total_sectors
+                              << (bps_shift - priv_fmt_log2((uint32_t)k_ra8_fs_sector_min));
+  uint32_t       clus_shift = (uint32_t)k_fmt_f32_clus_32k;
+  if (total_512 <= (uint64_t)k_fmt_f32_thr_260m) {
+    clus_shift = (uint32_t)k_fmt_f32_clus_512b;
+  } else if (total_512 <= (uint64_t)k_fmt_f32_thr_8g) {
+    clus_shift = (uint32_t)k_fmt_f32_clus_4k;
+  } else if (total_512 <= (uint64_t)k_fmt_f32_thr_16g) {
+    clus_shift = (uint32_t)k_fmt_f32_clus_8k;
+  } else if (total_512 <= (uint64_t)k_fmt_f32_thr_32g) {
+    clus_shift = (uint32_t)k_fmt_f32_clus_16k;
+  } else {
+    clus_shift = (uint32_t)k_fmt_f32_clus_32k;
   }
-  if (total_sectors <= (uint32_t)k_fmt_f32_thr_8g) {
-    return (uint32_t)k_fmt_f32_spc_4k;
+  if (clus_shift <= bps_shift) {
+    return 1U;
   }
-  if (total_sectors <= (uint32_t)k_fmt_f32_thr_16g) {
-    return (uint32_t)k_fmt_f32_spc_8k;
-  }
-  if (total_sectors <= (uint32_t)k_fmt_f32_thr_32g) {
-    return (uint32_t)k_fmt_f32_spc_16k;
-  }
-  return (uint32_t)k_fmt_f32_spc_32k;
+  return 1U << (clus_shift - bps_shift);
 }
 
 /* `priv_fmt_choose_geometry()`: see header for the documented contract. */
 ra8_err_t priv_fmt_choose_geometry(ra8_fs_fmt_geom_t* g, uint32_t spc_hint)
 {
+  /* FAT's BPB records the volume size in a 32-bit field: a device whose
+   * sector count does not fit cannot be described by the format at all --
+   * exFAT is the right choice there, so this fails cleanly instead of
+   * truncating the size (#683). */
+  if (g->total_sectors > (uint64_t)UINT32_MAX) {
+    return k_ra8_err_invalid_size;
+  }
   bool     auto_mode = (spc_hint == 0U);
   uint32_t spc       = spc_hint;
   if (auto_mode) {
     /* FAT32 starts the sweep at the size-appropriate cluster (MS table) so a
      * big card gets a small FAT; FAT12/16 start at the minimum and grow. */
-    spc = (g->type == k_ra8_fs_type_fat32) ? priv_fmt_fat32_default_spc(g->total_sectors) : 1U;
+    spc = (g->type == k_ra8_fs_type_fat32)
+            ? priv_fmt_fat32_default_spc(g->total_sectors, g->bytes_per_sector)
+            : 1U;
   }
   for (uint32_t guard = 0U; guard <= (uint32_t)k_fmt_spc_max; guard++) {
     uint32_t       fatsz = 0U;
-    const uint32_t count = priv_fmt_clusters_for(g, spc, &fatsz);
+    const uint64_t count = priv_fmt_clusters_for(g, spc, &fatsz);
     if (priv_fmt_count_in_band(g->type, count)) {
       g->sectors_per_cluster = spc;
       g->fat_size_sectors    = fatsz;
-      g->count_of_clusters   = count;
+      g->count_of_clusters   = (uint32_t)count;
       return k_ra8_ok;
     }
     if (!auto_mode || spc >= (uint32_t)k_fmt_spc_max) {
@@ -211,34 +267,22 @@ static void priv_fmt_boot_prologue(uint8_t* sec)
   priv_byte_copy(&sec[k_fmt_off_oem], k_oem, (uint32_t)k_filename_base_len);
 }
 
-/**
- * @brief Pad an ASCII volume label into the 11-byte 8.3 label field.
- *
- * @details Copies @p label up to its NUL (or 11 chars) then space-fills the
- *          remainder, matching the BS_VolLab convention. A NULL label yields
- *          an all-spaces field.
- *
- * @param[out] dst   Destination 11-byte label field.
- * @param[in]  label Source label, or NULL for an empty (spaces) label.
- *
- * @pre @p dst is non-NULL and at least 11 bytes.
- * @pre @p label is NUL-terminated when non-NULL.
- * @post @p dst holds the padded 11-byte label.
- * @post No bytes past offset 10 of @p dst are touched.
- *
- * @note Bounded loop (NASA Rule 2): exactly 11 iterations.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void priv_fmt_label_field(uint8_t* dst, const char* label)
+/* `priv_fmt_label_field()`: see header for the documented contract. */
+void priv_fmt_label_field(uint8_t* dst, const char* label)
 {
-  bool past_end = (label == nullptr);
+  /* An unlabelled FAT volume stores the spec sentinel "NO NAME    ", never
+   * zeros and never a bare run of spaces: fsck.fat reads a blank BS_VolLab as a
+   * corrupt label and strips it on sight, which trains people to ignore fsck
+   * output on every card this firmware writes (#634). A NULL or empty label
+   * therefore resolves to that sentinel before padding. */
+  static const char k_no_name[] = "NO NAME";
+  const char*       eff         = ((label != nullptr) && (label[0] != '\0')) ? label : k_no_name;
+  bool              past_end    = false;
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_label_len; i++) {
-    if (!past_end && (label[i] == '\0')) {
+    if (!past_end && (eff[i] == '\0')) {
       past_end = true;
     }
-    dst[i] = past_end ? (uint8_t)' ' : (uint8_t)label[i];
+    dst[i] = past_end ? (uint8_t)' ' : (uint8_t)eff[i];
   }
 }
 
@@ -266,14 +310,14 @@ RA8_INTERNAL
 static void priv_fmt_write_totals(uint8_t* sec, const ra8_fs_fmt_geom_t* g)
 {
   if (g->type == k_ra8_fs_type_fat32) {
-    priv_wr32(&sec[k_bpb_off_tot_sec_32], g->total_sectors);
+    priv_wr32(&sec[k_bpb_off_tot_sec_32], (uint32_t)g->total_sectors);
     priv_wr32(&sec[k_bpb_off_fat_sz_32], g->fat_size_sectors);
     return;
   }
-  if (g->total_sectors < (uint32_t)(k_word_mask + 1U)) {
+  if (g->total_sectors < (uint64_t)(k_word_mask + 1U)) {
     priv_wr16(&sec[k_bpb_off_tot_sec_16], (uint16_t)g->total_sectors);
   } else {
-    priv_wr32(&sec[k_bpb_off_tot_sec_32], g->total_sectors);
+    priv_wr32(&sec[k_bpb_off_tot_sec_32], (uint32_t)g->total_sectors);
   }
   priv_wr16(&sec[k_bpb_off_fat_sz_16], (uint16_t)g->fat_size_sectors);
 }
@@ -306,7 +350,7 @@ static void priv_fmt_build_bpb_f16(uint8_t* sec, const ra8_fs_fmt_geom_t* g, con
   static const uint8_t k_t12[k_filename_base_len] = {'F', 'A', 'T', '1', '2', ' ', ' ', ' '};
   static const uint8_t k_t16[k_filename_base_len] = {'F', 'A', 'T', '1', '6', ' ', ' ', ' '};
   priv_fmt_boot_prologue(sec);
-  priv_wr16(&sec[k_bpb_off_bytes_per_sec], (uint16_t)k_ra8_fs_bytes_per_sector);
+  priv_wr16(&sec[k_bpb_off_bytes_per_sec], (uint16_t)g->bytes_per_sector);
   sec[k_bpb_off_sec_per_clus] = (uint8_t)g->sectors_per_cluster;
   priv_wr16(&sec[k_bpb_off_rsvd_sec_cnt], (uint16_t)g->reserved_sectors);
   sec[k_bpb_off_num_fats] = (uint8_t)k_fmt_num_fats;
@@ -317,7 +361,7 @@ static void priv_fmt_build_bpb_f16(uint8_t* sec, const ra8_fs_fmt_geom_t* g, con
   priv_wr16(&sec[k_fmt_off_num_heads], (uint16_t)k_fmt_num_heads);
   sec[k_fmt_off_f16_drvnum]  = (uint8_t)k_fmt_drvnum_hd;
   sec[k_fmt_off_f16_bootsig] = (uint8_t)k_fmt_ext_bootsig;
-  priv_wr32(&sec[k_fmt_off_f16_volid], (uint32_t)k_fmt_volid_base | g->total_sectors);
+  priv_wr32(&sec[k_fmt_off_f16_volid], (uint32_t)k_fmt_volid_base | (uint32_t)g->total_sectors);
   priv_fmt_label_field(&sec[k_fmt_off_f16_label], label);
   priv_byte_copy(&sec[k_fmt_off_f16_fstype],
                  (g->type == k_ra8_fs_type_fat12) ? k_t12 : k_t16,
@@ -352,7 +396,7 @@ static void priv_fmt_build_bpb_f32(uint8_t* sec, const ra8_fs_fmt_geom_t* g, con
 {
   static const uint8_t k_t32[k_filename_base_len] = {'F', 'A', 'T', '3', '2', ' ', ' ', ' '};
   priv_fmt_boot_prologue(sec);
-  priv_wr16(&sec[k_bpb_off_bytes_per_sec], (uint16_t)k_ra8_fs_bytes_per_sector);
+  priv_wr16(&sec[k_bpb_off_bytes_per_sec], (uint16_t)g->bytes_per_sector);
   sec[k_bpb_off_sec_per_clus] = (uint8_t)g->sectors_per_cluster;
   priv_wr16(&sec[k_bpb_off_rsvd_sec_cnt], (uint16_t)g->reserved_sectors);
   sec[k_bpb_off_num_fats] = (uint8_t)k_fmt_num_fats;
@@ -365,7 +409,7 @@ static void priv_fmt_build_bpb_f32(uint8_t* sec, const ra8_fs_fmt_geom_t* g, con
   priv_wr16(&sec[k_fmt_off_f32_bkboot], (uint16_t)k_fmt_bkboot_sector);
   sec[k_fmt_off_f32_drvnum]  = (uint8_t)k_fmt_drvnum_hd;
   sec[k_fmt_off_f32_bootsig] = (uint8_t)k_fmt_ext_bootsig;
-  priv_wr32(&sec[k_fmt_off_f32_volid], (uint32_t)k_fmt_volid_base | g->total_sectors);
+  priv_wr32(&sec[k_fmt_off_f32_volid], (uint32_t)k_fmt_volid_base | (uint32_t)g->total_sectors);
   priv_fmt_label_field(&sec[k_fmt_off_f32_label], label);
   priv_byte_copy(&sec[k_fmt_off_f32_fstype], k_t32, (uint32_t)k_filename_base_len);
   sec[k_bpb_off_signature_lo] = (uint8_t)k_bpb_sig_lo;
@@ -373,21 +417,22 @@ static void priv_fmt_build_bpb_f32(uint8_t* sec, const ra8_fs_fmt_geom_t* g, con
 }
 
 /** @brief All-zero source for the chunked FAT/root wipe (read-only, in flash). */
-static const uint8_t
-  k_fmt_zero_chunk[(uint32_t)k_fmt_zero_chunk_secs * (uint32_t)k_ra8_fs_bytes_per_sector] = {};
+static const uint8_t k_fmt_zero_chunk[k_fmt_zero_chunk_bytes] = {};
 
 /**
  * @brief Zero a run of sectors on the backend in multi-sector chunks.
  *
- * @details Writes up to ::k_fmt_zero_chunk_secs sectors per `write_block` call
- *          from a read-only all-zero buffer, so an SD backend can clear the
- *          whole region with CMD25 multi-block writes instead of one slow CMD24
- *          single-block write per sector (a 32 MB FAT on a 128 GB card drops
- *          from minutes to seconds). Bounds the loop by the caller's count.
+ * @details Writes up to ::k_fmt_zero_chunk_bytes worth of sectors per
+ *          `write_block` call from a read-only all-zero buffer, so an SD
+ *          backend can clear the whole region with CMD25 multi-block writes
+ *          instead of one slow CMD24 single-block write per sector (a 32 MB
+ *          FAT on a 128 GB card drops from minutes to seconds). Bounds the
+ *          loop by the caller's count.
  *
  * @param[in] backend Block-device backend.
  * @param[in] lba     First sector to clear.
  * @param[in] count   Number of sectors to clear.
+ * @param[in] bps     Device sector size in bytes.
  *
  * @return Backend error code (first failure aborts).
  * @retval k_ra8_ok    All @p count sectors zeroed.
@@ -403,13 +448,15 @@ static const uint8_t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fmt_zero_run(const ra8_fs_backend_t* backend, uint32_t lba, uint32_t count)
+static ra8_err_t
+priv_fmt_zero_run(const ra8_fs_backend_t* backend, uint64_t lba, uint64_t count, uint32_t bps)
 {
-  uint32_t done = 0U;
+  const uint32_t chunk_secs = (uint32_t)k_fmt_zero_chunk_bytes / bps;
+  uint64_t       done       = 0U;
   while (done < count) {
-    uint32_t chunk = count - done;
-    if (chunk > (uint32_t)k_fmt_zero_chunk_secs) {
-      chunk = (uint32_t)k_fmt_zero_chunk_secs;
+    uint32_t chunk = chunk_secs;
+    if ((uint64_t)chunk > (count - done)) {
+      chunk = (uint32_t)(count - done);
     }
     const ra8_err_t err = backend->write_block(backend->ctx, lba + done, chunk, k_fmt_zero_chunk);
     if (err != k_ra8_ok) {
@@ -421,14 +468,15 @@ static ra8_err_t priv_fmt_zero_run(const ra8_fs_backend_t* backend, uint32_t lba
 }
 
 /* `priv_fmt_clear_region()`: see header for the documented contract. */
-ra8_err_t priv_fmt_clear_region(const ra8_fs_backend_t* backend, uint32_t lba, uint32_t count)
+ra8_err_t
+priv_fmt_clear_region(const ra8_fs_backend_t* backend, uint64_t lba, uint64_t count, uint32_t bps)
 {
   if ((backend->erase_blocks != nullptr) &&
       (backend->erase_blocks(backend->ctx, lba, count) == k_ra8_ok)) {
     return k_ra8_ok; /* erased and verified zero -- skip the zero-write */
   }
   /* No erase hook, or erase could not guarantee a zero read-back: write zeros. */
-  return priv_fmt_zero_run(backend, lba, count);
+  return priv_fmt_zero_run(backend, lba, count, bps);
 }
 
 /**
@@ -459,7 +507,7 @@ ra8_err_t priv_fmt_clear_region(const ra8_fs_backend_t* backend, uint32_t lba, u
 RA8_INTERNAL
 static ra8_err_t priv_fmt_seed_fats(const ra8_fs_backend_t* backend, const ra8_fs_fmt_geom_t* g)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_fs_bytes_per_sector; i++) {
+  for (uint32_t i = 0U; i < g->bytes_per_sector; i++) {
     s_scratch[i] = 0U;
   }
   if (g->type == k_ra8_fs_type_fat32) {
@@ -477,7 +525,7 @@ static ra8_err_t priv_fmt_seed_fats(const ra8_fs_backend_t* backend, const ra8_f
     s_scratch[2] = (uint8_t)k_byte_mask;
   }
   for (uint32_t f = 0U; f < (uint32_t)k_fmt_num_fats; f++) {
-    const uint32_t  fat_lba = g->reserved_sectors + (f * g->fat_size_sectors);
+    const uint64_t  fat_lba = (uint64_t)g->reserved_sectors + ((uint64_t)f * g->fat_size_sectors);
     const ra8_err_t err     = backend->write_block(backend->ctx, fat_lba, 1U, s_scratch);
     if (err != k_ra8_ok) {
       return err;
@@ -495,7 +543,7 @@ static ra8_err_t priv_fmt_seed_fats(const ra8_fs_backend_t* backend, const ra8_f
  *
  * @param[in] backend  Block-device backend.
  * @param[in] g        Resolved geometry (FAT32).
- * @param[in] boot_sec The freshly built boot sector (512 bytes) to back up.
+ * @param[in] boot_sec The freshly built boot sector to back up.
  *
  * @return Backend error code.
  * @retval k_ra8_ok    FSInfo + backup written (or nothing for FAT12/16).
@@ -518,7 +566,7 @@ static ra8_err_t priv_fmt_write_fsinfo(const ra8_fs_backend_t*  backend,
   if (g->type != k_ra8_fs_type_fat32) {
     return k_ra8_ok;
   }
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_fs_bytes_per_sector; i++) {
+  for (uint32_t i = 0U; i < g->bytes_per_sector; i++) {
     s_scratch[i] = 0U;
   }
   priv_wr32(&s_scratch[k_fmt_fsi_off_lead], (uint32_t)k_fmt_fsi_lead_sig);
@@ -528,11 +576,11 @@ static ra8_err_t priv_fmt_write_fsinfo(const ra8_fs_backend_t*  backend,
   priv_wr32(&s_scratch[k_fmt_fsi_off_free], free_count);
   priv_wr32(&s_scratch[k_fmt_fsi_off_nxtfree], (uint32_t)k_fmt_fat32_nxt_free);
   priv_wr32(&s_scratch[k_fmt_fsi_off_trail], (uint32_t)k_fmt_fsi_trail_sig);
-  ra8_err_t err = backend->write_block(backend->ctx, (uint32_t)k_fmt_fsinfo_sector, 1U, s_scratch);
+  ra8_err_t err = backend->write_block(backend->ctx, (uint64_t)k_fmt_fsinfo_sector, 1U, s_scratch);
   if (err != k_ra8_ok) {
     return err;
   }
-  return backend->write_block(backend->ctx, (uint32_t)k_fmt_bkboot_sector, 1U, boot_sec);
+  return backend->write_block(backend->ctx, (uint64_t)k_fmt_bkboot_sector, 1U, boot_sec);
 }
 
 /* `priv_fmt_spc_valid()`: see header for the documented contract. */
@@ -551,7 +599,8 @@ bool priv_fmt_spc_valid(uint8_t spc)
 ra8_err_t
 priv_fmt_emit_volume(const ra8_fs_backend_t* backend, const ra8_fs_fmt_geom_t* g, const char* label)
 {
-  uint8_t boot[k_ra8_fs_bytes_per_sector] = {};
+  uint8_t* const boot = priv_sec_walk();
+  priv_byte_fill(boot, 0U, g->bytes_per_sector);
   if (g->type == k_ra8_fs_type_fat32) {
     priv_fmt_build_bpb_f32(boot, g, label);
   } else {
@@ -562,10 +611,11 @@ priv_fmt_emit_volume(const ra8_fs_backend_t* backend, const ra8_fs_fmt_geom_t* g
    * one go when the card guarantees zero-after-erase, else stream zeros. Doing
    * this BEFORE the metadata writes means an erase that rounds into the reserved
    * region cannot clobber the boot sector / FSInfo written below. */
-  const uint32_t fat_total = (uint32_t)k_fmt_num_fats * g->fat_size_sectors;
-  const uint32_t root_span =
+  const uint64_t fat_total = (uint64_t)k_fmt_num_fats * g->fat_size_sectors;
+  const uint64_t root_span =
     (g->type == k_ra8_fs_type_fat32) ? g->sectors_per_cluster : g->root_sectors;
-  ra8_err_t err = priv_fmt_clear_region(backend, g->reserved_sectors, fat_total + root_span);
+  ra8_err_t err =
+    priv_fmt_clear_region(backend, g->reserved_sectors, fat_total + root_span, g->bytes_per_sector);
   if (err != k_ra8_ok) {
     return err;
   }

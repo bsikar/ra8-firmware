@@ -1,6 +1,7 @@
-# shellcheck shell=bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/gates/hygiene.sh -- Textual hygiene gates: encoding, headers, attribution bans, formatting.
 #
@@ -546,13 +547,33 @@ gate_ascii() (
 )
 
 # --- copyright ------------------------------------------------------------
+# ONE canonical attribution per file, in the place each comment convention
+# already keeps its metadata -- two forms, because this tree has two
+# conventions and forcing one on both made the C headers worse:
+#
+#   C family -- INSIDE the @file Doxygen block, as its closing tag group:
+#       * @copyright Copyright (c) 2026 Brighton Sikarskie
+#       * SPDX-License-Identifier: MIT
+#     never in a separate comment above the block. @author / @date / @since
+#     are PRESERVED where a file has them and are never invented: 2190 of the
+#     2297 C-family files have never carried @author or @date, and
+#     manufacturing those would be fabricated provenance, not a standard.
+#
+#   Hash-comment files (shell, python, cmake, make, yaml) -- no doc-comment
+#   convention to live inside, so the pair leads the file after any shebang:
+#       # SPDX-License-Identifier: MIT
+#       # Copyright (c) 2026 Brighton Sikarskie
+#
+# The check used to ask only whether the two strings appeared SOMEWHERE, which
+# let several conventions coexist; it now fixes the ORDER, POSITION and exact
+# TEXT for both forms. --selftest FIRST proves the rules fire and stay quiet
+# (and that the fixer merges, preserves provenance and is idempotent) before
+# the scan; --all judges the DERIVED first-party scope (lint_targets) so a new
+# top-level directory is covered the day it lands, not via a hand-kept glob.
 gate_copyright() (
   set -e
-  local files=() line
-  while IFS= read -r line; do files+=("$line"); done < <(
-    git ls-files '*.c' '*.h' '*.cpp' '*.hpp' '*.cmake' '*.sh' '*.py' 'CMakeLists.txt'
-  )
-  python3 scripts/checks/check-copyright.py "${files[@]}"
+  python3 scripts/checks/check-copyright.py --selftest
+  python3 scripts/checks/check-copyright.py --all
 )
 
 # --- since ----------------------------------------------------------------
@@ -635,6 +656,10 @@ gate_no_ai_attribution_commits() (
 # --- inclusive-terminology ------------------------------------------------
 gate_inclusive_terminology() (
   set -e
+  # --selftest FIRST (#549): proves the detector fires on a legacy symbol,
+  # spares vendored/hardware names, and that the derived scope reaches the
+  # roots (infra/, mk/) a hardcoded list had dropped.
+  python3 scripts/checks/check_inclusive_terminology.py --selftest
   python3 scripts/checks/check_inclusive_terminology.py
 )
 
@@ -642,6 +667,10 @@ gate_inclusive_terminology() (
 gate_inclusive_terminology_commits() (
   set -uo pipefail
   local range repo
+  # --selftest FIRST: proves the detector fires on an un-annotated legacy
+  # term and that a LEGACY-OK opt-out at the end of a wrapped paragraph
+  # covers the whole paragraph, not only the physical line it sits on.
+  python3 scripts/checks/check_inclusive_terminology_commits.py --selftest || return 1
   # See gate_no_ai_attribution_commits: self-test, then real-history guard,
   # then the scan.
   commit_range_selftest || return 1
@@ -660,5 +689,10 @@ gate_format() (
   set -e
   local cf
   cf="$(pick_clang_format)"
+  # format_code.sh drives check_comment_format.py, which is a DETECTOR: it is
+  # the only thing that reports a comment block clang-format tore in two.
+  # Prove it still detects before believing its verdict on the tree.
+  require_cmd python3
+  python3 scripts/checks/check_comment_format.py --selftest
   CLANG_FORMAT="$cf" bash scripts/checks/format_code.sh --check --verbose
 )

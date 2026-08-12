@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Generate the ereader_rabook full-resolution gray8 image fixture (#476).
 
 The ereader_rabook HIL/ra8_emulator gate proves the compiled-book path. This

@@ -52,11 +52,11 @@
  * rejects any atlas that is not a single full-width band column, so the O(1)
  * band math can never index outside the grid.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @see ra8_jof.h    The band-tile atlas format + reader this rides on.
  * @see ra8_tile_cache.h   The LRU decode-on-miss band cache.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

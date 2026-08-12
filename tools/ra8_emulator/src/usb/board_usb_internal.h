@@ -13,7 +13,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -270,38 +269,38 @@ static inline uint32_t usb_word(uint64_t off)
 
 /* Shared model state -- one logical module across the board_usb_* TUs; the
  * defining TU is noted per declaration. */
-extern usb_state_t            s_usb;                      /**< Controller + FIFO state (core).   */
-extern bool                   s_trace;                    /**< --trace verbose logging (core).   */
-extern board_usb_irq_raiser_t s_raise;                    /**< ICU pend callback (core).         */
-extern bool                   s_external_host;            /**< Bridge host owns the bus (core).  */
-extern bool                   s_roles_swapped;            /**< Self-loop role polarity (core).   */
-extern uint16_t               s_dev_irq_event;            /**< Device ICU event number (core).   */
-extern uint8_t                s_dcp_hold[k_usb_in_cap];   /**< Held control-OUT bytes (core).    */
-extern uint16_t               s_dcp_hold_len;             /**< Held byte count (core).           */
-extern bool                   s_dcp_hold_pending;         /**< Held bytes await the arm (core).  */
-extern uint8_t                s_host_phase;               /**< Virtual-host phase (core).        */
-extern uint8_t                s_host_step;                /**< Enumeration-script index (core).  */
-extern uint8_t                s_host_substate;            /**< Per-step sub-state (core).        */
-extern uint32_t               s_host_wait;                /**< Sub-state wait ticks (core).      */
-extern bool                   s_configured;               /**< Device reached CONFIGURED (core). */
-extern uint32_t               s_usb_irqs;                 /**< USB interrupts raised (core).     */
-extern uint8_t                s_echo_out[k_usb_echo_cap]; /**< Host bulk-OUT payload (core).     */
-extern uint32_t               s_echo_out_len;       /**< Bytes queued by --usb-in (core).     */
-extern uint32_t               s_echo_out_sent;      /**< Bytes delivered to device (core).    */
-extern uint32_t               s_echo_in_got;        /**< Echoed bytes read back (core).       */
-extern uint8_t                s_dev_class;          /**< Detected device class (vhost).       */
-extern uint32_t               s_hid_reports;        /**< HID reports read (vhost).            */
-extern int32_t                s_hid_cx;             /**< Accumulated HID mouse X (vhost).     */
-extern int32_t                s_hid_cy;             /**< Accumulated HID mouse Y (vhost).     */
-extern uint8_t                s_hid_buttons;        /**< Last HID button bitmap (vhost).      */
-extern uint32_t               s_msc_blocks;         /**< MSC capacity in blocks (vhost).      */
-extern uint32_t               s_msc_block_len;      /**< MSC block size (vhost).              */
-extern uint32_t               s_msc_read_ok;        /**< MSC read data bytes (vhost).         */
-extern bool                   s_msc_inquiry_ok;     /**< MSC INQUIRY completed (vhost).       */
-extern bool                   s_loop_latched;       /**< Firmware host owns the bus (loop).   */
-extern uint32_t               s_loop_setups;        /**< SETUPs the fw host delivered (loop). */
-extern uint32_t               s_loop_bulk_out_pkts; /**< Bulk-OUT packets (loop).             */
-extern uint32_t               s_loop_bulk_in_pkts;  /**< Bulk-IN packets (loop).              */
+extern usb_state_t            s_usb;                      /**< Controller + FIFO state (core).    */
+extern bool                   s_trace;                    /**< --trace verbose logging (core).    */
+extern board_usb_irq_raiser_t s_raise;                    /**< ICU pend callback (core).          */
+extern bool                   s_external_host;            /**< Bridge host owns the bus (core).   */
+extern bool                   s_roles_swapped;            /**< Self-loop role polarity (core).    */
+extern uint16_t               s_dev_irq_event;            /**< Device ICU event number (core).    */
+extern uint8_t                s_dcp_hold[k_usb_in_cap];   /**< Held control-OUT bytes (core).     */
+extern uint16_t               s_dcp_hold_len;             /**< Held byte count (core).            */
+extern bool                   s_dcp_hold_pending;         /**< Held bytes await the arm (core).   */
+extern uint8_t                s_host_phase;               /**< Virtual-host phase (core).         */
+extern uint8_t                s_host_step;                /**< Enumeration-script index (core).   */
+extern uint8_t                s_host_substate;            /**< Per-step sub-state (core).         */
+extern uint32_t               s_host_wait;                /**< Sub-state wait ticks (core).       */
+extern bool                   s_configured;               /**< Device reached CONFIGURED (core).  */
+extern uint32_t               s_usb_irqs;                 /**< USB interrupts raised (core).      */
+extern uint8_t                s_echo_out[k_usb_echo_cap]; /**< Host bulk-OUT payload (core).      */
+extern uint32_t               s_echo_out_len;             /**< Bytes queued by --usb-in (core).   */
+extern uint32_t               s_echo_out_sent;            /**< Bytes delivered to device (core).  */
+extern uint32_t               s_echo_in_got;              /**< Echoed bytes read back (core).     */
+extern uint8_t                s_dev_class;                /**< Detected device class (vhost).     */
+extern uint32_t               s_hid_reports;              /**< HID reports read (vhost).          */
+extern int32_t                s_hid_cx;                   /**< Accumulated HID mouse X (vhost).   */
+extern int32_t                s_hid_cy;                   /**< Accumulated HID mouse Y (vhost).   */
+extern uint8_t                s_hid_buttons;              /**< Last HID button bitmap (vhost).    */
+extern uint32_t               s_msc_blocks;               /**< MSC capacity in blocks (vhost).    */
+extern uint32_t               s_msc_block_len;            /**< MSC block size (vhost).            */
+extern uint32_t               s_msc_read_ok;              /**< MSC read data bytes (vhost).       */
+extern bool                   s_msc_inquiry_ok;           /**< MSC INQUIRY completed (vhost).     */
+extern bool                   s_loop_latched;             /**< Firmware host owns the bus (loop). */
+extern uint32_t               s_loop_setups;              /**< SETUPs from the fw host (loop).    */
+extern uint32_t               s_loop_bulk_out_pkts;       /**< Bulk-OUT packets (loop).           */
+extern uint32_t               s_loop_bulk_in_pkts;        /**< Bulk-IN packets (loop).            */
 
 /** @brief Append one already-formatted line to the enumeration-step log (core). */
 RA8_PRIV void usb_log_line(const char* msg);

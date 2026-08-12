@@ -31,12 +31,13 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_arena_first_byte =
-    0x5AU, /**< Byte stamped at the head of an allocation, so a later block that overlapped it is detectable. */
-  k_byte_mask = 0xFFU, /**< Low-byte mask used to split the connection handle little-endian. */
+    0x5AU, /**< Stamped at an allocation's head, so a later overlapping block is detectable. */
+  /** Low-byte mask used to split the connection handle little-endian. */
+  k_byte_mask = 0xFFU,
   k_arena_second_byte =
-    0xC3U, /**< The same for a second allocation; different, so the two blocks cannot alias unnoticed. */
+    0xC3U, /**< Same for a second allocation; different, so two blocks cannot alias unnoticed. */
   k_arena_alloc_items =
-    5U, /**< Item count of a small allocation; with a zero item size it must still return usable storage. */
+    5U, /**< Item count of a small allocation; a zero item size must still return usable storage. */
 } epub_miniz_alloc_fixture_t;
 
 enum : size_t {
@@ -296,7 +297,8 @@ static void test_alloc_real_overflow_and_firstfit_mcdc(void)
   void* b = ra8_epub_miniz_alloc(nullptr, 1U, k_small);
   TEST_ASSERT((a != nullptr) && (b != nullptr));
   ra8_epub_miniz_free(nullptr, a); /* front block now free but only k_small big */
-  void* c = ra8_epub_miniz_alloc(nullptr, 1U, k_medium); /* k_medium > k_small */
+  /* k_medium > k_small */
+  void* c = ra8_epub_miniz_alloc(nullptr, 1U, k_medium);
   TEST_ASSERT(c != nullptr);
   TEST_ASSERT(c != b); /* did not reuse the too-small freed block */
   ra8_epub_miniz_free(nullptr, b);

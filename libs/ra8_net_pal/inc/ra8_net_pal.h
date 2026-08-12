@@ -19,10 +19,15 @@
  * - Track link state and surface it to the stack.
  * - Hide the MSTP / clock-gate dance behind ``ra8_net_pal_init``.
  *
- * The PAL is intentionally stack-agnostic. NetX Duo's driver
- * (``port/netxduo/src/nx_ether_driver_ra8_eth.c``) wraps this API; no
- * NetX Duo types appear in this header. The same is true for any
- * future TCPDirect or zero-stack consumer.
+ * The PAL is intentionally stack-agnostic: no NetX Duo types appear in
+ * this header, and the same would hold for any future TCPDirect or
+ * zero-stack consumer.
+ *
+ * Its real consumers today are ``libs/ra8_nsc/src/ra8_nsc_eth.c`` (the
+ * TrustZone veneer that exposes Ethernet to the Non-Secure world) and the
+ * host tests. NetX Duo is NOT one of them: its driver
+ * (``port/netxduo/src/nx_ether_driver_ra8_eth.c``) includes ``ra8_eth.h``
+ * and calls ``ra8_eth_*`` directly, never this API (#621).
  *
  * ## Layering
  *

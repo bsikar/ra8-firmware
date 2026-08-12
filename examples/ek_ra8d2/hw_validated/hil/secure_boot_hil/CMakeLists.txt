@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake for `secure_boot_hil` -- on-silicon enforcing secure boot.
 # ra8_dfu_launch (RA8_ENABLE_ROOT_OF_TRUST) verifies ECDSA-P256 signature +

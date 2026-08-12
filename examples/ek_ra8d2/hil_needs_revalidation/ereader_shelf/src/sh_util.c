@@ -7,11 +7,11 @@
  * ellipsis truncation, decimal formatting, rectangle outlines, and the common
  * header bar. All drawing goes through `ra8_gfx` into the bound framebuffer.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 6 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #include <string.h>

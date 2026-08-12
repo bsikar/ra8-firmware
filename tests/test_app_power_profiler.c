@@ -28,7 +28,7 @@
  */
 typedef enum : uint8_t {
   k_profiler_tick_us =
-    100U, /**< Microseconds the mock clock advances per step, so elapsed time is a known multiple of the step count. */
+    100U, /**< Microseconds per mock-clock step, so elapsed time is a multiple of step count. */
 } app_power_profiler_fixture_t;
 
 static uint64_t s_now_us = 0U;

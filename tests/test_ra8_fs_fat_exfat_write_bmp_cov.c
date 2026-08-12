@@ -13,7 +13,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -181,8 +180,10 @@ static void test_bitmap_scan_full_volume(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
-  /* Bitmap cluster is always at cluster 2 = first_data_lba for a fresh volume. */
-  const uint32_t bmp_lba = h->first_data_lba;
+  /* Bitmap cluster is always at cluster 2 = first_data_lba for a fresh volume.
+   * first_data_lba is partition-relative (the driver adds partition_base_lba
+   * on every access), so indexing s_disk.bytes needs the base added back. */
+  const uint32_t bmp_lba = h->partition_base_lba + h->first_data_lba;
   for (uint32_t s = 0U; s < h->sectors_per_cluster; s++) {
     memset(&s_disk.bytes[(size_t)(bmp_lba + s) * (uint32_t)k_wc_block_size],
            (int)k_wc_mask_byte,
@@ -230,7 +231,7 @@ static void test_bmp_switch_write_fails(void)
   /* Arm: fail the very next write. */
   s_wr_remaining = (int32_t)k_wc_wr_at_w1;
 
-  uint32_t        loaded               = h->first_fat_lba;
+  uint64_t        loaded               = h->first_fat_lba;
   uint8_t         sec[k_wc_block_size] = {};
   const ra8_err_t r = priv_exfat_bmp_switch(h, h->first_fat_lba + 1U, &loaded, sec);
   TEST_ASSERT(r != k_ra8_ok);
@@ -272,7 +273,7 @@ static void test_bmp_switch_sector_change(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
   /* No faults -- both write (flush old) and read (load new) must succeed. */
-  uint32_t loaded               = h->first_fat_lba;
+  uint64_t loaded               = h->first_fat_lba;
   uint8_t  sec[k_wc_block_size] = {};
   TEST_ASSERT_EQ(k_ra8_ok, priv_exfat_bmp_switch(h, h->first_fat_lba + 1U, &loaded, sec));
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Bring a bare host up as the single-node k3s server the rig's CI and secrets
 # run on, then deploy the vault onto it.

@@ -62,6 +62,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -138,13 +139,56 @@ def scan_gate_invocations(text: str) -> dict[str, bool]:
 def collect() -> dict[str, bool]:
     """Gather every gate-invoked script and whether any gate runs its selftest.
 
+    Gate bodies delegate. ``gate_format`` invokes ``format_code.sh``, and
+    *that* is what drives ``check_comment_format.py`` -- a detector every bit as
+    gate-wired as one named in the fragment itself. Reading only the fragments
+    made such a script invisible: it was neither credited as invoked nor asked
+    for its selftest, so the checker reported clean over a detector no gate ever
+    proved. The walk therefore follows first-party shell helpers to a fixed
+    point, `seen` guarding against a helper cycle.
+
     Returns:
-        ``script path -> selftest is invoked somewhere in the gate bodies``.
+        ``script path -> selftest is invoked somewhere along the gate's reach``.
     """
-    out: dict[str, bool] = {}
+    direct: dict[str, bool] = {}
     for fragment in sorted(GATE_DIR.glob("*.sh")):
         for rel, ran in scan_gate_invocations(fragment.read_text(encoding="utf-8")).items():
-            out[rel] = out.get(rel, False) or ran
+            direct[rel] = direct.get(rel, False) or ran
+
+    def read(rel: str) -> str | None:
+        path = REPO_ROOT / rel
+        return path.read_text(encoding="utf-8") if path.is_file() else None
+
+    return expand_helpers(direct, read)
+
+
+def expand_helpers(
+    direct: dict[str, bool], read_text: Callable[[str], str | None]
+) -> dict[str, bool]:
+    """Extend `direct` with the scripts its shell helpers invoke, transitively.
+
+    Args:
+        direct: ``script path -> a selftest ran`` as read from the gate bodies.
+        read_text: Returns a script's source, or None when it cannot be read.
+
+    Returns:
+        The same mapping, plus every script reachable through a ``.sh`` helper.
+        `seen` makes a helper cycle terminate rather than spin.
+    """
+    out = dict(direct)
+    queue = list(direct)
+    seen: set[str] = set()
+    while queue:
+        rel = queue.pop()
+        if rel in seen or not rel.endswith(".sh"):
+            continue
+        seen.add(rel)
+        text = read_text(rel)
+        if text is None:
+            continue
+        for sub, ran in scan_gate_invocations(text).items():
+            out[sub] = out.get(sub, False) or ran
+            queue.append(sub)
     return out
 
 
@@ -370,13 +414,14 @@ def _selftest_cases() -> list[tuple[str, str, bool]]:
     ]
 
 
-def selftest() -> int:
-    """Prove Rule A fires on an unrun selftest and spares a run one.
+def _rule_a_cases() -> list[tuple[str, bool]]:
+    """Rule A over the fixture gate bodies: it must fire on an unrun selftest.
 
     Returns:
-        0 when every case holds, 1 otherwise.
+        ``(label, held)`` per fixture, the label carrying which direction the
+        fixture asserts so a failure names it.
     """
-    failures = 0
+    out: list[tuple[str, bool]] = []
     for label, text, must_fire in _selftest_cases():
         invoked = scan_gate_invocations(text)
         fired = any(
@@ -384,12 +429,56 @@ def selftest() -> int:
             for rel, ran in invoked.items()
             if (REPO_ROOT / rel).is_file()
         )
-        ok = fired == must_fire
-        failures += 0 if ok else 1
         expectation = "must fire" if must_fire else "must stay quiet"
-        print(f"  [{'ok' if ok else 'FAIL'}] {label} ({expectation})")
+        out.append((f"{label} ({expectation})", fired == must_fire))
+    return out
 
-    checks: list[tuple[str, bool]] = [
+
+def _helper_walk_cases() -> list[tuple[str, bool]]:
+    """The helper walk, driven off a fixture filesystem.
+
+    Without the walk a detector invoked through a gate's shell helper is
+    invisible in both directions: never credited as gate-wired, never asked for
+    its selftest.
+
+    Returns:
+        ``(label, held)`` per case.
+    """
+    helper = "scripts/checks/helper.sh"  # PATHREF-OK: selftest fixture, not a real script
+    detector = "scripts/checks/check_thing.py"  # PATHREF-OK: selftest fixture, not a real script
+    other = "scripts/checks/other.sh"  # PATHREF-OK: selftest fixture, not a real script
+    quiet_helper = {helper: f"python3 {detector}\n"}
+    loud_helper = {helper: f"python3 {detector} --selftest\npython3 {detector}\n"}
+    cyclic = {helper: f"bash {other}\n", other: f"bash {helper}\n"}
+
+    reached_quiet = expand_helpers({helper: False}, quiet_helper.get)
+    reached_loud = expand_helpers({helper: False}, loud_helper.get)
+    reached_cycle = expand_helpers({helper: False}, cyclic.get)
+
+    return [
+        (
+            "a detector reached through a gate helper is seen",
+            detector in reached_quiet,
+        ),
+        (
+            "its selftest going unrun through that helper is reported",
+            reached_quiet.get(detector) is False,
+        ),
+        (
+            "its selftest being run through that helper counts",
+            reached_loud.get(detector) is True,
+        ),
+        ("a helper cycle terminates", other in reached_cycle),
+    ]
+
+
+def _taxonomy_cases() -> list[tuple[str, bool]]:
+    """Which directories count as detectors, and both selftest spellings.
+
+    Returns:
+        ``(label, held)`` per case.
+    """
+    return [
         ("scripts/checks/ is classified as a detector", is_detector("scripts/checks/check_asm.py")),
         (
             "scripts/ci/check_*.py is classified as a detector",
@@ -400,25 +489,54 @@ def selftest() -> int:
         ("the flag selftest spelling is detected", has_selftest("scripts/checks/check_asm.py")),
         ("the subcommand selftest spelling is detected", has_selftest("scripts/ci/monitor.sh")),
     ]
+
+
+def _live_scan_cases() -> list[tuple[str, bool]]:
+    """The two properties that can only be asserted against the real tree.
+
+    Returns:
+        ``(label, held)`` for the non-vacuity floor and the shrink-only
+        baseline.
+    """
     live = collect()
-    checks.append(
+    baseline = load_baseline()
+    _, rule_b = evaluate(live)
+    return [
         (
             f"live scan sees {len(live)} gate-invoked script(s) (floor {MIN_INVOKED})",
             len(live) >= MIN_INVOKED,
-        )
-    )
-    baseline = load_baseline()
-    _, rule_b = evaluate(live)
-    checks.append(
+        ),
         (
             "every baseline row is still a real offender (the list only shrinks)",
             set(baseline) <= set(rule_b),
-        )
-    )
-    for label, ok in checks:
+        ),
+    ]
+
+
+def _report_cases(cases: list[tuple[str, bool]]) -> int:
+    """Print one line per case; return how many did not hold.
+
+    Args:
+        cases: ``(label, held)`` pairs.
+
+    Returns:
+        The number of cases that failed.
+    """
+    failures = 0
+    for label, ok in cases:
         failures += 0 if ok else 1
         print(f"  [{'ok' if ok else 'FAIL'}] {label}")
+    return failures
 
+
+def selftest() -> int:
+    """Prove Rule A fires on an unrun selftest and spares a run one.
+
+    Returns:
+        0 when every case holds, 1 otherwise.
+    """
+    families = (_rule_a_cases, _helper_walk_cases, _taxonomy_cases, _live_scan_cases)
+    failures = sum(_report_cases(family()) for family in families)
     if failures:
         sys.stderr.write(f"check_selftest_coverage.py --selftest: {failures} case(s) failed.\n")
         return EXIT_VIOLATION

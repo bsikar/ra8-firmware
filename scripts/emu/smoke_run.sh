@@ -1,6 +1,7 @@
-# shellcheck shell=bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/emu/smoke_run.sh -- run ONE app and assert its result.
 

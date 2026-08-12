@@ -33,11 +33,11 @@
  * layer prints a FAIL banner and traps on a BKPT before the PASS line, so the
  * EIL / HIL gate is exact.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / App] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

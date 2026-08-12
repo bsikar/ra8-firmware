@@ -126,9 +126,14 @@ RA8_GATE_REGISTRY=(
   "inclusive-terminology-commits|fast|inclusive terminology (commit messages)"
   "format|fast|clang-format dry run"
   "pre-commit-checks|fast|the check_*.py gate suite"
+  "shebangs|fast|first-party shell scripts carry an env-based shebang"
   "bench-lock|fast|every bench-touching script takes the bench lock"
   "annotations|fast|RA8_* annotation attributes (libclang)"
   "doc-attachment|fast|a Doxygen block describes the symbol it is attached to"
+  "tests-readme|fast|tests/README.md documents every tests/ subdir, none stale"
+  "disambig-readmes|fast|disambiguation READMEs: every machine-checked claim still holds"
+  "init-order-freshness|fast|committed docs/INIT_ORDER_AUDIT.md matches a fresh regenerate"
+  "roadmap-dashboard-freshness|fast|committed docs/ROADMAP_DASHBOARD.md matches a fresh regenerate"
   "lint-py-shell|fast|ruff + shellcheck + shfmt"
   "lint-cmake|fast|cmake-format + cmake-lint over every listfile"
   "lint-yaml|fast|yamllint + actionlint over the workflows"
@@ -242,6 +247,13 @@ pick_clang_format() {
 # shellcheck source=scripts/ci/lib/abort.sh
 . "${SCRIPT_DIR}/ci/lib/abort.sh"
 
+# use_pinned_arm_toolchain() -- put the pinned Arm GNU Toolchain (cortex-m85
+# aware) on PATH. One home for the policy so ci.sh's cross-build gates and
+# scripts/checks/clang_tidy.sh (its firmware pass, and the pre-commit hook that
+# runs it) resolve the SAME arm-none-eabi-gcc. Sourced like parallelism.sh.
+# shellcheck source=scripts/ci/lib/arm_toolchain.sh
+. "${SCRIPT_DIR}/ci/lib/arm_toolchain.sh"
+
 # Persistent PINNED-TOOL cache (#326). The docs gate builds with a
 # version-pinned doxygen that scripts/builders/provision_doxygen.sh downloads +
 # sha256-verifies on first use. Every suite run builds in a fresh mktemp
@@ -271,25 +283,6 @@ export_tools_cache() {
   fi
 }
 
-# Prepend the pinned Arm GNU Toolchain when the runner provisions it under
-# /opt, replacing what the workflows used to do with GITHUB_PATH. The apt
-# gcc-arm-none-eabi package ships no C++ standard library, so C++ apps
-# (ereader_shelf -> ra8_epub + tinyxml2) fail with "fatal error: cstddef";
-# the official ARM toolchain under /opt bundles libstdc++.
-use_pinned_arm_toolchain() {
-  local candidate
-  for candidate in \
-    "${RA8_ARM_TOOLCHAIN_BIN:-}" \
-    /opt/arm-gnu-toolchain-13.3/bin \
-    "$HOME/opt/arm-gnu-toolchain-13.3/bin"; do
-    if [[ -n "$candidate" && -x "$candidate/arm-none-eabi-gcc" ]]; then
-      PATH="$candidate:$PATH"
-      export PATH
-      return 0
-    fi
-  done
-}
-
 # Refuse to run a ra8_emulator gate on an unpinned Unicorn.
 #
 # ra8_emulator boots the real firmware .elf on Unicorn, and different Unicorn
@@ -299,6 +292,10 @@ use_pinned_arm_toolchain() {
 # ra8_emulator will link and exits non-zero -- with remediation -- when it is not
 # the pin, rather than letting a fossil produce an unreproducible green run.
 require_pinned_unicorn() {
+  # The pin check is a detector, so prove it still detects before believing it:
+  # a version comparison that silently stopped comparing would wave every
+  # Unicorn through and hand back exactly the unreproducible green run above.
+  bash scripts/checks/check_unicorn_version.sh --selftest
   bash scripts/checks/check_unicorn_version.sh
 }
 

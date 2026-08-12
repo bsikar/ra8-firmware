@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_dfu -- controller-agnostic USB-DFU MRAM bootloader core.
 #
@@ -18,8 +20,6 @@
 # Picked up automatically by tests/CMakeLists.txt globbing; apps pull it
 # in with ra8_add_app(... LIBS ra8_dfu).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

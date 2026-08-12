@@ -15,8 +15,6 @@
  * ``R_GLCDC_ColorPaletteUpdate``. Every register access carries a
  * HUM Ch 63 citation.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @param[in] mode See header declaration for direction and constraints.
  * @return ``ra8_err_t`` error code (or void if the signature returns void).
@@ -27,6 +25,8 @@
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
  * @note Thread safety: see the header declaration.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  *
  * @param[in] layer See header declaration for direction and constraints.

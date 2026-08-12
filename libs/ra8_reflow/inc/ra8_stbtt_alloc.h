@@ -27,11 +27,11 @@
  * NASA Power-of-10 Rule 3 (no dynamic allocation after init): the backing
  * store is a single file-scope array.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 4 / Reflow] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once

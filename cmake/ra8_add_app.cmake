@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/ra8_add_app.cmake -- shared per-app firmware build recipe.
 #
@@ -45,7 +47,7 @@
 #                       cmake/<m>.cmake (interface lib target <m>) and, when a
 #                       global property RA8_<M>_PORT_SOURCES exists, that
 #                       property's bridge sources. Recognised: threadx usbx
-#                       netxduo filex levelx nimble mbedtls. In standalone
+#                       netxduo levelx nimble mbedtls. In standalone
 #                       builds RA8_USE_<M> defaults ON; in the aggregate build it
 #                       stays as the top-level set it, and an app whose
 #                       middleware is OFF skips itself.
@@ -64,8 +66,6 @@
 # directory scope (project() may not be called from a function, and the
 # middleware skip-guard must return from the app's own CMakeLists).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Captured at include time (file scope) so it points at cmake/, not the
@@ -371,7 +371,6 @@ macro(ra8_add_app)
   set(_ra8_port_lib_usbx usbx_port_ra8_usb)
   set(_ra8_port_lib_netxduo netxduo_port_ra8_eth)
   set(_ra8_port_lib_mbedtls mbedtls_port_ra8_config)
-  set(_ra8_port_lib_filex filex_port_ra8_sdhi)
   set(_ra8_port_lib_levelx levelx_port_ra8_xspi)
   set(_ra8_port_lib_nimble nimble_port_threadx)
   set(_ra8_port_lib_esp_hosted esp_hosted_port_ra8_spi)
@@ -538,9 +537,18 @@ function(ra8_add_cpu1_image)
     -T${_c1_ld}
     -Wl,--Map=${C1_NAME}.map
   )
+  # The CPU1 image links NO ra8_hal, but it may INCLUDE the freestanding-clean
+  # PORT headers so an M33 image drives a pin through a HAL primitive
+  # (ra8_pcntr.h -> ra8_port_regs.h) instead of hand-rolling raw MMIO (issue
+  # #580). Only header-only accessors reach the M33 this way; nothing is
+  # compiled or linked from ra8_hal/src. IMPORTANT: keep this an include path,
+  # not a link -- a future dev must add ONLY freestanding-clean headers here
+  # (ra8_pcntr.h / ra8_port_regs.h + the ra8_core/inc enums they pull). A HAL
+  # header that includes ra8_log.h / ra8_check.h / the pin-validator is NOT
+  # freestanding and must never be reached from a CPU1 TU.
   target_include_directories(
     ${C1_NAME}.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${RA8_REPO_ROOT}/libs/ra8_core/inc
-                           ${C1_INCLUDES}
+                           ${RA8_REPO_ROOT}/libs/ra8_hal/inc ${C1_INCLUDES}
   )
   set_target_properties(${C1_NAME}.elf PROPERTIES LINK_DEPENDS ${_c1_ld})
   add_custom_command(

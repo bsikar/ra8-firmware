@@ -21,10 +21,10 @@
  * fronts the most hostile input in the content path, so each bound is
  * tested independently (and carries no compound-decision MC/DC burden).
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include "ra8_unarch_xz.h"
 

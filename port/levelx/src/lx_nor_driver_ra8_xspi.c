@@ -32,7 +32,7 @@
  *   wear-levelled partition. The remainder of the chip stays untouched
  *   for XIP code or other firmware uses.
  *
- * Copyright (c) 2026 Brighton Sikarskie
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 

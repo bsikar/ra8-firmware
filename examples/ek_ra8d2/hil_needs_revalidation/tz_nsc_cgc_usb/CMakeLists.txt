@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app CMake for `tz_nsc_cgc_usb` -- a TWO-PROJECT TrustZone build (#96).
 #
@@ -8,8 +10,6 @@
 # addresses. The two images are merged into one flashable hex. NS->Secure calls
 # go only through the import library's SG veneers.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 
@@ -53,13 +53,15 @@ set(_ra8_tz_implib ${CMAKE_CURRENT_BINARY_DIR}/tz_nsc_cgc_usb_cmse_import.o)
 target_link_options(tz_nsc_cgc_usb.elf PRIVATE -Wl,--cmse-implib -Wl,--out-implib=${_ra8_tz_implib})
 
 # ---- Post-build: verify the NSC SG-veneer slot offsets (T5-08) -------------
-# The NS image reaches each NSC CGC veneer by ADDRESS (g_ra8_ls_sgstubs_start +
-# slot offset), so a reordering of the .gnu.sgstubs stubs at link time would
-# silently redirect NS->Secure calls without any diagnostic. check_sg_offsets.py
-# reads the FINAL Secure symbol table and fails the build if any veneer drifted
-# from its expected offset (0/8/16); it self-skips a non-TrustZone link. This
-# makes the invariant the linker_script.ld comment already claims -- previously
-# unenforced anywhere -- actually hold on every build (including CI build-cross).
+# The NS image reaches each NSC CGC veneer by NAME, through the CMSE import
+# library emitted above (--out-implib), which binds ra8_nsc_cgc_* to the
+# .gnu.sgstubs addresses. Those byte offsets are the ABI: a reordering of the
+# stubs at link time would silently redirect NS->Secure calls without any
+# diagnostic. check_sg_offsets.py reads the FINAL Secure symbol table and fails
+# the build if any veneer drifted from its expected offset (0/8/16); it
+# self-skips a non-TrustZone link. This makes the invariant the linker_script.ld
+# comment already claims -- previously unenforced anywhere -- actually hold on
+# every build (including CI build-cross).
 # --nm pins the SAME cross nm as the link (CMAKE_NM from the toolchain file).
 add_custom_command(
   TARGET tz_nsc_cgc_usb.elf
@@ -155,6 +157,7 @@ set(_ns_usb_srcs
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_usb_host_bulk.c
     ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_mstp.c
     ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c
+    ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_scb.c
 )
 target_sources(tz_nsc_cgc_usb_ns.elf PRIVATE ${_ns_usb_srcs})
 # Vendored USBX + ra8_usb predate the first-party -Werror set.

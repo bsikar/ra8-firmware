@@ -8,10 +8,10 @@
  * decompressor: the app calls ra8_book_validate() directly. A real SD-loaded
  * .rabook would mz_uncompress() the container first (see README). Generated.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #pragma once
 

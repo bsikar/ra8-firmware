@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # cmake/esp_hosted.cmake
 #
@@ -78,8 +80,6 @@
 #     reached over full-duplex SPI only); the Bluetooth pair needs the
 #     NimBLE transport headers and belongs with the NimBLE integration.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Idempotency guard. A per-app standalone build and the aggregate repo

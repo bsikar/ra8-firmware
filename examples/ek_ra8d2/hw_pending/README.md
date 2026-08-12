@@ -57,10 +57,11 @@ load.
 `sd: roundtrip ok`) on the Pmod2 card -- and moved to `hw_validated/hil/` with a
 `uart_scrape` gate.
 
-`threadx_filex_demo` was rewritten to run FileX over the on-board OSPI flash
-(LevelX) instead of the unreachable SDHI card path, validated on real hardware
-(format -> FAT -> create/list/read-verify/delete -> `ospi FAT roundtrip ok`), and
-moved to `hw_validated/hil/`.
+`threadx_fs_demo` (originally a FileX SD-card demo, ported to ra8_fs when the
+vendored FileX was retired in #611) was rewritten to run over the on-board OSPI
+flash (LevelX) instead of the unreachable SDHI card path, validated on real
+hardware (format -> FAT -> create/list/read-verify/delete -> `ospi FAT
+roundtrip ok`), and moved to `hw_validated/hil/`.
 
 `usb_host_msc_browse` was re-based onto the self-loop (board hosts AND emulates
 the MSC peripheral over the J7<->J11 cable, no external drive): the host

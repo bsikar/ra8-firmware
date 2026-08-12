@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # Pre-commit hook for ra8-firmware
 # Runs: ASCII check, C23 pattern check, defensive macro paren check,
 #       clang-format, clang-tidy
@@ -114,11 +116,27 @@ if [[ -n "$c_files" ]]; then
 
   # ---- clang-tidy --------------------------------------------------------
   if command -v clang-tidy &>/dev/null || command -v clang-tidy-18 &>/dev/null; then
-    if ! bash scripts/checks/clang_tidy.sh --check; then
-      echo "[FAIL] clang-tidy violations found."
-      echo "   Fix violations above, then re-stage and commit."
+    # Mirror the CI tidy gate (gate_tidy in scripts/ci/gates/analysis.sh): run
+    # clang-tidy, then RATCHET the log against .github/tidy-baseline.txt so a
+    # commit fails only on NEW findings, not the pre-existing baselined debt.
+    # Keying the hook on clang_tidy.sh's raw exit made it stricter than CI --
+    # it returns non-zero on ANY finding, so the hook failed on baselined debt
+    # and forced --no-verify on every C commit. A tidy-log exit >=2 means
+    # clang_tidy.sh could not run (e.g. the compile database would not build),
+    # which is not a ratchetable result and must fail loudly.
+    tidy_log="$(mktemp)"
+    tidy_rc=0
+    bash scripts/checks/clang_tidy.sh --check --verbose >"$tidy_log" 2>&1 || tidy_rc=$?
+    cat "$tidy_log"
+    if [ "$tidy_rc" -ge 2 ]; then
+      echo "[FAIL] clang-tidy could not run (exit $tidy_rc); not ratcheting."
+      error_found=1
+    elif ! python3 scripts/checks/tidy_ratchet.py --check "$tidy_log"; then
+      echo "[FAIL] clang-tidy ratchet: new findings above the committed baseline."
+      echo "   Fix the new findings above, then re-stage and commit."
       error_found=1
     fi
+    rm -f "$tidy_log"
   else
     echo ""
     echo "WARNING: clang-tidy not found -- static analysis SKIPPED."
@@ -281,16 +299,56 @@ if [[ -n "$c_files" ]]; then
   fi
 
   # ---- cppcheck ----------------------------------------------------------
+  # ONE definition of the cppcheck policy. This step used to hand-roll its own
+  # scope -- every staged .c/.h except tests/ -- which is a SECOND, drifted
+  # definition of a check. CLAUDE.md is explicit that there is exactly one
+  # definition of a gate and that a gate body is never hand-copied, and the
+  # drift was not cosmetic: it failed commits over findings no gate has an
+  # opinion about. It diverged from gate_cppcheck in two separate ways.
+  #
+  # WHERE it looks. The gate covers src/, libs/, tools/ and the example apps.
+  # tools/ came under the gate in #596: before that it was reached only by
+  # scripts/checks/cppcheck.sh under --error-exitcode=0, where a finding
+  # CANNOT fail anything, so the first commit to stage tools/*.c met 65
+  # findings nothing had ever gated. This step mirrors the gate's scope, so it
+  # analyses staged tools/ TUs too, with the same C23 nullptr shim the gate
+  # force-includes (cppcheck 2.13 does not model the keyword).
+  #
+  # WHAT it analyses. cppcheck analyses TRANSLATION UNITS. The gate passes
+  # DIRECTORIES, so a header is analysed in the context of a .c that includes
+  # it. Passing a bare .h on the command line analyses it standalone instead,
+  # with none of its includes or macros resolved -- which is why four
+  # libs/ra8_nsc/inc headers reported `unknownMacro: RA8_INTERNAL_ANNOTATE`
+  # and ra8_ether_regs.h reported a bogus `unusedScopedObject`. The gate is
+  # green on the identical tree, which is the proof that those are artefacts
+  # of the invocation rather than defects in the headers.
+  #
+  # So: the gate's scope, and .c translation units. Headers stay covered
+  # through the TUs that include them, exactly as in CI. tools/ is now part of
+  # that scope (#596), which is why the grep below includes it.
+  #
+  # WHICH INCLUDES it resolves -- the third divergence, and the same defect one
+  # level down. The gate passes an include list; this step passed none, so
+  # every macro reaching a TU from a header was unresolved here and resolved
+  # in CI. Object-like annotations survived that (cppcheck skips an unknown
+  # identifier before a declaration), so it went unnoticed until the first
+  # FUNCTION-like one at file scope -- `RA8_OWNS_RESOURCE("ra8_fs_lock")` --
+  # read as a call and failed the commit with `unknownMacro` while
+  # scripts/checks/cppcheck.sh was green on the identical tree. The list now
+  # comes from that script, which is the one place that defines it.
   if command -v cppcheck &>/dev/null; then
-    prod_files=$(echo "$c_files" | grep -vE "^tests/" || true)
+    prod_files=$(echo "$c_files" | grep -E "^(src|libs|examples|tools)/" | grep -E "[.]c$" || true)
     if [[ -n "$prod_files" ]]; then
       mapfile -t prod_file_list <<<"$prod_files"
+      mapfile -t cppcheck_include_dirs < <(bash scripts/checks/cppcheck.sh --print-include-dirs)
       if ! cppcheck --enable=warning,style,performance,portability \
         --error-exitcode=1 \
         --suppressions-list=.cppcheck-suppressions \
         --inline-suppr \
+        --include=scripts/checks/cppcheck_c23_compat.h \
         --std=c23 \
         --quiet \
+        "${cppcheck_include_dirs[@]}" \
         "${prod_file_list[@]}"; then
         echo "[FAIL] cppcheck violations found."
         error_found=1
@@ -315,18 +373,20 @@ fi
 # Python, shell, CMake, YAML, Make and linker scripts as well as C/C++.
 # Honours an in-file @generated / FILE-SIZE-OK waiver marker.
 #
-# Selftest enforced; the tree-wide scan is not yet -- 8 files are over the cap.
-# See the matching note in scripts/ci/gates/checks.sh.
+# Selftest AND the tree-wide scan, matching scripts/ci/gates/checks.sh. The
+# file-size campaign brought the tree to zero over-cap, so the scan CI already
+# enforces belongs here too: a selftest-only hook let a 1019-line file reach
+# CI (#689, #690).
 if ! python3 scripts/checks/check_file_size.py --selftest; then
   echo "[FAIL] check_file_size.py selftest failed."
   echo "   The derived scope or the cap logic is broken; verdict untrustworthy."
   error_found=1
 fi
-# if ! python3 scripts/checks/check_file_size.py; then
-#   echo "[FAIL] file-size violation(s) above the 1000-line cap."
-#   echo "   Split along responsibilities or extract a shared helper."
-#   error_found=1
-# fi
+if ! python3 scripts/checks/check_file_size.py; then
+  echo "[FAIL] file-size violation(s) above the 1000-line cap."
+  echo "   Split along responsibilities or extract a shared helper."
+  error_found=1
+fi
 
 # Header placement: a header under a src/ dir must be module-private
 # (*_internal.h).  A non-internal src/ header is either a misfiled public

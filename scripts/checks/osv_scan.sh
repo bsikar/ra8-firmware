@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/checks/osv_scan.sh -- OSV CVE scan of the vendored SOUP.
 #
@@ -38,8 +40,6 @@
 # found, 128 no package sources (benign for an all-clean leg), other
 # values are hard errors.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 
 set -euo pipefail
 

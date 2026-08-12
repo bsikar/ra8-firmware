@@ -104,7 +104,7 @@ three weeks.
   IT8951 e-paper driver with sleep/wake.
 - **Example apps** under `examples/`: `blink`, `blink_hal`, `uart_hello`,
   `clock_check`, native USB CDC echo, USB device HID/MSC, USB host CDC/MSC/HID
-  and USB host audio, lcd/motor/audio/ethernet/ptp/`ptp_master`/
+  and USB host audio, lcd/motor/audio/ethernet/ptp/`ptp_master`/ <!-- LEGACY-OK: IEEE 1588 PTP example-app name, historical changelog entry -->
   `ethernet_tcp_echo`, NimBLE central + mesh demos, ThreadX demos
   (`threadx_blink`, `threadx_filex_demo`, `threadx_levelx_demo`,
   `threadx_netx_tcp_echo`, `threadx_lwip_tcp_echo`, `threadx_https_client`,

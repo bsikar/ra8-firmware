@@ -23,10 +23,10 @@
  * truncated block is rejected (::k_ra8_err_validation_failed) rather than
  * over-read.
  *
- * @since Version 0.1.0
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since Version 0.1.0
+ *
  */
 #include "ra8_rar.h"
 
@@ -188,9 +188,9 @@ static bool s_vint(const uint8_t* buf, size_t len, size_t* pos, uint64_t* val)
 {
   uint32_t       words[2] = {0U, 0U}; /* [0] = low 32 bits, [1] = high 32 bits */
   uint32_t       shift    = 0U;
-  const uint32_t hi_bit   = (uint32_t)k_rar_hi_sh;                             /* 32 */
-  const uint32_t straddle = (uint32_t)k_rar_hi_sh - (uint32_t)k_rar_vint_bits; /* 25 */
-  for (uint16_t i = 0U; i < (uint16_t)k_ra8_rar_vint_max; ++i) { /* bound: <=10 bytes */
+  const uint32_t hi_bit   = (uint32_t)k_rar_hi_sh;                             /* 32         */
+  const uint32_t straddle = (uint32_t)k_rar_hi_sh - (uint32_t)k_rar_vint_bits; /* 25         */
+  for (uint16_t i = 0U; i < (uint16_t)k_ra8_rar_vint_max; ++i) {               /* <=10 bytes */
     if (*pos >= len) {
       return false;
     }

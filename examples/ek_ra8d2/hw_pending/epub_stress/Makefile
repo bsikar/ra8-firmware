@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # Per-app Makefile for the `epub_stress` firmware.
 #
@@ -11,8 +13,6 @@
 # This file is a thin wrapper around the per-app CMakeLists.txt and
 # the shared scripts/ helpers in the repo root.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 SHELL     := /bin/bash

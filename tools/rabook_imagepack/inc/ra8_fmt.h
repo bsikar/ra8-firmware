@@ -31,10 +31,10 @@
  * rest NULL, and add one row to the registry in `ra8_fmt_registry.c`. Nothing
  * else changes -- CLI dispatch and the usage text are driven off the registry.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * @see ra8_jof.h  The band-tile atlas this tool was first built to debug.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
@@ -245,6 +245,11 @@ typedef struct {
 
 /**
  * @brief Release a blob's buffer and zero it.
+ *
+ * @details
+ * Frees the buffer ::ra8_fmt_slurp allocated and resets the blob to the empty
+ * state, so a released blob reads as owning nothing and a second call is a safe
+ * no-op. A NULL blob is also a no-op.
  *
  * @param[in,out] blob Blob to release (NULL is a no-op).
  *

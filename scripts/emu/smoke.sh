@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/emu/smoke.sh -- boot each display example on the board emulator
 # and assert it runs to its main loop without faulting.
@@ -15,8 +17,6 @@
 #   scripts/emu/smoke.sh                 # default display apps
 #   scripts/emu/smoke.sh blink lcd_draw_x  # explicit app list
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 set -euo pipefail
 
@@ -311,9 +311,9 @@ if [ "${#apps[@]}" -eq 0 ]; then
   # they run on a newer Unicorn (macOS / a source build) -- pass them
   # explicitly there (e.g. `ra8_emulator_smoke.sh usb_cdc_echo`).
   #
-  # The Octo-SPI LevelX/FileX apps (threadx_levelx_demo,
-  # threadx_filex_levelx_demo) exercise the xSPI flash model
-  # (board_periph_xspi.c) -- LevelX format/open + sector R/W, and FileX FAT
+  # The Octo-SPI LevelX/ra8_fs apps (threadx_levelx_demo,
+  # threadx_fs_levelx_demo) exercise the xSPI flash model
+  # (board_periph_xspi.c) -- LevelX format/open + sector R/W, and ra8_fs FAT
   # file write+readback round-trip. They are ThreadX, so the same Unicorn
   # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
   apps=(blink lcd_color_cycle display_pal_animation ereader_ui
@@ -332,7 +332,8 @@ if [ "${#apps[@]}" -eq 0 ]; then
     epub_parse epub_stress widget_app widget_app_demo glcdc_render
     acmphs_compare can_classic_loopback canfd_filter_demo dac_b_demo dac_waveform
     gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo
-    i2c_loopback flash_journal eth_loopback clock_check crypto_aes_demo
+    i2c_loopback flash_journal eth_loopback eth_gptp_timestamp_demo
+    clock_check crypto_aes_demo
     compile_on_m33 dualcore_background_m33 dualcore_mailbox
     import_reader i3c_i2c_peripheral_demo epaper_refresh modem_at_demo)
 fi

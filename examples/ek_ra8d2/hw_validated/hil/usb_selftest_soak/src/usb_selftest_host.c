@@ -12,7 +12,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -71,10 +70,15 @@ static volatile uint32_t s_dbg_pass_count;
  * @since 0.1.0
  */
 [[nodiscard]] static ra8_err_t
-selftest_backend_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+selftest_backend_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
-  return ra8_usb_hmsc_read10((uint8_t)k_selftest_target_lun, lba, (uint16_t)count, buf);
+  if (lba > (uint64_t)UINT32_MAX) {
+    /* SCSI READ(10)/WRITE(10) carry 32-bit LBAs; past-2-TiB addressing is a
+     * 64-bit-native-backend capability this transport cannot reach (#683). */
+    return k_ra8_err_out_of_range;
+  }
+  return ra8_usb_hmsc_read10((uint8_t)k_selftest_target_lun, (uint32_t)lba, (uint16_t)count, buf);
 }
 
 /**
@@ -101,10 +105,15 @@ selftest_backend_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  * @since 0.1.0
  */
 [[nodiscard]] static ra8_err_t
-selftest_backend_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+selftest_backend_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
-  return ra8_usb_hmsc_write10((uint8_t)k_selftest_target_lun, lba, (uint16_t)count, buf);
+  if (lba > (uint64_t)UINT32_MAX) {
+    /* SCSI READ(10)/WRITE(10) carry 32-bit LBAs; past-2-TiB addressing is a
+     * 64-bit-native-backend capability this transport cannot reach (#683). */
+    return k_ra8_err_out_of_range;
+  }
+  return ra8_usb_hmsc_write10((uint8_t)k_selftest_target_lun, (uint32_t)lba, (uint16_t)count, buf);
 }
 
 /**
@@ -128,10 +137,17 @@ selftest_backend_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* b
  * @since 0.1.0
  */
 [[nodiscard]] static ra8_err_t
-selftest_backend_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+selftest_backend_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
-  return ra8_usb_hmsc_read_capacity((uint8_t)k_selftest_target_lun, block_count, block_size);
+  uint32_t        blocks32 = 0U;
+  const ra8_err_t err =
+    ra8_usb_hmsc_read_capacity((uint8_t)k_selftest_target_lun, &blocks32, block_size);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  *block_count = blocks32;
+  return k_ra8_ok;
 }
 
 /**

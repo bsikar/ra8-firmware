@@ -39,7 +39,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -178,7 +177,7 @@ static uint32_t ulpt_cell_value(const ulpt_channel_t* c, uint64_t off)
   if (off == (uint64_t)k_ulpt_off_mr1) {
     return c->mr1;
   }
-  /* HUM Ch 25.2.3 "ULPTMR2 : ULPT Mode Register 2" p 1194 */
+  /* HUM Ch 25.2.3 "ULPTMR2 : ULPT Mode Register 2" p 1192 */
   if (off == (uint64_t)k_ulpt_off_mr2) {
     return c->mr2;
   }
@@ -186,7 +185,7 @@ static uint32_t ulpt_cell_value(const ulpt_channel_t* c, uint64_t off)
   if (off == (uint64_t)k_ulpt_off_mr3) {
     return c->mr3;
   }
-  /* HUM Ch 25.2.5 "ULPTIOC : ULPT I/O Control Register" p 1196 */
+  /* HUM Ch 25.2.5 "ULPTIOC : ULPT I/O Control Register" p 1195 */
   return c->ioc;
 }
 
@@ -275,13 +274,13 @@ static void ulpt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
     /* HUM Ch 25.2.2 "ULPTMR1 : ULPT Mode Register 1" p 1192 */
     c->mr1 = (uint8_t)value;
   } else if (off == (uint64_t)k_ulpt_off_mr2) {
-    /* HUM Ch 25.2.3 "ULPTMR2 : ULPT Mode Register 2" p 1194 */
+    /* HUM Ch 25.2.3 "ULPTMR2 : ULPT Mode Register 2" p 1192 */
     c->mr2 = (uint8_t)value;
   } else if (off == (uint64_t)k_ulpt_off_mr3) {
     /* HUM Ch 25.2.4 "ULPTMR3 : ULPT Mode Register 3" p 1195 */
     c->mr3 = (uint8_t)value;
   } else if (off == (uint64_t)k_ulpt_off_ioc) {
-    /* HUM Ch 25.2.5 "ULPTIOC : ULPT I/O Control Register" p 1196 */
+    /* HUM Ch 25.2.5 "ULPTIOC : ULPT I/O Control Register" p 1195 */
     c->ioc = (uint8_t)value;
   }
   (void)size;

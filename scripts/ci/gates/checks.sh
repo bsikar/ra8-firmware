@@ -1,6 +1,7 @@
-# shellcheck shell=bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/gates/checks.sh -- The first-party checker suites: check_*.py, annotations, docs, citations.
 #
@@ -12,7 +13,7 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: pre-commit-checks, annotations, doc-attachment, cite-check, hil-eil-parity
+# Gates in this file: pre-commit-checks, annotations, doc-attachment, tests-readme, disambig-readmes, init-order-freshness, cite-check, hil-eil-parity
 
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
@@ -105,6 +106,9 @@ _pcc_tree_structure() (
   # The EK-RA8D2 pinout is a board fact owned by libs/ra8_board_ek_ra8d2.
   # Forbid the (port << 8 | pin) idiom in examples so the USB-pin duplication
   # #251 fixed (identical pins copy-pasted across 29 apps) cannot come back.
+  # --selftest proves the detector fires AND that an in-source build under
+  # examples/<app>/build/ is excluded from the scope (#549) before a clean run.
+  python3 scripts/checks/check_example_board_pins.py --selftest
   python3 scripts/checks/check_example_board_pins.py
   # ra8_core is the foundation lib: it must depend on nothing above itself.
   python3 scripts/checks/check_core_layering.py
@@ -134,6 +138,16 @@ _pcc_tree_structure() (
   # firing cannot pass as clean.
   python3 scripts/checks/check_fleet_declaration.py --selftest
   python3 scripts/checks/check_fleet_declaration.py
+  # ra8-ci:latest, the image `make ci` boots, is a pure function of
+  # .devcontainer/ only while scripts/ci/devcontainer_image.sh is its SOLE
+  # builder (#521): a second `docker build -t ra8-ci` with the old
+  # reuse-forever logic silently defeats the context-digest staleness guard,
+  # exactly as the deleted inner-local.sh did (#528). This is the image's
+  # equivalent of ci-parity's ban on a second `run:` check body. --selftest
+  # FIRST, both directions plus a non-vacuity floor, so a reconstruction that
+  # stopped matching fails instead of reporting a clean, empty scan.
+  python3 scripts/checks/check_ci_image_single_builder.py --selftest
+  python3 scripts/checks/check_ci_image_single_builder.py
 )
 
 # How source is written: trailing newline, named constants, C23 attribute
@@ -142,7 +156,9 @@ _pcc_source_form() (
   set -e
   # Every first-party source file ends in a trailing newline. Complements
   # .clang-format InsertNewlineAtEOF (C/C++ only) by covering scripts and
-  # config-as-code.
+  # config-as-code. --selftest proves the detector fires and that the derived
+  # scope reaches the roots a hardcoded list had dropped (#549).
+  python3 scripts/checks/check_final_newline.py --selftest
   python3 scripts/checks/check_final_newline.py
   # No magic numbers. clang-tidy's readability-magic-numbers only sees files
   # in the host compile-db (no example main.c, no ARM-only #ifdef paths),
@@ -166,6 +182,9 @@ _pcc_source_form() (
   # a discarded ra8_cgc_init() right before a BLXNS (#191).
   python3 scripts/checks/check_tz_boundary_discard.py
   # Ban the numbered session-bookkeeping tags from comments and docs.
+  # --selftest proves the detector fires and that the derived scope reaches the
+  # roots a hardcoded list had dropped (#549).
+  python3 scripts/checks/check_no_wave_references.py --selftest
   python3 scripts/checks/check_no_wave_references.py
   # C23 typed enums (every enum names an explicit underlying type) and
   # pragma-once headers (no classic #ifndef include guards). Both were
@@ -173,14 +192,6 @@ _pcc_source_form() (
   # detector fires and stays silent for both rules before the tree is swept.
   python3 scripts/checks/check_c23_headers.py --selftest
   python3 scripts/checks/check_c23_headers.py --all
-  # Every shebang uses `#!/usr/bin/env <interp>`. A hardcoded interpreter path
-  # is a portability claim this tree cannot keep (NixOS, a Homebrew bash 5 on a
-  # Mac whose /bin/bash is the 3.2 without mapfile, busybox images), and the
-  # near-miss `# !/bin/bash` is not a shebang at all -- it reads as one and the
-  # kernel never sees it. Scope comes from git ls-files including untracked
-  # files, so a brand-new script is judged the moment it is written.
-  python3 scripts/checks/check_shebangs.py --selftest
-  python3 scripts/checks/check_shebangs.py
 )
 
 # Security invariants that a compiler cannot express: the NS->S entry surface,
@@ -307,7 +318,10 @@ _pcc_docs_and_tests() (
   # reporting the cleanest tree it has ever seen.
   python3 scripts/checks/audit_init_order.py --selftest
   python3 scripts/checks/audit_init_order.py
-  # OSHWA inclusive-terminology gate over first-party sources.
+  # OSHWA inclusive-terminology gate over first-party sources. --selftest
+  # proves the detector fires on a legacy symbol, spares vendored/HW names, and
+  # that the derived scope reaches the roots a hardcoded list had dropped (#549).
+  python3 scripts/checks/check_inclusive_terminology.py --selftest
   python3 scripts/checks/check_inclusive_terminology.py
   # MAXIMUM-documentation gate: every function -- including statics -- carries
   # the full Doxygen tag set.
@@ -352,6 +366,60 @@ gate_pre_commit_checks() (
   _pcc_security_invariants
   _pcc_mcdc_discipline
   _pcc_docs_and_tests
+)
+
+# --- shebangs -------------------------------------------------------------
+# Every first-party shell script starts with `#!/usr/bin/env <interp>`, and
+# every shebang the tree carries uses that form. A hardcoded interpreter path
+# is a portability claim this tree cannot keep (NixOS, a Homebrew bash 5 on a
+# Mac whose /bin/bash is the 3.2 without mapfile, busybox images); a MISSING
+# shebang on a script -- the gate bodies and libs this file sits among used to
+# be exactly that -- leaves the interpreter to whoever execs it; and the
+# near-miss `# !/bin/bash` is not a shebang at all, it reads as one and the
+# kernel never sees it. Scope comes from git ls-files including untracked
+# files, so a brand-new script is judged the moment it is written. --selftest
+# FIRST, both directions, so a rule that stopped matching cannot pass as clean.
+gate_shebangs() (
+  set -e
+  python3 scripts/checks/check_shebangs.py --selftest
+  python3 scripts/checks/check_shebangs.py
+)
+
+# --- init-order-freshness -------------------------------------------------
+# docs/INIT_ORDER_AUDIT.md is COMMITTED yet GENERATED (mk/docs.mk writes it via
+# audit_init_order.py --report). Nothing regenerated it and byte-compared the
+# committed copy, so it silently drifted -- it claimed 11 apps while the tree
+# held 217, for as long as the discovery glob was depth-capped (#190/#537). It
+# is cited from docs/qualification/, so a stale copy misrepresents the boot
+# order to the qualification set. This gate regenerates it from the current
+# tree and FAILS if the committed copy differs. The generator is hardware-free
+# and reads a sorted glob (byte-stable across runs), so unlike the slow
+# artefact-freshness gate this one needs no build output. --selftest FIRST,
+# both directions, so a comparator that stopped detecting drift cannot pass as
+# a clean tree.
+gate_init_order_freshness() (
+  set -e
+  require_cmd python3 "the init-order-freshness gate regenerates docs/INIT_ORDER_AUDIT.md"
+  python3 scripts/checks/check_init_order_freshness.py --selftest
+  python3 scripts/checks/check_init_order_freshness.py
+)
+
+# --- roadmap-dashboard-freshness ------------------------------------------
+# docs/ROADMAP_DASHBOARD.md is COMMITTED yet GENERATED (mk/docs.mk writes it via
+# scripts/report/roadmap_dashboard.py), rendered purely from docs/ROADMAP.md.
+# Nothing regenerated it and byte-compared the committed copy, so it could
+# silently drift out of step with ROADMAP.md the same way INIT_ORDER_AUDIT.md
+# did (#537). This gate regenerates it from the current tree and FAILS if the
+# committed copy differs. The generator reads one committed markdown file and is
+# hardware-free (byte-stable across runs), so unlike the slow artefact-freshness
+# gate this one needs no build output and sits in the fast group beside
+# init-order-freshness. --selftest FIRST, both directions, so a comparator that
+# stopped detecting drift cannot pass as a clean tree.
+gate_roadmap_dashboard_freshness() (
+  set -e
+  require_cmd python3 "the roadmap-dashboard-freshness gate regenerates docs/ROADMAP_DASHBOARD.md"
+  python3 scripts/checks/check_roadmap_dashboard_freshness.py --selftest
+  python3 scripts/checks/check_roadmap_dashboard_freshness.py
 )
 
 # --- bench-lock -----------------------------------------------------------
@@ -404,6 +472,46 @@ gate_doc_attachment() (
   # declarations, documented //#define options) must not.
   python3 scripts/checks/check_doc_attachment.py --selftest
   python3 scripts/checks/check_doc_attachment.py --check
+)
+
+# --- tests-readme ---------------------------------------------------------
+# tests/README.md says what each subdirectory of tests/ is for. Prose like that
+# rots the instant someone adds tests/newthing/ and does not describe it, or
+# removes a subdirectory and leaves the paragraph behind -- and nothing notices.
+# This gate makes both impossible: an undocumented subdirectory fails it, and so
+# does a README row naming a subdirectory that no longer exists.
+#
+# --selftest FIRST, both directions plus the floor: it builds throwaway tests/
+# trees and asserts an undocumented subdir fires, a stale entry fires, an
+# in-sync tree stays quiet, and a collapsed scan is caught -- so a comparator
+# that stopped detecting drift cannot pass as a clean tree.
+gate_tests_readme() (
+  set -e
+  require_cmd python3 "the tests-readme gate reads tests/README.md against the tree"
+  python3 scripts/checks/check_tests_readme.py --selftest
+  python3 scripts/checks/check_tests_readme.py
+)
+
+# --- disambig-readmes -----------------------------------------------------
+# Several pairs of things here can be picked wrongly -- two filesystems, two
+# firmware-update mechanisms, a facade and the driver under it -- and each pair
+# carries one small README saying which to use. That prose rots the same way the
+# tests/ README did: the library gets renamed, the cited symbol disappears, the
+# "two apps use this" count quietly becomes eleven, and nothing notices.
+#
+# So each of those READMEs states its load-bearing claims in a machine-readable
+# block and this gate re-derives every one from the tree. Registration is the
+# block itself -- a second list of anti-drift READMEs would be the very drift the
+# gate exists to stop.
+#
+# --selftest FIRST, both directions plus the floor: a broken path, a vanished
+# symbol, a stale count and a misfiled owner each fire, an in-sync tree stays
+# quiet, and a scan that finds nothing is reported as vacuous rather than clean.
+gate_disambig_readmes() (
+  set -e
+  require_cmd python3 "the disambig-readmes gate re-derives README claims from the tree"
+  python3 scripts/checks/check_disambig_readmes.py --selftest
+  python3 scripts/checks/check_disambig_readmes.py
 )
 
 # --- cite-check -----------------------------------------------------------

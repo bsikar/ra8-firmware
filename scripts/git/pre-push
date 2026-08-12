@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # pre-push hook for ra8-firmware
 #
 # Scans every commit message in the push range for AI attribution

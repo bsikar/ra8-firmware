@@ -49,10 +49,11 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_bd_pattern_stride = 5U, /**< Stride of the first backend's generator, `i * 5 + 1`. */
   k_bd_pattern_xor =
-    0x5AU, /**< XOR mask of the second backend's generator, so two backends holding the same index differ. */
+    0x5AU, /**< XOR mask of the second backend's generator, so same-index backends differ. */
   k_bd_pattern_offset =
-    9U, /**< Offset of the windowed backend's generator, proving the window maps to a shifted range. */
-  k_byte_mask = 0xFFU, /**< Low-byte mask used to split the connection handle little-endian. */
+    9U, /**< Offset of the windowed backend's generator, proving a shifted-range window mapping. */
+  /** Low-byte mask used to split the connection handle little-endian. */
+  k_byte_mask = 0xFFU,
 } io_blockdev_backends_fixture_t;
 
 /**

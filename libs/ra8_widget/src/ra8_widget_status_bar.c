@@ -10,12 +10,12 @@
  * ::ra8_widget_priv_text_pos helper (left / right alignment, vertical centring
  * when the backend can measure). Display-only: the vtable leaves `on_input` NULL.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

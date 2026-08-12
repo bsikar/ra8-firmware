@@ -50,8 +50,9 @@
  */
 typedef enum : uint8_t {
   k_epub_filler_stride =
-    31U, /**< Stride of the filler generator; prime, so the filler does not repeat inside a deflate window. */
-  k_epub_entry_bytes = 100U, /**< Declared size of the streamed entry. */
+    31U, /**< Stride of the filler; prime, so it does not repeat inside a deflate window. */
+  /** Declared size of the streamed entry. */
+  k_epub_entry_bytes = 100U,
 } epub_streaming_fixture_t;
 
 /* ---------------------------------------------------------------------------

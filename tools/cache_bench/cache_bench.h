@@ -13,11 +13,11 @@
  * ::cache_policy_t exactly as the eventual firmware Layer 2 will (NASA Rule 9
  * allows the function-pointer vtable for this DIP seam).
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 7 / Tooling] {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 #pragma once
@@ -91,12 +91,29 @@ typedef struct {
 /**
  * @brief Replay an access trace through one policy at a fixed capacity.
  *
+ * @details Drives @p keys through an exact resident-set hash while delegating
+ *          only eviction ordering to @p pol: hits update recency/frequency via
+ *          the policy callbacks, misses evict the policy's victim and load the
+ *          new key into that frame. Fills @p out with hit/miss and worst-case
+ *          scan accounting for one (policy, trace, capacity) sweep point.
+ *
  * @param[in]  pol      Policy to exercise.
  * @param[in]  keys     Access stream (object,page) pairs.
  * @param[in]  n        Number of accesses in @p keys.
  * @param[in]  capacity Frame count (the swept RAM budget).
  * @param[out] out      Receives the metrics for this run.
- * @return 0 on success, non-zero on allocation failure.
+ *
+ * @return int 0 on success, non-zero on allocation or argument failure.
+ * @retval 0 The replay completed and @p out holds the metrics.
+ * @retval 1 A NULL/zero argument, a policy `init`, or a buffer allocation failed.
+ *
+ * @pre @p pol has `pick_victim` bound and @p keys covers @p n accesses.
+ * @pre @p out is non-NULL and writable.
+ * @post On success, `out->accesses == n` and `out->hits <= out->accesses`.
+ * @post On any return, every buffer this call allocated has been freed.
+ *
+ * @note Not thread-safe: allocates and runs a policy. Call single-threaded.
+ * @since 0.1.0
  */
 int cb_replay(const cache_policy_t* pol,
               const cb_key_t*       keys,

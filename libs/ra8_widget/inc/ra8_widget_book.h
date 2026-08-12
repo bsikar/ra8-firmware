@@ -14,12 +14,12 @@
  * `on_input` maps a touch to the card it lands on, records it in `selected`, and
  * fires the optional `on_open` callback.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
@@ -93,7 +93,8 @@ typedef struct ra8_widget_book {
 typedef struct ra8_widget_book_grid {
   const ra8_widget_paint_t* paint; /**< Draw backend (NULL -> draws nothing). */
   const ra8_widget_book_t*  books; /**< Array of `count` book records.        */
-  void (*on_open)(struct ra8_widget* w, uint16_t index); /**< Tap callback (opt/NULL). */
+  /** Tap callback (opt/NULL). */
+  void (*on_open)(struct ra8_widget* w, uint16_t index);
   uint32_t bg;        /**< Grid background colour, 0xRRGGBB.     */
   uint32_t title_fg;  /**< Title text colour, 0xRRGGBB.          */
   uint32_t author_fg; /**< Author text colour, 0xRRGGBB.         */

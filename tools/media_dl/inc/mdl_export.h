@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_export.h
  * @brief Package a downloaded chapter folder into a reader-openable container.
@@ -19,6 +15,8 @@
  * `cbr` requires the proprietary `rar` tool on PATH (a clear error is printed
  * when it is absent). JOF/RABOOK (added separately) reuse the firmware's own
  * producers compiled host-side.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

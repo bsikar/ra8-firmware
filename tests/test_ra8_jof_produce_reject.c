@@ -101,8 +101,8 @@ typedef enum : uint16_t {
   k_t_starved_store_cap = 64U,   /**< Memstore cap too small for the atlas, forcing
                                       the sink's no-memory path.                */
   k_t_codec_invalid     = 9U,    /**< Codec id outside the enum; the config guard must reject it. */
-  k_t_hostile_sniff_len = 34U,   /**< Length of the not-a-PNG/JPEG blob fed to the sniffer.   */
-  k_t_hostile_lead_byte = 0xFFU, /**< Its leading byte: starts like a JPEG marker, then junk. */
+  k_t_hostile_sniff_len = 34U,   /**< Length of the not-a-PNG/JPEG blob fed to the sniffer.       */
+  k_t_hostile_lead_byte = 0xFFU, /**< Its leading byte: starts like a JPEG marker, then junk.     */
   k_t_plte_bad_len      = 14U,   /**< PLTE length not divisible by 3, tripping the
                                       indivisible-length guard.                 */
   k_t_kib               = 1024U, /**< Bytes per KiB, for sizing the producer work arena. */

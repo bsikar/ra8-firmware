@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_devcfg -- per-device (per-unit) configuration record.
 #
@@ -19,8 +21,6 @@
 # Picked up automatically by tests/CMakeLists.txt globbing; apps pull it in
 # with ra8_add_app(... LIBS ra8_devcfg).
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

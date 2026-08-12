@@ -1,10 +1,8 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_library.c
  * @brief Enumerate tracked series and delete a series tree (host dirent/nftw).
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_library.h"
 

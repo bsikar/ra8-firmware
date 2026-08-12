@@ -1,11 +1,9 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_search.c
  * @brief Pure search/discovery policy: percent-encoding, URL templating, and
  *        the zero-vs-broken result classifier.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_search.h"
 

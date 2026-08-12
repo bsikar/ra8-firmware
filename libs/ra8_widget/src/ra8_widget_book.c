@@ -12,12 +12,12 @@
  * the whole grid is host-testable with a recording mock paint. The card progress
  * bar reuses the shared ::ra8_widget_priv_fill_frac helper.
  *
- * @copyright Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
  *
  * [Ring 5 / UI]
  * {World: NS}
  *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 

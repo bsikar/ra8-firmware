@@ -118,16 +118,17 @@ shipped in this tree; the long-term option to write one in
 
 Pre-existing software is catalogued in [`../SOUP/`](../SOUP/) per
 IEC 61508-3 Clause 7.4.2.12 and DO-178C Section 12.1.4. The current
-register holds 12 components (ThreadX, NetX Duo, FileX, USBX,
+register holds 11 components (ThreadX, NetX Duo, USBX,
 LevelX, Mbed TLS, TF-PSA-Crypto, Apache NimBLE, litehtml,
 miniz, stb, TinyXML-2). Each entry carries a written qualification
 basis and a 12-month re-review cadence.
 
-Vendor binary blobs that **cannot** be source-audited (RSIP-E50D
-firmware image, Renesas BLE controller patch image) are vendored under
-[`../../libs/third_party/fsp_blobs/`](../../libs/third_party/fsp_blobs/)
-and tracked under SOUP per `docs/SOUP/`; they remain runtime
-dependencies for any app that exercises the corresponding peripheral.
+No vendor binary blob is shipped in this tree. The RSIP-E50D protected
+firmware -- the one blob a hardware-backed key-wrap path would need --
+is obtainable from public FSP under BSD-3-Clause but is not vendored
+here; see [`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md) for what degrades
+without it. The RA8D2 carries no BLE radio, so no controller patch
+image is a dependency of anything.
 
 ---
 
@@ -322,22 +323,25 @@ maximum from each entry's "Last review" stamp.
 
 ### 7.2 Vendor blobs and open blockers
 
-Two binary blobs cannot ship in a certified build without a vendor
-agreement; both are documented in
-[`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md):
+One vendor-controlled component is missing from a certified build, and
+it is documented in [`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md):
 
-- **RSIP-E50D firmware blob** -- required for production-grade key
+- **RSIP-E50D firmware** -- required for production-grade key
   install / wrap. Today's mitigation is a host-only emulator
   (`RA8_RSIP_SOFTWARE_BACKEND`) that is **not** hardware-equivalent
   and cannot ship in a certified build. See also the
   `threadx_https_client` root-cause section in
-  [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md).
-- **Renesas BLE controller patch image** -- required for end-to-end
-  BLE bring-up. Without it, all five BLE example apps panic at
-  radio init (see [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md)
-  "BLE apps").
+  [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md). Note this is a
+  *vendoring* gap, not a licensing one: the sources are public FSP
+  under BSD-3-Clause.
 
-Both items must be either acquired under licence or scoped out of a
+A second item, a "Renesas BLE controller patch image", was carried here
+until 2026-08 and was never real: commit `6f6209a95` established that
+the RA8D2 has no on-chip BLE radio, so no patch image exists to acquire
+and the five BLE example apps were driving a phantom controller. BLE
+now runs on the ESP32-C6 companion across the HCI transport seam.
+
+The RSIP item must be either vendored properly or scoped out of a
 specific certification campaign before that campaign closes. The
 decision is currently deferred and is recorded as a known blocker
 in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md)

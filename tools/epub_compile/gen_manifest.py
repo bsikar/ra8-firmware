@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Generate libs/ra8_book/inc/ra8_book_library.h from compiled .rabook blobs.
 
 Scans a directory of .rabook files, reads each one's title/author/language and

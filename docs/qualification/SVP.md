@@ -342,8 +342,8 @@ matching the DO-178C 12.1.4 division.
 
 Verification at the SOUP integration boundary is the responsibility
 of the in-tree wrapper layer (e.g. `libs/ra8_tls/` for Mbed TLS,
-`libs/ra8_fs/` for FileX) and is gated by the host unit tests for that
-wrapper.
+`libs/ra8_cache_store/` for LevelX) and is gated by the host unit tests
+for that wrapper.
 
 ---
 

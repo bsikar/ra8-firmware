@@ -1,6 +1,7 @@
-# shellcheck shell=bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/gates/emu.sh -- ra8_emulator: boot smoke, the io-fabric demos, and EIL/HIL parity runs.
 #

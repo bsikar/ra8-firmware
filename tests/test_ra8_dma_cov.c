@@ -38,11 +38,11 @@
  */
 typedef enum : uint8_t {
   k_dma_ch_unset =
-    0xFFU, /**< Poison channel id written before an allocate call, so a failed allocate that left the out-parameter alone is detectable. */
+    0xFFU, /**< Poison channel id before an allocate; a failed call that skips it is detectable. */
   k_dma_alloc_attempts_after_one =
-    254U, /**< The same, one fewer, for the case that holds a channel back before exhausting the rest. */
+    254U, /**< The same, one fewer: the case holding a channel back before exhausting the rest. */
   k_dma_alloc_attempts =
-    255U, /**< Allocate attempts: more than the driver has channels, so the loop runs it out and exercises the exhausted arm. */
+    255U, /**< Allocate attempts: more than available channels, exhausting the loop's empty arm. */
 } dma_cov_fixture_t;
 
 /* -------------------------------------------------------------------------

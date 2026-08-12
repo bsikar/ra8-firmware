@@ -24,7 +24,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 #include <stdint.h>
@@ -68,8 +67,33 @@ typedef struct {
 
 static mem_disk_t s_disk;
 
-/** @brief ra8_fs_backend_t::read_block over the flat sector store. */
-static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+/**
+ * @brief ra8_fs_backend_t::read_block over the flat sector store.
+ *
+ * @details
+ * Copies @p count contiguous 512-byte sectors starting at @p lba out of the
+ * ::mem_disk_t byte store. ra8_fs reads through this facade while mounting and
+ * reading the image, so the host tool and the firmware agree on the on-card
+ * layout byte for byte.
+ *
+ * @param[in]  ctx   The ::mem_disk_t backing store, type-erased as ra8_fs wants.
+ * @param[in]  lba   First logical block address to read.
+ * @param[in]  count Number of 512-byte blocks to read.
+ * @param[out] buf   Destination for @p count * 512 bytes.
+ *
+ * @return Block-device status.
+ * @retval k_ra8_ok               The sectors were copied out.
+ * @retval k_ra8_err_out_of_range @p lba + @p count runs past the disk.
+ *
+ * @pre @p ctx points at an initialised ::mem_disk_t whose bytes are allocated.
+ * @pre @p buf has room for @p count * 512 bytes.
+ * @post On success @p buf holds the requested sectors.
+ * @post The backing store is left unmodified.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
+ */
+static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -81,8 +105,32 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-/** @brief ra8_fs_backend_t::write_block over the flat sector store. */
-static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+/**
+ * @brief ra8_fs_backend_t::write_block over the flat sector store.
+ *
+ * @details
+ * Copies @p count contiguous 512-byte sectors from @p buf into the
+ * ::mem_disk_t byte store at @p lba. ra8_fs writes the font and directory
+ * entries through this facade; the whole image is dumped verbatim afterwards.
+ *
+ * @param[in]  ctx   The ::mem_disk_t backing store, type-erased as ra8_fs wants.
+ * @param[in]  lba   First logical block address to write.
+ * @param[in]  count Number of 512-byte blocks to write.
+ * @param[in]  buf   Source of @p count * 512 bytes to store.
+ *
+ * @return Block-device status.
+ * @retval k_ra8_ok               The sectors were stored.
+ * @retval k_ra8_err_out_of_range @p lba + @p count runs past the disk.
+ *
+ * @pre @p ctx points at an initialised ::mem_disk_t whose bytes are allocated.
+ * @pre @p buf holds at least @p count * 512 readable bytes.
+ * @post On success the addressed sectors equal @p buf.
+ * @post Out-of-range writes change nothing.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
+ */
+static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -94,8 +142,30 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-/** @brief ra8_fs_backend_t::get_capacity for the modelled disk. */
-static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
+/**
+ * @brief ra8_fs_backend_t::get_capacity for the modelled disk.
+ *
+ * @details
+ * Reports the geometry ra8_fs needs: the number of 512-byte blocks in the
+ * ::mem_disk_t store (::k_blocks_fat16) and the fixed sector size
+ * (::k_block_size).
+ *
+ * @param[in]  ctx         The ::mem_disk_t backing store, type-erased.
+ * @param[out] block_count Receives the number of 512-byte blocks.
+ * @param[out] block_size  Receives the sector size in bytes.
+ *
+ * @return Block-device status.
+ * @retval k_ra8_ok Geometry was reported (this shim cannot fail).
+ *
+ * @pre @p ctx points at an initialised ::mem_disk_t.
+ * @pre @p block_count and @p block_size are non-NULL.
+ * @post Both out-parameters are populated.
+ * @post The backing store is left unmodified.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
+ */
+static ra8_err_t mem_cap(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -103,14 +173,52 @@ static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
   return k_ra8_ok;
 }
 
-/** @brief Write a little-endian uint16 into the BPB. */
+/**
+ * @brief Write a little-endian uint16 into the BPB at a byte offset.
+ *
+ * @details
+ * Stores @p v as two bytes, low byte first, at @p p[@p off]. FAT BPB fields are
+ * little-endian regardless of host endianness, so the bytes are assembled by
+ * hand rather than through a struct overlay.
+ *
+ * @param[out] p   Base of the image buffer being built.
+ * @param[in]  off Byte offset of the field within @p p.
+ * @param[in]  v   The 16-bit value to store little-endian.
+ *
+ * @pre @p p is non-NULL with at least @p off + 2 bytes.
+ * @pre @p off is a valid BPB field offset.
+ * @post @p p[@p off] and @p p[@p off + 1] hold @p v low byte first.
+ * @post No other bytes of @p p are touched.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
+ */
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]      = (uint8_t)(v & (uint16_t)k_byte_lo_mask);
   p[off + 1U] = (uint8_t)((v >> (uint16_t)k_byte_shift) & (uint16_t)k_byte_lo_mask);
 }
 
-/** @brief Lay down a minimal FAT16 BPB on the zeroed image. */
+/**
+ * @brief Lay down a minimal FAT16 BPB on the zeroed image.
+ *
+ * @details
+ * Writes just the BPB fields ra8_fs needs to recognise and mount the volume --
+ * bytes-per-sector, sectors-per-cluster, reserved count, FAT count, root-entry
+ * count, total sectors and FAT size -- plus the 0x55AA boot signature. Mirrors
+ * the in-test image builder in tests/test_ra8_sdmmc_card_reflow.c so the two
+ * stay in lock-step. The buffer must already be zeroed by the caller.
+ *
+ * @param[in,out] b Image buffer, pre-zeroed; the boot sector is filled in place.
+ *
+ * @pre @p b is non-NULL with at least one 512-byte sector.
+ * @pre @p b is zero-initialised before the call.
+ * @post @p b carries a mountable FAT16 BPB and boot signature.
+ * @post Only BPB fields and the signature bytes are set; the rest stays zero.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
+ */
 static void build_fat16(uint8_t* b)
 {
   put16(b, (uint32_t)k_bpb_off_bytspersec, (uint16_t)k_block_size);
@@ -138,6 +246,8 @@ static void build_fat16(uint8_t* b)
  * @param[in]     dest_name 8.3 name to create on the card.
  *
  * @return 0 on success, 1 on any ra8_fs failure (diagnosed on stderr).
+ * @retval 0 The font was written and closed, or @p font was NULL (blank card).
+ * @retval 1 ra8_fs_open or ra8_fs_write failed (reported on stderr).
  *
  * @pre @p mnt is a successfully mounted volume.
  * @pre @p dest_name is a valid 8.3 name when @p font is non-NULL.
@@ -145,6 +255,7 @@ static void build_fat16(uint8_t* b)
  * @post On failure the caller still owns the image buffer and must free it.
  *
  * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
  */
 static int
 write_font_file(ra8_fs_mount_t* mnt, const uint8_t* font, size_t font_len, const char* dest_name)
@@ -168,9 +279,16 @@ write_font_file(ra8_fs_mount_t* mnt, const uint8_t* font, size_t font_len, const
 /**
  * @brief Write the whole in-memory card image out to @p image_out.
  *
+ * @details
+ * Streams all ::k_blocks_fat16 * ::k_block_size bytes of ::s_disk to
+ * @p image_out with no MBR and no padding, producing the raw FAT16 image the
+ * emulator attaches with @c --sd. A short write is treated as failure.
+ *
  * @param[in] image_out Output path for the raw FAT image.
  *
  * @return 0 on success, 1 if the file cannot be opened or the write is short.
+ * @retval 0 The image bytes were fully written.
+ * @retval 1 The output could not be opened, or fewer bytes than expected wrote.
  *
  * @pre `s_disk.bytes` holds a fully built image.
  * @pre @p image_out is non-NULL.
@@ -178,6 +296,7 @@ write_font_file(ra8_fs_mount_t* mnt, const uint8_t* font, size_t font_len, const
  * @post The output stream is closed on every path.
  *
  * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
  */
 static int dump_image(const char* image_out)
 {
@@ -199,11 +318,29 @@ static int dump_image(const char* image_out)
 /**
  * @brief Format a 4 MiB FAT16 image, optionally write a font, dump to disk.
  *
+ * @details
+ * Allocates the zeroed sector store, lays the BPB (::build_fat16), mounts it
+ * through the memory-backed ra8_fs backend, writes @p font as @p dest_name when
+ * one is supplied (::write_font_file), unmounts, and dumps the buffer to
+ * @p image_out (::dump_image). The disk buffer is freed on every path. A NULL
+ * @p font produces a formatted-but-empty card.
+ *
  * @param[in] image_out Output path for the raw FAT image.
  * @param[in] font      Font bytes to write, or NULL for a blank card.
  * @param[in] font_len  Length of @p font (ignored when @p font is NULL).
  * @param[in] dest_name 8.3 name on the card (ignored when @p font is NULL).
+ *
  * @return 0 on success, 1 on any allocation / ra8_fs / I/O failure.
+ * @retval 0 The image was formatted, populated and written.
+ * @retval 1 Allocation, mount, font write, or dump failed (reported on stderr).
+ *
+ * @pre @p image_out is a writable path.
+ * @pre @p font_len describes @p font when @p font is non-NULL.
+ * @post The disk buffer is allocated and freed within this call.
+ * @post On success @p image_out holds the raw FAT16 image.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
  */
 static int
 build_and_dump(const char* image_out, const uint8_t* font, size_t font_len, const char* dest_name)
@@ -287,6 +424,11 @@ static uint8_t* slurp_font(const char* font_in, size_t* font_len)
 /**
  * @brief Blank-card mode: format an empty FAT16 image with no font.
  *
+ * @details
+ * The "random card" case: writes a formatted-but-empty FAT16 image so the
+ * firmware app can exercise ::ra8_sdfont_load's self-provisioning path against
+ * a card that carries no font. Delegates to ::build_and_dump with a NULL font.
+ *
  * @param[in] argc Argument count, as handed to `main()`.
  * @param[in] argv Argument vector, with `argv[1]` already known to be --blank.
  * @return Process exit status.
@@ -300,6 +442,7 @@ static uint8_t* slurp_font(const char* font_in, size_t* font_len)
  * @post Nothing is allocated on return.
  *
  * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
  */
 static int run_blank(int argc, char** argv)
 {
@@ -317,6 +460,11 @@ static int run_blank(int argc, char** argv)
 /**
  * @brief Font mode: slurp a font and write it onto a fresh FAT16 image.
  *
+ * @details
+ * Reads the source font (::slurp_font), then formats a fresh FAT16 image and
+ * writes the font onto it (::build_and_dump) under @p argv[3] or the default
+ * @c FONT.OTF. The font buffer is freed on every return path.
+ *
  * @param[in] argc Argument count, as handed to `main()`.
  * @param[in] argv Argument vector: font-in, image-out, optional dest-name.
  * @return Process exit status.
@@ -330,6 +478,7 @@ static int run_blank(int argc, char** argv)
  * @post On success the output path holds a FAT16 image carrying the font.
  *
  * @note Not thread-safe; the tool is single-threaded.
+ * @since 0.1.0
  */
 static int run_font(int argc, char** argv)
 {

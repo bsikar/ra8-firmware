@@ -1,10 +1,8 @@
-/*
- * Copyright (c) 2026 Brighton Sikarskie
- * SPDX-License-Identifier: MIT
- */
 /**
  * @file mdl_sanitize.c
  * @brief Implementation of the untrusted-name sanitisers.
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_sanitize.h"
 
@@ -84,8 +82,8 @@ RA8_INTERNAL static bool copy_sanitised(const char* raw, char* out, size_t cap, 
 {
   bool   clean = true;
   size_t n     = 0U;
-  size_t i     = 0U;
   if (raw != nullptr) {
+    size_t i = 0U;
     while ((raw[i] != '\0') && ((n + 1U) < cap)) {
       if (is_allowed_char(raw[i])) {
         out[n] = raw[i];

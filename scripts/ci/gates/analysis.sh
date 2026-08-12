@@ -1,6 +1,7 @@
-# shellcheck shell=bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
+# shellcheck shell=bash
 #
 # scripts/ci/gates/analysis.sh -- Static analysis and link-time structure: cppcheck, MISRA, clang-tidy, CMSE.
 #
@@ -42,13 +43,61 @@ gate_cppcheck() (
     case "$line" in \#*) continue ;; esac
     suppress_args+=("--suppress=$line")
   done <.cppcheck-suppressions
+  # The annotation macros must be RESOLVABLE, or this scan stops parsing.
+  # RA8_OWNS_RESOURCE(kind) / RA8_DI_SLOT(role) are FUNCTION-LIKE macros
+  # written at file scope; this invocation passes no header search path, so
+  # `#include "ra8_attributes.h"` never resolves and cppcheck cannot tell them
+  # from a call -- it abandons the translation unit with unknownMacro. The
+  # object-like spellings (RA8_INTERNAL, RA8_PRIV) had always parsed anyway,
+  # which is why the gap survived until libs/ra8_fs became the first in-scope
+  # library to use the function-like forms and took seven TUs red at once.
+  #
+  # Force-include the ONE header that defines them rather than restating
+  # -DRA8_OWNS_RESOURCE(x)= here: a hand-list of names drifts silently the next
+  # time an annotation is added, and ra8_attributes.h already carries a
+  # `!defined(__CPPCHECK__)` arm so every macro collapses to nothing under this
+  # scan. A full -I search path is deliberately NOT the fix: it lets cppcheck
+  # see through every project header at once and surfaces a large batch of
+  # previously-unanalysed findings, which is a scope change rather than a
+  # green-up. The MISRA half never fired because misra_check_inner.sh derives
+  # real -I roots from the repo layout and resolves the include for real.
+  local attrs_header=libs/ra8_core/inc/ra8_attributes.h
+  if [[ ! -f "$attrs_header" ]]; then
+    echo "cppcheck: $attrs_header not found -- the RA8_* annotation macros" >&2
+    echo "  would go unresolved and every TU using a function-like one would" >&2
+    echo "  fail with unknownMacro. Update this path if the header moved." >&2
+    return 1
+  fi
+  # tools/ is held to the same bar as the firmware (CLAUDE.md), so it is IN
+  # scope here -- not just tools/ra8_emulator, and not behind the
+  # --error-exitcode=0 escape where a finding cannot fail anything (#596). The
+  # host tools are the only first-party code that opens files and calls malloc,
+  # so they are the only code that trips a cppcheck 2.13 blind spot: it does
+  # not model the C23 `nullptr` keyword as a null constant and reports a
+  # false-positive resourceLeak/memleak on every resource guarded by an
+  # `if (p == nullptr)` return. cppcheck_c23_compat.h maps the keyword to the
+  # classic null constant for the analyser only, force-included exactly as the
+  # annotation header is: a command-line `-Dnullptr=NULL` would disable the
+  # configuration exploration that the ra8p1 examples rely on, and a guarded
+  # `#ifdef __CPPCHECK__` would be explored both ways and re-surface the false
+  # positives. See that header for the full rationale.
+  local compat_header=scripts/checks/cppcheck_c23_compat.h
+  if [[ ! -f "$compat_header" ]]; then
+    echo "cppcheck: $compat_header not found -- the C23 nullptr keyword would" >&2
+    echo "  read as a non-null symbol and every nullptr-guarded fopen/malloc" >&2
+    echo "  in tools/ would fail with a false-positive resourceLeak. Update" >&2
+    echo "  this path if the shim moved." >&2
+    return 1
+  fi
   cppcheck --enable=warning,style,performance,portability \
     --error-exitcode=1 \
     "${suppress_args[@]}" \
     --inline-suppr \
+    --include="$attrs_header" \
+    --include="$compat_header" \
     -i libs/third_party \
     --std=c23 \
-    src libs "${apps[@]}"
+    src libs tools "${apps[@]}"
 )
 
 # --- scan-build -----------------------------------------------------------

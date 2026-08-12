@@ -29,7 +29,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 #pragma once
@@ -59,7 +58,7 @@ typedef enum : uint32_t {
   k_wc_blocks_exfat  = 131072U,     /**< 64 MiB exFAT volume in sectors.        */
   k_wc_entry_bytes   = 32U,         /**< Directory entry size in bytes.         */
   k_wc_per_cluster   = 128U,        /**< Directory entries per 4 KiB cluster.   */
-  k_wc_entry_inuse   = 0x85U,       /**< exFAT File entry type (in-use, bit 7). */
+  k_wc_entry_inuse   = 0xC1U,       /**< exFAT Name entry type (in-use, bit 7). */
   k_wc_entry_eod     = 0x00U,       /**< exFAT end-of-directory type.           */
   k_wc_fat_eoc       = 0xFFFFFFFFU, /**< exFAT end-of-chain FAT value.          */
   k_wc_patch_start   = 3U,          /**< First root entry to mark in-use.       */
@@ -167,7 +166,7 @@ static int32_t s_wr_remaining = (int32_t)k_wc_wr_never;
  *
  * @since 0.1.0
  */
-static inline ra8_err_t wc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static inline ra8_err_t wc_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   if (s_rd_remaining == 0) {
     return k_ra8_err_out_of_range;
@@ -202,7 +201,7 @@ static inline ra8_err_t wc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t
  *
  * @since 0.1.0
  */
-static inline ra8_err_t wc_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static inline ra8_err_t wc_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   if (s_wr_remaining == 0) {
     return k_ra8_err_out_of_range;
@@ -235,7 +234,7 @@ static inline ra8_err_t wc_write(void* ctx, uint32_t lba, uint32_t count, const 
  *
  * @since 0.1.0
  */
-static inline ra8_err_t wc_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static inline ra8_err_t wc_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const wc_disk_t* d = (const wc_disk_t*)ctx;
   *block_count       = d->block_count;
@@ -306,6 +305,13 @@ static inline void build_exfat_volume(void)
 /**
  * @brief Byte offset in `s_disk.bytes` for root-dir entry @p idx.
  *
+ * @details Every LBA cached in `ra8_fs_mount_t` is PARTITION-relative -- the
+ *          driver adds `partition_base_lba` inside `priv_read_sector()`. The
+ *          formatter lays the volume down inside an MBR partition rather than
+ *          at LBA 0, so a test poking `s_disk.bytes` directly must add that
+ *          base itself or it lands in the pre-partition gap and corrupts
+ *          nothing.
+ *
  * @param[in] h   Mounted exFAT volume.
  * @param[in] idx Entry index within the root cluster (0-based).
  *
@@ -318,12 +324,15 @@ static inline void build_exfat_volume(void)
  */
 static inline uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
 {
-  const uint32_t root_lba = h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
+  const uint32_t root_lba = h->partition_base_lba + h->first_data_lba +
+                            ((uint64_t)(h->root_cluster - 2U) * h->sectors_per_cluster);
   return (root_lba * (uint32_t)k_wc_block_size) + (idx * (uint32_t)k_wc_entry_bytes);
 }
 
 /**
  * @brief Byte offset in `s_disk.bytes` for the FAT entry of cluster @p clus.
+ *
+ * @details Partition-adjusted for the same reason as root_entry_off().
  *
  * @param[in] h    Mounted exFAT volume.
  * @param[in] clus Cluster number.
@@ -337,7 +346,8 @@ static inline uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
  */
 static inline uint32_t fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
-  return (h->first_fat_lba * (uint32_t)k_wc_block_size) + (clus * 4U);
+  return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_wc_block_size) +
+         ((uint64_t)clus * 4U);
 }
 
 /**
@@ -381,6 +391,10 @@ static inline void disk_set_u32le(uint32_t off, uint32_t val)
  */
 static inline void patch_root_full(const ra8_fs_mount_t* h, uint32_t start)
 {
+  /* A NAME entry (0xC1), not a File entry: bit 7 is set either way, so every
+   * slot reads as occupied to `priv_exfat_find_dir_space`, but the name lookup
+   * skips it instead of trying to parse 125 orphan File sets whose secondary
+   * counts come from whatever the pre-fill left there. */
   for (uint32_t i = start; i < (uint32_t)k_wc_per_cluster; i++) {
     s_disk.bytes[root_entry_off(h, i)] = (uint8_t)k_wc_entry_inuse;
   }

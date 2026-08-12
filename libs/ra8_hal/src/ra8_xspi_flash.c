@@ -474,7 +474,7 @@ ra8_err_t ra8_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* bu
  * every subsequent counter mismatched, (b) the threadx_levelx_demo
  * panicking inside ``lx_nor_flash_format`` because LevelX's free-bit
  * metadata reads back as the previous transfer's status byte instead
- * of the bit-pattern it just wrote, and (c) the threadx_filex_levelx_demo
+ * of the bit-pattern it just wrote, and (c) the threadx_fs_levelx_demo
  * surfacing ``lx_nor_flash_format failed`` for the same reason -- every
  * LevelX sector-header write to the on-board MX25xxx flash dropped its
  * payload, so LevelX saw zero usable sectors.

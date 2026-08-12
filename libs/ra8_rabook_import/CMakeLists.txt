@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_rabook_import -- on-import EPUB -> .rabook compile-and-cache (#151).
 #
@@ -29,8 +31,6 @@
 # `ra8_rabook_import` in ra8_add_app(LIBS ...); the host test build folds the
 # src/*.c into the shared object library the same way ra8_rabook_compile is.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Header-and-source library; no standalone build target. See the note above.

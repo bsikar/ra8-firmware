@@ -11,8 +11,10 @@
  *   - `priv_exfat_next_entry`: cluster-boundary FAT-read failure (131-134),
  *     end-of-chain detection (136-137), chain follow (139-141), and sector-read
  *     failure (147).
- *   - `priv_exfat_name_chunk_eq`: non-ASCII UTF-16 high byte (165) and full
- *     15-char loop completion (171).
+ *   - `priv_exfat_name_chunk_eq`: the full 15-unit loop completion (171). The
+ *     case-fold behaviour of the same function is a fold question rather than a
+ *     read-path one, and lives with the other fold vectors in
+ *     `tests/test_ra8_fs_utf.c` (#606).
  *   - `priv_exfat_match_set`: stream I/O fail (208), wrong stream type (211),
  *     name I/O fail (221), wrong name type (224).
  *   - `priv_exfat_find`: first-read I/O fail (253), match_set I/O error
@@ -29,7 +31,6 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- *
  * @since 0.1.0
  */
 
@@ -74,6 +75,8 @@ typedef enum : uint32_t {
   k_rc_root_strm_idx = 4U,      /**< Root dir: first user Stream entry index.   */
   k_rc_root_name_idx = 5U,      /**< Root dir: first user Name entry index.     */
   k_rc_max_files     = 4U,      /**< File table capacity (k_ra8_fs_max_files).  */
+  k_rc_mbr_part0_off = 446U,    /**< MBR: first partition-table entry offset.   */
+  k_rc_mbr_pe_lba    = 8U,      /**< Partition entry: first-LBA field offset.   */
 } rc_const_t;
 
 /**
@@ -146,7 +149,7 @@ static int32_t s_rd_remaining = (int32_t)k_rc_rd_never;
  *
  * @since 0.1.0
  */
-static ra8_err_t rc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t rc_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   if (s_rd_remaining == (int32_t)k_rc_rd_at_0) {
     return k_ra8_err_out_of_range;
@@ -181,7 +184,7 @@ static ra8_err_t rc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  *
  * @since 0.1.0
  */
-static ra8_err_t rc_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t rc_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   rc_disk_t* d = (rc_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -208,7 +211,7 @@ static ra8_err_t rc_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t
  *
  * @since 0.1.0
  */
-static ra8_err_t rc_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t rc_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const rc_disk_t* d = (const rc_disk_t*)ctx;
   *block_count       = d->block_count;
@@ -275,7 +278,39 @@ static void build_exfat_volume(void)
 }
 
 /**
+ * @brief First absolute LBA of the exFAT partition in the formatted image.
+ *
+ * @details Read out of the MBR partition-table entry the formatter wrote at
+ *          LBA 0 rather than hard-coded, so the fixture follows the formatter
+ *          instead of duplicating its constant. Used by the tests that corrupt
+ *          the VBR BEFORE mounting, where no mount handle exists yet to supply
+ *          `partition_base_lba`.
+ *
+ * @return Absolute LBA of the volume's first sector.
+ * @retval 0..UINT32_MAX Partition-0 start LBA from the MBR.
+ *
+ * @pre s_disk.bytes holds an image `ra8_fs_format()` has written.
+ * @pre s_disk.bytes is non-NULL.
+ * @post No disk state is modified.
+ * @post Return value matches the mount's `partition_base_lba`.
+ *
+ * @since 0.1.0
+ */
+static uint32_t part_base_lba(void)
+{
+  const uint8_t* pe = &s_disk.bytes[(uint32_t)k_rc_mbr_part0_off + (uint32_t)k_rc_mbr_pe_lba];
+  return (uint32_t)pe[0] | ((uint32_t)pe[1] << (uint32_t)k_rc_shift8) |
+         ((uint32_t)pe[2] << (uint32_t)k_rc_shift16) | ((uint32_t)pe[3] << (uint32_t)k_rc_shift24);
+}
+
+/**
  * @brief Byte offset in s_disk.bytes for root-dir entry idx.
+ *
+ * @details Every LBA cached in `ra8_fs_mount_t` is PARTITION-relative -- the
+ *          driver adds `partition_base_lba` inside `priv_read_sector()`. The
+ *          formatter lays the volume down inside an MBR partition rather than
+ *          at LBA 0, so a test poking s_disk.bytes directly must add that base
+ *          itself or it lands in the pre-partition gap and corrupts nothing.
  *
  * @param[in] h   Mounted exFAT volume.
  * @param[in] idx Entry index (0-based) within the root cluster.
@@ -289,12 +324,15 @@ static void build_exfat_volume(void)
  */
 static uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
 {
-  const uint32_t root_lba = h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
+  const uint32_t root_lba = h->partition_base_lba + h->first_data_lba +
+                            ((uint64_t)(h->root_cluster - 2U) * h->sectors_per_cluster);
   return (root_lba * (uint32_t)k_rc_block_size) + (idx * (uint32_t)k_rc_entry_bytes);
 }
 
 /**
  * @brief Byte offset in s_disk.bytes for the FAT entry of cluster clus.
+ *
+ * @details Partition-adjusted for the same reason as root_entry_off().
  *
  * @param[in] h    Mounted exFAT volume.
  * @param[in] clus Cluster number.
@@ -308,7 +346,8 @@ static uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
  */
 static uint32_t fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
-  return (h->first_fat_lba * (uint32_t)k_rc_block_size) + (clus * 4U);
+  return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_rc_block_size) +
+         ((uint64_t)clus * 4U);
 }
 
 /**
@@ -386,7 +425,9 @@ static void test_ascii_upper_a_to_z(void)
  *
  * @details Patches VBR byte 0x6C (BytesPerSectorShift) from 9 to 8; the
  *          exFAT signature "EXFAT   " remains intact so priv_exfat_is_volume
- *          returns 1, then priv_exfat_parse hits line 98.
+ *          returns 1, then priv_exfat_parse hits line 98. The VBR sits at the
+ *          partition's first sector, not LBA 0 -- LBA 0 is the MBR -- so the
+ *          patch offset is taken from the partition table via part_base_lba().
  *
  * @par MC/DC:
  * Decision: `if (buf[k_exfat_off_bps_shift] != k_exfat_bps_shift_512)` -- 1 cond.
@@ -402,9 +443,11 @@ static void test_parse_bad_bps_shift(void)
 {
   TEST_BEGIN("exfat read cov: bad BPS shift -> error (line 98)");
   build_exfat_volume();
-  s_disk.bytes[(uint32_t)k_rc_vbr_bps_off] = (uint8_t)k_rc_bps_shift_bad;
-  ra8_fs_mount_t* h                        = nullptr;
-  ra8_err_t       e                        = ra8_fs_mount(&s_ctrl_backend, &h);
+  const uint32_t vbr_bps =
+    (part_base_lba() * (uint32_t)k_rc_block_size) + (uint32_t)k_rc_vbr_bps_off;
+  s_disk.bytes[vbr_bps] = (uint8_t)k_rc_bps_shift_bad;
+  ra8_fs_mount_t* h     = nullptr;
+  ra8_err_t       e     = ra8_fs_mount(&s_ctrl_backend, &h);
   TEST_ASSERT(e != k_ra8_ok);
   free_volume();
   TEST_END("exfat read cov: bad BPS shift -> error (line 98)");
@@ -570,34 +613,6 @@ static void test_next_entry_sector_read_fail(void)
 }
 
 /**
- * @test test_name_chunk_eq_nonascii
- * @brief Non-ASCII UTF-16 high byte causes early return 0 (line 165).
- *
- * @details Sets entry byte at k_rc_name_off+1 to 1 (high byte non-zero);
- *          the first iteration of the inner loop hits line 165.
- *
- * @par MC/DC:
- * Decision: `if (entry[b+1] != 0U)` -- 1 cond.
- * V1: high_byte = 1 -> true -> return 0 (this test, line 165).
- * V2: high_byte = 0 -> false -> char compare (full-match test).
- *
- * @pre None.
- * @post priv_exfat_name_chunk_eq returns 0.
- *
- * @since 0.1.0
- */
-static void test_name_chunk_eq_nonascii(void)
-{
-  TEST_BEGIN("exfat read cov: name_chunk_eq non-ASCII high byte (line 165)");
-  uint8_t entry[(uint32_t)k_rc_entry_bytes] = {};
-  entry[(uint32_t)k_rc_name_off]            = (uint8_t)'A'; /* low byte       */
-  entry[(uint32_t)k_rc_name_off + 1U]       = 1U;           /* high byte != 0 */
-  uint8_t result                            = priv_exfat_name_chunk_eq(entry, "A", 0U, 1U);
-  TEST_ASSERT_EQ(0U, result);
-  TEST_END("exfat read cov: name_chunk_eq non-ASCII high byte (line 165)");
-}
-
-/**
  * @test test_name_chunk_eq_full_match
  * @brief Loop runs all 15 iterations without early exit (line 171).
  *
@@ -623,8 +638,11 @@ static void test_name_chunk_eq_full_match(void)
     entry[(uint32_t)k_rc_name_off + (i * 2U)] = (uint8_t)'A'; /* low byte */
     /* high byte stays 0 from zero-init */
   }
-  uint8_t result =
-    priv_exfat_name_chunk_eq(entry, "AAAAAAAAAAAAAAA", 0U, (uint32_t)k_rc_name_per_ent);
+  uint16_t want[(uint32_t)k_rc_name_per_ent] = {};
+  for (uint32_t i = 0U; i < (uint32_t)k_rc_name_per_ent; i++) {
+    want[i] = (uint16_t)'A';
+  }
+  uint8_t result = priv_exfat_name_chunk_eq(entry, want, 0U, (uint32_t)k_rc_name_per_ent);
   TEST_ASSERT_EQ(1U, result);
   TEST_END("exfat read cov: name_chunk_eq full 15-char match (line 171)");
 }
@@ -831,37 +849,46 @@ static void test_find_first_read_fail(void)
 }
 
 /**
- * @test test_open_write_mode_rejected
- * @brief priv_exfat_open rejects write mode (line 277).
+ * @test test_open_write_mode_dispatches
+ * @brief `priv_exfat_open` hands a writing mode to the streaming open path.
  *
- * @details ra8_fs_open with k_ra8_fs_mode_write on an exFAT mount dispatches to
- *          priv_exfat_open, which returns k_ra8_err_not_supported at line 277.
+ * @details This case used to assert `k_ra8_err_not_supported`: exFAT opened
+ *          read-only and the largest file the firmware could create on such a
+ *          card was bounded by RAM. Streaming write (#602) replaced that
+ *          refusal with a dispatch, so the same call now CREATES the name and
+ *          hands back a writable handle -- which is what this asserts, because
+ *          a test still pinning the old answer would be pinning the defect.
  *
  * @par MC/DC:
- * Decision: `if (mode != k_ra8_fs_mode_read)` -- 1 cond.
- * V1: mode = write -> true -> line 277, not_supported (this test).
- * V2: mode = read -> false -> priv_exfat_find (success-path tests).
+ * Decision: `if (mode != k_ra8_fs_mode_read)` in
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_read.c@priv_exfat_open` -- 1 condition.
+ * V1: mode = write -> true  -> ::priv_exfat_open_write (this test).
+ * V2: mode = read  -> false -> ::priv_exfat_find (the success-path cases).
  *
  * @pre Volume is formatted and mounted.
- * @post ra8_fs_open returns k_ra8_err_not_supported.
+ * @post `X.TXT` exists as a zero-length file and the handle is closed.
  *
  * @since 0.1.0
  */
-static void test_open_write_mode_rejected(void)
+static void test_open_write_mode_dispatches(void)
 {
-  TEST_BEGIN("exfat read cov: open write mode rejected (line 277)");
+  TEST_BEGIN("exfat read cov: write mode dispatches to the stream");
   build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
   s_rd_remaining   = (int32_t)k_rc_rd_never;
   ra8_fs_file_t* f = nullptr;
-  ra8_err_t      e = ra8_fs_open(h, "X.TXT", k_ra8_fs_mode_write, &f);
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, e);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "X.TXT", k_ra8_fs_mode_write, &f));
+  TEST_ASSERT_NOT_NULL(f);
+  uint64_t size = 1U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
+  TEST_ASSERT_EQ(0U, size);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
-  TEST_END("exfat read cov: open write mode rejected (line 277)");
+  TEST_END("exfat read cov: write mode dispatches to the stream");
 }
 
 /**
@@ -936,14 +963,13 @@ int main(void)
   test_next_entry_eoc();
   test_next_entry_follow_chain();
   test_next_entry_sector_read_fail();
-  test_name_chunk_eq_nonascii();
   test_name_chunk_eq_full_match();
   test_match_set_stream_io_fail();
   test_match_set_wrong_stream_type();
   test_match_set_name_io_fail();
   test_match_set_wrong_name_type();
   test_find_first_read_fail();
-  test_open_write_mode_rejected();
+  test_open_write_mode_dispatches();
   test_open_file_table_full();
 
   printf("[OK  ] test_ra8_fs_fat_exfat_read_cov.c\n");

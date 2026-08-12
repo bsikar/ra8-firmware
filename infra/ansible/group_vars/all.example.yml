@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Copy to group_vars/all.yml (git-ignored) and set the real values there.
 #

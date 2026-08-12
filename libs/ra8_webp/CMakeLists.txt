@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # libs/ra8_webp -- zero-heap WebP (VP8 / VP8L) decode facade over libwebp.
 #
@@ -31,8 +33,6 @@
 # NOTE(#289): the small-image ra8_reflow / ra8_img inline raster dispatch does
 # not yet have a WebP arm; that lands with the longstrip render path.
 #
-# Copyright (c) 2026 Brighton Sikarskie
-# SPDX-License-Identifier: MIT
 #
 
 # Intentionally empty -- consumers reach into inc/ + src/ directly.

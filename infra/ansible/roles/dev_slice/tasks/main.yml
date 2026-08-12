@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 ---
 # Lend a CI runner host's idle capacity to agent verification work, under a
 # cgroup that cannot take anything CI was promised.
