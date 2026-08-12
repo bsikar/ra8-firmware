@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/inc/usb_host_msc_browse_steps.h" name="examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/inc/usb_host_msc_browse_steps.h">
+<area shape="rect" id="Node000001" title="Shared constants + device&#45;side FAT16/MSC step declarations." alt="" coords="203,5,397,75"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__host__msc__browse_2main_8c.html" title="USB host&#45;mode MSC browse over the on&#45;board self&#45;loop (no external drive)." alt="" coords="5,130,179,185"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="229,84,141,132,138,128,226,79"/>
+<area shape="rect" id="Node000003" href="$usb__host__msc__browse__host_8c.html" title="Console formatters + host&#45;side ra8_fs browse/verify ladder." alt="" coords="203,123,397,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="303,89,303,122,297,122,297,89"/>
+<area shape="rect" id="Node000004" href="$usb__host__msc__browse__steps_8c.html" title="Device&#45;side FAT16 synthesis + USBX storage media callbacks." alt="" coords="421,123,616,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="377,79,456,120,454,125,375,83"/>
+</map>

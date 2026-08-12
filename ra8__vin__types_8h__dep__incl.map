@@ -1,0 +1,10 @@
+<map id="libs/ra8_hal/inc/ra8_vin_types.h" name="libs/ra8_hal/inc/ra8_vin_types.h">
+<area shape="rect" id="Node000001" title="Video Input Module (VIN) configuration descriptors and types." alt="" coords="5,5,151,45"/>
+<area shape="rect" id="Node000002" href="$ra8__vin_8h.html" title="Video Input Module (VIN) driver – public API." alt="" coords="5,181,151,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="63,59,51,94,49,113,51,133,59,158,69,180,65,182,54,160,46,134,43,113,46,93,58,57"/>
+<area shape="rect" id="Node000004" href="$ra8__vin__api_8h.html" title="Video Input Module (VIN) driver function prototypes." alt="" coords="61,93,207,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="100,56,124,92,119,95,96,58"/>
+<area shape="rect" id="Node000003" href="$ra8__vin_8c.html" title="Video Input Module (VIN) driver implementation." alt="" coords="5,269,151,309"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="81,235,81,269,75,269,75,235"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="116,146,93,183,88,180,112,144"/>
+</map>

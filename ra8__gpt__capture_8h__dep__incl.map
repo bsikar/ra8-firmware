@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/inc/ra8_gpt_capture.h" name="libs/ra8_hal/inc/ra8_gpt_capture.h">
+<area shape="rect" id="Node000001" title="GPT input&#45;capture + external event / pulse&#45;count extension." alt="" coords="132,5,277,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2gpt__edge__capture__count_2main_8c.html" title="GPT hardware input&#45;capture + external event/pulse counting demo." alt="" coords="5,93,207,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="177,57,136,95,132,91,173,53"/>
+<area shape="rect" id="Node000003" href="$ra8__gpt_8c.html" title="General PWM Timer (GPT) driver implementation." alt="" coords="231,101,376,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="236,53,285,99,282,103,233,57"/>
+</map>

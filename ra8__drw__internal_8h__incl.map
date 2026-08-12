@@ -1,0 +1,17 @@
+<map id="libs/ra8_hal/src/ra8_drw_internal.h" name="libs/ra8_hal/src/ra8_drw_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for ra8_drw internal helpers (MC/DC)." alt="" coords="169,5,314,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="245,240,315,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="263,44,282,66,298,92,311,128,316,166,318,179,316,193,299,230,294,228,311,191,312,179,311,167,306,129,294,95,277,69,259,47"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="5,240,131,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="194,48,155,67,114,94,76,127,46,168,42,182,43,198,55,227,50,229,38,199,37,182,42,166,72,124,111,89,152,63,192,43"/>
+<area shape="rect" id="Node000004" href="$ra8__drw_8h.html" title="2D Drawing Engine (DRW / D/AVE 2D) HAL driver – public API" alt="" coords="199,93,284,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="244,46,244,79,239,79,239,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="258,117,279,138,296,166,299,198,293,227,288,226,294,197,291,168,275,141,254,121"/>
+<area shape="rect" id="Node000005" href="$ra8__drw__regs_8h.html" title="2D Drawing Engine (DRW / D/AVE 2D) register layout for the RA8D2" alt="" coords="57,167,178,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="223,121,151,162,148,157,220,116"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="202,167,281,192"/>
+<area shape="poly" id="edge8_Node000004_Node000006" title=" " alt="" coords="244,119,244,153,239,153,239,119"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="145,190,242,232,240,237,142,194"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="111,194,86,230,82,227,107,191"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="250,191,270,227,265,229,245,194"/>
+</map>

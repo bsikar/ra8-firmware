@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/inc/usb_selftest_cdc_steps.h" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/inc/usb_selftest_cdc_steps.h">
+<area shape="rect" id="Node000001" title="Host&#45;side self&#45;test ladder + console helpers shared with main.c." alt="" coords="5,5,197,75"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="18,123,89,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="86,76,68,112,63,109,82,74"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="113,123,188,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="121,74,140,109,136,112,117,76"/>
+</map>

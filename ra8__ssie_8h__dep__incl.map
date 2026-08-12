@@ -1,0 +1,11 @@
+<map id="libs/ra8_hal/inc/ra8_ssie.h" name="libs/ra8_hal/inc/ra8_ssie.h">
+<area shape="rect" id="Node000001" title="Serial Sound Interface Enhanced (SSIE / I2S audio) driver." alt="" coords="324,5,469,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ssie__audio__loop_2main_8c.html" title="SSIE I2S internal&#45;loopback audio integrity demo for EK&#45;RA8D2." alt="" coords="5,93,188,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="324,52,182,96,180,91,322,47"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__audio__usb_8c.html" title="EK&#45;RA8D2 BSP – DA7212 audio CODEC, USB&#45;HS, and U15 I/O expander." alt="" coords="213,93,394,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="370,57,331,95,328,91,366,53"/>
+<area shape="rect" id="Node000004" href="$ra8__ssie_8c.html" title="Serial Sound Interface Enhanced (SSIE / I2S) driver implementation." alt="" coords="419,101,564,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="428,53,474,99,470,103,424,57"/>
+<area shape="rect" id="Node000005" href="$ra8__ssie__stream_8c.html" title="SSIE streaming data path: DMAC channel attach/detach + polled ISO bulk send/receive." alt="" coords="588,101,733,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="464,47,608,98,606,103,462,52"/>
+</map>

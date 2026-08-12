@@ -1,0 +1,19 @@
+<map id="libs/ra8_io/src/ra8_io_blockdev_internal.h" name="libs/ra8_io/src/ra8_io_blockdev_internal.h">
+<area shape="rect" id="Node000001" title="Internal vtable type for the ra8_io block&#45;device fabric." alt="" coords="603,5,779,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ftl_8c.html" title="Flash Translation Layer implementation – copy&#45;on&#45;write + wear&#45;levelling." alt="" coords="5,93,144,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="589,39,388,62,156,96,145,98,144,93,156,91,388,56,588,34"/>
+<area shape="rect" id="Node000003" href="$ra8__io__blockdev_8c.html" title="Block&#45;device dispatcher – forwards each public call into the bound backend vtable,..." alt="" coords="169,93,306,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="590,46,319,96,307,99,306,93,318,91,589,41"/>
+<area shape="rect" id="Node000004" href="$ra8__io__blockdev__cache_8c.html" title="Caching block device – LRU sector cache + write&#45;through over a backend." alt="" coords="331,93,493,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="617,52,474,96,472,91,616,47"/>
+<area shape="rect" id="Node000005" href="$ra8__io__blockdev__mram_8c.html" title="MRAM block&#45;device backend – a hard&#45;fenced data&#45;MRAM window as blocks." alt="" coords="518,93,682,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="663,57,622,95,618,91,659,53"/>
+<area shape="rect" id="Node000006" href="$ra8__io__blockdev__ram_8c.html" title="RAM block&#45;device backend – a flat buffer as 512&#45;byte logical blocks." alt="" coords="706,93,857,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="722,53,763,91,759,95,719,57"/>
+<area shape="rect" id="Node000007" href="$ra8__io__blockdev__sdhi_8c.html" title="Native&#45;SDHI block&#45;device backend – an SD card as 512&#45;byte blocks." alt="" coords="881,93,1033,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="763,47,900,91,898,96,761,52"/>
+<area shape="rect" id="Node000008" href="$ra8__io__blockdev__sdspi_8c.html" title="Micro&#45;SD&#45;over&#45;SPI block&#45;device backend – thin shim over ra8_sdmmc_spi." alt="" coords="1058,93,1217,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="793,43,1046,91,1058,93,1057,98,1045,96,792,48"/>
+<area shape="rect" id="Node000009" href="$ra8__io__blockdev__xspi_8c.html" title="OSPI NOR block&#45;device backend – 512&#45;byte LBAs over ra8_xspi flash." alt="" coords="1241,93,1393,133"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="793,34,995,57,1230,91,1242,93,1241,98,1229,96,994,62,792,39"/>
+</map>

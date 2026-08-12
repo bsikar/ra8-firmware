@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/inc/ra8_register_protection.h" name="libs/ra8_hal/inc/ra8_register_protection.h">
+<area shape="rect" id="Node000001" title="Scoped PRCR unlock helper." alt="" coords="5,5,169,45"/>
+<area shape="rect" id="Node000002" href="$ra8__system__regs_8h.html" title="System Control (SYSC) register layout for the Renesas RA8D2." alt="" coords="15,93,160,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="90,46,90,79,85,79,85,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="52,167,123,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="90,119,90,153,85,153,85,119"/>
+</map>

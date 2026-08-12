@@ -1,0 +1,18 @@
+<map id="libs/ra8_book" name="libs/ra8_book">
+<area shape="rect" id="node1" href="dir_9784371ce13fb6b4d69891743248b7e4.html" title="ra8_core" alt="" coords="27,209,106,235"/>
+<area shape="rect" id="node2" href="dir_9a108e527c72e57dfb7bcfb5eccf086c.html" title="ra8_mem" alt="" coords="130,209,214,235"/>
+<area shape="rect" id="node4" href="dir_3a7653ad9bb2a75a8028d27f54dd16a6.html" title="inc" alt="" coords="93,136,134,161"/>
+<area shape="poly" id="edge1" href="dir_000172_000275.html" alt="" coords="108,163,84,199,80,196,103,160"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000172_000275.html" title="3" alt="" coords="87,191,96,206"/>
+<area shape="poly" id="edge2" href="dir_000172_000303.html" alt="" coords="125,160,156,197,152,201,121,163"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000172_000303.html" title="2" alt="" coords="153,183,162,197"/>
+<area shape="rect" id="node5" href="dir_f0c30fad5ad938b7f354aa694b0f4357.html" title="src" alt="" coords="55,63,97,88"/>
+<area shape="poly" id="edge4" href="dir_000392_000275.html" alt="" coords="78,89,71,196,66,195,73,88"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000392_000275.html" title="10" alt="" coords="68,184,86,199"/>
+<area shape="poly" id="edge5" href="dir_000392_000303.html" alt="" coords="96,86,124,106,149,135,163,165,171,195,166,196,158,167,144,137,120,110,93,90"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000392_000303.html" title="1" alt="" coords="171,182,181,197"/>
+<area shape="poly" id="edge3" href="dir_000392_000172.html" alt="" coords="85,87,103,123,99,125,80,90"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000392_000172.html" title="6" alt="" coords="102,109,111,123"/>
+<area shape="rect" id="clust2" href="dir_b92b34a865b1ecbc6086eb6416f47f11.html" alt="" coords="44,52,215,172"/>
+<area shape="rect" id="clust1" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="16,16,225,245"/>
+</map>

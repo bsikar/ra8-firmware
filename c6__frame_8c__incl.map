@@ -1,0 +1,30 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_frame.c" name="examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/src/c6_frame.c">
+<area shape="rect" id="Node000001" title="Hand&#45;decoded esp&#45;hosted payload header for the ESP32&#45;C6 SPI probe." alt="" coords="5,5,179,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="331,475,402,500"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="71,62,52,88,33,120,19,155,13,193,13,342,16,353,22,364,46,386,83,406,128,424,229,454,318,474,317,479,228,459,127,429,81,411,43,390,18,367,11,355,8,342,8,192,14,154,28,117,47,85,66,59"/>
+<area shape="rect" id="Node000003" href="$c6__probe_8h.html" title="Shared contract for the EK&#45;RA8D2 &lt;&#45;&gt; ESP32&#45;C6 esp&#45;hosted SPI probe." alt="" coords="129,108,223,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="120,58,157,96,153,100,116,62"/>
+<area shape="rect" id="Node000004" href="$c6__proto_8h.html" title="The esp&#45;hosted SPI full&#45;duplex wire format, hand&#45;decoded." alt="" coords="48,181,139,207"/>
+<area shape="poly" id="edge19_Node000001_Node000004" title=" " alt="" coords="95,60,96,168,90,168,90,60"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="179,134,179,266,179,342,182,367,193,388,208,408,228,425,273,452,319,470,317,475,271,457,224,429,204,411,188,391,177,368,173,342,173,266,173,134"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="164,135,119,174,116,170,161,131"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="289,401,367,427"/>
+<area shape="poly" id="edge6_Node000003_Node000005" title=" " alt="" coords="184,132,318,388,313,390,180,135"/>
+<area shape="rect" id="Node000006" href="$ra8__spi_8h.html" title="SPI_B controller driver (RA8D2 Type&#45;B SPI peripheral)." alt="" coords="319,181,401,207"/>
+<area shape="poly" id="edge8_Node000003_Node000006" title=" " alt="" coords="207,131,318,174,316,179,205,136"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="96,207,96,248,104,307,123,370,139,399,159,425,195,451,236,468,279,478,317,483,317,488,278,483,235,473,192,456,155,429,134,402,118,372,99,308,91,248,90,207"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="337,426,356,461,352,464,332,428"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="395,204,478,238,526,262,571,289,608,320,633,354,639,372,640,391,635,409,623,428,609,440,589,450,535,466,473,477,416,484,416,479,472,472,534,461,587,445,607,436,619,425,630,407,635,390,634,373,628,356,604,324,568,294,523,266,476,243,393,209"/>
+<area shape="poly" id="edge18_Node000006_Node000005" title=" " alt="" coords="360,207,340,328,333,388,328,387,335,328,355,207"/>
+<area shape="rect" id="Node000007" href="$ra8__dma_8h.html" title="Generic DMA transfer substrate (DMAC engine)." alt="" coords="369,255,460,280"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="371,205,400,242,395,245,367,209"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="435,278,459,299,478,327,482,341,479,354,462,389,440,420,393,468,390,464,435,416,457,386,473,352,476,341,474,329,455,302,431,282"/>
+<area shape="poly" id="edge17_Node000007_Node000005" title=" " alt="" coords="401,282,377,303,356,329,342,359,335,388,329,387,337,357,351,327,373,299,397,278"/>
+<area shape="rect" id="Node000008" href="$ra8__dmac_8h.html" title="8&#45;channel DMA controller (DMAC0) driver" alt="" coords="365,328,464,353"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="417,280,417,314,412,314,412,280"/>
+<area shape="rect" id="Node000009" href="$ra8__elc__regs_8h.html" title="Event Link Controller (ELC) register layout for the Renesas RA8D2." alt="" coords="494,401,610,427"/>
+<area shape="poly" id="edge15_Node000007_Node000009" title=" " alt="" coords="448,278,486,297,522,326,540,356,550,387,545,388,535,358,518,330,484,301,446,282"/>
+<area shape="poly" id="edge13_Node000008_Node000002" title=" " alt="" coords="413,355,377,462,372,461,408,353"/>
+<area shape="poly" id="edge14_Node000008_Node000005" title=" " alt="" coords="402,355,354,395,351,390,399,351"/>
+<area shape="poly" id="edge16_Node000009_Node000002" title=" " alt="" coords="523,429,410,472,409,467,521,424"/>
+</map>

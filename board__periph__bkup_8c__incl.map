@@ -1,0 +1,17 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_bkup.c" name="tools/ra8_emulator/src/periph/board_periph_bkup.c">
+<area shape="rect" id="Node000001" title="VBATT backup&#45;register (VBTBKRn) reset&#45;retained domain model." alt="" coords="170,5,349,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="260,181,331,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="268,60,292,167,287,168,263,61"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="191,108,258,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="251,61,237,96,232,94,246,59"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="5,108,167,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="208,62,123,104,120,99,205,58"/>
+<area shape="rect" id="Node000006" href="$board__periph__prcr__internal_8h.html" title="Module&#45;private PRCR unlock state shared with the protected blocks." alt="" coords="333,108,541,133"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="315,58,402,100,399,104,312,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="120,131,249,174,247,179,119,136"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="19,181,153,207"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="89,134,89,168,83,168,83,134"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="415,136,332,177,329,173,413,131"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="374,181,499,207"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="439,134,439,168,434,168,434,134"/>
+</map>

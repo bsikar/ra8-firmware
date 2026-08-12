@@ -1,0 +1,32 @@
+<map id="libs/ra8_book/src/ra8_book.c" name="libs/ra8_book/src/ra8_book.c">
+<area shape="rect" id="Node000001" title="Implementation of the .rabook blob validator." alt="" coords="215,5,373,45"/>
+<area shape="rect" id="Node000002" href="$ra8__book_8h.html" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="5,93,100,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="237,48,102,92,100,86,235,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="124,93,195,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="263,48,192,89,190,84,260,43"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="331,167,457,192"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="332,43,361,64,384,92,395,122,398,152,393,153,390,123,380,95,357,68,329,48"/>
+<area shape="rect" id="Node000008" href="$ra8__book__internal_8h.html" title="ra8_book DOM&#45;walk helpers shared across the library&#39;s translation units." alt="" coords="219,93,369,119"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="297,46,297,79,291,79,291,46"/>
+<area shape="rect" id="Node000009" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="472,93,572,119"/>
+<area shape="poly" id="edge13_Node000001_Node000009" title=" " alt="" coords="349,43,476,86,475,91,348,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="78,167,153,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="65,117,98,154,94,158,61,121"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="372,240,443,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="53,119,53,155,58,174,68,190,88,204,117,215,195,232,282,242,358,247,358,252,282,247,195,237,116,220,85,208,64,194,53,176,48,155,48,119"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="177,167,256,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="80,116,179,159,176,164,78,121"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="248,190,364,232,362,237,246,195"/>
+<area shape="poly" id="edge9_Node000008_Node000003" title=" " alt="" coords="266,121,158,164,156,159,264,116"/>
+<area shape="poly" id="edge10_Node000008_Node000004" title=" " alt="" coords="298,118,304,153,311,172,321,190,344,213,371,231,368,236,341,218,317,194,306,175,299,154,292,119"/>
+<area shape="poly" id="edge12_Node000008_Node000005" title=" " alt="" coords="283,121,241,159,238,155,280,117"/>
+<area shape="poly" id="edge11_Node000008_Node000007" title=" " alt="" coords="312,117,368,156,365,161,309,121"/>
+<area shape="poly" id="edge14_Node000009_Node000004" title=" " alt="" coords="572,107,642,113,711,127,738,138,756,153,762,172,751,194,730,209,700,222,621,239,533,249,457,253,456,248,533,243,620,234,699,217,728,205,747,190,756,171,752,156,735,143,709,132,641,118,572,112"/>
+<area shape="poly" id="edge15_Node000009_Node000005" title=" " alt="" coords="474,121,270,168,269,163,472,116"/>
+<area shape="rect" id="Node000010" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="481,167,563,192"/>
+<area shape="poly" id="edge16_Node000009_Node000010" title=" " alt="" coords="525,119,525,153,519,153,519,119"/>
+<area shape="rect" id="Node000011" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="588,167,736,192"/>
+<area shape="poly" id="edge18_Node000009_Node000011" title=" " alt="" coords="546,116,628,158,626,163,543,121"/>
+<area shape="poly" id="edge17_Node000010_Node000004" title=" " alt="" coords="505,194,439,235,436,230,502,190"/>
+<area shape="poly" id="edge19_Node000011_Node000004" title=" " alt="" coords="622,195,457,240,456,235,620,189"/>
+</map>

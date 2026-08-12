@@ -1,0 +1,39 @@
+<map id="libs/ra8_jof/src/ra8_jof_produce_webp.c" name="libs/ra8_jof/src/ra8_jof_produce_webp.c">
+<area shape="rect" id="Node000001" title="Transcode producer: whole&#45;frame WebP arm (#290 normalize&#45;on&#45;import)." alt="" coords="578,5,737,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="273,313,348,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="612,48,552,77,480,120,409,175,378,207,350,241,333,272,321,301,316,299,329,269,346,239,374,203,406,171,477,115,549,73,610,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="479,387,550,412"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="737,26,820,37,863,47,904,62,941,81,970,107,990,139,997,178,997,254,994,271,983,287,967,301,946,314,892,337,826,356,683,382,564,396,564,391,683,377,825,350,890,332,943,309,964,297,979,283,989,269,992,254,992,178,985,141,966,110,938,85,902,66,862,52,819,42,737,31"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="832,167,957,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="737,31,772,39,808,51,842,68,871,91,882,105,889,121,896,152,891,154,884,123,877,108,867,95,839,72,806,56,771,44,736,36"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="578,313,657,339"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="659,46,651,140,635,266,627,301,622,299,629,265,646,140,654,45"/>
+<area shape="rect" id="Node000006" href="$ra8__jof__internal_8h.html" title="Module&#45;private seams shared by the producer translation units." alt="" coords="721,93,857,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="690,43,759,84,756,88,688,48"/>
+<area shape="rect" id="Node000007" href="$ra8__jof__produce_8h.html" title="Import&#45;time transcode producer: JPEG/PNG/WebP &#45;&gt; JOF band&#45;tile atlas in bounded RAM (#231,..." alt="" coords="479,167,617,192"/>
+<area shape="poly" id="edge19_Node000001_Node000007" title=" " alt="" coords="646,47,566,157,562,154,641,44"/>
+<area shape="rect" id="Node000009" href="$ra8__webp_8h.html" title="Zero&#45;heap WebP (VP8 / VP8L) decode facade over the vendored libwebp." alt="" coords="150,167,247,192"/>
+<area shape="poly" id="edge20_Node000001_Node000009" title=" " alt="" coords="578,36,405,58,324,75,268,96,236,124,213,156,209,153,232,120,265,91,322,70,404,53,577,31"/>
+<area shape="rect" id="Node000010" href="$ra8__webp__arena_8h.html" title="Heap&#45;free scratch allocator hooks for the vendored libwebp decoder." alt="" coords="5,240,147,265"/>
+<area shape="poly" id="edge27_Node000001_Node000010" title=" " alt="" coords="578,30,503,35,416,46,323,66,234,96,204,111,183,126,139,168,113,199,92,229,88,226,109,196,135,165,179,121,201,106,232,91,322,61,415,41,503,30,578,25"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="602,341,544,381,541,376,599,336"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="721,112,664,118,600,128,532,145,468,169,422,198,383,234,350,272,327,304,323,301,346,268,379,231,419,194,465,164,531,140,599,123,664,113,720,107"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="791,119,787,153,779,193,764,232,742,267,711,308,671,341,617,369,564,388,563,383,615,364,668,336,707,305,738,264,759,229,773,191,782,152,786,119"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="808,116,868,157,865,161,805,121"/>
+<area shape="poly" id="edge10_Node000006_Node000005" title=" " alt="" coords="789,120,764,186,742,228,714,267,687,291,657,309,654,305,683,287,710,264,738,226,759,184,784,118"/>
+<area shape="poly" id="edge11_Node000006_Node000007" title=" " alt="" coords="751,121,601,165,600,160,750,116"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="519,195,471,215,420,242,374,274,335,306,332,302,371,270,417,238,469,210,517,190"/>
+<area shape="poly" id="edge13_Node000007_Node000003" title=" " alt="" coords="520,194,489,213,476,226,465,241,459,258,457,276,465,312,480,346,499,374,494,377,476,349,459,314,452,276,454,257,460,239,472,223,486,209,518,190"/>
+<area shape="poly" id="edge14_Node000007_Node000005" title=" " alt="" coords="568,190,592,211,613,239,622,270,623,299,617,300,616,271,608,241,588,214,565,194"/>
+<area shape="rect" id="Node000008" href="$ra8__jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="475,240,554,265"/>
+<area shape="poly" id="edge15_Node000007_Node000008" title=" " alt="" coords="545,193,528,229,523,227,540,191"/>
+<area shape="poly" id="edge16_Node000008_Node000002" title=" " alt="" coords="483,268,357,311,356,306,481,263"/>
+<area shape="poly" id="edge17_Node000008_Node000003" title=" " alt="" coords="517,266,517,373,512,373,512,266"/>
+<area shape="poly" id="edge18_Node000008_Node000005" title=" " alt="" coords="533,263,591,303,588,307,530,268"/>
+<area shape="poly" id="edge21_Node000009_Node000002" title=" " alt="" coords="210,191,296,301,291,304,206,194"/>
+<area shape="poly" id="edge22_Node000009_Node000003" title=" " alt="" coords="202,192,207,221,217,261,235,302,248,321,263,337,298,354,351,369,466,389,465,395,350,374,296,359,260,341,244,324,230,305,212,263,202,223,197,193"/>
+<area shape="poly" id="edge23_Node000009_Node000005" title=" " alt="" coords="248,181,328,187,421,198,508,215,543,225,568,238,583,251,595,267,612,299,607,302,591,270,579,255,565,242,541,230,507,220,420,204,327,193,247,186"/>
+<area shape="poly" id="edge24_Node000009_Node000010" title=" " alt="" coords="180,194,109,235,106,231,178,190"/>
+<area shape="poly" id="edge25_Node000010_Node000002" title=" " alt="" coords="114,263,261,307,259,312,113,268"/>
+<area shape="poly" id="edge26_Node000010_Node000003" title=" " alt="" coords="86,264,119,301,141,320,167,336,205,353,244,366,326,384,403,393,465,396,465,401,402,398,325,389,243,371,203,358,164,341,138,325,115,304,82,267"/>
+</map>

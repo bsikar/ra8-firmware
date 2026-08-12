@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/ereader_ui/inc/ereader_ui_steps.h" name="examples/ek_ra8d2/hw_validated/hil/ereader_ui/inc/ereader_ui_steps.h">
+<area shape="rect" id="Node000001" title="E&#45;reader UI chrome – shared contract between main.c and the per&#45;aspect helper translation units (scre..." alt="" coords="202,5,393,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="5,108,179,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="233,68,147,110,144,106,231,63"/>
+<area shape="rect" id="Node000003" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="203,108,391,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="300,74,300,108,295,108,295,74"/>
+<area shape="rect" id="Node000004" href="$ereader__ui__screens_8c.html" title="E&#45;reader UI chrome – Library + Reading rendering and in&#45;content nav." alt="" coords="416,108,621,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="368,63,462,106,460,110,366,68"/>
+</map>

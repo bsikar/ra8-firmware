@@ -1,0 +1,5 @@
+<map id="ra8_touch_cal_run_cfg_t" name="ra8_touch_cal_run_cfg_t">
+<area shape="rect" id="Node000001" title="Configuration for ra8_touch_cal_run." alt="" coords="5,121,184,147"/>
+<area shape="rect" id="Node000002" href="$structra8__touch__cal__point__t.html" title="One (x, y) integer coordinate pair." alt="" coords="13,5,177,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,45,97,121,92,121,92,45"/>
+</map>

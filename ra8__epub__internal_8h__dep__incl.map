@@ -1,0 +1,11 @@
+<map id="libs/ra8_epub/src/ra8_epub_internal.h" name="libs/ra8_epub/src/ra8_epub_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for ra8_epub internal helpers (MC/DC)." alt="" coords="277,5,435,45"/>
+<area shape="rect" id="Node000002" href="$ra8__epub__chapter_8c.html" title="Chapter / metadata / cover / glyph accessors for the EPUB reader." alt="" coords="5,93,163,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="284,52,144,96,143,91,282,47"/>
+<area shape="rect" id="Node000003" href="$ra8__epub__entry_8c.html" title="Bounded&#45;RAM streaming + windowed extraction of a single ZIP entry (#231)." alt="" coords="187,93,344,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="328,57,287,95,284,91,324,53"/>
+<area shape="rect" id="Node000004" href="$ra8__epub__open_8c.html" title="ra8_epub_open() / ra8_epub_close() lifecycle plumbing." alt="" coords="368,93,525,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="388,53,428,91,425,95,384,57"/>
+<area shape="rect" id="Node000005" href="$ra8__epub__zip__guard_8c.html" title="Decompression&#45;limits retrofit for every miniz ZIP consumer." alt="" coords="549,93,707,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="430,47,569,91,568,96,428,52"/>
+</map>

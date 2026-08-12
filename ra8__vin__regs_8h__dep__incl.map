@@ -1,0 +1,15 @@
+<map id="libs/ra8_hal/inc/ra8_vin_regs.h" name="libs/ra8_hal/inc/ra8_vin_regs.h">
+<area shape="rect" id="Node000001" title="Video Input Module (VIN) register layout for the RA8D2." alt="" coords="56,5,201,45"/>
+<area shape="rect" id="Node000002" href="$ra8__vin_8h.html" title="Video Input Module (VIN) driver – public API." alt="" coords="116,269,261,309"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="216,47,247,65,272,92,282,116,284,141,279,167,268,191,240,237,210,271,206,268,235,233,264,189,274,165,278,141,277,117,268,95,244,69,213,51"/>
+<area shape="rect" id="Node000003" href="$ra8__vin_8c.html" title="Video Input Module (VIN) driver implementation." alt="" coords="5,357,151,397"/>
+<area shape="poly" id="edge8_Node000001_Node000003" title=" " alt="" coords="110,58,77,114,62,147,51,182,47,231,52,279,62,323,73,356,68,358,57,324,47,280,41,231,46,181,57,145,72,112,105,55"/>
+<area shape="rect" id="Node000004" href="$ra8__vin__api_8h.html" title="Video Input Module (VIN) driver function prototypes." alt="" coords="61,181,207,221"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="114,59,102,94,99,113,102,133,111,158,123,180,119,182,106,160,97,134,94,113,97,93,109,57"/>
+<area shape="rect" id="Node000005" href="$ra8__vin__types_8h.html" title="Video Input Module (VIN) configuration descriptors and types." alt="" coords="112,93,257,133"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="151,56,175,92,170,95,146,58"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="155,320,104,359,101,355,152,316"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="156,232,179,268,174,271,151,234"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="207,144,222,181,225,201,222,222,213,248,203,270,198,268,209,246,217,221,220,201,217,182,202,146"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="169,147,148,182,143,180,164,144"/>
+</map>

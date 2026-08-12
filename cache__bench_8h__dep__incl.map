@@ -1,0 +1,14 @@
+<map id="tools/cache_bench/cache_bench.h" name="tools/cache_bench/cache_bench.h">
+<area shape="rect" id="Node000001" title="Eviction&#45;policy comparison harness for the #147 memory&#45;hierarchy decision record: the DIP seam every ..." alt="" coords="147,5,331,45"/>
+<area shape="rect" id="Node000002" href="$cache__bench_8c.html" title="#147 eviction&#45;policy benchmark harness: replay + sweep + report." alt="" coords="78,181,262,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="134,48,61,69,33,81,16,95,9,108,9,121,15,132,26,143,59,163,99,179,98,184,57,168,23,148,11,136,4,122,4,107,11,92,30,77,59,64,132,43"/>
+<area shape="rect" id="Node000003" href="$policies_8c.html" title="Reference eviction policies + the registry for the #147 benchmark." alt="" coords="26,101,233,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="206,56,146,102,143,98,202,52"/>
+<area shape="rect" id="Node000004" href="$policy__scanresist_8c.html" title="Scan&#45;resistant eviction policies for the #147 benchmark: Segmented&#45;LRU and SRRIP – the deterministic,..." alt="" coords="257,93,442,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="276,52,327,91,323,95,273,56"/>
+<area shape="rect" id="Node000005" href="$trace_8h.html" title="Reader access&#45;trace generation + loading for the #147 cache benchmark." alt="" coords="466,101,657,126"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="323,46,519,98,518,103,322,51"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="497,132,256,184,255,179,495,126"/>
+<area shape="rect" id="Node000006" href="$trace_8c.html" title="Implementation of the #147 reader access&#45;trace corpus + loader." alt="" coords="466,189,657,214"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="564,140,564,188,559,188,559,140"/>
+</map>

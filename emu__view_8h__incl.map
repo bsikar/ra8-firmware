@@ -1,0 +1,12 @@
+<map id="tools/ra8_emulator/inc/emu_view.h" name="tools/ra8_emulator/inc/emu_view.h">
+<area shape="rect" id="Node000001" title="Board&#45;view presentation: frames, composition, input routing, panels." alt="" coords="95,5,241,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="79,167,150,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="96,42,49,61,29,76,13,95,9,105,9,114,20,131,42,147,68,159,66,164,39,151,16,135,4,115,3,104,8,92,26,72,47,57,94,37"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="23,93,158,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="151,47,114,85,110,82,147,44"/>
+<area shape="rect" id="Node000004" href="$board__overlay_8h.html" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="183,93,308,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="189,44,226,82,222,85,185,47"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="332,93,457,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="223,43,349,86,348,91,221,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="226,121,149,162,147,158,223,116"/>
+</map>

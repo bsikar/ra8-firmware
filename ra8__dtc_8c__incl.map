@@ -1,0 +1,43 @@
+<map id="libs/ra8_hal/src/ra8_dtc.c" name="libs/ra8_hal/src/ra8_dtc.c">
+<area shape="rect" id="Node000001" title="Data Transfer Controller driver implementation." alt="" coords="326,5,471,45"/>
+<area shape="rect" id="Node000002" href="$ra8__dtc_8h.html" title="Data Transfer Controller (DTC) driver." alt="" coords="153,93,236,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="351,48,239,91,237,86,349,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="479,240,550,265"/>
+<area shape="poly" id="edge8_Node000001_Node000003" title=" " alt="" coords="472,31,592,48,732,75,798,93,856,113,901,137,930,165,936,180,930,194,904,212,866,227,819,237,766,245,656,253,564,255,564,249,656,247,765,239,818,232,865,222,902,208,926,190,930,180,926,168,898,142,853,118,796,98,730,80,592,53,471,37"/>
+<area shape="rect" id="Node000004" href="$ra8__dtc__regs_8h.html" title="DTC (Data Transfer Controller) register layout for the RA8D2." alt="" coords="57,167,175,192"/>
+<area shape="poly" id="edge20_Node000001_Node000004" title=" " alt="" coords="326,30,280,35,231,47,184,66,143,95,133,108,127,123,120,153,115,152,122,121,129,105,139,91,181,61,230,41,279,30,325,24"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="5,240,131,265"/>
+<area shape="poly" id="edge9_Node000001_Node000005" title=" " alt="" coords="326,36,226,56,173,73,123,96,77,124,61,142,48,168,44,182,46,198,56,227,51,229,40,199,39,182,43,166,57,139,73,120,120,91,171,68,225,51,325,31"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="301,167,379,192"/>
+<area shape="poly" id="edge21_Node000001_Node000006" title=" " alt="" coords="397,46,374,120,356,156,352,154,370,118,392,45"/>
+<area shape="rect" id="Node000007" href="$ra8__cache_8h.html" title="Cortex&#45;M85 L1 cache maintenance, enable/disable, and I&#45;cache invalidate." alt="" coords="261,93,361,119"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="379,48,336,86,332,82,376,44"/>
+<area shape="rect" id="Node000008" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="487,93,587,119"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="433,43,506,84,504,89,431,48"/>
+<area shape="rect" id="Node000009" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="404,167,487,192"/>
+<area shape="poly" id="edge22_Node000001_Node000009" title=" " alt="" coords="407,45,440,153,435,154,402,47"/>
+<area shape="rect" id="Node000011" href="$ra8__mstp_8h.html" title="Ref&#45;counted Module Stop Control wrapper for the RA8D2." alt="" coords="657,93,751,119"/>
+<area shape="poly" id="edge23_Node000001_Node000011" title=" " alt="" coords="472,43,647,87,645,92,471,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="205,118,234,154,254,173,277,190,325,212,375,228,466,245,465,250,374,233,323,217,275,194,251,177,230,157,201,121"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="184,121,141,159,137,156,180,117"/>
+<area shape="poly" id="edge6_Node000002_Node000006" title=" " alt="" coords="219,116,305,158,303,163,217,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="175,188,466,240,465,245,174,194"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="110,194,86,230,81,227,106,191"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="369,190,474,232,472,237,367,194"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="304,120,287,155,284,174,290,190,301,200,318,209,363,224,466,243,465,248,362,229,315,213,298,204,286,194,279,174,281,153,299,118"/>
+<area shape="poly" id="edge12_Node000007_Node000006" title=" " alt="" coords="318,118,332,153,328,155,313,120"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="588,116,625,127,658,144,670,154,678,166,679,179,673,193,651,217,623,233,593,243,564,250,563,244,591,238,621,228,647,212,668,191,674,178,673,168,666,158,655,148,623,132,587,121"/>
+<area shape="poly" id="edge15_Node000008_Node000006" title=" " alt="" coords="507,121,386,164,384,159,505,116"/>
+<area shape="poly" id="edge16_Node000008_Node000009" title=" " alt="" coords="524,121,473,160,469,156,521,117"/>
+<area shape="rect" id="Node000010" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="511,167,659,192"/>
+<area shape="poly" id="edge18_Node000008_Node000010" title=" " alt="" coords="547,118,572,154,568,157,543,121"/>
+<area shape="poly" id="edge17_Node000009_Node000003" title=" " alt="" coords="459,190,496,228,492,232,455,194"/>
+<area shape="poly" id="edge19_Node000010_Node000003" title=" " alt="" coords="576,194,538,232,534,228,572,190"/>
+<area shape="poly" id="edge24_Node000011_Node000003" title=" " alt="" coords="709,119,710,155,705,175,695,194,667,219,633,236,597,246,564,252,563,246,596,241,631,231,664,214,691,190,700,173,704,154,703,119"/>
+<area shape="poly" id="edge25_Node000011_Node000006" title=" " alt="" coords="657,119,394,169,393,164,656,113"/>
+<area shape="rect" id="Node000012" href="$ra8__mstp__regs_8h.html" title="Module Stop Control (MSTP) register layout for the Renesas RA8D2." alt="" coords="785,167,916,192"/>
+<area shape="poly" id="edge26_Node000011_Node000012" title=" " alt="" coords="729,116,816,158,813,163,726,121"/>
+<area shape="poly" id="edge28_Node000012_Node000003" title=" " alt="" coords="797,195,564,244,563,238,796,189"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="813,240,888,265"/>
+<area shape="poly" id="edge27_Node000012_Node000013" title=" " alt="" coords="853,192,853,226,848,226,848,192"/>
+</map>

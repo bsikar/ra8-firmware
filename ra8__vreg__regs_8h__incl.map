@@ -1,0 +1,5 @@
+<map id="libs/ra8_hal/inc/ra8_vreg_regs.h" name="libs/ra8_hal/inc/ra8_vreg_regs.h">
+<area shape="rect" id="Node000001" title="Internal Voltage Regulator (VREG / DCDC / LDO) register layout for RA8D2." alt="" coords="5,5,151,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="43,93,113,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,46,81,79,75,79,75,46"/>
+</map>

@@ -1,0 +1,13 @@
+<map id="libs/ra8_hal/inc/ra8_ulpt.h" name="libs/ra8_hal/inc/ra8_ulpt.h">
+<area shape="rect" id="Node000001" title="Ultra&#45;Low&#45;Power Timer (ULPT) driver header." alt="" coords="5,5,151,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="43,167,113,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="60,47,42,69,29,94,26,106,28,118,40,138,55,156,51,159,36,141,24,120,20,106,23,92,38,66,56,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="39,93,117,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="81,46,81,79,75,79,75,46"/>
+<area shape="rect" id="Node000004" href="$ra8__ulpt__regs_8h.html" title="Ultra&#45;Low&#45;Power Timer (ULPT) register layout for the Renesas RA8D2." alt="" coords="142,93,265,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="110,43,175,84,172,88,107,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="81,119,81,153,75,153,75,119"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="185,121,112,162,109,157,182,116"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="141,167,266,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="206,119,206,153,201,153,201,119"/>
+</map>

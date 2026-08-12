@@ -1,0 +1,59 @@
+<map id="tools/ra8_emulator/inc/board_console.h" name="tools/ra8_emulator/inc/board_console.h">
+<area shape="rect" id="Node000001" title="Multi&#45;channel console log store backing the board view&#39;s tabbed console." alt="" coords="2856,5,3011,45"/>
+<area shape="rect" id="Node000002" href="$emu__console_8c.html" title="Emulator console surfaces implementation (see emu_console.h)." alt="" coords="5,101,200,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="2842,29,2331,29,1570,37,1166,45,787,57,459,74,212,96,172,103,171,98,212,91,459,68,787,51,1166,39,1569,31,2331,24,2842,24"/>
+<area shape="rect" id="Node000003" href="$emu__elf_8c.html" title="ELF32 image services implementation (see emu_elf.h)." alt="" coords="224,101,384,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="2843,30,1552,51,822,71,554,83,396,96,362,103,361,98,396,91,554,77,822,65,1552,46,2842,25"/>
+<area shape="rect" id="Node000004" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="408,101,573,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="2843,29,2394,30,1741,37,1397,45,1074,57,796,74,586,96,551,103,550,98,585,91,795,69,1074,52,1397,40,1741,32,2394,24,2843,24"/>
+<area shape="rect" id="Node000005" href="$emu__view_8c.html" title="Board&#45;view presentation implementation (see emu_view.h)." alt="" coords="598,101,773,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="2842,29,2428,32,1833,41,1521,50,1228,61,976,76,786,96,749,103,748,98,785,91,976,71,1228,56,1521,44,1833,36,2428,27,2842,24"/>
+<area shape="rect" id="Node000006" href="$board__console_8c.html" title="Multi&#45;channel console log store implementation (see board_console.h)." alt="" coords="797,101,968,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="2842,30,2462,33,1923,43,1379,63,1152,78,980,96,945,103,944,98,980,91,1151,72,1378,58,1923,38,2461,28,2842,24"/>
+<area shape="rect" id="Node000007" href="$board__net_8c.html" title="Virtual network peer (Ethernet/ARP/IPv4/ICMP/TCP) for ra8_emulator." alt="" coords="993,101,1138,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="2842,30,2491,33,2001,42,1747,51,1509,62,1304,77,1150,96,1119,103,1118,98,1149,91,1304,72,1509,57,1747,45,2001,37,2491,27,2842,24"/>
+<area shape="rect" id="Node000008" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="1162,101,1307,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="2842,30,2521,34,2080,45,1640,65,1457,79,1319,96,1289,103,1287,98,1318,91,1457,73,1640,59,2080,40,2521,29,2842,25"/>
+<area shape="rect" id="Node000009" href="$board__periph__adc_8c.html" title="ADC16H (16&#45;bit SAR) peripheral&#45;block model for the board emulator." alt="" coords="1331,101,1551,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="2842,29,2617,30,2300,39,1935,59,1748,75,1564,96,1521,103,1520,98,1564,91,1747,70,1934,54,2300,34,2617,25,2842,23"/>
+<area shape="rect" id="Node000010" href="$board__periph__canfd_8c.html" title="CAN&#45;FD controller peripheral&#45;block model for the board emulator." alt="" coords="1576,93,1755,148"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="2842,29,2646,30,2379,39,2075,59,1919,75,1767,96,1756,98,1755,93,1766,91,1918,70,2074,54,2379,34,2646,25,2842,23"/>
+<area shape="rect" id="Node000011" href="$board__periph__ceu_8c.html" title="Capture Engine Unit (CEU) peripheral&#45;block model for ra8_emulator." alt="" coords="1779,101,1999,141"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="2842,32,2478,50,2245,68,2011,96,1970,103,1969,98,2010,91,2245,63,2478,44,2842,26"/>
+<area shape="rect" id="Node000012" href="$board__periph__dac_8c.html" title="DAC_B (12&#45;bit D/A) peripheral&#45;block model for the board emulator." alt="" coords="2023,101,2243,141"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="2843,35,2579,57,2418,74,2256,96,2216,103,2215,98,2256,91,2417,69,2578,51,2842,30"/>
+<area shape="rect" id="Node000013" href="$board__periph__dmac_8c.html" title="DMAC0 transfer peripheral&#45;block model for the board emulator." alt="" coords="2268,93,2447,148"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="2842,39,2664,62,2459,96,2447,98,2446,93,2458,91,2664,57,2842,34"/>
+<area shape="rect" id="Node000014" href="$board__periph__dtc_8c.html" title="DTC (Data Transfer Controller) transfer&#45;engine model for ra8_emulator." alt="" coords="2471,101,2689,141"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="2850,51,2652,103,2651,98,2848,46"/>
+<area shape="rect" id="Node000015" href="$board__periph__eth_8c.html" title="R&#45;Switch (ESWM / MFWD / COMA / ETHA / RMAC / GWCA) model for ra8_emulator." alt="" coords="2713,101,2932,141"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="2902,56,2847,103,2843,99,2899,52"/>
+<area shape="rect" id="Node000016" href="$board__periph__gpio_8c.html" title="GPIO / PORT peripheral&#45;block model for the board emulator." alt="" coords="2956,93,3135,148"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="2968,52,3015,91,3012,95,2965,56"/>
+<area shape="rect" id="Node000017" href="$board__periph__i2c_8c.html" title="I3C&#45;in&#45;I2C&#45;mode (IIC_B) controller + GT911 touch + LSM6DSO IMU models plus an external&#45;controller sti..." alt="" coords="3159,101,3375,141"/>
+<area shape="poly" id="edge16_Node000001_Node000017" title=" " alt="" coords="3014,46,3200,98,3199,103,3013,52"/>
+<area shape="rect" id="Node000018" href="$board__periph__npu_8c.html" title="Arm Ethos&#45;U55 NPU command/queue execution model (RA8P1&#45;only) for ra8_emulator." alt="" coords="3399,101,3620,141"/>
+<area shape="poly" id="edge17_Node000001_Node000018" title=" " alt="" coords="3025,36,3194,59,3387,91,3425,98,3424,103,3386,96,3193,65,3024,41"/>
+<area shape="rect" id="Node000019" href="$board__periph__pdm_8c.html" title="PDM&#45;IF (digital MEMS microphone) peripheral&#45;block model for ra8_emulator." alt="" coords="3644,101,3871,141"/>
+<area shape="poly" id="edge18_Node000001_Node000019" title=" " alt="" coords="3024,29,3297,51,3465,69,3632,91,3674,98,3673,103,3632,96,3464,74,3297,56,3024,35"/>
+<area shape="rect" id="Node000020" href="$board__periph__riic_8c.html" title="RIIC (IIC) controller + PI4IOE5V6408 I/O&#45;expander + OV5640 SCCB model." alt="" coords="3895,93,4073,148"/>
+<area shape="poly" id="edge19_Node000001_Node000020" title=" " alt="" coords="3025,25,3187,29,3401,40,3641,59,3883,91,3895,93,3894,98,3882,96,3641,65,3400,45,3186,35,3025,30"/>
+<area shape="rect" id="Node000021" href="$board__periph__rtt_8c.html" title="SEGGER RTT up&#45;buffer drain model for ra8_emulator." alt="" coords="4098,101,4310,141"/>
+<area shape="poly" id="edge20_Node000001_Node000021" title=" " alt="" coords="3025,24,3218,28,3481,38,3782,58,3935,72,4086,91,4128,98,4127,103,4085,96,3935,78,3781,63,3481,43,3217,33,3024,30"/>
+<area shape="rect" id="Node000022" href="$board__periph__sci_8c.html" title="SCI_B UART peripheral&#45;block model for the board emulator." alt="" coords="4334,101,4549,141"/>
+<area shape="poly" id="edge21_Node000001_Node000022" title=" " alt="" coords="3024,23,3253,24,3575,32,3946,53,4137,69,4323,91,4366,98,4365,103,4322,96,4136,75,3946,58,3575,38,3253,29,3024,28"/>
+<area shape="rect" id="Node000023" href="$board__periph__sd_8c.html" title="SD&#45;card&#45;over&#45;SPI device model for ra8_emulator (attached to SPI_B)." alt="" coords="4573,101,4785,141"/>
+<area shape="poly" id="edge22_Node000001_Node000023" title=" " alt="" coords="3025,26,3792,46,4236,65,4421,77,4562,91,4604,98,4603,103,4561,96,4421,82,4236,70,3792,51,3025,31"/>
+<area shape="rect" id="Node000024" href="$board__periph__sd__image_8c.html" title="Backing&#45;image lifecycle for the modelled SD card (see board_periph_sd.h)." alt="" coords="4809,93,4988,148"/>
+<area shape="poly" id="edge23_Node000001_Node000024" title=" " alt="" coords="3025,25,3390,29,3902,40,4419,60,4635,74,4798,91,4809,93,4808,98,4797,96,4634,79,4419,65,3902,45,3390,34,3025,30"/>
+<area shape="rect" id="Node000025" href="$board__periph__sdhi_8c.html" title="Native 4&#45;bit SDHI host&#45;controller model for ra8_emulator (SDHI0)." alt="" coords="5012,93,5191,148"/>
+<area shape="poly" id="edge24_Node000001_Node000025" title=" " alt="" coords="3024,24,3425,27,3996,37,4576,57,4818,72,5000,91,5012,93,5011,98,5000,96,4817,77,4576,62,3996,43,3425,33,3024,30"/>
+<area shape="rect" id="Node000026" href="$board__periph__spi_8c.html" title="SPI_B (Type&#45;B SPI) controller peripheral&#45;block model for ra8_emulator." alt="" coords="5215,101,5431,141"/>
+<area shape="poly" id="edge25_Node000001_Node000026" title=" " alt="" coords="3025,24,3459,28,4090,39,4732,58,5000,73,5203,91,5247,98,5246,103,5202,96,5000,78,4732,64,4089,44,3459,34,3025,30"/>
+<area shape="rect" id="Node000027" href="$board__periph__ssie_8c.html" title="Serial Sound Interface Enhanced (SSIE / I2S) peripheral&#45;block model." alt="" coords="5455,93,5633,148"/>
+<area shape="poly" id="edge26_Node000001_Node000027" title=" " alt="" coords="3024,24,3500,24,4200,32,4570,40,4917,52,5217,68,5443,91,5455,93,5454,98,5442,96,5217,74,4917,57,4569,45,4200,37,3500,30,3024,29"/>
+<area shape="rect" id="Node000028" href="$board__periph__xspi_8c.html" title="Octal&#45;SPI (xSPI) manual&#45;command + NOR&#45;flash peripheral model for ra8_emulator." alt="" coords="5657,93,5836,148"/>
+<area shape="poly" id="edge27_Node000001_Node000028" title=" " alt="" coords="3024,23,3534,23,4293,29,4695,37,5073,49,5400,67,5534,78,5646,91,5657,93,5656,98,5645,96,5534,83,5399,72,5073,55,4694,42,4293,34,3534,28,3024,29"/>
+<area shape="rect" id="Node000029" href="$board__usb_8c.html" title="USBFS controller model + virtual USB host (chapter&#45;9 enumeration)." alt="" coords="5860,101,6015,141"/>
+<area shape="poly" id="edge28_Node000001_Node000029" title=" " alt="" coords="3025,25,3621,30,4503,43,5352,62,5664,75,5848,91,5882,98,5881,103,5848,96,5664,81,5352,68,4503,48,3621,36,3024,30"/>
+</map>

@@ -1,0 +1,19 @@
+<map id="tools/cache_bench/sweep_block_report.c" name="tools/cache_bench/sweep_block_report.c">
+<area shape="rect" id="Node000001" title="Reporting for the #208 sweep: machine&#45;parseable rows, per&#45;leg summary tables, and the measured knee /..." alt="" coords="38,5,226,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,72,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,48,65,86,62,82,108,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="97,93,167,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="135,46,135,79,129,79,129,46"/>
+<area shape="rect" id="Node000004" href="$sweep__block__internal_8h.html" title="Module&#45;private seams shared by the #208 sweep translation units." alt="" coords="191,93,366,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="168,43,246,84,244,89,166,48"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="310,313,381,339"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="257,121,236,134,217,151,205,170,204,180,206,191,228,227,256,258,286,284,315,304,312,308,283,288,252,262,223,230,202,193,199,181,200,169,213,148,233,130,254,116"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="216,167,341,192"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="281,119,281,153,276,153,276,119"/>
+<area shape="rect" id="Node000007" href="$ra8__vsource_8h.html" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="366,167,479,192"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="303,116,388,158,386,163,301,121"/>
+<area shape="poly" id="edge7_Node000007_Node000005" title=" " alt="" coords="412,194,392,215,373,241,360,271,352,300,347,299,355,269,368,239,388,212,408,190"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="383,240,462,265"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="425,192,425,226,420,226,420,192"/>
+<area shape="poly" id="edge9_Node000008_Node000005" title=" " alt="" coords="412,267,370,306,366,302,408,263"/>
+</map>

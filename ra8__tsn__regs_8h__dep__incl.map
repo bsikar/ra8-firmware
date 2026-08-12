@@ -1,0 +1,12 @@
+<map id="libs/ra8_hal/inc/ra8_tsn_regs.h" name="libs/ra8_hal/inc/ra8_tsn_regs.h">
+<area shape="rect" id="Node000001" title="Temperature Sensor (TSN) register layout for the Renesas RA8D2." alt="" coords="175,5,320,45"/>
+<area shape="rect" id="Node000002" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="199,54,116,96,114,91,197,49"/>
+<area shape="rect" id="Node000003" href="$ra8__tsn_8h.html" title="On&#45;chip Temperature Sensor (TSN) driver." alt="" coords="175,93,320,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="250,59,250,93,245,93,245,59"/>
+<area shape="rect" id="Node000005" href="$ra8__tsn_8c.html" title="On&#45;chip Temperature Sensor (TSN) driver implementation." alt="" coords="285,189,431,229"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="294,51,316,69,335,92,347,116,354,143,360,188,355,189,349,144,342,118,330,95,313,73,291,55"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2adc__diag__tsn__demo_2main_8c.html" title="ADC_B self&#45;diagnosis (modes 1/2/3) + on&#45;die temperature demo." alt="" coords="87,181,261,236"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="226,146,197,183,193,180,222,143"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="282,140,337,187,334,191,279,144"/>
+</map>

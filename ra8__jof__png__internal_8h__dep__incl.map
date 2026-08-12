@@ -1,0 +1,7 @@
+<map id="libs/ra8_jof/src/ra8_jof_png_internal.h" name="libs/ra8_jof/src/ra8_jof_png_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private declarations shared by the two PNG decoder units." alt="" coords="86,5,233,45"/>
+<area shape="rect" id="Node000002" href="$ra8__jof__png_8c.html" title="Streaming PNG scanline decoder for the transcode producer (#231)." alt="" coords="5,93,148,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="133,57,97,95,93,91,129,54"/>
+<area shape="rect" id="Node000003" href="$ra8__jof__png__chunk_8c.html" title="PNG chunk layer for the streaming decoder: prologue, palette tables, ancillary skipping and the post&#45;..." alt="" coords="172,93,315,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="189,53,227,91,223,95,185,57"/>
+</map>

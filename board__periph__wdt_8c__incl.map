@@ -1,0 +1,16 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_wdt.c" name="tools/ra8_emulator/src/periph/board_periph_wdt.c">
+<area shape="rect" id="Node000001" title="Window Watchdog Timer (WDT0 / WWDT) model for ra8_emulator." alt="" coords="53,5,275,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="47,167,118,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="77,48,41,67,25,79,13,95,9,111,16,128,31,144,50,157,47,162,28,148,12,131,3,112,8,92,22,76,38,62,75,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="352,93,419,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="218,43,341,86,339,91,216,48"/>
+<area shape="rect" id="Node000004" href="$board__periph_8h.html" title="Register&#45;accurate peripheral&#45;model framework for the board emulator." alt="" coords="23,93,142,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="146,47,107,85,103,82,142,44"/>
+<area shape="rect" id="Node000006" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="166,93,327,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="186,44,226,82,223,86,182,47"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="85,119,85,153,80,153,80,119"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="161,167,295,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="107,116,193,158,191,163,105,121"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="221,121,123,164,121,159,219,116"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="246,120,237,154,232,153,241,118"/>
+</map>

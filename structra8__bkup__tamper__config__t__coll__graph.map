@@ -1,0 +1,5 @@
+<map id="ra8_bkup_tamper_config_t" name="ra8_bkup_tamper_config_t">
+<area shape="rect" id="Node000001" title="Whole&#45;block tamper&#45;detection configuration." alt="" coords="5,116,199,141"/>
+<area shape="rect" id="Node000002" href="$structra8__bkup__tamper__chan__cfg__t.html" title="Per&#45;channel tamper&#45;detection configuration." alt="" coords="15,5,189,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="105,59,105,116,99,116,99,59"/>
+</map>

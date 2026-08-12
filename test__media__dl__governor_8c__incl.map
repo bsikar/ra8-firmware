@@ -1,0 +1,19 @@
+<map id="tools/media_dl/tests/test_media_dl_governor.c" name="tools/media_dl/tests/test_media_dl_governor.c">
+<area shape="rect" id="Node000001" title="Host unit tests for the #301 per&#45;host politeness governor." alt="" coords="56,5,249,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="80,240,151,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="79,48,43,67,28,80,16,95,9,113,9,132,15,150,26,169,56,203,89,230,85,234,52,207,22,172,10,153,4,132,4,112,12,92,25,76,40,62,76,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="26,93,93,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="132,48,86,86,82,82,128,44"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="117,93,188,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="155,46,155,79,150,79,150,46"/>
+<area shape="rect" id="Node000005" href="$mdl__politeness_8h.html" title="Jittered inter&#45;request delay plus the per&#45;host politeness governor." alt="" coords="213,93,346,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="185,43,251,84,248,88,182,48"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="370,93,498,119"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="221,43,381,87,379,92,219,48"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="226,121,182,139,161,152,143,168,127,196,120,226,115,225,122,194,139,165,158,148,179,134,224,116"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="153,167,278,192"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="271,121,237,158,233,155,267,117"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="303,167,381,192"/>
+<area shape="poly" id="edge7_Node000005_Node000007" title=" " alt="" coords="292,117,325,154,321,158,288,121"/>
+<area shape="poly" id="edge8_Node000007_Node000002" title=" " alt="" coords="306,195,165,239,163,234,305,189"/>
+</map>

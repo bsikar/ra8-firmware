@@ -1,0 +1,27 @@
+<map id="tools/ra8_emulator/src/engine/emu_memmap.c" name="tools/ra8_emulator/src/engine/emu_memmap.c">
+<area shape="rect" id="Node000001" title="Emulated memory map implementation (see emu_memmap.h)." alt="" coords="314,5,521,45"/>
+<area shape="rect" id="Node000002" href="$emu__memmap_8h.html" title="Emulated RA8D2 memory map: regions, alias backings, MMIO windows." alt="" coords="5,93,139,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="335,48,136,93,135,88,334,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="440,93,507,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="433,44,459,80,455,84,429,47"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="531,93,602,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="454,43,534,84,531,89,452,48"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="626,93,697,119"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="477,43,613,86,612,92,475,48"/>
+<area shape="rect" id="Node000009" href="$emu__console_8h.html" title="Emulator text&#45;console surfaces: UART echo, ITM/SWO echo, escapes." alt="" coords="163,93,283,119"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="372,48,265,91,263,86,370,43"/>
+<area shape="rect" id="Node000010" href="$emu__mmio_8h.html" title="Sparse MMIO model of the Renesas peripheral space." alt="" coords="307,93,415,119"/>
+<area shape="poly" id="edge12_Node000001_Node000010" title=" " alt="" coords="406,47,380,84,375,80,402,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="45,167,115,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="76,119,80,153,75,153,71,119"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="139,167,274,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="95,116,174,158,171,162,92,121"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="299,167,424,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="119,116,302,161,301,166,118,121"/>
+<area shape="poly" id="edge9_Node000009_Node000003" title=" " alt="" coords="201,121,117,163,114,158,199,116"/>
+<area shape="poly" id="edge10_Node000009_Node000004" title=" " alt="" coords="223,120,215,154,210,153,217,118"/>
+<area shape="poly" id="edge11_Node000009_Node000005" title=" " alt="" coords="246,116,328,158,325,163,244,121"/>
+<area shape="poly" id="edge13_Node000010_Node000003" title=" " alt="" coords="317,121,129,168,128,163,315,116"/>
+<area shape="poly" id="edge14_Node000010_Node000004" title=" " alt="" coords="338,121,245,163,243,158,335,116"/>
+<area shape="poly" id="edge15_Node000010_Node000005" title=" " alt="" coords="364,119,364,153,359,153,359,119"/>
+</map>

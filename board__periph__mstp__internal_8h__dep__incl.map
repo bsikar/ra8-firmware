@@ -1,0 +1,9 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_mstp_internal.h" name="tools/ra8_emulator/src/periph/board_periph_mstp_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private module&#45;stop (MSTP) gate state shared with the core." alt="" coords="221,5,399,60"/>
+<area shape="rect" id="Node000002" href="$board__periph_8c.html" title="Peripheral&#45;block registry core + ICU/NVIC routing for ra8_emulator." alt="" coords="5,115,196,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="245,68,141,117,139,113,242,63"/>
+<area shape="rect" id="Node000003" href="$board__periph__mstp_8c.html" title="Module Stop Control (MSTPCRA..E) register block for ra8_emulator." alt="" coords="221,108,399,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="313,74,313,108,307,108,307,74"/>
+<area shape="rect" id="Node000004" href="$board__periph__mstp__model_8c.html" title="Module&#45;stop (MSTP) shadow + address&#45;&gt;bit gate table (engine&#45;free half)." alt="" coords="423,108,602,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="376,64,461,106,459,110,374,68"/>
+</map>

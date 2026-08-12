@@ -1,0 +1,15 @@
+<map id="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs" name="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs">
+<area shape="rect" id="node2" href="dir_208a5d42abd6c5b39098deaf76e605cc.html" title="inc" alt="" coords="103,136,145,161"/>
+<area shape="poly" id="edge1" href="dir_000465_000164.html" alt="" coords="181,90,146,128,142,124,177,87"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000465_000164.html" title="3" alt="" coords="148,121,158,136"/>
+<area shape="rect" id="node4" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="307,136,352,161"/>
+<area shape="poly" id="edge2" href="dir_000465_000228.html" alt="" coords="213,86,296,127,293,132,211,90"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000465_000228.html" title="16" alt="" coords="285,113,303,127"/>
+<area shape="rect" id="node3" href="dir_1c8e58895b76ffd99cc390cf16984739.html" title="src" alt="" coords="38,63,79,88"/>
+<area shape="poly" id="edge3" href="dir_000384_000164.html" alt="" coords="71,87,106,124,102,128,67,90"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000384_000164.html" title="2" alt="" coords="103,110,112,124"/>
+<area shape="poly" id="edge4" href="dir_000384_000228.html" alt="" coords="80,81,93,85,192,110,291,133,294,134,293,139,290,139,191,115,91,91,79,87"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000384_000228.html" title="5" alt="" coords="287,120,296,135"/>
+<area shape="rect" id="clust2" href="dir_7367bf0fdee65fa679c9a584580fa14a.html" alt="" coords="27,52,285,172"/>
+<area shape="rect" id="clust1" href="dir_de7da76b43b062724f2f4e058a0557b5.html" title="manual" alt="" coords="16,16,296,183"/>
+</map>

@@ -1,0 +1,14 @@
+<map id="libs/ra8_webp/inc/ra8_webp.h" name="libs/ra8_webp/inc/ra8_webp.h">
+<area shape="rect" id="Node000001" title="Zero&#45;heap WebP (VP8 / VP8L) decode facade over the vendored libwebp." alt="" coords="69,5,229,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="77,48,42,67,28,80,16,95,11,109,13,124,27,154,22,156,7,126,6,108,11,92,24,76,39,62,75,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="169,167,239,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="161,45,181,92,200,152,195,154,176,94,156,47"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="242,93,321,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="182,43,251,84,248,88,180,48"/>
+<area shape="rect" id="Node000005" href="$ra8__webp__arena_8h.html" title="Heap&#45;free scratch allocator hooks for the vendored libwebp decoder." alt="" coords="25,93,167,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="139,47,114,83,110,80,134,44"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="271,121,229,159,225,155,267,117"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="89,121,62,157,57,154,85,117"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="115,116,176,157,173,161,112,121"/>
+</map>

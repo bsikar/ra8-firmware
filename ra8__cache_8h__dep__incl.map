@@ -1,0 +1,25 @@
+<map id="libs/ra8_hal/inc/ra8_cache.h" name="libs/ra8_hal/inc/ra8_cache.h">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 L1 cache maintenance, enable/disable, and I&#45;cache invalidate." alt="" coords="1132,5,1277,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2cache__hal__enable__demo_2main_8c.html" title="Cortex&#45;M85 L1 cache brought up through the ra8_cache HAL (issue #577)." alt="" coords="5,93,207,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1119,31,952,35,728,46,475,66,220,96,208,98,207,93,219,91,475,60,728,41,952,30,1118,25"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2mpu__boot__map__hal_2system__init_8c.html" title="Cortex&#45;M85 / RA8D2 core bring&#45;up – MPU map via the ra8_mpu HAL (#576)." alt="" coords="231,93,418,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1118,32,813,51,622,70,430,96,419,98,418,93,430,91,622,64,813,46,1118,27"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2cache__mpu__hil_2main_8c.html" title="Cortex&#45;M85 L1 cache + MPU &quot;runs correctly with them on&quot; HIL self&#45;test." alt="" coords="442,93,615,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1119,35,895,57,761,74,628,96,616,98,615,93,627,91,761,69,895,52,1118,30"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dma__coherency__hil_2main_8c.html" title="DMAC mem&#45;to&#45;mem coherency HIL proof with the M85 D&#45;cache ENABLED." alt="" coords="640,93,857,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1119,46,871,96,858,98,857,93,869,91,1118,41"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dtc__coherency__hil_2main_8c.html" title="DTC vector&#45;table / TI coherency HIL proof with the M85 D&#45;cache ENABLED." alt="" coords="882,93,1090,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1149,53,1049,96,1047,91,1147,48"/>
+<area shape="rect" id="Node000007" href="$libs_2ra8__board__ek__ra8d2_2boot_2system__init_8c.html" title="Cortex&#45;M85 / RA8D2 core bring&#45;up (called from Reset_Handler)." alt="" coords="1114,101,1295,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1207,59,1207,101,1202,101,1202,59"/>
+<area shape="rect" id="Node000008" href="$libs_2ra8__board__ra8p1_2boot_2system__init_8c.html" title="Cortex&#45;M85 / RA8D2/RA8P1 core bring&#45;up (called from Reset_Handler)." alt="" coords="1320,101,1479,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1258,49,1361,98,1359,103,1255,54"/>
+<area shape="rect" id="Node000009" href="$ra8__display__pal__lcd_8c.html" title="LCD backend (ra8_glcdc) implementation for the display PAL." alt="" coords="1503,101,1691,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1292,44,1492,91,1522,98,1521,103,1491,96,1290,49"/>
+<area shape="rect" id="Node000010" href="$ra8__cache_8c.html" title="Cortex&#45;M85 L1 cache maintenance, enable/disable, and I&#45;cache invalidate." alt="" coords="1715,101,1860,141"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1292,31,1482,53,1593,69,1704,91,1732,98,1731,103,1703,96,1592,75,1481,58,1291,36"/>
+<area shape="rect" id="Node000011" href="$ra8__dtc_8c.html" title="Data Transfer Controller driver implementation." alt="" coords="1884,101,2029,141"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1291,27,1407,34,1553,45,1713,64,1873,91,1902,98,1901,103,1872,96,1712,69,1552,51,1407,39,1291,32"/>
+<area shape="rect" id="Node000012" href="$ra8__spi__b__dma_8c.html" title="SPI_B DMA TX/RX pipes with Cortex&#45;M85 cache coherency." alt="" coords="2053,101,2199,141"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1291,25,1435,29,1622,39,1832,59,1939,73,2043,91,2072,98,2071,103,2041,96,1938,78,1832,64,1622,44,1435,34,1291,30"/>
+</map>

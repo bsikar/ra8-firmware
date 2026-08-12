@@ -1,0 +1,14 @@
+<map id="Hardware Abstraction Layer" name="Hardware Abstraction Layer">
+<area shape="rect" id="Node000001" title="Ring 3 peripheral drivers and register maps for the RA8D2 (libs/ra8_hal)." alt="" coords="5,245,168,285"/>
+<area shape="rect" id="Node000009" href="$group__grp__hal__analog.html" title="ADC, DAC, ACMPHS, temperature sensor, CRC." alt="" coords="217,5,393,31"/>
+<area shape="rect" id="Node000008" href="$group__grp__hal__audio.html" title="SSIE, PDM." alt="" coords="276,55,335,80"/>
+<area shape="rect" id="Node000007" href="$group__grp__hal__camera.html" title="CEU, VIN, MIPI&#45;CSI, JPEG codec." alt="" coords="233,104,377,129"/>
+<area shape="rect" id="Node000003" href="$group__grp__hal__comms.html" title="SCI (UART/SPI/LIN), RIIC/I2C, SPI&#45;B, SMBus, CANFD." alt="" coords="223,153,387,179"/>
+<area shape="rect" id="Node000010" href="$group__grp__hal__crypto.html" title="RSIP, DOTF, cache&#45;noise ECC." alt="" coords="240,203,371,228"/>
+<area shape="rect" id="Node000006" href="$group__grp__hal__display.html" title="GLCDC, DRW 2D engine, MIPI&#45;DSI/PHY, e&#45;paper." alt="" coords="270,252,341,277"/>
+<area shape="rect" id="Node000005" href="$group__grp__hal__memory.html" title="DMAC/DTC/DMA, XSPI/OSPI, flash, SDRAMC, SDHI/SD." alt="" coords="243,301,368,327"/>
+<area shape="rect" id="Node000011" href="$group__grp__hal__net.html" title="ETH/ETHA, RMAC PHY, PTP/gPTP, GWCA/COMA/MFWD." alt="" coords="243,351,368,376"/>
+<area shape="rect" id="Node000002" href="$group__grp__hal__system.html" title="ICU/ELC/ISR, CGC, MSTP, LPM/PWR, reset, MPC/ports, SRAM, IPC." alt="" coords="216,400,395,425"/>
+<area shape="rect" id="Node000004" href="$group__grp__hal__timers.html" title="GPT, AGT, ULPT, RTC, WDT, IWDT, POEG." alt="" coords="228,449,383,475"/>
+<area shape="rect" id="Node000012" href="$group__grp__hal__usb.html" title="USB device/host controller + class helpers, touch." alt="" coords="254,499,357,524"/>
+</map>

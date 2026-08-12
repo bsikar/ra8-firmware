@@ -1,0 +1,27 @@
+var structra8__epub__book__t =
+[
+    [ "author", "structra8__epub__book__t.html#a1b8acce836464b44aa3417add3a08af4", null ],
+    [ "chapter_count", "structra8__epub__book__t.html#aab7ae9c173cda5f0e58e2e4d87375fca", null ],
+    [ "chapter_paths", "structra8__epub__book__t.html#a97706b923e7773a15073f1e081a20fc2", null ],
+    [ "cover_path", "structra8__epub__book__t.html#a5d581eb49277ea913c3062309fa88b79", null ],
+    [ "embedded_font_count", "structra8__epub__book__t.html#a5e21250ed1faf5c146335049cd228c79", null ],
+    [ "embedded_font_paths", "structra8__epub__book__t.html#a3a58858370ac2696d12be5f5ff87e67a", null ],
+    [ "font_data", "structra8__epub__book__t.html#a68d604cc696bf354d127abd67eef3348", null ],
+    [ "font_size", "structra8__epub__book__t.html#a2237dfcf5b6fa9f3d2cf92219f35e2d8", null ],
+    [ "identifier", "structra8__epub__book__t.html#aee167efb4d66cd1e721521fe1cd4de45", null ],
+    [ "in_use", "structra8__epub__book__t.html#a6c00e2f8616cf9411da0b81ab7705c23", null ],
+    [ "language", "structra8__epub__book__t.html#a606eda34b9f4896b665a2268d80f9887", null ],
+    [ "manifest", "structra8__epub__book__t.html#a53a79550f99bf00950e09d1176e99e7f", null ],
+    [ "manifest_count", "structra8__epub__book__t.html#aa6b28b9c4e33583068449543b6a9154d", null ],
+    [ "opf_dir", "structra8__epub__book__t.html#a0229f8b2493496328feae0074d19eb7f", null ],
+    [ "stream_media", "structra8__epub__book__t.html#a04f0b256d9e5dd96b4788e8f006713d6", null ],
+    [ "title", "structra8__epub__book__t.html#a6cbc1051d7c176312ed863e4eb7e8909", null ],
+    [ "toc", "structra8__epub__book__t.html#a89a716ac26f1531d44b7e2a781a7baec", null ],
+    [ "toc_count", "structra8__epub__book__t.html#a7d1812ca3d95749926db91dbacf0f885", null ],
+    [ "toc_kind", "structra8__epub__book__t.html#aa3bd72e46b0043fc8f3e27f93b69f66f", null ],
+    [ "toc_path", "structra8__epub__book__t.html#a2c6f1a9e8f03c30fc72b530357eef9f5", null ],
+    [ "zip_archive_active", "structra8__epub__book__t.html#a099c512f4ce0d600efe23173b06ca806", null ],
+    [ "zip_archive_storage", "structra8__epub__book__t.html#a8662e2073a13fda9eb2faf36788d9383", null ],
+    [ "zip_bytes", "structra8__epub__book__t.html#a0b446bd3161da8b9eadbd5c0edf1b7a2", null ],
+    [ "zip_size", "structra8__epub__book__t.html#a122ef06a5970aa539f63afab9ce74439", null ]
+];

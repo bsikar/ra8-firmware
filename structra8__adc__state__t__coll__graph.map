@@ -1,0 +1,5 @@
+<map id="ra8_adc_state_t" name="ra8_adc_state_t">
+<area shape="rect" id="Node000001" title="Driver&#45;wide runtime state." alt="" coords="30,101,155,127"/>
+<area shape="rect" id="Node000002" href="$structra8__adc__group__cache__t.html" title="Per&#45;scan&#45;group channel&#45;list cache." alt="" coords="5,5,180,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,45,95,101,90,101,90,45"/>
+</map>

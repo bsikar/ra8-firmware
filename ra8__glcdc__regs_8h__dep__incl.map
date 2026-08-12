@@ -1,0 +1,139 @@
+<map id="libs/ra8_hal/inc/ra8_glcdc_regs.h" name="libs/ra8_hal/inc/ra8_glcdc_regs.h">
+<area shape="rect" id="Node000001" title="Graphics LCD Controller (GLCDC) register layout for the RA8D2." alt="" coords="3631,5,3776,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ceu__regs_8h.html" title="Capture Engine Unit (CEU) register layout for the RA8D2." alt="" coords="356,93,501,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="3617,32,502,113,501,107,3617,26"/>
+<area shape="rect" id="Node000010" href="$ra8__glcdc_8h.html" title="Graphics LCD Controller driver (two&#45;layer with alpha blending)." alt="" coords="3093,93,3239,133"/>
+<area shape="poly" id="edge15_Node000001_Node000010" title=" " alt="" coords="3617,43,3239,103,3238,98,3616,38"/>
+<area shape="rect" id="Node000032" href="$ra8__glcdc_8c.html" title="Graphics LCD Controller driver implementation." alt="" coords="3356,181,3501,221"/>
+<area shape="poly" id="edge82_Node000001_Node000032" title=" " alt="" coords="3663,55,3460,183,3457,179,3660,51"/>
+<area shape="rect" id="Node000033" href="$ra8__glcdc__gamma_8c.html" title="GLCDC piecewise&#45;linear gamma correction driver." alt="" coords="3525,181,3671,221"/>
+<area shape="poly" id="edge83_Node000001_Node000033" title=" " alt="" coords="3687,59,3612,183,3607,180,3682,56"/>
+<area shape="rect" id="Node000034" href="$ra8__glcdc__layer_8c.html" title="Graphics LCD Controller driver – layer composition and CLUT." alt="" coords="3695,181,3840,221"/>
+<area shape="poly" id="edge84_Node000001_Node000034" title=" " alt="" coords="3717,57,3763,180,3758,182,3712,59"/>
+<area shape="rect" id="Node000037" href="$ra8__mipi__csi__regs_8h.html" title="MIPI CSI&#45;2 Receiver register layout for the RA8D2 (HUM Ch 66)." alt="" coords="4244,93,4389,133"/>
+<area shape="poly" id="edge51_Node000001_Node000037" title=" " alt="" coords="3790,36,4244,99,4244,105,3789,41"/>
+<area shape="rect" id="Node000044" href="$ra8__mipi__phy__regs_8h.html" title="MIPI D&#45;PHY register layout for the RA8D2." alt="" coords="4681,93,4827,133"/>
+<area shape="poly" id="edge64_Node000001_Node000044" title=" " alt="" coords="3790,31,4681,103,4681,109,3790,36"/>
+<area shape="rect" id="Node000053" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="4851,93,4996,133"/>
+<area shape="poly" id="edge81_Node000001_Node000053" title=" " alt="" coords="3790,24,3979,28,4240,38,4537,58,4689,73,4838,91,4851,93,4850,98,4838,96,4689,78,4537,63,4239,44,3979,33,3790,30"/>
+<area shape="rect" id="Node000003" href="$ra8__ceu_8h.html" title="Capture Engine Unit (CEU) camera&#45;capture driver." alt="" coords="271,379,416,419"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="382,143,361,161,346,183,336,208,330,235,328,290,333,340,341,378,335,379,328,341,322,290,325,234,331,206,341,180,357,157,378,139"/>
+<area shape="rect" id="Node000005" href="$ra8__ceu_8c.html" title="Capture Engine Unit (CEU) driver implementation." alt="" coords="441,577,587,617"/>
+<area shape="poly" id="edge13_Node000002_Node000005" title=" " alt="" coords="472,139,494,158,515,180,554,233,564,260,567,295,567,401,563,452,551,502,525,578,520,576,546,500,557,451,562,401,562,295,559,261,549,235,511,183,491,162,468,143"/>
+<area shape="rect" id="Node000006" href="$ra8__ceu__init__regs_8c.html" title="Capture Engine Unit (CEU) init&#45;time register programming." alt="" coords="5,577,151,617"/>
+<area shape="poly" id="edge14_Node000002_Node000006" title=" " alt="" coords="343,119,244,131,192,143,142,160,97,183,62,213,49,230,39,250,32,271,30,295,30,401,35,451,46,500,72,576,67,578,41,502,29,452,25,401,25,295,27,270,34,248,44,227,58,209,94,178,140,155,190,138,243,126,342,114"/>
+<area shape="rect" id="Node000008" href="$ra8__ceu__types_8h.html" title="Capture Engine Unit (CEU) configuration descriptors and types." alt="" coords="356,181,501,221"/>
+<area shape="poly" id="edge9_Node000002_Node000008" title=" " alt="" coords="431,147,431,181,426,181,426,147"/>
+<area shape="rect" id="Node000004" href="$cam__ceu_8c.html" title="CEU parallel (DVP) capture: DVP pin routing, open, arm/poll, buffer." alt="" coords="285,475,476,529"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="358,431,373,473,368,475,353,433"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="421,422,458,443,489,473,504,499,512,527,517,577,512,577,507,528,499,501,485,476,455,448,418,427"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="258,408,217,416,176,430,138,449,105,476,91,500,82,527,79,577,74,577,77,526,86,498,101,473,135,445,174,425,216,411,256,403"/>
+<area shape="rect" id="Node000007" href="$ra8__ceu__internal_8h.html" title="Cross&#45;TU surface for the ra8_ceu driver split." alt="" coords="116,482,261,522"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="304,429,219,484,216,480,301,425"/>
+<area shape="poly" id="edge7_Node000007_Node000005" title=" " alt="" coords="262,523,273,527,445,575,443,580,272,532,261,529"/>
+<area shape="poly" id="edge8_Node000007_Node000006" title=" " alt="" coords="157,533,102,579,99,575,154,529"/>
+<area shape="poly" id="edge10_Node000008_Node000003" title=" " alt="" coords="399,233,384,251,371,271,360,299,353,328,347,379,341,379,347,328,355,297,366,268,379,247,395,229"/>
+<area shape="rect" id="Node000009" href="$ra8__ceu__api_8h.html" title="Capture Engine Unit (CEU) driver function prototypes." alt="" coords="381,277,527,317"/>
+<area shape="poly" id="edge11_Node000008_Node000009" title=" " alt="" coords="440,234,451,276,446,277,435,235"/>
+<area shape="poly" id="edge12_Node000009_Node000003" title=" " alt="" coords="425,328,366,381,362,377,421,324"/>
+<area shape="rect" id="Node000011" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2touch__cal_2main_8c.html" title="N&#45;point affine touch&#45;calibration demo + HIL gate (#262)." alt="" coords="3327,269,3520,324"/>
+<area shape="poly" id="edge16_Node000010_Node000011" title=" " alt="" coords="3171,146,3179,185,3188,203,3200,219,3247,240,3332,267,3330,272,3246,245,3196,223,3183,206,3174,186,3165,148"/>
+<area shape="rect" id="Node000012" href="$examples_2ek__ra8d2_2hw__validated_2hil_2glcdc__render_2main_8c.html" title="Headless on&#45;silicon HIL gate for the GLCDC layer&#45;1 render path." alt="" coords="3545,269,3718,324"/>
+<area shape="poly" id="edge17_Node000010_Node000012" title=" " alt="" coords="3184,144,3211,184,3229,203,3250,219,3288,239,3322,250,3354,256,3384,257,3450,257,3488,260,3532,267,3545,270,3544,275,3531,272,3488,265,3450,262,3384,263,3353,261,3321,255,3286,244,3247,224,3226,207,3207,188,3179,147"/>
+<area shape="rect" id="Node000013" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__app__demo_2main_8c.html" title="Interactive ra8_widget + ra8_app launcher on the live GLCDC panel." alt="" coords="3742,269,3915,324"/>
+<area shape="poly" id="edge18_Node000010_Node000013" title=" " alt="" coords="3201,140,3301,219,3362,241,3415,252,3464,257,3510,257,3608,255,3665,258,3730,267,3742,269,3741,274,3730,272,3664,263,3608,260,3510,262,3464,262,3415,258,3360,246,3298,224,3198,144"/>
+<area shape="rect" id="Node000014" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__chrome__demo_2main_8c.html" title="Concrete ereader chrome widgets composited on the live GLCDC panel (#145 Phase 2)." alt="" coords="3939,269,4113,324"/>
+<area shape="poly" id="edge19_Node000010_Node000014" title=" " alt="" coords="3220,137,3294,179,3319,201,3329,211,3344,219,3428,246,3501,260,3567,264,3630,262,3762,254,3839,256,3928,267,3940,269,3939,274,3927,272,3838,261,3762,259,3630,267,3567,270,3500,266,3427,252,3342,224,3326,215,3315,205,3291,183,3218,142"/>
+<area shape="rect" id="Node000015" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__compose__demo_2main_8c.html" title="Nested ra8_widget tree composited on the live GLCDC panel (#145)." alt="" coords="773,269,953,324"/>
+<area shape="poly" id="edge20_Node000010_Node000015" title=" " alt="" coords="3080,119,2248,138,1757,158,1553,170,1398,184,1277,202,1157,225,954,273,953,268,1156,220,1276,197,1398,179,1553,165,1757,152,2248,133,3080,113"/>
+<area shape="rect" id="Node000016" href="$examples_2ek__ra8d2_2hw__validated_2hil_2widget__kit__demo_2main_8c.html" title="Concrete ra8_widget leaf widgets composited on the GLCDC panel (#145)." alt="" coords="978,269,1151,324"/>
+<area shape="poly" id="edge21_Node000010_Node000016" title=" " alt="" coords="3080,118,2842,121,2501,131,2104,151,1900,166,1700,184,1548,201,1430,218,1164,272,1152,275,1151,269,1163,267,1429,213,1547,196,1699,179,1899,160,2103,146,2500,126,2842,116,3080,112"/>
+<area shape="rect" id="Node000017" href="$examples_2ek__ra8d2_2hw__validated_2manual_2lcd__color__cycle_2main_8c.html" title="GLCDC parallel&#45;RGB BG&#45;plane color cycle on the EK&#45;RA8D2 panel." alt="" coords="1175,269,1349,324"/>
+<area shape="poly" id="edge22_Node000010_Node000017" title=" " alt="" coords="3080,119,2793,130,2368,156,2124,175,1869,201,1612,233,1361,272,1349,274,1348,269,1360,267,1611,228,1868,196,2123,170,2368,150,2793,125,3080,114"/>
+<area shape="rect" id="Node000018" href="$ra8__panel__timing_8h.html" title="EK&#45;RA8D2 panel timing as the HAL&#39;s ra8_glcdc_timing_t (ER&#45;TFT070&#45;6)." alt="" coords="2374,181,2555,221"/>
+<area shape="poly" id="edge23_Node000010_Node000018" title=" " alt="" coords="3080,128,2556,192,2555,186,3079,123"/>
+<area shape="rect" id="Node000031" href="$ra8__display__pal__lcd_8c.html" title="LCD backend (ra8_glcdc) implementation for the display PAL." alt="" coords="2940,181,3128,221"/>
+<area shape="poly" id="edge44_Node000010_Node000031" title=" " alt="" coords="3127,143,3065,183,3062,179,3124,139"/>
+<area shape="poly" id="edge45_Node000010_Node000032" title=" " alt="" coords="3237,135,3372,179,3370,184,3236,140"/>
+<area shape="poly" id="edge46_Node000010_Node000033" title=" " alt="" coords="3252,128,3513,179,3525,181,3524,187,3512,184,3251,133"/>
+<area shape="poly" id="edge47_Node000010_Node000034" title=" " alt="" coords="3253,121,3450,144,3682,179,3695,181,3694,186,3682,184,3449,149,3252,126"/>
+<area shape="rect" id="Node000035" href="$ra8__nsc__io_8h.html" title="NSC veneers for the I/O drivers." alt="" coords="815,181,962,221"/>
+<area shape="poly" id="edge48_Node000010_Node000035" title=" " alt="" coords="3079,117,2749,119,2247,128,1651,148,1342,164,1040,184,962,192,962,187,1039,179,1342,158,1651,142,2247,122,2749,114,3079,112"/>
+<area shape="rect" id="Node000036" href="$ra8__nsc__io_8c.html" title="NSC veneers for the &#45;6 I/O drivers." alt="" coords="602,277,749,317"/>
+<area shape="poly" id="edge50_Node000010_Node000036" title=" " alt="" coords="3080,118,2565,124,1827,137,1147,156,915,169,842,176,804,184,769,203,737,228,691,278,687,275,734,224,766,199,802,179,842,171,915,164,1146,151,1827,131,2565,119,3080,113"/>
+<area shape="poly" id="edge25_Node000018_Node000011" title=" " alt="" coords="2570,203,2902,221,3108,240,3314,267,3327,269,3326,274,3314,272,3108,245,2902,227,2569,208"/>
+<area shape="poly" id="edge35_Node000018_Node000012" title=" " alt="" coords="2569,204,3068,228,3336,246,3532,267,3545,269,3544,274,3531,272,3336,251,3068,233,2569,209"/>
+<area shape="poly" id="edge37_Node000018_Node000013" title=" " alt="" coords="2569,204,3213,233,3541,251,3730,267,3742,269,3741,274,3730,272,3540,256,3213,239,2569,210"/>
+<area shape="poly" id="edge38_Node000018_Node000014" title=" " alt="" coords="2569,204,3345,236,3733,254,3928,267,3940,269,3939,274,3927,272,3732,260,3344,242,2569,209"/>
+<area shape="poly" id="edge39_Node000018_Node000015" title=" " alt="" coords="2360,207,2056,214,1654,227,1256,246,1092,258,966,272,954,274,953,269,966,267,1091,253,1256,241,1654,222,2056,209,2360,202"/>
+<area shape="poly" id="edge40_Node000018_Node000016" title=" " alt="" coords="2360,208,1748,229,1410,248,1270,259,1164,272,1152,274,1151,269,1163,267,1270,254,1410,243,1748,224,2360,203"/>
+<area shape="poly" id="edge42_Node000018_Node000017" title=" " alt="" coords="2361,209,1843,232,1564,250,1361,272,1349,274,1348,269,1360,267,1564,245,1843,227,2360,204"/>
+<area shape="rect" id="Node000019" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ereader__shelf_2main_8c.html" title="Hybrid baked + SD e&#45;reader: shelf, cover, TOC, full&#45;book reader." alt="" coords="3096,269,3303,324"/>
+<area shape="poly" id="edge24_Node000018_Node000019" title=" " alt="" coords="2570,208,2806,230,2945,246,3084,267,3096,269,3095,274,3083,272,2944,252,2805,235,2569,213"/>
+<area shape="rect" id="Node000020" href="$examples_2ek__ra8d2_2hw__pending_2ereader__comic_2main_8c.html" title="Viewable page&#45;turn comic reader – baked CBZ decoded to the 1024x600 GLCDC panel, tap&#45;zone navigation ..." alt="" coords="1373,269,1554,324"/>
+<area shape="poly" id="edge26_Node000018_Node000020" title=" " alt="" coords="2360,207,2205,213,2007,224,1787,243,1566,272,1555,274,1554,269,1566,267,1786,238,2006,219,2205,207,2360,202"/>
+<area shape="rect" id="Node000021" href="$examples_2ek__ra8d2_2hw__pending_2ereader__longstrip_2main_8c.html" title="Viewable continuous vertical&#45;scroll (longstrip / manhwa) reader (#289)." alt="" coords="1579,269,1777,324"/>
+<area shape="poly" id="edge27_Node000018_Node000021" title=" " alt="" coords="2360,211,2101,233,1945,250,1790,272,1778,274,1777,269,1790,267,1945,245,2100,227,2360,206"/>
+<area shape="rect" id="Node000022" href="$examples_2ek__ra8d2_2hw__pending_2ereader__manga_2main_8c.html" title="Viewable manga reader: pan/zoom a page larger than the panel (Demo B)." alt="" coords="1802,269,1989,324"/>
+<area shape="poly" id="edge28_Node000018_Node000022" title=" " alt="" coords="2361,217,2192,240,2001,272,1989,274,1988,269,2000,267,2191,235,2360,212"/>
+<area shape="rect" id="Node000023" href="$examples_2ek__ra8d2_2hw__pending_2ereader__zoom_2main_8c.html" title="Viewable tap&#45;to&#45;zoom image viewer: full&#45;screen zoom + panel loupe (#478)." alt="" coords="2013,269,2191,324"/>
+<area shape="poly" id="edge29_Node000018_Node000023" title=" " alt="" coords="2379,227,2193,275,2191,270,2377,222"/>
+<area shape="rect" id="Node000024" href="$ereader__ui__steps_8h.html" title="E&#45;reader UI chrome – shared contract between main.c and the per&#45;aspect helper translation units (scre..." alt="" coords="2267,269,2457,324"/>
+<area shape="poly" id="edge30_Node000018_Node000024" title=" " alt="" coords="2436,232,2393,271,2389,267,2432,228"/>
+<area shape="rect" id="Node000025" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="2106,372,2279,427"/>
+<area shape="poly" id="edge34_Node000018_Node000025" title=" " alt="" coords="2362,220,2306,240,2279,254,2256,271,2235,294,2220,321,2201,373,2196,371,2215,319,2231,291,2252,267,2277,249,2304,235,2360,215"/>
+<area shape="rect" id="Node000028" href="$examples_2ek__ra8d2_2hw__validated_2hil_2sd__font__render_2main_8c.html" title="Load a TTF/OTF font off an SD card and render text with ra8_reflow." alt="" coords="2482,269,2655,324"/>
+<area shape="poly" id="edge36_Node000018_Node000028" title=" " alt="" coords="2498,228,2541,267,2538,271,2494,232"/>
+<area shape="rect" id="Node000029" href="$examples_2ek__ra8d2_2hw__validated_2manual_2display__pal__animation_2main_8c.html" title="Canonical display PAL example – animated scrolling colour bars." alt="" coords="2679,269,2874,324"/>
+<area shape="poly" id="edge41_Node000018_Node000029" title=" " alt="" coords="2541,223,2690,267,2688,272,2540,228"/>
+<area shape="rect" id="Node000030" href="$examples_2ek__ra8d2_2hw__validated_2manual_2lcd__draw__x_2main_8c.html" title="Draw a coloured X to a SRAM&#45;backed GR1 layer on the EK&#45;RA8D2 panel." alt="" coords="2898,269,3071,324"/>
+<area shape="poly" id="edge43_Node000018_Node000030" title=" " alt="" coords="2569,214,2720,236,2887,267,2898,269,2897,274,2885,272,2719,241,2569,219"/>
+<area shape="poly" id="edge31_Node000024_Node000025" title=" " alt="" coords="2307,333,2238,374,2236,369,2305,329"/>
+<area shape="rect" id="Node000026" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="2304,372,2492,427"/>
+<area shape="poly" id="edge32_Node000024_Node000026" title=" " alt="" coords="2379,336,2391,371,2386,373,2374,338"/>
+<area shape="rect" id="Node000027" href="$ereader__ui__screens_8c.html" title="E&#45;reader UI chrome – Library + Reading rendering and in&#45;content nav." alt="" coords="2517,372,2722,427"/>
+<area shape="poly" id="edge33_Node000024_Node000027" title=" " alt="" coords="2443,326,2553,369,2551,374,2441,331"/>
+<area shape="poly" id="edge49_Node000035_Node000036" title=" " alt="" coords="834,229,720,279,717,274,832,224"/>
+<area shape="rect" id="Node000038" href="$ra8__mipi__csi__ctrl_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – control, status, and IRQ&#45;enable API." alt="" coords="4188,277,4333,317"/>
+<area shape="poly" id="edge52_Node000037_Node000038" title=" " alt="" coords="4303,147,4289,182,4275,233,4266,277,4261,276,4270,232,4283,180,4298,145"/>
+<area shape="rect" id="Node000040" href="$ra8__mipi__csi_8c.html" title="MIPI CSI&#45;2 receiver HAL driver implementation." alt="" coords="4131,482,4276,522"/>
+<area shape="poly" id="edge62_Node000037_Node000040" title=" " alt="" coords="4281,144,4224,198,4198,232,4178,270,4170,299,4167,328,4171,388,4184,441,4198,481,4193,483,4179,443,4166,389,4161,328,4165,298,4173,268,4193,229,4220,194,4278,140"/>
+<area shape="rect" id="Node000041" href="$ra8__mipi__csi__irq_8c.html" title="MIPI CSI&#45;2 receiver HAL driver – interrupt path and per&#45;VC framing." alt="" coords="4407,482,4552,522"/>
+<area shape="poly" id="edge63_Node000037_Node000041" title=" " alt="" coords="4402,135,4450,156,4498,184,4539,221,4556,243,4569,268,4576,299,4575,330,4569,361,4558,391,4528,444,4499,483,4494,480,4523,441,4553,389,4564,360,4570,330,4571,300,4563,270,4551,246,4536,225,4495,188,4448,160,4400,140"/>
+<area shape="rect" id="Node000042" href="$ra8__mipi__csi__isr_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – FIFO, ISR dispatch, framing, power." alt="" coords="4409,277,4555,317"/>
+<area shape="poly" id="edge56_Node000037_Node000042" title=" " alt="" coords="4399,137,4430,155,4457,180,4471,203,4480,230,4485,276,4480,277,4474,231,4466,206,4453,183,4427,159,4396,141"/>
+<area shape="rect" id="Node000043" href="$ra8__mipi__csi__types_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – public types." alt="" coords="4299,181,4444,221"/>
+<area shape="poly" id="edge58_Node000037_Node000043" title=" " alt="" coords="4338,144,4361,180,4357,183,4334,146"/>
+<area shape="rect" id="Node000039" href="$ra8__mipi__csi_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – public API." alt="" coords="4299,379,4444,419"/>
+<area shape="poly" id="edge53_Node000038_Node000039" title=" " alt="" coords="4293,324,4352,377,4349,381,4290,328"/>
+<area shape="poly" id="edge54_Node000039_Node000040" title=" " alt="" coords="4330,429,4236,484,4233,480,4327,424"/>
+<area shape="poly" id="edge55_Node000039_Node000041" title=" " alt="" coords="4404,427,4461,480,4457,484,4400,431"/>
+<area shape="poly" id="edge57_Node000042_Node000039" title=" " alt="" coords="4453,328,4394,381,4390,377,4449,324"/>
+<area shape="poly" id="edge60_Node000043_Node000038" title=" " alt="" coords="4340,232,4285,279,4281,275,4337,228"/>
+<area shape="poly" id="edge59_Node000043_Node000039" title=" " alt="" coords="4374,235,4374,379,4369,379,4369,235"/>
+<area shape="poly" id="edge61_Node000043_Node000042" title=" " alt="" coords="4406,228,4461,275,4458,279,4403,232"/>
+<area shape="rect" id="Node000045" href="$ra8__mipi__phy__api_8h.html" title="MIPI D&#45;PHY driver – public function prototypes." alt="" coords="4903,277,5048,317"/>
+<area shape="poly" id="edge65_Node000044_Node000045" title=" " alt="" coords="4841,133,4906,154,4933,166,4951,180,4966,203,4974,229,4979,276,4974,277,4969,230,4961,205,4947,183,4930,171,4904,159,4839,138"/>
+<area shape="rect" id="Node000048" href="$ra8__mipi__phy_8c.html" title="MIPI D&#45;PHY driver implementation." alt="" coords="4621,577,4767,617"/>
+<area shape="poly" id="edge79_Node000044_Node000048" title=" " alt="" coords="4725,145,4699,174,4673,210,4654,251,4646,296,4646,401,4651,451,4662,500,4688,576,4683,578,4657,502,4645,452,4641,401,4641,295,4649,249,4669,207,4695,170,4721,141"/>
+<area shape="rect" id="Node000050" href="$ra8__mipi__phy__timing_8c.html" title="MIPI D&#45;PHY driver – HUM timing tables and table&#45;driven setup." alt="" coords="5059,577,5209,617"/>
+<area shape="poly" id="edge80_Node000044_Node000050" title=" " alt="" coords="4841,133,4909,153,4979,179,5015,191,5052,199,5118,212,5146,221,5168,237,5182,261,5187,295,5187,401,5183,452,5171,502,5145,578,5140,576,5166,500,5177,451,5182,401,5182,296,5177,263,5164,241,5144,226,5117,217,5051,204,5014,196,4977,184,4908,158,4840,138"/>
+<area shape="rect" id="Node000051" href="$ra8__mipi__phy__ops_8h.html" title="MIPI D&#45;PHY driver – runtime operations prototypes." alt="" coords="4681,277,4827,317"/>
+<area shape="poly" id="edge73_Node000044_Node000051" title=" " alt="" coords="4757,147,4757,277,4751,277,4751,147"/>
+<area shape="rect" id="Node000052" href="$ra8__mipi__phy__types_8h.html" title="MIPI D&#45;PHY driver – shared enums, structs, and callback typedef." alt="" coords="4792,181,4937,221"/>
+<area shape="poly" id="edge75_Node000044_Node000052" title=" " alt="" coords="4791,140,4842,179,4839,183,4788,144"/>
+<area shape="rect" id="Node000046" href="$ra8__mipi__phy_8h.html" title="MIPI D&#45;PHY driver – physical layer shared by DSI and CSI." alt="" coords="4792,379,4937,419"/>
+<area shape="poly" id="edge66_Node000045_Node000046" title=" " alt="" coords="4946,328,4887,381,4884,377,4943,324"/>
+<area shape="rect" id="Node000047" href="$ra8__board__ek__ra8d2__comms_8c.html" title="EK&#45;RA8D2 BSP – MIPI&#45;DSI panel + J&#45;Link VCOM serial bring&#45;up." alt="" coords="4915,475,5097,529"/>
+<area shape="poly" id="edge67_Node000046_Node000047" title=" " alt="" coords="4904,425,4970,472,4967,477,4901,429"/>
+<area shape="poly" id="edge68_Node000046_Node000048" title=" " alt="" coords="4788,427,4752,448,4721,476,4708,501,4700,528,4696,577,4690,577,4695,527,4703,499,4717,473,4749,443,4786,422"/>
+<area shape="rect" id="Node000049" href="$ra8__mipi__phy__internal_8h.html" title="Module&#45;private link seam shared between the MIPI D&#45;PHY drivertranslation units." alt="" coords="4732,482,4891,522"/>
+<area shape="poly" id="edge69_Node000046_Node000049" title=" " alt="" coords="4851,433,4824,483,4819,481,4846,430"/>
+<area shape="poly" id="edge72_Node000046_Node000050" title=" " alt="" coords="4951,403,4993,411,5036,424,5076,444,5111,473,5126,498,5135,526,5138,577,5133,577,5130,527,5122,500,5107,476,5073,449,5034,429,4992,416,4950,408"/>
+<area shape="poly" id="edge70_Node000049_Node000048" title=" " alt="" coords="4779,533,4719,579,4716,575,4775,528"/>
+<area shape="poly" id="edge71_Node000049_Node000050" title=" " alt="" coords="4890,523,5070,575,5068,580,4889,528"/>
+<area shape="poly" id="edge74_Node000051_Node000046" title=" " alt="" coords="4787,324,4846,377,4842,381,4783,328"/>
+<area shape="poly" id="edge77_Node000052_Node000045" title=" " alt="" coords="4899,228,4955,275,4951,279,4896,232"/>
+<area shape="poly" id="edge76_Node000052_Node000046" title=" " alt="" coords="4867,235,4867,379,4862,379,4862,235"/>
+<area shape="poly" id="edge78_Node000052_Node000051" title=" " alt="" coords="4833,232,4778,279,4775,275,4830,228"/>
+</map>

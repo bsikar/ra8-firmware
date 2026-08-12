@@ -1,0 +1,9 @@
+<map id="ez_scene_cfg_t" name="ez_scene_cfg_t">
+<area shape="rect" id="Node000001" title="Everything ez_scene_init needs: storage and framebuffer geometry." alt="" coords="179,101,300,127"/>
+<area shape="rect" id="Node000002" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="5,5,159,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="114,35,221,99,219,103,112,40"/>
+<area shape="rect" id="Node000003" href="$structra8__tile__key__t.html" title="Identifies one decoded image tile." alt="" coords="183,5,296,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="242,45,242,101,237,101,237,45"/>
+<area shape="rect" id="Node000004" href="$structra8__tile__dims__t.html" title="Per&#45;cell user descriptor: the decoded tile dimensions." alt="" coords="321,5,443,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="355,40,258,103,256,99,352,36"/>
+</map>

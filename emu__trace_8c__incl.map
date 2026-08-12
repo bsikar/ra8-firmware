@@ -1,0 +1,18 @@
+<map id="tools/ra8_emulator/src/engine/emu_trace.c" name="tools/ra8_emulator/src/engine/emu_trace.c">
+<area shape="rect" id="Node000001" title="Seam glue + –trace&#45;sym implementation (see emu_trace.h)." alt="" coords="137,5,315,45"/>
+<area shape="rect" id="Node000002" href="$emu__trace_8h.html" title="Function&#45;entry seam glue + the –trace&#45;sym instrument." alt="" coords="175,93,277,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="229,46,229,79,223,79,223,46"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="302,93,369,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="254,43,310,83,307,87,251,48"/>
+<area shape="rect" id="Node000007" href="$emu__elf_8h.html" title="ELF32 image services for the board emulator (load / symbols / vectors)." alt="" coords="64,93,151,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="199,48,138,88,135,84,196,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,76,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="197,121,84,164,83,159,195,116"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="100,167,235,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="218,121,187,158,183,155,214,117"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="259,167,385,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="243,117,297,156,294,160,240,121"/>
+<area shape="poly" id="edge7_Node000007_Node000003" title=" " alt="" coords="98,121,63,158,59,155,94,117"/>
+<area shape="poly" id="edge8_Node000007_Node000004" title=" " alt="" coords="119,117,151,154,147,158,115,121"/>
+<area shape="poly" id="edge9_Node000007_Node000005" title=" " alt="" coords="143,116,275,160,273,165,141,121"/>
+</map>

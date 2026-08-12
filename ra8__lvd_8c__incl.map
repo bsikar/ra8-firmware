@@ -1,0 +1,41 @@
+<map id="libs/ra8_hal/src/ra8_lvd.c" name="libs/ra8_hal/src/ra8_lvd.c">
+<area shape="rect" id="Node000001" title="Programmable Voltage Detection (PVD / LVD) driver implementation." alt="" coords="262,5,407,45"/>
+<area shape="rect" id="Node000002" href="$ra8__lvd_8h.html" title="Programmable Voltage Detection (PVD / LVD) HAL driver." alt="" coords="133,167,216,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="312,47,255,95,195,158,191,154,252,91,308,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="341,460,411,485"/>
+<area shape="poly" id="edge12_Node000001_Node000004" title=" " alt="" coords="262,32,181,42,139,52,98,67,62,86,34,110,15,141,8,178,8,327,10,347,17,362,27,372,41,381,117,410,171,431,228,446,328,464,327,469,227,451,170,436,115,414,38,385,24,376,13,364,5,348,3,327,3,178,10,139,30,107,59,81,96,62,137,47,180,37,262,26"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="337,387,415,412"/>
+<area shape="poly" id="edge20_Node000001_Node000005" title=" " alt="" coords="384,43,424,64,464,94,481,112,494,132,503,154,507,178,507,254,504,275,497,296,473,331,442,360,411,382,408,377,438,356,469,328,492,293,499,274,501,254,501,178,498,155,490,134,477,115,460,98,421,69,381,48"/>
+<area shape="rect" id="Node000007" href="$ra8__lvd__regs_8h.html" title="Programmable Voltage Detection (PVD / LVD) register layout for the RA8D2." alt="" coords="144,387,261,412"/>
+<area shape="poly" id="edge26_Node000001_Node000007" title=" " alt="" coords="262,37,196,52,161,64,129,79,101,97,79,120,64,146,59,178,59,254,61,275,69,295,96,330,130,358,165,378,163,383,127,362,92,333,64,297,56,277,53,254,53,178,59,145,74,116,98,93,127,74,159,59,194,47,261,32"/>
+<area shape="rect" id="Node000008" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="542,313,642,339"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="408,34,470,54,499,70,525,91,544,116,559,143,580,200,590,256,594,299,589,300,585,256,575,202,554,145,539,119,521,95,496,75,467,59,407,39"/>
+<area shape="rect" id="Node000009" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="715,387,797,412"/>
+<area shape="poly" id="edge27_Node000001_Node000009" title=" " alt="" coords="408,37,503,59,605,90,650,109,686,130,711,152,718,165,720,178,720,254,723,287,730,319,748,373,743,375,724,320,717,287,715,254,715,178,713,167,706,156,683,134,647,114,603,95,502,64,407,43"/>
+<area shape="rect" id="Node000011" href="$ra8__lvd__internal_8h.html" title="Test&#45;access surface for ra8_lvd internal helpers (MC/DC)." alt="" coords="265,93,404,119"/>
+<area shape="poly" id="edge21_Node000001_Node000011" title=" " alt="" coords="337,46,337,79,332,79,332,46"/>
+<area shape="rect" id="Node000003" href="$ra8__lvd__api_8h.html" title="Programmable Voltage Detection (PVD / LVD) HAL function prototypes." alt="" coords="107,240,216,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="175,193,169,227,163,226,170,192"/>
+<area shape="rect" id="Node000006" href="$ra8__lvd__types_8h.html" title="Programmable Voltage Detection (PVD / LVD) HAL types." alt="" coords="144,313,269,339"/>
+<area shape="poly" id="edge11_Node000002_Node000006" title=" " alt="" coords="192,190,213,211,230,239,234,255,233,272,223,301,218,300,227,271,229,256,226,241,209,215,188,194"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="156,267,141,295,126,333,121,374,125,393,134,410,146,420,164,430,215,445,327,464,327,469,214,450,162,435,143,425,130,414,120,395,115,374,121,332,136,293,152,264"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="191,263,235,284,283,311,324,343,357,375,354,379,320,347,280,316,233,288,189,268"/>
+<area shape="poly" id="edge6_Node000003_Node000006" title=" " alt="" coords="171,264,194,300,190,303,167,267"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="379,412,379,446,373,446,373,412"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="222,337,354,449,350,453,219,341"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="235,336,337,379,335,384,233,341"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="209,339,207,373,201,373,203,339"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="232,410,336,452,334,457,230,414"/>
+<area shape="poly" id="edge14_Node000008_Node000004" title=" " alt="" coords="612,337,631,352,649,371,659,392,658,403,653,414,637,426,615,437,555,453,487,464,426,471,425,465,486,459,554,448,613,432,635,422,649,410,653,402,654,393,645,374,628,356,609,341"/>
+<area shape="poly" id="edge15_Node000008_Node000005" title=" " alt="" coords="558,341,425,385,423,380,556,336"/>
+<area shape="poly" id="edge16_Node000008_Node000009" title=" " alt="" coords="619,336,718,379,716,384,617,341"/>
+<area shape="rect" id="Node000010" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="491,387,639,412"/>
+<area shape="poly" id="edge18_Node000008_Node000010" title=" " alt="" coords="590,340,577,375,572,373,585,338"/>
+<area shape="poly" id="edge17_Node000009_Node000004" title=" " alt="" coords="715,411,696,415,425,465,424,460,696,409,714,406"/>
+<area shape="poly" id="edge19_Node000010_Node000004" title=" " alt="" coords="536,415,421,457,419,452,534,410"/>
+<area shape="poly" id="edge25_Node000011_Node000002" title=" " alt="" coords="310,121,214,163,212,159,308,116"/>
+<area shape="poly" id="edge22_Node000011_Node000004" title=" " alt="" coords="364,116,399,136,430,165,444,186,452,205,456,251,456,327,454,353,450,372,429,413,400,452,396,449,424,411,445,371,449,352,451,327,451,251,447,207,440,189,426,168,396,140,362,121"/>
+<area shape="poly" id="edge24_Node000011_Node000005" title=" " alt="" coords="320,121,298,141,281,168,279,179,281,191,298,245,320,295,363,374,359,377,315,298,293,246,276,193,274,179,276,166,294,138,317,117"/>
+<area shape="rect" id="Node000012" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="291,167,416,192"/>
+<area shape="poly" id="edge23_Node000011_Node000012" title=" " alt="" coords="340,118,349,153,344,154,335,120"/>
+</map>

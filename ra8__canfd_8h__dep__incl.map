@@ -1,0 +1,21 @@
+<map id="libs/ra8_hal/inc/ra8_canfd.h" name="libs/ra8_hal/inc/ra8_canfd.h">
+<area shape="rect" id="Node000001" title="CANFD Lite driver (bit&#45;timing, TX, RX, error state)." alt="" coords="811,5,956,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2can__classic__loopback_2main_8c.html" title="CAN 2.0B (classic, non&#45;FD) internal&#45;loopback HIL test." alt="" coords="5,93,193,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="797,34,532,54,369,72,206,96,194,98,193,93,206,91,369,67,531,49,796,29"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2canfd__filter__demo_2main_8c.html" title="CAN&#45;FD acceptance&#45;filter demo for EK&#45;RA8D2." alt="" coords="218,93,391,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="797,38,615,61,404,96,392,98,391,93,403,91,615,56,796,33"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2canfd__loopback_2main_8c.html" title="CANFD0 internal&#45;loopback HIL test for EK&#45;RA8D2." alt="" coords="415,93,589,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="798,49,601,96,590,99,588,94,600,91,797,44"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2threadx__canfd__demo_2main_8c.html" title="Eclipse ThreadX CANFD heartbeat / RX&#45;logger demo for RA8D2." alt="" coords="613,93,786,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="835,54,752,96,750,91,833,49"/>
+<area shape="rect" id="Node000006" href="$ra8__canfd_8c.html" title="CAN with Flexible Data&#45;rate driver implementation." alt="" coords="811,101,956,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="886,59,886,101,881,101,881,59"/>
+<area shape="rect" id="Node000007" href="$ra8__canfd__afl_8c.html" title="CANFD Acceptance&#45;Filter&#45;List (AFL) configuration (split from ra8_canfd.c)." alt="" coords="980,101,1125,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="931,50,1020,98,1017,103,928,54"/>
+<area shape="rect" id="Node000008" href="$ra8__canfd__frame_8c.html" title="CANFD frame transmit / receive data path (split from ra8_canfd.c)." alt="" coords="1149,101,1295,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="970,45,1139,91,1163,98,1162,103,1137,96,968,51"/>
+<area shape="rect" id="Node000009" href="$ra8__canfd__tdc_8c.html" title="CANFD Transmitter Delay Compensation (TDC) configuration." alt="" coords="1319,101,1464,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="970,34,1128,56,1308,91,1335,98,1334,103,1307,96,1127,62,969,39"/>
+<area shape="rect" id="Node000010" href="$ra8__canfd__timing_8c.html" title="CANFD bit&#45;timing solver + bitrate / BRS configuration (split from ra8_canfd.c)." alt="" coords="1488,101,1633,141"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="970,29,1200,48,1339,66,1477,91,1506,98,1505,103,1476,96,1338,72,1200,54,969,34"/>
+</map>

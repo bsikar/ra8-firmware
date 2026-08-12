@@ -1,0 +1,30 @@
+<map id="libs/ra8_hal/src/ra8_rmac_phy.c" name="libs/ra8_hal/src/ra8_rmac_phy.c">
+<area shape="rect" id="Node000001" title="RMAC off&#45;chip PHY driver." alt="" coords="315,5,461,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rmac__phy_8h.html" title="Reduced&#45;MAC (RMAC) PHY driver – off&#45;chip PHY for the GMAC&#45;FPI." alt="" coords="326,93,450,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="391,46,391,79,385,79,385,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="377,240,447,265"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="461,29,530,42,603,66,639,83,671,106,698,133,720,165,725,180,719,194,702,208,676,219,607,236,530,246,462,252,461,246,530,241,606,231,674,214,699,203,715,190,719,180,715,168,694,136,667,110,636,88,601,71,528,47,461,34"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="245,167,323,192"/>
+<area shape="poly" id="edge14_Node000001_Node000004" title=" " alt="" coords="363,47,339,69,317,95,302,124,292,154,287,152,297,122,312,92,335,65,360,43"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="5,167,131,192"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="315,33,242,40,165,52,98,70,73,82,57,95,50,108,49,123,58,153,53,155,44,123,45,107,53,92,70,77,96,65,163,47,241,35,315,28"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="474,93,574,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="422,43,493,84,491,89,419,48"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="623,167,705,192"/>
+<area shape="poly" id="edge15_Node000001_Node000007" title=" " alt="" coords="462,39,525,60,588,91,624,121,650,153,646,157,620,125,585,96,523,65,460,44"/>
+<area shape="rect" id="Node000009" href="$ra8__rmac__phy__internal_8h.html" title="Test&#45;access surface for ra8_rmac_phy internal helpers (MC/DC)." alt="" coords="67,93,250,119"/>
+<area shape="poly" id="edge16_Node000001_Node000009" title=" " alt="" coords="334,48,206,91,204,86,332,43"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="391,119,391,152,396,191,405,226,400,228,391,193,386,152,385,119"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="373,121,314,161,311,156,370,116"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="306,190,380,231,378,235,303,194"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="501,121,469,141,441,168,426,197,418,227,413,226,421,195,437,165,466,136,498,117"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="486,121,337,165,335,160,485,116"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="548,116,630,158,628,163,545,121"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="450,167,598,192"/>
+<area shape="poly" id="edge12_Node000006_Node000008" title=" " alt="" coords="527,119,527,153,521,153,521,119"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="624,195,462,240,460,235,623,189"/>
+<area shape="poly" id="edge13_Node000008_Node000003" title=" " alt="" coords="507,194,444,235,441,230,505,190"/>
+<area shape="poly" id="edge17_Node000009_Node000003" title=" " alt="" coords="168,117,195,153,214,173,235,190,266,207,300,221,364,240,362,245,298,226,264,212,232,194,210,177,191,157,164,121"/>
+<area shape="poly" id="edge19_Node000009_Node000004" title=" " alt="" coords="180,116,253,157,250,162,177,121"/>
+<area shape="poly" id="edge18_Node000009_Node000005" title=" " alt="" coords="146,121,95,160,92,156,142,117"/>
+</map>

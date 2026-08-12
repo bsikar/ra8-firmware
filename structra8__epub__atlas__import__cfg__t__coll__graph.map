@@ -1,0 +1,5 @@
+<map id="ra8_epub_atlas_import_cfg_t" name="ra8_epub_atlas_import_cfg_t">
+<area shape="rect" id="Node000001" title="Import&#45;time transcode knobs: tile geometry, budget caps, work arena and the destination store." alt="" coords="7,101,177,141"/>
+<area shape="rect" id="Node000002" href="$structra8__epub__atlas__store__t.html" title="Where an on&#45;device&#45;produced atlas lives: sink to write, pread to read back (DIP – an SDRAM memstore a..." alt="" coords="5,5,179,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,45,95,101,89,101,89,45"/>
+</map>

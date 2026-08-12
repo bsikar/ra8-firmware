@@ -1,0 +1,13 @@
+<map id="libs/ra8_hal/inc/ra8_epaper.h" name="libs/ra8_hal/inc/ra8_epaper.h">
+<area shape="rect" id="Node000001" title="IT8951 e&#45;paper controller SPI driver – public API." alt="" coords="387,5,532,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2epaper__refresh_2main_8c.html" title="IT8951 e&#45;paper full + partial refresh demo through the display PAL." alt="" coords="5,93,188,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="374,51,189,99,188,93,373,46"/>
+<area shape="rect" id="Node000003" href="$ra8__display__pal__eink_8c.html" title="E&#45;ink (IT8951) backend for the display PAL, wired to ra8_epaper." alt="" coords="212,93,363,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="414,54,337,96,335,91,411,50"/>
+<area shape="rect" id="Node000004" href="$ra8__epaper_8c.html" title="IT8951 e&#45;paper SPI driver implementation." alt="" coords="387,101,532,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="462,59,462,101,457,101,457,59"/>
+<area shape="rect" id="Node000005" href="$ra8__epaper__devinfo_8c.html" title="IT8951 GET_DEV_INFO response decoder." alt="" coords="556,101,701,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="507,50,596,98,593,103,504,54"/>
+<area shape="rect" id="Node000006" href="$ra8__epaper__geom_8c.html" title="IT8951 geometry, pixel&#45;format, waveform&#45;map and config validation." alt="" coords="725,101,871,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="546,45,715,91,739,98,738,103,713,96,544,51"/>
+</map>

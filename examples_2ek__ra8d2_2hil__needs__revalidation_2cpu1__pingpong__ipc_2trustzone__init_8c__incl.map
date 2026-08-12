@@ -1,0 +1,23 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/trustzone_init.c" name="examples/ek_ra8d2/hil_needs_revalidation/cpu1_pingpong_ipc/trustzone_init.c">
+<area shape="rect" id="Node000001" title="Per&#45;app secure&#45;boot wiring for cpu1_pingpong_ipc." alt="" coords="232,5,451,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,128,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="258,63,117,106,116,101,257,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="411,255,482,280"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="452,38,487,47,521,61,551,80,577,106,586,127,586,148,577,169,563,189,523,223,482,250,479,246,520,219,559,185,573,166,581,147,581,128,572,110,548,84,518,66,485,52,451,44"/>
+<area shape="rect" id="Node000004" href="$ra8__dual__core_8h.html" title="Dual&#45;core (CPU0 / CPU1) lifecycle helper – public API." alt="" coords="437,108,563,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="391,58,468,99,465,104,389,62"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="407,181,486,207"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="361,59,434,168,429,171,357,62"/>
+<area shape="rect" id="Node000006" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="100,181,183,207"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="268,62,229,83,193,110,169,139,153,169,149,167,165,136,189,106,226,79,266,58"/>
+<area shape="rect" id="Node000007" href="$ra8__tz__secure__boot_8h.html" title="FSP&#45;style TrustZone secure&#45;boot for the Cortex&#45;M85 (CPU0)." alt="" coords="203,108,363,133"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="326,62,300,98,296,95,321,59"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="505,133,508,167,506,188,501,208,489,229,473,247,469,244,485,226,496,206,501,187,502,167,500,134"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="493,135,466,172,461,169,489,132"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="449,207,449,241,444,241,444,207"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="184,202,399,252,397,257,183,208"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="272,136,259,151,247,169,242,188,248,205,262,221,279,233,318,251,359,261,398,264,398,270,358,266,316,256,276,238,258,225,243,208,237,188,243,167,255,148,268,132"/>
+<area shape="poly" id="edge13_Node000007_Node000005" title=" " alt="" coords="310,131,409,173,406,178,308,136"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="257,181,383,207"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="291,132,310,168,305,171,286,135"/>
+</map>

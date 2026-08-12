@@ -1,0 +1,12 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_crc.c" name="tools/ra8_emulator/src/periph/board_periph_crc.c">
+<area shape="rect" id="Node000001" title="CRC calculator peripheral&#45;block model for the board emulator." alt="" coords="5,5,221,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="49,167,119,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="98,47,82,69,71,94,69,124,76,153,71,154,63,125,65,93,78,66,94,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="80,93,147,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="116,46,116,79,111,79,111,46"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="171,93,333,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="148,43,221,84,218,89,145,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="226,121,125,164,123,159,224,116"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="185,167,319,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="255,119,255,153,249,153,249,119"/>
+</map>

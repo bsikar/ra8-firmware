@@ -1,0 +1,8 @@
+<map id="libs/ra8_core/inc/ra8_crashlog.h" name="libs/ra8_core/inc/ra8_crashlog.h">
+<area shape="rect" id="Node000001" title="Cross&#45;reset crash&#45;log: persist the last fault + a reset&#45;loop guard." alt="" coords="5,5,159,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="47,167,117,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="74,46,61,80,58,99,59,118,72,154,67,155,54,119,53,99,56,79,69,45"/>
+<area shape="rect" id="Node000003" href="$ra8__exception_8h.html" title="Cortex&#45;M85 CPU exception diagnostic helpers." alt="" coords="69,93,196,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="97,44,120,80,115,83,92,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="126,121,100,157,96,154,122,117"/>
+</map>

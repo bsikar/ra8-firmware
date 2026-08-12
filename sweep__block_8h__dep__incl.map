@@ -1,0 +1,7 @@
+<map id="tools/cache_bench/sweep_block.h" name="tools/cache_bench/sweep_block.h">
+<area shape="rect" id="Node000001" title="#208 block/frame&#45;size sweep: the byte&#45;size axis the capacity sweep never touches, so the chunked ...." alt="" coords="109,5,297,45"/>
+<area shape="rect" id="Node000002" href="$cache__bench_8c.html" title="#147 eviction&#45;policy benchmark harness: replay + sweep + report." alt="" coords="5,93,189,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="171,56,122,95,119,91,167,52"/>
+<area shape="rect" id="Node000003" href="$sweep__block_8c.html" title="Core of the #208 block/frame&#45;size sweep (&#45;&#45;sweep&#45;block)." alt="" coords="214,93,402,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="238,52,286,91,283,95,235,56"/>
+</map>

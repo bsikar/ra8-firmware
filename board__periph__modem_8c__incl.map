@@ -1,0 +1,12 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_modem.c" name="tools/ra8_emulator/src/periph/board_periph_modem.c">
+<area shape="rect" id="Node000001" title="Cellular AT&#45;modem device model for ra8_emulator (attached to SCI7)." alt="" coords="164,5,343,60"/>
+<area shape="rect" id="Node000002" href="$board__periph__modem_8h.html" title="Cellular AT&#45;modem device model for ra8_emulator (attached to SCI7 UART)." alt="" coords="5,108,181,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="206,62,128,104,126,99,203,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="121,181,191,207"/>
+<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="240,62,196,135,173,171,168,168,191,132,235,59"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="256,108,323,133"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="267,59,282,94,277,96,262,61"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="347,108,418,133"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="294,58,355,98,352,103,291,62"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="106,132,139,169,135,173,102,135"/>
+</map>

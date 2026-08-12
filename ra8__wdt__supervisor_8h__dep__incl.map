@@ -1,0 +1,9 @@
+<map id="libs/ra8_wdt_supervisor/inc/ra8_wdt_supervisor.h" name="libs/ra8_wdt_supervisor/inc/ra8_wdt_supervisor.h">
+<area shape="rect" id="Node000001" title="ThreadX&#45;aware watchdog supervisor (per&#45;thread check&#45;in registry)." alt="" coords="243,5,429,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2wdt__supervisor__demo_2main_8c.html" title="WDT supervisor abstraction HIL demo for EK&#45;RA8D2." alt="" coords="5,93,219,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="279,53,176,96,174,91,277,48"/>
+<area shape="rect" id="Node000003" href="$ra8__wdt__supervisor_8c.html" title="ThreadX&#45;aware watchdog supervisor implementation." alt="" coords="243,101,429,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="339,59,339,101,333,101,333,59"/>
+<area shape="rect" id="Node000004" href="$src_2app_2ns__main_8c.html" title="Non&#45;Secure main entry point: launches ThreadX and the e&#45;reader UI." alt="" coords="453,108,592,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="387,49,501,106,498,110,385,54"/>
+</map>

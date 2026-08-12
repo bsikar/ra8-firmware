@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/i2c_i3c_combined" name="examples/ek_ra8d2/hw_validated/hil/i2c_i3c_combined">
+<area shape="rect" id="node1" href="dir_f75df8963f5459ad579bff07ecc8dd0e.html" title="i2c_i3c_combined" alt="" coords="27,52,165,77"/>
+<area shape="rect" id="node2" href="dir_6719ab1f1f7655efc2fa43f7eb574fd1.html" title="Hand&#45;written first&#45;party libraries – the drivers and substrates the rest of the firmware builds on (H..." alt="" coords="73,125,119,151"/>
+<area shape="poly" id="edge1" href="dir_000135_000228.html" alt="" coords="99,78,99,112,93,112,93,78"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000135_000228.html" title="11" alt="" coords="96,100,113,114"/>
+<area shape="rect" id="clust1" href="dir_dda9d85eea4d4be218d5166c682d4b09.html" title="hil" alt="" coords="16,16,176,88"/>
+</map>

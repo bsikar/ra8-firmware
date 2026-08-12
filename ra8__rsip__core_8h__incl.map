@@ -1,0 +1,23 @@
+<map id="libs/ra8_hal/inc/ra8_rsip_core.h" name="libs/ra8_hal/inc/ra8_rsip_core.h">
+<area shape="rect" id="Node000001" title="Renesas Secure IP (RSIP&#45;E50D) HAL – core lifecycle / TRNG / hash API." alt="" coords="5,5,151,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="52,313,123,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="67,47,52,75,37,111,27,151,29,192,50,251,75,300,70,303,45,253,23,192,22,150,31,109,47,73,63,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="39,167,117,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="81,46,81,153,75,153,75,46"/>
+<area shape="rect" id="Node000004" href="$ra8__rsip__regs_8h.html" title="Renesas Secure IP (RSIP&#45;E50D) register layout for the RA8D2." alt="" coords="163,93,284,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="114,43,191,84,189,89,112,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="81,192,88,299,83,300,76,193"/>
+<area shape="rect" id="Node000005" href="$ra8__rsip__regs__fields_8h.html" title="RSIP&#45;E50D register field/value enums and the reg32 accessor." alt="" coords="142,167,305,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="226,119,226,153,221,153,221,119"/>
+<area shape="rect" id="Node000007" href="$ra8__rsip__regs__offsets_8h.html" title="RSIP&#45;E50D register base address, byte offsets, and layout asserts." alt="" coords="300,240,472,265"/>
+<area shape="poly" id="edge12_Node000004_Node000007" title=" " alt="" coords="247,116,282,137,318,165,349,196,373,227,368,230,345,200,315,169,279,142,244,121"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="203,194,172,215,140,242,117,272,100,302,96,300,113,269,136,238,168,210,200,190"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="150,240,275,265"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="224,193,219,227,214,226,219,192"/>
+<area shape="poly" id="edge8_Node000005_Node000007" title=" " alt="" coords="251,190,348,232,346,237,248,194"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="339,268,137,316,135,311,337,263"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="299,313,374,339"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="380,267,355,304,350,301,376,264"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="398,313,473,339"/>
+<area shape="poly" id="edge10_Node000007_Node000009" title=" " alt="" coords="396,264,422,301,417,304,392,267"/>
+</map>

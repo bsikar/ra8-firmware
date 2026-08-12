@@ -1,0 +1,13 @@
+<map id="libs/ra8_reflow/inc/ra8_reflow_svg.h" name="libs/ra8_reflow/inc/ra8_reflow_svg.h">
+<area shape="rect" id="Node000001" title="Minimal SVG handling for the ra8_reflow ereader (#112)." alt="" coords="387,5,527,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__svg_2main_8c.html" title="On&#45;silicon HIL: SVG vector&#45;art render&#45;at&#45;size + CRC gate (#143)." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="375,50,191,96,180,99,178,94,190,91,373,45"/>
+<area shape="rect" id="Node000003" href="$ra8__reflow__image_8c.html" title="Zero&#45;heap raster image decode + nearest&#45;neighbour scale + blit (#106)." alt="" coords="203,101,357,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="411,54,317,103,315,98,408,49"/>
+<area shape="rect" id="Node000004" href="$ra8__reflow__render_8c.html" title="Page&#45;rasteriser for ra8_reflow." alt="" coords="381,101,534,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="460,59,460,101,455,101,455,59"/>
+<area shape="rect" id="Node000005" href="$ra8__reflow__svg_8c.html" title="Scan / attribute / colour&#45;parsing core of the minimal SVG subset (#112)." alt="" coords="558,101,698,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="505,50,595,98,592,103,503,54"/>
+<area shape="rect" id="Node000006" href="$ra8__reflow__svg__doc_8c.html" title="SVG document walk, gradient definitions, and the public render API (#112)." alt="" coords="723,101,888,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="542,46,711,91,738,98,737,103,710,96,541,51"/>
+</map>

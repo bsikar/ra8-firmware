@@ -1,0 +1,27 @@
+<map id="libs/ra8_hal/src/ra8_vreg.c" name="libs/ra8_hal/src/ra8_vreg.c">
+<area shape="rect" id="Node000001" title="Internal Voltage Regulator (DCDC / LDO) driver implementation." alt="" coords="162,5,307,45"/>
+<area shape="rect" id="Node000002" href="$ra8__vreg_8h.html" title="Internal Voltage Regulator (DCDC / LDO) driver – full HUM Ch 68 surface." alt="" coords="148,93,238,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="227,47,208,82,203,80,222,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="238,240,308,265"/>
+<area shape="poly" id="edge7_Node000001_Node000003" title=" " alt="" coords="172,48,107,73,46,106,25,126,11,146,9,168,21,190,33,201,53,211,106,226,168,237,224,244,224,250,167,243,105,231,51,215,30,205,16,194,4,168,6,144,20,122,43,102,105,68,170,43"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="234,167,312,192"/>
+<area shape="poly" id="edge15_Node000001_Node000004" title=" " alt="" coords="242,45,269,153,264,154,237,46"/>
+<area shape="rect" id="Node000005" href="$ra8__vreg__regs_8h.html" title="Internal Voltage Regulator (VREG / DCDC / LDO) register layout for RA8D2." alt="" coords="31,167,158,192"/>
+<area shape="poly" id="edge17_Node000001_Node000005" title=" " alt="" coords="199,48,167,69,138,95,118,125,105,155,100,153,114,122,134,92,164,64,196,43"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="360,93,460,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="278,43,373,85,371,90,276,48"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="560,167,642,192"/>
+<area shape="poly" id="edge16_Node000001_Node000007" title=" " alt="" coords="308,38,389,60,474,91,531,123,578,156,575,160,529,128,472,96,388,65,307,43"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="198,118,208,152,225,191,254,228,249,232,220,193,203,154,193,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="208,117,252,156,248,160,204,121"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="179,121,123,161,120,156,176,117"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="276,192,276,226,270,226,270,192"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="124,190,232,232,230,237,122,195"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="440,117,466,130,490,149,505,170,505,182,499,194,488,204,470,213,425,228,323,248,322,243,423,223,468,208,484,200,495,190,500,181,499,171,487,152,463,135,437,121"/>
+<area shape="poly" id="edge10_Node000006_Node000004" title=" " alt="" coords="390,121,309,163,306,158,387,116"/>
+<area shape="poly" id="edge11_Node000006_Node000007" title=" " alt="" coords="442,116,558,159,556,164,440,121"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="336,167,484,192"/>
+<area shape="poly" id="edge13_Node000006_Node000008" title=" " alt="" coords="413,119,413,153,408,153,408,119"/>
+<area shape="poly" id="edge12_Node000007_Node000003" title=" " alt="" coords="560,192,323,243,322,238,559,187"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="390,194,309,236,306,231,387,190"/>
+</map>

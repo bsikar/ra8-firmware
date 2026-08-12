@@ -1,0 +1,24 @@
+<map id="examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/system_init.c" name="examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/system_init.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 / RA8D2 core bring&#45;up – MPU map via the ra8_mpu HAL (#576)." alt="" coords="316,5,503,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="413,255,483,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="316,41,229,48,138,61,60,81,32,94,13,110,8,121,13,132,38,154,77,175,127,194,184,211,301,238,399,256,398,261,300,243,182,216,126,199,75,180,35,158,8,135,3,121,8,106,29,90,59,76,137,56,229,43,315,35"/>
+<area shape="rect" id="Node000003" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="23,108,153,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="317,61,145,107,143,102,315,56"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="177,108,335,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="364,62,290,104,287,99,361,58"/>
+<area shape="rect" id="Node000005" href="$ra8__cache_8h.html" title="Cortex&#45;M85 L1 cache maintenance, enable/disable, and I&#45;cache invalidate." alt="" coords="359,108,459,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="412,60,412,94,407,94,407,60"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="447,181,526,207"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="439,58,457,81,473,107,483,138,488,167,483,168,478,139,468,109,453,84,434,62"/>
+<area shape="rect" id="Node000007" href="$ra8__mpu_8h.html" title="Cortex&#45;M85 Memory Protection Unit (MPU) configuration helper." alt="" coords="535,108,625,133"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="463,58,546,99,543,104,460,62"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="649,108,772,133"/>
+<area shape="poly" id="edge13_Node000001_Node000009" title=" " alt="" coords="502,58,658,102,657,107,501,63"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="415,133,444,241,439,242,410,134"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="423,131,466,170,462,174,420,135"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="483,208,463,244,458,241,478,206"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="579,135,564,169,539,208,513,232,485,250,482,246,510,228,535,205,560,167,574,133"/>
+<area shape="poly" id="edge12_Node000007_Node000006" title=" " alt="" coords="567,135,514,175,511,171,563,131"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="601,181,676,207"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="592,132,623,169,618,173,588,135"/>
+</map>

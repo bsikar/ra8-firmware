@@ -1,0 +1,15 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_dmac.c" name="tools/ra8_emulator/src/periph/board_periph_dmac.c">
+<area shape="rect" id="Node000001" title="DMAC0 transfer peripheral&#45;block model for the board emulator." alt="" coords="28,5,206,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="143,181,214,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="58,62,35,78,16,95,8,113,9,122,14,132,37,155,67,171,99,182,130,187,129,192,98,187,65,176,34,159,10,135,4,124,3,112,12,92,31,73,56,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="24,108,90,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="101,62,75,98,71,95,97,59"/>
+<area shape="rect" id="Node000004" href="$board__console_8h.html" title="Multi&#45;channel console log store backing the board view&#39;s tabbed console." alt="" coords="114,108,242,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="138,59,164,95,160,98,134,62"/>
+<area shape="rect" id="Node000005" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="267,108,428,133"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="188,58,305,101,303,106,187,63"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="181,134,181,168,176,168,176,134"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="322,136,220,178,218,173,319,131"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="280,181,415,207"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="350,134,350,168,345,168,345,134"/>
+</map>

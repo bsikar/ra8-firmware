@@ -1,0 +1,26 @@
+var ra8__reflow__svg__shape_8c =
+[
+    [ "svg_arc_t", "structsvg__arc__t.html", "structsvg__arc__t" ],
+    [ "priv_absf", "ra8__reflow__svg__shape_8c.html#ae58fc395b621791cbf0e23ef7bdd3bd7", null ],
+    [ "priv_arc_center", "ra8__reflow__svg__shape_8c.html#aedd61491d94a70ed1ad072d111061f5f", null ],
+    [ "priv_arc_segs", "ra8__reflow__svg__shape_8c.html#a4124877e6170ecdbf27c4d3367640ea7", null ],
+    [ "priv_arc_solve", "ra8__reflow__svg__shape_8c.html#ad67f188063ce06deb2c8e7f1015a7373", null ],
+    [ "priv_col_lerp", "ra8__reflow__svg__shape_8c.html#a81f965d6576287523a0b00497fcf4f2c", null ],
+    [ "priv_grad_eval", "ra8__reflow__svg__shape_8c.html#a76b811464725c768040a98b87188a786", null ],
+    [ "priv_parse_points", "ra8__reflow__svg__shape_8c.html#a8ff8614cc65e9b80a188d2b1e617df97", null ],
+    [ "priv_scanline_x", "ra8__reflow__svg__shape_8c.html#a53126a0ae48d1a72ddb1de3db1777c56", null ],
+    [ "priv_sort_i32", "ra8__reflow__svg__shape_8c.html#a9845afe752a8bc108e1f1a79ef510a7c", null ],
+    [ "ra8_svgp_draw_circle", "ra8__reflow__svg__shape_8c.html#a2d15e51abe48386bd0c07e4df3fd8b05", null ],
+    [ "ra8_svgp_draw_line", "ra8__reflow__svg__shape_8c.html#a5db440538445e54ff1c6a315cb50dc2e", null ],
+    [ "ra8_svgp_draw_polygon", "ra8__reflow__svg__shape_8c.html#a3614caa83ea9cdd24e02282267763851", null ],
+    [ "ra8_svgp_draw_polyline", "ra8__reflow__svg__shape_8c.html#ae82f7517cb4e77e71af955e753077548", null ],
+    [ "ra8_svgp_draw_rect", "ra8__reflow__svg__shape_8c.html#a1ea7d1d0b2dd4ba2bb11e1ec485ac9e8", null ],
+    [ "ra8_svgp_fill_poly", "ra8__reflow__svg__shape_8c.html#a5f4f2d243e33a0861c72e5512119a887", null ],
+    [ "ra8_svgp_fill_poly_grad", "ra8__reflow__svg__shape_8c.html#ac878886d3cb4472db7b8e1895a9b4394", null ],
+    [ "ra8_svgp_flatten_arc", "ra8__reflow__svg__shape_8c.html#a00b9ddf887ae0f31a8613cbff0a09783", null ],
+    [ "s_svg_2pi", "ra8__reflow__svg__shape_8c.html#accef7d31e0d26da1da13fc71dd411b4c", null ],
+    [ "s_svg_arc_step", "ra8__reflow__svg__shape_8c.html#af40061ee4868ab867f741b9bcc4e9266", null ],
+    [ "s_svg_deg_half", "ra8__reflow__svg__shape_8c.html#afa1c0c722c68dff20b8fbce295e322d5", null ],
+    [ "s_svg_half", "ra8__reflow__svg__shape_8c.html#aa990f39b843860e018380b61f150552e", null ],
+    [ "s_svg_pi", "ra8__reflow__svg__shape_8c.html#a7ebaa2cb37632409e29b5a8f984a632e", null ]
+];

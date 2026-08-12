@@ -1,0 +1,17 @@
+<map id="examples/ek_ra8d2/hw_pending/tz_threadx_demo/system_init.c" name="examples/ek_ra8d2/hw_pending/tz_threadx_demo/system_init.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 / RA8D2 core bring&#45;up (called from Reset_Handler)." alt="" coords="55,5,253,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="63,255,133,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="69,62,38,82,14,109,8,129,10,155,17,182,28,205,46,227,68,245,65,249,42,231,24,208,12,184,5,156,3,128,9,107,34,78,66,58"/>
+<area shape="rect" id="Node000003" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="23,108,154,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="136,62,108,99,104,95,132,58"/>
+<area shape="rect" id="Node000004" href="$ra8__cgc_8h.html" title="High&#45;level Clock Generation Circuit driver." alt="" coords="179,108,263,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="176,58,205,95,201,99,172,62"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="287,108,410,133"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="214,58,311,100,309,105,212,63"/>
+<area shape="rect" id="Node000005" href="$ra8__cgc__regs_8h.html" title="Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2." alt="" coords="39,181,157,207"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="202,136,131,177,128,172,199,131"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="181,181,260,207"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="223,134,223,168,218,168,218,134"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="101,207,101,241,95,241,95,207"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="202,209,131,250,128,245,199,204"/>
+</map>

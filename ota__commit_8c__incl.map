@@ -1,0 +1,22 @@
+<map id="src/secure_app/ota_commit.c" name="src/secure_app/ota_commit.c">
+<area shape="rect" id="Node000001" title="Secure&#45;side OTA commit + flash&#45;bank&#45;config implementation." alt="" coords="50,5,194,45"/>
+<area shape="rect" id="Node000002" href="$ota__commit_8h.html" title="Secure&#45;side OTA bank commit + flash&#45;bank&#45;config write." alt="" coords="20,93,132,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="113,47,92,83,87,80,109,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="135,240,206,265"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="67,48,42,61,21,77,9,96,8,106,10,118,32,156,63,188,98,213,131,232,129,236,95,218,59,192,27,159,5,120,3,107,4,94,17,73,39,56,65,43"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="92,167,171,192"/>
+<area shape="poly" id="edge13_Node000001_Node000004" title=" " alt="" coords="133,45,146,93,147,125,142,154,136,153,141,124,141,94,128,46"/>
+<area shape="rect" id="Node000005" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="207,93,307,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="156,43,227,84,224,89,153,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="76,119,73,153,75,173,82,191,103,214,129,232,126,236,99,218,77,193,70,174,68,154,70,119"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="87,117,116,154,112,157,83,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="140,191,160,227,155,229,136,194"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="252,120,187,229,182,227,248,118"/>
+<area shape="poly" id="edge8_Node000005_Node000004" title=" " alt="" coords="238,121,165,162,163,157,236,116"/>
+<area shape="rect" id="Node000006" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="246,167,329,192"/>
+<area shape="poly" id="edge9_Node000005_Node000006" title=" " alt="" coords="265,118,280,153,275,155,260,120"/>
+<area shape="rect" id="Node000007" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="354,167,502,192"/>
+<area shape="poly" id="edge11_Node000005_Node000007" title=" " alt="" coords="286,116,388,159,386,164,283,121"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="270,194,203,235,200,230,268,190"/>
+<area shape="poly" id="edge12_Node000007_Node000003" title=" " alt="" coords="387,195,219,241,218,235,386,189"/>
+</map>

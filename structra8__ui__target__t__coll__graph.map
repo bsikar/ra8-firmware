@@ -1,0 +1,5 @@
+<map id="ra8_ui_target_t" name="ra8_ui_target_t">
+<area shape="rect" id="Node000001" title="One tap target: a rectangle bound to an opaque action id." alt="" coords="5,101,125,127"/>
+<area shape="rect" id="Node000002" href="$structra8__ui__rect__t.html" title="Axis&#45;aligned rectangle in framebuffer pixel coordinates." alt="" coords="12,5,119,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="68,45,68,101,63,101,63,45"/>
+</map>

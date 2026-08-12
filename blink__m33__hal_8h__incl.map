@@ -1,0 +1,25 @@
+<map id="examples/ek_ra8d2/hw_pending/blink_m33_hal/blink_m33_hal.h" name="examples/ek_ra8d2/hw_pending/blink_m33_hal/blink_m33_hal.h">
+<area shape="rect" id="Node000001" title="One&#45;iteration LED1 blink step for the HAL&#45;based M33 example." alt="" coords="467,5,647,60"/>
+<area shape="rect" id="Node000002" href="$ra8__pcntr_8h.html" title="CPU1&#45;safe combined direction+level PORT primitive over PCNTR1/PCNTR2." alt="" coords="435,108,529,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="536,62,503,99,499,96,532,58"/>
+<area shape="rect" id="Node000005" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="632,255,791,280"/>
+<area shape="poly" id="edge14_Node000001_Node000005" title=" " alt="" coords="576,59,698,242,694,244,572,62"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="447,328,517,353"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="435,129,332,144,274,157,219,173,174,193,143,217,136,231,134,245,138,261,149,278,168,292,196,304,272,321,358,331,433,335,433,341,357,336,271,326,194,309,165,297,145,282,133,263,128,245,131,229,139,214,171,189,217,168,272,152,331,139,434,124"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,181,84,207"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="435,132,104,184,99,185,98,180,103,179,434,126"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="502,131,682,245,680,249,499,136"/>
+<area shape="rect" id="Node000006" href="$ra8__port__regs_8h.html" title="IOPORT (GPIO) register layout for the Renesas RA8D2." alt="" coords="421,181,543,207"/>
+<area shape="poly" id="edge7_Node000002_Node000006" title=" " alt="" coords="485,134,485,168,479,168,479,134"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="51,206,71,242,86,262,105,278,130,289,166,300,255,316,433,334,432,339,254,321,164,305,128,294,102,282,82,266,66,245,47,208"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="675,283,532,327,530,322,674,277"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="513,204,545,224,560,237,571,254,574,275,564,295,546,311,524,324,521,319,543,307,560,291,569,274,566,256,556,241,542,228,510,209"/>
+<area shape="poly" id="edge13_Node000006_Node000005" title=" " alt="" coords="520,204,662,248,660,253,518,209"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="159,255,234,280"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="437,209,248,256,247,251,436,204"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="258,255,383,280"/>
+<area shape="poly" id="edge10_Node000006_Node000008" title=" " alt="" coords="457,209,361,251,358,247,455,204"/>
+<area shape="rect" id="Node000009" href="$ra8__bit__constants_8h.html" title="Named Bit Positions and Masks for Register Manipulation." alt="" coords="407,255,557,280"/>
+<area shape="poly" id="edge11_Node000006_Node000009" title=" " alt="" coords="485,207,485,241,479,241,479,207"/>
+<area shape="poly" id="edge12_Node000009_Node000003" title=" " alt="" coords="485,280,485,314,479,314,479,280"/>
+</map>

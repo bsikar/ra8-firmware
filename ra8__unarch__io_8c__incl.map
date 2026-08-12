@@ -1,0 +1,11 @@
+<map id="libs/ra8_unarch/src/ra8_unarch_io.c" name="libs/ra8_unarch/src/ra8_unarch_io.c">
+<area shape="rect" id="Node000001" title="Flat&#45;memory backing for the shared unarchiver read seam." alt="" coords="80,5,224,45"/>
+<area shape="rect" id="Node000002" href="$ra8__unarch__io_8h.html" title="Shared seek+read seam and flat&#45;memory backing for the unarchivers." alt="" coords="28,93,153,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="139,47,110,84,106,81,135,44"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="178,93,249,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="169,44,198,81,194,84,165,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="85,121,60,157,56,154,81,118"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="105,167,175,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="101,117,126,154,122,157,97,121"/>
+</map>

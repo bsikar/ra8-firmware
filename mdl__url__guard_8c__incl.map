@@ -1,0 +1,15 @@
+<map id="tools/media_dl/src/mdl_url_guard.c" name="tools/media_dl/src/mdl_url_guard.c">
+<area shape="rect" id="Node000001" title="Implementation of the pure URL / address safety predicates." alt="" coords="205,5,347,45"/>
+<area shape="rect" id="Node000002" href="$mdl__url__guard_8h.html" title="Pure URL / address safety predicates for the libcurl backend." alt="" coords="27,93,154,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="233,48,131,90,129,85,231,43"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="178,93,270,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="266,47,242,83,237,80,261,44"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="294,93,365,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="291,44,316,80,311,83,287,47"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="389,93,515,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="319,43,415,85,412,90,317,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="85,121,60,157,56,154,81,118"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="105,167,175,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="101,117,126,154,122,157,97,121"/>
+</map>

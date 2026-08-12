@@ -1,0 +1,9 @@
+<map id="ra8_wifi" name="ra8_wifi">
+<area shape="rect" id="Node000001" title="Caller&#45;allocated Wi&#45;Fi handle." alt="" coords="181,121,255,147"/>
+<area shape="rect" id="Node000002" href="$structra8__wifi__backend.html" title="One vtable per radio." alt="" coords="5,5,140,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,40,120,68,152,95,192,119,190,123,148,100,116,71,89,43"/>
+<area shape="rect" id="Node000003" href="$structra8__wifi__mac.html" title="One IEEE 802 address, by value." alt="" coords="164,5,272,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="221,45,221,121,215,121,215,45"/>
+<area shape="rect" id="Node000004" href="$structra8__wifi__lease.html" title="The IPv4 configuration an ra8_wifi_ip_bind_fn obtained." alt="" coords="297,5,411,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="338,43,312,71,281,99,243,123,240,119,278,95,308,67,334,39"/>
+</map>

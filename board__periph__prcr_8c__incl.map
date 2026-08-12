@@ -1,0 +1,18 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_prcr.c" name="tools/ra8_emulator/src/periph/board_periph_prcr.c">
+<area shape="rect" id="Node000001" title="SYSC register&#45;write&#45;protection (PRCR) model." alt="" coords="206,5,385,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="260,181,331,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="298,60,298,168,293,168,293,60"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="191,108,258,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="276,62,245,99,241,96,272,58"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="5,108,167,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="232,63,128,105,126,100,230,58"/>
+<area shape="rect" id="Node000006" href="$board__periph__prcr__internal_8h.html" title="Module&#45;private PRCR unlock state shared with the protected blocks." alt="" coords="333,108,541,133"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="340,58,407,98,404,103,337,62"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="445,181,570,207"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="385,45,487,70,528,87,555,106,561,124,557,142,534,173,530,170,552,140,556,124,551,110,526,91,485,75,384,51"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="120,131,249,174,247,179,119,136"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="19,181,153,207"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="89,134,89,168,83,168,83,134"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="415,136,332,177,329,173,413,131"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="450,132,488,170,484,174,446,136"/>
+</map>

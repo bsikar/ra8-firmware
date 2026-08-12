@@ -1,0 +1,13 @@
+<map id="libs/ra8_hal/inc/ra8_pfs_regs.h" name="libs/ra8_hal/inc/ra8_pfs_regs.h">
+<area shape="rect" id="Node000001" title="Pin Function Select (PFS) register layout for the Renesas RA8D2." alt="" coords="95,5,241,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="214,167,285,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="96,45,57,57,25,74,15,84,9,94,9,105,15,117,27,127,44,136,93,151,201,170,200,175,91,156,42,141,24,131,11,120,4,106,4,93,11,80,22,70,55,53,94,40"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="25,93,151,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="150,47,112,85,108,82,147,44"/>
+<area shape="rect" id="Node000004" href="$ra8__bit__constants_8h.html" title="Named Bit Positions and Masks for Register Manipulation." alt="" coords="175,93,324,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="190,44,229,82,225,85,186,47"/>
+<area shape="rect" id="Node000005" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="349,93,507,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="231,43,378,87,376,92,229,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="252,119,252,153,247,153,247,119"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="400,121,292,164,290,159,398,116"/>
+</map>

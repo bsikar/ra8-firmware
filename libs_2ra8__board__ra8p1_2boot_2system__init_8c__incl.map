@@ -1,0 +1,17 @@
+<map id="libs/ra8_board_ra8p1/boot/system_init.c" name="libs/ra8_board_ra8p1/boot/system_init.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 / RA8D2/RA8P1 core bring&#45;up (called from Reset_Handler)." alt="" coords="181,5,339,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="301,240,371,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="181,32,112,39,50,55,27,66,13,80,9,96,17,117,43,148,74,174,110,195,147,212,223,234,288,245,287,250,222,239,145,217,107,200,71,178,39,152,12,120,3,97,8,77,24,61,48,50,112,34,180,26"/>
+<area shape="rect" id="Node000003" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="27,93,157,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="221,48,130,90,128,85,219,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="181,93,339,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="263,46,263,79,257,79,257,46"/>
+<area shape="rect" id="Node000005" href="$ra8__cache_8h.html" title="Cortex&#45;M85 L1 cache maintenance, enable/disable, and I&#45;cache invalidate." alt="" coords="363,93,463,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="298,43,380,85,378,89,296,48"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="488,93,611,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="330,43,495,87,493,92,329,48"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="402,121,382,142,364,168,351,198,343,227,338,226,346,196,359,165,378,138,399,117"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="374,167,453,192"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="416,119,416,153,411,153,411,119"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="403,194,361,232,357,229,399,190"/>
+</map>

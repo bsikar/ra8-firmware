@@ -1,0 +1,47 @@
+<map id="libs/ra8_hal/inc/ra8_rmac.h" name="libs/ra8_hal/inc/ra8_rmac.h">
+<area shape="rect" id="Node000001" title="Per&#45;port Ethernet MAC (RMAC) driver – HUM Ch 33." alt="" coords="877,5,1022,45"/>
+<area shape="rect" id="Node000002" href="$ra8__board__ek__ra8d2__ethernet_8c.html" title="EK&#45;RA8D2 BSP – on&#45;board RGMII Ethernet (GPY111/PEF7071) bring&#45;up." alt="" coords="5,357,187,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="864,35,723,54,645,72,569,96,502,124,435,157,310,231,205,303,130,359,127,355,202,299,307,227,433,153,500,119,567,91,643,67,722,49,863,30"/>
+<area shape="rect" id="Node000003" href="$ra8__etha_8h.html" title="Per&#45;port Ethernet Agent (ETHA) driver – HUM Ch 32 (p 1627&#45;1702)." alt="" coords="545,269,690,309"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="863,31,778,42,731,52,684,67,639,86,598,112,562,144,534,183,529,201,534,220,555,247,582,267,578,271,551,251,530,223,523,201,530,180,558,140,595,107,636,82,682,62,729,47,777,36,863,26"/>
+<area shape="rect" id="Node000006" href="$ra8__eth_8c.html" title="Ethernet Switch Module (ESWM) + frame TX/RX driver implementation." alt="" coords="958,365,1103,405"/>
+<area shape="poly" id="edge22_Node000001_Node000006" title=" " alt="" coords="950,59,948,109,951,172,960,241,978,308,995,338,1014,363,1010,366,990,341,974,310,955,242,945,172,943,109,944,59"/>
+<area shape="rect" id="Node000007" href="$ra8__eth__link_8c.html" title="Ethernet PHY link&#45;status poller + MAC speed/duplex resync." alt="" coords="1127,365,1273,405"/>
+<area shape="poly" id="edge26_Node000001_Node000007" title=" " alt="" coords="976,55,1006,92,1080,177,1112,215,1148,268,1175,319,1195,363,1190,366,1170,321,1143,271,1107,219,1076,180,1002,95,972,58"/>
+<area shape="rect" id="Node000012" href="$ra8__etha__shaper_8h.html" title="Per&#45;port ETHA VLAN / shaper / stats / ring / PHY API – HUM Ch 32 (p 1627&#45;1702)." alt="" coords="545,181,690,221"/>
+<area shape="poly" id="edge15_Node000001_Node000012" title=" " alt="" coords="864,45,796,65,728,96,700,116,674,139,634,183,630,179,670,135,696,111,725,91,794,60,863,40"/>
+<area shape="rect" id="Node000013" href="$ra8__etha__types_8h.html" title="Per&#45;port Ethernet Agent (ETHA) data types – HUM Ch 32 (p 1627&#45;1702)." alt="" coords="738,93,883,133"/>
+<area shape="poly" id="edge17_Node000001_Node000013" title=" " alt="" coords="909,55,842,96,840,91,906,50"/>
+<area shape="rect" id="Node000015" href="$ra8__eth__internal_8h.html" title="Cross&#45;TU shared surface for the ra8_eth driver split." alt="" coords="987,269,1133,309"/>
+<area shape="poly" id="edge23_Node000001_Node000015" title=" " alt="" coords="965,57,1054,268,1050,270,960,59"/>
+<area shape="rect" id="Node000016" href="$ra8__rmac_8c.html" title="Per&#45;port Ethernet MAC (RMAC) driver implementation – HUM Ch 33." alt="" coords="1209,93,1354,133"/>
+<area shape="poly" id="edge27_Node000001_Node000016" title=" " alt="" coords="1036,46,1209,91,1208,96,1035,51"/>
+<area shape="rect" id="Node000017" href="$ra8__rmac__mgmt_8c.html" title="RMAC status read/clear + statistics snapshot + Clause&#45;22 PHY – HUM Ch 33." alt="" coords="1378,93,1523,133"/>
+<area shape="poly" id="edge28_Node000001_Node000017" title=" " alt="" coords="1036,36,1191,60,1367,91,1378,93,1377,98,1366,96,1190,65,1036,42"/>
+<area shape="poly" id="edge5_Node000003_Node000002" title=" " alt="" coords="531,305,379,329,206,360,188,364,187,359,205,355,378,324,531,300"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2eth__tsn__tas__demo_2main_8c.html" title="TSN scheduled&#45;traffic demo: 802.1Qbv time&#45;aware + 802.1Qav credit shaper." alt="" coords="483,357,656,412"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="604,323,585,358,580,356,599,320"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2eth__loopback_2main_8c.html" title="ETHA per&#45;port internal loopback bring&#45;up demo for EK&#45;RA8D2." alt="" coords="681,357,882,412"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="664,314,736,355,734,360,661,319"/>
+<area shape="poly" id="edge6_Node000003_Node000006" title=" " alt="" coords="704,304,939,355,967,362,966,367,938,360,703,309"/>
+<area shape="poly" id="edge7_Node000003_Node000007" title=" " alt="" coords="704,295,894,317,1006,333,1117,355,1145,362,1143,367,1115,360,1005,339,894,322,704,300"/>
+<area shape="rect" id="Node000008" href="$ra8__etha_8c.html" title="Per&#45;port Ethernet Agent (ETHA) driver implementation – HUM Ch 32." alt="" coords="669,460,814,500"/>
+<area shape="poly" id="edge8_Node000003_Node000008" title=" " alt="" coords="704,297,761,306,818,318,866,335,884,345,897,356,905,370,908,384,905,398,897,414,881,433,860,448,815,468,813,463,858,443,877,429,892,410,900,397,903,384,900,372,893,359,881,349,864,340,817,324,760,311,704,302"/>
+<area shape="rect" id="Node000009" href="$ra8__etha__internal_8h.html" title="Cross&#45;TU shared surface for the ra8_etha driver split." alt="" coords="313,365,458,405"/>
+<area shape="poly" id="edge9_Node000003_Node000009" title=" " alt="" coords="559,317,433,367,431,362,557,312"/>
+<area shape="rect" id="Node000010" href="$ra8__etha__stats_8c.html" title="ETHA per&#45;port statistics, descriptor&#45;ring sizing, and PHY open – HUM Ch 32." alt="" coords="147,460,293,500"/>
+<area shape="poly" id="edge13_Node000003_Node000010" title=" " alt="" coords="532,302,391,324,329,340,287,360,264,382,247,409,227,461,222,459,243,407,260,379,284,355,327,335,390,319,531,297"/>
+<area shape="rect" id="Node000011" href="$ra8__etha__tas_8c.html" title="ETHA time&#45;aware shaper (TAS / 802.1Qbv) flows – HUM Ch 32.4.2." alt="" coords="317,460,462,500"/>
+<area shape="poly" id="edge14_Node000003_Node000011" title=" " alt="" coords="531,299,464,307,395,319,337,337,316,347,302,359,295,372,293,383,302,411,323,438,351,458,348,462,320,441,298,413,288,384,289,370,298,356,313,343,335,332,394,314,463,302,531,294"/>
+<area shape="poly" id="edge10_Node000009_Node000008" title=" " alt="" coords="459,406,471,409,669,459,667,464,470,415,458,411"/>
+<area shape="poly" id="edge11_Node000009_Node000010" title=" " alt="" coords="342,414,255,462,252,458,339,409"/>
+<area shape="poly" id="edge12_Node000009_Node000011" title=" " alt="" coords="389,418,391,460,386,460,384,418"/>
+<area shape="poly" id="edge16_Node000012_Node000003" title=" " alt="" coords="620,235,620,269,615,269,615,235"/>
+<area shape="poly" id="edge18_Node000013_Node000003" title=" " alt="" coords="785,145,704,223,645,271,641,267,701,219,781,142"/>
+<area shape="poly" id="edge21_Node000013_Node000012" title=" " alt="" coords="757,141,661,184,659,179,755,137"/>
+<area shape="rect" id="Node000014" href="$ra8__etha__ops_8h.html" title="Per&#45;port ETHA lifecycle / IRQ / mode / queue API – HUM Ch 32 (p 1627&#45;1702)." alt="" coords="766,181,911,221"/>
+<area shape="poly" id="edge19_Node000013_Node000014" title=" " alt="" coords="824,146,835,180,830,182,819,147"/>
+<area shape="poly" id="edge20_Node000014_Node000003" title=" " alt="" coords="778,229,667,272,665,267,777,224"/>
+<area shape="poly" id="edge24_Node000015_Node000006" title=" " alt="" coords="1052,323,1039,365,1034,364,1047,322"/>
+<area shape="poly" id="edge25_Node000015_Node000007" title=" " alt="" coords="1101,315,1173,362,1170,367,1098,319"/>
+</map>

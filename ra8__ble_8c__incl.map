@@ -1,0 +1,27 @@
+<map id="libs/ra8_hal/src/ra8_ble.c" name="libs/ra8_hal/src/ra8_ble.c">
+<area shape="rect" id="Node000001" title="HCI transport seam (host&#45;side) – in&#45;memory loopback backend." alt="" coords="163,5,309,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ble_8h.html" title="BLE HCI transport seam (host&#45;side)." alt="" coords="28,93,111,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="197,48,107,90,105,85,195,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="122,240,193,265"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="163,30,124,36,84,48,48,67,18,95,9,114,10,134,19,153,35,172,77,205,122,232,119,236,74,210,31,175,15,156,5,135,4,113,14,92,44,63,82,43,123,31,163,25"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="79,167,158,192"/>
+<area shape="poly" id="edge15_Node000001_Node000004" title=" " alt="" coords="218,47,175,95,134,156,130,153,171,92,214,44"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="361,93,436,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="276,43,363,85,361,90,274,48"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="460,93,585,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="305,43,468,87,467,92,304,48"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="186,93,286,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="239,46,239,79,233,79,233,46"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="407,167,489,192"/>
+<area shape="poly" id="edge16_Node000001_Node000008" title=" " alt="" coords="259,44,351,116,416,158,414,162,348,121,256,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="68,120,62,153,63,173,69,191,89,214,115,232,112,236,85,218,64,193,58,174,57,153,63,119"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="80,117,105,154,101,157,75,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="127,191,147,227,142,229,123,194"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="232,120,172,229,168,227,227,118"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="218,121,151,162,148,157,216,116"/>
+<area shape="poly" id="edge11_Node000007_Node000008" title=" " alt="" coords="271,116,402,160,400,165,269,121"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="234,167,382,192"/>
+<area shape="poly" id="edge13_Node000007_Node000009" title=" " alt="" coords="250,117,288,155,285,159,246,121"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="407,193,207,242,205,237,406,188"/>
+<area shape="poly" id="edge14_Node000009_Node000003" title=" " alt="" coords="285,194,195,236,193,232,283,190"/>
+</map>

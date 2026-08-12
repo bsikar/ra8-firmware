@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/src/ra8_jpeg_sw_encode_internal.h" name="libs/ra8_hal/src/ra8_jpeg_sw_encode_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private declarations shared by the two encoder translation units of the software JPEG codec." alt="" coords="71,5,276,45"/>
+<area shape="rect" id="Node000002" href="$ra8__jpeg__sw__encode_8c.html" title="Pure&#45;software baseline JPEG encoder: pixel pipeline and public API." alt="" coords="5,93,152,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="144,57,101,95,98,91,140,53"/>
+<area shape="rect" id="Node000003" href="$ra8__jpeg__sw__encode__emit_8c.html" title="Software JPEG encoder: byte/bit emitters, Annex K.3.3 tables and JFIF header&#45;segment writers." alt="" coords="176,93,360,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="206,53,249,91,245,95,203,57"/>
+</map>

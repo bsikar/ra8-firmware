@@ -1,0 +1,25 @@
+var searchData=
+[
+  ['h_0',['ADR-0003: Test-only access to internal symbols via &lt;span class=&quot;tt&quot;&gt;&amp;lt;module&amp;gt;_internal.h&lt;/span&gt;',['../md_docs_2adr_20003-test-only-internal-headers.html',1,'ra8_docsub_adr']]],
+  ['hardware_1',['Needs external hardware',['../ra8_ex__unsupported.html',1,'ra8_examples']]],
+  ['hardware_20bring_20up_20report_20ek_20ra8d2_20v1_2',['Hardware Bring-up Report (EK-RA8D2 v1)',['../md_docs_2HARDWARE__BRINGUP.html',1,'ra8_docs']]],
+  ['hardware_20in_20the_20loop_20ci_20runner_20setup_20ek_20ra8d2_20ndash_20deprecated_3',['Hardware-in-the-Loop CI Runner Setup (EK-RA8D2) &amp;ndash; DEPRECATED',['../md_docs_2qualification_2HW__IN__LOOP__RUNNER.html',1,'ra8_docsub_qualification']]],
+  ['hardware_20in_20the_20loop_20hil_4',['Hardware-in-the-loop (HIL)',['../ra8_ex_ek_ra8d2_hw_validated_hil.html',1,'ra8_ex_ek_ra8d2_hw_validated']]],
+  ['hardware_20in_20the_20loop_20hil_20developer_20workflow_5',['Hardware-in-the-Loop (HIL) Developer Workflow',['../md_docs_2HIL__DEVELOPER__WORKFLOW.html',1,'ra8_docs']]],
+  ['hardware_20pending_6',['Hardware-pending',['../ra8_ex_ek_ra8d2_hw_pending.html',1,'ra8_ex_ek_ra8d2']]],
+  ['hardware_20user_20s_20manual_20ndash_20chapter_20map_7',['RA8D2 Hardware User&apos;s Manual &amp;ndash; Chapter Map',['../md_docs_2reference_2CHAPTER__MAP.html',1,'ra8_docsub_reference']]],
+  ['hardware_20validated_8',['Hardware-validated',['../ra8_ex_ek_ra8d2_hw_validated.html',1,'ra8_ex_ek_ra8d2']]],
+  ['header_9',['NSR1 &amp;ndash; The Non-Secure Image RoT Header',['../md_docs_2formats_2NSR1.html',1,'ra8_docsub_formats']]],
+  ['headers_10',['SOUP Justification: gemmlowp (fixed-point headers)',['../md_docs_2SOUP_2gemmlowp.html',1,'ra8_docsub_SOUP']]],
+  ['hil_11',['Hardware-in-the-loop (HIL)',['../ra8_ex_ek_ra8d2_hw_validated_hil.html',1,'ra8_ex_ek_ra8d2_hw_validated']]],
+  ['hil_20c6_12',['ESP32-C6 companion radio (make hil-c6)',['../ra8_ex_ek_ra8d2_hw_validated_c6.html',1,'ra8_ex_ek_ra8d2_hw_validated']]],
+  ['hil_20developer_20workflow_13',['Hardware-in-the-Loop (HIL) Developer Workflow',['../md_docs_2HIL__DEVELOPER__WORKFLOW.html',1,'ra8_docs']]],
+  ['hil_20ndash_20needs_20re_20validation_14',['HIL &amp;ndash; needs re-validation',['../ra8_ex_ek_ra8d2_hil_needs_revalidation.html',1,'ra8_ex_ek_ra8d2']]],
+  ['hil_5fsuite_15',['HIL_SUITE',['../md_docs_2HIL__SUITE.html',1,'ra8_docs']]],
+  ['host_20build_20tool_16',['SOUP Justification: Arm Ethos-U Vela (host build tool)',['../md_docs_2SOUP_2vela.html',1,'ra8_docsub_SOUP']]],
+  ['host_20driver_17',['SOUP Justification: Espressif esp-hosted-mcu (host driver)',['../md_docs_2SOUP_2esp-hosted-host.html',1,'ra8_docsub_SOUP']]],
+  ['host_20side_20performance_20benchmarks_18',['Host-side Performance Benchmarks',['../md_docs_2PERFORMANCE.html',1,'ra8_docs']]],
+  ['hosted_20mcu_20co_20processor_20firmware_19',['SOUP Justification: Espressif esp-hosted-mcu (co-processor firmware)',['../md_docs_2SOUP_2esp-hosted.html',1,'ra8_docsub_SOUP']]],
+  ['hosted_20mcu_20host_20driver_20',['SOUP Justification: Espressif esp-hosted-mcu (host driver)',['../md_docs_2SOUP_2esp-hosted-host.html',1,'ra8_docsub_SOUP']]],
+  ['html_20documentation_21',['Doxygen HTML Documentation',['../md_docs_2DOCS.html',1,'ra8_docs']]]
+];

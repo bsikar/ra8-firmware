@@ -1,0 +1,22 @@
+<map id="tools/ra8_emulator/src/engine/emu_mmio.c" name="tools/ra8_emulator/src/engine/emu_mmio.c">
+<area shape="rect" id="Node000001" title="Sparse MMIO model implementation (see emu_mmio.h)." alt="" coords="175,5,357,45"/>
+<area shape="rect" id="Node000002" href="$emu__mmio_8h.html" title="Sparse MMIO model of the Renesas peripheral space." alt="" coords="148,93,256,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="253,47,222,84,218,81,248,44"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="406,93,473,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="309,43,402,85,400,90,306,48"/>
+<area shape="rect" id="Node000007" href="$board__periph_8h.html" title="Register&#45;accurate peripheral&#45;model framework for the board emulator." alt="" coords="5,93,124,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="219,48,108,91,106,86,217,43"/>
+<area shape="rect" id="Node000008" href="$emu__cpu1_8h.html" title="Second&#45;core (cpu1, Cortex&#45;M33) engine: release watch, boot, stepping." alt="" coords="281,93,382,119"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="284,44,315,81,311,84,280,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="168,167,239,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="205,119,206,153,200,153,200,119"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="9,167,144,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="183,121,110,162,108,157,181,116"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="266,167,391,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="224,116,297,157,295,162,221,121"/>
+<area shape="poly" id="edge7_Node000007_Node000003" title=" " alt="" coords="88,116,170,158,167,163,86,121"/>
+<area shape="poly" id="edge8_Node000007_Node000004" title=" " alt="" coords="69,119,75,153,70,154,64,119"/>
+<area shape="poly" id="edge10_Node000008_Node000003" title=" " alt="" coords="312,121,238,162,235,157,309,116"/>
+<area shape="poly" id="edge11_Node000008_Node000004" title=" " alt="" coords="291,121,131,166,130,160,290,116"/>
+<area shape="poly" id="edge12_Node000008_Node000005" title=" " alt="" coords="334,119,332,153,327,153,328,119"/>
+</map>

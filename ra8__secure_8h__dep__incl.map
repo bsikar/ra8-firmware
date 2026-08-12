@@ -1,0 +1,19 @@
+<map id="libs/ra8_core/inc/ra8_secure.h" name="libs/ra8_core/inc/ra8_secure.h">
+<area shape="rect" id="Node000001" title="Secure&#45;comparison primitives for the crypto / secure&#45;boot paths." alt="" coords="693,5,847,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2ota__ab__orchestration_2main_8c.html" title="A/B OTA orchestration demo: stage &#45;&gt; verify &#45;&gt; commit / rollback over MRAM." alt="" coords="5,93,228,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="680,38,478,62,240,96,229,98,228,93,239,91,477,56,679,33"/>
+<area shape="rect" id="Node000003" href="$ra8__secure_8c.html" title="Secure&#45;comparison primitives implementation." alt="" coords="252,101,405,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="680,44,556,67,419,96,391,103,389,98,417,91,555,61,679,39"/>
+<area shape="rect" id="Node000004" href="$ra8__rsip__key__injection_8c.html" title="RSIP key&#45;injection HAL implementation." alt="" coords="430,101,587,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="705,52,562,103,561,98,704,47"/>
+<area shape="rect" id="Node000005" href="$ra8__ota_8c.html" title="Phase&#45;5 OTA firmware&#45;update orchestration – implementation." alt="" coords="611,101,758,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="745,57,704,102,700,99,741,54"/>
+<area shape="rect" id="Node000006" href="$ra8__ota__verify_8c.html" title="Phase&#45;5 OTA signature&#45;verification cluster – implementation." alt="" coords="782,101,929,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="799,54,840,99,836,102,795,57"/>
+<area shape="rect" id="Node000007" href="$key__import_8c.html" title="Secure&#45;side sealed&#45;key import implementation." alt="" coords="953,101,1099,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="836,48,975,98,973,103,834,53"/>
+<area shape="rect" id="Node000008" href="$key__vault_8c.html" title="Secure&#45;only symmetric key store implementation." alt="" coords="1123,101,1270,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="861,39,981,62,1112,91,1139,98,1137,103,1111,96,979,67,860,44"/>
+<area shape="rect" id="Node000009" href="$sec__cmac_8c.html" title="Secure&#45;side AES&#45;CMAC seam implementation." alt="" coords="1295,101,1440,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="861,31,1055,53,1169,69,1283,91,1311,98,1310,103,1281,96,1169,75,1055,58,860,37"/>
+</map>

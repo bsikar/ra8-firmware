@@ -1,0 +1,13 @@
+<map id="libs/ra8_dfu/inc/ra8_dfu_device.h" name="libs/ra8_dfu/inc/ra8_dfu_device.h">
+<area shape="rect" id="Node000001" title="USBX DFU device class wired to real MRAM, bound to either controller." alt="" coords="478,5,625,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dfu__bootloader_2main_8c.html" title="Real USB&#45;DFU MRAM bootloader: boot the active app slot, or accept a DFU update." alt="" coords="5,93,217,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="465,47,229,96,218,98,217,93,228,91,464,42"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dfu__selftest__boot_2main_8c.html" title="USB self&#45;loop: the board is its own dfu&#45;util – DFU&#45;flash + commit a bootable Slot&#45;A image." alt="" coords="241,93,432,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="496,53,398,96,396,91,494,48"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dfu__selftest__fs__host_2main_8c.html" title="USB self&#45;loop config B: FS host DFU&#45;downloads firmware to an HS DFU device, uploads + verifies." alt="" coords="456,93,647,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="554,59,554,93,549,93,549,59"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dfu__selftest__hs__host_2main_8c.html" title="USB self&#45;loop: HS host DFU&#45;downloads firmware to an FS DFU device, uploads + verifies." alt="" coords="671,93,861,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="608,48,707,91,704,96,606,53"/>
+<area shape="rect" id="Node000006" href="$ra8__dfu__device_8c.html" title="USBX DFU device class wired to the ra8_dfu MRAM program path." alt="" coords="886,101,1033,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="639,40,751,62,875,91,901,98,900,103,873,96,750,68,638,45"/>
+</map>

@@ -1,0 +1,15 @@
+<map id="libs/ra8_tz_secure_boot/inc/ra8_tz_secure_boot.h" name="libs/ra8_tz_secure_boot/inc/ra8_tz_secure_boot.h">
+<area shape="rect" id="Node000001" title="FSP&#45;style TrustZone secure&#45;boot for the Cortex&#45;M85 (CPU0)." alt="" coords="593,5,767,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2cpu1__pingpong__ipc_2trustzone__init_8c.html" title="Per&#45;app secure&#45;boot wiring for cpu1_pingpong_ipc." alt="" coords="5,108,224,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="580,52,236,111,225,113,224,108,236,105,579,47"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2tz__nsc__cgc__usb_2trustzone__init_8c.html" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#60)." alt="" coords="249,108,463,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="583,67,441,110,440,105,582,62"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2secure__boot__ns__hil_2main_8c.html" title="Secure side: authenticate the NS image, then BLXNS – the TrustZone RoT proof (#172)." alt="" coords="488,108,661,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="644,72,604,110,600,106,641,68"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2tz__threadx__demo_2trustzone__init_8c.html" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#60)." alt="" coords="686,108,885,163"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="719,68,760,106,756,110,716,72"/>
+<area shape="rect" id="Node000006" href="$ra8__tz__secure__boot_8c.html" title="FSP&#45;style TrustZone secure&#45;boot implementation for RA8D2." alt="" coords="909,108,1083,163"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="776,62,914,105,913,110,774,67"/>
+<area shape="rect" id="Node000007" href="$src_2app_2trustzone__init_8c.html" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#60)." alt="" coords="1108,123,1281,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="781,47,931,72,1097,105,1155,120,1154,125,1095,111,930,78,780,52"/>
+</map>

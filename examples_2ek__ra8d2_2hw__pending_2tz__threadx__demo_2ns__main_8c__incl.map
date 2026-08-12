@@ -1,0 +1,21 @@
+<map id="examples/ek_ra8d2/hw_pending/tz_threadx_demo/ns_main.c" name="examples/ek_ra8d2/hw_pending/tz_threadx_demo/ns_main.c">
+<area shape="rect" id="Node000001" title="Non&#45;Secure main entry point: launches ThreadX and demo worker threads." alt="" coords="31,5,230,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="126,255,196,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="60,62,37,76,19,93,9,111,12,133,33,169,63,201,96,227,127,246,124,250,93,231,59,205,29,173,7,134,4,110,15,89,34,72,57,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="22,108,92,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="110,62,78,99,74,96,106,58"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="91,181,170,207"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="133,60,133,168,128,168,128,60"/>
+<area shape="rect" id="Node000005" href="$ra8__nsc_8h.html" title="Non&#45;Secure Callable veneer scaffold." alt="" coords="168,108,252,133"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="157,58,192,96,188,99,153,62"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="277,108,352,133"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="188,58,278,100,276,105,185,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="138,206,153,241,148,243,133,208"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="209,135,172,243,167,241,204,133"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="199,135,155,174,152,170,196,131"/>
+<area shape="rect" id="Node000006" href="$ra8__nsc__veneer_8h.html" title="Macros for declaring Non&#45;Secure Callable veneer functions." alt="" coords="246,181,380,207"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="228,131,286,171,283,175,225,136"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="290,209,199,251,197,246,288,204"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="250,255,376,280"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="316,207,316,241,310,241,310,207"/>
+</map>

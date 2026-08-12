@@ -1,0 +1,5 @@
+<map id="libs/ra8_board_ra8p1/inc/trustzone_init.h" name="libs/ra8_board_ra8p1/inc/trustzone_init.h">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 TrustZone&#45;M SAU bring&#45;up entry point." alt="" coords="5,5,164,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="49,93,120,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="87,46,87,79,82,79,82,46"/>
+</map>

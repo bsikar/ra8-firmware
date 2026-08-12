@@ -1,0 +1,28 @@
+<map id="libs/ra8_io/inc/ra8_io_blockdev_vsource.h" name="libs/ra8_io/inc/ra8_io_blockdev_vsource.h">
+<area shape="rect" id="Node000001" title="Thin adapter exposing an ra8_io block device as an ra8_vsource reader." alt="" coords="405,5,582,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="167,387,238,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="405,38,283,56,153,85,95,104,49,126,19,151,11,164,8,178,8,254,12,279,23,302,39,321,59,338,107,365,155,383,153,388,105,370,56,343,35,325,18,304,7,281,3,254,3,178,6,162,15,147,46,121,93,99,151,80,282,51,404,33"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="407,313,486,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="495,46,488,141,481,203,469,266,459,301,454,300,464,265,475,202,483,140,490,45"/>
+<area shape="rect" id="Node000004" href="$ra8__io__blockdev_8h.html" title="ra8_io block&#45;device fabric – one LBA vtable across every storage medium." alt="" coords="324,93,463,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="471,48,421,87,418,82,467,43"/>
+<area shape="rect" id="Node000008" href="$ra8__vsource_8h.html" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="586,240,699,265"/>
+<area shape="poly" id="edge16_Node000001_Node000008" title=" " alt="" coords="520,43,545,65,569,92,591,126,610,163,637,226,632,228,606,165,587,129,565,95,541,69,517,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="408,341,252,387,250,381,407,336"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="326,121,273,136,215,160,161,195,139,216,120,241,114,260,115,285,121,312,132,337,150,360,172,377,168,381,146,363,127,340,116,314,109,285,109,259,115,239,135,213,158,191,213,156,271,131,325,116"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="402,118,426,169,448,239,451,271,451,299,446,299,446,271,443,241,421,171,397,120"/>
+<area shape="rect" id="Node000005" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="309,167,384,192"/>
+<area shape="poly" id="edge7_Node000004_Node000005" title=" " alt="" coords="388,120,364,157,360,154,383,118"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="310,188,208,208,162,223,145,232,134,242,126,258,124,275,127,293,134,311,157,346,182,375,178,378,152,350,129,314,122,295,118,275,121,256,130,238,142,228,160,218,207,203,309,183"/>
+<area shape="poly" id="edge9_Node000005_Node000003" title=" " alt="" coords="368,190,396,210,422,238,437,269,445,299,440,300,432,271,418,242,393,214,365,194"/>
+<area shape="rect" id="Node000006" href="$ra8__fs__seams_8h.html" title="The two dependency&#45;injection seams ra8_fs offers its callers." alt="" coords="285,240,409,265"/>
+<area shape="poly" id="edge10_Node000005_Node000006" title=" " alt="" coords="349,192,349,226,344,226,344,192"/>
+<area shape="rect" id="Node000007" href="$ra8__fs__types_8h.html" title="On&#45;disk and handle data types shared by the ra8_fs public API." alt="" coords="144,240,261,265"/>
+<area shape="poly" id="edge13_Node000005_Node000007" title=" " alt="" coords="325,194,240,236,237,231,322,190"/>
+<area shape="poly" id="edge11_Node000006_Node000002" title=" " alt="" coords="337,268,226,379,222,375,333,264"/>
+<area shape="poly" id="edge12_Node000006_Node000003" title=" " alt="" coords="364,263,421,303,418,307,361,268"/>
+<area shape="poly" id="edge14_Node000007_Node000002" title=" " alt="" coords="205,266,205,373,200,373,200,266"/>
+<area shape="poly" id="edge15_Node000007_Node000003" title=" " alt="" coords="243,263,395,307,393,312,241,268"/>
+<area shape="poly" id="edge17_Node000008_Node000002" title=" " alt="" coords="628,268,573,304,536,324,498,341,433,362,366,378,252,396,251,390,365,372,432,357,496,336,534,319,570,299,626,263"/>
+<area shape="poly" id="edge18_Node000008_Node000003" title=" " alt="" coords="612,268,492,311,491,306,610,263"/>
+</map>

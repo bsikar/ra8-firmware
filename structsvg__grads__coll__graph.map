@@ -1,0 +1,7 @@
+<map id="svg_grads" name="svg_grads">
+<area shape="rect" id="Node000001" title="Bounded set of gradients scanned from the document before the render." alt="" coords="8,197,96,223"/>
+<area shape="rect" id="Node000002" href="$structsvg__grad__t.html" title="A parsed linear/radial gradient in objectBoundingBox units." alt="" coords="5,101,99,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="55,141,55,197,49,197,49,141"/>
+<area shape="rect" id="Node000003" href="$structsvg__stop__t.html" title="One gradient colour stop: an offset in [0,1] and an 0x00RRGGBB colour." alt="" coords="6,5,98,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="55,45,55,101,49,101,49,45"/>
+</map>

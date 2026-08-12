@@ -1,0 +1,19 @@
+<map id="libs/ra8_hal/src/ra8_i2c_internal.h" name="libs/ra8_hal/src/ra8_i2c_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for ra8_i2c internal helpers (MC/DC)." alt="" coords="200,5,345,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="187,240,257,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="322,43,376,70,427,105,446,125,458,147,459,170,448,194,436,204,419,213,373,228,272,248,271,243,372,223,417,208,433,200,444,190,454,169,452,149,442,129,423,109,373,75,319,48"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="159,167,285,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="269,47,253,94,233,154,228,153,247,92,264,45"/>
+<area shape="rect" id="Node000004" href="$ra8__i2c_8h.html" title="I2C Bus Interface (IIC) controller driver – polling mode." alt="" coords="81,93,163,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="238,48,158,89,155,84,235,43"/>
+<area shape="rect" id="Node000006" href="$ra8__i2c__regs_8h.html" title="I2C Bus Interface (IIC) register layout for the Renesas RA8D2." alt="" coords="263,93,379,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="287,44,309,80,304,83,282,47"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="126,118,133,152,150,191,169,212,192,230,188,234,165,216,145,193,128,154,121,119"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,167,84,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="111,121,69,159,66,155,108,117"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="74,190,182,232,180,237,72,194"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="322,120,316,154,299,193,279,216,256,235,252,230,275,213,294,191,311,153,317,119"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="306,121,251,161,248,156,303,117"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="359,167,434,192"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="335,117,376,155,372,159,331,121"/>
+</map>

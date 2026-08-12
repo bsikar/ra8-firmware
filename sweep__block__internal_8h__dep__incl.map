@@ -1,0 +1,9 @@
+<map id="tools/cache_bench/sweep_block_internal.h" name="tools/cache_bench/sweep_block_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private seams shared by the #208 sweep translation units." alt="" coords="217,5,405,45"/>
+<area shape="rect" id="Node000002" href="$sweep__block_8c.html" title="Core of the #208 block/frame&#45;size sweep (&#45;&#45;sweep&#45;block)." alt="" coords="5,93,193,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="253,53,147,96,145,91,251,48"/>
+<area shape="rect" id="Node000003" href="$sweep__block__backends_8c.html" title="The two in&#45;tree #208 sweep backends (mem, rbkc&#45;z9) + shared helpers (meter shim, wall clock,..." alt="" coords="217,93,405,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="314,59,314,93,309,93,309,59"/>
+<area shape="rect" id="Node000004" href="$sweep__block__report_8c.html" title="Reporting for the #208 sweep: machine&#45;parseable rows, per&#45;leg summary tables, and the measured knee /..." alt="" coords="429,93,617,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="371,48,478,91,476,96,369,53"/>
+</map>

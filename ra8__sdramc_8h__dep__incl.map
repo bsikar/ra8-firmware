@@ -1,0 +1,25 @@
+<map id="libs/ra8_hal/inc/ra8_sdramc.h" name="libs/ra8_hal/inc/ra8_sdramc.h">
+<area shape="rect" id="Node000001" title="External SDRAM controller driver (framework)." alt="" coords="1093,5,1239,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ereader__shelf_2main_8c.html" title="Hybrid baked + SD e&#45;reader: shelf, cover, TOC, full&#45;book reader." alt="" coords="5,93,212,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1080,31,920,37,707,48,467,67,225,96,213,98,212,93,224,91,466,62,707,43,920,31,1079,26"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2ereader__comic_2main_8c.html" title="Viewable page&#45;turn comic reader – baked CBZ decoded to the 1024x600 GLCDC panel, tap&#45;zone navigation ..." alt="" coords="237,93,418,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1080,33,791,52,611,70,430,96,419,98,418,93,430,91,610,65,790,47,1079,27"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2ereader__longstrip_2main_8c.html" title="Viewable continuous vertical&#45;scroll (longstrip / manhwa) reader (#289)." alt="" coords="443,93,641,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1080,38,885,61,654,96,642,98,641,93,654,91,884,56,1080,33"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2ereader__manga_2main_8c.html" title="Viewable manga reader: pan/zoom a page larger than the panel (Demo B)." alt="" coords="666,93,853,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1080,48,865,96,854,99,852,94,864,91,1079,43"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__pending_2ereader__zoom_2main_8c.html" title="Viewable tap&#45;to&#45;zoom image viewer: full&#45;screen zoom + panel loupe (#478)." alt="" coords="877,93,1055,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1114,54,1023,96,1021,91,1112,49"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="1079,93,1253,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1169,59,1169,93,1163,93,1163,59"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__validated_2hil_2sd__font__render_2main_8c.html" title="Load a TTF/OTF font off an SD card and render text with ra8_reflow." alt="" coords="1277,93,1450,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1219,49,1309,91,1307,96,1217,54"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__validated_2hil_2sdram__benchmark_2main_8c.html" title="External SDRAM bring&#45;up + 64 KB write/read benchmark on EK&#45;RA8D2." alt="" coords="1474,93,1647,148"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1253,43,1463,91,1474,94,1473,99,1461,96,1252,48"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hw__validated_2manual_2lcd__color__cycle_2main_8c.html" title="GLCDC parallel&#45;RGB BG&#45;plane color cycle on the EK&#45;RA8D2 panel." alt="" coords="1671,93,1845,148"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1253,32,1440,55,1660,91,1672,93,1670,98,1659,96,1439,60,1252,38"/>
+<area shape="rect" id="Node000011" href="$ra8__sdramc_8c.html" title="SDRAM controller driver implementation." alt="" coords="1869,101,2015,141"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1252,27,1372,33,1523,45,1690,63,1857,91,1887,98,1886,103,1856,96,1690,69,1523,50,1372,38,1252,32"/>
+<area shape="rect" id="Node000012" href="$ra8__io__blockdev__sdram_8c.html" title="SDRAM block&#45;device backend – the 64 MiB SDRAM window as a ramdisk." alt="" coords="2039,101,2205,141"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1253,25,1400,30,1594,41,1810,60,2028,91,2061,98,2060,103,2027,96,1810,66,1593,46,1400,35,1253,31"/>
+</map>

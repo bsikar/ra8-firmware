@@ -1,0 +1,8 @@
+<map id="libs/ra8_cache_store/inc/ra8_cache_store.h" name="libs/ra8_cache_store/inc/ra8_cache_store.h">
+<area shape="rect" id="Node000001" title="Persistent key(CRC32)&#45;&gt;blob cache for compiled .rabook containers,built on the vendored,..." alt="" coords="5,5,172,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="53,167,124,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="86,46,79,80,78,118,84,153,79,154,73,119,74,79,80,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="88,93,167,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="100,44,118,80,113,82,96,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="123,120,104,156,99,153,119,118"/>
+</map>

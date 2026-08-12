@@ -1,0 +1,7 @@
+<map id="libs/ra8_core/inc/ra8_register_guard.h" name="libs/ra8_core/inc/ra8_register_guard.h">
+<area shape="rect" id="Node000001" title="IRQ&#45;masked read&#45;modify&#45;write helper for shared registers." alt="" coords="87,5,241,45"/>
+<area shape="rect" id="Node000002" href="$ra8__dfu__program_8c.html" title="MRAM slot program / verify for the USB&#45;DFU bootloader core." alt="" coords="5,93,152,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="137,57,99,95,96,91,134,53"/>
+<area shape="rect" id="Node000003" href="$ra8__sci_8c.html" title="Full&#45;featured SCI_B driver implementation." alt="" coords="177,93,322,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="194,53,232,91,229,95,191,57"/>
+</map>

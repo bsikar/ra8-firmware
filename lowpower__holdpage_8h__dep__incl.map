@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_pending/lowpower_holdpage/lowpower_holdpage.h" name="examples/ek_ra8d2/hw_pending/lowpower_holdpage/lowpower_holdpage.h">
+<area shape="rect" id="Node000001" title="Shared&#45;SRAM contract for the low&#45;power &quot;hold the page&quot; dual&#45;core demo." alt="" coords="124,5,339,60"/>
+<area shape="rect" id="Node000002" href="$hw__pending_2lowpower__holdpage_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33 secondary core) image: hold the page in low power." alt="" coords="5,108,220,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="192,71,145,110,142,106,188,67"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2lowpower__holdpage_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver for the low&#45;power hold&#45;page demo." alt="" coords="244,108,459,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="275,67,322,106,318,110,271,71"/>
+</map>

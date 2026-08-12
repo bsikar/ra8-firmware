@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_eth_coma.h" name="libs/ra8_hal/inc/ra8_eth_coma.h">
+<area shape="rect" id="Node000001" title="Ethernet Common Agent (COMA) driver." alt="" coords="237,5,382,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2eth__hal__bringup_2main_8c.html" title="HAL&#45;based ESWM/COMA Ethernet media bring&#45;up demo (issue #581)." alt="" coords="5,93,195,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="256,53,160,96,158,91,253,49"/>
+<area shape="rect" id="Node000003" href="$ra8__board__ek__ra8d2__ethernet_8c.html" title="EK&#45;RA8D2 BSP – on&#45;board RGMII Ethernet (GPY111/PEF7071) bring&#45;up." alt="" coords="219,93,400,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="312,59,312,93,307,93,307,59"/>
+<area shape="rect" id="Node000004" href="$ra8__eth__coma_8c.html" title="Ethernet Common Agent driver implementation." alt="" coords="425,101,570,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="361,49,461,98,458,103,358,54"/>
+</map>

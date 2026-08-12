@@ -1,0 +1,13 @@
+<map id="libs/ra8_epub/src" name="libs/ra8_epub/src">
+<area shape="rect" id="node1" href="dir_378c3c1cf70e7255e737853365706003.html" title="inc" alt="" coords="43,125,85,151"/>
+<area shape="rect" id="node2" href="dir_01cd3f70e703207b5a14cf6760f5d5a6.html" title="src" alt="" coords="46,52,87,77"/>
+<area shape="poly" id="edge2" href="dir_000402_000182.html" alt="" coords="69,78,68,112,62,112,64,78"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000402_000182.html" title="9" alt="" coords="69,100,78,115"/>
+<area shape="rect" id="node3" href="dir_1fe3bc94f2be531e1dc07c51fad04396.html" title="ra8_reflow" alt="" coords="109,125,200,151"/>
+<area shape="poly" id="edge1" href="dir_000402_000313.html" alt="" coords="82,75,131,114,128,119,79,79"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000402_000313.html" title="1" alt="" coords="127,100,136,114"/>
+<area shape="rect" id="node4" href="dir_9784371ce13fb6b4d69891743248b7e4.html" title="ra8_core" alt="" coords="225,125,303,151"/>
+<area shape="poly" id="edge3" href="dir_000402_000275.html" alt="" coords="88,71,220,118,219,123,87,76"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000402_000275.html" title="14" alt="" coords="209,104,227,119"/>
+<area shape="rect" id="clust1" href="dir_4dcee69ef07e7e52c02f454563ecb9d9.html" title="ra8_epub" alt="" coords="16,16,99,161"/>
+</map>

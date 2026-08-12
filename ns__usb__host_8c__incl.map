@@ -1,0 +1,28 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_usb_host.c" name="examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_usb_host.c">
+<area shape="rect" id="Node000001" title="Non&#45;Secure USBHS polled HOST ladder: enumerate + bulk echo (#96)." alt="" coords="104,5,310,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="280,401,350,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="105,62,66,82,33,110,18,129,11,147,8,193,8,269,10,288,16,306,36,336,66,360,104,378,146,391,189,400,266,409,265,414,188,406,144,397,102,383,63,365,32,340,11,308,5,289,3,269,3,193,6,146,14,127,29,106,63,78,103,57"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="44,108,114,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="169,62,109,103,106,98,166,58"/>
+<area shape="rect" id="Node000004" href="$ns__usb__internal_8h.html" title="Private split&#45;seam shared between ns_usb.c and ns_usb_host.c (#96)." alt="" coords="139,108,275,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="210,60,210,94,204,94,204,60"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="275,181,350,207"/>
+<area shape="poly" id="edge16_Node000001_Node000006" title=" " alt="" coords="245,58,268,80,289,107,303,137,311,167,306,168,298,139,285,109,264,84,241,62"/>
+<area shape="rect" id="Node000007" href="$ra8__usb_8h.html" title="Native USB controller driver public API (device + host modes)." alt="" coords="350,108,435,133"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="265,58,356,100,354,105,262,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="177,136,152,148,129,165,115,184,114,194,116,206,131,237,150,266,196,318,245,361,286,391,283,396,241,365,193,322,146,269,127,239,111,208,108,194,110,182,125,161,149,144,174,131"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="126,181,251,207"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="206,134,197,169,192,168,201,133"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="225,131,285,171,282,176,222,136"/>
+<area shape="rect" id="Node000008" href="$ra8__usb__device_8h.html" title="Native USB controller driver public API – shared types + device mode." alt="" coords="286,255,421,280"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="392,134,363,242,358,241,386,133"/>
+<area shape="rect" id="Node000010" href="$ra8__usb__host_8h.html" title="Native USB controller driver public API – host&#45;mode bring&#45;up." alt="" coords="424,181,544,207"/>
+<area shape="poly" id="edge12_Node000007_Node000010" title=" " alt="" coords="409,131,460,171,457,175,405,135"/>
+<area shape="poly" id="edge9_Node000008_Node000002" title=" " alt="" coords="353,281,324,389,319,387,348,280"/>
+<area shape="rect" id="Node000009" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="353,328,432,353"/>
+<area shape="poly" id="edge10_Node000008_Node000009" title=" " alt="" coords="362,279,382,315,377,317,358,282"/>
+<area shape="poly" id="edge11_Node000009_Node000002" title=" " alt="" coords="382,355,340,394,336,390,378,351"/>
+<area shape="poly" id="edge13_Node000010_Node000002" title=" " alt="" coords="487,207,486,236,480,275,467,317,445,355,427,372,407,385,364,404,362,399,404,381,424,368,441,352,463,315,475,273,480,235,482,207"/>
+<area shape="poly" id="edge15_Node000010_Node000008" title=" " alt="" coords="465,209,388,250,385,246,462,204"/>
+<area shape="poly" id="edge14_Node000010_Node000009" title=" " alt="" coords="480,208,434,281,410,318,406,315,430,279,475,206"/>
+</map>

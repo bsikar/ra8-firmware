@@ -1,0 +1,10 @@
+<map id="libs/ra8_hal/src/ra8_jpeg_sw_internal.h" name="libs/ra8_hal/src/ra8_jpeg_sw_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private declarations shared across the software JPEGcodec translation units." alt="" coords="9,5,160,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="63,167,133,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="53,48,34,62,17,80,9,98,12,118,32,141,57,158,54,162,28,145,8,120,4,98,13,77,30,58,50,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="22,93,147,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="87,46,87,79,82,79,82,46"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="172,93,251,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="117,43,183,84,180,88,114,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="194,121,129,162,126,157,192,116"/>
+</map>

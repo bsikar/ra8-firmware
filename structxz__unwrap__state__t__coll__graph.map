@@ -1,0 +1,9 @@
+<map id="xz_unwrap_state_t" name="xz_unwrap_state_t">
+<area shape="rect" id="Node000001" title="Loop&#45;carried state of one unwrap: cursors, session, and budget." alt="" coords="51,197,195,223"/>
+<area shape="rect" id="Node000002" href="$structra8__unarch__xz__stream__t.html" title="One multi&#45;call XZ decode session (opaque decoder + liveness flag)." alt="" coords="5,101,187,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="106,139,122,196,117,198,100,141"/>
+<area shape="rect" id="Node000003" href="$structra8__decomp__budget__t.html" title="Running consumption tracker charged by a decoder against its policy." alt="" coords="211,101,378,127"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="263,136,145,199,143,195,260,131"/>
+<area shape="rect" id="Node000004" href="$structra8__decomp__limits__t.html" title="One decompression policy: the five resource bounds decoders enforce." alt="" coords="215,5,374,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="297,45,297,101,292,101,292,45"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_rsip_regs_offsets.h" name="libs/ra8_hal/inc/ra8_rsip_regs_offsets.h">
+<area shape="rect" id="Node000001" title="RSIP&#45;E50D register base address, byte offsets, and layout asserts." alt="" coords="66,5,217,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="119,48,70,87,67,82,116,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="104,93,179,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="144,46,144,79,139,79,139,46"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="203,93,274,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="167,43,215,82,212,87,163,48"/>
+</map>

@@ -1,0 +1,28 @@
+<map id="libs/ra8_hal/inc/ra8_lvd_regs.h" name="libs/ra8_hal/inc/ra8_lvd_regs.h">
+<area shape="rect" id="Node000001" title="Programmable Voltage Detection (PVD / LVD) register layout for the RA8D2." alt="" coords="512,5,657,45"/>
+<area shape="rect" id="Node000002" href="$ra8__lvd__types_8h.html" title="Programmable Voltage Detection (PVD / LVD) HAL types." alt="" coords="376,93,521,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="544,55,479,96,477,91,541,51"/>
+<area shape="rect" id="Node000005" href="$ra8__lvd_8c.html" title="Programmable Voltage Detection (PVD / LVD) driver implementation." alt="" coords="520,460,665,500"/>
+<area shape="poly" id="edge14_Node000001_Node000005" title=" " alt="" coords="602,57,625,122,634,160,638,200,638,291,634,339,624,387,602,461,597,459,619,386,628,339,632,291,632,200,629,161,620,123,597,59"/>
+<area shape="rect" id="Node000006" href="$ra8__lvd__events_8c.html" title="PVD / LVD security attribution, n&#45;channel lock, ELC / standby helpers, filter&#45;timing math,..." alt="" coords="181,460,326,500"/>
+<area shape="poly" id="edge15_Node000001_Node000006" title=" " alt="" coords="498,37,354,56,273,70,193,88,122,110,63,136,41,151,25,166,15,183,11,200,11,291,10,356,16,383,36,410,67,436,104,454,143,466,181,473,180,478,142,471,102,459,64,440,32,414,12,385,4,357,6,291,6,200,10,181,21,163,38,147,61,132,120,105,192,83,272,65,353,51,497,32"/>
+<area shape="rect" id="Node000008" href="$ra8__lvd__runtime_8c.html" title="PVD / LVD runtime control: IRQ / reset / CMPE toggles, filter, hysteresis, negate,..." alt="" coords="350,460,496,500"/>
+<area shape="poly" id="edge16_Node000001_Node000008" title=" " alt="" coords="587,59,587,200,587,291,583,320,573,347,558,372,540,395,498,434,458,462,455,458,495,430,536,392,554,369,569,345,578,318,582,291,582,200,582,59"/>
+<area shape="rect" id="Node000010" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="673,93,818,133"/>
+<area shape="poly" id="edge13_Node000001_Node000010" title=" " alt="" coords="633,49,712,91,709,96,630,54"/>
+<area shape="rect" id="Node000003" href="$ra8__lvd_8h.html" title="Programmable Voltage Detection (PVD / LVD) HAL driver." alt="" coords="265,269,410,309"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="405,143,383,161,365,183,354,204,347,228,341,270,336,269,342,226,350,202,361,180,380,157,402,139"/>
+<area shape="rect" id="Node000009" href="$ra8__lvd__api_8h.html" title="Programmable Voltage Detection (PVD / LVD) HAL function prototypes." alt="" coords="376,181,521,221"/>
+<area shape="poly" id="edge11_Node000002_Node000009" title=" " alt="" coords="451,147,451,181,446,181,446,147"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lvd__monitor__demo_2main_8c.html" title="Safe LVD / PVD VCC&#45;monitor demo for the EK&#45;RA8D2." alt="" coords="46,357,224,412"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="286,317,193,360,191,355,283,313"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="424,311,469,329,510,355,535,380,557,408,586,458,581,461,552,411,531,383,507,359,466,334,422,315"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="318,322,296,359,274,413,261,461,256,459,269,412,291,356,313,320"/>
+<area shape="rect" id="Node000007" href="$ra8__lvd__internal_8h.html" title="Test&#45;access surface for ra8_lvd internal helpers (MC/DC)." alt="" coords="350,365,496,405"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="366,318,408,363,404,366,362,321"/>
+<area shape="poly" id="edge10_Node000003_Node000008" title=" " alt="" coords="333,323,330,366,333,389,340,411,360,438,387,458,384,462,357,441,335,413,328,391,325,367,328,323"/>
+<area shape="poly" id="edge7_Node000007_Node000005" title=" " alt="" coords="470,409,559,458,557,462,468,414"/>
+<area shape="poly" id="edge8_Node000007_Node000006" title=" " alt="" coords="378,414,289,462,287,458,375,409"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="426,418,426,460,420,460,420,418"/>
+<area shape="poly" id="edge12_Node000009_Node000003" title=" " alt="" coords="414,232,364,271,360,267,411,228"/>
+</map>

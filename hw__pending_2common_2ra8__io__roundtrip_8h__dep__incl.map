@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hw_pending/common/ra8_io_roundtrip.h" name="examples/ek_ra8d2/hw_pending/common/ra8_io_roundtrip.h">
+<area shape="rect" id="Node000001" title="Shared, backend&#45;agnostic ra8_io VFS round&#45;trip for the FAT demos (#155)." alt="" coords="5,5,192,60"/>
+<area shape="rect" id="Node000002" href="$hw__pending_2common_2ra8__io__roundtrip_8c.html" title="Shared ra8_io VFS round&#45;trip implementation for the FAT demos (#155)." alt="" coords="5,108,192,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,74,101,108,96,108,96,74"/>
+</map>

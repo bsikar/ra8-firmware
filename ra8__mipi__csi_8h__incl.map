@@ -1,0 +1,31 @@
+<map id="libs/ra8_hal/inc/ra8_mipi_csi.h" name="libs/ra8_hal/inc/ra8_mipi_csi.h">
+<area shape="rect" id="Node000001" title="MIPI CSI&#45;2 receiver HAL driver – public API." alt="" coords="122,5,267,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mipi__csi__ctrl_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – control, status, and IRQ&#45;enable API." alt="" coords="5,93,149,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="168,48,107,88,104,84,165,43"/>
+<area shape="rect" id="Node000008" href="$ra8__mipi__csi__types_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – public types." alt="" coords="115,167,274,192"/>
+<area shape="poly" id="edge20_Node000001_Node000008" title=" " alt="" coords="197,46,197,153,192,153,192,46"/>
+<area shape="rect" id="Node000009" href="$ra8__mipi__csi__isr_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – FIFO, ISR dispatch, framing, power." alt="" coords="243,93,381,119"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="225,43,285,84,282,88,222,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="210,387,281,412"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="72,120,51,160,30,217,24,249,22,280,28,310,42,337,66,354,106,368,197,388,196,393,104,373,63,358,38,340,23,312,17,280,18,248,25,216,46,158,68,118"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="297,240,375,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="80,119,85,154,93,174,104,190,134,207,180,221,284,241,283,247,179,226,132,212,101,194,88,176,80,156,75,119"/>
+<area shape="rect" id="Node000005" href="$ra8__mipi__csi__regs_8h.html" title="MIPI CSI&#45;2 Receiver register layout for the RA8D2 (HUM Ch 66)." alt="" coords="55,240,206,265"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="73,120,59,153,57,172,61,191,77,213,99,231,95,235,73,217,56,193,52,173,54,152,68,118"/>
+<area shape="poly" id="edge11_Node000002_Node000008" title=" " alt="" coords="98,116,165,157,162,162,95,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="332,267,292,340,265,377,261,374,287,337,328,264"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="147,264,172,285,197,312,219,343,236,373,231,376,214,346,193,315,168,289,144,268"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="19,387,144,412"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="100,268,68,286,54,299,42,314,39,330,42,345,61,375,56,378,37,347,33,330,38,312,50,296,65,282,98,263"/>
+<area shape="rect" id="Node000007" href="$ra8__glcdc__regs_8h.html" title="Graphics LCD Controller (GLCDC) register layout for the RA8D2." alt="" coords="52,313,183,339"/>
+<area shape="poly" id="edge8_Node000005_Node000007" title=" " alt="" coords="131,266,125,300,119,299,126,265"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="139,336,213,377,211,382,137,341"/>
+<area shape="poly" id="edge10_Node000007_Node000006" title=" " alt="" coords="114,340,96,376,91,373,109,338"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="202,191,220,239,236,312,245,373,240,373,231,312,215,241,197,193"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="219,190,302,231,300,236,216,194"/>
+<area shape="poly" id="edge14_Node000008_Node000005" title=" " alt="" coords="186,194,152,232,148,228,182,191"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="327,117,351,143,377,180,387,200,393,222,394,244,389,266,368,303,339,335,308,362,280,382,277,377,305,357,336,332,364,300,384,264,389,244,388,223,382,202,372,182,347,147,323,121"/>
+<area shape="poly" id="edge17_Node000009_Node000004" title=" " alt="" coords="319,118,333,166,339,226,333,226,328,167,314,120"/>
+<area shape="poly" id="edge18_Node000009_Node000005" title=" " alt="" coords="314,119,308,155,300,176,287,194,251,221,210,239,208,234,248,217,283,190,295,173,303,154,309,118"/>
+<area shape="poly" id="edge19_Node000009_Node000008" title=" " alt="" coords="295,121,227,162,224,157,292,116"/>
+</map>

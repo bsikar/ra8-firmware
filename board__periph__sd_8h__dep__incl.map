@@ -1,0 +1,25 @@
+<map id="tools/ra8_emulator/inc/board_periph_sd.h" name="tools/ra8_emulator/inc/board_periph_sd.h">
+<area shape="rect" id="Node000001" title="SD&#45;card&#45;over&#45;SPI device model for ra8_emulator (attached to SPI_B)." alt="" coords="985,5,1153,45"/>
+<area shape="rect" id="Node000002" href="$emu__args_8c.html" title="CLI parsing implementation (see emu_args.h)." alt="" coords="5,101,177,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="971,31,819,36,625,47,408,66,190,96,156,103,155,98,190,91,407,61,624,42,819,31,971,26"/>
+<area shape="rect" id="Node000003" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="202,101,367,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="971,34,703,53,541,71,380,96,348,103,346,98,379,91,541,66,703,48,971,28"/>
+<area shape="rect" id="Node000004" href="$emu__run__report_8c.html" title="Run&#45;end report + finalize (see emu_run_internal.h)." alt="" coords="391,93,546,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="971,38,779,59,668,76,559,96,547,99,546,93,557,91,668,70,779,54,971,32"/>
+<area shape="rect" id="Node000005" href="$emu__seam__sd_8c.html" title="–fast&#45;sd whole&#45;block SD serving seam" alt="" coords="570,101,773,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="976,51,752,103,751,98,974,46"/>
+<area shape="rect" id="Node000006" href="$emu__view_8c.html" title="Board&#45;view presentation implementation (see emu_view.h)." alt="" coords="797,101,972,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1020,54,923,103,921,98,1018,49"/>
+<area shape="rect" id="Node000007" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="996,101,1141,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1071,59,1071,101,1066,101,1066,59"/>
+<area shape="rect" id="Node000008" href="$board__periph__sci_8c.html" title="SCI_B UART peripheral&#45;block model for the board emulator." alt="" coords="1165,101,1380,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1124,49,1233,98,1230,103,1121,54"/>
+<area shape="rect" id="Node000009" href="$board__periph__sd_8c.html" title="SD&#45;card&#45;over&#45;SPI device model for ra8_emulator (attached to SPI_B)." alt="" coords="1404,101,1616,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1167,44,1393,91,1427,98,1426,103,1392,96,1166,49"/>
+<area shape="rect" id="Node000010" href="$board__periph__sd__image_8c.html" title="Backing&#45;image lifecycle for the modelled SD card (see board_periph_sd.h)." alt="" coords="1641,93,1819,148"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1166,32,1379,54,1505,70,1629,91,1641,93,1640,98,1628,96,1504,75,1379,59,1166,37"/>
+<area shape="rect" id="Node000011" href="$board__periph__sdhi_8c.html" title="Native 4&#45;bit SDHI host&#45;controller model for ra8_emulator (SDHI0)." alt="" coords="1843,93,2022,148"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1167,27,1465,46,1648,65,1832,91,1844,93,1843,98,1831,96,1648,70,1465,52,1166,33"/>
+<area shape="rect" id="Node000012" href="$board__periph__spi_8c.html" title="SPI_B (Type&#45;B SPI) controller peripheral&#45;block model for ra8_emulator." alt="" coords="2046,101,2262,141"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1167,26,1332,32,1548,43,1790,62,2034,91,2076,98,2075,103,2034,96,1790,68,1548,49,1332,37,1167,31"/>
+</map>

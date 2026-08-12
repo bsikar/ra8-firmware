@@ -1,0 +1,14 @@
+<map id="libs/ra8_cache_store/src/ra8_cache_store_internal.h" name="libs/ra8_cache_store/src/ra8_cache_store_internal.h">
+<area shape="rect" id="Node000001" title="Internal on&#45;media format + cross&#45;TU helpers for ra8_cache_store (#201)." alt="" coords="87,5,241,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="169,255,239,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="87,55,53,68,24,86,15,96,9,107,9,119,13,132,42,172,80,204,121,229,159,247,157,252,119,234,77,208,38,175,8,135,3,119,4,105,11,93,21,82,50,63,85,50"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="23,108,148,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="142,62,107,99,103,96,138,58"/>
+<area shape="rect" id="Node000004" href="$ra8__cache__store_8h.html" title="Persistent key(CRC32)&#45;&gt;blob cache for compiled .rabook containers,built on the vendored,..." alt="" coords="173,108,313,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="190,58,225,96,221,99,186,62"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="242,181,321,207"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="243,48,290,70,311,86,328,107,333,124,329,142,308,173,303,169,324,140,327,124,323,109,307,90,287,74,240,53"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="242,134,213,242,208,241,237,133"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="251,132,271,168,266,171,247,135"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="271,209,229,247,225,243,267,205"/>
+</map>

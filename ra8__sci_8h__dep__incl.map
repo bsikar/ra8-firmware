@@ -1,0 +1,55 @@
+<map id="libs/ra8_hal/inc/ra8_sci.h" name="libs/ra8_hal/inc/ra8_sci.h">
+<area shape="rect" id="Node000001" title="Full&#45;featured Serial Communications Interface driver." alt="" coords="2206,5,2351,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__cache__demo_2main_8c.html" title="ra8_io caching block device demo (Phase 5, #160)." alt="" coords="5,93,184,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="2192,30,1791,33,1214,42,911,51,626,62,381,77,196,96,185,98,184,93,196,91,381,72,626,57,911,45,1214,37,1791,27,2192,24"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html" title="Transparent compress&#45;on&#45;write / decompress&#45;on&#45;read over the VFS (#161)." alt="" coords="208,93,411,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="2192,30,1831,36,1319,47,802,67,586,80,423,96,411,98,411,92,422,91,586,75,802,62,1319,42,1831,30,2192,25"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__demo_2main_8c.html" title="End&#45;to&#45;end demo of the ra8_io fabric (epic #155) over a RAM block device." alt="" coords="435,93,613,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="2192,30,1867,36,1414,48,958,67,769,80,626,96,614,98,613,93,625,91,768,75,958,62,1413,43,1866,31,2192,25"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__fsfmt__demo_2main_8c.html" title="ra8_io pluggable filesystem&#45;format registry demo (Phase 4, #159)." alt="" coords="637,93,816,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="2192,31,1902,38,1508,51,1115,70,952,82,828,96,817,98,816,93,828,91,952,77,1115,65,1508,45,1902,33,2192,26"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__sdram__demo_2main_8c.html" title="ra8_io fabric over the external SDRAM backend (epic #155) on EK&#45;RA8D2." alt="" coords="840,93,1021,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="2193,32,1606,54,1275,73,1138,84,1034,96,1022,98,1021,93,1033,91,1137,78,1275,67,1606,48,2193,26"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__xspi__demo_2main_8c.html" title="ra8_io fabric over OSPI NOR flash (epic #155, #156) on the EK&#45;RA8D2." alt="" coords="1045,93,1224,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="2192,29,2016,33,1779,42,1509,62,1371,77,1236,96,1225,98,1224,93,1236,91,1370,72,1508,57,1778,37,2016,27,2192,24"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__pending_2modem__at__demo_2main_8c.html" title="Cellular AT&#45;modem bring&#45;up + query demo over the MikroBUS UART (SCI7)." alt="" coords="1249,93,1447,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="2193,32,1870,51,1665,69,1460,96,1448,98,1447,93,1460,91,1665,64,1869,45,2192,27"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__pending_2ra8__ftl__demo_2main_8c.html" title="Wear&#45;levelled block I/O + power&#45;cycle survival over the FTL (#258)." alt="" coords="1472,93,1645,148"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="2193,34,1951,55,1804,73,1658,96,1646,98,1645,93,1657,91,1803,67,1950,50,2192,29"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__mram__demo_2main_8c.html" title="ra8_io fabric over on&#45;chip extra&#45;MRAM (data flash) backend (#155/#156)." alt="" coords="1669,93,1843,148"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="2193,40,2035,63,1855,96,1844,98,1842,93,1854,91,2034,58,2192,35"/>
+<area shape="rect" id="Node000011" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__swap__demo_2main_8c.html" title="ra8_io fabric capstone: two block&#45;dev backends swapped behind one interface, a VFS open/read/write/cl..." alt="" coords="1867,93,2040,148"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="2200,52,2041,97,2039,92,2199,47"/>
+<area shape="rect" id="Node000012" href="$examples_2ek__ra8d2_2hw__validated_2hil_2dfu__bootloader_2main_8c.html" title="Real USB&#45;DFU MRAM bootloader: boot the active app slot, or accept a DFU update." alt="" coords="2065,93,2277,148"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="2248,56,2203,95,2199,91,2245,52"/>
+<area shape="rect" id="Node000013" href="$examples_2ek__ra8d2_2hw__validated_2hil_2uart__irq__echo_2main_8c.html" title="Interrupt&#45;driven SCI8 UART echo for EK&#45;RA8D2 (RXI / TXI / TEI)." alt="" coords="2301,93,2475,148"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="2313,52,2359,91,2355,95,2310,56"/>
+<area shape="rect" id="Node000014" href="$ra8__board__ek__ra8d2__comms_8c.html" title="EK&#45;RA8D2 BSP – MIPI&#45;DSI panel + J&#45;Link VCOM serial bring&#45;up." alt="" coords="2499,93,2680,148"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="2355,47,2503,91,2501,96,2354,52"/>
+<area shape="rect" id="Node000015" href="$ra8__board__ra8p1_8c.html" title="Board&#45;support implementation for the RA8P1 foundation board." alt="" coords="2705,101,2874,141"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="2365,35,2518,58,2693,91,2723,98,2722,103,2691,96,2518,64,2365,41"/>
+<area shape="rect" id="Node000016" href="$ra8__sci__lin_8h.html" title="LIN (Local Interconnect Network) commander + responder driver on SCI_B." alt="" coords="2898,101,3043,141"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="2366,28,2601,48,2744,66,2886,91,2915,98,2914,103,2885,96,2743,71,2601,53,2365,34"/>
+<area shape="rect" id="Node000018" href="$ra8__sci__lin_8c.html" title="LIN commander + responder driver implementation on SCI_B." alt="" coords="2941,203,3086,243"/>
+<area shape="poly" id="edge23_Node000001_Node000018" title=" " alt="" coords="2365,25,2548,30,2765,40,2867,49,2955,60,3020,74,3043,82,3057,91,3065,105,3068,120,3063,150,3049,180,3032,204,3027,201,3044,177,3058,149,3063,120,3060,107,3053,95,3040,87,3019,79,2954,65,2867,54,2765,46,2547,35,2365,30"/>
+<area shape="rect" id="Node000019" href="$ra8__sci_8c.html" title="Full&#45;featured SCI_B driver implementation." alt="" coords="3110,203,3255,243"/>
+<area shape="poly" id="edge18_Node000001_Node000019" title=" " alt="" coords="2365,27,2772,50,2970,68,3040,79,3081,91,3114,115,3141,145,3176,202,3172,204,3137,148,3110,119,3079,96,3039,84,2969,73,2772,55,2365,33"/>
+<area shape="rect" id="Node000020" href="$ra8__sci__dma__isr_8c.html" title="SCI_B DMA TX/RX descriptors + TXI/RXI/ERI ISR dispatch." alt="" coords="3279,203,3425,243"/>
+<area shape="poly" id="edge19_Node000001_Node000020" title=" " alt="" coords="2365,24,2606,25,2908,33,3054,42,3180,54,3275,70,3308,80,3328,91,3347,117,3356,147,3359,178,3357,203,3352,203,3353,178,3351,148,3342,119,3325,95,3306,85,3274,75,3179,59,3053,47,2908,39,2606,30,2365,29"/>
+<area shape="rect" id="Node000021" href="$ra8__sci__internal_8h.html" title="src/&#45;local shared surface for the ra8_sci driver TUs." alt="" coords="3170,101,3315,141"/>
+<area shape="poly" id="edge20_Node000001_Node000021" title=" " alt="" coords="2365,25,2515,29,2711,40,2930,60,3151,91,3184,98,3183,103,3150,96,2930,65,2710,45,2514,35,2365,30"/>
+<area shape="rect" id="Node000022" href="$ra8__io__stream__uart_8c.html" title="UART/SCI byte&#45;stream sink – polled writes through ra8_sci." alt="" coords="3391,101,3529,141"/>
+<area shape="poly" id="edge24_Node000001_Node000022" title=" " alt="" coords="2365,27,2880,49,3165,67,3283,79,3372,91,3404,98,3403,103,3372,96,3282,84,3164,73,2880,54,2365,32"/>
+<area shape="rect" id="Node000023" href="$ra8__nsc__comms_8h.html" title="NSC veneers for the communications drivers." alt="" coords="3553,101,3700,141"/>
+<area shape="poly" id="edge25_Node000001_Node000023" title=" " alt="" coords="2365,26,2621,33,2961,45,3297,64,3436,77,3542,91,3573,98,3571,103,3541,96,3436,82,3296,70,2960,51,2621,38,2365,31"/>
+<area shape="rect" id="Node000025" href="$ra8__nsc__comms_8c.html" title="NSC veneers for the communications drivers." alt="" coords="3664,203,3811,243"/>
+<area shape="poly" id="edge28_Node000001_Node000025" title=" " alt="" coords="2365,25,2696,31,3133,43,3523,62,3652,75,3692,83,3714,91,3732,117,3742,147,3744,178,3743,203,3737,203,3739,178,3736,148,3728,119,3710,95,3691,88,3651,81,3522,68,3133,48,2696,36,2365,30"/>
+<area shape="rect" id="Node000017" href="$examples_2ek__ra8d2_2hw__pending_2lin__commander__hil_2main_8c.html" title="LIN commander frame&#45;driver HIL demo for EK&#45;RA8D2 (SCI2 on Pmod1)." alt="" coords="2729,196,2916,251"/>
+<area shape="poly" id="edge16_Node000016_Node000017" title=" " alt="" coords="2933,151,2863,198,2860,194,2930,146"/>
+<area shape="poly" id="edge17_Node000016_Node000018" title=" " alt="" coords="2986,152,3008,202,3003,204,2981,154"/>
+<area shape="poly" id="edge21_Node000021_Node000019" title=" " alt="" coords="3227,154,3196,205,3192,202,3222,151"/>
+<area shape="poly" id="edge22_Node000021_Node000020" title=" " alt="" coords="3275,148,3333,201,3330,205,3272,152"/>
+<area shape="rect" id="Node000024" href="$examples_2__unsupported_2usb__audio__device_2main_8c.html" title="USB Audio Class 1.0 device&#45;mode smoke test for EK&#45;RA8D2 (USB&#45;FS, 48 kHz / 16&#45;bit / stereo iso&#45;IN sine..." alt="" coords="3449,203,3639,243"/>
+<area shape="poly" id="edge26_Node000023_Node000024" title=" " alt="" coords="3605,153,3562,205,3557,202,3600,150"/>
+<area shape="poly" id="edge27_Node000023_Node000025" title=" " alt="" coords="3659,148,3718,201,3715,205,3656,152"/>
+</map>

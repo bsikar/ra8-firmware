@@ -1,0 +1,17 @@
+<map id="tools/media_dl/inc/mdl_sanitize.h" name="tools/media_dl/inc/mdl_sanitize.h">
+<area shape="rect" id="Node000001" title="Neutralise untrusted names before they reach a filesystem or XML sink." alt="" coords="501,5,643,45"/>
+<area shape="rect" id="Node000002" href="$tools_2media__dl_2src_2main_8c.html" title="media_dl – host CLI for the e&#45;reader media downloader." alt="" coords="5,93,147,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="488,41,335,65,159,96,147,98,146,93,158,91,334,60,487,36"/>
+<area shape="rect" id="Node000003" href="$mdl__export_8c.html" title="Package a chapter folder into a reader&#45;openable container." alt="" coords="171,93,312,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="489,51,313,96,311,91,487,46"/>
+<area shape="rect" id="Node000004" href="$mdl__pack_8c.html" title="Implementation of the downloaded&#45;folder archive packaging." alt="" coords="336,93,477,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="525,54,444,96,442,91,522,49"/>
+<area shape="rect" id="Node000005" href="$mdl__pathfs_8c.html" title="Implementation of the guarded filesystem directory join." alt="" coords="501,93,643,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="575,59,575,93,569,93,569,59"/>
+<area shape="rect" id="Node000006" href="$mdl__sanitize_8c.html" title="Implementation of the untrusted&#45;name sanitisers." alt="" coords="667,93,808,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="622,49,702,91,700,96,619,54"/>
+<area shape="rect" id="Node000007" href="$mdl__urlname_8c.html" title="Pure URL&#45;to&#45;name helpers (last segment, chapter number, extension)." alt="" coords="832,93,973,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="657,46,833,91,831,96,655,51"/>
+<area shape="rect" id="Node000008" href="$test__media__dl_8c.html" title="Host unit tests for the media_dl pure&#45;logic units + export round&#45;trip." alt="" coords="997,93,1152,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="657,36,986,91,998,93,997,98,985,96,656,42"/>
+</map>

@@ -1,0 +1,25 @@
+<map id="libs/ra8_core/src/ra8_systick.c" name="libs/ra8_core/src/ra8_systick.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 SysTick + DWT cycle&#45;counter timebase implementation." alt="" coords="142,5,295,45"/>
+<area shape="rect" id="Node000002" href="$ra8__systick_8h.html" title="Cortex&#45;M85 SysTick + DWT cycle&#45;counter timebase primitive." alt="" coords="28,93,136,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="187,48,116,89,113,84,184,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="122,240,192,265"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="142,33,108,40,74,52,43,70,18,95,9,114,10,134,19,153,35,172,77,205,121,231,119,236,74,210,31,175,15,156,5,135,4,113,13,92,39,66,71,47,106,35,141,28"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="79,167,158,192"/>
+<area shape="poly" id="edge14_Node000001_Node000004" title=" " alt="" coords="208,47,136,157,131,154,203,44"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="388,93,513,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="275,43,404,86,403,91,273,48"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="212,93,312,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="231,44,251,80,247,83,227,47"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="406,167,489,192"/>
+<area shape="poly" id="edge15_Node000001_Node000007" title=" " alt="" coords="250,43,325,91,422,157,419,161,322,96,247,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="78,120,65,154,64,173,69,191,89,214,115,232,112,236,85,218,64,193,58,173,60,152,73,118"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="91,118,109,153,104,156,86,120"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="127,191,147,227,142,229,122,194"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="256,121,176,230,171,227,252,118"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="240,121,155,163,153,158,238,116"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="293,116,406,159,404,164,291,121"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="234,167,382,192"/>
+<area shape="poly" id="edge12_Node000006_Node000008" title=" " alt="" coords="272,118,295,154,291,157,268,120"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="407,193,206,242,205,237,405,188"/>
+<area shape="poly" id="edge13_Node000008_Node000003" title=" " alt="" coords="285,194,195,236,193,232,282,190"/>
+</map>

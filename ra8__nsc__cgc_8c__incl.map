@@ -1,0 +1,36 @@
+<map id="libs/ra8_nsc/src/ra8_nsc_cgc.c" name="libs/ra8_nsc/src/ra8_nsc_cgc.c">
+<area shape="rect" id="Node000001" title="NSC veneers for the Clock Generation Circuit driver." alt="" coords="190,5,336,45"/>
+<area shape="rect" id="Node000002" href="$ra8__nsc__cgc_8h.html" title="NSC veneers for the Clock Generation Circuit (CGC) driver." alt="" coords="86,93,200,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="235,48,174,88,171,84,233,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="241,313,312,339"/>
+<area shape="poly" id="edge13_Node000001_Node000003" title=" " alt="" coords="190,40,130,60,101,75,75,95,38,136,14,178,9,198,9,220,16,241,30,264,43,274,61,283,113,299,227,317,227,323,112,304,59,288,40,278,26,267,11,243,4,220,3,198,9,176,33,133,72,91,98,71,128,55,188,35"/>
+<area shape="rect" id="Node000004" href="$ra8__cgc_8h.html" title="High&#45;level Clock Generation Circuit driver." alt="" coords="116,167,200,192"/>
+<area shape="poly" id="edge14_Node000001_Node000004" title=" " alt="" coords="256,47,238,82,213,120,181,158,177,155,209,117,233,79,252,44"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="198,240,277,265"/>
+<area shape="poly" id="edge22_Node000001_Node000006" title=" " alt="" coords="264,46,243,227,238,226,258,45"/>
+<area shape="rect" id="Node000007" href="$ra8__nsc__veneer_8h.html" title="Macros for declaring Non&#45;Secure Callable veneer functions." alt="" coords="514,167,649,192"/>
+<area shape="poly" id="edge23_Node000001_Node000007" title=" " alt="" coords="304,43,546,158,544,163,302,48"/>
+<area shape="rect" id="Node000009" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="326,167,426,192"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="280,44,362,154,357,157,275,47"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="127,121,93,148,57,185,44,205,36,225,36,245,45,264,56,273,74,282,121,298,228,317,227,322,120,303,72,287,53,278,41,267,31,246,31,224,39,202,53,181,89,144,124,117"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="148,118,155,153,150,154,143,120"/>
+<area shape="rect" id="Node000005" href="$ra8__cgc__regs_8h.html" title="Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2." alt="" coords="56,240,174,265"/>
+<area shape="poly" id="edge8_Node000002_Node000005" title=" " alt="" coords="134,121,118,141,106,167,103,198,109,226,103,227,98,198,100,166,114,139,130,117"/>
+<area shape="poly" id="edge9_Node000002_Node000006" title=" " alt="" coords="163,117,189,137,213,165,228,196,236,226,231,227,223,198,209,168,185,141,159,121"/>
+<area shape="poly" id="edge10_Node000002_Node000007" title=" " alt="" coords="200,114,501,162,500,168,199,119"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="153,194,131,230,127,227,148,191"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="172,190,216,229,213,233,169,194"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="142,263,239,305,236,310,140,268"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="246,264,266,300,261,303,242,267"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="596,190,610,206,622,226,628,247,621,267,601,283,570,295,491,312,403,322,326,326,326,321,402,317,490,307,569,290,598,278,617,264,623,247,618,228,606,209,592,194"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="683,240,808,265"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="609,190,708,232,705,237,607,194"/>
+<area shape="poly" id="edge16_Node000009_Node000003" title=" " alt="" coords="370,194,294,304,290,301,366,191"/>
+<area shape="poly" id="edge17_Node000009_Node000006" title=" " alt="" coords="355,194,274,236,271,231,353,190"/>
+<area shape="rect" id="Node000010" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="352,240,435,265"/>
+<area shape="poly" id="edge18_Node000009_Node000010" title=" " alt="" coords="382,192,390,226,385,228,377,193"/>
+<area shape="rect" id="Node000011" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="460,240,608,265"/>
+<area shape="poly" id="edge20_Node000009_Node000011" title=" " alt="" coords="403,190,497,232,495,237,401,194"/>
+<area shape="poly" id="edge19_Node000010_Node000003" title=" " alt="" coords="376,268,309,308,306,304,373,263"/>
+<area shape="poly" id="edge21_Node000011_Node000003" title=" " alt="" coords="493,268,325,314,324,309,492,263"/>
+</map>

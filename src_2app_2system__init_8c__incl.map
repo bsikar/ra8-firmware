@@ -1,0 +1,17 @@
+<map id="src/app/system_init.c" name="src/app/system_init.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 / RA8D2 core bring&#45;up (called from Reset_Handler)." alt="" coords="75,5,235,31"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="63,225,134,251"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="87,33,46,51,28,64,14,80,9,99,10,124,17,151,29,176,47,198,69,216,65,220,43,202,24,179,12,153,5,125,3,98,10,77,25,60,43,46,85,28"/>
+<area shape="rect" id="Node000003" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="24,79,155,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="146,33,111,70,107,67,142,29"/>
+<area shape="rect" id="Node000004" href="$ra8__cgc_8h.html" title="High&#45;level Clock Generation Circuit driver." alt="" coords="179,79,263,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="167,29,203,67,199,70,164,33"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="288,79,411,104"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="187,28,306,71,304,76,185,33"/>
+<area shape="rect" id="Node000005" href="$ra8__cgc__regs_8h.html" title="Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2." alt="" coords="39,152,158,177"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="203,106,132,147,129,143,200,102"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="182,152,261,177"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="224,104,224,138,219,138,219,104"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="101,178,101,212,96,212,96,178"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="203,180,132,221,129,216,200,175"/>
+</map>

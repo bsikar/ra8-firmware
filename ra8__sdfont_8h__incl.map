@@ -1,0 +1,11 @@
+<map id="libs/ra8_sdfont/inc/ra8_sdfont.h" name="libs/ra8_sdfont/inc/ra8_sdfont.h">
+<area shape="rect" id="Node000001" title="Load a TTF/OTF font off a Pmod SD card, self&#45;provisioning if absent." alt="" coords="5,5,147,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="41,167,111,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="58,47,40,69,27,94,24,106,26,118,38,138,53,156,49,159,34,141,22,120,18,106,21,92,36,66,54,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="37,93,115,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="79,46,79,79,73,79,73,46"/>
+<area shape="rect" id="Node000004" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="139,93,298,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="111,43,187,84,185,89,109,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="79,119,79,153,73,153,73,119"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="197,121,113,163,110,158,195,116"/>
+</map>

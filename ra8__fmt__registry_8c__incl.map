@@ -1,0 +1,30 @@
+<map id="tools/rabook_imagepack/src/ra8_fmt_registry.c" name="tools/rabook_imagepack/src/ra8_fmt_registry.c">
+<area shape="rect" id="Node000001" title="The format registry: one descriptor row per first&#45;party container." alt="" coords="182,5,365,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="301,240,376,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="365,38,424,54,484,80,540,116,565,139,585,165,594,191,586,211,565,227,535,238,462,250,390,254,389,249,461,245,534,233,563,222,582,208,588,191,580,168,561,142,537,120,482,84,422,59,364,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="173,93,243,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="260,47,228,84,224,81,255,44"/>
+<area shape="rect" id="Node000004" href="$ra8__fmt_8h.html" title="One&#45;file converter / inspector for the first&#45;party content formats." alt="" coords="76,167,161,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="231,48,196,68,163,95,143,124,129,154,124,152,138,122,159,92,193,64,228,43"/>
+<area shape="rect" id="Node000008" href="$ra8__fmt__internal_8h.html" title="Cross&#45;TU declarations shared inside the ra8_fmt tool." alt="" coords="267,93,410,119"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="291,44,322,81,318,84,287,47"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="155,189,291,233,290,238,153,195"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="190,313,261,339"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="121,192,123,226,128,246,137,264,159,287,186,305,183,309,156,291,132,267,123,248,118,227,115,192"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="5,240,72,265"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="108,194,64,233,60,229,104,190"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="147,240,226,265"/>
+<area shape="poly" id="edge7_Node000004_Node000007" title=" " alt="" coords="132,190,168,228,164,232,128,194"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="195,264,215,300,210,303,191,267"/>
+<area shape="poly" id="edge10_Node000008_Node000002" title=" " alt="" coords="341,119,341,226,336,226,336,119"/>
+<area shape="poly" id="edge14_Node000008_Node000004" title=" " alt="" coords="304,121,168,165,166,160,303,116"/>
+<area shape="poly" id="edge11_Node000008_Node000005" title=" " alt="" coords="351,117,371,145,392,183,399,205,402,226,399,247,390,267,366,291,337,307,305,318,275,324,274,319,304,313,335,303,363,287,386,264,394,246,396,226,393,206,387,185,367,148,346,120"/>
+<area shape="poly" id="edge13_Node000008_Node000007" title=" " alt="" coords="305,121,265,140,227,168,208,197,196,227,191,225,203,195,223,165,262,135,303,116"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="445,167,571,192"/>
+<area shape="poly" id="edge12_Node000008_Node000009" title=" " alt="" coords="367,116,469,159,467,164,365,121"/>
+<area shape="rect" id="Node000010" href="$ra8__jof_8h.html" title="JOF band&#45;tile atlas: the display&#45;native normalized image format (#231, shared with the longstrip scro..." alt="" coords="237,167,315,192"/>
+<area shape="poly" id="edge15_Node000008_Node000010" title=" " alt="" coords="330,121,297,158,293,154,326,117"/>
+<area shape="poly" id="edge16_Node000010_Node000002" title=" " alt="" coords="288,191,321,228,317,231,284,194"/>
+<area shape="poly" id="edge17_Node000010_Node000005" title=" " alt="" coords="274,193,236,301,231,300,269,192"/>
+<area shape="poly" id="edge18_Node000010_Node000007" title=" " alt="" coords="263,194,214,233,210,229,260,190"/>
+</map>

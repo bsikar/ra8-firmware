@@ -1,0 +1,30 @@
+<map id="libs/ra8_hal/src/ra8_reset.c" name="libs/ra8_hal/src/ra8_reset.c">
+<area shape="rect" id="Node000001" title="Reset cause introspection + software&#45;reset trigger." alt="" coords="209,5,354,45"/>
+<area shape="rect" id="Node000002" href="$ra8__reset_8h.html" title="Reset cause introspection + software reset trigger." alt="" coords="149,93,244,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="263,48,221,86,217,82,259,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="281,240,352,265"/>
+<area shape="poly" id="edge7_Node000001_Node000003" title=" " alt="" coords="209,45,131,68,91,83,57,101,29,120,13,142,9,165,22,190,38,203,62,213,127,230,201,240,267,246,267,251,200,246,126,235,60,218,35,207,18,194,4,166,8,140,26,116,54,96,89,78,129,63,208,40"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="238,167,317,192"/>
+<area shape="poly" id="edge15_Node000001_Node000004" title=" " alt="" coords="284,46,281,153,276,153,278,46"/>
+<area shape="rect" id="Node000005" href="$ra8__reset__regs_8h.html" title="Reset block register layout (offsets, bit masks, accessors)for the Renesas RA8D2." alt="" coords="32,167,163,192"/>
+<area shape="poly" id="edge19_Node000001_Node000005" title=" " alt="" coords="217,48,175,67,138,95,118,124,106,154,101,152,114,121,134,91,173,63,215,43"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="320,93,420,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="305,44,348,82,344,86,301,48"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="566,167,648,192"/>
+<area shape="poly" id="edge18_Node000001_Node000007" title=" " alt="" coords="326,43,433,91,573,158,571,163,431,96,324,48"/>
+<area shape="rect" id="Node000009" href="$ra8__hw__intrinsics_8h.html" title="Shared CPU&#45;intrinsic seam for the HAL drivers (host/target split)." alt="" coords="586,93,732,119"/>
+<area shape="poly" id="edge16_Node000001_Node000009" title=" " alt="" coords="355,39,591,88,590,93,354,44"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="201,118,210,153,218,172,229,190,253,214,280,231,277,236,250,218,225,194,213,175,205,154,195,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="211,117,256,156,252,160,208,121"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="182,121,126,161,123,156,179,117"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="286,191,306,227,301,229,282,194"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="133,189,268,233,267,238,132,195"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="368,120,328,228,323,226,363,118"/>
+<area shape="poly" id="edge10_Node000006_Node000004" title=" " alt="" coords="356,121,305,160,302,156,353,117"/>
+<area shape="poly" id="edge11_Node000006_Node000007" title=" " alt="" coords="408,116,556,160,555,165,407,121"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="393,167,541,192"/>
+<area shape="poly" id="edge13_Node000006_Node000008" title=" " alt="" coords="387,117,441,156,438,160,384,121"/>
+<area shape="poly" id="edge12_Node000007_Node000003" title=" " alt="" coords="566,193,366,242,364,237,565,188"/>
+<area shape="poly" id="edge14_Node000008_Node000003" title=" " alt="" coords="444,194,354,236,352,232,442,190"/>
+<area shape="poly" id="edge17_Node000009_Node000003" title=" " alt="" coords="666,118,673,154,671,175,662,194,642,209,611,222,531,239,442,249,365,253,365,248,442,244,530,234,610,217,639,205,658,190,666,174,668,154,661,119"/>
+</map>

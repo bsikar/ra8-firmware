@@ -1,0 +1,22 @@
+<map id="libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2.h" name="libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2.h">
+<area shape="rect" id="Node000001" title="Board&#45;support layer for the Renesas EK&#45;RA8D2 v1 evaluation kit." alt="" coords="141,5,335,45"/>
+<area shape="rect" id="Node000002" href="$ra8__board__ek__ra8d2__connectors_8h.html" title="Board&#45;identity, LEDs, switches, display, audio, Arduino, Pmod, and MikroBUS portion of the EK&#45;RA8D2 v..." alt="" coords="103,181,258,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="230,47,209,94,189,168,184,167,203,92,225,44"/>
+<area shape="rect" id="Node000007" href="$ra8__board__ek__ra8d2__peripherals_8h.html" title="I/O&#45;expander, USB, camera, external&#45;memory, MIPI&#45;DSI, UART console, and Ethernet portion of the EK&#45;RA..." alt="" coords="218,93,373,133"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="253,44,277,80,273,83,249,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="343,269,418,295"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="230,219,340,262,338,267,228,224"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="145,343,216,368"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="170,223,154,256,150,275,151,294,167,330,162,332,146,295,145,275,149,254,165,220"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,269,84,295"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="149,224,78,265,75,260,147,219"/>
+<area shape="rect" id="Node000006" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="160,269,319,295"/>
+<area shape="poly" id="edge6_Node000002_Node000006" title=" " alt="" coords="197,220,224,256,220,260,193,223"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="68,292,148,334,145,339,65,297"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="232,297,201,334,197,331,228,293"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="271,136,218,175,215,171,268,131"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="307,132,371,256,366,258,303,135"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="330,131,374,162,418,203,434,226,443,249,443,273,432,296,419,308,399,318,346,334,286,345,230,352,229,347,285,340,345,328,397,313,416,303,428,293,438,272,438,250,429,228,414,207,371,167,326,136"/>
+<area shape="poly" id="edge12_Node000007_Node000005" title=" " alt="" coords="218,127,153,147,121,163,93,183,79,200,67,219,53,257,48,255,62,216,74,197,90,179,119,158,151,142,217,122"/>
+<area shape="poly" id="edge13_Node000007_Node000006" title=" " alt="" coords="295,134,286,175,272,222,255,259,251,256,268,220,281,174,290,133"/>
+</map>

@@ -1,0 +1,88 @@
+var ra8__gpt_8c =
+[
+    [ "ra8_gpt_state_t", "structra8__gpt__state__t.html", "structra8__gpt__state__t" ],
+    [ "ra8_gpt_three_phase_state_t", "structra8__gpt__three__phase__state__t.html", "structra8__gpt__three__phase__state__t" ],
+    [ "ra8_gpt_bits_t", "ra8__gpt_8c.html#ab38777ce0cdf66016590f2e32d21a848", [
+      [ "k_ra8_gpt_gtcr_cst_set", "ra8__gpt_8c.html#ab38777ce0cdf66016590f2e32d21a848a7ecf876f47a5f500d9d8746f797e03e8", null ],
+      [ "k_ra8_gpt_gtcr_md_shift", "ra8__gpt_8c.html#ab38777ce0cdf66016590f2e32d21a848acf483fcb97d5fbbbcc281998804dfb1e", null ],
+      [ "k_ra8_gpt_gtcr_tpcs_shift", "ra8__gpt_8c.html#ab38777ce0cdf66016590f2e32d21a848ae61f71a6324d0561b9143e0bac20dffe", null ],
+      [ "k_ra8_gpt_gtstr_start", "ra8__gpt_8c.html#ab38777ce0cdf66016590f2e32d21a848ae3280780bb67656b2fd4d07802b77011", null ],
+      [ "k_ra8_gpt_gtstp_stop", "ra8__gpt_8c.html#ab38777ce0cdf66016590f2e32d21a848a95142a19d8fa5a70da10145c1db2a62c", null ],
+      [ "k_ra8_gpt_gtst_mask", "ra8__gpt_8c.html#ab38777ce0cdf66016590f2e32d21a848a250e3746b6bbfe36fb31baa22624072d", null ]
+    ] ],
+    [ "ra8_gpt_buffer_bits_t", "ra8__gpt_8c.html#a7f556f41f0b6488bfba9a1b0f5174755", [
+      [ "k_ra8_gpt_gtber_ccra_single", "ra8__gpt_8c.html#a7f556f41f0b6488bfba9a1b0f5174755a3f2c2794b18f24899997931fb7e5e657", null ],
+      [ "k_ra8_gpt_gtber_ccrb_single", "ra8__gpt_8c.html#a7f556f41f0b6488bfba9a1b0f5174755ab7980f70b5282ed31d7b08099555ab57", null ],
+      [ "k_ra8_gpt_gtdtcr_tde", "ra8__gpt_8c.html#a7f556f41f0b6488bfba9a1b0f5174755a4e22c696c2410e4d344d3859605d0a7e", null ],
+      [ "k_ra8_gpt_gtcr_cst_mask", "ra8__gpt_8c.html#a7f556f41f0b6488bfba9a1b0f5174755ac1bf575d93040238471291a189b8223d", null ]
+    ] ],
+    [ "ra8_gpt_ccr_idx_t", "ra8__gpt_8c.html#a21805b08c363e86e36a938182861e322", [
+      [ "k_ra8_gpt_ccr_idx_a", "ra8__gpt_8c.html#a21805b08c363e86e36a938182861e322aee69c8fe377e384334a925f09e968f8b", null ],
+      [ "k_ra8_gpt_ccr_idx_b", "ra8__gpt_8c.html#a21805b08c363e86e36a938182861e322a0f528ac737a27efd7c3a5dfcf1c41bae", null ],
+      [ "k_ra8_gpt_ccr_idx_c", "ra8__gpt_8c.html#a21805b08c363e86e36a938182861e322a0fa808038dca5f7af2774cdb48c14ac9", null ],
+      [ "k_ra8_gpt_ccr_idx_e", "ra8__gpt_8c.html#a21805b08c363e86e36a938182861e322ac7e640ece3f0f021bf13abe8df3d3ac6", null ]
+    ] ],
+    [ "ra8_gpt_gtior_bits_t", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825b", [
+      [ "k_ra8_gpt_gtioa_mask", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825bafe5036be0b1b7bd7e94df5b636f5bc32", null ],
+      [ "k_ra8_gpt_gtioa_shift", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825bacd4f6b38a0de56aaeb84411bc47cb038", null ],
+      [ "k_ra8_gpt_oadflt_mask", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825bab745a9c2834839c00ad6d73458942f0a", null ],
+      [ "k_ra8_gpt_oadflt_shift", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825ba4a2a9993f4e782c7560d7b57a3c3f235", null ],
+      [ "k_ra8_gpt_oae_mask", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825ba8c0f4aa20decb7cc99bc5c2436d8e341", null ],
+      [ "k_ra8_gpt_oadf_mask", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825ba21c85c361170480886f57b9b4a0e5780", null ],
+      [ "k_ra8_gpt_oadf_shift", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825ba190be0deb6d11960ee1c0311286e544c", null ],
+      [ "k_ra8_gpt_gtiob_mask", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825ba019c5755764f8e45a9be70fa8b6edd2e", null ],
+      [ "k_ra8_gpt_gtiob_shift", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825baee06db1b943fa81a241fb358cbe56be7", null ],
+      [ "k_ra8_gpt_obdflt_mask", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825ba6b547c9628e41234417fab300d3ea55b", null ],
+      [ "k_ra8_gpt_obdflt_shift", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825bac061332d2f35408bb331b85921f33461", null ],
+      [ "k_ra8_gpt_obe_mask", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825baf1074578133004fd7ec9298ccb5cca0c", null ],
+      [ "k_ra8_gpt_obdf_mask", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825bae82c298571f82281a82227e2c4555da5", null ],
+      [ "k_ra8_gpt_obdf_shift", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825bacf325b65e907c0d6351f20c389374d68", null ],
+      [ "k_ra8_gpt_gtio_active_high", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825ba11dc7e0764063c8cf8d2a2d196dc99c1", null ],
+      [ "k_ra8_gpt_gtio_active_low", "ra8__gpt_8c.html#ad3aa8efeda87cabd54e45b18f9a1825ba758edfa202d9bf900c89b49097bf2e67", null ]
+    ] ],
+    [ "ra8_gptclkcr_bits_t", "ra8__gpt_8c.html#abfd1163fd71e5782cc25e857431bbe7e", [
+      [ "k_ra8_gptclkcr_bpen", "ra8__gpt_8c.html#abfd1163fd71e5782cc25e857431bbe7eaf514c9d43ee1c24807aedd23072893be", null ]
+    ] ],
+    [ "ra8_gtwp_t", "ra8__gpt_8c.html#a54ddcd1b865b54c276de4c5d31c874fe", [
+      [ "k_ra8_gtwp_key_unlock", "ra8__gpt_8c.html#a54ddcd1b865b54c276de4c5d31c874fea2fb12914120e6962d9ddf8c0fca50094", null ],
+      [ "k_ra8_gtwp_key_lock", "ra8__gpt_8c.html#a54ddcd1b865b54c276de4c5d31c874feabed9cdf75ea33e0134926dde9af58817", null ]
+    ] ],
+    [ "internal_dispatch", "ra8__gpt_8c.html#a34533ce2487d765d89aa5d3f1102670c", null ],
+    [ "internal_gpt_clock_block_init", "ra8__gpt_8c.html#abcf974c6f9f13fd28cea1f88744d1f3a", null ],
+    [ "internal_gtcr", "ra8__gpt_8c.html#af00064a319eb9807afff16f4b9ed35bd", null ],
+    [ "internal_gtio_pattern", "ra8__gpt_8c.html#a2d0fa886ac3d3f044f5f9dd846b38eba", null ],
+    [ "internal_three_phase_init_subs", "ra8__gpt_8c.html#a46ab9f2e0f6abbf64c954e8837433819", null ],
+    [ "ra8_gpt_attach_handler", "ra8__gpt_8c.html#a554d6ebe8515ef0e11ca63fd9e865918", null ],
+    [ "ra8_gpt_capture_configure", "ra8__gpt_8c.html#aadc9cb1cc68d268d94eeb503edcaabce", null ],
+    [ "ra8_gpt_capture_read", "ra8__gpt_8c.html#a1ae70b6f0216412dbfb254c264a2f1bb", null ],
+    [ "ra8_gpt_clear_status", "ra8__gpt_8c.html#a9e28337f68ee13b40fd2ae41f1084027", null ],
+    [ "ra8_gpt_counter_set", "ra8__gpt_8c.html#ad04bb418fb9f8d72b4f84987fd2ef31d", null ],
+    [ "ra8_gpt_dead_time_set", "ra8__gpt_8c.html#a2b8ec00a7f79719755ae737e29016200", null ],
+    [ "ra8_gpt_deinit", "ra8__gpt_8c.html#ad2b3446e32d2cd09ef193821862005da", null ],
+    [ "ra8_gpt_dispatch_ccra", "ra8__gpt_8c.html#ac0d234350ccbac64b968840e1f60af22", null ],
+    [ "ra8_gpt_dispatch_ccrb", "ra8__gpt_8c.html#a0c67a0fc8690af4cb35b5968ed63db98", null ],
+    [ "ra8_gpt_dispatch_ovf", "ra8__gpt_8c.html#acae1b6d6fd86a8da3319ee4669b934e9", null ],
+    [ "ra8_gpt_dispatch_und", "ra8__gpt_8c.html#a71393da2f0618c497c1f211aec1f72e1", null ],
+    [ "ra8_gpt_duty_cycle_set", "ra8__gpt_8c.html#a90bd8f2c9f3f69db839fab65344d5819", null ],
+    [ "ra8_gpt_enter_stop", "ra8__gpt_8c.html#af56b97a739891261a6946abbc3282cd1", null ],
+    [ "ra8_gpt_event_count_configure", "ra8__gpt_8c.html#affbe82f344e5e22731415651e6e0f484", null ],
+    [ "ra8_gpt_exit_stop", "ra8__gpt_8c.html#a9ecefcbf715285ac58655e5bc8c95762", null ],
+    [ "ra8_gpt_get_status", "ra8__gpt_8c.html#add1aa6636969c210aae0421c1b491d99", null ],
+    [ "ra8_gpt_init", "ra8__gpt_8c.html#ad0111e43ba003c04ed9d848f744eca6f", null ],
+    [ "ra8_gpt_period_set", "ra8__gpt_8c.html#aff7e1c83818bc0085dcfa252766bc0d0", null ],
+    [ "ra8_gpt_pwm_pin_configure", "ra8__gpt_8c.html#a16b31cfdef872f4fe0c7821982bdb3ca", null ],
+    [ "ra8_gpt_read", "ra8__gpt_8c.html#ae02fa7ee7a30835012609eccf58c7d95", null ],
+    [ "ra8_gpt_read_dma", "ra8__gpt_8c.html#a97aff11c6e0fb79a3f6763419eed3ca3", null ],
+    [ "ra8_gpt_set_duty", "ra8__gpt_8c.html#a79f0e154d07532ddc4e7a38544206fff", null ],
+    [ "ra8_gpt_set_period", "ra8__gpt_8c.html#a61eca63f5987c075007ce8ba3b0637db", null ],
+    [ "ra8_gpt_start_free_run", "ra8__gpt_8c.html#a3cff6cdb663a9ea90c71e8fe452a6718", null ],
+    [ "ra8_gpt_stop", "ra8__gpt_8c.html#a486bfb7bceec4d0a79689d8c4751556e", null ],
+    [ "ra8_gpt_three_phase_close", "ra8__gpt_8c.html#aa7fd8166da463188f636144479ff9659", null ],
+    [ "ra8_gpt_three_phase_open", "ra8__gpt_8c.html#ab82df63e2b88f0da98dbac70e6371b1f", null ],
+    [ "ra8_gpt_three_phase_set_duty", "ra8__gpt_8c.html#a8e9db9b12fac64163246c6d3d0e5ab5e", null ],
+    [ "ra8_gpt_write_dma", "ra8__gpt_8c.html#a82ca990e2acf525406383e9268d2bf30", null ],
+    [ "s_gpt_mstp_table", "ra8__gpt_8c.html#a9be4e321bc66c05eaaf2be89d1fc623e", null ],
+    [ "s_gpt_state", "ra8__gpt_8c.html#a4465cf2be048d4cb6f7c47511ed53d98", null ],
+    [ "s_tag", "ra8__gpt_8c.html#af8861f6a1fb30510e283b1b7806b64e7", null ],
+    [ "s_three_phase", "ra8__gpt_8c.html#acf218bf99597cd230e82b6c20df4c924", null ]
+];

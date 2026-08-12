@@ -1,0 +1,16 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_main.c" name="examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_main.c">
+<area shape="rect" id="Node000001" title="Non&#45;Secure image: prove the NSC CGC veneers return OK from NS (#60)." alt="" coords="50,5,230,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="44,255,114,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="102,62,74,84,49,110,25,143,11,182,8,194,11,206,26,228,47,245,44,249,23,231,6,208,3,194,6,181,20,141,45,106,71,80,98,58"/>
+<area shape="rect" id="Node000003" href="$ra8__cgc_8h.html" title="High&#45;level Clock Generation Circuit driver." alt="" coords="58,108,142,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="131,61,114,97,109,94,126,59"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="162,181,241,207"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="153,59,195,168,190,169,148,61"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="218,108,292,133"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="177,58,230,97,227,102,174,62"/>
+<area shape="rect" id="Node000004" href="$ra8__cgc__regs_8h.html" title="Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2." alt="" coords="20,181,138,207"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="99,134,89,169,84,167,94,133"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="118,131,175,171,172,175,115,136"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="82,207,82,241,76,241,76,207"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="183,209,112,250,109,245,181,204"/>
+</map>

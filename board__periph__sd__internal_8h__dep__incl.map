@@ -1,0 +1,9 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_sd_internal.h" name="tools/ra8_emulator/src/periph/board_periph_sd_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private FAT formatter shared by the board_periph_sd TUs." alt="" coords="242,5,421,60"/>
+<area shape="rect" id="Node000002" href="$board__periph__sd_8c.html" title="SD&#45;card&#45;over&#45;SPI device model for ra8_emulator (attached to SPI_B)." alt="" coords="5,115,217,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="263,68,154,118,152,113,261,63"/>
+<area shape="rect" id="Node000003" href="$board__periph__sd__format_8c.html" title="Blank&#45;card FAT16/FAT32 in&#45;memory formatters (–sd&#45;new)." alt="" coords="242,108,421,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="334,74,334,108,329,108,329,74"/>
+<area shape="rect" id="Node000004" href="$board__periph__sd__image_8c.html" title="Backing&#45;image lifecycle for the modelled SD card (see board_periph_sd.h)." alt="" coords="445,108,623,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="398,64,482,106,480,110,395,68"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="libs/ra8_io/inc/ra8_io_spi_bus_sci_spi.h" name="libs/ra8_io/inc/ra8_io_spi_bus_sci_spi.h">
+<area shape="rect" id="Node000001" title="SCI Simple&#45;SPI backend binder for the ra8_io SPI&#45;bus facade." alt="" coords="5,5,165,45"/>
+<area shape="rect" id="Node000002" href="$ra8__io__spi__bus__sci__spi_8c.html" title="SCI Simple&#45;SPI backend for the ra8_io SPI&#45;bus facade – thin shim over ra8_sci_spi." alt="" coords="6,93,165,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="88,59,88,93,83,93,83,59"/>
+</map>

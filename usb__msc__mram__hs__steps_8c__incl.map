@@ -1,0 +1,14 @@
+<map id="examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/src/usb_msc_mram_hs_steps.c" name="examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/src/usb_msc_mram_hs_steps.c">
+<area shape="rect" id="Node000001" title="Synthesized FAT16 volume helpers for the USB&#45;HS MRAM MSC demo." alt="" coords="55,5,263,75"/>
+<area shape="rect" id="Node000002" href="$usb__msc__mram__hs__steps_8h.html" title="Synthesized FAT16 volume helpers for the USB&#45;HS MRAM MSC demo." alt="" coords="59,123,260,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="162,75,162,109,157,109,157,75"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,196,76,221"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="94,77,68,98,48,124,40,153,39,182,34,182,34,152,44,121,65,94,91,73"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="284,123,355,148"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="218,72,289,113,287,118,216,77"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="142,150,73,191,71,186,139,146"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="111,196,186,221"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="160,149,155,183,150,182,155,148"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="210,196,287,221"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="175,146,225,185,222,189,172,150"/>
+</map>

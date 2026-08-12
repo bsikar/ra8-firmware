@@ -1,0 +1,5 @@
+<map id="libs/ra8_hal/inc/ra8_rmac_phy.h" name="libs/ra8_hal/inc/ra8_rmac_phy.h">
+<area shape="rect" id="Node000001" title="Reduced&#45;MAC (RMAC) PHY driver – off&#45;chip PHY for the GMAC&#45;FPI." alt="" coords="5,5,151,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rmac__phy_8c.html" title="RMAC off&#45;chip PHY driver." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="81,59,81,93,75,93,75,59"/>
+</map>

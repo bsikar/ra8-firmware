@@ -1,0 +1,32 @@
+<map id="libs/ra8_nsc/src/ra8_nsc_eth.c" name="libs/ra8_nsc/src/ra8_nsc_eth.c">
+<area shape="rect" id="Node000001" title="NSC veneer: ethernet frame TX / RX." alt="" coords="299,5,446,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="332,240,402,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="299,37,192,55,135,68,84,85,42,106,16,130,10,143,9,158,13,173,25,190,44,205,73,217,153,234,241,244,318,248,318,253,241,249,152,239,72,222,41,209,21,194,9,175,3,158,4,142,12,127,39,101,82,80,134,63,191,50,298,32"/>
+<area shape="rect" id="Node000003" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="188,93,288,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="341,48,270,89,268,84,339,43"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="366,167,445,192"/>
+<area shape="poly" id="edge10_Node000001_Node000004" title=" " alt="" coords="364,46,352,81,350,99,353,118,365,138,381,156,377,159,361,141,348,120,344,100,346,79,359,45"/>
+<area shape="rect" id="Node000007" href="$ra8__net__pal_8h.html" title="Network Platform Abstraction Layer for the RA8D2 ESWM block." alt="" coords="364,93,474,119"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="386,44,407,80,403,83,381,47"/>
+<area shape="rect" id="Node000008" href="$ra8__nsc_8h.html" title="Non&#45;Secure Callable veneer scaffold." alt="" coords="498,93,582,119"/>
+<area shape="poly" id="edge14_Node000001_Node000008" title=" " alt="" coords="414,43,504,85,502,90,411,48"/>
+<area shape="rect" id="Node000009" href="$ra8__nsc__veneer_8h.html" title="Macros for declaring Non&#45;Secure Callable veneer functions." alt="" coords="572,167,706,192"/>
+<area shape="poly" id="edge20_Node000001_Node000009" title=" " alt="" coords="446,32,522,51,561,68,595,91,619,121,634,152,629,154,615,123,592,95,558,73,520,56,445,37"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="253,117,303,165,353,227,349,230,300,168,250,121"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="266,116,366,159,364,164,263,121"/>
+<area shape="rect" id="Node000005" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="35,167,118,192"/>
+<area shape="poly" id="edge6_Node000003_Node000005" title=" " alt="" coords="213,121,116,163,114,159,211,116"/>
+<area shape="rect" id="Node000006" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="142,167,290,192"/>
+<area shape="poly" id="edge8_Node000003_Node000006" title=" " alt="" coords="237,120,226,154,221,153,231,118"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="401,194,382,229,377,227,397,191"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="118,188,319,237,317,242,117,193"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="242,190,331,232,329,236,239,194"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="433,118,457,151,463,172,459,193,438,218,411,236,408,232,434,214,454,191,457,172,452,153,429,121"/>
+<area shape="poly" id="edge13_Node000007_Node000004" title=" " alt="" coords="419,119,413,154,408,153,414,119"/>
+<area shape="poly" id="edge15_Node000008_Node000002" title=" " alt="" coords="536,120,513,156,479,194,445,218,410,237,407,232,442,214,476,190,509,152,532,118"/>
+<area shape="poly" id="edge16_Node000008_Node000004" title=" " alt="" coords="520,121,441,162,438,158,517,116"/>
+<area shape="poly" id="edge17_Node000008_Node000009" title=" " alt="" coords="558,117,613,156,610,161,554,121"/>
+<area shape="poly" id="edge18_Node000009_Node000002" title=" " alt="" coords="596,195,416,241,414,236,594,189"/>
+<area shape="rect" id="Node000010" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="576,240,702,265"/>
+<area shape="poly" id="edge19_Node000009_Node000010" title=" " alt="" coords="642,192,642,226,636,226,636,192"/>
+</map>

@@ -1,0 +1,11 @@
+<map id="libs/ra8_hal/inc/ra8_bscan_regs.h" name="libs/ra8_hal/inc/ra8_bscan_regs.h">
+<area shape="rect" id="Node000001" title="JTAG / IEEE&#45;1149.1 Boundary Scan TAP constants for the RA8D2." alt="" coords="111,5,257,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2bscan__selftest_2main_8c.html" title="Headless on&#45;silicon self&#45;test gate for the JTAG boundary&#45;scan TAP bookkeeping driver ra8_bscan (#138)..." alt="" coords="5,181,179,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="138,55,117,73,101,95,93,116,89,139,90,181,85,181,84,138,88,115,96,92,113,69,135,51"/>
+<area shape="rect" id="Node000003" href="$ra8__bscan_8h.html" title="JTAG / IEEE&#45;1149.1 Boundary Scan TAP HAL surface." alt="" coords="111,93,257,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="187,59,187,93,181,93,181,59"/>
+<area shape="rect" id="Node000004" href="$ra8__bscan_8c.html" title="JTAG / IEEE&#45;1149.1 Boundary Scan TAP HAL implementation." alt="" coords="213,189,358,229"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="232,51,254,69,272,92,282,117,288,143,289,188,284,189,282,144,277,118,267,95,250,73,229,55"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="158,145,120,183,116,179,154,141"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="216,141,267,187,263,191,213,145"/>
+</map>

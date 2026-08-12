@@ -1,0 +1,12 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_rtc.c" name="tools/ra8_emulator/src/periph/board_periph_rtc.c">
+<area shape="rect" id="Node000001" title="Realtime Clock (RTC) calendar peripheral&#45;block model for ra8_emulator." alt="" coords="5,5,220,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="48,167,119,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="98,47,82,69,70,94,68,124,75,153,70,154,63,125,65,93,77,66,93,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="79,93,146,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="115,46,115,79,110,79,110,46"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="171,93,332,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="147,43,220,84,218,89,145,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="225,121,124,164,122,159,223,116"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="184,167,319,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="254,119,254,153,249,153,249,119"/>
+</map>

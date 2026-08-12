@@ -1,0 +1,7 @@
+<map id="tools/ra8_emulator/inc/board_usb_host.h" name="tools/ra8_emulator/inc/board_usb_host.h">
+<area shape="rect" id="Node000001" title="USBHS HOST&#45;mode controller model (self&#45;loop peer of the USBFS device)." alt="" coords="22,5,185,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,76,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="90,47,61,84,57,81,86,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="100,93,235,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="121,44,151,81,147,84,117,47"/>
+</map>

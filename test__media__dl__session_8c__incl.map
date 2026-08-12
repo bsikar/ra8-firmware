@@ -1,0 +1,35 @@
+<map id="tools/media_dl/tests/test_media_dl_session.c" name="tools/media_dl/tests/test_media_dl_session.c">
+<area shape="rect" id="Node000001" title="Host unit tests for the session identity + robots.txt gating, driven through the #310 mdl_net vtable ..." alt="" coords="311,5,497,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="153,240,228,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="379,47,315,99,279,132,245,168,223,199,205,229,200,226,218,196,241,165,275,129,311,95,376,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="287,313,358,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="401,46,332,301,327,299,396,45"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="467,93,533,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="429,43,477,82,474,87,426,48"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="558,93,629,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="450,43,554,85,552,90,448,48"/>
+<area shape="rect" id="Node000006" href="$mdl__net_8h.html" title="Streaming HTTP(S) GET seam (a real function&#45;pointer vtable) for the host manga downloader (v0)." alt="" coords="254,167,341,192"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="393,47,315,157,311,154,388,44"/>
+<area shape="rect" id="Node000008" href="$mdl__politeness_8h.html" title="Jittered inter&#45;request delay plus the per&#45;host politeness governor." alt="" coords="427,167,560,192"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="416,44,457,117,480,154,476,157,452,120,412,47"/>
+<area shape="rect" id="Node000010" href="$mdl__session_8h.html" title="Session identity (honest User&#45;Agent) and robots.txt gating." alt="" coords="64,93,179,119"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="337,48,176,92,175,87,336,43"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="653,93,781,119"/>
+<area shape="poly" id="edge21_Node000001_Node000012" title=" " alt="" coords="480,43,659,87,658,93,478,48"/>
+<area shape="poly" id="edge6_Node000006_Node000002" title=" " alt="" coords="282,194,221,235,218,230,279,190"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="302,192,321,299,316,300,297,193"/>
+<area shape="rect" id="Node000007" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="386,240,465,265"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="319,190,394,231,391,235,317,194"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="410,268,352,307,349,303,407,263"/>
+<area shape="poly" id="edge11_Node000008_Node000003" title=" " alt="" coords="497,193,495,228,490,249,479,267,456,288,429,304,372,321,371,316,427,299,453,284,475,264,485,247,490,227,492,192"/>
+<area shape="poly" id="edge13_Node000008_Node000007" title=" " alt="" coords="484,194,448,232,444,228,480,190"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="540,240,665,265"/>
+<area shape="poly" id="edge12_Node000008_Node000009" title=" " alt="" coords="512,190,575,230,572,235,509,194"/>
+<area shape="poly" id="edge15_Node000010_Node000002" title=" " alt="" coords="129,118,182,226,177,229,125,120"/>
+<area shape="poly" id="edge16_Node000010_Node000003" title=" " alt="" coords="82,121,52,133,25,149,10,169,8,179,12,191,34,223,63,250,96,271,133,288,208,310,274,319,273,325,207,315,131,293,94,276,59,254,30,227,7,193,3,179,5,166,22,145,49,128,80,116"/>
+<area shape="poly" id="edge17_Node000010_Node000006" title=" " alt="" coords="151,116,257,159,255,164,149,121"/>
+<area shape="rect" id="Node000011" href="$mdl__robots_8h.html" title="robots.txt parser, path matcher, and per&#45;host cache." alt="" coords="21,167,128,192"/>
+<area shape="poly" id="edge18_Node000010_Node000011" title=" " alt="" coords="116,120,92,157,88,154,111,118"/>
+<area shape="poly" id="edge19_Node000011_Node000002" title=" " alt="" coords="95,190,161,230,159,235,92,194"/>
+<area shape="poly" id="edge20_Node000011_Node000003" title=" " alt="" coords="83,191,106,227,123,246,143,263,175,282,209,296,274,314,273,319,207,301,172,286,140,268,120,250,102,230,79,194"/>
+</map>

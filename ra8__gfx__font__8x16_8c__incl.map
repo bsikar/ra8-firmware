@@ -1,0 +1,8 @@
+<map id="libs/ra8_gfx/src/ra8_gfx_font_8x16.c" name="libs/ra8_gfx/src/ra8_gfx_font_8x16.c">
+<area shape="rect" id="Node000001" title="8x16 monochrome bitmap font, ASCII 0x20..0x7E." alt="" coords="5,5,152,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="43,167,114,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="72,46,60,80,58,99,59,118,70,153,65,155,53,119,52,99,55,79,67,45"/>
+<area shape="rect" id="Node000003" href="$ra8__gfx__font_8h.html" title="Bitmap font descriptor + bundled font handles for ra8_gfx." alt="" coords="69,93,185,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="93,44,115,80,110,83,88,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="121,121,96,157,92,154,117,118"/>
+</map>

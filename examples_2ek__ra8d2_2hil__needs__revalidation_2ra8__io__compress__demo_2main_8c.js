@@ -1,0 +1,35 @@
+var examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c =
+[
+    [ "demo_const_t", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a611b2af7c27664f49f92755b70bbe8c2", [
+      [ "k_demo_uart_chan", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a611b2af7c27664f49f92755b70bbe8c2a9a88937b6f7c97b2cc858abd47039f9d", null ],
+      [ "k_demo_uart_baud", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a611b2af7c27664f49f92755b70bbe8c2a7eca744efe295ccc7af36659fed8960d", null ],
+      [ "k_demo_disk_blocks", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a611b2af7c27664f49f92755b70bbe8c2a214cab0b8c540ecaebd9ab09f7eea23e", null ],
+      [ "k_demo_payload", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a611b2af7c27664f49f92755b70bbe8c2a130a7d6ef919940bc29539594680d18d", null ],
+      [ "k_demo_blob_cap", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a611b2af7c27664f49f92755b70bbe8c2ae120ff7e79954d8d8ada14389de1648c", null ],
+      [ "k_demo_pin_shift", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a611b2af7c27664f49f92755b70bbe8c2aa74df097afcd234d243217c577055cc9", null ],
+      [ "k_demo_seed_mul", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a611b2af7c27664f49f92755b70bbe8c2ab3c59e1067e9e13eb8b9278e3e13f805", null ],
+      [ "k_demo_pattern_mod", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a611b2af7c27664f49f92755b70bbe8c2ab213869001f7847f704b3e5b7de6b25d", null ]
+    ] ],
+    [ "demo_mount", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a6874ee7b50d4c06395d25db3c9158609", null ],
+    [ "demo_print", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a42996270121f8ee65e014fa6cf0cad1e", null ],
+    [ "demo_roundtrip", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a713326da29185900987e199fef6d57b0", null ],
+    [ "demo_run", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#ad50829dba093e4fdd60dc425d4de52b9", null ],
+    [ "demo_setup_or_halt", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#acc99b240e11dee31476a812e937ccd67", null ],
+    [ "main", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a840291bc02cba5474a4cb46a9b9566fe", null ],
+    [ "k_demo_rxd", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a62dbd485a5c9acbc61e106f146993f1a", null ],
+    [ "k_demo_txd", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a2a444329944047c9db125c2124ceb6a8", null ],
+    [ "s_bd_dr", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#ac248fea810b20283577d18d842e1f29c", null ],
+    [ "s_bd_ram", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a7318664cb699129f21e596a9a952e8ca", null ],
+    [ "s_be_dr", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a9a0f72b0cdc79c9c3359d37559a7fe73", null ],
+    [ "s_be_ram", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#acf325963347a19a1a0612161fbd82609", null ],
+    [ "s_blob", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#ace97eb7cacbe98b51a332d8e4dd06a6c", null ],
+    [ "s_bstate_dr", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a70266224a5c28cb63b546fa7e8f56c36", null ],
+    [ "s_bstate_ram", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#aaa6581ad1eb4f2a94427141af210f012", null ],
+    [ "s_disk", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a5a73021fa3ae045b01216f8dc9808f23", null ],
+    [ "s_payload", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a61ad401ee525408be2ef59e507471ef0", null ],
+    [ "s_restored", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#afe39d0d52642aec0ac4e3d7513980d44", null ],
+    [ "s_scratch", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a9d57612b468e8f32e075adc4aadfb9a6", null ],
+    [ "s_tag", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#aa7129027772dcdce950994a2fabfc92a", null ],
+    [ "s_uart", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a9315344ec1415164260a5ca82004a208", null ],
+    [ "s_ust", "examples_2ek__ra8d2_2hil__needs__revalidation_2ra8__io__compress__demo_2main_8c.html#a6a13ecc530c6c54fbb974f7e69d2318d", null ]
+];

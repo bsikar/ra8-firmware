@@ -1,0 +1,11 @@
+<map id="examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/trustzone_init.c" name="examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/trustzone_init.c">
+<area shape="rect" id="Node000001" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#172)." alt="" coords="79,5,252,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2secure__boot__ns__hil_2trustzone__init_8h.html" title="Secure TrustZone bring&#45;up contract for the BLXNS RoT proof (#172)." alt="" coords="5,108,128,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="137,62,92,101,89,97,133,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="130,181,201,207"/>
+<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="168,60,168,168,163,168,163,60"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="203,108,282,133"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="191,58,225,96,221,99,187,62"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="84,131,140,171,137,175,81,136"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="232,135,190,174,186,170,228,131"/>
+</map>

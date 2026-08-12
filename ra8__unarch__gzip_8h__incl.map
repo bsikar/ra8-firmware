@@ -1,0 +1,18 @@
+<map id="libs/ra8_unarch/inc/ra8_unarch_gzip.h" name="libs/ra8_unarch/inc/ra8_unarch_gzip.h">
+<area shape="rect" id="Node000001" title="Clean&#45;room gzip member decoder (RFC 1952) over the miniz DEFLATE core." alt="" coords="181,5,325,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="241,167,315,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="259,45,276,153,271,153,253,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="229,240,300,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="326,32,354,40,383,52,409,69,430,92,439,115,437,137,425,159,407,178,358,212,308,237,306,232,356,207,403,174,421,155,432,136,434,116,425,95,405,73,380,57,353,45,324,37"/>
+<area shape="rect" id="Node000004" href="$ra8__decomp__limits_8h.html" title="Unified decompression&#45;limits policy: one bound set for every decoder." alt="" coords="5,93,164,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="214,48,123,90,121,85,211,43"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="137,167,216,192"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="245,47,191,155,186,153,241,45"/>
+<area shape="rect" id="Node000006" href="$ra8__unarch__io_8h.html" title="Shared seek+read seam and flat&#45;memory backing for the unarchivers." alt="" coords="290,93,415,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="279,43,328,82,325,87,275,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="90,118,103,153,114,173,128,190,148,206,170,219,217,237,215,242,168,224,145,210,124,194,109,176,98,155,85,120"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="101,117,153,156,149,160,98,121"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="192,190,241,229,238,233,189,194"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="343,121,302,159,298,155,339,117"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="354,120,346,154,330,193,313,215,293,233,290,229,309,212,325,191,341,152,349,118"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/inc/ra8_tsn.h" name="libs/ra8_hal/inc/ra8_tsn.h">
+<area shape="rect" id="Node000001" title="On&#45;chip Temperature Sensor (TSN) driver." alt="" coords="111,5,257,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2adc__diag__tsn__demo_2main_8c.html" title="ADC_B self&#45;diagnosis (modes 1/2/3) + on&#45;die temperature demo." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,57,120,95,116,91,154,53"/>
+<area shape="rect" id="Node000003" href="$ra8__tsn_8c.html" title="On&#45;chip Temperature Sensor (TSN) driver implementation." alt="" coords="203,101,349,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="214,53,259,99,256,102,210,57"/>
+</map>

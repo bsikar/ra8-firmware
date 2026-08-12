@@ -1,0 +1,26 @@
+<map id="libs/ra8_hal/inc/ra8_flash_fsp.h" name="libs/ra8_hal/inc/ra8_flash_fsp.h">
+<area shape="rect" id="Node000001" title="Code MRAM driver – FSP r_mram parity surface." alt="" coords="759,5,904,45"/>
+<area shape="rect" id="Node000002" href="$ra8__flash_8h.html" title="Code MRAM + Extra MRAM + Option&#45;Setting driver – DANGEROUS, brick&#45;capable." alt="" coords="759,93,904,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="834,59,834,93,829,93,829,59"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2ota__ab__orchestration_2main_8c.html" title="A/B OTA orchestration demo: stage &#45;&gt; verify &#45;&gt; commit / rollback over MRAM." alt="" coords="5,181,228,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="745,125,517,147,241,184,229,186,228,181,240,179,516,142,744,119"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2ra8__ftl__demo_2main_8c.html" title="Wear&#45;levelled block I/O + power&#45;cycle survival over the FTL (#258)." alt="" coords="253,181,426,236"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="745,130,601,153,439,184,427,187,426,181,437,179,600,148,745,124"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2ra8__io__mram__demo_2main_8c.html" title="ra8_io fabric over on&#45;chip extra&#45;MRAM (data flash) backend (#155/#156)." alt="" coords="450,181,623,236"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="759,140,620,184,619,179,758,135"/>
+<area shape="rect" id="Node000006" href="$ra8__dfu__program_8c.html" title="MRAM slot program / verify for the USB&#45;DFU bootloader core." alt="" coords="647,189,794,229"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="800,144,745,191,741,187,797,140"/>
+<area shape="rect" id="Node000007" href="$ra8__flash_8c.html" title="Code&#45;MRAM + Extra&#45;MRAM + Option&#45;Setting driver implementation – DANGEROUS." alt="" coords="721,284,867,324"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="828,147,800,284,795,283,822,146"/>
+<area shape="rect" id="Node000008" href="$ra8__flash__config_8c.html" title="MRAM configuration&#45;set, ARC counters + extra&#45;MRAM programming – DANGEROUS." alt="" coords="891,284,1036,324"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="852,144,911,234,949,282,945,286,907,238,847,147"/>
+<area shape="rect" id="Node000009" href="$ra8__flash__internal_8h.html" title="Test&#45;access surface for ra8_flash internal helpers (MC/DC)." alt="" coords="920,189,1065,229"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="877,138,961,186,959,191,874,142"/>
+<area shape="rect" id="Node000010" href="$ra8__flash__irq_8c.html" title="MRAM IRQ enables + dispatcher and FSP r_mram parity surface – DANGEROUS." alt="" coords="1060,284,1205,324"/>
+<area shape="poly" id="edge12_Node000002_Node000010" title=" " alt="" coords="918,117,959,124,1002,136,1043,154,1080,179,1101,203,1116,231,1132,283,1127,284,1111,234,1096,206,1076,183,1040,159,1000,142,958,130,917,122"/>
+<area shape="rect" id="Node000011" href="$ra8__io__blockdev__mram_8c.html" title="MRAM block&#45;device backend – a hard&#45;fenced data&#45;MRAM window as blocks." alt="" coords="1141,189,1305,229"/>
+<area shape="poly" id="edge13_Node000002_Node000011" title=" " alt="" coords="918,131,1123,179,1152,186,1151,191,1121,184,917,136"/>
+<area shape="poly" id="edge9_Node000009_Node000007" title=" " alt="" coords="941,237,835,286,833,282,939,232"/>
+<area shape="poly" id="edge10_Node000009_Node000008" title=" " alt="" coords="985,243,972,285,967,283,980,241"/>
+<area shape="poly" id="edge11_Node000009_Node000010" title=" " alt="" coords="1034,234,1106,282,1103,286,1031,239"/>
+</map>

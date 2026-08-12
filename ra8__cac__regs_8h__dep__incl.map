@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_cac_regs.h" name="libs/ra8_hal/inc/ra8_cac_regs.h">
+<area shape="rect" id="Node000001" title="Clock Accuracy Check (CAC) register layout for the Renesas RA8D2." alt="" coords="231,5,376,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2cac__accuracy__demo_2main_8c.html" title="Clock Frequency Accuracy Measurement (CAC) demo for the EK&#45;RA8D2." alt="" coords="5,93,207,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="252,54,163,96,160,91,250,49"/>
+<area shape="rect" id="Node000003" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="231,101,376,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="306,59,306,101,301,101,301,59"/>
+<area shape="rect" id="Node000004" href="$ra8__cac_8c.html" title="Clock Frequency Accuracy Measurement Circuit driver." alt="" coords="400,101,545,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="351,50,440,98,437,103,348,54"/>
+</map>

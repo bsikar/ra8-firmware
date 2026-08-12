@@ -1,0 +1,23 @@
+var ra8_docsub_SOUP =
+[
+    [ "SOUP Justification: Espressif esp-hosted-mcu (host driver)", "md_docs_2SOUP_2esp-hosted-host.html", null ],
+    [ "SOUP Justification: Espressif esp-hosted-mcu (co-processor firmware)", "md_docs_2SOUP_2esp-hosted.html", null ],
+    [ "SOUP Justification: FlatBuffers", "md_docs_2SOUP_2flatbuffers.html", null ],
+    [ "SOUP Justification: gemmlowp (fixed-point headers)", "md_docs_2SOUP_2gemmlowp.html", null ],
+    [ "SOUP Justification: Eclipse LevelX", "md_docs_2SOUP_2levelx.html", null ],
+    [ "SOUP Justification: libwebp (WebP decoder)", "md_docs_2SOUP_2libwebp.html", null ],
+    [ "SOUP Justification: litehtml", "md_docs_2SOUP_2litehtml.html", null ],
+    [ "SOUP Justification: Mbed TLS", "md_docs_2SOUP_2mbedtls.html", null ],
+    [ "SOUP Justification: miniz", "md_docs_2SOUP_2miniz.html", null ],
+    [ "SOUP Justification: Eclipse NetX Duo", "md_docs_2SOUP_2netxduo.html", null ],
+    [ "SOUP Justification: Apache NimBLE", "md_docs_2SOUP_2nimble.html", null ],
+    [ "SOUP Justification: ruy (profiler instrumentation stub)", "md_docs_2SOUP_2ruy.html", null ],
+    [ "SOUP Justification: stb (image / truetype)", "md_docs_2SOUP_2stb.html", null ],
+    [ "SOUP Justification: TF-PSA-Crypto", "md_docs_2SOUP_2tf-psa-crypto.html", null ],
+    [ "SOUP Justification: TensorFlow Lite for Microcontrollers", "md_docs_2SOUP_2tflite-micro.html", null ],
+    [ "SOUP Justification: Eclipse ThreadX", "md_docs_2SOUP_2threadx.html", null ],
+    [ "SOUP Justification: TinyXML-2", "md_docs_2SOUP_2tinyxml2.html", null ],
+    [ "SOUP Justification: Eclipse USBX", "md_docs_2SOUP_2usbx.html", null ],
+    [ "SOUP Justification: Arm Ethos-U Vela (host build tool)", "md_docs_2SOUP_2vela.html", null ],
+    [ "SOUP Justification: XZ Embedded (decode-only)", "md_docs_2SOUP_2xz__embedded.html", null ]
+];

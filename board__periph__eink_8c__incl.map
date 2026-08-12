@@ -1,0 +1,15 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_eink.c" name="tools/ra8_emulator/src/periph/board_periph_eink.c">
+<area shape="rect" id="Node000001" title="IT8951 e&#45;paper SPI&#45;device model for ra8_emulator." alt="" coords="143,5,321,60"/>
+<area shape="rect" id="Node000002" href="$board__periph__eink_8h.html" title="IT8951 e&#45;paper SPI&#45;device model for ra8_emulator (attached to SPI_B)." alt="" coords="5,108,160,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="188,62,116,103,113,99,185,58"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="162,181,233,207"/>
+<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="229,61,205,168,200,167,224,60"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="235,108,301,133"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="245,59,260,94,255,96,241,61"/>
+<area shape="rect" id="Node000005" href="$board__periph_8h.html" title="Register&#45;accurate peripheral&#45;model framework for the board emulator." alt="" coords="326,108,445,133"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="280,58,354,99,352,104,278,62"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="102,131,168,172,166,176,100,136"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="356,136,242,179,240,174,354,131"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="318,181,453,207"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="388,134,388,168,383,168,383,134"/>
+</map>

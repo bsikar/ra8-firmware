@@ -1,0 +1,26 @@
+var group__grp__hal__memory =
+[
+    [ "ra8_dma.h", "ra8__dma_8h.html", null ],
+    [ "ra8_dmac.h", "ra8__dmac_8h.html", null ],
+    [ "ra8_dmac_regs.h", "ra8__dmac__regs_8h.html", null ],
+    [ "ra8_dtc.h", "ra8__dtc_8h.html", null ],
+    [ "ra8_dtc_regs.h", "ra8__dtc__regs_8h.html", null ],
+    [ "ra8_flash.h", "ra8__flash_8h.html", null ],
+    [ "ra8_flash_core.h", "ra8__flash__core_8h.html", null ],
+    [ "ra8_flash_fsp.h", "ra8__flash__fsp_8h.html", null ],
+    [ "ra8_flash_regs.h", "ra8__flash__regs_8h.html", null ],
+    [ "ra8_flash_types.h", "ra8__flash__types_8h.html", null ],
+    [ "ra8_ospi_regs.h", "ra8__ospi__regs_8h.html", null ],
+    [ "ra8_sdcard.h", "ra8__sdcard_8h.html", null ],
+    [ "ra8_sdhi.h", "ra8__sdhi_8h.html", null ],
+    [ "ra8_sdhi_regs.h", "ra8__sdhi__regs_8h.html", null ],
+    [ "ra8_sdramc.h", "ra8__sdramc_8h.html", null ],
+    [ "ra8_sdramc_regs.h", "ra8__sdramc__regs_8h.html", null ],
+    [ "ra8_sram.h", "ra8__sram_8h.html", null ],
+    [ "ra8_sram_regs.h", "ra8__sram__regs_8h.html", null ],
+    [ "ra8_xspi.h", "ra8__xspi_8h.html", null ],
+    [ "ra8_dmac_internal.h", "ra8__dmac__internal_8h.html", null ],
+    [ "ra8_flash_internal.h", "ra8__flash__internal_8h.html", null ],
+    [ "ra8_sram_internal.h", "ra8__sram__internal_8h.html", null ],
+    [ "ra8_xspi_internal.h", "ra8__xspi__internal_8h.html", null ]
+];

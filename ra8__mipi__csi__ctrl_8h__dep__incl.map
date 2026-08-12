@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_mipi_csi_ctrl.h" name="libs/ra8_hal/inc/ra8_mipi_csi_ctrl.h">
+<area shape="rect" id="Node000001" title="MIPI CSI&#45;2 receiver HAL driver – control, status, and IRQ&#45;enable API." alt="" coords="89,5,235,45"/>
+<area shape="rect" id="Node000002" href="$ra8__mipi__csi_8h.html" title="MIPI CSI&#45;2 receiver HAL driver – public API." alt="" coords="89,93,235,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="165,59,165,93,159,93,159,59"/>
+<area shape="rect" id="Node000003" href="$ra8__mipi__csi_8c.html" title="MIPI CSI&#45;2 receiver HAL driver implementation." alt="" coords="5,181,151,221"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="136,145,98,183,95,179,132,141"/>
+<area shape="rect" id="Node000004" href="$ra8__mipi__csi__irq_8c.html" title="MIPI CSI&#45;2 receiver HAL driver – interrupt path and per&#45;VC framing." alt="" coords="175,181,320,221"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="192,141,230,179,227,183,189,145"/>
+</map>

@@ -1,0 +1,56 @@
+var ra8__cnecc_8c =
+[
+    [ "ra8_cnecc_compute_align_t", "ra8__cnecc_8c.html#a7f0ea4955c62e27a0bcc58af25abd0e7", [
+      [ "k_ra8_cnecc_compute_align", "ra8__cnecc_8c.html#a7f0ea4955c62e27a0bcc58af25abd0e7add6c2a957a6a7fd65520a1388abf290e", null ],
+      [ "k_ra8_cnecc_compute_byte_bits", "ra8__cnecc_8c.html#a7f0ea4955c62e27a0bcc58af25abd0e7a85f98e4c0430f697418ca87abd887005", null ],
+      [ "k_ra8_cnecc_compute_byte_mask", "ra8__cnecc_8c.html#a7f0ea4955c62e27a0bcc58af25abd0e7a22521af59e76a4c9001ebf58c8c57d6e", null ]
+    ] ],
+    [ "ra8_cnecc_compute_const_t", "ra8__cnecc_8c.html#a84f185dac40249e7903b92349cac28b9", [
+      [ "k_ra8_cnecc_crc_seed", "ra8__cnecc_8c.html#a84f185dac40249e7903b92349cac28b9a618b19e255341f4259b298115cab2e74", null ],
+      [ "k_ra8_cnecc_crc_xorout", "ra8__cnecc_8c.html#a84f185dac40249e7903b92349cac28b9af857ed48c21281cdf30aa4adf06900dd", null ],
+      [ "k_ra8_cnecc_crc_poly", "ra8__cnecc_8c.html#a84f185dac40249e7903b92349cac28b9a17545a010deb460277c45f4065866c70", null ]
+    ] ],
+    [ "ra8_cnecc_isr_const_t", "ra8__cnecc_8c.html#a8c9d62fa11bbb42db341e5005358c598", [
+      [ "k_ra8_cnecc_isr_ctx_inst_mask", "ra8__cnecc_8c.html#a8c9d62fa11bbb42db341e5005358c598abdab161f1d3eb9c2c5cd984138a26cd4", null ]
+    ] ],
+    [ "internal_apply_instance", "ra8__cnecc_8c.html#aa128c0b20d0f18e9b505111de421c839", null ],
+    [ "internal_crc32", "ra8__cnecc_8c.html#aef900df4cdc931061c8017ebfc62fb90", null ],
+    [ "internal_ctl_rmw", "ra8__cnecc_8c.html#ac4bc5bc6d26424bec3838c9f053575ca", null ],
+    [ "ra8_cnecc_attach_handler", "ra8__cnecc_8c.html#a01ce945d9368ba22b08914bc65bffdae", null ],
+    [ "ra8_cnecc_attach_isr", "ra8__cnecc_8c.html#ac99e4a2fdacb5c220d250ff059cf54fa", null ],
+    [ "ra8_cnecc_clear_status", "ra8__cnecc_8c.html#a7789aa7a9f8abf0d8844b8c93f4ddad6", null ],
+    [ "ra8_cnecc_compute", "ra8__cnecc_8c.html#ae8b52165727c8451301406f85db74460", null ],
+    [ "ra8_cnecc_deinit", "ra8__cnecc_8c.html#ac98c7969b0d22ca355656e5305b6a04f", null ],
+    [ "ra8_cnecc_detach_isr", "ra8__cnecc_8c.html#a32c5839f28ee0349d8cb20301c4cefac", null ],
+    [ "ra8_cnecc_disable_instance", "ra8__cnecc_8c.html#a0d6d433eb0395c7b396c71bb6f702e51", null ],
+    [ "ra8_cnecc_dispatch", "ra8__cnecc_8c.html#a8611d2d1e597c7a17d45d8cb39b46d75", null ],
+    [ "ra8_cnecc_dispatch_overflow", "ra8__cnecc_8c.html#a10166435846eac95f1485b0491edef4b", null ],
+    [ "ra8_cnecc_enable_instance", "ra8__cnecc_8c.html#a3ec049067f355414c6a27d5b0935cec6", null ],
+    [ "ra8_cnecc_enter_standby", "ra8__cnecc_8c.html#a12bacae2c35718afb6aa7f78e8642d47", null ],
+    [ "ra8_cnecc_exit_standby", "ra8__cnecc_8c.html#adb9aaa775520a6b8e2295e80efcb10f5", null ],
+    [ "ra8_cnecc_get_counters", "ra8__cnecc_8c.html#a36d154d39380fd84ac39e450b56d97b3", null ],
+    [ "ra8_cnecc_get_status", "ra8__cnecc_8c.html#ae785dcf1b0732439dbaf13bd05b12570", null ],
+    [ "ra8_cnecc_init", "ra8__cnecc_8c.html#a4a70b025f085c618302ad1e97de9e6fd", null ],
+    [ "ra8_cnecc_inject_fault", "ra8__cnecc_8c.html#a3850d68aee24a88cd9e3469d058561c5", null ],
+    [ "ra8_cnecc_isr_handler", "ra8__cnecc_8c.html#ab37e8f9f57901ef89b37277ea762ad7b", null ],
+    [ "ra8_cnecc_open", "ra8__cnecc_8c.html#a1e74325629fdfee4905fed6c83f8b297", null ],
+    [ "ra8_cnecc_reset_counters", "ra8__cnecc_8c.html#a8d9dbf9abbf060210994b0c250447c7b", null ],
+    [ "ra8_cnecc_set_correction_permission", "ra8__cnecc_8c.html#a68927791f3a18a75380ce29d1b2047a7", null ],
+    [ "ra8_cnecc_set_counter_mirror", "ra8__cnecc_8c.html#a0c5e20caa0a2e722bcf459d499b3c5a4", null ],
+    [ "ra8_cnecc_set_irq_enables", "ra8__cnecc_8c.html#a7f0435506e844a217e2b2097d7bb93b6", null ],
+    [ "ra8_cnecc_test_mode_active", "ra8__cnecc_8c.html#a9fd42805276426f91441376b393ad3e5", null ],
+    [ "ra8_cnecc_test_mode_disable", "ra8__cnecc_8c.html#a40df009f9df3e3b38acbb0dd4f9b0695", null ],
+    [ "ra8_cnecc_verify", "ra8__cnecc_8c.html#ac1f3d0dbf211dcb61075a2fa93ce9fd2", null ],
+    [ "s_cnecc_bbr_mirror", "ra8__cnecc_8c.html#abe16f9daf2df756e0ab83a0c0521df9f", null ],
+    [ "s_cnecc_cached_cfg", "ra8__cnecc_8c.html#a994c1b695b749704f77209d8fef1463f", null ],
+    [ "s_cnecc_ctx", "ra8__cnecc_8c.html#adc2316640b34249d820616b3e2ca3fd7", null ],
+    [ "s_cnecc_event_table", "ra8__cnecc_8c.html#a6eb5143b7571e3401ed3f28a9bd19dd4", null ],
+    [ "s_cnecc_fn", "ra8__cnecc_8c.html#a1d7d1f9043d6f595866cb06f36ca180b", null ],
+    [ "s_cnecc_initialized", "ra8__cnecc_8c.html#ab3667a4b5267c2caa9fa2764e0cb1733", null ],
+    [ "s_cnecc_isr_attached", "ra8__cnecc_8c.html#a35f0a7072af588afced986fdf7fc2a65", null ],
+    [ "s_cnecc_mstp_table", "ra8__cnecc_8c.html#a08afb420a2ff7756b0b8ae42e266a717", null ],
+    [ "s_cnecc_one_bit_count", "ra8__cnecc_8c.html#a6887b888f21812c62af85d35664296f5", null ],
+    [ "s_cnecc_overflow_count", "ra8__cnecc_8c.html#a5be86d966901fc975fd03776bff5f290", null ],
+    [ "s_cnecc_two_bit_count", "ra8__cnecc_8c.html#a8fa9c994239c2d2765947e6a5dad6c42", null ],
+    [ "s_tag", "ra8__cnecc_8c.html#af8861f6a1fb30510e283b1b7806b64e7", null ]
+];

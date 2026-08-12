@@ -1,0 +1,8 @@
+<map id="examples/ek_ra8d2/hw_pending/camera_capture/cam_ceu.h" name="examples/ek_ra8d2/hw_pending/camera_capture/cam_ceu.h">
+<area shape="rect" id="Node000001" title="CEU parallel (DVP) capture: pin routing, open, arm/poll, frame view." alt="" coords="5,5,196,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="65,181,136,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="96,61,90,95,90,133,96,168,91,169,85,134,85,95,91,60"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="100,108,179,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="115,59,131,94,126,96,110,61"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="135,135,116,171,111,168,131,132"/>
+</map>

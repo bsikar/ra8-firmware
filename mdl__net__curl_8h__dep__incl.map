@@ -1,0 +1,9 @@
+<map id="tools/media_dl/inc/mdl_net_curl.h" name="tools/media_dl/inc/mdl_net_curl.h">
+<area shape="rect" id="Node000001" title="Factory for the concrete libcurl&#45;backed mdl_net_iface_t backend." alt="" coords="171,5,312,45"/>
+<area shape="rect" id="Node000002" href="$tools_2media__dl_2src_2main_8c.html" title="media_dl – host CLI for the e&#45;reader media downloader." alt="" coords="5,93,147,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="194,54,113,96,111,91,192,49"/>
+<area shape="rect" id="Node000003" href="$mdl__net__curl_8c.html" title="libcurl host backend registered through the mdl_net vtable seam." alt="" coords="171,93,312,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="244,59,244,93,239,93,239,59"/>
+<area shape="rect" id="Node000004" href="$test__media__dl__net_8c.html" title="Host unit tests for the mdl_net vtable seam and the politeness clock." alt="" coords="336,93,493,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="293,49,378,91,376,96,290,54"/>
+</map>

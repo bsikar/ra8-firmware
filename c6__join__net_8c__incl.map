@@ -1,0 +1,33 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/c6_join_net.c" name="examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/src/c6_join_net.c">
+<area shape="rect" id="Node000001" title="NetX Duo IP bring&#45;up over the C6 link: DHCP lease + ICMP reachability." alt="" coords="245,5,419,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="167,401,238,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="246,42,168,56,128,67,90,83,57,102,31,127,14,157,8,193,8,268,12,294,23,316,39,336,59,353,107,380,155,398,153,403,105,385,56,357,35,340,18,319,7,295,3,269,3,192,9,155,27,124,54,98,88,78,126,62,166,51,245,37"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="297,108,367,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="335,60,335,94,329,94,329,60"/>
+<area shape="rect" id="Node000004" href="$c6__join_8h.html" title="Shared contract for the C6 Wi&#45;Fi join + DHCP + reachability app." alt="" coords="141,108,221,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="287,62,215,103,212,99,285,58"/>
+<area shape="rect" id="Node000006" href="$ra8__c6link_8h.html" title="The single integration boundary between this firmware and the ESP32&#45;C6." alt="" coords="293,181,395,207"/>
+<area shape="poly" id="edge17_Node000001_Node000006" title=" " alt="" coords="309,62,289,96,285,114,288,132,301,153,318,171,315,175,297,157,283,134,279,114,284,94,304,59"/>
+<area shape="rect" id="Node000008" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="163,328,242,353"/>
+<area shape="poly" id="edge18_Node000001_Node000008" title=" " alt="" coords="246,45,214,54,182,67,154,85,132,110,119,135,116,163,119,191,128,220,156,274,186,315,181,318,151,277,123,222,114,192,110,163,114,134,127,106,151,81,180,62,212,49,244,40"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="392,108,469,133"/>
+<area shape="poly" id="edge14_Node000001_Node000009" title=" " alt="" coords="364,58,409,97,405,101,360,62"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="494,108,653,133"/>
+<area shape="poly" id="edge15_Node000001_Node000010" title=" " alt="" coords="407,58,529,101,527,106,405,63"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="677,108,816,133"/>
+<area shape="poly" id="edge16_Node000001_Node000011" title=" " alt="" coords="419,49,679,103,678,108,418,55"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="840,108,915,133"/>
+<area shape="poly" id="edge19_Node000001_Node000012" title=" " alt="" coords="419,42,603,68,827,105,826,111,602,73,418,48"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="169,135,150,156,135,182,133,194,135,206,135,282,140,314,153,352,165,372,181,390,177,393,161,376,148,354,134,315,130,282,129,207,128,194,129,180,146,153,165,132"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="144,181,219,207"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="184,134,184,168,179,168,179,134"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="209,131,306,173,304,178,206,136"/>
+<area shape="poly" id="edge13_Node000004_Node000008" title=" " alt="" coords="197,132,217,153,233,180,240,217,236,254,228,289,217,317,212,315,222,287,231,253,234,217,228,182,213,156,193,135"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="384,204,415,217,443,234,460,255,462,268,457,281,438,307,414,330,360,366,303,390,252,405,251,400,301,385,358,361,411,326,434,304,452,279,457,267,455,257,440,238,413,222,382,209"/>
+<area shape="rect" id="Node000007" href="$ra8__c6link__transport_8h.html" title="The one seam between ra8_c6link and the wire that reaches the C6." alt="" coords="275,255,442,280"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="349,206,356,241,351,242,344,208"/>
+<area shape="poly" id="edge12_Node000006_Node000008" title=" " alt="" coords="326,209,297,230,266,257,240,287,219,317,215,314,236,284,262,253,293,226,323,205"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="348,282,227,394,223,390,344,278"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="335,282,242,325,240,320,333,278"/>
+<area shape="poly" id="edge11_Node000008_Node000002" title=" " alt="" coords="205,354,205,388,200,388,200,354"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="libs/ra8_devcfg/inc/ra8_devcfg.h" name="libs/ra8_devcfg/inc/ra8_devcfg.h">
+<area shape="rect" id="Node000001" title="Per&#45;device (per&#45;unit) configuration record – schema, storage seam, two&#45;copy resolution." alt="" coords="97,5,241,45"/>
+<area shape="rect" id="Node000002" href="$ra8__devcfg_8c.html" title="Per&#45;device configuration record – codec, two&#45;copy resolver, commit." alt="" coords="5,101,149,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="143,57,98,102,94,99,139,53"/>
+<area shape="rect" id="Node000003" href="$ra8__devcfg__store__extra__mram_8c.html" title="Production ra8_devcfg_store_t binding over the extra&#45;MRAM window." alt="" coords="173,93,352,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="200,53,238,91,235,95,196,57"/>
+</map>

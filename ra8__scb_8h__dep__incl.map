@@ -1,0 +1,13 @@
+<map id="libs/ra8_core/inc/ra8_scb.h" name="libs/ra8_core/inc/ra8_scb.h">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 System Control Block: VTOR relocation + fault&#45;status decode." alt="" coords="394,5,547,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2scb__diag__demo_2main_8c.html" title="Cortex&#45;M85 SCB HAL demo: VTOR query + fault&#45;status dump over UART." alt="" coords="5,93,192,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="383,51,193,99,192,93,382,46"/>
+<area shape="rect" id="Node000003" href="$ra8__exception_8c.html" title="Cortex&#45;M85 CPU exception diagnostic implementation." alt="" coords="217,101,370,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="424,54,330,103,328,98,421,49"/>
+<area shape="rect" id="Node000004" href="$ra8__log_8c.html" title="Default log sink implementation." alt="" coords="394,101,547,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="473,59,473,101,468,101,468,59"/>
+<area shape="rect" id="Node000005" href="$ra8__scb_8c.html" title="Cortex&#45;M85 System Control Block driver implementation." alt="" coords="571,101,725,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="520,49,613,98,611,103,517,54"/>
+<area shape="rect" id="Node000006" href="$ra8__dfu__launch_8c.html" title="Copy&#45;to&#45;run launch: copy an image to the SRAM run base and branch to it." alt="" coords="749,101,896,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="562,45,738,91,763,98,762,103,737,96,560,51"/>
+</map>

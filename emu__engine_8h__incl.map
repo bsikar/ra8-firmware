@@ -1,0 +1,9 @@
+<map id="tools/ra8_emulator/inc/emu_engine.h" name="tools/ra8_emulator/inc/emu_engine.h">
+<area shape="rect" id="Node000001" title="Shared Unicorn engine access utilities for the board emulator." alt="" coords="95,5,240,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,76,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="138,48,72,88,69,84,135,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="100,93,235,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="170,46,170,79,165,79,165,46"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="259,93,385,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="206,43,288,85,286,89,203,48"/>
+</map>

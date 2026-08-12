@@ -1,0 +1,22 @@
+<map id="libs/ra8_nsc/src/ra8_nsc_ota.c" name="libs/ra8_nsc/src/ra8_nsc_ota.c">
+<area shape="rect" id="Node000001" title="NSC veneers: OTA bank&#45;commit + flash&#45;bank&#45;config write." alt="" coords="103,5,250,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="122,240,193,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="104,41,55,61,34,76,17,95,9,115,10,134,20,154,35,172,77,206,121,231,119,236,74,210,31,176,15,157,5,136,4,114,13,92,31,72,53,56,102,36"/>
+<area shape="rect" id="Node000003" href="$ota__commit_8h.html" title="Secure&#45;side OTA bank commit + flash&#45;bank&#45;config write." alt="" coords="27,93,139,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="155,48,109,86,106,82,152,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="118,167,197,192"/>
+<area shape="poly" id="edge6_Node000001_Node000004" title=" " alt="" coords="176,46,163,153,158,153,171,46"/>
+<area shape="rect" id="Node000005" href="$ra8__nsc_8h.html" title="Non&#45;Secure Callable veneer scaffold." alt="" coords="214,93,298,119"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="197,44,236,82,233,85,194,47"/>
+<area shape="rect" id="Node000006" href="$ra8__nsc__veneer_8h.html" title="Macros for declaring Non&#45;Secure Callable veneer functions." alt="" coords="273,167,408,192"/>
+<area shape="poly" id="edge13_Node000001_Node000006" title=" " alt="" coords="239,43,278,63,313,92,330,121,339,152,334,153,325,123,309,95,275,67,237,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="87,118,94,152,108,191,137,229,133,232,103,193,88,153,82,119"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="97,117,137,155,134,159,93,121"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="160,192,160,226,155,226,155,192"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="253,120,236,154,212,194,180,232,176,228,207,190,231,151,249,118"/>
+<area shape="poly" id="edge9_Node000005_Node000004" title=" " alt="" coords="242,121,186,161,183,156,239,117"/>
+<area shape="poly" id="edge10_Node000005_Node000006" title=" " alt="" coords="271,117,318,155,314,160,268,121"/>
+<area shape="poly" id="edge11_Node000006_Node000002" title=" " alt="" coords="312,195,201,237,199,232,310,190"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="278,240,403,265"/>
+<area shape="poly" id="edge12_Node000006_Node000007" title=" " alt="" coords="343,192,343,226,338,226,338,192"/>
+</map>

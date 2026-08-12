@@ -1,0 +1,14 @@
+<map id="tools/media_dl/inc/mdl_net_curl.h" name="tools/media_dl/inc/mdl_net_curl.h">
+<area shape="rect" id="Node000001" title="Factory for the concrete libcurl&#45;backed mdl_net_iface_t backend." alt="" coords="112,5,253,45"/>
+<area shape="rect" id="Node000002" href="$mdl__net_8h.html" title="Streaming HTTP(S) GET seam (a real function&#45;pointer vtable) for the host manga downloader (v0)." alt="" coords="74,93,161,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="169,47,138,84,134,81,165,44"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="185,93,311,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="201,44,232,81,228,84,196,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="107,121,67,159,63,155,104,117"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="121,240,191,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="123,118,152,226,147,227,118,120"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="155,167,234,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="132,117,174,155,170,159,128,121"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="191,194,171,229,166,227,186,191"/>
+</map>

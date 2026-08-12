@@ -1,0 +1,14 @@
+<map id="libs/ra8_rabook_compile/inc/ra8_rabook_compile.h" name="libs/ra8_rabook_compile/inc/ra8_rabook_compile.h">
+<area shape="rect" id="Node000001" title="Zero&#45;heap builder that emits a RABOOK1 blob (the #149 compiler back&#45;end)." alt="" coords="19,5,212,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,240,76,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="94,48,75,69,59,94,48,129,43,164,41,226,36,226,37,164,43,127,54,92,71,66,91,44"/>
+<area shape="rect" id="Node000003" href="$ra8__book_8h.html" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="68,93,163,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="118,46,118,79,113,79,113,46"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="177,167,256,192"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="137,44,178,92,209,153,205,155,173,95,133,48"/>
+<area shape="poly" id="edge4_Node000003_Node000002" title=" " alt="" coords="105,121,86,142,68,168,56,198,48,227,43,226,51,196,64,165,82,138,101,117"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="78,167,153,192"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="118,119,118,153,113,153,113,119"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="133,116,190,156,187,161,130,121"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="189,194,83,237,81,232,187,190"/>
+</map>

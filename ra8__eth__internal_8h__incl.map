@@ -1,0 +1,28 @@
+<map id="libs/ra8_hal/src/ra8_eth_internal.h" name="libs/ra8_hal/src/ra8_eth_internal.h">
+<area shape="rect" id="Node000001" title="Cross&#45;TU shared surface for the ra8_eth driver split." alt="" coords="45,5,191,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="101,313,172,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="66,48,35,67,11,95,8,106,11,118,28,196,42,227,65,264,85,286,108,304,105,308,82,290,61,267,37,229,23,197,6,119,3,106,6,92,31,63,63,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="413,313,538,339"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="189,43,262,69,342,110,382,136,419,166,451,200,478,239,486,270,484,300,479,299,481,270,473,241,447,203,415,170,379,140,340,114,259,74,187,48"/>
+<area shape="rect" id="Node000004" href="$ra8__eth_8h.html" title="Ethernet Switch Module (ESWM) + frame TX/RX driver." alt="" coords="21,93,103,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="107,47,80,84,76,80,102,44"/>
+<area shape="rect" id="Node000006" href="$ra8__rmac_8h.html" title="Per&#45;port Ethernet MAC (RMAC) driver – HUM Ch 33." alt="" coords="128,93,223,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="134,44,161,80,156,84,130,47"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="59,120,48,153,46,172,48,191,62,223,80,253,118,302,114,305,75,256,57,226,43,193,41,172,43,152,54,118"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="59,167,137,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="70,118,88,153,83,156,65,120"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="104,192,133,299,127,301,99,193"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="176,119,144,300,138,299,171,119"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="165,121,123,159,119,155,161,117"/>
+<area shape="rect" id="Node000007" href="$ra8__rmac__regs_8h.html" title="Ethernet MAC (RMAC) per&#45;port register layout for the RA8D2." alt="" coords="213,167,343,192"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="193,116,251,156,248,161,190,121"/>
+<area shape="poly" id="edge12_Node000007_Node000002" title=" " alt="" coords="268,194,159,305,156,302,264,191"/>
+<area shape="poly" id="edge13_Node000007_Node000003" title=" " alt="" coords="344,186,401,204,428,219,452,238,469,268,476,299,471,300,464,270,448,242,425,223,399,209,343,191"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="273,313,347,339"/>
+<area shape="poly" id="edge11_Node000007_Node000008" title=" " alt="" coords="283,192,298,265,306,300,301,301,293,266,278,193"/>
+<area shape="rect" id="Node000009" href="$ra8__ether__regs_8h.html" title="Ethernet controller base addresses for the Renesas RA8D2." alt="" coords="307,240,438,265"/>
+<area shape="poly" id="edge14_Node000007_Node000009" title=" " alt="" coords="295,190,348,229,345,234,292,194"/>
+<area shape="poly" id="edge16_Node000009_Node000002" title=" " alt="" coords="335,268,186,313,184,308,334,263"/>
+<area shape="poly" id="edge17_Node000009_Node000003" title=" " alt="" coords="391,263,449,303,446,307,388,268"/>
+<area shape="poly" id="edge15_Node000009_Node000008" title=" " alt="" coords="364,267,331,305,327,301,360,264"/>
+</map>

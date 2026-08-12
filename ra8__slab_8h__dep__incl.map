@@ -1,0 +1,7 @@
+<map id="libs/ra8_mem/inc/ra8_slab.h" name="libs/ra8_mem/inc/ra8_slab.h">
+<area shape="rect" id="Node000001" title="Fixed&#45;cell slab allocator – O(1), zero&#45;fragmentation, zero&#45;heap." alt="" coords="120,5,279,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2mem__subsystem_2main_8c.html" title="Drives each ra8_mem (#147) memory&#45;hierarchy layer in isolation (#263)." alt="" coords="5,93,196,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="171,57,130,95,127,91,168,53"/>
+<area shape="rect" id="Node000003" href="$ra8__slab_8c.html" title="Fixed&#45;cell slab allocator implementation (Layer 0, #147)." alt="" coords="220,101,379,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="231,53,281,99,277,103,228,57"/>
+</map>

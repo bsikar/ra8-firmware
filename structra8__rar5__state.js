@@ -1,0 +1,25 @@
+var structra8__rar5__state =
+[
+    [ "acc", "structra8__rar5__state.html#aef4d2655a2fe4d261bb4715c5128ee0c", null ],
+    [ "base", "structra8__rar5__state.html#a42d1e23318cc2cbc685372d86cac0810", null ],
+    [ "bd", "structra8__rar5__state.html#a4ba2f81d2fb0f6e23fb215ee5e661b64", null ],
+    [ "consumed", "structra8__rar5__state.html#a1a67a27f8b0beeacc1b906f7b702f18b", null ],
+    [ "dd", "structra8__rar5__state.html#ab1771e14704a6f45baf1f381f1290743", null ],
+    [ "delta", "structra8__rar5__state.html#a350cd586b6bd9b9ae0f497558c28a164", null ],
+    [ "fetched", "structra8__rar5__state.html#a9a7497cae7b2e55638269495c33b1556", null ],
+    [ "filter_count", "structra8__rar5__state.html#a8b7557f92d4958effc4ddd61f5f6e17f", null ],
+    [ "filters", "structra8__rar5__state.html#a6da56327d2fc186454eef8506a9387bd", null ],
+    [ "last_length", "structra8__rar5__state.html#ae6d278158c842d631f9cf83fd733aa91", null ],
+    [ "ld", "structra8__rar5__state.html#a0b3a2c0cad43526bbcaf4f7803876d77", null ],
+    [ "ldd", "structra8__rar5__state.html#ac58e915aaf730a2e1112040de3a92af1", null ],
+    [ "nbits", "structra8__rar5__state.html#abc6fcd9ff1724846baec49470d431a7b", null ],
+    [ "old_dist", "structra8__rar5__state.html#a5f7588f27379302106040c5796e31d95", null ],
+    [ "overrun", "structra8__rar5__state.html#a1fcfdbe4b067d7e74af6aa8a46bf096c", null ],
+    [ "packlen", "structra8__rar5__state.html#a5971645ea1aa6858919f3cc8cb1366fc", null ],
+    [ "rar", "structra8__rar5__state.html#aea6d8dc674916301895df78c10a62c8b", null ],
+    [ "rd", "structra8__rar5__state.html#aead3d0765146b69272dcf07bd61f8926", null ],
+    [ "refill", "structra8__rar5__state.html#a699199247d139641c14d86d3dafe8034", null ],
+    [ "refill_len", "structra8__rar5__state.html#af43cc9ea8d1fdee2b41dde8c1b36012f", null ],
+    [ "refill_pos", "structra8__rar5__state.html#aae2c9fcf873ab8881785646f88699321", null ],
+    [ "tables_ready", "structra8__rar5__state.html#a6e266cbbb290972b90d8c6345a0c7a18", null ]
+];

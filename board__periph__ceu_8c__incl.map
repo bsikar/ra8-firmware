@@ -1,0 +1,15 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_ceu.c" name="tools/ra8_emulator/src/periph/board_periph_ceu.c">
+<area shape="rect" id="Node000001" title="Capture Engine Unit (CEU) peripheral&#45;block model for ra8_emulator." alt="" coords="7,5,227,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="143,167,213,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="68,48,41,62,20,79,9,98,9,107,14,117,37,140,67,157,99,167,129,173,128,178,97,172,64,161,34,145,9,120,4,108,3,96,16,75,38,58,66,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="23,93,90,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="104,47,76,84,72,81,100,44"/>
+<area shape="rect" id="Node000004" href="$board__console_8h.html" title="Multi&#45;channel console log store backing the board view&#39;s tabbed console." alt="" coords="114,93,242,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="134,44,163,81,158,84,129,47"/>
+<area shape="rect" id="Node000005" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="267,93,428,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="173,43,302,86,300,91,171,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="181,119,181,153,175,153,175,119"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="321,121,219,164,217,159,319,116"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="280,167,415,192"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="350,119,350,153,345,153,345,119"/>
+</map>

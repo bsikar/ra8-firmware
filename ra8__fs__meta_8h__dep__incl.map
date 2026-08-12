@@ -1,0 +1,15 @@
+<map id="libs/ra8_fs/inc/ra8_fs_meta.h" name="libs/ra8_fs/inc/ra8_fs_meta.h">
+<area shape="rect" id="Node000001" title="Volume&#45;level metadata: free space, volume label, and per&#45;entry utime." alt="" coords="429,5,567,45"/>
+<area shape="rect" id="Node000002" href="$ra8__fs__fat__attr_8c.html" title="Set / clear a named entry&#39;s file attributes (ra8_fs_set_attr())." alt="" coords="5,93,143,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="416,45,156,96,143,99,142,93,155,91,415,39"/>
+<area shape="rect" id="Node000003" href="$ra8__fs__fat__exfat__label_8c.html" title="exFAT volume&#45;label read/write (the exFAT half of ra8_fs_{get,set}_label)." alt="" coords="167,93,325,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="431,52,302,96,300,91,429,47"/>
+<area shape="rect" id="Node000004" href="$ra8__fs__fat__label_8c.html" title="Runtime volume&#45;label read/set (ra8_fs_get_label() / ra8_fs_set_label())." alt="" coords="349,93,487,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="473,57,438,95,434,91,469,54"/>
+<area shape="rect" id="Node000005" href="$ra8__fs__fat__space_8c.html" title="Free / used / total space query (ra8_fs_free_space()) for FAT and exFAT." alt="" coords="511,93,648,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="527,54,563,91,559,95,524,57"/>
+<area shape="rect" id="Node000006" href="$ra8__fs__fat__truncate_8c.html" title="ra8_fs_truncate: shrink or grow an open file to an arbitrary length." alt="" coords="673,93,811,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="565,47,689,91,688,96,563,52"/>
+<area shape="rect" id="Node000007" href="$ra8__fs__fat__utime_8c.html" title="Set a named entry&#39;s create / modify / access timestamps (ra8_fs_utime())." alt="" coords="836,93,973,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="581,40,824,91,836,93,835,99,823,96,580,46"/>
+</map>

@@ -1,0 +1,38 @@
+<map id="libs/ra8_comic/src/ra8_rar5.c" name="libs/ra8_comic/src/ra8_rar5.c">
+<area shape="rect" id="Node000001" title="RAR 5.0 LZ decoder driver: token loop, data filters, public entry." alt="" coords="586,5,725,45"/>
+<area shape="rect" id="Node000002" href="$ra8__rar5_8h.html" title="Clean&#45;room RAR 5.0 (&quot;method 50&quot;) decompressor – LZ + Huffman + filters." alt="" coords="489,167,577,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="627,47,599,69,573,95,555,125,543,154,538,152,551,122,569,92,596,65,624,43"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="804,93,875,119"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="700,43,801,85,799,90,698,48"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="746,167,871,192"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="684,44,743,91,795,154,791,157,739,95,681,48"/>
+<area shape="rect" id="Node000009" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="213,240,313,265"/>
+<area shape="poly" id="edge12_Node000001_Node000009" title=" " alt="" coords="624,48,297,235,294,231,621,43"/>
+<area shape="rect" id="Node000012" href="$ra8__rar5__internal_8h.html" title="Cross&#45;TU seam between the RAR5 entropy front&#45;end and the LZ decoder." alt="" coords="583,93,728,119"/>
+<area shape="poly" id="edge19_Node000001_Node000012" title=" " alt="" coords="658,46,658,79,653,79,653,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="570,313,645,339"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="547,191,566,212,584,239,597,269,605,299,600,300,592,271,580,241,562,215,543,194"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="340,387,411,412"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="522,194,480,242,464,268,454,290,444,313,428,340,398,378,394,375,424,337,439,310,449,288,459,265,476,238,518,190"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="336,313,415,339"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="509,194,473,214,436,242,410,272,390,303,386,300,406,269,432,238,470,210,506,190"/>
+<area shape="rect" id="Node000006" href="$ra8__rar_8h.html" title="Clean&#45;room, read&#45;only RAR archive walker (RAR4 + RAR5 headers, STORE data)." alt="" coords="491,240,569,265"/>
+<area shape="poly" id="edge6_Node000002_Node000006" title=" " alt="" coords="535,192,534,227,528,226,530,192"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="378,339,378,373,373,373,373,339"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="544,263,586,302,583,306,541,267"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="526,267,505,302,473,341,444,364,413,383,410,378,441,360,469,337,501,299,522,264"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="506,268,414,310,412,305,504,263"/>
+<area shape="poly" id="edge13_Node000009_Node000004" title=" " alt="" coords="251,267,235,282,221,300,214,319,219,337,241,359,268,375,298,385,327,392,326,397,296,391,266,380,237,364,214,340,209,319,217,298,231,279,247,263"/>
+<area shape="poly" id="edge14_Node000009_Node000005" title=" " alt="" coords="283,263,347,303,344,308,280,268"/>
+<area shape="rect" id="Node000010" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="229,313,311,339"/>
+<area shape="poly" id="edge15_Node000009_Node000010" title=" " alt="" coords="267,265,270,300,265,300,262,266"/>
+<area shape="rect" id="Node000011" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="5,313,153,339"/>
+<area shape="poly" id="edge17_Node000009_Node000011" title=" " alt="" coords="235,268,123,311,121,306,233,263"/>
+<area shape="poly" id="edge16_Node000010_Node000004" title=" " alt="" coords="288,336,348,377,346,381,285,341"/>
+<area shape="poly" id="edge18_Node000011_Node000004" title=" " alt="" coords="128,336,327,384,326,389,126,341"/>
+<area shape="poly" id="edge24_Node000012_Node000002" title=" " alt="" coords="637,121,566,162,563,157,634,116"/>
+<area shape="poly" id="edge20_Node000012_Node000003" title=" " alt="" coords="655,120,615,300,610,299,650,118"/>
+<area shape="poly" id="edge21_Node000012_Node000004" title=" " alt="" coords="663,118,676,159,687,218,688,250,685,282,675,313,659,340,643,353,619,364,558,380,488,391,425,397,424,392,487,386,557,375,618,359,640,349,655,337,671,311,679,281,683,250,681,218,670,160,657,120"/>
+<area shape="poly" id="edge23_Node000012_Node000005" title=" " alt="" coords="599,121,539,140,478,169,439,200,410,241,395,271,384,301,379,299,390,269,405,239,435,196,475,164,537,135,597,116"/>
+<area shape="poly" id="edge22_Node000012_Node000008" title=" " alt="" coords="681,116,772,158,770,163,679,121"/>
+</map>

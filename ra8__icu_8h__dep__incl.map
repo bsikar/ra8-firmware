@@ -1,0 +1,19 @@
+<map id="libs/ra8_hal/inc/ra8_icu.h" name="libs/ra8_hal/inc/ra8_icu.h">
+<area shape="rect" id="Node000001" title="Interrupt Control Unit driver (IRQ pins, NMI)." alt="" coords="739,5,885,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2icu__extint__demo_2main_8c.html" title="ICU external&#45;interrupt&#45;on&#45;user&#45;button demo for EK&#45;RA8D2." alt="" coords="5,93,184,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="726,35,486,56,341,73,196,96,185,98,184,93,196,91,341,68,486,50,725,29"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2kint__demo_2main_8c.html" title="Key&#45;interrupt (KINT / IRQ pin) input demo for EK&#45;RA8D2." alt="" coords="209,93,391,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="726,41,576,65,405,96,392,99,391,93,403,91,575,59,725,36"/>
+<area shape="rect" id="Node000004" href="$ra8__board__ek__ra8d2_8c.html" title="Board&#45;support implementation for the EK&#45;RA8D2 v1." alt="" coords="416,101,608,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="739,52,573,103,572,98,737,47"/>
+<area shape="rect" id="Node000005" href="$ra8__board__ra8p1_8c.html" title="Board&#45;support implementation for the RA8P1 foundation board." alt="" coords="633,101,802,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="785,57,738,103,735,99,781,53"/>
+<area shape="rect" id="Node000006" href="$gpio_8c.html" title="High&#45;level GPIO driver on top of PORT + PFS." alt="" coords="827,108,989,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="843,53,898,106,894,110,839,57"/>
+<area shape="rect" id="Node000007" href="$ra8__icu_8c.html" title="Interrupt Control Unit driver implementation." alt="" coords="1014,101,1159,141"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="881,47,1032,98,1030,103,879,52"/>
+<area shape="rect" id="Node000008" href="$ra8__touch_8c.html" title="Multi&#45;touch input driver – GoodIX GT911 backend (implementation)." alt="" coords="1183,101,1329,141"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="899,37,1028,60,1173,91,1199,98,1198,103,1171,96,1027,65,898,42"/>
+<area shape="rect" id="Node000009" href="$ra8__wdt_8c.html" title="Software Watchdog Timer (WDT) driver implementation." alt="" coords="1353,101,1498,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="899,30,1102,51,1222,68,1342,91,1370,98,1369,103,1341,96,1222,74,1102,57,898,36"/>
+</map>

@@ -1,0 +1,11 @@
+<map id="libs/ra8_gfx/inc/ra8_gfx.h" name="libs/ra8_gfx/inc/ra8_gfx.h">
+<area shape="rect" id="Node000001" title="Software 2D graphics primitives layered on top of a caller&#45;ownedframebuffer (DRW / D/AVE 2D / GLCDC r..." alt="" coords="5,5,152,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="43,167,114,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="60,47,43,69,29,94,26,106,29,118,41,138,56,156,52,159,36,141,24,120,21,106,24,92,38,66,56,44"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="39,93,118,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="81,46,81,79,76,79,76,46"/>
+<area shape="rect" id="Node000004" href="$ra8__gfx__font_8h.html" title="Bitmap font descriptor + bundled font handles for ra8_gfx." alt="" coords="142,93,258,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="109,43,172,84,169,88,107,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="81,119,81,153,76,153,76,119"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="182,121,111,162,109,157,179,116"/>
+</map>

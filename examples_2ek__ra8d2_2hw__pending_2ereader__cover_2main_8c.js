@@ -1,0 +1,38 @@
+var examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c =
+[
+    [ "ec_consts_t", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416", [
+      [ "k_ec_uart_baud", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416a1a40466bfb601d0d7589698f4e5d6ed8", null ],
+      [ "k_ec_fb_w", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416a86beb29d143e2dba658f850c69cc89ee", null ],
+      [ "k_ec_fb_h", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416aafdd92828279653e73100dd41d37ef38", null ],
+      [ "k_ec_arena_bytes", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416af1297f00b8d7b536fd535ab43dc05e74", null ],
+      [ "k_ec_cover_cap", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416a6de0160dc22ae8cb990ae03f9607c829", null ],
+      [ "k_ec_col_bg", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416a26db3e590db790ea5bbf150370f27d09", null ],
+      [ "k_ec_fnv_offset", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416a75ab5bfa0e7956030aeb2bf95b155773", null ],
+      [ "k_ec_fnv_prime", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416a5dbb405943b81aea63373c2ecef555ad", null ],
+      [ "k_ec_hex_nibbles", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416a50fe260500c932bd8667bb470926fafa", null ],
+      [ "k_ec_nibble_bits", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416a158331aa9d6054ed53aaa1de3ef07e23", null ],
+      [ "k_ec_nibble_mask", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416a4db3ada39a7103b025c070e636b04321", null ],
+      [ "k_ec_dec_ten", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#afa6e9259a9ff6be1518cd8e13dd80416af6fa250d62a2f9f43740528af2ab5f5d", null ]
+    ] ],
+    [ "ec_framebuffer_hash", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a22891638857761ce60214b6c7baf30e4", null ],
+    [ "ec_panic_halt", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#acc481dfeadd0b49f154b98765d3a17e8", null ],
+    [ "ec_print", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a8aa0f101967209beefe0eb722913b470", null ],
+    [ "ec_print_hex", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a1f37ef8d47c3a7710a718dea038e0ba3", null ],
+    [ "ec_print_uint", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a0a0eaf0d86a57f7d1ca44d4b8aa6f0f8", null ],
+    [ "ec_render_cover_or_halt", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a4a019bfca064e10a5bf70376d177e52a", null ],
+    [ "ec_setup_or_halt", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a77d60bbd7d03f880fcd8576a4296d930", null ],
+    [ "main", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a52d2cba30e6946c95578be946ac12a65", null ],
+    [ "k_msg_boot", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#aba1d408a93fdcaa9ae549cc1f0e5464b", null ],
+    [ "k_msg_cov", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a27acae471f9cbfc135a1487d6c80714c", null ],
+    [ "k_msg_crc", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a74d816267e6e8a1bcf7db7bf6f352c9a", null ],
+    [ "k_msg_derr", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a21039100f28689215915f18858cbee29", null ],
+    [ "k_msg_fail", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#af8107ac7c7d62d60d3a4770dba66dc41", null ],
+    [ "k_msg_ok", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a500246e8bb7d57387d3b2aa97c71a615", null ],
+    [ "k_msg_open", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#abf044a567deaa92815e83ed8a5478fa8", null ],
+    [ "k_msg_pre", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a1bed449e69a86fe7b14d725d833ef27a", null ],
+    [ "k_msg_x", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#ab602ca8be17efbdba73da7abeee784bd", null ],
+    [ "s_book", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a5db1da24df88dc33dcc99bb1cf4f7945", null ],
+    [ "s_cover", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a86cb2cf85915af92600299ced0ffd67b", null ],
+    [ "s_framebuffer", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#a44b77e908b1a3d34e3f0a4a17310776f", null ],
+    [ "s_img_arena", "examples_2ek__ra8d2_2hw__pending_2ereader__cover_2main_8c.html#af825cba133194ce19c1cc867127b82e0", null ]
+];

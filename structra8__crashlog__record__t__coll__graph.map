@@ -1,0 +1,9 @@
+<map id="ra8_crashlog_record_t" name="ra8_crashlog_record_t">
+<area shape="rect" id="Node000001" title="The .noinit cross&#45;reset post&#45;mortem record." alt="" coords="115,197,281,223"/>
+<area shape="rect" id="Node000002" href="$structra8__exception__last__t.html" title="Fixed&#45;SRAM post&#45;mortem snapshot of the most recent fault or NMI." alt="" coords="119,101,277,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="201,141,201,197,195,197,195,141"/>
+<area shape="rect" id="Node000003" href="$structra8__exception__frame__t.html" title="Stacked registers pushed by the Cortex&#45;M exception entry." alt="" coords="5,5,177,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="116,38,187,99,183,103,113,42"/>
+<area shape="rect" id="Node000004" href="$structra8__exception__diagnostics__t.html" title="SCB fault&#45;status register snapshot." alt="" coords="201,5,408,31"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="283,42,213,103,209,99,280,38"/>
+</map>

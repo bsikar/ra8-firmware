@@ -1,0 +1,7 @@
+<map id="libs/ra8_zoom/src/ra8_zoom_internal.h" name="libs/ra8_zoom/src/ra8_zoom_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private seam shared by the ra8_zoom state machine and its render." alt="" coords="97,5,259,45"/>
+<area shape="rect" id="Node000002" href="$ra8__zoom_8c.html" title="Viewport state machine for the tap&#45;to&#45;zoom image viewer (#478)." alt="" coords="5,93,167,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="150,57,108,95,105,91,146,53"/>
+<area shape="rect" id="Node000003" href="$ra8__zoom__render_8c.html" title="Strip composite for the tap&#45;to&#45;zoom viewer: magnify, re&#45;dither, blit (#478)." alt="" coords="191,93,352,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="211,53,252,91,249,95,207,57"/>
+</map>

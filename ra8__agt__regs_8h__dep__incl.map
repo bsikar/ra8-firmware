@@ -1,0 +1,11 @@
+<map id="libs/ra8_hal/inc/ra8_agt_regs.h" name="libs/ra8_hal/inc/ra8_agt_regs.h">
+<area shape="rect" id="Node000001" title="Asynchronous General&#45;Purpose Timer (AGT) register layout for RA8D2." alt="" coords="333,5,478,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2agt__cascade__demo_2main_8c.html" title="AGT0 + AGT1 cascade (32&#45;bit virtual counter) demo for EK&#45;RA8D2." alt="" coords="5,93,200,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="332,52,189,96,187,91,330,47"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2agt__pulse__demo_2main_8c.html" title="AGT pulse&#45;output / output&#45;compare demo for EK&#45;RA8D2." alt="" coords="225,93,402,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="379,57,341,95,337,91,375,53"/>
+<area shape="rect" id="Node000004" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="426,101,571,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="436,53,482,99,478,103,432,57"/>
+<area shape="rect" id="Node000005" href="$ra8__agt_8c.html" title="Low Power Asynchronous General Purpose Timer driver." alt="" coords="595,101,741,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="472,47,616,98,614,103,470,52"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_usb_internal.h" name="examples/ek_ra8d2/hil_needs_revalidation/tz_nsc_cgc_usb/ns_usb_internal.h">
+<area shape="rect" id="Node000001" title="Private split&#45;seam shared between ns_usb.c and ns_usb_host.c (#96)." alt="" coords="82,5,310,60"/>
+<area shape="rect" id="Node000002" href="$ns__usb_8c.html" title="Non&#45;Secure image: full ThreadX + USBX CDC self&#45;loop inside TrustZone NS (#96)." alt="" coords="5,108,176,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="160,72,120,110,116,106,157,68"/>
+<area shape="rect" id="Node000003" href="$ns__usb__host_8c.html" title="Non&#45;Secure USBHS polled HOST ladder: enumerate + bulk echo (#96)." alt="" coords="200,108,405,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="236,68,277,106,273,110,232,72"/>
+</map>

@@ -1,0 +1,46 @@
+<map id="libs/ra8_hal/inc/ra8_i3c.h" name="libs/ra8_hal/inc/ra8_i3c.h">
+<area shape="rect" id="Node000001" title="I3C Bus Interface driver – unified native&#45;I3C + I2C&#45;compat modes." alt="" coords="2080,5,2225,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2ereader__shelf_2main_8c.html" title="Hybrid baked + SD e&#45;reader: shelf, cover, TOC, full&#45;book reader." alt="" coords="5,93,212,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="2066,30,1692,35,1159,47,619,66,394,80,224,96,213,98,212,92,223,91,393,74,619,61,1159,41,1692,30,2066,25"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2touch__cal_2main_8c.html" title="N&#45;point affine touch&#45;calibration demo + HIL gate (#262)." alt="" coords="236,93,429,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="2067,30,1730,36,1260,48,787,68,590,81,441,96,430,98,429,92,440,91,590,75,787,62,1260,43,1730,31,2066,25"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2touch__demo_2main_8c.html" title="Standalone GoodIX GT911 capacitive&#45;touch bring&#45;up demo + HIL (#122)." alt="" coords="453,93,647,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="2067,31,1362,51,955,70,786,82,658,96,647,98,647,92,658,91,786,77,955,65,1362,46,2066,26"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2battery__monitor__demo_2main_8c.html" title="Battery state&#45;of&#45;charge monitor over a MAX17048&#45;class fuel gauge." alt="" coords="671,93,861,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="2066,28,1855,29,1559,38,1219,58,1045,74,874,96,862,98,861,93,874,91,1044,69,1219,53,1559,32,1855,24,2066,23"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__pending_2ereader__comic_2main_8c.html" title="Viewable page&#45;turn comic reader – baked CBZ decoded to the 1024x600 GLCDC panel, tap&#45;zone navigation ..." alt="" coords="886,93,1067,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="2066,29,1886,32,1641,42,1361,62,1219,77,1080,96,1068,98,1067,93,1079,91,1218,72,1361,56,1640,36,1886,27,2066,24"/>
+<area shape="rect" id="Node000007" href="$examples_2ek__ra8d2_2hw__pending_2ereader__longstrip_2main_8c.html" title="Viewable continuous vertical&#45;scroll (longstrip / manhwa) reader (#289)." alt="" coords="1092,93,1291,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="2066,32,1731,50,1518,69,1304,96,1291,98,1290,93,1303,91,1517,63,1730,45,2066,27"/>
+<area shape="rect" id="Node000008" href="$examples_2ek__ra8d2_2hw__pending_2ereader__manga_2main_8c.html" title="Viewable manga reader: pan/zoom a page larger than the panel (Demo B)." alt="" coords="1315,93,1502,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="2067,35,1818,56,1666,73,1514,96,1503,98,1502,93,1514,91,1665,68,1817,50,2066,29"/>
+<area shape="rect" id="Node000009" href="$examples_2ek__ra8d2_2hw__pending_2ereader__zoom_2main_8c.html" title="Viewable tap&#45;to&#45;zoom image viewer: full&#45;screen zoom + panel loupe (#478)." alt="" coords="1526,93,1705,148"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="2066,40,1904,63,1717,96,1705,98,1704,93,1716,91,1903,58,2066,35"/>
+<area shape="rect" id="Node000010" href="$examples_2ek__ra8d2_2hw__pending_2i3c__i2c__peripheral__demo_2main_8c.html" title="IIC_B peripheral&#45;mode demo on EK&#45;RA8D2." alt="" coords="1729,93,1931,148"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="2075,52,1922,96,1920,91,2073,47"/>
+<area shape="rect" id="Node000011" href="$examples_2ek__ra8d2_2hw__pending_2imu__lsm6dso__demo_2main_8c.html" title="LSM6DSO 6&#45;DoF IMU bring&#45;up demo over IIC_B." alt="" coords="1955,93,2129,148"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="2122,56,2075,95,2071,91,2118,52"/>
+<area shape="rect" id="Node000012" href="$examples_2ek__ra8d2_2hw__pending_2smbus__demo_2main_8c.html" title="SMBus 3.2 protocol&#45;layer demo + HIL over IIC_B (#128)." alt="" coords="2153,101,2373,141"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="2187,52,2243,99,2239,103,2184,56"/>
+<area shape="rect" id="Node000013" href="$examples_2ek__ra8d2_2hw__validated_2hil_2ereader__ui_2main_8c.html" title="E&#45;reader device chrome – Library + Reading screens." alt="" coords="2398,93,2571,148"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="2234,46,2398,92,2397,98,2232,52"/>
+<area shape="rect" id="Node000014" href="$ereader__ui__input_8c.html" title="E&#45;reader UI chrome – on&#45;screen keyboard, battery nag, input polling." alt="" coords="2596,93,2784,148"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="2239,35,2400,59,2584,91,2596,93,2595,99,2583,96,2399,64,2239,40"/>
+<area shape="rect" id="Node000015" href="$examples_2ek__ra8d2_2hw__validated_2hil_2i2c__i3c__combined_2main_8c.html" title="RIIC + I3C(I2C&#45;mode) coexistence self&#45;test for the EK&#45;RA8D2." alt="" coords="2809,93,2982,148"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="2239,29,2490,49,2643,67,2796,91,2809,93,2808,98,2795,96,2642,72,2489,55,2239,34"/>
+<area shape="rect" id="Node000016" href="$examples_2ek__ra8d2_2hw__validated_2hil_2i3c__loopback_2main_8c.html" title="I3C (ra8_i3c) controller bring&#45;up self&#45;test for the EK&#45;RA8D2." alt="" coords="3007,93,3205,148"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="2239,27,2571,45,2782,64,2994,91,3007,93,3006,98,2994,96,2782,69,2571,50,2239,32"/>
+<area shape="rect" id="Node000017" href="$examples_2ek__ra8d2_2hw__validated_2hil_2iic__b__facade__demo_2main_8c.html" title="IIC_B (I3C block in I2C&#45;compat mode) facade controller + peripheral demo." alt="" coords="3230,93,3403,148"/>
+<area shape="poly" id="edge16_Node000001_Node000017" title=" " alt="" coords="2239,24,2418,27,2661,36,2938,56,3079,71,3217,91,3230,93,3229,98,3216,96,3078,77,2937,61,2661,41,2418,32,2239,29"/>
+<area shape="rect" id="Node000018" href="$ra8__i3c_8c.html" title="I3C Bus Interface driver implementation." alt="" coords="3428,101,3573,141"/>
+<area shape="poly" id="edge17_Node000001_Node000018" title=" " alt="" coords="2239,26,2495,33,2835,45,3171,64,3310,77,3416,91,3447,98,3445,103,3415,96,3310,82,3170,70,2834,51,2495,38,2239,31"/>
+<area shape="rect" id="Node000019" href="$ra8__io__i2c__bus__i3c__compat_8c.html" title="I3C I2C&#45;compatibility backend for the ra8_io I2C&#45;bus facade – thin shim over ra8_i3c." alt="" coords="3597,101,3788,141"/>
+<area shape="poly" id="edge18_Node000001_Node000019" title=" " alt="" coords="2239,26,2914,47,3302,66,3463,77,3585,91,3624,98,3623,103,3584,96,3462,83,3301,71,2914,52,2239,31"/>
+<area shape="rect" id="Node000020" href="$ra8__nsc__comms_8h.html" title="NSC veneers for the communications drivers." alt="" coords="3813,101,3959,141"/>
+<area shape="poly" id="edge19_Node000001_Node000020" title=" " alt="" coords="2239,25,2564,29,3015,40,3469,59,3657,73,3800,91,3832,98,3830,103,3799,96,3657,79,3468,65,3015,45,2564,34,2239,30"/>
+<area shape="rect" id="Node000022" href="$ra8__nsc__comms_8c.html" title="NSC veneers for the communications drivers." alt="" coords="3923,196,4070,236"/>
+<area shape="poly" id="edge22_Node000001_Node000022" title=" " alt="" coords="2239,24,2649,27,3212,37,3487,45,3722,57,3892,72,3945,81,3973,91,3991,115,4000,143,4003,172,4002,196,3996,196,3997,172,3995,144,3986,117,3970,95,3944,86,3892,77,3722,62,3487,51,3212,42,2649,33,2239,30"/>
+<area shape="rect" id="Node000021" href="$examples_2__unsupported_2usb__audio__device_2main_8c.html" title="USB Audio Class 1.0 device&#45;mode smoke test for EK&#45;RA8D2 (USB&#45;FS, 48 kHz / 16&#45;bit / stereo iso&#45;IN sine..." alt="" coords="3708,196,3899,236"/>
+<area shape="poly" id="edge20_Node000020_Node000021" title=" " alt="" coords="3862,153,3822,198,3818,194,3858,149"/>
+<area shape="poly" id="edge21_Node000020_Node000022" title=" " alt="" coords="3921,148,3976,194,3973,198,3917,152"/>
+</map>

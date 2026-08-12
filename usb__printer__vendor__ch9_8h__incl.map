@@ -1,0 +1,18 @@
+<map id="examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/inc/usb_printer_vendor_ch9.h" name="examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/inc/usb_printer_vendor_ch9.h">
+<area shape="rect" id="Node000001" title="Chapter&#45;9 SETUP router + descriptor tables for the printer/vendor demo." alt="" coords="5,5,273,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="196,401,267,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="128,61,103,121,94,156,90,193,90,268,93,290,100,309,126,344,161,372,195,393,192,398,157,377,123,348,96,312,88,291,85,269,85,193,88,155,98,119,123,59"/>
+<area shape="rect" id="Node000003" href="$ra8__usb_8h.html" title="Native USB controller driver public API (device + host modes)." alt="" coords="150,108,235,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="158,59,180,95,176,98,153,61"/>
+<area shape="rect" id="Node000004" href="$ra8__usb__device_8h.html" title="Native USB controller driver public API – shared types + device mode." alt="" coords="125,255,260,280"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="195,134,195,241,190,241,190,134"/>
+<area shape="rect" id="Node000006" href="$ra8__usb__host_8h.html" title="Native USB controller driver public API – host&#45;mode bring&#45;up." alt="" coords="234,181,354,207"/>
+<area shape="poly" id="edge7_Node000003_Node000006" title=" " alt="" coords="210,131,268,171,265,175,207,136"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="198,280,227,387,222,389,193,281"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="231,328,309,353"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="207,278,249,317,245,320,203,282"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="266,355,246,391,242,388,261,352"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="303,206,317,233,330,271,335,313,332,335,324,355,303,380,277,398,274,393,300,376,320,352,327,333,329,313,324,272,312,235,298,208"/>
+<area shape="poly" id="edge10_Node000006_Node000004" title=" " alt="" coords="279,209,222,249,219,244,276,204"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="295,208,277,315,272,314,289,207"/>
+</map>

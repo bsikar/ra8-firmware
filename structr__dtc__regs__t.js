@@ -1,0 +1,26 @@
+var structr__dtc__regs__t =
+[
+    [ "_r0", "structr__dtc__regs__t.html#a888b866482c3163620ec479139bf52f7", null ],
+    [ "_r1", "structr__dtc__regs__t.html#a57ce5953df7dd06e101c5a326c6a7e7c", null ],
+    [ "_r10", "structr__dtc__regs__t.html#a2dd54e6d1f0fcc85eb1c90722a443708", null ],
+    [ "_r2", "structr__dtc__regs__t.html#a1d5a9dab1f6c34866f5e52cb45fa2300", null ],
+    [ "_r3", "structr__dtc__regs__t.html#a3086a29e1e31178f9bdc6f9cf6f236ac", null ],
+    [ "_r4", "structr__dtc__regs__t.html#a99f12d630d61a3cecb409d9b8f991cb8", null ],
+    [ "_r5", "structr__dtc__regs__t.html#a4739b42662cef61f5f592b2eb2f14466", null ],
+    [ "_r6", "structr__dtc__regs__t.html#a98b0fee33fcbe3ce54850454d62d7821", null ],
+    [ "_r7", "structr__dtc__regs__t.html#a26a101f110f406e3b148758085bb24e5", null ],
+    [ "_r8", "structr__dtc__regs__t.html#af4c6ffab9b15ee329893407267c24c6b", null ],
+    [ "_r9", "structr__dtc__regs__t.html#a70ad63a2de438a91795dda913fd8c673", null ],
+    [ "DTCADMOD", "structr__dtc__regs__t.html#ae3901db28c9c2a72eb2bcbbe92252176", null ],
+    [ "DTCCR", "structr__dtc__regs__t.html#a738d82e8d5db32e52e7374fc1e6fe9ae", null ],
+    [ "DTCCR_SEC", "structr__dtc__regs__t.html#a968a244cb72c091c941f2e5c1001b8fa", null ],
+    [ "DTCDISP", "structr__dtc__regs__t.html#a7cf295f5e4cf0949f6280b83c94a565b", null ],
+    [ "DTCIBR", "structr__dtc__regs__t.html#ac05d7992cab89691576e4a0050335424", null ],
+    [ "DTCOR", "structr__dtc__regs__t.html#a8a6076fb38e0067f35e7527c573ba576", null ],
+    [ "DTCSQE", "structr__dtc__regs__t.html#a158132832b7e565c32d97d0c99af7899", null ],
+    [ "DTCST", "structr__dtc__regs__t.html#a4edd3a12329351cfdd6fc7712ba479a7", null ],
+    [ "DTCSTS", "structr__dtc__regs__t.html#ab01711b6ba5cc50c1fa80dde9a08202a", null ],
+    [ "DTCVBR", "structr__dtc__regs__t.html#a748d3f4d3ce2ede82d72ddfe29b66bc6", null ],
+    [ "DTCVBR_SEC", "structr__dtc__regs__t.html#a6641dcf78ee16abc7dd8c2a3618afcbe", null ],
+    [ "DTEVR", "structr__dtc__regs__t.html#a8579377b693650dc94ea322ac3230c37", null ]
+];

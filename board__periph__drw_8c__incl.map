@@ -1,0 +1,16 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_drw.c" name="tools/ra8_emulator/src/periph/board_periph_drw.c">
+<area shape="rect" id="Node000001" title="Bench&#45;validated DRW (&quot;D/AVE 2D&quot;) rasterizer model for ra8_emulator." alt="" coords="29,5,249,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,181,76,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="84,48,52,67,27,95,21,112,21,131,31,168,26,169,16,132,16,111,22,92,48,63,81,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="37,101,103,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="126,47,90,91,86,88,122,44"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="128,101,289,126"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="157,44,193,88,189,91,153,47"/>
+<area shape="rect" id="Node000006" href="$board__periph__pdctr__internal_8h.html" title="Module&#45;private graphics power&#45;domain state for the gated blocks." alt="" coords="314,93,461,133"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="195,43,321,86,319,91,193,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="185,128,78,178,76,173,183,124"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="141,181,276,207"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="211,126,211,167,206,167,206,126"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="325,181,450,207"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="390,134,390,167,385,167,385,134"/>
+</map>

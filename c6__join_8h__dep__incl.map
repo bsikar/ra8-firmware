@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/c6_join.h" name="examples/ek_ra8d2/hw_validated/c6/c6_wifi_join/c6_join.h">
+<area shape="rect" id="Node000001" title="Shared contract for the C6 Wi&#45;Fi join + DHCP + reachability app." alt="" coords="213,5,387,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__join_2main_8c.html" title="Join the bench Wi&#45;Fi over the ESP32&#45;C6 and get an IP by DHCP (#492)." alt="" coords="5,108,179,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="235,68,147,110,145,106,233,63"/>
+<area shape="rect" id="Node000003" href="$c6__join__console_8c.html" title="Bounded console formatters for the C6 Wi&#45;Fi join application." alt="" coords="203,108,397,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="303,74,303,108,297,108,297,74"/>
+<area shape="rect" id="Node000004" href="$c6__join__net_8c.html" title="NetX Duo IP bring&#45;up over the C6 link: DHCP lease + ICMP reachability." alt="" coords="421,108,595,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="367,63,455,106,453,110,365,68"/>
+</map>

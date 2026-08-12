@@ -1,0 +1,61 @@
+<map id="examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_shelf.c" name="examples/ek_ra8d2/hil_needs_revalidation/ereader_shelf/src/sh_shelf.c">
+<area shape="rect" id="Node000001" title="Bookshelf screen: a grid of book cards with cover thumbnails." alt="" coords="103,5,310,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="326,255,397,280"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="226,59,348,242,344,244,222,62"/>
+<area shape="rect" id="Node000003" href="$ra8__box_8h.html" title="Bounded, allocation&#45;free box&#45;model layout for e&#45;reader chrome." alt="" coords="163,255,250,280"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="209,60,209,241,204,241,204,60"/>
+<area shape="rect" id="Node000007" href="$ra8__gfx_8h.html" title="Software 2D graphics primitives layered on top of a caller&#45;ownedframebuffer (DRW / D/AVE 2D / GLCDC r..." alt="" coords="5,328,88,353"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="160,62,132,83,109,110,82,162,64,219,55,272,50,314,45,314,49,271,59,218,77,160,104,106,129,79,157,58"/>
+<area shape="rect" id="Node000008" href="$ra8__gfx__font_8h.html" title="Bitmap font descriptor + bundled font handles for ra8_gfx." alt="" coords="81,401,197,427"/>
+<area shape="poly" id="edge14_Node000001_Node000008" title=" " alt="" coords="185,62,166,88,148,120,134,155,128,193,128,269,131,333,138,387,132,388,126,333,123,269,123,192,128,154,143,117,162,85,181,59"/>
+<area shape="rect" id="Node000009" href="$sh__app_8h.html" title="Shared contract for the ereader_shelf multi&#45;screen e&#45;reader." alt="" coords="609,108,689,133"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="311,51,596,106,595,112,310,57"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="657,475,727,500"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="215,279,235,313,266,351,296,378,321,395,386,424,454,446,524,462,643,479,642,484,523,467,453,451,384,429,318,400,292,382,262,355,231,317,210,282"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="653,401,731,427"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="219,278,257,315,283,335,312,351,398,380,488,398,571,407,639,410,639,416,571,413,487,404,397,386,310,356,280,339,254,319,215,282"/>
+<area shape="rect" id="Node000006" href="$ra8__ui_8h.html" title="Bounded UI interaction core: hit&#45;testing, screen stack, paging." alt="" coords="323,328,397,353"/>
+<area shape="poly" id="edge6_Node000003_Node000006" title=" " alt="" coords="232,278,324,320,322,325,230,282"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="695,427,695,461,689,461,689,427"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="367,352,385,389,400,408,418,424,473,453,534,471,592,480,643,484,643,489,592,485,533,476,471,458,414,429,396,412,380,391,362,355"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="398,347,640,399,639,404,397,353"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="48,353,51,390,58,409,70,425,100,437,157,448,320,465,501,476,643,482,643,487,500,481,319,471,156,453,99,442,66,429,53,411,46,391,43,354"/>
+<area shape="poly" id="edge11_Node000007_Node000005" title=" " alt="" coords="88,344,640,404,639,410,88,349"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="63,351,115,391,111,395,60,355"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="197,421,216,424,643,478,642,483,216,429,197,427"/>
+<area shape="poly" id="edge17_Node000009_Node000004" title=" " alt="" coords="690,121,821,132,904,142,989,156,1067,175,1132,199,1158,213,1178,229,1190,246,1195,266,1195,342,1191,360,1180,376,1163,391,1140,404,1083,427,1014,446,865,472,742,485,741,480,864,466,1013,441,1082,422,1138,399,1160,386,1176,373,1186,358,1189,342,1189,266,1185,248,1174,232,1155,217,1130,203,1065,180,987,161,904,147,821,137,689,127"/>
+<area shape="poly" id="edge35_Node000009_Node000006" title=" " alt="" coords="609,126,561,130,502,140,440,157,381,184,358,199,341,213,328,230,317,255,315,272,319,287,339,316,335,319,314,290,310,272,312,254,324,228,337,209,355,194,379,179,438,152,501,135,560,125,609,121"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="491,328,565,353"/>
+<area shape="poly" id="edge16_Node000009_Node000010" title=" " alt="" coords="645,135,544,317,539,314,640,132"/>
+<area shape="rect" id="Node000011" href="$library_8h.html" title="@generated tools/bake_library.py – do not edit by hand." alt="" coords="1229,401,1304,427"/>
+<area shape="poly" id="edge18_Node000009_Node000011" title=" " alt="" coords="690,121,817,127,981,139,1130,156,1183,167,1212,179,1233,202,1248,228,1259,256,1266,286,1272,343,1272,388,1266,388,1267,343,1261,287,1254,258,1243,230,1228,205,1209,184,1181,172,1129,161,981,144,817,133,689,126"/>
+<area shape="rect" id="Node000012" href="$ra8__book_8h.html" title="Flat, execute&#45;in&#45;place container for a build&#45;time &quot;compiled&quot; e&#45;book." alt="" coords="625,255,719,280"/>
+<area shape="poly" id="edge20_Node000009_Node000012" title=" " alt="" coords="654,133,671,241,665,241,649,134"/>
+<area shape="rect" id="Node000013" href="$ra8__book__paged_8h.html" title="Paged (demand&#45;fetched) accessor mode for ra8_book over ra8_vmem (#163)." alt="" coords="687,181,828,207"/>
+<area shape="poly" id="edge24_Node000009_Node000013" title=" " alt="" coords="668,131,730,171,727,176,665,136"/>
+<area shape="rect" id="Node000016" href="$ra8__vsource_8h.html" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="1041,328,1154,353"/>
+<area shape="poly" id="edge36_Node000009_Node000016" title=" " alt="" coords="690,129,761,149,841,179,906,213,967,252,1070,318,1067,323,964,257,903,217,839,184,760,154,689,134"/>
+<area shape="rect" id="Node000017" href="$sh__classify_8h.html" title="Book&#45;format classification by file extension (long&#45;name aware, #633)." alt="" coords="391,181,494,207"/>
+<area shape="poly" id="edge39_Node000009_Node000017" title=" " alt="" coords="617,136,490,179,488,174,615,131"/>
+<area shape="poly" id="edge19_Node000011_Node000004" title=" " alt="" coords="1229,426,1211,429,946,464,741,484,741,479,946,459,1210,424,1228,421"/>
+<area shape="poly" id="edge22_Node000012_Node000004" title=" " alt="" coords="668,281,656,308,644,344,638,385,639,406,644,426,655,446,670,464,666,467,651,449,639,428,634,407,632,385,638,343,651,306,663,279"/>
+<area shape="poly" id="edge23_Node000012_Node000005" title=" " alt="" coords="676,280,691,387,686,388,671,281"/>
+<area shape="poly" id="edge21_Node000012_Node000010" title=" " alt="" coords="650,282,565,324,563,319,648,278"/>
+<area shape="poly" id="edge26_Node000013_Node000004" title=" " alt="" coords="762,207,766,245,768,301,763,365,757,397,746,428,734,449,718,467,714,463,730,446,742,426,752,395,758,364,763,300,761,245,757,207"/>
+<area shape="poly" id="edge28_Node000013_Node000005" title=" " alt="" coords="756,208,735,281,702,389,697,388,729,279,751,206"/>
+<area shape="poly" id="edge25_Node000013_Node000010" title=" " alt="" coords="720,209,668,229,615,257,578,287,548,319,544,315,574,283,612,252,666,224,718,204"/>
+<area shape="poly" id="edge27_Node000013_Node000012" title=" " alt="" coords="745,209,698,248,695,244,742,205"/>
+<area shape="rect" id="Node000014" href="$ra8__vmem_8h.html" title="Byte&#45;range page cache with SLRU eviction (Layer 2, #147)." alt="" coords="849,255,953,280"/>
+<area shape="poly" id="edge29_Node000013_Node000014" title=" " alt="" coords="782,204,867,246,864,251,779,209"/>
+<area shape="poly" id="edge30_Node000014_Node000004" title=" " alt="" coords="927,278,949,292,970,310,983,331,984,343,980,355,958,385,931,410,901,430,868,447,800,470,741,483,740,478,799,465,865,442,898,426,928,406,954,381,975,352,978,342,978,332,966,313,946,296,924,282"/>
+<area shape="poly" id="edge31_Node000014_Node000005" title=" " alt="" coords="886,282,722,395,719,391,883,278"/>
+<area shape="rect" id="Node000015" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="843,328,965,353"/>
+<area shape="poly" id="edge32_Node000014_Node000015" title=" " alt="" coords="904,280,906,314,900,315,899,280"/>
+<area shape="poly" id="edge33_Node000015_Node000004" title=" " alt="" coords="897,356,868,391,826,429,783,454,741,472,739,467,781,449,822,425,864,387,893,352"/>
+<area shape="poly" id="edge34_Node000015_Node000005" title=" " alt="" coords="871,356,740,399,738,394,869,351"/>
+<area shape="poly" id="edge37_Node000016_Node000004" title=" " alt="" coords="1093,355,1066,392,1046,412,1023,429,987,446,950,460,873,478,801,487,741,490,741,484,801,481,872,473,948,455,985,441,1020,424,1042,408,1062,389,1088,352"/>
+<area shape="poly" id="edge38_Node000016_Node000005" title=" " alt="" coords="1041,355,745,406,744,401,1040,349"/>
+<area shape="poly" id="edge42_Node000017_Node000002" title=" " alt="" coords="431,209,387,248,383,244,428,205"/>
+<area shape="poly" id="edge41_Node000017_Node000004" title=" " alt="" coords="445,207,451,273,461,314,481,352,517,391,561,424,606,449,647,467,645,472,604,454,558,428,514,395,476,355,457,316,445,274,440,207"/>
+<area shape="poly" id="edge40_Node000017_Node000010" title=" " alt="" coords="452,206,516,315,512,317,447,208"/>
+</map>

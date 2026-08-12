@@ -1,0 +1,5 @@
+<map id="ra8_usb_pmsc_state_data_t" name="ra8_usb_pmsc_state_data_t">
+<area shape="rect" id="Node000001" title="Singleton shadow state for the device&#45;MSC driver." alt="" coords="19,101,174,141"/>
+<area shape="rect" id="Node000002" href="$structra8__usb__pmsc__storage__t.html" title="Caller&#45;owned storage backend bound to the device&#45;MSC class." alt="" coords="5,5,188,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,45,99,101,94,101,94,45"/>
+</map>

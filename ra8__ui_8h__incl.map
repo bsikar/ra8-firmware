@@ -1,0 +1,8 @@
+<map id="libs/ra8_ui/inc/ra8_ui.h" name="libs/ra8_ui/inc/ra8_ui.h">
+<area shape="rect" id="Node000001" title="Bounded UI interaction core: hit&#45;testing, screen stack, paging." alt="" coords="5,5,173,31"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="54,152,125,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="88,31,80,64,79,104,85,138,80,139,73,104,75,63,83,30"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="89,79,167,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="98,30,118,65,113,68,93,32"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="124,106,104,141,100,139,119,103"/>
+</map>

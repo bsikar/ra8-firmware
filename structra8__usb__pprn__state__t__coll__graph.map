@@ -1,0 +1,5 @@
+<map id="ra8_usb_pprn_state_t" name="ra8_usb_pprn_state_t">
+<area shape="rect" id="Node000001" title="Singleton shadow state for the device&#45;Printer function." alt="" coords="5,101,167,127"/>
+<area shape="rect" id="Node000002" href="$structra8__usb__setup__t.html" title="Decoded 8&#45;byte USB SETUP packet." alt="" coords="22,5,150,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="89,45,89,101,83,101,83,45"/>
+</map>

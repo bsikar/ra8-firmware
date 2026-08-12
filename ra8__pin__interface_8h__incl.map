@@ -1,0 +1,10 @@
+<map id="libs/ra8_core/inc/ra8_pin_interface.h" name="libs/ra8_core/inc/ra8_pin_interface.h">
+<area shape="rect" id="Node000001" title="Abstract pin&#45;driver interface for dependency injection." alt="" coords="39,5,192,45"/>
+<area shape="rect" id="Node000002" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,93,84,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="100,47,66,85,62,81,96,44"/>
+<area shape="rect" id="Node000004" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="108,93,267,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="135,44,169,81,165,85,131,47"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="80,167,151,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="58,117,96,155,92,159,54,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="177,121,139,159,135,155,174,117"/>
+</map>

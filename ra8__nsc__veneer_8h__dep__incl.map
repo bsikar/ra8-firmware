@@ -1,0 +1,47 @@
+<map id="libs/ra8_nsc/inc/ra8_nsc_veneer.h" name="libs/ra8_nsc/inc/ra8_nsc_veneer.h">
+<area shape="rect" id="Node000001" title="Macros for declaring Non&#45;Secure Callable veneer functions." alt="" coords="1352,5,1499,45"/>
+<area shape="rect" id="Node000002" href="$ra8__nsc_8h.html" title="Non&#45;Secure Callable veneer scaffold." alt="" coords="861,93,1008,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1339,44,1009,102,1008,97,1338,39"/>
+<area shape="rect" id="Node000004" href="$ra8__nsc__eth_8c.html" title="NSC veneer: ethernet frame TX / RX." alt="" coords="5,189,152,229"/>
+<area shape="poly" id="edge20_Node000001_Node000004" title=" " alt="" coords="1338,30,1179,34,969,45,731,64,610,78,492,96,392,116,293,142,133,191,132,186,292,137,391,111,492,91,610,73,731,59,968,39,1179,29,1338,25"/>
+<area shape="rect" id="Node000005" href="$ra8__nsc__key__vault_8c.html" title="NSC veneer: secure key vault challenge&#45;response." alt="" coords="176,189,323,229"/>
+<area shape="poly" id="edge22_Node000001_Node000005" title=" " alt="" coords="1338,32,1042,51,857,69,672,96,570,117,470,142,306,191,305,186,468,137,569,112,672,91,857,64,1041,46,1338,27"/>
+<area shape="rect" id="Node000006" href="$ra8__nsc__log_8c.html" title="NSC veneer: secure&#45;side logging." alt="" coords="347,189,493,229"/>
+<area shape="poly" id="edge23_Node000001_Node000006" title=" " alt="" coords="1339,36,1116,57,983,74,850,96,752,116,677,135,506,184,481,191,480,186,505,179,675,130,751,111,849,91,982,69,1116,52,1338,30"/>
+<area shape="rect" id="Node000007" href="$ra8__nsc__ota_8c.html" title="NSC veneers: OTA bank&#45;commit + flash&#45;bank&#45;config write." alt="" coords="904,189,1051,229"/>
+<area shape="poly" id="edge24_Node000001_Node000007" title=" " alt="" coords="1366,53,1258,96,1024,191,1022,186,1256,91,1364,48"/>
+<area shape="rect" id="Node000008" href="$ra8__nsc__periph__init_8c.html" title="NSC veneer: secure peripheral substrate bring&#45;up." alt="" coords="1075,189,1221,229"/>
+<area shape="poly" id="edge25_Node000001_Node000008" title=" " alt="" coords="1386,55,1178,191,1175,186,1383,51"/>
+<area shape="rect" id="Node000009" href="$ra8__nsc__wdt_8c.html" title="NSC veneers: secure&#45;side watchdog arm + refresh." alt="" coords="1245,189,1392,229"/>
+<area shape="poly" id="edge26_Node000001_Node000009" title=" " alt="" coords="1409,59,1332,190,1327,187,1405,56"/>
+<area shape="rect" id="Node000010" href="$ra8__nsc__xspi_8c.html" title="NSC veneer: external XSPI flash read + status." alt="" coords="1416,189,1563,229"/>
+<area shape="poly" id="edge27_Node000001_Node000010" title=" " alt="" coords="1439,57,1485,188,1480,189,1434,59"/>
+<area shape="rect" id="Node000012" href="$ra8__nsc__cgc_8h.html" title="NSC veneers for the Clock Generation Circuit (CGC) driver." alt="" coords="1561,93,1708,133"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1485,48,1590,91,1588,96,1483,53"/>
+<area shape="rect" id="Node000013" href="$ra8__nsc__cgc_8c.html" title="NSC veneers for the Clock Generation Circuit driver." alt="" coords="1587,189,1733,229"/>
+<area shape="poly" id="edge18_Node000001_Node000013" title=" " alt="" coords="1458,53,1551,131,1631,186,1628,191,1548,135,1454,57"/>
+<area shape="rect" id="Node000014" href="$ra8__nsc__comms_8h.html" title="NSC veneers for the communications drivers." alt="" coords="1780,93,1927,133"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="1513,41,1780,95,1779,100,1512,47"/>
+<area shape="rect" id="Node000016" href="$ra8__nsc__comms_8c.html" title="NSC veneers for the communications drivers." alt="" coords="1973,189,2120,229"/>
+<area shape="poly" id="edge19_Node000001_Node000016" title=" " alt="" coords="1512,28,1622,36,1746,48,1860,66,1905,78,1940,91,1971,112,1999,138,2037,187,2033,190,1995,141,1968,116,1937,96,1904,83,1859,72,1745,54,1622,41,1512,34"/>
+<area shape="rect" id="Node000017" href="$ra8__nsc__io_8h.html" title="NSC veneers for the I/O drivers." alt="" coords="2131,93,2277,133"/>
+<area shape="poly" id="edge16_Node000001_Node000017" title=" " alt="" coords="1513,30,1776,53,2100,91,2131,95,2130,101,2100,96,1776,59,1512,36"/>
+<area shape="rect" id="Node000018" href="$ra8__nsc__io_8c.html" title="NSC veneers for the &#45;6 I/O drivers." alt="" coords="2144,189,2291,229"/>
+<area shape="poly" id="edge21_Node000001_Node000018" title=" " alt="" coords="1512,25,1610,31,1729,42,1858,61,1985,91,2043,112,2100,137,2189,186,2186,191,2097,142,2041,117,1983,96,1857,66,1729,47,1610,36,1512,31"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2tz__threadx__demo_2ns__main_8c.html" title="Non&#45;Secure main entry point: launches ThreadX and demo worker threads." alt="" coords="681,181,879,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="893,143,825,184,822,179,890,138"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="848,119,715,124,544,135,354,154,165,184,135,191,134,186,163,179,354,149,544,130,715,119,848,114"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="848,122,615,142,475,160,335,184,306,191,305,186,334,179,474,154,614,136,847,117"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="848,127,688,150,506,184,478,191,477,186,505,179,687,144,847,122"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="951,145,971,187,966,190,947,147"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="992,136,1106,186,1104,191,989,141"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="1022,130,1234,179,1260,186,1258,191,1233,184,1021,135"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="1022,120,1199,142,1302,159,1405,179,1433,186,1432,191,1403,184,1301,164,1198,148,1021,126"/>
+<area shape="rect" id="Node000011" href="$src_2app_2ns__main_8c.html" title="Non&#45;Secure main entry point: launches ThreadX and the e&#45;reader UI." alt="" coords="517,196,656,221"/>
+<area shape="poly" id="edge10_Node000002_Node000011" title=" " alt="" coords="849,137,669,184,621,199,620,193,667,179,847,132"/>
+<area shape="poly" id="edge12_Node000012_Node000013" title=" " alt="" coords="1646,146,1657,188,1652,189,1641,147"/>
+<area shape="rect" id="Node000015" href="$examples_2__unsupported_2usb__audio__device_2main_8c.html" title="USB Audio Class 1.0 device&#45;mode smoke test for EK&#45;RA8D2 (USB&#45;FS, 48 kHz / 16&#45;bit / stereo iso&#45;IN sine..." alt="" coords="1758,189,1949,229"/>
+<area shape="poly" id="edge14_Node000014_Node000015" title=" " alt="" coords="1856,147,1856,189,1851,189,1851,147"/>
+<area shape="poly" id="edge15_Node000014_Node000016" title=" " alt="" coords="1906,137,2009,186,2006,191,1904,142"/>
+<area shape="poly" id="edge17_Node000017_Node000018" title=" " alt="" coords="2211,147,2217,188,2212,189,2206,147"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="ra8_usb_pal_state_inner_t" name="ra8_usb_pal_state_inner_t">
+<area shape="rect" id="Node000001" title="Singleton PAL state." alt="" coords="5,197,197,223"/>
+<area shape="rect" id="Node000002" href="$structra8__usb__pal__ep__slot__t.html" title="Configuration + queue for one endpoint." alt="" coords="18,101,185,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="104,141,104,197,99,197,99,141"/>
+<area shape="rect" id="Node000003" href="$structra8__usb__pal__packet__t.html" title="One packet on a per&#45;endpoint ring." alt="" coords="20,5,183,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="104,45,104,101,99,101,99,45"/>
+</map>

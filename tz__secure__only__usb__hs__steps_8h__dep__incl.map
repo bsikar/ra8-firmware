@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/inc/tz_secure_only_usb_hs_steps.h" name="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/inc/tz_secure_only_usb_hs_steps.h">
+<area shape="rect" id="Node000001" title="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_steps...." alt="" coords="254,5,483,75"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2manual_2tz__secure__only__usb__hs_2main_8c.html" title="Secure&#45;world&#45;only ThreadX + USBX CDC ACM echo for EK&#45;RA8D2 (USB&#45;HS)." alt="" coords="5,130,212,185"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="281,83,169,132,167,128,279,78"/>
+<area shape="rect" id="Node000003" href="$tz__secure__only__usb__hs__descriptors_8c.html" title="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_descriptors...." alt="" coords="236,123,501,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="371,89,371,122,366,122,366,89"/>
+<area shape="rect" id="Node000004" href="$tz__secure__only__usb__hs__steps_8c.html" title="examples/ek_ra8d2/hw_validated/manual/tz_secure_only_usb_hs/src/tz_secure_only_usb_hs_steps...." alt="" coords="525,123,753,192"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="461,78,561,120,559,125,459,83"/>
+</map>

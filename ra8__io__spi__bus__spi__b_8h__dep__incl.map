@@ -1,0 +1,7 @@
+<map id="libs/ra8_io/inc/ra8_io_spi_bus_spi_b.h" name="libs/ra8_io/inc/ra8_io_spi_bus_spi_b.h">
+<area shape="rect" id="Node000001" title="SPI_B backend binder for the ra8_io SPI&#45;bus facade." alt="" coords="116,5,267,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2epaper__refresh_2main_8c.html" title="IT8951 e&#45;paper full + partial refresh demo through the display PAL." alt="" coords="5,93,188,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="164,57,125,95,121,91,160,53"/>
+<area shape="rect" id="Node000003" href="$ra8__io__spi__bus__spi__b_8c.html" title="SPI_B backend for the ra8_io SPI&#45;bus facade – thin shim over ra8_spi." alt="" coords="213,101,362,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="222,53,270,99,266,103,219,57"/>
+</map>

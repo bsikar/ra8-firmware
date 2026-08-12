@@ -1,0 +1,33 @@
+<map id="libs/ra8_dfu/src/ra8_dfu_host.c" name="libs/ra8_dfu/src/ra8_dfu_host.c">
+<area shape="rect" id="Node000001" title="Polled on&#45;board USB&#45;DFU host driver (factored from usb_selftest_dfu)." alt="" coords="283,5,429,45"/>
+<area shape="rect" id="Node000002" href="$ra8__dfu__host_8h.html" title="Polled on&#45;board USB&#45;DFU host driver, bound to either controller." alt="" coords="37,93,155,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="294,48,148,92,146,87,293,43"/>
+<area shape="rect" id="Node000005" href="$ra8__usb_8h.html" title="Native USB controller driver public API (device + host modes)." alt="" coords="191,167,276,192"/>
+<area shape="poly" id="edge20_Node000001_Node000005" title=" " alt="" coords="343,48,253,158,249,154,338,44"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="394,93,465,119"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="376,44,411,81,407,85,372,47"/>
+<area shape="rect" id="Node000009" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="489,93,615,119"/>
+<area shape="poly" id="edge14_Node000001_Node000009" title=" " alt="" coords="404,43,511,86,509,91,402,48"/>
+<area shape="rect" id="Node000010" href="$ra8__time_8h.html" title="SysTick&#45;based tick counter, delay and timestamp helpers." alt="" coords="355,313,447,339"/>
+<area shape="poly" id="edge15_Node000001_Node000010" title=" " alt="" coords="362,45,400,299,395,300,356,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="243,460,314,485"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="84,121,61,143,36,174,16,211,10,231,8,251,8,327,14,361,31,388,57,411,89,429,125,443,162,453,230,465,229,470,161,458,123,448,87,434,54,415,27,392,9,363,3,328,3,251,5,230,11,209,32,171,58,139,80,117"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="201,387,279,412"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="93,120,78,159,64,216,61,248,63,279,70,310,84,337,104,359,131,374,159,385,188,391,186,396,158,390,128,379,101,363,79,340,65,311,57,280,56,248,59,215,73,158,88,118"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="119,116,200,158,198,163,117,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="249,411,268,447,264,449,244,414"/>
+<area shape="rect" id="Node000006" href="$ra8__usb__device_8h.html" title="Native USB controller driver public API – shared types + device mode." alt="" coords="94,313,229,339"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="224,194,206,215,189,241,177,271,169,300,164,299,172,270,184,239,202,212,220,190"/>
+<area shape="rect" id="Node000007" href="$ra8__usb__host_8h.html" title="Native USB controller driver public API – host&#45;mode bring&#45;up." alt="" coords="199,240,319,265"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="240,191,253,226,248,228,235,193"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="165,338,172,373,180,392,190,410,214,434,241,451,238,456,210,438,186,414,175,395,167,374,160,339"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="176,337,219,376,215,379,172,341"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="266,265,286,327,293,369,293,412,288,447,282,446,288,412,288,369,280,328,261,266"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="260,266,246,373,241,373,254,265"/>
+<area shape="poly" id="edge12_Node000007_Node000006" title=" " alt="" coords="245,268,190,307,187,303,241,263"/>
+<area shape="poly" id="edge16_Node000010_Node000003" title=" " alt="" coords="395,341,338,414,302,452,298,448,334,410,391,338"/>
+<area shape="poly" id="edge17_Node000010_Node000004" title=" " alt="" coords="376,341,280,383,278,379,374,336"/>
+<area shape="rect" id="Node000011" href="$ra8__time__interface_8h.html" title="Abstract time&#45;source interface for DI and unit testing." alt="" coords="405,387,563,412"/>
+<area shape="poly" id="edge18_Node000010_Node000011" title=" " alt="" coords="416,337,462,375,458,380,413,341"/>
+<area shape="poly" id="edge19_Node000011_Node000003" title=" " alt="" coords="452,415,326,458,324,453,450,409"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="ra8_rabook_import_cfg_t" name="ra8_rabook_import_cfg_t">
+<area shape="rect" id="Node000001" title="Injected dependencies + versioning for ra8_rabook_import_open." alt="" coords="5,217,189,243"/>
+<area shape="rect" id="Node000002" href="$structra8__fs__mount__t.html" title="Cached parse of one mounted FAT volume." alt="" coords="36,101,159,127"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="100,141,100,217,95,217,95,141"/>
+<area shape="rect" id="Node000003" href="$structra8__fs__backend__t.html" title="Block&#45;device interface that ra8_fs runs on top of." alt="" coords="30,5,165,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="100,45,100,101,95,101,95,45"/>
+</map>

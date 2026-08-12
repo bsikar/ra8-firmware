@@ -1,0 +1,41 @@
+<map id="libs/ra8_hal/src/ra8_sram.c" name="libs/ra8_hal/src/ra8_sram.c">
+<area shape="rect" id="Node000001" title="SRAM (with ECC) HAL driver implementation." alt="" coords="324,5,470,45"/>
+<area shape="rect" id="Node000002" href="$ra8__sram_8h.html" title="SRAM (with ECC) HAL driver public API." alt="" coords="568,167,663,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="425,43,529,116,588,156,585,161,526,121,422,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="336,313,407,339"/>
+<area shape="poly" id="edge8_Node000001_Node000003" title=" " alt="" coords="325,45,209,77,147,99,91,126,45,155,28,172,16,188,10,206,9,224,15,243,28,264,47,278,77,290,157,307,245,317,323,321,322,326,245,322,156,313,75,295,45,283,24,267,10,246,4,225,4,205,11,186,24,168,42,151,88,121,145,94,207,72,323,40"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="332,240,411,265"/>
+<area shape="poly" id="edge16_Node000001_Node000004" title=" " alt="" coords="397,46,377,227,372,226,392,45"/>
+<area shape="rect" id="Node000005" href="$ra8__sram__regs_8h.html" title="SRAM (with ECC) control / status / security register layout." alt="" coords="692,240,822,265"/>
+<area shape="poly" id="edge27_Node000001_Node000005" title=" " alt="" coords="470,32,604,53,665,70,688,80,705,91,730,122,746,159,754,195,758,226,753,227,749,196,741,160,725,125,702,95,686,85,663,75,603,59,469,37"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="183,167,283,192"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="367,48,336,69,304,95,275,126,251,157,247,153,271,123,300,91,333,65,364,43"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="225,240,308,265"/>
+<area shape="poly" id="edge17_Node000001_Node000008" title=" " alt="" coords="388,47,282,229,277,227,384,44"/>
+<area shape="rect" id="Node000010" href="$ra8__mstp_8h.html" title="Ref&#45;counted Module Stop Control wrapper for the RA8D2." alt="" coords="410,167,504,192"/>
+<area shape="poly" id="edge18_Node000001_Node000010" title=" " alt="" coords="407,45,450,153,445,155,402,47"/>
+<area shape="rect" id="Node000012" href="$ra8__sram__internal_8h.html" title="src/&#45;local shared surface for the SRAM HAL driver split." alt="" coords="540,93,692,119"/>
+<area shape="poly" id="edge24_Node000001_Node000012" title=" " alt="" coords="450,43,571,86,570,91,448,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="625,192,638,227,639,248,631,267,617,279,596,289,541,305,478,316,421,323,420,318,478,311,540,300,594,284,614,274,627,264,634,247,633,228,620,193"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="577,195,425,239,423,234,576,189"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="639,190,723,231,721,236,637,194"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="374,266,374,300,369,300,369,266"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="695,268,421,318,420,313,695,263"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="617,313,692,339"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="742,268,684,307,681,303,739,263"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="183,188,125,196,70,212,49,222,36,234,33,247,42,264,60,278,88,289,163,306,248,316,322,321,322,326,247,321,162,312,86,294,57,282,38,267,28,248,32,231,46,217,68,207,124,191,182,182"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="256,190,338,231,336,236,254,194"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="241,191,257,227,253,229,236,193"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="52,240,200,265"/>
+<area shape="poly" id="edge14_Node000007_Node000009" title=" " alt="" coords="217,194,156,235,153,230,214,190"/>
+<area shape="poly" id="edge13_Node000008_Node000003" title=" " alt="" coords="285,263,345,303,342,308,282,268"/>
+<area shape="poly" id="edge15_Node000009_Node000003" title=" " alt="" coords="166,263,324,308,323,313,165,268"/>
+<area shape="poly" id="edge19_Node000010_Node000003" title=" " alt="" coords="456,193,444,227,425,267,395,305,390,302,420,264,439,225,451,191"/>
+<area shape="poly" id="edge20_Node000010_Node000004" title=" " alt="" coords="445,194,398,233,394,229,442,190"/>
+<area shape="rect" id="Node000011" href="$ra8__mstp__regs_8h.html" title="Module Stop Control (MSTP) register layout for the Renesas RA8D2." alt="" coords="486,240,617,265"/>
+<area shape="poly" id="edge21_Node000010_Node000011" title=" " alt="" coords="474,190,527,229,524,234,471,194"/>
+<area shape="poly" id="edge23_Node000011_Node000003" title=" " alt="" coords="524,268,415,311,413,306,522,263"/>
+<area shape="poly" id="edge22_Node000011_Node000006" title=" " alt="" coords="570,263,628,303,625,307,567,268"/>
+<area shape="poly" id="edge25_Node000012_Node000002" title=" " alt="" coords="618,119,618,153,613,153,613,119"/>
+<area shape="poly" id="edge26_Node000012_Node000005" title=" " alt="" coords="630,117,677,165,738,228,734,231,674,169,626,121"/>
+</map>

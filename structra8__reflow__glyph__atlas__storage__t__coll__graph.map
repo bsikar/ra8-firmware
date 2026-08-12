@@ -1,0 +1,9 @@
+<map id="ra8_reflow_glyph_atlas_storage_t" name="ra8_reflow_glyph_atlas_storage_t">
+<area shape="rect" id="Node000001" title="Caller&#45;owned backing storage for the render&#45;path glyph cache (#164)." alt="" coords="161,101,333,141"/>
+<area shape="rect" id="Node000002" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="5,5,159,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="114,36,218,99,215,103,111,40"/>
+<area shape="rect" id="Node000003" href="$structra8__glyph__key__t.html" title="Identifies one rendered glyph." alt="" coords="183,5,311,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="250,45,250,101,245,101,245,45"/>
+<area shape="rect" id="Node000004" href="$structra8__glyph__dims__t.html" title="Per&#45;cell user descriptor: the rendered glyph dimensions." alt="" coords="336,5,473,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="377,40,278,103,276,99,374,36"/>
+</map>

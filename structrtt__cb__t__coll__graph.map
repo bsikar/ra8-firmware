@@ -1,0 +1,5 @@
+<map id="rtt_cb_t" name="rtt_cb_t">
+<area shape="rect" id="Node000001" title="SEGGER RTT control block." alt="" coords="9,121,79,147"/>
+<area shape="rect" id="Node000002" href="$structrtt__buf__t.html" title="One direction of an RTT channel (matches SEGGER layout)." alt="" coords="5,5,83,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="47,45,47,121,41,121,41,45"/>
+</map>

@@ -1,0 +1,15 @@
+<map id="libs/ra8_jof/src/ra8_jof_internal.h" name="libs/ra8_jof/src/ra8_jof_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private seams shared by the producer translation units." alt="" coords="200,5,343,45"/>
+<area shape="rect" id="Node000002" href="$ra8__jof__png_8c.html" title="Streaming PNG scanline decoder for the transcode producer (#231)." alt="" coords="5,181,148,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="187,36,156,44,126,55,99,72,78,95,68,115,66,138,73,181,68,181,61,138,63,114,73,92,96,68,124,51,155,38,186,31"/>
+<area shape="rect" id="Node000003" href="$ra8__jof__png__chunk_8c.html" title="PNG chunk layer for the streaming decoder: prologue, palette tables, ancillary skipping and the post&#45;..." alt="" coords="185,181,328,221"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="271,59,261,181,256,181,266,59"/>
+<area shape="rect" id="Node000004" href="$ra8__jof__png__internal_8h.html" title="Module&#45;private declarations shared by the two PNG decoder units." alt="" coords="87,93,234,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="237,56,187,95,184,91,234,52"/>
+<area shape="rect" id="Node000005" href="$ra8__jof__produce_8c.html" title="Transcode producer: sniff, decode, tile, encode, emit (#231, #290)." alt="" coords="309,93,452,133"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="308,52,358,91,355,95,305,56"/>
+<area shape="rect" id="Node000006" href="$ra8__jof__produce__webp_8c.html" title="Transcode producer: whole&#45;frame WebP arm (#290 normalize&#45;on&#45;import)." alt="" coords="476,93,635,133"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="348,47,494,91,492,96,346,52"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="135,145,97,183,93,179,131,141"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="194,141,237,179,234,183,191,145"/>
+</map>

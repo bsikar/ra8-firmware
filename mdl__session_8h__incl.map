@@ -1,0 +1,18 @@
+<map id="tools/media_dl/inc/mdl_session.h" name="tools/media_dl/inc/mdl_session.h">
+<area shape="rect" id="Node000001" title="Session identity (honest User&#45;Agent) and robots.txt gating." alt="" coords="155,5,297,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="159,167,234,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="222,46,209,94,201,153,196,152,203,93,217,45"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="161,240,232,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="281,43,306,56,328,74,341,95,342,107,339,120,318,157,290,189,259,215,231,235,228,230,256,211,286,185,314,154,334,118,337,106,336,96,324,77,303,61,278,48"/>
+<area shape="rect" id="Node000004" href="$mdl__net_8h.html" title="Streaming HTTP(S) GET seam (a real function&#45;pointer vtable) for the host manga downloader (v0)." alt="" coords="56,93,143,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="197,48,131,88,128,84,194,43"/>
+<area shape="rect" id="Node000006" href="$mdl__robots_8h.html" title="robots.txt parser, path matcher, and per&#45;host cache." alt="" coords="218,93,325,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="239,44,260,80,255,83,235,47"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="117,117,171,156,168,160,113,121"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="107,117,150,191,179,228,175,231,145,193,103,120"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,167,84,192"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="92,121,64,157,60,154,88,117"/>
+<area shape="poly" id="edge7_Node000005_Node000003" title=" " alt="" coords="70,190,161,232,159,237,68,194"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="261,121,221,159,217,155,258,117"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="272,119,264,153,248,193,220,231,216,228,244,191,259,152,267,118"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="exfat_dir_stack_t" name="exfat_dir_stack_t">
+<area shape="rect" id="Node000001" title="Bounded worklist of exFAT directories still to walk (NASA P10 Rule 1)." alt="" coords="5,101,140,127"/>
+<area shape="rect" id="Node000002" href="$structexfat__dir__t.html" title="Identifies the exFAT directory a lookup, scan or link operates in." alt="" coords="27,5,119,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="75,45,75,101,70,101,70,45"/>
+</map>

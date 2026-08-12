@@ -1,0 +1,9 @@
+<map id="tools/ra8_emulator/inc/emu_usbh_seam.h" name="tools/ra8_emulator/inc/emu_usbh_seam.h">
+<area shape="rect" id="Node000001" title="Virtual USB host&#45;mode devices behind the ra8_usb_host_* / hmsc seams." alt="" coords="192,5,363,45"/>
+<area shape="rect" id="Node000002" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="5,101,171,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="228,54,127,103,125,98,226,49"/>
+<area shape="rect" id="Node000003" href="$emu__usbh__seam_8c.html" title="Virtual USB host&#45;mode device seams (see emu_usbh_seam.h)." alt="" coords="195,93,359,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="280,59,280,93,275,93,275,59"/>
+<area shape="rect" id="Node000004" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="383,101,529,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="327,49,421,98,419,103,324,54"/>
+</map>

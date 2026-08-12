@@ -1,0 +1,13 @@
+<map id="libs/ra8_c6link/inc/ra8_c6link_wifi.h" name="libs/ra8_c6link/inc/ra8_c6link_wifi.h">
+<area shape="rect" id="Node000001" title="Wi&#45;Fi station bring&#45;up and association over the C6 link." alt="" coords="400,5,539,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__join_2main_8c.html" title="Join the bench Wi&#45;Fi over the ESP32&#45;C6 and get an IP by DHCP (#492)." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="387,49,191,96,180,99,178,94,190,91,386,43"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__wifi__link_2main_8c.html" title="Bring the ESP32&#45;C6&#39;s Wi&#45;Fi station up through the ra8_c6link facade." alt="" coords="203,93,376,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="422,54,341,96,339,91,420,49"/>
+<area shape="rect" id="Node000004" href="$ra8__c6link__wifi_8c.html" title="Radio lifecycle: initialise, choose station mode, start, tear down." alt="" coords="400,101,539,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="472,59,472,101,467,101,467,59"/>
+<area shape="rect" id="Node000005" href="$ra8__c6link__wifi__sta_8c.html" title="Station credentials, association, and what the radio reports back." alt="" coords="563,101,725,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="518,49,610,98,607,103,515,54"/>
+<area shape="rect" id="Node000006" href="$ra8__wifi__c6link_8c.html" title="The ESP32&#45;C6 backend: each ra8_wifi operation onto ra8_c6link." alt="" coords="749,101,897,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="553,44,738,91,763,98,762,103,737,96,551,49"/>
+</map>

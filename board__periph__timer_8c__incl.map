@@ -1,0 +1,12 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_timer.c" name="tools/ra8_emulator/src/periph/board_periph_timer.c">
+<area shape="rect" id="Node000001" title="GPT + AGT timer peripheral&#45;block model for the board emulator." alt="" coords="5,5,184,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="30,181,101,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="76,61,62,84,52,109,50,139,57,168,52,169,45,140,47,107,57,81,72,59"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="61,108,128,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="97,60,97,94,92,94,92,60"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="153,108,314,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="138,58,204,98,202,103,136,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="207,136,106,178,104,173,205,131"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="166,181,301,207"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="236,134,236,168,231,168,231,134"/>
+</map>

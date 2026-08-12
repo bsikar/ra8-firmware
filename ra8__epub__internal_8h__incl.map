@@ -1,0 +1,14 @@
+<map id="libs/ra8_epub/src/ra8_epub_internal.h" name="libs/ra8_epub/src/ra8_epub_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for ra8_epub internal helpers (MC/DC)." alt="" coords="112,5,269,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,48,78,89,75,84,154,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="243,167,314,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="171,47,157,63,145,81,140,100,145,117,162,136,183,150,231,168,229,173,181,155,158,140,140,120,135,100,140,79,152,60,167,44"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="155,93,226,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="193,46,193,79,188,79,188,46"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="251,93,376,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="222,43,285,84,282,88,219,48"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="401,93,479,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="251,43,391,87,390,92,250,48"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="415,121,319,163,316,159,413,116"/>
+</map>

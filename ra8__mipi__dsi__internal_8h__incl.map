@@ -1,0 +1,29 @@
+<map id="libs/ra8_hal/src/ra8_mipi_dsi_internal.h" name="libs/ra8_hal/src/ra8_mipi_dsi_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private link seam shared between the MIPI DSI&#45;2 hostdriver translation units." alt="" coords="202,5,355,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="189,387,259,412"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="202,39,138,54,105,66,75,81,48,99,27,121,13,147,8,178,8,254,13,282,25,305,44,326,68,343,123,370,176,386,175,391,121,375,65,348,40,330,21,308,7,283,3,254,3,178,8,146,23,118,44,95,72,76,103,61,136,49,201,34"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="468,387,593,412"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="356,37,415,54,472,82,497,100,516,122,529,148,533,178,533,254,533,373,528,373,528,254,528,178,524,150,512,125,493,104,470,86,413,59,355,42"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="87,313,166,339"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="258,47,224,80,183,125,146,180,131,210,120,241,117,271,122,299,116,300,112,271,115,239,126,208,141,177,179,122,220,77,254,44"/>
+<area shape="rect" id="Node000005" href="$ra8__mipi__dsi_8h.html" title="MIPI DSI&#45;2 host driver – public API (full HUM Ch 65 surface)." alt="" coords="220,93,337,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="281,46,281,79,276,79,276,46"/>
+<area shape="rect" id="Node000007" href="$ra8__mipi__dsi__regs_8h.html" title="MIPI DSI Host (DSI&#45;2) register layout for the RA8D2." alt="" coords="341,313,493,339"/>
+<area shape="poly" id="edge18_Node000001_Node000007" title=" " alt="" coords="310,43,339,65,370,93,398,127,420,166,429,201,431,238,425,300,420,300,426,238,424,202,415,168,394,130,366,97,335,69,307,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="144,337,198,376,195,380,141,341"/>
+<area shape="rect" id="Node000006" href="$ra8__mipi__dsi__api_8h.html" title="MIPI DSI&#45;2 host driver – public function surface (full HUM Ch 65)." alt="" coords="261,167,405,192"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="290,117,318,154,314,157,286,121"/>
+<area shape="rect" id="Node000009" href="$ra8__mipi__dsi__types_8h.html" title="MIPI DSI&#45;2 host driver – public types (enums / structs / typedefs)." alt="" coords="144,240,304,265"/>
+<area shape="poly" id="edge17_Node000005_Node000009" title=" " alt="" coords="275,120,252,168,233,227,228,226,247,166,270,118"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="335,192,330,226,318,266,283,329,245,378,241,375,278,326,314,264,325,225,330,192"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="261,185,227,191,192,201,160,218,134,242,127,255,123,269,124,300,119,300,118,269,122,253,130,238,157,213,190,196,226,185,261,180"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="343,191,406,300,401,303,338,194"/>
+<area shape="poly" id="edge13_Node000006_Node000009" title=" " alt="" coords="317,194,255,235,252,230,314,190"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="387,341,269,384,267,379,385,336"/>
+<area shape="poly" id="edge12_Node000007_Node000003" title=" " alt="" coords="437,336,502,377,499,382,434,341"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="369,387,444,412"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="418,339,413,374,408,373,413,339"/>
+<area shape="poly" id="edge14_Node000009_Node000002" title=" " alt="" coords="227,266,227,373,221,373,221,266"/>
+<area shape="poly" id="edge15_Node000009_Node000004" title=" " alt="" coords="210,268,155,307,152,303,207,263"/>
+<area shape="poly" id="edge16_Node000009_Node000007" title=" " alt="" coords="256,263,374,306,372,311,254,268"/>
+</map>

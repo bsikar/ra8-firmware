@@ -1,0 +1,11 @@
+<map id="ra8_wdt_sup_state_t" name="ra8_wdt_sup_state_t">
+<area shape="rect" id="Node000001" title="Module state – entirely static." alt="" coords="240,101,396,127"/>
+<area shape="rect" id="Node000002" href="$structra8__wdt__sup__cfg__t.html" title="One&#45;shot supervisor configuration block." alt="" coords="5,5,148,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="120,33,290,99,288,104,118,38"/>
+<area shape="rect" id="Node000003" href="$structra8__wdt__sup__slot__t.html" title="One row of the supervisor registry." alt="" coords="173,5,319,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="265,40,311,99,307,103,261,43"/>
+<area shape="rect" id="Node000004" href="$structTX__MUTEX.html" title="Opaque mutex stand&#45;in for the host build." alt="" coords="343,5,437,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="375,43,329,103,325,99,371,40"/>
+<area shape="rect" id="Node000005" href="$structTX__THREAD.html" title="Opaque thread stand&#45;in for the host build." alt="" coords="461,5,561,31"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="485,41,419,80,357,104,355,99,417,75,483,36"/>
+</map>

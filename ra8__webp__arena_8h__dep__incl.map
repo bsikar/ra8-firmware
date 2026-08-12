@@ -1,0 +1,18 @@
+<map id="libs/ra8_webp/inc/ra8_webp_arena.h" name="libs/ra8_webp/inc/ra8_webp_arena.h">
+<area shape="rect" id="Node000001" title="Heap&#45;free scratch allocator hooks for the vendored libwebp decoder." alt="" coords="321,5,481,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2webp__decode__demo_2main_8c.html" title="On&#45;target WebP decode smoke test (ra8_webp over vendored libwebp)." alt="" coords="5,181,180,236"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="357,55,287,96,138,184,135,179,285,91,355,50"/>
+<area shape="rect" id="Node000003" href="$ra8__jof__produce__webp_8c.html" title="Transcode producer: whole&#45;frame WebP arm (#290 normalize&#45;on&#45;import)." alt="" coords="204,189,363,229"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="353,55,330,73,311,95,299,118,292,143,286,189,281,188,287,142,294,116,306,92,326,69,350,51"/>
+<area shape="rect" id="Node000004" href="$ra8__webp_8h.html" title="Zero&#45;heap WebP (VP8 / VP8L) decode facade over the vendored libwebp." alt="" coords="321,93,481,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="403,59,403,93,398,93,398,59"/>
+<area shape="rect" id="Node000006" href="$ra8__webp_8c.html" title="Zero&#45;heap WebP decode facade over the vendored libwebp (impl)." alt="" coords="554,189,714,229"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="440,51,494,91,613,187,609,191,491,95,437,56"/>
+<area shape="rect" id="Node000007" href="$ra8__webp__arena_8c.html" title="Caller&#45;bound bump arena with refcount auto&#45;reset for libwebp." alt="" coords="555,93,715,133"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="466,48,585,91,583,96,464,53"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="326,140,180,184,179,179,324,135"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="368,144,309,191,305,187,365,140"/>
+<area shape="rect" id="Node000005" href="$ra8__jof__produce_8c.html" title="Transcode producer: sniff, decode, tile, encode, emit (#231, #290)." alt="" coords="387,189,529,229"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="422,143,449,187,444,190,417,146"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="462,136,588,186,586,191,460,141"/>
+</map>

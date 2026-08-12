@@ -1,0 +1,21 @@
+<map id="tools/ra8_emulator/src/engine/emu_mpu.c" name="tools/ra8_emulator/src/engine/emu_mpu.c">
+<area shape="rect" id="Node000001" title="Armv8&#45;M MPU enforcement implementation (see emu_mpu.h)." alt="" coords="99,5,272,45"/>
+<area shape="rect" id="Node000002" href="$emu__mpu_8h.html" title="Armv8&#45;M MPU enforcement model for ra8_emulator." alt="" coords="5,93,104,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="155,48,87,88,84,84,152,43"/>
+<area shape="rect" id="Node000006" href="$emu__engine_8h.html" title="Shared Unicorn engine access utilities for the board emulator." alt="" coords="128,93,243,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="188,46,188,79,183,79,183,46"/>
+<area shape="rect" id="Node000007" href="$emu__exc_8h.html" title="Cortex&#45;M exception model constants and interfaces for ra8_emulator." alt="" coords="267,93,360,119"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="218,43,284,84,282,88,215,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="19,167,90,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="57,119,57,153,52,153,52,119"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="114,167,249,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="76,116,150,157,147,162,74,121"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="273,167,399,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="101,116,278,161,277,166,99,121"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="166,121,89,162,87,158,163,116"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="187,119,185,153,180,153,182,119"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="211,116,300,158,298,163,208,121"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="272,121,104,167,103,162,271,116"/>
+<area shape="poly" id="edge11_Node000007_Node000004" title=" " alt="" coords="293,121,216,162,214,158,291,116"/>
+<area shape="poly" id="edge12_Node000007_Node000005" title=" " alt="" coords="320,118,331,153,326,154,315,120"/>
+</map>

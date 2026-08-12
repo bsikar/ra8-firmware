@@ -1,0 +1,25 @@
+<map id="libs/ra8_core/src/ra8_time.c" name="libs/ra8_core/src/ra8_time.c">
+<area shape="rect" id="Node000001" title="SysTick tick counter implementation." alt="" coords="282,5,435,45"/>
+<area shape="rect" id="Node000002" href="$ra8__time_8h.html" title="SysTick&#45;based tick counter, delay and timestamp helpers." alt="" coords="91,93,183,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="307,48,184,91,182,86,305,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="319,240,390,265"/>
+<area shape="poly" id="edge7_Node000001_Node000003" title=" " alt="" coords="369,45,383,93,385,130,381,167,366,228,361,226,376,166,379,130,377,94,364,46"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="238,167,317,192"/>
+<area shape="poly" id="edge8_Node000001_Node000004" title=" " alt="" coords="306,48,275,67,250,95,246,109,248,125,262,154,257,157,243,126,241,109,246,92,271,63,303,43"/>
+<area shape="rect" id="Node000006" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="443,167,525,192"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="381,44,426,92,472,154,467,157,422,95,377,48"/>
+<area shape="rect" id="Node000007" href="$ra8__systick_8h.html" title="Cortex&#45;M85 SysTick + DWT cycle&#45;counter timebase primitive." alt="" coords="259,93,367,119"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="350,47,329,83,325,80,345,44"/>
+<area shape="rect" id="Node000008" href="$ra8__time__constants_8h.html" title="Named Time Unit Constants for Delay / Timeout / Tick Math." alt="" coords="493,93,656,119"/>
+<area shape="poly" id="edge14_Node000001_Node000008" title=" " alt="" coords="411,43,531,86,529,91,409,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="149,117,183,152,228,190,270,214,311,232,309,237,267,218,225,194,179,156,145,121"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="161,116,244,158,241,163,159,121"/>
+<area shape="rect" id="Node000005" href="$ra8__time__interface_8h.html" title="Abstract time&#45;source interface for DI and unit testing." alt="" coords="5,167,163,192"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="131,121,103,157,99,154,126,117"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="292,190,334,229,330,232,288,194"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="128,189,306,236,305,241,127,195"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="464,194,389,235,387,231,462,190"/>
+<area shape="poly" id="edge12_Node000007_Node000003" title=" " alt="" coords="319,118,350,226,345,227,314,120"/>
+<area shape="poly" id="edge13_Node000007_Node000004" title=" " alt="" coords="310,120,292,156,287,153,305,118"/>
+<area shape="poly" id="edge15_Node000008_Node000003" title=" " alt="" coords="575,120,564,156,554,176,539,194,508,216,473,232,404,249,403,244,471,227,505,211,536,190,549,173,559,154,570,118"/>
+</map>

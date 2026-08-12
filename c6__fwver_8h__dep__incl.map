@@ -1,0 +1,13 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_fw_version/c6_fwver.h" name="examples/ek_ra8d2/hw_validated/c6/c6_fw_version/c6_fwver.h">
+<area shape="rect" id="Node000001" title="Shared contract for the esp&#45;hosted RPC round&#45;trip application." alt="" coords="464,5,669,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__fw__version_2main_8c.html" title="Complete an esp&#45;hosted RPC round&#45;trip against the ESP32&#45;C6." alt="" coords="5,108,211,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="451,61,223,111,212,113,211,108,222,105,450,56"/>
+<area shape="rect" id="Node000003" href="$c6__fwver__console_8c.html" title="Bounded console formatters for the esp&#45;hosted RPC round&#45;trip app." alt="" coords="235,108,440,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="495,68,398,110,396,105,493,63"/>
+<area shape="rect" id="Node000004" href="$c6__fwver__link_8c.html" title="The esp&#45;hosted transaction pump: frame in, frame out, counted." alt="" coords="464,108,669,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="569,74,569,108,564,108,564,74"/>
+<area shape="rect" id="Node000005" href="$c6__fwver__priv_8c.html" title="The ESP_PRIV_IF control channel: host capabilities out, INIT in." alt="" coords="693,108,899,163"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="640,63,737,105,735,110,638,68"/>
+<area shape="rect" id="Node000006" href="$c6__fwver__rpc_8c.html" title="The ESP_SERIAL_IF RPC channel: request, response, verdict." alt="" coords="923,108,1128,163"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="683,56,911,105,923,108,922,113,910,111,682,61"/>
+</map>

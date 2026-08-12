@@ -1,0 +1,42 @@
+<map id="libs/ra8_gfx/src/ra8_gfx_dither.c" name="libs/ra8_gfx/src/ra8_gfx_dither.c">
+<area shape="rect" id="Node000001" title="Void&#45;and&#45;cluster blue&#45;noise dither: gray8 &#45;&gt; 16&#45;level e&#45;ink panel (#477)." alt="" coords="287,5,434,45"/>
+<area shape="rect" id="Node000002" href="$ra8__gfx__dither_8h.html" title="Void&#45;and&#45;cluster blue&#45;noise dithering: continuous&#45;tone gray8 &#45;&gt; 16&#45;level panel (#477)." alt="" coords="20,181,147,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="288,44,227,65,167,96,128,132,99,171,95,168,124,129,164,91,225,60,286,39"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="320,328,391,353"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="288,34,195,49,145,62,99,79,59,102,28,130,18,146,11,164,8,184,10,206,15,247,22,262,36,278,55,290,83,300,156,316,236,327,307,334,306,339,236,332,155,321,82,305,53,294,32,282,17,265,10,248,5,207,3,184,6,163,13,144,24,127,56,97,97,74,144,57,194,44,287,29"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="57,255,136,280"/>
+<area shape="poly" id="edge15_Node000001_Node000004" title=" " alt="" coords="342,47,121,247,118,243,338,43"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="699,181,774,207"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="434,26,517,32,607,44,686,63,715,76,736,92,746,109,750,130,747,168,741,167,745,130,741,111,732,95,713,80,684,68,606,49,516,38,434,32"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="798,181,923,207"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="434,23,506,27,589,38,677,58,720,73,761,91,787,108,810,128,847,169,843,172,807,132,784,112,758,96,718,78,675,63,588,43,505,33,434,29"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="223,181,323,207"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="353,47,287,170,283,168,348,44"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="385,255,467,280"/>
+<area shape="poly" id="edge27_Node000001_Node000008" title=" " alt="" coords="367,45,388,133,421,241,415,242,383,134,362,46"/>
+<area shape="rect" id="Node000010" href="$ra8__gfx__dither__mask__internal_8h.html" title="Void&#45;and&#45;cluster blue&#45;noise threshold mask for the e&#45;ink dither (#477)." alt="" coords="399,93,557,133"/>
+<area shape="poly" id="edge16_Node000001_Node000010" title=" " alt="" coords="388,43,442,83,439,87,385,48"/>
+<area shape="rect" id="Node000011" href="$ra8__gfx__internal_8h.html" title="Module&#45;private declarations shared across the ra8_gfx software rasteriser TUs." alt="" coords="581,101,721,126"/>
+<area shape="poly" id="edge18_Node000001_Node000011" title=" " alt="" coords="425,43,600,94,599,99,424,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="73,209,59,224,47,243,41,261,47,278,63,291,89,302,158,319,237,329,306,335,306,340,236,335,157,324,87,307,61,296,42,282,36,261,42,240,55,221,69,205"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="88,207,95,241,89,242,83,207"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="137,277,307,323,306,329,136,282"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="251,209,229,223,209,240,198,260,197,269,201,279,223,300,249,316,279,326,307,332,306,338,277,331,247,321,219,305,197,281,192,270,192,258,205,237,226,219,248,204"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="245,209,139,252,137,247,243,204"/>
+<area shape="poly" id="edge11_Node000007_Node000008" title=" " alt="" coords="298,204,390,246,387,251,296,209"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="212,255,360,280"/>
+<area shape="poly" id="edge13_Node000007_Node000009" title=" " alt="" coords="277,207,284,241,279,242,272,207"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="416,282,378,320,374,316,412,278"/>
+<area shape="poly" id="edge14_Node000009_Node000003" title=" " alt="" coords="299,278,337,316,333,320,295,282"/>
+<area shape="poly" id="edge17_Node000010_Node000003" title=" " alt="" coords="487,133,494,164,499,202,496,243,482,281,466,300,447,314,405,332,403,327,444,309,463,296,477,279,491,242,493,202,489,165,482,134"/>
+<area shape="poly" id="edge20_Node000011_Node000003" title=" " alt="" coords="639,128,583,183,561,211,547,235,531,258,505,282,455,311,405,329,403,324,453,306,502,278,527,255,542,232,557,208,579,180,636,124"/>
+<area shape="poly" id="edge19_Node000011_Node000005" title=" " alt="" coords="666,124,716,170,712,174,662,128"/>
+<area shape="poly" id="edge21_Node000011_Node000006" title=" " alt="" coords="683,124,818,174,816,179,681,129"/>
+<area shape="rect" id="Node000012" href="$ra8__gfx_8h.html" title="Software 2D graphics primitives layered on top of a caller&#45;ownedframebuffer (DRW / D/AVE 2D / GLCDC r..." alt="" coords="593,181,675,207"/>
+<area shape="poly" id="edge22_Node000011_Node000012" title=" " alt="" coords="651,127,642,169,637,167,646,126"/>
+<area shape="poly" id="edge23_Node000012_Node000003" title=" " alt="" coords="631,208,611,245,595,265,575,282,534,305,489,321,444,332,405,338,404,333,443,327,487,316,532,300,572,278,591,261,606,242,626,206"/>
+<area shape="poly" id="edge24_Node000012_Node000004" title=" " alt="" coords="593,203,150,262,149,256,592,198"/>
+<area shape="rect" id="Node000013" href="$ra8__gfx__font_8h.html" title="Bitmap font descriptor + bundled font handles for ra8_gfx." alt="" coords="644,255,760,280"/>
+<area shape="poly" id="edge25_Node000012_Node000013" title=" " alt="" coords="647,205,683,243,679,246,643,209"/>
+<area shape="poly" id="edge26_Node000013_Node000003" title=" " alt="" coords="647,283,404,332,403,327,646,277"/>
+</map>

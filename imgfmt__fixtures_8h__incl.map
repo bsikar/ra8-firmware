@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/imgfmt_fixtures.h" name="examples/ek_ra8d2/hw_validated/hil/ereader_imgfmt/imgfmt_fixtures.h">
+<area shape="rect" id="Node000001" title="Baked BMP + GIF test images for the ereader_imgfmt gate." alt="" coords="5,5,203,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="19,108,93,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,61,72,97,67,95,87,59"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="118,108,189,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="121,59,142,95,137,97,117,61"/>
+</map>

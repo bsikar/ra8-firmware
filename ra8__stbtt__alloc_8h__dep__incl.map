@@ -1,0 +1,5 @@
+<map id="libs/ra8_reflow/inc/ra8_stbtt_alloc.h" name="libs/ra8_reflow/inc/ra8_stbtt_alloc.h">
+<area shape="rect" id="Node000001" title="Heap&#45;free scratch allocator for stb_truetype (glyph rasterise)." alt="" coords="5,5,145,45"/>
+<area shape="rect" id="Node000002" href="$ra8__stbtt__alloc_8c.html" title="Fixed bump arena with refcount auto&#45;reset for stb_truetype." alt="" coords="5,93,145,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="78,59,78,93,73,93,73,59"/>
+</map>

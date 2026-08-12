@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hw_pending/compile_on_m33/parity_fixture.h" name="examples/ek_ra8d2/hw_pending/compile_on_m33/parity_fixture.h">
+<area shape="rect" id="Node000001" title="Baked parity .epub + golden blob for the M33 compile (#149)." alt="" coords="5,5,201,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2compile__on__m33_2main_8c.html" title="CPU0 (Cortex&#45;M85 primary core) driver: stage an EPUB, offload its compile to the M33." alt="" coords="5,108,201,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="106,74,106,108,101,108,101,74"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/src/ra8_npu.c" name="libs/ra8_hal/src/ra8_npu.c">
+<area shape="rect" id="Node000001" title="Arm Ethos&#45;U55 NPU command/queue driver foundation (RA8P1&#45;only)." alt="" coords="65,5,210,45"/>
+<area shape="rect" id="Node000002" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="5,93,131,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="123,47,90,84,86,81,119,44"/>
+<area shape="rect" id="Node000003" href="$ra8__device_8h.html" title="Compile&#45;time device selection for the RA8 multi&#45;chip build (RA8D2 / RA8P1)." alt="" coords="155,93,261,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="156,44,190,81,186,85,152,47"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="173,167,243,192"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="211,119,211,153,205,153,205,119"/>
+</map>

@@ -1,0 +1,16 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/c6_proto.h" name="examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/c6_proto.h">
+<area shape="rect" id="Node000001" title="The esp&#45;hosted SPI full&#45;duplex wire format, hand&#45;decoded." alt="" coords="572,5,745,60"/>
+<area shape="rect" id="Node000002" href="$c6__probe_8h.html" title="Shared contract for the EK&#45;RA8D2 &lt;&#45;&gt; ESP32&#45;C6 esp&#45;hosted SPI probe." alt="" coords="511,108,684,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="638,73,616,109,611,107,633,70"/>
+<area shape="rect" id="Node000005" href="$c6__frame_8c.html" title="Hand&#45;decoded esp&#45;hosted payload header for the ESP32&#45;C6 SPI probe." alt="" coords="811,211,984,265"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="701,67,868,208,865,212,698,71"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__spi__probe_2main_8c.html" title="First raw SPI link probe against the ESP32&#45;C6 wireless co&#45;processor." alt="" coords="5,211,179,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="497,155,352,181,191,213,180,216,178,211,190,208,351,176,497,150"/>
+<area shape="rect" id="Node000004" href="$c6__console_8c.html" title="Bounded console formatters for the ESP32&#45;C6 SPI probe." alt="" coords="203,211,379,265"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="505,169,371,213,370,208,504,164"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="689,164,820,208,818,213,687,169"/>
+<area shape="rect" id="Node000006" href="$c6__sideband_8c.html" title="Pmod1 side&#45;band sampling, wire test, pull&#45;up contest, chip&#45;select hunt." alt="" coords="403,211,589,265"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="563,175,524,212,521,209,559,171"/>
+<area shape="rect" id="Node000007" href="$c6__xfer_8c.html" title="One full esp&#45;hosted SPI full&#45;duplex transaction against the C6." alt="" coords="613,211,787,265"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="636,170,675,209,671,212,632,174"/>
+</map>

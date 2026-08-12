@@ -1,0 +1,7 @@
+<map id="src/secure_app/inc/ota_commit.h" name="src/secure_app/inc/ota_commit.h">
+<area shape="rect" id="Node000001" title="Secure&#45;side OTA bank commit + flash&#45;bank&#45;config write." alt="" coords="91,5,234,45"/>
+<area shape="rect" id="Node000002" href="$ra8__nsc__ota_8c.html" title="NSC veneers: OTA bank&#45;commit + flash&#45;bank&#45;config write." alt="" coords="5,93,152,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="137,57,99,95,95,91,133,53"/>
+<area shape="rect" id="Node000003" href="$ota__commit_8c.html" title="Secure&#45;side OTA commit + flash&#45;bank&#45;config implementation." alt="" coords="176,93,320,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="193,53,231,91,227,95,189,57"/>
+</map>

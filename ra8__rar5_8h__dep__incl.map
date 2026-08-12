@@ -1,0 +1,50 @@
+<map id="libs/ra8_comic/inc/ra8_rar5.h" name="libs/ra8_comic/inc/ra8_rar5.h">
+<area shape="rect" id="Node000001" title="Clean&#45;room RAR 5.0 (&quot;method 50&quot;) decompressor – LZ + Huffman + filters." alt="" coords="1544,5,1683,45"/>
+<area shape="rect" id="Node000002" href="$ra8__comic_8h.html" title="Unified demand&#45;paged reader for comic&#45;book archives – CBZ (ZIP) and CBR (RAR)." alt="" coords="701,93,840,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1530,38,841,108,840,102,1530,32"/>
+<area shape="rect" id="Node000017" href="$ra8__rar_8c.html" title="Implementation of the clean&#45;room RAR4/RAR5 archive walker (ra8_rar.h)." alt="" coords="1437,93,1576,133"/>
+<area shape="poly" id="edge23_Node000001_Node000017" title=" " alt="" coords="1581,56,1532,95,1529,91,1577,52"/>
+<area shape="rect" id="Node000018" href="$ra8__rar5_8c.html" title="RAR 5.0 LZ decoder driver: token loop, data filters, public entry." alt="" coords="1605,189,1744,229"/>
+<area shape="poly" id="edge24_Node000001_Node000018" title=" " alt="" coords="1622,58,1641,132,1666,187,1662,189,1636,134,1617,60"/>
+<area shape="rect" id="Node000019" href="$ra8__rar5__internal_8h.html" title="Cross&#45;TU seam between the RAR5 entropy front&#45;end and the LZ decoder." alt="" coords="1651,93,1800,133"/>
+<area shape="poly" id="edge25_Node000001_Node000019" title=" " alt="" coords="1651,52,1702,91,1699,95,1648,56"/>
+<area shape="rect" id="Node000020" href="$ra8__rar5__tables_8c.html" title="RAR 5.0 entropy front&#45;end: bit reader, canonical Huffman, block tables." alt="" coords="1768,189,1907,229"/>
+<area shape="poly" id="edge28_Node000001_Node000020" title=" " alt="" coords="1697,33,1728,41,1759,53,1789,70,1814,92,1829,115,1837,141,1841,188,1836,189,1832,142,1824,117,1810,95,1786,74,1757,58,1727,46,1696,38"/>
+<area shape="rect" id="Node000003" href="$sh__comic_8c.html" title="Full&#45;page image reader for CBZ / CBR comic archives (#236)." alt="" coords="667,181,874,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="773,147,773,181,768,181,768,147"/>
+<area shape="rect" id="Node000004" href="$cm__tiled__check_8c.html" title="Oversized&#45;page tile self&#45;check for ereader_comic (#344)." alt="" coords="899,181,1080,236"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="828,136,929,179,927,184,826,141"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__pending_2ereader__comic_2main_8c.html" title="Viewable page&#45;turn comic reader – baked CBZ decoded to the 1024x600 GLCDC panel, tap&#45;zone navigation ..." alt="" coords="1104,181,1285,236"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="854,128,1093,179,1104,181,1103,187,1091,184,853,134"/>
+<area shape="rect" id="Node000006" href="$ra8__comic_8c.html" title="Facade for the comic&#45;archive reader: magic detect, page index, dispatch." alt="" coords="360,284,499,324"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="704,141,655,160,607,184,522,237,455,286,452,281,519,232,604,179,653,155,702,136"/>
+<area shape="rect" id="Node000007" href="$ra8__comic__cbr_8c.html" title="CBR backend: walk a RAR archive (ra8_rar.h) and index its page images." alt="" coords="523,284,661,324"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="703,142,671,160,643,183,626,208,613,235,598,284,593,283,608,233,621,205,639,180,668,155,700,137"/>
+<area shape="rect" id="Node000008" href="$ra8__comic__cbt_8c.html" title="CBT backend: walk a tar archive (ra8_unarch_tar.h) and index its pages." alt="" coords="685,284,824,324"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="702,142,677,159,657,183,650,197,648,208,657,235,680,262,709,282,706,286,676,266,652,237,643,209,645,195,652,180,673,155,699,137"/>
+<area shape="rect" id="Node000009" href="$ra8__comic__cbz_8c.html" title="CBZ backend: a streaming miniz ZIP reader that indexes page images." alt="" coords="5,284,144,324"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="687,118,599,122,494,133,381,153,272,184,221,206,173,234,99,286,96,282,170,229,219,201,270,179,380,148,493,128,599,117,687,113"/>
+<area shape="rect" id="Node000010" href="$ra8__comic__internal_8h.html" title="Cross&#45;TU seams between the comic facade and its CBZ / CBR backends." alt="" coords="328,189,491,229"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="689,138,510,184,482,191,481,186,509,179,687,133"/>
+<area shape="rect" id="Node000011" href="$ra8__comic__wrapped_8c.html" title="Wrapped comic open: gzip / XZ unwrap in front of the container detect." alt="" coords="169,284,335,324"/>
+<area shape="poly" id="edge15_Node000002_Node000011" title=" " alt="" coords="688,121,590,127,481,139,383,157,345,169,318,183,295,206,278,233,259,285,254,283,273,231,291,202,314,179,343,165,382,152,480,134,589,122,688,115"/>
+<area shape="rect" id="Node000012" href="$ra8__viewer__comic_8c.html" title="Comic&#45;archive reader engine: CBZ / CBR / CBT and wrapped variants." alt="" coords="1141,284,1320,324"/>
+<area shape="poly" id="edge16_Node000002_Node000012" title=" " alt="" coords="854,117,979,125,1118,139,1236,156,1277,167,1299,179,1308,194,1309,207,1300,237,1282,264,1260,286,1256,282,1278,261,1295,235,1304,207,1303,195,1296,183,1275,172,1235,162,1117,144,978,131,853,122"/>
+<area shape="rect" id="Node000013" href="$ra8__viewer__reader_8c.html" title="Host&#45;side reader core: format dispatch, buffer ownership, public API." alt="" coords="1345,284,1525,324"/>
+<area shape="poly" id="edge17_Node000002_Node000013" title=" " alt="" coords="854,115,972,122,1108,134,1234,153,1285,165,1323,179,1356,201,1385,229,1425,282,1421,285,1381,233,1353,205,1320,184,1283,170,1233,158,1107,139,972,127,854,120"/>
+<area shape="rect" id="Node000014" href="$ra8__viewer__reader__internal_8h.html" title="Module&#45;private reader state + per&#45;engine entry points for the viewer." alt="" coords="1411,181,1581,236"/>
+<area shape="poly" id="edge18_Node000002_Node000014" title=" " alt="" coords="854,117,1096,138,1244,156,1392,179,1411,182,1410,188,1392,184,1244,161,1096,144,853,123"/>
+<area shape="poly" id="edge10_Node000010_Node000006" title=" " alt="" coords="419,241,428,283,423,285,414,242"/>
+<area shape="poly" id="edge11_Node000010_Node000007" title=" " alt="" coords="460,232,556,282,554,286,457,237"/>
+<area shape="poly" id="edge12_Node000010_Node000008" title=" " alt="" coords="493,230,686,281,684,287,492,235"/>
+<area shape="poly" id="edge13_Node000010_Node000009" title=" " alt="" coords="329,235,143,287,142,281,328,230"/>
+<area shape="poly" id="edge14_Node000010_Node000011" title=" " alt="" coords="367,238,285,286,282,282,364,233"/>
+<area shape="poly" id="edge19_Node000014_Node000012" title=" " alt="" coords="1409,243,1285,287,1283,281,1407,238"/>
+<area shape="poly" id="edge22_Node000014_Node000013" title=" " alt="" coords="1473,249,1449,285,1445,282,1469,246"/>
+<area shape="rect" id="Node000015" href="$ra8__viewer__jof_8c.html" title="JOF long&#45;strip reader engine: vertical&#45;scroll tile atlas rendering." alt="" coords="1741,284,1896,324"/>
+<area shape="poly" id="edge20_Node000014_Node000015" title=" " alt="" coords="1595,236,1754,281,1753,287,1594,241"/>
+<area shape="rect" id="Node000016" href="$ra8__viewer__ppm_8c.html" title="RGB565 &lt;&#45;&gt; 8&#45;bit RGB conversion and the shared binary&#45;PPM (P6) writer." alt="" coords="1549,284,1717,324"/>
+<area shape="poly" id="edge21_Node000014_Node000016" title=" " alt="" coords="1548,242,1607,282,1604,286,1545,246"/>
+<area shape="poly" id="edge26_Node000019_Node000018" title=" " alt="" coords="1711,147,1687,190,1683,187,1706,144"/>
+<area shape="poly" id="edge27_Node000019_Node000020" title=" " alt="" coords="1760,140,1816,187,1813,191,1757,144"/>
+</map>

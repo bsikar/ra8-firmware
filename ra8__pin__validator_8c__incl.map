@@ -1,0 +1,32 @@
+<map id="libs/ra8_core/src/ra8_pin_validator.c" name="libs/ra8_core/src/ra8_pin_validator.c">
+<area shape="rect" id="Node000001" title="Runtime pin&#45;ownership bitmap implementation." alt="" coords="276,5,429,45"/>
+<area shape="rect" id="Node000002" href="$ra8__pin__validator_8h.html" title="Runtime Pin&#45;Ownership Validator." alt="" coords="113,93,259,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="314,48,224,90,222,85,312,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="311,240,381,265"/>
+<area shape="poly" id="edge7_Node000001_Node000003" title=" " alt="" coords="276,39,175,58,123,72,76,89,39,109,15,133,9,146,9,159,13,174,24,190,42,204,69,215,142,232,225,242,297,247,297,252,224,248,141,238,67,220,39,208,20,194,9,176,3,160,4,144,10,130,35,105,74,84,122,67,174,53,275,34"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="268,167,347,192"/>
+<area shape="poly" id="edge18_Node000001_Node000004" title=" " alt="" coords="345,46,325,94,313,154,307,152,319,93,340,44"/>
+<area shape="rect" id="Node000005" href="$ra8__port__constants_8h.html" title="Typed Port / Pin Constants for the RA8D2 IOPORT Module." alt="" coords="33,167,192,192"/>
+<area shape="poly" id="edge20_Node000001_Node000005" title=" " alt="" coords="277,39,172,61,129,77,103,95,97,108,96,123,103,153,98,154,90,123,92,107,99,92,127,72,171,56,275,34"/>
+<area shape="rect" id="Node000006" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="683,93,809,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="430,39,676,88,675,93,429,45"/>
+<area shape="rect" id="Node000007" href="$ra8__bit__constants_8h.html" title="Named Bit Positions and Masks for Register Manipulation." alt="" coords="334,93,483,119"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="368,44,395,80,390,84,364,47"/>
+<area shape="rect" id="Node000008" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="508,93,608,119"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="403,43,516,86,514,91,401,48"/>
+<area shape="rect" id="Node000009" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="646,167,729,192"/>
+<area shape="poly" id="edge19_Node000001_Node000009" title=" " alt="" coords="430,30,476,37,526,49,576,67,622,91,654,120,677,153,672,156,650,124,619,96,573,72,524,54,475,42,429,35"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="196,118,222,152,258,190,315,231,312,235,255,194,218,155,192,121"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="207,116,277,157,275,162,204,121"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="176,121,136,159,133,155,172,117"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="316,191,336,227,331,229,311,194"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="151,189,298,234,297,239,149,195"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="406,120,359,228,354,226,401,118"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="540,121,464,169,373,234,370,230,461,164,537,116"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="518,121,361,166,359,161,517,116"/>
+<area shape="poly" id="edge14_Node000008_Node000009" title=" " alt="" coords="580,116,655,157,653,162,578,121"/>
+<area shape="rect" id="Node000010" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="473,167,621,192"/>
+<area shape="poly" id="edge16_Node000008_Node000010" title=" " alt="" coords="559,119,554,154,548,153,554,119"/>
+<area shape="poly" id="edge15_Node000009_Node000003" title=" " alt="" coords="647,192,635,195,395,244,394,239,633,189,645,187"/>
+<area shape="poly" id="edge17_Node000010_Node000003" title=" " alt="" coords="516,195,392,238,391,233,514,190"/>
+</map>

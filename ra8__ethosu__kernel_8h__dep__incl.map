@@ -1,0 +1,5 @@
+<map id="libs/ra8_hal/inc/ra8_ethosu_kernel.h" name="libs/ra8_hal/inc/ra8_ethosu_kernel.h">
+<area shape="rect" id="Node000001" title="First&#45;party TFLite&#45;micro Ethos&#45;U custom&#45;op registration probe (RA8P1&#45;only)." alt="" coords="35,5,180,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ra8p1__foundation_2npu__infer_2main_8c.html" title="RA8P1 Ethos&#45;U55 inference runtime smoke – quantize + IRQ + TFLite&#45;micro." alt="" coords="5,93,209,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="110,59,110,93,105,93,105,59"/>
+</map>

@@ -1,0 +1,31 @@
+<map id="examples/ek_ra8d2/hw_pending/ereader_zoom/inc/ez_scene.h" name="examples/ek_ra8d2/hw_pending/ereader_zoom/inc/ez_scene.h">
+<area shape="rect" id="Node000001" title="Tap&#45;to&#45;zoom demo scene: tiled 12 MP page, zoom viewport, loupe (#478)." alt="" coords="112,5,291,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="170,401,241,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="128,62,86,84,47,113,31,130,19,149,11,170,8,193,8,268,12,294,23,317,39,336,60,354,109,380,157,398,155,403,107,385,57,358,36,340,18,320,7,296,3,269,3,192,6,169,14,147,27,127,43,109,83,80,125,58"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="267,328,346,353"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="279,58,310,78,334,107,346,133,352,162,352,191,350,220,337,274,321,316,316,314,331,273,344,220,347,191,346,163,341,135,330,109,306,82,276,62"/>
+<area shape="rect" id="Node000004" href="$ra8__tile__cache_8h.html" title="Fixed&#45;RAM&#45;budget image&#45;tile cache with LRU eviction (Layer 3b, #147)." alt="" coords="395,181,523,207"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="282,58,330,79,378,106,414,137,443,169,439,172,411,141,374,110,328,84,280,62"/>
+<area shape="rect" id="Node000006" href="$ra8__ui_8h.html" title="Bounded UI interaction core: hit&#45;testing, screen stack, paging." alt="" coords="43,255,117,280"/>
+<area shape="poly" id="edge10_Node000001_Node000006" title=" " alt="" coords="177,62,132,115,111,147,93,182,85,212,82,241,77,241,80,211,88,180,106,145,128,112,173,58"/>
+<area shape="rect" id="Node000007" href="$ra8__zoom_8h.html" title="Tap&#45;to&#45;zoom image viewer: viewport state machine + tiled magnifying render (#478)." alt="" coords="103,181,201,207"/>
+<area shape="poly" id="edge13_Node000001_Node000007" title=" " alt="" coords="194,61,177,109,161,169,155,167,172,107,189,59"/>
+<area shape="rect" id="Node000008" href="$ra8__zoom__tiles_8h.html" title="Bind a tiled gray8 atlas behind an ra8_tile_cache as a ra8_zoom source (#478)." alt="" coords="187,108,320,133"/>
+<area shape="poly" id="edge17_Node000001_Node000008" title=" " alt="" coords="219,59,242,95,237,98,215,61"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="292,356,235,395,232,391,289,351"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="504,204,538,216,568,233,580,243,587,255,588,268,582,281,550,318,512,348,468,371,422,388,376,400,331,408,255,415,254,410,330,403,375,395,421,383,466,366,509,344,547,315,578,279,583,267,582,257,576,247,565,237,536,221,503,209"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="450,209,378,282,333,321,329,317,374,278,446,205"/>
+<area shape="rect" id="Node000005" href="$ra8__keycache_8h.html" title="The one reusable hash + pin + evict cache engine (#147, #345)." alt="" coords="445,255,568,280"/>
+<area shape="poly" id="edge7_Node000004_Node000005" title=" " alt="" coords="469,206,494,242,489,245,464,209"/>
+<area shape="poly" id="edge8_Node000005_Node000002" title=" " alt="" coords="490,283,433,317,360,356,253,399,251,394,358,351,430,312,487,278"/>
+<area shape="poly" id="edge9_Node000005_Node000003" title=" " alt="" coords="475,283,353,326,352,321,474,278"/>
+<area shape="poly" id="edge11_Node000006_Node000002" title=" " alt="" coords="89,279,109,313,138,352,181,391,177,395,134,355,105,316,84,282"/>
+<area shape="poly" id="edge12_Node000006_Node000003" title=" " alt="" coords="117,277,258,321,256,326,116,283"/>
+<area shape="poly" id="edge14_Node000007_Node000002" title=" " alt="" coords="157,206,189,353,200,387,194,389,184,354,152,207"/>
+<area shape="poly" id="edge15_Node000007_Node000003" title=" " alt="" coords="166,205,286,316,282,320,163,209"/>
+<area shape="poly" id="edge16_Node000007_Node000006" title=" " alt="" coords="142,209,103,247,100,243,138,205"/>
+<area shape="poly" id="edge18_Node000008_Node000002" title=" " alt="" coords="254,134,212,388,207,387,249,133"/>
+<area shape="poly" id="edge19_Node000008_Node000003" title=" " alt="" coords="259,133,303,314,298,315,254,134"/>
+<area shape="poly" id="edge20_Node000008_Node000004" title=" " alt="" coords="287,131,413,174,412,179,285,136"/>
+<area shape="poly" id="edge21_Node000008_Node000007" title=" " alt="" coords="239,136,181,175,178,171,236,131"/>
+</map>

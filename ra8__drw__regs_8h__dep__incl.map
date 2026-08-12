@@ -1,0 +1,25 @@
+<map id="libs/ra8_hal/inc/ra8_drw_regs.h" name="libs/ra8_hal/inc/ra8_drw_regs.h">
+<area shape="rect" id="Node000001" title="2D Drawing Engine (DRW / D/AVE 2D) register layout for the RA8D2" alt="" coords="489,5,634,45"/>
+<area shape="rect" id="Node000002" href="$ra8__drw_8h.html" title="2D Drawing Engine (DRW / D/AVE 2D) HAL driver – public API" alt="" coords="489,93,634,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="564,59,564,93,559,93,559,59"/>
+<area shape="rect" id="Node000007" href="$ra8__drw__draw_8c.html" title="2D Drawing Engine (DRW / D/AVE 2D) geometry primitives" alt="" coords="409,291,554,331"/>
+<area shape="poly" id="edge14_Node000001_Node000007" title=" " alt="" coords="475,29,381,38,328,48,273,62,221,82,171,108,126,142,89,183,81,197,78,209,81,221,89,234,109,250,140,264,225,285,321,298,409,304,408,310,320,303,224,290,139,269,106,255,85,238,76,223,73,209,76,195,85,180,123,138,168,104,218,77,272,57,326,43,380,33,475,24"/>
+<area shape="rect" id="Node000008" href="$ra8__drw_8c.html" title="2D Drawing Engine (DRW / D/AVE 2D) HAL driver implementation" alt="" coords="834,291,979,331"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="648,35,717,52,790,80,826,99,860,121,889,148,914,180,925,208,927,239,923,268,916,292,911,290,918,267,922,239,920,209,910,183,885,152,856,126,823,103,788,85,715,57,647,41"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__validated_2hil_2drw__blend__demo_2main_8c.html" title="DRW 2D&#45;engine blit + per&#45;pixel alpha&#45;blend headless CRC demo (EK&#45;RA8D2)." alt="" coords="269,181,451,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="509,142,418,184,416,179,507,137"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2drw__dlist__demo_2main_8c.html" title="DRW display&#45;list (DLR) clear+fill demo – loop&#45;stable (EK&#45;RA8D2, #247)." alt="" coords="5,284,179,339"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="475,117,370,119,254,129,199,138,152,150,114,165,89,183,77,206,74,232,77,259,84,283,79,285,72,260,69,232,72,204,85,180,111,160,150,144,198,133,253,124,369,114,475,111"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2drw__fill__demo_2main_8c.html" title="DRW 2D&#45;engine framebuffer fill&#45;rect + verify demo (EK&#45;RA8D2)." alt="" coords="475,181,648,236"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="564,147,564,181,559,181,559,147"/>
+<area shape="rect" id="Node000006" href="$ra8__drw__dlist_8h.html" title="2D Drawing Engine (DRW / D/AVE 2D) display&#45;list builder – public API" alt="" coords="99,189,245,229"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="476,134,258,184,232,191,231,186,257,179,475,129"/>
+<area shape="poly" id="edge9_Node000002_Node000007" title=" " alt="" coords="620,138,644,156,662,180,672,209,670,223,662,238,641,261,614,280,584,293,555,302,553,297,583,288,611,275,637,257,658,234,665,221,667,209,658,183,640,160,617,142"/>
+<area shape="poly" id="edge8_Node000002_Node000008" title=" " alt="" coords="648,119,715,128,784,140,844,157,867,168,883,179,901,206,909,236,912,266,912,291,906,291,907,266,904,237,896,208,879,183,864,172,842,162,783,145,715,133,648,125"/>
+<area shape="rect" id="Node000009" href="$ra8__drw__internal_8h.html" title="Test&#45;access surface for ra8_drw internal helpers (MC/DC)." alt="" coords="723,189,869,229"/>
+<area shape="poly" id="edge10_Node000002_Node000009" title=" " alt="" coords="623,136,750,186,748,191,621,141"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="151,241,115,285,111,282,146,238"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="243,230,424,289,422,294,242,235"/>
+<area shape="poly" id="edge12_Node000009_Node000007" title=" " alt="" coords="725,235,541,294,540,289,723,230"/>
+<area shape="poly" id="edge11_Node000009_Node000008" title=" " alt="" coords="829,236,888,289,884,293,825,240"/>
+</map>

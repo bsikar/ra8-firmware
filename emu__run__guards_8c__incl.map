@@ -1,0 +1,33 @@
+<map id="tools/ra8_emulator/src/engine/emu_run_guards.c" name="tools/ra8_emulator/src/engine/emu_run_guards.c">
+<area shape="rect" id="Node000001" title="Run&#45;guard environment knob reader (see emu_run.h)." alt="" coords="216,5,371,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,72,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="217,62,86,106,84,101,215,57"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="97,108,167,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="245,62,167,104,165,99,243,58"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="192,108,277,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="278,62,252,98,248,95,273,59"/>
+<area shape="rect" id="Node000005" href="$emu__prof_8h.html" title="Firmware profiler (RA8_EMU_PROFILE): sampling, hooks, reports." alt="" coords="426,108,521,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="349,58,438,100,436,105,347,62"/>
+<area shape="rect" id="Node000009" href="$emu__run_8h.html" title="The chunked emulation run loop, report and exit&#45;code mapping." alt="" coords="564,108,655,133"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="372,52,555,102,554,107,370,58"/>
+<area shape="rect" id="Node000011" href="$emu__view_8h.html" title="Board&#45;view presentation: frames, composition, input routing, panels." alt="" coords="302,108,402,133"/>
+<area shape="poly" id="edge14_Node000001_Node000011" title=" " alt="" coords="313,59,339,95,334,98,309,62"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="314,255,385,280"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="444,136,408,155,377,183,362,212,355,242,349,240,357,210,373,180,405,150,441,131"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="387,181,522,207"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="473,134,464,169,459,168,468,133"/>
+<area shape="rect" id="Node000008" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="547,181,672,207"/>
+<area shape="poly" id="edge7_Node000005_Node000008" title=" " alt="" coords="496,131,576,173,574,177,494,136"/>
+<area shape="poly" id="edge9_Node000009_Node000006" title=" " alt="" coords="634,131,657,146,680,164,692,185,692,197,686,208,666,224,637,236,560,253,474,263,399,267,399,262,473,258,559,248,635,231,664,219,682,205,687,196,687,187,675,168,654,150,631,136"/>
+<area shape="poly" id="edge10_Node000009_Node000007" title=" " alt="" coords="586,136,493,178,491,173,583,131"/>
+<area shape="poly" id="edge13_Node000009_Node000008" title=" " alt="" coords="612,134,612,168,607,168,607,134"/>
+<area shape="rect" id="Node000010" href="$board__view_8h.html" title="Minimal self&#45;contained macOS window for the board emulator." alt="" coords="747,181,855,207"/>
+<area shape="poly" id="edge11_Node000009_Node000010" title=" " alt="" coords="641,131,758,174,756,179,639,136"/>
+<area shape="poly" id="edge12_Node000010_Node000006" title=" " alt="" coords="748,206,398,261,398,256,747,201"/>
+<area shape="poly" id="edge15_Node000011_Node000006" title=" " alt="" coords="303,135,227,155,196,169,177,183,170,199,173,212,184,223,202,234,250,249,301,258,300,263,249,254,200,238,181,228,168,214,165,198,173,180,193,164,225,150,301,129"/>
+<area shape="poly" id="edge16_Node000011_Node000007" title=" " alt="" coords="370,131,428,171,425,175,367,136"/>
+<area shape="poly" id="edge19_Node000011_Node000008" title=" " alt="" coords="394,131,555,175,554,180,393,136"/>
+<area shape="rect" id="Node000012" href="$board__overlay_8h.html" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="187,181,312,207"/>
+<area shape="poly" id="edge17_Node000011_Node000012" title=" " alt="" coords="337,136,279,175,276,171,334,131"/>
+<area shape="poly" id="edge18_Node000012_Node000006" title=" " alt="" coords="267,205,323,244,320,249,264,209"/>
+</map>

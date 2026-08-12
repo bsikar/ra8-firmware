@@ -1,0 +1,13 @@
+<map id="mdl_session_t" name="mdl_session_t">
+<area shape="rect" id="Node000001" title="One download session&#39;s identity and robots.txt state." alt="" coords="41,389,155,415"/>
+<area shape="rect" id="Node000002" href="$structmdl__net__iface__t.html" title="A network backend handle: an immutable method table plus its state." alt="" coords="5,293,132,319"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="79,331,97,388,92,390,74,333"/>
+<area shape="rect" id="Node000003" href="$structmdl__robots__cache__t.html" title="Fixed&#45;size per&#45;host robots.txt cache for one run." alt="" coords="157,293,309,319"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="207,329,116,391,113,387,204,324"/>
+<area shape="rect" id="Node000004" href="$structmdl__robots__cache__entry__t.html" title="One host&#39;s cached robots.txt outcome." alt="" coords="136,197,329,223"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="235,237,235,293,230,293,230,237"/>
+<area shape="rect" id="Node000005" href="$structmdl__robots__t.html" title="Rules and crawl&#45;delay for the group matching our user&#45;agent." alt="" coords="179,101,286,127"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="235,141,235,197,230,197,230,141"/>
+<area shape="rect" id="Node000006" href="$structmdl__robots__rule__t.html" title="One Allow/Disallow rule from the selected group." alt="" coords="163,5,302,31"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="235,45,235,101,230,101,230,45"/>
+</map>

@@ -1,0 +1,17 @@
+<map id="libs/ra8_reflow/src/ra8_reflow_internal.h" name="libs/ra8_reflow/src/ra8_reflow_internal.h">
+<area shape="rect" id="Node000001" title="Test&#45;access surface for ra8_reflow internal helpers (MC/DC)." alt="" coords="313,5,475,45"/>
+<area shape="rect" id="Node000002" href="$ra8__reflow__layout_8c.html" title="Greedy line&#45;break + page&#45;break engine for ra8_reflow." alt="" coords="5,181,159,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="344,54,263,96,114,184,111,179,261,91,342,49"/>
+<area shape="rect" id="Node000003" href="$ra8__reflow__layout__driver_8c.html" title="Token&#45;stream driver + public lifecycle API for the ra8_reflow engine." alt="" coords="183,181,381,221"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="324,54,299,71,279,95,271,116,270,139,278,181,273,182,265,139,266,115,274,92,295,67,321,49"/>
+<area shape="rect" id="Node000004" href="$ra8__reflow__layout__image_8c.html" title="Block&#45;level &lt;img&gt; layout for the ra8_reflow engine (#106)." alt="" coords="405,181,607,221"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="467,49,493,67,514,92,522,115,523,139,515,182,510,181,518,139,517,116,509,95,489,71,464,54"/>
+<area shape="rect" id="Node000005" href="$ra8__reflow__layout__internal_8h.html" title="Cross&#45;TU shared declarations for the ra8_reflow layout engine." alt="" coords="289,93,499,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="397,59,397,93,391,93,391,59"/>
+<area shape="rect" id="Node000006" href="$ra8__reflow__layout__table_8c.html" title="&lt;table&gt; equal&#45;column grid layout for the ra8_reflow engine (#107)." alt="" coords="631,181,824,221"/>
+<area shape="poly" id="edge9_Node000001_Node000006" title=" " alt="" coords="449,49,537,91,696,179,694,184,534,96,447,53"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="313,140,151,184,150,179,312,134"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="360,144,308,183,305,179,356,140"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="432,140,483,179,480,183,428,144"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="481,134,655,179,654,184,480,139"/>
+</map>

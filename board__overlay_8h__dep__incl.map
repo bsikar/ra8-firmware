@@ -1,0 +1,35 @@
+<map id="tools/ra8_emulator/inc/board_overlay.h" name="tools/ra8_emulator/inc/board_overlay.h">
+<area shape="rect" id="Node000001" title="Composite board&#45;view renderer: panel framebuffer + a status sidebar." alt="" coords="1025,5,1177,45"/>
+<area shape="rect" id="Node000002" href="$emu__view_8h.html" title="Board&#45;view presentation: frames, composition, input routing, panels." alt="" coords="746,101,891,141"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1032,52,877,103,875,98,1030,47"/>
+<area shape="rect" id="Node000005" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="5,203,171,243"/>
+<area shape="poly" id="edge14_Node000001_Node000005" title=" " alt="" coords="1011,32,842,38,637,50,441,69,361,81,301,96,245,119,193,149,113,205,109,201,190,144,243,114,299,91,360,76,440,64,636,45,842,33,1011,26"/>
+<area shape="rect" id="Node000010" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="1311,203,1457,243"/>
+<area shape="poly" id="edge19_Node000001_Node000010" title=" " alt="" coords="1141,51,1358,201,1355,206,1138,55"/>
+<area shape="rect" id="Node000011" href="$board__overlay_8c.html" title="Composite board&#45;view renderer implementation (see board_overlay.h)." alt="" coords="1481,203,1684,243"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1161,48,1538,201,1536,206,1159,53"/>
+<area shape="rect" id="Node000012" href="$board__overlay__internal_8h.html" title="Module&#45;private layout constants + draw primitives for the overlay." alt="" coords="1486,93,1679,148"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1191,41,1487,98,1485,103,1190,46"/>
+<area shape="rect" id="Node000014" href="$emu__run__internal_8h.html" title="Shared run&#45;loop state + cross&#45;TU run helpers (ra8_emulator internal)." alt="" coords="312,93,467,148"/>
+<area shape="poly" id="edge15_Node000001_Node000014" title=" " alt="" coords="1012,41,467,112,467,107,1011,36"/>
+<area shape="rect" id="Node000003" href="$emu__args_8c.html" title="CLI parsing implementation (see emu_args.h)." alt="" coords="930,203,1102,243"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="869,145,980,201,978,206,867,149"/>
+<area shape="rect" id="Node000004" href="$emu__elf_8c.html" title="ELF32 image services implementation (see emu_elf.h)." alt="" coords="1127,203,1287,243"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="905,140,1114,193,1141,201,1140,206,1113,199,904,146"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="733,131,485,154,334,173,183,199,151,206,150,201,182,193,333,168,484,149,732,125"/>
+<area shape="rect" id="Node000006" href="$emu__run__guards_8c.html" title="Run&#45;guard environment knob reader (see emu_run.h)." alt="" coords="552,196,707,251"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="772,149,680,198,677,194,770,145"/>
+<area shape="rect" id="Node000007" href="$emu__run__inner_8c.html" title="Inner per&#45;chunk exception&#45;resolve loop (see emu_run_internal.h)." alt="" coords="195,196,349,251"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="732,135,560,161,362,199,350,201,349,196,361,193,559,156,732,130"/>
+<area shape="rect" id="Node000008" href="$emu__run__report_8c.html" title="Run&#45;end report + finalize (see emu_run_internal.h)." alt="" coords="373,196,528,251"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="734,147,541,199,529,202,527,197,539,193,733,141"/>
+<area shape="rect" id="Node000009" href="$emu__view_8c.html" title="Board&#45;view presentation implementation (see emu_view.h)." alt="" coords="731,203,906,243"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="821,155,821,203,816,203,816,155"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="906,129,1088,154,1194,172,1299,193,1327,201,1326,206,1298,199,1193,177,1087,159,905,134"/>
+<area shape="poly" id="edge12_Node000012_Node000011" title=" " alt="" coords="1585,162,1585,203,1580,203,1580,162"/>
+<area shape="rect" id="Node000013" href="$board__overlay__draw_8c.html" title="Overlay draw primitives + embedded 5x7 font." alt="" coords="1709,196,1902,251"/>
+<area shape="poly" id="edge13_Node000012_Node000013" title=" " alt="" coords="1654,151,1748,194,1746,198,1652,156"/>
+<area shape="poly" id="edge16_Node000014_Node000005" title=" " alt="" coords="299,155,145,206,144,201,298,150"/>
+<area shape="poly" id="edge17_Node000014_Node000007" title=" " alt="" coords="350,159,304,198,301,194,346,155"/>
+<area shape="poly" id="edge18_Node000014_Node000008" title=" " alt="" coords="415,158,437,195,432,197,410,161"/>
+</map>

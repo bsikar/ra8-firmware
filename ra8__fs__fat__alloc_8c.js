@@ -1,0 +1,26 @@
+var ra8__fs__fat__alloc_8c =
+[
+    [ "fat_alloc_state_t", "structfat__alloc__state__t.html", "structfat__alloc__state__t" ],
+    [ "priv_alloc_hint_get", "ra8__fs__fat__alloc_8c.html#ae696a15e9d2f795e362f545e5ac57ecf", null ],
+    [ "priv_alloc_hint_lower", "ra8__fs__fat__alloc_8c.html#a4d3c0f6c93b4ed644457366b7c349d20", null ],
+    [ "priv_alloc_hint_set", "ra8__fs__fat__alloc_8c.html#aa83db5ca925516dea9259e5300a3ff56", null ],
+    [ "priv_alloc_state_bind", "ra8__fs__fat__alloc_8c.html#a77fc8799d284d4ce2f0e3f88a6b6b407", null ],
+    [ "priv_alloc_state_release", "ra8__fs__fat__alloc_8c.html#ae58242956a673c0587a4a98255be6def", null ],
+    [ "priv_exfat_bitmap_lba", "ra8__fs__fat__alloc_8c.html#ae3ad5416efd6a3a1ffd87b61a9cb1c80", null ],
+    [ "priv_fat_sector_read", "ra8__fs__fat__alloc_8c.html#ac2c12f09d0ae7a4e960c2ce42a6a6fa6", null ],
+    [ "priv_fat_sector_wrote", "ra8__fs__fat__alloc_8c.html#a9df00c62cd108526f761d6fef61984b8", null ],
+    [ "priv_free_count_cache", "ra8__fs__fat__alloc_8c.html#af4a2dbdc7e3fbfb1d963041b7c67ea0a", null ],
+    [ "priv_free_count_gave", "ra8__fs__fat__alloc_8c.html#a4ae9bd2a49398c8859184ca3d8cec823", null ],
+    [ "priv_free_count_peek", "ra8__fs__fat__alloc_8c.html#a4c2625bea17be22a9b66fc86938c03e0", null ],
+    [ "priv_free_count_took", "ra8__fs__fat__alloc_8c.html#a30ea0a44deb4614a14647c894edac3e2", null ],
+    [ "priv_fsinfo_flush", "ra8__fs__fat__alloc_8c.html#aaa162c5d820dcf9c6356e950ecb37c81", null ],
+    [ "priv_fsinfo_locate", "ra8__fs__fat__alloc_8c.html#aa2b4bd775d994ddc36fbc9df1cfee6a7", null ],
+    [ "priv_fsinfo_seed", "ra8__fs__fat__alloc_8c.html#a2ea8530684fcf2ea7c44cc4eace19e19", null ],
+    [ "priv_fsinfo_signatures_ok", "ra8__fs__fat__alloc_8c.html#adb496d5dbd74735dee29fff088d7ff4e", null ],
+    [ "priv_lba_is_cacheable", "ra8__fs__fat__alloc_8c.html#a26694406f0ee7fd7614119ac192bbdd4", null ],
+    [ "priv_state_for", "ra8__fs__fat__alloc_8c.html#a1f65b1d90ed35eb1962ac7491a8b3b25", null ],
+    [ "s_alloc", "ra8__fs__fat__alloc_8c.html#a656303fba865289dc7a89807712c71c7", null ],
+    [ "s_fat_cache", "ra8__fs__fat__alloc_8c.html#ab332e684080389f3180802bcedbd0800", null ],
+    [ "s_fat_cache_lba", "ra8__fs__fat__alloc_8c.html#a835235fbf2f4e84ae1c69a27cf4d87ec", null ],
+    [ "s_fat_cache_owner", "ra8__fs__fat__alloc_8c.html#ae1af4fda602706f2313024d37c63396b", null ]
+];

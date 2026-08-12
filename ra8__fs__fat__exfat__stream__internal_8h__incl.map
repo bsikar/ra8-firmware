@@ -1,0 +1,27 @@
+<map id="libs/ra8_fs/src/ra8_fs_fat_exfat_stream_internal.h" name="libs/ra8_fs/src/ra8_fs_fat_exfat_stream_internal.h">
+<area shape="rect" id="Node000001" title="The exFAT streaming&#45;write mechanism: entry&#45;set positions and its helpers." alt="" coords="171,5,331,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="217,401,287,427"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="171,53,115,73,63,101,41,120,23,141,12,165,8,193,8,268,13,299,28,325,51,347,78,364,143,390,204,404,202,409,141,395,76,369,47,351,24,328,8,301,3,269,3,192,7,164,19,138,37,116,60,97,113,68,169,48"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="139,108,264,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="238,61,217,97,213,95,233,59"/>
+<area shape="rect" id="Node000004" href="$ra8__fs_8h.html" title="Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write)." alt="" coords="264,181,339,207"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="262,59,279,107,297,167,292,169,273,109,257,61"/>
+<area shape="rect" id="Node000008" href="$ra8__fs__fat__types__internal_8h.html" title="Cross&#45;TU on&#45;disk&#45;layout enums and typedefs for the FAT/exFAT adapter." alt="" coords="343,108,542,133"/>
+<area shape="poly" id="edge13_Node000001_Node000008" title=" " alt="" coords="310,58,405,100,403,105,308,63"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="325,205,352,225,374,253,378,267,374,281,356,316,332,348,281,395,277,391,328,344,352,313,370,279,373,267,370,256,348,228,322,209"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="170,328,249,353"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="283,209,257,229,233,256,220,285,214,314,209,313,215,283,228,253,253,225,280,205"/>
+<area shape="rect" id="Node000006" href="$ra8__fs__seams_8h.html" title="The two dependency&#45;injection seams ra8_fs offers its callers." alt="" coords="43,255,167,280"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="271,209,151,252,149,247,269,204"/>
+<area shape="rect" id="Node000007" href="$ra8__fs__types_8h.html" title="On&#45;disk and handle data types shared by the ra8_fs public API." alt="" coords="243,255,360,280"/>
+<area shape="poly" id="edge10_Node000004_Node000007" title=" " alt="" coords="304,207,304,241,299,241,299,207"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="219,352,240,388,236,391,214,355"/>
+<area shape="poly" id="edge8_Node000006_Node000002" title=" " alt="" coords="113,279,131,314,159,351,187,374,216,392,214,397,184,379,155,355,126,316,108,281"/>
+<area shape="poly" id="edge9_Node000006_Node000005" title=" " alt="" coords="124,278,182,318,179,322,121,282"/>
+<area shape="poly" id="edge11_Node000007_Node000002" title=" " alt="" coords="300,281,263,389,258,388,295,280"/>
+<area shape="poly" id="edge12_Node000007_Node000005" title=" " alt="" coords="288,282,237,322,233,317,285,278"/>
+<area shape="poly" id="edge15_Node000008_Node000002" title=" " alt="" coords="444,134,437,175,421,234,395,298,376,328,354,355,324,379,293,398,290,393,321,375,350,351,372,325,390,295,416,232,432,174,439,133"/>
+<area shape="poly" id="edge16_Node000008_Node000004" title=" " alt="" coords="421,136,338,177,335,173,419,131"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="485,181,560,207"/>
+<area shape="poly" id="edge14_Node000008_Node000009" title=" " alt="" coords="457,131,501,170,498,174,454,135"/>
+</map>

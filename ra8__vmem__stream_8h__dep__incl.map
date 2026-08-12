@@ -1,0 +1,9 @@
+<map id="libs/ra8_mem/inc/ra8_vmem_stream.h" name="libs/ra8_mem/inc/ra8_vmem_stream.h">
+<area shape="rect" id="Node000001" title="Read a page&#45;cached object as a seekable byte stream (Layer 2 helper, #147/#151)." alt="" coords="220,5,379,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2mem__subsystem_2main_8c.html" title="Drives each ra8_mem (#147) memory&#45;hierarchy layer in isolation (#263)." alt="" coords="5,93,196,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="248,54,158,96,155,91,246,49"/>
+<area shape="rect" id="Node000003" href="$ra8__vmem__stream_8c.html" title="Read a page&#45;cached object as a seekable byte stream – impl (#147/#151)." alt="" coords="220,101,379,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="302,59,302,101,297,101,297,59"/>
+<area shape="rect" id="Node000004" href="$ra8__rabook__import__compiler_8c.html" title="Production adapter binding the import seam to the real compiler (#151)." alt="" coords="403,93,575,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="351,49,437,91,434,96,349,54"/>
+</map>

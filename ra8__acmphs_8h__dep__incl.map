@@ -1,0 +1,12 @@
+<map id="libs/ra8_hal/inc/ra8_acmphs.h" name="libs/ra8_hal/inc/ra8_acmphs.h">
+<area shape="rect" id="Node000001" title="Full&#45;featured High&#45;Speed Analog Comparator (ACMPHS) driver." alt="" coords="289,5,434,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2acmphs__compare_2main_8c.html" title="High&#45;Speed Analog Comparator (ACMPHS) channel&#45;0 polling demo." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="295,52,169,96,167,91,293,47"/>
+<area shape="rect" id="Node000003" href="$ra8__acmphs_8c.html" title="High&#45;Speed Analog Comparator driver implementation." alt="" coords="203,101,349,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="337,57,295,102,291,99,333,54"/>
+<area shape="rect" id="Node000004" href="$ra8__nsc__io_8h.html" title="NSC veneers for the I/O drivers." alt="" coords="373,101,520,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="390,54,431,99,427,102,386,57"/>
+<area shape="rect" id="Node000005" href="$ra8__nsc__io_8c.html" title="NSC veneers for the &#45;6 I/O drivers." alt="" coords="428,196,575,236"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="448,37,496,57,517,72,534,92,543,119,540,148,530,175,517,197,512,194,525,172,535,146,538,119,530,95,513,76,493,62,446,42"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="467,151,493,195,488,197,462,154"/>
+</map>

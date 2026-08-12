@@ -1,0 +1,5 @@
+<map id="cb_frame_t" name="cb_frame_t">
+<area shape="rect" id="Node000001" title="One frame slot in the fixed page cache." alt="" coords="5,101,100,127"/>
+<area shape="rect" id="Node000002" href="$structcb__key__t.html" title="A cache key: one (object, page) the reader&#39;s vm_get touches." alt="" coords="13,5,92,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="55,45,55,101,50,101,50,45"/>
+</map>

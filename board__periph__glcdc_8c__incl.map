@@ -1,0 +1,16 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_glcdc.c" name="tools/ra8_emulator/src/periph/board_periph_glcdc.c">
+<area shape="rect" id="Node000001" title="Graphics LCD Controller (GLCDC) framebuffer&#45;descriptor model for ra8_emulator." alt="" coords="74,5,253,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="47,181,118,207"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="75,60,40,80,13,109,9,126,16,143,31,158,50,172,47,176,28,162,12,146,4,127,8,107,37,76,73,55"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="352,108,418,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="232,58,344,100,342,105,230,63"/>
+<area shape="rect" id="Node000004" href="$board__periph_8h.html" title="Register&#45;accurate peripheral&#45;model framework for the board emulator." alt="" coords="23,108,142,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="141,62,105,100,101,96,137,58"/>
+<area shape="rect" id="Node000006" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="166,108,327,133"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="191,58,228,96,224,100,187,62"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="85,134,85,168,80,168,80,134"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="160,181,295,207"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="107,131,193,173,191,178,105,136"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="221,136,123,178,120,173,219,131"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="246,134,237,169,232,168,241,133"/>
+</map>

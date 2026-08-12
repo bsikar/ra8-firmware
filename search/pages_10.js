@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['jof_20ndash_20the_20jump_20offset_20band_20tile_20atlas_0',['JOF &amp;ndash; The Jump-Offset Band-Tile Atlas',['../md_docs_2formats_2JOF.html',1,'ra8_docsub_formats']]],
+  ['jump_20offset_20band_20tile_20atlas_1',['JOF &amp;ndash; The Jump-Offset Band-Tile Atlas',['../md_docs_2formats_2JOF.html',1,'ra8_docsub_formats']]],
+  ['jumper_20button_20steps_2',['jumper button steps',['../ra8_ex_ek_ra8d2_hw_pending_manual.html',1,'Manual (jumper / button steps)'],['../ra8_ex_ek_ra8d2_hw_validated_manual.html',1,'Manual (jumper / button steps)']]],
+  ['justification_3a_20apache_20nimble_3',['SOUP Justification: Apache NimBLE',['../md_docs_2SOUP_2nimble.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20arm_20ethos_20u_20vela_20host_20build_20tool_4',['SOUP Justification: Arm Ethos-U Vela (host build tool)',['../md_docs_2SOUP_2vela.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20eclipse_20levelx_5',['SOUP Justification: Eclipse LevelX',['../md_docs_2SOUP_2levelx.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20eclipse_20netx_20duo_6',['SOUP Justification: Eclipse NetX Duo',['../md_docs_2SOUP_2netxduo.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20eclipse_20threadx_7',['SOUP Justification: Eclipse ThreadX',['../md_docs_2SOUP_2threadx.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20eclipse_20usbx_8',['SOUP Justification: Eclipse USBX',['../md_docs_2SOUP_2usbx.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20espressif_20esp_20hosted_20mcu_20co_20processor_20firmware_9',['SOUP Justification: Espressif esp-hosted-mcu (co-processor firmware)',['../md_docs_2SOUP_2esp-hosted.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20espressif_20esp_20hosted_20mcu_20host_20driver_10',['SOUP Justification: Espressif esp-hosted-mcu (host driver)',['../md_docs_2SOUP_2esp-hosted-host.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20flatbuffers_11',['SOUP Justification: FlatBuffers',['../md_docs_2SOUP_2flatbuffers.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20gemmlowp_20fixed_20point_20headers_12',['SOUP Justification: gemmlowp (fixed-point headers)',['../md_docs_2SOUP_2gemmlowp.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20libwebp_20webp_20decoder_13',['SOUP Justification: libwebp (WebP decoder)',['../md_docs_2SOUP_2libwebp.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20litehtml_14',['SOUP Justification: litehtml',['../md_docs_2SOUP_2litehtml.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20mbed_20tls_15',['SOUP Justification: Mbed TLS',['../md_docs_2SOUP_2mbedtls.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20miniz_16',['SOUP Justification: miniz',['../md_docs_2SOUP_2miniz.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20ruy_20profiler_20instrumentation_20stub_17',['SOUP Justification: ruy (profiler instrumentation stub)',['../md_docs_2SOUP_2ruy.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20stb_20image_20truetype_18',['SOUP Justification: stb (image / truetype)',['../md_docs_2SOUP_2stb.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20tensorflow_20lite_20for_20microcontrollers_19',['SOUP Justification: TensorFlow Lite for Microcontrollers',['../md_docs_2SOUP_2tflite-micro.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20tf_20psa_20crypto_20',['SOUP Justification: TF-PSA-Crypto',['../md_docs_2SOUP_2tf-psa-crypto.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20tinyxml_202_21',['SOUP Justification: TinyXML-2',['../md_docs_2SOUP_2tinyxml2.html',1,'ra8_docsub_SOUP']]],
+  ['justification_3a_20xz_20embedded_20decode_20only_22',['SOUP Justification: XZ Embedded (decode-only)',['../md_docs_2SOUP_2xz__embedded.html',1,'ra8_docsub_SOUP']]],
+  ['justifications_20soup_23',['SOUP component justifications (SOUP)',['../ra8_docsub_SOUP.html',1,'ra8_docs']]]
+];

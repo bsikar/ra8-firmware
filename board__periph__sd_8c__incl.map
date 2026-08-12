@@ -1,0 +1,28 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_sd.c" name="tools/ra8_emulator/src/periph/board_periph_sd.c">
+<area shape="rect" id="Node000001" title="SD&#45;card&#45;over&#45;SPI device model for ra8_emulator (attached to SPI_B)." alt="" coords="377,5,589,45"/>
+<area shape="rect" id="Node000002" href="$board__periph__sd_8h.html" title="SD&#45;card&#45;over&#45;SPI device model for ra8_emulator (attached to SPI_B)." alt="" coords="5,93,147,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="386,48,149,93,148,88,385,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="497,167,567,192"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="377,32,302,40,238,56,215,67,202,81,200,97,211,117,229,131,256,142,329,159,411,169,483,174,483,179,411,174,328,164,254,147,226,135,207,120,195,98,198,78,212,63,236,51,302,35,376,27"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="222,93,285,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="429,48,299,92,297,87,427,43"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="309,93,376,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="450,48,377,89,374,84,448,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="401,93,471,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="474,47,452,83,448,80,469,44"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="495,93,566,119"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="497,44,519,80,514,83,492,47"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="590,93,693,119"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="522,43,607,85,605,90,519,48"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="717,93,792,119"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="549,43,705,88,704,93,547,48"/>
+<area shape="rect" id="Node000010" href="$board__console_8h.html" title="Multi&#45;channel console log store backing the board view&#39;s tabbed console." alt="" coords="816,93,944,119"/>
+<area shape="poly" id="edge10_Node000001_Node000010" title=" " alt="" coords="578,43,809,88,808,93,577,48"/>
+<area shape="rect" id="Node000011" href="$board__periph__sd__internal_8h.html" title="Module&#45;private FAT formatter shared by the board_periph_sd TUs." alt="" coords="969,93,1167,119"/>
+<area shape="poly" id="edge12_Node000001_Node000011" title=" " alt="" coords="589,38,969,89,969,94,589,43"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="147,116,484,168,483,173,146,121"/>
+<area shape="poly" id="edge11_Node000010_Node000003" title=" " alt="" coords="825,121,581,171,580,165,824,116"/>
+<area shape="poly" id="edge13_Node000011_Node000003" title=" " alt="" coords="982,121,582,174,581,169,982,116"/>
+<area shape="rect" id="Node000012" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="1005,167,1131,192"/>
+<area shape="poly" id="edge14_Node000011_Node000012" title=" " alt="" coords="1071,119,1071,153,1065,153,1065,119"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="ra8_usb_hcdc_ecm_state_t" name="ra8_usb_hcdc_ecm_state_t">
+<area shape="rect" id="Node000001" title="Singleton shadow state for the host&#45;CDC&#45;ECM driver." alt="" coords="10,121,207,147"/>
+<area shape="rect" id="Node000002" href="$structra8__usb__hcdc__ecm__device__t.html" title="Snapshot of the attached CDC&#45;ECM adapter, passed to the attach callback." alt="" coords="5,5,212,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,45,111,121,106,121,106,45"/>
+</map>

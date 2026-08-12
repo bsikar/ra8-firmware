@@ -1,0 +1,8 @@
+<map id="libs/ra8_wdt_supervisor/inc/ra8_wdt_supervisor.h" name="libs/ra8_wdt_supervisor/inc/ra8_wdt_supervisor.h">
+<area shape="rect" id="Node000001" title="ThreadX&#45;aware watchdog supervisor (per&#45;thread check&#45;in registry)." alt="" coords="5,5,192,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="63,167,134,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="96,46,89,80,88,118,94,153,89,154,83,119,84,79,90,45"/>
+<area shape="rect" id="Node000003" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="98,93,177,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="110,44,128,80,123,82,106,47"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="133,120,114,156,109,153,129,118"/>
+</map>

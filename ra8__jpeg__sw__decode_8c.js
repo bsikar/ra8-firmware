@@ -1,0 +1,26 @@
+var ra8__jpeg__sw__decode_8c =
+[
+    [ "dec_block_ac", "ra8__jpeg__sw__decode_8c.html#a39181eb5d4e54bbd155927b6308c693a", null ],
+    [ "dec_check_chroma_layout", "ra8__jpeg__sw__decode_8c.html#aae1c53561dde1f666ce9da79b2650506", null ],
+    [ "dec_copy_block_to_tile", "ra8__jpeg__sw__decode_8c.html#a5e73f5557df1bfc4f6288a39c91a5c31", null ],
+    [ "dec_decode_mcu", "ra8__jpeg__sw__decode_8c.html#add54c5e713e3f0f3b49a04c63a26be3d", null ],
+    [ "dec_decode_scan", "ra8__jpeg__sw__decode_8c.html#a1a68831f35db8788994f374a0948d4b1", null ],
+    [ "dec_dispatch_tail", "ra8__jpeg__sw__decode_8c.html#afd52d16e8989b899965164e76d44254a", null ],
+    [ "dec_emit_mcu_rgb", "ra8__jpeg__sw__decode_8c.html#adb8fc31f1a71a2b77cf724e8249c9eb7", null ],
+    [ "dec_parse_dht_one", "ra8__jpeg__sw__decode_8c.html#a807d86dbf9fe724ae1ab11d1882ea776", null ],
+    [ "dec_parse_sof0_components", "ra8__jpeg__sw__decode_8c.html#acf7b266a2fae163937d1c82551a6def8", null ],
+    [ "dec_run", "ra8__jpeg__sw__decode_8c.html#a9c229af8663bd0509bd38bed3b172d90", null ],
+    [ "dec_scan_begin", "ra8__jpeg__sw__decode_8c.html#af2528f379fcb0e3ba0bae37a1f05dfb8", null ],
+    [ "ra8_jpeg_sw_decode", "ra8__jpeg__sw__decode_8c.html#aca85aa75219e734e67b20dd5f739ddf1", null ],
+    [ "ra8_jpeg_sw_priv_block", "ra8__jpeg__sw__decode_8c.html#ab27c4943fe65d071c39dbe2dfea9d97b", null ],
+    [ "ra8_jpeg_sw_priv_dispatch", "ra8__jpeg__sw__decode_8c.html#a6a644ac8c6c2cf08ca2f8f1f3c32515b", null ],
+    [ "ra8_jpeg_sw_priv_idct_into", "ra8__jpeg__sw__decode_8c.html#a19b3b9d29ac1f50de0ccbe858b200c2c", null ],
+    [ "ra8_jpeg_sw_priv_mcu_chroma", "ra8__jpeg__sw__decode_8c.html#a440b42248b96940ca48c592083e359db", null ],
+    [ "ra8_jpeg_sw_priv_mcu_y", "ra8__jpeg__sw__decode_8c.html#a8b5dc788fdcd01a88d2221f4337b9621", null ],
+    [ "ra8_jpeg_sw_priv_parse_dht", "ra8__jpeg__sw__decode_8c.html#af372b8ba92a9084c67e473283e9bae55", null ],
+    [ "ra8_jpeg_sw_priv_parse_dqt", "ra8__jpeg__sw__decode_8c.html#add164ce014a3675d47d1e5396a20bbf8", null ],
+    [ "ra8_jpeg_sw_priv_parse_sof0", "ra8__jpeg__sw__decode_8c.html#a2cf2fefcef7f8eba148eb167d10dca39", null ],
+    [ "ra8_jpeg_sw_priv_parse_sos", "ra8__jpeg__sw__decode_8c.html#a0e83260892cccf0189a344cadb99ef2f", null ],
+    [ "ra8_jpeg_sw_priv_skip_segment", "ra8__jpeg__sw__decode_8c.html#a177dacc825cddc59e946627698592c70", null ],
+    [ "s_tag", "ra8__jpeg__sw__decode_8c.html#af8861f6a1fb30510e283b1b7806b64e7", null ]
+];

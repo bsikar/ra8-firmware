@@ -1,0 +1,10 @@
+<map id="libs/ra8_board_ek_ra8d2/boot/vector_table.c" name="libs/ra8_board_ek_ra8d2/boot/vector_table.c">
+<area shape="rect" id="Node000001" title="Cortex&#45;M85 vector table and default interrupt handlers for RA8D2." alt="" coords="5,5,187,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="94,167,165,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="63,48,43,62,26,80,17,99,17,108,21,117,33,132,47,145,82,162,79,167,44,149,29,136,16,120,12,109,12,97,21,77,39,58,60,43"/>
+<area shape="rect" id="Node000003" href="$ra8__boot__entry_8h.html" title="Boot entry points shared between a vector table and its startup code." alt="" coords="31,93,161,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="99,46,99,79,93,79,93,46"/>
+<area shape="rect" id="Node000004" href="$ra8__lpm__safe__boot_8h.html" title="Self&#45;healing LPM register reset for very early boot." alt="" coords="186,93,345,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="138,43,229,85,227,90,135,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="245,121,165,163,162,158,242,116"/>
+</map>

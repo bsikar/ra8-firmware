@@ -1,0 +1,11 @@
+<map id="tools/media_dl/inc/mdl_urlname.h" name="tools/media_dl/inc/mdl_urlname.h">
+<area shape="rect" id="Node000001" title="Pure URL&#45;to&#45;name helpers shared by the CLI and the fetch orchestrator." alt="" coords="253,5,395,45"/>
+<area shape="rect" id="Node000002" href="$tools_2media__dl_2src_2main_8c.html" title="media_dl – host CLI for the e&#45;reader media downloader." alt="" coords="5,93,147,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="257,52,131,96,129,91,256,47"/>
+<area shape="rect" id="Node000003" href="$mdl__fetch_8c.html" title="State&#45;aware, resumable, deduping chapter/page download loop." alt="" coords="171,93,312,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="298,57,262,95,258,91,294,54"/>
+<area shape="rect" id="Node000004" href="$mdl__urlname_8c.html" title="Pure URL&#45;to&#45;name helpers (last segment, chapter number, extension)." alt="" coords="336,93,477,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="354,54,390,91,386,95,350,57"/>
+<area shape="rect" id="Node000005" href="$test__media__dl__state_8c.html" title="Host unit tests for the #305 library&#45;state store, its content&#45;identity hashing, and the URL&#45;to&#45;name h..." alt="" coords="502,93,671,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="395,47,530,91,528,96,394,52"/>
+</map>

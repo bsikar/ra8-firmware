@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/inc/ra8_bscan.h" name="libs/ra8_hal/inc/ra8_bscan.h">
+<area shape="rect" id="Node000001" title="JTAG / IEEE&#45;1149.1 Boundary Scan TAP HAL surface." alt="" coords="111,5,257,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2bscan__selftest_2main_8c.html" title="Headless on&#45;silicon self&#45;test gate for the JTAG boundary&#45;scan TAP bookkeeping driver ra8_bscan (#138)..." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,57,120,95,116,91,154,53"/>
+<area shape="rect" id="Node000003" href="$ra8__bscan_8c.html" title="JTAG / IEEE&#45;1149.1 Boundary Scan TAP HAL implementation." alt="" coords="203,101,349,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="214,53,259,99,256,102,210,57"/>
+</map>

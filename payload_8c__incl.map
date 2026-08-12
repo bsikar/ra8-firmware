@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/payload.c" name="examples/ek_ra8d2/hw_validated/hil/dfu_copy_to_run/payload.c">
+<area shape="rect" id="Node000001" title="Minimal copy&#45;to&#45;run payload – one image that runs from the SRAM run base." alt="" coords="5,5,179,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="57,108,127,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,60,95,94,89,94,89,60"/>
+</map>

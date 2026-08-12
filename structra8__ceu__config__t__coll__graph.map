@@ -1,0 +1,9 @@
+<map id="ra8_ceu_config_t" name="ra8_ceu_config_t">
+<area shape="rect" id="Node000001" title="Full configuration descriptor for ra8_ceu_init." alt="" coords="202,101,333,127"/>
+<area shape="rect" id="Node000002" href="$structra8__ceu__edge__info__t.html" title="CAMCR.DSEL / HDSEL / VDSEL / FLDSEL latch&#45;edge bundle." alt="" coords="5,5,161,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="119,35,246,99,243,104,117,39"/>
+<area shape="rect" id="Node000003" href="$structra8__ceu__byte__swap__t.html" title="CDOCR.COBS / COWS / COLS byte&#45;swap control bundle." alt="" coords="186,5,349,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="270,45,270,101,265,101,265,45"/>
+<area shape="rect" id="Node000004" href="$structra8__ceu__scale__t.html" title="CFLCR scale&#45;down + CFSZR clip&#45;size programming bundle." alt="" coords="373,5,500,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="412,41,353,80,299,104,297,99,350,75,409,37"/>
+</map>

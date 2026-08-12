@@ -1,0 +1,9 @@
+<map id="tools/ra8_emulator/inc/board_usb_host.h" name="tools/ra8_emulator/inc/board_usb_host.h">
+<area shape="rect" id="Node000001" title="USBHS HOST&#45;mode controller model (self&#45;loop peer of the USBFS device)." alt="" coords="189,5,351,45"/>
+<area shape="rect" id="Node000002" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="216,53,121,96,119,91,214,49"/>
+<area shape="rect" id="Node000003" href="$board__periph_8c.html" title="Peripheral&#45;block registry core + ICU/NVIC routing for ra8_emulator." alt="" coords="175,93,365,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="273,59,273,93,267,93,267,59"/>
+<area shape="rect" id="Node000004" href="$board__usb__host_8c.html" title="USBHS HOST&#45;mode controller model (self&#45;loop peer of the USBFS device)." alt="" coords="390,93,579,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="331,48,439,91,437,96,329,53"/>
+</map>

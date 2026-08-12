@@ -1,0 +1,12 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_doc.c" name="tools/ra8_emulator/src/periph/board_periph_doc.c">
+<area shape="rect" id="Node000001" title="Data Operation Circuit (DOC) peripheral&#45;block model for ra8_emulator." alt="" coords="5,5,225,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="51,167,121,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="100,47,84,69,73,94,71,124,78,153,73,154,65,125,67,93,80,66,96,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="82,93,149,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="118,46,118,79,113,79,113,46"/>
+<area shape="rect" id="Node000004" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="173,93,335,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="150,43,223,84,220,89,147,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="228,121,127,164,125,159,226,116"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="187,167,321,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="257,119,257,153,251,153,251,119"/>
+</map>

@@ -1,0 +1,18 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_npu.c" name="tools/ra8_emulator/src/periph/board_periph_npu.c">
+<area shape="rect" id="Node000001" title="Arm Ethos&#45;U55 NPU command/queue execution model (RA8P1&#45;only) for ra8_emulator." alt="" coords="70,5,291,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="229,167,300,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="86,48,50,61,22,76,13,85,9,95,9,105,16,117,28,127,47,137,100,153,160,164,216,171,215,176,159,169,99,158,45,142,25,132,12,120,4,107,3,94,8,82,18,72,47,56,84,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="26,93,92,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="152,48,90,88,87,84,150,43"/>
+<area shape="rect" id="Node000004" href="$board__console_8h.html" title="Multi&#45;channel console log store backing the board view&#39;s tabbed console." alt="" coords="116,93,244,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="183,46,183,79,178,79,178,46"/>
+<area shape="rect" id="Node000005" href="$board__periph__block_8h.html" title="Decentralized peripheral&#45;block registry for the board emulator core." alt="" coords="449,93,610,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="265,43,466,88,465,93,264,48"/>
+<area shape="rect" id="Node000007" href="$ra8__npu__fake__cmd_8h.html" title="ra8_emulator / host&#45;test command&#45;stream convention for the Ethos&#45;U55 model" alt="" coords="269,93,425,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="221,43,311,85,309,90,219,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="196,117,242,155,238,160,192,121"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="488,121,314,168,313,162,486,116"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="462,167,597,192"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="532,119,532,153,527,153,527,119"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="336,121,290,160,287,155,332,117"/>
+</map>

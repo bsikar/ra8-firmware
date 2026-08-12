@@ -1,0 +1,46 @@
+<map id="libs/ra8_hal/inc/ra8_system_regs.h" name="libs/ra8_hal/inc/ra8_system_regs.h">
+<area shape="rect" id="Node000001" title="System Control (SYSC) register layout for the Renesas RA8D2." alt="" coords="1021,5,1167,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hil__needs__revalidation_2lvd__monitor__demo_2main_8c.html" title="Safe LVD / PVD VCC&#45;monitor demo for the EK&#45;RA8D2." alt="" coords="249,93,427,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1007,34,752,54,596,72,440,96,427,98,426,93,439,91,595,67,751,49,1007,29"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2mpu__boot__map__hal_2main_8c.html" title="&quot;MPU boot map brought up through the ra8_mpu HAL&quot; self&#45;test (#576)" alt="" coords="451,93,638,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1008,40,842,63,650,96,639,98,638,93,650,91,841,58,1007,35"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__validated_2hil_2cache__mpu__hil_2main_8c.html" title="Cortex&#45;M85 L1 cache + MPU &quot;runs correctly with them on&quot; HIL self&#45;test." alt="" coords="662,93,835,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1012,52,836,99,835,93,1010,46"/>
+<area shape="rect" id="Node000005" href="$ra8__register__protection_8h.html" title="Scoped PRCR unlock helper." alt="" coords="1012,101,1176,141"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1097,59,1097,101,1091,101,1091,59"/>
+<area shape="rect" id="Node000009" href="$ra8__canfd_8c.html" title="CAN with Flexible Data&#45;rate driver implementation." alt="" coords="5,196,151,236"/>
+<area shape="poly" id="edge18_Node000001_Node000009" title=" " alt="" coords="1009,46,949,66,893,95,880,109,872,123,864,138,849,150,820,162,786,172,705,185,611,191,511,193,314,192,229,193,162,199,151,200,150,195,162,193,229,188,314,187,511,188,611,186,704,180,785,167,818,157,846,146,860,134,868,121,875,106,890,91,947,61,1007,41"/>
+<area shape="rect" id="Node000010" href="$ra8__cgc_8c.html" title="Clock Generation Circuit driver – RA8D2 PLL bring&#45;up." alt="" coords="175,196,320,236"/>
+<area shape="poly" id="edge19_Node000001_Node000010" title=" " alt="" coords="1025,53,983,72,944,95,929,110,920,124,910,138,893,150,841,168,774,179,698,185,616,188,455,191,386,193,332,199,321,201,320,195,331,193,386,188,455,186,615,183,697,180,774,173,839,162,890,146,906,134,915,121,925,106,940,91,981,67,1023,48"/>
+<area shape="rect" id="Node000011" href="$ra8__cgc__eswclk_8c.html" title="Clock Generation Circuit driver – Ethernet&#45;switch (ESWCLK) path." alt="" coords="344,196,489,236"/>
+<area shape="poly" id="edge20_Node000001_Node000011" title=" " alt="" coords="1055,55,1001,95,985,111,974,125,962,138,943,150,880,175,825,189,775,194,727,194,627,189,568,191,501,199,490,201,489,195,500,193,568,185,627,184,727,188,775,189,824,183,879,170,941,146,959,134,970,122,981,107,998,91,1052,51"/>
+<area shape="rect" id="Node000012" href="$ra8__cgc__usb_8c.html" title="Clock Generation Circuit driver – PLL2 + USB&#45;FS / USB&#45;HS clocks." alt="" coords="1360,196,1505,236"/>
+<area shape="poly" id="edge21_Node000001_Node000012" title=" " alt="" coords="1135,51,1189,91,1218,120,1230,133,1247,146,1304,173,1360,194,1359,199,1301,178,1245,150,1226,137,1214,124,1186,95,1132,55"/>
+<area shape="rect" id="Node000015" href="$ra8__rtc_8c.html" title="BCD&#45;calendar Realtime Clock driver implementation." alt="" coords="1529,196,1675,236"/>
+<area shape="poly" id="edge23_Node000001_Node000015" title=" " alt="" coords="1156,48,1196,68,1237,91,1255,106,1267,120,1279,133,1298,146,1356,169,1404,178,1455,183,1518,193,1530,196,1529,201,1518,199,1454,188,1404,184,1355,174,1295,150,1276,137,1263,124,1251,110,1234,96,1194,72,1153,53"/>
+<area shape="rect" id="Node000016" href="$ra8__sdramc_8c.html" title="SDRAM controller driver implementation." alt="" coords="1699,196,1844,236"/>
+<area shape="poly" id="edge24_Node000001_Node000016" title=" " alt="" coords="1181,46,1234,66,1286,91,1305,106,1317,120,1330,134,1349,146,1396,165,1438,176,1477,181,1513,183,1590,183,1636,186,1688,193,1699,196,1698,201,1687,199,1635,191,1590,189,1513,188,1476,187,1437,181,1395,170,1346,150,1326,138,1313,124,1301,109,1283,96,1232,71,1179,52"/>
+<area shape="rect" id="Node000017" href="$ra8__xspi_8c.html" title="Octal Serial Peripheral Interface (OSPI / xSPI) driver." alt="" coords="1868,196,2013,236"/>
+<area shape="poly" id="edge25_Node000001_Node000017" title=" " alt="" coords="1181,38,1258,58,1298,73,1335,91,1354,105,1365,120,1376,134,1394,146,1459,171,1516,184,1569,189,1619,189,1724,184,1786,185,1857,193,1868,195,1867,201,1856,199,1786,191,1724,189,1619,194,1568,195,1516,190,1458,176,1391,150,1372,138,1361,123,1350,109,1333,96,1295,78,1256,63,1179,43"/>
+<area shape="rect" id="Node000018" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="1404,101,1549,141"/>
+<area shape="poly" id="edge17_Node000001_Node000018" title=" " alt="" coords="1181,43,1385,91,1413,98,1411,103,1384,96,1180,48"/>
+<area shape="rect" id="Node000019" href="$ra8__pwr_8c.html" title="Low Power Mode + clock&#45;domain wrapper implementation." alt="" coords="1573,101,1719,141"/>
+<area shape="poly" id="edge22_Node000001_Node000019" title=" " alt="" coords="1181,32,1358,54,1461,70,1563,91,1591,98,1589,103,1561,96,1460,76,1357,59,1180,37"/>
+<area shape="rect" id="Node000006" href="$ra8__bkup_8c.html" title="Battery Backup Function (VBATT) driver – core lifecycle and storage." alt="" coords="1191,196,1336,236"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="1141,145,1230,194,1228,198,1139,150"/>
+<area shape="rect" id="Node000007" href="$ra8__bkup__security_8c.html" title="Battery Backup Function (VBATT) driver – TrustZone partitioning." alt="" coords="513,196,659,236"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="1012,146,993,151,903,167,832,176,761,184,670,199,659,201,658,196,670,193,760,179,831,170,902,161,992,145,1011,141"/>
+<area shape="rect" id="Node000008" href="$ra8__bkup__tamper_8c.html" title="Battery Backup Function (VBATT) driver – tamper detection." alt="" coords="683,196,828,236"/>
+<area shape="poly" id="edge7_Node000005_Node000008" title=" " alt="" coords="1013,147,824,199,823,193,1012,142"/>
+<area shape="poly" id="edge8_Node000005_Node000009" title=" " alt="" coords="998,138,892,151,686,165,526,169,366,176,162,199,151,200,150,195,162,193,366,171,526,164,686,160,891,145,998,133"/>
+<area shape="poly" id="edge9_Node000005_Node000010" title=" " alt="" coords="999,142,942,151,771,167,636,172,503,179,332,199,320,200,320,195,331,193,502,174,636,167,770,161,942,145,998,137"/>
+<area shape="poly" id="edge10_Node000005_Node000011" title=" " alt="" coords="1015,146,993,151,855,169,747,176,639,182,501,199,490,201,489,195,500,193,638,177,747,171,855,164,992,145,1014,141"/>
+<area shape="poly" id="edge11_Node000005_Node000012" title=" " alt="" coords="1176,142,1365,193,1364,199,1175,147"/>
+<area shape="rect" id="Node000013" href="$ra8__lpm_8c.html" title="Low Power Mode (LPM) HAL driver implementation." alt="" coords="852,196,997,236"/>
+<area shape="poly" id="edge12_Node000005_Node000013" title=" " alt="" coords="1049,150,960,198,958,194,1047,145"/>
+<area shape="rect" id="Node000014" href="$ra8__lpm__graphics_8c.html" title="Graphics power&#45;domain bring&#45;up for the LPM HAL driver." alt="" coords="1021,196,1167,236"/>
+<area shape="poly" id="edge13_Node000005_Node000014" title=" " alt="" coords="1097,154,1097,196,1091,196,1091,154"/>
+<area shape="poly" id="edge14_Node000005_Node000015" title=" " alt="" coords="1190,136,1518,193,1530,196,1529,201,1518,199,1189,141"/>
+<area shape="poly" id="edge15_Node000005_Node000016" title=" " alt="" coords="1190,132,1297,145,1493,166,1578,176,1688,193,1699,195,1698,201,1687,199,1578,182,1492,172,1296,151,1190,137"/>
+<area shape="poly" id="edge16_Node000005_Node000017" title=" " alt="" coords="1190,129,1348,145,1491,157,1603,164,1714,174,1857,193,1868,195,1867,201,1856,199,1714,179,1602,170,1491,163,1347,151,1190,135"/>
+</map>

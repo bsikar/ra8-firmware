@@ -1,0 +1,5 @@
+<map id="r_pdg_regs_t" name="r_pdg_regs_t">
+<area shape="rect" id="Node000001" title="PDG block register window mapped at k_ra8_pdg_base_addr." alt="" coords="17,121,123,147"/>
+<area shape="rect" id="Node000002" href="$structr__pdg__dly__pair__t.html" title="Two consecutive 16&#45;bit delay cells that match the PDG layout." alt="" coords="5,5,135,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="73,45,73,121,67,121,67,45"/>
+</map>

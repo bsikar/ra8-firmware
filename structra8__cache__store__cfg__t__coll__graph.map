@@ -1,0 +1,5 @@
+<map id="ra8_cache_store_cfg_t" name="ra8_cache_store_cfg_t">
+<area shape="rect" id="Node000001" title="Injected dependencies + geometry for ra8_cache_store_init." alt="" coords="13,101,179,127"/>
+<area shape="rect" id="Node000002" href="$structra8__cache__store__entry__t.html" title="One RAM index slot: key &#45;&gt; {header sector, run length, payload len}." alt="" coords="5,5,187,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,45,99,101,93,101,93,45"/>
+</map>

@@ -1,0 +1,23 @@
+<map id="libs/ra8_reflow/src/ra8_reflow_svg_shape.c" name="libs/ra8_reflow/src/ra8_reflow_svg_shape.c">
+<area shape="rect" id="Node000001" title="SVG shape rasterisers: rect / circle / line / polygon + fill + arc (#112)." alt="" coords="199,5,381,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="117,93,185,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="258,48,185,89,183,84,255,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="299,167,425,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="302,45,353,153,348,155,297,47"/>
+<area shape="rect" id="Node000004" href="$ra8__gfx_8h.html" title="Software 2D graphics primitives layered on top of a caller&#45;ownedframebuffer (DRW / D/AVE 2D / GLCDC r..." alt="" coords="210,93,293,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="283,47,266,82,261,80,278,44"/>
+<area shape="rect" id="Node000008" href="$ra8__reflow__svg__internal_8h.html" title="Cross&#45;TU surface for the split minimal&#45;SVG subset (#112)." alt="" coords="367,93,557,119"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="332,43,425,85,423,90,330,48"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="179,240,249,265"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="253,119,239,193,227,228,222,226,234,191,247,119"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="5,167,84,192"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="219,121,92,165,90,160,217,116"/>
+<area shape="rect" id="Node000007" href="$ra8__gfx__font_8h.html" title="Bitmap font descriptor + bundled font handles for ra8_gfx." alt="" coords="108,167,224,192"/>
+<area shape="poly" id="edge7_Node000004_Node000007" title=" " alt="" coords="239,121,192,160,189,156,236,117"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="73,190,175,232,173,237,71,194"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="176,191,201,227,196,230,172,194"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="447,121,391,161,388,156,444,117"/>
+<area shape="poly" id="edge11_Node000008_Node000005" title=" " alt="" coords="465,119,459,156,451,176,439,194,398,222,352,240,305,250,263,254,263,249,304,245,350,235,396,218,435,190,447,174,454,154,459,119"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="499,167,574,192"/>
+<area shape="poly" id="edge10_Node000008_Node000009" title=" " alt="" coords="476,117,516,155,513,159,472,121"/>
+</map>

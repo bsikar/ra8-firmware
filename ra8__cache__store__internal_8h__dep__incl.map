@@ -1,0 +1,7 @@
+<map id="libs/ra8_cache_store/src/ra8_cache_store_internal.h" name="libs/ra8_cache_store/src/ra8_cache_store_internal.h">
+<area shape="rect" id="Node000001" title="Internal on&#45;media format + cross&#45;TU helpers for ra8_cache_store (#201)." alt="" coords="103,5,258,60"/>
+<area shape="rect" id="Node000002" href="$ra8__cache__store_8c.html" title="ra8_cache_store runtime path: put / get / read / evict / pin / checkpoint (#201)." alt="" coords="5,115,172,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="149,72,108,117,104,113,145,69"/>
+<area shape="rect" id="Node000003" href="$ra8__cache__store__mount_8c.html" title="ra8_cache_store mount/recovery path + shared on&#45;flash helpers (#201)." alt="" coords="197,108,351,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="217,69,252,106,248,110,213,72"/>
+</map>

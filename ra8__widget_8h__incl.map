@@ -1,0 +1,17 @@
+<map id="libs/ra8_widget/inc/ra8_widget.h" name="libs/ra8_widget/inc/ra8_widget.h">
+<area shape="rect" id="Node000001" title="Zero&#45;heap composable widget layer (dwm&#45;style) over ra8_box + ra8_ui." alt="" coords="40,5,184,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="61,313,131,339"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="70,48,42,68,20,95,10,122,9,151,13,180,23,208,50,261,79,301,75,304,46,264,18,210,8,181,3,151,5,121,15,92,38,64,67,43"/>
+<area shape="rect" id="Node000003" href="$ra8__box_8h.html" title="Bounded, allocation&#45;free box&#45;model layout for e&#45;reader chrome." alt="" coords="29,93,115,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="105,47,86,82,82,80,100,44"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="101,240,179,265"/>
+<area shape="poly" id="edge9_Node000001_Node000004" title=" " alt="" coords="120,45,131,93,139,165,142,226,137,226,133,166,125,94,115,46"/>
+<area shape="rect" id="Node000005" href="$ra8__ui_8h.html" title="Bounded UI interaction core: hit&#45;testing, screen stack, paging." alt="" coords="191,167,265,192"/>
+<area shape="poly" id="edge10_Node000001_Node000005" title=" " alt="" coords="133,44,174,92,216,153,211,156,170,95,129,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="76,119,92,265,96,300,90,300,87,266,70,119"/>
+<area shape="poly" id="edge4_Node000003_Node000004" title=" " alt="" coords="80,118,131,226,126,229,75,120"/>
+<area shape="poly" id="edge6_Node000003_Node000005" title=" " alt="" coords="98,116,191,158,189,163,96,121"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="135,267,112,303,108,300,130,264"/>
+<area shape="poly" id="edge7_Node000005_Node000002" title=" " alt="" coords="228,193,217,228,194,267,167,291,137,310,134,305,164,287,190,264,212,226,223,191"/>
+<area shape="poly" id="edge8_Node000005_Node000004" title=" " alt="" coords="215,194,167,233,163,229,212,190"/>
+</map>

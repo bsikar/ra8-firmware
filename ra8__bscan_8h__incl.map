@@ -1,0 +1,11 @@
+<map id="libs/ra8_hal/inc/ra8_bscan.h" name="libs/ra8_hal/inc/ra8_bscan.h">
+<area shape="rect" id="Node000001" title="JTAG / IEEE&#45;1149.1 Boundary Scan TAP HAL surface." alt="" coords="17,5,162,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="54,167,125,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="55,48,35,62,18,79,9,98,12,118,30,140,53,158,50,162,26,144,7,120,4,97,14,76,31,58,52,43"/>
+<area shape="rect" id="Node000003" href="$ra8__bscan__regs_8h.html" title="JTAG / IEEE&#45;1149.1 Boundary Scan TAP constants for the RA8D2." alt="" coords="22,93,157,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="92,46,92,79,87,79,87,46"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="181,93,260,119"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="123,43,191,84,188,88,120,48"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="92,119,92,153,87,153,87,119"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="201,121,124,162,122,158,198,116"/>
+</map>

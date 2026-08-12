@@ -1,0 +1,7 @@
+<map id="ra8_jof_prod_state_t" name="ra8_jof_prod_state_t">
+<area shape="rect" id="Node000001" title="Whole transcode state (module&#45;static instance in the producer TU)." alt="" coords="95,121,249,147"/>
+<area shape="rect" id="Node000002" href="$structra8__jof__produce__cfg__t.html" title="Producer configuration: source, sink, tile geometry and work arena." alt="" coords="5,5,171,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="107,41,165,119,161,122,103,44"/>
+<area shape="rect" id="Node000003" href="$structra8__jof__bump__t.html" title="Linear (bump) allocator over the caller&#39;s work arena." alt="" coords="195,5,317,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="241,44,183,122,179,119,237,41"/>
+</map>

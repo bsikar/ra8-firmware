@@ -1,0 +1,27 @@
+var structra8__book__header__t =
+[
+    [ "attr_count", "structra8__book__header__t.html#a4579b816f790c7b1ed6f39b2ed469ac0", null ],
+    [ "attr_off", "structra8__book__header__t.html#a0888ca34a6795d09c3bda5ba2b3e9ad5", null ],
+    [ "author_off", "structra8__book__header__t.html#a423917e5b85105257726a04fe21bd6c1", null ],
+    [ "chapter_count", "structra8__book__header__t.html#abfe1387457aedd9f24be311e6246f32f", null ],
+    [ "chapter_off", "structra8__book__header__t.html#afda9edeb2c903672ed157c66176e31c3", null ],
+    [ "cover_image_index", "structra8__book__header__t.html#a38eabf5dc718338e676f0653bda38ee8", null ],
+    [ "crc32", "structra8__book__header__t.html#a5d66452d4351aa5fdb08fac5bcc53a13", null ],
+    [ "flags", "structra8__book__header__t.html#ab0d967f8faa88e16a2593cffa09cf180", null ],
+    [ "format_version", "structra8__book__header__t.html#a6744a479cb5decd62a932f8d32200e5a", null ],
+    [ "identifier_off", "structra8__book__header__t.html#a0eace03082e6829ae46df9b3476e55bb", null ],
+    [ "image_count", "structra8__book__header__t.html#a979dfa92d156726a208df904a8243ec2", null ],
+    [ "image_off", "structra8__book__header__t.html#acbeb2ca338350310883e78d5dba2ecf0", null ],
+    [ "image_pool_off", "structra8__book__header__t.html#a491ca86e45da9919f2e75343cdff5aca", null ],
+    [ "image_pool_size", "structra8__book__header__t.html#a5f73555616a3c13828f76e1685cc2cf5", null ],
+    [ "language_off", "structra8__book__header__t.html#ade834288e772e50c48ea50a2df2dd727", null ],
+    [ "magic", "structra8__book__header__t.html#a9b410c9f11cf79e6171e724886e60f1e", null ],
+    [ "node_count", "structra8__book__header__t.html#a697b55e3a6516bbdf79ed537ec66f479", null ],
+    [ "node_off", "structra8__book__header__t.html#ac8820f5b98501cd9b7a4ddc3b3c8b8c1", null ],
+    [ "string_off", "structra8__book__header__t.html#ae153309781b2cdb872a90ce10a9cc7af", null ],
+    [ "string_size", "structra8__book__header__t.html#ac0ebd19763cfdf699e6b6e3f3b7efec4", null ],
+    [ "stylesheet_count", "structra8__book__header__t.html#a03ed2e0976f5c2b431c4a928af968a31", null ],
+    [ "stylesheet_off", "structra8__book__header__t.html#a9be9e25b68a6c3471d533830f0c56d45", null ],
+    [ "title_off", "structra8__book__header__t.html#a24742159c9b0a9374240fb0701284773", null ],
+    [ "total_size", "structra8__book__header__t.html#aa52635ce1ea1574bfd6300f529169d0b", null ]
+];

@@ -1,0 +1,39 @@
+<map id="libs/ra8_hal/src/ra8_poeg.c" name="libs/ra8_hal/src/ra8_poeg.c">
+<area shape="rect" id="Node000001" title="Port Output Enable for GPT (POEG) driver implementation." alt="" coords="404,5,550,45"/>
+<area shape="rect" id="Node000002" href="$ra8__poeg_8h.html" title="Port Output Enable for GPT (POEG) driver." alt="" coords="311,93,406,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="450,48,388,88,385,84,447,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="387,240,458,265"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="504,44,519,59,532,77,540,98,538,119,521,154,498,186,450,233,446,229,494,182,516,151,533,118,535,98,528,80,515,62,500,47"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="306,167,384,192"/>
+<area shape="poly" id="edge14_Node000001_Node000004" title=" " alt="" coords="405,37,375,45,347,56,321,73,301,95,296,110,300,125,322,156,318,159,295,128,290,110,296,92,318,69,344,52,374,40,403,32"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="766,167,892,192"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="550,30,620,39,694,52,760,69,786,79,804,91,815,105,823,121,830,152,825,153,818,122,811,108,800,95,783,84,758,74,693,57,619,44,549,36"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="84,93,184,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="405,46,198,93,197,88,404,41"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="198,167,281,192"/>
+<area shape="poly" id="edge15_Node000001_Node000007" title=" " alt="" coords="405,42,346,63,317,77,291,95,267,124,251,155,246,152,262,121,287,91,314,73,344,58,403,37"/>
+<area shape="rect" id="Node000009" href="$ra8__mstp_8h.html" title="Ref&#45;counted Module Stop Control wrapper for the RA8D2." alt="" coords="430,93,524,119"/>
+<area shape="poly" id="edge16_Node000001_Node000009" title=" " alt="" coords="480,46,480,79,474,79,474,46"/>
+<area shape="rect" id="Node000010" href="$ra8__mstp__regs_8h.html" title="Module Stop Control (MSTP) register layout for the Renesas RA8D2." alt="" coords="561,167,692,192"/>
+<area shape="poly" id="edge22_Node000001_Node000010" title=" " alt="" coords="517,43,551,64,583,92,605,122,619,152,615,155,600,125,579,95,548,68,515,48"/>
+<area shape="rect" id="Node000012" href="$ra8__poeg__regs_8h.html" title="Port Output Enable for GPT (POEG) register layout for the RA8D2." alt="" coords="662,93,791,119"/>
+<area shape="poly" id="edge23_Node000001_Node000012" title=" " alt="" coords="537,43,678,87,676,92,536,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="369,118,398,166,419,225,414,227,393,168,365,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="359,119,352,154,347,153,353,119"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="359,190,401,229,398,232,356,194"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="92,121,57,134,26,151,15,160,9,170,9,179,15,190,39,207,75,221,121,232,173,239,281,247,373,249,373,255,281,253,173,244,120,237,74,226,36,212,11,194,4,181,4,168,11,156,23,146,55,129,91,116"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="169,116,299,160,297,165,167,121"/>
+<area shape="poly" id="edge10_Node000006_Node000007" title=" " alt="" coords="153,116,213,157,210,161,150,121"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="26,167,174,192"/>
+<area shape="poly" id="edge12_Node000006_Node000008" title=" " alt="" coords="131,120,114,155,109,153,126,118"/>
+<area shape="poly" id="edge11_Node000007_Node000003" title=" " alt="" coords="270,190,381,232,379,237,268,195"/>
+<area shape="poly" id="edge13_Node000008_Node000003" title=" " alt="" coords="152,189,374,238,373,243,151,195"/>
+<area shape="poly" id="edge17_Node000009_Node000003" title=" " alt="" coords="475,120,434,228,429,226,470,118"/>
+<area shape="poly" id="edge18_Node000009_Node000004" title=" " alt="" coords="457,121,380,162,377,158,454,116"/>
+<area shape="poly" id="edge19_Node000009_Node000010" title=" " alt="" coords="502,116,591,158,588,163,500,121"/>
+<area shape="poly" id="edge21_Node000010_Node000003" title=" " alt="" coords="594,195,469,238,467,233,593,190"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="589,240,664,265"/>
+<area shape="poly" id="edge20_Node000010_Node000011" title=" " alt="" coords="629,192,629,226,624,226,624,192"/>
+<area shape="poly" id="edge24_Node000012_Node000003" title=" " alt="" coords="729,119,725,156,718,176,705,194,688,205,664,215,603,231,472,250,471,244,602,226,663,210,686,201,702,190,713,174,720,155,724,119"/>
+<area shape="poly" id="edge25_Node000012_Node000005" title=" " alt="" coords="744,116,802,156,799,161,741,121"/>
+</map>

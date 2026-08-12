@@ -1,0 +1,15 @@
+<map id="libs/ra8_hal/inc/ra8_port_regs.h" name="libs/ra8_hal/inc/ra8_port_regs.h">
+<area shape="rect" id="Node000001" title="IOPORT (GPIO) register layout for the Renesas RA8D2." alt="" coords="281,5,427,45"/>
+<area shape="rect" id="Node000002" href="$ra8__pcntr_8h.html" title="CPU1&#45;safe combined direction+level PORT primitive over PCNTR1/PCNTR2." alt="" coords="23,93,168,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="285,52,153,96,151,91,283,47"/>
+<area shape="rect" id="Node000005" href="$ra8__regs_8h.html" title="Top&#45;level peripheral register header for the Renesas RA8D2." alt="" coords="192,93,337,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="326,57,286,95,283,91,322,53"/>
+<area shape="rect" id="Node000006" href="$gpio_8c.html" title="High&#45;level GPIO driver on top of PORT + PFS." alt="" coords="362,101,525,126"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="386,53,433,98,429,102,382,57"/>
+<area shape="rect" id="Node000007" href="$ra8__epaper_8c.html" title="IT8951 e&#45;paper SPI driver implementation." alt="" coords="549,93,695,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="427,47,564,91,563,96,425,52"/>
+<area shape="rect" id="Node000003" href="$blink__m33__hal_8h.html" title="One&#45;iteration LED1 blink step for the HAL&#45;based M33 example." alt="" coords="5,181,185,236"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="98,147,98,181,93,181,93,147"/>
+<area shape="rect" id="Node000004" href="$hw__pending_2blink__m33__hal_2cpu1__main_8c.html" title="CPU1 (Cortex&#45;M33) image: blink LED1 through the HAL PCNTR primitive." alt="" coords="5,284,185,339"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="98,250,98,284,93,284,93,250"/>
+</map>

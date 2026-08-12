@@ -1,0 +1,13 @@
+<map id="tools/cache_bench/sweep_block_internal.h" name="tools/cache_bench/sweep_block_internal.h">
+<area shape="rect" id="Node000001" title="Module&#45;private seams shared by the #208 sweep translation units." alt="" coords="5,5,193,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="131,240,201,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="68,47,49,62,34,79,25,98,27,118,48,153,77,185,107,210,135,230,132,235,104,215,73,188,44,157,22,120,20,97,29,76,46,58,65,43"/>
+<area shape="rect" id="Node000003" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="37,93,162,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="102,46,102,79,97,79,97,46"/>
+<area shape="rect" id="Node000004" href="$ra8__vsource_8h.html" title="Virtual&#45;memory object sources – the page&#45;cache storage seam (Layer 1, #147)." alt="" coords="187,93,300,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="135,43,211,84,209,89,133,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="232,121,212,142,194,168,181,198,173,227,168,226,176,196,189,165,208,138,229,117"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="204,167,283,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="246,119,246,153,241,153,241,119"/>
+<area shape="poly" id="edge6_Node000005_Node000002" title=" " alt="" coords="233,194,191,232,187,229,229,190"/>
+</map>

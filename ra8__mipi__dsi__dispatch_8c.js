@@ -1,0 +1,38 @@
+var ra8__mipi__dsi__dispatch_8c =
+[
+    [ "ra8_mipi_dsi_timing_limits_t", "ra8__mipi__dsi__dispatch_8c.html#a88fe72e6cc00f3420eb88d5561228042", [
+      [ "k_ra8_mipi_dsi_timing_max_sync", "ra8__mipi__dsi__dispatch_8c.html#a88fe72e6cc00f3420eb88d5561228042af3ba9c0e052bc625b3d2c9ad48e1dff7", null ],
+      [ "k_ra8_mipi_dsi_timing_max_porch", "ra8__mipi__dsi__dispatch_8c.html#a88fe72e6cc00f3420eb88d5561228042aebbd0b91524a0725b9ca9b31a332c9a6", null ],
+      [ "k_ra8_mipi_dsi_timing_max_active", "ra8__mipi__dsi__dispatch_8c.html#a88fe72e6cc00f3420eb88d5561228042ae8b8ced5c53651839f21abd1ab7c0f6e", null ]
+    ] ],
+    [ "internal_ra8_mipi_dsi_call_user", "ra8__mipi__dsi__dispatch_8c.html#ad0d5faa865b70c5c701fa6355c385f1f", null ],
+    [ "internal_ra8_mipi_dsi_decode_rx", "ra8__mipi__dsi__dispatch_8c.html#a3475d0df6237c4c78366c3815caf8b44", null ],
+    [ "ra8_mipi_dsi_ack_error_get", "ra8__mipi__dsi__dispatch_8c.html#ac31a39df79064a096515afadc19c033a", null ],
+    [ "ra8_mipi_dsi_attach_handler", "ra8__mipi__dsi__dispatch_8c.html#aeb10c9c8a075d3c870244ddd53dc4b0f", null ],
+    [ "ra8_mipi_dsi_clear_status", "ra8__mipi__dsi__dispatch_8c.html#a0e0fb6d66100135f495b5489606dc68a", null ],
+    [ "ra8_mipi_dsi_dispatch", "ra8__mipi__dsi__dispatch_8c.html#a4cbf3dec8ef3917524de3e4cf64717d9", null ],
+    [ "ra8_mipi_dsi_dispatch_fatal", "ra8__mipi__dsi__dispatch_8c.html#a1bafc0fed2089ce4edf1db9088d5496a", null ],
+    [ "ra8_mipi_dsi_dispatch_phy", "ra8__mipi__dsi__dispatch_8c.html#a2e860cc2abe661b37b82c8b52482d4c7", null ],
+    [ "ra8_mipi_dsi_dispatch_receive", "ra8__mipi__dsi__dispatch_8c.html#ad2bf5f5adca438e230da675b166829da", null ],
+    [ "ra8_mipi_dsi_dispatch_seq0", "ra8__mipi__dsi__dispatch_8c.html#a34d6d6e27b99d1d4eacb3a9d2e3b15d2", null ],
+    [ "ra8_mipi_dsi_dispatch_seq1", "ra8__mipi__dsi__dispatch_8c.html#a2718427360cd9b4e27442547e8f14fe0", null ],
+    [ "ra8_mipi_dsi_dispatch_video", "ra8__mipi__dsi__dispatch_8c.html#aa7d449c191cff811749cddb8e476575e", null ],
+    [ "ra8_mipi_dsi_enter_ulps", "ra8__mipi__dsi__dispatch_8c.html#aac053720d5c5562dcdc11c0c0331cf8a", null ],
+    [ "ra8_mipi_dsi_exit_ulps", "ra8__mipi__dsi__dispatch_8c.html#aa55c1edcba62ef63a2d5da925d85df75", null ],
+    [ "ra8_mipi_dsi_get_link_status", "ra8__mipi__dsi__dispatch_8c.html#aeb7e2b360d75a767047f4ad2362ba53c", null ],
+    [ "ra8_mipi_dsi_get_status", "ra8__mipi__dsi__dispatch_8c.html#a74158b9a91cd3fba8e151c3c75b9171f", null ],
+    [ "ra8_mipi_dsi_irq_enable", "ra8__mipi__dsi__dispatch_8c.html#a795b2b246bc2ac749943918fc08f7cfc", null ],
+    [ "ra8_mipi_dsi_link_status_get", "ra8__mipi__dsi__dispatch_8c.html#adcd470dc9eb4a119eb16f73ea0b9c30b", null ],
+    [ "ra8_mipi_dsi_rx_payload_read", "ra8__mipi__dsi__dispatch_8c.html#a229359f6a65f15b9f287d7f040dd6da8", null ],
+    [ "ra8_mipi_dsi_rx_result_get", "ra8__mipi__dsi__dispatch_8c.html#afdcdc2f551fba1ecafb44793033ea71e", null ],
+    [ "ra8_mipi_dsi_send_command_long", "ra8__mipi__dsi__dispatch_8c.html#a6714ce347f72a53601ca83ec556aa079", null ],
+    [ "ra8_mipi_dsi_send_command_payload", "ra8__mipi__dsi__dispatch_8c.html#acd5f560bc6ec979681472073c58bb700", null ],
+    [ "ra8_mipi_dsi_send_command_short", "ra8__mipi__dsi__dispatch_8c.html#ab62fe5bdeb491a8fbb7aed1f396521a6", null ],
+    [ "ra8_mipi_dsi_set_video_timing", "ra8__mipi__dsi__dispatch_8c.html#ad00dab9d9d83ab1b9982596f8f7d7baf", null ],
+    [ "ra8_mipi_dsi_te_event_clear", "ra8__mipi__dsi__dispatch_8c.html#affaba5d3dc0ccf61dd7ecd9120cfb813", null ],
+    [ "ra8_mipi_dsi_te_event_pending", "ra8__mipi__dsi__dispatch_8c.html#a27e3c7c58a96e0d8633926e868a8e29f", null ],
+    [ "ra8_mipi_dsi_video_configure", "ra8__mipi__dsi__dispatch_8c.html#a21bcce1e2b2428ce1b5d94c85dae7bff", null ],
+    [ "ra8_mipi_dsi_video_start", "ra8__mipi__dsi__dispatch_8c.html#ac23afad3515cd5d875143553d3fdd465", null ],
+    [ "ra8_mipi_dsi_video_stop", "ra8__mipi__dsi__dispatch_8c.html#a4b335d4ba72f1552b7adc5f2b6255d65", null ],
+    [ "s_tag", "ra8__mipi__dsi__dispatch_8c.html#af8861f6a1fb30510e283b1b7806b64e7", null ]
+];

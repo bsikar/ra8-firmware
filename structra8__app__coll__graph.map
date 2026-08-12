@@ -1,0 +1,5 @@
+<map id="ra8_app" name="ra8_app">
+<area shape="rect" id="Node000001" title=" " alt="" coords="35,101,110,127"/>
+<area shape="rect" id="Node000002" href="$structra8__app__vtable__t.html" title="App lifecycle callbacks (shared by all instances of one app)." alt="" coords="5,5,140,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="75,45,75,101,70,101,70,45"/>
+</map>

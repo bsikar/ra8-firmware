@@ -1,0 +1,9 @@
+<map id="examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/trustzone_init.h" name="examples/ek_ra8d2/hw_pending/secure_boot_ns_hil/trustzone_init.h">
+<area shape="rect" id="Node000001" title="Secure TrustZone bring&#45;up contract for the BLXNS RoT proof (#172)." alt="" coords="203,5,376,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2secure__boot__ns__hil_2main_8c.html" title="Secure side: authenticate the NS image, then BLXNS – the TrustZone RoT proof (#172)." alt="" coords="5,108,179,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="227,68,145,110,142,106,225,64"/>
+<area shape="rect" id="Node000003" href="$examples_2ek__ra8d2_2hw__pending_2secure__boot__ns__hil_2system__init_8c.html" title="Cortex&#45;M85 / RA8D2 core bring&#45;up (called from Reset_Handler)." alt="" coords="203,108,376,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="292,74,292,108,287,108,287,74"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2secure__boot__ns__hil_2trustzone__init_8c.html" title="Single&#45;core TrustZone bring&#45;up for a RAM&#45;resident NS image (#172)." alt="" coords="400,108,573,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="354,64,436,106,434,110,351,68"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="ra8_glyph_atlas_cfg_t" name="ra8_glyph_atlas_cfg_t">
+<area shape="rect" id="Node000001" title="Caller&#45;supplied storage + renderer for ra8_glyph_atlas_init." alt="" coords="165,121,329,147"/>
+<area shape="rect" id="Node000002" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="5,5,159,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="112,37,232,119,229,123,109,41"/>
+<area shape="rect" id="Node000003" href="$structra8__glyph__key__t.html" title="Identifies one rendered glyph." alt="" coords="183,5,311,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="250,45,250,121,245,121,245,45"/>
+<area shape="rect" id="Node000004" href="$structra8__glyph__dims__t.html" title="Per&#45;cell user descriptor: the rendered glyph dimensions." alt="" coords="336,5,473,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="381,42,305,100,268,124,265,119,302,95,378,37"/>
+</map>

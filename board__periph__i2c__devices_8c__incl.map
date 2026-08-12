@@ -1,0 +1,16 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_i2c_devices.c" name="tools/ra8_emulator/src/periph/board_periph_i2c_devices.c">
+<area shape="rect" id="Node000001" title="LSM6DSO IMU + MAX17048 fuel&#45;gauge device models on the I2C bus." alt="" coords="70,5,249,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,76,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="125,62,69,102,66,98,122,58"/>
+<area shape="rect" id="Node000003" href="$board__periph_8h.html" title="Register&#45;accurate peripheral&#45;model framework for the board emulator." alt="" coords="100,108,219,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="162,60,162,94,157,94,157,60"/>
+<area shape="rect" id="Node000006" href="$board__periph__i2c__internal_8h.html" title="Module&#45;private interfaces shared by the board_periph_i2c TUs." alt="" coords="243,108,446,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="217,58,308,100,306,105,215,62"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="219,181,289,207"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="176,131,229,171,226,175,173,135"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="60,181,195,207"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="156,135,140,170,136,168,152,133"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="332,135,281,175,278,170,328,131"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="314,181,439,207"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="352,133,368,168,364,170,348,135"/>
+</map>

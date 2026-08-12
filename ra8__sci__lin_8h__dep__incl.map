@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/inc/ra8_sci_lin.h" name="libs/ra8_hal/inc/ra8_sci_lin.h">
+<area shape="rect" id="Node000001" title="LIN (Local Interconnect Network) commander + responder driver on SCI_B." alt="" coords="121,5,266,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2lin__commander__hil_2main_8c.html" title="LIN commander frame&#45;driver HIL demo for EK&#45;RA8D2 (SCI2 on Pmod1)." alt="" coords="5,93,192,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="166,57,127,95,123,91,162,53"/>
+<area shape="rect" id="Node000003" href="$ra8__sci__lin_8c.html" title="LIN commander + responder driver implementation on SCI_B." alt="" coords="217,101,362,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="224,53,272,99,268,103,221,57"/>
+</map>

@@ -1,0 +1,11 @@
+<map id="tools/ra8_emulator/src/periph/board_periph_sd_format.c" name="tools/ra8_emulator/src/periph/board_periph_sd_format.c">
+<area shape="rect" id="Node000001" title="Blank&#45;card FAT16/FAT32 in&#45;memory formatters (–sd&#45;new)." alt="" coords="30,5,209,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,76,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,62,63,99,59,96,93,58"/>
+<area shape="rect" id="Node000003" href="$board__periph__sd__internal_8h.html" title="Module&#45;private FAT formatter shared by the board_periph_sd TUs." alt="" coords="100,108,299,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="146,58,181,96,177,99,142,62"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="103,181,173,207"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="191,135,159,173,155,169,187,132"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="198,181,323,207"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="211,132,244,169,240,173,207,135"/>
+</map>

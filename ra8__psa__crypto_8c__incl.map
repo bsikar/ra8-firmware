@@ -1,0 +1,37 @@
+<map id="libs/ra8_psa_crypto/src/ra8_psa_crypto.c" name="libs/ra8_psa_crypto/src/ra8_psa_crypto.c">
+<area shape="rect" id="Node000001" title="Implementation of the ra8_psa_crypto facade over TF&#45;PSA&#45;Crypto." alt="" coords="401,5,559,45"/>
+<area shape="rect" id="Node000002" href="$ra8__psa__crypto_8h.html" title="Application&#45;level PSA Crypto facade over tf&#45;psa&#45;crypto." alt="" coords="80,167,213,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="401,39,275,61,220,77,183,95,172,108,163,122,153,153,148,152,159,120,168,105,180,91,218,72,274,56,400,33"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,240,80,265"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="401,37,285,58,221,74,160,96,95,122,72,139,50,168,41,197,41,226,36,226,36,196,46,165,68,135,93,117,158,91,220,69,284,52,400,32"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="370,313,441,339"/>
+<area shape="poly" id="edge7_Node000001_Node000004" title=" " alt="" coords="525,43,600,82,641,107,678,135,708,166,726,199,730,216,729,233,724,250,713,267,695,281,669,292,601,309,524,320,455,325,455,320,523,314,600,304,667,287,692,276,709,264,719,248,724,232,725,216,721,201,703,169,674,139,638,111,598,86,523,48"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="289,240,367,265"/>
+<area shape="poly" id="edge16_Node000001_Node000005" title=" " alt="" coords="485,46,487,76,485,115,476,156,457,194,441,210,422,224,382,242,379,237,419,219,437,206,452,190,471,154,479,114,481,76,480,46"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="774,93,845,119"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="559,43,761,91,760,96,558,48"/>
+<area shape="rect" id="Node000007" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="518,167,618,192"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="493,44,557,153,552,156,489,47"/>
+<area shape="rect" id="Node000008" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="616,240,699,265"/>
+<area shape="poly" id="edge17_Node000001_Node000008" title=" " alt="" coords="510,44,572,94,605,128,633,165,647,196,656,226,650,227,642,198,628,168,600,131,568,98,506,48"/>
+<area shape="rect" id="Node000010" href="$ra8__psa__crypto__internal_8h.html" title="Module&#45;private definitions shared across the ra8_psa_crypto TUs." alt="" coords="194,93,385,119"/>
+<area shape="poly" id="edge18_Node000001_Node000010" title=" " alt="" coords="435,48,331,91,329,86,433,43"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="339,167,442,192"/>
+<area shape="poly" id="edge24_Node000001_Node000011" title=" " alt="" coords="471,47,407,156,402,153,466,44"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="131,194,73,234,70,230,128,190"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="157,190,189,226,233,263,296,293,357,312,356,317,294,298,231,268,185,230,153,194"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="177,190,287,232,285,237,175,195"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="342,263,384,302,381,306,339,267"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="519,194,474,212,452,225,434,242,418,270,410,300,405,298,413,268,430,238,449,221,471,207,517,189"/>
+<area shape="poly" id="edge11_Node000007_Node000005" title=" " alt="" coords="530,195,381,239,379,233,529,189"/>
+<area shape="poly" id="edge12_Node000007_Node000008" title=" " alt="" coords="584,190,634,229,630,233,581,194"/>
+<area shape="rect" id="Node000009" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="443,240,591,265"/>
+<area shape="poly" id="edge14_Node000007_Node000009" title=" " alt="" coords="562,194,536,230,531,227,557,191"/>
+<area shape="poly" id="edge13_Node000008_Node000004" title=" " alt="" coords="618,268,455,314,453,308,616,263"/>
+<area shape="poly" id="edge15_Node000009_Node000004" title=" " alt="" coords="501,268,437,308,434,303,498,263"/>
+<area shape="poly" id="edge22_Node000010_Node000002" title=" " alt="" coords="268,121,183,163,181,158,265,116"/>
+<area shape="poly" id="edge19_Node000010_Node000003" title=" " alt="" coords="195,115,161,122,128,132,97,148,70,169,60,181,53,196,46,227,41,226,48,194,56,178,66,165,94,143,126,127,160,116,193,110"/>
+<area shape="poly" id="edge20_Node000010_Node000004" title=" " alt="" coords="287,120,276,148,268,185,267,226,271,246,280,264,295,282,314,295,358,313,356,318,312,300,291,286,275,267,266,248,261,227,262,184,271,146,282,118"/>
+<area shape="poly" id="edge21_Node000010_Node000005" title=" " alt="" coords="295,118,324,226,319,227,290,120"/>
+<area shape="poly" id="edge23_Node000010_Node000011" title=" " alt="" coords="307,116,364,156,361,161,304,121"/>
+</map>

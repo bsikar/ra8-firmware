@@ -1,0 +1,7 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/inc/usb_selftest_host.h" name="examples/ek_ra8d2/hw_validated/hil/usb_selftest_soak/inc/usb_selftest_host.h">
+<area shape="rect" id="Node000001" title="Host&#45;side entry point of the soak self&#45;test." alt="" coords="107,5,319,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2hil_2usb__selftest__soak_2main_8c.html" title="USB self&#45;loop endurance soak + throughput benchmark (board&#45;only)." alt="" coords="5,108,197,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="176,71,132,110,129,106,172,67"/>
+<area shape="rect" id="Node000003" href="$usb__selftest__host_8c.html" title="Host side of the soak self&#45;test: enumerate, mount, verify, soak." alt="" coords="221,108,432,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="255,67,299,106,295,110,252,71"/>
+</map>

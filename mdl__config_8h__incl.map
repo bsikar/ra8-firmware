@@ -1,0 +1,16 @@
+<map id="tools/media_dl/inc/mdl_config.h" name="tools/media_dl/inc/mdl_config.h">
+<area shape="rect" id="Node000001" title="Per&#45;site descriptor loaded from a flat key=value config file." alt="" coords="121,5,263,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,80,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="157,48,78,89,76,84,155,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="133,240,203,265"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="185,46,169,94,164,166,168,226,162,227,159,165,164,93,180,45"/>
+<area shape="rect" id="Node000004" href="$mdl__politeness_8h.html" title="Jittered inter&#45;request delay plus the per&#45;host politeness governor." alt="" coords="179,93,312,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="207,44,232,80,227,83,203,47"/>
+<area shape="rect" id="Node000006" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="355,167,434,192"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="242,43,284,64,326,91,357,122,381,153,377,157,353,126,322,95,281,69,239,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="234,121,214,142,196,168,183,198,175,227,170,226,178,196,191,165,210,138,231,117"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="205,167,331,192"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="252,118,263,153,258,154,247,120"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="270,116,359,158,357,163,268,121"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="359,195,217,239,216,234,357,189"/>
+</map>

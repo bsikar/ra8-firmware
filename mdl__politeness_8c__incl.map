@@ -1,0 +1,22 @@
+<map id="tools/media_dl/src/mdl_politeness.c" name="tools/media_dl/src/mdl_politeness.c">
+<area shape="rect" id="Node000001" title="Seeded xorshift64 jitter, injectable clock, and the per&#45;host governor." alt="" coords="288,5,429,45"/>
+<area shape="rect" id="Node000002" href="$mdl__politeness_8h.html" title="Jittered inter&#45;request delay plus the per&#45;host politeness governor." alt="" coords="31,93,164,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="297,48,149,92,148,87,295,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="26,240,97,265"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="347,47,316,95,303,123,295,148,285,171,264,194,228,217,188,234,147,244,111,250,110,245,146,239,186,229,226,213,261,190,281,168,290,146,298,121,311,92,343,44"/>
+<area shape="rect" id="Node000004" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="125,167,251,192"/>
+<area shape="poly" id="edge11_Node000001_Node000004" title=" " alt="" coords="333,48,271,95,209,158,205,154,268,91,330,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="325,93,392,119"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="361,46,361,79,356,79,356,46"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="417,93,487,119"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="383,44,429,82,426,86,380,48"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="511,93,582,119"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="405,43,507,85,505,90,403,48"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="607,93,671,119"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="426,43,594,89,592,95,425,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="68,121,37,140,23,153,12,168,8,184,13,200,37,229,33,233,8,202,3,184,7,166,19,149,34,136,66,117"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="114,117,164,156,161,160,110,121"/>
+<area shape="rect" id="Node000005" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="22,167,101,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="94,120,76,156,71,153,89,118"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="64,192,64,226,59,226,59,192"/>
+</map>

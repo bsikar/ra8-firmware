@@ -1,0 +1,24 @@
+<map id="tools/rabook_imagepack/inc/ra8_fmt.h" name="tools/rabook_imagepack/inc/ra8_fmt.h">
+<area shape="rect" id="Node000001" title="One&#45;file converter / inspector for the first&#45;party content formats." alt="" coords="445,5,628,45"/>
+<area shape="rect" id="Node000002" href="$tools_2rabook__imagepack_2src_2main_8c.html" title="ra8_fmt command&#45;line entry: parse the verb + options, then dispatch." alt="" coords="72,93,255,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="442,51,246,96,244,91,441,46"/>
+<area shape="rect" id="Node000003" href="$ra8__fmt__book_8c.html" title="RBKC (.rabook) container inspector for ra8_fmt." alt="" coords="5,181,188,221"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="453,52,393,71,333,96,300,115,267,136,208,162,152,184,150,179,206,157,265,131,297,111,330,91,391,66,451,47"/>
+<area shape="rect" id="Node000004" href="$ra8__fmt__internal_8h.html" title="Cross&#45;TU declarations shared inside the ra8_fmt tool." alt="" coords="381,93,564,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="516,58,489,95,485,92,512,55"/>
+<area shape="rect" id="Node000005" href="$ra8__fmt__jof_8c.html" title="JOF band&#45;tile atlas verbs for ra8_fmt: convert, inspect, verify." alt="" coords="212,181,395,221"/>
+<area shape="poly" id="edge9_Node000001_Node000005" title=" " alt="" coords="449,52,408,71,370,95,351,116,335,139,313,182,308,180,330,136,347,112,367,91,405,66,446,48"/>
+<area shape="rect" id="Node000006" href="$ra8__fmt__jof__inspect_8c.html" title="JOF structure dump, duplicate detection and round&#45;trip verification." alt="" coords="419,181,609,221"/>
+<area shape="poly" id="edge10_Node000001_Node000006" title=" " alt="" coords="562,56,579,93,582,114,578,134,561,162,540,183,537,179,557,158,573,132,576,114,574,95,557,58"/>
+<area shape="rect" id="Node000007" href="$ra8__fmt__jof__verify_8c.html" title="JOF round&#45;trip verification: banded encode versus untiled reference." alt="" coords="633,181,816,221"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="569,53,706,179,702,183,565,57"/>
+<area shape="rect" id="Node000008" href="$ra8__fmt__registry_8c.html" title="The format registry: one descriptor row per first&#45;party container." alt="" coords="840,181,1023,221"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="582,50,664,96,731,131,800,157,865,179,864,184,798,162,729,136,661,101,580,55"/>
+<area shape="rect" id="Node000009" href="$ra8__fmt__util_8c.html" title="Shared file I/O, byte&#45;field readers and the hex dumper for ra8_fmt." alt="" coords="741,93,924,133"/>
+<area shape="poly" id="edge13_Node000001_Node000009" title=" " alt="" coords="615,47,769,91,767,96,614,52"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="378,139,180,184,178,179,376,134"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="425,142,342,184,339,179,422,137"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="490,145,507,180,502,182,485,147"/>
+<area shape="poly" id="edge7_Node000004_Node000007" title=" " alt="" coords="542,135,670,179,669,184,540,140"/>
+<area shape="poly" id="edge8_Node000004_Node000008" title=" " alt="" coords="578,132,840,180,839,186,577,137"/>
+</map>

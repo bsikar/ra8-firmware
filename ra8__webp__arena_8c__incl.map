@@ -1,0 +1,13 @@
+<map id="libs/ra8_webp/src/ra8_webp_arena.c" name="libs/ra8_webp/src/ra8_webp_arena.c">
+<area shape="rect" id="Node000001" title="Caller&#45;bound bump arena with refcount auto&#45;reset for libwebp." alt="" coords="68,5,228,45"/>
+<area shape="rect" id="Node000002" href="$ra8__webp__arena_8h.html" title="Heap&#45;free scratch allocator hooks for the vendored libwebp decoder." alt="" coords="24,93,165,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="137,47,113,83,108,80,133,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,80,192"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="76,48,41,67,26,80,14,95,10,109,11,124,26,154,22,157,6,126,4,108,10,92,22,76,38,62,73,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="110,167,181,192"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="163,44,178,79,182,99,180,119,164,156,159,154,175,118,176,99,173,80,158,47"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="241,93,311,119"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="180,43,247,84,244,88,178,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="88,121,61,157,57,154,84,117"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="105,117,131,154,127,157,101,121"/>
+</map>

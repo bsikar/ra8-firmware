@@ -1,0 +1,31 @@
+<map id="tools/ra8_emulator/src/engine/emu_seam_sd.c" name="tools/ra8_emulator/src/engine/emu_seam_sd.c">
+<area shape="rect" id="Node000001" title="–fast&#45;sd whole&#45;block SD serving seam" alt="" coords="267,5,469,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,72,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="287,48,86,96,85,90,286,43"/>
+<area shape="rect" id="Node000003" href="$board__periph__sd_8h.html" title="SD&#45;card&#45;over&#45;SPI device model for ra8_emulator (attached to SPI_B)." alt="" coords="96,93,237,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="321,48,210,91,208,86,319,43"/>
+<area shape="rect" id="Node000005" href="$emu__elf_8h.html" title="ELF32 image services for the board emulator (load / symbols / vectors)." alt="" coords="262,93,349,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="355,47,325,84,321,81,351,44"/>
+<area shape="rect" id="Node000008" href="$emu__engine_8h.html" title="Shared Unicorn engine access utilities for the board emulator." alt="" coords="373,93,488,119"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="385,44,415,81,411,84,381,47"/>
+<area shape="rect" id="Node000009" href="$emu__seams_8h.html" title="Armv8.1&#45;M instruction&#45;emulation seams (M85 ops on Unicorn&#39;s M33)." alt="" coords="513,93,626,119"/>
+<area shape="poly" id="edge12_Node000001_Node000009" title=" " alt="" coords="417,43,528,86,526,91,415,48"/>
+<area shape="rect" id="Node000010" href="$emu__trace_8h.html" title="Function&#45;entry seam glue + the –trace&#45;sym instrument." alt="" coords="650,93,753,119"/>
+<area shape="poly" id="edge16_Node000001_Node000010" title=" " alt="" coords="448,43,640,88,639,93,447,48"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="273,167,343,192"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="191,116,274,158,272,163,188,121"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="308,119,310,153,304,153,303,119"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="518,167,653,192"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="350,116,527,161,526,166,348,121"/>
+<area shape="rect" id="Node000007" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="368,167,493,192"/>
+<area shape="poly" id="edge7_Node000005_Node000007" title=" " alt="" coords="327,116,400,157,397,162,324,121"/>
+<area shape="poly" id="edge9_Node000008_Node000004" title=" " alt="" coords="412,121,341,162,338,157,410,116"/>
+<area shape="poly" id="edge10_Node000008_Node000006" title=" " alt="" coords="457,116,549,158,547,163,454,121"/>
+<area shape="poly" id="edge11_Node000008_Node000007" title=" " alt="" coords="433,119,433,153,428,153,428,119"/>
+<area shape="poly" id="edge13_Node000009_Node000004" title=" " alt="" coords="528,121,357,167,356,162,527,116"/>
+<area shape="poly" id="edge14_Node000009_Node000006" title=" " alt="" coords="575,118,582,153,577,154,569,120"/>
+<area shape="poly" id="edge15_Node000009_Node000007" title=" " alt="" coords="548,121,467,163,464,158,546,116"/>
+<area shape="poly" id="edge17_Node000010_Node000004" title=" " alt="" coords="650,119,639,121,500,144,357,169,356,164,499,138,638,116,649,114"/>
+<area shape="poly" id="edge18_Node000010_Node000006" title=" " alt="" coords="684,121,617,162,615,157,681,116"/>
+<area shape="poly" id="edge19_Node000010_Node000007" title=" " alt="" coords="659,121,488,166,487,161,657,116"/>
+</map>

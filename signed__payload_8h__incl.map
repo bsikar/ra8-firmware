@@ -1,0 +1,5 @@
+<map id="examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/signed_payload.h" name="examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/signed_payload.h">
+<area shape="rect" id="Node000001" title="GENERATED: copy&#45;to&#45;run payload signed by tools/rot_sign.py – do not edit." alt="" coords="5,5,204,60"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="69,108,140,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="107,60,107,94,102,94,102,60"/>
+</map>

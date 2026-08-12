@@ -1,0 +1,23 @@
+<map id="libs/ra8_hal/inc/ra8_ceu_regs.h" name="libs/ra8_hal/inc/ra8_ceu_regs.h">
+<area shape="rect" id="Node000001" title="Capture Engine Unit (CEU) register layout for the RA8D2." alt="" coords="232,5,377,45"/>
+<area shape="rect" id="Node000002" href="$ra8__ceu_8h.html" title="Capture Engine Unit (CEU) camera&#45;capture driver." alt="" coords="228,269,373,309"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="290,59,278,94,273,143,278,192,296,268,291,270,273,192,268,143,272,93,285,57"/>
+<area shape="rect" id="Node000004" href="$ra8__ceu_8c.html" title="Capture Engine Unit (CEU) driver implementation." alt="" coords="424,460,569,500"/>
+<area shape="poly" id="edge12_Node000001_Node000004" title=" " alt="" coords="391,47,445,70,496,102,518,122,535,145,546,171,550,200,550,291,545,340,534,388,508,461,503,459,529,386,540,339,544,291,544,200,541,172,530,148,514,126,493,106,443,75,389,52"/>
+<area shape="rect" id="Node000005" href="$ra8__ceu__init__regs_8c.html" title="Capture Engine Unit (CEU) init&#45;time register programming." alt="" coords="202,460,348,500"/>
+<area shape="poly" id="edge13_Node000001_Node000005" title=" " alt="" coords="219,42,150,61,115,75,82,92,54,113,31,138,16,167,11,200,11,291,10,357,16,383,36,410,72,439,115,458,160,469,202,475,202,480,159,475,113,463,69,443,32,414,11,385,4,357,6,291,6,200,11,165,27,135,50,109,79,88,112,70,148,56,218,37"/>
+<area shape="rect" id="Node000007" href="$ra8__ceu__types_8h.html" title="Capture Engine Unit (CEU) configuration descriptors and types." alt="" coords="288,93,433,133"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="327,56,350,92,346,95,322,58"/>
+<area shape="rect" id="Node000003" href="$cam__ceu_8c.html" title="CEU parallel (DVP) capture: DVP pin routing, open, arm/poll, buffer." alt="" coords="46,357,237,412"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="258,319,188,360,185,355,255,314"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="387,304,434,324,455,338,473,356,488,381,497,409,500,460,495,460,491,410,483,383,469,359,451,342,431,328,385,309"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="299,323,280,460,275,459,293,323"/>
+<area shape="rect" id="Node000006" href="$ra8__ceu__internal_8h.html" title="Cross&#45;TU surface for the ra8_ceu driver split." alt="" coords="313,365,458,405"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="329,318,370,363,367,366,325,321"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="420,412,476,458,472,462,417,416"/>
+<area shape="poly" id="edge7_Node000006_Node000005" title=" " alt="" coords="355,416,299,462,296,458,351,412"/>
+<area shape="poly" id="edge9_Node000007_Node000002" title=" " alt="" coords="345,146,328,182,314,229,306,270,301,269,309,228,323,180,340,144"/>
+<area shape="rect" id="Node000008" href="$ra8__ceu__api_8h.html" title="Capture Engine Unit (CEU) driver function prototypes." alt="" coords="338,181,484,221"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="381,144,402,180,398,182,376,147"/>
+<area shape="poly" id="edge11_Node000008_Node000002" title=" " alt="" coords="377,232,327,271,323,267,374,228"/>
+</map>

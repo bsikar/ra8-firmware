@@ -1,0 +1,13 @@
+<map id="libs/ra8_hal/inc/ra8_i3c_i2c.h" name="libs/ra8_hal/inc/ra8_i3c_i2c.h">
+<area shape="rect" id="Node000001" title="IIC_B (I3C unified IP, I2C&#45;only mode) controller driver." alt="" coords="171,5,316,45"/>
+<area shape="rect" id="Node000002" href="$ra8__i3c_8c.html" title="I3C Bus Interface driver implementation." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="196,54,115,96,113,91,194,49"/>
+<area shape="rect" id="Node000003" href="$ra8__i3c__i2c_8c.html" title="IIC_B (I3C unified IP) controller driver implementation." alt="" coords="141,181,287,221"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="229,59,217,94,212,141,214,181,209,181,207,141,211,93,224,57"/>
+<area shape="rect" id="Node000004" href="$ra8__i3c__i2c__control_8c.html" title="IIC_B (I3C unified IP) control&#45;plane + diagnostics implementation." alt="" coords="324,181,469,221"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="330,48,361,66,387,92,398,114,403,138,402,181,397,181,397,139,393,116,382,95,358,71,328,53"/>
+<area shape="rect" id="Node000005" href="$ra8__i3c__i2c__internal_8h.html" title="Test&#45;access surface for ra8_i3c_i2c internal helpers (MC/DC)." alt="" coords="227,93,372,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="265,56,289,92,285,95,261,58"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="273,145,235,183,231,179,269,141"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="333,140,377,179,373,183,329,144"/>
+</map>

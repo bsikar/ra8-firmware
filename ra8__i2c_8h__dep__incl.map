@@ -1,0 +1,28 @@
+<map id="libs/ra8_hal/inc/ra8_i2c.h" name="libs/ra8_hal/inc/ra8_i2c.h">
+<area shape="rect" id="Node000001" title="I2C Bus Interface (IIC) controller driver – polling mode." alt="" coords="1076,5,1221,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2camera__capture_2main_8c.html" title="OV5640 parallel (CEU) camera capture + plausibility self&#45;test." alt="" coords="5,93,196,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1062,31,902,35,689,46,449,66,208,96,197,98,196,93,207,91,449,60,689,41,902,30,1062,25"/>
+<area shape="rect" id="Node000003" href="$cam__ov5640_8c.html" title="OV5640 SCCB driver: reset strap, chip&#45;ID probe, DVP colour&#45;bar config." alt="" coords="220,93,411,148"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1062,33,777,53,600,71,422,96,412,98,411,93,422,91,599,66,776,48,1062,28"/>
+<area shape="rect" id="Node000004" href="$examples_2ek__ra8d2_2hw__pending_2i2c__peripheral__responder_2main_8c.html" title="RIIC (ra8_i2c) target/peripheral responder driven by an external controller." alt="" coords="435,93,612,148"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1062,37,862,59,743,76,625,96,613,98,612,93,624,91,742,71,861,54,1062,32"/>
+<area shape="rect" id="Node000005" href="$examples_2ek__ra8d2_2hw__validated_2hil_2i2c__i3c__combined_2main_8c.html" title="RIIC + I3C(I2C&#45;mode) coexistence self&#45;test for the EK&#45;RA8D2." alt="" coords="637,93,810,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1063,45,823,96,811,99,810,94,821,91,1062,40"/>
+<area shape="rect" id="Node000006" href="$examples_2ek__ra8d2_2hw__validated_2hil_2i2c__loopback_2main_8c.html" title="RIIC (ra8_i2c) controller self&#45;test against the on&#45;board U15." alt="" coords="835,93,1033,148"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1094,53,996,96,993,91,1092,48"/>
+<area shape="rect" id="Node000007" href="$ra8__board__ek__ra8d2__audio__usb_8c.html" title="EK&#45;RA8D2 BSP – DA7212 audio CODEC, USB&#45;HS, and U15 I/O expander." alt="" coords="1058,93,1239,148"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1151,59,1151,93,1146,93,1146,59"/>
+<area shape="rect" id="Node000008" href="$ra8__i2c_8c.html" title="I2C Bus Interface (IIC) controller driver implementation." alt="" coords="1167,196,1312,236"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1210,50,1235,68,1254,92,1262,119,1262,148,1250,196,1245,195,1257,147,1257,120,1249,95,1231,72,1207,54"/>
+<area shape="rect" id="Node000009" href="$ra8__i2c__config_8c.html" title="I2C Bus Interface (IIC) bring&#45;up, clock and error&#45;status plane." alt="" coords="1336,196,1481,236"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1204,49,1277,91,1343,145,1393,194,1389,198,1339,149,1274,96,1202,54"/>
+<area shape="rect" id="Node000010" href="$ra8__i2c__internal_8h.html" title="Test&#45;access surface for ra8_i2c internal helpers (MC/DC)." alt="" coords="1365,101,1511,141"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1221,47,1380,98,1379,103,1219,52"/>
+<area shape="rect" id="Node000011" href="$ra8__i2c__peripheral_8c.html" title="I2C Bus Interface (IIC) target (peripheral) role – polling mode." alt="" coords="1505,196,1651,236"/>
+<area shape="poly" id="edge13_Node000001_Node000011" title=" " alt="" coords="1236,30,1315,38,1400,51,1474,68,1503,79,1525,91,1547,115,1562,143,1578,195,1573,196,1557,145,1542,118,1522,95,1501,84,1473,73,1399,56,1315,44,1235,35"/>
+<area shape="rect" id="Node000012" href="$ra8__io__i2c__bus__riic_8c.html" title="RIIC backend for the ra8_io I2C&#45;bus facade – thin shim over ra8_i2c." alt="" coords="1587,101,1724,141"/>
+<area shape="poly" id="edge14_Node000001_Node000012" title=" " alt="" coords="1235,34,1391,57,1568,91,1597,98,1595,103,1567,96,1390,62,1234,40"/>
+<area shape="poly" id="edge10_Node000010_Node000008" title=" " alt="" coords="1387,149,1281,198,1278,194,1384,144"/>
+<area shape="poly" id="edge11_Node000010_Node000009" title=" " alt="" coords="1430,155,1417,197,1412,195,1425,153"/>
+<area shape="poly" id="edge12_Node000010_Node000011" title=" " alt="" coords="1479,146,1551,194,1548,198,1476,151"/>
+</map>

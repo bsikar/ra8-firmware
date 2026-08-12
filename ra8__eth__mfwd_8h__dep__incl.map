@@ -1,0 +1,9 @@
+<map id="libs/ra8_hal/inc/ra8_eth_mfwd.h" name="libs/ra8_hal/inc/ra8_eth_mfwd.h">
+<area shape="rect" id="Node000001" title="Ethernet Message Forwarding Engine (MFWD) driver." alt="" coords="203,5,349,45"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__pending_2eth__l3switch__forward__demo_2main_8c.html" title="L3 Ethernet switch / frame&#45;forwarding config demo (ra8_eth_mfwd + ra8_layer3_switch)." alt="" coords="5,93,179,148"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="228,54,145,96,143,91,225,49"/>
+<area shape="rect" id="Node000003" href="$ra8__eth_8c.html" title="Ethernet Switch Module (ESWM) + frame TX/RX driver implementation." alt="" coords="203,101,349,141"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="279,59,279,101,273,101,273,59"/>
+<area shape="rect" id="Node000004" href="$ra8__eth__mfwd_8c.html" title="Ethernet Message Forwarding Engine driver implementation." alt="" coords="373,101,518,141"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="323,50,412,98,410,103,321,54"/>
+</map>

@@ -1,0 +1,22 @@
+<map id="libs/ra8_core/src/ra8_decomp_limits.c" name="libs/ra8_core/src/ra8_decomp_limits.c">
+<area shape="rect" id="Node000001" title="Unified decompression&#45;limits policy – budget charging and checks." alt="" coords="175,5,328,45"/>
+<area shape="rect" id="Node000002" href="$ra8__decomp__limits_8h.html" title="Unified decompression&#45;limits policy: one bound set for every decoder." alt="" coords="5,93,164,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="213,48,123,90,120,85,210,43"/>
+<area shape="rect" id="Node000005" href="$ra8__attributes_8h.html" title="Annotation&#45;attribute framework macros for ra8&#45;firmware." alt="" coords="189,93,314,119"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="254,46,254,79,249,79,249,46"/>
+<area shape="rect" id="Node000006" href="$ra8__check_8h.html" title="Validation and Error&#45;Checking Macros for ra8&#45;firmware." alt="" coords="339,93,439,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="286,43,358,84,355,89,283,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="256,240,327,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="95,117,123,152,164,190,204,214,246,233,243,238,202,219,160,194,119,156,91,121"/>
+<area shape="rect" id="Node000004" href="$ra8__err_8h.html" title="Error Code Definitions for ra8&#45;firmware." alt="" coords="175,167,253,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="107,116,182,157,179,162,104,121"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="228,190,270,229,267,232,225,194"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="370,121,343,141,319,168,305,197,297,227,292,226,300,196,314,165,340,137,367,117"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="362,121,256,164,254,159,360,116"/>
+<area shape="rect" id="Node000007" href="$ra8__log_8h.html" title="Lightweight Logging Interface for ra8&#45;firmware." alt="" coords="329,167,411,192"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="388,120,379,154,374,153,383,118"/>
+<area shape="rect" id="Node000008" href="$ra8__error__handler_8h.html" title="Centralised fatal&#45;error sink." alt="" coords="436,167,584,192"/>
+<area shape="poly" id="edge11_Node000006_Node000008" title=" " alt="" coords="410,116,480,157,477,162,407,121"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="359,194,316,233,312,229,356,190"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="476,195,341,238,339,233,474,189"/>
+</map>

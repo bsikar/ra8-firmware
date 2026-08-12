@@ -1,0 +1,44 @@
+<map id="ra8_rabook_import_compiler_m33_ctx_t" name="ra8_rabook_import_compiler_m33_ctx_t">
+<area shape="rect" id="Node000001" title="Cookie for ra8_rabook_import_compile_adapter_m33 (the M33&#45;offload binding)." alt="" coords="1405,295,1615,335"/>
+<area shape="rect" id="Node000002" href="$structra8__rabook__import__compiler__ctx__t.html" title="Cookie carrying the storage ra8_rabook_import_compile_adapter needs." alt="" coords="1087,295,1296,335"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1310,313,1405,313,1405,318,1310,318"/>
+<area shape="rect" id="Node000003" href="$structra8__epub__book__t.html" title="Opened EPUB book." alt="" coords="846,85,979,111"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="943,117,1166,293,1163,297,939,121"/>
+<area shape="rect" id="Node000004" href="$structra8__epub__stream__media__t.html" title="Seekable EPUB media descriptor – opens with no whole&#45;file residency (#151)." alt="" coords="487,5,682,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="696,28,753,38,810,51,851,66,888,83,885,88,849,71,809,57,752,43,695,33"/>
+<area shape="rect" id="Node000005" href="$structra8__epub__manifest__item__t.html" title="One &lt;manifest&gt; &lt;item&gt; entry, retained in OPF document order." alt="" coords="487,59,683,84"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="697,78,846,90,846,95,696,83"/>
+<area shape="rect" id="Node000006" href="$structra8__epub__toc__entry__t.html" title="One titled entry in the table of contents." alt="" coords="503,112,666,137"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="680,123,809,115,855,108,855,113,810,121,680,128"/>
+<area shape="rect" id="Node000007" href="$structra8__vmem__t.html" title="Page&#45;cache state (caller&#45;owned; treat as private)." alt="" coords="861,219,965,244"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="979,242,1063,263,1144,293,1142,298,1062,269,977,247"/>
+<area shape="rect" id="Node000008" href="$structra8__vmem__cfg__t.html" title="Caller&#45;supplied storage + loader for ra8_vmem_init." alt="" coords="519,165,650,191"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="664,184,810,205,862,216,861,221,809,210,663,189"/>
+<area shape="rect" id="Node000009" href="$structra8__keycache__cell__t.html" title="Per&#45;cell link metadata (one caller&#45;owned array entry per cell)." alt="" coords="5,193,159,219"/>
+<area shape="poly" id="edge13_Node000002_Node000009" title=" " alt="" coords="106,227,144,261,196,299,225,316,257,330,290,339,323,342,914,342,1002,338,1086,329,1086,334,1002,343,914,347,323,347,289,344,255,335,223,321,193,304,141,266,103,231"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="131,187,182,175,274,167,365,164,519,170,519,175,365,170,274,172,183,181,133,192"/>
+<area shape="rect" id="Node000012" href="$structra8__keycache__cfg__t.html" title="Caller&#45;supplied storage + policy + renderer for ra8_keycache_init." alt="" coords="249,193,400,219"/>
+<area shape="poly" id="edge12_Node000012_Node000009" title=" " alt="" coords="173,203,249,203,249,209,173,209"/>
+<area shape="rect" id="Node000010" href="$structra8__vmem__key__t.html" title="The (object_id, frame&#45;aligned offset) key the page cache hashes on." alt="" coords="257,257,392,283"/>
+<area shape="poly" id="edge14_Node000002_Node000010" title=" " alt="" coords="406,272,1086,307,1086,313,406,277"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="405,264,435,256,461,243,469,234,472,223,476,212,485,201,518,185,520,190,488,205,481,215,477,225,474,236,464,247,437,261,407,269"/>
+<area shape="rect" id="Node000011" href="$structra8__keycache__t.html" title="Cache engine state (caller&#45;owned; treat as private)." alt="" coords="523,216,646,241"/>
+<area shape="poly" id="edge10_Node000007_Node000011" title=" " alt="" coords="660,227,707,227,860,228,860,234,707,233,660,232"/>
+<area shape="poly" id="edge11_Node000011_Node000012" title=" " alt="" coords="414,210,463,214,523,220,523,225,462,219,413,215"/>
+<area shape="rect" id="Node000013" href="$structra8__rabook__buffers__t.html" title="Caller&#45;owned, fixed&#45;capacity arenas the builder appends into (no heap)." alt="" coords="833,471,992,496"/>
+<area shape="poly" id="edge15_Node000002_Node000013" title=" " alt="" coords="945,461,1156,333,1158,338,948,466"/>
+<area shape="rect" id="Node000014" href="$structra8__book__chapter__t.html" title="One spine document (a renderable chapter) plus its TOC label." alt="" coords="509,604,660,629"/>
+<area shape="poly" id="edge16_Node000013_Node000014" title=" " alt="" coords="674,616,742,607,776,598,808,585,838,565,865,540,901,495,905,498,869,544,842,569,811,590,778,603,743,612,674,621"/>
+<area shape="rect" id="Node000015" href="$structra8__book__node__t.html" title="One DOM node." alt="" coords="518,393,651,419"/>
+<area shape="poly" id="edge17_Node000013_Node000015" title=" " alt="" coords="665,410,736,420,810,437,852,452,888,468,886,473,850,457,809,442,735,426,665,415"/>
+<area shape="rect" id="Node000016" href="$structra8__book__attr__t.html" title="One name=&quot;value&quot; attribute on an element." alt="" coords="523,444,647,469"/>
+<area shape="poly" id="edge18_Node000013_Node000016" title=" " alt="" coords="660,460,833,474,833,480,660,465"/>
+<area shape="rect" id="Node000017" href="$structra8__book__stylesheet__t.html" title="A preserved CSS stylesheet and the chapter it scopes to." alt="" coords="500,497,669,523"/>
+<area shape="poly" id="edge19_Node000013_Node000017" title=" " alt="" coords="683,508,809,501,855,493,855,499,810,506,683,513"/>
+<area shape="rect" id="Node000018" href="$structra8__book__image__t.html" title="Descriptor for one transcoded image in the image pool." alt="" coords="513,551,656,576"/>
+<area shape="poly" id="edge20_Node000013_Node000018" title=" " alt="" coords="669,559,738,551,809,535,854,516,891,494,894,498,856,521,810,541,739,556,670,564"/>
+<area shape="rect" id="Node000019" href="$structra8__rabook__pipeline__scratch__t.html" title="Caller&#45;owned temporary buffers the pipeline stage needs." alt="" coords="835,598,990,638"/>
+<area shape="poly" id="edge21_Node000002_Node000019" title=" " alt="" coords="940,586,1170,334,1174,337,944,590"/>
+<area shape="rect" id="Node000020" href="$structra8__img__arena__t.html" title="Caller&#45;owned bump arena backing a single image decode." alt="" coords="519,657,650,683"/>
+<area shape="poly" id="edge22_Node000019_Node000020" title=" " alt="" coords="664,675,735,676,809,666,846,653,879,636,881,641,848,658,810,671,735,681,664,681"/>
+</map>

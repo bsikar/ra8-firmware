@@ -1,0 +1,9 @@
+<map id="libs/ra8_display_pal/src/ra8_display_pal_internal.h" name="libs/ra8_display_pal/src/ra8_display_pal_internal.h">
+<area shape="rect" id="Node000001" title="Internal vtable + handle types for the display PAL." alt="" coords="193,5,343,60"/>
+<area shape="rect" id="Node000002" href="$ra8__display__pal_8c.html" title="Display PAL dispatcher – forwards every public call into the bound backend&#39;s vtable." alt="" coords="5,115,168,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="210,69,122,117,120,113,208,64"/>
+<area shape="rect" id="Node000003" href="$ra8__display__pal__eink_8c.html" title="E&#45;ink (IT8951) backend for the display PAL, wired to ra8_epaper." alt="" coords="193,108,343,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="271,74,271,108,265,108,265,74"/>
+<area shape="rect" id="Node000004" href="$ra8__display__pal__lcd_8c.html" title="LCD backend (ra8_glcdc) implementation for the display PAL." alt="" coords="367,115,555,155"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="332,64,426,113,424,117,329,69"/>
+</map>

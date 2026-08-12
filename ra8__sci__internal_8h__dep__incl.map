@@ -1,0 +1,7 @@
+<map id="libs/ra8_hal/src/ra8_sci_internal.h" name="libs/ra8_hal/src/ra8_sci_internal.h">
+<area shape="rect" id="Node000001" title="src/&#45;local shared surface for the ra8_sci driver TUs." alt="" coords="89,5,235,45"/>
+<area shape="rect" id="Node000002" href="$ra8__sci_8c.html" title="Full&#45;featured SCI_B driver implementation." alt="" coords="5,93,151,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,57,98,95,95,91,132,53"/>
+<area shape="rect" id="Node000003" href="$ra8__sci__dma__isr_8c.html" title="SCI_B DMA TX/RX descriptors + TXI/RXI/ERI ISR dispatch." alt="" coords="175,93,320,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="192,53,230,91,227,95,189,57"/>
+</map>

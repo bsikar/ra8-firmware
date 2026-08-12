@@ -1,0 +1,13 @@
+<map id="examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/c6_probe.h" name="examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/c6_probe.h">
+<area shape="rect" id="Node000001" title="Shared contract for the EK&#45;RA8D2 &lt;&#45;&gt; ESP32&#45;C6 esp&#45;hosted SPI probe." alt="" coords="403,5,576,60"/>
+<area shape="rect" id="Node000002" href="$examples_2ek__ra8d2_2hw__validated_2c6_2c6__spi__probe_2main_8c.html" title="First raw SPI link probe against the ESP32&#45;C6 wireless co&#45;processor." alt="" coords="5,108,179,163"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="390,61,191,111,180,114,178,108,190,105,388,56"/>
+<area shape="rect" id="Node000003" href="$c6__console_8c.html" title="Bounded console formatters for the ESP32&#45;C6 SPI probe." alt="" coords="203,108,379,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="427,68,344,110,341,106,424,64"/>
+<area shape="rect" id="Node000004" href="$c6__frame_8c.html" title="Hand&#45;decoded esp&#45;hosted payload header for the ESP32&#45;C6 SPI probe." alt="" coords="403,108,576,163"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="492,74,492,108,487,108,487,74"/>
+<area shape="rect" id="Node000005" href="$c6__sideband_8c.html" title="Pmod1 side&#45;band sampling, wire test, pull&#45;up contest, chip&#45;select hunt." alt="" coords="601,108,786,163"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="556,63,641,106,639,110,553,68"/>
+<area shape="rect" id="Node000006" href="$c6__xfer_8c.html" title="One full esp&#45;hosted SPI full&#45;duplex transaction against the C6." alt="" coords="811,108,984,163"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="590,55,799,105,811,108,810,114,798,111,589,60"/>
+</map>

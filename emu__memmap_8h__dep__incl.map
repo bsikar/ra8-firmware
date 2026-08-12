@@ -1,0 +1,17 @@
+<map id="tools/ra8_emulator/inc/emu_memmap.h" name="tools/ra8_emulator/inc/emu_memmap.h">
+<area shape="rect" id="Node000001" title="Emulated RA8D2 memory map: regions, alias backings, MMIO windows." alt="" coords="603,5,763,45"/>
+<area shape="rect" id="Node000002" href="$emu__cpu1_8c.html" title="Second&#45;core (cpu1) engine implementation (see emu_cpu1.h)." alt="" coords="5,93,180,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="590,41,406,65,193,96,181,98,180,93,192,91,405,59,589,35"/>
+<area shape="rect" id="Node000003" href="$emu__elf_8c.html" title="ELF32 image services implementation (see emu_elf.h)." alt="" coords="205,93,365,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="590,49,365,97,364,92,589,44"/>
+<area shape="rect" id="Node000004" href="$emu__exc_8c.html" title="Hand&#45;modelled Cortex&#45;M exception engine (see emu_exc.h)." alt="" coords="389,93,556,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="626,53,520,96,518,91,624,48"/>
+<area shape="rect" id="Node000005" href="$emu__memmap_8c.html" title="Emulated memory map implementation (see emu_memmap.h)." alt="" coords="580,93,787,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="686,59,686,93,681,93,681,59"/>
+<area shape="rect" id="Node000006" href="$emu__run_8c.html" title="Chunked run loop + report implementation (see emu_run.h)." alt="" coords="811,93,977,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="743,48,849,91,847,96,741,53"/>
+<area shape="rect" id="Node000007" href="$emu__view_8c.html" title="Board&#45;view presentation implementation (see emu_view.h)." alt="" coords="1001,93,1176,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="777,44,1002,91,1000,96,776,49"/>
+<area shape="rect" id="Node000008" href="$tools_2ra8__emulator_2src_2main_8c.html" title="RA8D2 board emulator – boot a real .elf on a CPU emulator, with ticks." alt="" coords="1200,93,1345,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="777,34,968,57,1189,91,1200,93,1199,98,1188,96,967,62,777,39"/>
+</map>
