@@ -283,7 +283,13 @@ is_dualcore_embedded() { # elf src-dir -> 0 (true) if dual-core embedded image
 build_and_resolve() { # app src-dir result-file -> "elf<TAB>note<TAB>ns args"
   local app="$1" src_dir="$2" rf="$3"
   local elf note="" ns=""
-  if [ -z "$src_dir" ] || ! timeout "$build_timeout" make -C "$src_dir" build \
+  # The xargs pool owns this phase's parallelism.  Per-app Makefiles delegate
+  # to `cmake --build` without an explicit -j, which otherwise inherits the
+  # workflow's CMAKE_BUILD_PARALLEL_LEVEL and multiplies the worker width
+  # (four matrix workers × four inner builds).  Keep the total at $jobs: one
+  # compiler scheduler per app, one app per pool slot.
+  if [ -z "$src_dir" ] || ! CMAKE_BUILD_PARALLEL_LEVEL=1 \
+    timeout "$build_timeout" make -C "$src_dir" build \
     >"$run_dir/$app.build.log" 2>&1; then
     printf 'BUILD_FAIL\tBUILD FAIL (see %s)\n' "$run_dir/$app.build.log" >"$rf"
     return 1

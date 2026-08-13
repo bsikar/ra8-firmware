@@ -39,8 +39,12 @@ RA8_UNICORN_VERSION="2.1.4"
 RA8_UNICORN_TARBALL_URL="https://github.com/unicorn-engine/unicorn/archive/refs/tags/${RA8_UNICORN_VERSION}.tar.gz"
 RA8_UNICORN_TARBALL_SHA256="ea8863f095a0136388694e5a6063afd9bb7650e30243dd6251af59c5ce5601f4"
 
-# Install prefix. /usr/local matches how the runner already carries the pin
-# (/usr/local/lib/libunicorn.so.2), so ldconfig resolves it ahead of any stale
-# distro package and ra8_emulator's find_library(unicorn) picks it with no
-# CMake change. Override with RA8_UNICORN_PREFIX for a per-user install.
-RA8_UNICORN_PREFIX="${RA8_UNICORN_PREFIX:-/usr/local}"
+# Install prefix. Linux keeps the CI-compatible `/usr/local` default. macOS
+# uses a user-writable prefix so a fresh clone never needs sudo; the emulator's
+# CMake configuration searches that location automatically. Override either
+# with RA8_UNICORN_PREFIX when provisioning an unusual host.
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  RA8_UNICORN_PREFIX="${RA8_UNICORN_PREFIX:-${HOME}/.local/ra8-firmware/unicorn}"
+else
+  RA8_UNICORN_PREFIX="${RA8_UNICORN_PREFIX:-/usr/local}"
+fi
