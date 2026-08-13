@@ -195,7 +195,7 @@ fi
   echo "versions, so this gate refuses to run on an unpinned emulator (#354)."
   echo ""
   echo "Fix it by installing the pinned build:"
-  echo "  bash scripts/ci/install_unicorn.sh           # -> \$RA8_UNICORN_PREFIX (/usr/local)"
+  echo "  bash scripts/ci/install_unicorn.sh           # -> $RA8_UNICORN_PREFIX"
   echo "On a self-hosted runner, provision the same pin (docs/TOOLCHAIN.md)."
 } >&2
 exit 1

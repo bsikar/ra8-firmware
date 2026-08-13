@@ -55,7 +55,7 @@ target; the "status" column flags the known skews.
 | `yamllint` | **1.37.1** | (install per section 3.5) | 1.37.1 (`~/.local/bin`) | CONVERGED -- see 3.5 |
 | `actionlint` | **1.7.7** | (install per section 3.5) | 1.7.7 (`~/.local/bin`) | CONVERGED -- see 3.5 |
 | `gcovr` | 8.6 (pip) | 8.6 | 8.6 (`~/.local/bin` + `/usr/bin`) | CONVERGED |
-| `libunicorn` (ra8_emulator) | **2.1.4** (source build -> `/usr/local`) | 2.1.4 (`brew`, or source) | **2.1.4** (source build -> `/usr/local`) | pinned + FAIL-LOUD; dev box needs the source build -- see 3.6 (#354) |
+| `libunicorn` (ra8_emulator) | **2.1.4** (source build -> `/usr/local`) | 2.1.4 (source build) | **2.1.4** (source build -> `/usr/local`) | pinned + FAIL-LOUD; dev box needs the source build -- see 3.6 (#354) |
 
 ---
 
@@ -211,8 +211,9 @@ How it is enforced (three parts, no assumptions):
   `cmake/toolchain-ra8d2.cmake`.
 - **Reproducible install.** `scripts/ci/install_unicorn.sh` downloads the pinned
   tarball, checks the sha256, builds the `arm` target (`-DUNICORN_ARCH=arm`,
-  Release, shared), and installs to `/usr/local` (`RA8_UNICORN_PREFIX` to
-  override). It is idempotent -- already-pinned is a no-op. The devcontainer runs
+  Release, shared), and installs to `/usr/local` on Linux or
+  `~/.local/ra8-firmware/unicorn` on macOS (`RA8_UNICORN_PREFIX` overrides
+  either). It is idempotent -- already-pinned is a no-op. The devcontainer runs
   the same source build in its `Dockerfile`. It is provisioning, **not** a gate,
   and is deliberately never invoked from a workflow step (the `ci-parity` gate
   forbids an "infra" step from calling anything under `scripts/`).
@@ -229,12 +230,21 @@ How it is enforced (three parts, no assumptions):
   install produced green ra8_emulator runs nobody could reproduce. A skewed or
   absent Unicorn now fails the gate instead of quietly passing.
 
-**Provision a box** (dev box, or a fresh runner):
+**Provision a Linux box** (dev box, or a fresh runner):
 
 ```sh
 bash scripts/ci/install_unicorn.sh            # -> /usr/local (needs sudo for a system prefix)
 RA8_UNICORN_PREFIX=$HOME/opt/unicorn bash scripts/ci/install_unicorn.sh   # per-user, no sudo
 ```
+
+On macOS, run `make emu-setup` from a clone for the one-command setup. It
+requires only Apple's Command Line Tools (not the full Xcode app), uses the
+user-writable default prefix, and configures the emulator to find it without
+environment variables. The installer applies a narrow Unicorn 2.1.4
+compatibility change that skips an AArch64 `CTR_EL0` cache-register probe on
+Darwin; macOS can deny the preceding sysctl query, and that privileged probe
+otherwise terminates the emulator with `SIGILL`. The generic fallback cache
+line size is safe for Unicorn's JIT.
 
 **No longer an out-of-repo residual.** This used to be a manual step on the
 bare-metal `k3s-runner-*` services on `k3s-pve`, whose `/usr/local` Unicorn was

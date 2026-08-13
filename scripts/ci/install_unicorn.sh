@@ -25,7 +25,7 @@
 # and exits 0 without rebuilding.
 #
 # Usage:
-#   scripts/ci/install_unicorn.sh              # install to $RA8_UNICORN_PREFIX (/usr/local)
+#   scripts/ci/install_unicorn.sh              # Linux: /usr/local; macOS: ~/.local/ra8-firmware/unicorn
 #   RA8_UNICORN_PREFIX=$HOME/opt/unicorn ...    # per-user prefix (no sudo)
 #   scripts/ci/install_unicorn.sh --force      # rebuild even if already pinned
 
@@ -77,19 +77,40 @@ if [[ "$force" -eq 0 ]]; then
   fi
 fi
 
-for tool in curl cmake make sha256sum tar cc; do
+for tool in curl cmake make tar cc; do
   command -v "$tool" >/dev/null 2>&1 || {
     echo "ERROR: '$tool' is required to build Unicorn from source." >&2
     exit 1
   }
 done
 
+if command -v sha256sum >/dev/null 2>&1; then
+  checksum_cmd=(sha256sum)
+elif command -v shasum >/dev/null 2>&1; then
+  checksum_cmd=(shasum -a 256)
+else
+  echo "ERROR: 'sha256sum' or 'shasum' is required to verify Unicorn source." >&2
+  exit 1
+fi
+
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
+# Unicorn's bundled QEMU configure requires that pkg-config exists even when
+# this arm-only build has no pkg-config dependencies.  Keep optional probes
+# disabled when a minimal macOS toolchain lacks it.
+if ! command -v pkg-config >/dev/null 2>&1; then
+  cat >"$work/pkg-config-unavailable" <<'EOF'
+#!/bin/sh
+exit 1
+EOF
+  chmod +x "$work/pkg-config-unavailable"
+  export PKG_CONFIG="$work/pkg-config-unavailable"
+fi
+
 echo "[install_unicorn] downloading Unicorn $RA8_UNICORN_VERSION ..."
 curl -fsSL "$RA8_UNICORN_TARBALL_URL" -o "$work/unicorn.tar.gz"
-echo "${RA8_UNICORN_TARBALL_SHA256}  $work/unicorn.tar.gz" | sha256sum -c -
+echo "${RA8_UNICORN_TARBALL_SHA256}  $work/unicorn.tar.gz" | "${checksum_cmd[@]}" -c -
 
 tar -xzf "$work/unicorn.tar.gz" -C "$work"
 src="$work/unicorn-${RA8_UNICORN_VERSION}"
@@ -97,6 +118,17 @@ src="$work/unicorn-${RA8_UNICORN_VERSION}"
   echo "ERROR: extracted tree $src not found." >&2
   exit 1
 }
+
+# Unicorn 2.1.4 reads CTR_EL0 when its macOS cache-size sysctl is unavailable.
+# That system register is privileged on Apple Silicon and terminates the host
+# process with SIGILL.  macOS has a safe fallback cache-line size, so retain the
+# register probe only on non-Apple AArch64 hosts.
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  cacheinfo="$src/qemu/util/cacheinfo.c"
+  sed 's/^#if defined(__aarch64__)$/#if defined(__aarch64__) \&\& !defined(__APPLE__)/' \
+    "$cacheinfo" >"$cacheinfo.tmp"
+  mv "$cacheinfo.tmp" "$cacheinfo"
+fi
 
 echo "[install_unicorn] building (arm only, Release) ..."
 # UNICORN_ARCH=arm: ra8_emulator only emulates the Cortex-M (Armv8.1-M) core, so

@@ -8,7 +8,7 @@
 EMU_PANEL ?= ek_ra8d2
 PANEL     ?= $(EMU_PANEL)
 
-.PHONY: $(RA8_EMU) emu-help emu-matrix emu-matrix-triage emu-matrix-baseline \
+.PHONY: $(RA8_EMU) emu-help emu-setup emu-matrix emu-matrix-triage emu-matrix-baseline \
         eil eil-all eil-only ereader-gui \
         ereader-golden ereader-golden-update
 
@@ -105,7 +105,11 @@ ereader-gui: ereader_shelf
 		--panel $(RA8_EMU_DIR)/panels/$(PANEL).toml --view
 
 # `make emu-help` -- usage, the PANEL knob, and the ra8_emulator flag surface.
+emu-setup:
+	bash scripts/emu/setup_macos.sh
+
 emu-help:
+	@echo "make emu-setup                         install macOS emulator dependencies"
 	@echo "make emu-<app> [PANEL=<name>]  -- boot an app's REAL .elf on the ra8_emulator"
 	@echo "                                  Unicorn CPU emulator (tools/ra8_emulator)"
 	@echo ""
