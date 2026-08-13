@@ -12,7 +12,7 @@
 #   ./build/ra8_emulator ../../examples/ek_ra8d2/.../<app>/build/<app>.elf
 #
 # Needs Unicorn + Capstone:
-#   macOS: brew install unicorn capstone
+#   macOS: make emu-setup (Homebrew Capstone + source-built pinned Unicorn)
 #   Linux: libunicorn-dev + libcapstone-dev (or a source install) -- found via
 #          pkg-config, so the emulator smoke gate runs on the Linux CI runner.
 #
@@ -25,6 +25,10 @@ cmake_minimum_required(VERSION 3.20)
 # and add OBJC only on APPLE, where board_view.m is actually compiled.
 project(ra8_emulator LANGUAGES C)
 if(APPLE)
+  if(NOT DEFINED CMAKE_OBJC_COMPILER OR CMAKE_OBJC_COMPILER MATCHES "gcc")
+    set(CMAKE_OBJC_COMPILER "/usr/bin/clang" CACHE FILEPATH
+        "Objective-C compiler for the Cocoa board view" FORCE)
+  endif()
   enable_language(OBJC)
 endif()
 
@@ -33,8 +37,23 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Homebrew prefix (Apple Silicon default); only used on the APPLE path below.
-set(BREW /opt/homebrew)
+# Homebrew supplies Capstone on macOS. The pinned Unicorn source build lives in
+# a user-local prefix by default so cloning the repository never requires sudo.
+if(APPLE)
+  find_program(BREW_EXECUTABLE brew HINTS /opt/homebrew/bin /usr/local/bin)
+  if(BREW_EXECUTABLE)
+    execute_process(COMMAND ${BREW_EXECUTABLE} --prefix
+                    OUTPUT_VARIABLE BREW OUTPUT_STRIP_TRAILING_WHITESPACE)
+  endif()
+  set(RA8_UNICORN_PREFIX "$ENV{RA8_UNICORN_PREFIX}")
+  if(NOT RA8_UNICORN_PREFIX)
+    set(RA8_UNICORN_PREFIX "$ENV{HOME}/.local/ra8-firmware/unicorn")
+  endif()
+  # A prior configuration may have cached Homebrew Unicorn. Always rediscover
+  # the source-built pinned prefix when reconfiguring after `make emu-setup`.
+  unset(UNICORN_INCLUDE_DIR CACHE)
+  unset(UNICORN_LIBRARY CACHE)
+endif()
 
 # board_view is the optional live board window: the Cocoa backend (board_view.m)
 # on macOS, the headless no-op shim (board_view_stub.c) everywhere else. Both
@@ -122,26 +141,24 @@ target_include_directories(
           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
 )
 
-# Unicorn + Capstone discovery: Homebrew prefix on macOS (unchanged); on Linux
-# use CMake's native find_* (works with or without pkg-config). Capstone is the
-# distro -dev package (disassembly only). Unicorn is the PINNED source build in
-# /usr/local (docs/TOOLCHAIN.md, #354): find_library(unicorn) resolves it there
-# ahead of any stale distro package, and the emulator gates fail loudly via
-# check_unicorn_version.sh if the runtime Unicorn is not the pin. A custom prefix
-# still works via CMAKE_PREFIX_PATH. Cocoa is linked on the APPLE path only.
+# Unicorn + Capstone discovery. macOS checks the source-built user prefix
+# before Homebrew, while CMAKE_PREFIX_PATH remains available for custom setups.
+find_path(UNICORN_INCLUDE_DIR unicorn/unicorn.h HINTS ${RA8_UNICORN_PREFIX} ${BREW}
+          PATH_SUFFIXES include REQUIRED)
+find_path(CAPSTONE_INCLUDE_DIR capstone/capstone.h HINTS ${BREW}
+          PATH_SUFFIXES include REQUIRED)
+find_library(UNICORN_LIBRARY unicorn HINTS ${RA8_UNICORN_PREFIX} ${BREW}
+             PATH_SUFFIXES lib REQUIRED)
+find_library(CAPSTONE_LIBRARY capstone HINTS ${BREW} PATH_SUFFIXES lib REQUIRED)
+target_include_directories(ra8_emulator PRIVATE ${UNICORN_INCLUDE_DIR} ${CAPSTONE_INCLUDE_DIR})
+target_link_libraries(ra8_emulator PRIVATE ${UNICORN_LIBRARY} ${CAPSTONE_LIBRARY})
+
 if(APPLE)
-  target_include_directories(ra8_emulator PRIVATE ${BREW}/include)
-  target_link_directories(ra8_emulator PRIVATE ${BREW}/lib)
-  target_link_libraries(
-    ra8_emulator PRIVATE unicorn capstone "-framework Cocoa" "-framework QuartzCore"
-  )
-else()
-  find_path(UNICORN_INCLUDE_DIR unicorn/unicorn.h REQUIRED)
-  find_path(CAPSTONE_INCLUDE_DIR capstone/capstone.h REQUIRED)
-  find_library(UNICORN_LIBRARY unicorn REQUIRED)
-  find_library(CAPSTONE_LIBRARY capstone REQUIRED)
-  target_include_directories(ra8_emulator PRIVATE ${UNICORN_INCLUDE_DIR} ${CAPSTONE_INCLUDE_DIR})
-  target_link_libraries(ra8_emulator PRIVATE ${UNICORN_LIBRARY} ${CAPSTONE_LIBRARY})
+  set_property(TARGET ra8_emulator PROPERTY BUILD_RPATH "${RA8_UNICORN_PREFIX}/lib")
+endif()
+
+if(APPLE)
+  target_link_libraries(ra8_emulator PRIVATE "-framework Cocoa" "-framework QuartzCore")
 endif()
 
 target_compile_options(ra8_emulator PRIVATE -Wall -Wextra)

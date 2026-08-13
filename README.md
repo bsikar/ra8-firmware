@@ -36,7 +36,7 @@ click in the window enters the firmware through the genuine GT911 touch path;
 typing feeds the console UART's receive path.
 
 ```sh
-brew install unicorn capstone  # macOS; Linux: libcapstone-dev + scripts/ci/install_unicorn.sh
+make emu-setup                 # macOS: provisions dependencies (requires Command Line Tools, not Xcode)
 make emu-blink                 # live window: LEDs plus the USB/UART/IRQ sidebar
 make emu-ereader_ui            # the e-reader chrome, drawn by the firmware itself
 make emu-help                  # panels, profiling, the whole flag surface

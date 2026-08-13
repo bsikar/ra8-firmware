@@ -15,8 +15,13 @@ screen beside the status panel. ra8_emulator runs the actual cross-compiled ARM
 binary, so it exercises the genuine bring-up and peripheral-driver code path --
 the panel/UI you see is exactly what the flashed firmware draws.
 
-Standalone tool under `tools/`. Needs Unicorn + Capstone: `brew install unicorn
-capstone` on macOS. On Linux, Capstone is the distro `libcapstone-dev` package
+On macOS, run `make emu-setup` from the repository root: it requests the
+lightweight Xcode Command Line Tools if absent (the full Xcode app is not
+required), installs Homebrew dependencies and the pinned Arm GNU Toolchain,
+and builds pinned Unicorn at
+`~/.local/ra8-firmware/unicorn`, and configures the emulator. The CMake project
+discovers that prefix and embeds its runtime path automatically. On Linux,
+Capstone is the distro `libcapstone-dev` package
 but **Unicorn is version-pinned** -- its decode of Armv8.1-M (Helium/MVE)
 differs across releases, so an unpinned emulator makes the same commit pass on
 one box and fault on another (#354). Provision the pin (currently 2.1.4) with
