@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/camera_capture/cam_ov5640.h
+ * @file examples/ek_ra8d2/hw_validated/hil/camera_capture/cam_ov5640.h
  * @brief OV5640 sensor bring-up over SCCB (reset, chip-ID probe, DVP config).
  *
  * @par Tag
@@ -9,7 +9,7 @@
  * Public contract for the OV5640 half of the CEU capture self-test. The
  * module owns the SCCB (I2C) conversation with the sensor: releasing the
  * hardware reset strap, discovering which 7-bit address the chip answers on
- * and reading its 16-bit ID, and streaming the compact DVP colour-bar
+ * and reading its 16-bit ID, and streaming the live VGA DVP
  * register sequence. The register-init table, the SCCB read/write helpers,
  * and the OV5640 register enums live in `src/cam_ov5640.c`; only the sensor
  * lifecycle entry points and the shared SCCB bus channel are exported here.
@@ -80,19 +80,20 @@ ra8_err_t cam_reset_sensor(void);
 bool cam_probe_sensor(uint16_t* out_id);
 
 /**
- * @brief Software-reset the OV5640 and apply the DVP colour-bar sequence.
+ * @brief Software-reset the OV5640 and apply the live VGA DVP sequence.
  *
- * @details Issues an SCCB software reset, streams the trimmed DVP YUV422 QVGA
- *          colour-bar register table, then wakes the sensor into normal
- *          operation so it drives a deterministic frame on the parallel bus.
+ * @details Issues an SCCB software reset, programs the proven VGA YUV422 live
+ *          scene register table, then wakes the sensor into normal operation.
  *
- * @return ra8_err_t; ok when every register write ACKed.
- * @retval k_ra8_ok Sensor configured and woken.
+ * @return ra8_err_t; ok when programming and format readback succeed.
+ * @retval k_ra8_ok Sensor configured, verified, and woken.
  * @retval k_ra8_err_nack A register write was NACKed.
+ * @retval k_ra8_err_invalid_arg Format or test-pattern readback was unexpected.
  *
  * @pre RIIC ch1 up, XVCLK running, sensor out of hardware reset.
  * @pre The chip ID has been confirmed as 0x5640.
- * @post The sensor streams a QVGA YUV422 colour bar on the DVP bus.
+ * @post The sensor streams a VGA YUV422 live scene on the DVP bus.
+ * @post The ISP test pattern is disabled.
  * @post The sensor is in normal (awake) mode.
  * @note Thread safety: not thread-safe.
  * @since 0.1.0

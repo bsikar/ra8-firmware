@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/camera_capture/cam_ceu.h
+ * @file examples/ek_ra8d2/hw_validated/hil/camera_capture/cam_ceu.h
  * @brief CEU parallel (DVP) capture: pin routing, open, arm/poll, frame view.
  *
  * @par Tag
@@ -8,8 +8,8 @@
  * @details
  * Public contract for the Capture Engine Unit (CEU) half of the camera
  * self-test. The module routes the 11 J35 DVP pins to the CEU, opens the
- * capture engine with a single-shot QVGA YUV422 descriptor, arms one frame
- * into a module-owned 8-byte-aligned buffer, and lends the app a read-only
+ * capture engine with a single-shot VGA YUV422 descriptor, captures one frame
+ * into a module-owned cache-line-aligned buffer, and lends the app a read-only
  * view of that buffer plus a snapshot of the CEU status register. The raw
  * `ra8_ceu_*` driver and the ::ra8_ceu_config_t descriptor stay inside
  * `src/cam_ceu.c`; callers deal only in these wrappers.
@@ -27,15 +27,53 @@
 
 /**
  * @enum cam_ceu_frame_t
- * @brief Byte count of one captured QVGA YUV422 frame.
- * @details Shared between the CEU descriptor (`image_area_size`) and the app's
- *          frame-plausibility scan, so it is exported here as the single source
- *          of truth for the capture-buffer length.
+ * @brief Byte count of one captured VGA YUV422 frame.
+ * @details Shared between the capture buffer, app plausibility scan, and host
+ *          SWD dump, so it is exported as the single source of truth for the
+ *          captured byte count.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_cam_frame_bytes = 153600U, /**< 320 x 240 x 2 bytes (QVGA YUV422). */
+  k_cam_frame_bytes = 614400U, /**< 640 x 480 x 2 bytes (VGA YUV422). */
 } cam_ceu_frame_t;
+
+/** @brief Snapshot of DVP sync activity observed through GPIO input samples. */
+typedef struct {
+  uint32_t vsync_edges;           /**< Observed VIO_VD transitions.                   */
+  uint32_t hsync_edges;           /**< Observed VIO_HD transitions.                   */
+  uint32_t hsync_high_min;        /**< Shortest observed high run, samples.           */
+  uint32_t hsync_high_max;        /**< Longest observed high run, samples.            */
+  uint32_t hsync_low_min;         /**< Shortest observed low run, samples.            */
+  uint32_t hsync_low_max;         /**< Longest observed low run, samples.             */
+  uint32_t hsync_high_cycles_min; /**< Shortest high run, CPU cycles.                 */
+  uint32_t hsync_high_cycles_max; /**< Longest high run, CPU cycles.                  */
+  uint32_t pclk_edges;            /**< Observed VIO_CLK transitions.                  */
+  uint32_t pclk_half_cycles_min;  /**< Shortest observed VIO_CLK half-period.         */
+  uint32_t data_samples;          /**< Data bytes sampled on active-line PCLK rises.  */
+  uint32_t data_changes;          /**< Changes between consecutive sampled bytes.     */
+  uint32_t measured_lines;        /**< Completed HREF pulses measured in PCLK edges.  */
+  uint32_t line_pclk_min;         /**< Minimum PCLK rises inside one HREF pulse.      */
+  uint32_t line_pclk_max;         /**< Maximum PCLK rises inside one HREF pulse.      */
+  uint32_t line_pclk_mean;        /**< Mean PCLK rises inside measured HREF pulses.   */
+  uint32_t line_pclk_long;        /**< HREF pulses exceeding 1024 sampled PCLK rises. */
+  uint8_t  data_min;              /**< Minimum sampled VIO_D[7:0] value.              */
+  uint8_t  data_max;              /**< Maximum sampled VIO_D[7:0] value.              */
+  uint8_t  data_and;              /**< AND reduction of sampled VIO_D[7:0].           */
+  uint8_t  data_or;               /**< OR reduction of sampled VIO_D[7:0].            */
+} cam_ceu_sync_probe_t;
+
+/**
+ * @brief Measure DVP sync, clock, and data activity before CEU routing.
+ *
+ * @param[out] out_probe Receives observed sync transition counts.
+ * @return ra8_err_t; ok when the GPIO sampling pass completed.
+ *
+ * @pre The sensor is configured and streaming.
+ * @pre The DVP pins have not been claimed by ::cam_route_ceu_pins.
+ * @post All temporary DVP GPIO claims are released.
+ * @since 0.1.0
+ */
+ra8_err_t cam_probe_sync_activity(cam_ceu_sync_probe_t* out_probe);
 
 /**
  * @brief Route the 11 J35 parallel-camera data/sync pins to the CEU.
@@ -48,7 +86,7 @@ typedef enum : uint32_t {
  * @retval k_ra8_err_gpio_conflict A pin was already claimed.
  *
  * @pre `ra8_pfs_init` context (IOPORT reachable).
- * @pre DIP SW4-6 is ON (board in parallel-camera mode).
+ * @pre The U15 SW4-6 override selects parallel-camera mode.
  * @post All 11 pins carry the CEU (VIO_*) function (PMR=1, PSEL=CEU).
  * @post No CEU pin is left as GPIO.
  * @note Thread safety: init context only.
@@ -57,10 +95,10 @@ typedef enum : uint32_t {
 ra8_err_t cam_route_ceu_pins(void);
 
 /**
- * @brief Fill the CEU descriptor and open the capture engine for a QVGA grab.
+ * @brief Fill the CEU descriptor and open the capture engine for a VGA grab.
  *
  * @details Populates the open-time descriptor for a single-shot
- *          data-synchronous 8-bit QVGA YUV422 capture and hands it to
+ *          data-synchronous 8-bit VGA YUV422 capture and hands it to
  *          `ra8_ceu_init`. Wraps the fill-then-init pair so callers never touch
  *          the raw CEU descriptor type.
  *
@@ -70,8 +108,8 @@ ra8_err_t cam_route_ceu_pins(void);
  * @retval k_ra8_err_null_ptr Internal descriptor pointer was NULL (cannot occur).
  *
  * @pre The CEU DVP pins are routed (::cam_route_ceu_pins).
- * @pre The sensor is streaming a QVGA YUV422 frame.
- * @post The CEU holds the QVGA descriptor and is ready for ::cam_capture_one.
+ * @pre The sensor is streaming a VGA YUV422 frame.
+ * @post The CEU holds the VGA descriptor and is ready for ::cam_capture_one.
  * @post No frame has been captured yet.
  * @note Thread safety: init context only.
  * @since 0.1.0
@@ -123,8 +161,8 @@ ra8_err_t cam_ceu_get_status(uint32_t* out_evt);
  * @brief Borrow a read-only view of the internal CEU capture buffer.
  *
  * @details Returns the module-owned frame buffer that ::cam_capture_one fills.
- *          The buffer is ::k_cam_frame_bytes long and 8-byte aligned for the
- *          CEU destination-address register.
+ *          The buffer is ::k_cam_frame_bytes long and cache-line aligned for
+ *          DMA coherency, exceeding the CEU register's 8-byte requirement.
  *
  * @return const uint8_t* Pointer to the capture buffer (never NULL).
  * @retval non-NULL Always: the buffer has static storage duration.
@@ -137,3 +175,6 @@ ra8_err_t cam_ceu_get_status(uint32_t* out_evt);
  * @since 0.1.0
  */
 const uint8_t* cam_ceu_frame(void);
+
+/** @brief Return the valid byte count of the last completed capture. */
+uint32_t cam_ceu_capture_bytes(void);

@@ -87,6 +87,11 @@
 #     HIL_BOOT_TIMEOUT_S=25        -- wait for "eth: ready" banner
 #     HIL_PROBE_TIMEOUT_S=10       -- wire-side probe deadline
 #
+#   HIL_MODE=c6_camera_livestream
+#     HIL_SELF_BUILD=1              -- build in a temporary credential-bearing
+#                                      tree owned by the dedicated verifier
+#     Runs the combined OV5640 + ESP32-C6 HTTP/JPEG end-to-end verifier.
+#
 # Usage:
 #   bash scripts/hil/all.sh                  -- everything
 #   bash scripts/hil/all.sh --only blink     -- one app
@@ -226,14 +231,23 @@ ra8_bench_require "HIL suite: ${#APPS[@]} apps${ONLY:+ (only $ONLY)}" 2h || exit
 if ((SKIP_BUILD == 0)); then
   echo -e "${CYAN}[hil_all]${NC} building all apps under hil/"
   declare -a build_targets=()
-  if [[ -n "$ONLY" ]]; then
-    build_targets=("$ONLY")
-  else
-    build_targets=("${APPS[@]}")
-  fi
+  for app in "${APPS[@]}"; do
+    if [[ -n "$ONLY" && "$ONLY" != "$app" ]]; then
+      continue
+    fi
+    conf="${HIL_DIR}/${app}/hil.conf"
+    if [[ -f "$conf" ]]; then
+      hil_conf_load "$conf"
+      if [[ "${HIL_SELF_BUILD:-0}" == "1" ]]; then
+        echo -e "${CYAN}[hil_all]${NC} ${app}: verifier owns its private build"
+        continue
+      fi
+    fi
+    build_targets+=("$app")
+  done
   cd "$REPO_ROOT"
   # We pass everything to one `make` so the project's discovery sweeps once.
-  if ! make -k "${build_targets[@]}" >/dev/null 2>&1; then
+  if ((${#build_targets[@]} > 0)) && ! make -k "${build_targets[@]}" >/dev/null 2>&1; then
     echo -e "${RED}[hil_all]${NC} make failed for at least one app -- check 'make <app>' individually"
     exit 1
   fi
@@ -329,6 +343,10 @@ run_rtt_scrape() {
     --timeout "${HIL_TIMEOUT_S:-10}"
 }
 
+run_c6_camera_livestream() {
+  bash "${REPO_ROOT}/scripts/hil/camera_livestream.sh"
+}
+
 declare -i pass=0 fail=0 skipped=0
 declare -a failed_apps=()
 
@@ -383,6 +401,7 @@ for app in "${APPS[@]}"; do
     jlink_memprobe) run_jlink_memprobe "$app" || rc=$? ;;
     hil_eth_tcp) run_hil_eth_tcp "$app" || rc=$? ;;
     rtt_scrape) run_rtt_scrape "$app" || rc=$? ;;
+    c6_camera_livestream) run_c6_camera_livestream "$app" || rc=$? ;;
     *)
       echo -e "${RED}[hil_all]${NC} ${app}: unknown HIL_MODE='${HIL_MODE}'"
       rc=99

@@ -197,7 +197,7 @@ hil-find-jlink:
 # and every app added since had to be remembered into a list nobody knew
 # existed. That file is deleted; this is the suite.
 hil-all:
-	bash scripts/hil/all.sh
+	bash scripts/hil/all.sh $(if $(APP),--only $(APP),)
 
 # The ESP32-C6 lane. Same runner, different tier: these apps need SW4-4 OFF,
 # which takes the Arduino and mikroBUS connectors off the board for every app

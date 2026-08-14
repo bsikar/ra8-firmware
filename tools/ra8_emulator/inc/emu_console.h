@@ -89,7 +89,7 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_uart_line_max = 256U, /**< Pretty-print line buffer for the [uart] prefix. */
+  k_uart_line_max = 512U, /**< Pretty-print line buffer for the [uart] prefix. */
 } console_cfg_t;
 
 /**

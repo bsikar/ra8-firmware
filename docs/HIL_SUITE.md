@@ -49,6 +49,7 @@ instrument it (preferred) or place it under
 | `usb_cdc`        | `scripts/hil/usb_test.sh`        | The Pi enumerates the chip as a USB CDC ACM device at the given `HIL_VIDPID`, opens the CDC port, runs a correctness chunk + throughput stream, and asserts byte-exact echo + a throughput floor. PPPS re-enumerates the device mid-test. |
 | `jlink_memprobe` | `scripts/hil/jlink_memprobe.sh`  | Halts the chip, reads `HIL_PROBE_SYMBOL` (resolved from the matching `.elf` via `arm-none-eabi-nm`), runs the chip for `HIL_PROBE_SECONDS`, halts again, asserts the value advanced by `>= HIL_PROBE_MIN_ADVANCE`. If `HIL_PROBE_FAILURE_SYMBOL` is set, also asserts that counter advanced by `<= HIL_PROBE_MAX_FAILURE` (default 0). |
 | `hil_eth_tcp`    | `scripts/hil/eth_tcp.sh`         | The Pi opens a TCP/UDP socket to `HIL_BOARD_IP:HIL_PORT` (or `curl` for `HIL_PROTO=http`), sends a random `HIL_PAYLOAD_BYTES` payload, and asserts byte-exact echo (or HTTP 200 + the "Hello from RA8D2" marker). Uses a USB-Ethernet adapter on the Pi auto-detected via the `enxXX` / `usbX` interface naming. |
+| `c6_camera_livestream` | `scripts/hil/camera_livestream.sh` | On the C6 lane, cold-starts the co-processor, proves its SPI link, joins Wi-Fi, checks the camera server health endpoint, decodes two 320x240 JPEG frames and requires their bytes to differ. The verifier builds in a temporary tree because the firmware necessarily embeds the bench Wi-Fi credentials. |
 | `alive`          | `scripts/hil/check_alive.sh`     | **Reserved for the fault-recovery demo only** (`HIL_FAULT_EXPECTED=1`). Asserts: PC in MRAM/ITCM at both samples, PC not in a fault-spinner symbol (`panic_halt` / `halt_loop` / `exception_halt` / `*_Handler` / `_die`), CycleCnt advances, HFSR with DEBUGEVT masked is zero, CFSR != 0 (the fault DID fire), UART capture contains no negative banner. |
 
 ## Required Pi infrastructure
@@ -199,6 +200,7 @@ follow-up firmware fixes; the test config itself is correct.
 | App                          | Expect                          | Notes |
 |------------------------------|---------------------------------|-------|
 | `uart_hello`                 | `hello, ra8d2!`                 | basic UART up |
+| `camera_capture`             | `verdict=PASS`                  | OV5640 + full VGA CEU frame + four firmware RGB rotations |
 | `crypto_aes_demo`            | `aes: round-trip OK`            | |
 | `eth_loopback`               | `etha: loopback ok`             | |
 | `iwdt_demo`                  | `iwdt: poll counter`            | |

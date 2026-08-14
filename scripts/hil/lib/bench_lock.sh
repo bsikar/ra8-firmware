@@ -143,18 +143,41 @@ _ra8_bench_stop_fence() {
 
 # Prepend a command to whatever EXIT trap the caller already installed, rather
 # than replacing it. Several HIL scripts clean up a mktemp in theirs, and a
-# guard that silently ate that would leak a file per flash. `trap -p` prints a
-# re-runnable `trap -- '...' EXIT`, so splicing our command into the front of
-# its quoted body and re-issuing it composes the two.
-_ra8_bench_add_exit_trap() {
-  local new="$1" old
-  old="$(trap -p EXIT)"
-  if [ -z "$old" ]; then
-    # shellcheck disable=SC2064  # expanding NOW is the point: $new is the literal function name to install, and late expansion would install nothing.
-    trap "$new" EXIT
-    return 0
+# guard that silently ate that would leak a file per flash. Keep the original
+# command separate rather than editing `trap -p` output: Bash 3.2 does not
+# reliably perform the quoted pattern substitution the old implementation used.
+if [ -z "${_RA8_BENCH_EXIT_STATE_INITIALIZED:-}" ]; then
+  declare -a _RA8_BENCH_EXIT_HANDLERS=()
+  _RA8_BENCH_ORIGINAL_EXIT_TRAP=""
+  _RA8_BENCH_EXIT_DISPATCH_INSTALLED=0
+  _RA8_BENCH_EXIT_STATE_INITIALIZED=1
+fi
+
+_ra8_bench_run_exit_traps() {
+  local status=$? handler
+  trap - EXIT
+  for handler in "${_RA8_BENCH_EXIT_HANDLERS[@]}"; do
+    "$handler"
+  done
+  if [ -n "$_RA8_BENCH_ORIGINAL_EXIT_TRAP" ]; then
+    eval "$_RA8_BENCH_ORIGINAL_EXIT_TRAP"
   fi
-  eval "${old/trap -- \'/trap -- \'$new; }"
+  return "$status"
+}
+
+_ra8_bench_add_exit_trap() {
+  local new="$1" old specification
+  if [ "$_RA8_BENCH_EXIT_DISPATCH_INSTALLED" -eq 0 ]; then
+    old="$(trap -p EXIT)"
+    if [ -n "$old" ]; then
+      specification="${old#trap -- }"
+      specification="${specification% EXIT}"
+      eval "_RA8_BENCH_ORIGINAL_EXIT_TRAP=$specification"
+    fi
+    trap _ra8_bench_run_exit_traps EXIT
+    _RA8_BENCH_EXIT_DISPATCH_INSTALLED=1
+  fi
+  _RA8_BENCH_EXIT_HANDLERS=("$new" "${_RA8_BENCH_EXIT_HANDLERS[@]}")
 }
 
 # Release the hold this shell owns. Idempotent; safe to call when there is
