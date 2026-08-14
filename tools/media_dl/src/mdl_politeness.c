@@ -432,7 +432,11 @@ RA8_INTERNAL static void gov_on_success(mdl_governor_t* g,
   }
 }
 
-void mdl_governor_observe(mdl_governor_t* g, const char* host, long status, const char* retry_after)
+void mdl_governor_observe_at_wall(mdl_governor_t* g,
+                                  const char*     host,
+                                  long            status,
+                                  const char*     retry_after,
+                                  int64_t         now_wall_s)
 {
   if (g == nullptr) {
     return;
@@ -442,9 +446,9 @@ void mdl_governor_observe(mdl_governor_t* g, const char* host, long status, cons
   if (rec == nullptr) {
     return; /* NULL host or table full */
   }
-  uint32_t   retry_ms  = 0U;
-  const bool has_retry = (retry_after != nullptr) &&
-                         mdl_retry_after_parse(retry_after, now / (int64_t)k_ms_per_s, &retry_ms);
+  uint32_t   retry_ms = 0U;
+  const bool has_retry =
+    (retry_after != nullptr) && mdl_retry_after_parse(retry_after, now_wall_s, &retry_ms);
   const bool throttled =
     (status == (long)k_http_too_many_req) || (status == (long)k_http_unavailable);
   if (throttled) {
@@ -452,6 +456,11 @@ void mdl_governor_observe(mdl_governor_t* g, const char* host, long status, cons
   } else {
     gov_on_success(g, rec, now, has_retry, retry_ms);
   }
+}
+
+void mdl_governor_observe(mdl_governor_t* g, const char* host, long status, const char* retry_after)
+{
+  mdl_governor_observe_at_wall(g, host, status, retry_after, (int64_t)time(nullptr));
 }
 
 bool mdl_governor_peek(const mdl_governor_t* g,

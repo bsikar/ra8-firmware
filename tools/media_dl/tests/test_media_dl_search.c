@@ -211,6 +211,26 @@ static void test_build_url(void)
   TEST_END("search build url");
 }
 
+/** @test A live-site-shaped result list keeps series and rejects chapters. */
+static void test_filter_series_hits(void)
+{
+  TEST_BEGIN("search canonical series filter");
+  static const char html[] = "<a href='/webtoon/alpha/'>Alpha</a>"
+                             "<a href='/webtoon/alpha/chapter-108-5/'>Alpha Chapter 108.5</a>"
+                             "<a href='/webtoon/alpha/'>Alpha duplicate</a>"
+                             "<a href='/webtoon/beta/'>Beta</a>";
+  TEST_ASSERT(
+    mdl_extract_hits(html, sizeof(html) - 1U, "https://manhwaus.net/", "/webtoon/", &s_hits) ==
+    k_ra8_ok);
+  TEST_ASSERT_EQ((uint16_t)3, s_hits.count); /* extractor already removes exact duplicates */
+  TEST_ASSERT_EQ((uint16_t)1, mdl_search_filter_series_hits(&s_hits, "/chapter-"));
+  TEST_ASSERT_EQ((uint16_t)2, s_hits.count);
+  TEST_ASSERT(strcmp(s_hits.hits[0].url, "https://manhwaus.net/webtoon/alpha/") == 0);
+  TEST_ASSERT(strcmp(s_hits.hits[1].url, "https://manhwaus.net/webtoon/beta/") == 0);
+  TEST_ASSERT_EQ((uint16_t)0, mdl_search_filter_series_hits(nullptr, "/chapter-"));
+  TEST_END("search canonical series filter");
+}
+
 /**
  * @brief Run every search/discovery unit test in sequence.
  * @return 0 when all tests passed, non-zero on the first failure.
@@ -223,6 +243,7 @@ int32_t main(void)
   test_zero_vs_markup();
   test_query_encode();
   test_build_url();
+  test_filter_series_hits();
   (void)fprintf(stderr, "[OK  ] test_media_dl_search.c\n");
   return 0;
 }

@@ -161,4 +161,3 @@ size_t mdl_pack_combined(mdl_format_t             format,
 {
   return mdl_pack_combined_meta(format, allow_incomplete, series_dir, combined_rel, stats, nullptr);
 }
-

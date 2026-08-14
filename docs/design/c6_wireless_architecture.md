@@ -25,12 +25,15 @@ driver, and matching protocol version 2.12.11 is what makes them speak.
 | Side | Device | Software |
 |------|--------|----------|
 | Host | RA8D2 (Cortex-M85) | Upstream esp-hosted host driver (vendored SOUP) + the first-party RA8 + ThreadX port at `port/esp-hosted/` |
-| Co-processor | ESP32-C6 | Espressif esp-hosted-mcu `network_adapter`, unmodified SOUP |
+| Co-processor | ESP32-C6 | Pinned esp-hosted-mcu `network_adapter` SOUP + first-party `ra8_mdl_service` component |
 
-**Zero first-party code runs on the C6.** The whole C6 image is upstream
-esp-hosted-mcu, built from a pinned commit. Nothing project-authored is flashed
-to the C6, and the C6 image itself is never linked into the RA8D2 firmware
-binary -- the two are separate images that meet only on the wire.
+The C6 is a mixed image. The pinned upstream application supplies the radio,
+network stack, SPI transport, and outer RPC envelope. One checked patch exposes
+a bounded synchronous CustomRpc response hook, and the first-party
+`ra8_mdl_service` component supplies a pull-based HTTPS artifact transfer. The
+build refuses patch drift and asserts the strong service symbol exists in the
+final ELF. The C6 image is never linked into the RA8D2 firmware binary -- the
+two remain separate images that meet only on the wire.
 
 The RA8D2 side is a mix by design: the protocol driver is the *same upstream
 project* (vendored at `libs/third_party/esp-hosted/`, so the framing and RPC
@@ -280,17 +283,16 @@ that grant intact.
 - **A-la-carte ESP-IDF components** do not stand alone; they drag Kconfig, the
   IDF Python environment, FreeRTOS and inter-component dependency resolution, so
   consuming the SDK as libraries does not work at that grain.
-- **A full ESP-IDF application on the C6** is warranted only if substantial
-  first-party logic must run next to the radio. Here the C6 jobs (radio, OTA
-  ingress) are all appliance jobs, so that path buys a second toolchain and
-  image format for no benefit.
+- **A separate first-party ESP-IDF application** would duplicate the proven
+  esp-hosted integration. The selected mixed-image design instead adds one
+  narrow component to the pinned `network_adapter`, retaining its transport
+  while allowing bounded HTTPS artifact transfer next to the radio.
 - **ESP-AT** terminates TCP/IP on the C6, bypassing the RA8-side network stack
   and its TLS posture, offers no host-pushed OTA, and its C6 line is stalled.
 
-Running the whole co-processor firmware as one pinned SOUP artifact keeps every
-line the project compiles under its own rules, turns the SOUP boundary into a
-documented wire protocol rather than a linker boundary, and preserves the FCC
-modular grant.
+Keeping the radio/transport portion pinned as SOUP while isolating the
+first-party service behind a generated, bounded wire contract makes the trust
+boundary explicit and preserves the FCC modular grant.
 
 ## Primary sources
 

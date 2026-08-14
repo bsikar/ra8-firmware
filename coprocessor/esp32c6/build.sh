@@ -4,11 +4,10 @@
 #
 # build.sh -- reproducibly build the ESP32-C6 wireless co-processor firmware.
 #
-# The C6 runs Espressif's esp-hosted-mcu "network_adapter" application as SOUP:
-# ZERO first-party code runs on the C6. This script fetches the pinned upstream
-# at ESP_HOSTED_MCU_COMMIT, drops in the proven sdkconfig.defaults, and builds
-# the peripheral-side app with a pinned esp-idf. See docs/SOUP/esp-hosted.md and
-# docs/design/c6_wireless_architecture.md.
+# The C6 image is a pinned Espressif esp-hosted-mcu "network_adapter" plus the
+# reviewed first-party ra8_mdl_service component. The checked-in patch exposes
+# a bounded synchronous CustomRpc response hook; this script refuses to build
+# if that patch no longer applies to the exact upstream pin.
 #
 # Three things are ASSERTED rather than assumed, because each can drift while
 # the build still succeeds:
@@ -97,11 +96,41 @@ fi
 echo "==> checking out ${ESP_HOSTED_MCU_SHORT} (${ESP_HOSTED_MCU_COMMIT})"
 git -C "${CLONE_DIR}" fetch origin
 git -C "${CLONE_DIR}" -c advice.detachedHead=false checkout --detach "${ESP_HOSTED_MCU_COMMIT}"
+git -C "${CLONE_DIR}" reset --hard "${ESP_HOSTED_MCU_COMMIT}"
+git -C "${CLONE_DIR}" submodule update --init --recursive
 
 if [[ ! -d "${PERIPHERAL_DIR}" ]]; then
   echo "ERROR: ${PERIPHERAL_DIR} missing -- upstream layout changed at this commit" >&2
   exit 1
 fi
+
+# ---- 2b. apply the reviewed extension and stage the first-party component ----
+PATCH_FILE="${SCRIPT_DIR}/patches/0001-custom-rpc-sync-response-hook.patch"
+COMPONENT_DIR="${PERIPHERAL_DIR}/components/ra8_mdl_service"
+if [[ ! -f "${PATCH_FILE}" ]]; then
+  echo "ERROR: required CustomRpc patch is missing: ${PATCH_FILE}" >&2
+  exit 1
+fi
+echo "==> applying checked-in CustomRpc response hook"
+git -C "${CLONE_DIR}" apply --unidiff-zero --check "${PATCH_FILE}"
+git -C "${CLONE_DIR}" apply --unidiff-zero "${PATCH_FILE}"
+
+echo "==> staging first-party ra8_mdl_service component"
+rm -rf "${COMPONENT_DIR}"
+mkdir -p "${COMPONENT_DIR}/include" "${COMPONENT_DIR}/src"
+cp "${SCRIPT_DIR}/../../port/esp32_c6/CMakeLists.txt" "${COMPONENT_DIR}/CMakeLists.txt"
+cp "${SCRIPT_DIR}/../../port/esp32_c6/src/mdl_service.c" "${COMPONENT_DIR}/src/mdl_service.c"
+cp "${SCRIPT_DIR}/../../libs/ra8_c6link/src/ra8_c6link_mdl_service.c" \
+  "${COMPONENT_DIR}/src/ra8_c6link_mdl_service.c"
+cp "${SCRIPT_DIR}/../../libs/ra8_c6link/src/ra8_media_download.pb-c.c" \
+  "${COMPONENT_DIR}/src/ra8_media_download.pb-c.c"
+cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_c6link_mdl_msg.h" \
+  "${COMPONENT_DIR}/include/ra8_c6link_mdl_msg.h"
+cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_mdl_protocol.h" \
+  "${COMPONENT_DIR}/include/ra8_mdl_protocol.h"
+cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_media_download.pb-c.h" \
+  "${COMPONENT_DIR}/include/ra8_media_download.pb-c.h"
+cp "${SCRIPT_DIR}/../../libs/ra8_core/inc/ra8_err.h" "${COMPONENT_DIR}/include/ra8_err.h"
 
 # ---- 3. drop in the proven sdkconfig.defaults ----
 echo "==> installing sdkconfig.defaults"
@@ -121,6 +150,25 @@ echo "==> idf.py set-target ${ESP_TARGET} && idf.py build"
   idf.py set-target "${ESP_TARGET}"
   idf.py build
 )
+
+if ! command -v riscv32-esp-elf-nm >/dev/null 2>&1; then
+  echo "ERROR: riscv32-esp-elf-nm missing; cannot assert media service linkage" >&2
+  exit 1
+fi
+C6_ELF="${PERIPHERAL_DIR}/build/network_adapter.elf"
+C6_SYMBOLS="$(riscv32-esp-elf-nm --defined-only "${C6_ELF}")"
+if ! grep -Eq '^[[:xdigit:]]+[[:space:]]+T[[:space:]]+esp_hosted_custom_rpc_sync_handler$' \
+  <<<"${C6_SYMBOLS}"; then
+  echo "ERROR: built C6 image does not contain the strong media CustomRpc handler" >&2
+  echo "       (a weak W fallback does not satisfy this check)" >&2
+  exit 1
+fi
+if ! grep -Eq '^[[:xdigit:]]+[[:space:]]+T[[:space:]]+ra8_mdl_service_component_abi$' \
+  <<<"${C6_SYMBOLS}"; then
+  echo "ERROR: built C6 image lacks the ra8_mdl_service component ABI marker" >&2
+  exit 1
+fi
+echo "==> verified strong ra8 media handler and component ABI in network_adapter.elf"
 
 # ---- 5. verify the component set that actually resolved ----
 # Step 4 deletes dependencies.lock, so the esp-idf component manager re-resolves

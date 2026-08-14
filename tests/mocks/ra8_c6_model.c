@@ -18,11 +18,64 @@
 
 #include "ra8_c6link.h"
 #include "ra8_c6link_internal.h"
+#include "ra8_c6link_mdl_msg.h"
 #include "ra8_err.h"
+#include "ra8_media_download.pb-c.h"
 #include "unity_minimal.h"
 
 /** @brief The one modelled co-processor. */
 static ra8_c6_model_t s_c6;
+
+/** @brief Deterministic media bytes served through the modelled custom RPC. */
+static const uint8_t s_mdl_bytes[] = {'a', 'b', 'c', 'd', 'e', 'f'};
+
+/** @brief State behind the modelled C6 media backend. */
+typedef struct {
+  size_t at;
+} c6m_mdl_backend_t;
+
+static c6m_mdl_backend_t s_mdl_backend;
+static ra8_mdl_service_t s_mdl_service;
+
+static ra8_err_t c6m_mdl_begin(void* ctx, const char* url, ra8_mdl_format_t format)
+{
+  c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
+  if ((strcmp(url, "https://example.test/book") != 0) || (format != k_ra8_mdl_format_rabook)) {
+    return k_ra8_err_invalid_arg;
+  }
+  backend->at = 0U;
+  return k_ra8_ok;
+}
+
+static ra8_err_t c6m_mdl_read(void*     ctx,
+                              uint8_t*  out,
+                              uint16_t  cap,
+                              uint16_t* got,
+                              uint64_t* total_bytes,
+                              bool*     complete,
+                              uint8_t   sha256[RA8_MDL_SHA256_BYTES])
+{
+  c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
+  const size_t       left    = sizeof(s_mdl_bytes) - backend->at;
+  const size_t       take    = (left < cap) ? left : cap;
+  if (take != 0U) {
+    (void)memcpy(out, &s_mdl_bytes[backend->at], take);
+    backend->at += take;
+  }
+  *got         = (uint16_t)take;
+  *total_bytes = sizeof(s_mdl_bytes);
+  *complete    = (take == 0U);
+  if (*complete) {
+    (void)memset(sha256, 0xA5, RA8_MDL_SHA256_BYTES);
+  }
+  return k_ra8_ok;
+}
+
+static ra8_err_t c6m_mdl_cancel(void* ctx)
+{
+  (void)ctx;
+  return k_ra8_ok;
+}
 
 ra8_c6_model_t* ra8_c6_model(void)
 {
@@ -31,8 +84,14 @@ ra8_c6_model_t* ra8_c6_model(void)
 
 void ra8_c6_model_reset(void)
 {
-  s_c6           = (ra8_c6_model_t){};
-  s_c6.handshake = true;
+  s_c6                                    = (ra8_c6_model_t){};
+  s_c6.handshake                          = true;
+  s_mdl_backend                           = (c6m_mdl_backend_t){};
+  const ra8_mdl_service_backend_t backend = {.begin  = c6m_mdl_begin,
+                                             .read   = c6m_mdl_read,
+                                             .cancel = c6m_mdl_cancel,
+                                             .ctx    = &s_mdl_backend};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_service_init(&s_mdl_service, &backend));
 }
 
 uint8_t* ra8_c6_model_slot(void)
@@ -472,6 +531,102 @@ static bool c6m_rich_answer(Rpc* out, uint32_t req_id, int32_t resp)
   return true;
 }
 
+/** @brief Apply one requested malformed/terminal Chunk shape, then consume it. */
+static void c6m_mdl_apply_fault(uint8_t* response, size_t response_cap, size_t* response_len)
+{
+  const ra8_c6_model_mdl_fault_t fault = s_c6.mdl_fault;
+  if (fault == k_c6m_mdl_fault_none) {
+    return;
+  }
+  s_c6.mdl_fault         = k_c6m_mdl_fault_none;
+  Ra8__Mdl__Chunk* chunk = ra8__mdl__chunk__unpack(nullptr, *response_len, response);
+  TEST_ASSERT(chunk != nullptr);
+  static uint8_t            bad_data   = 0xA5U;
+  const ProtobufCBinaryData owned_data = chunk->data;
+  const ProtobufCBinaryData owned_sha  = chunk->sha256;
+  switch (fault) {
+    case k_c6m_mdl_fault_complete_no_sha:
+      chunk->sha256 = (ProtobufCBinaryData){};
+      break;
+    case k_c6m_mdl_fault_complete_bad_total:
+      chunk->total_bytes = chunk->offset + chunk->data.len + 1U;
+      break;
+    case k_c6m_mdl_fault_failed:
+      chunk->state  = RA8__MDL__STATE__STATE_FAILED;
+      chunk->status = (int32_t)k_ra8_fail;
+      chunk->data   = (ProtobufCBinaryData){};
+      chunk->sha256 = (ProtobufCBinaryData){};
+      break;
+    case k_c6m_mdl_fault_failed_zero_status:
+      chunk->state  = RA8__MDL__STATE__STATE_FAILED;
+      chunk->status = 0;
+      chunk->data   = (ProtobufCBinaryData){};
+      chunk->sha256 = (ProtobufCBinaryData){};
+      break;
+    case k_c6m_mdl_fault_cancelled:
+      chunk->state  = RA8__MDL__STATE__STATE_CANCELLED;
+      chunk->status = 0;
+      chunk->data   = (ProtobufCBinaryData){};
+      chunk->sha256 = (ProtobufCBinaryData){};
+      break;
+    case k_c6m_mdl_fault_cancelled_with_data:
+      chunk->state  = RA8__MDL__STATE__STATE_CANCELLED;
+      chunk->status = 0;
+      chunk->data   = (ProtobufCBinaryData){.len = 1U, .data = &bad_data};
+      chunk->sha256 = (ProtobufCBinaryData){};
+      break;
+    case k_c6m_mdl_fault_downloading_error:
+      chunk->state  = RA8__MDL__STATE__STATE_DOWNLOADING;
+      chunk->status = (int32_t)k_ra8_fail;
+      chunk->sha256 = (ProtobufCBinaryData){};
+      break;
+    default:
+      TEST_ASSERT(false);
+  }
+  *response_len = ra8__mdl__chunk__get_packed_size(chunk);
+  TEST_ASSERT(*response_len <= response_cap);
+  TEST_ASSERT_EQ((int64_t)*response_len, (int64_t)ra8__mdl__chunk__pack(chunk, response));
+  chunk->data   = owned_data;
+  chunk->sha256 = owned_sha;
+  ra8__mdl__chunk__free_unpacked(chunk, nullptr);
+}
+
+/** @brief Run an inner media message through the portable C6 service. */
+static bool c6m_custom_answer(Rpc* out, const Rpc* req, int32_t scripted_resp)
+{
+  if ((uint32_t)req->msg_id != (uint32_t)RPC_ID__Req_CustomRpc) {
+    return false;
+  }
+  static uint8_t          response[1200];
+  static RpcRespCustomRpc body;
+  rpc__resp__custom_rpc__init(&body);
+  out->msg_id          = RPC_ID__Resp_CustomRpc;
+  out->payload_case    = RPC__PAYLOAD_RESP_CUSTOM_RPC;
+  out->resp_custom_rpc = &body;
+  if (req->req_custom_rpc == nullptr) {
+    body.resp = (int32_t)k_ra8_err_protocol_error;
+    return true;
+  }
+  body.custom_msg_id = req->req_custom_rpc->custom_msg_id;
+  if (scripted_resp != 0) {
+    body.resp = scripted_resp;
+    return true;
+  }
+  size_t response_len = 0U;
+  body.resp           = (int32_t)ra8_mdl_service_dispatch(&s_mdl_service,
+                                                          body.custom_msg_id,
+                                                          req->req_custom_rpc->data.data,
+                                                          req->req_custom_rpc->data.len,
+                                                          response,
+                                                          sizeof(response),
+                                                          &response_len);
+  if ((body.resp == (int32_t)k_ra8_ok) && (body.custom_msg_id == (uint32_t)k_ra8_mdl_rpc_next)) {
+    c6m_mdl_apply_fault(response, sizeof(response), &response_len);
+  }
+  body.data = (ProtobufCBinaryData){.len = response_len, .data = response};
+  return true;
+}
+
 /**
  * @brief Build and queue the answer to one decoded request.
  * @param[in] req The decoded request; must be non-null.
@@ -510,7 +665,8 @@ static void c6m_answer(const Rpc* req)
   }
 
   RpcRespWifiStart bare;
-  if (!c6m_rich_answer(&out, req_id, resp) && !c6m_bare(&out, req_id, &bare, resp)) {
+  if (!c6m_custom_answer(&out, req, resp) && !c6m_rich_answer(&out, req_id, resp) &&
+      !c6m_bare(&out, req_id, &bare, resp)) {
     return;
   }
 

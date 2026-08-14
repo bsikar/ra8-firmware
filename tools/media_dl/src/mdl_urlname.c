@@ -18,7 +18,6 @@
 typedef enum : uint16_t {
   k_urlname_raw_bytes = 256, /**< Pre-sanitise last-segment scratch bytes. */
   k_urlname_num_bytes = 16,  /**< Digit-run capture buffer bytes.          */
-  k_urlname_dec_base  = 10,  /**< strtol() radix for the chapter number.   */
   k_urlname_case_gap  = 32,  /**< 'a' - 'A': ASCII upper-to-lower offset.  */
 } mdl_urlname_const_t;
 
@@ -55,29 +54,84 @@ void mdl_urlname_last_segment(const char* url, char* out, size_t cap)
   (void)mdl_sanitize_segment(raw, out, cap);
 }
 
-long mdl_urlname_chapter_number(const char* url)
+/** @brief Start offset of the path, excluding any URL scheme and authority. */
+RA8_INTERNAL static size_t path_start(const char* url, size_t end)
 {
-  if (url == nullptr) {
-    return 0L;
+  const char* scheme = strstr(url, "://");
+  if ((scheme == nullptr) || ((size_t)(scheme - url) >= end)) {
+    return 0U; /* Relative URL: its entire prefix is a path. */
   }
-  const size_t len   = strlen(url);
-  size_t       s     = 0U;
-  size_t       e     = 0U;
-  bool         found = false;
-  for (size_t i = 0U; i < len; ++i) {
-    if ((url[i] >= '0') && (url[i] <= '9')) {
-      size_t j = i;
-      while ((j < len) && (url[j] >= '0') && (url[j] <= '9')) {
-        ++j;
-      }
-      s     = i;
-      e     = j;
-      found = true;
-      i     = j; /* skip the run just captured */
+  const size_t authority = (size_t)(scheme - url) + strlen("://");
+  const char*  slash     = memchr(url + authority, '/', end - authority);
+  return (slash == nullptr) ? end : (size_t)(slash - url);
+}
+
+/** @brief Locate the last chapter marker wholly inside `[begin,end)`. */
+RA8_INTERNAL static const char*
+last_path_marker(const char* url, size_t begin, size_t end, const char* marker)
+{
+  const size_t marker_len = strlen(marker);
+  const char*  found      = nullptr;
+  if (marker_len > (end - begin)) {
+    return nullptr;
+  }
+  for (size_t i = begin; i <= (end - marker_len); ++i) {
+    if (memcmp(url + i, marker, marker_len) == 0) {
+      found = url + i;
     }
   }
-  if (!found) {
-    return 0L;
+  return found;
+}
+
+double mdl_urlname_chapter_value(const char* url)
+{
+  if (url == nullptr) {
+    return 0.0;
+  }
+  const size_t end          = path_end(url);
+  const size_t begin        = path_start(url, end);
+  const char*  start        = last_path_marker(url, begin, end, "chapter-");
+  size_t       skip         = strlen("chapter-");
+  const char*  short_marker = last_path_marker(url, begin, end, "/ch-");
+  if ((short_marker != nullptr) && ((start == nullptr) || (short_marker > start))) {
+    start = short_marker;
+    skip  = strlen("/ch-");
+  }
+  if (start != nullptr) {
+    start += skip;
+    char   num[k_urlname_num_bytes];
+    size_t n = 0U;
+    while ((*start >= '0') && (*start <= '9') && (n + 1U < sizeof(num))) {
+      num[n++] = *start++;
+    }
+    if (((*start == '-') || (*start == '.')) && (start[1] >= '0') && (start[1] <= '9') &&
+        (n + 2U < sizeof(num))) {
+      num[n++] = '.';
+      ++start;
+      while ((*start >= '0') && (*start <= '9') && (n + 1U < sizeof(num))) {
+        num[n++] = *start++;
+      }
+    }
+    num[n] = '\0';
+    return (n == 0U) ? 0.0 : strtod(num, nullptr);
+  }
+
+  /* Compatibility fallback for descriptors whose chapter slugs lack a marker. */
+  size_t s = 0U;
+  size_t e = 0U;
+  for (size_t i = begin; i < end; ++i) {
+    if ((url[i] >= '0') && (url[i] <= '9')) {
+      size_t j = i;
+      while ((j < end) && (url[j] >= '0') && (url[j] <= '9')) {
+        ++j;
+      }
+      s = i;
+      e = j;
+      i = j;
+    }
+  }
+  if (e == 0U) {
+    return 0.0;
   }
   char   num[k_urlname_num_bytes];
   size_t n = 0U;
@@ -85,7 +139,12 @@ long mdl_urlname_chapter_number(const char* url)
     num[n++] = url[i];
   }
   num[n] = '\0';
-  return strtol(num, nullptr, (int)k_urlname_dec_base);
+  return strtod(num, nullptr);
+}
+
+long mdl_urlname_chapter_number(const char* url)
+{
+  return (long)mdl_urlname_chapter_value(url);
 }
 
 /** @brief Lower-case an ASCII byte. */
@@ -142,12 +201,12 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap)
 }
 
 bool mdl_urlname_sniff_image_type(const void* buf,
-                                  size_t buf_len,
+                                  size_t      buf_len,
                                   const char* content_type,
-                                  char* out_ext,
-                                  size_t ext_cap,
-                                  char* out_mime,
-                                  size_t mime_cap)
+                                  char*       out_ext,
+                                  size_t      ext_cap,
+                                  char*       out_mime,
+                                  size_t      mime_cap)
 {
   const char* ext   = nullptr;
   const char* mime  = nullptr;
@@ -177,8 +236,8 @@ bool mdl_urlname_sniff_image_type(const void* buf,
   if (!found && (buf != nullptr) && (buf_len >= 12U)) {
     const uint8_t* b = (const uint8_t*)buf;
     /* WebP: RIFF....WEBP */
-    if ((b[0] == 'R') && (b[1] == 'I') && (b[2] == 'F') && (b[3] == 'F') &&
-        (b[8] == 'W') && (b[9] == 'E') && (b[10] == 'B') && (b[11] == 'P')) {
+    if ((b[0] == 'R') && (b[1] == 'I') && (b[2] == 'F') && (b[3] == 'F') && (b[8] == 'W') &&
+        (b[9] == 'E') && (b[10] == 'B') && (b[11] == 'P')) {
       ext   = "webp";
       mime  = "image/webp";
       found = true;
@@ -239,20 +298,38 @@ bool mdl_urlname_sniff_image_type(const void* buf,
 
 bool mdl_urlname_sniff_file(const char* file_path,
                             const char* content_type,
-                            char* out_ext,
-                            size_t ext_cap,
-                            char* out_mime,
-                            size_t mime_cap)
+                            char*       out_ext,
+                            size_t      ext_cap,
+                            char*       out_mime,
+                            size_t      mime_cap)
 {
   if (file_path == nullptr) {
-    return mdl_urlname_sniff_image_type(nullptr, 0U, content_type, out_ext, ext_cap, out_mime, mime_cap);
+    return mdl_urlname_sniff_image_type(nullptr,
+                                        0U,
+                                        content_type,
+                                        out_ext,
+                                        ext_cap,
+                                        out_mime,
+                                        mime_cap);
   }
   FILE* f = fopen(file_path, "rb");
   if (f == nullptr) {
-    return mdl_urlname_sniff_image_type(nullptr, 0U, content_type, out_ext, ext_cap, out_mime, mime_cap);
+    return mdl_urlname_sniff_image_type(nullptr,
+                                        0U,
+                                        content_type,
+                                        out_ext,
+                                        ext_cap,
+                                        out_mime,
+                                        mime_cap);
   }
   uint8_t      header[16];
   const size_t nread = fread(header, 1U, sizeof(header), f);
   (void)fclose(f);
-  return mdl_urlname_sniff_image_type(header, nread, content_type, out_ext, ext_cap, out_mime, mime_cap);
+  return mdl_urlname_sniff_image_type(header,
+                                      nread,
+                                      content_type,
+                                      out_ext,
+                                      ext_cap,
+                                      out_mime,
+                                      mime_cap);
 }

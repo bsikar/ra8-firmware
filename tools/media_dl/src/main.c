@@ -197,7 +197,7 @@ RA8_INTERNAL static void sort_by_chapter_num(mdl_url_list_t* l)
   for (size_t i = 0U; i + 1U < l->count; ++i) {
     size_t min = i;
     for (size_t j = i + 1U; j < l->count; ++j) {
-      if (mdl_urlname_chapter_number(l->urls[j]) < mdl_urlname_chapter_number(l->urls[min])) {
+      if (mdl_urlname_chapter_value(l->urls[j]) < mdl_urlname_chapter_value(l->urls[min])) {
         min = j;
       }
     }
@@ -438,22 +438,23 @@ RA8_INTERNAL static mdl_fetch_ctx_t make_ctx(const series_run_t* r,
                                              const char*         state_path,
                                              mdl_governor_t*     gov)
 {
-  return (mdl_fetch_ctx_t){
-    .session        = &s_session,
-    .state          = &s_state,
-    .state_path     = state_path,
-    .series_abs_dir = abs_dir,
-    .series_url     = r->series_url,
-    .site           = site,
-    .gov            = gov,
-    .timeout_ms     = r->timeout,
-    .page_buf       = s_page,
-    .page_cap       = sizeof(s_page),
-    .images         = &s_images,
-    .update_only    = r->update,
-    .faillog        = &s_faillog,
-    .progress_fn  = r->opts->progress ? mdl_report_progress_bar : mdl_report_progress,
-    .progress_ctx = nullptr};
+  return (mdl_fetch_ctx_t){.session        = &s_session,
+                           .state          = &s_state,
+                           .state_path     = state_path,
+                           .series_abs_dir = abs_dir,
+                           .series_url     = r->series_url,
+                           .site           = site,
+                           .gov            = gov,
+                           .timeout_ms     = r->timeout,
+                           .page_buf       = s_page,
+                           .page_cap       = sizeof(s_page),
+                           .images         = &s_images,
+                           .update_only    = r->update,
+                           .refetch        = r->opts->refetch,
+                           .faillog        = &s_faillog,
+                           .progress_fn =
+                             r->opts->progress ? mdl_report_progress_bar : mdl_report_progress,
+                           .progress_ctx = nullptr};
 }
 
 /** @brief Package the freshly-downloaded output; returns the export-failure count. */
@@ -505,11 +506,14 @@ RA8_INTERNAL static int run_prepared(const series_run_t* r,
                                         layout,
                                         (layout == k_mdl_layout_combined) ? combined_rel : nullptr,
                                         &stats);
-  (void)mdl_state_save(state_path, &s_state);
+  const ra8_err_t   src = mdl_state_save(state_path, &s_state);
+  if (src != k_ra8_ok) {
+    (void)fprintf(stderr, "media_dl: failed to save library state '%s'\n", state_path);
+  }
   report_stats(abs_dir, &stats);
   mdl_report_failures(&s_faillog);
   const size_t efail = export_after(r, abs_dir, layout, combined_rel, sel, &stats, run_start);
-  return ((frc == k_ra8_ok) && (efail == 0U)) ? 0 : 1;
+  return ((frc == k_ra8_ok) && (src == k_ra8_ok) && (efail == 0U)) ? 0 : 1;
 }
 
 /** @brief series mode: config + series URL -> chapter selection -> download. */
@@ -608,6 +612,7 @@ RA8_INTERNAL static int run_remove(const char* out_dir, const char* url_or_slug)
 typedef struct {
   const series_run_t* base;    /**< Template run (format/knobs); url filled per series. */
   size_t              updated; /**< Count of series updated.                            */
+  size_t              failed;  /**< Count of series skipped or unsuccessfully updated.  */
 } update_all_ctx_t;
 
 /** @brief `--update-all`: run an incremental update of one tracked series. */
@@ -617,6 +622,7 @@ update_all_cb(const char* series_dir, const char* state_path, void* ctx)
   update_all_ctx_t* p = (update_all_ctx_t*)ctx;
   if (mdl_state_load(state_path, &s_state) != k_ra8_ok) {
     (void)printf("skip %s (state file unreadable)\n", series_dir);
+    p->failed += 1U;
     return k_ra8_ok;
   }
   char url[k_mdl_url_max];
@@ -628,6 +634,7 @@ update_all_cb(const char* series_dir, const char* state_path, void* ctx)
                  (s_state.config_path[0] != '\0') ? s_state.config_path : p->base->cfg_path);
   if ((url[0] == '\0') || (cfg[0] == '\0')) {
     (void)printf("skip %s (no series URL / descriptor recorded)\n", series_dir);
+    p->failed += 1U;
     return k_ra8_ok;
   }
   (void)printf("updating %s\n", url);
@@ -635,20 +642,26 @@ update_all_cb(const char* series_dir, const char* state_path, void* ctx)
   run.series_url   = url;
   run.cfg_path     = cfg;
   run.update       = true;
-  (void)run_series(&run);
-  p->updated += 1U;
+  if (run_series(&run) == 0) {
+    p->updated += 1U;
+  } else {
+    p->failed += 1U;
+  }
   return k_ra8_ok;
 }
 
 /** @brief `--update-all`: incrementally update every tracked series. */
 RA8_INTERNAL static int run_update_all(const series_run_t* base)
 {
-  update_all_ctx_t c  = {.base = base, .updated = 0U};
+  update_all_ctx_t c  = {.base = base, .updated = 0U, .failed = 0U};
   const ra8_err_t  rc = mdl_library_for_each(base->out_dir, update_all_cb, &c);
   if (c.updated == 0U) {
     (void)printf("no tracked series to update under %s\n", base->out_dir);
   }
-  return (rc == k_ra8_ok) ? 0 : 1;
+  if (c.failed > 0U) {
+    (void)fprintf(stderr, "media_dl: %zu series failed to update\n", c.failed);
+  }
+  return ((rc == k_ra8_ok) && (c.failed == 0U)) ? 0 : 1;
 }
 
 /** @brief Gate, space, and download one page-mode image; 0 ok, 1 on skip/fail. */
@@ -685,7 +698,7 @@ RA8_INTERNAL static size_t download_page_image(const char*       url,
   if (mdl_urlname_sniff_file(path, resp.content_type, true_ext, sizeof(true_ext), nullptr, 0)) {
     const char* dot = strrchr(path, '.');
     if ((dot != nullptr) && (strcmp(dot + 1, true_ext) != 0)) {
-      char new_path[k_file_path_bytes];
+      char         new_path[k_file_path_bytes];
       const size_t prefix_len = (size_t)(dot - path);
       (void)snprintf(new_path, sizeof(new_path), "%.*s.%s", (int)prefix_len, path, true_ext);
       (void)rename(path, new_path);
@@ -1075,7 +1088,7 @@ RA8_INTERNAL static int run_verify(const char* target_dir)
   verify_stats_t st  = {};
 
   char        state_path[PATH_MAX];
-  const int   n  = snprintf(state_path, sizeof(state_path), "%s/.mdl_state", dir);
+  const int   n = snprintf(state_path, sizeof(state_path), "%s/.mdl_state", dir);
   struct stat sb;
   if ((n > 0) && ((size_t)n < sizeof(state_path)) && (stat(state_path, &sb) == 0) &&
       S_ISREG(sb.st_mode)) {
