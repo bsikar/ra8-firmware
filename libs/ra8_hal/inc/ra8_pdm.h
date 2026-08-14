@@ -17,8 +17,9 @@
  * The driver is the mechanism; the filter coefficients and decimation
  * ratio are microphone-and-rate policy supplied by the caller via
  * ::ra8_pdm_channel_cfg_t (see the EK-RA8D2 ``pdm_mic_demo`` for the
- * SPH0690 coefficient set). Sample delivery is polled -- no interrupt or
- * DTC plumbing -- which keeps the demo path self-contained.
+ * SPH0690 coefficient set). Sample delivery can be polled or interrupt-driven.
+ * The interrupt path drains each FIFO threshold into a bounded borrowed view;
+ * storage and scheduling policy remain above the HAL.
  *
  * Bring-up order (HUM Ch 49.4.1 "Start Flow"):
  *   1. ::ra8_pdm_init            -- module-stop release.
@@ -107,6 +108,19 @@ typedef struct {
   uint16_t lpf_h0;                         /**< Low-pass filter coefficient h0.                  */
   uint16_t lpf_h1[k_ra8_pdm_lpf_h1_count]; /**< Low-pass filter h1(0..19).                       */
 } ra8_pdm_channel_cfg_t;
+
+/**
+ * @typedef ra8_pdm_data_callback_t
+ * @brief PDM FIFO data callback invoked from ICU interrupt context.
+ * @param[in] ctx Caller context supplied at stream enable.
+ * @param[in] samples Borrowed signed PCM-S32 samples.
+ * @param[in] count Number of readable samples.
+ * @pre `samples` is readable only for the duration of the callback.
+ * @post The callback must not retain `samples`.
+ * @note ISR context: must be bounded and non-blocking.
+ * @since 0.1.0
+ */
+typedef void (*ra8_pdm_data_callback_t)(void* ctx, const int32_t* samples, uint32_t count);
 
 /**
  * @brief Release the PDM-IF module stop and reset its common bank.
@@ -252,6 +266,41 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_pdm_read(uint8_t ch, int32_t* out, uint32_t max, uint32_t* out_count);
+
+/**
+ * @brief Enable interrupt-driven FIFO delivery for one running channel.
+ * @param[in] ch Channel index (0..2).
+ * @param[in] callback Bounded data callback.
+ * @param[in] ctx Opaque callback context; may be `nullptr`.
+ * @param[in] priority NVIC priority accepted by ::ra8_isr_register.
+ * @return Error code.
+ * @retval k_ra8_ok Interrupt delivery enabled.
+ * @retval k_ra8_err_null_ptr `callback` was `nullptr`.
+ * @retval k_ra8_err_invalid_arg Channel or priority is invalid.
+ * @retval k_ra8_err_exists The channel is already streaming.
+ * @retval other Propagated ISR registration error.
+ * @pre ::ra8_pdm_read_enable and ::ra8_isr_init succeeded.
+ * @post Each FIFO threshold invokes `callback` from interrupt context.
+ * @note Not thread-safe. One stream may be active per PDM channel.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_pdm_stream_enable(uint8_t ch, ra8_pdm_data_callback_t callback, void* ctx, uint8_t priority);
+
+/**
+ * @brief Disable interrupt-driven delivery for one channel.
+ * @param[in] ch Channel index (0..2).
+ * @return Error code.
+ * @retval k_ra8_ok Delivery disabled.
+ * @retval k_ra8_err_invalid_arg Channel is invalid.
+ * @retval k_ra8_err_not_initialized Channel was not streaming.
+ * @retval other Propagated ISR unregister error.
+ * @pre No callback for this channel is currently executing.
+ * @post The PDM data event is unregistered and callback state cleared.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_pdm_stream_disable(uint8_t ch);
 
 /**
  * @brief Stop a channel and wait for its filter to halt.

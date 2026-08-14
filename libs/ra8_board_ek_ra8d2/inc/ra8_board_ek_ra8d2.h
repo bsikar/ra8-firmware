@@ -42,4 +42,5 @@
 #pragma once
 
 #include "ra8_board_ek_ra8d2_connectors.h"
+#include "ra8_board_ek_ra8d2_pdm.h"
 #include "ra8_board_ek_ra8d2_peripherals.h"

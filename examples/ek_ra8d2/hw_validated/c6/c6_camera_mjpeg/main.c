@@ -1,0 +1,26 @@
+/**
+ * @file examples/ek_ra8d2/hw_validated/c6/c6_camera_mjpeg/main.c
+ * @brief Entry point for the sensor-JPEG C6 camera livestream.
+ *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
+ * @details Selects the local sensor-JPEG camera backend and delegates the
+ * shared network, ThreadX, and HTTP lifecycle to ::c6_cam_app_run.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#include <stdint.h>
+
+#include "c6_camera_server.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+int32_t main(void)
+{
+  return c6_cam_app_run();
+}
+#pragma GCC diagnostic pop

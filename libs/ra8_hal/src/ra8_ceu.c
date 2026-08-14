@@ -488,8 +488,6 @@ static ra8_err_t internal_arm_capture(const ra8_ceu_buffers_t* bufs)
     return k_ra8_err_busy;
   }
 
-  internal_program_addresses(bufs);
-
   /* HUM Ch 60.2.18 "CFWCR : Firewall Operation Control Register" p 3661
    * In data-enable-fetch mode arm the firewall to the cached image
    * area; in image / data-sync modes leave the firewall disabled. */
@@ -503,6 +501,11 @@ static ra8_err_t internal_arm_capture(const ra8_ceu_buffers_t* bufs)
   } else {
     *ra8_ceu_reg32(k_ra8_ceu_off_cfwcr) = 0U;
   }
+
+  /* HUM Ch 60.2.13 "CDAYR : Capture Data Y Address Register" p 3656.
+   * Program the destination after the data-enable firewall, matching the
+   * hardware sequence used by Renesas FSP R_CEU_CaptureStart. */
+  internal_program_addresses(bufs);
 
   /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3669 */
   *ra8_ceu_reg32(k_ra8_ceu_off_cetcr) = 0U;

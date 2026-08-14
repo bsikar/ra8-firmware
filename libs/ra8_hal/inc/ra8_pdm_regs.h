@@ -216,6 +216,7 @@ typedef enum : uint32_t {
   k_ra8_pdm_pdscr_clr_all = 0x08070002U, /**< PDSCR clear-all write pattern. */
   k_ra8_pdm_pdstrtr_strt  = 0x1U,        /**< PDSTRTR[0] start trigger.      */
   k_ra8_pdm_pdstptr_stp   = 0x1U,        /**< PDSTPTR[0] stop trigger.       */
+  k_ra8_pdm_pdicr_idre    = 0x4U,        /**< PDICR[2] data IRQ enable.      */
   k_ra8_pdm_pddrcr_datre  = 0x1U,        /**< PDDRCR[0] data read enable.    */
 } ra8_pdm_status_bits_t;
 

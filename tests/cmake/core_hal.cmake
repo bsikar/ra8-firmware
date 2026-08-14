@@ -23,6 +23,9 @@ add_library(
   ${RA8_USB_PAL_SOURCES}
   ${RA8_FS_SOURCES}
   ${RA8_IO_SOURCES}
+  ${RA8_AUDIO_SOURCES}
+  ${RA8_CAMERA_SOURCES}
+  ${RA8_CAMERA_IO_SOURCES}
   ${RA8_FTL_SOURCES}
   ${RA8_MEM_SOURCES}
   ${RA8_SDMMC_SPI_SOURCES}
@@ -62,6 +65,7 @@ add_library(
   ${RA8_WDT_SUPERVISOR_SOURCES}
   ${RA8_BOARD_EK_RA8D2_SOURCES}
   ${RA8_LSM6DSO_SOURCES}
+  ${RA8_OV5640_SOURCES}
   ${RA8_TZ_SECURE_BOOT_SOURCES}
   ${RA8_DFU_SOURCES}
   ${RA8_DEVCFG_SOURCES}
@@ -116,6 +120,9 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_usb_pal/inc
          ${FW_ROOT}/libs/ra8_fs/inc
          ${FW_ROOT}/libs/ra8_io/inc
+         ${FW_ROOT}/libs/ra8_audio/inc
+         ${FW_ROOT}/libs/ra8_camera/inc
+         ${FW_ROOT}/libs/ra8_camera_io/inc
          ${FW_ROOT}/libs/ra8_ftl/inc
          ${FW_ROOT}/libs/ra8_mem/inc
          ${FW_ROOT}/libs/ra8_sdmmc_spi/inc
@@ -153,6 +160,7 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_wdt_supervisor/inc
          ${FW_ROOT}/libs/ra8_board_ek_ra8d2/inc
          ${FW_ROOT}/libs/ra8_lsm6dso/inc
+         ${FW_ROOT}/libs/ra8_ov5640/inc
          ${FW_ROOT}/libs/ra8_tz_secure_boot/inc
          ${FW_ROOT}/port/threadx/inc
          ${FW_ROOT}/port/esp-hosted/inc
@@ -190,6 +198,9 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_usb_pal/src
          ${FW_ROOT}/libs/ra8_fs/src
          ${FW_ROOT}/libs/ra8_io/src
+         ${FW_ROOT}/libs/ra8_audio/src
+         ${FW_ROOT}/libs/ra8_camera/src
+         ${FW_ROOT}/libs/ra8_camera_io/src
          ${FW_ROOT}/libs/ra8_ftl/src
          ${FW_ROOT}/libs/ra8_sdmmc_spi/src
          ${FW_ROOT}/libs/ra8_gfx/src

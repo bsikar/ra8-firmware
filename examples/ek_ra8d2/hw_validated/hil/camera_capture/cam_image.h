@@ -24,10 +24,11 @@
 
 /** @brief Captured VGA geometry and RGB888 buffer contract. */
 typedef enum : uint32_t {
-  k_cam_image_width_px   = 640U,    /**< Unrotated and 180-degree width.  */
-  k_cam_image_height_px  = 480U,    /**< Unrotated and 180-degree height. */
-  k_cam_rgb_bytes_per_px = 3U,      /**< RGB888 bytes per output pixel.   */
-  k_cam_rgb_frame_bytes  = 921600U, /**< 640 x 480 x 3 bytes.             */
+  k_cam_image_width_px   = 640U,    /**< Unrotated and 180-degree width.       */
+  k_cam_image_height_px  = 480U,    /**< Unrotated and 180-degree height.      */
+  k_cam_uyvy_frame_bytes = 614400U, /**< 640 x 480 x 2-byte packed UYVY input. */
+  k_cam_rgb_bytes_per_px = 3U,      /**< RGB888 bytes per output pixel.        */
+  k_cam_rgb_frame_bytes  = 921600U, /**< 640 x 480 x 3 bytes.                  */
 } cam_image_size_t;
 
 /**
@@ -62,6 +63,8 @@ extern const uint32_t g_cam_rgb_frame_bytes;
 
 /**
  * @brief Convert one packed Cb-Y0-Cr-Y1 VGA frame into all four RGB views.
+ * @details Performs fixed-point YCbCr conversion and scatters each pixel into
+ *          caller-observable SDRAM buffers for the four clockwise orientations.
  *
  * @param[in] uyvy Source VGA frame in packed UYVY byte order.
  * @param[in] source_bytes Valid bytes at `uyvy`; must equal 614400.

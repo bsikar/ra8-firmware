@@ -49,6 +49,8 @@ emu_dir="$ROOT/tools/ra8_emulator"
 # loop and the summary -- the things that only make sense once.
 # shellcheck source=scripts/emu/smoke_assert.sh
 . "$ROOT/scripts/emu/smoke_assert.sh"
+# shellcheck source=scripts/emu/emu_fixtures.sh
+. "$ROOT/scripts/emu/emu_fixtures.sh"
 # shellcheck source=scripts/emu/smoke_apps.sh
 . "$ROOT/scripts/emu/smoke_apps.sh"
 # shellcheck source=scripts/emu/smoke_run.sh

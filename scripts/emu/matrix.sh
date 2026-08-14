@@ -532,7 +532,24 @@ n_skipped=0
 run_dir="$ROOT/build/ra8_emulator_matrix"
 rm -rf "$run_dir"
 mkdir -p "$run_dir"
+
+# import_reader consumes BOOK.EPB and deliberately fails when it is absent.
+# Bake the same deterministic card as the deep smoke gate before workers are
+# forked; every emulator loads the image privately, so the read-only fixture is
+# safe to share across the pool.
+RA8_EMU_IMPORT_READER_IMG=""
+case " ${apps[*]} " in
+  *" import_reader "*)
+    candidate="$run_dir/import_reader.img"
+    if emu_build_import_reader_card "$candidate"; then
+      RA8_EMU_IMPORT_READER_IMG="$candidate"
+    else
+      log "WARNING import_reader fixture could not be built; its run will fail loud"
+    fi
+    ;;
+esac
 export MATRIX_RUN_DIR="$run_dir" MATRIX_EMU="$emu"
+export RA8_EMU_IMPORT_READER_IMG
 export BUILD_TIMEOUT RUN_TIMEOUT MAX_CHUNKS
 # Phase 1: build everything, with nothing else running. Phase 2: boot
 # everything, with no compiler running. See the two-phase note above -- the
