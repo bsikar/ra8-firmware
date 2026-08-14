@@ -31,7 +31,7 @@ static const uint8_t s_mdl_bytes[] = {'a', 'b', 'c', 'd', 'e', 'f'};
 
 /** @brief State behind the modelled C6 media backend. */
 typedef struct {
-  size_t at;
+  size_t at; /**< Offset of the next modelled body byte. */
 } c6m_mdl_backend_t;
 
 static c6m_mdl_backend_t s_mdl_backend;
@@ -66,7 +66,7 @@ static ra8_err_t c6m_mdl_read(void*     ctx,
   *total_bytes = sizeof(s_mdl_bytes);
   *complete    = (take == 0U);
   if (*complete) {
-    (void)memset(sha256, 0xA5, k_ra8_mdl_sha256_bytes);
+    (void)memset(sha256, k_c6m_mdl_digest_fill, k_ra8_mdl_sha256_bytes);
   }
   return k_ra8_ok;
 }
@@ -533,6 +533,8 @@ static bool c6m_rich_answer(Rpc* out, uint32_t req_id, int32_t resp)
 }
 
 /** @brief Apply one requested malformed/terminal Chunk shape, then consume it. */
+// A single switch intentionally keeps all mutually exclusive wire corruptions visible.
+// NOLINTNEXTLINE(readability-function-size)
 static void c6m_mdl_apply_fault(uint8_t* response, size_t response_cap, size_t* response_len)
 {
   const ra8_c6_model_mdl_fault_t fault = s_c6.mdl_fault;
@@ -541,8 +543,11 @@ static void c6m_mdl_apply_fault(uint8_t* response, size_t response_cap, size_t* 
   }
   s_c6.mdl_fault         = k_c6m_mdl_fault_none;
   Ra8__Mdl__Chunk* chunk = ra8__mdl__chunk__unpack(nullptr, *response_len, response);
-  TEST_ASSERT(chunk != nullptr);
-  static uint8_t            bad_data   = 0xA5U;
+  if (chunk == nullptr) {
+    TEST_ASSERT_NOT_NULL(chunk);
+    return;
+  }
+  static uint8_t            s_bad_data = k_c6m_mdl_digest_fill;
   const ProtobufCBinaryData owned_data = chunk->data;
   const ProtobufCBinaryData owned_sha  = chunk->sha256;
   switch (fault) {
@@ -573,7 +578,7 @@ static void c6m_mdl_apply_fault(uint8_t* response, size_t response_cap, size_t* 
     case k_c6m_mdl_fault_cancelled_with_data:
       chunk->state  = RA8__MDL__STATE__STATE_CANCELLED;
       chunk->status = 0;
-      chunk->data   = (ProtobufCBinaryData){.len = 1U, .data = &bad_data};
+      chunk->data   = (ProtobufCBinaryData){.len = 1U, .data = &s_bad_data};
       chunk->sha256 = (ProtobufCBinaryData){};
       break;
     case k_c6m_mdl_fault_downloading_error:
@@ -601,33 +606,34 @@ static bool c6m_custom_answer(Rpc* out, const Rpc* req, int32_t scripted_resp)
   if ((uint32_t)req->msg_id != (uint32_t)RPC_ID__Req_CustomRpc) {
     return false;
   }
-  static uint8_t          response[1200];
-  static RpcRespCustomRpc body;
-  rpc__resp__custom_rpc__init(&body);
+  static uint8_t          s_response[k_c6m_custom_response_bytes];
+  static RpcRespCustomRpc s_body;
+  rpc__resp__custom_rpc__init(&s_body);
   out->msg_id          = RPC_ID__Resp_CustomRpc;
   out->payload_case    = RPC__PAYLOAD_RESP_CUSTOM_RPC;
-  out->resp_custom_rpc = &body;
+  out->resp_custom_rpc = &s_body;
   if (req->req_custom_rpc == nullptr) {
-    body.resp = (int32_t)k_ra8_err_protocol_error;
+    s_body.resp = (int32_t)k_ra8_err_protocol_error;
     return true;
   }
-  body.custom_msg_id = req->req_custom_rpc->custom_msg_id;
+  s_body.custom_msg_id = req->req_custom_rpc->custom_msg_id;
   if (scripted_resp != 0) {
-    body.resp = scripted_resp;
+    s_body.resp = scripted_resp;
     return true;
   }
   size_t response_len = 0U;
-  body.resp           = (int32_t)ra8_mdl_service_dispatch(&s_mdl_service,
-                                                          body.custom_msg_id,
+  s_body.resp         = (int32_t)ra8_mdl_service_dispatch(&s_mdl_service,
+                                                          s_body.custom_msg_id,
                                                           req->req_custom_rpc->data.data,
                                                           req->req_custom_rpc->data.len,
-                                                          response,
-                                                          sizeof(response),
+                                                          s_response,
+                                                          sizeof(s_response),
                                                           &response_len);
-  if ((body.resp == (int32_t)k_ra8_ok) && (body.custom_msg_id == (uint32_t)k_ra8_mdl_rpc_next)) {
-    c6m_mdl_apply_fault(response, sizeof(response), &response_len);
+  if ((s_body.resp == (int32_t)k_ra8_ok) &&
+      (s_body.custom_msg_id == (uint32_t)k_ra8_mdl_rpc_next)) {
+    c6m_mdl_apply_fault(s_response, sizeof(s_response), &response_len);
   }
-  body.data = (ProtobufCBinaryData){.len = response_len, .data = response};
+  s_body.data = (ProtobufCBinaryData){.len = response_len, .data = s_response};
   return true;
 }
 
