@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# scan_build.sh -- Run clang's scan-build static analyzer against the
-# host unit-test build of ra8-firmware.
+# scan_build.sh -- Run clang's static analyzer against the host unit-test build
+# and every first-party CMake host tool.
 #
 # Background
 # ----------
@@ -12,10 +12,11 @@
 # pattern) by finding null-deref, use-after-free, dead-store and
 # logic-error paths through symbolic execution.
 #
-# We point it at the host test build (built OUT of the source tree; see
-# BUILD_DIR below) rather than the cross-compile firmware build because clang
-# cannot consume the arm-none-eabi sysroot reliably. The host build covers the
-# same first-party libs/, src/, port/ TUs.
+# We point it at the host test build and every CMake host tool (all built OUT of
+# the source tree; see BUILD_DIR / TOOL_BUILD_ROOT below) rather than the
+# cross-compile firmware build because clang cannot consume the arm-none-eabi
+# sysroot reliably. Together those builds cover first-party libs/, src/, port/
+# and tools/ TUs.
 #
 # Findings under libs/third_party/ are filtered out (SOUP -- see
 # CLAUDE.md, docs/SOUP/). First-party findings are recorded in
@@ -68,6 +69,7 @@
 #     RA8_SCAN_BUILD_OUT_DIR -- out-of-tree dir holding the build + report trees
 #                               (default: a per-checkout dir under $TMPDIR)
 #     MIN_TRANSLATION_UNITS  -- vacuity floor on the analysed TU count
+#     MIN_TOOL_PROJECTS      -- vacuity floor on discovered CMake host tools
 #
 
 set -uo pipefail
@@ -118,6 +120,11 @@ unset _sb_base _sb_ver
 # Measured 1128 on the current tree; this is a trip-wire for a collapsed
 # configure or a no-op incremental build, not a policy on suite size.
 MIN_TRANSLATION_UNITS="${MIN_TRANSLATION_UNITS:-800}"
+
+# Measured eight immediate tools/*/CMakeLists.txt projects. Discovery is
+# derived, so adding a ninth automatically puts it under scan-build; the floor
+# turns a missing/collapsed tools root into a loud infrastructure failure.
+MIN_TOOL_PROJECTS="${MIN_TOOL_PROJECTS:-8}"
 
 # ===========================================================================
 # THE TWO DECISIONS, FACTORED OUT SO --selftest CAN DRIVE THEM
@@ -180,6 +187,9 @@ classify_reports() {
 # Whether a scan of $1 translation units is large enough to be worth a verdict.
 scan_is_big_enough() { [[ "$1" -ge "$MIN_TRANSLATION_UNITS" ]]; }
 
+# Whether discovery reached enough CMake tools for that scope to be credible.
+tool_scope_is_big_enough() { [[ "$1" -ge "$MIN_TOOL_PROJECTS" ]]; }
+
 # --- selftest -------------------------------------------------------------
 # Both directions for both decisions, because this script decides what counts
 # as an actionable finding and what counts as an analysis at all. A classifier
@@ -231,6 +241,10 @@ _sb_selftest_floor() {
   _sb_expect "a scan one TU short of the floor is refused" no "$rc"
   scan_is_big_enough "$MIN_TRANSLATION_UNITS" && rc=yes || rc=no
   _sb_expect "a scan at the floor is accepted" yes "$rc"
+  tool_scope_is_big_enough $((MIN_TOOL_PROJECTS - 1)) && rc=yes || rc=no
+  _sb_expect "a tool scope one project short is refused" no "$rc"
+  tool_scope_is_big_enough "$MIN_TOOL_PROJECTS" && rc=yes || rc=no
+  _sb_expect "a tool scope at the floor is accepted" yes "$rc"
 }
 
 _sb_selftest_fail_loud() {
@@ -306,22 +320,21 @@ _sb_tag="$(printf '%s' "$REPO_ROOT" | cksum | cut -d' ' -f1)"
 SCAN_OUT_DIR="${RA8_SCAN_BUILD_OUT_DIR:-${TMPDIR:-/tmp}/ra8-scan-build-$(id -u)-${_sb_tag}}"
 unset _sb_tag
 BUILD_DIR="$SCAN_OUT_DIR/build"
+TOOL_BUILD_ROOT="$SCAN_OUT_DIR/tools"
 REPORT_DIR="$SCAN_OUT_DIR/reports"
 
-# BOTH directories are wiped first, and neither is an optimisation to reclaim.
+# All build/report directories are wiped first; none is optional hygiene.
 #
 # The BUILD tree: scan-build analyses what the build COMPILES, so an incremental
 # build analyses only what changed. A second local run over an up-to-date tree
 # compiles nothing, produces no report, and reads as a clean analysis.
 #
-# The REPORT tree: the summary below picks the newest directory under it, which
-# on a second run is the PREVIOUS run's. Measured here -- an incremental rerun
-# after the offending finding was fixed still reported it, because the numbers
-# came from a directory the run had not written. That is a verdict computed
-# from another run's evidence, and it is why both go.
-rm -rf "$BUILD_DIR" "$REPORT_DIR"
-if ! mkdir -p "$BUILD_DIR" "$REPORT_DIR"; then
-  echo "scan_build.sh: FATAL -- cannot create $BUILD_DIR / $REPORT_DIR." >&2
+# The REPORT tree: classification walks everything beneath it. A stale report
+# from a previous run would therefore preserve a finding after it was fixed and
+# compute this run's verdict from another run's evidence.
+rm -rf "$BUILD_DIR" "$TOOL_BUILD_ROOT" "$REPORT_DIR"
+if ! mkdir -p "$BUILD_DIR" "$TOOL_BUILD_ROOT" "$REPORT_DIR"; then
+  echo "scan_build.sh: FATAL -- cannot create the build/report directories." >&2
   echo "  Nothing can be analysed from a tree this script cannot write to." >&2
   exit 2
 fi
@@ -341,19 +354,44 @@ if ! "$SCAN_BUILD" --use-cc="$USE_CC" --use-c++="$USE_CXX" \
   exit 2
 fi
 
+# Discover every immediate CMake host tool rather than maintaining a second
+# hand-list beside tools-build. Each gets its own build tree because CMake
+# projects are independent roots. A configure failure is as fatal here as it is
+# for the host tests: an analyzer cannot judge a TU it never compiled.
+TOOL_PROJECTS=()
+for cmake_file in "$REPO_ROOT"/tools/*/CMakeLists.txt; do
+  [[ -f "$cmake_file" ]] && TOOL_PROJECTS+=("${cmake_file%/CMakeLists.txt}")
+done
+if ! tool_scope_is_big_enough "${#TOOL_PROJECTS[@]}"; then
+  echo "scan_build.sh: FATAL -- discovered ${#TOOL_PROJECTS[@]} CMake tool" >&2
+  echo "  project(s); the floor is $MIN_TOOL_PROJECTS. The tools scope collapsed." >&2
+  exit 2
+fi
+for tool_dir in "${TOOL_PROJECTS[@]}"; do
+  tool="$(basename "$tool_dir")"
+  echo "==> scan-build: configuring host tool $tool"
+  if ! CC="$USE_CC" CXX="$USE_CXX" "$CMAKE" \
+    -B "$TOOL_BUILD_ROOT/$tool" -S "$tool_dir" \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -Wno-dev >/dev/null; then
+    echo "scan_build.sh: FATAL -- $tool configure failed; nothing was analysed." >&2
+    exit 2
+  fi
+done
+
 # VACUITY FLOOR. scan-build emits no report directory at all when it finds
 # nothing, so "no reports" cannot be told from "nothing was analysed" by
 # looking at the output. The compile database can: it lists exactly the
 # translation units the analyzer will be handed. A collapsed one means the
 # clean verdict below would be a verdict over almost no code.
-TU_COUNT="$(grep -c '"file"' "$BUILD_DIR/compile_commands.json" 2>/dev/null || echo 0)"
+TU_COUNT="$(find "$BUILD_DIR" "$TOOL_BUILD_ROOT" -name compile_commands.json \
+  -exec grep -h '"file"' {} + 2>/dev/null | wc -l | tr -d ' ')"
 if ! scan_is_big_enough "$TU_COUNT"; then
   echo "scan_build.sh: FATAL -- the compile database lists $TU_COUNT translation" >&2
   echo "  unit(s); the floor is $MIN_TRANSLATION_UNITS. A clean report over a" >&2
   echo "  collapsed scope is not a clean tree, it is an analysis that did not run." >&2
   exit 2
 fi
-echo "==> scan-build: analyzing $TU_COUNT translation units (several minutes)..."
+echo "==> scan-build: analyzing $TU_COUNT translation units across host tests and tools..."
 # -o : per-run html report dir
 # Disable a couple of high-noise checks that fire mostly on test
 # scaffolding -- enabling them would drown out real first-party signal.
@@ -363,12 +401,16 @@ echo "==> scan-build: analyzing $TU_COUNT translation units (several minutes)...
 # it. That makes this exit status the BUILD's, so a non-zero one means the
 # compile failed and nothing downstream is trustworthy.
 BUILD_RC=0
-"$SCAN_BUILD" --use-cc="$USE_CC" --use-c++="$USE_CXX" \
-  -o "$REPORT_DIR" \
-  -disable-checker deadcode.DeadStores \
-  -disable-checker security.insecureAPI.DeprecatedOrUnsafeBufferHandling \
-  "$CMAKE" --build "$BUILD_DIR" --parallel "$JOBS" \
-  >"$REPORT_DIR/scan-build.log" 2>&1 || BUILD_RC=$?
+: >"$REPORT_DIR/scan-build.log"
+for target_dir in "$BUILD_DIR" "$TOOL_BUILD_ROOT"/*; do
+  "$SCAN_BUILD" --use-cc="$USE_CC" --use-c++="$USE_CXX" \
+    -o "$REPORT_DIR" \
+    -disable-checker deadcode.DeadStores \
+    -disable-checker security.insecureAPI.DeprecatedOrUnsafeBufferHandling \
+    "$CMAKE" --build "$target_dir" --parallel "$JOBS" \
+    >>"$REPORT_DIR/scan-build.log" 2>&1 || BUILD_RC=$?
+  [[ "$BUILD_RC" -eq 0 ]] || break
+done
 if [[ "$BUILD_RC" -ne 0 ]]; then
   echo "scan_build.sh: FATAL -- the analyzed build FAILED (exit $BUILD_RC)." >&2
   echo "  It compiled nothing analysable; no verdict downstream is trustworthy." >&2
@@ -393,7 +435,7 @@ fi
 # says what the analyzer was OFFERED; the object files say what it actually
 # compiled. Zero findings is a legitimate outcome, so an empty report directory
 # proves nothing on its own -- these do.
-OBJ_COUNT="$(find "$BUILD_DIR" -name '*.o' -type f | wc -l | tr -d ' ')"
+OBJ_COUNT="$(find "$BUILD_DIR" "$TOOL_BUILD_ROOT" -name '*.o' -type f | wc -l | tr -d ' ')"
 if ! scan_is_big_enough "$OBJ_COUNT"; then
   echo "scan_build.sh: FATAL -- the analyzed build produced $OBJ_COUNT object" >&2
   echo "  file(s) from $TU_COUNT translation units; the floor is" >&2
@@ -401,19 +443,14 @@ if ! scan_is_big_enough "$OBJ_COUNT"; then
   exit 2
 fi
 
-# The report directory scan-build produced. It is unambiguous because
-# REPORT_DIR was wiped above: any directory in here is this run's.
-LATEST_REPORT="$(find "$REPORT_DIR" -maxdepth 1 -mindepth 1 -type d |
-  sort | tail -n 1 || true)"
-
 # Count findings, partitioning first-party vs suppressed (third_party
 # SOUP + host-only test scaffolding + documented HAL MMIO suppression).
-classify_reports "$LATEST_REPORT"
+classify_reports "$REPORT_DIR"
 
 echo ""
 echo "==> scan-build summary"
 echo "    translation units: $TU_COUNT analysed, $OBJ_COUNT object(s) produced"
-echo "    report dir       : ${LATEST_REPORT:-<none, no findings>}"
+echo "    report root      : $REPORT_DIR"
 echo "    first-party bugs : $FIRST_PARTY_COUNT          (actionable)"
 echo "    HAL MMIO bugs    : $MMIO_SUPPRESSED_COUNT  (suppressed -- register accessor pattern)"
 echo "    third-party bugs : $THIRD_PARTY_COUNT  (suppressed -- SOUP)"

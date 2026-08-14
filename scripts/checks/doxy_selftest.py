@@ -15,6 +15,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from doxy_function_baseline import function_key, partition_function_gaps
 from doxy_functions import audit_file
 from doxy_members import audit_members_file
 from doxy_scope import override_repo_root
@@ -228,6 +229,21 @@ def _check_function_mode(func_rows: list) -> list[str]:
     return failures
 
 
+def _check_function_ratchet(func_rows: list) -> list[str]:
+    """The function ratchet must excuse only the exact frozen debt."""
+    gaps = [row for row in func_rows if row[3]]
+    frozen = {function_key(gaps[0])}
+    new_rows, stale = partition_function_gaps(gaps, frozen | {"tools/gone.c\tf\t@brief"})
+    failures = []
+    if any(function_key(row) in frozen for row in new_rows):
+        failures.append("function ratchet reported exact frozen debt as new")
+    if len(new_rows) != len(gaps) - 1:
+        failures.append("function ratchet hid a gap not present in the baseline")
+    if stale != ["tools/gone.c\tf\t@brief"]:
+        failures.append("function ratchet did not report a stale baseline row")
+    return failures
+
+
 def _check_member_mode(member_rows: list) -> list[str]:
     """The member gate must report undocumented members and spare documented ones."""
     member_hits = {(r[2], r[3]) for r in member_rows}
@@ -386,6 +402,7 @@ def run_selftest() -> int:
 
     failures = [
         *_check_function_mode(func_rows),
+        *_check_function_ratchet(func_rows),
         *_check_member_mode(member_rows),
         *_check_style_mode(),
         *_check_style_ratchet(),

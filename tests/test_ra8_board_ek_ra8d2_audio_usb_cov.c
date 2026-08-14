@@ -73,6 +73,7 @@
 #include <stdint.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_audio_usb_internal.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_i2c_regs.h"
@@ -91,18 +92,6 @@ typedef enum : uint8_t {
   k_sys_oscsf_all_ready =
     0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready */
 } board_ek_ra8d2_audio_usb_cov_fixture_t;
-
-/* -------------------------------------------------------------------------
- * Externally-linked bisect probes owned by the module under test.  They are
- * file-scope volatiles (non-static) so a JLink session can read them on the
- * target; here they let a test assert that a state-machine step executed
- * without depending on the final return value of a HAL sub-call that may
- * differ between the host fake and silicon.
- * -------------------------------------------------------------------------
- */
-
-/** @brief Step probe advanced across internal_usbhs_clock_and_mstp / device-init. */
-extern volatile uint32_t s_usbhs_probe;
 
 /* -------------------------------------------------------------------------
  * Local sentinels (tests are exempt from the magic-number gate; named here

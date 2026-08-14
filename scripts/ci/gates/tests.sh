@@ -14,7 +14,7 @@
 # prevent.
 #
 # Gates in this file: unit-tests, ubsan, coverage, coverage-report, mcdc,
-# artefact-freshness, cache-bench
+# artefact-freshness, cache-bench, tools-coverage
 
 # --- unit-tests -----------------------------------------------------------
 gate_unit_tests() (
@@ -185,8 +185,11 @@ gate_artefact_freshness() (
 # #147/#160: builds + runs cache_bench (the SLRU decision record), reader_vmem
 # (drives the real ra8_vmem with a reader workload and emits a
 # cache_bench-consumable trace) and glyph_bench (sweeps the real glyph atlas),
-# re-confirming SLRU on the captured reader trace on every push. clang-18
-# accepts the C23 typed-enum / nullptr syntax the bench tools and ra8_mem use.
+# re-confirming SLRU on the captured reader trace on every push. Both pinned
+# host compilers are required: the rest of tools-build already proves clang-18
+# and gcc-14 independently, and a benchmark is not a reason to accept a weaker
+# warning/compiler bar. Each arm starts from clean outputs so make cannot reuse
+# the first compiler's binaries for the second arm.
 #
 # Despite the name this is NOT a wall-clock gate, so it belongs in the local
 # suite and is stable under a loaded shared box (#326/#328). Every non-zero exit
@@ -199,5 +202,53 @@ gate_artefact_freshness() (
 gate_cache_bench() (
   set -e
   require_cmd clang-18 "the cache-bench gate pins clang-18 to match CI"
-  CC=clang-18 make bench-cache
+  require_cmd gcc-14 "the cache-bench gate pins gcc-14 as its second warning arm"
+  require_tool_versions gcc-14
+  local cc
+  for cc in clang-18 gcc-14; do
+    make -C tools/cache_bench clean
+    make -C tools/reader_vmem clean
+    make -C tools/glyph_bench clean
+    CC="$cc" make bench-cache
+  done
+)
+
+# --- tools-coverage -------------------------------------------------------
+# media_dl carries production orchestration code that is not linked into the
+# firmware host suite, so the libs/src coverage build cannot measure it. Build
+# and run its seven CTest binaries under the same pinned gcc/gcov pipeline,
+# then apply a per-file ratchet: historical uncovered debt may only shrink and
+# every new production file must enter at the firmware's 90/80 line/branch bar.
+gate_tools_coverage() (
+  set -e
+  require_cmd cmake
+  require_cmd ctest
+  require_cmd gcc-14 "the tool coverage gate pins gcc-14 to match gcov-14"
+  require_cmd gcov-14
+  require_cmd gcovr
+  require_tool_versions gcc-14
+
+  local out="$PWD/build/tool-coverage/media_dl"
+  rm -rf "$out"
+  cmake -S "$PWD/tools/media_dl" -B "$out" \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_C_COMPILER=gcc-14 \
+    -DRA8_COVERAGE=ON
+  cmake --build "$out" --parallel "$(ra8_max_jobs)"
+  ctest --test-dir "$out" --output-on-failure --timeout 60
+
+  gcovr \
+    --gcov-executable gcov-14 \
+    --gcov-ignore-parse-errors=all \
+    --root "$PWD" \
+    --object-directory "$out" \
+    --filter "$PWD/tools/media_dl/src/" \
+    --exclude-throw-branches \
+    --exclude-unreachable-branches \
+    --json-summary "$out/coverage.json" \
+    --json-summary-pretty \
+    --print-summary
+
+  python3 scripts/checks/check_tool_coverage.py --selftest
+  python3 scripts/checks/check_tool_coverage.py
 )

@@ -13,7 +13,7 @@
 #
 # Closing this out means this file reaching zero rows and being
 # DELETED -- never regenerated larger.
-# Rows at this baseline: 23
+# Rows at this baseline: 21
 
 scripts/checks/check_assert_casts.py
 scripts/checks/check_core_layering.py
@@ -35,5 +35,4 @@ scripts/checks/format_code.sh
 scripts/checks/lint_selftest.sh
 scripts/checks/lint_targets.py
 scripts/checks/misra_check_inner.sh
-scripts/checks/misra_ratchet.py
 scripts/checks/osv_scan.sh

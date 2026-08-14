@@ -9,7 +9,7 @@
 # under strict aliasing at -O2).
 
 CC      ?= cc
-CFLAGS  ?= -std=gnu23 -O2 -g -Wall -Wextra -Wno-unused-parameter
+CFLAGS  ?= -std=gnu23 -O2 -g -Wall -Wextra -Werror -Wno-unused-parameter
 ROOT    := ../..
 INCS    := -I$(ROOT)/libs/ra8_core/inc \
            -I$(ROOT)/libs/ra8_mem/inc \

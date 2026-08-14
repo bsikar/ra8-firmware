@@ -161,6 +161,7 @@ RA8_GATE_REGISTRY=(
   "artefact-freshness|slow|committed MC/DC + doxygen gap docs match a fresh regenerate"
   "cache-bench|slow|cache/glyph benchmark toolchain"
   "tools-build|slow|first-party host tools compile, link and test on Linux"
+  "tools-coverage|slow|media_dl per-file line/branch coverage ratchet"
   "build-cross|slow|cross-build every example app"
   "build-cross-union|slow|the cross-build shards covered every app exactly once"
   "sg-offsets|slow|NSC SG-veneer slot offsets in the linked secure ELF"
@@ -678,6 +679,15 @@ run_suite() {
     fi
     if [[ "$fast" == "1" && "$speed" == "slow" ]]; then
       continue
+    fi
+    # The full suite shares one disposable snapshot across every gate. Retire
+    # completed build trees at their last-use boundary so later instrumented
+    # builds cannot exhaust the runner merely because earlier outputs remain
+    # resident. The lifecycle helper is snapshot-only; single-gate CI jobs and
+    # developers' in-place incremental builds are untouched.
+    if ! suite_reclaim_completed_builds "$name"; then
+      echo "ci.sh: failed to reclaim completed build trees before '$name'." >&2
+      return 1
     fi
     echo ""
     echo "==================================================================="

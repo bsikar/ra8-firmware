@@ -101,9 +101,9 @@ gate_cppcheck() (
 )
 
 # --- scan-build -----------------------------------------------------------
-# The clang static analyzer over the host unit-test build: path-sensitive
-# symbolic execution, so it finds the null-deref / leak / garbage-read PATHS
-# cppcheck's pattern matching cannot.
+# The clang static analyzer over the host unit-test build and every CMake host
+# tool: path-sensitive symbolic execution, so it finds the null-deref / leak /
+# garbage-read PATHS cppcheck's pattern matching cannot.
 #
 # docs/STATIC_ANALYSIS.md claimed "CI runs bash scripts/checks/scan_build.sh
 # --strict" for months while no workflow ran it and RA8_GATE_REGISTRY had no
@@ -122,17 +122,55 @@ gate_cppcheck() (
 # and an off-partition fixed-address finding must be REPORTED; SOUP, test
 # scaffolding and the documented MMIO partitions must be SUPPRESSED), the
 # vacuity floor either side of its boundary, and the fail-loud path.
+# Remove only a workspace created by gate_scan_build. scan_build.sh itself
+# must build outside the checkout so gcovr cannot ingest clang profile data;
+# the gate therefore owns that external lifetime explicitly.
+scan_build_gate_cleanup() {
+  local dir="$1" tmp_root="${TMPDIR:-/tmp}" name parent
+  name="$(basename -- "$dir")"
+  parent="$(dirname -- "$dir")"
+  if [[ "$parent" != "$tmp_root" || "$name" != ra8-scan-gate.* ]]; then
+    echo "ERROR: refusing to remove non-gate scan-build path: $dir" >&2
+    return 1
+  fi
+  rm -rf -- "${dir:?}"
+}
+
+# Assert both directions of the external-workspace ownership rule: the exact
+# gate-shaped directory is reclaimed, and an unrelated directory is refused.
+scan_build_gate_cleanup_selftest() {
+  local probe keep
+  probe="$(mktemp -d "${TMPDIR:-/tmp}/ra8-scan-gate.XXXXXXXX")"
+  keep="$(mktemp -d "${TMPDIR:-/tmp}/ra8-scan-keep.XXXXXXXX")"
+  scan_build_gate_cleanup "$probe"
+  if [[ -e "$probe" || ! -d "$keep" ]]; then
+    echo "ERROR: scan-build workspace cleanup self-test failed." >&2
+    rm -rf -- "$probe" "$keep"
+    return 1
+  fi
+  if scan_build_gate_cleanup "$keep" >/dev/null 2>&1; then
+    echo "ERROR: scan-build cleanup accepted a non-gate path." >&2
+    return 1
+  fi
+  rm -rf -- "$keep"
+  echo "scan-build gate cleanup self-test: PASS"
+}
+
 gate_scan_build() (
   set -e
   require_cmd scan-build-18 \
     "CI installs clang-tools-18; add it to .devcontainer/Dockerfile too."
   require_cmd cmake
+  scan_build_gate_cleanup_selftest
+  local scan_out
+  scan_out="$(mktemp -d "${TMPDIR:-/tmp}/ra8-scan-gate.XXXXXXXX")"
+  trap 'scan_build_gate_cleanup "$scan_out"' EXIT
   bash scripts/checks/scan_build.sh --selftest
-  bash scripts/checks/scan_build.sh --strict
+  RA8_SCAN_BUILD_OUT_DIR="$scan_out" bash scripts/checks/scan_build.sh --strict
 )
 
 # --- misra ----------------------------------------------------------------
-# misra_check.sh (cppcheck misra.py addon) over libs/ src/ port/, then
+# misra_check.sh (cppcheck misra.py addon) over libs/ src/ port/ tools/, then
 # misra_ratchet.py compares per-file-per-rule finding counts against
 # .github/misra-baseline.txt. `make cppcheck` is NOT a substitute: different
 # rule set, no addon, no baseline, so a new MISRA finding sails through it.
@@ -142,6 +180,7 @@ gate_misra() (
   # The MISRA baseline records the cppcheck version it was generated with;
   # a drifted cppcheck ratchets against the wrong findings (#333).
   require_tool_versions cppcheck
+  python3 scripts/checks/misra_ratchet.py --selftest
   bash scripts/checks/misra_check_inner.sh
   python3 scripts/checks/misra_ratchet.py --check
 )

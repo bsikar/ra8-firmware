@@ -50,6 +50,7 @@ Usage
 -----
     check_tool_warning_flags.py COMPILE_COMMANDS_JSON [...]
     check_tool_warning_flags.py --require-compilers clang,gcc COMPILE_COMMANDS_JSON [...]
+    check_tool_warning_flags.py --require-all-cmake-tools COMPILE_COMMANDS_JSON [...]
     check_tool_warning_flags.py --selftest
 """
 
@@ -109,6 +110,17 @@ def missing_required_compilers(seen: set[str], required: list[str]) -> list[str]
     failure class. ``--selftest`` asserts this fires when an arm is absent.
     """
     return sorted(set(required) - set(seen))
+
+
+def missing_tool_projects(expected: set[str], database_paths: list[str]) -> list[str]:
+    """Return CMake tool directories with no compile database in the gate."""
+    observed = {Path(path).parent.name for path in database_paths}
+    return sorted(expected - observed)
+
+
+def cmake_tool_projects(repo_root: Path) -> set[str]:
+    """Discover every immediate tools/ CMake project from the repository."""
+    return {path.parent.name for path in (repo_root / "tools").glob("*/CMakeLists.txt")}
 
 
 def flag_problem(argv: list[str]) -> str | None:
@@ -252,6 +264,24 @@ COVERAGE_SELFTEST_CASES: list[tuple[str, set[str], list[str], list[str]]] = [
     ("both seen -> nothing missing", {"clang", "gcc"}, ["clang", "gcc"], []),
 ]
 
+PROJECT_SELFTEST_CASES: list[tuple[str, set[str], list[str], list[str]]] = [
+    (
+        "an omitted CMake tool is reported",
+        {"media_dl", "ra8_emulator"},
+        ["build/media_dl/compile_commands.json"],
+        ["ra8_emulator"],
+    ),
+    (
+        "all CMake tools represented stays quiet",
+        {"media_dl", "ra8_emulator"},
+        [
+            "build/media_dl/compile_commands.json",
+            "build/ra8_emulator/compile_commands.json",
+        ],
+        [],
+    ),
+]
+
 
 def selftest() -> int:
     """Prove the detector fires and stays quiet where it must."""
@@ -276,6 +306,13 @@ def selftest() -> int:
                 f"  coverage {name}: expected missing {want_missing}, got {got_missing}"
             )
 
+    for name, expected, paths, want_missing in PROJECT_SELFTEST_CASES:
+        got_missing = missing_tool_projects(expected, paths)
+        if got_missing != want_missing:
+            failures.append(
+                f"  project scope {name}: expected missing {want_missing}, got {got_missing}"
+            )
+
     if failures:
         sys.stderr.write("check_tool_warning_flags.py --selftest: FAILED\n")
         sys.stderr.write("\n".join(failures) + "\n")
@@ -287,7 +324,8 @@ def selftest() -> int:
         f"check_tool_warning_flags.py --selftest: PASS "
         f"({fires} must-fire, {quiet} must-stay-quiet flag cases; "
         f"{len(COMPILER_SELFTEST_CASES)} classifier, "
-        f"{len(COVERAGE_SELFTEST_CASES)} second-arm coverage cases)"
+        f"{len(COVERAGE_SELFTEST_CASES)} second-arm coverage, "
+        f"{len(PROJECT_SELFTEST_CASES)} project-scope cases)"
     )
     return 0
 
@@ -361,6 +399,11 @@ def main() -> int:
             "comma-joined value keeps it order-independent of the database list."
         ),
     )
+    parser.add_argument(
+        "--require-all-cmake-tools",
+        action="store_true",
+        help="fail when any tools/*/CMakeLists.txt project has no database",
+    )
     args = parser.parse_args()
 
     if args.selftest:
@@ -372,6 +415,15 @@ def main() -> int:
             "  pass for work never done.\n"
         )
         return 2
+
+    if args.require_all_cmake_tools:
+        missing_projects = missing_tool_projects(cmake_tool_projects(Path.cwd()), args.databases)
+        if missing_projects:
+            sys.stderr.write(
+                "check_tool_warning_flags.py: FATAL -- CMake tool project(s) "
+                f"absent from tools-build: {', '.join(missing_projects)}\n"
+            )
+            return 2
 
     required = [fam for fam in args.require_compilers.split(",") if fam]
     violations, seen = _scan_databases(args.databases)

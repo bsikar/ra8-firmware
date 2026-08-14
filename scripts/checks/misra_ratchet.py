@@ -35,6 +35,7 @@ runner / dev box cppcheck), never on a drifted local install.
 Usage:
     python3 scripts/checks/misra_ratchet.py --check    # gate (default)
     python3 scripts/checks/misra_ratchet.py --update   # rewrite the baseline
+    python3 scripts/checks/misra_ratchet.py --selftest # both-direction regression test
 
 Both modes read `build/misra/results.txt`; run the audit first:
     bash scripts/checks/misra_check_inner.sh
@@ -158,6 +159,41 @@ def report_regressions(
     )
 
 
+def find_regressions(
+    counts: Counter[tuple[str, str]], baseline: Counter[tuple[str, str]]
+) -> list[tuple[str, str, int, int]]:
+    """Return every current (file, rule) bucket above its frozen count."""
+    return [
+        (fname, rule, baseline.get((fname, rule), 0), count)
+        for (fname, rule), count in sorted(counts.items())
+        if count > baseline.get((fname, rule), 0)
+    ]
+
+
+def selftest() -> int:
+    """Prove the count ratchet fires on growth and stays quiet on burn-down."""
+    key = ("tools/media_dl/src/mdl_fetch.c", "misra-c2012-15.5")
+    new_key = ("tools/new_tool.c", "misra-c2012-17.3")
+    baseline = Counter({key: 2})
+    cases = [
+        ("exact frozen debt stays quiet", Counter({key: 2}), False),
+        ("burn-down stays quiet", Counter({key: 1}), False),
+        ("bucket growth fires", Counter({key: 3}), True),
+        ("a new file/rule bucket fires", Counter({key: 2, new_key: 1}), True),
+    ]
+    failures = [
+        name
+        for name, current, should_fire in cases
+        if bool(find_regressions(current, baseline)) != should_fire
+    ]
+    if failures:
+        for name in failures:
+            print(f"misra_ratchet.py --selftest: FAIL: {name}", file=sys.stderr)
+        return 1
+    print(f"misra_ratchet.py --selftest: PASS ({len(cases)} both-direction cases)")
+    return 0
+
+
 def check(counts: Counter[tuple[str, str]], details: dict[tuple[str, str], list[str]]) -> int:
     """Ratchet `counts` against the committed baseline; return the exit code."""
     if not BASELINE_FILE.is_file():
@@ -177,11 +213,7 @@ def check(counts: Counter[tuple[str, str]], details: dict[tuple[str, str], list[
             f"gate on the CI-pinned toolchain before trusting a red or a green."
         )
 
-    regressions = [
-        (fname, rule, baseline.get((fname, rule), 0), count)
-        for (fname, rule), count in sorted(counts.items())
-        if count > baseline.get((fname, rule), 0)
-    ]
+    regressions = find_regressions(counts, baseline)
     if regressions:
         report_regressions(regressions, details)
         return 1
@@ -217,7 +249,15 @@ def main() -> int:
         action="store_true",
         help="rewrite the committed baseline from build/misra/results.txt",
     )
+    mode.add_argument(
+        "--selftest",
+        action="store_true",
+        help="prove the ratchet fires and stays quiet, then exit",
+    )
     args = parser.parse_args()
+
+    if args.selftest:
+        return selftest()
 
     if not RESULTS_TSV.is_file():
         print(

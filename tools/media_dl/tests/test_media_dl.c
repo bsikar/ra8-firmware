@@ -557,7 +557,7 @@ static void test_tar_rejects_long_name(void)
   char name[k_buf_256];
   memset(name, 'p', (size_t)k_longname_len);
   (void)snprintf(name + k_longname_len, sizeof(name) - (size_t)k_longname_len, ".jpg");
-  char path[k_buf_256];
+  char path[k_buf_320];
   (void)snprintf(path, sizeof(path), "%s/%s", dir, name);
   write_fixture(path, 'x');
   TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbt, dir, out) == k_ra8_err_invalid_size);
