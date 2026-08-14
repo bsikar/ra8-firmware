@@ -143,6 +143,7 @@ RA8_GATE_REGISTRY=(
   "lint-devcontainer|fast|hadolint over the Dockerfile, zsh -n over the zshrc"
   "lint-coverage|fast|every code file is claimed by a linter and a formatter"
   "reserved-addrs|fast|address enums never point into a HUM Reserved window"
+  "agnostic-registers|fast|concrete RA8 driver reach-ins may only shrink"
   "cite-check|fast|HUM citation validator (strict)"
   "hum-register-map|fast|register symbols cross-checked against the HUM register tables"
   "roadmap-stats|fast|ROADMAP summary stats"
