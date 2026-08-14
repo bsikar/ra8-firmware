@@ -90,7 +90,9 @@ typedef struct {
  * @details Initialise with @ref ra8_rabook_compile_init; treat the fields as
  *          private. `failed` latches on the first arena overflow so the caller
  *          can build optimistically and check once at @ref ra8_rabook_finalize.
- * @invariant Each `*_count` / `*_size` never exceeds the matching `_cap`.
+ * @invariant Each table count and the string size never exceeds its matching cap.
+ * @invariant An internal image pool never exceeds `image_pool_cap`; an external
+ *            pool is instead bounded by the uint32 wire-format size.
  * @since Version 0.1.0
  */
 typedef struct {
@@ -108,8 +110,45 @@ typedef struct {
   uint32_t             identifier_off;    /**< Metadata: identifier string offset. */
   uint32_t             cover_image_index; /**< Cover image index, or nil.          */
   uint32_t             flags;             /**< Reserved header flags (0 in v1).    */
+  uint8_t              image_pool_mode;   /**< Internal builder storage mode.      */
   bool                 failed;            /**< Sticky: an arena overflowed.        */
 } ra8_rabook_ctx_t;
+
+/**
+ * @brief Read bytes from an externally stored image pool.
+ * @param[in]  ctx       Caller context supplied to @ref ra8_rabook_finalize_stream.
+ * @param[in]  offset    Byte offset in the logical image pool.
+ * @param[out] dst       Destination for @p requested bytes.
+ * @param[in]  requested Exact number of bytes requested.
+ * @param[out] out_read  Receives the number of bytes actually copied.
+ * @return Read status; callback-specific failures are propagated unchanged.
+ * @pre Pointers are non-NULL and @p dst spans @p requested writable bytes.
+ * @post On success `*out_read <= requested`; the finalizer rejects a short read.
+ * @note Not thread-safe unless the callback context is independently synchronized.
+ * @since 0.1.0
+ */
+typedef ra8_err_t (*ra8_rabook_image_read_fn)(void*     ctx,
+                                              uint32_t  offset,
+                                              uint8_t*  dst,
+                                              uint32_t  requested,
+                                              uint32_t* out_read);
+
+/**
+ * @brief Append bytes to a streaming RABOOK1 destination.
+ * @param[in,out] ctx         Caller context supplied to @ref ra8_rabook_finalize_stream.
+ * @param[in]     src         Source bytes to append.
+ * @param[in]     requested   Exact number of bytes requested.
+ * @param[out]    out_written Receives the number of bytes actually appended.
+ * @return Write status; callback-specific failures are propagated unchanged.
+ * @pre Pointers are non-NULL and @p src spans @p requested readable bytes.
+ * @post On success `*out_written <= requested`; the finalizer rejects a short write.
+ * @note Not thread-safe unless the callback context is independently synchronized.
+ * @since 0.1.0
+ */
+typedef ra8_err_t (*ra8_rabook_write_fn)(void*          ctx,
+                                         const uint8_t* src,
+                                         uint32_t       requested,
+                                         uint32_t*      out_written);
 
 /**
  * @brief Bind a builder context to its caller-provided arenas.
@@ -299,6 +338,41 @@ uint32_t ra8_rabook_add_image(ra8_rabook_ctx_t* ctx,
                               uint32_t          data_size);
 
 /**
+ * @brief Append an image descriptor whose bytes live in a caller-owned spool.
+ * @details Reserves the next contiguous span of the logical image pool without
+ *          copying bytes into @ref ra8_rabook_buffers_t::image_pool. The caller
+ *          stores exactly @p data_size bytes at the returned @p out_data_off and
+ *          later supplies a matching read callback to
+ *          @ref ra8_rabook_finalize_stream. Internal and external non-empty
+ *          images cannot be mixed in one context.
+ * @param[in,out] ctx          Builder context.
+ * @param[in]     id_off       Interned image identifier offset.
+ * @param[in]     width        Image width in pixels.
+ * @param[in]     height       Image height in pixels.
+ * @param[in]     format       @ref ra8_book_image_format_t value.
+ * @param[in]     pixel_format @ref ra8_book_image_pixfmt_t value.
+ * @param[in]     data_size    Reserved external byte count.
+ * @param[out]    out_data_off Receives the logical image-pool offset.
+ * @return The new image index, or @ref k_ra8_book_nil on error.
+ * @retval k_ra8_book_nil NULL arguments, image-table exhaustion, mixed storage
+ *                       modes, or a logical image-pool size overflow.
+ * @pre @p ctx was initialized and @p out_data_off is writable.
+ * @pre @p data_size bytes are available in the caller's spool before finalize.
+ * @post On success the descriptor references `[out_data_off, out_data_off + data_size)`.
+ * @post On failure the sticky builder failure is latched and no descriptor is appended.
+ * @note The builder does not own or write the external bytes.
+ * @since 0.1.0
+ */
+uint32_t ra8_rabook_add_image_external(ra8_rabook_ctx_t* ctx,
+                                       uint32_t          id_off,
+                                       uint16_t          width,
+                                       uint16_t          height,
+                                       uint8_t           format,
+                                       uint8_t           pixel_format,
+                                       uint32_t          data_size,
+                                       uint32_t*         out_data_off);
+
+/**
  * @brief Append a preserved stylesheet; return its stylesheet index.
  * @details Records one verbatim-CSS stylesheet entry in the stylesheet table.
  *          @p scope_chapter limits it to a single chapter, or @ref k_ra8_book_nil
@@ -382,6 +456,47 @@ ra8_err_t ra8_rabook_set_metadata(ra8_rabook_ctx_t* ctx,
  * @since Version 0.1.0
  */
 ra8_err_t ra8_rabook_finalize(ra8_rabook_ctx_t* ctx, const void** out_blob, uint32_t* out_len);
+
+/**
+ * @brief Stream a canonical flat RABOOK1 blob without a full output arena.
+ * @details Computes the same canonical layout and CRC as @ref ra8_rabook_finalize,
+ *          then appends the header, tables, string pool, and image pool through
+ *          @p write. Internal image pools are read directly. An external image
+ *          pool is read twice through @p image_read: once for CRC and once for
+ *          emission, in chunks no larger than @p scratch_cap.
+ * @param[in]     ctx         Completed builder context.
+ * @param[in]     image_read  External image-pool reader; required only for an
+ *                            external non-empty pool.
+ * @param[in,out] image_ctx   Context passed to @p image_read.
+ * @param[in]     write       Exact append callback.
+ * @param[in,out] write_ctx   Context passed to @p write.
+ * @param[in,out] scratch     External-pool transfer scratch; required only for
+ *                            an external non-empty pool.
+ * @param[in]     scratch_cap Writable bytes at @p scratch.
+ * @param[out]    out_len     Receives the complete flat blob length.
+ * @return Finalization status.
+ * @retval k_ra8_ok Blob streamed completely and @p out_len set.
+ * @retval k_ra8_err_null_ptr A required pointer or callback is NULL.
+ * @retval k_ra8_err_no_mem A prior builder operation overflowed an arena.
+ * @retval k_ra8_err_invalid_size Layout overflow, zero external scratch, or a
+ *                                short callback transfer.
+ * @return Other callback failures are propagated unchanged.
+ * @pre The external reader is repeatable and exposes the logical pool recorded
+ *      by @ref ra8_rabook_add_image_external.
+ * @pre @p write appends atomically or reports the exact short transfer.
+ * @post On success exactly @p *out_len bytes were appended in canonical order.
+ * @post On failure @p out_len is untouched; the destination may hold a prefix.
+ * @note Uses only caller storage and fixed stack state; performs no allocation.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_rabook_finalize_stream(const ra8_rabook_ctx_t*  ctx,
+                                     ra8_rabook_image_read_fn image_read,
+                                     void*                    image_ctx,
+                                     ra8_rabook_write_fn      write,
+                                     void*                    write_ctx,
+                                     uint8_t*                 scratch,
+                                     uint32_t                 scratch_cap,
+                                     uint32_t*                out_len);
 
 #ifdef __cplusplus
 } /* extern "C" */

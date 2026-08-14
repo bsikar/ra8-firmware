@@ -87,6 +87,47 @@ typedef enum : uint32_t {
                                         uint32_t*      out_len);
 
 /**
+ * @brief Zlib-wrap and DEFLATE-compress one bounded byte range.
+ *
+ * @details Uses the same caller-owned `tdefl_compressor` scratch and bounded
+ *          output sink as ::ra8_io_compress, but emits an RFC 1950 zlib stream
+ *          (two-byte header plus Adler-32 trailer). This is the wire shape used
+ *          by each independently compressed chunk in an RBKC `.rabook`
+ *          container. Keeping the wrapper choice explicit prevents raw RFC 1951
+ *          streams from being mislabeled as zlib data.
+ *
+ * @param[in]  src         Bytes to compress.
+ * @param[in]  src_len     Number of input bytes.
+ * @param[out] out         Destination for the zlib stream.
+ * @param[in]  out_cap     Writable capacity of @p out.
+ * @param[in]  scratch     Caller buffer for one `tdefl_compressor`.
+ * @param[in]  scratch_len Size of @p scratch in bytes.
+ * @param[out] out_len     Receives the complete zlib-stream length.
+ *
+ * @return Canonical compression status.
+ * @retval k_ra8_ok               A complete zlib stream was produced.
+ * @retval k_ra8_err_null_ptr     A required pointer was NULL.
+ * @retval k_ra8_err_invalid_size Compressor scratch was too small.
+ * @retval k_ra8_err_no_mem       The bounded output could not hold the stream.
+ * @retval k_ra8_fail             The compressor rejected the input.
+ *
+ * @pre @p scratch is at least ::k_ra8_io_compress_scratch_bytes and 8-byte aligned.
+ * @pre @p out spans @p out_cap writable bytes.
+ * @post On success, inflating `out[0..*out_len)` as zlib reproduces @p src.
+ * @post No allocator is called; all transient state is caller-owned.
+ *
+ * @note Not thread-safe with respect to the same buffers.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_io_compress_zlib(const uint8_t* src,
+                                             uint32_t       src_len,
+                                             uint8_t*       out,
+                                             uint32_t       out_cap,
+                                             void*          scratch,
+                                             uint32_t       scratch_len,
+                                             uint32_t*      out_len);
+
+/**
  * @brief Raw-DEFLATE decompress `src` into `out`.
  *
  * @param[in]  src     Compressed stream (raw DEFLATE).
