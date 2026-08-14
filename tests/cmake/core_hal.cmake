@@ -22,6 +22,8 @@ add_library(
   ${RA8_TLS_SOURCES}
   ${RA8_USB_PAL_SOURCES}
   ${RA8_FS_SOURCES}
+  ${RA8_IF_SOURCES}
+  ${RA8_IF_RA8_VFS_SOURCES}
   ${RA8_IO_SOURCES}
   ${RA8_AUDIO_SOURCES}
   ${RA8_CAMERA_SOURCES}
@@ -119,6 +121,8 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_modem_at/inc
          ${FW_ROOT}/libs/ra8_usb_pal/inc
          ${FW_ROOT}/libs/ra8_fs/inc
+         ${FW_ROOT}/libs/if/inc
+         ${FW_ROOT}/libs/if_ra8_vfs/inc
          ${FW_ROOT}/libs/ra8_io/inc
          ${FW_ROOT}/libs/ra8_audio/inc
          ${FW_ROOT}/libs/ra8_camera/inc
@@ -197,6 +201,8 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_tls/src
          ${FW_ROOT}/libs/ra8_usb_pal/src
          ${FW_ROOT}/libs/ra8_fs/src
+         ${FW_ROOT}/libs/if/src
+         ${FW_ROOT}/libs/if_ra8_vfs/src
          ${FW_ROOT}/libs/ra8_io/src
          ${FW_ROOT}/libs/ra8_audio/src
          ${FW_ROOT}/libs/ra8_camera/src

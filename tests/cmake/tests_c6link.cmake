@@ -92,3 +92,20 @@ if(NOT TARGET test_ra8_c6link_mdl)
   target_include_directories(test_ra8_c6link_mdl PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
   add_test(NAME test_ra8_c6link_mdl COMMAND test_ra8_c6link_mdl)
 endif()
+
+# test_ra8_mdl_storage_vfs: the production media-download transaction binding
+# over a real RAM blockdev -> ra8_fs -> named-VFS stack. The adapter depends on
+# the c6link-owned storage seam but not the protobuf runtime or transport.
+add_executable(
+  test_ra8_mdl_storage_vfs
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_storage_vfs.c
+  ${FW_ROOT}/libs/ra8_mdl_storage_vfs/src/ra8_mdl_storage_vfs.c $<TARGET_OBJECTS:ra8_core_hal>
+)
+set_target_properties(test_ra8_mdl_storage_vfs PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_ra8_mdl_storage_vfs PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+target_include_directories(
+  test_ra8_mdl_storage_vfs
+  PRIVATE ${RA8_C6LINK_INCLUDE_DIRS} ${FW_ROOT}/libs/ra8_mdl_storage_vfs/inc
+          ${FW_ROOT}/libs/ra8_io/inc ${FW_ROOT}/libs/ra8_fs/inc
+)
+add_test(NAME test_ra8_mdl_storage_vfs COMMAND test_ra8_mdl_storage_vfs)
