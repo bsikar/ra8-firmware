@@ -8,7 +8,7 @@ their maturity.
 Run the whole tier with:
 
 ```sh
-make hil-c6              # all five, in order
+make hil-c6              # every app in this lane
 make hil-c6 APP=c6_spi_probe
 ```
 
@@ -51,6 +51,7 @@ grows a co-processor model.
 | `c6_wifi_link` | The **facade** (`libs/ra8_c6link`), and the co-processor's acceptance of a real `Req_WifiInit` configuration -- the one part of the control plane no host test can settle. Takes the station up, reads its MAC, tears it down. | `c6_wifi: PASS ra8_c6link drove the coprocessor station up` |
 | `c6_wifi_join` | The **network** (#492). Associates the station with a bench AP, runs a NetX Duo DHCP client over the `nx_ether_driver_c6` link driver to get a lease, and pings the gateway. Needs credentials compiled in (env / `coprocessor/esp32c6/wifi.env`) and an AP in range. | `c6_join: PASS ra8_c6link joined the bench Wi-Fi and DHCP leased an address` |
 | `wifi_hal_join` | The **facade** (`libs/ra8_wifi`). The same association + DHCP as `c6_wifi_join`, but every Wi-Fi step goes through `ra8_wifi_init` / `ra8_wifi_connect` / `ra8_wifi_wait_ip` instead of `ra8_c6link` directly -- a side-by-side of how much the HAL hides. Same credentials and AP requirement. | `wifi_hal: PASS ra8_wifi joined the bench Wi-Fi and DHCP leased an address` |
+| `c6_camera_livestream` | The **camera network path**. Captures OV5640 VGA frames, serves them through NetX over the C6, probes `/health`, decodes two 320x240 JPEG responses and rejects identical frames. Its dedicated HIL mode owns a temporary credential-bearing build tree. | `camera_livestream: PASS health + two changing 320x240 JPEG captures` |
 
 They form a ladder: when the top one fails, the one below separates "the wire
 is wrong" from "the firmware is wrong". `c6_spi_probe` is the bench's negative

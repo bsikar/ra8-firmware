@@ -4,11 +4,11 @@
 # Per-app Makefile for the `camera_capture` firmware.
 #
 # Standalone use:
-#   cd examples/camera_capture/
-#   make             # configure + build -> examples/camera_capture/build/camera_capture.elf
+#   cd examples/ek_ra8d2/hw_validated/hil/camera_capture/
+#   make             # configure + build -> build/camera_capture.elf
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
-#   make clean       # rm -rf examples/camera_capture/build
+#   make clean       # rm -rf build
 #
 # This file is a thin wrapper around the per-app CMakeLists.txt and
 # the shared scripts/ helpers in the repo root.
@@ -25,6 +25,8 @@ ELF        := $(BUILD_DIR)/$(APP).elf
 HEX        := $(BUILD_DIR)/$(APP).hex
 BIN        := $(BUILD_DIR)/$(APP).bin
 TOOLCHAIN  := $(ROOT)/cmake/toolchain-ra8d2.cmake
+APP_SOURCES := $(wildcard $(HERE)/*.c) $(wildcard $(HERE)/src/*.c)
+APP_HEADERS := $(wildcard $(HERE)/*.h) $(wildcard $(HERE)/src/*.h)
 
 CMAKE      ?= cmake
 ARM_SIZE   ?= arm-none-eabi-size
@@ -44,7 +46,7 @@ help:
 
 build: $(ELF)
 
-$(ELF): $(wildcard $(HERE)/*.c) $(wildcard $(HERE)/*.h) $(wildcard $(HERE)/linker_script.ld) $(HERE)/CMakeLists.txt
+$(ELF): $(APP_SOURCES) $(APP_HEADERS) $(wildcard $(HERE)/linker_script.ld) $(HERE)/CMakeLists.txt $(HERE)/Makefile
 	$(CMAKE) -S $(HERE) -B $(BUILD_DIR) \
 	    -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) \
 	    -DCMAKE_BUILD_TYPE=$(or $(BUILD_TYPE),RelWithDebInfo) \

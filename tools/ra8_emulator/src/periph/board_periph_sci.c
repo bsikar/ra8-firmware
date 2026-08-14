@@ -107,7 +107,7 @@ typedef enum : uint32_t {
   k_sci_sd_ch          = 0U,    /**< EK-RA8D2 Pmod2 microSD = SCI0 Simple-SPI.   */
   k_sci_rx_queue_len   = 512U,  /**< Per-channel host->firmware RX capacity.     */
   k_sci_data_mask      = 0xFFU, /**< RDR/TDR data field is 8 bits.               */
-  k_uart_line_cap      = 256U,  /**< Captured last-TX-line buffer capacity.      */
+  k_uart_line_cap      = 512U,  /**< Captured last-TX-line buffer capacity.      */
   k_sci_spi_cipo_idle  = 0xFFU, /**< CIPO idles high (0xFF) on an empty SPI bus. */
   k_sci_modem_resp_cap = 96U,   /**< Scratch for one AT-modem reply burst.       */
 } sci_tune_t;

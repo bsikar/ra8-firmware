@@ -32,5 +32,5 @@ include("${_d}/cmake/ra8_add_app.cmake")
 ra8_add_app(
   NAME camera_capture
   STACK_BYTES 2200
-  DESCRIPTION "camera_capture firmware for RA8D2"
+  DESCRIPTION "OV5640 CEU capture and firmware-side RGB rotations"
 )

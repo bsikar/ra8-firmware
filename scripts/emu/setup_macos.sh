@@ -8,8 +8,8 @@
 set -euo pipefail
 
 case "${1:-}" in
-  "" ) ;;
-  -h|--help)
+  "") ;;
+  -h | --help)
     cat <<'EOF'
 Usage: make emu-setup
 
@@ -84,8 +84,14 @@ fi
 arm_gcc="$arm_prefix/bin/arm-none-eabi-gcc"
 if [[ ! -x "$arm_gcc" ]] || [[ "$("$arm_gcc" -dumpfullversion 2>/dev/null || true)" != 13.3.* ]]; then
   case "$(uname -m)" in
-    arm64) arm_arch="aarch64"; arm_sha256="c8824bffd057afce2259f7618254e840715f33523a3d4e4294f471208f976764" ;;
-    x86_64) arm_arch="x86_64"; arm_sha256="95c011cee430e64dd6087c75c800f04b9c49832cc1000127a92a97f9c8d83af4" ;;
+    arm64)
+      arm_arch="aarch64"
+      arm_sha256="c8824bffd057afce2259f7618254e840715f33523a3d4e4294f471208f976764"
+      ;;
+    x86_64)
+      arm_arch="x86_64"
+      arm_sha256="95c011cee430e64dd6087c75c800f04b9c49832cc1000127a92a97f9c8d83af4"
+      ;;
     *)
       echo "ERROR: unsupported macOS architecture $(uname -m) for Arm GNU Toolchain." >&2
       exit 1

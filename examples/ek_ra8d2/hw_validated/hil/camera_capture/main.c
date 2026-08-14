@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/camera_capture/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/camera_capture/main.c
  * @brief OV5640 parallel (CEU) camera capture + plausibility self-test
  *
  * @par Tag
@@ -22,22 +22,18 @@
  *      bring-up, then force SW4-6 = ON through the U15 expander so the
  *      Camera Expansion Board is in parallel (DVP) mode (the board
  *      default is MIPI). The OV5640 SCCB shares ch1 with U15 + the codec.
- *   5. Confirm the XCLK GPT counter advances, route the CEU DVP pins
- *      (VIO_D[7:0], VIO_VD, VIO_HD, VIO_CLK), release the sensor RST
+ *   5. Confirm the XCLK GPT counter advances, release the sensor RST
  *      strap (P709), then scan the bus and read the OV5640 chip-ID
  *      registers 0x300A/0x300B -- the VERIFY-FIRST proof the sensor is
  *      present (expected 0x5640), trying SCCB 0x3C then 0x3D.
- *   6. SCCB register sequence: software reset + a compact DVP YUV422
- *      QVGA config with the built-in colour-bar test pattern enabled,
- *      so the captured frame is deterministic and independent of lens
- *      focus or scene light.
- *   7. `ra8_ceu_init` + `ra8_ceu_capture_arm` capture one frame into an
- *      internal SRAM buffer; the driver polls CETCR.CPE for completion.
- *   8. Plausibility stats over the frame: min / max / mean byte. The
- *      verdict is PASS when the sensor ID is 0x5640, a frame was
- *      captured, and the frame is non-degenerate (max != min) -- a
- *      colour bar spans black..white so a real grab always varies,
- *      while a dead bus reads all-identical bytes.
+ *   6. Program the proven VGA YUV422 live-scene sequence, sample the active
+ *      DVP signals through GPIO, then route VIO_D[7:0], VIO_VD, VIO_HD, and
+ *      VIO_CLK to the CEU.
+ *   7. `ra8_ceu_init` + `ra8_ceu_capture_start_ex` capture one packed frame
+ *      into internal SRAM; the driver polls CETCR.CPE for completion.
+ *   8. Plausibility stats over the frame, then firmware-side UYVY-to-RGB888
+ *      conversion into four cache-cleaned SDRAM buffers at 0/90/180/270.
+ *      PASS requires a captured, non-degenerate frame and all four images.
  *
  * The sensor SCCB half (reset / probe / configure + the register table)
  * lives in `cam_ov5640.{c,h}`; the CEU half (DVP pin routing, descriptor,
@@ -46,24 +42,17 @@
  *
  * Banner (scraped by the HIL gate once promoted):
  *   `cam: gpt=RUN scan=3C:56.43:00. chipid=5640 xclk=OK rst=OK sccb=OK`
- *   ` ceu=OK frame=OK min=.. max=.. mean=.. verdict=PASS`
+ *   ` ceu=OK bytes=614400 frame=OK cetcr=........`
+ *   ` min=.. max=.. mean=.. verdict=PASS`
  *
  * Hardware: EK-RA8D2 with the OV5640 Camera Expansion Board on the
  * underside FFC port (J35). SW4-6 is driven ON in firmware; no manual
  * jumpers required.
  *
- * @note Bench status (silicon, SWD forensics): SCCB works and the chip
- *       ID reads 0x5640; the OV5640 fully streams over the parallel port
- *       -- VIO_VD, VIO_HD, VIO_CLK and VIO_D[7:0] were all confirmed
- *       toggling on the MCU pins (PORT PIDR sampling). The remaining
- *       blocker is the CEU: every armed frame ends with CETCR IGHS
- *       (bit17, "HD clock-cycle count differs from CMCYR.HCYL") followed
- *       by VBP (bit20, "invalid VD"), and zero bytes are written. No
- *       HCYL value from 2..2560 clears IGHS, so the VIO_HD active-cycle
- *       count the CEU sees is not a stable/matchable width. Resolving
- *       this needs a logic analyzer on VIO_HD / VIO_CLK to measure the
- *       real HREF-active duration and the PCLK/HREF phase; it cannot be
- *       fixed by register config alone. See the README.
+ * @note Bench status: validated on EK-RA8D2 silicon. The sensor ID reads
+ *       0x5640, DVP activity is observed on every data/sync signal, CEU
+ *       completes a 614400-byte VGA capture, and the host dump decodes to a
+ *       clean live image. See the README for still/video capture commands.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -73,6 +62,7 @@
 #include <stdint.h>
 
 #include "cam_ceu.h"
+#include "cam_image.h"
 #include "cam_ov5640.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -83,6 +73,7 @@
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
 #include "ra8_port_utils.h"
+#include "ra8_sdramc.h"
 #include "ra8_time.h"
 
 /* =============================================================================
@@ -102,14 +93,13 @@ typedef enum : uint32_t {
 
 /** @brief 8-bit app constants: hex/decimal printing, bus scan, U15 expander. */
 typedef enum : uint8_t {
-  k_cam_nibble_mask    = 0x0FU, /**< Low-nibble mask for hex printing.       */
-  k_cam_dec_base       = 10U,   /**< Base for decimal printing.              */
-  k_cam_byte_max       = 0xFFU, /**< Maximum byte value (min-scan seed).     */
-  k_cam_scan_lo        = 0x08U, /**< First 7-bit address in the bus scan.    */
-  k_cam_scan_hi        = 0x77U, /**< Last 7-bit address in the bus scan.     */
-  k_cam_u15_addr       = 0x43U, /**< U15 PI4IOE5V6408 SW4-override address.  */
-  k_cam_u15_reg_output = 0x05U, /**< U15 output register (1 = SW4 OFF).      */
-  k_cam_sw46_bit       = 5U,    /**< U15 output bit for SW4-6 (camera mode). */
+  k_cam_nibble_mask = 0x0FU, /**< Low-nibble mask for hex printing.     */
+  k_cam_dec_base    = 10U,   /**< Base for decimal printing.            */
+  k_cam_byte_max    = 0xFFU, /**< Maximum byte value (min-scan seed).   */
+  k_cam_scan_lo     = 0x08U, /**< First 7-bit address in the bus scan.  */
+  k_cam_scan_hi     = 0x77U, /**< Last 7-bit address in the bus scan.   */
+  k_cam_sw46_output = 0xDFU, /**< U15 latch: SW4-6 ON, other bits high. */
+  k_cam_sw46_mask   = 0x20U, /**< Drive SW4-6 only; release all others. */
 } cam_u8_t;
 
 /** @brief GPT channel that generates XCLK on GTIOC12A (P501). */
@@ -318,7 +308,12 @@ static ra8_err_t cam_start_xclk(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  return ra8_pfs_route_peripheral(RA8_PIN(k_ra8_port_5, k_ra8_pin_1), k_ra8_psel_gpt0, "cam.xclk");
+  err = ra8_pfs_route_peripheral(RA8_PIN(k_ra8_port_5, k_ra8_pin_1), k_ra8_psel_gpt0, "cam.xclk");
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return ra8_pfs_set_drive_strength(RA8_PIN(k_ra8_port_5, k_ra8_pin_1),
+                                    k_ra8_pfs_dscr_high_speed_high);
 }
 
 /* =============================================================================
@@ -330,7 +325,7 @@ static ra8_err_t cam_start_xclk(void)
  * @brief Compute min / max / mean over the CEU frame and store to globals.
  *
  * @return true when the frame is non-degenerate (max != min).
- * @retval true  Frame varies -- a real colour-bar grab spans black..white.
+ * @retval true  Frame varies, consistent with a live non-degenerate capture.
  * @retval false Frame is all-identical, empty, or the buffer was unavailable.
  *
  * @pre ::cam_capture_one has filled the CEU frame buffer.
@@ -443,8 +438,7 @@ static void cam_park(void)
  * @retval k_ra8_ok Parallel-camera routing selected.
  * @retval k_ra8_err_nack U15 did not ACK.
  *
- * @pre RIIC ch1 up and `ra8_board_io_expander_apply_project_sw4_defaults`
- *      has configured U15 as all-outputs.
+ * @pre `ra8_mstp_init` has run and the Camera Expansion Board is on J35.
  * @pre The Camera Expansion Board is on J35.
  * @post SW4-6 reads ON; the DVP data/clock path is live.
  * @post U15's other SW4 overrides are unchanged.
@@ -453,31 +447,18 @@ static void cam_park(void)
  */
 static ra8_err_t cam_select_parallel_camera(void)
 {
-  const uint8_t reg = (uint8_t)k_cam_u15_reg_output;
-  uint8_t       cur = 0U;
-  ra8_err_t     err =
-    ra8_i2c_transfer((uint8_t)k_cam_iic_ch, (uint8_t)k_cam_u15_addr, &reg, 1U, &cur, 1U);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const uint8_t want       = (uint8_t)(cur & (uint8_t)(~(1U << (uint8_t)k_cam_sw46_bit)));
-  const uint8_t payload[2] = {reg, want};
-  return ra8_i2c_write((uint8_t)k_cam_iic_ch,
-                       (uint8_t)k_cam_u15_addr,
-                       payload,
-                       (uint32_t)sizeof(payload),
-                       true);
+  return ra8_board_io_expander_apply_sw4_mask((uint8_t)k_cam_sw46_output, (uint8_t)k_cam_sw46_mask);
 }
 
 /**
- * @brief Bring up clocks, console, XCLK, SCCB and select parallel camera.
+ * @brief Bring up clocks, console, SDRAM, XCLK, SCCB and parallel camera.
  *
  * @return ra8_err_t from the first failing bring-up step, or ok.
- * @retval k_ra8_ok Console, XCLK and I2C ch1 are live; SW4-6 = ON.
+ * @retval k_ra8_ok Console, SDRAM, XCLK and I2C ch1 are live; SW4-6 = ON.
  *
  * @pre Reset_Handler + SystemInit ran.
  * @pre Single-threaded init context.
- * @post On ok the console prints and the OV5640 has XVCLK + SCCB.
+ * @post On ok the console prints, SDRAM responds, and the OV5640 has XVCLK + SCCB.
  * @post On ok the Camera Expansion Board is in parallel (DVP) mode.
  * @note Thread safety: init context only.
  * @since 0.1.0
@@ -505,16 +486,16 @@ static ra8_err_t cam_bringup(void)
   if (err != k_ra8_ok) {
     return err;
   }
+  err = ra8_sdramc_init();
+  if (err != k_ra8_ok) {
+    return err;
+  }
   err = cam_start_xclk();
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_board_io_expander_apply_project_sw4_defaults();
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  /* The board default is SW4-6 OFF (MIPI camera); flip it ON so the DVP
-     path + the P501 XVCLK reach the sensor. */
+  /* Force only SW4-6 ON so DVP reaches the sensor without overriding the
+     physical settings used by unrelated board peripherals. */
   err = cam_select_parallel_camera();
   if (err != k_ra8_ok) {
     return err;
@@ -527,12 +508,11 @@ static ra8_err_t cam_bringup(void)
  * @brief Configure the sensor, capture one frame, and print the verdict.
  *
  * @details Called only after the OV5640 chip ID is confirmed. Emits the
- *          ` ceu= frame= min= max= mean= verdict=` banner fields and sets
- *          the result globals. PASS requires a captured, non-degenerate
- *          frame.
+ *          the DVP probe, CEU status, byte count, frame statistics, and verdict
+ *          banner fields. PASS also requires all four RGB SDRAM views.
  *
  * @pre `cam_probe_sensor` returned true (SCCB reaches the OV5640).
- * @pre The CEU DVP pins are routed and the sensor is out of reset.
+ * @pre The sensor is out of reset; this function probes then routes DVP pins.
  * @post One verdict field has been written to SCI8.
  * @post `g_cam_frame_ok` / `g_cam_verdict` reflect the outcome.
  * @note Thread safety: not thread-safe.
@@ -541,6 +521,55 @@ static ra8_err_t cam_bringup(void)
 static void cam_capture_and_verdict(void)
 {
   ra8_err_t err = cam_configure_sensor();
+  if (err == k_ra8_ok) {
+    cam_ceu_sync_probe_t sync_probe = {};
+    err                             = cam_probe_sync_activity(&sync_probe);
+    (void)cam_puts(" dvp_sync_edges=");
+    (void)cam_put_u32(sync_probe.vsync_edges);
+    (void)cam_puts("/");
+    (void)cam_put_u32(sync_probe.hsync_edges);
+    (void)cam_puts(" h=");
+    (void)cam_put_u32(sync_probe.hsync_high_min);
+    (void)cam_puts("-");
+    (void)cam_put_u32(sync_probe.hsync_high_max);
+    (void)cam_puts(" l=");
+    (void)cam_put_u32(sync_probe.hsync_low_min);
+    (void)cam_puts("-");
+    (void)cam_put_u32(sync_probe.hsync_low_max);
+    (void)cam_puts(" hc=");
+    (void)cam_put_u32(sync_probe.hsync_high_cycles_min);
+    (void)cam_puts("-");
+    (void)cam_put_u32(sync_probe.hsync_high_cycles_max);
+    (void)cam_puts(" pc=");
+    (void)cam_put_u32(sync_probe.pclk_edges);
+    (void)cam_puts(" ph=");
+    (void)cam_put_u32(sync_probe.pclk_half_cycles_min);
+    (void)cam_puts(" data=");
+    (void)cam_put_u32(sync_probe.data_samples);
+    (void)cam_puts("/");
+    (void)cam_put_u32(sync_probe.data_changes);
+    (void)cam_puts(" ");
+    (void)cam_put_hex((uint32_t)sync_probe.data_min, 2U);
+    (void)cam_puts("-");
+    (void)cam_put_hex((uint32_t)sync_probe.data_max, 2U);
+    (void)cam_puts(" &");
+    (void)cam_put_hex((uint32_t)sync_probe.data_and, 2U);
+    (void)cam_puts(" |");
+    (void)cam_put_hex((uint32_t)sync_probe.data_or, 2U);
+    (void)cam_puts(" lineclk=");
+    (void)cam_put_u32(sync_probe.measured_lines);
+    (void)cam_puts("/");
+    (void)cam_put_u32(sync_probe.line_pclk_min);
+    (void)cam_puts("-");
+    (void)cam_put_u32(sync_probe.line_pclk_max);
+    (void)cam_puts("/");
+    (void)cam_put_u32(sync_probe.line_pclk_mean);
+    (void)cam_puts(" long=");
+    (void)cam_put_u32(sync_probe.line_pclk_long);
+  }
+  if (err == k_ra8_ok) {
+    err = cam_route_ceu_pins();
+  }
   if (err == k_ra8_ok) {
     err = cam_ceu_setup();
   }
@@ -552,6 +581,8 @@ static void cam_capture_and_verdict(void)
     frame_ok = (cam_capture_one() == k_ra8_ok);
   }
   g_cam_frame_ok = frame_ok ? 1U : 0U;
+  (void)cam_puts(" bytes=");
+  (void)cam_put_u32(cam_ceu_capture_bytes());
   (void)cam_puts(" frame=");
   (void)cam_puts(frame_ok ? "OK" : "TIMEOUT");
 
@@ -564,8 +595,12 @@ static void cam_capture_and_verdict(void)
   (void)cam_put_hex(cetcr, 8U);
 
   bool plausible = false;
+  bool rgb_ok    = false;
   if (frame_ok) {
     plausible = cam_frame_is_plausible();
+    if (plausible) {
+      rgb_ok = (cam_image_generate(cam_ceu_frame(), cam_ceu_capture_bytes()) == k_ra8_ok);
+    }
   }
   (void)cam_puts(" min=");
   (void)cam_put_u32(g_cam_min);
@@ -573,9 +608,13 @@ static void cam_capture_and_verdict(void)
   (void)cam_put_u32(g_cam_max);
   (void)cam_puts(" mean=");
   (void)cam_put_u32(g_cam_mean);
+  (void)cam_puts(" rgb=");
+  (void)cam_puts(rgb_ok ? "OK" : "ERR");
+  (void)cam_puts(" rgb_bytes=");
+  (void)cam_put_u32(g_cam_rgb_frame_bytes);
 
-  g_cam_verdict = plausible ? 1U : 0U;
-  (void)cam_puts(plausible ? " verdict=PASS\r\n" : " verdict=FAIL\r\n");
+  g_cam_verdict = (plausible && rgb_ok) ? 1U : 0U;
+  (void)cam_puts((plausible && rgb_ok) ? " verdict=PASS\r\n" : " verdict=FAIL\r\n");
 }
 
 /**
@@ -583,8 +622,8 @@ static void cam_capture_and_verdict(void)
  *
  * @details Reports progressively so a single flash reveals exactly which
  *          stage the hardware reached. The verdict is PASS only when the
- *          sensor ID is 0x5640, a frame was captured, and it is
- *          non-degenerate.
+ *          sensor ID is 0x5640, a frame was captured, it is non-degenerate,
+ *          and the four RGB SDRAM views are complete.
  *
  * @pre `cam_bringup` returned ok (console + XCLK + SCCB live).
  * @post A `cam: ...verdict=...` line has been written to SCI8.
@@ -616,9 +655,8 @@ static void cam_run(void)
   (void)cam_puts(gpt_running ? "RUN" : "DEAD");
 
   /* The OV5640 needs XVCLK (up in cam_bringup) and must be out of
-     hardware reset before it answers on SCCB, so route the DVP pins and
-     release RST (P709) FIRST, then probe. */
-  (void)cam_route_ceu_pins();
+     hardware reset before it answers on SCCB, so release RST (P709)
+     before scanning and probing the sensor. */
   const ra8_err_t rst_err = cam_reset_sensor();
 
   cam_bus_scan();

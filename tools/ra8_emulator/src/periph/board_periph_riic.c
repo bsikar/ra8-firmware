@@ -24,8 +24,10 @@
  *     big-endian register pointer whose chip-ID registers (0x300A / 0x300B)
  *     answer 0x56 / 0x40 so ``camera_capture``'s VERIFY-FIRST sensor probe reads
  *     0x5640 and reaches its CEU capture path (board_periph_ceu.c); config
- *     writes ACK. The register/value path is synthetic (no analog sensor) --
- *     a run-headless enabler, not a claim the board's camera streams.
+ *     writes ACK and the firmware's post-configuration verifier registers
+ *     read back their last written values. The register/value path is synthetic
+ *     (no analog sensor) -- a run-headless enabler, not a claim the board's
+ *     camera streams.
  *
  * Self-registers its descriptor (address range + read / write / reset /
  * report) with the board_periph core from a file-scope constructor.
@@ -338,12 +340,15 @@ static void pi4ioe_stop(void* ctx)
 
 /** @brief OV5640 SCCB sensor constants (cam_ov5640.c / camera_capture). */
 typedef enum : uint16_t {
-  k_ov5640_addr_7b   = 0x3CU,   /**< SCCB 7-bit address (SID low; alt 0x3D). */
-  k_ov5640_reg_id_hi = 0x300AU, /**< Chip-ID high-byte register.             */
-  k_ov5640_reg_id_lo = 0x300BU, /**< Chip-ID low-byte register.              */
-  k_ov5640_id_hi     = 0x56U,   /**< Chip-ID high byte (0x5640 >> 8).        */
-  k_ov5640_id_lo     = 0x40U,   /**< Chip-ID low byte (0x5640 & 0xFF).       */
-  k_ov5640_ptr_bytes = 2U,      /**< 16-bit big-endian register pointer.     */
+  k_ov5640_addr_7b     = 0x3CU,   /**< SCCB 7-bit address (SID low; alt 0x3D). */
+  k_ov5640_reg_id_hi   = 0x300AU, /**< Chip-ID high-byte register.             */
+  k_ov5640_reg_id_lo   = 0x300BU, /**< Chip-ID low-byte register.              */
+  k_ov5640_reg_format  = 0x4300U, /**< DVP output pixel-format register.       */
+  k_ov5640_reg_isp_mux = 0x501FU, /**< ISP output format-mux register.         */
+  k_ov5640_reg_test    = 0x503DU, /**< ISP test-pattern register.              */
+  k_ov5640_id_hi       = 0x56U,   /**< Chip-ID high byte (0x5640 >> 8).        */
+  k_ov5640_id_lo       = 0x40U,   /**< Chip-ID low byte (0x5640 & 0xFF).       */
+  k_ov5640_ptr_bytes   = 2U,      /**< 16-bit big-endian register pointer.     */
 } ov5640_const_t;
 
 /**
@@ -354,13 +359,18 @@ typedef enum : uint16_t {
  * transfer writes the pointer high byte then low byte, then either a data byte
  * (register write) or, after a repeated-START, one read byte (register read).
  * The model answers the chip-ID registers so the firmware's VERIFY-FIRST probe
- * reads 0x5640; every other register reads 0 and config writes are accepted.
+ * reads 0x5640. Configuration writes are accepted, and the three registers the
+ * firmware verifies after programming (format, ISP mux, test pattern) latch and
+ * read back their last written values; all other registers read 0.
  */
 typedef struct {
-  uint16_t reg_ptr;   /**< Active 16-bit register pointer (MSB-first).  */
-  uint8_t  ptr_bytes; /**< Pointer bytes captured this transfer (0..2). */
-  uint32_t writes;    /**< Config register writes accepted.             */
-  uint32_t id_reads;  /**< Chip-ID bytes served (report).               */
+  uint16_t reg_ptr;     /**< Active 16-bit register pointer (MSB-first).  */
+  uint8_t  ptr_bytes;   /**< Pointer bytes captured this transfer (0..2). */
+  uint8_t  reg_format;  /**< Latched 0x4300 DVP output format.            */
+  uint8_t  reg_isp_mux; /**< Latched 0x501F ISP output mux.               */
+  uint8_t  reg_test;    /**< Latched 0x503D test-pattern control.         */
+  uint32_t writes;      /**< Config register writes accepted.             */
+  uint32_t id_reads;    /**< Chip-ID bytes served (report).               */
 } ov5640_state_t;
 
 /** @brief The single modelled OV5640 camera sensor on RIIC channel 1. */
@@ -378,11 +388,18 @@ static void ov5640_write(void* ctx, uint8_t byte)
     p->ptr_bytes++;
     return;
   }
-  /* Data byte after the pointer: accept (ACK) the config write. */
+  /* Data byte after the pointer: latch verifier-visible configuration. */
+  if (p->reg_ptr == (uint16_t)k_ov5640_reg_format) {
+    p->reg_format = byte;
+  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_isp_mux) {
+    p->reg_isp_mux = byte;
+  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_test) {
+    p->reg_test = byte;
+  }
   p->writes++;
 }
 
-/** @brief Sensor -> controller: serve the addressed register (chip-ID or 0). */
+/** @brief Sensor -> controller: serve chip ID, latched verifier registers, or 0. */
 static uint32_t ov5640_read(void* ctx, uint8_t* buf, uint32_t max)
 {
   ov5640_state_t* p = (ov5640_state_t*)ctx;
@@ -396,6 +413,12 @@ static uint32_t ov5640_read(void* ctx, uint8_t* buf, uint32_t max)
   } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_id_lo) {
     v = (uint8_t)k_ov5640_id_lo;
     p->id_reads++;
+  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_format) {
+    v = p->reg_format;
+  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_isp_mux) {
+    v = p->reg_isp_mux;
+  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_test) {
+    v = p->reg_test;
   }
   buf[0] = v;
   return 1U;

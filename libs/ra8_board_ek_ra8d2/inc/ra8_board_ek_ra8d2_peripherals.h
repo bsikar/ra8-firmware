@@ -65,14 +65,14 @@ extern "C" {
  * physical DIP positions.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok                All five U15 register writes succeeded.
- * @retval k_ra8_err_gpio_conflict P400/P401 already owned by another driver.
- * @retval k_ra8_err_hw_init_failed IIC_B0 init failed.
+ * @retval k_ra8_ok                All three U15 register writes succeeded.
+ * @retval k_ra8_err_gpio_conflict P512/P511 already owned by another driver.
+ * @retval k_ra8_err_hw_init_failed RIIC1 initialization failed.
  * @retval k_ra8_err_nack          U15 didn't ACK the register write.
  *
  * @pre IOPORT module powered (reset default).
  * @pre ``ra8_mstp_init`` has run.
- * @post P400/P401 are routed to SCL0/SDA0; IIC_B0 is initialized at
+ * @post P512/P511 are routed to SCL1/SDA1; RIIC1 is initialized at
  *       100 kHz; U15.P0..P7 are configured as outputs driven to
  *       ``k_ra8_board_pi4ioe_output_project_default``.
  *
@@ -82,6 +82,40 @@ extern "C" {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_board_io_expander_apply_project_sw4_defaults(void);
+
+/**
+ * @brief Program an exact U15 SW4 override byte in one bring-up sequence.
+ *
+ * @details Writes the requested output latch before enabling U15's outputs,
+ * avoiding an intermediate board-mux layout. Bit n = 1 requests SW4-(n+1)
+ * OFF and bit n = 0 requests it ON.
+ *
+ * @param[in] output_byte Exact byte for U15's output register.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok U15 is driving @p output_byte.
+ * @retval k_ra8_err_gpio_conflict RIIC1 pins are already owned.
+ * @retval k_ra8_err_hw_init_failed RIIC1 initialization failed.
+ * @retval k_ra8_err_nack U15 did not acknowledge a register write.
+ *
+ * @pre IOPORT is powered and `ra8_mstp_init` has run.
+ * @post RIIC1 is initialized at 100 kHz and U15 drives @p output_byte.
+ * @note Not thread-safe; call once from boot context.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_io_expander_apply_sw4(uint8_t output_byte);
+
+/**
+ * @brief Override selected SW4 positions while releasing every other position.
+ *
+ * @param[in] output_byte Output latch values using the SW4 active-low convention.
+ * @param[in] output_mask Bit mask of U15 pins to drive; clear bits remain inputs.
+ * @return ra8_err_t Error code from RIIC1 or U15 programming.
+ * @post U15's output latch is @p output_byte and IODIR is @p output_mask.
+ * @note Not thread-safe; call once from boot context.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_io_expander_apply_sw4_mask(uint8_t output_byte,
+                                                             uint8_t output_mask);
 
 /**
  * @brief Program the U15 I/O expander to request the Octo-SPI SW4 layout.
@@ -222,21 +256,19 @@ typedef enum : uint16_t {
  * default OFF position) which puts USB-HS into Device mode and leaves
  * the other muxed peripherals at their EK-RA8D2 default routing.
  *
- * Routes P400 -> SCL0 and P401 -> SDA0 (chip HUM I/O Ports +
- * EK-RA8D2 v1 UM Section 5.5.3) and brings IIC_B channel 0 up at
- * 100 kHz (PCLKA = 125 MHz, same divisor used by every other I2C
- * bring-up in this tree -- see ``tests/test_app_i2c_loopback.c``).
+ * Routes P512 -> SCL1 and P511 -> SDA1 and initializes RIIC channel 1 at
+ * 100 kHz.
  *
  * @return ``ra8_err_t`` Error code.
- * @retval k_ra8_ok All five register writes succeeded; U15 is driving
+ * @retval k_ra8_ok All three register writes succeeded; U15 is driving
  *                 SW4-8 = OFF (Device mode).
- * @retval k_ra8_err_gpio_conflict P400/P401 already owned.
- * @retval k_ra8_err_hw_init_failed IIC_B init failed.
+ * @retval k_ra8_err_gpio_conflict P512/P511 already owned.
+ * @retval k_ra8_err_hw_init_failed RIIC1 initialization failed.
  * @retval k_ra8_err_nack U15 didn't ACK the register write.
  *
  * @pre IOPORT module powered (reset default).
  * @pre ``ra8_mstp_init`` has run.
- * @post P400/P401 are routed to SCL0/SDA0; IIC_B0 is initialized at
+ * @post P512/P511 are routed to SCL1/SDA1; RIIC1 is initialized at
  *       100 kHz; U15.P0..P7 are configured as outputs driven HIGH.
  *
  * @note Not thread-safe; call once from the boot context immediately
@@ -260,14 +292,14 @@ typedef enum : uint16_t {
  *
  * @return ``ra8_err_t`` Error code.
  * @retval k_ra8_ok U15 is driving SW4-8 = ON (Host mode).
- * @retval k_ra8_err_gpio_conflict P400/P401 already owned.
- * @retval k_ra8_err_hw_init_failed IIC_B init failed.
+ * @retval k_ra8_err_gpio_conflict P512/P511 already owned.
+ * @retval k_ra8_err_hw_init_failed RIIC1 initialization failed.
  * @retval k_ra8_err_nack U15 didn't ACK a register write.
  *
  * @pre IOPORT module powered (reset default).
  * @pre ``ra8_mstp_init`` has run.
  * @post U15.P0..P7 are outputs driving 0x72; J7 supplies VBUS.
- * @post P400/P401 are routed to SCL0/SDA0 with IIC_B0 at 100 kHz.
+ * @post P512/P511 are routed to SCL1/SDA1 with RIIC1 at 100 kHz.
  *
  * @note Not thread-safe; call once from the boot context before the
  *       USB host bring-up.
