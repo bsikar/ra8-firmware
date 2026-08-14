@@ -309,6 +309,50 @@ typedef struct {
 } ra8_fs_file_t;
 
 /**
+ * @struct ra8_fs_datetime_t
+ * @brief Broken-down civil date and time used at the filesystem boundary.
+ *
+ * @details This value is shared by the injected write clock and metadata read
+ *          results. The fields are civil time; `utc_offset_min` says which
+ *          zone they belong to when the on-disk format records one. FAT has no
+ *          UTC-offset field, while exFAT does.
+ *
+ * @invariant A valid value has year 1980..2107, month 1..12, day 1..31,
+ *            hour 0..23, minute/second 0..59, and centisecond 0..99.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint16_t year;           /**< Full civil year, e.g. 2026.                      */
+  int16_t  utc_offset_min; /**< Offset of the civil fields from UTC, in minutes. */
+  uint8_t  month;          /**< Month of year, 1..12.                            */
+  uint8_t  day;            /**< Day of month, 1..31.                             */
+  uint8_t  hour;           /**< Hour of day, 0..23.                              */
+  uint8_t  minute;         /**< Minute of hour, 0..59.                           */
+  uint8_t  second;         /**< Second of minute, 0..59.                         */
+  uint8_t  centisecond;    /**< Hundredths within `second`, 0..99.               */
+} ra8_fs_datetime_t;
+
+/**
+ * @struct ra8_fs_timestamp_t
+ * @brief One decoded on-disk timestamp plus availability facts.
+ *
+ * @details `valid` distinguishes a real decoded entry stamp from the volume
+ *          root (which has no directory entry) or malformed third-party
+ *          metadata. `utc_offset_valid` is independent because FAT stores a
+ *          valid civil date without any zone, and exFAT may explicitly mark
+ *          its offset unknown.
+ *
+ * @invariant `utc_offset_valid` implies `valid`.
+ * @invariant When `valid` is false, `value` is all zero.
+ * @since 0.1.0
+ */
+typedef struct {
+  ra8_fs_datetime_t value;            /**< Decoded civil date/time.           */
+  bool              valid;            /**< true => the on-disk date is legal. */
+  bool              utc_offset_valid; /**< true => `utc_offset_min` is known. */
+} ra8_fs_timestamp_t;
+
+/**
  * @struct ra8_fs_stat_t
  * @brief What ::ra8_fs_stat() read out of a directory entry.
  *
@@ -335,10 +379,13 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint64_t size_bytes;    /**< File length in bytes; 0 for a directory.        */
-  uint32_t first_cluster; /**< Head of the entry's cluster chain (0 if empty). */
-  uint8_t  attr;          /**< The entry's own FAT attribute byte.             */
-  bool     is_directory;  /**< true => the ATTR_DIRECTORY bit is set.          */
+  uint64_t           size_bytes;    /**< File length in bytes; 0 for a directory.        */
+  uint32_t           first_cluster; /**< Head of the entry's cluster chain (0 if empty). */
+  ra8_fs_timestamp_t created;       /**< Creation timestamp, or invalid for the root.    */
+  ra8_fs_timestamp_t modified;      /**< Last-modified timestamp.                        */
+  ra8_fs_timestamp_t accessed;      /**< Last-accessed timestamp (date-only on FAT).     */
+  uint8_t            attr;          /**< The entry's own FAT attribute byte.             */
+  bool               is_directory;  /**< true => the ATTR_DIRECTORY bit is set.          */
 } ra8_fs_stat_t;
 
 /* =============================================================================

@@ -41,6 +41,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_fs_types.h"
 
 /* =============================================================================
  * Optional lock seam
@@ -157,59 +158,6 @@ typedef struct {
  * Wall-clock seam (dependency injection)
  * =============================================================================
  */
-
-/**
- * @struct ra8_fs_datetime_t
- * @brief Broken-down civil date and time, as the volume should record it.
- *
- * @details
- * The unit of exchange between a caller's calendar source and the on-disk
- * timestamp fields. `ra8_fs` owns no clock: `ra8_time` is a monotonic
- * millisecond counter and the calendar source (`ra8_rtc_get()`) lives in
- * `ra8_hal`, which this library must not depend on if it is to keep building
- * against the host test mock. So the caller supplies the reading and this
- * struct is what it supplies it in.
- *
- * The fields are the civil time to WRITE, not necessarily UTC.
- * @ref ra8_fs_datetime_t::utc_offset_min says which zone that civil time is
- * in, and exFAT records it. FAT has no offset field at all -- a FAT stamp is
- * whatever civil time was handed over, exactly as every other FAT
- * implementation stores it -- so a caller that wants FAT dates to read
- * correctly on a desktop in its own zone should supply local time.
- *
- * Out-of-range fields are CLAMPED into the range the on-disk format can
- * express rather than rejected: a filesystem must not fail a write because a
- * clock came back with a bad month. A year before 1980 (the FAT epoch, and
- * the exFAT epoch) or after 2107 clamps to the nearest representable year.
- *
- * @invariant `month` is 1..12, `day` 1..31, `hour` 0..23, `minute` 0..59,
- *            `second` 0..59, `centisecond` 0..99 -- any value outside those
- *            ranges is clamped on the way to the disk, never stored raw.
- * @invariant `utc_offset_min` is the signed offset of the OTHER fields from
- *            UTC; a value that is not a whole number of 15-minute steps in
- *            -12:00..+14:00 is recorded as "offset unknown".
- *
- * @par Example:
- * @code
- * ra8_fs_datetime_t t = {};
- * t.year = 2026; t.month = 8; t.day = 4;
- * t.hour = 13;   t.minute = 45; t.second = 30;
- * t.utc_offset_min = -300;  // UTC-05:00
- * @endcode
- *
- * @see ra8_fs_clock_t
- * @since 0.1.0
- */
-typedef struct {
-  uint16_t year;           /**< Full civil year, e.g. 2026 (1980..2107 on disk). */
-  int16_t  utc_offset_min; /**< Offset of the fields above from UTC, in minutes. */
-  uint8_t  month;          /**< Month of year, 1..12.                            */
-  uint8_t  day;            /**< Day of month, 1..31.                             */
-  uint8_t  hour;           /**< Hour of day, 0..23.                              */
-  uint8_t  minute;         /**< Minute of hour, 0..59.                           */
-  uint8_t  second;         /**< Second of minute, 0..59.                         */
-  uint8_t  centisecond;    /**< Hundredths within `second`, 0..99.               */
-} ra8_fs_datetime_t;
 
 /**
  * @struct ra8_fs_clock_t

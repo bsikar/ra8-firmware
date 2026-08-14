@@ -9,9 +9,9 @@
  * @details
  * A small registry that lets the fabric recognise the on-disk filesystem on a
  * block device and report what that format can do, without the upper layers
- * hard-coding a `switch` over FAT vs exFAT. Each format provides a `probe`
- * (does this volume look like me?) and a capability descriptor (read-only?
- * sub-directories? streaming writes? name length?). FAT and exFAT are
+ * hard-coding a `switch` over FAT vs exFAT. Each format provides a complete
+ * operations table beginning with `probe` and a capability descriptor
+ * (read-only? sub-directories? streaming writes? name length?). FAT and exFAT are
  * registered as built-ins; a foreign format (a future APFS / NTFS / btrfs / ZFS
  * reader, or a test stub) registers through ::ra8_io_fsfmt_register with no
  * change to the existing code -- that is the pluggability seam.
@@ -44,6 +44,7 @@ extern "C" {
 
 #include "ra8_err.h"
 #include "ra8_fs.h"
+#include "ra8_fs_meta.h"
 
 /**
  * @enum ra8_io_fsfmt_limits_t
@@ -65,11 +66,18 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint16_t max_name_len;             /**< Longest file name (incl NUL).         */
-  bool     read_only;                /**< true => no writes/creates/erases.     */
-  bool     supports_mkdir;           /**< true => sub-directory creation.       */
-  bool     supports_streaming_write; /**< true => open-for-write streaming.     */
-  bool     case_sensitive;           /**< true => names compare case-sensitive. */
+  uint16_t max_name_len;             /**< Max UTF-8 bytes in one name, excluding NUL.  */
+  bool     read_only;                /**< true => no writes/creates/erases.            */
+  bool     supports_mkdir;           /**< true => sub-directory creation.              */
+  bool     supports_rmdir;           /**< true => empty-directory removal.             */
+  bool     supports_streaming_write; /**< true => open-for-write streaming.            */
+  bool     supports_timestamps;      /**< true => stat reports entry timestamps.       */
+  bool     supports_free_space;      /**< true => a cheap free-space query exists.     */
+  bool     supports_sync;            /**< true => an explicit software sync op exists. */
+  bool     atomic_rename;            /**< true => rename is power-loss atomic.         */
+  bool     durable_sync;             /**< true => sync reaches non-volatile media.     */
+  bool     unicode_names;            /**< true => public names are strict UTF-8.       */
+  bool     case_sensitive;           /**< true => names compare case-sensitive.        */
 } ra8_io_fsfmt_caps_t;
 
 /**
@@ -82,6 +90,80 @@ typedef struct {
  */
 typedef bool (*ra8_io_fsfmt_probe_fn_t)(const ra8_fs_backend_t* backend);
 
+/** @brief Mount a format over a block backend and return its private context. */
+typedef ra8_err_t (*ra8_io_fsfmt_mount_fn_t)(const ra8_fs_backend_t* backend, void** out_mount);
+/** @brief Release a context returned by ::ra8_io_fsfmt_mount_fn_t. */
+typedef ra8_err_t (*ra8_io_fsfmt_unmount_fn_t)(void* mount_ctx);
+/** @brief Open a path and return a format-private file context. */
+typedef ra8_err_t (*ra8_io_fsfmt_open_fn_t)(void*         mount_ctx,
+                                            const char*   path,
+                                            ra8_fs_mode_t mode,
+                                            void**        out_file);
+/** @brief Close a format-private file context. */
+typedef ra8_err_t (*ra8_io_fsfmt_close_fn_t)(void* file_ctx);
+/** @brief Read from a format-private file context. */
+typedef ra8_err_t (*ra8_io_fsfmt_read_fn_t)(void*     file_ctx,
+                                            void*     buf,
+                                            uint32_t  bytes,
+                                            uint32_t* out_read);
+/** @brief Write to a format-private file context. */
+typedef ra8_err_t (*ra8_io_fsfmt_write_fn_t)(void* file_ctx, const void* buf, uint32_t bytes);
+/** @brief Seek a format-private file context. */
+typedef ra8_err_t (*ra8_io_fsfmt_seek_fn_t)(void* file_ctx, uint64_t offset_bytes);
+/** @brief Report a format-private file context's offset. */
+typedef ra8_err_t (*ra8_io_fsfmt_tell_fn_t)(const void* file_ctx, uint64_t* out_offset);
+/** @brief Report a format-private file context's size. */
+typedef ra8_err_t (*ra8_io_fsfmt_size_fn_t)(const void* file_ctx, uint64_t* out_bytes);
+/** @brief Flush format-owned software state for one file. */
+typedef ra8_err_t (*ra8_io_fsfmt_sync_fn_t)(void* file_ctx);
+/** @brief Query path metadata in a mounted format. */
+typedef ra8_err_t (*ra8_io_fsfmt_stat_fn_t)(void* mount_ctx, const char* path, ra8_fs_stat_t* out);
+/** @brief Enumerate one directory in a mounted format. */
+typedef ra8_err_t (*ra8_io_fsfmt_listdir_fn_t)(void*               mount_ctx,
+                                               const char*         path,
+                                               ra8_fs_listdir_cb_t cb,
+                                               void*               cb_ctx);
+/** @brief Apply a one-path namespace mutation. */
+typedef ra8_err_t (*ra8_io_fsfmt_path_fn_t)(void* mount_ctx, const char* path);
+/** @brief Rename within one mounted format. */
+typedef ra8_err_t (*ra8_io_fsfmt_rename_fn_t)(void*       mount_ctx,
+                                              const char* old_path,
+                                              const char* new_path);
+/** @brief Query capacity and free space in one mounted format. */
+typedef ra8_err_t (*ra8_io_fsfmt_space_fn_t)(void* mount_ctx, ra8_fs_space_t* out);
+
+/**
+ * @struct ra8_io_fsfmt_ops_t
+ * @brief Complete filesystem-format dispatch surface used by the VFS.
+ *
+ * @details A registered format owns these operations; the VFS never switches
+ *          on FAT/exFAT or reaches into format internals. Optional operations
+ *          may be NULL and are capability-gated as ::k_ra8_err_not_supported.
+ *          All contexts and file handles remain implementation-owned; the VFS
+ *          stores only pointers in fixed tables and allocates nothing.
+ * @since 0.1.0
+ */
+typedef struct {
+  ra8_io_fsfmt_probe_fn_t   probe;      /**< Recognise an on-disk volume.          */
+  ra8_io_fsfmt_mount_fn_t   mount;      /**< Bind a block backend.                 */
+  ra8_io_fsfmt_unmount_fn_t unmount;    /**< Release a mounted context.            */
+  ra8_io_fsfmt_open_fn_t    open;       /**< Open a file stream.                   */
+  ra8_io_fsfmt_close_fn_t   close;      /**< Close a file stream.                  */
+  ra8_io_fsfmt_read_fn_t    read;       /**< Read stream bytes.                    */
+  ra8_io_fsfmt_write_fn_t   write;      /**< Write stream bytes.                   */
+  ra8_io_fsfmt_seek_fn_t    seek;       /**< Set stream offset.                    */
+  ra8_io_fsfmt_tell_fn_t    tell;       /**< Query stream offset.                  */
+  ra8_io_fsfmt_size_fn_t    size;       /**< Query stream size.                    */
+  ra8_io_fsfmt_sync_fn_t    sync;       /**< Flush software state, when supported. */
+  ra8_io_fsfmt_stat_fn_t    stat;       /**< Query path metadata.                  */
+  ra8_io_fsfmt_listdir_fn_t listdir;    /**< Enumerate a directory.                */
+  ra8_io_fsfmt_path_fn_t    unlink;     /**< Remove a plain file.                  */
+  ra8_io_fsfmt_rename_fn_t  rename;     /**< Rename within the mount.              */
+  ra8_io_fsfmt_path_fn_t    mkdir;      /**< Create a directory.                   */
+  ra8_io_fsfmt_path_fn_t    rmdir;      /**< Remove an empty directory.            */
+  ra8_io_fsfmt_space_fn_t   free_space; /**< Query free/total bytes.               */
+} ra8_io_fsfmt_ops_t;
+
 /**
  * @struct ra8_io_fsfmt_t
  * @brief One registered filesystem format.
@@ -89,14 +171,14 @@ typedef bool (*ra8_io_fsfmt_probe_fn_t)(const ra8_fs_backend_t* backend);
  * @details A format is a `const` instance the caller (or a built-in) exports;
  *          the registry holds pointers to them, so they must out-live it.
  *
- * @invariant `name` and `probe` are non-NULL.
+ * @invariant `name`, `ops`, and every mandatory read-side operation are non-NULL.
  *
  * @since 0.1.0
  */
 typedef struct {
-  const char*             name;  /**< Short format name, e.g. "fat" / "exfat". */
-  ra8_io_fsfmt_caps_t     caps;  /**< What the format supports.                */
-  ra8_io_fsfmt_probe_fn_t probe; /**< On-disk signature test.                  */
+  const char*               name; /**< Short format name, e.g. "fat" / "exfat". */
+  ra8_io_fsfmt_caps_t       caps; /**< What the format supports.                */
+  const ra8_io_fsfmt_ops_t* ops;  /**< Runtime dispatch table.                  */
 } ra8_io_fsfmt_t;
 
 /**
@@ -123,7 +205,8 @@ typedef struct {
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok              Format registered.
- * @retval k_ra8_err_null_ptr    `fmt`, `fmt->name`, or `fmt->probe` was NULL.
+ * @retval k_ra8_err_null_ptr    A mandatory descriptor or operation was NULL.
+ * @retval k_ra8_err_invalid_arg A capability claimed an absent optional op.
  * @retval k_ra8_err_no_mem      The registry is full.
  *
  * @pre `fmt` and its members out-live the registry.
@@ -136,6 +219,25 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_io_fsfmt_register(const ra8_io_fsfmt_t* fmt);
+
+/**
+ * @brief Return the built-in descriptor serving one native ra8_fs type.
+ *
+ * @details FAT12/16/32 share the FAT descriptor; exFAT has its own descriptor.
+ *          This lookup does not depend on registry initialization and is used
+ *          to adapt an already-mounted legacy ::ra8_fs_mount_t into the same
+ *          operations-dispatched VFS path as an automatically probed mount.
+ *
+ * @param[in]  type Native filesystem type.
+ * @param[out] out  Matching built-in descriptor.
+ *
+ * @retval k_ra8_ok              Descriptor returned.
+ * @retval k_ra8_err_null_ptr    `out` was NULL.
+ * @retval k_ra8_err_invalid_arg `type` was unknown or foreign.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_io_fsfmt_get_builtin(ra8_fs_type_t type, const ra8_io_fsfmt_t** out);
 
 /**
  * @brief Detect the format of a volume by probing registered formats in order.
