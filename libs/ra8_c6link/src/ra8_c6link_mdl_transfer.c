@@ -19,10 +19,10 @@
 
 /** @brief State that must be unwound together after storage begins. */
 typedef struct {
-  ra8_c6link_t*                    link;
-  const ra8_mdl_transfer_config_t* config;
-  ra8_mdl_session_t                session;
-  bool                             storage_active;
+  ra8_c6link_t*                    link;    /**< Active media RPC link.       */
+  const ra8_mdl_transfer_config_t* config;  /**< Injected storage/hash seams. */
+  ra8_mdl_session_t                session; /**< Correlated remote session.   */
+  bool storage_active;                      /**< Whether local temporary storage needs abort. */
 } mdl_transfer_state_t;
 
 /**

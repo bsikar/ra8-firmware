@@ -35,20 +35,22 @@
  * @brief Sizes this test file owns, as opposed to the model's own.
  */
 typedef enum : uint32_t {
-  k_t_arena          = 4096U, /**< Decode arena handed to the link.                  */
-  k_t_events         = 8U,    /**< Announcements this file will remember.            */
-  k_t_ssid_len       = 9U,    /**< Length of the SSID the tests configure.           */
-  k_t_stray_len      = 16U,   /**< Length of a payload that is not an envelope.      */
-  k_t_junk_len       = 3U,    /**< Length of an envelope body that is not an Rpc.    */
-  k_t_hdr_off_lo     = 4U,    /**< Offset of the payload header's offset field.      */
-  k_t_pin_first      = 0xDEU, /**< First octet of the pinned BSSID a join sends.     */
-  k_t_pin_last       = 0xADU, /**< Its last octet.                                   */
-  k_t_pin_last_i     = 5U,    /**< Index of that last octet.                         */
-  k_t_stray_first    = 0xF0U, /**< First octet of a payload that is not an envelope. */
-  k_t_junk_octet     = 0xFFU, /**< Filler for an envelope body that is not an Rpc.   */
-  k_t_caps_tlv_bytes = 15U,   /**< Octets of TLV the announcement declares.          */
-  k_t_throttle_high  = 80U,   /**< Flow-control high-water mark it advertises.       */
-  k_t_throttle_low   = 60U,   /**< Its low-water mark.                               */
+  k_t_arena               = 4096U, /**< Decode arena handed to the link.                  */
+  k_t_events              = 8U,    /**< Announcements this file will remember.            */
+  k_t_ssid_len            = 9U,    /**< Length of the SSID the tests configure.           */
+  k_t_stray_len           = 16U,   /**< Length of a payload that is not an envelope.      */
+  k_t_junk_len            = 3U,    /**< Length of an envelope body that is not an Rpc.    */
+  k_t_hdr_off_lo          = 4U,    /**< Offset of the payload header's offset field.      */
+  k_t_pin_first           = 0xDEU, /**< First octet of the pinned BSSID a join sends.     */
+  k_t_pin_last            = 0xADU, /**< Its last octet.                                   */
+  k_t_pin_last_i          = 5U,    /**< Index of that last octet.                         */
+  k_t_stray_first         = 0xF0U, /**< First octet of a payload that is not an envelope. */
+  k_t_junk_octet          = 0xFFU, /**< Filler for an envelope body that is not an Rpc.   */
+  k_t_caps_tlv_bytes      = 15U,   /**< Octets of TLV the announcement declares.          */
+  k_t_throttle_high       = 80U,   /**< Flow-control high-water mark it advertises.       */
+  k_t_throttle_low        = 60U,   /**< Its low-water mark.                               */
+  k_t_mdl_digest_fill     = 0xA5U, /**< Expected model media digest octet.                */
+  k_t_mdl_bad_digest_fill = 0x5AU, /**< Deliberately mismatched digest octet.         */
 } t_c6_const_t;
 
 /** @brief Decode arena handed to the link under test. */
@@ -1074,29 +1076,29 @@ static void test_media_download_terminal_status(void)
 
 /** @brief Failure injection and observations for a transactional store. */
 typedef struct {
-  uint8_t   bytes[16];
-  uint16_t  len;
-  ra8_err_t write_error;
-  ra8_err_t validation_error;
-  bool      short_write;
-  uint8_t   begins;
-  uint8_t   validations;
-  uint8_t   commits;
-  uint8_t   aborts;
+  uint8_t   bytes[16];        /**< Bytes written to temporary storage.  */
+  uint16_t  len;              /**< Number of valid stored bytes.        */
+  ra8_err_t write_error;      /**< Injected write result.               */
+  ra8_err_t validation_error; /**< Injected artifact validation result. */
+  bool      short_write;      /**< Whether writes accept one less byte. */
+  uint8_t   begins;           /**< Begin callback count.                */
+  uint8_t   validations;      /**< Validation callback count.           */
+  uint8_t   commits;          /**< Commit callback count.               */
+  uint8_t   aborts;           /**< Abort callback count.                */
 } t_mdl_store_t;
 
 /** @brief Failure injection and observations for a streaming hash. */
 typedef struct {
-  uint8_t  bytes[16];
-  uint16_t len;
-  bool     bad_digest;
+  uint8_t  bytes[16];  /**< Bytes observed by the model hash. */
+  uint16_t len;        /**< Number of observed hash bytes.    */
+  bool     bad_digest; /**< Whether final emits corruption.   */
 } t_mdl_hash_t;
 
 /** @brief One fixed set of coordinator seams. */
 typedef struct {
-  t_mdl_store_t store;
-  t_mdl_hash_t  hash;
-  bool          cancel;
+  t_mdl_store_t store;  /**< Transactional storage fixture. */
+  t_mdl_hash_t  hash;   /**< Streaming hash fixture.        */
+  bool          cancel; /**< Cooperative cancellation flag. */
 } t_mdl_transfer_fixture_t;
 
 static t_mdl_transfer_fixture_t s_mdl_transfer;
@@ -1141,7 +1143,7 @@ t_mdl_store_validate(void* ctx, uint64_t total_bytes, const uint8_t sha256[k_ra8
     return store->validation_error;
   }
   if ((total_bytes != 6U) || (store->len != 6U) || (memcmp(store->bytes, "abcdef", 6U) != 0) ||
-      (sha256[0] != 0xA5U)) {
+      (sha256[0] != k_t_mdl_digest_fill)) {
     return k_ra8_err_validation_failed;
   }
   return k_ra8_ok;
@@ -1188,7 +1190,9 @@ static ra8_err_t t_mdl_sha_update(void* ctx, const uint8_t* data, uint16_t len)
 static ra8_err_t t_mdl_sha_final(void* ctx, uint8_t out[k_ra8_mdl_sha256_bytes])
 {
   const t_mdl_hash_t* hash = (const t_mdl_hash_t*)ctx;
-  memset(out, hash->bad_digest ? 0x5AU : 0xA5U, k_ra8_mdl_sha256_bytes);
+  memset(out,
+         hash->bad_digest ? k_t_mdl_bad_digest_fill : k_t_mdl_digest_fill,
+         k_ra8_mdl_sha256_bytes);
   return k_ra8_ok;
 }
 

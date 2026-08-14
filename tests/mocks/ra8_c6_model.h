@@ -50,23 +50,25 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_c6m_queue       = 10U,   /**< Frames the model may hold for the host.      */
-  k_c6m_seen        = 16U,   /**< Request ids the model records, in order.     */
-  k_c6m_fw_major    = 2U,    /**< Firmware major version reported.             */
-  k_c6m_fw_minor    = 12U,   /**< Firmware minor version reported.             */
-  k_c6m_fw_patch    = 11U,   /**< Firmware patch version reported.             */
-  k_c6m_chip_id     = 0x0DU, /**< `ESP_PRIV_FIRMWARE_CHIP_ESP32C6`.            */
-  k_c6m_channel     = 6U,    /**< Channel the modelled AP is on.               */
-  k_c6m_reason      = 15U,   /**< 802.11 four-way-handshake timeout.           */
-  k_c6m_rssi_mag    = 55U,   /**< Magnitude of the modelled RSSI, in dBm.      */
-  k_c6m_eth_len     = 64U,   /**< Length of the modelled Ethernet frame.       */
-  k_c6m_wifi_ev     = 2U,    /**< `WIFI_EVENT_STA_START`, as the bench saw it. */
-  k_c6m_bssid_first = 2U,    /**< First octet of the modelled AP address; the
+  k_c6m_queue                 = 10U,   /**< Frames the model may hold for the host.      */
+  k_c6m_seen                  = 16U,   /**< Request ids the model records, in order.     */
+  k_c6m_fw_major              = 2U,    /**< Firmware major version reported.             */
+  k_c6m_fw_minor              = 12U,   /**< Firmware minor version reported.             */
+  k_c6m_fw_patch              = 11U,   /**< Firmware patch version reported.             */
+  k_c6m_chip_id               = 0x0DU, /**< `ESP_PRIV_FIRMWARE_CHIP_ESP32C6`.            */
+  k_c6m_channel               = 6U,    /**< Channel the modelled AP is on.               */
+  k_c6m_reason                = 15U,   /**< 802.11 four-way-handshake timeout.           */
+  k_c6m_rssi_mag              = 55U,   /**< Magnitude of the modelled RSSI, in dBm.      */
+  k_c6m_eth_len               = 64U,   /**< Length of the modelled Ethernet frame.       */
+  k_c6m_wifi_ev               = 2U,    /**< `WIFI_EVENT_STA_START`, as the bench saw it. */
+  k_c6m_bssid_first           = 2U,    /**< First octet of the modelled AP address; the
                                rest ascend from it.                        */
-  k_c6m_mac_first   = 9U,    /**< First octet of the modelled station address;
+  k_c6m_mac_first             = 9U,    /**< First octet of the modelled station address;
                                the rest descend from it.                   */
-  k_c6m_eth_first   = 0x80U, /**< First octet of the modelled 802.3 frame.      */
-  k_c6m_caps_bytes  = 17U,   /**< Octets in the host-capabilities announcement. */
+  k_c6m_eth_first             = 0x80U, /**< First octet of the modelled 802.3 frame.      */
+  k_c6m_caps_bytes            = 17U,   /**< Octets in the host-capabilities announcement. */
+  k_c6m_mdl_digest_fill       = 0xA5U, /**< Deterministic media digest test octet.      */
+  k_c6m_custom_response_bytes = 1200U, /**< CustomRpc response scratch capacity. */
 } ra8_c6_model_const_t;
 
 /**
@@ -95,15 +97,15 @@ typedef enum : int32_t {
 
 /** @brief Test-only corruption applied to the next media Chunk response. */
 typedef enum : uint8_t {
-  k_c6m_mdl_fault_none = 0U,
-  k_c6m_mdl_fault_complete_no_sha,
-  k_c6m_mdl_fault_complete_bad_total,
-  k_c6m_mdl_fault_failed,
-  k_c6m_mdl_fault_failed_zero_status,
-  k_c6m_mdl_fault_cancelled,
-  k_c6m_mdl_fault_cancelled_with_data,
-  k_c6m_mdl_fault_downloading_error,
-  k_c6m_mdl_fault_out_of_order,
+  k_c6m_mdl_fault_none = 0U,           /**< Leave the next chunk unchanged. */
+  k_c6m_mdl_fault_complete_no_sha,     /**< Omit the terminal digest.       */
+  k_c6m_mdl_fault_complete_bad_total,  /**< Corrupt the terminal total.     */
+  k_c6m_mdl_fault_failed,              /**< Emit a coherent failure.        */
+  k_c6m_mdl_fault_failed_zero_status,  /**< Emit failure with zero status.  */
+  k_c6m_mdl_fault_cancelled,           /**< Emit coherent cancellation.     */
+  k_c6m_mdl_fault_cancelled_with_data, /**< Attach data to cancellation.    */
+  k_c6m_mdl_fault_downloading_error,   /**< Attach error to active data.    */
+  k_c6m_mdl_fault_out_of_order,        /**< Increment the response sequence. */
 } ra8_c6_model_mdl_fault_t;
 
 /**

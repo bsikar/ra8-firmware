@@ -1,6 +1,8 @@
 /**
  * @file ra8_c6link_mdl.c
  * @brief Pull-based media download client over generated protobuf codecs.
+ * @details Encodes bounded media requests and validates every correlated
+ * response before mutating caller-owned session or chunk state.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -15,23 +17,25 @@
 #include "ra8_media_download.pb-c.h"
 
 /** @brief Largest encoded inner request (bounded URL plus protobuf overhead). */
-typedef enum : uint16_t { k_mdl_request_bytes = k_ra8_mdl_url_max + 32U } mdl_request_const_t;
+typedef enum : uint16_t {
+  k_mdl_request_bytes = k_ra8_mdl_url_max + 32U, /**< Maximum packed request bytes. */
+} mdl_request_const_t;
 
 /** @brief Response extractor variants. */
 typedef enum : uint8_t {
-  k_mdl_take_accepted  = 1U,
-  k_mdl_take_chunk     = 2U,
-  k_mdl_take_cancelled = 3U,
+  k_mdl_take_accepted  = 1U, /**< Extract an Accepted response.  */
+  k_mdl_take_chunk     = 2U, /**< Extract a Chunk response.     */
+  k_mdl_take_cancelled = 3U, /**< Extract a Cancelled response. */
 } mdl_take_kind_t;
 
 /** @brief Context consumed synchronously by the CustomRpc response extractor. */
 typedef struct {
-  ra8_c6link_t*      link;
-  ra8_mdl_session_t* session;
-  ra8_mdl_chunk_t*   chunk;
-  uint32_t           operation;
-  uint16_t           requested_bytes;
-  mdl_take_kind_t    kind;
+  ra8_c6link_t*      link;            /**< Link whose arena decoded the response. */
+  ra8_mdl_session_t* session;         /**< Correlated caller session.             */
+  ra8_mdl_chunk_t*   chunk;           /**< Optional caller chunk destination.     */
+  uint32_t           operation;       /**< Expected CustomRpc operation id.       */
+  uint16_t           requested_bytes; /**< Maximum accepted response body bytes.  */
+  mdl_take_kind_t    kind;            /**< Expected generated response variant.   */
 } mdl_take_ctx_t;
 
 /**
@@ -250,6 +254,8 @@ static ra8_err_t mdl_take_response(void* ctx, const void* msg_v)
   }
 }
 
+/* protobuf-c's pack-only binary-data ABI still declares its byte pointer mutable. */
+// NOLINTBEGIN(readability-non-const-parameter)
 /**
  * @brief Send one already-encoded generated message through CustomRpc
  * @details Wraps caller-owned inner bytes without retaining them after the synchronous call.
@@ -291,6 +297,7 @@ static ra8_err_t mdl_call(ra8_c6link_t*   link,
                                   mdl_take_response,
                                   take);
 }
+// NOLINTEND(readability-non-const-parameter)
 
 ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t* link, const char* url, ra8_mdl_session_t* session)
 {

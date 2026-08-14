@@ -1,6 +1,8 @@
 /**
  * @file test_ra8_c6link_mdl.c
  * @brief Generated-code and service-state tests for media download RPC.
+ * @details Exercises bounded generated-code dispatch, job correlation,
+ * transactional response sizing, cancellation, and malformed input rejection.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -14,18 +16,27 @@
 #include "ra8_media_download.pb-c.h"
 #include "unity_minimal.h"
 
+/** @brief Fixed capacities and sentinels owned by this service fixture. */
+typedef enum : uint16_t {
+  k_t_mdl_request_bytes  = 700U,  /**< Packed request scratch capacity. */
+  k_t_mdl_response_bytes = 1200U, /**< Packed response scratch capacity. */
+  k_t_mdl_len_sentinel   = 99U,   /**< Non-zero output-length sentinel. */
+  k_t_mdl_digest_fill    = 0xA5U, /**< Deterministic digest test octet. */
+} t_mdl_const_t;
+
+/** @brief State for the deterministic media backend. */
 typedef struct {
-  const uint8_t* bytes;
-  size_t         len;
-  size_t         at;
-  uint32_t       begins;
-  uint32_t       cancels;
+  const uint8_t* bytes;   /**< Modelled response body.         */
+  size_t         len;     /**< Total response body length.     */
+  size_t         at;      /**< Offset of the next body byte.   */
+  uint32_t       begins;  /**< Successful begin call count.    */
+  uint32_t       cancels; /**< Successful cancel call count.   */
 } fake_backend_t;
 
 static fake_backend_t    s_backend;
 static ra8_mdl_service_t s_service;
-static uint8_t           s_request[700];
-static uint8_t           s_response[1200];
+static uint8_t           s_request[k_t_mdl_request_bytes];
+static uint8_t           s_response[k_t_mdl_response_bytes];
 
 static ra8_err_t fake_begin(void* ctx, const char* url)
 {
@@ -57,7 +68,7 @@ static ra8_err_t fake_read(void*     ctx,
   *total_bytes = fake->len;
   *complete    = (take == 0U);
   if (*complete) {
-    memset(sha256, 0xA5, k_ra8_mdl_sha256_bytes);
+    memset(sha256, k_t_mdl_digest_fill, k_ra8_mdl_sha256_bytes);
   }
   return k_ra8_ok;
 }
@@ -222,6 +233,8 @@ static void test_service_busy_stale_and_cancel(void)
   TEST_END("mdl service busy stale cancel");
 }
 
+// One linear scenario proves that each rejected response leaves later state usable.
+// NOLINTNEXTLINE(readability-function-size)
 static void test_response_capacity_is_transactional(void)
 {
   TEST_BEGIN("mdl response capacity is transactional");
@@ -231,7 +244,7 @@ static void test_response_capacity_is_transactional(void)
   start.protocol_version       = k_ra8_mdl_protocol_version;
   start.url                    = (char*)"https://example.test/book";
   size_t request_len           = ra8__mdl__start_request__pack(&start, s_request);
-  size_t response_len          = 99U;
+  size_t response_len          = k_t_mdl_len_sentinel;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_mdl_service_dispatch(&s_service,
                                           k_ra8_mdl_rpc_start,
@@ -253,7 +266,7 @@ static void test_response_capacity_is_transactional(void)
   next.acknowledged_offset   = 0U;
   next.max_bytes             = 4U;
   request_len                = ra8__mdl__next_request__pack(&next, s_request);
-  response_len               = 99U;
+  response_len               = k_t_mdl_len_sentinel;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_mdl_service_dispatch(&s_service,
                                           k_ra8_mdl_rpc_next,
@@ -277,7 +290,7 @@ static void test_response_capacity_is_transactional(void)
   cancel.protocol_version        = k_ra8_mdl_protocol_version;
   cancel.job_id                  = job;
   request_len                    = ra8__mdl__cancel_request__pack(&cancel, s_request);
-  response_len                   = 99U;
+  response_len                   = k_t_mdl_len_sentinel;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_mdl_service_dispatch(&s_service,
                                           k_ra8_mdl_rpc_cancel,
@@ -308,7 +321,7 @@ static void test_rejects_malformed(void)
 {
   TEST_BEGIN("mdl rejects malformed");
   reset_service();
-  size_t response_len = 99U;
+  size_t response_len = k_t_mdl_len_sentinel;
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_mdl_service_dispatch(&s_service,
                                           0xDEADBEEFU,
@@ -330,7 +343,7 @@ static void test_rejects_malformed(void)
   insecure.protocol_version       = k_ra8_mdl_protocol_version;
   insecure.url                    = (char*)"http://example.test/book";
   const size_t insecure_len       = ra8__mdl__start_request__pack(&insecure, s_request);
-  response_len                    = 99U;
+  response_len                    = k_t_mdl_len_sentinel;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_mdl_service_dispatch(&s_service,
                                           k_ra8_mdl_rpc_start,
