@@ -169,7 +169,8 @@ resolve_root_rel(const char* auth, const char* raw, char* out, size_t out_cap)
 {
   /* The snprintf return is the truncation test: n >= out_cap is exactly the
    * over-long case a separate strlen guard would reject, and using the return
-   * (rather than discarding it) is also what keeps -Wformat-truncation quiet. */
+   * (rather than discarding it) is also what keeps -Wformat-truncation quiet.
+   */
   const int n = snprintf(out, out_cap, "%s%s", auth, raw);
   return (n >= 0) && ((size_t)n < out_cap);
 }
@@ -188,7 +189,8 @@ resolve_path_rel(const char* base, const char* auth, const char* raw, char* out,
   }
   if (slash < strlen(auth)) {
     /* As in resolve_root_rel: the snprintf return is the truncation test, and
-     * using it keeps -Wformat-truncation quiet where a discarded return does not. */
+     * using it keeps -Wformat-truncation quiet where a discarded return does
+     * not. */
     const int n = snprintf(out, out_cap, "%s/%s", auth, raw);
     return (n >= 0) && ((size_t)n < out_cap);
   }
@@ -201,8 +203,11 @@ resolve_path_rel(const char* base, const char* auth, const char* raw, char* out,
 }
 
 /** @brief Resolve `raw` (possibly relative) against `base` into `out`. */
-RA8_INTERNAL static bool resolve_url(const char* base, const char* raw, char* out, size_t out_cap)
+bool mdl_extract_resolve_url(const char* base, const char* raw, char* out, size_t out_cap)
 {
+  if ((base == nullptr) || (raw == nullptr) || (out == nullptr) || (out_cap == 0U)) {
+    return false;
+  }
   while ((*raw == ' ') || (*raw == '\t') || (*raw == '\n') || (*raw == '\r')) {
     ++raw;
   }
@@ -269,7 +274,7 @@ RA8_INTERNAL static ra8_err_t emit_tag_url(const char*     base_url,
     return k_ra8_ok;
   }
   char abs[k_mdl_url_max];
-  if (!resolve_url(base_url, raw, abs, sizeof(abs)) || !contains_ok(abs, keep) ||
+  if (!mdl_extract_resolve_url(base_url, raw, abs, sizeof(abs)) || !contains_ok(abs, keep) ||
       already_have(out, abs)) {
     return k_ra8_ok;
   }
@@ -385,15 +390,30 @@ decode_entity(const char* s, size_t len, size_t* i, char* out_ch, bool* space)
 }
 
 /**
- * @brief Copy the anchor inner text from `text` into `out`, cleaned for display.
+ * @brief Copy the anchor inner text from `text` into `out`, cleaned for
+ * display.
  * @details Strips nested `<...>` tags, collapses runs of whitespace to one
  *          space, decodes the common HTML entities, and trims the ends.
+ * @param[in]  text Source HTML fragment; need not be NUL-terminated.
+ * @param[in]  len  Number of readable bytes at @p text.
+ * @param[out] out  Destination for cleaned display text.
+ * @param[in]  cap  Destination capacity including NUL.
+ * @return Whether the complete cleaned text fit.
+ * @retval true  @p out contains the complete cleaned text.
+ * @retval false @p out contains a NUL-terminated truncated prefix.
+ * @pre @p text and @p out are non-NULL.
+ * @pre @p cap is greater than zero and describes writable @p out storage.
+ * @post @p out is always NUL-terminated.
+ * @post No source bytes are modified.
+ * @note Thread-safe: uses only caller-owned storage.
+ * @since 0.1.0
  */
-RA8_INTERNAL static void clean_inner_text(const char* text, size_t len, char* out, size_t cap)
+RA8_INTERNAL static bool clean_inner_text(const char* text, size_t len, char* out, size_t cap)
 {
   size_t n       = 0U;
   bool   pending = false; /* a space is owed before the next visible char */
-  for (size_t i = 0U; (i < len) && ((n + 1U) < cap); ++i) {
+  bool   fits    = true;
+  for (size_t i = 0U; i < len; ++i) {
     const char c = text[i];
     if (c == '<') {
       while ((i < len) && (text[i] != '>')) {
@@ -416,17 +436,23 @@ RA8_INTERNAL static void clean_inner_text(const char* text, size_t len, char* ou
     if (pending && ((n + 1U) < cap)) {
       out[n] = ' ';
       ++n;
+    } else if (pending) {
+      fits = false;
     }
     pending = false;
     if ((n + 1U) < cap) {
       out[n] = emit;
       ++n;
+    } else {
+      fits = false;
     }
   }
   out[n] = '\0';
+  return fits;
 }
 
-/** @brief Fill `out` with the URL's last non-empty path segment (slug fallback). */
+/** @brief Fill `out` with the URL's last non-empty path segment (slug
+ * fallback). */
 RA8_INTERNAL static void url_slug(const char* url, char* out, size_t cap)
 {
   const char*  q   = strpbrk(url, "?#");
@@ -471,8 +497,7 @@ RA8_INTERNAL static bool anchor_title(const char* html,
   const char*  close    = find_ci(html + text_off, html_len - text_off, "</a");
   const size_t text_len =
     (close == nullptr) ? (html_len - text_off) : (size_t)(close - (html + text_off));
-  clean_inner_text(html + text_off, text_len, out, cap);
-  return out[0] != '\0';
+  return clean_inner_text(html + text_off, text_len, out, cap) && (out[0] != '\0');
 }
 
 /** @brief Index of an existing hit with URL `url`, or `count` when absent. */
@@ -486,7 +511,8 @@ RA8_INTERNAL static size_t hit_index_of(const mdl_hit_list_t* out, const char* u
   return out->count;
 }
 
-/** @brief Merge one resolved (url,title) hit; upgrade a slug with a real title. */
+/** @brief Merge one resolved (url,title) hit; upgrade a slug with a real title.
+ */
 RA8_INTERNAL static ra8_err_t
 merge_hit(mdl_hit_list_t* out, bool* real, const char* url, const char* title, bool title_real)
 {
@@ -524,8 +550,9 @@ RA8_INTERNAL static ra8_err_t emit_hit(const char*     html,
     return k_ra8_ok; /* an <a> with no href is not a link */
   }
   char abs[k_mdl_url_max];
-  if (!resolve_url(base_url, raw, abs, sizeof(abs))) {
-    return k_ra8_ok; /* unresolvable (e.g. javascript:, fragment): not counted */
+  if (!mdl_extract_resolve_url(base_url, raw, abs, sizeof(abs))) {
+    return k_ra8_ok; /* unresolvable (e.g. javascript:, fragment): not counted
+                      */
   }
   out->anchors_seen++;
   if (!contains_ok(abs, keep)) {
@@ -575,4 +602,244 @@ ra8_err_t mdl_extract_hits(const char*     html,
     pos = tag_off + ((gt == nullptr) ? tag_len : (tag_len + 1U));
   }
   return k_ra8_ok;
+}
+
+/**
+ * @brief Find one whitespace-delimited class token.
+ * @details Uses exact token boundaries so substrings of longer class names do
+ *          not match.
+ * @param[in] classes NUL-terminated HTML class attribute.
+ * @param[in] value   Non-empty class token to find.
+ * @return Whether @p value occurs as one complete token.
+ * @retval true  A boundary-delimited token matched.
+ * @retval false No complete token matched.
+ * @pre @p classes and @p value are non-NULL and NUL-terminated.
+ * @pre @p value is non-empty.
+ * @post Both inputs are unchanged.
+ * @post No locale or global state is accessed.
+ * @note Thread-safe: reads only caller storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool class_has_token(const char* classes, const char* value)
+{
+  const size_t value_len = strlen(value);
+  const char*  at        = classes;
+  while ((at = strstr(at, value)) != nullptr) {
+    const bool left_ok  = (at == classes) || is_ws(at[-1]);
+    const char after    = at[value_len];
+    const bool right_ok = (after == '\0') || is_ws(after);
+    if (left_ok && right_ok) {
+      return true;
+    }
+    at += value_len;
+  }
+  return false;
+}
+
+/**
+ * @brief Copy one non-empty literal selector value.
+ * @details Rejects empty and over-capacity values without reporting success.
+ * @param[in]  value NUL-terminated literal value.
+ * @param[out] out   Destination character buffer.
+ * @param[in]  cap   Destination capacity including NUL.
+ * @return An ::ra8_err_t extraction result.
+ * @retval k_ra8_ok               The complete value was copied.
+ * @retval k_ra8_err_not_found    The value was empty.
+ * @retval k_ra8_err_invalid_size The complete value did not fit.
+ * @pre @p value and @p out are non-NULL.
+ * @pre @p cap is greater than zero and describes writable @p out storage.
+ * @post On success, @p out is non-empty and NUL-terminated.
+ * @post @p value is unchanged.
+ * @note Thread-safe: uses only caller storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t selector_copy(const char* value, char* out, size_t cap)
+{
+  if (value[0] == '\0') {
+    return k_ra8_err_not_found;
+  }
+  if (!copy_fits(out, cap, value)) {
+    return k_ra8_err_invalid_size;
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Extract one matching HTML meta-content value.
+ * @details Scans bounded markup for a `property` or `name` equal to @p key,
+ *          then cleans its `content` value without truncation.
+ * @param[in]  html Bounded HTML bytes.
+ * @param[in]  len  Number of readable HTML bytes.
+ * @param[in]  key  Meta property/name to match.
+ * @param[out] out  Destination for cleaned content.
+ * @param[in]  cap  Destination capacity including NUL.
+ * @return An ::ra8_err_t extraction result.
+ * @retval k_ra8_ok               A non-empty value was extracted.
+ * @retval k_ra8_err_not_found    No matching non-empty meta value exists.
+ * @retval k_ra8_err_invalid_size The cleaned value did not fit.
+ * @pre @p html, @p key, and @p out are non-NULL.
+ * @pre @p cap is greater than zero and @p len bounds readable @p html bytes.
+ * @post On success, @p out is non-empty and NUL-terminated.
+ * @post No input bytes are modified.
+ * @note Thread-safe: uses only caller storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+extract_meta(const char* html, size_t len, const char* key, char* out, size_t cap)
+{
+  size_t pos = 0U;
+  while (pos < len) {
+    const char* tag = find_ci(html + pos, len - pos, "<meta");
+    if (tag == nullptr) {
+      return k_ra8_err_not_found;
+    }
+    const size_t off = (size_t)(tag - html);
+    const char*  gt  = memchr(tag, '>', len - off);
+    if (gt == nullptr) {
+      return k_ra8_err_not_found;
+    }
+    const size_t tag_len = (size_t)(gt - tag);
+    char         name[k_mdl_hit_title_max];
+    char         content[k_mdl_url_max];
+    const bool   named = find_attr_value(tag, tag_len, "property", name, sizeof(name)) ||
+                         find_attr_value(tag, tag_len, "name", name, sizeof(name));
+    if (named && (strcmp(name, key) == 0) &&
+        find_attr_value(tag, tag_len, "content", content, sizeof(content))) {
+      if (!clean_inner_text(content, strlen(content), out, cap)) {
+        return k_ra8_err_invalid_size;
+      }
+      return (out[0] == '\0') ? k_ra8_err_not_found : k_ra8_ok;
+    }
+    pos = off + tag_len + 1U;
+  }
+  return k_ra8_err_not_found;
+}
+
+/**
+ * @brief Extract visible text from the first matching class token.
+ * @details Scans bounded start tags, matches one exact class token, and cleans
+ *          the following element text without truncation.
+ * @param[in]  html  Bounded HTML bytes.
+ * @param[in]  len   Number of readable HTML bytes.
+ * @param[in]  token Non-empty class token to match.
+ * @param[out] out   Destination for cleaned visible text.
+ * @param[in]  cap   Destination capacity including NUL.
+ * @return An ::ra8_err_t extraction result.
+ * @retval k_ra8_ok               A non-empty value was extracted.
+ * @retval k_ra8_err_not_found    No matching non-empty element exists.
+ * @retval k_ra8_err_invalid_size The cleaned value did not fit.
+ * @pre @p html, @p token, and @p out are non-NULL.
+ * @pre @p token is non-empty and @p len bounds readable @p html bytes.
+ * @post On success, @p out is non-empty and NUL-terminated.
+ * @post No input bytes are modified.
+ * @note Thread-safe: uses only caller storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+extract_class(const char* html, size_t len, const char* token, char* out, size_t cap)
+{
+  size_t pos = 0U;
+  while (pos < len) {
+    const char* tag = memchr(html + pos, '<', len - pos);
+    if (tag == nullptr) {
+      return k_ra8_err_not_found;
+    }
+    const size_t off = (size_t)(tag - html);
+    const char*  gt  = memchr(tag, '>', len - off);
+    if (gt == nullptr) {
+      return k_ra8_err_not_found;
+    }
+    const size_t tag_len = (size_t)(gt - tag);
+    char         classes[k_mdl_hit_title_max];
+    if (find_attr_value(tag, tag_len, "class", classes, sizeof(classes)) &&
+        class_has_token(classes, token)) {
+      const size_t inner_off = (size_t)(gt - html) + 1U;
+      const char*  close     = find_ci(html + inner_off, len - inner_off, "</");
+      const size_t inner_len =
+        (close == nullptr) ? (len - inner_off) : (size_t)(close - (html + inner_off));
+      if (!clean_inner_text(html + inner_off, inner_len, out, cap)) {
+        return k_ra8_err_invalid_size;
+      }
+      return (out[0] == '\0') ? k_ra8_err_not_found : k_ra8_ok;
+    }
+    pos = off + tag_len + 1U;
+  }
+  return k_ra8_err_not_found;
+}
+
+/**
+ * @brief Extract the first anchor text following a visible label.
+ * @details Finds @p label case-insensitively, locates the next anchor, and
+ *          cleans its bounded inner text without truncation.
+ * @param[in]  html  Bounded HTML bytes.
+ * @param[in]  len   Number of readable HTML bytes.
+ * @param[in]  label Non-empty visible label to find.
+ * @param[out] out   Destination for cleaned anchor text.
+ * @param[in]  cap   Destination capacity including NUL.
+ * @return An ::ra8_err_t extraction result.
+ * @retval k_ra8_ok               A non-empty anchor value was extracted.
+ * @retval k_ra8_err_not_found    The label/anchor/value was absent.
+ * @retval k_ra8_err_invalid_size The cleaned value did not fit.
+ * @pre @p html, @p label, and @p out are non-NULL.
+ * @pre @p label is NUL-terminated and @p len bounds readable @p html bytes.
+ * @post On success, @p out is non-empty and NUL-terminated.
+ * @post No input bytes are modified.
+ * @note Thread-safe: uses only caller storage.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+extract_label(const char* html, size_t len, const char* label, char* out, size_t cap)
+{
+  const char* hit = find_ci(html, len, label);
+  if (hit == nullptr) {
+    return k_ra8_err_not_found;
+  }
+  const size_t after_label = (size_t)(hit - html) + strlen(label);
+  const char*  anchor      = find_ci(html + after_label, len - after_label, "<a");
+  if (anchor == nullptr) {
+    return k_ra8_err_not_found;
+  }
+  const size_t anchor_off = (size_t)(anchor - html);
+  const char*  gt         = memchr(anchor, '>', len - anchor_off);
+  if (gt == nullptr) {
+    return k_ra8_err_not_found;
+  }
+  const size_t inner_off = (size_t)(gt - html) + 1U;
+  const char*  close     = find_ci(html + inner_off, len - inner_off, "</a");
+  const size_t inner_len =
+    (close == nullptr) ? (len - inner_off) : (size_t)(close - (html + inner_off));
+  if (!clean_inner_text(html + inner_off, inner_len, out, cap)) {
+    return k_ra8_err_invalid_size;
+  }
+  return (out[0] == '\0') ? k_ra8_err_not_found : k_ra8_ok;
+}
+
+ra8_err_t mdl_extract_selector(const char* html,
+                               size_t      html_len,
+                               const char* selector,
+                               char*       out,
+                               size_t      out_cap)
+{
+  if ((html == nullptr) || (selector == nullptr) || (out == nullptr) || (out_cap == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  out[0]            = '\0';
+  const char* value = strchr(selector, ':');
+  if ((value == nullptr) || (value[1] == '\0')) {
+    return k_ra8_err_invalid_arg;
+  }
+  ++value;
+  if (strncmp(selector, "meta:", sizeof("meta:") - 1U) == 0) {
+    return extract_meta(html, html_len, value, out, out_cap);
+  }
+  if (strncmp(selector, "class:", sizeof("class:") - 1U) == 0) {
+    return extract_class(html, html_len, value, out, out_cap);
+  }
+  if (strncmp(selector, "label:", sizeof("label:") - 1U) == 0) {
+    return extract_label(html, html_len, value, out, out_cap);
+  }
+  if (strncmp(selector, "literal:", sizeof("literal:") - 1U) == 0) {
+    return selector_copy(value, out, out_cap);
+  }
+  return k_ra8_err_invalid_arg;
 }

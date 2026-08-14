@@ -51,17 +51,18 @@ typedef enum : uint16_t {
 
 /** @brief Named sizes/values for the hardening tests (no bare literals). */
 typedef enum : uint16_t {
-  k_crawl_5s_ms  = 5000, /**< `Crawl-delay: 5` expressed in milliseconds.   */
-  k_longname_len = 120,  /**< Page-name length exceeding the ustar field.   */
-  k_join_tiny    = 6,    /**< Buffer too small for a joined path (D4 test). */
-  k_buf_128      = 128,  /**< Small host/path/name probe buffer.            */
-  k_buf_256      = 256,  /**< Medium probe buffer.                          */
-  k_buf_320      = 320,  /**< EPUB zip-entry-path probe buffer.             */
-  k_buf_512      = 512,  /**< Large probe buffer.                           */
-  k_buf_2k       = 2048, /**< EPUB escaped-name / href probe buffer.        */
-  k_buf_4k       = 4096, /**< robots.txt fetch scratch buffer.              */
-  k_long_amp_run = 240,  /**< '&' chars in the long-filename EPUB probe.    */
-  k_amp_esc_len  = 5,    /**< strlen("&amp;"), the escape of one '&'.       */
+  k_crawl_5s_ms          = 5000, /**< `Crawl-delay: 5` expressed in milliseconds.   */
+  k_longname_len         = 120,  /**< Page-name length exceeding the ustar field.   */
+  k_join_tiny            = 6,    /**< Buffer too small for a joined path (D4 test). */
+  k_buf_128              = 128,  /**< Small host/path/name probe buffer.            */
+  k_buf_256              = 256,  /**< Medium probe buffer.                          */
+  k_buf_320              = 320,  /**< EPUB zip-entry-path probe buffer.             */
+  k_buf_512              = 512,  /**< Large probe buffer.                           */
+  k_buf_2k               = 2048, /**< EPUB escaped-name / href probe buffer.        */
+  k_buf_4k               = 4096, /**< robots.txt fetch scratch buffer.              */
+  k_long_amp_run         = 240,  /**< '&' chars in the long-filename EPUB probe.    */
+  k_amp_esc_len          = 5,    /**< strlen("&amp;"), the escape of one '&'.       */
+  k_meta_line_test_slack = 16,   /**< Key/delimiter bytes around a path value. */
 } mdl_hard_const_t;
 
 static mdl_url_list_t s_list;
@@ -235,6 +236,40 @@ static void test_config_load(void)
   TEST_ASSERT(strcmp(site.chapter_url_contains, "/chapter-") == 0);
   TEST_ASSERT(site.chapter_order == k_mdl_order_asc);
   TEST_ASSERT_EQ((uint16_t)111, (uint16_t)site.img_delay_min);
+
+  f = fopen(path, "w");
+  TEST_ASSERT_NOT_NULL(f);
+  (void)fputs("host = t.net\nunknown_typo = accepted\n", f);
+  TEST_ASSERT(fclose(f) == 0);
+  TEST_ASSERT(mdl_config_load(path, &site) == k_ra8_err_invalid_state);
+
+  f = fopen(path, "w");
+  TEST_ASSERT_NOT_NULL(f);
+  (void)fputs("host = t.net\nseries_title_selector = meta:\n", f);
+  TEST_ASSERT(fclose(f) == 0);
+  TEST_ASSERT(mdl_config_load(path, &site) == k_ra8_err_invalid_state);
+
+  f = fopen(path, "w");
+  TEST_ASSERT_NOT_NULL(f);
+  (void)fputs("host = t.net\nburst = -1\n", f);
+  TEST_ASSERT(fclose(f) == 0);
+  TEST_ASSERT(mdl_config_load(path, &site) == k_ra8_err_invalid_state);
+
+  f = fopen(path, "w");
+  TEST_ASSERT_NOT_NULL(f);
+  (void)fputs("host = t.net\nseries_title_selector = css:.title\n", f);
+  TEST_ASSERT(fclose(f) == 0);
+  TEST_ASSERT(mdl_config_load(path, &site) == k_ra8_err_invalid_state);
+
+  f = fopen(path, "w");
+  TEST_ASSERT_NOT_NULL(f);
+  char overlong[k_buf_512];
+  memset(overlong, 'a', sizeof(overlong) - 1U);
+  overlong[sizeof(overlong) - 1U] = '\0';
+  (void)fputs("host = t.net\nname = ", f);
+  (void)fputs(overlong, f);
+  TEST_ASSERT(fclose(f) == 0);
+  TEST_ASSERT(mdl_config_load(path, &site) == k_ra8_err_invalid_state);
   (void)unlink(path);
   TEST_END("config load");
 }
@@ -247,6 +282,16 @@ static void write_fixture(const char* path, char fill)
     char buf[k_fixture_bytes];
     memset(buf, fill, sizeof(buf));
     (void)fwrite(buf, 1U, sizeof(buf), f);
+    (void)fclose(f);
+  }
+}
+
+/** @brief Write an exact binary fixture to `path`. */
+static void write_binary_fixture(const char* path, const void* data, size_t len)
+{
+  FILE* f = fopen(path, "wb");
+  if (f != nullptr) {
+    (void)fwrite(data, 1U, len, f);
     (void)fclose(f);
   }
 }
@@ -1151,6 +1196,7 @@ static void test_meta_init_parse_load(void)
                            "artist = Illustrator & Artist\n"
                            "number = 12.5\n"
                            "summary = A great story <start>\n"
+                           "source_url = https://example.test/series?a=1&title=<Origins>\n"
                            "cover = page_002.jpg\n"
                            "cover_index = 1\n"
                            "language = ja\n"
@@ -1164,12 +1210,56 @@ static void test_meta_init_parse_load(void)
   TEST_ASSERT(strcmp(meta.artist, "Illustrator & Artist") == 0);
   TEST_ASSERT(meta.chapter_number == 12.5);
   TEST_ASSERT(strcmp(meta.summary, "A great story <start>") == 0);
+  TEST_ASSERT(strcmp(meta.source_url, "https://example.test/series?a=1&title=<Origins>") == 0);
   TEST_ASSERT(strcmp(meta.cover_path, "page_002.jpg") == 0);
   TEST_ASSERT_EQ(1, meta.cover_index);
   TEST_ASSERT(strcmp(meta.language, "ja") == 0);
   TEST_ASSERT(meta.reading_direction == k_mdl_read_rtl);
   TEST_ASSERT(strcmp(meta.identifier, "book:test") == 0);
   TEST_ASSERT(strcmp(meta.modified, "2025-02-03T04:05:06Z") == 0);
+
+  /* A PATH_MAX-style cover fits exactly; one additional byte is rejected. */
+  char exact_cover[k_mdl_meta_path_max];
+  memset(exact_cover, 'a', sizeof(exact_cover) - 1U);
+  exact_cover[sizeof(exact_cover) - 1U] = '\0';
+  char cover_line[k_mdl_meta_path_max + k_meta_line_test_slack];
+  (void)snprintf(cover_line, sizeof(cover_line), "cover=%s\n", exact_cover);
+  mdl_meta_init(&meta);
+  TEST_ASSERT(mdl_meta_parse(&meta, cover_line) == k_ra8_ok);
+  TEST_ASSERT(strlen(meta.cover_path) == sizeof(exact_cover) - 1U);
+
+  char overlong_cover[k_mdl_meta_path_max + 1U];
+  memset(overlong_cover, 'b', sizeof(overlong_cover) - 1U);
+  overlong_cover[sizeof(overlong_cover) - 1U] = '\0';
+  (void)snprintf(cover_line, sizeof(cover_line), "cover=%s\n", overlong_cover);
+  mdl_meta_init(&meta);
+  TEST_ASSERT(mdl_meta_parse(&meta, cover_line) == k_ra8_err_invalid_size);
+  TEST_ASSERT(meta.cover_path[0] == '\0');
+
+  /* The complete bounded URL fits; overflow and non-web schemes fail closed. */
+  char exact_source[k_mdl_meta_url_max];
+  memset(exact_source, 'a', sizeof(exact_source) - 1U);
+  static const char source_prefix[] = "https://example.test/";
+  memcpy(exact_source, source_prefix, sizeof(source_prefix) - 1U);
+  exact_source[sizeof(exact_source) - 1U] = '\0';
+  char source_line[k_mdl_meta_url_max + k_meta_line_test_slack];
+  (void)snprintf(source_line, sizeof(source_line), "source_url=%s\n", exact_source);
+  mdl_meta_init(&meta);
+  TEST_ASSERT(mdl_meta_parse(&meta, source_line) == k_ra8_ok);
+  TEST_ASSERT(strlen(meta.source_url) == sizeof(exact_source) - 1U);
+
+  char overlong_source[k_mdl_meta_url_max + 1U];
+  memset(overlong_source, 'b', sizeof(overlong_source) - 1U);
+  memcpy(overlong_source, source_prefix, sizeof(source_prefix) - 1U);
+  overlong_source[sizeof(overlong_source) - 1U] = '\0';
+  (void)snprintf(source_line, sizeof(source_line), "source_url=%s\n", overlong_source);
+  mdl_meta_init(&meta);
+  TEST_ASSERT(mdl_meta_parse(&meta, source_line) == k_ra8_err_invalid_size);
+  TEST_ASSERT(meta.source_url[0] == '\0');
+
+  mdl_meta_init(&meta);
+  TEST_ASSERT(mdl_meta_parse(&meta, "source_url=file:///tmp/private\n") == k_ra8_err_invalid_arg);
+  TEST_ASSERT(meta.source_url[0] == '\0');
 
   /* XML ComicInfo parsing */
   mdl_meta_init(&meta);
@@ -1181,6 +1271,7 @@ static void test_meta_init_parse_load(void)
                             "  <Artist>XML Artist</Artist>\n"
                             "  <Number>5</Number>\n"
                             "  <Summary>XML Summary &quot;Quote&quot;</Summary>\n"
+                            "  <Web>https://example.test/xml?a=1&amp;title=&lt;Origins&gt;</Web>\n"
                             "  <CoverImage>cover.jpg</CoverImage>\n"
                             "</ComicInfo>";
   TEST_ASSERT(mdl_meta_parse(&meta, xml) == k_ra8_ok);
@@ -1190,6 +1281,7 @@ static void test_meta_init_parse_load(void)
   TEST_ASSERT(strcmp(meta.artist, "XML Artist") == 0);
   TEST_ASSERT(meta.chapter_number == 5.0);
   TEST_ASSERT(strcmp(meta.summary, "XML Summary \"Quote\"") == 0);
+  TEST_ASSERT(strcmp(meta.source_url, "https://example.test/xml?a=1&title=<Origins>") == 0);
   TEST_ASSERT(strcmp(meta.cover_path, "cover.jpg") == 0);
 
   /* Load dir auto-discovery */
@@ -1223,6 +1315,9 @@ static void test_comicinfo_xml_generation(void)
   (void)snprintf(meta.writer, sizeof(meta.writer), "Writer & Author");
   (void)snprintf(meta.artist, sizeof(meta.artist), "Artist & Penciller");
   (void)snprintf(meta.summary, sizeof(meta.summary), "Summary & Description");
+  (void)snprintf(meta.source_url,
+                 sizeof(meta.source_url),
+                 "https://example.test/series?a=1&title=<Origins>");
   (void)snprintf(meta.language, sizeof(meta.language), "ja");
   meta.reading_direction = k_mdl_read_rtl;
   meta.cover_index       = 0;
@@ -1235,6 +1330,9 @@ static void test_comicinfo_xml_generation(void)
   TEST_ASSERT(strstr(xml_buf, "<Writer>Writer &amp; Author</Writer>") != nullptr);
   TEST_ASSERT(strstr(xml_buf, "<Artist>Artist &amp; Penciller</Artist>") != nullptr);
   TEST_ASSERT(strstr(xml_buf, "<Summary>Summary &amp; Description</Summary>") != nullptr);
+  TEST_ASSERT(
+    strstr(xml_buf, "<Web>https://example.test/series?a=1&amp;title=&lt;Origins&gt;</Web>") !=
+    nullptr);
   TEST_ASSERT(strstr(xml_buf, "<PageCount>3</PageCount>") != nullptr);
   TEST_ASSERT(strstr(xml_buf, "<LanguageISO>ja</LanguageISO>") != nullptr);
   TEST_ASSERT(strstr(xml_buf, "<Manga>YesAndRightToLeft</Manga>") != nullptr);
@@ -1256,11 +1354,23 @@ static void test_comicinfo_xml_generation(void)
   TEST_ASSERT(strstr(content, "<Series>Comic &amp; Series</Series>") != nullptr);
   TEST_ASSERT(strstr(content, "<PageCount>1</PageCount>") != nullptr);
   TEST_ASSERT(strstr(content, "<LanguageISO>ja</LanguageISO>") != nullptr);
+  TEST_ASSERT(
+    strstr(content, "<Web>https://example.test/series?a=1&amp;title=&lt;Origins&gt;</Web>") !=
+    nullptr);
   free(content);
   (void)mz_zip_reader_end(&zr);
 
+  mdl_export_meta_t overlong_meta = meta;
+  memset(overlong_meta.source_url, 'x', sizeof(overlong_meta.source_url));
+  const char* rejected_out = "/tmp/mdl_cbz_meta_rejected.cbz";
+  (void)unlink(rejected_out);
+  TEST_ASSERT(mdl_export_chapter_meta(k_mdl_fmt_cbz, dir, rejected_out, &overlong_meta) ==
+              k_ra8_err_invalid_size);
+  TEST_ASSERT(access(rejected_out, F_OK) != 0);
+
   (void)unlink("/tmp/mdl_cbz_meta_chap/page_001.jpg");
   (void)unlink(out);
+  (void)unlink(rejected_out);
   (void)rmdir(dir);
   TEST_END("ComicInfo.xml generation & CBZ metadata");
 }
@@ -1283,6 +1393,9 @@ static void test_epub_metadata_and_uuid(void)
   (void)snprintf(meta.writer, sizeof(meta.writer), "EPUB Writer");
   (void)snprintf(meta.artist, sizeof(meta.artist), "EPUB Artist");
   (void)snprintf(meta.summary, sizeof(meta.summary), "EPUB Summary");
+  (void)snprintf(meta.source_url,
+                 sizeof(meta.source_url),
+                 "https://example.test/series?a=1&title=<Origins>");
   meta.cover_index = 1; /* page_002.jpg is cover */
   (void)snprintf(meta.language, sizeof(meta.language), "ja");
   meta.reading_direction = k_mdl_read_rtl;
@@ -1303,6 +1416,10 @@ static void test_epub_metadata_and_uuid(void)
   TEST_ASSERT(strstr(opf, "<dc:creator opf:role=\"aut\">EPUB Writer</dc:creator>") != nullptr);
   TEST_ASSERT(strstr(opf, "<dc:creator opf:role=\"art\">EPUB Artist</dc:creator>") != nullptr);
   TEST_ASSERT(strstr(opf, "<dc:description>EPUB Summary</dc:description>") != nullptr);
+  TEST_ASSERT(
+    strstr(opf,
+           "<dc:source>https://example.test/series?a=1&amp;title=&lt;Origins&gt;</dc:source>") !=
+    nullptr);
   TEST_ASSERT(strstr(opf, "<dc:language>ja</dc:language>") != nullptr);
   TEST_ASSERT(strstr(opf, "<meta property=\"schema:numberOfPages\">2</meta>") != nullptr);
   TEST_ASSERT(strstr(opf, "<spine page-progression-direction=\"rtl\">") != nullptr);
@@ -1326,17 +1443,94 @@ static void test_epub_metadata_and_uuid(void)
   free(opf);
   (void)mz_zip_reader_end(&zr2);
 
+  mdl_export_meta_t overlong_meta = meta;
+  memset(overlong_meta.source_url, 'x', sizeof(overlong_meta.source_url));
+  const char* rejected_out = "/tmp/mdl_epub_meta_rejected.epub";
+  (void)unlink(rejected_out);
+  TEST_ASSERT(mdl_export_chapter_meta(k_mdl_fmt_epub, dir, rejected_out, &overlong_meta) ==
+              k_ra8_err_invalid_size);
+  TEST_ASSERT(access(rejected_out, F_OK) != 0);
+
   (void)unlink("/tmp/mdl_epub_meta_chap/page_001.jpg");
   (void)unlink("/tmp/mdl_epub_meta_chap/page_002.jpg");
   (void)unlink(out);
   (void)unlink(out2);
+  (void)unlink(rejected_out);
   (void)rmdir(dir);
   TEST_END("EPUB metadata, UUID, and cover image");
 }
 
+/** @test An external series cover is typed by bytes and embedded canonically. */
+static void test_external_cover_embedding(void)
+{
+  TEST_BEGIN("external cover embedding");
+  static const char cover_bytes[] = "\x89PNG\r\n\x1a\nseries-cover";
+  const char*       dir           = "/tmp/mdl_external_cover_chap";
+  const char*       cover_path    = "/tmp/mdl_series_cover.jpg";
+  const char*       bad_path      = "/tmp/mdl_series_cover_bad.jpg";
+  const char*       cbz_out       = "/tmp/mdl_external_cover_chap.cbz";
+  const char*       bad_out       = "/tmp/mdl_external_cover_bad.cbz";
+  const char*       epub_out      = "/tmp/mdl_external_cover_chap.epub";
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
+  write_fixture("/tmp/mdl_external_cover_chap/page_001.jpg", 'p');
+  write_binary_fixture(cover_path, cover_bytes, sizeof(cover_bytes) - 1U);
+
+  mdl_export_meta_t meta;
+  mdl_meta_init(&meta);
+  (void)snprintf(meta.cover_path, sizeof(meta.cover_path), "%s", cover_path);
+
+  TEST_ASSERT(mdl_export_chapter_meta(k_mdl_fmt_cbz, dir, cbz_out, &meta) == k_ra8_ok);
+  mz_zip_archive cbz;
+  memset(&cbz, 0, sizeof(cbz));
+  TEST_ASSERT(mz_zip_reader_init_file(&cbz, cbz_out, 0) != MZ_FALSE);
+  char embedded[sizeof(cover_bytes) - 1U];
+  TEST_ASSERT(
+    mz_zip_reader_extract_file_to_mem(&cbz, "cover/cover.png", embedded, sizeof(embedded), 0));
+  TEST_ASSERT(memcmp(embedded, cover_bytes, sizeof(embedded)) == 0);
+  char* comic_info = zip_entry_str(&cbz, "ComicInfo.xml");
+  TEST_ASSERT_NOT_NULL(comic_info);
+  TEST_ASSERT(strstr(comic_info, "<PageCount>2</PageCount>") != nullptr);
+  TEST_ASSERT(strstr(comic_info, "Image=\"0\" Type=\"FrontCover\"") != nullptr);
+  free(comic_info);
+  (void)mz_zip_reader_end(&cbz);
+
+  TEST_ASSERT(mdl_export_chapter_meta(k_mdl_fmt_epub, dir, epub_out, &meta) == k_ra8_ok);
+  mz_zip_archive epub;
+  memset(&epub, 0, sizeof(epub));
+  TEST_ASSERT(mz_zip_reader_init_file(&epub, epub_out, 0) != MZ_FALSE);
+  TEST_ASSERT(mz_zip_reader_extract_file_to_mem(&epub,
+                                                "OEBPS/cover/cover.png",
+                                                embedded,
+                                                sizeof(embedded),
+                                                0));
+  TEST_ASSERT(memcmp(embedded, cover_bytes, sizeof(embedded)) == 0);
+  char* opf = zip_entry_str(&epub, "OEBPS/content.opf");
+  TEST_ASSERT_NOT_NULL(opf);
+  TEST_ASSERT(strstr(opf,
+                     "id=\"cover-image\" href=\"cover/cover.png\" media-type=\"image/png\" "
+                     "properties=\"cover-image\"") != nullptr);
+  free(opf);
+  (void)mz_zip_reader_end(&epub);
+
+  write_fixture(bad_path, 'x');
+  (void)snprintf(meta.cover_path, sizeof(meta.cover_path), "%s", bad_path);
+  (void)unlink(bad_out);
+  TEST_ASSERT(mdl_export_chapter_meta(k_mdl_fmt_cbz, dir, bad_out, &meta) ==
+              k_ra8_err_validation_failed);
+  TEST_ASSERT(access(bad_out, F_OK) != 0);
+
+  (void)unlink("/tmp/mdl_external_cover_chap/page_001.jpg");
+  (void)unlink(cover_path);
+  (void)unlink(bad_path);
+  (void)unlink(cbz_out);
+  (void)unlink(epub_out);
+  (void)rmdir(dir);
+  TEST_END("external cover embedding");
+}
+
 /**
  * @test test_image_magic_bytes
- * @brief Unit tests for image magic byte & Content-Type sniffing (JPEG, PNG, WebP, GIF).
+ * @brief Unit tests for image magic and MIME typing, including BMP consistency.
  */
 static void test_image_magic_bytes(void)
 {
@@ -1403,7 +1597,19 @@ static void test_image_magic_bytes(void)
   TEST_ASSERT(strcmp(ext, "gif") == 0);
   TEST_ASSERT(strcmp(mime, "image/gif") == 0);
 
-  /* 5. Fallback to Content-Type header when magic bytes are missing or unknown */
+  /* 5. BMP magic bytes: ASCII BM. */
+  static const uint8_t bmp_hdr[] = {'B', 'M', 0, 0, 0, 0};
+  TEST_ASSERT(mdl_urlname_sniff_image_type(bmp_hdr,
+                                           sizeof(bmp_hdr),
+                                           nullptr,
+                                           ext,
+                                           sizeof(ext),
+                                           mime,
+                                           sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "bmp") == 0);
+  TEST_ASSERT(strcmp(mime, "image/bmp") == 0);
+
+  /* 6. Fallback to Content-Type header when magic bytes are missing or unknown. */
   TEST_ASSERT(
     mdl_urlname_sniff_image_type(nullptr, 0, "image/jpeg", ext, sizeof(ext), mime, sizeof(mime)));
   TEST_ASSERT(strcmp(ext, "jpg") == 0);
@@ -1429,7 +1635,12 @@ static void test_image_magic_bytes(void)
   TEST_ASSERT(strcmp(ext, "gif") == 0);
   TEST_ASSERT(strcmp(mime, "image/gif") == 0);
 
-  /* 6. Priority: Magic bytes take precedence over Content-Type header */
+  TEST_ASSERT(
+    mdl_urlname_sniff_image_type(nullptr, 0, "image/bmp", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(strcmp(ext, "bmp") == 0);
+  TEST_ASSERT(strcmp(mime, "image/bmp") == 0);
+
+  /* 7. Priority: Magic bytes take precedence over Content-Type header. */
   TEST_ASSERT(mdl_urlname_sniff_image_type(png_hdr,
                                            sizeof(png_hdr),
                                            "image/jpeg",
@@ -1440,7 +1651,7 @@ static void test_image_magic_bytes(void)
   TEST_ASSERT(strcmp(ext, "png") == 0);
   TEST_ASSERT(strcmp(mime, "image/png") == 0);
 
-  /* 7. Unrecognized header / invalid content type */
+  /* 8. Unrecognized header / invalid content type. */
   static const uint8_t junk_hdr[] = {0x00, 0x00, 0x00, 0x00};
   TEST_ASSERT(!mdl_urlname_sniff_image_type(junk_hdr,
                                             sizeof(junk_hdr),
@@ -1452,7 +1663,7 @@ static void test_image_magic_bytes(void)
 
   TEST_END("image magic byte & Content-Type typing");
 }
-/** @test Export workspace fails closed below the name-table bound and reports high-water. */
+/** @test Export and miniz writer arenas fail closed and report deterministic high-water. */
 static void test_export_workspace_bounds(void)
 {
   TEST_BEGIN("export workspace bounds");
@@ -1467,12 +1678,46 @@ static void test_export_workspace_bounds(void)
   TEST_ASSERT(mdl_export_chapter_ws(k_mdl_fmt_cbz, dir, out, &ws) == k_ra8_err_invalid_size);
   TEST_ASSERT(ws.high_water == 0U);
 
-  mdl_export_workspace_init(&ws, s_test_export_arena, k_names_bytes);
+  mdl_export_workspace_init(&ws, s_test_export_arena, sizeof(s_test_export_arena));
   TEST_ASSERT(mdl_export_chapter_ws(k_mdl_fmt_cbz, dir, out, &ws) == k_ra8_ok);
-  TEST_ASSERT(ws.high_water == k_names_bytes);
+  const size_t cbz_high_water = ws.high_water;
+  TEST_ASSERT(cbz_high_water > k_names_bytes);
+  TEST_ASSERT(cbz_high_water <= sizeof(s_test_export_arena));
+
+  write_fixture(out, 'z');
+  mdl_export_workspace_init(&ws, s_test_export_arena, cbz_high_water - 1U);
+  TEST_ASSERT(mdl_export_chapter_ws(k_mdl_fmt_cbz, dir, out, &ws) == k_ra8_err_invalid_size);
+  TEST_ASSERT(ws.high_water <= cbz_high_water - 1U);
+  FILE* intact = fopen(out, "rb");
+  TEST_ASSERT(intact != nullptr);
+  for (size_t i = 0U; i < (size_t)k_fixture_bytes; ++i) {
+    TEST_ASSERT(fgetc(intact) == 'z');
+  }
+  TEST_ASSERT(fgetc(intact) == EOF);
+  (void)fclose(intact);
+
+  const char* epub_out = "/tmp/mdl_ws_chap.epub";
+  mdl_export_workspace_init(&ws, s_test_export_arena, sizeof(s_test_export_arena));
+  TEST_ASSERT(mdl_export_chapter_ws(k_mdl_fmt_epub, dir, epub_out, &ws) == k_ra8_ok);
+  const size_t epub_high_water = ws.high_water;
+  TEST_ASSERT(epub_high_water > cbz_high_water);
+  TEST_ASSERT(epub_high_water <= sizeof(s_test_export_arena));
+
+  write_fixture(epub_out, 'e');
+  mdl_export_workspace_init(&ws, s_test_export_arena, epub_high_water - 1U);
+  TEST_ASSERT(mdl_export_chapter_ws(k_mdl_fmt_epub, dir, epub_out, &ws) == k_ra8_err_invalid_size);
+  TEST_ASSERT(ws.high_water <= epub_high_water - 1U);
+  intact = fopen(epub_out, "rb");
+  TEST_ASSERT(intact != nullptr);
+  for (size_t i = 0U; i < (size_t)k_fixture_bytes; ++i) {
+    TEST_ASSERT(fgetc(intact) == 'e');
+  }
+  TEST_ASSERT(fgetc(intact) == EOF);
+  (void)fclose(intact);
 
   (void)unlink("/tmp/mdl_ws_chap/page_001.jpg");
   (void)unlink(out);
+  (void)unlink(epub_out);
   (void)rmdir(dir);
   TEST_END("export workspace bounds");
 }
@@ -1544,6 +1789,7 @@ int32_t main(void)
   test_meta_init_parse_load();
   test_comicinfo_xml_generation();
   test_epub_metadata_and_uuid();
+  test_external_cover_embedding();
   test_image_magic_bytes();
   (void)fprintf(stderr, "[OK  ] test_media_dl.c\n");
   return 0;

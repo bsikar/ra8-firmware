@@ -125,6 +125,7 @@ void mdl_robots_parse(const char* text, size_t len, const char* ua_token, mdl_ro
  * @pre `robots` and `path` are non-NULL.
  * @pre `path` begins with `/` (a URL path, not a full URL).
  * @post Neither argument is modified.
+ * @post A tie at the longest match is resolved in favour of `Allow`.
  *
  * @note Thread-safe: depends only on its arguments.
  * @since 0.1.0

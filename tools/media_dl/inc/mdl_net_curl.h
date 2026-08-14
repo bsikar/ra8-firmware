@@ -25,7 +25,7 @@
 
 /** @brief Bytes reserved by the caller for one libcurl backend context. */
 typedef enum : size_t {
-  k_mdl_net_curl_storage_bytes = 1024U,
+  k_mdl_net_curl_storage_bytes = 1024U, /**< Private backend storage capacity. */
 } mdl_net_curl_storage_size_t;
 
 /**

@@ -62,6 +62,7 @@ typedef struct {
  * @pre `out`, when non-NULL, has room for at least `cap` bytes.
  * @pre `cap` is large enough for the fixed portion (>= 64 recommended).
  * @post `out` is NUL-terminated whenever `cap > 0`.
+ * @post The generated identity always contains the tool name, version, and project URL.
  *
  * @note Thread-safe: writes only caller-provided storage.
  * @since 0.1.0
@@ -81,6 +82,10 @@ const char* mdl_session_ua_token(void);
 
 /**
  * @brief Initialise a session over a network backend.
+ *
+ * @details Stores the borrowed backend and User-Agent pointers, selects the
+ * robots policy, and clears the fixed per-host cache. No network request is
+ * made until ::mdl_session_url_allowed examines a host for the first time.
  *
  * @param[out] session      Session to initialise (non-NULL).
  * @param[in]  net          Backend used for robots.txt fetches.

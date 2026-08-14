@@ -80,6 +80,7 @@ typedef enum : uint16_t {
  * @param[in] names Page file names, `count` entries of at most ::k_name_max
  *                  bytes each, in the order they should be converted.
  * @param[in] count Number of valid entries in @p names.
+ * @param[in,out] ws Exclusive caller-owned exporter workspace.
  *
  * @return Result code.
  * @retval k_ra8_ok                Every page was transcoded.
@@ -97,7 +98,7 @@ typedef enum : uint16_t {
  * @note Not thread-safe: installs a process-wide `ra8_log` byte sink.
  * @warning Redirects `ra8_log` output to stderr for the rest of the process.
  *
- * @see mdl_export_chapter()
+ * @see mdl_export_chapter_ws()
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t mdl_export_jof(const char*             dir,
