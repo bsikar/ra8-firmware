@@ -2,6 +2,11 @@
  * @file mdl_search.c
  * @brief Pure search/discovery policy: percent-encoding, URL templating, and
  *        the zero-vs-broken result classifier.
+ *
+ * @details Provides bounded query encoding and template expansion plus the
+ * result-list policy that distinguishes an honest empty result from changed
+ * markup. Filtering compacts caller-owned fixed storage in place and preserves
+ * discovery order.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -26,7 +31,20 @@ const char* mdl_search_placeholder(void)
   return s_placeholder;
 }
 
-/** @brief True for an RFC 3986 unreserved byte (copied verbatim). */
+/**
+ * @brief True for an RFC 3986 unreserved byte (copied verbatim).
+ * @details Recognises ASCII alphanumeric bytes and the four unreserved marks.
+ * @param[in] c Byte to classify.
+ * @return Whether percent-encoding may be omitted.
+ * @retval true The byte is RFC 3986 unreserved.
+ * @retval false The byte requires percent-encoding.
+ * @pre @p c is one complete input byte.
+ * @pre Classification is intentionally ASCII-only.
+ * @post No state is modified.
+ * @post Input is unchanged.
+ * @note Thread-safe: pure comparison.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool is_unreserved(unsigned char c)
 {
   const bool alpha = ((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z'));
@@ -35,7 +53,19 @@ RA8_INTERNAL static bool is_unreserved(unsigned char c)
   return alpha || digit || mark;
 }
 
-/** @brief Upper-case hex digit for a 0..15 nibble. */
+/**
+ * @brief Upper-case hex digit for a 0..15 nibble.
+ * @details Masks to the low nibble before indexing the constant digit table.
+ * @param[in] nibble Value whose low four bits are encoded.
+ * @return Upper-case hexadecimal digit.
+ * @retval other One byte from `0`-`9` or `A`-`F`.
+ * @pre Only the low nibble is significant.
+ * @pre Upper-case percent escapes are required.
+ * @post No state is modified.
+ * @post The result is an ASCII hex digit.
+ * @note Thread-safe: reads constant storage.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static char hex_digit(unsigned nibble)
 {
   static const char digits[] = "0123456789ABCDEF";

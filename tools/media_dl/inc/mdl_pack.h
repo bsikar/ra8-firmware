@@ -33,6 +33,7 @@
  * @param[in] format     Output container/format (never ::k_mdl_fmt_loose here).
  * @param[in] series_dir Absolute, resolved series directory.
  * @param[in] chap_id    Sanitised chapter identifier (the page folder leaf).
+ * @param[in,out] ws     Caller-owned bounded exporter workspace.
  *
  * @return The number of export failures (0 on success, 1 on any failure).
  * @retval 0U The chapter was packaged.
@@ -53,6 +54,23 @@ size_t mdl_pack_one(mdl_format_t            format,
 
 /**
  * @brief Package one downloaded chapter folder into @p format with rich metadata.
+ *
+ * @details Uses @p meta instead of auto-loading the chapter metadata files,
+ *          while retaining guarded path composition and atomic export behavior.
+ * @param[in] format Output container format.
+ * @param[in] series_dir Absolute, resolved series directory.
+ * @param[in] chap_id Sanitized chapter directory leaf.
+ * @param[in] meta Metadata to embed, or NULL to auto-load it.
+ * @param[in,out] ws Caller-owned bounded exporter workspace.
+ * @return The number of failures from this one packaging operation.
+ * @retval 0U Packaging succeeded.
+ * @retval 1U Path validation or export failed.
+ * @pre @p series_dir and @p chap_id are non-NULL and NUL-terminated.
+ * @pre @p ws owns writable arena storage for the duration of the call.
+ * @post Success creates the selected container or per-page artifacts.
+ * @post Failure is counted once and diagnosed without replacing a good output.
+ * @note Not thread-safe when callers share a workspace or output path.
+ * @since 0.1.0
  */
 size_t mdl_pack_one_meta(mdl_format_t             format,
                          const char*              series_dir,
@@ -60,6 +78,28 @@ size_t mdl_pack_one_meta(mdl_format_t             format,
                          const mdl_export_meta_t* meta,
                          mdl_export_workspace_t*  ws);
 
+/**
+ * @brief Package a combined page directory when completion policy permits
+ *
+ * @details Delegates to the metadata-aware variant and auto-loads metadata.
+ *          Incomplete runs are skipped unless explicitly allowed, in which
+ *          case the output filename is marked `INCOMPLETE`.
+ * @param[in] format Output container format.
+ * @param[in] allow_incomplete Whether a partial run may be packaged.
+ * @param[in] series_dir Absolute, resolved series directory.
+ * @param[in] combined_rel Sanitized combined-directory leaf.
+ * @param[in] stats Completed run statistics controlling the policy decision.
+ * @param[in,out] ws Caller-owned bounded exporter workspace.
+ * @return The number of packaging failures.
+ * @retval 0U Nothing required packaging, policy skipped it, or export succeeded.
+ * @retval 1U Path validation or export failed.
+ * @pre All pointer arguments are non-NULL and NUL strings are terminated.
+ * @pre @p ws is exclusive to this call and owns writable arena bytes.
+ * @post A disallowed incomplete run creates no combined archive.
+ * @post An allowed incomplete export is visibly marked in its filename.
+ * @note Not thread-safe when callers share a workspace or output path.
+ * @since 0.1.0
+ */
 size_t mdl_pack_combined(mdl_format_t             format,
                          bool                     allow_incomplete,
                          const char*              series_dir,
@@ -69,6 +109,25 @@ size_t mdl_pack_combined(mdl_format_t             format,
 
 /**
  * @brief Package a combined page folder into @p format with rich metadata.
+ *
+ * @details Applies the same incomplete-run policy as ::mdl_pack_combined but
+ *          embeds caller-supplied metadata instead of auto-loading it.
+ * @param[in] format Output container format.
+ * @param[in] allow_incomplete Whether a partial run may be packaged.
+ * @param[in] series_dir Absolute, resolved series directory.
+ * @param[in] combined_rel Sanitized combined-directory leaf.
+ * @param[in] stats Completed run statistics controlling the policy decision.
+ * @param[in] meta Metadata to embed, or NULL to auto-load it.
+ * @param[in,out] ws Caller-owned bounded exporter workspace.
+ * @return The number of packaging failures.
+ * @retval 0U Nothing required packaging, policy skipped it, or export succeeded.
+ * @retval 1U Path validation or export failed.
+ * @pre All pointer arguments are non-NULL except optional @p meta.
+ * @pre @p ws is exclusive to this call and owns writable arena bytes.
+ * @post A disallowed incomplete run creates no combined archive.
+ * @post Successful partial output carries the `INCOMPLETE` marker.
+ * @note Not thread-safe when callers share a workspace or output path.
+ * @since 0.1.0
  */
 size_t mdl_pack_combined_meta(mdl_format_t             format,
                               bool                     allow_incomplete,

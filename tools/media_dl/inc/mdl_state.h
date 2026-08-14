@@ -3,43 +3,50 @@
  * @brief Persistent per-series library state for the media downloader.
  *
  * @details
- * Without this store `media_dl` kept nothing between runs: resuming was an index
- * into a freshly scraped list (`--start K`), there was no "fetch only what is
- * new", a kill mid-chapter left an unrecorded partial directory, and two runs
- * (or two chapters) sharing an image re-downloaded it. This module is the on-disk
- * record that fixes all four: one small, versioned state file per series holding
- * the series identity, the site descriptor used, and -- per chapter -- the parsed
- * chapter identifier, source URL, page count, completion status and fetch time,
- * plus a series-wide pool of per-page content identities.
+ * Without this store `media_dl` kept nothing between runs: resuming was an
+ * index into a freshly scraped list (`--start K`), there was no "fetch only
+ * what is new", a kill mid-chapter left an unrecorded partial directory, and
+ * two runs (or two chapters) sharing an image re-downloaded it. This module is
+ * the on-disk record that fixes all four: one small, versioned state file per
+ * series holding the series identity, the site descriptor used, and -- per
+ * chapter -- the parsed chapter identifier, source URL, page count, completion
+ * status and fetch time, plus a series-wide pool of per-page content
+ * identities.
  *
- * Because chapters are keyed by a parsed identifier (::mdl_urlname_last_segment)
- * rather than list position, `--start` can mean "resume where we left off" and
+ * Because chapters are keyed by a parsed identifier
+ * (::mdl_urlname_last_segment) rather than list position, `--start` can mean
+ * "resume where we left off" and
  * `--update` can mean "only chapters we do not already have complete", both
  * stable as the site adds or reorders chapters. Because every page carries a
  * source-URL hash and a content hash, a re-run skips a byte-identical image
- * already held (::mdl_state_find_page) and a torn file is detected and refetched
- * rather than silently packaged.
+ * already held (::mdl_state_find_page) and a torn file is detected and
+ * refetched rather than silently packaged.
  *
- * ### On-disk format (v1)
+ * ### On-disk format (v2)
  * A flat, line-oriented, TAB-separated text file (`.mdl_state` in the series
- * directory), deliberately simple so it is human-readable and ports unchanged to
- * the RA8. A leading `#` marks a comment; blank lines are ignored. Each record is
- * a one-letter type followed by TAB-separated fields:
+ * directory), deliberately simple so it is human-readable and ports unchanged
+ * to the RA8. A leading `#` marks a comment; blank lines are ignored. Each
+ * record is a one-letter type followed by TAB-separated fields:
  *
- *     # media_dl library state v1
- *     V<TAB>1                                         schema version
+ *     # media_dl library state v2
+ *     V<TAB>2                                         schema version
  *     S<TAB><series-url>                              series URL
  *     T<TAB><series-title>                            series title
  *     N<TAB><site-name>                               site descriptor name
  *     H<TAB><site-host>                               site host
  *     G<TAB><config-path>                             descriptor file used
- *     C<TAB>id<TAB>num<TAB>done<TAB>pages<TAB>ready<TAB>epoch<TAB>url   one chapter
- *     P<TAB>url_hash_hex<TAB>content_hash_hex<TAB>rel_path              one page
+ *     D/W/A/O/K/L/R<TAB>value                         rich series metadata
+ *     C<TAB>id<TAB>known<TAB>num<TAB>done<TAB>pages<TAB>ready<TAB>epoch<TAB>url<TAB>title
+ *     P<TAB>url_hash_hex<TAB>content_hash_hex<TAB>rel_path              one
+ * page
  *
- * The file is written atomically (temp file + `rename`, ::mdl_state_save) so a
- * kill mid-write cannot corrupt it, and a file that fails to parse degrades to a
- * clear ::k_ra8_err_invalid_state so the caller can rebuild rather than crash or
- * silently refetch everything.
+ * Version 1 files remain readable and are migrated in memory; their integral
+ * chapter number is considered known only when nonzero because v1 had no
+ * explicit presence bit. The next save always emits v2. The file is written
+ * atomically (temp file + `rename`, ::mdl_state_save) so a
+ * kill mid-write cannot corrupt it, and a file that fails to parse degrades to
+ * a clear ::k_ra8_err_invalid_state so the caller can rebuild rather than crash
+ * or silently refetch everything.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -55,13 +62,23 @@
 
 /** @brief Fixed capacities and the schema version (zero dynamic allocation). */
 typedef enum : uint16_t {
-  k_mdl_state_version  = 1,   /**< On-disk schema version this build reads. */
+  k_mdl_state_version_v1 = 1, /**< Legacy schema accepted for migration.   */
+  k_mdl_state_version = 2,    /**< Schema version written by this build.   */
   k_mdl_chapter_id_max = 128, /**< Chapter identifier bytes (sanitised).    */
-  k_mdl_title_max      = 192, /**< Series title bytes.                      */
-  k_mdl_relpath_max    = 200, /**< Page path relative to the series dir.    */
-  k_mdl_cfgpath_max    = 512, /**< Site-descriptor path bytes.              */
-  k_mdl_max_chapters   = 512, /**< Chapters tracked per series.             */
+  k_mdl_title_max = 192,      /**< Series title bytes.                      */
+  k_mdl_summary_max = 1024,   /**< Series summary bytes.                    */
+  k_mdl_person_max = 128,     /**< Writer/artist bytes.                     */
+  k_mdl_language_max = 16,    /**< BCP-47 language bytes.                   */
+  k_mdl_relpath_max = 200,    /**< Page path relative to the series dir.    */
+  k_mdl_cfgpath_max = 512,    /**< Site-descriptor path bytes.              */
+  k_mdl_max_chapters = 512,   /**< Chapters tracked per series.             */
 } mdl_state_limit_t;
+
+/** @brief Persisted fixed-layout reading direction. */
+typedef enum : uint8_t {
+  k_mdl_state_read_ltr = 0, /**< Left-to-right page progression.  */
+  k_mdl_state_read_rtl = 1, /**< Right-to-left page progression. */
+} mdl_state_reading_direction_t;
 
 /** @brief Page pool capacity (kept separate: it needs a 32-bit count). */
 typedef enum : uint32_t {
@@ -79,13 +96,15 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  char     chapter_id[k_mdl_chapter_id_max]; /**< Stable identifier (URL leaf). */
-  char     source_url[k_mdl_url_max];        /**< Chapter page URL.             */
-  long     number;                           /**< Parsed chapter number, 0 = ?. */
-  uint16_t page_count;                       /**< Total pages known (0 = ?).    */
-  uint16_t pages_done;                       /**< Pages fetched and verified.   */
-  bool     complete;                         /**< All pages present + verified. */
-  int64_t  fetched_at;                       /**< Completion time (epoch s).    */
+  char chapter_id[k_mdl_chapter_id_max]; /**< Stable identifier (URL leaf). */
+  char source_url[k_mdl_url_max];        /**< Chapter page URL.             */
+  char title[k_mdl_title_max];           /**< Display title, or empty.       */
+  double number;                         /**< Parsed number; 0 may be valid. */
+  bool number_known;                     /**< Whether @ref number is known.  */
+  uint16_t page_count;                   /**< Total pages known (0 = ?).    */
+  uint16_t pages_done;                   /**< Pages fetched and verified.   */
+  bool complete;                         /**< All pages present + verified. */
+  int64_t fetched_at;                    /**< Completion time (epoch s).    */
 } mdl_chapter_rec_t;
 
 /**
@@ -93,18 +112,18 @@ typedef struct {
  * @brief One page's dedup/verify record in the series-wide pool.
  * @details @ref url_hash keys a source URL so a re-fetch of the same image (a
  *          rerun, or an image shared between chapters) is found without the
- *          network; @ref content_hash is the byte identity used to verify a page
- *          already on disk and to prove a reused copy is truly identical.
+ *          network; @ref content_hash is the byte identity used to verify a
+ * page already on disk and to prove a reused copy is truly identical.
  * @invariant `rel_path` is a sanitised path relative to the series directory.
  * @see mdl_state_find_page
  * @since 0.1.0
  */
 typedef struct {
-  uint64_t url_hash;                          /**< FNV-1a 64 of the source URL.     */
-  uint64_t content_hash;                      /**< FNV-1a 64 of the fetched bytes.  */
-  char     rel_path[k_mdl_relpath_max];       /**< Path under the series directory. */
-  char     etag[k_mdl_etag_max];              /**< Cached ETag for conditional GET. */
-  char     last_modified[k_mdl_last_mod_max]; /**< Cached Last-Modified.            */
+  uint64_t url_hash;                /**< FNV-1a 64 of the source URL.     */
+  uint64_t content_hash;            /**< FNV-1a 64 of the fetched bytes.  */
+  char rel_path[k_mdl_relpath_max]; /**< Path under the series directory. */
+  char etag[k_mdl_etag_max];        /**< Cached ETag for conditional GET. */
+  char last_modified[k_mdl_last_mod_max]; /**< Cached Last-Modified. */
 } mdl_page_rec_t;
 
 /**
@@ -121,16 +140,23 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint16_t          version;                        /**< Schema version.        */
-  char              series_url[k_mdl_url_max];      /**< Series page URL.       */
-  char              series_title[k_mdl_title_max];  /**< Series title.          */
-  char              site_name[k_mdl_name_max];      /**< Descriptor name.       */
-  char              site_host[k_mdl_host_max];      /**< Site host.             */
-  char              config_path[k_mdl_cfgpath_max]; /**< Descriptor used.       */
-  uint16_t          chapter_count;                  /**< Chapters recorded.     */
-  uint32_t          page_rec_count;                 /**< Page records recorded. */
-  mdl_chapter_rec_t chapters[k_mdl_max_chapters];   /**< Per-chapter coverage.  */
-  mdl_page_rec_t    pages[k_mdl_max_page_recs];     /**< Per-page identities.   */
+  uint16_t version;                    /**< Schema version.        */
+  char series_url[k_mdl_url_max];      /**< Series page URL.       */
+  char series_title[k_mdl_title_max];  /**< Series title.          */
+  char site_name[k_mdl_name_max];      /**< Descriptor name.       */
+  char site_host[k_mdl_host_max];      /**< Site host.             */
+  char config_path[k_mdl_cfgpath_max]; /**< Descriptor used.       */
+  char summary[k_mdl_summary_max];     /**< Series synopsis.       */
+  char writer[k_mdl_person_max];       /**< Writer/author.         */
+  char artist[k_mdl_person_max];       /**< Artist/illustrator.    */
+  char cover_url[k_mdl_url_max];       /**< Remote cover URL.      */
+  char cover_path[k_mdl_relpath_max];  /**< Local cover path.      */
+  char language[k_mdl_language_max];   /**< BCP-47 language tag.   */
+  mdl_state_reading_direction_t reading_direction; /**< Page progression. */
+  uint16_t chapter_count;                         /**< Chapters recorded.     */
+  uint32_t page_rec_count;                        /**< Page records recorded. */
+  mdl_chapter_rec_t chapters[k_mdl_max_chapters]; /**< Per-chapter coverage.  */
+  mdl_page_rec_t pages[k_mdl_max_page_recs];      /**< Per-page identities.   */
 } mdl_state_t;
 
 /**
@@ -148,7 +174,7 @@ typedef struct {
  * @note Not thread-safe: initialises caller storage.
  * @since 0.1.0
  */
-void mdl_state_init(mdl_state_t* st);
+void mdl_state_init(mdl_state_t *st);
 
 /**
  * @brief Record the series identity and the descriptor used.
@@ -158,7 +184,8 @@ void mdl_state_init(mdl_state_t* st);
  * @param[in]     title       Series title, or NULL to leave unchanged.
  * @param[in]     site_name   Descriptor display name, or NULL.
  * @param[in]     site_host   Site host, or NULL.
- * @param[in]     config_path Descriptor file path used (for update-all), or NULL.
+ * @param[in]     config_path Descriptor file path used (for update-all), or
+ * NULL.
  *
  * @return Nothing.
  *
@@ -170,23 +197,56 @@ void mdl_state_init(mdl_state_t* st);
  * @note Not thread-safe: writes caller storage.
  * @since 0.1.0
  */
-void mdl_state_set_series(mdl_state_t* st,
-                          const char*  url,
-                          const char*  title,
-                          const char*  site_name,
-                          const char*  site_host,
-                          const char*  config_path);
+void mdl_state_set_series(mdl_state_t *st, const char *url, const char *title,
+                          const char *site_name, const char *site_host,
+                          const char *config_path);
+
+/**
+ * @brief Set the optional rich metadata persisted for a series.
+ *
+ * @details
+ * Copies the complete metadata tuple only when every field fits its fixed
+ * destination, contains no TAB/newline record delimiters, the cover path is a
+ * relative non-traversing path, and @p direction is a supported value. Empty
+ * strings explicitly clear fields; NULL string arguments are invalid.
+ *
+ * @param[in,out] st         State to update (never NULL).
+ * @param[in]     summary    Series synopsis (may be empty).
+ * @param[in]     writer     Writer/author name (may be empty).
+ * @param[in]     artist     Artist/illustrator name (may be empty).
+ * @param[in]     cover_url  Remote cover URL (may be empty).
+ * @param[in]     cover_path Local cover path relative to the series directory.
+ * @param[in]     language   BCP-47 language tag (may be empty).
+ * @param[in]     direction  Page progression direction.
+ *
+ * @return Whether the complete tuple was accepted.
+ * @retval true  Every value was validated and copied.
+ * @retval false An argument was NULL, overlong, malformed, or unsupported.
+ *
+ * @pre @p st is non-NULL and caller-owned.
+ * @pre All string arguments are non-NULL and NUL-terminated.
+ * @post On true, all rich series metadata fields equal the supplied values.
+ * @post On false, @p st is unchanged.
+ *
+ * @note Not thread-safe: writes caller storage.
+ * @since 0.1.0
+ */
+bool mdl_state_set_series_metadata(mdl_state_t *st, const char *summary,
+                                   const char *writer, const char *artist,
+                                   const char *cover_url,
+                                   const char *cover_path, const char *language,
+                                   mdl_state_reading_direction_t direction);
 
 /**
  * @brief Load a series' state from disk.
  *
  * @details
- * Parses the v1 format (see the file header). A file that is absent is NOT an
- * error -- @p st is initialised empty and ::k_ra8_ok is returned, so the first
- * run of a new series just starts fresh. A file that exists but does not parse
- * (wrong version, malformed record, over-capacity) leaves @p st initialised
- * empty and returns ::k_ra8_err_invalid_state, giving the caller a clear rebuild
- * path rather than a crash or a silent full refetch.
+ * Parses both v2 and the migratable v1 format (see the file header). A file
+ * that is absent is NOT an error -- @p st is initialised empty and ::k_ra8_ok
+ * is returned, so the first run of a new series just starts fresh. A file that
+ * exists but does not parse (wrong version, malformed record, over-capacity)
+ * leaves @p st initialised empty and returns ::k_ra8_err_invalid_state, giving
+ * the caller a clear rebuild path rather than a crash or silent full refetch.
  *
  * @param[in]  path State file path (never NULL).
  * @param[out] st   State to fill; always left in a valid (possibly empty) form.
@@ -205,17 +265,17 @@ void mdl_state_set_series(mdl_state_t* st,
  * @see mdl_state_save
  * @since 0.1.0
  */
-ra8_err_t mdl_state_load(const char* path, mdl_state_t* st);
+ra8_err_t mdl_state_load(const char *path, mdl_state_t *st);
 
 /**
  * @brief Persist a series' state atomically.
  *
  * @details
- * Writes to `<path>.tmp` and then `rename`s it over @p path, so a process killed
- * mid-write can never leave a half-written (thus corrupt) state file -- the old
- * file survives intact until the complete new one replaces it in one step. This
- * is what makes per-page checkpointing safe: the fetch loop can save after every
- * page without risking the record it is protecting.
+ * Writes to `<path>.tmp` and then `rename`s it over @p path, so a process
+ * killed mid-write can never leave a half-written (thus corrupt) state file --
+ * the old file survives intact until the complete new one replaces it in one
+ * step. This is what makes per-page checkpointing safe: the fetch loop can save
+ * after every page without risking the record it is protecting.
  *
  * @param[in] path State file path (never NULL).
  * @param[in] st   State to write (never NULL).
@@ -234,7 +294,7 @@ ra8_err_t mdl_state_load(const char* path, mdl_state_t* st);
  * @see mdl_state_load
  * @since 0.1.0
  */
-ra8_err_t mdl_state_save(const char* path, const mdl_state_t* st);
+ra8_err_t mdl_state_save(const char *path, const mdl_state_t *st);
 
 /**
  * @brief Find a chapter record by its stable identifier.
@@ -252,7 +312,7 @@ ra8_err_t mdl_state_save(const char* path, const mdl_state_t* st);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-mdl_chapter_rec_t* mdl_state_find_chapter(mdl_state_t* st, const char* id);
+mdl_chapter_rec_t *mdl_state_find_chapter(mdl_state_t *st, const char *id);
 
 /**
  * @brief Find or append a chapter record, returning it.
@@ -267,14 +327,72 @@ mdl_chapter_rec_t* mdl_state_find_chapter(mdl_state_t* st, const char* id);
  *
  * @pre @p st, @p id, @p url are non-NULL and NUL-terminated.
  * @pre The caller treats NULL as "table full" and degrades, never crashes.
- * @post A new record starts incomplete with `page_count == 0`.
+ * @post A new record starts incomplete with `page_count == 0`; a nonzero
+ *       @p number is marked known and zero retains legacy "unknown" semantics.
  * @post `st->chapter_count` grows by at most one.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-mdl_chapter_rec_t*
-mdl_state_add_chapter(mdl_state_t* st, const char* id, const char* url, long number);
+mdl_chapter_rec_t *mdl_state_add_chapter(mdl_state_t *st, const char *id,
+                                         const char *url, long number);
+
+/**
+ * @brief Find or append a chapter with explicit parsed-number presence.
+ *
+ * @details
+ * Unlike the source-compatible ::mdl_state_add_chapter wrapper, this API keeps
+ * chapter zero distinct from an unknown number and preserves fractional chapter
+ * numbers. An unknown number must be supplied canonically as 0.0.
+ *
+ * @param[in,out] st           State to update (never NULL).
+ * @param[in]     id           Chapter identifier (never NULL).
+ * @param[in]     url          Chapter page URL (never NULL).
+ * @param[in]     number       Finite parsed chapter number, or 0.0 if unknown.
+ * @param[in]     number_known Whether @p number was explicitly parsed.
+ *
+ * @return The existing or newly-added record, or NULL when invalid/full.
+ * @retval NULL A NULL/malformed argument, invalid number, or full table.
+ *
+ * @pre @p st, @p id, and @p url are non-NULL.
+ * @pre @p id and @p url are NUL-terminated and fit their fixed fields.
+ * @post A new record stores @p number and @p number_known exactly.
+ * @post An existing record is returned without changing its metadata.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+mdl_chapter_rec_t *
+mdl_state_add_chapter_numbered(mdl_state_t *st, const char *id, const char *url,
+                               double number, bool number_known);
+
+/**
+ * @brief Set a chapter's display title and explicit parsed number.
+ *
+ * @details
+ * Applies both fields transactionally after validating the title and number.
+ * A known number may be zero or fractional; an unknown number must be 0.0.
+ *
+ * @param[in,out] chapter      Chapter record to update (never NULL).
+ * @param[in]     title        Display title (may be empty, never NULL).
+ * @param[in]     number       Finite parsed chapter number, or 0.0 if unknown.
+ * @param[in]     number_known Whether @p number was explicitly parsed.
+ *
+ * @return Whether the complete metadata tuple was accepted.
+ * @retval true  The title and number were stored.
+ * @retval false An argument was invalid; @p chapter is unchanged.
+ *
+ * @pre @p chapter is non-NULL and caller-owned.
+ * @pre @p title is non-NULL and NUL-terminated.
+ * @post On true, the chapter metadata exactly matches the arguments.
+ * @post On false, @p chapter is unchanged.
+ *
+ * @note Not thread-safe: writes caller storage.
+ * @since 0.1.0
+ */
+bool mdl_state_set_chapter_metadata(mdl_chapter_rec_t *chapter,
+                                    const char *title, double number,
+                                    bool number_known);
 
 /**
  * @brief Whether a chapter is recorded fully fetched and verified.
@@ -293,7 +411,7 @@ mdl_state_add_chapter(mdl_state_t* st, const char* id, const char* url, long num
  * @note Not thread-safe.
  * @since 0.1.0
  */
-bool mdl_state_chapter_complete(const mdl_state_t* st, const char* id);
+bool mdl_state_chapter_complete(const mdl_state_t *st, const char *id);
 
 /**
  * @brief Recorded page count for a chapter (0 when unknown).
@@ -316,7 +434,7 @@ bool mdl_state_chapter_complete(const mdl_state_t* st, const char* id);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-uint16_t mdl_state_chapter_pages(const mdl_state_t* st, const char* id);
+uint16_t mdl_state_chapter_pages(const mdl_state_t *st, const char *id);
 
 /**
  * @brief Find a page record by its source-URL hash (the dedup lookup).
@@ -335,36 +453,44 @@ uint16_t mdl_state_chapter_pages(const mdl_state_t* st, const char* id);
  * @see mdl_state_add_page
  * @since 0.1.0
  */
-const mdl_page_rec_t* mdl_state_find_page(const mdl_state_t* st, uint64_t url_hash);
+const mdl_page_rec_t *mdl_state_find_page(const mdl_state_t *st,
+                                          uint64_t url_hash);
 
 /**
- * @brief Append a page's dedup/verify record to the series pool.
+ * @brief Add or replace a URL-keyed page cache record.
+ *
+ * @details
+ * Adds or refreshes a bounded page identity and its optional HTTP validators.
+ * The URL hash is the sole cache key: when magic-byte validation changes a
+ * page's canonical extension or a combined layout relocates it, the existing
+ * record is replaced instead of leaving an older path first in lookup order.
+ * Empty or NULL validator strings are stored as empty values.
  *
  * @param[in,out] st           State to update (never NULL).
  * @param[in]     url_hash     FNV-1a 64 of the page's source URL.
  * @param[in]     content_hash FNV-1a 64 of the fetched page bytes.
- * @param[in]     rel_path     Page path relative to the series dir (never NULL).
+ * @param[in]     rel_path     Page path relative to the series dir (never
+ * NULL).
+ * @param[in]     etag         Cached ETag, or NULL when unavailable.
+ * @param[in]     last_modified Cached Last-Modified, or NULL when unavailable.
  *
  * @return Whether the record was stored.
- * @retval true  The record was appended.
+ * @retval true  The record was appended or the existing URL record replaced.
  * @retval false The pool is full (::k_mdl_max_page_recs) or a NULL argument;
  *               dedup simply degrades to a refetch next time, never a crash.
  *
  * @pre @p st and @p rel_path are non-NULL; @p rel_path is NUL-terminated.
  * @pre @p rel_path is a sanitised path with no `..`/leading `/`.
- * @post On true, `st->page_rec_count` grows by one.
+ * @post On true, `st->page_rec_count` grows by one only for a new URL hash.
  * @post On false, @p st is unchanged.
  *
  * @note Not thread-safe.
  * @see mdl_state_find_page
  * @since 0.1.0
  */
-bool mdl_state_add_page(mdl_state_t* st,
-                        uint64_t     url_hash,
-                        uint64_t     content_hash,
-                        const char*  rel_path,
-                        const char*  etag,
-                        const char*  last_modified);
+bool mdl_state_add_page(mdl_state_t *st, uint64_t url_hash,
+                        uint64_t content_hash, const char *rel_path,
+                        const char *etag, const char *last_modified);
 
 /**
  * @brief Render a one-line coverage summary (chapter span, count, gaps).
@@ -388,4 +514,4 @@ bool mdl_state_add_page(mdl_state_t* st,
  * @note Not thread-safe: writes caller storage.
  * @since 0.1.0
  */
-void mdl_state_coverage(const mdl_state_t* st, char* buf, size_t cap);
+void mdl_state_coverage(const mdl_state_t *st, char *buf, size_t cap);

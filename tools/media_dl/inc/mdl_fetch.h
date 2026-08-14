@@ -176,6 +176,43 @@ typedef struct {
 } mdl_fetch_ctx_t;
 
 /**
+ * @brief Fetch one policy-governed asset to an absolute file path.
+ *
+ * @details
+ * Provides non-page callers (notably series-cover acquisition) the same robots
+ * gate, backend SSRF policy, per-host governor, bounded retry loop, and atomic
+ * publication used by chapter images. The transfer is staged beside the target;
+ * an existing target survives every failed or zero-byte response unchanged.
+ *
+ * @param[in,out] ctx        Injected session/site/governor dependencies.
+ * @param[in]     url        Absolute HTTP(S) asset URL (never NULL).
+ * @param[in]     target_abs Absolute destination path (never NULL).
+ * @param[in]     referer    Referer header, or NULL to omit it.
+ * @param[out]    out_resp   Finished response metadata, or NULL.
+ * @param[out]    out_bytes  Committed byte count, or NULL.
+ *
+ * @return An ::ra8_err_t transfer result.
+ * @retval k_ra8_ok               A non-empty asset was atomically committed.
+ * @retval k_ra8_err_invalid_arg  Required context/path/URL input was invalid.
+ * @retval k_ra8_err_invalid_size The server returned a successful empty body.
+ * @retval k_ra8_fail             Robots refused the URL or publication failed.
+ *
+ * @pre @p ctx has a session, site descriptor, and configured network backend.
+ * @pre @p target_abs names a writable absolute path whose parent exists.
+ * @post On success, @p target_abs holds exactly `*out_bytes` nonzero bytes.
+ * @post On failure, a pre-existing @p target_abs is unchanged and no temp remains.
+ *
+ * @note Not thread-safe: mutates the session cache and governor.
+ * @since 0.1.0
+ */
+ra8_err_t mdl_fetch_asset(mdl_fetch_ctx_t* ctx,
+                          const char*      url,
+                          const char*      target_abs,
+                          const char*      referer,
+                          mdl_net_resp_t*  out_resp,
+                          size_t*          out_bytes);
+
+/**
  * @brief Download a series' chapters incrementally, resuming and deduping.
  *
  * @details

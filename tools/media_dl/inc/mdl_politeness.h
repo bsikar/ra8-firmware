@@ -81,6 +81,7 @@ typedef struct {
  */
 void mdl_politeness_init(mdl_politeness_t* p, uint64_t seed);
 
+RA8_DI_SLOT("politeness_sleep")
 /**
  * @brief Seed the jitter source and inject a clock for the blocking sleep.
  *
@@ -105,7 +106,6 @@ void mdl_politeness_init(mdl_politeness_t* p, uint64_t seed);
  * @note Not thread-safe: initialises caller storage.
  * @since 0.1.0
  */
-RA8_DI_SLOT("politeness_sleep")
 void mdl_politeness_init_clock(mdl_politeness_t* p,
                                uint64_t          seed,
                                mdl_sleep_fn      sleep_fn,
@@ -267,6 +267,7 @@ typedef struct {
  * @retval (by value) Never fails; always returns the conservative defaults.
  *
  * @pre None.
+ * @pre The caller accepts the documented conservative constants.
  * @post `burst >= 1` and `max_inflight >= 1` in the returned config.
  * @post `rate_per_min > 0`, so rate limiting is on by default.
  *
@@ -300,6 +301,7 @@ mdl_gov_cfg_t mdl_gov_cfg_default(void);
  */
 void mdl_governor_init(mdl_governor_t* g, const mdl_gov_cfg_t* cfg, uint64_t seed);
 
+RA8_DI_SLOT("governor_clock")
 /**
  * @brief Initialise a governor with injected clock and sleep seams (DI).
  *
@@ -327,7 +329,6 @@ void mdl_governor_init(mdl_governor_t* g, const mdl_gov_cfg_t* cfg, uint64_t see
  * @note Not thread-safe: initialises caller storage.
  * @since 0.1.0
  */
-RA8_DI_SLOT("governor_clock")
 void mdl_governor_init_clock(mdl_governor_t*      g,
                              const mdl_gov_cfg_t* cfg,
                              uint64_t             seed,
@@ -377,6 +378,10 @@ ra8_err_t mdl_governor_acquire(mdl_governor_t* g,
 
 /**
  * @brief Release the in-flight slot reserved by a matching ::mdl_governor_acquire.
+ *
+ * @details Decrements the matching host record's in-flight count when it is
+ * non-zero. NULL arguments, unknown hosts, and unmatched releases are tolerated
+ * no-ops so cleanup paths can remain unconditional.
  *
  * @param[in,out] g    Governor, or NULL (no-op).
  * @param[in]     host Host key passed to the paired acquire; may be NULL.
@@ -446,6 +451,14 @@ void mdl_governor_observe(mdl_governor_t* g,
  * @param[in]     retry_after Raw `Retry-After` header, or NULL/empty.
  * @param[in]     now_wall_s Current Unix wall-clock time in seconds.
  *
+ * @return Nothing.
+ *
+ * @pre `g`, when non-NULL, was initialised by a governor init function.
+ * @pre `status`, `retry_after`, and `now_wall_s` describe the same completed request.
+ * @post A 429/503 raises the host backoff and advances its earliest-next gate.
+ * @post Other outcomes advance the success streak and may decay one backoff level.
+ *
+ * @note Not thread-safe: mutates the per-host table and reads the monotonic clock.
  * @since 0.1.0
  */
 void mdl_governor_observe_at_wall(mdl_governor_t* g,
@@ -475,6 +488,7 @@ void mdl_governor_observe_at_wall(mdl_governor_t* g,
  * @pre `g`, when non-NULL, was initialised by a governor init function.
  * @pre The caller treats a false return as "host not yet seen".
  * @post No governor state is modified.
+ * @post Output pointers are written only when the function returns true.
  *
  * @note Not thread-safe: reads the per-host table.
  * @since 0.1.0

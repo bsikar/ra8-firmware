@@ -38,6 +38,7 @@
 /** @brief Backend tunables. */
 typedef enum : uint32_t {
   k_curl_max_redirects   = 5,     /**< Redirect hops to follow.                  */
+  k_http_not_modified    = 304,   /**< Conditional GET reused the held entity.  */
   k_http_client_err_min  = 400,   /**< First HTTP status treated as an error.    */
   k_http_not_found       = 404,   /**< Absent resource (client error).           */
   k_http_too_many_req    = 429,   /**< Too Many Requests (throttle).             */
@@ -69,6 +70,7 @@ typedef struct {
   const char*       proxy;                          /**< HTTP/HTTPS proxy URL.        */
   const char*       socks5;                         /**< SOCKS5 proxy URL.            */
   const char*       cookie_file;                    /**< Cookie file path.            */
+  const char*       ca_file;                        /**< Custom PEM CA bundle.         */
   char              origin_host[k_origin_host_max]; /**< Host of the current request. */
   mdl_req_headers_t request_headers;                /**< Stable conditional headers.  */
 } mdl_curl_ctx_t;
@@ -94,7 +96,19 @@ typedef struct {
   char content_type[k_mdl_content_type_max]; /**< Raw Content-Type, "" when absent.  */
 } hdr_sink_t;
 
-/** @brief Lower-case an ASCII byte (locale-independent). */
+/**
+ * @brief Lower-case an ASCII byte (locale-independent).
+ * @details Maps uppercase ASCII letters and preserves all other bytes.
+ * @param[in] c Character to map.
+ * @return Lower-case equivalent.
+ * @retval other Mapped or unchanged character.
+ * @pre @p c is representable as `char`.
+ * @pre Locale-specific folding is not required.
+ * @post No state is modified.
+ * @post Non-uppercase input is unchanged.
+ * @note Thread-safe: pure arithmetic.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static char ascii_lower(char c)
 {
   if ((c >= 'A') && (c <= 'Z')) {
@@ -103,7 +117,22 @@ RA8_INTERNAL static char ascii_lower(char c)
   return c;
 }
 
-/** @brief True when `line` begins with `prefix`, ASCII case-insensitively. */
+/**
+ * @brief True when `line` begins with `prefix`, ASCII case-insensitively.
+ * @details Compares a bounded header line against a lower-case literal prefix.
+ * @param[in] line Header bytes, not necessarily NUL-terminated.
+ * @param[in] line_len Readable line length.
+ * @param[in] prefix NUL-terminated lower-case prefix.
+ * @return Whether the complete prefix matched.
+ * @retval true The bounded line starts with @p prefix.
+ * @retval false A byte differs or the line ends first.
+ * @pre @p line is readable for @p line_len bytes and @p prefix is non-NULL.
+ * @pre @p prefix is lower-case ASCII.
+ * @post Inputs are unchanged.
+ * @post No state is modified.
+ * @note Thread-safe: reads only arguments.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool header_is(const char* line, size_t line_len, const char* prefix)
 {
   size_t i = 0U;
@@ -115,7 +144,21 @@ RA8_INTERNAL static bool header_is(const char* line, size_t line_len, const char
   return prefix[i] == '\0';
 }
 
-/** @brief Copy a header value (after the colon), trimmed of CR/LF/space, bounded. */
+/**
+ * @brief Copy a header value (after the colon), trimmed of CR/LF/space, bounded.
+ * @details Finds the first colon, trims surrounding HTTP whitespace, and copies with NUL termination.
+ * @param[in] line Header bytes.
+ * @param[in] line_len Readable byte count.
+ * @param[out] out Destination string.
+ * @param[in] cap Destination capacity.
+ * @return Nothing.
+ * @pre @p line and @p out are non-NULL; @p cap is non-zero.
+ * @pre @p line is readable for @p line_len bytes.
+ * @post @p out is NUL-terminated and contains at most `cap - 1` bytes.
+ * @post @p line is unchanged.
+ * @note Longer values are deliberately truncated.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static void header_value(const char* line, size_t line_len, char* out, size_t cap)
 {
   size_t start = 0U;
@@ -143,8 +186,24 @@ RA8_INTERNAL static void header_value(const char* line, size_t line_len, char* o
   out[n] = '\0';
 }
 
-/** @brief libcurl header callback: latch the final response's Retry-After value. */
 /* cppcheck-suppress constParameterCallback ; libcurl HEADERFUNCTION ABI is char* */
+/**
+ * @brief Capture selected headers from the final libcurl response.
+ * @details Clears redirect-hop metadata on a status line and latches bounded validator fields.
+ * @param[in] buffer Header bytes supplied by libcurl.
+ * @param[in] size Element size.
+ * @param[in] nitems Element count.
+ * @param[in,out] user Optional ::hdr_sink_t callback state.
+ * @return Number of elements consumed, or zero on multiplication overflow.
+ * @retval 0 The byte count overflowed.
+ * @retval other @p nitems when accepted.
+ * @pre @p buffer is readable for `size * nitems` bytes when representable.
+ * @pre @p user is NULL or points to writable header sink storage.
+ * @post Recognised headers update only their bounded sink field.
+ * @post A new status line clears metadata from the preceding redirect hop.
+ * @note Signature is fixed by libcurl's callback ABI.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static size_t on_header(char* buffer, size_t size, size_t nitems, void* user)
 {
   if ((nitems != 0U) && (size > (SIZE_MAX / nitems))) {
@@ -193,8 +252,24 @@ RA8_PRIV size_t mdl_net_curl_buf_write(char* data, size_t size, size_t nmemb, vo
   return nmemb;
 }
 
-/** @brief libcurl write callback: append to a FILE*, enforcing the size cap. */
 /* cppcheck-suppress constParameterCallback ; libcurl WRITEFUNCTION ABI is char* */
+/**
+ * @brief Append response bytes to a file while enforcing the configured cap.
+ * @details Rejects overflow before writing and returns the exact byte count accepted by `fwrite`.
+ * @param[in] data Response bytes supplied by libcurl.
+ * @param[in] size Element size.
+ * @param[in] nmemb Element count.
+ * @param[in,out] user ::file_sink_t callback state.
+ * @return Number of bytes written, or zero to abort transfer.
+ * @retval 0 Invalid state, overflow, or a failed write.
+ * @retval other Bytes accepted by the file stream.
+ * @pre @p data is readable for the representable requested byte count.
+ * @pre @p user points to an open file sink.
+ * @post `written` advances by exactly the returned count.
+ * @post A cap or arithmetic overflow sets the overflow flag.
+ * @note Signature is fixed by libcurl's callback ABI.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static size_t on_file_write(char* data, size_t size, size_t nmemb, void* user)
 {
   file_sink_t* sink = (file_sink_t*)user;
@@ -215,7 +290,20 @@ RA8_INTERNAL static size_t on_file_write(char* data, size_t size, size_t nmemb, 
   return wrote;
 }
 
-/** @brief Extract the host of the connection curl is about to request. */
+/**
+ * @brief Verify that libcurl's effective redirect host is permitted.
+ * @details Allows configured cross-host redirects; otherwise compares the effective URL host to origin.
+ * @param[in] net Initialised curl backend state.
+ * @return Whether the effective host satisfies redirect policy.
+ * @retval true Cross-host policy allows it or the host matches.
+ * @retval false The effective URL cannot be classified or changes host.
+ * @pre @p net and its easy handle are non-NULL.
+ * @pre `origin_host` was populated for the request when policy requires it.
+ * @post Backend state is unchanged.
+ * @post No network operation is initiated.
+ * @note Failure to classify is fail-closed.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool redirect_host_ok(mdl_curl_ctx_t* net)
 {
   if (net->allow_cross_host || (net->origin_host[0] == '\0')) {
@@ -233,9 +321,26 @@ RA8_INTERNAL static bool redirect_host_ok(mdl_curl_ctx_t* net)
   return strcmp(host, net->origin_host) == 0;
 }
 
-/** @brief libcurl prereq callback: refuse SSRF and cross-host redirect peers. */
 /* The libcurl CURLOPT_PREREQFUNCTION ABI fixes these parameter types as
  * non-const `char*`; conn_local_ip is unused here but cannot be re-qualified. */
+/**
+ * @brief Refuse non-public peers and forbidden cross-host redirects before transfer.
+ * @details Classifies libcurl's resolved primary address and then applies redirect-host policy.
+ * @param[in] clientp Initialised ::mdl_curl_ctx_t callback state.
+ * @param[in] conn_primary_ip NUL-terminated resolved peer address.
+ * @param[in] conn_local_ip Local address supplied by libcurl but unused.
+ * @param[in] conn_primary_port Resolved peer port supplied by libcurl.
+ * @param[in] conn_local_port Local port supplied by libcurl.
+ * @return libcurl prerequisite decision.
+ * @retval CURL_PREREQFUNC_OK The peer and redirect host are permitted.
+ * @retval CURL_PREREQFUNC_ABORT State or policy validation failed.
+ * @pre Address pointers follow libcurl's prerequisite callback contract.
+ * @pre @p clientp is NULL or points to backend state.
+ * @post No connection data is modified.
+ * @post A decision that cannot be made is denied.
+ * @note Parameter types are fixed by libcurl's ABI.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static int
 on_prereq(void* clientp,
           /* cppcheck-suppress constParameterCallback ; CURLOPT_PREREQFUNCTION ABI fixes char* */
@@ -261,13 +366,40 @@ on_prereq(void* clientp,
   return CURL_PREREQFUNC_OK;
 }
 
-/** @brief True if `code` is CURLE_OK (setopt success). */
+/**
+ * @brief True if `code` is CURLE_OK (setopt success).
+ * @details Normalises libcurl option results for checked boolean chains.
+ * @param[in] code libcurl result code.
+ * @return Whether the operation succeeded.
+ * @retval true @p code equals `CURLE_OK`.
+ * @retval false Any libcurl error was reported.
+ * @pre @p code came from a libcurl operation.
+ * @pre Exact success classification is intended.
+ * @post No state is modified.
+ * @post Input is unchanged.
+ * @note Thread-safe: pure comparison.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool ok_code(CURLcode code)
 {
   return code == CURLE_OK;
 }
 
-/** @brief Apply the security-critical, life-of-handle options (all checked). */
+/**
+ * @brief Apply the security-critical, life-of-handle options (all checked).
+ * @details Configures proxy policy, TLS verification, protocol limits, redirects, and peer checks.
+ * @param[in,out] curl Easy handle being hardened.
+ * @param[in] net Backend security policy and callback state.
+ * @return Whether the complete security policy was applied.
+ * @retval true Every required option succeeded.
+ * @retval false Proxy policy is unsafe or an option failed.
+ * @pre @p curl and @p net are non-NULL.
+ * @pre Policy strings, when present, are NUL-terminated.
+ * @post On true, the handle enforces the documented transport policy.
+ * @post On false, the caller destroys the partial handle.
+ * @note A proxy without the private-address escape hatch is rejected fail-closed.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool apply_security_opts(CURL* curl, mdl_curl_ctx_t* net)
 {
   const bool using_proxy = ((net->socks5 != nullptr) && (net->socks5[0] != '\0')) ||
@@ -288,7 +420,10 @@ RA8_INTERNAL static bool apply_security_opts(CURL* curl, mdl_curl_ctx_t* net)
     proxy_ok = ok_code(curl_easy_setopt(curl, CURLOPT_PROXY, ""));
   }
 
-  return proxy_ok && ok_code(curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http,https")) &&
+  const bool ca_ok = ((net->ca_file == nullptr) || (net->ca_file[0] == '\0')) ||
+                     ok_code(curl_easy_setopt(curl, CURLOPT_CAINFO, net->ca_file));
+  return proxy_ok && ca_ok &&
+         ok_code(curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http,https")) &&
          ok_code(curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "http,https")) &&
          /* Defaults are correct today; assert them so the guarantee is in code. */
          ok_code(curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L)) &&
@@ -300,7 +435,25 @@ RA8_INTERNAL static bool apply_security_opts(CURL* curl, mdl_curl_ctx_t* net)
          ok_code(curl_easy_setopt(curl, CURLOPT_PREREQDATA, net));
 }
 
-/** @brief Apply the behavioural, life-of-handle options (all checked). */
+/**
+ * @brief Apply the behavioural, life-of-handle options (all checked).
+ *
+ * @details Enables transparent content decoding, configures the caller's cookie
+ * file, installs the response-header callback, and enforces connect and
+ * low-speed time bounds. Any failed libcurl option rejects the handle.
+ *
+ * @param[in,out] curl Easy handle being configured.
+ * @param[in] net Backend policy containing the optional cookie-file path.
+ * @return Whether every behavioural option was accepted by libcurl.
+ * @retval true  All options were applied.
+ * @retval false At least one option failed.
+ * @pre @p curl is a valid easy handle.
+ * @pre @p net is NULL or remains readable for this call.
+ * @post On true, the handle has the complete required behavioural policy.
+ * @post On false, the caller will destroy rather than use the partial handle.
+ * @note The security-critical transport options are applied separately.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool apply_behavior_opts(CURL* curl, const mdl_curl_ctx_t* net)
 {
   const char* cfile = (net != nullptr && net->cookie_file != nullptr) ? net->cookie_file : "";
@@ -313,7 +466,26 @@ RA8_INTERNAL static bool apply_behavior_opts(CURL* curl, const mdl_curl_ctx_t* n
          ok_code(curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, (long)k_low_speed_secs));
 }
 
-/** @brief Append one bounded header to caller-owned stable list storage. */
+/**
+ * @brief Append one bounded header to caller-owned stable list storage.
+ *
+ * @details Formats `name: value` into the next fixed buffer, then links the
+ * corresponding embedded curl-list node. No allocation or ownership transfer
+ * occurs, so the storage remains valid through `curl_easy_perform`.
+ *
+ * @param[in,out] headers Fixed header buffers and embedded list nodes.
+ * @param[in] name NUL-terminated HTTP header name.
+ * @param[in] value NUL-terminated HTTP header value.
+ * @return Whether the complete header was appended.
+ * @retval true  A node was linked and the count advanced.
+ * @retval false The table was full or the formatted header did not fit.
+ * @pre All arguments are non-NULL and the header state was initialised.
+ * @pre @p headers remains alive until the request header is detached.
+ * @post On true, `headers->count` increases by one and the list remains terminated.
+ * @post On false, `headers->count` and the linked prefix are unchanged.
+ * @note Header syntax and value policy are supplied by the internal caller.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool
 append_req_header(mdl_req_headers_t* headers, const char* name, const char* value)
 {
@@ -336,7 +508,24 @@ append_req_header(mdl_req_headers_t* headers, const char* name, const char* valu
   return true;
 }
 
-/** @brief Build conditional request headers (If-None-Match, If-Modified-Since). */
+/**
+ * @brief Build conditional request headers (If-None-Match, If-Modified-Since).
+ *
+ * @details Resets @p headers, then appends each non-empty validator supplied by
+ * @p req. A NULL request produces an empty, valid header list.
+ *
+ * @param[in] req Optional request carrying entity validators.
+ * @param[out] headers Fixed storage receiving the embedded curl list.
+ * @return Whether every requested validator fit.
+ * @retval true  The complete conditional-header list was built.
+ * @retval false A requested header exceeded a fixed bound.
+ * @pre @p headers points to writable ::mdl_req_headers_t storage.
+ * @pre Validator strings in @p req, when present, are NUL-terminated.
+ * @post @p headers is initialised even when no validator is requested.
+ * @post On true, the list order is ETag followed by modification date.
+ * @note The returned list borrows only storage embedded in @p headers.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool build_req_headers(const mdl_net_req_t* req, mdl_req_headers_t* headers)
 {
   *headers = (mdl_req_headers_t){};
@@ -354,7 +543,22 @@ RA8_INTERNAL static bool build_req_headers(const mdl_net_req_t* req, mdl_req_hea
   return true;
 }
 
-/** @brief Apply the per-request options shared by both fetch paths. */
+/**
+ * @brief Apply the per-request options shared by both fetch paths.
+ * @details Validates and stores the origin host, then sets URL, timeout, referer, and User-Agent.
+ * @param[in,out] net Initialised backend state.
+ * @param[in] url Absolute request URL.
+ * @param[in] req Request metadata and timeout.
+ * @return Whether validation and all required options succeeded.
+ * @retval true The handle is ready for this request.
+ * @retval false Host extraction or a libcurl option failed.
+ * @pre @p net, @p url, and @p req are non-NULL.
+ * @pre Request strings, when present, are NUL-terminated.
+ * @post On true, `origin_host` identifies @p url for redirect enforcement.
+ * @post On host failure, `origin_host` is empty.
+ * @note The caller separately attaches response sinks and conditional headers.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool apply_req(mdl_curl_ctx_t* net, const char* url, const mdl_net_req_t* req)
 {
   if (!mdl_url_host(url, net->origin_host, sizeof(net->origin_host))) {
@@ -372,7 +576,22 @@ RA8_INTERNAL static bool apply_req(mdl_curl_ctx_t* net, const char* url, const m
   return ok;
 }
 
-/** @brief Detach request headers; their backing remains valid in backend state. */
+/**
+ * @brief Detach request headers; their backing remains valid in backend state.
+ *
+ * @details Clears `CURLOPT_HTTPHEADER` only when an embedded list was attached.
+ * The fixed nodes and strings are caller-owned and therefore are not freed.
+ *
+ * @param[in,out] curl Easy handle from which to detach the request list.
+ * @param[in] headers Fixed list state used for the completed request.
+ * @return Nothing.
+ * @pre @p curl and @p headers are non-NULL.
+ * @pre The request using @p headers has completed or failed before transfer.
+ * @post A non-empty list is no longer associated with @p curl.
+ * @post @p headers and all embedded backing bytes remain unchanged.
+ * @note A libcurl detach error is intentionally ignored during cleanup.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static void release_req_headers(CURL* curl, const mdl_req_headers_t* headers)
 {
   if (headers->head == nullptr) {
@@ -405,7 +624,24 @@ RA8_PRIV ra8_err_t mdl_net_curl_classify(CURLcode code, bool overflow, long stat
   return k_ra8_ok;
 }
 
-/** @brief Read status + captured headers, fill @p resp, and classify the result. */
+/**
+ * @brief Read status and captured headers, fill @p resp, and classify the result.
+ * @details Retrieves the HTTP response code, copies bounded metadata, and maps transport status.
+ * @param[in] curl Easy handle for the completed request.
+ * @param[in] code Result from `curl_easy_perform`.
+ * @param[in] overflow Whether the body sink exceeded its cap.
+ * @param[in] hdr Captured final-response headers.
+ * @param[out] resp Optional public response metadata.
+ * @return Canonical network result.
+ * @retval k_ra8_ok Transfer and HTTP classification succeeded.
+ * @retval other Canonical transport, size, throttle, or HTTP error.
+ * @pre @p curl and @p hdr are non-NULL and the transfer has completed.
+ * @pre @p resp is NULL or points to writable response storage.
+ * @post A non-NULL @p resp contains the final status and bounded headers.
+ * @post Curl and captured header state remain owned by the caller.
+ * @note Thread safety follows ownership of the easy handle.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t finish_transfer(CURL*             curl,
                                               CURLcode          code,
                                               bool              overflow,
@@ -424,7 +660,26 @@ RA8_INTERNAL static ra8_err_t finish_transfer(CURL*             curl,
   return mdl_net_curl_classify(code, overflow, status);
 }
 
-/** @brief Vtable method: GET `url` into a caller buffer. */
+/**
+ * @brief Vtable method: GET @p url into a caller buffer.
+ * @details Applies bounded request state, performs the transfer, detaches headers, and terminates when room remains.
+ * @param[in] ctx Initialised curl backend state.
+ * @param[in] url Allowed absolute HTTP(S) URL.
+ * @param[in] req Request metadata.
+ * @param[out] buf Body destination.
+ * @param[in] cap Destination capacity.
+ * @param[out] out_len Optional body length.
+ * @param[out] resp Optional response metadata.
+ * @return Canonical transfer result.
+ * @retval k_ra8_ok The complete response fit.
+ * @retval other Validation, option, transport, HTTP, or size failure.
+ * @pre Required pointers are non-NULL and @p buf is writable for @p cap bytes.
+ * @pre @p ctx owns an idle easy handle.
+ * @post Request headers are detached before return after attachment.
+ * @post On success, @p out_len is written when non-NULL.
+ * @note Not thread-safe: reuses backend request storage.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t curl_get_buf(void*                ctx,
                                            const char*          url,
                                            const mdl_net_req_t* req,
@@ -469,7 +724,25 @@ RA8_INTERNAL static ra8_err_t curl_get_buf(void*                ctx,
   return k_ra8_ok;
 }
 
-/** @brief Vtable method: GET `url` and stream the body to a file. */
+/**
+ * @brief Vtable method: GET @p url and atomically replace a file.
+ * @details Streams into a bounded sibling temporary file and commits it only after a successful complete transfer.
+ * @param[in] ctx Initialised curl backend state.
+ * @param[in] url Allowed absolute HTTP(S) URL.
+ * @param[in] req Request metadata.
+ * @param[in] out_path Destination path.
+ * @param[out] out_len Optional committed body length.
+ * @param[out] resp Optional response metadata.
+ * @return Canonical transfer result.
+ * @retval k_ra8_ok A complete file was atomically committed.
+ * @retval other Validation, file, option, transport, HTTP, or size failure.
+ * @pre Required pointers are non-NULL and strings are NUL-terminated.
+ * @pre @p ctx owns an idle easy handle.
+ * @post On failure, the prior destination remains unchanged and temporary debris is removed.
+ * @post Request headers are detached before return after attachment.
+ * @note Not thread-safe: reuses backend request storage.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
                                             const char*          url,
                                             const mdl_net_req_t* req,
@@ -540,7 +813,7 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
   } else {
     curl_easy_getinfo(net->curl, CURLINFO_RESPONSE_CODE, &status);
   }
-  if (status == 304) {
+  if (status == (long)k_http_not_modified) {
     /* 304 Not Modified: discard empty temp file, retain existing destination file. */
     mdl_atomic_abort(tmp_path);
     if (out_len != nullptr) {
@@ -558,7 +831,18 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
   return k_ra8_ok;
 }
 
-/** @brief Vtable method: release the libcurl handle and this backend state. */
+/**
+ * @brief Release the libcurl handle and clear this backend state.
+ * @details Cleans up the easy handle when present, zeroes caller-owned storage, and releases global curl state.
+ * @param[in,out] ctx Optional ::mdl_curl_ctx_t backend state.
+ * @return Nothing.
+ * @pre @p ctx is NULL or points to storage initialised by this backend.
+ * @pre No transfer is active on the easy handle.
+ * @post A non-NULL context contains only zero bytes.
+ * @post Backend-owned libcurl resources are released.
+ * @note Not thread-safe with concurrent operations on the same backend.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static void curl_destroy(void* ctx)
 {
   mdl_curl_ctx_t* net = (mdl_curl_ctx_t*)ctx;
@@ -604,6 +888,7 @@ ra8_err_t mdl_net_curl_init(mdl_net_iface_t*        net,
     ctx->proxy            = policy->proxy;
     ctx->socks5           = policy->socks5;
     ctx->cookie_file      = policy->cookie_file;
+    ctx->ca_file          = policy->ca_file;
   }
   ctx->curl = curl_easy_init();
   if (ctx->curl == nullptr) {
