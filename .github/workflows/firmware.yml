@@ -275,11 +275,11 @@ jobs:
       - run: bash scripts/ci.sh --gate ubsan
 
   # ---------------------------------------------------------------------------
-  # #147/#160 cache-benchmark toolchain -- #160's "cache_bench builds in CI"
-  # gate, re-confirming SLRU on the captured reader trace on every push.
+  # Cache-benchmark toolchain gate, re-confirming SLRU on the captured reader
+  # trace on every push.
   # ---------------------------------------------------------------------------
   cache-bench:
-    name: Cache benchmarks (#147/#160)
+    name: Cache benchmarks
     runs-on: ra8-ci
     if: >-
       github.event_name != 'pull_request'
