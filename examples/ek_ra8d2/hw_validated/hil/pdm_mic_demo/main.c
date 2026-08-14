@@ -23,7 +23,7 @@
  * reset-default SPH0690 set (HUM Ch 49.2 register reset values).
  *
  * Flow:
- *   1. ra8_cgc_init / ra8_mstp_init / ra8_time_init (system runs on MOCO).
+ *   1. Board clocks / ra8_mstp_init / ra8_time_init.
  *   2. Route P812/P502 to the PDM function; bring up the SCI8 console.
  *   3. Query board-owned SPH0690 policy and bind `ra8_audio_source_pdm`.
  *   4. The backend starts PDM-IF, settles, and discards the filter transient.
@@ -43,7 +43,6 @@
 #include "ra8_audio.h"
 #include "ra8_audio_source_pdm.h"
 #include "ra8_board_ek_ra8d2.h"
-#include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_mstp.h"
 #include "ra8_time.h"
@@ -330,17 +329,14 @@ static void pdm_demo_emit_kv(const uint8_t* label, uint32_t label_len, int32_t v
  */
 static void pdm_demo_clocks_or_halt(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  if (ra8_cgc_init() != k_ra8_ok) {
-    pdm_demo_panic_halt();
-  }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
+  ra8_board_clock_rates_t clock_rates = {};
+  if (ra8_board_clocks_init(&clock_rates) != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
-  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
+  if (ra8_time_init(clock_rates.cpuclk0_hz) != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
 }

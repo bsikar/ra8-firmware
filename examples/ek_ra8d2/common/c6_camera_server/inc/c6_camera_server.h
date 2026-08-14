@@ -21,27 +21,27 @@
 
 /** @brief Application sizing, pacing and fixed network values. */
 typedef enum : uint32_t {
-  k_c6_cam_uart_baud       = 115200U,  /**< Diagnostic console baud rate.          */
-  k_c6_cam_sck_hz          = 5000000U, /**< ESP-hosted SPI clock rate.             */
-  k_c6_cam_edge_poll_ms    = 2U,       /**< C6 interrupt-edge poll period.         */
-  k_c6_cam_boot_wait_ms    = 200U,     /**< C6 boot stabilization delay.           */
-  k_c6_cam_assoc_polls     = 200U,     /**< Maximum association status polls.      */
-  k_c6_cam_assoc_gap_ms    = 50U,      /**< Delay between association polls.       */
-  k_c6_cam_dhcp_wait_ms    = 25000U,   /**< DHCP lease timeout.                    */
-  k_c6_cam_worker_stack    = 12288U,   /**< Worker thread stack bytes.             */
-  k_c6_cam_worker_prio     = 8U,       /**< ThreadX worker priority.               */
-  k_c6_cam_arena_bytes     = 4096U,    /**< C6-link caller-owned arena size.       */
-  k_c6_cam_http_port       = 80U,      /**< Browser server TCP port.               */
-  k_c6_cam_http_chunk      = 1400U,    /**< Maximum HTTP send chunk.               */
-  k_c6_cam_request_max     = 512U,     /**< Maximum parsed request bytes.          */
-  k_c6_cam_tcp_window      = 4096U,    /**< HTTP socket receive window.            */
-  k_c6_cam_listen_backlog  = 1U,       /**< Single-client listen backlog.          */
-  k_c6_cam_stream_frames   = 1024U,    /**< Frames served before client reconnect. */
-  k_c6_cam_net_pkt_payload = 1568U,    /**< NetX packet payload bytes.             */
-  k_c6_cam_net_pool_bytes  = 49152U,   /**< NetX packet pool bytes.                */
-  k_c6_cam_net_ip_stack    = 2048U,    /**< NetX IP thread stack bytes.            */
-  k_c6_cam_net_arp_bytes   = 1040U,    /**< NetX ARP cache bytes.                  */
-  k_c6_cam_net_ip_prio     = 3U,       /**< NetX IP thread priority.               */
+  k_c6_cam_uart_baud       = 115200U,   /**< Diagnostic console baud rate.          */
+  k_c6_cam_sck_hz          = 10000000U, /**< Camera-stream ESP-hosted SPI rate.     */
+  k_c6_cam_edge_poll_ms    = 2U,        /**< C6 interrupt-edge poll period.         */
+  k_c6_cam_boot_wait_ms    = 200U,      /**< C6 boot stabilization delay.           */
+  k_c6_cam_assoc_polls     = 200U,      /**< Maximum association status polls.      */
+  k_c6_cam_assoc_gap_ms    = 50U,       /**< Delay between association polls.       */
+  k_c6_cam_dhcp_wait_ms    = 25000U,    /**< DHCP lease timeout.                    */
+  k_c6_cam_worker_stack    = 12288U,    /**< Worker thread stack bytes.             */
+  k_c6_cam_worker_prio     = 8U,        /**< ThreadX worker priority.               */
+  k_c6_cam_arena_bytes     = 4096U,     /**< C6-link caller-owned arena size.       */
+  k_c6_cam_http_port       = 80U,       /**< Browser server TCP port.               */
+  k_c6_cam_http_chunk      = 1400U,     /**< Maximum HTTP send chunk.               */
+  k_c6_cam_request_max     = 512U,      /**< Maximum parsed request bytes.          */
+  k_c6_cam_tcp_window      = 4096U,     /**< HTTP socket receive window.            */
+  k_c6_cam_listen_backlog  = 1U,        /**< Single-client listen backlog.          */
+  k_c6_cam_stream_frames   = 1024U,     /**< Frames served before client reconnect. */
+  k_c6_cam_net_pkt_payload = 1568U,     /**< NetX packet payload bytes.             */
+  k_c6_cam_net_pool_bytes  = 49152U,    /**< NetX packet pool bytes.                */
+  k_c6_cam_net_ip_stack    = 2048U,     /**< NetX IP thread stack bytes.            */
+  k_c6_cam_net_arp_bytes   = 1040U,     /**< NetX ARP cache bytes.                  */
+  k_c6_cam_net_ip_prio     = 3U,        /**< NetX IP thread priority.               */
 } c6_cam_cfg_t;
 
 /** @brief DHCP lease returned by the raw, bench-validated C6/NetX path. */

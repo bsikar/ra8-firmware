@@ -333,6 +333,26 @@ typedef void (*ra8_esp_hosted_event_cb_t)(void*       ctx,
 [[nodiscard]] bool ra8_esp_hosted_port_is_ready(void);
 
 /**
+ * @brief Report whether the co-processor has queued receive data.
+ * @details Samples the held DATA_READY side-band signal through the bound
+ *          esp-hosted GPIO seam. This is a non-blocking level check for poll
+ *          schedulers; it does not clock SPI or consume the pending frame.
+ *
+ * @return Whether one or more receive frames are pending.
+ * @retval true DATA_READY is asserted on an initialized port.
+ * @retval false The port is not initialized or DATA_READY is inactive.
+ *
+ * @pre The caller does not concurrently tear the port down.
+ * @pre DATA_READY retains the board-qualified active polarity.
+ * @post No GPIO, SPI, or queue state is modified.
+ * @post A true result remains advisory until the caller acquires its wire lock.
+ *
+ * @note Reentrant while the port remains initialized.
+ * @since 0.1.0
+ */
+[[nodiscard]] bool ra8_esp_hosted_port_rx_pending(void);
+
+/**
  * @brief Report transport pool occupancy at a named point.
  *
  * @details

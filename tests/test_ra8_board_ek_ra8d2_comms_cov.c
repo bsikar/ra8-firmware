@@ -67,6 +67,7 @@
 #include "ra8_port_constants.h"
 #include "ra8_sci_regs.h"
 #include "ra8_system_regs.h"
+#include "ra8_time_constants.h"
 #include "unity_minimal.h"
 
 /**
@@ -311,6 +312,61 @@ static void test_uart_console_init_pclka_below_minimum(void)
   TEST_END("uart_console_init: pclka below min returns not_initialized (line 225)");
 }
 
+/**
+ * @brief Verify board clock bring-up rejects a null output pointer.
+ * @return Nothing.
+ * @pre The board clock API is linked into the test binary.
+ * @post No clock-generator state changes.
+ * @note Single-threaded host test.
+ * @since 0.1.0
+ */
+static void test_board_clocks_init_rejects_null(void)
+{
+  TEST_BEGIN("board_clocks_init: null output rejected");
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_clocks_init(nullptr));
+  TEST_END("board_clocks_init: null output rejected");
+}
+
+/**
+ * @brief Verify board clock bring-up propagates an oscillator timeout.
+ * @return Nothing.
+ * @pre The fake oscillator-stable register is clear.
+ * @post The caller-owned output remains unchanged.
+ * @note Single-threaded host test.
+ * @since 0.1.0
+ */
+static void test_board_clocks_init_propagates_failure(void)
+{
+  TEST_BEGIN("board_clocks_init: CGC failure propagated");
+  reset_state();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(ra8_sys_oscsf()));
+  ra8_board_clock_rates_t rates = {.cpuclk0_hz = 1U, .pclka_hz = 2U};
+  TEST_ASSERT(ra8_board_clocks_init(&rates) != k_ra8_ok);
+  TEST_ASSERT_EQ(1U, rates.cpuclk0_hz);
+  TEST_ASSERT_EQ(2U, rates.pclka_hz);
+  TEST_END("board_clocks_init: CGC failure propagated");
+}
+
+/**
+ * @brief Verify board clock bring-up publishes the qualified clock rates.
+ * @return Nothing.
+ * @pre The fake oscillator-stable register reports every source ready.
+ * @post CPUCLK0 and PCLKA match the standard PLL1 clock tree.
+ * @note Single-threaded host test.
+ * @since 0.1.0
+ */
+static void test_board_clocks_init_publishes_rates(void)
+{
+  TEST_BEGIN("board_clocks_init: qualified rates published");
+  reset_state();
+  *ra8_sys_oscsf()              = (uint8_t)k_sys_oscsf_all_ready;
+  ra8_board_clock_rates_t rates = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_clocks_init(&rates));
+  TEST_ASSERT_EQ(k_ra8_cpuclk0_hz, rates.cpuclk0_hz);
+  TEST_ASSERT_EQ(k_ra8_pclka_hz, rates.pclka_hz);
+  TEST_END("board_clocks_init: qualified rates published");
+}
+
 /* -------------------------------------------------------------------------
  * 5. ra8_board_uart_console_init -- TXD pin conflict (line 236)
  * -------------------------------------------------------------------------
@@ -542,6 +598,9 @@ int32_t main(void)
   test_uart_console_write_not_initialized();
   test_uart_console_read_not_initialized();
   test_uart_console_init_pclka_below_minimum();
+  test_board_clocks_init_rejects_null();
+  test_board_clocks_init_propagates_failure();
+  test_board_clocks_init_publishes_rates();
   test_uart_console_init_txd_pin_conflict();
   test_uart_console_init_rxd_pin_conflict();
   test_uart_console_read_no_byte_available();

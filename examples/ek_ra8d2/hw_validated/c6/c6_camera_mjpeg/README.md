@@ -41,3 +41,9 @@ decodes two changing 640x480 stills, validates a one-second microphone WAV,
 and extracts two complete changing frames from the multipart MJPEG stream.
 Bench capture completes in about 188 ms per sensor-compressed frame; no RA8D2
 software JPEG pass or heap allocation is used.
+
+The camera server uses the highest SPI rate qualified on the repository rig:
+10 MHz. A 10-second multipart transfer delivered 21 complete frames (2.10 FPS,
+about 20 KiB per JPEG). The same application delivered 1.50 FPS at 5 MHz;
+20 MHz is intentionally not used because both control-RPC and raw-Ethernet
+qualification timed out at that rate on this wiring.

@@ -46,6 +46,32 @@
 extern "C" {
 #endif
 
+/** @brief Clock rates published by the standard EK-RA8D2 bring-up. */
+typedef struct {
+  uint32_t cpuclk0_hz; /**< Main Cortex-M85 clock rate in hertz. */
+  uint32_t pclka_hz;   /**< Peripheral clock A rate in hertz.   */
+} ra8_board_clock_rates_t;
+
+/**
+ * @brief Initialize the standard EK-RA8D2 clock tree and return its rates.
+ * @details Keeps chip-specific CGC selection inside the board-composition
+ *          layer while exposing the fixed rates needed by application-owned
+ *          timebases and peripheral configurations.
+ *
+ * @param[out] out_rates Initialized CPUCLK0 and PCLKA rates.
+ * @return Error code from the board clock bring-up.
+ * @retval k_ra8_ok Clock initialization succeeded and @p out_rates is valid.
+ * @retval k_ra8_err_invalid_arg @p out_rates is null.
+ * @retval other Propagated clock-generator initialization error.
+ *
+ * @pre Called from single-threaded board initialization.
+ * @post On success, the standard PLL1 clock tree is active.
+ * @post On failure, @p out_rates is unchanged when nonnull.
+ * @note Not thread-safe; call once during board initialization.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_clocks_init(ra8_board_clock_rates_t* out_rates);
+
 /* =============================================================================
  * 6c. Project SW4 layout (UM Section 4.3 Table 3 p 16 + Table 18 p 26)
  *     -- I/O-expander override functions (the ra8_board_pi4ioe_project_t
