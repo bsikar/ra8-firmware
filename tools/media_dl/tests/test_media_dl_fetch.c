@@ -206,6 +206,7 @@ static mdl_url_list_t      g_images;             /**< Extracted-image scratch.  
 static char                g_page[k_page_bytes]; /**< Chapter-HTML scratch.                   */
 static mdl_governor_t*     g_fetch_gov;          /**< Governor wired into run_fetch, or NULL. */
 static mdl_fetch_faillog_t g_faillog;            /**< Failure log run_fetch fills each run.   */
+static bool                g_refetch;            /**< Cache bypass for the current run.       */
 
 /**
  * @struct fetch_clock_t
@@ -236,6 +237,7 @@ static void fetch_sleep(void* c, uint32_t ms)
 static void setup_site(void)
 {
   memset(&g_site, 0, sizeof(g_site));
+  g_refetch = false;
   (void)snprintf(g_site.page_img_attr, sizeof(g_site.page_img_attr), "%s", "data-src");
   g_site.page_img_url_contains[0] = '\0';
 }
@@ -290,6 +292,7 @@ static ra8_err_t run_fetch(const char*        abs_dir,
                          .page_cap       = sizeof(g_page),
                          .images         = &g_images,
                          .update_only    = update_only,
+                         .refetch        = g_refetch,
                          .faillog        = &g_faillog,
                          .progress_fn    = nullptr,
                          .progress_ctx   = nullptr};
@@ -369,6 +372,35 @@ static void test_first_run_then_update_only_new(void)
   TEST_ASSERT_EQ((uint16_t)1, (uint16_t)g_mock.get_file_calls);
   TEST_ASSERT(page_exists(abs_dir, "chapter-3/page_0001.jpg"));
   TEST_END("first run + update only new");
+}
+
+/** @test --refetch bypasses an otherwise valid, reusable local page. */
+static void test_refetch_bypasses_valid_cache(void)
+{
+  TEST_BEGIN("refetch bypasses valid cache");
+  setup_site();
+  g_mock.map   = s_map3;
+  g_mock.map_n = sizeof(s_map3) / sizeof(s_map3[0]);
+  char abs_dir[PATH_MAX];
+  char state_path[PATH_MAX];
+  make_series_dir(abs_dir, sizeof(abs_dir), state_path, sizeof(state_path));
+  mdl_state_init(&g_state);
+  const char* chapters[] = {"http://s/chapter-2"};
+  set_chapters(chapters, 1U);
+  mdl_fetch_stats_t first = {};
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok,
+                 run_fetch(abs_dir, state_path, k_mdl_layout_separate, nullptr, false, 0U, &first));
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)first.pages_fetched);
+
+  g_refetch                = true;
+  mdl_fetch_stats_t second = {};
+  TEST_ASSERT_EQ(
+    (int64_t)k_ra8_ok,
+    run_fetch(abs_dir, state_path, k_mdl_layout_separate, nullptr, false, 0U, &second));
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)second.pages_fetched);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)second.pages_reused);
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)g_mock.get_file_calls);
+  TEST_END("refetch bypasses valid cache");
 }
 
 /** @brief The two-chapter map used by the combined resume test. */
@@ -727,9 +759,9 @@ static void test_conditional_fetch_304_not_modified(void)
 {
   TEST_BEGIN("conditional fetch 304 not modified");
   setup_site();
-  g_mock.map               = s_map1;
-  g_mock.map_n             = sizeof(s_map1) / sizeof(s_map1[0]);
-  g_mock.resp_etag         = "\"v100\"";
+  g_mock.map                = s_map1;
+  g_mock.map_n              = sizeof(s_map1) / sizeof(s_map1[0]);
+  g_mock.resp_etag          = "\"v100\"";
   g_mock.resp_last_modified = "Wed, 21 Oct 2015 07:28:00 GMT";
   char abs_dir[PATH_MAX];
   char state_path[PATH_MAX];
@@ -759,7 +791,8 @@ static void test_conditional_fetch_304_not_modified(void)
   TEST_ASSERT_NOT_NULL(ch);
   ch->complete = false;
 
-  mdl_page_rec_t* page_rec = (mdl_page_rec_t*)mdl_state_find_page(&g_state, mdl_hash_str("http://cdn/a.jpg"));
+  mdl_page_rec_t* page_rec =
+    (mdl_page_rec_t*)mdl_state_find_page(&g_state, mdl_hash_str("http://cdn/a.jpg"));
   TEST_ASSERT_NOT_NULL(page_rec);
   page_rec->content_hash = 0;
 
@@ -769,7 +802,7 @@ static void test_conditional_fetch_304_not_modified(void)
                  run_fetch(abs_dir, state_path, k_mdl_layout_separate, nullptr, false, 0U, &s2));
   g_mock.not_mod_on_file_call = 0U;
   g_mock.resp_etag            = nullptr;
-  g_mock.resp_last_modified    = nullptr;
+  g_mock.resp_last_modified   = nullptr;
 
   /* 304 is treated as success, counts as reused, retains existing file */
   TEST_ASSERT_EQ((uint16_t)1, (uint16_t)s2.pages_reused);
@@ -788,6 +821,7 @@ int32_t main(void)
 {
   test_conditional_fetch_304_not_modified();
   test_first_run_then_update_only_new();
+  test_refetch_bypasses_valid_cache();
   test_resume_equals_uninterrupted();
   test_content_dedup_across_chapters();
   test_corrupt_state_rebuilds();

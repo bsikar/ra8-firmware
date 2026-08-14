@@ -27,12 +27,16 @@ int main(void)
    * for this compile-only test we just need a placeholder. */
   ra8_c6link_t link = {};
 
-  (void)ra8_c6link_mdl_download(&link, "http://example.com/file", "/fs/file");
+  ra8_mdl_session_t session = {};
+  (void)ra8_c6link_mdl_start(&link,
+                             "https://example.com/file.rabook",
+                             k_ra8_mdl_format_rabook,
+                             &session);
 
-  ra8_mdl_download_progress_t prog = {};
-  (void)ra8_c6link_mdl_poll(&link, &prog);
+  ra8_mdl_chunk_t chunk = {};
+  (void)ra8_c6link_mdl_next(&link, &session, RA8_MDL_CHUNK_DATA_MAX, &chunk);
 
-  (void)ra8_c6link_mdl_cancel(&link);
+  (void)ra8_c6link_mdl_cancel(&link, &session);
 
   return 0;
 }

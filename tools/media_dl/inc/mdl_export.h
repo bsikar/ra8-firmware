@@ -77,10 +77,10 @@ bool mdl_format_is_dir_output(mdl_format_t fmt);
 
 /** @brief Sizing constants for metadata fields. */
 typedef enum : uint16_t {
-  k_mdl_meta_title_max   = 256, /**< Title (series or chapter) buffer max bytes.   */
-  k_mdl_meta_summary_max = 1024,/**< Summary description buffer max bytes.         */
-  k_mdl_meta_name_max    = 128, /**< Person name (writer/artist) buffer max bytes. */
-  k_mdl_meta_path_max    = 256, /**< Cover image path buffer max bytes.            */
+  k_mdl_meta_title_max   = 256,  /**< Title (series or chapter) buffer max bytes.   */
+  k_mdl_meta_summary_max = 1024, /**< Summary description buffer max bytes.         */
+  k_mdl_meta_name_max    = 128,  /**< Person name (writer/artist) buffer max bytes. */
+  k_mdl_meta_path_max    = 256,  /**< Cover image path buffer max bytes.            */
 } mdl_meta_size_t;
 
 /**
@@ -88,14 +88,14 @@ typedef enum : uint16_t {
  * @brief Rich series and chapter metadata for export containers (ComicInfo.xml, EPUB OPF).
  */
 typedef struct {
-  char   series_title[k_mdl_meta_title_max];   /**< Series title.                            */
-  char   summary[k_mdl_meta_summary_max];      /**< Summary / description.                   */
-  char   writer[k_mdl_meta_name_max];          /**< Writer / Author.                         */
-  char   artist[k_mdl_meta_name_max];          /**< Artist / Illustrator.                    */
-  char   chapter_title[k_mdl_meta_title_max];  /**< Chapter title.                           */
-  double chapter_number;                       /**< Chapter number (0.0 if unnumbered).      */
-  char   cover_path[k_mdl_meta_path_max];      /**< Cover image filename/path.               */
-  int    cover_index;                          /**< Cover page index (0-based, -1 if unset). */
+  char   series_title[k_mdl_meta_title_max];  /**< Series title.                            */
+  char   summary[k_mdl_meta_summary_max];     /**< Summary / description.                   */
+  char   writer[k_mdl_meta_name_max];         /**< Writer / Author.                         */
+  char   artist[k_mdl_meta_name_max];         /**< Artist / Illustrator.                    */
+  char   chapter_title[k_mdl_meta_title_max]; /**< Chapter title.                           */
+  double chapter_number;                      /**< Chapter number (0.0 if unnumbered).      */
+  char   cover_path[k_mdl_meta_path_max];     /**< Cover image filename/path.               */
+  int    cover_index;                         /**< Cover page index (0-based, -1 if unset). */
 } mdl_export_meta_t;
 
 /**
@@ -155,4 +155,3 @@ ra8_err_t mdl_export_chapter_meta(mdl_format_t             fmt,
  *          load metadata from @p chapter_dir automatically.
  */
 ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path);
-

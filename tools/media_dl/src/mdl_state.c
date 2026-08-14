@@ -37,10 +37,10 @@ typedef enum : uint8_t {
 
 /** @brief Field index of each column on a `P` (page) record line. */
 typedef enum : uint8_t {
-  k_p_urlhash = 1, /**< Source-URL hash (hex).   */
-  k_p_content = 2, /**< Content hash (hex).      */
-  k_p_relpath = 3, /**< Path under the series.   */
-  k_p_etag    = 4, /**< Cached ETag (optional).  */
+  k_p_urlhash = 1, /**< Source-URL hash (hex).           */
+  k_p_content = 2, /**< Content hash (hex).              */
+  k_p_relpath = 3, /**< Path under the series.           */
+  k_p_etag    = 4, /**< Cached ETag (optional).          */
   k_p_lastmod = 5, /**< Cached Last-Modified (optional). */
   k_p_fields  = 4, /**< Minimum fields a `P` line needs. */
 } mdl_p_col_t;
@@ -181,7 +181,10 @@ bool mdl_state_add_page(mdl_state_t* st,
   rec->content_hash = content_hash;
   (void)snprintf(rec->rel_path, sizeof(rec->rel_path), "%s", rel_path);
   (void)snprintf(rec->etag, sizeof(rec->etag), "%s", (etag != nullptr) ? etag : "");
-  (void)snprintf(rec->last_modified, sizeof(rec->last_modified), "%s", (last_modified != nullptr) ? last_modified : "");
+  (void)snprintf(rec->last_modified,
+                 sizeof(rec->last_modified),
+                 "%s",
+                 (last_modified != nullptr) ? last_modified : "");
   return true;
 }
 
@@ -312,9 +315,9 @@ RA8_INTERNAL static bool apply_page(mdl_state_t* st, char* fld[], size_t nf)
   if (nf < (size_t)k_p_fields) {
     return false;
   }
-  const uint64_t uh = (uint64_t)strtoull(fld[k_p_urlhash], nullptr, (int)k_state_hex_base);
-  const uint64_t ch = (uint64_t)strtoull(fld[k_p_content], nullptr, (int)k_state_hex_base);
-  const char*    etag = (nf > (size_t)k_p_etag) ? fld[k_p_etag] : "";
+  const uint64_t uh      = (uint64_t)strtoull(fld[k_p_urlhash], nullptr, (int)k_state_hex_base);
+  const uint64_t ch      = (uint64_t)strtoull(fld[k_p_content], nullptr, (int)k_state_hex_base);
+  const char*    etag    = (nf > (size_t)k_p_etag) ? fld[k_p_etag] : "";
   const char*    lastmod = (nf > (size_t)k_p_lastmod) ? fld[k_p_lastmod] : "";
   return mdl_state_add_page(st, uh, ch, fld[k_p_relpath], etag, lastmod);
 }

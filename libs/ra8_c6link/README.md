@@ -55,6 +55,14 @@ defines, and every one of them was already generated in the vendored codec.
 | `src/ra8_c6link_wifi.c` | radio lifecycle: init, mode, start, stop |
 | `src/ra8_c6link_wifi_sta.c` | credentials, association, MAC address, AP record |
 
+The media-download extension has one checked-in schema at
+`proto/ra8_media_download.proto`. Its generated protobuf-c codec is reproduced
+with `scripts/gen/gen_ra8_media_proto.sh`; `--check` fails when the committed C
+and header drift from the schema. The script intentionally requires the exact
+generator pair used for the committed output (protobuf-c 1.5.2 and libprotoc
+35.1) so regeneration is deterministic rather than dependent on the developer's
+installed compiler.
+
 ## No heap, and no borrowed one either
 
 `rpc__unpack()` allocates. This firmware has none -- `_sbrk` is a strong symbol

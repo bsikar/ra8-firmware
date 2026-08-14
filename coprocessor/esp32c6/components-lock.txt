@@ -40,8 +40,10 @@
 # 949bb30612747a3bd9e402eda8d01fbfa1f8503e under esp-idf v5.5.4 -- the build
 # whose network_adapter.bin is the image actually flashed on the C6 and proven
 # end to end (peripheral firmware 2.12.11, esp-hosted RPC round-trip green).
-# The upstream manifest these were resolved from is pinned by
-# ESP_HOSTED_MCU_COMMIT in pins.env, so it is not restated here.
+# The upstream manifest is pinned by ESP_HOSTED_MCU_COMMIT in pins.env. The
+# checked-in extension patch also narrows its MQTT dependency to the proven
+# 1.0.0 release; this record remains the final assertion over every resolved
+# component and registry hash.
 #
 # Changing a row means re-pinning the C6 image. Update it only together with a
 # reflash and a re-run of `make hil-c6`; an edit here on its own just teaches

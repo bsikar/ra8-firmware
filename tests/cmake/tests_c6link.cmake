@@ -75,17 +75,20 @@ target_compile_options(test_ra8_c6link PRIVATE -Wall -Wextra -Wno-unused-paramet
 target_include_directories(test_ra8_c6link PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
 add_test(NAME test_ra8_c6link COMMAND test_ra8_c6link)
 
-# test_ra8_c6link_mdl: lightweight coverage of the media download stub client.
-# Only needs ra8_c6link_mdl.c (no esp-hosted codec or transport).
+# test_ra8_c6link_mdl: generated inner-protobuf round trips and the portable
+# service state machine. It deliberately stays independent of the large host
+# HAL object library, so this protocol test also runs on non-Linux hosts.
 # Guard: unit_tests.cmake should exclude it from the auto-glob, but cmake
 # caching may cause a stale duplicate; if(...NOT TARGET) is defensive.
 if(NOT TARGET test_ra8_c6link_mdl)
   add_executable(
     test_ra8_c6link_mdl
     ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c
-    ${FW_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl.c
-    $<TARGET_OBJECTS:ra8_core_hal>
+    ${FW_ROOT}/libs/ra8_c6link/src/ra8_c6link_mdl_service.c
+    ${FW_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
+    ${RA8_C6LINK_VENDOR_DIR}/common/protobuf-c/protobuf-c/protobuf-c.c
   )
+  target_compile_options(test_ra8_c6link_mdl PRIVATE -Wall -Wextra -Wno-unused-parameter)
   target_include_directories(test_ra8_c6link_mdl PRIVATE ${RA8_C6LINK_INCLUDE_DIRS})
   add_test(NAME test_ra8_c6link_mdl COMMAND test_ra8_c6link_mdl)
 endif()

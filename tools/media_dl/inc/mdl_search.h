@@ -146,3 +146,23 @@ bool mdl_search_build_url(const char* tmpl, const char* encoded_term, char* out,
  * @since 0.1.0
  */
 mdl_search_outcome_t mdl_search_classify(const mdl_hit_list_t* hits);
+
+/**
+ * @brief Remove chapter links and duplicate series URLs from discovery hits.
+ *
+ * @details Site result pages commonly mix canonical series links with recent
+ *          chapter links. A descriptor's chapter marker therefore acts as an
+ *          exclusion as well as the series-page extraction selector. Exact
+ *          duplicate URLs are collapsed while preserving first-seen order.
+ *
+ * @param[in,out] hits           Parsed hit list to compact in place.
+ * @param[in]     chapter_marker Chapter URL substring to reject; an empty
+ *                               string disables only the chapter filter.
+ * @return Number of entries removed.
+ * @retval 0 No entry was removed, or an argument was NULL.
+ * @pre @p hits and @p chapter_marker are non-NULL.
+ * @post @p hits contains only canonical, unique series candidates.
+ * @note Thread-safe when callers use distinct hit lists.
+ * @since 0.1.0
+ */
+size_t mdl_search_filter_series_hits(mdl_hit_list_t* hits, const char* chapter_marker);

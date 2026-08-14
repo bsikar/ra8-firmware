@@ -8,14 +8,20 @@ BLE HCI seam is still on loopback, #493). The C6 runs Espressif's
 upstream "slave", firmware) over a SPI transport; the RA8 is the host that <!-- LEGACY-OK: names the upstream esp-hosted-mcu role verbatim; our term is peripheral-side -->
 drives it.
 
-**Zero first-party code runs on the C6.** The C6 image is entirely Espressif
-esp-hosted-mcu, vendored-in as Software Of Unknown Provenance (SOUP). This
-directory holds only the *build recipe* (pinned versions, our proven
-`sdkconfig.defaults`, and reproducible build/flash scripts) -- not any source
-that runs on the C6. The RA8-side host driver is **not** part of this
-directory: it lives in `libs/third_party/esp-hosted/` (vendored),
-`port/esp-hosted/` (the first-party port) and `libs/ra8_c6link/` (the driver),
-all landed.
+The C6 image is now a mixed image: pinned Espressif esp-hosted-mcu SOUP plus
+the first-party `ra8_mdl_service` component. `build.sh` applies one checked-in
+patch to the exact upstream commit to expose a bounded synchronous CustomRpc
+response hook, stages the component from `port/esp32_c6`, and verifies the
+service symbol exists in the final ELF. If the patch drifts, the build stops
+before compilation. The RA8-side host driver lives in
+`libs/third_party/esp-hosted/`, `port/esp-hosted/`, and `libs/ra8_c6link/`.
+
+The media service performs a pull-based HTTPS transfer. Start returns quickly,
+each Next request provides backpressure and acknowledges its offset, and HTTP
+redirects are refused so an HTTPS request cannot downgrade to plaintext. The C6
+counts every received byte and emits COMPLETE only after ESP-IDF confirms the
+message body is complete and any advertised length matches that count. The RA8
+remains the sole owner of SD paths, temporary files, and final rename.
 
 - SOUP qualification: [`../../docs/SOUP/esp-hosted.md`](../../docs/SOUP/esp-hosted.md)
 - Architecture: [`../../docs/design/c6_wireless_architecture.md`](../../docs/design/c6_wireless_architecture.md)
@@ -169,12 +175,17 @@ esp-idf). The build is fully reproducible from the pins:
 1. verifies `sdkconfig.defaults` still agrees with `pins.env`
    (`scripts/checks/check_c6_pin_config.py` -- the same script CI runs),
 2. clones esp-hosted-mcu and checks out the pinned commit `949bb30`,
-3. copies our `sdkconfig.defaults` into the upstream peripheral-side project,
-4. cleans (`rm -rf build sdkconfig dependencies.lock managed_components`),
-5. runs `idf.py set-target esp32c6 && idf.py build`,
-6. diffs the component set that actually resolved against
+3. checks and applies the reviewed CustomRpc hook patch, pins the upstream MQTT
+   dependency to the proven `1.0.0` release, then stages the first-party
+   `ra8_mdl_service` component,
+4. copies our `sdkconfig.defaults` into the upstream peripheral-side project,
+5. cleans (`rm -rf build sdkconfig dependencies.lock managed_components`),
+6. runs `idf.py set-target esp32c6 && idf.py build` and asserts the strong
+   media-service handler (not the weak upstream fallback) and the component ABI
+   marker both exist in the resulting ELF,
+7. diffs the component set that actually resolved against
    `components-lock.txt` and fails on any difference,
-7. prints the four output `.bin` paths.
+8. prints the four output `.bin` paths.
 
 There is no `menuconfig` step. See **No menuconfig** below.
 

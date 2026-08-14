@@ -24,6 +24,7 @@
 #include "ra8_c6_model.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_internal.h"
+#include "ra8_c6link_mdl.h"
 #include "ra8_c6link_wifi.h"
 #include "ra8_err.h"
 #include "unity_minimal.h"
@@ -945,10 +946,146 @@ static void test_host_announcement(void)
   TEST_END("c6link host announcement");
 }
 
+/** @brief Exercise both protobuf layers and the full modelled transport path. */
+static void test_media_download_roundtrip(void)
+{
+  TEST_BEGIN("c6link media download roundtrip");
+  t_bringup();
+
+  ra8_mdl_session_t session = {};
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_c6link_mdl_start(&s_link, "https://example.test/book", k_ra8_mdl_format_rabook, &session));
+  TEST_ASSERT(session.active);
+  TEST_ASSERT(session.job_id != 0U);
+
+  uint8_t received[sizeof "abcdef" - 1U] = {};
+  size_t  received_len                   = 0U;
+  while (session.active) {
+    ra8_mdl_chunk_t chunk = {};
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_next(&s_link, &session, 4U, &chunk));
+    TEST_ASSERT((received_len + chunk.data_len) <= sizeof(received));
+    (void)memcpy(&received[received_len], chunk.data, chunk.data_len);
+    received_len += chunk.data_len;
+    if (!session.active) {
+      TEST_ASSERT(chunk.has_sha256);
+      TEST_ASSERT_EQ((int64_t)0xA5, (int64_t)chunk.sha256[0]);
+    }
+  }
+  TEST_ASSERT_EQ((int64_t)sizeof(received), (int64_t)received_len);
+  TEST_ASSERT(memcmp(received, "abcdef", sizeof(received)) == 0);
+
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_c6link_mdl_start(&s_link, "https://example.test/book", k_ra8_mdl_format_rabook, &session));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_cancel(&s_link, &session));
+  TEST_ASSERT(!session.active);
+  TEST_END("c6link media download roundtrip");
+}
+
+/** @brief Start a modelled job and consume its one non-terminal data frame. */
+static void t_mdl_before_terminal(ra8_mdl_session_t* session)
+{
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_c6link_mdl_start(&s_link, "https://example.test/book", k_ra8_mdl_format_rabook, session));
+  ra8_mdl_chunk_t data = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_next(&s_link, session, 6U, &data));
+  TEST_ASSERT_EQ((int64_t)6, (int64_t)data.data_len);
+  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_state_downloading, (int64_t)data.state);
+  TEST_ASSERT(session->active);
+  TEST_ASSERT_EQ((int64_t)6, (int64_t)session->next_offset);
+}
+
+/** @brief Reject malformed terminal metadata without advancing the session. */
+static void test_media_download_rejects_bad_terminal_frames(void)
+{
+  TEST_BEGIN("c6link media rejects bad terminal frames");
+
+  t_bringup();
+  ra8_mdl_session_t session = {};
+  t_mdl_before_terminal(&session);
+  ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_complete_no_sha;
+  ra8_mdl_chunk_t chunk     = {};
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_c6link_mdl_next(&s_link, &session, 6U, &chunk));
+  TEST_ASSERT(session.active);
+  TEST_ASSERT_EQ((int64_t)6, (int64_t)session.next_offset);
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)session.next_sequence);
+
+  t_bringup();
+  session = (ra8_mdl_session_t){};
+  t_mdl_before_terminal(&session);
+  ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_complete_bad_total;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_c6link_mdl_next(&s_link, &session, 6U, &chunk));
+  TEST_ASSERT(session.active);
+  TEST_ASSERT_EQ((int64_t)6, (int64_t)session.next_offset);
+
+  t_bringup();
+  session = (ra8_mdl_session_t){};
+  t_mdl_before_terminal(&session);
+  ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_failed_zero_status;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_c6link_mdl_next(&s_link, &session, 6U, &chunk));
+  TEST_ASSERT(session.active);
+
+  t_bringup();
+  session = (ra8_mdl_session_t){};
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_c6link_mdl_start(&s_link, "https://example.test/book", k_ra8_mdl_format_rabook, &session));
+  ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_downloading_error;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_c6link_mdl_next(&s_link, &session, 6U, &chunk));
+  TEST_ASSERT(session.active);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)session.next_offset);
+
+  t_bringup();
+  session = (ra8_mdl_session_t){};
+  t_mdl_before_terminal(&session);
+  ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_cancelled_with_data;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_c6link_mdl_next(&s_link, &session, 6U, &chunk));
+  TEST_ASSERT(session.active);
+
+  TEST_END("c6link media rejects bad terminal frames");
+}
+
+/** @brief Accept coherent terminal failure/cancellation with explicit semantics. */
+static void test_media_download_terminal_status(void)
+{
+  TEST_BEGIN("c6link media terminal status");
+
+  t_bringup();
+  ra8_mdl_session_t session = {};
+  t_mdl_before_terminal(&session);
+  ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_failed;
+  ra8_mdl_chunk_t chunk     = {};
+  TEST_ASSERT_EQ(k_ra8_fail, ra8_c6link_mdl_next(&s_link, &session, 6U, &chunk));
+  TEST_ASSERT(!session.active);
+  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_state_failed, (int64_t)chunk.state);
+  TEST_ASSERT_EQ((int64_t)k_ra8_fail, (int64_t)chunk.status);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)chunk.data_len);
+  TEST_ASSERT(!chunk.has_sha256);
+
+  t_bringup();
+  session = (ra8_mdl_session_t){};
+  t_mdl_before_terminal(&session);
+  ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_cancelled;
+  chunk                     = (ra8_mdl_chunk_t){};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_next(&s_link, &session, 6U, &chunk));
+  TEST_ASSERT(!session.active);
+  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_state_cancelled, (int64_t)chunk.state);
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, (int64_t)chunk.status);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)chunk.data_len);
+  TEST_ASSERT(!chunk.has_sha256);
+
+  TEST_END("c6link media terminal status");
+}
+
 int32_t main(void)
 {
   test_open_validation();
   test_host_announcement();
+  test_media_download_roundtrip();
+  test_media_download_rejects_bad_terminal_frames();
+  test_media_download_terminal_status();
   test_fw_version_roundtrip();
   test_answer_correlation();
   test_wifi_start_sequence();

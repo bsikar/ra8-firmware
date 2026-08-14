@@ -180,6 +180,13 @@ endif()
 # directory. See cmake/ccache.cmake for the full rationale.
 include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/ccache.cmake")
 
+# GNU ld's `-Ttext-segment` is an ELF/Linux image-layout control. Darwin's
+# linker does not implement it, and macOS does not map the Linux peripheral
+# windows that require the host-test image pin in the first place.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(RA8_HOST_IMAGE_PIN_OPTIONS -no-pie -Wl,-Ttext-segment=0x70000000)
+endif()
+
 # RA8_SANITIZE: when non-empty (e.g. "undefined"), instrument every host-test
 # target with -fsanitize=<list> -- the undefined-behaviour gate driven by
 # `make ubsan`. Independent of the coverage / MC-DC instrumentation above; pick
@@ -199,8 +206,8 @@ if(RA8_SANITIZE)
   # ra8_fake_mmap_install aborts before main(). Apply the pin for every sanitizer
   # except address, which owns its own low-address layout and skips the
   # shadow-gap window at runtime instead.
-  if(NOT RA8_SANITIZE MATCHES "address")
-    add_link_options(-no-pie -Wl,-Ttext-segment=0x70000000)
+  if(RA8_HOST_IMAGE_PIN_OPTIONS AND NOT RA8_SANITIZE MATCHES "address")
+    add_link_options(${RA8_HOST_IMAGE_PIN_OPTIONS})
   endif()
 else()
   # The MAP_FIXED peripheral windows span [0x02000000, 0x68100000) (see
@@ -212,5 +219,7 @@ else()
   # every window so text/.data/.bss/brk can never intersect one. AddressSanitizer
   # is excluded above: it owns its low layout and skips the shadow-gap window
   # instead (ra8_fake_mmap_install still checks overlap at runtime).
-  add_link_options(-no-pie -Wl,-Ttext-segment=0x70000000)
+  if(RA8_HOST_IMAGE_PIN_OPTIONS)
+    add_link_options(${RA8_HOST_IMAGE_PIN_OPTIONS})
+  endif()
 endif()

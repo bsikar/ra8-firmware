@@ -1,0 +1,63 @@
+diff --git a/slave/CMakeLists.txt b/slave/CMakeLists.txt
+index fff63ee..ca9962b 100644
+--- a/slave/CMakeLists.txt
++++ b/slave/CMakeLists.txt
+@@ -25 +25 @@ list(APPEND EXCLUDE_COMPONENTS lwip esp_netif)
+-set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi protocomm driver mqtt wpa_supplicant wifi_provisioning esp_driver_sdio esp_pm openthread)
++set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi protocomm driver mqtt wpa_supplicant wifi_provisioning esp_driver_sdio esp_pm openthread ra8_mdl_service)
+diff --git a/slave/main/idf_component.yml b/slave/main/idf_component.yml
+index 9e8358b..c1c29e3 100644
+--- a/slave/main/idf_component.yml
++++ b/slave/main/idf_component.yml
+@@ -27 +27 @@ dependencies:
+-        version: "~1"
++        version: "1.0.0"
+diff --git a/slave/main/slave_control.c b/slave/main/slave_control.c
+index 7c51888..b20269f 100644
+--- a/slave/main/slave_control.c
++++ b/slave/main/slave_control.c
+@@ -853,0 +854,19 @@ static esp_err_t req_mem_monitor(Rpc *req, Rpc *resp, void *priv_data)
++/* Optional synchronous extension point for first-party CustomRpc services.
++ * The weak default preserves upstream behaviour. A strong implementation may
++ * fill response_data before this serialized handler returns. */
++#define CUSTOM_RPC_SYNC_RESPONSE_MAX 1200
++static uint8_t custom_rpc_sync_response[CUSTOM_RPC_SYNC_RESPONSE_MAX];
++
++__attribute__((weak)) esp_err_t esp_hosted_custom_rpc_sync_handler(
++	uint32_t msg_id, const uint8_t *req_data, size_t req_len,
++	uint8_t *response_data, size_t response_cap, size_t *response_len)
++{
++	(void)msg_id;
++	(void)req_data;
++	(void)req_len;
++	(void)response_data;
++	(void)response_cap;
++	*response_len = 0;
++	return ESP_ERR_NOT_SUPPORTED;
++}
++
+@@ -1010,6 +1029,13 @@ static esp_err_t req_custom_rpc_handler(Rpc *req, Rpc *resp, void *priv_data)
+-	/* Call the internal handler with message ID */
+-	esp_err_t ret = handle_custom_rpc_request(
+-		req_payload->custom_msg_id,
+-		req_payload->data.data,
+-		req_payload->data.len
+-	);
++	/* Give a synchronous extension first refusal. Its response storage is
++	 * static because protobuf serialization occurs after this handler returns. */
++	size_t response_len = 0;
++	esp_err_t ret = esp_hosted_custom_rpc_sync_handler(
++		req_payload->custom_msg_id, req_payload->data.data, req_payload->data.len,
++		custom_rpc_sync_response, sizeof(custom_rpc_sync_response), &response_len);
++	if (ret == ESP_ERR_NOT_SUPPORTED) {
++		ret = handle_custom_rpc_request(
++			req_payload->custom_msg_id, req_payload->data.data, req_payload->data.len);
++	} else if (ret == ESP_OK) {
++		resp_payload->data.data = custom_rpc_sync_response;
++		resp_payload->data.len = response_len;
++	}
+@@ -1017,2 +1043,2 @@ static esp_err_t req_custom_rpc_handler(Rpc *req, Rpc *resp, void *priv_data)
+-	/* Fill response with just status */
+-	resp_payload->custom_msg_id = 0; /* Not used */
++	/* Echo the operation so the host can reject stale/mismatched answers. */
++	resp_payload->custom_msg_id = req_payload->custom_msg_id;

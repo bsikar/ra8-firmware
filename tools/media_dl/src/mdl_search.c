@@ -129,3 +129,32 @@ mdl_search_outcome_t mdl_search_classify(const mdl_hit_list_t* hits)
   }
   return k_mdl_search_zero_results;
 }
+
+size_t mdl_search_filter_series_hits(mdl_hit_list_t* hits, const char* chapter_marker)
+{
+  if ((hits == nullptr) || (chapter_marker == nullptr)) {
+    return 0U;
+  }
+  const size_t before = hits->count;
+  size_t       kept   = 0U;
+  for (size_t i = 0U; i < before; ++i) {
+    const mdl_hit_t* candidate = &hits->hits[i];
+    bool             reject    = false;
+    if ((chapter_marker[0] != '\0') && (strstr(candidate->url, chapter_marker) != nullptr)) {
+      reject = true;
+    }
+    for (size_t j = 0U; (!reject) && (j < kept); ++j) {
+      if (strcmp(candidate->url, hits->hits[j].url) == 0) {
+        reject = true;
+      }
+    }
+    if (!reject) {
+      if (kept != i) {
+        hits->hits[kept] = *candidate;
+      }
+      ++kept;
+    }
+  }
+  hits->count = (uint16_t)kept;
+  return before - kept;
+}

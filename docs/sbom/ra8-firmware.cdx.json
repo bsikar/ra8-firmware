@@ -1327,15 +1327,15 @@
         },
         {
           "name": "ra8:modified",
-          "value": "false"
+          "value": "true"
         },
         {
           "name": "ra8:note0",
-          "value": "NOT vendored: coprocessor/esp32c6/build.sh fetches the pinned upstream commit at build time into the git-ignored coprocessor/esp32c6/esp-hosted-mcu/. The build recipe (pins + proven sdkconfig.defaults) is the record; see coprocessor/esp32c6/README.md and docs/SOUP/esp-hosted.md."
+          "value": "NOT vendored: coprocessor/esp32c6/build.sh fetches the pinned upstream commit at build time into the git-ignored coprocessor/esp32c6/esp-hosted-mcu/. The build recipe, reviewed CustomRpc patch, first-party media component, pins, and proven sdkconfig.defaults are the record; see coprocessor/esp32c6/README.md and docs/SOUP/esp-hosted.md."
         },
         {
           "name": "ra8:note1",
-          "value": "Co-processor firmware: it runs on the ESP32-C6 (Wi-Fi/BLE), not on the RA8D2, and is not part of the RA8 linked image -- hence scope=excluded. Zero first-party code runs on the C6."
+          "value": "Co-processor firmware: it runs on the ESP32-C6, not on the RA8D2, and is not part of the RA8 linked image -- hence scope=excluded. The image is pinned esp-hosted-mcu SOUP plus a reviewed first-party media component."
         },
         {
           "name": "ra8:note2",

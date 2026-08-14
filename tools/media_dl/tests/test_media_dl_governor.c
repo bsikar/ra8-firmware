@@ -272,7 +272,11 @@ static void test_gov_retry_after_precedence(void)
                           &clk2,
                           gov_clk_sleep,
                           &clk2);
-  mdl_governor_observe(&g_gov, "b", (long)k_http_unavail, "Thu, 01 Jan 1970 00:01:00 GMT");
+  mdl_governor_observe_at_wall(&g_gov,
+                               "b",
+                               (long)k_http_unavail,
+                               "Thu, 01 Jan 1970 00:01:00 GMT",
+                               0);
   gate = 0;
   TEST_ASSERT(mdl_governor_peek(&g_gov, "b", nullptr, &gate));
   TEST_ASSERT_EQ((int64_t)k_gov_retry_60s_ms, gate);

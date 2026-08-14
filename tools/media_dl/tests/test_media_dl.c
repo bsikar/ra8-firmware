@@ -823,16 +823,20 @@ static void test_robots_cache(void)
 static void test_cli_new_flags(void)
 {
   TEST_BEGIN("cli new flags parsing");
-  char* argv[] = {
-    "media_dl",
-    "--proxy", "http://proxy.example.com:8080",
-    "--socks5", "socks5://127.0.0.1:1080",
-    "--cookie-file", "/tmp/cookies.txt",
-    "--progress",
-    "--init-site", "https://example.com/manga/",
-    "--verify", "/tmp/downloads"
-  };
-  int argc = sizeof(argv) / sizeof(argv[0]);
+  char* argv[] = {"media_dl",
+                  "--proxy",
+                  "http://proxy.example.com:8080",
+                  "--socks5",
+                  "socks5://127.0.0.1:1080",
+                  "--cookie-file",
+                  "/tmp/cookies.txt",
+                  "--progress",
+                  "--refetch",
+                  "--init-site",
+                  "https://example.com/manga/",
+                  "--verify",
+                  "/tmp/downloads"};
+  int   argc   = sizeof(argv) / sizeof(argv[0]);
 
   mdl_args_t a = {};
   mdl_cli_parse(argc, argv, &a);
@@ -842,16 +846,34 @@ static void test_cli_new_flags(void)
   TEST_ASSERT(a.socks5 != nullptr && strcmp(a.socks5, "socks5://127.0.0.1:1080") == 0);
   TEST_ASSERT(a.cookie_file != nullptr && strcmp(a.cookie_file, "/tmp/cookies.txt") == 0);
   TEST_ASSERT(a.progress == true);
-  TEST_ASSERT(a.init_site_url != nullptr && strcmp(a.init_site_url, "https://example.com/manga/") == 0);
+  TEST_ASSERT(a.refetch == true);
+  TEST_ASSERT(a.init_site_url != nullptr &&
+              strcmp(a.init_site_url, "https://example.com/manga/") == 0);
   TEST_ASSERT(a.verify == true);
   TEST_ASSERT(a.verify_dir != nullptr && strcmp(a.verify_dir, "/tmp/downloads") == 0);
 
   mdl_run_opts_t opts = mdl_cli_run_opts(&a);
   TEST_ASSERT(opts.progress == true);
-  TEST_ASSERT(opts.policy.proxy != nullptr && strcmp(opts.policy.proxy, "http://proxy.example.com:8080") == 0);
-  TEST_ASSERT(opts.policy.socks5 != nullptr && strcmp(opts.policy.socks5, "socks5://127.0.0.1:1080") == 0);
-  TEST_ASSERT(opts.policy.cookie_file != nullptr && strcmp(opts.policy.cookie_file, "/tmp/cookies.txt") == 0);
+  TEST_ASSERT(opts.refetch == true);
+  TEST_ASSERT(opts.policy.proxy != nullptr &&
+              strcmp(opts.policy.proxy, "http://proxy.example.com:8080") == 0);
+  TEST_ASSERT(opts.policy.socks5 != nullptr &&
+              strcmp(opts.policy.socks5, "socks5://127.0.0.1:1080") == 0);
+  TEST_ASSERT(opts.policy.cookie_file != nullptr &&
+              strcmp(opts.policy.cookie_file, "/tmp/cookies.txt") == 0);
   TEST_END("cli new flags parsing");
+}
+
+/** @test A value-taking option at argv end is a usage error. */
+static void test_cli_missing_value(void)
+{
+  TEST_BEGIN("cli missing option value");
+  char*      argv[] = {"media_dl", "--config"};
+  mdl_args_t args   = {};
+  mdl_cli_parse(2, argv, &args);
+  TEST_ASSERT(args.bad);
+  TEST_ASSERT(args.cfg == nullptr);
+  TEST_END("cli missing option value");
 }
 
 /** @test Rich metadata init, key-value parsing, XML parsing, and dir auto-discovery. */
@@ -864,15 +886,14 @@ static void test_meta_init_parse_load(void)
   TEST_ASSERT(meta.series_title[0] == '\0');
 
   /* Key-value parsing */
-  static const char kv[] =
-      "series = Test Series & Saga\n"
-      "title = Chapter 12: Beginning & End\n"
-      "writer = Author & Writer\n"
-      "artist = Illustrator & Artist\n"
-      "number = 12.5\n"
-      "summary = A great story <start>\n"
-      "cover = page_002.jpg\n"
-      "cover_index = 1\n";
+  static const char kv[] = "series = Test Series & Saga\n"
+                           "title = Chapter 12: Beginning & End\n"
+                           "writer = Author & Writer\n"
+                           "artist = Illustrator & Artist\n"
+                           "number = 12.5\n"
+                           "summary = A great story <start>\n"
+                           "cover = page_002.jpg\n"
+                           "cover_index = 1\n";
   TEST_ASSERT(mdl_meta_parse(&meta, kv) == k_ra8_ok);
   TEST_ASSERT(strcmp(meta.series_title, "Test Series & Saga") == 0);
   TEST_ASSERT(strcmp(meta.chapter_title, "Chapter 12: Beginning & End") == 0);
@@ -885,17 +906,16 @@ static void test_meta_init_parse_load(void)
 
   /* XML ComicInfo parsing */
   mdl_meta_init(&meta);
-  static const char xml[] =
-      "<?xml version=\"1.0\"?>\n"
-      "<ComicInfo>\n"
-      "  <Series>XML &amp; Series</Series>\n"
-      "  <Title>XML &lt;Title&gt;</Title>\n"
-      "  <Writer>XML Writer</Writer>\n"
-      "  <Artist>XML Artist</Artist>\n"
-      "  <Number>5</Number>\n"
-      "  <Summary>XML Summary &quot;Quote&quot;</Summary>\n"
-      "  <CoverImage>cover.jpg</CoverImage>\n"
-      "</ComicInfo>";
+  static const char xml[] = "<?xml version=\"1.0\"?>\n"
+                            "<ComicInfo>\n"
+                            "  <Series>XML &amp; Series</Series>\n"
+                            "  <Title>XML &lt;Title&gt;</Title>\n"
+                            "  <Writer>XML Writer</Writer>\n"
+                            "  <Artist>XML Artist</Artist>\n"
+                            "  <Number>5</Number>\n"
+                            "  <Summary>XML Summary &quot;Quote&quot;</Summary>\n"
+                            "  <CoverImage>cover.jpg</CoverImage>\n"
+                            "</ComicInfo>";
   TEST_ASSERT(mdl_meta_parse(&meta, xml) == k_ra8_ok);
   TEST_ASSERT(strcmp(meta.series_title, "XML & Series") == 0);
   TEST_ASSERT(strcmp(meta.chapter_title, "XML <Title>") == 0);
@@ -1007,7 +1027,11 @@ static void test_epub_metadata_and_uuid(void)
   TEST_ASSERT(strstr(opf, "<dc:description>EPUB Summary</dc:description>") != nullptr);
 
   /* Check cover image property on img1 (page_002.jpg) */
-  TEST_ASSERT(strstr(opf, "id=\"img1\" href=\"images/page_002.jpg\" media-type=\"image/jpeg\" properties=\"cover-image\"") != nullptr);
+  TEST_ASSERT(
+    strstr(
+      opf,
+      "id=\"img1\" href=\"images/page_002.jpg\" media-type=\"image/jpeg\" properties=\"cover-image\"") !=
+    nullptr);
 
   free(opf);
   (void)mz_zip_reader_end(&zr);
@@ -1031,58 +1055,109 @@ static void test_image_magic_bytes(void)
 
   /* 1. JPEG magic bytes: FF D8 FF */
   static const uint8_t jpeg_hdr[] = {0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10};
-  TEST_ASSERT(mdl_urlname_sniff_image_type(jpeg_hdr, sizeof(jpeg_hdr), nullptr, ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(mdl_urlname_sniff_image_type(jpeg_hdr,
+                                           sizeof(jpeg_hdr),
+                                           nullptr,
+                                           ext,
+                                           sizeof(ext),
+                                           mime,
+                                           sizeof(mime)));
   TEST_ASSERT(strcmp(ext, "jpg") == 0);
   TEST_ASSERT(strcmp(mime, "image/jpeg") == 0);
 
   /* 2. PNG magic bytes: 89 50 4E 47 */
   static const uint8_t png_hdr[] = {0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
-  TEST_ASSERT(mdl_urlname_sniff_image_type(png_hdr, sizeof(png_hdr), nullptr, ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(mdl_urlname_sniff_image_type(png_hdr,
+                                           sizeof(png_hdr),
+                                           nullptr,
+                                           ext,
+                                           sizeof(ext),
+                                           mime,
+                                           sizeof(mime)));
   TEST_ASSERT(strcmp(ext, "png") == 0);
   TEST_ASSERT(strcmp(mime, "image/png") == 0);
 
   /* 3. WebP magic bytes: RIFF....WEBP */
   static const uint8_t webp_hdr[] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P'};
-  TEST_ASSERT(mdl_urlname_sniff_image_type(webp_hdr, sizeof(webp_hdr), nullptr, ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(mdl_urlname_sniff_image_type(webp_hdr,
+                                           sizeof(webp_hdr),
+                                           nullptr,
+                                           ext,
+                                           sizeof(ext),
+                                           mime,
+                                           sizeof(mime)));
   TEST_ASSERT(strcmp(ext, "webp") == 0);
   TEST_ASSERT(strcmp(mime, "image/webp") == 0);
 
   /* 4. GIF magic bytes: GIF87a / GIF89a */
   static const uint8_t gif87_hdr[] = {'G', 'I', 'F', '8', '7', 'a', 0, 0};
-  TEST_ASSERT(mdl_urlname_sniff_image_type(gif87_hdr, sizeof(gif87_hdr), nullptr, ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(mdl_urlname_sniff_image_type(gif87_hdr,
+                                           sizeof(gif87_hdr),
+                                           nullptr,
+                                           ext,
+                                           sizeof(ext),
+                                           mime,
+                                           sizeof(mime)));
   TEST_ASSERT(strcmp(ext, "gif") == 0);
   TEST_ASSERT(strcmp(mime, "image/gif") == 0);
 
   static const uint8_t gif89_hdr[] = {'G', 'I', 'F', '8', '9', 'a', 0, 0};
-  TEST_ASSERT(mdl_urlname_sniff_image_type(gif89_hdr, sizeof(gif89_hdr), nullptr, ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(mdl_urlname_sniff_image_type(gif89_hdr,
+                                           sizeof(gif89_hdr),
+                                           nullptr,
+                                           ext,
+                                           sizeof(ext),
+                                           mime,
+                                           sizeof(mime)));
   TEST_ASSERT(strcmp(ext, "gif") == 0);
   TEST_ASSERT(strcmp(mime, "image/gif") == 0);
 
   /* 5. Fallback to Content-Type header when magic bytes are missing or unknown */
-  TEST_ASSERT(mdl_urlname_sniff_image_type(nullptr, 0, "image/jpeg", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(
+    mdl_urlname_sniff_image_type(nullptr, 0, "image/jpeg", ext, sizeof(ext), mime, sizeof(mime)));
   TEST_ASSERT(strcmp(ext, "jpg") == 0);
   TEST_ASSERT(strcmp(mime, "image/jpeg") == 0);
 
-  TEST_ASSERT(mdl_urlname_sniff_image_type(nullptr, 0, "image/png; charset=utf-8", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(mdl_urlname_sniff_image_type(nullptr,
+                                           0,
+                                           "image/png; charset=utf-8",
+                                           ext,
+                                           sizeof(ext),
+                                           mime,
+                                           sizeof(mime)));
   TEST_ASSERT(strcmp(ext, "png") == 0);
   TEST_ASSERT(strcmp(mime, "image/png") == 0);
 
-  TEST_ASSERT(mdl_urlname_sniff_image_type(nullptr, 0, "IMAGE/WEBP", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(
+    mdl_urlname_sniff_image_type(nullptr, 0, "IMAGE/WEBP", ext, sizeof(ext), mime, sizeof(mime)));
   TEST_ASSERT(strcmp(ext, "webp") == 0);
   TEST_ASSERT(strcmp(mime, "image/webp") == 0);
 
-  TEST_ASSERT(mdl_urlname_sniff_image_type(nullptr, 0, "image/gif", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(
+    mdl_urlname_sniff_image_type(nullptr, 0, "image/gif", ext, sizeof(ext), mime, sizeof(mime)));
   TEST_ASSERT(strcmp(ext, "gif") == 0);
   TEST_ASSERT(strcmp(mime, "image/gif") == 0);
 
   /* 6. Priority: Magic bytes take precedence over Content-Type header */
-  TEST_ASSERT(mdl_urlname_sniff_image_type(png_hdr, sizeof(png_hdr), "image/jpeg", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(mdl_urlname_sniff_image_type(png_hdr,
+                                           sizeof(png_hdr),
+                                           "image/jpeg",
+                                           ext,
+                                           sizeof(ext),
+                                           mime,
+                                           sizeof(mime)));
   TEST_ASSERT(strcmp(ext, "png") == 0);
   TEST_ASSERT(strcmp(mime, "image/png") == 0);
 
   /* 7. Unrecognized header / invalid content type */
   static const uint8_t junk_hdr[] = {0x00, 0x00, 0x00, 0x00};
-  TEST_ASSERT(!mdl_urlname_sniff_image_type(junk_hdr, sizeof(junk_hdr), "text/html", ext, sizeof(ext), mime, sizeof(mime)));
+  TEST_ASSERT(!mdl_urlname_sniff_image_type(junk_hdr,
+                                            sizeof(junk_hdr),
+                                            "text/html",
+                                            ext,
+                                            sizeof(ext),
+                                            mime,
+                                            sizeof(mime)));
 
   TEST_END("image magic byte & Content-Type typing");
 }
@@ -1121,6 +1196,7 @@ int32_t main(void)
   test_robots_edge();
   test_robots_cache();
   test_cli_new_flags();
+  test_cli_missing_value();
   test_meta_init_parse_load();
   test_comicinfo_xml_generation();
   test_epub_metadata_and_uuid();

@@ -50,7 +50,7 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_c6m_queue       = 6U,    /**< Frames the model may hold for the host.      */
+  k_c6m_queue       = 10U,   /**< Frames the model may hold for the host.      */
   k_c6m_seen        = 16U,   /**< Request ids the model records, in order.     */
   k_c6m_fw_major    = 2U,    /**< Firmware major version reported.             */
   k_c6m_fw_minor    = 12U,   /**< Firmware minor version reported.             */
@@ -93,6 +93,18 @@ typedef enum : int32_t {
   k_c6m_esp_fail = -1, /**< The refusal code the model reports. */
 } ra8_c6_model_err_t;
 
+/** @brief Test-only corruption applied to the next media Chunk response. */
+typedef enum : uint8_t {
+  k_c6m_mdl_fault_none = 0U,
+  k_c6m_mdl_fault_complete_no_sha,
+  k_c6m_mdl_fault_complete_bad_total,
+  k_c6m_mdl_fault_failed,
+  k_c6m_mdl_fault_failed_zero_status,
+  k_c6m_mdl_fault_cancelled,
+  k_c6m_mdl_fault_cancelled_with_data,
+  k_c6m_mdl_fault_downloading_error,
+} ra8_c6_model_mdl_fault_t;
+
 /**
  * @struct ra8_c6_model
  * @brief The modelled co-processor's whole observable state.
@@ -115,18 +127,19 @@ typedef enum : int32_t {
  * @since 0.1.0
  */
 typedef struct ra8_c6_model {
-  bool     handshake;                        /**< What HANDSHAKE reads.                      */
-  bool     fail_transfer;                    /**< Make every transfer report a bus fault.    */
-  uint32_t fail_req;                         /**< Request id to refuse, or zero for none.    */
-  bool     wrong_uid;                        /**< Answer with a UID the host did not send.   */
-  bool     wrong_id;                         /**< Answer with a message id nobody asked for. */
-  bool     mute;                             /**< Answer nothing at all.                     */
-  bool     silent_boot;                      /**< Do not answer the announcement.            */
-  uint16_t transfers;                        /**< Transactions the host has clocked.         */
-  uint32_t delays;                           /**< Times the host asked the seam to wait.     */
-  uint16_t last_delay_ms;                    /**< Milliseconds the newest wait asked for.    */
-  uint32_t seen[k_c6m_seen];                 /**< Request ids observed, in order.            */
-  uint8_t  seen_n;                           /**< Entries in `seen`.                         */
+  bool                     handshake;        /**< What HANDSHAKE reads.                      */
+  bool                     fail_transfer;    /**< Make every transfer report a bus fault.    */
+  uint32_t                 fail_req;         /**< Request id to refuse, or zero for none.    */
+  ra8_c6_model_mdl_fault_t mdl_fault;        /**< Corrupt the next modelled media chunk.     */
+  bool                     wrong_uid;        /**< Answer with a UID the host did not send.   */
+  bool                     wrong_id;         /**< Answer with a message id nobody asked for. */
+  bool                     mute;             /**< Answer nothing at all.                     */
+  bool                     silent_boot;      /**< Do not answer the announcement.            */
+  uint16_t                 transfers;        /**< Transactions the host has clocked.         */
+  uint32_t                 delays;           /**< Times the host asked the seam to wait.     */
+  uint16_t                 last_delay_ms;    /**< Milliseconds the newest wait asked for.    */
+  uint32_t                 seen[k_c6m_seen]; /**< Request ids observed, in order.            */
+  uint8_t                  seen_n;           /**< Entries in `seen`.                         */
   char     ssid[k_ra8_c6link_ssid_max + 1U]; /**< SSID the host configured.                  */
   uint8_t  ssid_len;                         /**< Its length as received.                    */
   char     pass[k_ra8_c6link_pass_max + 1U]; /**< Passphrase received.                       */

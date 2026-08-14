@@ -104,6 +104,15 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_extra ${_ra8_lib_one})
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/${_ra8_lib}/inc)
   endforeach()
+  # Generated protobuf-c output contains casts required by its runtime ABI.
+  # Keep warnings enabled for the handwritten client and service while
+  # treating this one generated translation unit like the vendored codec.
+  if("ra8_c6link" IN_LIST _RA8_APP_LIBS)
+    set_source_files_properties(
+      ${RA8_REPO_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
+      PROPERTIES COMPILE_OPTIONS "-w"
+    )
+  endif()
   foreach(_ra8_lib ${_RA8_APP_OFF_TARGET_LIBS})
     file(GLOB_RECURSE _ra8_lib_one CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/${_ra8_lib}/src/*.c)
     list(APPEND _ra8_lib_extra_off_target ${_ra8_lib_one})

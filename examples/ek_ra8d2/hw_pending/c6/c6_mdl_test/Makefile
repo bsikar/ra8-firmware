@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# Per-app Makefile for the `c6_fw_version` firmware.
+# Per-app Makefile for the `c6_mdl_test` firmware.
 #
 # Standalone:
-#   cd examples/ek_ra8d2/hw_validated/c6/c6_fw_version/
+#   cd examples/ek_ra8d2/hw_validated/c6/c6_mdl_test/
 #   make             # configure + build (auto-enables ThreadX + NetX Duo + Mbed TLS)
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make clean
@@ -17,7 +17,7 @@
 
 SHELL     := /bin/bash
 
-APP        := c6_fw_version
+APP        := c6_mdl_test
 ROOT       := $(shell git -C "$(CURDIR)" rev-parse --show-toplevel)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build

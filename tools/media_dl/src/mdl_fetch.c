@@ -10,8 +10,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include "mdl_atomic.h"
 #include "mdl_fetch_internal.h"
@@ -293,8 +293,18 @@ try_reuse(mdl_fetch_ctx_t* ctx, uint64_t url_hash, const char* target_abs, const
   if ((held_dot != nullptr) && (tab_dot != nullptr) && (tre_dot != nullptr)) {
     const char* held_ext = held_dot + 1;
     if (strcmp(tab_dot + 1, held_ext) != 0) {
-      (void)snprintf(act_abs, sizeof(act_abs), "%.*s.%s", (int)(tab_dot - target_abs), target_abs, held_ext);
-      (void)snprintf(act_rel, sizeof(act_rel), "%.*s.%s", (int)(tre_dot - target_rel), target_rel, held_ext);
+      (void)snprintf(act_abs,
+                     sizeof(act_abs),
+                     "%.*s.%s",
+                     (int)(tab_dot - target_abs),
+                     target_abs,
+                     held_ext);
+      (void)snprintf(act_rel,
+                     sizeof(act_rel),
+                     "%.*s.%s",
+                     (int)(tre_dot - target_rel),
+                     target_rel,
+                     held_ext);
     }
   }
 
@@ -304,9 +314,12 @@ try_reuse(mdl_fetch_ctx_t* ctx, uint64_t url_hash, const char* target_abs, const
   if (!copy_file(src_abs, act_abs)) {
     return false;
   }
-  (void)mdl_state_add_page(
-    ctx->state, url_hash, held->content_hash, act_rel, held->etag, held->last_modified);
-  return true;
+  return mdl_state_add_page(ctx->state,
+                            url_hash,
+                            held->content_hash,
+                            act_rel,
+                            held->etag,
+                            held->last_modified);
 }
 
 /** @brief Governor host key for `url`, or NULL when it cannot be parsed. */
@@ -384,20 +397,22 @@ RA8_INTERNAL static ra8_err_t do_fetch_page(mdl_fetch_ctx_t* ctx,
     record_fail(ctx, url, 0, k_ra8_fail); /* robots refused (message printed) */
     return k_ra8_fail;
   }
-  const mdl_page_rec_t* held = mdl_state_find_page(ctx->state, mdl_hash_str(url));
+  const mdl_page_rec_t* held =
+    ctx->refetch ? nullptr : mdl_state_find_page(ctx->state, mdl_hash_str(url));
   char                hostbuf[k_mdl_gov_host_max];
-  const char*         host   = page_host(url, hostbuf, sizeof(hostbuf));
-  const uint32_t      jmin   = max_u32(ctx->site->img_delay_min, crawl);
-  const uint32_t      jmax   = max_u32(ctx->site->img_delay_max, crawl);
-  const mdl_net_req_t req    = {
-    .user_agent        = ctx->session->user_agent,
-    .referer           = chapter_url,
-    .if_none_match     = (held != nullptr && held->etag[0] != '\0') ? held->etag : nullptr,
-    .if_modified_since = (held != nullptr && held->last_modified[0] != '\0') ? held->last_modified : nullptr,
-    .timeout_ms        = ctx->timeout_ms,
+  const char*         host = page_host(url, hostbuf, sizeof(hostbuf));
+  const uint32_t      jmin = max_u32(ctx->site->img_delay_min, crawl);
+  const uint32_t      jmax = max_u32(ctx->site->img_delay_max, crawl);
+  const mdl_net_req_t req  = {
+    .user_agent    = ctx->session->user_agent,
+    .referer       = chapter_url,
+    .if_none_match = (held != nullptr && held->etag[0] != '\0') ? held->etag : nullptr,
+    .if_modified_since =
+      (held != nullptr && held->last_modified[0] != '\0') ? held->last_modified : nullptr,
+    .timeout_ms = ctx->timeout_ms,
   };
   mdl_net_resp_t  resp = {};
-  const ra8_err_t rc   =
+  const ra8_err_t rc =
     fetch_with_retry(ctx, host, url, &req, target_abs, jmin, jmax, &resp, out_bytes);
   if (out_resp != nullptr) {
     *out_resp = resp;
@@ -426,8 +441,8 @@ RA8_INTERNAL static ra8_err_t do_fetch_page(mdl_fetch_ctx_t* ctx,
     const char* dot_rel = strrchr(act_rel, '.');
     if ((dot_abs != nullptr) && (dot_rel != nullptr)) {
       if (strcmp(dot_abs + 1, true_ext) != 0) {
-        char new_abs[PATH_MAX];
-        char new_rel[k_mdl_relpath_max];
+        char         new_abs[PATH_MAX];
+        char         new_rel[k_mdl_relpath_max];
         const size_t pabs = (size_t)(dot_abs - act_abs);
         const size_t prel = (size_t)(dot_rel - act_rel);
         (void)snprintf(new_abs, sizeof(new_abs), "%.*s.%s", (int)pabs, act_abs, true_ext);
@@ -447,10 +462,18 @@ RA8_INTERNAL static ra8_err_t do_fetch_page(mdl_fetch_ctx_t* ctx,
   }
   const char* etag_to_save =
     (resp.etag[0] != '\0') ? resp.etag : ((held != nullptr) ? held->etag : "");
-  const char* lastmod_to_save =
-    (resp.last_modified[0] != '\0') ? resp.last_modified : ((held != nullptr) ? held->last_modified : "");
-  (void)mdl_state_add_page(
-    ctx->state, mdl_hash_str(url), content, act_rel, etag_to_save, lastmod_to_save);
+  const char* lastmod_to_save = (resp.last_modified[0] != '\0')
+                                  ? resp.last_modified
+                                  : ((held != nullptr) ? held->last_modified : "");
+  if (!mdl_state_add_page(ctx->state,
+                          mdl_hash_str(url),
+                          content,
+                          act_rel,
+                          etag_to_save,
+                          lastmod_to_save)) {
+    record_fail(ctx, url, resp.status, k_ra8_err_no_mem);
+    return k_ra8_err_no_mem;
+  }
   return k_ra8_ok;
 }
 
@@ -478,14 +501,14 @@ RA8_INTERNAL static ra8_err_t fetch_one_page(mdl_fetch_ctx_t*    ctx,
       ((size_t)rn >= sizeof(target_rel))) {
     return k_ra8_fail;
   }
-  if (try_reuse(ctx, mdl_hash_str(url), target_abs, target_rel)) {
+  if (!ctx->refetch && try_reuse(ctx, mdl_hash_str(url), target_abs, target_rel)) {
     stats->pages_reused += 1U;
     *out = (mdl_page_outcome_t){.bytes = 0U, .elapsed_ms = 0U, .reused = true};
   } else {
     const int64_t   t0   = mono_ms(ctx);
     size_t          got  = 0U;
     mdl_net_resp_t  resp = {};
-    const ra8_err_t rc   = do_fetch_page(ctx, chapter_url, url, target_abs, target_rel, &got, &resp);
+    const ra8_err_t rc = do_fetch_page(ctx, chapter_url, url, target_abs, target_rel, &got, &resp);
     if (rc != k_ra8_ok) {
       stats->pages_failed += 1U;
       return rc;
@@ -588,7 +611,15 @@ RA8_INTERNAL static ra8_err_t fetch_chapter_html(mdl_fetch_ctx_t* ctx, const cha
                                            ctx->site->page_img_attr,
                                            ctx->site->page_img_url_contains,
                                            ctx->images);
-  return ((erc == k_ra8_ok) || (erc == k_ra8_err_no_mem)) ? k_ra8_ok : erc;
+  if (erc != k_ra8_ok) {
+    record_fail(ctx, chapter_url, status, erc);
+    return erc;
+  }
+  if (ctx->images->count == 0U) {
+    record_fail(ctx, chapter_url, status, k_ra8_err_no_data);
+    return k_ra8_err_no_data;
+  }
+  return k_ra8_ok;
 }
 
 /** @brief Resolve the output directory + starting page number for one chapter. */

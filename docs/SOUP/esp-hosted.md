@@ -40,10 +40,12 @@ protocol version 2.12.11, which is what makes them wire-compatible.
 - **Origin**: Espressif Systems, the esp-hosted-mcu project.
 - **License**: Apache-2.0 (upstream `LICENSE`).
 - **How it enters our build**: `coprocessor/esp32c6/build.sh` clones the upstream
-  repository, checks out the pinned commit `949bb30`, drops in the proven
+  repository, checks out the pinned commit `949bb30`, applies the reviewed
+  `0001-custom-rpc-sync-response-hook.patch`, stages the first-party
+  `ra8_mdl_service` component, drops in the proven
   `coprocessor/esp32c6/sdkconfig.defaults`, and builds the `network_adapter`
-  peripheral-side application with the pinned esp-idf. Nothing is copied into
-  the repository; the recipe is the record.
+  peripheral-side application with the pinned esp-idf. The fetched SOUP is not
+  vendored; the patch, component, and recipe are the reviewable record.
 
 ## Use case in this project
 
@@ -54,9 +56,11 @@ protocol version 2.12.11, which is what makes them wire-compatible.
   excludes the host `drivers/bt/` bridge, `coprocessor/esp32c6/sdkconfig.defaults`
   says nothing about the BT stack so what the C6 image contains is
   undetermined, and the RA8-side BLE work is still open (#493).
-- **Zero first-party code runs on the C6.** The entire C6 image is upstream
-  esp-hosted-mcu. This is why it is catalogued as co-processor firmware SOUP
-  rather than a linked library: it never enters the RA8D2 firmware binary.
+- The C6 image is mixed: pinned esp-hosted-mcu SOUP plus the first-party
+  `ra8_mdl_service` component. A small checked patch exposes a synchronous,
+  bounded CustomRpc response hook; the first-party component implements a
+  pull-based HTTPS artifact transfer behind it. The C6 image remains separate
+  from the RA8D2 image, and only the upstream portion is accepted as SOUP.
 - This project uses "co-processor" / "peripheral-side" for the C6 app to match its inclusive terminology standard, in place of the upstream role name. <!-- LEGACY-OK: names the upstream esp-hosted-mcu slave role verbatim -->
 - Integrity-claim category: none. No safety signal in this project depends on
   the C6 link; it is a connectivity convenience.
@@ -76,16 +80,18 @@ DO-178C Section 12.1.4 (previously developed software):
   <https://github.com/espressif/esp-hosted-mcu/issues> was reviewed at
   vendor-in; no open advisory affects the SPI transport configuration this
   project uses.
-- **Black-box treatment**: the firmware is admitted as a pre-developed
+- **Black-box treatment**: the upstream portion is admitted as a pre-developed
   component whose internal structure is not re-verified here (no source-level
-  MC/DC, MISRA, or Doxygen audit). The compensating control is that the C6 is
-  reachable only through the RA8-side host driver's single integration
-  boundary and carries no integrity claim.
+  MC/DC, MISRA, or Doxygen audit). The patch and `ra8_mdl_service` are
+  first-party code and remain subject to normal source review and tests. The
+  C6 is reachable only through the RA8-side host driver's integration boundary
+  and carries no integrity claim.
 
 ## Risk mitigation
 
-- The C6 is a separate device on a SPI link; a fault is contained to the
-  connectivity path and cannot corrupt RA8D2 state outside the host driver.
+- The C6 is a separate device on a SPI link; RA8-side message correlation,
+  bounds checks, digest verification, and storage ownership contain a remote
+  fault to the connectivity/download path.
 - The build is fully pinned (esp-idf `v5.5.4` + commit `949bb30` +
   verbatim `sdkconfig.defaults`), so the flashed image is reproducible.
 - Host-side access is mediated through first-party RA8 code -- the port at
@@ -95,10 +101,13 @@ DO-178C Section 12.1.4 (previously developed software):
 
 ## Deviations / patches
 
-- **Modified**: no. The upstream tree is built unmodified at the pinned
-  commit. The only project-supplied input is `coprocessor/esp32c6/sdkconfig.defaults`
-  (build configuration: transport = SPI, the SPI pin assignments, and 16 MB
-  flash size), which selects upstream options and patches no upstream source.
+- **Modified**: yes. The build applies
+  `coprocessor/esp32c6/patches/0001-custom-rpc-sync-response-hook.patch` to the
+  exact pinned commit. It adds a weak bounded CustomRpc hook and registers the
+  first-party component; it does not alter radio, transport, or Wi-Fi logic.
+  `git apply --check` makes upstream drift a hard build failure, and the build
+  asserts that the strong first-party handler symbol is present in the final
+  ELF.
 
 ## CVE monitoring
 
@@ -113,6 +122,7 @@ OSV.dev alongside the vendored SOUP.
 - Use case + mitigation tense corrected against the tree (#612): 2026-08-04.
   The RA8-side driver is no longer a "follow-on", and the Bluetooth half is
   now stated as planned rather than provided.
+- Mixed-image trust boundary and media-service patch recorded: 2026-08-13.
 - Expected re-review by: 2027-07-26
 
 ## See also
