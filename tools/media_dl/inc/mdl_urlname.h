@@ -71,6 +71,32 @@ void mdl_urlname_last_segment(const char* url, char* out, size_t cap);
 long mdl_urlname_chapter_number(const char* url);
 
 /**
+ * @brief Parse an explicitly-marked integral or decimal chapter value.
+ *
+ * @details Recognises `chapter-N`, `/ch-N`, and Pepper&Carrot-style `/epN`
+ * markers only within the URL path. Host digits, opaque trailing IDs, query
+ * parameters, and fragments are never treated as chapter numbers. A hyphen
+ * between the integral and fractional runs is interpreted as a decimal point,
+ * so `chapter-108-5` is 108.5.
+ *
+ * @param[in]  url Absolute or relative URL to inspect.
+ * @param[out] out Parsed non-negative value on success.
+ *
+ * @retval true  An explicit, bounded chapter value was found.
+ * @retval false Arguments were invalid, no marker/value was present, or the
+ *               value exceeded the supported bound.
+ *
+ * @pre A non-NULL @p url is NUL-terminated within the documented URL bound.
+ * @pre A non-NULL @p out addresses writable storage for one `double`.
+ * @post On false, @p out is set to 0.0 when it is non-NULL.
+ * @post @p url is never modified.
+ *
+ * @note Thread-safe: uses only caller-owned storage.
+ * @since 0.1.0
+ */
+bool mdl_urlname_chapter_parse(const char* url, double* out);
+
+/**
  * @brief Parse a chapter URL as a possibly-decimal chapter value.
  *
  * @details A site slug such as `chapter-108-5` represents chapter 108.5, not
@@ -78,7 +104,9 @@ long mdl_urlname_chapter_number(const char* url);
  * decimals while ignoring unrelated digits in the host or earlier path.
  *
  * @param[in] url URL to parse; may be NULL.
- * @return Parsed chapter value, or 0.0 for an unnumbered URL.
+ * @return Parsed chapter value, or 0.0 for an unnumbered URL. New callers that
+ *         must distinguish an absent number from chapter zero use
+ *         ::mdl_urlname_chapter_parse.
  * @since 0.1.0
  */
 double mdl_urlname_chapter_value(const char* url);

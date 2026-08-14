@@ -46,7 +46,10 @@
  * @note Not thread-safe (shared cwd during path resolution).
  * @since 0.1.0
  */
-size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* chap_id);
+size_t mdl_pack_one(mdl_format_t            format,
+                    const char*             series_dir,
+                    const char*             chap_id,
+                    mdl_export_workspace_t* ws);
 
 /**
  * @brief Package one downloaded chapter folder into @p format with rich metadata.
@@ -54,13 +57,15 @@ size_t mdl_pack_one(mdl_format_t format, const char* series_dir, const char* cha
 size_t mdl_pack_one_meta(mdl_format_t             format,
                          const char*              series_dir,
                          const char*              chap_id,
-                         const mdl_export_meta_t* meta);
+                         const mdl_export_meta_t* meta,
+                         mdl_export_workspace_t*  ws);
 
 size_t mdl_pack_combined(mdl_format_t             format,
                          bool                     allow_incomplete,
                          const char*              series_dir,
                          const char*              combined_rel,
-                         const mdl_fetch_stats_t* stats);
+                         const mdl_fetch_stats_t* stats,
+                         mdl_export_workspace_t*  ws);
 
 /**
  * @brief Package a combined page folder into @p format with rich metadata.
@@ -70,4 +75,5 @@ size_t mdl_pack_combined_meta(mdl_format_t             format,
                               const char*              series_dir,
                               const char*              combined_rel,
                               const mdl_fetch_stats_t* stats,
-                              const mdl_export_meta_t* meta);
+                              const mdl_export_meta_t* meta,
+                              mdl_export_workspace_t*  ws);

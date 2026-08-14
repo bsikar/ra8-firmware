@@ -115,6 +115,7 @@ add_executable(
   src/mdl_pack.c
   src/mdl_library.c
   src/mdl_export.c
+  src/mdl_verify.c
   src/mdl_export_jof.c
   ${MDL_JOF_SRC}
   ${MDL_MINIZ}
@@ -160,6 +161,7 @@ add_executable(
   src/mdl_config.c
   src/mdl_politeness.c
   src/mdl_export.c
+  src/mdl_verify.c
   src/mdl_export_jof.c
   src/mdl_cli.c
   src/mdl_net.c
@@ -318,6 +320,47 @@ target_include_directories(
 target_compile_definitions(test_media_dl_search PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_search PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_media_dl_search COMMAND test_media_dl_search)
+
+# CLI grammar/dispatch qualification stays independent of exporter/network
+# implementations so a broken mode matrix cannot be hidden by optional tools.
+add_executable(test_media_dl_cli tests/test_media_dl_cli.c src/mdl_cli.c)
+target_include_directories(
+  test_media_dl_cli
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+)
+target_compile_definitions(test_media_dl_cli PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
+target_compile_options(test_media_dl_cli PRIVATE -Wall -Wextra -Werror)
+add_test(NAME test_media_dl_cli COMMAND test_media_dl_cli)
+
+# Every checked-in site descriptor is exercised against a sanitised captured
+# discovery, series, and chapter fixture. Adding a descriptor requires adding
+# its fixture vectors here rather than making an untested support claim.
+file(GLOB MDL_SHIPPED_SITE_CONFIGS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/sites/*.conf")
+list(LENGTH MDL_SHIPPED_SITE_CONFIGS MDL_SHIPPED_SITE_COUNT)
+add_executable(
+  test_media_dl_sites
+  tests/test_media_dl_sites.c
+  src/mdl_config.c
+  src/mdl_extract.c
+  src/mdl_search.c
+  src/mdl_urlname.c
+  src/mdl_sanitize.c
+  src/mdl_politeness.c
+)
+target_include_directories(
+  test_media_dl_sites
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+)
+target_compile_definitions(
+  test_media_dl_sites
+  PRIVATE _GNU_SOURCE RA8_OFF_TARGET MDL_SITE_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/sites"
+          MDL_SITE_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/sites"
+          MDL_SHIPPED_SITE_COUNT=${MDL_SHIPPED_SITE_COUNT}
+)
+target_compile_options(test_media_dl_sites PRIVATE -Wall -Wextra -Werror)
+add_test(NAME test_media_dl_sites COMMAND test_media_dl_sites)
 
 # Real socket/libcurl orchestration: deterministic local HTTP, no internet.
 find_program(MDL_BASH_EXECUTABLE NAMES bash REQUIRED)

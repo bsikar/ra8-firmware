@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "mdl_atomic.h"
@@ -569,6 +570,13 @@ static long atom_read(const char* path, char* out, size_t cap)
   return (long)n;
 }
 
+/** @brief Whether `path` names a regular file. */
+static bool atom_exists(const char* path)
+{
+  struct stat st;
+  return (stat(path, &st) == 0) && S_ISREG(st.st_mode);
+}
+
 /** @brief Whether `dir` still holds any `.mdl-tmp-` debris from a failed write. */
 static bool atom_has_debris(const char* dir)
 {
@@ -606,27 +614,46 @@ static void test_atomic_tmp_path_shape(void)
 {
   TEST_BEGIN("atomic tmp path shape");
   char buf[k_atom_path_max];
+  char buf2[k_atom_path_max];
+  char tmpl[k_atom_path_max];
+  (void)snprintf(tmpl, sizeof(tmpl), "%s", "/tmp/mdl_atomic_shape_XXXXXX");
+  const char* dir = mkdtemp(tmpl);
+  TEST_ASSERT(dir != nullptr);
+  char dst[k_atom_path_max];
+  (void)snprintf(dst, sizeof(dst), "%s/f.cbz", dir);
 
-  TEST_ASSERT(mdl_atomic_tmp_path("/d/f.cbz", buf, sizeof(buf)));      /* V1 */
-  TEST_ASSERT(!mdl_atomic_tmp_path(nullptr, buf, sizeof(buf)));        /* V2 */
-  TEST_ASSERT(!mdl_atomic_tmp_path("/d/f.cbz", nullptr, sizeof(buf))); /* V3 */
-  TEST_ASSERT(!mdl_atomic_tmp_path("/d/f.cbz", buf, 0U));              /* V4 */
+  TEST_ASSERT(mdl_atomic_tmp_path(dst, buf, sizeof(buf)));      /* V1 */
+  TEST_ASSERT(!mdl_atomic_tmp_path(nullptr, buf, sizeof(buf))); /* V2 */
+  TEST_ASSERT(!mdl_atomic_tmp_path(dst, nullptr, sizeof(buf))); /* V3 */
+  TEST_ASSERT(!mdl_atomic_tmp_path(dst, buf2, 0U));             /* V4 */
 
   /* A sibling in the destination's own directory, so rename() cannot EXDEV. */
-  TEST_ASSERT(mdl_atomic_tmp_path("/d/f.cbz", buf, sizeof(buf)));
-  TEST_ASSERT(strncmp(buf, "/d/.mdl-tmp-", strlen("/d/.mdl-tmp-")) == 0);
+  const size_t dir_len = strlen(dir);
+  TEST_ASSERT(strncmp(buf, dir, dir_len) == 0);
+  TEST_ASSERT(strncmp(&buf[dir_len], "/.mdl-tmp-", strlen("/.mdl-tmp-")) == 0);
   /* The extension survives: `rar` appends `.rar` to a name that lacks one. */
   TEST_ASSERT(strcmp(buf + strlen(buf) - strlen(".cbz"), ".cbz") == 0);
   /* Never the destination itself -- that is the whole point. */
-  TEST_ASSERT(strcmp(buf, "/d/f.cbz") != 0);
+  TEST_ASSERT(strcmp(buf, dst) != 0);
+  TEST_ASSERT(atom_exists(buf));
+
+  /* A second reservation for the same destination is a different file. */
+  TEST_ASSERT(mdl_atomic_tmp_path(dst, buf2, sizeof(buf2)));
+  TEST_ASSERT(strcmp(buf, buf2) != 0);
+  TEST_ASSERT(atom_exists(buf2));
 
   /* A bare leaf gets a dot-prefixed name in the current directory. */
-  TEST_ASSERT(mdl_atomic_tmp_path("f.jpg", buf, sizeof(buf)));
-  TEST_ASSERT(buf[0] == '.');
+  char bare[k_atom_path_max];
+  TEST_ASSERT(mdl_atomic_tmp_path("f.jpg", bare, sizeof(bare)));
+  TEST_ASSERT(bare[0] == '.');
 
   /* Too small to hold the prefixed name: refuse rather than retarget. */
   char tiny[8];
-  TEST_ASSERT(!mdl_atomic_tmp_path("/d/some-long-name.cbz", tiny, sizeof(tiny)));
+  TEST_ASSERT(!mdl_atomic_tmp_path(dst, tiny, sizeof(tiny)));
+  mdl_atomic_abort(buf);
+  mdl_atomic_abort(buf2);
+  mdl_atomic_abort(bare);
+  (void)rmdir(dir);
   TEST_END("atomic tmp path shape");
 }
 
@@ -667,8 +694,18 @@ static void test_atomic_commit_and_abort(void)
   TEST_ASSERT(!atom_has_debris(dir));
 
   /* commit: and only now is the destination replaced. */
+  TEST_ASSERT(mdl_atomic_tmp_path(dst, tmp, sizeof(tmp)));
   TEST_ASSERT(atom_write(tmp, "NEWBYTES"));
   TEST_ASSERT(mdl_atomic_commit(tmp, dst)); /* V1 */
+  TEST_ASSERT_EQ((long)strlen("NEWBYTES"), atom_read(dst, body, sizeof(body)));
+  TEST_ASSERT(strcmp(body, "NEWBYTES") == 0);
+  TEST_ASSERT(!atom_has_debris(dir));
+
+  /* A replaced reservation must not be followed as a symlink at commit. */
+  TEST_ASSERT(mdl_atomic_tmp_path(dst, tmp, sizeof(tmp)));
+  mdl_atomic_abort(tmp);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)symlink(dst, tmp));
+  TEST_ASSERT(!mdl_atomic_commit(tmp, dst));
   TEST_ASSERT_EQ((long)strlen("NEWBYTES"), atom_read(dst, body, sizeof(body)));
   TEST_ASSERT(strcmp(body, "NEWBYTES") == 0);
   TEST_ASSERT(!atom_has_debris(dir));
@@ -717,11 +754,12 @@ static void test_curl_get_file_failure_keeps_existing(void)
   /* allow_private_hosts so the SSRF guard does not reject the loopback URL
    * before libcurl ever runs -- the failure under test must be the TRANSFER
    * failing, not the request being refused up front. */
-  const mdl_net_policy_t pol = {.allow_private_hosts       = true,
-                                .allow_cross_host_redirect = false,
-                                .max_response_bytes        = 0U};
-  mdl_net_iface_t*       net = mdl_net_curl_create(&pol);
-  TEST_ASSERT(net != nullptr);
+  const mdl_net_policy_t pol     = {.allow_private_hosts       = true,
+                                    .allow_cross_host_redirect = false,
+                                    .max_response_bytes        = 0U};
+  mdl_net_iface_t        net     = {};
+  mdl_net_curl_storage_t storage = {};
+  TEST_ASSERT(mdl_net_curl_init(&net, &storage, &pol) == k_ra8_ok);
 
   const mdl_net_req_t req  = {.user_agent = "media_dl-test",
                               .referer    = nullptr,
@@ -729,7 +767,8 @@ static void test_curl_get_file_failure_keeps_existing(void)
   size_t              len  = 0U;
   mdl_net_resp_t      resp = {};
   /* Port 1 on loopback refuses immediately: deterministic, offline, fast. */
-  const ra8_err_t rc = mdl_net_get_file(net, "http://127.0.0.1:1/page.jpg", &req, dst, &len, &resp);
+  const ra8_err_t rc =
+    mdl_net_get_file(&net, "http://127.0.0.1:1/page.jpg", &req, dst, &len, &resp);
   TEST_ASSERT(rc != k_ra8_ok);
 
   /* THE POINT: the file the user already had is still there, intact. */
@@ -738,7 +777,9 @@ static void test_curl_get_file_failure_keeps_existing(void)
   /* ...and the failed attempt left no half-downloaded sibling behind. */
   TEST_ASSERT(!atom_has_debris(dir));
 
-  mdl_net_destroy(net);
+  mdl_net_destroy(&net);
+  TEST_ASSERT(net.vtable == nullptr);
+  TEST_ASSERT(net.ctx == nullptr);
   (void)unlink(dst);
   (void)rmdir(dir);
   TEST_END("curl get_file failure keeps existing");

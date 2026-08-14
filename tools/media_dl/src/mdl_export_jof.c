@@ -30,10 +30,11 @@
 
 #include <limits.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "mdl_atomic.h"
+#include "mdl_export.h"
 #include "mdl_export_internal.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
@@ -67,6 +68,12 @@ typedef enum : uint8_t {
   k_jof_webp_head_len   = 12U, /**< Bytes needed to sniff both fourCCs. */
   k_jof_webp_tag_len    = 4U,  /**< Length of one fourCC tag.           */
 } mdl_jof_webp_t;
+/** @brief Hard memory ceilings for the non-reentrant transcode workspace. */
+typedef enum : uint32_t {
+  k_jof_source_cap    = 16U * 1024U * 1024U,
+  k_jof_work_cap      = 16U * 1024U * 1024U,
+  k_jof_webp_work_cap = 64U * 1024U * 1024U,
+} mdl_jof_workspace_t;
 
 /** @brief WebP RIFF container tag (page head bytes 0..3). */
 static const uint8_t s_jof_webp_riff[k_jof_webp_tag_len] =
@@ -137,8 +144,8 @@ RA8_INTERNAL static ra8_err_t jof_sink(void* ctx, const uint8_t* buf, size_t len
   return (fwrite(buf, 1U, len, (FILE*)ctx) == len) ? k_ra8_ok : k_ra8_fail;
 }
 
-/** @brief Read a whole file into a malloc'd buffer. */
-RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t* out_len)
+/** @brief Read a whole file into a caller-owned bounded buffer. */
+RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t* buf, size_t cap, size_t* out_len)
 {
   FILE* f = fopen(path, "rb");
   if (f == nullptr) {
@@ -151,14 +158,11 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t*
     (void)fclose(f);
     return k_ra8_fail;
   }
-  uint8_t* buf = (uint8_t*)malloc((size_t)sz);
-  if ((buf == nullptr) || (fread(buf, 1U, (size_t)sz, f) != (size_t)sz)) {
-    free(buf);
+  if (((size_t)sz > cap) || (fread(buf, 1U, (size_t)sz, f) != (size_t)sz)) {
     (void)fclose(f);
-    return k_ra8_fail;
+    return ((size_t)sz > cap) ? k_ra8_err_invalid_size : k_ra8_fail;
   }
   (void)fclose(f);
-  *out_buf = buf;
   *out_len = (size_t)sz;
   return k_ra8_ok;
 }
@@ -189,12 +193,13 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t*
  * @see ra8_jof_webp_work_bytes()
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
-                                             size_t         slen,
-                                             uint16_t       w,
-                                             uint16_t       h,
-                                             uint8_t**      out_work,
-                                             size_t*        out_cap)
+RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t*          src,
+                                             size_t                  slen,
+                                             uint16_t                w,
+                                             uint16_t                h,
+                                             uint8_t**               out_work,
+                                             size_t*                 out_cap,
+                                             mdl_export_workspace_t* ws)
 {
   *out_work = nullptr;
   *out_cap  = 0U;
@@ -202,12 +207,12 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
     return k_ra8_ok;
   }
   const uint32_t need = ra8_jof_webp_work_bytes(w, h, (uint32_t)slen);
-  if (need == 0U) {
+  if ((need == 0U) || ((size_t)need > (size_t)k_jof_webp_work_cap)) {
     return k_ra8_err_invalid_size;
   }
-  uint8_t* mem = (uint8_t*)malloc((size_t)need);
+  uint8_t* mem = (uint8_t*)mdl_export_workspace_take(ws, (size_t)need, 16U);
   if (mem == nullptr) {
-    return k_ra8_err_no_mem;
+    return k_ra8_err_invalid_size;
   }
   *out_work = mem;
   *out_cap  = (size_t)need;
@@ -246,23 +251,26 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t* src,
  * @see jof_carve_webp()
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t* src,
-                                               size_t         slen,
-                                               uint16_t       w,
-                                               uint16_t       h,
-                                               uint16_t       tile_h,
-                                               uint32_t       work_cap,
-                                               FILE*          out)
+RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t*          src,
+                                               size_t                  slen,
+                                               uint16_t                w,
+                                               uint16_t                h,
+                                               uint16_t                tile_h,
+                                               uint32_t                work_cap,
+                                               FILE*                   out,
+                                               mdl_export_workspace_t* ws)
 {
-  uint8_t* work = (uint8_t*)malloc((size_t)work_cap);
+  if ((size_t)work_cap > (size_t)k_jof_work_cap) {
+    return k_ra8_err_invalid_size;
+  }
+  uint8_t* work = (uint8_t*)mdl_export_workspace_take(ws, (size_t)work_cap, 16U);
   if (work == nullptr) {
-    return k_ra8_err_no_mem;
+    return k_ra8_err_invalid_size;
   }
   uint8_t*        webp_work = nullptr;
   size_t          webp_cap  = 0U;
-  const ra8_err_t carve_rc  = jof_carve_webp(src, slen, w, h, &webp_work, &webp_cap);
+  const ra8_err_t carve_rc  = jof_carve_webp(src, slen, w, h, &webp_work, &webp_cap, ws);
   if (carve_rc != k_ra8_ok) {
-    free(work);
     return carve_rc;
   }
   jof_pull_ctx_t        pull = {.data = src, .len = slen, .pos = 0U};
@@ -281,17 +289,26 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t* src,
                                 .webp_work_cap = webp_cap};
   ra8_jof_info_t        info = {};
   const ra8_err_t       rc   = ra8_jof_produce(&cfg, &info);
-  free(work);
-  free(webp_work);
   return rc;
 }
 
 /** @brief Transcode one JPEG / PNG / WebP page to a `.jof` full-width-column atlas. */
-RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
+RA8_INTERNAL static ra8_err_t
+jof_one(const char* in_path, const char* out_path, mdl_export_workspace_t* ws)
 {
-  uint8_t*  src  = nullptr;
+  struct stat st;
+  if ((stat(in_path, &st) != 0) || (st.st_size <= 0)) {
+    return k_ra8_fail;
+  }
+  if ((uintmax_t)st.st_size > (uintmax_t)k_jof_source_cap) {
+    return k_ra8_err_invalid_size;
+  }
+  uint8_t* src = (uint8_t*)mdl_export_workspace_take(ws, (size_t)st.st_size, 16U);
+  if (src == nullptr) {
+    return k_ra8_err_invalid_size;
+  }
   size_t    slen = 0U;
-  ra8_err_t rc   = slurp(in_path, &src, &slen);
+  ra8_err_t rc   = slurp(in_path, src, (size_t)st.st_size, &slen);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -300,13 +317,11 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
   /* Probe through the producer's own dispatch, so every format the producer can
    * decode (JPEG, PNG, WebP) is a format this exporter can size and write. */
   if (ra8_jof_probe_dims(src, slen, &w, &h) != k_ra8_ok) {
-    free(src);
     return k_ra8_err_not_supported;
   }
   const uint16_t tile_h   = (h < (uint16_t)k_jof_band_h) ? h : (uint16_t)k_jof_band_h;
   const uint32_t work_cap = ra8_jof_work_bytes(w, h, w, tile_h);
   if (work_cap == 0U) {
-    free(src);
     return k_ra8_err_invalid_size;
   }
   /* Produce into a sibling temp and rename on success: re-exporting a chapter
@@ -314,19 +329,17 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
    * decode (see mdl_atomic.h). */
   char tmp[PATH_MAX];
   if (!mdl_atomic_tmp_path(out_path, tmp, sizeof(tmp))) {
-    free(src);
     return k_ra8_fail;
   }
   FILE* out = fopen(tmp, "wb");
   if (out == nullptr) {
-    free(src);
+    mdl_atomic_abort(tmp);
     return k_ra8_fail;
   }
-  rc = jof_produce_page(src, slen, w, h, tile_h, work_cap, out);
+  rc = jof_produce_page(src, slen, w, h, tile_h, work_cap, out, ws);
   if (fclose(out) != 0) {
     rc = (rc == k_ra8_ok) ? k_ra8_fail : rc;
   }
-  free(src);
   if (rc != k_ra8_ok) {
     mdl_atomic_abort(tmp);
     return rc;
@@ -334,10 +347,14 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
   return mdl_atomic_commit(tmp, out_path) ? k_ra8_ok : k_ra8_fail;
 }
 
-RA8_PRIV ra8_err_t mdl_export_jof(const char* dir, const char names[][k_name_max], size_t count)
+RA8_PRIV ra8_err_t mdl_export_jof(const char*             dir,
+                                  const char              names[][k_name_max],
+                                  size_t                  count,
+                                  mdl_export_workspace_t* ws)
 {
   ra8_log_set_byte_sink(jof_log_sink, nullptr);
-  ra8_err_t rc = k_ra8_ok;
+  const size_t page_mark = ws->used;
+  ra8_err_t    rc        = k_ra8_ok;
   for (size_t i = 0U; (rc == k_ra8_ok) && (i < count); ++i) {
     char in_path[PATH_MAX];
     char stem[k_name_max];
@@ -349,7 +366,8 @@ RA8_PRIV ra8_err_t mdl_export_jof(const char* dir, const char names[][k_name_max
       *dot = '\0';
     }
     (void)snprintf(out_path, sizeof(out_path), "%s/%s.jof", dir, stem);
-    rc = jof_one(in_path, out_path);
+    ws->used = page_mark;
+    rc       = jof_one(in_path, out_path, ws);
   }
   return rc;
 }

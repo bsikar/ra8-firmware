@@ -67,14 +67,16 @@ typedef struct {
  * @details The result of parsing one robots.txt for one user-agent token; an
  *          all-zero value (no rules) permits every path.
  * @invariant `count <= ::k_mdl_robots_max_rules`.
+ * @invariant `valid` is false if any line, rule, or rule table exceeded a bound.
  * @see mdl_robots_parse()
  * @since 0.1.0
  */
 typedef struct {
-  mdl_robots_rule_t rules[k_mdl_robots_max_rules]; /**< Selected group's rules. */
-  size_t            count;                         /**< Number of valid rules.  */
-  bool              have_crawl_delay;              /**< A Crawl-delay was seen. */
-  uint32_t          crawl_delay_ms;                /**< Crawl-delay in ms.      */
+  mdl_robots_rule_t rules[k_mdl_robots_max_rules]; /**< Selected group's rules.          */
+  size_t            count;                         /**< Number of valid rules.           */
+  bool              valid;                         /**< False if input exceeded a bound. */
+  bool              have_crawl_delay;              /**< A Crawl-delay was seen.          */
+  uint32_t          crawl_delay_ms;                /**< Crawl-delay in ms.               */
 } mdl_robots_t;
 
 /**
@@ -156,29 +158,32 @@ const char* mdl_robots_disallow_reason(const mdl_robots_t* robots, const char* p
 /**
  * @struct mdl_robots_cache_entry_t
  * @brief One host's cached robots.txt outcome.
- * @details Populated on first contact with a host and reused thereafter.
- * @invariant `used` is true once `host` and `rules` are valid.
+ * @details Populated on first contact with an origin (scheme + host) and reused thereafter.
+ * @invariant `used` is true once `scheme`, `host`, and the outcome are valid.
  * @see mdl_robots_cache_consult()
  * @since 0.1.0
  */
 typedef struct {
-  char         host[k_mdl_robots_host_max]; /**< Host this entry describes.  */
-  bool         used;                        /**< Entry is populated.         */
-  bool         disallow_all;                /**< 5xx convention: refuse all. */
-  mdl_robots_t rules;                       /**< Parsed rules for our UA.    */
+  char         scheme[6];                   /**< Lower-case `http` or `https`. */
+  char         host[k_mdl_robots_host_max]; /**< Host this entry describes.    */
+  bool         used;                        /**< Entry is populated.           */
+  bool         disallow_all;                /**< 5xx convention: refuse all.   */
+  mdl_robots_t rules;                       /**< Parsed rules for our UA.      */
 } mdl_robots_cache_entry_t;
 
 /**
  * @struct mdl_robots_cache_t
  * @brief Fixed-size per-host robots.txt cache for one run.
  * @details Zero-initialise before first use; holds up to
- *          ::k_mdl_robots_max_hosts distinct hosts.
+ *          ::k_mdl_robots_max_hosts distinct origins. The overflow member is
+ *          scratch for a full cache and is never considered a cache hit.
  * @invariant Entries are filled front-to-back; `[i].used` gaps do not occur.
  * @see mdl_robots_cache_consult()
  * @since 0.1.0
  */
 typedef struct {
-  mdl_robots_cache_entry_t hosts[k_mdl_robots_max_hosts]; /**< Cached hosts. */
+  mdl_robots_cache_entry_t hosts[k_mdl_robots_max_hosts]; /**< Cached hosts.             */
+  mdl_robots_cache_entry_t overflow;                      /**< Full-cache scratch entry. */
 } mdl_robots_cache_t;
 
 /**

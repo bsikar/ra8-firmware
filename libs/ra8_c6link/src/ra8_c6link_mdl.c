@@ -15,7 +15,7 @@
 #include "ra8_media_download.pb-c.h"
 
 /** @brief Largest encoded inner request (bounded URL plus protobuf overhead). */
-typedef enum : uint16_t { k_mdl_request_bytes = RA8_MDL_URL_MAX + 32U } mdl_request_const_t;
+typedef enum : uint16_t { k_mdl_request_bytes = k_ra8_mdl_url_max + 32U } mdl_request_const_t;
 
 /** @brief Response extractor variants. */
 typedef enum : uint8_t {
@@ -34,7 +34,20 @@ typedef struct {
   mdl_take_kind_t    kind;
 } mdl_take_ctx_t;
 
-/** @brief Validate the state-specific fields of a correlated chunk. */
+/**
+ * @brief Validate state-specific fields of one correlated chunk
+ * @details Enforces data/digest/status combinations and overflow-safe totals.
+ * @param[in] msg Decoded generated chunk.
+ * @return Whether the semantic combination is valid.
+ * @retval true State-specific fields and totals are coherent.
+ * @retval false A state, size, status, or digest rule is violated.
+ * @pre @p msg is non-null and decoded by the bounded link arena.
+ * @pre Binary-data lengths describe their decoded buffers.
+ * @post No caller or decoded state is modified.
+ * @post True guarantees later bounded copies are size-safe.
+ * @note Reentrant for independent decoded messages.
+ * @since 0.1.0
+ */
 static bool mdl_chunk_semantics_valid(const Ra8__Mdl__Chunk* msg)
 {
   if (msg->data.len > (UINT64_MAX - msg->offset)) {
@@ -50,7 +63,7 @@ static bool mdl_chunk_semantics_valid(const Ra8__Mdl__Chunk* msg)
       return (msg->status == 0) && (msg->data.len != 0U) && (msg->sha256.len == 0U);
     case RA8__MDL__STATE__STATE_COMPLETE:
       return (msg->status == 0) && (msg->data.len == 0U) &&
-             (msg->sha256.len == RA8_MDL_SHA256_BYTES) && (msg->sha256.data != nullptr) &&
+             (msg->sha256.len == k_ra8_mdl_sha256_bytes) && (msg->sha256.data != nullptr) &&
              ((msg->total_bytes == 0U) || (msg->total_bytes == end));
     case RA8__MDL__STATE__STATE_CANCELLED:
       return (msg->status == 0) && (msg->data.len == 0U) && (msg->sha256.len == 0U);
@@ -62,7 +75,21 @@ static bool mdl_chunk_semantics_valid(const Ra8__Mdl__Chunk* msg)
   }
 }
 
-/** @brief Decode and validate a start response. */
+/**
+ * @brief Decode and validate one accepted-job response
+ * @details Uses the link-owned bounded arena and updates the session only after validation.
+ * @param[in,out] take Response extraction context.
+ * @param[in] data Packed generated Accepted response.
+ * @return Decode status.
+ * @retval k_ra8_ok Session was activated with bounded correlation state.
+ * @retval k_ra8_err_protocol_error Decode or field validation failed.
+ * @pre @p take, its link/session, and @p data are non-null.
+ * @pre The link arena is exclusively owned for this synchronous callback.
+ * @post Success initializes an active session.
+ * @post Failure leaves the caller's session unchanged.
+ * @note Not thread-safe for a shared c6link arena.
+ * @since 0.1.0
+ */
 static ra8_err_t mdl_take_accepted(mdl_take_ctx_t* take, const ProtobufCBinaryData* data)
 {
   ProtobufCAllocator alloc = {};
@@ -71,9 +98,9 @@ static ra8_err_t mdl_take_accepted(mdl_take_ctx_t* take, const ProtobufCBinaryDa
   if (msg == nullptr) {
     return k_ra8_err_protocol_error;
   }
-  const bool valid = (msg->protocol_version == RA8_MDL_PROTOCOL_VERSION) && (msg->job_id != 0U) &&
+  const bool valid = (msg->protocol_version == k_ra8_mdl_protocol_version) && (msg->job_id != 0U) &&
                      (msg->max_chunk_bytes != 0U) &&
-                     (msg->max_chunk_bytes <= RA8_MDL_CHUNK_DATA_MAX);
+                     (msg->max_chunk_bytes <= k_ra8_mdl_chunk_data_max);
   if (valid) {
     *take->session = (ra8_mdl_session_t){
       .job_id          = msg->job_id,
@@ -87,7 +114,21 @@ static ra8_err_t mdl_take_accepted(mdl_take_ctx_t* take, const ProtobufCBinaryDa
   return valid ? k_ra8_ok : k_ra8_err_protocol_error;
 }
 
-/** @brief Decode a chunk and enforce job, sequence, offset, and size correlation. */
+/**
+ * @brief Decode a chunk and enforce correlation and size bounds
+ * @details Accepts only the exact active job, sequence, offset, and requested span.
+ * @param[in,out] take Active extraction/session context.
+ * @param[in] data Packed generated Chunk response.
+ * @return Decode or remote terminal status.
+ * @retval k_ra8_ok A valid data or successful terminal chunk was copied.
+ * @retval k_ra8_err_protocol_error Decode or correlation validation failed.
+ * @pre @p take owns an active session and non-null output chunk.
+ * @pre The link arena is exclusively owned for this callback.
+ * @post Success advances offset/sequence by exactly the decoded data length.
+ * @post A valid terminal response deactivates the session.
+ * @note Not thread-safe for a shared session or c6link arena.
+ * @since 0.1.0
+ */
 static ra8_err_t mdl_take_chunk(mdl_take_ctx_t* take, const ProtobufCBinaryData* data)
 {
   ProtobufCAllocator alloc = {};
@@ -97,10 +138,10 @@ static ra8_err_t mdl_take_chunk(mdl_take_ctx_t* take, const ProtobufCBinaryData*
     return k_ra8_err_protocol_error;
   }
   const bool valid =
-    (msg->protocol_version == RA8_MDL_PROTOCOL_VERSION) && (msg->job_id == take->session->job_id) &&
-    (msg->sequence == take->session->next_sequence) &&
+    (msg->protocol_version == k_ra8_mdl_protocol_version) &&
+    (msg->job_id == take->session->job_id) && (msg->sequence == take->session->next_sequence) &&
     (msg->offset == take->session->next_offset) && (msg->data.len <= take->requested_bytes) &&
-    (msg->data.len <= RA8_MDL_CHUNK_DATA_MAX) &&
+    (msg->data.len <= k_ra8_mdl_chunk_data_max) &&
     ((msg->data.len == 0U) || (msg->data.data != nullptr)) && mdl_chunk_semantics_valid(msg);
   ra8_err_t result = valid ? k_ra8_ok : k_ra8_err_protocol_error;
   if (valid) {
@@ -112,13 +153,13 @@ static ra8_err_t mdl_take_chunk(mdl_take_ctx_t* take, const ProtobufCBinaryData*
       .state       = (ra8_mdl_state_t)msg->state,
       .status      = (ra8_err_t)msg->status,
       .data_len    = (uint16_t)msg->data.len,
-      .has_sha256  = (msg->sha256.len == RA8_MDL_SHA256_BYTES),
+      .has_sha256  = (msg->sha256.len == k_ra8_mdl_sha256_bytes),
     };
     if (msg->data.len != 0U) {
       memcpy(take->chunk->data, msg->data.data, msg->data.len);
     }
     if (take->chunk->has_sha256) {
-      memcpy(take->chunk->sha256, msg->sha256.data, RA8_MDL_SHA256_BYTES);
+      memcpy(take->chunk->sha256, msg->sha256.data, k_ra8_mdl_sha256_bytes);
     }
     take->session->next_offset += msg->data.len;
     take->session->next_sequence += 1U;
@@ -135,7 +176,21 @@ static ra8_err_t mdl_take_chunk(mdl_take_ctx_t* take, const ProtobufCBinaryData*
   return result;
 }
 
-/** @brief Decode a cancellation acknowledgement for the active job. */
+/**
+ * @brief Decode a cancellation acknowledgement for the active job
+ * @details Rejects acknowledgements for another job or protocol version.
+ * @param[in,out] take Active extraction/session context.
+ * @param[in] data Packed generated Cancelled response.
+ * @return Decode status.
+ * @retval k_ra8_ok Matching cancellation deactivated the session.
+ * @retval k_ra8_err_protocol_error Decode or correlation validation failed.
+ * @pre @p take and its active session are non-null.
+ * @pre The link arena is exclusively owned for this callback.
+ * @post Success makes the session inactive.
+ * @post Failure preserves session activity for caller recovery.
+ * @note Not thread-safe for a shared session or c6link arena.
+ * @since 0.1.0
+ */
 static ra8_err_t mdl_take_cancelled(mdl_take_ctx_t* take, const ProtobufCBinaryData* data)
 {
   ProtobufCAllocator alloc = {};
@@ -144,7 +199,7 @@ static ra8_err_t mdl_take_cancelled(mdl_take_ctx_t* take, const ProtobufCBinaryD
   if (msg == nullptr) {
     return k_ra8_err_protocol_error;
   }
-  const bool valid = (msg->protocol_version == RA8_MDL_PROTOCOL_VERSION) &&
+  const bool valid = (msg->protocol_version == k_ra8_mdl_protocol_version) &&
                      (msg->job_id == take->session->job_id) && (msg->status == 0);
   if (valid) {
     take->session->active = false;
@@ -153,7 +208,21 @@ static ra8_err_t mdl_take_cancelled(mdl_take_ctx_t* take, const ProtobufCBinaryD
   return valid ? k_ra8_ok : k_ra8_err_protocol_error;
 }
 
-/** @brief Extract one inner media response from an ESP-hosted CustomRpc response. */
+/**
+ * @brief Extract one generated media payload from a CustomRpc response
+ * @details Validates outer response identity/status before selecting the expected inner type.
+ * @param[in,out] ctx ::mdl_take_ctx_t selected by the initiating call.
+ * @param[in] msg_v Decoded ESP-hosted Rpc response.
+ * @return Extraction status.
+ * @retval k_ra8_ok Expected inner response was accepted.
+ * @retval k_ra8_err_protocol_error Outer or inner response is incoherent.
+ * @pre @p ctx and @p msg_v are non-null for the synchronous callback.
+ * @pre `kind` matches the initiating media operation.
+ * @post Success applies exactly one expected state transition.
+ * @post Failure does not select a different inner response type.
+ * @note Not thread-safe for a shared c6link/session.
+ * @since 0.1.0
+ */
 static ra8_err_t mdl_take_response(void* ctx, const void* msg_v)
 {
   mdl_take_ctx_t*         take = (mdl_take_ctx_t*)ctx;
@@ -181,7 +250,24 @@ static ra8_err_t mdl_take_response(void* ctx, const void* msg_v)
   }
 }
 
-/** @brief Send one already-encoded inner message through CustomRpc. */
+/**
+ * @brief Send one already-encoded generated message through CustomRpc
+ * @details Wraps caller-owned inner bytes without retaining them after the synchronous call.
+ * @param[in,out] link Already-open exclusively owned c6link.
+ * @param[in] operation Stable media operation identifier.
+ * @param[in] data Packed inner request bytes.
+ * @param[in] data_len Valid bytes at @p data.
+ * @param[in,out] take Expected response extraction context.
+ * @return Transport, remote, or response-validation status.
+ * @retval k_ra8_ok The expected response was extracted.
+ * @retval k_ra8_err_protocol_error Response identity or payload was invalid.
+ * @pre Every pointer is non-null and @p data_len is within the local buffer.
+ * @pre ::ra8_c6link_open succeeded and no concurrent caller uses @p link.
+ * @post Inner request storage is no longer referenced when the call returns.
+ * @post Response state changes only through ::mdl_take_response.
+ * @note Synchronous and not thread-safe for a shared link.
+ * @since 0.1.0
+ */
 static ra8_err_t mdl_call(ra8_c6link_t*   link,
                           uint32_t        operation,
                           uint8_t*        data,
@@ -206,27 +292,24 @@ static ra8_err_t mdl_call(ra8_c6link_t*   link,
                                   take);
 }
 
-ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t*      link,
-                               const char*        url,
-                               ra8_mdl_format_t   format,
-                               ra8_mdl_session_t* session)
+ra8_err_t ra8_c6link_mdl_start(ra8_c6link_t* link, const char* url, ra8_mdl_session_t* session)
 {
   if ((link == nullptr) || (url == nullptr) || (session == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  const size_t url_len = strnlen(url, RA8_MDL_URL_MAX);
-  if ((url_len == 0U) || (url_len >= RA8_MDL_URL_MAX) || (format < k_ra8_mdl_format_rabook) ||
-      (format > k_ra8_mdl_format_epub)) {
+  const size_t https_prefix_len = sizeof("https://") - 1U;
+  const size_t url_len          = strnlen(url, k_ra8_mdl_url_max);
+  if ((url_len == 0U) || (url_len >= k_ra8_mdl_url_max) ||
+      (strncmp(url, "https://", https_prefix_len) != 0) || (url[https_prefix_len] == '\0')) {
     return k_ra8_err_invalid_arg;
   }
   *session = (ra8_mdl_session_t){};
-  char url_copy[RA8_MDL_URL_MAX];
+  char url_copy[k_ra8_mdl_url_max];
   memcpy(url_copy, url, url_len + 1U);
   Ra8__Mdl__StartRequest inner;
   ra8__mdl__start_request__init(&inner);
-  inner.protocol_version = RA8_MDL_PROTOCOL_VERSION;
+  inner.protocol_version = k_ra8_mdl_protocol_version;
   inner.url              = url_copy;
-  inner.format           = (Ra8__Mdl__Format)format;
   uint8_t      data[k_mdl_request_bytes];
   const size_t packed = ra8__mdl__start_request__get_packed_size(&inner);
   if ((packed == 0U) || (packed > sizeof(data)) ||
@@ -249,12 +332,12 @@ ra8_err_t ra8_c6link_mdl_next(ra8_c6link_t*      link,
     return k_ra8_err_invalid_state;
   }
   if ((max_bytes == 0U) || (max_bytes > session->max_chunk_bytes) ||
-      (max_bytes > RA8_MDL_CHUNK_DATA_MAX)) {
+      (max_bytes > k_ra8_mdl_chunk_data_max)) {
     return k_ra8_err_invalid_size;
   }
   *chunk                      = (ra8_mdl_chunk_t){};
   Ra8__Mdl__NextRequest inner = RA8__MDL__NEXT_REQUEST__INIT;
-  inner.protocol_version      = RA8_MDL_PROTOCOL_VERSION;
+  inner.protocol_version      = k_ra8_mdl_protocol_version;
   inner.job_id                = session->job_id;
   inner.acknowledged_offset   = session->next_offset;
   inner.max_bytes             = max_bytes;
@@ -280,7 +363,7 @@ ra8_err_t ra8_c6link_mdl_cancel(ra8_c6link_t* link, ra8_mdl_session_t* session)
     return k_ra8_err_invalid_state;
   }
   Ra8__Mdl__CancelRequest inner = RA8__MDL__CANCEL_REQUEST__INIT;
-  inner.protocol_version        = RA8_MDL_PROTOCOL_VERSION;
+  inner.protocol_version        = k_ra8_mdl_protocol_version;
   inner.job_id                  = session->job_id;
   uint8_t      data[k_mdl_request_bytes];
   const size_t packed = ra8__mdl__cancel_request__get_packed_size(&inner);
