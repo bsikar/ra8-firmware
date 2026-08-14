@@ -36,6 +36,39 @@
 #include "ra8_port_constants.h"
 #include "ra8_port_utils.h"
 #include "ra8_sci.h"
+#include "ra8_time_constants.h"
+
+/**
+ * @brief Initialize the board-standard PLL1 clock tree and publish its rates.
+ * @details Delegates the register-level transition to the CGC HAL, then
+ *          returns the board-qualified CPUCLK0 and PCLKA constants without
+ *          exposing a concrete clock driver to application code.
+ * @param[out] out_rates Initialized board clock rates.
+ * @return Board clock initialization status.
+ * @retval k_ra8_ok Clock initialization and rate publication succeeded.
+ * @retval k_ra8_err_invalid_arg @p out_rates is null.
+ * @retval other Propagated clock-generator initialization error.
+ * @pre Called from the single-threaded board boot path.
+ * @post On success, PLL1 supplies the standard EK-RA8D2 clock tree.
+ * @post On failure, @p out_rates is unchanged when nonnull.
+ * @note Not thread-safe; call once during board initialization.
+ * @since 0.1.0
+ */
+ra8_err_t ra8_board_clocks_init(ra8_board_clock_rates_t* out_rates)
+{
+  if (out_rates == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  const ra8_err_t err = ra8_cgc_init();
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  *out_rates = (ra8_board_clock_rates_t){
+    .cpuclk0_hz = (uint32_t)k_ra8_cpuclk0_hz,
+    .pclka_hz   = (uint32_t)k_ra8_pclka_hz,
+  };
+  return k_ra8_ok;
+}
 
 /* =============================================================================
  * 10. MIPI-DSI panel bring-up (J32 -- Renesas RTKMIPILCDB00000BE mezzanine)

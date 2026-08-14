@@ -32,6 +32,7 @@
 #include "nx_arp.h"
 #include "nx_ip.h"
 #include "ra8_c6link.h"
+#include "ra8_esp_hosted_port.h"
 #include "tx_api.h"
 
 #ifndef NX_DISABLE_IPV4
@@ -128,7 +129,7 @@ typedef enum : uint32_t {
   k_nx_c6_worker_stack_bytes  = 4096U, /**< RX worker stack, in octets.    */
   k_nx_c6_worker_priority     = 4U,    /**< RX worker ThreadX priority.    */
   k_nx_c6_worker_period_ticks = 1U,    /**< Sleep between polls, in ticks. */
-  k_nx_c6_poll_transactions   = 8U,    /**< Transactions clocked per poll. */
+  k_nx_c6_poll_transactions   = 1U,    /**< One DATA_READY frame per poll. */
 } nx_c6_worker_t;
 
 /**
@@ -392,9 +393,10 @@ void nx_ether_driver_c6_rx(void* ctx, const uint8_t* frame, uint16_t len)
 /**
  * @brief RX poll worker entry: pump the link so received frames reach NetX.
  * @details The SPI transport raises no interrupt, so this thread calls
- * ``ra8_c6link_poll`` under the wire mutex forever; the facade fires
- * ::nx_ether_driver_c6_rx from inside that poll for each frame. It sleeps one
- * tick between polls so it does not starve the NetX IP thread.
+ * ``ra8_c6link_poll`` under the wire mutex only while the held DATA_READY
+ * signal says receive work exists; the facade fires ::nx_ether_driver_c6_rx
+ * from inside that poll. One transaction is clocked per wake and the worker
+ * sleeps one tick between checks so an idle C6 never blocks outbound traffic.
  * @param[in] arg ThreadX entry argument; unused.
  * @return Never returns.
  * @pre The driver has been bound and the mutex created.
@@ -419,6 +421,9 @@ static void priv_rx_worker_entry(ULONG arg)
     }
     if (s_c6_mtx_made == 0U) {
       pumpable = false;
+    }
+    if (pumpable) {
+      pumpable = ra8_esp_hosted_port_rx_pending();
     }
     if (pumpable) {
       (void)tx_mutex_get(&s_c6_mtx, TX_WAIT_FOREVER);
