@@ -263,6 +263,7 @@ list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_emulator_
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_wire.c)
 list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_c6link_mdl.c)
+list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_mdl_storage_vfs.c)
 
 # test_ra8_wifi_c6link.c drives the ESP32-C6 ra8_wifi backend, which -- like the
 # c6link tests above -- links libs/ra8_c6link + the vendored codec against the
@@ -280,6 +281,20 @@ foreach(src ${RA8_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)
   ra8_add_test(${name})
 endforeach()
+
+# The portable-filesystem conformance test runs the same vectors against the
+# firmware VFS adapter (from ra8_core_hal) and this hosted POSIX port. Keep the
+# POSIX source out of the firmware object library by adding it only here.
+if(TARGET test_fw_if_fs)
+  target_sources(
+    test_fw_if_fs PRIVATE ${FW_ROOT}/port/posix/src/fw_if_fs_posix.c
+                          ${FW_ROOT}/port/posix/src/fw_if_fs_posix_common.c
+  )
+  target_include_directories(
+    test_fw_if_fs PRIVATE ${FW_ROOT}/libs/if/inc ${FW_ROOT}/libs/if_ra8_vfs/inc
+                          ${FW_ROOT}/port/posix/inc ${FW_ROOT}/port/posix/src
+  )
+endif()
 
 # ---------------------------------------------------------------------------
 # test_app_ereader_manga: the ereader_manga host twin drives the app's shared
