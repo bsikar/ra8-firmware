@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+
+syntax = "proto3";
+
+package ra8.mdl;
+
+// Payloads carried inside ESP-hosted's generated CustomRpc protobuf envelope.
+// The RA8 owns destination paths and storage; the C6 sees only the source URL.
+enum Format {
+  FORMAT_UNSPECIFIED = 0;
+  FORMAT_RABOOK = 1;
+  FORMAT_CBZ = 2;
+  FORMAT_EPUB = 3;
+}
+
+enum State {
+  STATE_UNSPECIFIED = 0;
+  STATE_ACCEPTED = 1;
+  STATE_DOWNLOADING = 2;
+  STATE_COMPLETE = 3;
+  STATE_CANCELLED = 4;
+  STATE_FAILED = 5;
+}
+
+message StartRequest {
+  uint32 protocol_version = 1;
+  string url = 2;
+  Format format = 3;
+}
+
+message Accepted {
+  uint32 protocol_version = 1;
+  uint32 job_id = 2;
+  uint32 max_chunk_bytes = 3;
+}
+
+message NextRequest {
+  uint32 protocol_version = 1;
+  uint32 job_id = 2;
+  uint64 acknowledged_offset = 3;
+  uint32 max_bytes = 4;
+}
+
+message Chunk {
+  uint32 protocol_version = 1;
+  uint32 job_id = 2;
+  uint32 sequence = 3;
+  uint64 offset = 4;
+  bytes data = 5;
+  uint64 total_bytes = 6;
+  State state = 7;
+  int32 status = 8;
+  bytes sha256 = 9;
+}
+
+message CancelRequest {
+  uint32 protocol_version = 1;
+  uint32 job_id = 2;
+}
+
+message Cancelled {
+  uint32 protocol_version = 1;
+  uint32 job_id = 2;
+  int32 status = 3;
+}

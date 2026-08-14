@@ -250,7 +250,15 @@ int mdl_discover_run(const mdl_discover_req_t* req, size_t pick, char* out_url, 
     (void)fprintf(stderr, "media_dl: %s request failed -- %s\n", mode_word(req->mode), reason);
     return 1;
   }
-  (void)mdl_extract_hits(req->page_buf, len, url, req->site->search_result_contains, req->hits);
+  const ra8_err_t parsed =
+    mdl_extract_hits(req->page_buf, len, url, req->site->search_result_contains, req->hits);
+  if (parsed != k_ra8_ok) {
+    (void)fprintf(stderr,
+                  "media_dl: %s results exceeded the bounded hit table\n",
+                  mode_word(req->mode));
+    return 1;
+  }
+  (void)mdl_search_filter_series_hits(req->hits, req->site->chapter_url_contains);
   const mdl_search_outcome_t outcome = mdl_search_classify(req->hits);
   return present_and_pick(req, outcome, pick, out_url, out_cap);
 }

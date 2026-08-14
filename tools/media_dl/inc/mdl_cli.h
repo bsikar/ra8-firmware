@@ -34,6 +34,7 @@ typedef struct {
   bool             polite;           /**< True when --polite is set.           */
   bool             allow_incomplete; /**< True when --allow-incomplete is set. */
   bool             progress;         /**< True when --progress is set.         */
+  bool             refetch;          /**< True when --refetch bypasses cache.  */
 } mdl_run_opts_t;
 
 /**
@@ -79,6 +80,7 @@ typedef struct {
   bool        cross_host;       /**< --cross-host: permit cross-host redirects.                 */
   bool        allow_incomplete; /**< --allow-incomplete: package a run with failed pages.       */
   bool        progress;         /**< --progress: terminal progress bar during downloads.        */
+  bool        refetch;          /**< --refetch: bypass verified local page reuse.               */
   bool        verify;           /**< --verify: verify existing downloaded archives/files.       */
   bool        bad;              /**< An unrecognised argument was seen.                         */
 } mdl_args_t;

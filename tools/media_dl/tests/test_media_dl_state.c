@@ -155,6 +155,16 @@ static void test_urlname(void)
   TEST_ASSERT_EQ((int64_t)137, (int64_t)mdl_urlname_chapter_number("http://s/read/ch-137"));
   TEST_ASSERT_EQ((int64_t)0, (int64_t)mdl_urlname_chapter_number("http://s/read/prologue"));
   TEST_ASSERT_EQ((int64_t)5, (int64_t)mdl_urlname_chapter_number("http://12s/ch-5"));
+  TEST_ASSERT_EQ(
+    (int64_t)108,
+    (int64_t)mdl_urlname_chapter_number("https://manhwaus.net/webtoon/s/chapter-108-5/"));
+  TEST_ASSERT(mdl_urlname_chapter_value("https://manhwaus.net/webtoon/s/chapter-108-5/") == 108.5);
+  TEST_ASSERT(mdl_urlname_chapter_value("https://12.example/read/chapter-7.25/") == 7.25);
+  TEST_ASSERT(mdl_urlname_chapter_value("https://s.example/read/chapter-7/?next=/chapter-999/") ==
+              7.0);
+  TEST_ASSERT(mdl_urlname_chapter_value("https://s.example/read/chapter-8/#chapter-777") == 8.0);
+  TEST_ASSERT(mdl_urlname_chapter_value(
+                "https://12.example/read/prologue?next=chapter-999#chapter-777") == 0.0);
 
   char ext[k_probe_bytes + 3U];
   mdl_urlname_ext("http://cdn/a.PNG", ext, sizeof(ext));
@@ -202,7 +212,12 @@ static void test_state_chapters_and_pages(void)
   TEST_ASSERT(!mdl_state_chapter_complete(&s_a, "nope"));
   TEST_ASSERT_NULL(mdl_state_find_chapter(&s_a, "nope"));
 
-  TEST_ASSERT(mdl_state_add_page(&s_a, (uint64_t)k_uh_a, (uint64_t)k_ch_a, "c1/page_0001.jpg", nullptr, nullptr));
+  TEST_ASSERT(mdl_state_add_page(&s_a,
+                                 (uint64_t)k_uh_a,
+                                 (uint64_t)k_ch_a,
+                                 "c1/page_0001.jpg",
+                                 nullptr,
+                                 nullptr));
   const mdl_page_rec_t* p = mdl_state_find_page(&s_a, (uint64_t)k_uh_a);
   TEST_ASSERT_NOT_NULL(p);
   TEST_ASSERT_EQ((uint64_t)k_ch_a, p->content_hash);
@@ -227,8 +242,18 @@ static void seed_fixture(void)
   mdl_chapter_rec_t* c2 = mdl_state_add_chapter(&s_a, "chapter-2", "http://s/c2", (long)k_ch_two);
   c2->complete          = false;
   c2->page_count        = (uint16_t)k_ch_one;
-  (void)mdl_state_add_page(&s_a, (uint64_t)k_uh_a, (uint64_t)k_ch_a, "chapter-1/page_0001.jpg", "e1", "m1");
-  (void)mdl_state_add_page(&s_a, (uint64_t)k_uh_b, (uint64_t)k_ch_b, "chapter-1/page_0002.jpg", "e2", "m2");
+  (void)mdl_state_add_page(&s_a,
+                           (uint64_t)k_uh_a,
+                           (uint64_t)k_ch_a,
+                           "chapter-1/page_0001.jpg",
+                           "e1",
+                           "m1");
+  (void)mdl_state_add_page(&s_a,
+                           (uint64_t)k_uh_b,
+                           (uint64_t)k_ch_b,
+                           "chapter-1/page_0002.jpg",
+                           "e2",
+                           "m2");
 }
 
 /**

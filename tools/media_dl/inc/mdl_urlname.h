@@ -49,13 +49,12 @@
 void mdl_urlname_last_segment(const char* url, char* out, size_t cap);
 
 /**
- * @brief Parse the last run of decimal digits in a URL as a chapter number.
+ * @brief Parse a chapter URL's integral chapter number.
  *
  * @details
- * Manga/manhwa chapter URLs end in a number (`.../chapter-137`); this returns
- * that number so chapters can be addressed and ordered by identity rather than
- * by list position, and so coverage gaps can be reported. The LAST digit run is
- * taken so a numeric host or path prefix does not mask the chapter number.
+ * Recognises chapter slugs such as `chapter-137`, `chapter-108-5`, and `ch-5`.
+ * Decimal slugs return their integral part here; use
+ * ::mdl_urlname_chapter_value when ordering decimal chapters.
  *
  * @param[in] url URL to parse (never NULL).
  *
@@ -70,6 +69,19 @@ void mdl_urlname_last_segment(const char* url, char* out, size_t cap);
  * @since 0.1.0
  */
 long mdl_urlname_chapter_number(const char* url);
+
+/**
+ * @brief Parse a chapter URL as a possibly-decimal chapter value.
+ *
+ * @details A site slug such as `chapter-108-5` represents chapter 108.5, not
+ * chapter 5. This helper recognises that convention and ordinary dotted
+ * decimals while ignoring unrelated digits in the host or earlier path.
+ *
+ * @param[in] url URL to parse; may be NULL.
+ * @return Parsed chapter value, or 0.0 for an unnumbered URL.
+ * @since 0.1.0
+ */
+double mdl_urlname_chapter_value(const char* url);
 
 /**
  * @brief Choose a lower-case image file extension from a URL.
@@ -118,12 +130,12 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap);
  * @return true if an image type was recognized from magic bytes or Content-Type header, false otherwise.
  */
 bool mdl_urlname_sniff_image_type(const void* buf,
-                                  size_t buf_len,
+                                  size_t      buf_len,
                                   const char* content_type,
-                                  char* out_ext,
-                                  size_t ext_cap,
-                                  char* out_mime,
-                                  size_t mime_cap);
+                                  char*       out_ext,
+                                  size_t      ext_cap,
+                                  char*       out_mime,
+                                  size_t      mime_cap);
 
 /**
  * @brief Sniff true image extension and MIME type from a file on disk.
@@ -139,7 +151,7 @@ bool mdl_urlname_sniff_image_type(const void* buf,
  */
 bool mdl_urlname_sniff_file(const char* file_path,
                             const char* content_type,
-                            char* out_ext,
-                            size_t ext_cap,
-                            char* out_mime,
-                            size_t mime_cap);
+                            char*       out_ext,
+                            size_t      ext_cap,
+                            char*       out_mime,
+                            size_t      mime_cap);

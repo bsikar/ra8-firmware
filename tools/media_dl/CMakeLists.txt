@@ -318,3 +318,21 @@ target_include_directories(
 target_compile_definitions(test_media_dl_search PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl_search PRIVATE -Wall -Wextra -Werror)
 add_test(NAME test_media_dl_search COMMAND test_media_dl_search)
+
+# Real socket/libcurl orchestration: deterministic local HTTP, no internet.
+find_program(MDL_BASH_EXECUTABLE NAMES bash REQUIRED)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_test(
+  NAME test_media_dl_http_integration
+  COMMAND
+    ${MDL_BASH_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/http_integration.sh
+    $<TARGET_FILE:media_dl>
+    ${Python3_EXECUTABLE}
+    ${CMAKE_COMMAND}
+)
+set_tests_properties(
+  test_media_dl_http_integration
+  PROPERTIES TIMEOUT 30
+             LABELS "integration;network"
+)

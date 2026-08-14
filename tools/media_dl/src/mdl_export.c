@@ -558,7 +558,7 @@ RA8_INTERNAL static void parse_xml_tag(const char* xml, const char* tag, char* o
     return;
   }
   size_t len = (size_t)(end - start);
-  char raw[1024];
+  char   raw[1024];
   if (len >= sizeof(raw)) {
     len = sizeof(raw) - 1U;
   }
@@ -570,19 +570,29 @@ RA8_INTERNAL static void parse_xml_tag(const char* xml, const char* tag, char* o
   while ((raw[r] != '\0') && (w + 1U < cap)) {
     if (raw[r] == '&') {
       if (strncmp(raw + r, "&amp;", 5) == 0) {
-        out[w++] = '&'; r += 5; continue;
+        out[w++] = '&';
+        r += 5;
+        continue;
       }
       if (strncmp(raw + r, "&lt;", 4) == 0) {
-        out[w++] = '<'; r += 4; continue;
+        out[w++] = '<';
+        r += 4;
+        continue;
       }
       if (strncmp(raw + r, "&gt;", 4) == 0) {
-        out[w++] = '>'; r += 4; continue;
+        out[w++] = '>';
+        r += 4;
+        continue;
       }
       if (strncmp(raw + r, "&quot;", 6) == 0) {
-        out[w++] = '"'; r += 6; continue;
+        out[w++] = '"';
+        r += 6;
+        continue;
       }
       if (strncmp(raw + r, "&apos;", 6) == 0) {
-        out[w++] = '\''; r += 6; continue;
+        out[w++] = '\'';
+        r += 6;
+        continue;
       }
     }
     out[w++] = raw[r++];
@@ -640,8 +650,8 @@ ra8_err_t mdl_meta_parse(mdl_export_meta_t* meta, const char* text)
   const char* p = text;
   while (*p != '\0') {
     const char* line_end = strchr(p, '\n');
-    size_t line_len = (line_end != nullptr) ? (size_t)(line_end - p) : strlen(p);
-    char line[1024];
+    size_t      line_len = (line_end != nullptr) ? (size_t)(line_end - p) : strlen(p);
+    char        line[1024];
     if (line_len >= sizeof(line)) {
       line_len = sizeof(line) - 1U;
     }
@@ -669,7 +679,7 @@ ra8_err_t mdl_meta_parse(mdl_export_meta_t* meta, const char* text)
       continue;
     }
 
-    *sep = '\0';
+    *sep            = '\0';
     const char* key = s;
     const char* val = sep + 1;
 
@@ -722,15 +732,18 @@ ra8_err_t mdl_meta_load_dir(mdl_export_meta_t* meta, const char* dir)
   }
   mdl_meta_init(meta);
 
-  static const char* const candidate_files[] = {
-      "metadata.txt", "ComicInfo.xml", ".mdl_meta", "metadata.conf", "../metadata.txt"};
+  static const char* const candidate_files[] = {"metadata.txt",
+                                                "ComicInfo.xml",
+                                                ".mdl_meta",
+                                                "metadata.conf",
+                                                "../metadata.txt"};
 
   for (size_t i = 0U; i < (sizeof(candidate_files) / sizeof(candidate_files[0])); ++i) {
     char path[PATH_MAX];
     (void)snprintf(path, sizeof(path), "%s/%s", dir, candidate_files[i]);
     FILE* f = fopen(path, "r");
     if (f != nullptr) {
-      char buf[4096];
+      char         buf[4096];
       const size_t got = fread(buf, 1U, sizeof(buf) - 1U, f);
       (void)fclose(f);
       if (got > 0U) {
@@ -760,8 +773,9 @@ ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, s
   char esc_writer[k_mdl_meta_name_max * 6U];
   char esc_artist[k_mdl_meta_name_max * 6U];
 
-  const char* raw_title = (m.chapter_title[0] != '\0') ? m.chapter_title :
-                          ((m.series_title[0] != '\0') ? m.series_title : "Chapter");
+  const char* raw_title  = (m.chapter_title[0] != '\0')
+                             ? m.chapter_title
+                             : ((m.series_title[0] != '\0') ? m.series_title : "Chapter");
   const char* raw_series = (m.series_title[0] != '\0') ? m.series_title : "Series";
 
   if (!mdl_xml_escape(raw_title, esc_title, sizeof(esc_title))) {
@@ -791,20 +805,25 @@ ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, s
     (void)snprintf(num_buf, sizeof(num_buf), "1");
   }
 
-  const int written = snprintf(
-      buf, cap,
-      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-      "<ComicInfo xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
-      "xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n"
-      "  <Title>%s</Title>\n"
-      "  <Series>%s</Series>\n"
-      "  <Number>%s</Number>\n"
-      "  <Summary>%s</Summary>\n"
-      "  <Writer>%s</Writer>\n"
-      "  <Artist>%s</Artist>\n"
-      "  <ComicBookInfo>media_dl</ComicBookInfo>\n"
-      "</ComicInfo>",
-      esc_title, esc_series, num_buf, esc_summary, esc_writer, esc_artist);
+  const int written = snprintf(buf,
+                               cap,
+                               "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                               "<ComicInfo xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+                               "xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">\n"
+                               "  <Title>%s</Title>\n"
+                               "  <Series>%s</Series>\n"
+                               "  <Number>%s</Number>\n"
+                               "  <Summary>%s</Summary>\n"
+                               "  <Writer>%s</Writer>\n"
+                               "  <Artist>%s</Artist>\n"
+                               "  <ComicBookInfo>media_dl</ComicBookInfo>\n"
+                               "</ComicInfo>",
+                               esc_title,
+                               esc_series,
+                               num_buf,
+                               esc_summary,
+                               esc_writer,
+                               esc_artist);
 
   return snprintf_fit(written, cap) ? k_ra8_ok : k_ra8_err_invalid_size;
 }
@@ -812,7 +831,7 @@ ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, s
 RA8_INTERNAL static void mdl_generate_uuid(char* out, size_t cap)
 {
   uint8_t b[16];
-  int fd = open("/dev/urandom", O_RDONLY);
+  int     fd = open("/dev/urandom", O_RDONLY);
   if (fd >= 0) {
     ssize_t n = read(fd, b, sizeof(b));
     (void)close(fd);
@@ -832,19 +851,33 @@ RA8_INTERNAL static void mdl_generate_uuid(char* out, size_t cap)
   b[6] = (uint8_t)((b[6] & 0x0FU) | 0x40U);
   b[8] = (uint8_t)((b[8] & 0x3FU) | 0x80U);
 
-  (void)snprintf(out, cap,
+  (void)snprintf(out,
+                 cap,
                  "urn:uuid:%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-                 b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
-                 b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]);
+                 b[0],
+                 b[1],
+                 b[2],
+                 b[3],
+                 b[4],
+                 b[5],
+                 b[6],
+                 b[7],
+                 b[8],
+                 b[9],
+                 b[10],
+                 b[11],
+                 b[12],
+                 b[13],
+                 b[14],
+                 b[15]);
 }
 
 /** @brief Write a CBZ (STORE ZIP) via the vendored miniz writer. */
-RA8_INTERNAL static ra8_err_t
-export_cbz(const char*              dir,
-           char                     names[][k_name_max],
-           size_t                   count,
-           const char*              out_path,
-           const mdl_export_meta_t* meta)
+RA8_INTERNAL static ra8_err_t export_cbz(const char*              dir,
+                                         char                     names[][k_name_max],
+                                         size_t                   count,
+                                         const char*              out_path,
+                                         const mdl_export_meta_t* meta)
 {
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
@@ -861,7 +894,8 @@ export_cbz(const char*              dir,
   }
   char comic_xml[4096];
   if (mdl_export_build_comicinfo(meta, comic_xml, sizeof(comic_xml)) == k_ra8_ok) {
-    (void)mz_zip_writer_add_mem(&zip, "ComicInfo.xml", comic_xml, strlen(comic_xml), MZ_NO_COMPRESSION);
+    (void)
+      mz_zip_writer_add_mem(&zip, "ComicInfo.xml", comic_xml, strlen(comic_xml), MZ_NO_COMPRESSION);
   }
   const bool ok = (mz_zip_writer_finalize_archive(&zip) != MZ_FALSE);
   (void)mz_zip_writer_end(&zip);
@@ -1067,16 +1101,16 @@ RA8_INTERNAL static ra8_err_t epub_append_frags(char*       mani,
   char        frag[k_epub_frag_max];
   const char* prop_attr = is_cover ? " properties=\"cover-image\"" : "";
   const int   fn        = snprintf(frag,
-                            sizeof(frag),
-                            "<item id=\"pg%zu\" href=\"page_%03u.xhtml\" "
-                            "media-type=\"application/xhtml+xml\"/>"
-                            "<item id=\"img%zu\" href=\"images/%s\" media-type=\"%s\"%s/>",
-                            idx,
-                            n,
-                            idx,
-                            esc_name,
-                            media,
-                            prop_attr);
+                                   sizeof(frag),
+                                   "<item id=\"pg%zu\" href=\"page_%03u.xhtml\" "
+                                   "media-type=\"application/xhtml+xml\"/>"
+                                   "<item id=\"img%zu\" href=\"images/%s\" media-type=\"%s\"%s/>",
+                                   idx,
+                                   n,
+                                   idx,
+                                   esc_name,
+                                   media,
+                                   prop_attr);
   if (!snprintf_fit(fn, sizeof(frag))) {
     return k_ra8_fail;
   }
@@ -1145,7 +1179,15 @@ RA8_INTERNAL static ra8_err_t epub_add_page(mz_zip_archive*          zip,
       is_cover = true;
     }
   }
-  return epub_append_frags(mani, spine, nav, cap, esc, epub_media_type(dir, name), idx, n, is_cover);
+  return epub_append_frags(mani,
+                           spine,
+                           nav,
+                           cap,
+                           esc,
+                           epub_media_type(dir, name),
+                           idx,
+                           n,
+                           is_cover);
 }
 
 /** @brief Build + add content.opf and nav.xhtml, then finalize the archive. */
@@ -1166,8 +1208,9 @@ RA8_INTERNAL static ra8_err_t epub_add_meta(mz_zip_archive*          zip,
   mdl_generate_uuid(uuid_str, sizeof(uuid_str));
 
   char        esc_title[k_mdl_meta_title_max * 6U];
-  const char* raw_title = (m.chapter_title[0] != '\0') ? m.chapter_title
-                          : ((m.series_title[0] != '\0') ? m.series_title : "chapter");
+  const char* raw_title = (m.chapter_title[0] != '\0')
+                            ? m.chapter_title
+                            : ((m.series_title[0] != '\0') ? m.series_title : "chapter");
   if (!mdl_xml_escape(raw_title, esc_title, sizeof(esc_title))) {
     (void)snprintf(esc_title, sizeof(esc_title), "chapter");
   }
@@ -1300,8 +1343,7 @@ RA8_INTERNAL static ra8_err_t run_rabook_python(const char* cbz, const char* out
   (void)setenv("PYTHONPATH", MDL_EPUB_COMPILE_DIR, 1);
   const char* const argv[] = {"python3", script, cbz, out_path, "--rtl", nullptr};
   pid_t             pid    = 0;
-  const int rc =
-    posix_spawnp(&pid, argv[0], nullptr, nullptr, (char* const*)argv, spawn_environ());
+  const int rc = posix_spawnp(&pid, argv[0], nullptr, nullptr, (char* const*)argv, spawn_environ());
   if (rc != 0) {
     (void)fprintf(stderr, "media_dl: rabook needs python3 + Pillow: %s\n", strerror(rc));
     return k_ra8_err_not_supported;
@@ -1322,10 +1364,10 @@ RA8_INTERNAL static ra8_err_t run_rabook_python(const char* cbz, const char* out
 
 /** @brief Build a temp CBZ of the pages, then compile it to `.rabook`. */
 RA8_INTERNAL static ra8_err_t export_rabook(const char*              dir,
-                                             char                     names[][k_name_max],
-                                             size_t                   count,
-                                             const char*              out_path,
-                                             const mdl_export_meta_t* meta)
+                                            char                     names[][k_name_max],
+                                            size_t                   count,
+                                            const char*              out_path,
+                                            const mdl_export_meta_t* meta)
 {
   /* As in export_tar_wrapped: a truncated suffix would name a different file. */
   char      tmp_cbz[PATH_MAX];
@@ -1344,11 +1386,11 @@ RA8_INTERNAL static ra8_err_t export_rabook(const char*              dir,
 
 /** @brief Run one format's writer, producing the container at `out_path`. */
 RA8_INTERNAL static ra8_err_t export_dispatch(mdl_format_t             fmt,
-                                               const char*              dir,
-                                               char                     names[][k_name_max],
-                                               size_t                   count,
-                                               const char*              out_path,
-                                               const mdl_export_meta_t* meta)
+                                              const char*              dir,
+                                              char                     names[][k_name_max],
+                                              size_t                   count,
+                                              const char*              out_path,
+                                              const mdl_export_meta_t* meta)
 {
   switch (fmt) {
     case k_mdl_fmt_cbz:
@@ -1384,11 +1426,11 @@ RA8_INTERNAL static ra8_err_t export_dispatch(mdl_format_t             fmt,
  *          copy exists. See mdl_atomic.h.
  */
 RA8_INTERNAL static ra8_err_t export_atomic(mdl_format_t             fmt,
-                                             const char*              dir,
-                                             char                     names[][k_name_max],
-                                             size_t                   count,
-                                             const char*              out_path,
-                                             const mdl_export_meta_t* meta)
+                                            const char*              dir,
+                                            char                     names[][k_name_max],
+                                            size_t                   count,
+                                            const char*              out_path,
+                                            const mdl_export_meta_t* meta)
 {
   char tmp_path[PATH_MAX];
   if (!mdl_atomic_tmp_path(out_path, tmp_path, sizeof(tmp_path))) {
@@ -1446,4 +1488,3 @@ ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const ch
   }
   return mdl_export_chapter_meta(fmt, chapter_dir, out_path, &meta);
 }
-

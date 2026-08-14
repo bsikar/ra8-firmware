@@ -30,68 +30,76 @@ typedef enum : uint64_t {
 
 void mdl_cli_usage(const char* a0)
 {
-  (void)fprintf(
-      stderr,
-      "usage:\n"
-      "  series:\n"
-      "    %s --config SITE.conf --series URL [--chapters N] [--from CHAP]\n"
-      "       [--update] [--out DIR] [--format FMT] [--separate] [--seed S]\n"
-      "       [--timeout MS]\n"
-      "       Formats: cbz|cbt|cbr|cbt.xz|cbt.gz|epub|jof|rabook\n"
-      "       Default: N chapters combine into ONE <slug>-<lo>-<hi>.<ext>.\n"
-      "       --separate keeps one archive per chapter.\n"
-      "       --from CHAP starts at chapter NUMBERED CHAP (not an index).\n"
-      "       --update fetches only incomplete chapters.\n\n"
+  (void)fprintf(stderr,
+                "usage:\n"
+                "  series:\n"
+                "    %s --config SITE.conf --series URL [--chapters N] [--from CHAP]\n"
+                "       [--update] [--out DIR] [--format FMT] [--separate] [--seed S]\n"
+                "       [--timeout MS]\n"
+                "       Formats: cbz|cbt|cbr|cbt.xz|cbt.gz|epub|jof|rabook\n"
+                "       Default: N chapters combine into ONE <slug>-<lo>-<hi>.<ext>.\n"
+                "       --separate keeps one archive per chapter.\n"
+                "       --from CHAP starts at chapter NUMBERED CHAP (not an index).\n"
+                "       --update fetches only incomplete chapters.\n\n"
 
-      "  search:\n"
-      "    %s --config SITE.conf --search TERM [--pick N ...opts]\n"
-      "       Lists title + series URL per hit.\n"
-      "       --pick N downloads hit N directly using --series options.\n\n"
+                "  search:\n"
+                "    %s --config SITE.conf --search TERM [--pick N ...opts]\n"
+                "       Lists title + series URL per hit.\n"
+                "       --pick N downloads hit N directly using --series options.\n\n"
 
-      "  browse:\n"
-      "    %s --config SITE.conf --browse [--pick N ...opts]\n"
-      "       Lists site's latest updates (requires browse_url in conf).\n\n"
+                "  browse:\n"
+                "    %s --config SITE.conf --browse [--pick N ...opts]\n"
+                "       Lists site's latest updates (requires browse_url in conf).\n\n"
 
-      "  library:\n"
-      "    %s --list | --update-all --config SITE.conf | --remove URL|SLUG "
-      "[--out DIR]\n\n"
+                "  library:\n"
+                "    %s --list | --update-all --config SITE.conf | --remove URL|SLUG "
+                "[--out DIR]\n\n"
 
-      "  verify:\n"
-      "    %s --verify [DIR]\n"
-      "       Verify existing downloaded archives/files.\n\n"
+                "  verify:\n"
+                "    %s --verify [DIR]\n"
+                "       Verify existing downloaded archives/files.\n\n"
 
-      "  init-site:\n"
-      "    %s --init-site URL\n"
-      "       Generate starter .conf site descriptor template.\n\n"
+                "  init-site:\n"
+                "    %s --init-site URL\n"
+                "       Generate starter .conf site descriptor template.\n\n"
 
-      "  pack:\n"
-      "    %s --pack DIR --format FMT\n"
-      "       Package an existing folder of page images (no network).\n\n"
+                "  pack:\n"
+                "    %s --pack DIR --format FMT\n"
+                "       Package an existing folder of page images (no network).\n\n"
 
-      "  page:\n"
-      "    %s URL [--out DIR] [--max N] [--attr data-src|src] [--seed S]\n"
-      "       [--timeout MS]\n\n"
+                "  page:\n"
+                "    %s URL [--out DIR] [--max N] [--attr data-src|src] [--seed S]\n"
+                "       [--timeout MS]\n\n"
 
-      "  identity / politeness / network options:\n"
-      "    --contact <email|url>  Identify yourself in the User-Agent\n"
-      "    --polite               Raise delays; per-host concurrency 1\n"
-      "    --progress             Terminal progress bar during downloads\n"
-      "    --proxy <URL>          HTTP/HTTPS proxy URL for libcurl\n"
-      "    --socks5 <URL>         SOCKS5 proxy URL for libcurl\n"
-      "    --cookie-file <FILE>   Cookie file path for libcurl\n"
-      "    --max-bytes N          Per-response size cap (default 64 MiB)\n"
-      "    --ignore-robots        Do NOT honour robots.txt (logged loudly)\n"
-      "    --allow-private        Permit loopback/private/link-local "
-      "peers\n"
-      "    --cross-host           Permit redirects to a different host\n"
-      "    --allow-incomplete     Package run with failed pages; archive\n"
-      "                           is named .INCOMPLETE so it is visibly "
-      "partial\n",
-      a0, a0, a0, a0, a0, a0, a0, a0);
+                "  identity / politeness / network options:\n"
+                "    --contact <email|url>  Identify yourself in the User-Agent\n"
+                "    --polite               Raise delays; per-host concurrency 1\n"
+                "    --progress             Terminal progress bar during downloads\n"
+                "    --refetch              Bypass the local page cache\n"
+                "    --proxy <URL>          HTTP/HTTPS proxy (requires --allow-private)\n"
+                "    --socks5 <URL>         SOCKS5 proxy (requires --allow-private)\n"
+                "    --cookie-file <FILE>   Cookie file path for libcurl\n"
+                "    --max-bytes N          Per-response size cap (default 64 MiB)\n"
+                "    --ignore-robots        Do NOT honour robots.txt (logged loudly)\n"
+                "    --allow-private        Permit loopback/private/link-local "
+                "peers\n"
+                "    --cross-host           Permit redirects to a different host\n"
+                "    --allow-incomplete     Package run with failed pages; archive\n"
+                "                           is named .INCOMPLETE so it is visibly "
+                "partial\n",
+                a0,
+                a0,
+                a0,
+                a0,
+                a0,
+                a0,
+                a0,
+                a0);
 }
 
 /** @brief If argv[*i] == `flag`, store its value in *dst and advance `*i`. */
-RA8_INTERNAL static bool take_opt(char** argv, int argc, int* i, const char* flag, const char** dst)
+RA8_INTERNAL static bool
+take_opt(char** argv, int argc, int* i, const char* flag, const char** dst, bool* bad)
 {
   if ((argv[*i] == nullptr) || (strcmp(argv[*i], flag) != 0)) {
     return false;
@@ -99,6 +107,8 @@ RA8_INTERNAL static bool take_opt(char** argv, int argc, int* i, const char* fla
   if ((*i + 1) < argc) {
     *i += 1;
     *dst = argv[*i];
+  } else {
+    *bad = true;
   }
   return true;
 }
@@ -123,7 +133,7 @@ RA8_INTERNAL static bool parse_bool_flags(const char* arg, mdl_args_t* a)
          take_flag(arg, "--allow-private", &a->allow_private) ||
          take_flag(arg, "--cross-host", &a->cross_host) ||
          take_flag(arg, "--allow-incomplete", &a->allow_incomplete) ||
-         take_flag(arg, "--progress", &a->progress);
+         take_flag(arg, "--progress", &a->progress) || take_flag(arg, "--refetch", &a->refetch);
 }
 
 void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
@@ -168,7 +178,7 @@ void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
     }
     bool matched = false;
     for (size_t k = 0U; (k < (sizeof(opts) / sizeof(opts[0]))) && !matched; ++k) {
-      matched = take_opt(argv, argc, &i, opts[k].flag, opts[k].dst);
+      matched = take_opt(argv, argc, &i, opts[k].flag, opts[k].dst, &a->bad);
     }
     if (matched) {
       continue;
@@ -198,6 +208,7 @@ mdl_run_opts_t mdl_cli_run_opts(const mdl_args_t* a)
     .polite           = a->polite,
     .allow_incomplete = a->allow_incomplete,
     .progress         = a->progress,
+    .refetch          = a->refetch,
   };
 }
 

@@ -754,14 +754,16 @@ REGISTRY: tuple[Component, ...] = (
         ),
         upstream_commit="949bb30612747a3bd9e402eda8d01fbfa1f8503e",
         scope="excluded",
+        modified=True,
         extra_notes=(
             "NOT vendored: coprocessor/esp32c6/build.sh fetches the pinned upstream "
             "commit at build time into the git-ignored coprocessor/esp32c6/esp-hosted-mcu/. "
-            "The build recipe (pins + proven sdkconfig.defaults) is the record; "
-            "see coprocessor/esp32c6/README.md and docs/SOUP/esp-hosted.md.",
-            "Co-processor firmware: it runs on the ESP32-C6 (Wi-Fi/BLE), not on "
-            "the RA8D2, and is not part of the RA8 linked image -- hence "
-            "scope=excluded. Zero first-party code runs on the C6.",
+            "The build recipe, reviewed CustomRpc patch, first-party media component, "
+            "pins, and proven sdkconfig.defaults are the record; see "
+            "coprocessor/esp32c6/README.md and docs/SOUP/esp-hosted.md.",
+            "Co-processor firmware: it runs on the ESP32-C6, not on the RA8D2, and is "
+            "not part of the RA8 linked image -- hence scope=excluded. The image is "
+            "pinned esp-hosted-mcu SOUP plus a reviewed first-party media component.",
             "esp-idf toolchain pinned at v5.5.4; firmware version 2.12.11.",
         ),
     ),

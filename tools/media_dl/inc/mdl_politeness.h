@@ -432,6 +432,29 @@ void mdl_governor_observe(mdl_governor_t* g,
                           const char*     retry_after);
 
 /**
+ * @brief Observe a response using an explicit wall-clock timestamp.
+ *
+ * @details This is the deterministic-clock form of ::mdl_governor_observe.
+ * The governor still schedules gates against its monotonic clock, but parses
+ * an HTTP-date `Retry-After` relative to @p now_wall_s. Production callers
+ * should use ::mdl_governor_observe; tests and platforms with an injected wall
+ * clock may use this entry point.
+ *
+ * @param[in,out] g          Governor, or NULL (no-op).
+ * @param[in]     host       Host key of the completed request; may be NULL.
+ * @param[in]     status     HTTP status observed.
+ * @param[in]     retry_after Raw `Retry-After` header, or NULL/empty.
+ * @param[in]     now_wall_s Current Unix wall-clock time in seconds.
+ *
+ * @since 0.1.0
+ */
+void mdl_governor_observe_at_wall(mdl_governor_t* g,
+                                  const char*     host,
+                                  long            status,
+                                  const char*     retry_after,
+                                  int64_t         now_wall_s);
+
+/**
  * @brief Read a host's current backoff level and earliest-next gate.
  *
  * @details

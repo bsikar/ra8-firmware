@@ -131,6 +131,7 @@ find_source_files() {
   git ls-files --cached --others --exclude-standard |
     grep -E '\.(c|h|cpp|hpp|cc|cxx|hh|hxx|m)$' |
     grep -Ev '^(libs/third_party/|libs/ra8_fonts/|tools/vela/generated/)' |
+    grep -Ev '^libs/ra8_c6link/(inc|src)/ra8_media_download\.pb-c\.(c|h)$' |
     grep -Ev '(^|/)(build|build-[^/]*|_deps)/' |
     sort
 }

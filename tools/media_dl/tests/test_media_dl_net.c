@@ -53,11 +53,11 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_err_t   rc;            /**< Result the fetch call returns.                    */
-  long        status;        /**< HTTP status reported through `resp`.              */
-  const char* body;          /**< Body copied into the buffer on ok, or NULL.       */
-  const char* retry_after;   /**< Raw Retry-After surfaced through `resp`, or NULL. */
-  const char* etag;          /**< Raw ETag surfaced through `resp`, or NULL.        */
+  ra8_err_t   rc;            /**< Result the fetch call returns.                      */
+  long        status;        /**< HTTP status reported through `resp`.                */
+  const char* body;          /**< Body copied into the buffer on ok, or NULL.         */
+  const char* retry_after;   /**< Raw Retry-After surfaced through `resp`, or NULL.   */
+  const char* etag;          /**< Raw ETag surfaced through `resp`, or NULL.          */
   const char* last_modified; /**< Raw Last-Modified surfaced through `resp`, or NULL. */
   const char* content_type;  /**< Raw Content-Type surfaced through `resp`, or NULL.  */
 } fake_reply_t;
@@ -107,10 +107,7 @@ static void fake_fill_resp(const fake_reply_t* r, mdl_net_resp_t* resp)
                    sizeof(resp->retry_after),
                    "%s",
                    (r->retry_after != nullptr) ? r->retry_after : "");
-    (void)snprintf(resp->etag,
-                   sizeof(resp->etag),
-                   "%s",
-                   (r->etag != nullptr) ? r->etag : "");
+    (void)snprintf(resp->etag, sizeof(resp->etag), "%s", (r->etag != nullptr) ? r->etag : "");
     (void)snprintf(resp->last_modified,
                    sizeof(resp->last_modified),
                    "%s",
@@ -780,7 +777,8 @@ static void test_net_conditional_and_response_headers(void)
   TEST_ASSERT(strcmp(resp.etag, "\"etag-123\"") == 0);
   TEST_ASSERT(strcmp(resp.last_modified, "Wed, 21 Oct 2015 07:28:00 GMT") == 0);
   TEST_ASSERT(f.if_none_matches[0] != nullptr && strcmp(f.if_none_matches[0], "\"etag-123\"") == 0);
-  TEST_ASSERT(f.if_modified_sinces[0] != nullptr && strcmp(f.if_modified_sinces[0], "Wed, 21 Oct 2015 07:28:00 GMT") == 0);
+  TEST_ASSERT(f.if_modified_sinces[0] != nullptr &&
+              strcmp(f.if_modified_sinces[0], "Wed, 21 Oct 2015 07:28:00 GMT") == 0);
 
   TEST_ASSERT(mdl_net_get_file(&net, "http://site/img.jpg", &r0, "/dev/null", &got, &resp) ==
               k_ra8_ok);

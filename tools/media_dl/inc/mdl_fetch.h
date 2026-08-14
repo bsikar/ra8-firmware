@@ -169,6 +169,7 @@ typedef struct {
   size_t               page_cap;       /**< Capacity of @ref page_buf.                */
   mdl_url_list_t*      images;         /**< Extracted-image scratch (caller-owned).   */
   bool                 update_only;    /**< Skip chapters already recorded complete.  */
+  bool                 refetch;        /**< Ignore local page reuse and hit network.  */
   mdl_fetch_faillog_t* faillog;        /**< Caller-cleared failure log, or NULL.      */
   mdl_progress_fn      progress_fn;    /**< Per-page progress sink, or NULL (silent). */
   void*                progress_ctx;   /**< Context passed to @ref progress_fn.       */

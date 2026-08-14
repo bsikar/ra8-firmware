@@ -26,22 +26,29 @@ int main(void)
   /* ra8_err_t err = ra8_c6link_open(&link, &cfg); */
 
   /* 2. Request a book download via RPC. */
-  const char* url         = "https://example.com/book.rabook";
-  const char* output_path = "/sd/book.rabook";
-  ra8_err_t   err         = ra8_c6link_mdl_download(&link, url, output_path);
+  const char*       url         = "https://example.com/book.rabook";
+  const char*       output_path = "/sd/book.rabook"; /* RA8-local; never sent to the C6. */
+  ra8_mdl_session_t session     = {};
+  ra8_err_t         err = ra8_c6link_mdl_start(&link, url, k_ra8_mdl_format_rabook, &session);
   if (err != k_ra8_ok) {
     (void)printf("Failed to start download\n");
     return -1;
   }
 
   /* 3. Show progress on the display and write to SD card. */
-  ra8_mdl_download_progress_t progress = {};
-  while (progress.status == 0U) {
-    err = ra8_c6link_mdl_poll(&link, &progress);
+  while (session.active) {
+    ra8_mdl_chunk_t chunk = {};
+    err                   = ra8_c6link_mdl_next(&link, &session, RA8_MDL_CHUNK_DATA_MAX, &chunk);
     if (err == k_ra8_ok) {
-      (void)printf("Progress: %u / %u bytes\n",
-                   (unsigned)progress.bytes_received,
-                   (unsigned)progress.total_bytes);
+      /* TODO: append chunk.data to an RA8 temp file for output_path, verify the
+       * final digest, fsync, then atomically rename the temp file. */
+      (void)printf("Progress: %llu / %llu bytes -> %s\n",
+                   (unsigned long long)(chunk.offset + chunk.data_len),
+                   (unsigned long long)chunk.total_bytes,
+                   output_path);
+    } else {
+      (void)ra8_c6link_mdl_cancel(&link, &session);
+      return -1;
     }
     /* TODO: Sleep or yield. */
   }
