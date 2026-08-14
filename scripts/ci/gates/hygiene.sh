@@ -41,6 +41,7 @@ gate_ci_parity() (
   require_python_mod yaml "pip install pyyaml (the CI runners ship it)"
   suite_errexit_selftest
   suite_registry_selftest
+  suite_build_lifecycle_selftest
   # The runner must also be honest about runs that STOPPED. A SIGTERMed suite
   # once deleted its own snapshot and kept going, inventing a FAIL for every
   # gate that came after; a fabricated red costs a lane its time and teaches

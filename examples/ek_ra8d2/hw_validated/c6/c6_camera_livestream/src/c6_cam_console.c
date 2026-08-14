@@ -5,6 +5,9 @@
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
+ * @details Provides bounded decimal, IPv4, and string formatting directly to
+ *          SCI8 using fixed-size stack buffers and no heap allocation.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -18,10 +21,10 @@
 
 /** @brief Bounded formatting sizes and IPv4 extraction constants. */
 typedef enum : uint32_t {
-  k_c6_cam_console_text_max = 512U,
-  k_c6_cam_decimal_digits   = 10U,
-  k_c6_cam_ipv4_high_shift  = 24U,
-  k_c6_cam_ipv4_octet_mask  = 0xFFU,
+  k_c6_cam_console_text_max = 512U,  /**< Bounded console string length.        */
+  k_c6_cam_decimal_digits   = 10U,   /**< Digits in a 32-bit decimal rendering. */
+  k_c6_cam_ipv4_high_shift  = 24U,   /**< Shift of the first IPv4 octet.        */
+  k_c6_cam_ipv4_octet_mask  = 0xFFU, /**< Mask selecting one IPv4 octet.        */
 } c6_cam_console_t;
 
 void c6_cam_puts(const char* text)

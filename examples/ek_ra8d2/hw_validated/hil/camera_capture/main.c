@@ -505,67 +505,123 @@ static ra8_err_t cam_bringup(void)
 }
 
 /**
- * @brief Configure the sensor, capture one frame, and print the verdict.
+ * @brief Print horizontal-sync pulse diagnostics.
  *
- * @details Called only after the OV5640 chip ID is confirmed. Emits the
- *          the DVP probe, CEU status, byte count, frame statistics, and verdict
- *          banner fields. PASS also requires all four RGB SDRAM views.
- *
- * @pre `cam_probe_sensor` returned true (SCCB reaches the OV5640).
- * @pre The sensor is out of reset; this function probes then routes DVP pins.
- * @post One verdict field has been written to SCI8.
- * @post `g_cam_frame_ok` / `g_cam_verdict` reflect the outcome.
+ * @param[in] probe Completed DVP sync/data probe.
+ * @pre `probe` is non-NULL and the console is initialized.
+ * @post HSYNC level and cycle fields are printed.
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void cam_capture_and_verdict(void)
+static void cam_print_hsync_probe(const cam_ceu_sync_probe_t* probe)
+{
+  (void)cam_puts(" h=");
+  (void)cam_put_u32(probe->hsync_high_min);
+  (void)cam_puts("-");
+  (void)cam_put_u32(probe->hsync_high_max);
+  (void)cam_puts(" l=");
+  (void)cam_put_u32(probe->hsync_low_min);
+  (void)cam_puts("-");
+  (void)cam_put_u32(probe->hsync_low_max);
+  (void)cam_puts(" hc=");
+  (void)cam_put_u32(probe->hsync_high_cycles_min);
+  (void)cam_puts("-");
+  (void)cam_put_u32(probe->hsync_high_cycles_max);
+}
+
+/**
+ * @brief Print pixel-clock and sampled data diagnostics.
+ *
+ * @param[in] probe Completed DVP sync/data probe.
+ * @pre `probe` is non-NULL and the console is initialized.
+ * @post Pixel-clock and data fields are printed.
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+static void cam_print_data_probe(const cam_ceu_sync_probe_t* probe)
+{
+  (void)cam_puts(" pc=");
+  (void)cam_put_u32(probe->pclk_edges);
+  (void)cam_puts(" ph=");
+  (void)cam_put_u32(probe->pclk_half_cycles_min);
+  (void)cam_puts(" data=");
+  (void)cam_put_u32(probe->data_samples);
+  (void)cam_puts("/");
+  (void)cam_put_u32(probe->data_changes);
+  (void)cam_puts(" ");
+  (void)cam_put_hex((uint32_t)probe->data_min, 2U);
+  (void)cam_puts("-");
+  (void)cam_put_hex((uint32_t)probe->data_max, 2U);
+  (void)cam_puts(" &");
+  (void)cam_put_hex((uint32_t)probe->data_and, 2U);
+  (void)cam_puts(" |");
+  (void)cam_put_hex((uint32_t)probe->data_or, 2U);
+}
+
+/**
+ * @brief Print per-line pixel-clock diagnostics.
+ *
+ * @param[in] probe Completed DVP sync/data probe.
+ * @pre `probe` is non-NULL and the console is initialized.
+ * @post Line-count and line-clock fields are printed.
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+static void cam_print_line_probe(const cam_ceu_sync_probe_t* probe)
+{
+  (void)cam_puts(" lineclk=");
+  (void)cam_put_u32(probe->measured_lines);
+  (void)cam_puts("/");
+  (void)cam_put_u32(probe->line_pclk_min);
+  (void)cam_puts("-");
+  (void)cam_put_u32(probe->line_pclk_max);
+  (void)cam_puts("/");
+  (void)cam_put_u32(probe->line_pclk_mean);
+  (void)cam_puts(" long=");
+  (void)cam_put_u32(probe->line_pclk_long);
+}
+
+/**
+ * @brief Print the complete GPIO-observed DVP diagnostic snapshot.
+ *
+ * @param[in] probe Completed DVP sync/data probe.
+ * @pre `probe` is non-NULL.
+ * @pre The SCI8 console is initialized.
+ * @post Every field in `probe` is represented in the banner.
+ * @post `probe` is not modified.
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+static void cam_print_sync_probe(const cam_ceu_sync_probe_t* probe)
+{
+  (void)cam_puts(" dvp_sync_edges=");
+  (void)cam_put_u32(probe->vsync_edges);
+  (void)cam_puts("/");
+  (void)cam_put_u32(probe->hsync_edges);
+  cam_print_hsync_probe(probe);
+  cam_print_data_probe(probe);
+  cam_print_line_probe(probe);
+}
+
+/**
+ * @brief Configure the sensor, sample DVP, and prepare the CEU.
+ *
+ * @return Status of the first failed preparation stage.
+ * @retval k_ra8_ok Sensor, pin routing, and CEU are ready.
+ * @pre The camera chip ID was confirmed.
+ * @pre Camera pins are not owned by another peripheral.
+ * @post The CEU readiness field has been printed.
+ * @post Success leaves the CEU ready for a single capture.
+ * @note Thread safety: init context only.
+ * @since 0.1.0
+ */
+static ra8_err_t cam_prepare_capture(void)
 {
   ra8_err_t err = cam_configure_sensor();
   if (err == k_ra8_ok) {
     cam_ceu_sync_probe_t sync_probe = {};
     err                             = cam_probe_sync_activity(&sync_probe);
-    (void)cam_puts(" dvp_sync_edges=");
-    (void)cam_put_u32(sync_probe.vsync_edges);
-    (void)cam_puts("/");
-    (void)cam_put_u32(sync_probe.hsync_edges);
-    (void)cam_puts(" h=");
-    (void)cam_put_u32(sync_probe.hsync_high_min);
-    (void)cam_puts("-");
-    (void)cam_put_u32(sync_probe.hsync_high_max);
-    (void)cam_puts(" l=");
-    (void)cam_put_u32(sync_probe.hsync_low_min);
-    (void)cam_puts("-");
-    (void)cam_put_u32(sync_probe.hsync_low_max);
-    (void)cam_puts(" hc=");
-    (void)cam_put_u32(sync_probe.hsync_high_cycles_min);
-    (void)cam_puts("-");
-    (void)cam_put_u32(sync_probe.hsync_high_cycles_max);
-    (void)cam_puts(" pc=");
-    (void)cam_put_u32(sync_probe.pclk_edges);
-    (void)cam_puts(" ph=");
-    (void)cam_put_u32(sync_probe.pclk_half_cycles_min);
-    (void)cam_puts(" data=");
-    (void)cam_put_u32(sync_probe.data_samples);
-    (void)cam_puts("/");
-    (void)cam_put_u32(sync_probe.data_changes);
-    (void)cam_puts(" ");
-    (void)cam_put_hex((uint32_t)sync_probe.data_min, 2U);
-    (void)cam_puts("-");
-    (void)cam_put_hex((uint32_t)sync_probe.data_max, 2U);
-    (void)cam_puts(" &");
-    (void)cam_put_hex((uint32_t)sync_probe.data_and, 2U);
-    (void)cam_puts(" |");
-    (void)cam_put_hex((uint32_t)sync_probe.data_or, 2U);
-    (void)cam_puts(" lineclk=");
-    (void)cam_put_u32(sync_probe.measured_lines);
-    (void)cam_puts("/");
-    (void)cam_put_u32(sync_probe.line_pclk_min);
-    (void)cam_puts("-");
-    (void)cam_put_u32(sync_probe.line_pclk_max);
-    (void)cam_puts("/");
-    (void)cam_put_u32(sync_probe.line_pclk_mean);
-    (void)cam_puts(" long=");
-    (void)cam_put_u32(sync_probe.line_pclk_long);
+    cam_print_sync_probe(&sync_probe);
   }
   if (err == k_ra8_ok) {
     err = cam_route_ceu_pins();
@@ -575,9 +631,27 @@ static void cam_capture_and_verdict(void)
   }
   (void)cam_puts(" ceu=");
   (void)cam_puts((err == k_ra8_ok) ? "OK" : "ERR");
+  return err;
+}
 
+/**
+ * @brief Attempt one frame capture and print CEU completion diagnostics.
+ *
+ * @param[in] ready Whether CEU preparation completed successfully.
+ * @return true when one complete frame was captured.
+ * @retval true CEU capture completed.
+ * @retval false Preparation failed or capture timed out.
+ * @pre The console is initialized.
+ * @pre `ready` reflects ::cam_prepare_capture.
+ * @post Frame byte count and raw CETCR are printed.
+ * @post `g_cam_frame_ok` reflects the returned value.
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+static bool cam_capture_frame_and_report(bool ready)
+{
   bool frame_ok = false;
-  if (err == k_ra8_ok) {
+  if (ready) {
     frame_ok = (cam_capture_one() == k_ra8_ok);
   }
   g_cam_frame_ok = frame_ok ? 1U : 0U;
@@ -586,14 +660,27 @@ static void cam_capture_and_verdict(void)
   (void)cam_puts(" frame=");
   (void)cam_puts(frame_ok ? "OK" : "TIMEOUT");
 
-  /* Emit the raw CEU event register (CETCR) so a timeout is diagnosable
-     from the banner alone: bit17=IGHS (HD cycle-count mismatch), bit20=VBP
-     (invalid VD), bit24/25=NHD/NVD (sync missing), bit0=CPE (frame done). */
+  /* Emit CETCR so missing sync and invalid timing remain diagnosable. */
   uint32_t cetcr = 0U;
   (void)cam_ceu_get_status(&cetcr);
   (void)cam_puts(" cetcr=");
   (void)cam_put_hex(cetcr, 8U);
+  return frame_ok;
+}
 
+/**
+ * @brief Validate, convert, and report the completed camera frame.
+ *
+ * @param[in] frame_ok Whether CEU capture completed.
+ * @pre The console is initialized.
+ * @pre `frame_ok` reflects ::cam_capture_frame_and_report.
+ * @post Frame statistics, RGB status, and verdict are printed.
+ * @post `g_cam_verdict` is true only for a plausible converted frame.
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+static void cam_finish_verdict(bool frame_ok)
+{
   bool plausible = false;
   bool rgb_ok    = false;
   if (frame_ok) {
@@ -612,9 +699,29 @@ static void cam_capture_and_verdict(void)
   (void)cam_puts(rgb_ok ? "OK" : "ERR");
   (void)cam_puts(" rgb_bytes=");
   (void)cam_put_u32(g_cam_rgb_frame_bytes);
-
   g_cam_verdict = (plausible && rgb_ok) ? 1U : 0U;
   (void)cam_puts((plausible && rgb_ok) ? " verdict=PASS\r\n" : " verdict=FAIL\r\n");
+}
+
+/**
+ * @brief Configure the sensor, capture one frame, and print the verdict.
+ *
+ * @details Called only after the OV5640 chip ID is confirmed. Emits the
+ *          the DVP probe, CEU status, byte count, frame statistics, and verdict
+ *          banner fields. PASS also requires all four RGB SDRAM views.
+ *
+ * @pre `cam_probe_sensor` returned true (SCCB reaches the OV5640).
+ * @pre The sensor is out of reset; this function probes then routes DVP pins.
+ * @post One verdict field has been written to SCI8.
+ * @post `g_cam_frame_ok` / `g_cam_verdict` reflect the outcome.
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+static void cam_capture_and_verdict(void)
+{
+  const ra8_err_t prep_err = cam_prepare_capture();
+  const bool      frame_ok = cam_capture_frame_and_report(prep_err == k_ra8_ok);
+  cam_finish_verdict(frame_ok);
 }
 
 /**

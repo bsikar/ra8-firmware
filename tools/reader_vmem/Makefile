@@ -5,7 +5,7 @@
 # ra8_vsource) so the emitted trace is what the production cache actually sees.
 
 CC      ?= cc
-CFLAGS  ?= -std=gnu23 -O2 -g -Wall -Wextra -Wno-unused-parameter
+CFLAGS  ?= -std=gnu23 -O2 -g -Wall -Wextra -Werror -Wno-unused-parameter
 ROOT    := ../..
 INCS    := -I$(ROOT)/libs/ra8_core/inc -I$(ROOT)/libs/ra8_mem/inc
 SRC     := reader_vmem.c \

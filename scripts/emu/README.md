@@ -33,7 +33,7 @@ that: scripts/checks/check_hil_eil_parity.py
 symbol: hil_conf_load
 symbol: hil_discover_apps
 symbol: HIL_EMU_ARGS
-files: examples/ek_ra8d2/hw_validated/hil/*/hil.conf = 116
+files: examples/ek_ra8d2/hw_validated/hil/*/hil.conf = 117
 files: scripts/emu/eil_all.sh = 1
 files: scripts/emu/matrix.sh = 1
 files: scripts/emu/smoke.sh = 1

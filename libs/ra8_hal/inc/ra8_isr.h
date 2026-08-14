@@ -66,7 +66,6 @@
 extern "C" {
 #endif
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #include "ra8_elc_regs.h"

@@ -5,6 +5,9 @@
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
+ * @details Converts one module-owned VGA UYVY frame into four statically
+ *          allocated, cache-aligned RGB888 views in external SDRAM.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -20,27 +23,27 @@
 
 /** @brief Cache-line alignment shared by the SDRAM buffers and cache API. */
 typedef enum : uint32_t {
-  k_cam_image_cache_line_bytes = 32U,
+  k_cam_image_cache_line_bytes = 32U, /**< Cortex-M85 data-cache line size. */
 } cam_image_align_t;
 
 /** @brief BT.601 limited-range fixed-point YCbCr-to-RGB coefficients. */
 typedef enum : int32_t {
-  k_cam_yuv_luma_black = 16,
-  k_cam_yuv_chroma_mid = 128,
-  k_cam_yuv_luma_scale = 298,
-  k_cam_yuv_red_cr     = 409,
-  k_cam_yuv_green_cb   = 100,
-  k_cam_yuv_green_cr   = 208,
-  k_cam_yuv_blue_cb    = 516,
-  k_cam_yuv_rounding   = 128,
-  k_cam_yuv_shift      = 8,
+  k_cam_yuv_luma_black = 16,  /**< Limited-range black luma code.       */
+  k_cam_yuv_chroma_mid = 128, /**< Neutral limited-range chroma code.   */
+  k_cam_yuv_luma_scale = 298, /**< BT.601 fixed-point luma coefficient. */
+  k_cam_yuv_red_cr     = 409, /**< BT.601 red-from-Cr coefficient.      */
+  k_cam_yuv_green_cb   = 100, /**< BT.601 green-from-Cb coefficient.    */
+  k_cam_yuv_green_cr   = 208, /**< BT.601 green-from-Cr coefficient.    */
+  k_cam_yuv_blue_cb    = 516, /**< BT.601 blue-from-Cb coefficient.     */
+  k_cam_yuv_rounding   = 128, /**< Fixed-point rounding bias.           */
+  k_cam_yuv_shift      = 8,   /**< Fixed-point fractional-bit count.    */
 } cam_image_yuv_coeff_t;
 
 /** @brief One RGB888 pixel used while scattering the four orientations. */
 typedef struct {
-  uint8_t red;
-  uint8_t green;
-  uint8_t blue;
+  uint8_t red;   /**< Red RGB888 component.   */
+  uint8_t green; /**< Green RGB888 component. */
+  uint8_t blue;  /**< Blue RGB888 component.  */
 } cam_rgb_t;
 
 [[gnu::section(".sdram_data"), gnu::aligned(k_cam_image_cache_line_bytes)]]
@@ -60,7 +63,7 @@ static uint8_t cam_image_clamp(int32_t component)
   if (component < 0) {
     return 0U;
   }
-  if (component > UINT8_MAX) {
+  if (component > (int32_t)UINT8_MAX) {
     return UINT8_MAX;
   }
   return (uint8_t)component;
@@ -114,12 +117,17 @@ static void cam_image_scatter(uint32_t x, uint32_t y, cam_rgb_t rgb)
   }
 }
 
-ra8_err_t cam_image_generate(const uint8_t* uyvy, uint32_t source_bytes)
+/**
+ * @brief Convert one complete UYVY frame into all four RGB orientations.
+ *
+ * @param[in] uyvy Complete VGA UYVY source frame.
+ * @pre `uyvy` points to at least ::k_cam_frame_bytes readable bytes.
+ * @post All four statically allocated RGB buffers contain complete views.
+ * @note Thread safety: not thread-safe; writes module-owned image buffers.
+ * @since 0.1.0
+ */
+static void cam_image_convert(const uint8_t* uyvy)
 {
-  RA8_CHECK_NULL_PTR(uyvy, "cam_image", "uyvy");
-  if (source_bytes != (uint32_t)k_cam_frame_bytes) {
-    return k_ra8_err_invalid_arg;
-  }
   const uint32_t width  = (uint32_t)k_cam_image_width_px;
   const uint32_t height = (uint32_t)k_cam_image_height_px;
   for (uint32_t y = 0U; y < height; y += 1U) {
@@ -133,6 +141,20 @@ ra8_err_t cam_image_generate(const uint8_t* uyvy, uint32_t source_bytes)
       cam_image_scatter(x + 1U, y, cam_image_ycbcr_to_rgb(y1, cb, cr));
     }
   }
+}
+
+/**
+ * @brief Clean all generated RGB views from the data cache.
+ *
+ * @return Status of the first failed cache-clean operation.
+ * @retval k_ra8_ok All four image ranges were cleaned.
+ * @pre ::cam_image_convert populated every RGB view.
+ * @post Successful completion makes every RGB view visible outside the CPU.
+ * @note Thread safety: not thread-safe; operates on module-owned buffers.
+ * @since 0.1.0
+ */
+static ra8_err_t cam_image_clean_outputs(void)
+{
   RA8_RETURN_ON_ERROR(ra8_cache_dcache_clean_by_addr(g_cam_rgb_0, (uint32_t)k_cam_rgb_frame_bytes),
                       "cam_image",
                       "clean rgb0");
@@ -144,4 +166,14 @@ ra8_err_t cam_image_generate(const uint8_t* uyvy, uint32_t source_bytes)
     "cam_image",
     "clean rgb180");
   return ra8_cache_dcache_clean_by_addr(g_cam_rgb_270, (uint32_t)k_cam_rgb_frame_bytes);
+}
+
+ra8_err_t cam_image_generate(const uint8_t* uyvy, uint32_t source_bytes)
+{
+  RA8_CHECK_NULL_PTR(uyvy, "cam_image", "uyvy");
+  if (source_bytes != (uint32_t)k_cam_frame_bytes) {
+    return k_ra8_err_invalid_arg;
+  }
+  cam_image_convert(uyvy);
+  return cam_image_clean_outputs();
 }

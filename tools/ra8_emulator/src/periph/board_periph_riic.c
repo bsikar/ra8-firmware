@@ -395,6 +395,8 @@ static void ov5640_write(void* ctx, uint8_t byte)
     p->reg_isp_mux = byte;
   } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_test) {
     p->reg_test = byte;
+  } else {
+    /* This register is outside the verifier-visible camera subset. */
   }
   p->writes++;
 }

@@ -157,26 +157,44 @@ static bool c6_cam_prepare_link(void)
   return true;
 }
 
-static bool c6_cam_join(c6_cam_lease_t* lease)
+/**
+ * @brief Start station mode and read the C6 station MAC address.
+ *
+ * @param[out] mac Station MAC populated on success.
+ * @return true when both C6 operations succeed.
+ * @pre The C6 link is ready.
+ * @post A failure is reported on the console.
+ * @note Thread safety: worker-thread only.
+ * @since 0.1.0
+ */
+static bool c6_cam_start_wifi(ra8_c6link_mac_t* mac)
 {
-  if (g_c6_cam_wifi_ssid[0] == '\0') {
-    c6_cam_puts("c6_cam: FAIL no Wi-Fi credentials compiled in\r\n");
-    return false;
-  }
-
   ra8_err_t err = ra8_c6link_wifi_start(&s_link);
   if (err != k_ra8_ok) {
     c6_cam_report_fault("wifi_start", err);
     return false;
   }
-  ra8_c6link_mac_t mac = {};
-  err                  = ra8_c6link_wifi_mac(&s_link, &mac);
+  err = ra8_c6link_wifi_mac(&s_link, mac);
   if (err != k_ra8_ok) {
     c6_cam_report_fault("wifi_mac", err);
     return false;
   }
+  return true;
+}
+
+/**
+ * @brief Configure the station and wait for association.
+ *
+ * @return true after the connected event is observed.
+ * @pre Station mode is started and credentials are present.
+ * @post Association diagnostics are printed.
+ * @note Thread safety: worker-thread only.
+ * @since 0.1.0
+ */
+static bool c6_cam_associate(void)
+{
   ra8_c6link_sta_cfg_t station = {};
-  err = ra8_c6link_sta_cfg_set(&station, g_c6_cam_wifi_ssid, g_c6_cam_wifi_psk);
+  ra8_err_t err = ra8_c6link_sta_cfg_set(&station, g_c6_cam_wifi_ssid, g_c6_cam_wifi_psk);
   if (err != k_ra8_ok) {
     c6_cam_report_fault("sta_cfg_set", err);
     return false;
@@ -200,8 +218,23 @@ static bool c6_cam_join(c6_cam_lease_t* lease)
   c6_cam_puts("c6_cam: associated events=");
   c6_cam_put_u32((uint32_t)s_events);
   c6_cam_puts("\r\n");
+  return true;
+}
 
-  err = c6_cam_net_up(&s_link, &mac, lease);
+/**
+ * @brief Acquire and validate the NetX DHCP lease.
+ *
+ * @param[in] mac Associated station MAC address.
+ * @param[out] lease Network lease populated by NetX.
+ * @return true when DHCP reports success and a bound lease.
+ * @pre The station is associated.
+ * @post DHCP failure is reported on the console.
+ * @note Thread safety: worker-thread only.
+ * @since 0.1.0
+ */
+static bool c6_cam_acquire_lease(const ra8_c6link_mac_t* mac, c6_cam_lease_t* lease)
+{
+  const ra8_err_t err = c6_cam_net_up(&s_link, mac, lease);
   if ((err != k_ra8_ok) || !lease->bound) {
     c6_cam_puts("c6_cam: FAIL DHCP err=");
     c6_cam_puts(ra8_err_to_str(err));
@@ -209,6 +242,32 @@ static bool c6_cam_join(c6_cam_lease_t* lease)
     return false;
   }
   return true;
+}
+
+/**
+ * @brief Join the configured network and acquire an address.
+ *
+ * @param[out] lease Bound network lease on success.
+ * @return true when station start, association, and DHCP all succeed.
+ * @pre The C6 link is ready.
+ * @post A failed stage is identified on the console.
+ * @note Thread safety: worker-thread only.
+ * @since 0.1.0
+ */
+static bool c6_cam_join(c6_cam_lease_t* lease)
+{
+  if (g_c6_cam_wifi_ssid[0] == '\0') {
+    c6_cam_puts("c6_cam: FAIL no Wi-Fi credentials compiled in\r\n");
+    return false;
+  }
+  ra8_c6link_mac_t mac = {};
+  if (!c6_cam_start_wifi(&mac)) {
+    return false;
+  }
+  if (!c6_cam_associate()) {
+    return false;
+  }
+  return c6_cam_acquire_lease(&mac, lease);
 }
 
 static void c6_cam_worker_entry(ULONG input)

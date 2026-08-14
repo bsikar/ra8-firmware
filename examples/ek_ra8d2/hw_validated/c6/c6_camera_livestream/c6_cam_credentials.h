@@ -2,6 +2,9 @@
  * @file c6_cam_credentials.h
  * @brief Wi-Fi credential declarations backed by the private build tree.
  *
+ * @details Declares the station credentials generated from the private CMake
+ *          inputs. The public source tree contains no credential values.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0

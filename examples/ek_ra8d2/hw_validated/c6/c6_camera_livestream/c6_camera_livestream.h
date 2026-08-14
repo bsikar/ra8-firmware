@@ -5,6 +5,9 @@
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
+ * @details Defines the fixed, statically allocated sizing limits and the
+ *          camera, network, and console interfaces shared by the app modules.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -19,44 +22,44 @@
 
 /** @brief Application sizing, pacing and fixed network values. */
 typedef enum : uint32_t {
-  k_c6_cam_uart_baud       = 115200U,
-  k_c6_cam_sck_hz          = 1000000U,
-  k_c6_cam_edge_poll_ms    = 2U,
-  k_c6_cam_boot_wait_ms    = 200U,
-  k_c6_cam_assoc_polls     = 200U,
-  k_c6_cam_assoc_gap_ms    = 50U,
-  k_c6_cam_dhcp_wait_ms    = 25000U,
-  k_c6_cam_worker_stack    = 12288U,
-  k_c6_cam_worker_prio     = 8U,
-  k_c6_cam_arena_bytes     = 4096U,
-  k_c6_cam_http_port       = 80U,
-  k_c6_cam_http_chunk      = 1400U,
-  k_c6_cam_request_max     = 512U,
-  k_c6_cam_source_width    = 640U,
-  k_c6_cam_source_height   = 480U,
-  k_c6_cam_source_stride   = 1280U,
-  k_c6_cam_stream_width    = 320U,
-  k_c6_cam_stream_height   = 240U,
-  k_c6_cam_rgb_bytes       = 230400U,
-  k_c6_cam_jpeg_bytes      = 230400U,
-  k_c6_cam_jpeg_quality    = 65U,
-  k_c6_cam_xclk_hz         = 24000000U,
-  k_c6_cam_gpt_period_max  = 0xFFFFU,
-  k_c6_cam_mode_settle_ms  = 100U,
-  k_c6_cam_net_pkt_payload = 1568U,
-  k_c6_cam_net_pool_bytes  = 49152U,
-  k_c6_cam_net_ip_stack    = 2048U,
-  k_c6_cam_net_arp_bytes   = 1040U,
-  k_c6_cam_net_ip_prio     = 3U,
+  k_c6_cam_uart_baud       = 115200U,   /**< SCI8 diagnostic-console baud rate.     */
+  k_c6_cam_sck_hz          = 1000000U,  /**< ESP-hosted SPI clock rate in hertz.    */
+  k_c6_cam_edge_poll_ms    = 2U,        /**< C6 interrupt-edge poll period.         */
+  k_c6_cam_boot_wait_ms    = 200U,      /**< Delay after releasing the C6 reset.    */
+  k_c6_cam_assoc_polls     = 200U,      /**< Maximum bounded association polls.     */
+  k_c6_cam_assoc_gap_ms    = 50U,       /**< Delay between association polls.       */
+  k_c6_cam_dhcp_wait_ms    = 25000U,    /**< Maximum DHCP address-resolution wait.  */
+  k_c6_cam_worker_stack    = 12288U,    /**< C6 worker thread stack bytes.          */
+  k_c6_cam_worker_prio     = 8U,        /**< C6 worker ThreadX priority.            */
+  k_c6_cam_arena_bytes     = 4096U,     /**< Fixed ESP-hosted protocol arena bytes. */
+  k_c6_cam_http_port       = 80U,       /**< TCP port for the camera HTTP server.   */
+  k_c6_cam_http_chunk      = 1400U,     /**< Maximum HTTP body bytes per packet.    */
+  k_c6_cam_request_max     = 512U,      /**< Maximum accepted HTTP request bytes.   */
+  k_c6_cam_source_width    = 640U,      /**< Captured VGA width in pixels.          */
+  k_c6_cam_source_height   = 480U,      /**< Captured VGA height in pixels.         */
+  k_c6_cam_source_stride   = 1280U,     /**< Captured UYVY bytes per source row.    */
+  k_c6_cam_stream_width    = 320U,      /**< Downsampled stream width in pixels.    */
+  k_c6_cam_stream_height   = 240U,      /**< Downsampled stream height in pixels.   */
+  k_c6_cam_rgb_bytes       = 230400U,   /**< QVGA RGB888 work-buffer bytes.         */
+  k_c6_cam_jpeg_bytes      = 230400U,   /**< Maximum encoded JPEG buffer bytes.     */
+  k_c6_cam_jpeg_quality    = 65U,       /**< Software JPEG quality setting.         */
+  k_c6_cam_xclk_hz         = 24000000U, /**< OV5640 external-clock target in hertz. */
+  k_c6_cam_gpt_period_max  = 0xFFFFU,   /**< Maximum GPT period-register value.     */
+  k_c6_cam_mode_settle_ms  = 100U,      /**< Parallel-camera switch settling delay. */
+  k_c6_cam_net_pkt_payload = 1568U,     /**< NetX packet-pool payload bytes.        */
+  k_c6_cam_net_pool_bytes  = 49152U,    /**< Static NetX packet-pool storage bytes. */
+  k_c6_cam_net_ip_stack    = 2048U,     /**< Static NetX IP helper stack bytes.     */
+  k_c6_cam_net_arp_bytes   = 1040U,     /**< Static NetX ARP-cache bytes.           */
+  k_c6_cam_net_ip_prio     = 3U,        /**< NetX IP helper ThreadX priority.       */
 } c6_cam_cfg_t;
 
 /** @brief DHCP lease returned by the raw, bench-validated C6/NetX path. */
 typedef struct {
-  uint32_t ip;
-  uint32_t mask;
-  uint32_t gateway;
-  uint32_t dhcp_server;
-  bool     bound;
+  uint32_t ip;          /**< Assigned IPv4 address in NetX word order. */
+  uint32_t mask;        /**< Assigned IPv4 subnet mask.                */
+  uint32_t gateway;     /**< DHCP-provided default gateway.            */
+  uint32_t dhcp_server; /**< DHCP server IPv4 address.                 */
+  bool     bound;       /**< True when the lease carries an address.   */
 } c6_cam_lease_t;
 
 /** @brief Camera image and board-switch initialization, then one CEU capture. */

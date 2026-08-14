@@ -286,7 +286,7 @@ build_and_resolve() { # app src-dir result-file -> "elf<TAB>note<TAB>ns args"
   # The xargs pool owns this phase's parallelism.  Per-app Makefiles delegate
   # to `cmake --build` without an explicit -j, which otherwise inherits the
   # workflow's CMAKE_BUILD_PARALLEL_LEVEL and multiplies the worker width
-  # (four matrix workers × four inner builds).  Keep the total at $jobs: one
+  # (four matrix workers by four inner builds). Keep the total at $jobs: one
   # compiler scheduler per app, one app per pool slot.
   if [ -z "$src_dir" ] || ! CMAKE_BUILD_PARALLEL_LEVEL=1 \
     timeout "$build_timeout" make -C "$src_dir" build \

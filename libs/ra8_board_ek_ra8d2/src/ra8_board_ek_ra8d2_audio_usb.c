@@ -31,6 +31,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2_audio_usb_internal.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_gpio_constants.h"
@@ -492,7 +493,7 @@ RA8_INTERNAL static ra8_err_t internal_io_expander_write_reg(uint8_t reg, uint8_
  *       by symbol name.
  * @since 0.1.0
  */
-volatile uint32_t s_io_expander_probe = 0U;
+static volatile uint32_t s_io_expander_probe = 0U;
 
 /**
  * @brief Step values for s_io_expander_probe (see variable docs).

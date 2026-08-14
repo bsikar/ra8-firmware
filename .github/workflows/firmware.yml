@@ -290,11 +290,10 @@ jobs:
       - run: bash scripts/ci.sh --gate cache-bench
 
   # ---------------------------------------------------------------------------
-  # #335/#309 host-tool build gate -- media_dl, ra8_viewer, ra8_fmt, mkbookimg
-  # and mkfontimg were linted but never compiled or linked by any job, and
-  # media_dl could not build on Linux at all. This job builds and links all
-  # five, runs media_dl's CTest suite, drives the viewer's headless render, and
-  # enforces -Wall -Wextra -Werror on every first-party TU they pull in.
+  # #335/#309 host-tool build gate -- every tools/* CMake project is compiled
+  # and linked here; media_dl's CTest suite and the viewer's headless render
+  # also execute. A scope guard fails when a new CMake tool is not represented,
+  # and every first-party TU is held to -Wall -Wextra -Werror.
   #
   # #356: the build runs under BOTH pinned compilers, clang-18 AND gcc-14, so
   # the warning families each catches but the other misses are both held --
@@ -331,6 +330,17 @@ jobs:
           }
 
       - run: bash scripts/ci.sh --gate tools-build
+
+  tools-coverage:
+    name: Host tools coverage (media_dl per-file ratchet)
+    runs-on: ra8-ci
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/ci.sh --gate tools-coverage
 
   coverage:
     name: Coverage (gcovr 90/80)
@@ -768,9 +778,9 @@ jobs:
   # ---------------------------------------------------------------------------
   # Clang static analyzer (#532). docs/STATIC_ANALYSIS.md asserted that CI ran
   # this for months while nothing did; this job is what makes that true. It
-  # analyses the host unit-test build, so it needs no cross-toolchain, and it
-  # is a full re-compile under the analyzer -- hence its own job rather than a
-  # step inside an existing one.
+  # analyses the host unit-test build plus every CMake tool, so it needs no
+  # cross-toolchain, and it is a full re-compile under the analyzer -- hence
+  # its own job rather than a step inside an existing one.
   # ---------------------------------------------------------------------------
   scan-build:
     name: clang static analyzer

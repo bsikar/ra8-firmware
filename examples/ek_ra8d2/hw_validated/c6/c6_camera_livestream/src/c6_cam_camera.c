@@ -30,26 +30,26 @@
 
 /** @brief GPT channel driving the OV5640 XVCLK input on P501. */
 typedef enum : uint8_t {
-  k_c6_cam_xclk_gpt_ch = 12U,
+  k_c6_cam_xclk_gpt_ch = 12U, /**< GPT channel routed to OV5640 XVCLK. */
 } c6_cam_gpt_t;
 
 /** @brief U15 address/register and the combined C6 + DVP switch pattern. */
 typedef enum : uint8_t {
-  k_c6_cam_sw46_output = 0xDFU,
-  k_c6_cam_sw46_mask   = 0x20U,
+  k_c6_cam_sw46_output = 0xDFU, /**< U15 latch value selecting DVP mode. */
+  k_c6_cam_sw46_mask   = 0x20U, /**< U15 bit mask for SW4-6 only.        */
 } c6_cam_u15_t;
 
 /** @brief BT.601 fixed-point conversion constants and sensor identity. */
 typedef enum : int32_t {
-  k_c6_cam_u8_max         = 255,
-  k_c6_cam_chroma_neutral = 128,
-  k_c6_cam_luma_scale     = 298,
-  k_c6_cam_red_cr_scale   = 409,
-  k_c6_cam_green_cb_scale = 100,
-  k_c6_cam_green_cr_scale = 208,
-  k_c6_cam_blue_cb_scale  = 516,
-  k_c6_cam_rounding       = 128,
-  k_c6_cam_sensor_id      = 0x5640,
+  k_c6_cam_u8_max         = 255,    /**< Maximum RGB888 component value.       */
+  k_c6_cam_chroma_neutral = 128,    /**< Neutral BT.601 chroma code.           */
+  k_c6_cam_luma_scale     = 298,    /**< BT.601 fixed-point luma coefficient.  */
+  k_c6_cam_red_cr_scale   = 409,    /**< BT.601 red-from-Cr coefficient.       */
+  k_c6_cam_green_cb_scale = 100,    /**< BT.601 green-from-Cb coefficient.     */
+  k_c6_cam_green_cr_scale = 208,    /**< BT.601 green-from-Cr coefficient.     */
+  k_c6_cam_blue_cb_scale  = 516,    /**< BT.601 blue-from-Cb coefficient.      */
+  k_c6_cam_rounding       = 128,    /**< Fixed-point rounding bias.            */
+  k_c6_cam_sensor_id      = 0x5640, /**< Expected OV5640 SCCB chip identifier. */
 } c6_cam_color_t;
 
 /** @brief QVGA RGB work buffer. */

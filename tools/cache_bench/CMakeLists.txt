@@ -56,6 +56,7 @@ target_compile_options(
           -g
           -Wall
           -Wextra
+          -Werror
           -Wno-unused-parameter
 )
 

@@ -7,11 +7,12 @@ by symbolically executing every path through every translation unit and
 flagging null-deref, use-after-free, division-by-zero, dead-store,
 uninitialized-read and similar logic errors.
 
-ra8-firmware runs scan-build against the **host unit-test build**
-(`tests/build-scan/`) -- the cross-compile firmware build cannot be
-analyzed reliably because clang has no working sysroot for
-`arm-none-eabi`. The host build covers the same first-party `libs/`,
-`src/`, and `port/` translation units, just with mocked HAL.
+ra8-firmware runs scan-build against the **host unit-test build and every
+CMake host tool** -- the cross-compile firmware build cannot be analyzed
+reliably because clang has no working sysroot for `arm-none-eabi`. Together
+these builds cover first-party `libs/`, `src/`, `port/`, and `tools/`
+translation units. Tool projects are discovered from
+`tools/*/CMakeLists.txt`, and a scope floor makes a collapsed tools walk fail.
 
 ## How to run
 
@@ -31,15 +32,14 @@ finding, and a classifier that binned everything as suppressed would report a
 clean tree forever. It drives the real classifier over synthetic reports in
 both directions -- a first-party finding and a fixed-address finding OUTSIDE
 the MMIO partitions must be REPORTED; SOUP, `tests/` and the documented MMIO
-partitions must be SUPPRESSED -- plus the vacuity floor either side of its
-boundary and the fail-loud path.
+partitions must be SUPPRESSED -- plus the translation-unit and tool-scope
+floors on either side of their boundaries and the fail-loud path.
 
 Every run reconfigures and rebuilds from scratch, and wipes the previous
 reports first. That is not hygiene: scan-build analyses what the build
 *compiles*, so an incremental rerun analyses only what changed and reports
-nothing, and the summary used to read its numbers out of the newest report
-directory -- which on a second run was the previous run's. Both were measured
-here, in both directions.
+nothing, while stale report directories can preserve findings from another
+run. Both failure modes were measured here.
 
 The analyzer is pinned to **`scan-build-18`**, from the `clang-tools-18`
 package the devcontainer installs. The pin is load-bearing: the checker set
@@ -48,12 +48,11 @@ below), so a run under a different major does not stand in for this one. The
 wrapper prefers `scan-build-18` and honours a `SCAN_BUILD=<path>` override;
 if neither resolves it **fails**, it does not skip.
 
-Reports land under `build/scan-build-reports/<timestamp>/`. The
-top-level `index.html` aggregates every finding with full path
-visualisations. When there are no findings, scan-build writes no
-directory at all -- which is why the wrapper floors the *translation-unit*
-and *object-file* counts rather than inferring anything from an empty
-report tree.
+Reports land in the per-worktree temporary root printed by the gate (or under
+`RA8_SCAN_BUILD_OUT_DIR` when overridden). When there are no findings,
+scan-build writes no timestamped report directory at all -- which is why the
+wrapper floors the *translation-unit*, *object-file*, and discovered-tool
+counts rather than inferring anything from an empty report tree.
 
 ## Suppression policy
 

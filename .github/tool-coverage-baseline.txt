@@ -1,0 +1,30 @@
+# media_dl coverage ratchet: covered/total counts per production source.
+# New files must enter at >=90% line and >=80% branch coverage.
+# Existing files may neither gain uncovered debt nor lose coverage ratio.
+# columns: file<TAB>line-covered<TAB>line-total<TAB>branch-covered<TAB>branch-total
+# rows: 24
+
+tools/media_dl/src/main.c	0	396	0	202
+tools/media_dl/src/mdl_atomic.c	22	26	20	24
+tools/media_dl/src/mdl_cli.c	0	157	0	102
+tools/media_dl/src/mdl_config.c	94	119	40	56
+tools/media_dl/src/mdl_discover.c	0	128	0	84
+tools/media_dl/src/mdl_export.c	235	406	121	271
+tools/media_dl/src/mdl_export_jof.c	77	112	25	54
+tools/media_dl/src/mdl_extract.c	230	282	167	286
+tools/media_dl/src/mdl_fetch.c	229	312	114	194
+tools/media_dl/src/mdl_hash.c	33	36	17	22
+tools/media_dl/src/mdl_library.c	0	41	0	44
+tools/media_dl/src/mdl_net.c	23	24	27	30
+tools/media_dl/src/mdl_net_curl.c	107	222	62	190
+tools/media_dl/src/mdl_pack.c	0	59	0	38
+tools/media_dl/src/mdl_pathfs.c	8	13	3	6
+tools/media_dl/src/mdl_politeness.c	193	214	114	138
+tools/media_dl/src/mdl_report.c	0	46	0	18
+tools/media_dl/src/mdl_robots.c	206	214	143	180
+tools/media_dl/src/mdl_sanitize.c	120	127	100	118
+tools/media_dl/src/mdl_search.c	64	70	66	72
+tools/media_dl/src/mdl_session.c	46	51	36	40
+tools/media_dl/src/mdl_state.c	232	261	124	181
+tools/media_dl/src/mdl_url_guard.c	116	129	115	140
+tools/media_dl/src/mdl_urlname.c	68	73	55	74
