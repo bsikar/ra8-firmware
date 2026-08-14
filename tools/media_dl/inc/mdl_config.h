@@ -49,8 +49,9 @@ typedef struct {
   char contact[k_mdl_contact_max]; /**< Operator contact for the UA.     */
 
   /* Chapter list, found on a series page. */
-  char                chapter_url_contains[k_mdl_match_max]; /**< href must contain this. */
-  mdl_chapter_order_t chapter_order;                         /**< Ordering to apply.      */
+  char chapter_url_contains[k_mdl_match_max];    /**< href must contain this.         */
+  char chapter_url_prefix[k_mdl_search_url_max]; /**< Absolute series-chapter prefix. */
+  mdl_chapter_order_t chapter_order;             /**< Ordering to apply.              */
 
   /* Page images, found on a chapter page. */
   char page_img_attr[k_mdl_attr_max];          /**< Preferred attr (fallback other). */

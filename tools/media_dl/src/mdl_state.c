@@ -7,10 +7,13 @@
 #include "mdl_state.h"
 
 #include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "ra8_attributes.h"
 
@@ -62,6 +65,50 @@ RA8_INTERNAL static void set_opt(char* dst, size_t cap, const char* val)
   }
 }
 
+/** @brief True when a record field fits and cannot inject a line or column. */
+RA8_INTERNAL static bool field_valid(const char* text, size_t cap)
+{
+  if (text == nullptr) {
+    return false;
+  }
+  const size_t len = strnlen(text, cap);
+  return (len < cap) && (strpbrk(text, "\t\r\n") == nullptr);
+}
+
+/** @brief Validate every bound and cross-field invariant before persistence. */
+RA8_INTERNAL static bool state_valid(const mdl_state_t* st)
+{
+  if ((st->version != (uint16_t)k_mdl_state_version) ||
+      (st->chapter_count > (uint16_t)k_mdl_max_chapters) ||
+      (st->page_rec_count > (uint32_t)k_mdl_max_page_recs) ||
+      !field_valid(st->series_url, sizeof(st->series_url)) ||
+      !field_valid(st->series_title, sizeof(st->series_title)) ||
+      !field_valid(st->site_name, sizeof(st->site_name)) ||
+      !field_valid(st->site_host, sizeof(st->site_host)) ||
+      !field_valid(st->config_path, sizeof(st->config_path))) {
+    return false;
+  }
+  for (uint16_t i = 0U; i < st->chapter_count; ++i) {
+    const mdl_chapter_rec_t* chapter = &st->chapters[i];
+    if (!field_valid(chapter->chapter_id, sizeof(chapter->chapter_id)) ||
+        !field_valid(chapter->source_url, sizeof(chapter->source_url)) ||
+        (chapter->pages_done > chapter->page_count) ||
+        (chapter->complete &&
+         ((chapter->page_count == 0U) || (chapter->pages_done != chapter->page_count)))) {
+      return false;
+    }
+  }
+  for (uint32_t i = 0U; i < st->page_rec_count; ++i) {
+    const mdl_page_rec_t* page = &st->pages[i];
+    if (!field_valid(page->rel_path, sizeof(page->rel_path)) ||
+        !field_valid(page->etag, sizeof(page->etag)) ||
+        !field_valid(page->last_modified, sizeof(page->last_modified))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void mdl_state_set_series(mdl_state_t* st,
                           const char*  url,
                           const char*  title,
@@ -96,6 +143,9 @@ mdl_chapter_rec_t*
 mdl_state_add_chapter(mdl_state_t* st, const char* id, const char* url, long number)
 {
   if ((st == nullptr) || (id == nullptr) || (url == nullptr)) {
+    return nullptr;
+  }
+  if (!field_valid(id, k_mdl_chapter_id_max) || !field_valid(url, k_mdl_url_max)) {
     return nullptr;
   }
   mdl_chapter_rec_t* existing = mdl_state_find_chapter(st, id);
@@ -163,9 +213,14 @@ bool mdl_state_add_page(mdl_state_t* st,
   if ((st == nullptr) || (rel_path == nullptr)) {
     return false;
   }
+  if (!field_valid(rel_path, k_mdl_relpath_max) ||
+      !field_valid((etag != nullptr) ? etag : "", k_mdl_etag_max) ||
+      !field_valid((last_modified != nullptr) ? last_modified : "", k_mdl_last_mod_max)) {
+    return false;
+  }
   mdl_page_rec_t* rec = nullptr;
   for (uint32_t i = 0U; i < st->page_rec_count; ++i) {
-    if (st->pages[i].url_hash == url_hash) {
+    if ((st->pages[i].url_hash == url_hash) && (strcmp(st->pages[i].rel_path, rel_path) == 0)) {
       rec = &st->pages[i];
       break;
     }
@@ -191,42 +246,76 @@ bool mdl_state_add_page(mdl_state_t* st,
 /* ---- serialisation ------------------------------------------------------- */
 
 /** @brief Write `val` as one line `type<TAB>val`, TAB/newlines mapped to space. */
-RA8_INTERNAL static void write_kv(FILE* fp, char type, const char* val)
+RA8_INTERNAL static bool write_kv(FILE* fp, char type, const char* val)
 {
-  (void)fputc(type, fp);
-  (void)fputc('\t', fp);
+  if ((fputc(type, fp) == EOF) || (fputc('\t', fp) == EOF)) {
+    return false;
+  }
   for (const char* c = val; *c != '\0'; ++c) {
     const char ch = (char)(((*c == '\t') || (*c == '\n') || (*c == '\r')) ? ' ' : *c);
-    (void)fputc(ch, fp);
+    if (fputc(ch, fp) == EOF) {
+      return false;
+    }
   }
-  (void)fputc('\n', fp);
+  return fputc('\n', fp) != EOF;
 }
 
 /** @brief Serialise every chapter and page record to an open stream. */
-RA8_INTERNAL static void write_records(FILE* fp, const mdl_state_t* st)
+RA8_INTERNAL static bool write_records(FILE* fp, const mdl_state_t* st)
 {
   for (uint16_t i = 0U; i < st->chapter_count; ++i) {
     const mdl_chapter_rec_t* c = &st->chapters[i];
-    (void)fprintf(fp,
-                  "C\t%s\t%ld\t%d\t%u\t%u\t%lld\t%s\n",
-                  c->chapter_id,
-                  c->number,
-                  c->complete ? 1 : 0,
-                  (unsigned)c->page_count,
-                  (unsigned)c->pages_done,
-                  (long long)c->fetched_at,
-                  c->source_url);
+    if (fprintf(fp,
+                "C\t%s\t%ld\t%d\t%u\t%u\t%lld\t%s\n",
+                c->chapter_id,
+                c->number,
+                c->complete ? 1 : 0,
+                (unsigned)c->page_count,
+                (unsigned)c->pages_done,
+                (long long)c->fetched_at,
+                c->source_url) < 0) {
+      return false;
+    }
   }
   for (uint32_t i = 0U; i < st->page_rec_count; ++i) {
     const mdl_page_rec_t* p = &st->pages[i];
-    (void)fprintf(fp,
-                  "P\t%016llx\t%016llx\t%s\t%s\t%s\n",
-                  (unsigned long long)p->url_hash,
-                  (unsigned long long)p->content_hash,
-                  p->rel_path,
-                  p->etag,
-                  p->last_modified);
+    if (fprintf(fp,
+                "P\t%016llx\t%016llx\t%s\t%s\t%s\n",
+                (unsigned long long)p->url_hash,
+                (unsigned long long)p->content_hash,
+                p->rel_path,
+                p->etag,
+                p->last_modified) < 0) {
+      return false;
+    }
   }
+  return true;
+}
+
+/** @brief Flush file bytes and the containing directory before reporting success. */
+RA8_INTERNAL static bool sync_parent(const char* path)
+{
+  char         dir[k_state_line_max];
+  const size_t len = strnlen(path, sizeof(dir));
+  if ((len == 0U) || (len >= sizeof(dir))) {
+    return false;
+  }
+  memcpy(dir, path, len + 1U);
+  char* slash = strrchr(dir, '/');
+  if (slash == nullptr) {
+    (void)snprintf(dir, sizeof(dir), ".");
+  } else if (slash == dir) {
+    slash[1] = '\0';
+  } else {
+    *slash = '\0';
+  }
+  const int fd = open(dir, O_RDONLY);
+  if (fd < 0) {
+    return false;
+  }
+  const bool ok = fsync(fd) == 0;
+  (void)close(fd);
+  return ok;
 }
 
 ra8_err_t mdl_state_save(const char* path, const mdl_state_t* st)
@@ -234,30 +323,42 @@ ra8_err_t mdl_state_save(const char* path, const mdl_state_t* st)
   if ((path == nullptr) || (st == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
+  if (!state_valid(st)) {
+    return k_ra8_err_invalid_state;
+  }
   char      tmp[k_state_line_max];
-  const int tn = snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+  const int tn = snprintf(tmp, sizeof(tmp), "%s.tmp.XXXXXX", path);
   if ((tn < 0) || ((size_t)tn >= sizeof(tmp))) {
     return k_ra8_fail;
   }
-  FILE* fp = fopen(tmp, "w");
-  if (fp == nullptr) {
+  const int fd = mkstemp(tmp);
+  if (fd < 0) {
     return k_ra8_fail;
   }
-  (void)fprintf(fp, "# media_dl library state v%u\n", (unsigned)k_mdl_state_version);
-  (void)fprintf(fp, "V\t%u\n", (unsigned)k_mdl_state_version);
-  write_kv(fp, 'S', st->series_url);
-  write_kv(fp, 'T', st->series_title);
-  write_kv(fp, 'N', st->site_name);
-  write_kv(fp, 'H', st->site_host);
-  write_kv(fp, 'G', st->config_path);
-  write_records(fp, st);
-  const bool io_ok = (ferror(fp) == 0);
+  FILE* fp = fdopen(fd, "w");
+  if (fp == nullptr) {
+    (void)close(fd);
+    (void)remove(tmp);
+    return k_ra8_fail;
+  }
+  bool io_ok = fprintf(fp, "# media_dl library state v%u\n", (unsigned)k_mdl_state_version) >= 0;
+  io_ok      = io_ok && (fprintf(fp, "V\t%u\n", (unsigned)k_mdl_state_version) >= 0);
+  io_ok      = io_ok && write_kv(fp, 'S', st->series_url);
+  io_ok      = io_ok && write_kv(fp, 'T', st->series_title);
+  io_ok      = io_ok && write_kv(fp, 'N', st->site_name);
+  io_ok      = io_ok && write_kv(fp, 'H', st->site_host);
+  io_ok      = io_ok && write_kv(fp, 'G', st->config_path);
+  io_ok      = io_ok && write_records(fp, st);
+  io_ok      = io_ok && (fflush(fp) == 0) && (fsync(fd) == 0) && (ferror(fp) == 0);
   if ((fclose(fp) != 0) || !io_ok) {
     (void)remove(tmp);
     return k_ra8_fail;
   }
   if (rename(tmp, path) != 0) {
     (void)remove(tmp);
+    return k_ra8_fail;
+  }
+  if (!sync_parent(path)) {
     return k_ra8_fail;
   }
   return k_ra8_ok;
@@ -278,7 +379,58 @@ RA8_INTERNAL static size_t split_tabs(char* line, char* fld[], size_t max)
       ++n;
     }
   }
+  if ((n == max) && (strchr(fld[max - 1U], '\t') != nullptr)) {
+    return max + 1U;
+  }
   return n;
+}
+
+/** @brief Parse a complete signed long field, rejecting overflow and tails. */
+RA8_INTERNAL static bool parse_long_field(const char* text, long* out)
+{
+  if ((text == nullptr) || (text[0] == '\0')) {
+    return false;
+  }
+  errno            = 0;
+  char*      end   = nullptr;
+  const long value = strtol(text, &end, (int)k_state_dec_base);
+  if ((errno != 0) || (end == text) || (*end != '\0')) {
+    return false;
+  }
+  *out = value;
+  return true;
+}
+
+/** @brief Parse a complete uint64 field in `base`, rejecting overflow/tails. */
+RA8_INTERNAL static bool parse_u64_field(const char* text, int base, uint64_t* out)
+{
+  if ((text == nullptr) || (text[0] == '\0') || (text[0] == '-') || (text[0] == '+')) {
+    return false;
+  }
+  errno                          = 0;
+  char*                    end   = nullptr;
+  const unsigned long long value = strtoull(text, &end, base);
+  if ((errno != 0) || (end == text) || (*end != '\0')) {
+    return false;
+  }
+  *out = (uint64_t)value;
+  return true;
+}
+
+/** @brief Parse a complete signed 64-bit epoch field. */
+RA8_INTERNAL static bool parse_i64_field(const char* text, int64_t* out)
+{
+  if ((text == nullptr) || (text[0] == '\0')) {
+    return false;
+  }
+  errno                 = 0;
+  char*           end   = nullptr;
+  const long long value = strtoll(text, &end, (int)k_state_dec_base);
+  if ((errno != 0) || (end == text) || (*end != '\0')) {
+    return false;
+  }
+  *out = (int64_t)value;
+  return true;
 }
 
 /** @brief Strip a trailing CR/LF pair from a fgets() line. */
@@ -297,15 +449,28 @@ RA8_INTERNAL static bool apply_chapter(mdl_state_t* st, char* fld[], size_t nf)
   if (nf < (size_t)k_c_fields) {
     return false;
   }
-  const long         num = strtol(fld[k_c_number], nullptr, (int)k_state_dec_base);
+  long     num   = 0L;
+  uint64_t done  = 0U;
+  uint64_t pages = 0U;
+  uint64_t ready = 0U;
+  int64_t  epoch = 0;
+  if (!parse_long_field(fld[k_c_number], &num) ||
+      !parse_u64_field(fld[k_c_done], (int)k_state_dec_base, &done) ||
+      !parse_u64_field(fld[k_c_pages], (int)k_state_dec_base, &pages) ||
+      !parse_u64_field(fld[k_c_ready], (int)k_state_dec_base, &ready) ||
+      !parse_i64_field(fld[k_c_epoch], &epoch) || (done > 1U) || (pages > UINT16_MAX) ||
+      (ready > UINT16_MAX) || (ready > pages) ||
+      ((done != 0U) && ((pages == 0U) || (ready != pages)))) {
+    return false;
+  }
   mdl_chapter_rec_t* rec = mdl_state_add_chapter(st, fld[k_c_id], fld[k_c_url], num);
   if (rec == nullptr) {
     return false;
   }
-  rec->complete   = (strtol(fld[k_c_done], nullptr, (int)k_state_dec_base) != 0);
-  rec->page_count = (uint16_t)strtoul(fld[k_c_pages], nullptr, (int)k_state_dec_base);
-  rec->pages_done = (uint16_t)strtoul(fld[k_c_ready], nullptr, (int)k_state_dec_base);
-  rec->fetched_at = (int64_t)strtoll(fld[k_c_epoch], nullptr, (int)k_state_dec_base);
+  rec->complete   = done != 0U;
+  rec->page_count = (uint16_t)pages;
+  rec->pages_done = (uint16_t)ready;
+  rec->fetched_at = epoch;
   return true;
 }
 
@@ -315,10 +480,14 @@ RA8_INTERNAL static bool apply_page(mdl_state_t* st, char* fld[], size_t nf)
   if (nf < (size_t)k_p_fields) {
     return false;
   }
-  const uint64_t uh      = (uint64_t)strtoull(fld[k_p_urlhash], nullptr, (int)k_state_hex_base);
-  const uint64_t ch      = (uint64_t)strtoull(fld[k_p_content], nullptr, (int)k_state_hex_base);
-  const char*    etag    = (nf > (size_t)k_p_etag) ? fld[k_p_etag] : "";
-  const char*    lastmod = (nf > (size_t)k_p_lastmod) ? fld[k_p_lastmod] : "";
+  uint64_t uh = 0U;
+  uint64_t ch = 0U;
+  if (!parse_u64_field(fld[k_p_urlhash], (int)k_state_hex_base, &uh) ||
+      !parse_u64_field(fld[k_p_content], (int)k_state_hex_base, &ch)) {
+    return false;
+  }
+  const char* etag    = (nf > (size_t)k_p_etag) ? fld[k_p_etag] : "";
+  const char* lastmod = (nf > (size_t)k_p_lastmod) ? fld[k_p_lastmod] : "";
   return mdl_state_add_page(st, uh, ch, fld[k_p_relpath], etag, lastmod);
 }
 
@@ -331,8 +500,9 @@ RA8_INTERNAL static bool apply_line(mdl_state_t* st, char* fld[], size_t nf, boo
   }
   if (!*seen_v) {
     /* The first record MUST be a version line this build understands. */
-    if ((type != 'V') || (nf < 2U) ||
-        (strtoul(fld[1], nullptr, (int)k_state_dec_base) != (unsigned long)k_mdl_state_version)) {
+    uint64_t version = 0U;
+    if ((type != 'V') || (nf != 2U) || !parse_u64_field(fld[1], (int)k_state_dec_base, &version) ||
+        (version != (uint64_t)k_mdl_state_version)) {
       return false;
     }
     *seen_v = true;
@@ -340,20 +510,35 @@ RA8_INTERNAL static bool apply_line(mdl_state_t* st, char* fld[], size_t nf, boo
   }
   switch (type) {
     case 'V':
-      return true; /* a duplicate version line is harmless */
+      return false; /* duplicate headers make corruption/concatenation visible */
     case 'S':
+      if ((nf != 2U) || !field_valid(fld[1], sizeof(st->series_url))) {
+        return false;
+      }
       set_opt(st->series_url, sizeof(st->series_url), (nf > 1U) ? fld[1] : "");
       return true;
     case 'T':
+      if ((nf != 2U) || !field_valid(fld[1], sizeof(st->series_title))) {
+        return false;
+      }
       set_opt(st->series_title, sizeof(st->series_title), (nf > 1U) ? fld[1] : "");
       return true;
     case 'N':
+      if ((nf != 2U) || !field_valid(fld[1], sizeof(st->site_name))) {
+        return false;
+      }
       set_opt(st->site_name, sizeof(st->site_name), (nf > 1U) ? fld[1] : "");
       return true;
     case 'H':
+      if ((nf != 2U) || !field_valid(fld[1], sizeof(st->site_host))) {
+        return false;
+      }
       set_opt(st->site_host, sizeof(st->site_host), (nf > 1U) ? fld[1] : "");
       return true;
     case 'G':
+      if ((nf != 2U) || !field_valid(fld[1], sizeof(st->config_path))) {
+        return false;
+      }
       set_opt(st->config_path, sizeof(st->config_path), (nf > 1U) ? fld[1] : "");
       return true;
     case 'C':
@@ -371,17 +556,20 @@ RA8_INTERNAL static bool parse_stream(FILE* fp, mdl_state_t* st)
   char line[k_state_line_max];
   bool seen_v = false;
   while (fgets(line, (int)sizeof(line), fp) != nullptr) {
+    if ((strchr(line, '\n') == nullptr) && (strchr(line, '\r') == nullptr) && (feof(fp) == 0)) {
+      return false; /* overlong record: do not parse its continuation as another record */
+    }
     chomp(line);
     if ((line[0] == '\0') || (line[0] == '#')) {
       continue; /* blank or comment */
     }
     char*        fld[k_state_max_flds];
     const size_t nf = split_tabs(line, fld, (size_t)k_state_max_flds);
-    if (!apply_line(st, fld, nf, &seen_v)) {
+    if ((nf > (size_t)k_state_max_flds) || !apply_line(st, fld, nf, &seen_v)) {
       return false;
     }
   }
-  return seen_v; /* a file with no version record is corrupt */
+  return seen_v && (ferror(fp) == 0); /* no version or a read error is corrupt */
 }
 
 ra8_err_t mdl_state_load(const char* path, mdl_state_t* st)
@@ -398,8 +586,8 @@ ra8_err_t mdl_state_load(const char* path, mdl_state_t* st)
     (void)fprintf(stderr, "media_dl: cannot read state '%s'\n", path);
     return k_ra8_err_invalid_state;
   }
-  const bool ok = parse_stream(fp, st);
-  (void)fclose(fp);
+  bool ok = parse_stream(fp, st);
+  ok      = (fclose(fp) == 0) && ok;
   if (!ok) {
     mdl_state_init(st);
     (void)fprintf(stderr,

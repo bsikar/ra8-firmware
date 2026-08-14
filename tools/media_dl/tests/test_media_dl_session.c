@@ -37,8 +37,9 @@ typedef enum : uint32_t {
   k_rec_max        = 128U,   /**< Recorded URL / User-Agent bytes per call.  */
   k_http_ok        = 200U,   /**< HTTP 200 OK.                               */
   k_http_not_found = 404U,   /**< HTTP 404 (absent -> allow all).            */
+  k_http_too_many  = 429U,   /**< HTTP 429 (rate limit -> refuse).           */
   k_http_srv_err   = 500U,   /**< HTTP 500 (5xx -> disallow all).            */
-  k_http_over_5xx  = 600U,   /**< Just above the 5xx band (-> allow all).    */
+  k_http_over_5xx  = 600U,   /**< Invalid HTTP status (fail closed).         */
   k_crawl_ms       = 7000U,  /**< The served Crawl-delay in milliseconds.    */
   k_base_lo_min    = 100U,   /**< Base per-host floor below the crawl delay. */
   k_base_lo_max    = 200U,   /**< Base per-host ceiling below the crawl.     */
@@ -270,8 +271,8 @@ static void test_session_disallow_blocks(void)
  * - V1 control: session set, url set, honor_robots true -> guard false -> the
  *   robots fetch runs and the allow-all body permits the URL (true, one fetch).
  * - V2: honor_robots false -> guard true -> allowed with NO fetch (varies c3).
- * - V3: url = NULL          -> guard true -> allowed (varies c2).
- * - V4: session = NULL      -> guard true -> allowed (varies c1).
+ * - V3: url = NULL          -> guard true -> refused (varies c2).
+ * - V4: session = NULL      -> guard true -> refused (varies c1).
  * V1 pairs with each of V2..V4 to isolate one condition.
  */
 static void test_session_gating_off_and_null(void)
@@ -289,9 +290,9 @@ static void test_session_gating_off_and_null(void)
   sess_reset(&net, "media_dl/0.1.0", false);
   TEST_ASSERT(mdl_session_url_allowed(&s_sess, "https://h/a", &crawl));
   TEST_ASSERT_EQ((uint16_t)0, (uint16_t)f.calls);
-  /* V3: NULL url -> allowed. V4: NULL session -> allowed. */
-  TEST_ASSERT(mdl_session_url_allowed(&s_sess, nullptr, &crawl));
-  TEST_ASSERT(mdl_session_url_allowed(nullptr, "https://h/a", &crawl));
+  /* V3/V4: malformed API use fails closed. */
+  TEST_ASSERT(!mdl_session_url_allowed(&s_sess, nullptr, &crawl));
+  TEST_ASSERT(!mdl_session_url_allowed(nullptr, "https://h/a", &crawl));
   TEST_END("session gating off / null");
 }
 
@@ -354,7 +355,7 @@ static void test_session_crawl_delay_respected(void)
  * (2 conditions, N+1 = 3), reached when the robots.txt GET fails:
  * - V1: status 500 -> both true        -> "disallow all": every path refused.
  * - V2: status 404 -> c1 false          -> "absent": no restrictions (allow all).
- * - V3: status 600 -> c1 true, c2 false -> "absent": allow all.
+ * Status 429, transport failure, and values outside HTTP's range also fail closed.
  */
 static void test_session_robots_5xx_denies(void)
 {
@@ -370,12 +371,76 @@ static void test_session_robots_5xx_denies(void)
   mdl_net_iface_t n4 = robo_iface(&f4);
   sess_reset(&n4, "media_dl/0.1.0", true);
   TEST_ASSERT(mdl_session_url_allowed(&s_sess, "https://b/x", &crawl));
-  /* V3: a status just above the 5xx band is also treated as absent. */
+  /* A status outside the HTTP range cannot prove robots is absent. */
   robo_net_t      f6 = {.body = nullptr, .rc = k_ra8_fail, .status = (long)k_http_over_5xx};
   mdl_net_iface_t n6 = robo_iface(&f6);
   sess_reset(&n6, "media_dl/0.1.0", true);
-  TEST_ASSERT(mdl_session_url_allowed(&s_sess, "https://c/x", &crawl));
+  TEST_ASSERT(!mdl_session_url_allowed(&s_sess, "https://c/x", &crawl));
+
+  robo_net_t      rate  = {.body = nullptr, .rc = k_ra8_fail, .status = (long)k_http_too_many};
+  mdl_net_iface_t nrate = robo_iface(&rate);
+  sess_reset(&nrate, "media_dl/0.1.0", true);
+  TEST_ASSERT(!mdl_session_url_allowed(&s_sess, "https://rate/x", &crawl));
+
+  robo_net_t      down  = {.body = nullptr, .rc = k_ra8_fail, .status = 0L};
+  mdl_net_iface_t ndown = robo_iface(&down);
+  sess_reset(&ndown, "media_dl/0.1.0", true);
+  TEST_ASSERT(!mdl_session_url_allowed(&s_sess, "https://down/x", &crawl));
   TEST_END("session robots 5xx denies");
+}
+
+/** @test Query strings participate in robots matching and malformed URLs fail closed. */
+static void test_session_query_and_url_validation(void)
+{
+  TEST_BEGIN("session robots query + URL validation");
+  robo_net_t      f   = {.body   = "User-agent: *\nDisallow: /search?private=\n",
+                         .rc     = k_ra8_ok,
+                         .status = (long)k_http_ok};
+  mdl_net_iface_t net = robo_iface(&f);
+  sess_reset(&net, "media_dl/0.1.0", true);
+  uint32_t crawl = 0U;
+  TEST_ASSERT(!mdl_session_url_allowed(&s_sess, "https://h/search?private=yes#fragment", &crawl));
+  TEST_ASSERT(mdl_session_url_allowed(&s_sess, "https://h/search?public=yes", &crawl));
+  TEST_ASSERT(!mdl_session_url_allowed(&s_sess, "ftp://h/file", &crawl));
+  TEST_ASSERT(!mdl_session_url_allowed(&s_sess, "not-a-url", &crawl));
+  TEST_END("session robots query + URL validation");
+}
+
+/** @test Robots cache keys include scheme and never evict a full live slot. */
+static void test_session_origin_cache_and_bounds(void)
+{
+  TEST_BEGIN("session robots origin cache + bounds");
+  robo_net_t f = {.body = "User-agent: *\nAllow: /\n", .rc = k_ra8_ok, .status = (long)k_http_ok};
+  mdl_net_iface_t net = robo_iface(&f);
+  sess_reset(&net, "media_dl/0.1.0", true);
+  uint32_t crawl = 0U;
+  TEST_ASSERT(mdl_session_url_allowed(&s_sess, "https://same.example/a", &crawl));
+  TEST_ASSERT(mdl_session_url_allowed(&s_sess, "http://same.example/a", &crawl));
+  TEST_ASSERT_EQ((uint16_t)2, (uint16_t)f.calls);
+  TEST_ASSERT(strcmp(f.last_url, "http://same.example/robots.txt") == 0);
+
+  sess_reset(&net, "media_dl/0.1.0", true);
+  f.calls = 0U;
+  for (uint16_t i = 0U; i < (uint16_t)k_mdl_robots_max_hosts; ++i) {
+    char url[k_rec_max];
+    (void)snprintf(url, sizeof(url), "https://host-%u.example/a", (unsigned)i);
+    TEST_ASSERT(mdl_session_url_allowed(&s_sess, url, &crawl));
+  }
+  TEST_ASSERT(mdl_session_url_allowed(&s_sess, "https://overflow.example/a", &crawl));
+  TEST_ASSERT_EQ((uint16_t)(k_mdl_robots_max_hosts + 1U), (uint16_t)f.calls);
+  TEST_ASSERT(mdl_session_url_allowed(&s_sess, "https://host-0.example/again", &crawl));
+  TEST_ASSERT_EQ((uint16_t)(k_mdl_robots_max_hosts + 1U), (uint16_t)f.calls);
+
+  char      oversized[k_mdl_robots_path_max + k_rec_max];
+  const int prefix = snprintf(oversized, sizeof(oversized), "User-agent: *\nDisallow: /");
+  TEST_ASSERT(prefix > 0);
+  memset(&oversized[prefix], 'x', sizeof(oversized) - (size_t)prefix - 2U);
+  oversized[sizeof(oversized) - 2U] = '\n';
+  oversized[sizeof(oversized) - 1U] = '\0';
+  f.body                            = oversized;
+  sess_reset(&net, "media_dl/0.1.0", true);
+  TEST_ASSERT(!mdl_session_url_allowed(&s_sess, "https://bounded.example/a", &crawl));
+  TEST_END("session robots origin cache + bounds");
 }
 
 /**
@@ -391,6 +456,8 @@ int32_t main(void)
   test_session_gating_off_and_null();
   test_session_crawl_delay_respected();
   test_session_robots_5xx_denies();
+  test_session_query_and_url_validation();
+  test_session_origin_cache_and_bounds();
   (void)fprintf(stderr, "[OK  ] test_media_dl_session.c\n");
   return 0;
 }

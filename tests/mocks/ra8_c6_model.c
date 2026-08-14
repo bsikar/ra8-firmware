@@ -37,10 +37,10 @@ typedef struct {
 static c6m_mdl_backend_t s_mdl_backend;
 static ra8_mdl_service_t s_mdl_service;
 
-static ra8_err_t c6m_mdl_begin(void* ctx, const char* url, ra8_mdl_format_t format)
+static ra8_err_t c6m_mdl_begin(void* ctx, const char* url)
 {
   c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
-  if ((strcmp(url, "https://example.test/book") != 0) || (format != k_ra8_mdl_format_rabook)) {
+  if (strcmp(url, "https://example.test/book") != 0) {
     return k_ra8_err_invalid_arg;
   }
   backend->at = 0U;
@@ -53,7 +53,7 @@ static ra8_err_t c6m_mdl_read(void*     ctx,
                               uint16_t* got,
                               uint64_t* total_bytes,
                               bool*     complete,
-                              uint8_t   sha256[RA8_MDL_SHA256_BYTES])
+                              uint8_t   sha256[k_ra8_mdl_sha256_bytes])
 {
   c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
   const size_t       left    = sizeof(s_mdl_bytes) - backend->at;
@@ -66,14 +66,15 @@ static ra8_err_t c6m_mdl_read(void*     ctx,
   *total_bytes = sizeof(s_mdl_bytes);
   *complete    = (take == 0U);
   if (*complete) {
-    (void)memset(sha256, 0xA5, RA8_MDL_SHA256_BYTES);
+    (void)memset(sha256, 0xA5, k_ra8_mdl_sha256_bytes);
   }
   return k_ra8_ok;
 }
 
 static ra8_err_t c6m_mdl_cancel(void* ctx)
 {
-  (void)ctx;
+  c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
+  ra8_c6_model()->mdl_cancels += (backend != nullptr) ? 1U : 0U;
   return k_ra8_ok;
 }
 
@@ -579,6 +580,9 @@ static void c6m_mdl_apply_fault(uint8_t* response, size_t response_cap, size_t* 
       chunk->state  = RA8__MDL__STATE__STATE_DOWNLOADING;
       chunk->status = (int32_t)k_ra8_fail;
       chunk->sha256 = (ProtobufCBinaryData){};
+      break;
+    case k_c6m_mdl_fault_out_of_order:
+      chunk->sequence += 1U;
       break;
     default:
       TEST_ASSERT(false);

@@ -27,10 +27,10 @@ static ra8_mdl_service_t s_service;
 static uint8_t           s_request[700];
 static uint8_t           s_response[1200];
 
-static ra8_err_t fake_begin(void* ctx, const char* url, ra8_mdl_format_t format)
+static ra8_err_t fake_begin(void* ctx, const char* url)
 {
   fake_backend_t* fake = (fake_backend_t*)ctx;
-  if ((strcmp(url, "https://example.test/book") != 0) || (format != k_ra8_mdl_format_rabook)) {
+  if (strcmp(url, "https://example.test/book") != 0) {
     return k_ra8_err_invalid_arg;
   }
   fake->at = 0U;
@@ -44,7 +44,7 @@ static ra8_err_t fake_read(void*     ctx,
                            uint16_t* got,
                            uint64_t* total_bytes,
                            bool*     complete,
-                           uint8_t   sha256[RA8_MDL_SHA256_BYTES])
+                           uint8_t   sha256[k_ra8_mdl_sha256_bytes])
 {
   fake_backend_t* fake = (fake_backend_t*)ctx;
   const size_t    left = fake->len - fake->at;
@@ -57,7 +57,7 @@ static ra8_err_t fake_read(void*     ctx,
   *total_bytes = fake->len;
   *complete    = (take == 0U);
   if (*complete) {
-    memset(sha256, 0xA5, RA8_MDL_SHA256_BYTES);
+    memset(sha256, 0xA5, k_ra8_mdl_sha256_bytes);
   }
   return k_ra8_ok;
 }
@@ -83,9 +83,8 @@ static void reset_service(void)
 static uint32_t dispatch_start(void)
 {
   Ra8__Mdl__StartRequest req = RA8__MDL__START_REQUEST__INIT;
-  req.protocol_version       = RA8_MDL_PROTOCOL_VERSION;
+  req.protocol_version       = k_ra8_mdl_protocol_version;
   req.url                    = (char*)"https://example.test/book";
-  req.format                 = RA8__MDL__FORMAT__FORMAT_RABOOK;
   const size_t request_len   = ra8__mdl__start_request__pack(&req, s_request);
   size_t       response_len  = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -98,9 +97,9 @@ static uint32_t dispatch_start(void)
                                           &response_len));
   Ra8__Mdl__Accepted* accepted = ra8__mdl__accepted__unpack(nullptr, response_len, s_response);
   TEST_ASSERT(accepted != nullptr);
-  TEST_ASSERT_EQ((int64_t)RA8_MDL_PROTOCOL_VERSION, (int64_t)accepted->protocol_version);
+  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_protocol_version, (int64_t)accepted->protocol_version);
   TEST_ASSERT(accepted->job_id != 0U);
-  TEST_ASSERT_EQ((int64_t)RA8_MDL_CHUNK_DATA_MAX, (int64_t)accepted->max_chunk_bytes);
+  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_chunk_data_max, (int64_t)accepted->max_chunk_bytes);
   const uint32_t job = accepted->job_id;
   ra8__mdl__accepted__free_unpacked(accepted, nullptr);
   return job;
@@ -109,7 +108,7 @@ static uint32_t dispatch_start(void)
 static Ra8__Mdl__Chunk* dispatch_next(uint32_t job, uint64_t offset, uint32_t max_bytes)
 {
   Ra8__Mdl__NextRequest req = RA8__MDL__NEXT_REQUEST__INIT;
-  req.protocol_version      = RA8_MDL_PROTOCOL_VERSION;
+  req.protocol_version      = k_ra8_mdl_protocol_version;
   req.job_id                = job;
   req.acknowledged_offset   = offset;
   req.max_bytes             = max_bytes;
@@ -159,7 +158,7 @@ static void test_service_multichunk_and_digest(void)
   TEST_ASSERT_EQ((int64_t)6, (int64_t)terminal->offset);
   TEST_ASSERT_EQ((int64_t)0, (int64_t)terminal->data.len);
   TEST_ASSERT_EQ((int64_t)RA8__MDL__STATE__STATE_COMPLETE, (int64_t)terminal->state);
-  TEST_ASSERT_EQ((int64_t)RA8_MDL_SHA256_BYTES, (int64_t)terminal->sha256.len);
+  TEST_ASSERT_EQ((int64_t)k_ra8_mdl_sha256_bytes, (int64_t)terminal->sha256.len);
   for (size_t i = 0U; i < terminal->sha256.len; ++i) {
     TEST_ASSERT_EQ((int64_t)0xA5, (int64_t)terminal->sha256.data[i]);
   }
@@ -175,9 +174,8 @@ static void test_service_busy_stale_and_cancel(void)
   const uint32_t job = dispatch_start();
 
   Ra8__Mdl__StartRequest second = RA8__MDL__START_REQUEST__INIT;
-  second.protocol_version       = RA8_MDL_PROTOCOL_VERSION;
+  second.protocol_version       = k_ra8_mdl_protocol_version;
   second.url                    = (char*)"https://example.test/book";
-  second.format                 = RA8__MDL__FORMAT__FORMAT_RABOOK;
   size_t request_len            = ra8__mdl__start_request__pack(&second, s_request);
   size_t response_len           = 0U;
   TEST_ASSERT_EQ(k_ra8_err_busy,
@@ -190,7 +188,7 @@ static void test_service_busy_stale_and_cancel(void)
                                           &response_len));
 
   Ra8__Mdl__NextRequest stale = RA8__MDL__NEXT_REQUEST__INIT;
-  stale.protocol_version      = RA8_MDL_PROTOCOL_VERSION;
+  stale.protocol_version      = k_ra8_mdl_protocol_version;
   stale.job_id                = job + 1U;
   stale.max_bytes             = 4U;
   request_len                 = ra8__mdl__next_request__pack(&stale, s_request);
@@ -204,7 +202,7 @@ static void test_service_busy_stale_and_cancel(void)
                                           &response_len));
 
   Ra8__Mdl__CancelRequest cancel = RA8__MDL__CANCEL_REQUEST__INIT;
-  cancel.protocol_version        = RA8_MDL_PROTOCOL_VERSION;
+  cancel.protocol_version        = k_ra8_mdl_protocol_version;
   cancel.job_id                  = job;
   request_len                    = ra8__mdl__cancel_request__pack(&cancel, s_request);
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -230,9 +228,8 @@ static void test_response_capacity_is_transactional(void)
   reset_service();
 
   Ra8__Mdl__StartRequest start = RA8__MDL__START_REQUEST__INIT;
-  start.protocol_version       = RA8_MDL_PROTOCOL_VERSION;
+  start.protocol_version       = k_ra8_mdl_protocol_version;
   start.url                    = (char*)"https://example.test/book";
-  start.format                 = RA8__MDL__FORMAT__FORMAT_RABOOK;
   size_t request_len           = ra8__mdl__start_request__pack(&start, s_request);
   size_t response_len          = 99U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
@@ -251,7 +248,7 @@ static void test_response_capacity_is_transactional(void)
   TEST_ASSERT_EQ((int64_t)1, (int64_t)s_backend.begins);
 
   Ra8__Mdl__NextRequest next = RA8__MDL__NEXT_REQUEST__INIT;
-  next.protocol_version      = RA8_MDL_PROTOCOL_VERSION;
+  next.protocol_version      = k_ra8_mdl_protocol_version;
   next.job_id                = job;
   next.acknowledged_offset   = 0U;
   next.max_bytes             = 4U;
@@ -277,7 +274,7 @@ static void test_response_capacity_is_transactional(void)
   ra8__mdl__chunk__free_unpacked(first, nullptr);
 
   Ra8__Mdl__CancelRequest cancel = RA8__MDL__CANCEL_REQUEST__INIT;
-  cancel.protocol_version        = RA8_MDL_PROTOCOL_VERSION;
+  cancel.protocol_version        = k_ra8_mdl_protocol_version;
   cancel.job_id                  = job;
   request_len                    = ra8__mdl__cancel_request__pack(&cancel, s_request);
   response_len                   = 99U;
@@ -329,6 +326,22 @@ static void test_rejects_malformed(void)
                                           s_response,
                                           sizeof(s_response),
                                           &response_len));
+  Ra8__Mdl__StartRequest insecure = RA8__MDL__START_REQUEST__INIT;
+  insecure.protocol_version       = k_ra8_mdl_protocol_version;
+  insecure.url                    = (char*)"http://example.test/book";
+  const size_t insecure_len       = ra8__mdl__start_request__pack(&insecure, s_request);
+  response_len                    = 99U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_mdl_service_dispatch(&s_service,
+                                          k_ra8_mdl_rpc_start,
+                                          s_request,
+                                          insecure_len,
+                                          s_response,
+                                          sizeof(s_response),
+                                          &response_len));
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)response_len);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_backend.begins);
+  TEST_ASSERT(!s_service.active);
   TEST_END("mdl rejects malformed");
 }
 

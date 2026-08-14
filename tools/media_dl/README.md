@@ -78,8 +78,46 @@ for the integration harness.
 
 **page mode** (debug): fetch one URL and download its `<img>` URLs.
 
+**direct artifact mode**: a bare HTTPS URL ending in `.cbz`, `.cbt`, `.epub`,
+or `.jof` is streamed to a sibling staging file, structurally validated, and
+only then atomically published under `--out`. A failed or unsupported download
+never replaces an existing artifact.
+
 The scope is deliberately small (unlike the half-baked Kotlin original): fetch,
 extract, download politely, resumably, package.
+
+### Command behavior matrix
+
+Exactly one mode is required. Repeated flags/options, multiple modes, missing
+values, and options that have no effect in the selected mode are usage errors
+(exit 2); dispatch never relies on precedence.
+
+| Mode | Required | Mode-specific optional arguments |
+| --- | --- | --- |
+| series | `--config FILE --series URL` | `--out`, `--chapters`, `--from`, `--format`, `--separate`, `--update`, `--allow-incomplete`, `--progress`, `--refetch` |
+| search | `--config FILE --search TERM` | `--pick N`; download options above are accepted only with `--pick` |
+| browse | `--config FILE --browse` | `--pick N`; download options above are accepted only with `--pick` |
+| list | `--list` | `--out` |
+| update all | `--update-all --config FILE` | `--out`, `--format`, `--separate`, `--allow-incomplete`, `--progress`, `--refetch` |
+| remove | `--remove URL\|SLUG` | `--out`; removal refuses directories without a valid tracked-state marker |
+| verify | `--verify [DIR]` | `--out DIR` is an alternate spelling; using both is an error |
+| init site | `--init-site URL` | none |
+| pack | `--pack DIR --format FMT` | none |
+| direct artifact | bare HTTPS artifact URL | `--out` plus network/security controls; structurally verified formats are `cbz`, `cbt`, `cbt.gz`, `epub`, `jof` |
+| page debug | bare `URL` | `--out`, `--max`, `--attr src\|data-src` |
+
+Network modes additionally accept the applicable identity/security controls:
+`--seed`, `--timeout`, `--contact`, `--max-bytes`, `--proxy` or `--socks5`,
+`--cookie-file`, `--polite`, `--ignore-robots`, `--allow-private`, and
+`--cross-host`. Proxy modes require `--allow-private` because libcurl's proxy
+peer callback cannot prove the proxy's target address is public.
+
+`--verify` proves tracked page hashes and structurally parses every recognized
+artifact. CBZ/EPUB ZIP members (including CRC), CBT/CBT.GZ tar headers, gzip
+CRC/size, and JOF tables are validated in process. CBR, CBT.XZ, and rabook are
+not verification targets and are never presented as verified.
+`.INCOMPLETE` names and the multi-dot CBT.GZ suffix are recognized from the
+complete filename.
 
 ## Design (why it maps cleanly to the RA8 later)
 
@@ -248,22 +286,17 @@ Sites behind a Cloudflare JS challenge will not work (no challenge solver yet).
 | `cbz` | vendored miniz ZIP writer (STORE) | nothing |
 | `cbt` | hand-written POSIX ustar tar | nothing |
 | `cbt.gz` | miniz DEFLATE + RFC-1952 gzip framing | nothing |
-| `cbt.xz` | tar, then the external `xz` CLI (CRC32 check, 1 MiB dict) | `xz` on PATH |
-| `cbr` | the external `rar` CLI | `rar` on PATH |
 | `epub` | a valid EPUB3 of the pages via vendored miniz (`ra8_epub` opens it) | nothing |
 | `jof` | per-page native JOF tile atlas via the firmware `ra8_jof` producer -- a full-width column (`tile_w == width`) the `ra8_longstrip` engine opens directly | nothing |
-| `rabook` | build a CBZ, then `tools/epub_compile/cbz_compile.py` -> the RBKC `.rabook` | `python3` + Pillow |
 
 `cbz`/`cbt`/`cbt.gz`/`epub`/`jof` are fully self-contained (in-tree/vendored
 code, no system library or external process): `epub` is hand-built with miniz,
 and `jof` reuses the firmware's own `ra8_jof_produce` host-side, so a
 `.jof` the CLI writes is byte-identical to one the RA8 produces (webtoon
-column). `cbt.xz` / `cbr` / `rabook` are optional -- they shell out to `xz` /
-`rar` / `python3` only when producing that format and report clearly if the tool
-is absent (RAR and an xz *encoder* have no small in-tree option; the RBKC
-container has no C writer, so rabook uses the desktop python emitter). The
-`.gz`/`.xz` variants wrap a whole tar and are opened on-device by
-`ra8_comic_open_wrapped`. JOF writes one `page_NNN.jof` per page into the
+column). CBR, CBT.XZ, and rabook enums remain for reader compatibility but are
+not accepted as host CLI export formats. The `.gz` variant wraps a whole tar
+and is opened on-device by `ra8_comic_open_wrapped`. JOF writes one
+`page_NNN.jof` per page into the
 chapter folder (the webtoon-native form), not a single archive file.
 
 ### Which format for a webtoon / manhwa?

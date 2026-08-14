@@ -19,8 +19,11 @@ typedef enum : uint32_t {
 
 /** @brief HTTP server-error range treated as "disallow all". */
 typedef enum : uint16_t {
-  k_http_server_err_min = 500, /**< First 5xx status. */
-  k_http_server_err_max = 599, /**< Last 5xx status.  */
+  k_http_too_many       = 429, /**< Rate limiting: do not bypass robots. */
+  k_http_client_err_min = 400, /**< First 4xx unavailable status.        */
+  k_http_client_err_max = 499, /**< Last 4xx unavailable status.         */
+  k_http_server_err_min = 500, /**< First 5xx status.                    */
+  k_http_server_err_max = 599, /**< Last 5xx status.                     */
 } mdl_session_status_t;
 
 /** @brief Product token used to match robots.txt `User-agent` groups. */
@@ -63,10 +66,69 @@ void mdl_session_init(mdl_session_t*   session,
   session->cache        = (mdl_robots_cache_t){};
 }
 
-/** @brief `"https"` when `url` is https, else `"http"`. */
+/** @brief ASCII case-insensitive comparison of one URL prefix. */
+RA8_INTERNAL static bool url_prefix(const char* url, const char* prefix)
+{
+  size_t i = 0U;
+  while (prefix[i] != '\0') {
+    char c = url[i];
+    if ((c >= 'A') && (c <= 'Z')) {
+      c = (char)(c + ('a' - 'A'));
+    }
+    if (c != prefix[i]) {
+      return false;
+    }
+    ++i;
+  }
+  return true;
+}
+
+/** @brief Return the validated lower-case HTTP(S) scheme, or NULL. */
 RA8_INTERNAL static const char* url_scheme(const char* url)
 {
-  return (strncmp(url, "https://", sizeof("https://") - 1U) == 0) ? "https" : "http";
+  if (url_prefix(url, "https://")) {
+    return "https";
+  }
+  if (url_prefix(url, "http://")) {
+    return "http";
+  }
+  return nullptr;
+}
+
+/** @brief Extract path plus query, excluding fragment, for RFC 9309 matching. */
+RA8_INTERNAL static bool robots_target(const char* url, char* out, size_t cap)
+{
+  if ((url == nullptr) || (out == nullptr) || (cap < 2U)) {
+    return false;
+  }
+  const char* sep = strstr(url, "://");
+  if (sep == nullptr) {
+    return false;
+  }
+  const char* authority = sep + 3U;
+  const char* start     = strpbrk(authority, "/?#");
+  size_t      n         = 0U;
+  if ((start == nullptr) || (*start == '#')) {
+    out[0] = '/';
+    out[1] = '\0';
+    return true;
+  }
+  if (*start == '?') {
+    out[n] = '/';
+    ++n;
+  }
+  const char* p = start;
+  while ((*p != '\0') && (*p != '#')) {
+    if ((n + 1U) >= cap) {
+      out[0] = '\0';
+      return false;
+    }
+    out[n] = *p;
+    ++n;
+    ++p;
+  }
+  out[n] = '\0';
+  return true;
 }
 
 /** @brief robots.txt fetch callback: map an mdl_net GET to a fetch result. */
@@ -81,11 +143,15 @@ session_fetch(void* ctx, const char* robots_url, char* buf, size_t cap, size_t* 
   if (mdl_net_get_buf(s->net, robots_url, &req, buf, cap, out_len, &resp) == k_ra8_ok) {
     return k_mdl_robots_fetch_ok;
   }
+  if ((resp.status >= (long)k_http_client_err_min) &&
+      (resp.status <= (long)k_http_client_err_max) && (resp.status != (long)k_http_too_many)) {
+    return k_mdl_robots_fetch_absent;
+  }
   if ((resp.status >= (long)k_http_server_err_min) &&
       (resp.status <= (long)k_http_server_err_max)) {
     return k_mdl_robots_fetch_denied;
   }
-  return k_mdl_robots_fetch_absent;
+  return k_mdl_robots_fetch_denied;
 }
 
 bool mdl_session_url_allowed(mdl_session_t* session, const char* url, uint32_t* crawl_delay_ms)
@@ -93,19 +159,30 @@ bool mdl_session_url_allowed(mdl_session_t* session, const char* url, uint32_t* 
   if (crawl_delay_ms != nullptr) {
     *crawl_delay_ms = 0U;
   }
-  if ((session == nullptr) || (url == nullptr) || !session->honor_robots) {
+  if ((session == nullptr) || (url == nullptr)) {
+    return false;
+  }
+  if (!session->honor_robots) {
     return true;
+  }
+  const char* scheme = url_scheme(url);
+  if (scheme == nullptr) {
+    (void)fprintf(stderr,
+                  "media_dl: cannot apply robots.txt to malformed/non-HTTP URL; refusing\n");
+    return false;
   }
   char host[k_mdl_robots_host_max];
   if (!mdl_url_host(url, host, sizeof(host))) {
-    return true; /* cannot identify the host -> cannot apply its rules */
+    (void)fprintf(stderr, "media_dl: cannot identify URL origin for robots.txt; refusing\n");
+    return false;
   }
   char path[k_mdl_robots_path_max];
-  if (!mdl_url_path(url, path, sizeof(path))) {
-    (void)snprintf(path, sizeof(path), "/");
+  if (!robots_target(url, path, sizeof(path))) {
+    (void)fprintf(stderr, "media_dl: URL path/query exceeds robots.txt bound; refusing\n");
+    return false;
   }
   const mdl_robots_t* rules = mdl_robots_cache_consult(&session->cache,
-                                                       url_scheme(url),
+                                                       scheme,
                                                        host,
                                                        s_ua_token,
                                                        session_fetch,
@@ -113,8 +190,11 @@ bool mdl_session_url_allowed(mdl_session_t* session, const char* url, uint32_t* 
                                                        session->scratch,
                                                        sizeof(session->scratch));
   if (rules == nullptr) {
-    (void)
-      fprintf(stderr, "media_dl: robots.txt (5xx) disallows all of %s; skipping %s\n", host, path);
+    (void)fprintf(stderr,
+                  "media_dl: robots.txt unavailable, rate-limited, or oversized for %s; "
+                  "refusing %s\n",
+                  host,
+                  path);
     return false;
   }
   if ((crawl_delay_ms != nullptr) && rules->have_crawl_delay) {

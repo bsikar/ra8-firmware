@@ -27,16 +27,16 @@
 
 /** @brief Output container selected by `--format`. */
 typedef enum : uint8_t {
-  k_mdl_fmt_loose   = 0,   /**< Leave loose page images (no archive).             */
-  k_mdl_fmt_cbz     = 1,   /**< ZIP of images (`.cbz`).                           */
-  k_mdl_fmt_cbt     = 2,   /**< tar of images (`.cbt`).                           */
-  k_mdl_fmt_cbr     = 3,   /**< RAR of images (`.cbr`); needs external `rar`.     */
-  k_mdl_fmt_cbt_xz  = 4,   /**< xz-compressed tar (`.cbt.xz`).                    */
-  k_mdl_fmt_cbt_gz  = 5,   /**< gzip-compressed tar (`.cbt.gz`).                  */
-  k_mdl_fmt_epub    = 6,   /**< EPUB of images (`.epub`).                         */
-  k_mdl_fmt_jof     = 7,   /**< Native JOF tile atlas per page (`.jof`).          */
-  k_mdl_fmt_rabook  = 8,   /**< Native RABOOK (`.rabook`); needs external python. */
-  k_mdl_fmt_invalid = 255, /**< Unrecognised `--format` string.                   */
+  k_mdl_fmt_loose   = 0,   /**< Leave loose page images (no archive).    */
+  k_mdl_fmt_cbz     = 1,   /**< ZIP of images (`.cbz`).                  */
+  k_mdl_fmt_cbt     = 2,   /**< tar of images (`.cbt`).                  */
+  k_mdl_fmt_cbr     = 3,   /**< Reserved; not accepted by the CLI.       */
+  k_mdl_fmt_cbt_xz  = 4,   /**< Reserved; not accepted by the CLI.       */
+  k_mdl_fmt_cbt_gz  = 5,   /**< gzip-compressed tar (`.cbt.gz`).         */
+  k_mdl_fmt_epub    = 6,   /**< EPUB of images (`.epub`).                */
+  k_mdl_fmt_jof     = 7,   /**< Native JOF tile atlas per page (`.jof`). */
+  k_mdl_fmt_rabook  = 8,   /**< Reserved; not accepted by the CLI.       */
+  k_mdl_fmt_invalid = 255, /**< Unrecognised `--format` string.          */
 } mdl_format_t;
 
 /**
@@ -81,7 +81,16 @@ typedef enum : uint16_t {
   k_mdl_meta_summary_max = 1024, /**< Summary description buffer max bytes.         */
   k_mdl_meta_name_max    = 128,  /**< Person name (writer/artist) buffer max bytes. */
   k_mdl_meta_path_max    = 256,  /**< Cover image path buffer max bytes.            */
+  k_mdl_meta_lang_max    = 16,   /**< BCP-47 language tag buffer max bytes.         */
+  k_mdl_meta_id_max      = 96,   /**< Stable publication identifier max bytes.      */
+  k_mdl_meta_date_max    = 32,   /**< ISO-8601 modified timestamp max bytes.        */
 } mdl_meta_size_t;
+
+/** @brief Logical page progression used by fixed-layout readers. */
+typedef enum : uint8_t {
+  k_mdl_read_ltr = 0, /**< Left-to-right page progression. */
+  k_mdl_read_rtl = 1, /**< Right-to-left page progression. */
+} mdl_reading_direction_t;
 
 /**
  * @struct mdl_export_meta_t
@@ -96,6 +105,10 @@ typedef struct {
   double chapter_number;                      /**< Chapter number (0.0 if unnumbered).      */
   char   cover_path[k_mdl_meta_path_max];     /**< Cover image filename/path.               */
   int    cover_index;                         /**< Cover page index (0-based, -1 if unset). */
+  char   language[k_mdl_meta_lang_max];       /**< BCP-47 language tag (default "en").      */
+  mdl_reading_direction_t reading_direction;  /**< Fixed-layout page progression.           */
+  char identifier[k_mdl_meta_id_max];         /**< Stable identifier; derived when empty.   */
+  char modified[k_mdl_meta_date_max];         /**< Deterministic ISO-8601 modified time.    */
 } mdl_export_meta_t;
 
 /**
@@ -129,6 +142,39 @@ ra8_err_t mdl_meta_load_dir(mdl_export_meta_t* meta, const char* dir);
  */
 ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, size_t cap);
 
+/** @brief Generate ComicInfo.xml including page count/direction semantics. */
+ra8_err_t mdl_export_build_comicinfo_pages(const mdl_export_meta_t* meta,
+                                           size_t                   page_count,
+                                           char*                    buf,
+                                           size_t                   cap);
+
+/** @brief Caller-owned bounded arena for all exporter scratch state. */
+typedef struct mdl_export_workspace {
+  uint8_t* data;       /**< Writable arena bytes.         */
+  size_t   cap;        /**< Total arena capacity.         */
+  size_t   used;       /**< Current allocation high edge. */
+  size_t   high_water; /**< Largest used value observed.  */
+} mdl_export_workspace_t;
+
+/** @brief Bind an exporter arena; no allocation occurs. */
+void mdl_export_workspace_init(mdl_export_workspace_t* ws, void* data, size_t cap);
+
+/** @brief Reserve aligned bytes from an exporter arena, or NULL when bounded capacity is exhausted. */
+void* mdl_export_workspace_take(mdl_export_workspace_t* ws, size_t bytes, size_t alignment);
+
+/** @brief Package a chapter using only caller-owned workspace. */
+ra8_err_t mdl_export_chapter_meta_ws(mdl_format_t             fmt,
+                                     const char*              chapter_dir,
+                                     const char*              out_path,
+                                     const mdl_export_meta_t* meta,
+                                     mdl_export_workspace_t*  ws);
+
+/** @brief Metadata-autoloading workspace variant. */
+ra8_err_t mdl_export_chapter_ws(mdl_format_t            fmt,
+                                const char*             chapter_dir,
+                                const char*             out_path,
+                                mdl_export_workspace_t* ws);
+
 /**
  * @brief Package `chapter_dir`'s contents into `out_path` as `fmt` with rich metadata.
  *
@@ -144,14 +190,3 @@ ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, s
  * @retval k_ra8_err_not_supported The archiver tool is not on PATH.
  * @retval k_ra8_fail             The archiver ran but failed.
  */
-ra8_err_t mdl_export_chapter_meta(mdl_format_t             fmt,
-                                  const char*              chapter_dir,
-                                  const char*              out_path,
-                                  const mdl_export_meta_t* meta);
-
-/**
- * @brief Package `chapter_dir`'s contents into `out_path` as `fmt`.
- * @details Convenience wrapper around ::mdl_export_chapter_meta that attempts to
- *          load metadata from @p chapter_dir automatically.
- */
-ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path);

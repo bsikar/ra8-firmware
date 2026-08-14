@@ -29,8 +29,10 @@
 
 #include <ctype.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <math.h>
 #include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -119,12 +121,6 @@ mdl_format_t mdl_format_from_str(const char* s)
   if (strcmp(s, "cbt") == 0) {
     return k_mdl_fmt_cbt;
   }
-  if (strcmp(s, "cbr") == 0) {
-    return k_mdl_fmt_cbr;
-  }
-  if (strcmp(s, "cbt.xz") == 0) {
-    return k_mdl_fmt_cbt_xz;
-  }
   if (strcmp(s, "cbt.gz") == 0) {
     return k_mdl_fmt_cbt_gz;
   }
@@ -133,9 +129,6 @@ mdl_format_t mdl_format_from_str(const char* s)
   }
   if (strcmp(s, "jof") == 0) {
     return k_mdl_fmt_jof;
-  }
-  if (strcmp(s, "rabook") == 0) {
-    return k_mdl_fmt_rabook;
   }
   return k_mdl_fmt_invalid;
 }
@@ -174,6 +167,37 @@ bool mdl_format_is_dir_output(mdl_format_t fmt)
   return fmt == k_mdl_fmt_jof;
 }
 
+void mdl_export_workspace_init(mdl_export_workspace_t* ws, void* data, size_t cap)
+{
+  if (ws == nullptr) {
+    return;
+  }
+  ws->data       = (uint8_t*)data;
+  ws->cap        = (data == nullptr) ? 0U : cap;
+  ws->used       = 0U;
+  ws->high_water = 0U;
+}
+
+void* mdl_export_workspace_take(mdl_export_workspace_t* ws, size_t bytes, size_t alignment)
+{
+  if ((ws == nullptr) || (ws->data == nullptr) || (bytes == 0U) || (alignment == 0U) ||
+      ((alignment & (alignment - 1U)) != 0U)) {
+    return nullptr;
+  }
+  const size_t mask = alignment - 1U;
+  if (ws->used > (SIZE_MAX - mask)) {
+    return nullptr;
+  }
+  const size_t start = (ws->used + mask) & ~mask;
+  if ((start > ws->cap) || (bytes > (ws->cap - start))) {
+    return nullptr;
+  }
+  ws->used = start + bytes;
+  if (ws->used > ws->high_water) {
+    ws->high_water = ws->used;
+  }
+  return &ws->data[start];
+}
 /** @brief The process environment block, for the `posix_spawnp` calls below. */
 RA8_INTERNAL static char* const* spawn_environ(void)
 {
@@ -296,7 +320,31 @@ list_pages(const char* dir, char names[][k_name_max], size_t cap, bool* out_trun
   }
   (void)closedir(d);
   qsort(names, n, k_name_max, name_cmp);
+
   return n;
+}
+RA8_INTERNAL static bool metadata_set_page_timestamp(mdl_export_meta_t* meta,
+                                                     const char*        dir,
+                                                     const char         names[][k_name_max],
+                                                     size_t             count)
+{
+  time_t latest = 0;
+  for (size_t i = 0U; i < count; ++i) {
+    char        path[PATH_MAX];
+    const int   n = snprintf(path, sizeof(path), "%s/%s", dir, names[i]);
+    struct stat st;
+    if ((n < 0) || ((size_t)n >= sizeof(path)) || (stat(path, &st) != 0)) {
+      return false;
+    }
+    if (st.st_mtime > latest) {
+      latest = st.st_mtime;
+    }
+  }
+  struct tm utc;
+  if ((latest <= 0) || (gmtime_r(&latest, &utc) == nullptr)) {
+    return false;
+  }
+  return strftime(meta->modified, sizeof(meta->modified), "%Y-%m-%dT%H:%M:%SZ", &utc) != 0U;
 }
 
 /** @brief Round `n` up to a whole tar block. */
@@ -367,10 +415,27 @@ RA8_INTERNAL static ra8_err_t tar_copy_file(FILE* in, FILE* out, size_t size)
   }
   return k_ra8_ok;
 }
+/** @brief Write a bounded in-memory tar member and block padding. */
+RA8_INTERNAL static ra8_err_t
+tar_write_mem(FILE* out, const char* name, const void* data, size_t len)
+{
+  uint8_t         hdr[k_tar_block];
+  const ra8_err_t hrc = tar_header(hdr, name, len);
+  if ((hrc != k_ra8_ok) || (fwrite(hdr, 1U, sizeof(hdr), out) != sizeof(hdr)) ||
+      (fwrite(data, 1U, len, out) != len)) {
+    return (hrc == k_ra8_ok) ? k_ra8_fail : hrc;
+  }
+  const uint8_t zeros[k_tar_block] = {};
+  const size_t  pad                = round_block(len) - len;
+  return ((pad == 0U) || (fwrite(zeros, 1U, pad, out) == pad)) ? k_ra8_ok : k_ra8_fail;
+}
 
 /** @brief Stream a ustar of `names` from `dir` straight into the open file `out`. */
-RA8_INTERNAL static ra8_err_t
-build_tar_to_file(const char* dir, char names[][k_name_max], size_t count, FILE* out)
+RA8_INTERNAL static ra8_err_t build_tar_to_file(const char*              dir,
+                                                char                     names[][k_name_max],
+                                                size_t                   count,
+                                                const mdl_export_meta_t* meta,
+                                                FILE*                    out)
 {
   for (size_t i = 0U; i < count; ++i) {
     char path[PATH_MAX];
@@ -402,7 +467,17 @@ build_tar_to_file(const char* dir, char names[][k_name_max], size_t count, FILE*
       return rc;
     }
   }
-  uint8_t trailer[2U * (size_t)k_tar_block] = {}; /* two trailing zero blocks */
+  uint8_t         trailer[2U * (size_t)k_tar_block] = {}; /* two trailing zero blocks */
+  char            comic_xml[4096];
+  const ra8_err_t meta_rc =
+    mdl_export_build_comicinfo_pages(meta, count, comic_xml, sizeof(comic_xml));
+  if (meta_rc != k_ra8_ok) {
+    return meta_rc;
+  }
+  const ra8_err_t xml_rc = tar_write_mem(out, "ComicInfo.xml", comic_xml, strlen(comic_xml));
+  if (xml_rc != k_ra8_ok) {
+    return xml_rc;
+  }
   return (fwrite(trailer, 1U, sizeof(trailer), out) == sizeof(trailer)) ? k_ra8_ok : k_ra8_fail;
 }
 
@@ -412,14 +487,17 @@ build_tar_to_file(const char* dir, char names[][k_name_max], size_t count, FILE*
  *          into here now writes a temp that ::export_atomic aborts, so a second
  *          remove() here would only race its own cleanup.
  */
-RA8_INTERNAL static ra8_err_t
-write_tar_file(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
+RA8_INTERNAL static ra8_err_t write_tar_file(const char*              dir,
+                                             char                     names[][k_name_max],
+                                             size_t                   count,
+                                             const char*              out_path,
+                                             const mdl_export_meta_t* meta)
 {
   FILE* f = fopen(out_path, "wb");
   if (f == nullptr) {
     return k_ra8_fail;
   }
-  ra8_err_t  rc       = build_tar_to_file(dir, names, count, f);
+  ra8_err_t  rc       = build_tar_to_file(dir, names, count, meta, f);
   const bool close_ok = (fclose(f) == 0);
   if ((rc == k_ra8_ok) && !close_ok) {
     rc = k_ra8_fail;
@@ -452,8 +530,13 @@ RA8_INTERNAL static mz_bool gz_put(const void* buf, int len, void* user)
  *          the source nor the compressed stream is ever held whole. CRC32 and
  *          ISIZE are accumulated incrementally across the chunks.
  */
-RA8_INTERNAL static ra8_err_t gzip_file(const char* in_path, const char* out_path)
+RA8_INTERNAL static ra8_err_t
+gzip_file(const char* in_path, const char* out_path, mdl_export_workspace_t* ws)
 {
+  tdefl_compressor* d = (tdefl_compressor*)mdl_export_workspace_take(ws, sizeof(*d), 16U);
+  if (d == nullptr) {
+    return k_ra8_err_invalid_size;
+  }
   FILE* in = fopen(in_path, "rb");
   if (in == nullptr) {
     return k_ra8_fail;
@@ -462,12 +545,6 @@ RA8_INTERNAL static ra8_err_t gzip_file(const char* in_path, const char* out_pat
   if (out == nullptr) {
     (void)fclose(in);
     return k_ra8_fail;
-  }
-  tdefl_compressor* d = (tdefl_compressor*)malloc(sizeof(*d));
-  if (d == nullptr) {
-    (void)fclose(in);
-    (void)fclose(out);
-    return k_ra8_err_no_mem;
   }
   const uint8_t hdr[k_gzip_hdr_len] =
     {k_gz_id1, k_gz_id2, k_gz_cm, 0U, 0U, 0U, 0U, 0U, 0U, k_gz_os};
@@ -491,7 +568,6 @@ RA8_INTERNAL static ra8_err_t gzip_file(const char* in_path, const char* out_pat
   if (ok && (tdefl_compress_buffer(d, nullptr, 0U, TDEFL_FINISH) != TDEFL_STATUS_DONE)) {
     ok = false;
   }
-  free(d);
   ok = ok && put_u32le(out, crc) && put_u32le(out, isize);
   ok = (fclose(out) == 0) && ok;
   (void)fclose(in);
@@ -511,7 +587,10 @@ void mdl_meta_init(mdl_export_meta_t* meta)
     return;
   }
   memset(meta, 0, sizeof(*meta));
-  meta->cover_index = -1;
+  meta->cover_index       = -1;
+  meta->reading_direction = k_mdl_read_ltr;
+  (void)snprintf(meta->language, sizeof(meta->language), "en");
+  meta->modified[0] = '\0';
 }
 
 RA8_INTERNAL static void str_copy_trimmed(char* dst, size_t cap, const char* src)
@@ -528,6 +607,38 @@ RA8_INTERNAL static void str_copy_trimmed(char* dst, size_t cap, const char* src
   }
   memcpy(dst, src, len);
   dst[len] = '\0';
+}
+
+RA8_INTERNAL static bool parse_double_strict(const char* text, double* out)
+{
+  errno              = 0;
+  char*        end   = nullptr;
+  const double value = strtod(text, &end);
+  while ((end != nullptr) && isspace((unsigned char)*end)) {
+    ++end;
+  }
+  if ((end == text) || (end == nullptr) || (*end != '\0') || (errno == ERANGE) ||
+      !isfinite(value) || (value < 0.0)) {
+    return false;
+  }
+  *out = value;
+  return true;
+}
+
+RA8_INTERNAL static bool parse_int_strict(const char* text, int* out)
+{
+  errno            = 0;
+  char*      end   = nullptr;
+  const long value = strtol(text, &end, 10);
+  while ((end != nullptr) && isspace((unsigned char)*end)) {
+    ++end;
+  }
+  if ((end == text) || (end == nullptr) || (*end != '\0') || (errno == ERANGE) || (value < -1L) ||
+      (value > INT_MAX)) {
+    return false;
+  }
+  *out = (int)value;
+  return true;
 }
 
 RA8_INTERNAL static void parse_xml_tag(const char* xml, const char* tag, char* out, size_t cap)
@@ -637,7 +748,21 @@ ra8_err_t mdl_meta_parse(mdl_export_meta_t* meta, const char* text)
     val[0] = '\0';
     parse_xml_tag(text, "Number", val, sizeof(val));
     if (val[0] != '\0') {
-      meta->chapter_number = strtod(val, nullptr);
+      if (!parse_double_strict(val, &meta->chapter_number)) {
+        return k_ra8_err_invalid_arg;
+      }
+    }
+    val[0] = '\0';
+    parse_xml_tag(text, "LanguageISO", val, sizeof(val));
+    if (val[0] != '\0') {
+      str_copy_trimmed(meta->language, sizeof(meta->language), val);
+    }
+    val[0] = '\0';
+    parse_xml_tag(text, "Manga", val, sizeof(val));
+    if (strcmp(val, "YesAndRightToLeft") == 0) {
+      meta->reading_direction = k_mdl_read_rtl;
+    } else if (strcmp(val, "No") == 0) {
+      meta->reading_direction = k_mdl_read_ltr;
     }
     val[0] = '\0';
     parse_xml_tag(text, "CoverImage", val, sizeof(val));
@@ -709,7 +834,9 @@ ra8_err_t mdl_meta_parse(mdl_export_meta_t* meta, const char* text)
                (strcmp(k, "num") == 0)) {
       char v[64];
       str_copy_trimmed(v, sizeof(v), val);
-      meta->chapter_number = strtod(v, nullptr);
+      if (!parse_double_strict(v, &meta->chapter_number)) {
+        return k_ra8_err_invalid_arg;
+      }
     } else if ((strcmp(k, "cover") == 0) || (strcmp(k, "cover_path") == 0) ||
                (strcmp(k, "coverpath") == 0) || (strcmp(k, "cover path") == 0) ||
                (strcmp(k, "cover_image") == 0)) {
@@ -718,7 +845,27 @@ ra8_err_t mdl_meta_parse(mdl_export_meta_t* meta, const char* text)
                (strcmp(k, "cover index") == 0) || (strcmp(k, "cover_idx") == 0)) {
       char v[64];
       str_copy_trimmed(v, sizeof(v), val);
-      meta->cover_index = atoi(v);
+      if (!parse_int_strict(v, &meta->cover_index)) {
+        return k_ra8_err_invalid_arg;
+      }
+    } else if ((strcmp(k, "language") == 0) || (strcmp(k, "language_iso") == 0) ||
+               (strcmp(k, "lang") == 0)) {
+      str_copy_trimmed(meta->language, sizeof(meta->language), val);
+    } else if ((strcmp(k, "reading_direction") == 0) || (strcmp(k, "direction") == 0) ||
+               (strcmp(k, "page_progression") == 0)) {
+      char v[16];
+      str_copy_trimmed(v, sizeof(v), val);
+      if (strcmp(v, "rtl") == 0) {
+        meta->reading_direction = k_mdl_read_rtl;
+      } else if (strcmp(v, "ltr") == 0) {
+        meta->reading_direction = k_mdl_read_ltr;
+      } else {
+        return k_ra8_err_invalid_arg;
+      }
+    } else if ((strcmp(k, "identifier") == 0) || (strcmp(k, "uuid") == 0)) {
+      str_copy_trimmed(meta->identifier, sizeof(meta->identifier), val);
+    } else if ((strcmp(k, "modified") == 0) || (strcmp(k, "date_modified") == 0)) {
+      str_copy_trimmed(meta->modified, sizeof(meta->modified), val);
     }
   }
 
@@ -755,7 +902,10 @@ ra8_err_t mdl_meta_load_dir(mdl_export_meta_t* meta, const char* dir)
   return k_ra8_ok;
 }
 
-ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, size_t cap)
+ra8_err_t mdl_export_build_comicinfo_pages(const mdl_export_meta_t* meta,
+                                           size_t                   page_count,
+                                           char*                    buf,
+                                           size_t                   cap)
 {
   if ((buf == nullptr) || (cap == 0U)) {
     return k_ra8_err_invalid_arg;
@@ -772,6 +922,7 @@ ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, s
   char esc_summary[k_mdl_meta_summary_max * 6U];
   char esc_writer[k_mdl_meta_name_max * 6U];
   char esc_artist[k_mdl_meta_name_max * 6U];
+  char esc_language[k_mdl_meta_lang_max * 6U];
 
   const char* raw_title  = (m.chapter_title[0] != '\0')
                              ? m.chapter_title
@@ -793,6 +944,9 @@ ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, s
   if (!mdl_xml_escape(m.artist, esc_artist, sizeof(esc_artist))) {
     esc_artist[0] = '\0';
   }
+  if (!mdl_xml_escape(m.language, esc_language, sizeof(esc_language))) {
+    return k_ra8_err_invalid_size;
+  }
 
   char num_buf[32];
   if (m.chapter_number > 0.0) {
@@ -805,6 +959,18 @@ ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, s
     (void)snprintf(num_buf, sizeof(num_buf), "1");
   }
 
+  char pages[160];
+  pages[0] = '\0';
+  if ((m.cover_index >= 0) && ((size_t)m.cover_index < page_count)) {
+    const int pn = snprintf(pages,
+                            sizeof(pages),
+                            "  <Pages><Page Image=\"%d\" Type=\"FrontCover\"/></Pages>\n",
+                            m.cover_index);
+    if (!snprintf_fit(pn, sizeof(pages))) {
+      return k_ra8_err_invalid_size;
+    }
+  }
+  const char* manga = (m.reading_direction == k_mdl_read_rtl) ? "YesAndRightToLeft" : "No";
   const int written = snprintf(buf,
                                cap,
                                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -816,41 +982,64 @@ ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, s
                                "  <Summary>%s</Summary>\n"
                                "  <Writer>%s</Writer>\n"
                                "  <Artist>%s</Artist>\n"
-                               "  <ComicBookInfo>media_dl</ComicBookInfo>\n"
+                               "  <PageCount>%zu</PageCount>\n"
+                               "  <LanguageISO>%s</LanguageISO>\n"
+                               "  <Manga>%s</Manga>\n"
+                               "%s"
                                "</ComicInfo>",
                                esc_title,
                                esc_series,
                                num_buf,
                                esc_summary,
                                esc_writer,
-                               esc_artist);
+                               esc_artist,
+                               page_count,
+                               esc_language,
+                               manga,
+                               pages);
 
   return snprintf_fit(written, cap) ? k_ra8_ok : k_ra8_err_invalid_size;
 }
 
-RA8_INTERNAL static void mdl_generate_uuid(char* out, size_t cap)
+ra8_err_t mdl_export_build_comicinfo(const mdl_export_meta_t* meta, char* buf, size_t cap)
 {
-  uint8_t b[16];
-  int     fd = open("/dev/urandom", O_RDONLY);
-  if (fd >= 0) {
-    ssize_t n = read(fd, b, sizeof(b));
-    (void)close(fd);
-    if (n != (ssize_t)sizeof(b)) {
-      fd = -1;
-    }
-  }
-  if (fd < 0) {
-    static uint32_t counter = 0U;
-    counter++;
-    uint64_t seed = (uint64_t)counter ^ (uint64_t)time(nullptr);
-    for (size_t i = 0U; i < sizeof(b); ++i) {
-      seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
-      b[i] = (uint8_t)(seed >> 32U);
-    }
-  }
-  b[6] = (uint8_t)((b[6] & 0x0FU) | 0x40U);
-  b[8] = (uint8_t)((b[8] & 0x3FU) | 0x80U);
+  return mdl_export_build_comicinfo_pages(meta, 0U, buf, cap);
+}
 
+RA8_INTERNAL static uint64_t uuid_hash_text(uint64_t hash, const char* text)
+{
+  while (*text != '\0') {
+    hash ^= (uint8_t)*text++;
+    hash *= UINT64_C(1099511628211);
+  }
+  hash ^= UINT8_C(0xff);
+  return hash * UINT64_C(1099511628211);
+}
+
+/** @brief Derive a stable RFC-4122-shaped identifier from canonical metadata. */
+RA8_INTERNAL static void mdl_generate_uuid(char* out, size_t cap, const mdl_export_meta_t* meta)
+{
+  mdl_export_meta_t m;
+  if (meta != nullptr) {
+    m = *meta;
+  } else {
+    mdl_meta_init(&m);
+  }
+  const char* fields[] =
+    {m.series_title, m.chapter_title, m.writer, m.artist, m.language, m.cover_path};
+  uint64_t h1 = UINT64_C(14695981039346656037);
+  uint64_t h2 = UINT64_C(7809847782465536322);
+  for (size_t i = 0U; i < (sizeof(fields) / sizeof(fields[0])); ++i) {
+    h1 = uuid_hash_text(h1, fields[i]);
+    h2 = uuid_hash_text(h2, fields[(sizeof(fields) / sizeof(fields[0])) - 1U - i]);
+  }
+  uint8_t b[16];
+  for (size_t i = 0U; i < 8U; ++i) {
+    b[i]      = (uint8_t)(h1 >> (56U - (i * 8U)));
+    b[i + 8U] = (uint8_t)(h2 >> (56U - (i * 8U)));
+  }
+  b[6] = (uint8_t)((b[6] & 0x0FU) | 0x50U);
+  b[8] = (uint8_t)((b[8] & 0x3FU) | 0x80U);
   (void)snprintf(out,
                  cap,
                  "urn:uuid:%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
@@ -892,10 +1081,16 @@ RA8_INTERNAL static ra8_err_t export_cbz(const char*              dir,
       return k_ra8_fail;
     }
   }
-  char comic_xml[4096];
-  if (mdl_export_build_comicinfo(meta, comic_xml, sizeof(comic_xml)) == k_ra8_ok) {
-    (void)
-      mz_zip_writer_add_mem(&zip, "ComicInfo.xml", comic_xml, strlen(comic_xml), MZ_NO_COMPRESSION);
+  char            comic_xml[4096];
+  const ra8_err_t meta_rc =
+    mdl_export_build_comicinfo_pages(meta, count, comic_xml, sizeof(comic_xml));
+  if ((meta_rc != k_ra8_ok) || (mz_zip_writer_add_mem(&zip,
+                                                      "ComicInfo.xml",
+                                                      comic_xml,
+                                                      strlen(comic_xml),
+                                                      MZ_NO_COMPRESSION) == MZ_FALSE)) {
+    (void)mz_zip_writer_end(&zip);
+    return (meta_rc == k_ra8_ok) ? k_ra8_fail : meta_rc;
   }
   const bool ok = (mz_zip_writer_finalize_archive(&zip) != MZ_FALSE);
   (void)mz_zip_writer_end(&zip);
@@ -956,9 +1151,11 @@ RA8_INTERNAL static ra8_err_t run_to_file(const char* const argv[], const char* 
 }
 
 /** @brief Compress `in_path` to `out_path` via the external `xz` with reader-safe flags. */
-RA8_INTERNAL static ra8_err_t xz_file(const char* in_path, const char* out_path)
+RA8_INTERNAL static ra8_err_t
+xz_file(const char* in_path, const char* out_path, mdl_export_workspace_t* ws)
 {
   /* CRC32 check + 1 MiB dict so the on-device xz scratch accepts the stream. */
+  (void)ws;
   const char* const a[] =
     {"xz", "--check=crc32", "--lzma2=preset=6,dict=1MiB", "-c", in_path, nullptr};
   return run_to_file(a, out_path);
@@ -970,12 +1167,15 @@ RA8_INTERNAL static ra8_err_t xz_file(const char* in_path, const char* out_path)
  *          `compress` reads that file and streams its own output, and the temp
  *          file is removed on every exit path.
  */
-RA8_INTERNAL static ra8_err_t export_tar_wrapped(const char* dir,
-                                                 char        names[][k_name_max],
-                                                 size_t      count,
-                                                 const char* out_path,
+RA8_INTERNAL static ra8_err_t export_tar_wrapped(const char*              dir,
+                                                 char                     names[][k_name_max],
+                                                 size_t                   count,
+                                                 const char*              out_path,
+                                                 const mdl_export_meta_t* meta,
                                                  ra8_err_t (*compress)(const char* in_path,
-                                                                       const char* out_path))
+                                                                       const char* out_path,
+                                                                       mdl_export_workspace_t* ws),
+                                                 mdl_export_workspace_t* ws)
 {
   /* A truncated suffix would name a DIFFERENT file than intended -- possibly
    * one that already exists -- so overflow aborts rather than proceeding. */
@@ -984,9 +1184,9 @@ RA8_INTERNAL static ra8_err_t export_tar_wrapped(const char* dir,
   if ((n < 0) || ((size_t)n >= sizeof(tmp))) {
     return k_ra8_fail;
   }
-  ra8_err_t rc = write_tar_file(dir, names, count, tmp);
+  ra8_err_t rc = write_tar_file(dir, names, count, tmp, meta);
   if (rc == k_ra8_ok) {
-    rc = compress(tmp, out_path);
+    rc = compress(tmp, out_path, ws);
   }
   (void)remove(tmp);
   return rc;
@@ -1013,6 +1213,7 @@ typedef enum : uint32_t {
   k_epub_entry_max      = 320U,  /**< A zip entry path ("OEBPS/images/" + name).    */
   k_epub_base_bytes     = 4096U, /**< Fixed opf/nav overhead.                       */
   k_epub_per_page_bytes = 2048U, /**< Per-page opf/nav accumulator growth.          */
+  k_epub_workspace_cap  = k_epub_base_bytes + (k_max_pages * k_epub_per_page_bytes),
 } mdl_epub_size_t;
 
 /** @brief OCF container pointing at the OPF package (fixed). */
@@ -1195,7 +1396,12 @@ RA8_INTERNAL static ra8_err_t epub_add_meta(mz_zip_archive*          zip,
                                             const char*              mani,
                                             const char*              spine,
                                             const char*              nav,
-                                            const mdl_export_meta_t* meta)
+                                            size_t                   page_count,
+                                            const mdl_export_meta_t* meta,
+                                            char*                    opf,
+                                            size_t                   opf_buf_cap,
+                                            char*                    navdoc,
+                                            size_t                   nav_buf_cap)
 {
   mdl_export_meta_t m;
   if (meta != nullptr) {
@@ -1204,8 +1410,21 @@ RA8_INTERNAL static ra8_err_t epub_add_meta(mz_zip_archive*          zip,
     mdl_meta_init(&m);
   }
 
-  char uuid_str[64];
-  mdl_generate_uuid(uuid_str, sizeof(uuid_str));
+  char raw_id[k_mdl_meta_id_max];
+  if (m.identifier[0] != '\0') {
+    (void)snprintf(raw_id, sizeof(raw_id), "%s", m.identifier);
+  } else {
+    mdl_generate_uuid(raw_id, sizeof(raw_id), &m);
+  }
+  char uuid_str[k_mdl_meta_id_max * 6U];
+  char esc_lang[k_mdl_meta_lang_max * 6U];
+  char esc_modified[k_mdl_meta_date_max * 6U];
+  if (!mdl_xml_escape(raw_id, uuid_str, sizeof(uuid_str)) ||
+      !mdl_xml_escape(m.language, esc_lang, sizeof(esc_lang)) ||
+      !mdl_xml_escape(m.modified, esc_modified, sizeof(esc_modified))) {
+    return k_ra8_err_invalid_size;
+  }
+  const char* progression = (m.reading_direction == k_mdl_read_rtl) ? "rtl" : "ltr";
 
   char        esc_title[k_mdl_meta_title_max * 6U];
   const char* raw_title = (m.chapter_title[0] != '\0')
@@ -1243,48 +1462,51 @@ RA8_INTERNAL static ra8_err_t epub_add_meta(mz_zip_archive*          zip,
     (void)snprintf(desc, sizeof(desc), "<dc:description>%s</dc:description>", esc_s);
   }
 
-  const size_t opf_cap =
+  const size_t opf_need =
     strlen(mani) + strlen(spine) + strlen(creators) + strlen(desc) + (size_t)k_epub_base_bytes;
-  const size_t nav_cap = strlen(nav) + (size_t)k_epub_base_bytes;
-  char*        opf     = (char*)malloc(opf_cap);
-  char*        navdoc  = (char*)malloc(nav_cap);
-  if ((opf == nullptr) || (navdoc == nullptr)) {
-    free(opf);
-    free(navdoc);
-    return k_ra8_err_no_mem;
+  const size_t nav_need = strlen(nav) + (size_t)k_epub_base_bytes;
+  if ((opf_need > opf_buf_cap) || (nav_need > nav_buf_cap)) {
+    return k_ra8_err_invalid_size;
   }
-  (void)snprintf(opf,
-                 opf_cap,
-                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                 "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
-                 "unique-identifier=\"bookid\"><metadata "
-                 "xmlns:dc=\"http://purl.org/dc/elements/1.1/\" "
-                 "xmlns:opf=\"http://www.idpf.org/2007/opf\">"
-                 "<dc:identifier id=\"bookid\">%s</dc:identifier>"
-                 "<dc:title>%s</dc:title>%s%s<dc:language>en</dc:language>"
-                 "<meta property=\"dcterms:modified\">2026-01-01T00:00:00Z</meta>"
-                 "</metadata><manifest><item id=\"nav\" href=\"nav.xhtml\" "
-                 "media-type=\"application/xhtml+xml\" properties=\"nav\"/>%s</manifest>"
-                 "<spine>%s</spine></package>",
-                 uuid_str,
-                 esc_title,
-                 creators,
-                 desc,
-                 mani,
-                 spine);
-  (void)snprintf(navdoc,
-                 nav_cap,
-                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                 "<html xmlns=\"http://www.w3.org/1999/xhtml\" "
-                 "xmlns:epub=\"http://www.idpf.org/2007/ops\"><head><title>Contents"
-                 "</title></head><body><nav epub:type=\"toc\"><ol>%s</ol></nav>"
-                 "</body></html>",
-                 nav);
-  const bool ok = epub_add_str(zip, "OEBPS/content.opf", opf) &&
-                  epub_add_str(zip, "OEBPS/nav.xhtml", navdoc) &&
-                  (mz_zip_writer_finalize_archive(zip) != MZ_FALSE);
-  free(opf);
-  free(navdoc);
+  const size_t opf_cap = opf_need;
+  const size_t nav_cap = nav_need;
+  const int    opf_n =
+    snprintf(opf,
+             opf_cap,
+             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
+             "unique-identifier=\"bookid\"><metadata "
+             "xmlns:dc=\"http://purl.org/dc/elements/1.1/\" "
+             "xmlns:opf=\"http://www.idpf.org/2007/opf\">"
+             "<dc:identifier id=\"bookid\">%s</dc:identifier>"
+             "<dc:title>%s</dc:title>%s%s<dc:language>%s</dc:language>"
+             "<meta property=\"dcterms:modified\">%s</meta>"
+             "<meta property=\"schema:numberOfPages\">%zu</meta>"
+             "</metadata><manifest><item id=\"nav\" href=\"nav.xhtml\" "
+             "media-type=\"application/xhtml+xml\" properties=\"nav\"/>%s</manifest>"
+             "<spine page-progression-direction=\"%s\">%s</spine></package>",
+             uuid_str,
+             esc_title,
+             creators,
+             desc,
+             esc_lang,
+             esc_modified,
+             page_count,
+             mani,
+             progression,
+             spine);
+  const int  nav_n = snprintf(navdoc,
+                              nav_cap,
+                              "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                              "<html xmlns=\"http://www.w3.org/1999/xhtml\" "
+                              "xmlns:epub=\"http://www.idpf.org/2007/ops\"><head><title>Contents"
+                              "</title></head><body><nav epub:type=\"toc\"><ol>%s</ol></nav>"
+                              "</body></html>",
+                              nav);
+  const bool ok    = snprintf_fit(opf_n, opf_cap) && snprintf_fit(nav_n, nav_cap) &&
+                     epub_add_str(zip, "OEBPS/content.opf", opf) &&
+                     epub_add_str(zip, "OEBPS/nav.xhtml", navdoc) &&
+                     (mz_zip_writer_finalize_archive(zip) != MZ_FALSE);
   return ok ? k_ra8_ok : k_ra8_fail;
 }
 
@@ -1293,18 +1515,22 @@ RA8_INTERNAL static ra8_err_t export_epub(const char*              dir,
                                           char                     names[][k_name_max],
                                           size_t                   count,
                                           const char*              out_path,
-                                          const mdl_export_meta_t* meta)
+                                          const mdl_export_meta_t* meta,
+                                          mdl_export_workspace_t*  ws)
 {
-  const size_t cap   = (size_t)k_epub_base_bytes + (count * (size_t)k_epub_per_page_bytes);
-  char*        mani  = (char*)calloc(1U, cap);
-  char*        spine = (char*)calloc(1U, cap);
-  char*        nav   = (char*)calloc(1U, cap);
-  if ((mani == nullptr) || (spine == nullptr) || (nav == nullptr)) {
-    free(mani);
-    free(spine);
-    free(nav);
-    return k_ra8_err_no_mem;
+  const size_t cap    = (size_t)k_epub_base_bytes + (count * (size_t)k_epub_per_page_bytes);
+  char* const  mani   = (char*)mdl_export_workspace_take(ws, cap, 1U);
+  char* const  spine  = (char*)mdl_export_workspace_take(ws, cap, 1U);
+  char* const  nav    = (char*)mdl_export_workspace_take(ws, cap, 1U);
+  char* const  opf    = (char*)mdl_export_workspace_take(ws, cap, 1U);
+  char* const  navdoc = (char*)mdl_export_workspace_take(ws, cap, 1U);
+  if ((mani == nullptr) || (spine == nullptr) || (nav == nullptr) || (opf == nullptr) ||
+      (navdoc == nullptr)) {
+    return k_ra8_err_invalid_size;
   }
+  mani[0]  = '\0';
+  spine[0] = '\0';
+  nav[0]   = '\0';
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   const bool zip_open = (mz_zip_writer_init_file(&zip, out_path, 0) != MZ_FALSE);
@@ -1317,14 +1543,11 @@ RA8_INTERNAL static ra8_err_t export_epub(const char*              dir,
     rc = epub_add_page(&zip, dir, names[i], i, mani, spine, nav, cap, meta);
   }
   if (rc == k_ra8_ok) {
-    rc = epub_add_meta(&zip, mani, spine, nav, meta);
+    rc = epub_add_meta(&zip, mani, spine, nav, count, meta, opf, cap, navdoc, cap);
   }
   if (zip_open) {
     (void)mz_zip_writer_end(&zip);
   }
-  free(mani);
-  free(spine);
-  free(nav);
   /* A partial EPUB is ::export_atomic's temp to discard, not ours. */
   return rc;
 }
@@ -1390,19 +1613,20 @@ RA8_INTERNAL static ra8_err_t export_dispatch(mdl_format_t             fmt,
                                               char                     names[][k_name_max],
                                               size_t                   count,
                                               const char*              out_path,
-                                              const mdl_export_meta_t* meta)
+                                              const mdl_export_meta_t* meta,
+                                              mdl_export_workspace_t*  ws)
 {
   switch (fmt) {
     case k_mdl_fmt_cbz:
       return export_cbz(dir, names, count, out_path, meta);
     case k_mdl_fmt_cbt:
-      return write_tar_file(dir, names, count, out_path);
+      return write_tar_file(dir, names, count, out_path, meta);
     case k_mdl_fmt_cbt_gz:
-      return export_tar_wrapped(dir, names, count, out_path, gzip_file);
+      return export_tar_wrapped(dir, names, count, out_path, meta, gzip_file, ws);
     case k_mdl_fmt_cbt_xz:
-      return export_tar_wrapped(dir, names, count, out_path, xz_file);
+      return export_tar_wrapped(dir, names, count, out_path, meta, xz_file, ws);
     case k_mdl_fmt_epub:
-      return export_epub(dir, names, count, out_path, meta);
+      return export_epub(dir, names, count, out_path, meta, ws);
     case k_mdl_fmt_rabook:
       return export_rabook(dir, names, count, out_path, meta);
     case k_mdl_fmt_cbr:
@@ -1430,13 +1654,14 @@ RA8_INTERNAL static ra8_err_t export_atomic(mdl_format_t             fmt,
                                             char                     names[][k_name_max],
                                             size_t                   count,
                                             const char*              out_path,
-                                            const mdl_export_meta_t* meta)
+                                            const mdl_export_meta_t* meta,
+                                            mdl_export_workspace_t*  ws)
 {
   char tmp_path[PATH_MAX];
   if (!mdl_atomic_tmp_path(out_path, tmp_path, sizeof(tmp_path))) {
     return k_ra8_fail;
   }
-  const ra8_err_t rc = export_dispatch(fmt, dir, names, count, tmp_path, meta);
+  const ra8_err_t rc = export_dispatch(fmt, dir, names, count, tmp_path, meta, ws);
   if (rc != k_ra8_ok) {
     mdl_atomic_abort(tmp_path);
     return rc;
@@ -1444,23 +1669,31 @@ RA8_INTERNAL static ra8_err_t export_atomic(mdl_format_t             fmt,
   return mdl_atomic_commit(tmp_path, out_path) ? k_ra8_ok : k_ra8_fail;
 }
 
-ra8_err_t mdl_export_chapter_meta(mdl_format_t             fmt,
-                                  const char*              chapter_dir,
-                                  const char*              out_path,
-                                  const mdl_export_meta_t* meta)
+ra8_err_t mdl_export_chapter_meta_ws(mdl_format_t             fmt,
+                                     const char*              chapter_dir,
+                                     const char*              out_path,
+                                     const mdl_export_meta_t* meta,
+                                     mdl_export_workspace_t*  ws)
 {
   if ((chapter_dir == nullptr) || (out_path == nullptr) || (fmt == k_mdl_fmt_loose) ||
-      (fmt == k_mdl_fmt_invalid)) {
+      (fmt == k_mdl_fmt_invalid) || (ws == nullptr) || (ws->data == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
-  if (fmt == k_mdl_fmt_cbr) {
-    /* `rar` archives the directory itself, so it needs no page table. */
-    return export_atomic(fmt, chapter_dir, nullptr, 0U, out_path, meta);
+  ws->used = 0U;
+  if ((fmt == k_mdl_fmt_cbr) || (fmt == k_mdl_fmt_cbt_xz) || (fmt == k_mdl_fmt_rabook)) {
+    return k_ra8_err_not_supported;
   }
 
-  static char  s_names[k_max_pages][k_name_max];
+  ws->high_water            = 0U;
+  char (*names)[k_name_max] = mdl_export_workspace_take(ws,
+                                                        (size_t)k_max_pages * (size_t)k_name_max,
+                                                        _Alignof(char[k_name_max]));
+  if (names == nullptr) {
+    return k_ra8_err_invalid_size;
+  }
+
   bool         truncated = false;
-  const size_t count     = list_pages(chapter_dir, s_names, (size_t)k_max_pages, &truncated);
+  const size_t count     = list_pages(chapter_dir, names, (size_t)k_max_pages, &truncated);
   if (truncated) {
     /* More page images than the fixed table holds: fail rather than silently
      * package a short chapter the reader would discover missing pages in. */
@@ -1469,16 +1702,30 @@ ra8_err_t mdl_export_chapter_meta(mdl_format_t             fmt,
   if (count == 0U) {
     return k_ra8_err_empty;
   }
+  mdl_export_meta_t resolved;
+  if (meta != nullptr) {
+    resolved = *meta;
+  } else {
+    mdl_meta_init(&resolved);
+  }
+  if ((resolved.modified[0] == '\0') &&
+      !metadata_set_page_timestamp(&resolved, chapter_dir, names, count)) {
+    return k_ra8_fail;
+  }
+
   if (fmt == k_mdl_fmt_jof) {
     /* JOF writes one `.jof` sibling per page into chapter_dir; out_path names
      * no single container (see mdl_format_is_dir_output), so there is no single
      * file to rename into place -- mdl_export_jof commits each page itself. */
-    return mdl_export_jof(chapter_dir, s_names, count);
+    return mdl_export_jof(chapter_dir, names, count, ws);
   }
-  return export_atomic(fmt, chapter_dir, s_names, count, out_path, meta);
+  return export_atomic(fmt, chapter_dir, names, count, out_path, &resolved, ws);
 }
 
-ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path)
+ra8_err_t mdl_export_chapter_ws(mdl_format_t            fmt,
+                                const char*             chapter_dir,
+                                const char*             out_path,
+                                mdl_export_workspace_t* ws)
 {
   mdl_export_meta_t meta;
   if (chapter_dir != nullptr) {
@@ -1486,5 +1733,5 @@ ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const ch
   } else {
     mdl_meta_init(&meta);
   }
-  return mdl_export_chapter_meta(fmt, chapter_dir, out_path, &meta);
+  return mdl_export_chapter_meta_ws(fmt, chapter_dir, out_path, &meta, ws);
 }

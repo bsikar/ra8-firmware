@@ -73,6 +73,7 @@ RA8_INTERNAL static bool apply_kv_str(mdl_site_t* s, const char* key, const char
     {"kind", s->kind, sizeof(s->kind)},
     {"contact", s->contact, sizeof(s->contact)},
     {"chapter_url_contains", s->chapter_url_contains, sizeof(s->chapter_url_contains)},
+    {"chapter_url_prefix", s->chapter_url_prefix, sizeof(s->chapter_url_prefix)},
     {"page_img_attr", s->page_img_attr, sizeof(s->page_img_attr)},
     {"page_img_url_contains", s->page_img_url_contains, sizeof(s->page_img_url_contains)},
     {"search_url", s->search_url, sizeof(s->search_url)},

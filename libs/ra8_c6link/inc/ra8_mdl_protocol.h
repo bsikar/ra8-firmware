@@ -1,6 +1,12 @@
 /**
  * @file ra8_mdl_protocol.h
- * @brief Allocation-free constants shared by the RA8 and C6 media endpoints.
+ * @brief Allocation-free constants shared by the RA8 and C6 media endpoints
+ *
+ * @par Tag
+ * [Ring 4 / PAL] {World: NS}
+ *
+ * @details Defines only raw HTTPS-body transfer semantics. Site scraping,
+ * conversion, and export formats are intentionally outside this wire contract.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -8,30 +14,30 @@
 
 #include <stdint.h>
 
-#define RA8_MDL_URL_MAX          (512U)
-#define RA8_MDL_CHUNK_DATA_MAX   (1024U)
-#define RA8_MDL_SHA256_BYTES     (32U)
-#define RA8_MDL_PROTOCOL_VERSION (1U)
+/** @brief Bounded dimensions shared by both protocol endpoints. */
+typedef enum : uint16_t {
+  k_ra8_mdl_url_max        = 512U,  /**< Maximum URL buffer size, including NUL. */
+  k_ra8_mdl_chunk_data_max = 1024U, /**< Maximum raw body bytes in one chunk.    */
+  k_ra8_mdl_sha256_bytes   = 32U,   /**< SHA-256 digest size in bytes.           */
+} ra8_mdl_dimension_t;
+
+/** @brief Version included in every media RPC request and response. */
+typedef enum : uint32_t {
+  k_ra8_mdl_protocol_version = 1U, /**< Initial raw-byte protocol version. */
+} ra8_mdl_protocol_version_t;
 
 /** @brief Stable CustomRpc operation IDs (`MD` + version + operation). */
 typedef enum : uint32_t {
-  k_ra8_mdl_rpc_start  = 0x4D440101U,
-  k_ra8_mdl_rpc_next   = 0x4D440102U,
-  k_ra8_mdl_rpc_cancel = 0x4D440103U,
+  k_ra8_mdl_rpc_start  = 0x4D440101U, /**< Start one raw HTTPS-body job.   */
+  k_ra8_mdl_rpc_next   = 0x4D440102U, /**< Pull one ordered bounded chunk. */
+  k_ra8_mdl_rpc_cancel = 0x4D440103U, /**< Cancel one active job.          */
 } ra8_mdl_rpc_id_t;
-
-/** @brief Output format requested from the remote downloader. */
-typedef enum : uint8_t {
-  k_ra8_mdl_format_rabook = 1U,
-  k_ra8_mdl_format_cbz    = 2U,
-  k_ra8_mdl_format_epub   = 3U,
-} ra8_mdl_format_t;
 
 /** @brief Remote job state. */
 typedef enum : uint8_t {
-  k_ra8_mdl_state_accepted    = 1U,
-  k_ra8_mdl_state_downloading = 2U,
-  k_ra8_mdl_state_complete    = 3U,
-  k_ra8_mdl_state_cancelled   = 4U,
-  k_ra8_mdl_state_failed      = 5U,
+  k_ra8_mdl_state_accepted    = 1U, /**< Job was accepted but has no body bytes yet. */
+  k_ra8_mdl_state_downloading = 2U, /**< Response carries non-empty ordered bytes.   */
+  k_ra8_mdl_state_complete    = 3U, /**< Response carries terminal size and digest.  */
+  k_ra8_mdl_state_cancelled   = 4U, /**< Job ended through explicit cancellation.    */
+  k_ra8_mdl_state_failed      = 5U, /**< Job ended with a canonical error status.    */
 } ra8_mdl_state_t;

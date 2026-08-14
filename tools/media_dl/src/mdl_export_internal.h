@@ -34,6 +34,7 @@
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 
+typedef struct mdl_export_workspace mdl_export_workspace_t;
 /**
  * @enum mdl_export_limits_t
  * @brief Fixed bounds on the per-chapter page list.
@@ -99,4 +100,7 @@ typedef enum : uint16_t {
  * @see mdl_export_chapter()
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t mdl_export_jof(const char* dir, const char names[][k_name_max], size_t count);
+RA8_PRIV ra8_err_t mdl_export_jof(const char*             dir,
+                                  const char              names[][k_name_max],
+                                  size_t                  count,
+                                  mdl_export_workspace_t* ws);

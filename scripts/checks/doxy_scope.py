@@ -75,6 +75,16 @@ EXCLUDE_PARTS = {"third_party", "generated", "build", ".git"}
 MEMBER_SCAN_DIRS = ["libs", "src", "port", "examples", "tools", "tests"]
 MEMBER_EXCLUDE_PARTS = {"third_party", "ra8_fonts", "build", "build-cov", "_deps", ".git"}
 
+# Exact files emitted by protoc-c from the reviewed schema. Generated protocol
+# code is compiled and tested, but requiring hand-authored Doxygen on every
+# generated declaration would be both unstable and overwritten on regeneration.
+# Keep this as an exact allow-list: neighboring handwritten RPC code remains in
+# both audits.
+GENERATED_PROTOCOL_FILES = {
+    "libs/ra8_c6link/inc/ra8_media_download.pb-c.h",
+    "libs/ra8_c6link/src/ra8_media_download.pb-c.c",
+}
+
 # A tree this size cannot legitimately collapse to a handful of files. If
 # either walk returns less than its floor, something broke (an unreachable
 # repo root, a renamed SCAN_DIRS entry) and reporting zero gaps would be a
@@ -86,6 +96,15 @@ MEMBER_FILE_FLOOR = 1700
 
 # Minimum path depth to form a two-segment module label (e.g. "libs/ra8_hal").
 MODULE_PATH_MIN_DEPTH = 2
+
+
+def _is_generated_protocol_file(path: Path) -> bool:
+    """Return whether ``path`` is one exact reviewed protoc-c output."""
+    try:
+        relative = path.resolve().relative_to(repo_root().resolve()).as_posix()
+    except ValueError:
+        return False
+    return relative in GENERATED_PROTOCOL_FILES
 
 
 def iter_function_files() -> Iterator[Path]:
@@ -109,6 +128,8 @@ def iter_function_files() -> Iterator[Path]:
                 p = Path(dirpath) / fn
                 if any(part in EXCLUDE_PARTS for part in p.relative_to(repo_root()).parts):
                     continue
+                if _is_generated_protocol_file(p):
+                    continue
                 yield p
 
 
@@ -121,10 +142,10 @@ def _iter_member_files(explicit: list[str]) -> Iterator[Path]:
     if explicit:
         for raw_path in explicit:
             p = Path(raw_path)
-            if p.is_file():  # relative to CWD or absolute
-                yield p
-            elif (repo_root() / raw_path).is_file():  # relative to the repo root
-                yield repo_root() / raw_path
+            # Accept CWD/absolute paths first, then resolve repo-relative input.
+            candidate = p if p.is_file() else repo_root() / raw_path
+            if candidate.is_file() and not _is_generated_protocol_file(candidate):
+                yield candidate
         return
     for top in MEMBER_SCAN_DIRS:
         root = repo_root() / top
@@ -137,6 +158,8 @@ def _iter_member_files(explicit: list[str]) -> Iterator[Path]:
                     continue
                 p = Path(dirpath) / fn
                 if any(part in MEMBER_EXCLUDE_PARTS for part in p.relative_to(repo_root()).parts):
+                    continue
+                if _is_generated_protocol_file(p):
                     continue
                 yield p
 

@@ -17,11 +17,32 @@
  */
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include "mdl_net.h"
 #include "ra8_attributes.h"
 
+/** @brief Bytes reserved by the caller for one libcurl backend context. */
+typedef enum : size_t {
+  k_mdl_net_curl_storage_bytes = 1024U,
+} mdl_net_curl_storage_size_t;
+
 /**
- * @brief Create the libcurl-backed host network interface.
+ * @struct mdl_net_curl_storage
+ * @brief Opaque, aligned, caller-owned storage for one host network backend
+ * @details The concrete layout remains private to `mdl_net_curl.c`. Keeping
+ * the bytes in the composition root removes all first-party heap allocation
+ * from backend construction while preserving a replaceable network seam.
+ * @invariant `bytes` is aligned for every private backend member.
+ * @since 0.1.0
+ */
+typedef struct mdl_net_curl_storage {
+  alignas(max_align_t) uint8_t bytes[k_mdl_net_curl_storage_bytes]; /**< Private context bytes. */
+} mdl_net_curl_storage_t;
+
+/**
+ * @brief Initialise a libcurl-backed host network interface in caller storage.
  *
  * @details
  * The returned handle wires the libcurl backend's method table to a private
@@ -32,21 +53,25 @@
  * Injection seam: production wires this factory; tests wire a fake with the
  * same ::mdl_net_iface_t shape.
  *
- * @param[in] policy Session security policy, or NULL for the safe defaults
- *                   (no private hosts, same-host redirects only, no size cap).
+ * @param[out] net Caller-owned interface populated on success.
+ * @param[in,out] storage Caller-owned private storage retained until destroy.
+ * @param[in] policy Session security policy, or NULL for the safe defaults.
  *
- * @return Owned handle, or NULL on allocation/init failure, or if any
- *         security-relevant libcurl option could not be applied.
- * @retval non-NULL A ready interface; release it with ::mdl_net_destroy.
- * @retval NULL     Global init, allocation, or option-hardening failed.
+ * @return Canonical initialisation status.
+ * @retval k_ra8_ok A ready interface; release resources with ::mdl_net_destroy.
+ * @retval k_ra8_err_invalid_arg A required caller-owned object is null.
+ * @retval k_ra8_fail Global/easy init or option hardening failed.
  *
  * @pre libcurl is available at link time.
  * @pre `policy`, when non-NULL, describes the intended escape hatches.
- * @post On success the returned handle owns a hardened libcurl easy handle.
- * @post On failure no resources are leaked.
+ * @post On success @p net owns a hardened libcurl easy handle while caller
+ * storage remains valid.
+ * @post On failure @p net and @p storage contain only zero bytes.
  *
  * @note Not thread-safe: one interface per worker.
  * @since 0.1.0
  */
 RA8_DI_SLOT("net_iface")
-mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy);
+[[nodiscard]] ra8_err_t mdl_net_curl_init(mdl_net_iface_t*        net,
+                                          mdl_net_curl_storage_t* storage,
+                                          const mdl_net_policy_t* policy);

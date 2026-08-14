@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Enforce NASA Power-of-10 Rule 3 -- no dynamic memory after init.
 
-Applies to RA8D2 firmware code.
+Applies to RA8D2 firmware code and first-party ESP32-C6 port code.
 
 Flags two classes of violation:
 
@@ -29,12 +29,24 @@ Flags two classes of violation:
                       mz_zip_reader_extract_file_to_heap.
                       Use the *_to_mem variants with a caller buffer.
 
+      - ESP-IDF HTTP: esp_http_client_init, esp_http_client_set_url,
+                      esp_http_client_open, esp_http_client_close,
+                      esp_http_client_cleanup. These allocate or release
+                      transitive HTTP/TLS state and therefore require an exact,
+                      reasoned exception until a fixed-memory backend replaces
+                      the adapter.
+
+      - Host downloader SOUP boundaries: miniz writer lifecycle, libcurl easy
+        lifecycle/request calls, and POSIX spawn setup/execution. These APIs
+        may allocate transitively. They are reported for review, but do not
+        fail the firmware Rule 3 gate because they never run on a target.
+
 Scope:
 
-  Only firmware code under libs/ra8_*/, src/, and examples/<app>/ where
-  <app> has main.c + CMakeLists.txt. Vendored libs (libs/third_party/...),
-  build outputs, and host-side tests/
-  are exempt -- those are allowed to allocate.
+  Firmware code under libs/ra8_*/, src/, port/esp32_c6/, and examples/<app>/
+  where <app> has main.c + CMakeLists.txt is blocking. tools/media_dl/inc and
+  tools/media_dl/src are a separate, non-blocking SOUP-boundary report. Build
+  outputs, vendored code, and host-side tests/ are exempt.
 
 Inline suppression:
 
@@ -83,7 +95,7 @@ DIRECT_ALLOCATORS = (
     "vasprintf",
 )
 
-TRANSITIVE_ALLOCATORS = (
+FIRMWARE_TRANSITIVE_ALLOCATORS = (
     "stbtt_GetCodepointBitmap",
     "stbtt_GetCodepointBitmapSubpixel",
     "stbtt_GetGlyphBitmap",
@@ -103,8 +115,33 @@ TRANSITIVE_ALLOCATORS = (
     "stbi_image_free",
     "mz_zip_reader_extract_to_heap",
     "mz_zip_reader_extract_file_to_heap",
+    "esp_http_client_init",
+    "esp_http_client_set_url",
+    "esp_http_client_open",
+    "esp_http_client_close",
+    "esp_http_client_cleanup",
 )
 
+HOST_SOUP_ALLOCATORS = (
+    "mz_zip_writer_init_file",
+    "mz_zip_writer_add_file",
+    "mz_zip_writer_add_mem",
+    "mz_zip_writer_finalize_archive",
+    "mz_zip_writer_end",
+    "curl_global_init",
+    "curl_easy_init",
+    "curl_easy_setopt",
+    "curl_easy_perform",
+    "curl_easy_cleanup",
+    "curl_slist_append",
+    "curl_slist_free_all",
+    "posix_spawn_file_actions_init",
+    "posix_spawnattr_init",
+    "posix_spawn",
+    "posix_spawnp",
+)
+
+TRANSITIVE_ALLOCATORS = FIRMWARE_TRANSITIVE_ALLOCATORS + HOST_SOUP_ALLOCATORS
 ALL_NAMES = DIRECT_ALLOCATORS + TRANSITIVE_ALLOCATORS
 
 # Match "<name>(" at a word boundary so e.g. mz_free(...) does not match
@@ -123,7 +160,7 @@ LINE_COMMENT_RE = re.compile(r"//[^\n]*")
 MIN_ARGC_WITH_ARG = 2
 
 
-def _scan_dirs() -> list[pathlib.Path]:
+def _firmware_scan_dirs() -> list[pathlib.Path]:
     """The firmware directories this rule governs.
 
     Deliberately narrower than the whole tree: host tools and tests may
@@ -140,6 +177,9 @@ def _scan_dirs() -> list[pathlib.Path]:
     src = REPO_ROOT / "src"
     if src.is_dir():
         out.append(src)
+    c6_port = REPO_ROOT / "port" / "esp32_c6"
+    if c6_port.is_dir():
+        out.append(c6_port)
     examples = REPO_ROOT / "examples"
     if examples.is_dir():
         for tier in sorted(examples.iterdir()):
@@ -153,23 +193,46 @@ def _scan_dirs() -> list[pathlib.Path]:
     return out
 
 
-SCAN_DIRS = _scan_dirs()
-SCAN_DIR_RELS = [d.relative_to(REPO_ROOT) for d in SCAN_DIRS]
+def _host_report_dirs() -> list[pathlib.Path]:
+    """Host-only trees whose allocator-bearing SOUP calls remain visible."""
+    media_dl = REPO_ROOT / "tools" / "media_dl"
+    return [candidate for subtree in ("inc", "src") if (candidate := media_dl / subtree).is_dir()]
 
 
-def _is_in_scope(path: pathlib.Path) -> bool:
-    """True if `path` is firmware code we should lint."""
+FIRMWARE_SCAN_DIRS = _firmware_scan_dirs()
+HOST_REPORT_DIRS = _host_report_dirs()
+FIRMWARE_SCAN_RELS = [directory.relative_to(REPO_ROOT) for directory in FIRMWARE_SCAN_DIRS]
+HOST_REPORT_RELS = [directory.relative_to(REPO_ROOT) for directory in HOST_REPORT_DIRS]
+
+
+def _scope(path: pathlib.Path) -> str | None:
+    """Return ``firmware`` or ``host`` for a source file in either scope."""
     if path.suffix not in SOURCE_SUFFIXES:
-        return False
+        return None
     try:
         rel = path.resolve().relative_to(REPO_ROOT)
     except ValueError:
-        return False
+        return None
     excluded_parts = {"third_party", "build", "_deps"}
     if any(part in excluded_parts for part in rel.parts):
-        return False
+        return None
     rel_str = str(rel)
-    return any(rel_str == str(d) or rel_str.startswith(str(d) + "/") for d in SCAN_DIR_RELS)
+    if any(
+        rel_str == str(directory) or rel_str.startswith(str(directory) + "/")
+        for directory in FIRMWARE_SCAN_RELS
+    ):
+        return "firmware"
+    if any(
+        rel_str == str(directory) or rel_str.startswith(str(directory) + "/")
+        for directory in HOST_REPORT_RELS
+    ):
+        return "host"
+    return None
+
+
+def _is_in_scope(path: pathlib.Path) -> bool:
+    """Return whether ``path`` belongs to a blocking or report-only scope."""
+    return _scope(path) is not None
 
 
 def _strip_comments(text: str) -> str:
@@ -217,8 +280,11 @@ def check(path: pathlib.Path) -> list[str]:
 
 
 def collect_repo_paths() -> list[pathlib.Path]:
-    """Every in-scope firmware source file, for the whole-tree sweep."""
-    return [p for d in SCAN_DIRS for p in d.rglob("*") if _is_in_scope(p)]
+    """Every source file in the blocking and report-only scopes."""
+    directories = FIRMWARE_SCAN_DIRS + HOST_REPORT_DIRS
+    return [
+        path for directory in directories for path in directory.rglob("*") if _is_in_scope(path)
+    ]
 
 
 def main() -> int:
@@ -242,12 +308,26 @@ def main() -> int:
         return 2
 
     failures: list[str] = []
+    reports: list[str] = []
     for path in paths:
         if not path.is_file():
             continue
         if not _is_in_scope(path):
             continue
-        failures.extend(check(path))
+        problems = check(path)
+        if _scope(path) == "firmware":
+            failures.extend(problems)
+        else:
+            reports.extend(problems)
+
+    if reports:
+        print(
+            "check_no_dynamic_alloc.py: host media_dl SOUP allocation report "
+            "(non-blocking; not target firmware)."
+        )
+        for line in reports:
+            print(line)
+        print(f"\n{len(reports)} host SOUP call site(s) reported; firmware gate unaffected.")
 
     if failures:
         print(

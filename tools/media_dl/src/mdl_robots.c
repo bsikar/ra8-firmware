@@ -6,6 +6,7 @@
  */
 #include "mdl_robots.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,7 +74,8 @@ RA8_INTERNAL static char* trim_ws(char* s)
 }
 
 /** @brief Read one line into `buf`; strip its `#` comment and trim whitespace. */
-RA8_INTERNAL static bool next_line(const char** pp, const char* end, char* buf, size_t cap)
+RA8_INTERNAL static bool
+next_line(const char** pp, const char* end, char* buf, size_t cap, bool* truncated)
 {
   const char* p = *pp;
   if (p >= end) {
@@ -84,6 +86,8 @@ RA8_INTERNAL static bool next_line(const char** pp, const char* end, char* buf, 
     if ((n + 1U) < cap) {
       buf[n] = *p;
       ++n;
+    } else {
+      *truncated = true;
     }
     ++p;
   }
@@ -125,7 +129,7 @@ RA8_INTERNAL static int agent_spec(const char* agent, const char* ua_token)
 }
 
 /** @brief Pass 1: find the best specific match length and wildcard presence. */
-RA8_INTERNAL static void
+RA8_INTERNAL static bool
 scan_spec(const char* text, size_t len, const char* ua_token, int* best, bool* wild)
 {
   *best           = (int)k_spec_none;
@@ -133,7 +137,8 @@ scan_spec(const char* text, size_t len, const char* ua_token, int* best, bool* w
   const char* p   = text;
   const char* end = text + len;
   char        line[k_robots_line_max];
-  while (next_line(&p, end, line, sizeof(line))) {
+  bool        truncated = false;
+  while (next_line(&p, end, line, sizeof(line), &truncated)) {
     char* field = nullptr;
     char* value = nullptr;
     if (!split_field(line, &field, &value)) {
@@ -148,6 +153,7 @@ scan_spec(const char* text, size_t len, const char* ua_token, int* best, bool* w
       }
     }
   }
+  return !truncated;
 }
 
 /** @brief True if a group of this specificity is the selected group. */
@@ -161,7 +167,14 @@ group_selected(int target, bool wildcard_target, int grp_spec, bool grp_wild)
 RA8_INTERNAL static void add_rule(mdl_robots_t* out, mdl_robots_rule_kind_t kind, const char* value)
 {
   if ((value[0] == '\0') || (out->count >= (size_t)k_mdl_robots_max_rules)) {
+    if (value[0] != '\0') {
+      out->valid = false;
+    }
     return; /* empty pattern imposes no restriction; full table stops growing */
+  }
+  if (strnlen(value, k_mdl_robots_path_max) >= k_mdl_robots_path_max) {
+    out->valid = false;
+    return;
   }
   mdl_robots_rule_t* r = &out->rules[out->count];
   r->kind              = kind;
@@ -173,8 +186,9 @@ RA8_INTERNAL static void add_rule(mdl_robots_t* out, mdl_robots_rule_kind_t kind
 /** @brief Record the strictest Crawl-delay seen (clamped to the ceiling). */
 RA8_INTERNAL static void set_crawl(mdl_robots_t* out, const char* value)
 {
-  const double secs = strtod(value, nullptr);
-  if (secs <= 0.0) {
+  char*        end  = nullptr;
+  const double secs = strtod(value, &end);
+  if ((end == value) || (*end != '\0') || !isfinite(secs) || (secs <= 0.0)) {
     return;
   }
   uint32_t ms = (secs >= ((double)k_crawl_cap_ms / (double)k_ms_per_s))
@@ -213,7 +227,8 @@ RA8_INTERNAL static void harvest(const char*   text,
   int         grp_spec   = (int)k_spec_none;
   bool        grp_wild   = false;
   char        line[k_robots_line_max];
-  while (next_line(&p, end, line, sizeof(line))) {
+  bool        truncated = false;
+  while (next_line(&p, end, line, sizeof(line), &truncated)) {
     char* field = nullptr;
     char* value = nullptr;
     if (!split_field(line, &field, &value)) {
@@ -239,6 +254,9 @@ RA8_INTERNAL static void harvest(const char*   text,
       }
     }
   }
+  if (truncated) {
+    out->valid = false;
+  }
 }
 
 void mdl_robots_parse(const char* text, size_t len, const char* ua_token, mdl_robots_t* out)
@@ -246,13 +264,25 @@ void mdl_robots_parse(const char* text, size_t len, const char* ua_token, mdl_ro
   if (out == nullptr) {
     return;
   }
-  *out = (mdl_robots_t){};
-  if ((text == nullptr) || (len == 0U) || (ua_token == nullptr)) {
+  *out       = (mdl_robots_t){};
+  out->valid = true;
+  if ((text == nullptr) && (len != 0U)) {
+    out->valid = false;
+    return;
+  }
+  if (ua_token == nullptr) {
+    out->valid = false;
+    return;
+  }
+  if (len == 0U) {
     return;
   }
   int  best = (int)k_spec_none;
   bool wild = false;
-  scan_spec(text, len, ua_token, &best, &wild);
+  if (!scan_spec(text, len, ua_token, &best, &wild)) {
+    out->valid = false;
+    return;
+  }
   if ((best < 0) && !wild) {
     return; /* no group matches us -> no restrictions */
   }
@@ -328,7 +358,7 @@ RA8_INTERNAL static const mdl_robots_rule_t* best_matching_rule(const mdl_robots
 
 bool mdl_robots_allows(const mdl_robots_t* robots, const char* path)
 {
-  if ((robots == nullptr) || (path == nullptr)) {
+  if ((robots == nullptr) || (path == nullptr) || !robots->valid) {
     return false;
   }
   const mdl_robots_rule_t* best = best_matching_rule(robots, path);
@@ -344,19 +374,20 @@ const char* mdl_robots_disallow_reason(const mdl_robots_t* robots, const char* p
   return ((best != nullptr) && (best->kind == k_mdl_rule_disallow)) ? best->path : nullptr;
 }
 
-/** @brief Locate an existing cache entry for `host`, or NULL if absent. */
-RA8_INTERNAL static mdl_robots_cache_entry_t* cache_find(mdl_robots_cache_t* cache,
-                                                         const char*         host)
+/** @brief Locate an existing cache entry for one origin, or NULL if absent. */
+RA8_INTERNAL static mdl_robots_cache_entry_t*
+cache_find(mdl_robots_cache_t* cache, const char* scheme, const char* host)
 {
   for (size_t i = 0U; i < (size_t)k_mdl_robots_max_hosts; ++i) {
-    if (cache->hosts[i].used && (strcmp(cache->hosts[i].host, host) == 0)) {
+    if (cache->hosts[i].used && (strcmp(cache->hosts[i].scheme, scheme) == 0) &&
+        (strcmp(cache->hosts[i].host, host) == 0)) {
       return &cache->hosts[i];
     }
   }
   return nullptr;
 }
 
-/** @brief Pick a free cache slot, or slot 0 when the cache is full. */
+/** @brief Pick a free cache slot, or the dedicated uncached overflow slot. */
 RA8_INTERNAL static mdl_robots_cache_entry_t* cache_slot(mdl_robots_cache_t* cache)
 {
   for (size_t i = 0U; i < (size_t)k_mdl_robots_max_hosts; ++i) {
@@ -364,7 +395,7 @@ RA8_INTERNAL static mdl_robots_cache_entry_t* cache_slot(mdl_robots_cache_t* cac
       return &cache->hosts[i];
     }
   }
-  return &cache->hosts[0];
+  return &cache->overflow;
 }
 
 const mdl_robots_t* mdl_robots_cache_consult(mdl_robots_cache_t* cache,
@@ -376,19 +407,35 @@ const mdl_robots_t* mdl_robots_cache_consult(mdl_robots_cache_t* cache,
                                              char*               scratch,
                                              size_t              scratch_cap)
 {
-  mdl_robots_cache_entry_t* e = cache_find(cache, host);
+  if ((cache == nullptr) || (scheme == nullptr) || (host == nullptr) || (ua_token == nullptr) ||
+      (fetch == nullptr) || (scratch == nullptr) || (scratch_cap == 0U) ||
+      ((strcmp(scheme, "http") != 0) && (strcmp(scheme, "https") != 0)) ||
+      (strnlen(host, k_mdl_robots_host_max) >= k_mdl_robots_host_max)) {
+    return nullptr;
+  }
+  mdl_robots_cache_entry_t* e = cache_find(cache, scheme, host);
   if (e == nullptr) {
-    e  = cache_slot(cache);
-    *e = (mdl_robots_cache_entry_t){};
+    e              = cache_slot(cache);
+    *e             = (mdl_robots_cache_entry_t){};
+    e->rules.valid = true;
+    (void)snprintf(e->scheme, sizeof(e->scheme), "%s", scheme);
     (void)snprintf(e->host, sizeof(e->host), "%s", host);
-    char url[k_robots_url_max];
-    (void)snprintf(url, sizeof(url), "%s://%s/robots.txt", scheme, host);
+    char      url[k_robots_url_max];
+    const int url_len = snprintf(url, sizeof(url), "%s://%s/robots.txt", scheme, host);
+    if ((url_len < 0) || ((size_t)url_len >= sizeof(url))) {
+      e->disallow_all = true;
+      e->used         = true;
+      return nullptr;
+    }
     size_t                          got = 0U;
     const mdl_robots_fetch_result_t rc  = fetch(ctx, url, scratch, scratch_cap, &got);
     if (rc == k_mdl_robots_fetch_denied) {
       e->disallow_all = true;
     } else if (rc == k_mdl_robots_fetch_ok) {
       mdl_robots_parse(scratch, got, ua_token, &e->rules);
+      if (!e->rules.valid) {
+        e->disallow_all = true;
+      }
     }
     e->used = true;
   }

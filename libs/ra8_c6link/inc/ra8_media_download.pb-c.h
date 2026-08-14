@@ -25,17 +25,6 @@ typedef struct Ra8__Mdl__Cancelled Ra8__Mdl__Cancelled;
 
 /* --- enums --- */
 
-/*
- * Payloads carried inside ESP-hosted's generated CustomRpc protobuf envelope.
- * The RA8 owns destination paths and storage; the C6 sees only the source URL.
- */
-typedef enum _Ra8__Mdl__Format {
-  RA8__MDL__FORMAT__FORMAT_UNSPECIFIED = 0,
-  RA8__MDL__FORMAT__FORMAT_RABOOK = 1,
-  RA8__MDL__FORMAT__FORMAT_CBZ = 2,
-  RA8__MDL__FORMAT__FORMAT_EPUB = 3
-    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RA8__MDL__FORMAT)
-} Ra8__Mdl__Format;
 typedef enum _Ra8__Mdl__State {
   RA8__MDL__STATE__STATE_UNSPECIFIED = 0,
   RA8__MDL__STATE__STATE_ACCEPTED = 1,
@@ -53,11 +42,10 @@ struct  Ra8__Mdl__StartRequest
   ProtobufCMessage base;
   uint32_t protocol_version;
   char *url;
-  Ra8__Mdl__Format format;
 };
 #define RA8__MDL__START_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&ra8__mdl__start_request__descriptor) \
-, 0, (char *)protobuf_c_empty_string, RA8__MDL__FORMAT__FORMAT_UNSPECIFIED }
+, 0, (char *)protobuf_c_empty_string }
 
 
 struct  Ra8__Mdl__Accepted
@@ -266,7 +254,6 @@ typedef void (*Ra8__Mdl__Cancelled_Closure)
 
 /* --- descriptors --- */
 
-extern const ProtobufCEnumDescriptor    ra8__mdl__format__descriptor;
 extern const ProtobufCEnumDescriptor    ra8__mdl__state__descriptor;
 extern const ProtobufCMessageDescriptor ra8__mdl__start_request__descriptor;
 extern const ProtobufCMessageDescriptor ra8__mdl__accepted__descriptor;

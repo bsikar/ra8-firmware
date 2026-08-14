@@ -26,6 +26,7 @@
  * SPDX-License-Identifier: MIT
  */
 #include <dirent.h>
+#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,6 +34,7 @@
 #include <sys/stat.h>
 #include <time.h>
 
+#include "mdl_atomic.h"
 #include "mdl_cli.h"
 #include "mdl_config.h"
 #include "mdl_discover.h"
@@ -53,12 +55,14 @@
 #include "mdl_state.h"
 #include "mdl_url_guard.h"
 #include "mdl_urlname.h"
+#include "mdl_verify.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /** @brief Fixed sizing for the CLI (large buffers live in .bss). */
 typedef enum : uint32_t {
-  k_page_buf_bytes = 8U * 1024U * 1024U, /**< Max HTML page size. */
+  k_page_buf_bytes     = 8U * 1024U * 1024U,  /**< Max HTML page size.          */
+  k_export_arena_bytes = 96U * 1024U * 1024U, /**< Host export scratch ceiling. */
 } mdl_cli_limits_t;
 
 /** @brief On-stack string buffer sizes and page-mode delays. */
@@ -93,6 +97,18 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 static mdl_session_t s_session;
+
+/** @brief Naturally aligned, caller-owned exporter workspace storage. */
+typedef union {
+  max_align_t align;                       /**< Force maximum C alignment. */
+  uint8_t     bytes[k_export_arena_bytes]; /**< Bounded scratch bytes.     */
+} export_arena_storage_t;
+
+/** @brief Process-lifetime exporter workspace storage (zero heap). */
+static export_arena_storage_t s_export_arena;
+
+/** @brief Arena cursor reset by each exporter call; single-threaded CLI only. */
+static mdl_export_workspace_t s_export_ws;
 
 /**
  * @var s_page
@@ -261,13 +277,19 @@ prepare_chapters(const mdl_site_t* site, const char* series_url, uint32_t timeou
   }
   (void)mdl_extract_anchors(s_page, len, series_url, site->chapter_url_contains, &s_chapters);
 
-  /* Keep only this series' chapters (drop cross-series relation links). */
+  /* Keep only this series' chapters (drop cross-series relation links). A
+   * descriptor may supply a stable absolute chapter prefix when its episode
+   * pages are siblings of, rather than descendants of, the index URL. */
   char prefix[k_dir_path_bytes];
-  (void)snprintf(prefix, sizeof(prefix), "%s", series_url);
-  size_t pl = strlen(prefix);
-  if ((pl > 0U) && (prefix[pl - 1U] != '/') && (pl + 1U < sizeof(prefix))) {
-    prefix[pl]      = '/';
-    prefix[pl + 1U] = '\0';
+  if (site->chapter_url_prefix[0] != '\0') {
+    (void)snprintf(prefix, sizeof(prefix), "%s", site->chapter_url_prefix);
+  } else {
+    (void)snprintf(prefix, sizeof(prefix), "%s", series_url);
+    size_t pl = strlen(prefix);
+    if ((pl > 0U) && (prefix[pl - 1U] != '/') && (pl + 1U < sizeof(prefix))) {
+      prefix[pl]      = '/';
+      prefix[pl + 1U] = '\0';
+    }
   }
   filter_prefix(&s_chapters, prefix);
   apply_order(&s_chapters, site->chapter_order);
@@ -370,7 +392,7 @@ RA8_INTERNAL static size_t export_fresh_separate(mdl_format_t          format,
     mdl_urlname_last_segment(sel->urls[i], id, sizeof(id));
     const mdl_chapter_rec_t* rec = mdl_state_find_chapter(&s_state, id);
     if ((rec != nullptr) && rec->complete && (rec->fetched_at >= run_start)) {
-      fails += mdl_pack_one(format, abs_dir, id);
+      fails += mdl_pack_one(format, abs_dir, id, &s_export_ws);
     }
   }
   return fails;
@@ -470,7 +492,12 @@ RA8_INTERNAL static size_t export_after(const series_run_t*      r,
     return 0U;
   }
   if (layout == k_mdl_layout_combined) {
-    return mdl_pack_combined(r->format, r->opts->allow_incomplete, abs_dir, combined_rel, stats);
+    return mdl_pack_combined(r->format,
+                             r->opts->allow_incomplete,
+                             abs_dir,
+                             combined_rel,
+                             stats,
+                             &s_export_ws);
   }
   return export_fresh_separate(r->format, abs_dir, sel, run_start);
 }
@@ -528,13 +555,14 @@ RA8_INTERNAL static int run_series(const series_run_t* r)
   }
   (void)printf("site: %s (host %s, kind %s)\n", site.name, site.host, site.kind);
 
-  mdl_net_iface_t* net = mdl_net_curl_create(&r->opts->policy);
-  if (net == nullptr) {
+  mdl_net_iface_t        net     = {};
+  mdl_net_curl_storage_t storage = {};
+  if (mdl_net_curl_init(&net, &storage, &r->opts->policy) != k_ra8_ok) {
     (void)fprintf(stderr, "media_dl: network init failed\n");
     return 1;
   }
   char ua[k_mdl_ua_max];
-  start_session(net, r->opts, site.contact, ua, sizeof(ua));
+  start_session(&net, r->opts, site.contact, ua, sizeof(ua));
 
   int rc = 1;
   if (prepare_chapters(&site, r->series_url, r->timeout) != k_ra8_ok) {
@@ -553,17 +581,23 @@ RA8_INTERNAL static int run_series(const series_run_t* r)
       rc = run_prepared(r, &site, abs_dir, slug, state_path);
     }
   }
-  mdl_net_destroy(net);
+  mdl_net_destroy(&net);
   return rc;
 }
+
+typedef struct {
+  size_t found;
+  size_t unreadable;
+} list_ctx_t;
 
 /** @brief `--list`: print one tracked series' URL and coverage summary. */
 RA8_INTERNAL static ra8_err_t list_cb(const char* series_dir, const char* state_path, void* ctx)
 {
-  size_t* n = (size_t*)ctx;
-  *n += 1U;
+  list_ctx_t* list = (list_ctx_t*)ctx;
+  list->found += 1U;
   if (mdl_state_load(state_path, &s_state) != k_ra8_ok) {
     (void)printf("  %s\n    (state file unreadable)\n", series_dir);
+    list->unreadable += 1U;
     return k_ra8_ok;
   }
   char cov[k_cov_bytes];
@@ -578,12 +612,12 @@ RA8_INTERNAL static ra8_err_t list_cb(const char* series_dir, const char* state_
 /** @brief `--list`: enumerate tracked series under `out_dir`. */
 RA8_INTERNAL static int run_list(const char* out_dir)
 {
-  size_t          n  = 0U;
-  const ra8_err_t rc = mdl_library_for_each(out_dir, list_cb, &n);
-  if (n == 0U) {
+  list_ctx_t      list = {};
+  const ra8_err_t rc   = mdl_library_for_each(out_dir, list_cb, &list);
+  if (list.found == 0U) {
     (void)printf("no tracked series under %s\n", out_dir);
   }
-  return (rc == k_ra8_ok) ? 0 : 1;
+  return ((rc == k_ra8_ok) && (list.unreadable == 0U)) ? 0 : 1;
 }
 
 /** @brief `--remove`: drop the series whose slug matches `url_or_slug`. */
@@ -594,6 +628,15 @@ RA8_INTERNAL static int run_remove(const char* out_dir, const char* url_or_slug)
   char dir[k_dir_path_bytes];
   if (!mdl_path_join(out_dir, slug, dir, sizeof(dir))) {
     (void)fprintf(stderr, "media_dl: cannot resolve series '%s'\n", url_or_slug);
+    return 1;
+  }
+  char        state_path[PATH_MAX];
+  struct stat state_st;
+  if (!state_path_of(dir, state_path, sizeof(state_path)) || (stat(state_path, &state_st) != 0) ||
+      !S_ISREG(state_st.st_mode)) {
+    (void)fprintf(stderr,
+                  "media_dl: refusing to remove untracked directory '%s' (no .mdl_state)\n",
+                  dir);
     return 1;
   }
   if (mdl_library_remove_tree(dir) != k_ra8_ok) {
@@ -731,6 +774,83 @@ RA8_INTERNAL static size_t download_page_images(const char* url,
   return fail;
 }
 
+/** @brief Download one HTTPS artifact, validate it, then atomically publish it. */
+RA8_INTERNAL static int
+run_artifact(const char* url, const char* out_dir, uint32_t timeout, const mdl_run_opts_t* opts)
+{
+  char leaf[k_leaf_name_bytes];
+  mdl_urlname_last_segment(url, leaf, sizeof(leaf));
+  mdl_format_t format = k_mdl_fmt_invalid;
+  if ((mdl_format_from_path(leaf, &format) != k_ra8_ok) || !mdl_format_is_verifiable(format)) {
+    (void)fprintf(stderr,
+                  "media_dl: direct artifact '%s' has no supported structural validator "
+                  "(cbz|cbt|cbt.gz|epub|jof)\n",
+                  leaf);
+    return 1;
+  }
+  if ((mkdir(out_dir, (mode_t)k_dir_mode) != 0) && (errno != EEXIST)) {
+    (void)fprintf(stderr, "media_dl: cannot create output directory '%s'\n", out_dir);
+    return 1;
+  }
+  char out_abs[PATH_MAX];
+  char final_path[PATH_MAX];
+  if ((realpath(out_dir, out_abs) == nullptr) ||
+      !mdl_path_join(out_abs, leaf, final_path, sizeof(final_path))) {
+    (void)fprintf(stderr, "media_dl: unsafe or unresolved output directory '%s'\n", out_dir);
+    return 1;
+  }
+
+  mdl_net_iface_t        net     = {};
+  mdl_net_curl_storage_t storage = {};
+  if (mdl_net_curl_init(&net, &storage, &opts->policy) != k_ra8_ok) {
+    (void)fprintf(stderr, "media_dl: network init failed\n");
+    return 1;
+  }
+  char ua[k_mdl_ua_max];
+  start_session(&net, opts, nullptr, ua, sizeof(ua));
+  if (!mdl_session_url_allowed(&s_session, url, nullptr)) {
+    mdl_net_destroy(&net);
+    return 1;
+  }
+
+  char staged[PATH_MAX];
+  if (!mdl_atomic_tmp_path(final_path, staged, sizeof(staged))) {
+    (void)fprintf(stderr, "media_dl: cannot create staging path for '%s'\n", final_path);
+    mdl_net_destroy(&net);
+    return 1;
+  }
+  const mdl_net_req_t req      = {.user_agent = s_session.user_agent,
+                                  .referer    = nullptr,
+                                  .timeout_ms = timeout};
+  size_t              got      = 0U;
+  mdl_net_resp_t      resp     = {};
+  const ra8_err_t     fetch_rc = mdl_net_get_file(&net, url, &req, staged, &got, &resp);
+  mdl_net_destroy(&net);
+  if (fetch_rc != k_ra8_ok) {
+    char reason[k_mdl_reason_max];
+    mdl_fetch_reason(fetch_rc, resp.status, reason, sizeof(reason));
+    (void)fprintf(stderr, "media_dl: artifact fetch failed -- %s\n", reason);
+    mdl_atomic_abort(staged);
+    return 1;
+  }
+  mdl_verify_report_t report    = {};
+  const ra8_err_t     verify_rc = mdl_verify_file(format, staged, &s_export_ws, &report);
+  if (verify_rc != k_ra8_ok) {
+    (void)fprintf(stderr, "media_dl: downloaded artifact failed structural validation\n");
+    mdl_atomic_abort(staged);
+    return 1;
+  }
+  if (!mdl_atomic_commit(staged, final_path)) {
+    (void)fprintf(stderr, "media_dl: could not publish verified artifact '%s'\n", final_path);
+    return 1;
+  }
+  (void)printf("downloaded and verified %s (%zu bytes, %zu page(s))\n",
+               final_path,
+               got,
+               report.page_count);
+  return 0;
+}
+
 /** @brief page mode: fetch one URL, download its `<img>` URLs (debug path). */
 RA8_INTERNAL static int run_page(const char*           url,
                                  const char*           out_dir,
@@ -740,16 +860,17 @@ RA8_INTERNAL static int run_page(const char*           url,
                                  uint32_t              timeout,
                                  const mdl_run_opts_t* opts)
 {
-  mdl_net_iface_t* net = mdl_net_curl_create(&opts->policy);
-  if (net == nullptr) {
+  mdl_net_iface_t        net     = {};
+  mdl_net_curl_storage_t storage = {};
+  if (mdl_net_curl_init(&net, &storage, &opts->policy) != k_ra8_ok) {
     (void)fprintf(stderr, "media_dl: network init failed\n");
     return 1;
   }
   char ua[k_mdl_ua_max];
-  start_session(net, opts, nullptr, ua, sizeof(ua));
+  start_session(&net, opts, nullptr, ua, sizeof(ua));
 
   if (!mdl_session_url_allowed(&s_session, url, nullptr)) {
-    mdl_net_destroy(net);
+    mdl_net_destroy(&net);
     return 1;
   }
   const mdl_net_req_t req  = {.user_agent = s_session.user_agent,
@@ -762,7 +883,7 @@ RA8_INTERNAL static int run_page(const char*           url,
     char reason[k_mdl_reason_max];
     mdl_fetch_reason(rc, resp.status, reason, sizeof(reason));
     (void)fprintf(stderr, "media_dl: fetch failed -- %s\n", reason);
-    mdl_net_destroy(net);
+    mdl_net_destroy(&net);
     return 1;
   }
   (void)mdl_extract_images(s_page, len, url, attr, nullptr, &s_images);
@@ -770,7 +891,7 @@ RA8_INTERNAL static int run_page(const char*           url,
   (void)mkdir(out_dir, (mode_t)k_dir_mode);
 
   const size_t fail = download_page_images(url, out_dir, max_imgs, seed, timeout, opts->polite);
-  mdl_net_destroy(net);
+  mdl_net_destroy(&net);
   return (fail == 0U) ? 0 : 1;
 }
 
@@ -780,7 +901,7 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
   if ((format == k_mdl_fmt_loose) || (format == k_mdl_fmt_invalid)) {
     (void)fprintf(stderr,
                   "media_dl: --pack needs a --format "
-                  "(cbz|cbt|cbt.gz|cbt.xz|cbr|epub|jof|rabook)\n");
+                  "(cbz|cbt|cbt.gz|epub|jof)\n");
     return 2;
   }
   char abs[PATH_MAX];
@@ -792,7 +913,7 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
   if (mdl_format_is_dir_output(format)) {
     /* JOF writes per-page `.jof` siblings into the packed directory itself;
      * report that directory rather than a container file it never creates. */
-    const ra8_err_t drc = mdl_export_chapter(format, abs, abs);
+    const ra8_err_t drc = mdl_export_chapter_ws(format, abs, abs, &s_export_ws);
     if (drc != k_ra8_ok) {
       (void)
         fprintf(stderr, "media_dl: pack '%s' as .%s FAILED (err 0x%X)\n", dir, ext, (unsigned)drc);
@@ -807,7 +928,7 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
     (void)fprintf(stderr, "media_dl: output path for '%s' is too long\n", dir);
     return 1;
   }
-  const ra8_err_t rc = mdl_export_chapter(format, abs, out);
+  const ra8_err_t rc = mdl_export_chapter_ws(format, abs, out, &s_export_ws);
   if (rc != k_ra8_ok) {
     (void)fprintf(stderr, "media_dl: pack '%s' as .%s FAILED (err 0x%X)\n", dir, ext, (unsigned)rc);
     return 1;
@@ -852,13 +973,14 @@ RA8_INTERNAL static int run_discover(const mdl_args_t*     a,
   if (opts->polite) {
     mdl_config_apply_polite(&site);
   }
-  mdl_net_iface_t* net = mdl_net_curl_create(&opts->policy);
-  if (net == nullptr) {
+  mdl_net_iface_t        net     = {};
+  mdl_net_curl_storage_t storage = {};
+  if (mdl_net_curl_init(&net, &storage, &opts->policy) != k_ra8_ok) {
     (void)fprintf(stderr, "media_dl: network init failed\n");
     return 1;
   }
   char ua[k_mdl_ua_max];
-  start_session(net, opts, site.contact, ua, sizeof(ua));
+  start_session(&net, opts, site.contact, ua, sizeof(ua));
 
   mdl_governor_t      gov;
   const mdl_gov_cfg_t cfg = mdl_config_gov_cfg(&site);
@@ -877,7 +999,7 @@ RA8_INTERNAL static int run_discover(const mdl_args_t*     a,
   };
   char      picked[k_mdl_url_max] = {};
   const int rc                    = mdl_discover_run(&req, n->pick, picked, sizeof(picked));
-  mdl_net_destroy(net);
+  mdl_net_destroy(&net);
   if ((rc != 0) || (picked[0] == '\0')) {
     return rc; /* listed results, or an error, with nothing to download */
   }
@@ -963,6 +1085,7 @@ RA8_INTERNAL static int run_init_site(const char* url)
                 "\n"
                 "# --- chapter list (on a series page) ---\n"
                 "chapter_url_contains = /chapter-\n"
+                "# chapter_url_prefix = https://%s/path/to/series/chapters/\n"
                 "chapter_order = asc\n"
                 "\n"
                 "# --- search / discovery ---\n"
@@ -984,6 +1107,7 @@ RA8_INTERNAL static int run_init_site(const char* url)
                 name,
                 host,
                 host,
+                host,
                 host);
   (void)fclose(fp);
 
@@ -995,13 +1119,69 @@ RA8_INTERNAL static int run_init_site(const char* url)
 
 /** @brief Stats accumulated during a library/series verification run. */
 typedef struct {
-  size_t series_checked;   /**< Tracked series verified.             */
-  size_t pages_valid;      /**< Pages matching content hash on disk. */
-  size_t pages_missing;    /**< Page files missing from disk.        */
-  size_t pages_corrupt;    /**< Page files failing hash match.       */
-  size_t archives_checked; /**< Archive files checked.               */
-  size_t archives_corrupt; /**< Archive files empty/corrupt.         */
+  size_t series_checked;   /**< Tracked series verified.               */
+  size_t pages_valid;      /**< Pages matching content hash on disk.   */
+  size_t pages_missing;    /**< Page files missing from disk.          */
+  size_t pages_corrupt;    /**< Page files failing hash match.         */
+  size_t archives_checked; /**< Archive files checked.                 */
+  size_t archives_valid;   /**< Structurally valid artifacts.          */
+  size_t archives_corrupt; /**< Archive files empty/corrupt.           */
+  size_t state_errors;     /**< State files that could not be parsed.  */
+  size_t fs_errors;        /**< Directory/path operations that failed. */
 } verify_stats_t;
+
+/** @brief Structurally validate every recognized regular artifact in one directory. */
+RA8_INTERNAL static void verify_artifacts(const char* dir, verify_stats_t* st)
+{
+  DIR* d = opendir(dir);
+  if (d == nullptr) {
+    (void)printf("  [VERIFY FAIL] cannot open %s\n", dir);
+    st->fs_errors += 1U;
+    return;
+  }
+  for (;;) {
+    errno                    = 0;
+    const struct dirent* ent = readdir(d);
+    if (ent == nullptr) {
+      if (errno != 0) {
+        (void)printf("  [VERIFY FAIL] cannot finish reading %s\n", dir);
+        st->fs_errors += 1U;
+      }
+      break;
+    }
+    if (ent->d_name[0] == '.') {
+      continue;
+    }
+    mdl_format_t format = k_mdl_fmt_invalid;
+    if (mdl_format_from_path(ent->d_name, &format) != k_ra8_ok) {
+      continue;
+    }
+    st->archives_checked += 1U;
+    char        path[PATH_MAX];
+    const int   n = snprintf(path, sizeof(path), "%s/%s", dir, ent->d_name);
+    struct stat sb;
+    if ((n < 0) || ((size_t)n >= sizeof(path)) || (lstat(path, &sb) != 0) || !S_ISREG(sb.st_mode)) {
+      (void)printf("  [CORRUPT ARTIFACT] %s (not a regular file)\n", ent->d_name);
+      st->archives_corrupt += 1U;
+      continue;
+    }
+    mdl_verify_report_t report = {};
+    const ra8_err_t     rc     = mdl_verify_file(format, path, &s_export_ws, &report);
+    if (rc != k_ra8_ok) {
+      (void)printf("  [%s ARTIFACT] %s\n",
+                   mdl_format_is_verifiable(format) ? "CORRUPT" : "UNSUPPORTED",
+                   ent->d_name);
+      st->archives_corrupt += 1U;
+      continue;
+    }
+    (void)printf("  [VALID ARTIFACT] %s (%zu page(s), %zu member(s))\n",
+                 ent->d_name,
+                 report.page_count,
+                 report.member_count);
+    st->archives_valid += 1U;
+  }
+  (void)closedir(d);
+}
 
 RA8_INTERNAL static void
 verify_series_dir(const char* series_dir, const char* state_path, verify_stats_t* st)
@@ -1010,138 +1190,143 @@ verify_series_dir(const char* series_dir, const char* state_path, verify_stats_t
   (void)printf("verifying %s...\n", series_dir);
   if (mdl_state_load(state_path, &s_state) != k_ra8_ok) {
     (void)printf("  [VERIFY FAIL] %s: .mdl_state file unreadable or corrupt\n", series_dir);
-    return;
-  }
-  size_t s_valid   = 0U;
-  size_t s_missing = 0U;
-  size_t s_corrupt = 0U;
-
-  for (uint32_t i = 0U; i < s_state.page_rec_count; ++i) {
-    const mdl_page_rec_t* rec = &s_state.pages[i];
-    char                  page_path[PATH_MAX];
-    if (!mdl_path_join(series_dir, rec->rel_path, page_path, sizeof(page_path))) {
-      s_missing += 1U;
-      continue;
-    }
-    struct stat sb;
-    if ((stat(page_path, &sb) != 0) || !S_ISREG(sb.st_mode)) {
-      (void)printf("  [MISSING] %s\n", rec->rel_path);
-      s_missing += 1U;
-      continue;
-    }
-    uint64_t hash = 0U;
-    if ((mdl_hash_file(page_path, &hash) != k_ra8_ok) || (hash != rec->content_hash)) {
-      (void)printf("  [CORRUPT] %s (hash mismatch)\n", rec->rel_path);
-      s_corrupt += 1U;
-    } else {
-      s_valid += 1U;
-    }
-  }
-
-  DIR* d = opendir(series_dir);
-  if (d != nullptr) {
-    const struct dirent* ent;
-    while ((ent = readdir(d)) != nullptr) {
-      if (ent->d_name[0] == '.') {
+    st->state_errors += 1U;
+  } else {
+    for (uint32_t i = 0U; i < s_state.page_rec_count; ++i) {
+      const mdl_page_rec_t* rec = &s_state.pages[i];
+      char                  page_path[PATH_MAX];
+      const int   pn = snprintf(page_path, sizeof(page_path), "%s/%s", series_dir, rec->rel_path);
+      char        resolved[PATH_MAX];
+      struct stat sb;
+      if ((pn < 0) || ((size_t)pn >= sizeof(page_path)) ||
+          (realpath(page_path, resolved) == nullptr) || !mdl_path_contained(series_dir, resolved) ||
+          (stat(resolved, &sb) != 0) || !S_ISREG(sb.st_mode)) {
+        (void)printf("  [MISSING/UNSAFE] %s\n", rec->rel_path);
+        st->pages_missing += 1U;
         continue;
       }
-      const char* dot = strrchr(ent->d_name, '.');
-      if (dot != nullptr) {
-        if ((strcmp(dot, ".cbz") == 0) || (strcmp(dot, ".cbt") == 0) ||
-            (strcmp(dot, ".cbr") == 0) || (strcmp(dot, ".epub") == 0) ||
-            (strcmp(dot, ".jof") == 0) || (strcmp(dot, ".rabook") == 0)) {
-          st->archives_checked += 1U;
-          char arch_path[PATH_MAX];
-          (void)snprintf(arch_path, sizeof(arch_path), "%s/%s", series_dir, ent->d_name);
-          struct stat ast;
-          if ((stat(arch_path, &ast) != 0) || (ast.st_size == 0)) {
-            (void)printf("  [CORRUPT ARCHIVE] %s\n", ent->d_name);
-            st->archives_corrupt += 1U;
-          }
-        }
+      uint64_t hash = 0U;
+      if ((mdl_hash_file(resolved, &hash) != k_ra8_ok) || (hash != rec->content_hash)) {
+        (void)printf("  [CORRUPT] %s (hash mismatch)\n", rec->rel_path);
+        st->pages_corrupt += 1U;
+      } else {
+        st->pages_valid += 1U;
       }
     }
-    (void)closedir(d);
   }
-
-  (void)printf("  summary for %s: %zu valid, %zu missing, %zu corrupt\n",
-               series_dir,
-               s_valid,
-               s_missing,
-               s_corrupt);
-  st->pages_valid += s_valid;
-  st->pages_missing += s_missing;
-  st->pages_corrupt += s_corrupt;
-}
-
-RA8_INTERNAL static ra8_err_t
-verify_lib_cb(const char* series_dir, const char* state_path, void* ctx)
-{
-  verify_stats_t* st = (verify_stats_t*)ctx;
-  verify_series_dir(series_dir, state_path, st);
-  return k_ra8_ok;
+  verify_artifacts(series_dir, st);
 }
 
 RA8_INTERNAL static int run_verify(const char* target_dir)
 {
   const char*    dir = (target_dir != nullptr && target_dir[0] != '\0') ? target_dir : "downloads";
   verify_stats_t st  = {};
-
+  char           canonical[PATH_MAX];
+  struct stat    root_sb;
+  if ((realpath(dir, canonical) == nullptr) || (lstat(canonical, &root_sb) != 0) ||
+      !S_ISDIR(root_sb.st_mode)) {
+    (void)fprintf(stderr, "media_dl: verify target '%s' is not a readable directory\n", dir);
+    return 1;
+  }
   char        state_path[PATH_MAX];
-  const int   n = snprintf(state_path, sizeof(state_path), "%s/.mdl_state", dir);
-  struct stat sb;
-  if ((n > 0) && ((size_t)n < sizeof(state_path)) && (stat(state_path, &sb) == 0) &&
-      S_ISREG(sb.st_mode)) {
-    verify_series_dir(dir, state_path, &st);
+  const int   state_n = snprintf(state_path, sizeof(state_path), "%s/.mdl_state", canonical);
+  struct stat state_sb;
+  if ((state_n > 0) && ((size_t)state_n < sizeof(state_path)) &&
+      (lstat(state_path, &state_sb) == 0) && S_ISREG(state_sb.st_mode)) {
+    verify_series_dir(canonical, state_path, &st);
   } else {
-    (void)mdl_library_for_each(dir, verify_lib_cb, &st);
+    verify_artifacts(canonical, &st);
+    DIR* root = opendir(canonical);
+    if (root == nullptr) {
+      st.fs_errors += 1U;
+    } else {
+      for (;;) {
+        errno                    = 0;
+        const struct dirent* ent = readdir(root);
+        if (ent == nullptr) {
+          if (errno != 0) {
+            st.fs_errors += 1U;
+          }
+          break;
+        }
+        if (ent->d_name[0] == '.') {
+          continue;
+        }
+        char      child[PATH_MAX];
+        char      child_state[PATH_MAX];
+        const int cn = snprintf(child, sizeof(child), "%s/%s", canonical, ent->d_name);
+        const int sn =
+          snprintf(child_state, sizeof(child_state), "%s/%s/.mdl_state", canonical, ent->d_name);
+        struct stat child_sb;
+        struct stat marker_sb;
+        if ((cn <= 0) || ((size_t)cn >= sizeof(child)) || (sn <= 0) ||
+            ((size_t)sn >= sizeof(child_state)) || (lstat(child, &child_sb) != 0) ||
+            !S_ISDIR(child_sb.st_mode) || (lstat(child_state, &marker_sb) != 0) ||
+            !S_ISREG(marker_sb.st_mode)) {
+          continue;
+        }
+        verify_series_dir(child, child_state, &st);
+      }
+      (void)closedir(root);
+    }
   }
 
-  (void)printf("verify complete: %zu series checked; pages: %zu valid, %zu missing, %zu corrupt\n",
+  (void)printf("verify complete: %zu series; pages %zu valid, %zu missing, %zu corrupt; "
+               "artifacts %zu valid, %zu failed\n",
                st.series_checked,
                st.pages_valid,
                st.pages_missing,
-               st.pages_corrupt);
+               st.pages_corrupt,
+               st.archives_valid,
+               st.archives_corrupt);
 
-  return ((st.pages_missing == 0U) && (st.pages_corrupt == 0U) && (st.archives_corrupt == 0U)) ? 0
-                                                                                               : 1;
+  const bool any_target = (st.series_checked != 0U) || (st.archives_checked != 0U);
+  if (!any_target) {
+    (void)fprintf(stderr, "media_dl: no tracked series or recognized artifacts under '%s'\n", dir);
+  }
+  return (any_target && (st.state_errors == 0U) && (st.fs_errors == 0U) &&
+          (st.pages_missing == 0U) && (st.pages_corrupt == 0U) && (st.archives_corrupt == 0U))
+           ? 0
+           : 1;
 }
 
-/** @brief Select and run the mode implied by the parsed args; return the exit code. */
+/** @brief Dispatch the one mode already selected by strict CLI validation. */
 RA8_INTERNAL static int dispatch_run(const mdl_args_t*     a,
+                                     mdl_cli_mode_t        mode,
                                      mdl_format_t          format,
                                      const mdl_run_opts_t* opts,
                                      const mdl_nums_t*     nums,
-                                     const series_run_t*   run,
-                                     const char*           prog)
+                                     const series_run_t*   run)
 {
-  if (a->init_site_url != nullptr) {
-    return run_init_site(a->init_site_url);
-  }
-  if (a->verify) {
-    return run_verify(a->verify_dir != nullptr ? a->verify_dir : a->out);
-  }
-  if (a->list || (a->remove_series != nullptr) || a->update_all) {
-    return run_library(a, run);
-  }
-  if ((a->search != nullptr) || a->browse) {
-    return run_discover(a, opts, nums, run);
-  }
-  if (a->pack != nullptr) {
-    return run_pack(a->pack, format);
-  }
-  if (a->cfg != nullptr) {
-    if (a->series == nullptr) {
-      (void)fprintf(stderr, "media_dl: --config requires --series URL\n");
+  switch (mode) {
+    case k_mdl_cli_mode_series:
+      return run_series(run);
+    case k_mdl_cli_mode_search:
+    case k_mdl_cli_mode_browse:
+      return run_discover(a, opts, nums, run);
+    case k_mdl_cli_mode_list:
+    case k_mdl_cli_mode_update_all:
+    case k_mdl_cli_mode_remove:
+      return run_library(a, run);
+    case k_mdl_cli_mode_verify:
+      return run_verify(a->verify_dir != nullptr ? a->verify_dir : a->out);
+    case k_mdl_cli_mode_init_site:
+      return run_init_site(a->init_site_url);
+    case k_mdl_cli_mode_pack:
+      return run_pack(a->pack, format);
+    case k_mdl_cli_mode_artifact:
+      return run_artifact(a->page_url, a->out, nums->timeout, opts);
+    case k_mdl_cli_mode_page:
+      return run_page(a->page_url,
+                      a->out,
+                      a->attr,
+                      nums->max_imgs,
+                      nums->seed,
+                      nums->timeout,
+                      opts);
+    default:
       return 2;
-    }
-    return run_series(run);
   }
-  if (a->page_url != nullptr) {
-    return run_page(a->page_url, a->out, a->attr, nums->max_imgs, nums->seed, nums->timeout, opts);
-  }
-  mdl_cli_usage(prog);
-  return 2;
 }
 
 /**
@@ -1158,13 +1343,27 @@ RA8_INTERNAL static int dispatch_run(const mdl_args_t*     a,
  */
 int main(int argc, char** argv)
 {
+  mdl_export_workspace_init(&s_export_ws, s_export_arena.bytes, sizeof(s_export_arena.bytes));
   mdl_args_t a = {};
-  a.out        = "downloads";
-  a.attr       = "data-src";
   mdl_cli_parse(argc, argv, &a);
-  if (a.bad) {
+  mdl_cli_mode_t mode = k_mdl_cli_mode_invalid;
+  if (!mdl_cli_validate(&a, &mode)) {
     mdl_cli_usage(argv[0]);
     return 2;
+  }
+  if (mode == k_mdl_cli_mode_help) {
+    mdl_cli_usage(argv[0]);
+    return 0;
+  }
+  if (mode == k_mdl_cli_mode_version) {
+    (void)printf("media_dl 0.1.0\n");
+    return 0;
+  }
+  if (a.out == nullptr) {
+    a.out = "downloads";
+  }
+  if (a.attr == nullptr) {
+    a.attr = "data-src";
   }
   if (a.ignore_robots) {
     (void)fprintf(stderr,
@@ -1181,11 +1380,11 @@ int main(int argc, char** argv)
   if (format == k_mdl_fmt_invalid) {
     (void)fprintf(stderr,
                   "media_dl: bad --format '%s' "
-                  "(loose|cbz|cbt|cbr|cbt.xz|cbt.gz|epub|jof|rabook)\n",
+                  "(loose|cbz|cbt|cbt.gz|epub|jof)\n",
                   a.format);
     return 2;
   }
 
   const series_run_t run = build_run(&a, format, &opts, &nums);
-  return dispatch_run(&a, format, &opts, &nums, &run, argv[0]);
+  return dispatch_run(&a, mode, format, &opts, &nums, &run);
 }

@@ -38,6 +38,30 @@ typedef struct {
 } mdl_run_opts_t;
 
 /**
+ * @brief Exactly one command mode selected by a valid invocation.
+ * @details Values are stable dispatch identities produced by
+ *          ::mdl_cli_validate; callers must not infer modes from option
+ *          precedence.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_mdl_cli_mode_invalid = 0, /**< No valid primary mode.                     */
+  k_mdl_cli_mode_series,      /**< Download or update one configured series.  */
+  k_mdl_cli_mode_search,      /**< Search a descriptor and optionally pick.   */
+  k_mdl_cli_mode_browse,      /**< Browse a descriptor and optionally pick.   */
+  k_mdl_cli_mode_list,        /**< List tracked local series.                 */
+  k_mdl_cli_mode_update_all,  /**< Update every tracked local series.         */
+  k_mdl_cli_mode_remove,      /**< Remove one tracked local series.           */
+  k_mdl_cli_mode_verify,      /**< Verify tracked state/pages/containers.     */
+  k_mdl_cli_mode_init_site,   /**< Generate a starter descriptor template.    */
+  k_mdl_cli_mode_pack,        /**< Package a local page-image directory.      */
+  k_mdl_cli_mode_artifact,    /**< Download one verified HTTPS artifact.      */
+  k_mdl_cli_mode_page,        /**< Debug-download images from one page URL.   */
+  k_mdl_cli_mode_help,        /**< Print command help without running a mode. */
+  k_mdl_cli_mode_version,     /**< Print the program version and exit.        */
+} mdl_cli_mode_t;
+
+/**
  * @struct mdl_args_t
  * @brief Parsed command-line options in string form (converted by main).
  * @details Every value field is a borrowed pointer into `argv`; the boolean
@@ -57,7 +81,7 @@ typedef struct {
   const char* max;              /**< --max.                                                     */
   const char* seed;             /**< --seed.                                                    */
   const char* timeout;          /**< --timeout.                                                 */
-  const char* format;           /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/jof/rabook).      */
+  const char* format;           /**< --format (cbz/cbt/cbt.gz/epub/jof).                        */
   const char* pack;             /**< --pack DIR: package an existing folder, no network.        */
   const char* contact;          /**< --contact: operator identity for the User-Agent.           */
   const char* max_bytes;        /**< --max-bytes: per-response size cap.                        */
@@ -82,6 +106,8 @@ typedef struct {
   bool        progress;         /**< --progress: terminal progress bar during downloads.        */
   bool        refetch;          /**< --refetch: bypass verified local page reuse.               */
   bool        verify;           /**< --verify: verify existing downloaded archives/files.       */
+  bool        help;             /**< --help/-h: print usage and exit successfully.              */
+  bool        version;          /**< --version: print version and exit successfully.            */
   bool        bad;              /**< An unrecognised argument was seen.                         */
 } mdl_args_t;
 
@@ -154,7 +180,7 @@ typedef struct {
  * `--seed`, `--from`, and `--max-bytes` for presence-validation) into typed
  * scalars, rejecting any non-numeric or trailing-garbage value with a usage
  * message on stderr rather than silently substituting 0. `--chapters` of 0 is
- * clamped up to 1.
+ * rejected.
  *
  * @param[in]  a Parsed command-line options (never NULL).
  * @param[out] n Receives the validated scalars (never NULL).
@@ -173,3 +199,49 @@ typedef struct {
  * @since 0.1.0
  */
 bool mdl_cli_parse_nums(const mdl_args_t* a, mdl_nums_t* n);
+
+/**
+ * @brief Validate mode selection, required arguments, and per-mode options.
+ *
+ * @details Enforces exactly one primary command, rejects duplicate/unknown
+ * options recorded by ::mdl_cli_parse, and uses a per-mode allowlist so an
+ * accepted option always has an effect. Proxy escape hatches and debug image
+ * attributes receive their mode-independent consistency checks here.
+ *
+ * @param[in]  a    Parsed, pre-default argument set.
+ * @param[out] mode Receives the one selected command mode on success.
+ *
+ * @return Whether the invocation is unambiguous and every option is effective.
+ * @retval true  Validation succeeded and @p mode names the command to dispatch.
+ * @retval false Validation failed; a diagnostic was written when possible.
+ *
+ * @pre @p a and @p mode are non-NULL and ::mdl_cli_parse has run.
+ * @pre Defaults that were absent on the command line have not been injected.
+ * @post On true, @p mode is not ::k_mdl_cli_mode_invalid.
+ * @post On false, @p mode is ::k_mdl_cli_mode_invalid.
+ *
+ * @note Not thread-safe: writes @p mode and may write stderr.
+ * @since 0.1.0
+ */
+bool mdl_cli_validate(const mdl_args_t* a, mdl_cli_mode_t* mode);
+
+/**
+ * @brief Stable human-readable command mode name.
+ *
+ * @details Provides the spelling used in diagnostics without exposing a
+ * mutable name table to callers. Unknown values map to `"invalid"`.
+ *
+ * @param[in] mode Mode value.
+ *
+ * @return Pointer to a process-lifetime static mode name.
+ * @retval non-NULL A stable name, or `"invalid"` for an unknown value.
+ *
+ * @pre @p mode is any value representable by ::mdl_cli_mode_t.
+ * @pre The caller treats the returned bytes as read-only.
+ * @post The returned string is NUL-terminated.
+ * @post No caller-visible state is modified.
+ *
+ * @note Thread-safe: reads immutable static storage only.
+ * @since 0.1.0
+ */
+const char* mdl_cli_mode_name(mdl_cli_mode_t mode);

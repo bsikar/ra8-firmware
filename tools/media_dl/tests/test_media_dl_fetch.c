@@ -80,19 +80,21 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const page_map_t* map;                  /**< Chapter URL -> HTML.                 */
-  size_t            map_n;                /**< Entries in @ref map.                 */
-  size_t            get_buf_calls;        /**< Chapter-HTML fetches dispatched.     */
-  size_t            get_file_calls;       /**< Page transfers attempted.            */
-  size_t            fail_on_file_call;    /**< 1-based call to fail once (0=never). */
-  size_t            busy_on_file_call;    /**< 1-based call to 503+Retry (0=off).   */
-  const char*       busy_retry_after;     /**< Retry-After for the busy reply.      */
-  const char*       fail_url;             /**< URL that fails on EVERY attempt.     */
-  size_t            not_mod_on_file_call; /**< 1-based call to return 304.          */
-  const char*       resp_etag;            /**< ETag response header to return.      */
-  const char*       resp_last_modified;   /**< Last-Modified response to return.    */
-  const char*       last_if_none_match;   /**< Captured If-None-Match header.       */
-  const char*       last_if_mod_since;    /**< Captured If-Modified-Since header.   */
+  const page_map_t* map;                                /**< Chapter URL -> HTML.              */
+  size_t            map_n;                              /**< Entries in @ref map.              */
+  size_t            get_buf_calls;                      /**< Chapter-HTML fetches dispatched.  */
+  size_t            get_file_calls;                     /**< Page transfers attempted.         */
+  size_t            fail_on_file_call;                  /**< One call to fail once (0=never).  */
+  size_t            busy_on_file_call;                  /**< One call to return 503 (0=off).   */
+  const char*       busy_retry_after;                   /**< Retry-After for the busy reply.   */
+  const char*       fail_url;                           /**< URL that fails on EVERY attempt.  */
+  size_t            not_mod_on_file_call;               /**< 1-based call to return 304.       */
+  const char*       resp_etag;                          /**< ETag response header to return.   */
+  const char*       resp_last_modified;                 /**< Last-Modified response to return. */
+  const char*       response_body;                      /**< Optional 200 response bytes.      */
+  char              last_if_none_match[k_mdl_etag_max]; /**< Captured If-None-Match.           */
+  /** Captured If-Modified-Since value. */
+  char last_if_mod_since[k_mdl_last_mod_max];
 } mock_net_t;
 
 /** @brief Fake get_buf: serve the mapped HTML for a chapter URL. */
@@ -131,8 +133,14 @@ static ra8_err_t mock_get_file(void*                ctx,
   mock_net_t* f = (mock_net_t*)ctx;
   f->get_file_calls += 1U;
   if (req != nullptr) {
-    f->last_if_none_match = req->if_none_match;
-    f->last_if_mod_since  = req->if_modified_since;
+    (void)snprintf(f->last_if_none_match,
+                   sizeof(f->last_if_none_match),
+                   "%s",
+                   (req->if_none_match != nullptr) ? req->if_none_match : "");
+    (void)snprintf(f->last_if_mod_since,
+                   sizeof(f->last_if_mod_since),
+                   "%s",
+                   (req->if_modified_since != nullptr) ? req->if_modified_since : "");
   }
   if (resp != nullptr) {
     if (f->resp_etag != nullptr) {
@@ -174,10 +182,12 @@ static ra8_err_t mock_get_file(void*                ctx,
   if (fp == nullptr) {
     return k_ra8_fail;
   }
-  (void)fwrite(url, 1U, strlen(url), fp);
+  const char*  body     = (f->response_body != nullptr) ? f->response_body : url;
+  const size_t body_len = strlen(body);
+  (void)fwrite(body, 1U, body_len, fp);
   (void)fclose(fp);
   if (out_len != nullptr) {
-    *out_len = strlen(url);
+    *out_len = body_len;
   }
   return k_ra8_ok;
 }
@@ -236,6 +246,7 @@ static void fetch_sleep(void* c, uint32_t ms)
 /** @brief Configure the site descriptor the fake HTML is scraped against. */
 static void setup_site(void)
 {
+  memset(&g_mock, 0, sizeof(g_mock));
   memset(&g_site, 0, sizeof(g_site));
   g_refetch = false;
   (void)snprintf(g_site.page_img_attr, sizeof(g_site.page_img_attr), "%s", "data-src");
@@ -699,6 +710,36 @@ static void test_incomplete_chapter_not_completed_and_logged(void)
   TEST_END("incomplete chapter is not completed and is logged");
 }
 
+/** @test A state checkpoint failure makes the successful page run fail honestly. */
+static void test_checkpoint_failure_fails_run(void)
+{
+  TEST_BEGIN("checkpoint failure fails run");
+  setup_site();
+  g_mock.map   = s_map1;
+  g_mock.map_n = sizeof(s_map1) / sizeof(s_map1[0]);
+  char abs_dir[PATH_MAX];
+  char state_path[PATH_MAX];
+  make_series_dir(abs_dir, sizeof(abs_dir), state_path, sizeof(state_path));
+  mdl_state_init(&g_state);
+  const char* c1[] = {"http://s/chapter-1"};
+  set_chapters(c1, 1U);
+
+  mdl_fetch_stats_t stats;
+  TEST_ASSERT_EQ((int64_t)k_ra8_fail,
+                 run_fetch(abs_dir,
+                           abs_dir, /* rename cannot replace the existing series directory */
+                           k_mdl_layout_separate,
+                           nullptr,
+                           false,
+                           0U,
+                           &stats));
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)stats.chapters_failed);
+  TEST_ASSERT_EQ((uint16_t)0, (uint16_t)stats.chapters_completed);
+  TEST_ASSERT(g_faillog.total > 0U);
+  TEST_ASSERT(strcmp(g_faillog.items[g_faillog.count - 1U].url, abs_dir) == 0);
+  TEST_END("checkpoint failure fails run");
+}
+
 /**
  * @test test_mcdc_is_retryable
  *
@@ -786,15 +827,11 @@ static void test_conditional_fetch_304_not_modified(void)
   /* Reload state from disk to test persistence */
   TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_state_load(state_path, &g_state));
 
-  /* Force conditional re-fetch: mark chapter incomplete and invalidate content_hash so try_reuse falls through to do_fetch_page */
+  /* Mark the chapter incomplete. A valid cached hash with validators must still
+   * take the conditional network path rather than short-circuiting to reuse. */
   mdl_chapter_rec_t* ch = mdl_state_find_chapter(&g_state, "chapter-1");
   TEST_ASSERT_NOT_NULL(ch);
   ch->complete = false;
-
-  mdl_page_rec_t* page_rec =
-    (mdl_page_rec_t*)mdl_state_find_page(&g_state, mdl_hash_str("http://cdn/a.jpg"));
-  TEST_ASSERT_NOT_NULL(page_rec);
-  page_rec->content_hash = 0;
 
   g_mock.not_mod_on_file_call = 1U; /* Script call 1 of run 2 to 304 */
   mdl_fetch_stats_t s2;
@@ -810,16 +847,57 @@ static void test_conditional_fetch_304_not_modified(void)
   TEST_ASSERT(page_exists(abs_dir, "chapter-1/page_0001.jpg"));
 
   /* Verify conditional headers were sent */
-  TEST_ASSERT_NOT_NULL(g_mock.last_if_none_match);
   TEST_ASSERT(strcmp(g_mock.last_if_none_match, "\"v100\"") == 0);
-  TEST_ASSERT_NOT_NULL(g_mock.last_if_mod_since);
   TEST_ASSERT(strcmp(g_mock.last_if_mod_since, "Wed, 21 Oct 2015 07:28:00 GMT") == 0);
   TEST_END("conditional fetch 304 not modified");
+}
+
+/** @test A 200 response at the same URL replaces valid cached bytes atomically. */
+static void test_conditional_fetch_200_replaces_changed_content(void)
+{
+  TEST_BEGIN("conditional fetch 200 replaces changed content");
+  setup_site();
+  g_mock.map       = s_map1;
+  g_mock.map_n     = sizeof(s_map1) / sizeof(s_map1[0]);
+  g_mock.resp_etag = "\"v1\"";
+  char abs_dir[PATH_MAX];
+  char state_path[PATH_MAX];
+  make_series_dir(abs_dir, sizeof(abs_dir), state_path, sizeof(state_path));
+  mdl_state_init(&g_state);
+  const char* c1[] = {"http://s/chapter-1"};
+  set_chapters(c1, 1U);
+
+  mdl_fetch_stats_t first = {};
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok,
+                 run_fetch(abs_dir, state_path, k_mdl_layout_separate, nullptr, false, 0U, &first));
+  const mdl_page_rec_t* old = mdl_state_find_page(&g_state, mdl_hash_str("http://cdn/a.jpg"));
+  TEST_ASSERT_NOT_NULL(old);
+  const uint64_t old_hash = old->content_hash;
+
+  mdl_chapter_rec_t* chapter = mdl_state_find_chapter(&g_state, "chapter-1");
+  TEST_ASSERT_NOT_NULL(chapter);
+  chapter->complete        = false;
+  g_mock.response_body     = "replacement image bytes";
+  g_mock.resp_etag         = "\"v2\"";
+  mdl_fetch_stats_t second = {};
+  TEST_ASSERT_EQ(
+    (int64_t)k_ra8_ok,
+    run_fetch(abs_dir, state_path, k_mdl_layout_separate, nullptr, false, 0U, &second));
+
+  const mdl_page_rec_t* changed = mdl_state_find_page(&g_state, mdl_hash_str("http://cdn/a.jpg"));
+  TEST_ASSERT_NOT_NULL(changed);
+  TEST_ASSERT(changed->content_hash != old_hash);
+  TEST_ASSERT(strcmp(changed->etag, "\"v2\"") == 0);
+  TEST_ASSERT_EQ((uint16_t)1, (uint16_t)second.pages_fetched);
+  TEST_ASSERT_EQ((uint16_t)0, (uint16_t)second.pages_reused);
+  TEST_ASSERT(strcmp(g_mock.last_if_none_match, "\"v1\"") == 0);
+  TEST_END("conditional fetch 200 replaces changed content");
 }
 
 int32_t main(void)
 {
   test_conditional_fetch_304_not_modified();
+  test_conditional_fetch_200_replaces_changed_content();
   test_first_run_then_update_only_new();
   test_refetch_bypasses_valid_cache();
   test_resume_equals_uninterrupted();
@@ -828,6 +906,7 @@ int32_t main(void)
   test_governor_retries_throttle();
   test_transient_page_retry_succeeds();
   test_incomplete_chapter_not_completed_and_logged();
+  test_checkpoint_failure_fails_run();
   test_mcdc_is_retryable();
   test_mcdc_run_incomplete();
   (void)fprintf(stderr, "[OK  ] test_media_dl_fetch.c\n");
