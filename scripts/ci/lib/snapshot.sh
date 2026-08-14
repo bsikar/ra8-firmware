@@ -166,6 +166,145 @@ prepare_head_snapshot() {
   export RA8_CI_HISTORY_REPO="$REPO_ROOT"
 }
 
+# Reclaim reproducible build trees once the full suite has consumed them.
+#
+# Static analysis, unit, UBSan, and the two gcov gates each leave reproducible
+# CMake trees. No later gate consumes them after the boundary table below.
+# Keeping every completed tree resident made the suite exceed the shared
+# runner's free space before coverage-report, then again while clang-18 built
+# MC/DC, even though each gate passed alone.
+#
+# This is deliberately restricted to the owned, disposable HEAD snapshot.
+# `bash scripts/ci.sh --gate <name>` and direct make targets run in place and
+# retain developers' incremental trees. Exact relative paths plus the owner
+# and cwd checks keep this from ever becoming a broad checkout cleanup.
+RA8_CI_RECLAIM_BOUNDARIES=(
+  "unit-tests"
+  "ubsan"
+  "coverage"
+  "coverage-report"
+  "mcdc"
+  "cache-bench"
+)
+
+# Print the completed build trees whose last consumer precedes the named gate.
+# The table is the single definition of their lifetimes; the self-test drives
+# every row through the real cleanup helper.
+suite_reclaim_targets() {
+  case "$1" in
+    unit-tests)
+      printf '%s\n' build/cppcheck build/misra build/tidy \
+        build/tidy-reflow-v2 build/xtidy
+      ;;
+    ubsan) printf '%s\n' tests/build ;;
+    coverage) printf '%s\n' tests/build-ubsan ;;
+    coverage-report) printf '%s\n' build/coverage ;;
+    mcdc) printf '%s\n' tests/build-cov build/coverage ;;
+    cache-bench) printf '%s\n' tests/build-cov build/mcdc-report ;;
+    *) return 0 ;;
+  esac
+}
+
+suite_reclaim_completed_builds() {
+  local next_gate="$1" here rel
+  local completed_builds=()
+
+  mapfile -t completed_builds < <(suite_reclaim_targets "$next_gate")
+  [[ "${#completed_builds[@]}" -gt 0 ]] || return 0
+  [[ -n "$RA8_CI_SNAPSHOT_DIR" ]] || return 0
+  if [[ "$BASHPID" != "$RA8_CI_SNAPSHOT_OWNER" ]]; then
+    echo "ERROR: only the snapshot owner may reclaim suite build trees." >&2
+    return 1
+  fi
+  here="$(pwd -P 2>/dev/null || true)"
+  if [[ -z "$here" || "$here" != "$RA8_CI_SNAPSHOT_DIR" ]]; then
+    echo "ERROR: refusing build-tree cleanup outside the owned snapshot." >&2
+    return 1
+  fi
+  for rel in "${completed_builds[@]}"; do
+    if [[ "$rel" == /* || "$rel" == *".."* ]]; then
+      echo "ERROR: unsafe suite build lifecycle target: $rel" >&2
+      return 1
+    fi
+    [[ -e "$here/$rel" ]] || continue
+    echo "==> suite storage: retiring completed $rel"
+    rm -rf -- "${here:?}/$rel" || return 1
+  done
+}
+
+# Exercise one lifecycle row through the real cleanup helper.
+suite_build_lifecycle_boundary_selftest() {
+  local probe="$1" boundary="$2" rel rc=0 failures=0
+  local targets=()
+  mapfile -t targets < <(suite_reclaim_targets "$boundary")
+  if [[ "${#targets[@]}" -eq 0 ]]; then
+    echo "ERROR: lifecycle boundary $boundary has no cleanup targets." >&2
+    return 1
+  fi
+  for rel in "${targets[@]}"; do
+    mkdir -p "$probe/$rel"
+    touch "$probe/$rel/probe"
+  done
+  (
+    cd "$probe"
+    RA8_CI_SNAPSHOT_DIR="$probe"
+    RA8_CI_SNAPSHOT_OWNER="$BASHPID"
+    suite_reclaim_completed_builds "$boundary"
+  ) >/dev/null 2>&1 || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    echo "ERROR: lifecycle boundary $boundary cleanup returned $rc." >&2
+    failures=1
+  fi
+  for rel in "${targets[@]}"; do
+    if [[ -e "$probe/$rel" ]]; then
+      echo "ERROR: lifecycle boundary $boundary retained $rel." >&2
+      failures=1
+    fi
+  done
+  if [[ ! -f "$probe/keep/probe" ]]; then
+    echo "ERROR: lifecycle boundary $boundary removed a live path." >&2
+    failures=1
+  fi
+  return "$failures"
+}
+
+# Prove every lifecycle boundary in both directions: its completed build trees
+# are removed in an owned snapshot while an unrelated path survives; outside a
+# snapshot the helper must be a no-op. A row that silently stopped matching
+# would otherwise only be rediscovered by another full disk.
+suite_build_lifecycle_selftest() {
+  local probe boundary failures=0
+  probe="$(mktemp -d "${TMPDIR:-/tmp}/ra8-storage-probe.XXXXXXXX")"
+  if [[ "${#RA8_CI_RECLAIM_BOUNDARIES[@]}" -lt 6 ]]; then
+    echo "ERROR: suite build lifecycle boundary set collapsed below its floor." >&2
+    failures=1
+  fi
+  mkdir -p "$probe/keep"
+  touch "$probe/keep/probe"
+  for boundary in "${RA8_CI_RECLAIM_BOUNDARIES[@]}"; do
+    suite_build_lifecycle_boundary_selftest "$probe" "$boundary" || failures=1
+  done
+
+  mkdir -p "$probe/tests/build"
+  touch "$probe/tests/build/outside-probe"
+  (
+    cd "$probe"
+    RA8_CI_SNAPSHOT_DIR=""
+    RA8_CI_SNAPSHOT_OWNER=""
+    suite_reclaim_completed_builds ubsan
+  ) >/dev/null 2>&1 || failures=1
+  if [[ ! -f "$probe/tests/build/outside-probe" ]]; then
+    echo "ERROR: suite build lifecycle modified an in-place checkout." >&2
+    failures=1
+  fi
+
+  rm -rf -- "$probe"
+  if [[ "$failures" -ne 0 ]]; then
+    return 1
+  fi
+  echo "ci.sh: suite build-lifecycle self-test OK (bounded snapshot cleanup)."
+}
+
 # Disable errexit around the gate CALL only -- never `run_suite ... || rc=$?`.
 # A `||` chain (like an `if` condition, or `!`) puts the callee into bash's
 # inherited "ignoring errors" state, and that state propagates into every nested

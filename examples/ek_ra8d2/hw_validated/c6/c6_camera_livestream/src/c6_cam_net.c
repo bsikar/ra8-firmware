@@ -173,8 +173,8 @@ static uint32_t c6_cam_append(char* out, uint32_t at, uint32_t cap, const char* 
 
 /** @brief Decimal formatting and minimum HTTP request sizes. */
 typedef enum : uint32_t {
-  k_c6_cam_net_decimal_digits = 10U,
-  k_c6_cam_http_get_min       = 5U,
+  k_c6_cam_net_decimal_digits = 10U, /**< Digits in a 32-bit decimal rendering. */
+  k_c6_cam_http_get_min       = 5U,  /**< Minimum bytes in an HTTP GET request. */
 } c6_cam_net_format_t;
 
 static uint32_t c6_cam_append_u32(char* out, uint32_t at, uint32_t cap, uint32_t value)

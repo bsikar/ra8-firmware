@@ -13,6 +13,21 @@ project(media_dl C)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# Keep host-tool coverage opt-in, matching tests/cmake/host_config.cmake. The
+# flags are added after project() so CMake's compiler probe is not instrumented
+# and gcovr never mistakes compiler-identification objects for project code.
+option(RA8_COVERAGE "Emit gcov coverage data for media_dl and its tests" OFF)
+if(RA8_COVERAGE)
+  add_compile_options(
+    --coverage
+    -fprofile-arcs
+    -ftest-coverage
+    -O0
+    -g
+  )
+  add_link_options(--coverage -fprofile-arcs -ftest-coverage)
+endif()
+
 find_package(CURL REQUIRED)
 
 # posix_spawn_file_actions_addchdir() is POSIX.1-2024. macOS 26 ships it and

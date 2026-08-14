@@ -3,8 +3,9 @@
 # Copyright (c) 2026 Brighton Sikarskie
 # ra8-firmware -- MISRA-C 2012 audit (advisory)
 #
-# Runs cppcheck + the bundled misra.py addon over first-party source
-# (libs/ + src/ + port/, excluding libs/third_party/) and emits:
+# Runs cppcheck + the bundled misra.py addon over every first-party C source
+# root (libs/ + src/ + port/ + tools/, excluding vendored/generated code) and
+# emits:
 #
 #   build/misra/results.txt  -- one violation per line, parsed
 #   build/misra/raw.txt      -- raw cppcheck stderr
@@ -15,7 +16,8 @@
 # compliance. cppcheck-MISRA covers roughly two thirds of the
 # mandatory + required rules; see docs/MISRA.md for the gap plan.
 #
-# Out of scope: tests/, examples/, build/, mocks/.
+# Out of scope: tests/, examples/, build/, mocks/. Host tools are first-party
+# production code and deliberately remain in scope.
 #
 # Strategy: cppcheck's `--addon=misra` dispatcher silently drops
 # misra.py findings when no MISRA rule-texts file is supplied (the
@@ -50,8 +52,8 @@ RESULTS="$OUT_DIR/results.txt"
 # since changed -- silent corruption of the ratchet comparison.
 # shellcheck disable=SC2329  # invoked by `trap cleanup_dumps EXIT` below.
 cleanup_dumps() {
-  find libs src port -name '*.dump' -not -path '*/third_party/*' -delete 2>/dev/null || true
-  find libs src port -name '*.ctu-info' -not -path '*/third_party/*' -delete 2>/dev/null || true
+  find libs src port tools -name '*.dump' -not -path '*/third_party/*' -delete 2>/dev/null || true
+  find libs src port tools -name '*.ctu-info' -not -path '*/third_party/*' -delete 2>/dev/null || true
 }
 trap cleanup_dumps EXIT
 
@@ -61,7 +63,8 @@ if ! command -v cppcheck >/dev/null 2>&1; then
 fi
 
 ADDON_DIR=""
-for candidate in /opt/homebrew/share/Cppcheck/addons /usr/share/cppcheck/addons /usr/local/share/Cppcheck/addons /usr/lib/x86_64-linux-gnu/cppcheck/addons; do
+for candidate in /opt/homebrew/share/Cppcheck/addons /usr/share/cppcheck/addons \
+  /usr/local/share/Cppcheck/addons /usr/lib/*-linux-gnu/cppcheck/addons; do
   if [[ -d "$candidate" && -f "$candidate/misra.py" ]]; then
     ADDON_DIR="$candidate"
     break
@@ -85,7 +88,7 @@ JOBS="${JOBS:-$(ra8_max_jobs)}"
 # _include_args() in check_annotations.py). Deriving both from the layout
 # means a new library or port cannot silently fall outside either.
 INCLUDE_DIRS=()
-for _inc_dir in libs/*/inc src/inc src/*/inc port/*/inc tools/ra8_emulator/inc; do
+for _inc_dir in libs/*/inc src/inc src/*/inc port/*/inc tools/*/inc; do
   case "$_inc_dir" in */third_party/*) continue ;; esac
   [[ -d "$_inc_dir" ]] && INCLUDE_DIRS+=("-I$_inc_dir")
 done
@@ -150,7 +153,7 @@ done <"$ROOT_DIR/.cppcheck-suppressions"
 # are already comments. Suppressing the four rules or absorbing the
 # findings into the baseline would blind the ratchet to real defects in
 # every annotated file.
-echo "[INFO] generating cppcheck dumps under libs/, src/, port/ ..." >&2
+echo "[INFO] generating cppcheck dumps under libs/, src/, port/, tools/ ..." >&2
 set +e
 "${TIMEOUT_CMD[@]}" cppcheck \
   -j "$JOBS" \
@@ -164,6 +167,7 @@ set +e
   --suppress=internalError \
   --suppress=*:libs/third_party/* \
   -ilibs/third_party \
+  -itools/vela/generated \
   -ilibs/ra8_epub/src/ra8_epub_xml_shim.cpp \
   -U__clang__ \
   --std=c11 \
@@ -172,7 +176,7 @@ set +e
   --quiet \
   --error-exitcode=0 \
   "${INCLUDE_DIRS[@]}" \
-  libs src port \
+  libs src port tools \
   2>"$RAW"
 RC=$?
 set -e
@@ -182,8 +186,11 @@ if [[ "$RC" -eq 124 ]]; then
   exit 1
 fi
 
-# Run misra.py on every dump file produced under libs/ src/ port/.
-mapfile -t DUMPS < <(find libs src port -name '*.dump' -not -path '*/third_party/*' | sort)
+# Run misra.py on every dump file produced under the four first-party roots.
+mapfile -t DUMPS < <(
+  find libs src port tools -name '*.dump' \
+    -not -path '*/third_party/*' -not -path '*/vela/generated/*' | sort
+)
 echo "[INFO] running misra.py on ${#DUMPS[@]} dump file(s) ..." >&2
 if [[ ${#DUMPS[@]} -eq 0 ]]; then
   echo "[ERROR] cppcheck produced zero dump files -- the audit did not run" >&2

@@ -17,15 +17,16 @@
 
 # --- tools-build ----------------------------------------------------------
 # #335/#309: COMPILES AND LINKS every first-party CMake host tool -- media_dl,
-# rabook_viewer, rabook_imagepack, mkbookimg, mkfontimg, exfat_mkimage. They were
+# rabook_viewer, rabook_imagepack, mkbookimg, mkfontimg, exfat_mkimage,
+# cache_bench and ra8_emulator. They were
 # linted (#296 widened
 # clang-tidy to tools/) and NONE was ever built by a job, so a change that
 # parsed and linted cleanly could break the build or the link with nothing
 # going red -- and media_dl could not build on Linux at all, which is the only
-# kind of runner this project has. tools/cache_bench, tools/glyph_bench and
-# tools/reader_vmem are already built by the cache-bench gate; tools/ra8_emulator
-# by the emulator gates; tools/epub_compile, tools/mcp and tools/vela are
-# Python and are covered by lint-py-shell.
+# kind of runner this project has. tools/glyph_bench and tools/reader_vmem are
+# Make-only and are built under both compilers by the cache-bench gate;
+# tools/epub_compile, tools/mcp and tools/vela are Python and are covered by
+# lint-py-shell.
 #
 # The gate also holds them to NASA Power of 10 Rule 10. media_dl used to
 # compile ten hand-written first-party firmware sources under a blanket `-w`,
@@ -74,9 +75,10 @@
 _tb_media_dl() (
   set -e
   local cc="$1" root="$2" jobs="$3"
+  shift 3
   echo "tools-build[$cc]: media_dl"
   CC="$cc" cmake -S "$PWD/tools/media_dl" -B "$root/media_dl" \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON "$@"
   cmake --build "$root/media_dl" -j "$jobs"
   test -x "$root/media_dl/media_dl"
   ctest --test-dir "$root/media_dl" --output-on-failure
@@ -89,9 +91,10 @@ _tb_media_dl() (
 _tb_rabook_viewer() (
   set -e
   local cc="$1" root="$2" jobs="$3"
+  shift 3
   echo "tools-build[$cc]: rabook_viewer"
   CC="$cc" cmake -S "$PWD/tools/rabook_viewer" -B "$root/rabook_viewer" \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON "$@"
   cmake --build "$root/rabook_viewer" -j "$jobs"
   test -x "$root/rabook_viewer/rabook_viewer"
 
@@ -123,13 +126,31 @@ _tb_rabook_viewer() (
 _tb_other_tools() (
   set -e
   local cc="$1" root="$2" jobs="$3" tool
-  for tool in rabook_imagepack mkbookimg mkfontimg exfat_mkimage; do
+  shift 3
+  for tool in rabook_imagepack mkbookimg mkfontimg exfat_mkimage cache_bench ra8_emulator; do
     echo "tools-build[$cc]: $tool"
     CC="$cc" cmake -S "$PWD/tools/$tool" -B "$root/$tool" \
-      -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON "$@"
     cmake --build "$root/$tool" -j "$jobs"
     test -x "$root/$tool/$tool"
   done
+)
+
+_tb_build_compiler() (
+  set -e
+  local cc="$1" root="$2" jobs="$3"
+  local cmake_args=()
+  if [[ "$cc" == gcc-14 ]]; then
+    # The gcc arm is also the tool-wide UBSan arm, matching gate_ubsan's
+    # halt-on-first-undefined-behaviour contract for the library host suite.
+    cmake_args+=(
+      -DCMAKE_C_FLAGS=-fsanitize=undefined\ -fno-sanitize-recover=undefined
+      -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=undefined
+    )
+  fi
+  _tb_media_dl "$cc" "$root" "$jobs" "${cmake_args[@]}"
+  _tb_rabook_viewer "$cc" "$root" "$jobs" "${cmake_args[@]}"
+  _tb_other_tools "$cc" "$root" "$jobs" "${cmake_args[@]}"
 )
 
 gate_tools_build() (
@@ -155,21 +176,19 @@ gate_tools_build() (
   # Build, link and test every tool under BOTH pinned compilers. Each compiler
   # gets its own build tree so the two compile databases never overwrite each
   # other; both are handed to check_tool_warning_flags.py below.
-  local dbs=()
-  local cc root
+  local cc
+  export UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
   for cc in clang-18 gcc-14; do
-    root="$base/$cc"
-    _tb_media_dl "$cc" "$root" "$jobs"
-    _tb_rabook_viewer "$cc" "$root" "$jobs"
-    _tb_other_tools "$cc" "$root" "$jobs"
-    dbs+=(
-      "$root/media_dl/compile_commands.json"
-      "$root/rabook_viewer/compile_commands.json"
-      "$root/rabook_imagepack/compile_commands.json"
-      "$root/mkbookimg/compile_commands.json"
-      "$root/mkfontimg/compile_commands.json"
-      "$root/exfat_mkimage/compile_commands.json"
-    )
+    _tb_build_compiler "$cc" "$base/$cc" "$jobs"
+  done
+
+  local dbs=()
+  local tool
+  for cc in clang-18 gcc-14; do
+    for tool in media_dl rabook_viewer rabook_imagepack mkbookimg mkfontimg \
+      exfat_mkimage cache_bench ra8_emulator; do
+      dbs+=("$base/$cc/$tool/compile_commands.json")
+    done
   done
 
   # --- the warning bar actually reached every first-party TU, under BOTH arms.
@@ -177,6 +196,7 @@ gate_tools_build() (
   # failure instead of a vacuous pass (#356, #348/#355 class).
   python3 scripts/checks/check_tool_warning_flags.py \
     --require-compilers clang,gcc \
+    --require-all-cmake-tools \
     "${dbs[@]}"
 
   echo "PASS: host tools build, link, test and hold the warning bar under clang-18 and gcc-14."
