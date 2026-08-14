@@ -220,6 +220,16 @@ static uint32_t internal_pack_cdocr(const ra8_ceu_config_t* cfg)
 
 void ra8_ceu_program_geometry(const ra8_ceu_config_t* cfg)
 {
+  if (cfg->capture_format == k_ra8_ceu_fmt_data_enable) {
+    /* HUM Ch 60.2.4-60.2.6: data-enable fetch does not use cycle
+     * validation, capture offsets, or the fixed capture window. Nonzero
+     * geometry falsely treats variable JPEG framing as synchronous pixels. */
+    *ra8_ceu_reg32(k_ra8_ceu_off_cmcyr) = 0U;
+    *ra8_ceu_reg32(k_ra8_ceu_off_camor) = 0U;
+    *ra8_ceu_reg32(k_ra8_ceu_off_capwr) = 0U;
+    return;
+  }
+
   /* HUM Ch 60.2.4 "CMCYR : Camera Interface Cycle Register" p 3641 */
   const uint32_t cmcyr =
     (((uint32_t)cfg->height_px) << k_ra8_ceu_cmcyr_shift_vcyl) | (uint32_t)cfg->width_px;

@@ -50,6 +50,9 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/ra8_usb_pal/inc
             ${FW_ROOT}/libs/ra8_fs/inc
             ${FW_ROOT}/libs/ra8_io/inc
+            ${FW_ROOT}/libs/ra8_audio/inc
+            ${FW_ROOT}/libs/ra8_camera/inc
+            ${FW_ROOT}/libs/ra8_camera_io/inc
             ${FW_ROOT}/libs/ra8_ftl/inc
             ${FW_ROOT}/libs/ra8_mem/inc
             ${FW_ROOT}/libs/ra8_sdmmc_spi/inc
@@ -87,6 +90,7 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/ra8_wdt_supervisor/inc
             ${FW_ROOT}/libs/ra8_board_ek_ra8d2/inc
             ${FW_ROOT}/libs/ra8_lsm6dso/inc
+            ${FW_ROOT}/libs/ra8_ov5640/inc
             ${FW_ROOT}/libs/ra8_tz_secure_boot/inc
             ${FW_ROOT}/port/threadx/inc
             ${FW_ROOT}/port/esp-hosted/inc
@@ -115,6 +119,9 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/ra8_usb_pal/src
             ${FW_ROOT}/libs/ra8_fs/src
             ${FW_ROOT}/libs/ra8_io/src
+            ${FW_ROOT}/libs/ra8_audio/src
+            ${FW_ROOT}/libs/ra8_camera/src
+            ${FW_ROOT}/libs/ra8_camera_io/src
             ${FW_ROOT}/libs/ra8_ftl/src
             ${FW_ROOT}/libs/ra8_sdmmc_spi/src
             ${FW_ROOT}/libs/ra8_gfx/src
@@ -132,6 +139,7 @@ function(ra8_add_test name)
             ${FW_ROOT}/libs/ra8_wdt_supervisor/src
             ${FW_ROOT}/libs/ra8_board_ek_ra8d2/src
             ${FW_ROOT}/libs/ra8_lsm6dso/src
+            ${FW_ROOT}/libs/ra8_ov5640/src
             ${FW_ROOT}/libs/ra8_epub/src
             ${FW_ROOT}/libs/ra8_comic/src
             ${FW_ROOT}/libs/ra8_unarch/src

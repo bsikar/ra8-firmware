@@ -4,7 +4,7 @@
 # Per-app Makefile for the `pdm_mic_demo` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_pending/pdm_mic_demo/
+#   cd examples/ek_ra8d2/hw_validated/hil/pdm_mic_demo/
 #   make             # configure + build -> build/pdm_mic_demo.elf
 #   make flash       # JLinkExe load via scripts/dev/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger

@@ -13,15 +13,15 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **253**
-- Total compound decisions in scope: **1333**
-- Decisions at 100% MC/DC (`yes`): **1153**
+- Source files with at least one decision: **255**
+- Total compound decisions in scope: **1337**
+- Decisions at 100% MC/DC (`yes`): **1157**
 - Decisions partially covered (`partial`): **74**
 - Decisions fully uncovered (`no`): **106**
-- Coverage rate (yes / total): **86.50%**
+- Coverage rate (yes / total): **86.54%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **89**
-- Reachable-condition denominator (total - deactivated): **1244**
-- **Reachable MC/DC rate**: **92.68%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **1248**
+- **Reachable MC/DC rate**: **92.71%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -335,6 +335,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_fs_fat_file | 3 | 3 | 0 | 0 |
 | ra8_jof | 3 | 3 | 0 | 0 |
 | ra8_jpeg_sw_stream | 3 | 3 | 0 | 0 |
+| ra8_ov5640 | 3 | 3 | 0 | 0 |
 | ra8_reflow_link | 3 | 3 | 0 | 0 |
 | ra8_sdmmc_spi | 3 | 3 | 0 | 0 |
 | ra8_touch | 3 | 3 | 0 | 0 |
@@ -393,6 +394,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | key_import | 1 | 1 | 0 | 0 |
 | key_vault | 1 | 1 | 0 | 0 |
 | ota_commit | 1 | 1 | 0 | 0 |
+| ra8_board_ek_ra8d2_camera | 1 | 1 | 0 | 0 |
 | ra8_c6link_pump | 1 | 1 | 0 | 0 |
 | ra8_cache | 1 | 1 | 0 | 0 |
 | ra8_canfd_frame | 1 | 1 | 0 | 0 |

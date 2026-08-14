@@ -94,7 +94,8 @@ static bool s_mve_resume_armed = false;
 
 /* ---------------------------------------------------------------------------
  * MVE contiguous load/store family (VLDRB/VLDRH/VLDRW, VSTRB/VSTRH/VSTRW with
- * an immediate offset), serviced from the NoCP UsageFault.
+ * an immediate offset or post-index write-back), serviced from the NoCP
+ * UsageFault.
  *
  * Armv8.1-M reallocates coprocessor space 0b1110 / 0b1111 to MVE, so this
  * family reuses the legacy STC/LDC encodings byte for byte. `arm-none-eabi-as
@@ -122,7 +123,7 @@ static bool s_mve_resume_armed = false;
  * of two or more MVE accesses faulting on its second instruction.
  *
  * Field layout, confirmed by assembling each form and reading the bytes back:
- *   hw1 = 1110 1101 0 U W L Rn   (0xED.., hw1[6] the legacy 'D' bit is 0)
+ *   hw1 = 1110 110P 0 U W L Rn   (P=1 offset, P=0 post-index; bit6 is 0)
  *   hw2 = Qd[2:0] 1 1 1 1 size[1:0] imm7
  * with size 0b00 byte (imm7 scaled by 1), 0b01 halfword (by 2), 0b10 word
  * (by 4) and 0b11 unallocated. Every form transfers the whole 16-byte vector;
@@ -138,8 +139,9 @@ static bool s_mve_resume_armed = false;
  * ===========================================================================
  */
 typedef enum : uint32_t {
-  k_mve_mem_h1_mask  = 0xFF40U, /**< hw1 fixed bits: 0xED.. with bit6 clear.     */
-  k_mve_mem_h1_val   = 0xED00U, /**< hw1 match for the contiguous family.        */
+  k_mve_mem_h1_mask  = 0xFF40U, /**< hw1 fixed bits with P/U/W/L/Rn excluded.    */
+  k_mve_mem_h1_val   = 0xED00U, /**< hw1 match for immediate-offset forms.       */
+  k_mve_mem_h1_post  = 0xEC00U, /**< hw1 match for post-index write-back forms.  */
   k_mve_mem_h2_mask  = 0x1E00U, /**< Isolates hw2[12:9], the coprocessor space.  */
   k_mve_mem_h2_val   = 0x1E00U, /**< hw2[12:9] == 0b1111 selects MVE, not FP.    */
   k_mve_mem_bit_u    = 0x0080U, /**< hw1[7]: add (1) or subtract (0) the offset. */
@@ -163,9 +165,9 @@ typedef enum : uint32_t {
  * @struct mve_mem_op_t
  * @brief One decoded MVE contiguous load/store.
  *
- * @details Filled by ::mve_mem_decode and consumed by ::mve_mem_exec. The
- * addressing mode is always pre-indexed, so the accessed address is
- * `Rn +/- off` and write-back stores that same address into `Rn`.
+ * @details Filled by ::mve_mem_decode and consumed by ::mve_mem_exec. Offset
+ * forms access `Rn +/- off`; post-index forms access `Rn` first and then write
+ * `Rn +/- off` back to the base register.
  *
  * @invariant `qd` is in [0, 7] -- it comes from a 3-bit field.
  * @invariant `rn` is in [0, 15] -- it comes from a 4-bit field and may name SP.
@@ -179,6 +181,7 @@ typedef struct {
   bool     load;  /**< True for VLDR*, false for VSTR*.                 */
   bool     wback; /**< True when the computed address is written to Rn. */
   bool     add;   /**< True to add the offset, false to subtract it.    */
+  bool     post;  /**< True when access precedes write-back adjustment. */
 } mve_mem_op_t;
 
 /**
@@ -205,7 +208,8 @@ typedef struct {
  */
 static bool mve_mem_decode(uint16_t hw1, uint16_t hw2, mve_mem_op_t* op)
 {
-  if (((hw1 & (uint16_t)k_mve_mem_h1_mask) != (uint16_t)k_mve_mem_h1_val) ||
+  const uint16_t h1_family = hw1 & (uint16_t)k_mve_mem_h1_mask;
+  if (((h1_family != (uint16_t)k_mve_mem_h1_val) && (h1_family != (uint16_t)k_mve_mem_h1_post)) ||
       ((hw2 & (uint16_t)k_mve_mem_h2_mask) != (uint16_t)k_mve_mem_h2_val)) {
     return false;
   }
@@ -231,6 +235,7 @@ static bool mve_mem_decode(uint16_t hw1, uint16_t hw2, mve_mem_op_t* op)
   op->load  = (hw1 & (uint16_t)k_mve_mem_bit_l) != 0U;
   op->wback = (hw1 & (uint16_t)k_mve_mem_bit_w) != 0U;
   op->add   = (hw1 & (uint16_t)k_mve_mem_bit_u) != 0U;
+  op->post  = h1_family == (uint16_t)k_mve_mem_h1_post;
   return true;
 }
 
@@ -261,8 +266,9 @@ static void mve_mem_exec(uc_engine* uc, const mve_mem_op_t* op)
 {
   uint32_t base = 0U;
   (void)uc_reg_read(uc, k_arm_reg_id[op->rn], &base);
-  const uint32_t addr = op->add ? (base + op->off) : (base - op->off);
-  const int      d_lo = (int)UC_ARM_REG_D0 + (int)(2U * op->qd);
+  const uint32_t adjusted = op->add ? (base + op->off) : (base - op->off);
+  const uint32_t addr     = op->post ? base : adjusted;
+  const int      d_lo     = (int)UC_ARM_REG_D0 + (int)(2U * op->qd);
   uint8_t        buf[k_mve_q_bytes];
   uint64_t       lo = 0U;
   uint64_t       hi = 0U;
@@ -280,7 +286,7 @@ static void mve_mem_exec(uc_engine* uc, const mve_mem_op_t* op)
     (void)uc_mem_write(uc, (uint64_t)addr, buf, (size_t)k_mve_q_bytes);
   }
   if (op->wback) {
-    (void)uc_reg_write(uc, k_arm_reg_id[op->rn], &addr);
+    (void)uc_reg_write(uc, k_arm_reg_id[op->rn], &adjusted);
   }
 }
 

@@ -29,16 +29,17 @@
  *   6. Program the proven VGA YUV422 live-scene sequence, sample the active
  *      DVP signals through GPIO, then route VIO_D[7:0], VIO_VD, VIO_HD, and
  *      VIO_CLK to the CEU.
- *   7. `ra8_ceu_init` + `ra8_ceu_capture_start_ex` capture one packed frame
- *      into internal SRAM; the driver polls CETCR.CPE for completion.
+ *   7. `ra8_camera_source_ceu` captures one packed frame into app-owned,
+ *      cache-line-aligned internal SRAM; the backend polls CEU completion.
  *   8. Plausibility stats over the frame, then firmware-side UYVY-to-RGB888
  *      conversion into four cache-cleaned SDRAM buffers at 0/90/180/270.
  *      PASS requires a captured, non-degenerate frame and all four images.
  *
- * The sensor SCCB half (reset / probe / configure + the register table)
- * lives in `cam_ov5640.{c,h}`; the CEU half (DVP pin routing, descriptor,
- * arm/poll + frame buffer) lives in `cam_ceu.{c,h}`. This file owns the
- * app flow, the GPT XCLK, the console, and the banner/verdict logic.
+ * The reusable `ra8_ov5640` sensor driver owns sensor protocol and tables;
+ * the board adapter owns J35 routing/reset/SCCB; `ra8_camera_source_ceu` owns
+ * generic capture dispatch. This file owns app policy, caller-supplied source
+ * state/storage, console output, and the verdict. `cam_ceu` is limited to the
+ * HIL-only pre-routing GPIO activity probe.
  *
  * Banner (scraped by the HIL gate once promoted):
  *   `cam: gpt=RUN scan=3C:56.43:00. chipid=5640 xclk=OK rst=OK sccb=OK`
@@ -63,8 +64,10 @@
 
 #include "cam_ceu.h"
 #include "cam_image.h"
-#include "cam_ov5640.h"
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_camera.h"
+#include "ra8_camera_source_ceu.h"
+#include "ra8_ceu.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -72,6 +75,7 @@
 #include "ra8_i2c.h"
 #include "ra8_isr.h"
 #include "ra8_mstp.h"
+#include "ra8_ov5640.h"
 #include "ra8_port_utils.h"
 #include "ra8_sdramc.h"
 #include "ra8_time.h"
@@ -86,21 +90,32 @@ typedef enum : uint32_t {
   k_cam_baud            = 115200U,   /**< SCI8 console baud.                     */
   k_cam_xclk_hz         = 24000000U, /**< OV5640 XVCLK input-clock target, Hz.   */
   k_cam_mode_settle_ms  = 100U,      /**< Settle after selecting parallel mode.  */
+  k_cam_capture_poll_ms = 5U,        /**< CEU completion-poll interval.          */
+  k_cam_capture_tries   = 800U,      /**< CEU poll cap (~4 seconds).             */
+  k_cam_cache_line      = 32U,       /**< DMA buffer cache-line alignment.       */
+  k_cam_string_cap      = 1024U,     /**< Console-string scan safety bound.      */
   k_cam_dec_cap         = 99999999U, /**< Max value cam_put_u32 can render.      */
-  k_cam_gpt_period_max  = 0xFFFFU,   /**< Max GPT period (16-bit GTPR).          */
   k_cam_gpt_probe_iters = 64U,       /**< GTCNT samples to prove the timer runs. */
 } cam_u32_t;
 
 /** @brief 8-bit app constants: hex/decimal printing, bus scan, U15 expander. */
 typedef enum : uint8_t {
-  k_cam_nibble_mask = 0x0FU, /**< Low-nibble mask for hex printing.     */
-  k_cam_dec_base    = 10U,   /**< Base for decimal printing.            */
-  k_cam_byte_max    = 0xFFU, /**< Maximum byte value (min-scan seed).   */
-  k_cam_scan_lo     = 0x08U, /**< First 7-bit address in the bus scan.  */
-  k_cam_scan_hi     = 0x77U, /**< Last 7-bit address in the bus scan.   */
-  k_cam_sw46_output = 0xDFU, /**< U15 latch: SW4-6 ON, other bits high. */
-  k_cam_sw46_mask   = 0x20U, /**< Drive SW4-6 only; release all others. */
+  k_cam_nibble_mask = 0x0FU, /**< Low-nibble mask for hex printing.    */
+  k_cam_dec_base    = 10U,   /**< Base for decimal printing.           */
+  k_cam_byte_max    = 0xFFU, /**< Maximum byte value (min-scan seed).  */
+  k_cam_scan_lo     = 0x08U, /**< First 7-bit address in the bus scan. */
+  k_cam_scan_hi     = 0x77U, /**< Last 7-bit address in the bus scan.  */
 } cam_u8_t;
+
+/** @brief Packed VGA UYVY CEU geometry. */
+typedef enum : uint16_t {
+  k_cam_line_bytes = 1280U, /**< 640 pixels x 2 packed bytes. */
+} cam_capture_geom_t;
+
+/** @brief Packed VGA UYVY storage layout. */
+typedef enum : uint8_t {
+  k_cam_bytes_per_pixel = 2U, /**< UYVY bytes per pixel. */
+} cam_capture_layout_t;
 
 /** @brief GPT channel that generates XCLK on GTIOC12A (P501). */
 typedef enum : uint8_t {
@@ -140,6 +155,108 @@ volatile uint32_t g_cam_verdict = 0U;
 /** @brief Console tag prefix for every banner line. */
 static const uint8_t k_cam_tag[] = "cam: ";
 
+/** @brief Transport-independent sensor instance bound to the board SCCB adapter. */
+static ra8_ov5640_t s_camera_sensor;
+
+/** @brief Generic CEU source handle and caller-owned backend state. */
+static ra8_camera_source_t           s_camera_source;
+static ra8_camera_source_ceu_state_t s_camera_source_state;
+
+/** @brief Last immutable frame view returned by the generic source. */
+static ra8_camera_frame_t s_camera_frame;
+
+/** @brief App-owned, cache-line-aligned target for one packed VGA capture. */
+alignas(k_cam_cache_line) static uint8_t s_camera_capture[k_cam_uyvy_frame_bytes];
+
+/**
+ * @brief Bind the reusable sensor driver to the EK-RA8D2 SCCB adapter.
+ * @details Constructs a transport over board-owned SCCB and delay callbacks.
+ * @return Repository error code.
+ * @retval k_ra8_ok The sensor instance was initialized.
+ * @retval k_ra8_err_null_ptr A required transport callback was unavailable.
+ * @pre Board camera support is linked into the application.
+ * @pre No capture operation is concurrently using `s_camera_sensor`.
+ * @post On success, `s_camera_sensor` is initialized at the primary address.
+ * @post No sensor register transfer is performed by the binding itself.
+ * @note The board adapter owns the physical I2C channel.
+ * @since 0.1.0
+ */
+static ra8_err_t cam_sensor_bind(void)
+{
+  const ra8_ov5640_bus_t bus = {
+    .read_reg  = ra8_board_camera_sccb_read_reg,
+    .write_reg = ra8_board_camera_sccb_write_reg,
+    .delay_ms  = ra8_board_camera_delay_ms,
+    .ctx       = nullptr,
+  };
+  return ra8_ov5640_init(&s_camera_sensor, &bus);
+}
+
+/**
+ * @brief Bind the generic CEU source to app-owned state and VGA metadata.
+ * @details Configures a single-shot 8-bit synchronous UYVY capture with fixed
+ *          VGA geometry and bounded polling.
+ * @return Error from CEU configuration or generic-source binding.
+ * @retval k_ra8_ok The generic source is ready.
+ * @retval k_ra8_err_null_ptr Internal source bindings were invalid.
+ * @pre Clocks and module-stop control are initialized.
+ * @pre Parallel camera pins have been routed to the CEU.
+ * @post On success `s_camera_source` is ready for one-shot captures.
+ * @post App-owned source state retains the configured VGA metadata.
+ * @note This function allocates no capture storage.
+ * @since 0.1.0
+ */
+static ra8_err_t cam_capture_source_bind(void)
+{
+  const ra8_camera_source_ceu_cfg_t cfg = {
+    .ceu =
+      {
+        .width_px        = (uint16_t)k_cam_image_width_px,
+        .height_px       = (uint16_t)k_cam_image_height_px,
+        .x_start_px      = 0U,
+        .y_start_px      = 0U,
+        .x_capture_px    = (uint16_t)k_cam_line_bytes,
+        .y_capture_lines = (uint16_t)k_cam_image_height_px,
+        .dst_stride      = (uint16_t)k_cam_line_bytes,
+        .frame_drop      = 0U,
+        .bytes_per_pixel = (uint8_t)k_cam_bytes_per_pixel,
+        .interrupts      = 0U,
+        .capture_format  = k_ra8_ceu_fmt_data_synchronous,
+        .capture_mode    = k_ra8_ceu_capture_single,
+        .data_bus        = k_ra8_ceu_bus_8_bit,
+        .hsync_polarity  = k_ra8_ceu_pol_high_active,
+        .vsync_polarity  = k_ra8_ceu_pol_high_active,
+        .field_polarity  = k_ra8_ceu_pol_high_active,
+        .input_order     = k_ra8_ceu_input_cb0_y0_cr0_y1,
+        .output_format   = k_ra8_ceu_output_ycbcr_422,
+        .burst_mode      = k_ra8_ceu_burst_32,
+        .first_field     = k_ra8_ceu_field_immediate,
+        .edge            = {k_ra8_ceu_edge_rising,
+                            k_ra8_ceu_edge_rising,
+                            k_ra8_ceu_edge_rising,
+                            k_ra8_ceu_edge_rising},
+        .byte_swap       = {false, true, true},
+        .scale = {0U, 0U, 0U, 0U, (uint16_t)k_cam_image_width_px, (uint16_t)k_cam_image_height_px},
+        .interlace       = false,
+        .one_field_only  = false,
+        .bundle_write    = false,
+        .low_pass_filter = false,
+        .image_area_size = 0U,
+      },
+    .output =
+      {
+        .frame_bytes_max = (uint32_t)k_cam_uyvy_frame_bytes,
+        .stride_bytes    = (uint32_t)k_cam_line_bytes,
+        .width           = (uint16_t)k_cam_image_width_px,
+        .height          = (uint16_t)k_cam_image_height_px,
+        .format          = k_ra8_camera_format_uyvy422,
+      },
+    .poll_interval_ms = (uint32_t)k_cam_capture_poll_ms,
+    .poll_attempts    = (uint32_t)k_cam_capture_tries,
+  };
+  return ra8_camera_source_ceu_init(&s_camera_source, &s_camera_source_state, &cfg);
+}
+
 /* =============================================================================
  * Console helpers
  * =============================================================================
@@ -147,9 +264,10 @@ static const uint8_t k_cam_tag[] = "cam: ";
 
 /**
  * @brief Bounded length of a NUL-terminated C string.
- *
+ * @details Scans at most `k_cam_string_cap` bytes to keep console helpers bounded.
  * @param[in] s Non-NULL C string.
- * @return Length in bytes, capped at ::k_cam_frame_bytes.
+ * @return Length in bytes, capped at ::k_cam_string_cap.
+ * @retval uint32_t Number of bytes preceding NUL or the configured cap.
  *
  * @pre `s` is non-NULL.
  * @pre The string is NUL-terminated within the cap.
@@ -162,7 +280,7 @@ static uint32_t cam_strlen(const char* s)
 {
   RA8_CHECK_NULL_PTR(s, "cam", "strlen");
   uint32_t n = 0U;
-  while ((n < (uint32_t)k_cam_frame_bytes) && (s[n] != '\0')) {
+  while ((n < (uint32_t)k_cam_string_cap) && (s[n] != '\0')) {
     n += 1U;
   }
   return n;
@@ -170,7 +288,7 @@ static uint32_t cam_strlen(const char* s)
 
 /**
  * @brief Write a NUL-terminated string to the SCI8 console.
- *
+ * @details Measures the bounded string and forwards its bytes to the board console.
  * @param[in] s Non-NULL C string.
  * @return ra8_err_t from the BSP console write.
  * @retval k_ra8_ok String queued.
@@ -192,7 +310,7 @@ static ra8_err_t cam_puts(const char* s)
 
 /**
  * @brief Write `width` hex nibbles of `value` (big-endian) to the console.
- *
+ * @details Formats uppercase hexadecimal into fixed stack storage before one write.
  * @param[in] value Value to print.
  * @param[in] width Number of nibbles (1..8).
  * @return ra8_err_t from the console write.
@@ -223,7 +341,7 @@ static ra8_err_t cam_put_hex(uint32_t value, uint8_t width)
 
 /**
  * @brief Write an unsigned decimal integer to the console.
- *
+ * @details Formats the value backward into fixed stack storage before one write.
  * @param[in] value Value to print (0..99999999).
  * @return ra8_err_t from the console write.
  * @retval k_ra8_ok Digits queued.
@@ -254,102 +372,49 @@ static ra8_err_t cam_put_u32(uint32_t value)
 }
 
 /* =============================================================================
- * XCLK generation (GPT12 saw-PWM on P501)
- * =============================================================================
- */
-
-/**
- * @brief Start the ~24 MHz XVCLK on GTIOC12A (P501) via GPT channel 12.
- *
- * @details Programs a saw-wave PWM whose period divides PCLKD down to the
- *          XVCLK target, enables the GTIOC12A output, and routes P501 to
- *          the GPT peripheral. The OV5640 needs this clock before any
- *          SCCB access.
- *
- * @return ra8_err_t; ok when the clock is toggling on P501.
- * @retval k_ra8_ok XVCLK is running.
- * @retval k_ra8_err_invalid_arg PCLKD readback gave an unusable divisor.
- *
- * @pre `ra8_cgc_init` + `ra8_mstp_init` have run.
- * @pre P501 is free (not muxed to the audio codec).
- * @post GPT12 counts and drives a ~24 MHz square wave on P501.
- * @post P501 carries the GTIOC12A function.
- * @note Thread safety: init context only.
- * @since 0.1.0
- */
-static ra8_err_t cam_start_xclk(void)
-{
-  uint32_t  pclkd_hz = 0U;
-  ra8_err_t err      = ra8_cgc_get_clock_hz(k_ra8_clock_id_pclkd, &pclkd_hz);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const uint32_t period_counts = pclkd_hz / (uint32_t)k_cam_xclk_hz;
-  RA8_CHECK_RANGE(period_counts, 2U, (uint32_t)k_cam_gpt_period_max, k_ra8_err_invalid_arg);
-  const ra8_gpt_cfg_t cfg = {
-    .mode       = k_ra8_gpt_mode_saw_pwm,
-    .prescaler  = k_ra8_gpt_ps_div_1,
-    .period     = period_counts - 1U,
-    .duty_a     = period_counts / 2U,
-    .duty_b     = 0U,
-    .auto_start = true,
-  };
-  err = ra8_gpt_init((uint8_t)k_cam_xclk_gpt_ch, &cfg);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const ra8_gpt_pwm_pin_cfg_t pin = {
-    .output_enable    = true,
-    .polarity         = k_ra8_gpt_pol_active_high,
-    .stop_level       = k_ra8_gpt_stop_low,
-    .disable_on_fault = k_ra8_gpt_disable_none,
-  };
-  err = ra8_gpt_pwm_pin_configure((uint8_t)k_cam_xclk_gpt_ch, k_ra8_gpt_pin_a, &pin);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = ra8_pfs_route_peripheral(RA8_PIN(k_ra8_port_5, k_ra8_pin_1), k_ra8_psel_gpt0, "cam.xclk");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_pfs_set_drive_strength(RA8_PIN(k_ra8_port_5, k_ra8_pin_1),
-                                    k_ra8_pfs_dscr_high_speed_high);
-}
-
-/* =============================================================================
  * Frame plausibility
  * =============================================================================
  */
 
 /**
  * @brief Compute min / max / mean over the CEU frame and store to globals.
+ * @details Validates the expected VGA UYVY geometry before reducing all bytes
+ *          into simple non-degeneracy statistics for the HIL verdict.
  *
  * @return true when the frame is non-degenerate (max != min).
  * @retval true  Frame varies, consistent with a live non-degenerate capture.
  * @retval false Frame is all-identical, empty, or the buffer was unavailable.
  *
- * @pre ::cam_capture_one has filled the CEU frame buffer.
- * @pre ::k_cam_frame_bytes is non-zero.
+ * @param[in] frame Completed generic-camera frame view.
+ * @pre @p frame was returned by ::ra8_camera_source_capture.
+ * @pre The captured storage remains readable for `frame->bytes` bytes.
  * @post `g_cam_min` / `g_cam_max` / `g_cam_mean` reflect the frame.
  * @post Return distinguishes a live grab from an all-identical buffer.
- * @note Thread safety: reads shared CEU state; call after capture only.
+ * @note Thread safety: reads only the completed frame view and its storage.
  * @since 0.1.0
  */
-static bool cam_frame_is_plausible(void)
+static bool cam_frame_is_plausible(const ra8_camera_frame_t* frame)
 {
-  const uint8_t* frame = cam_ceu_frame();
-  if (frame == nullptr) {
+  if ((frame == nullptr) || (frame->data == nullptr)) {
     return false;
   }
-  const uint32_t n = (uint32_t)k_cam_frame_bytes;
-  if (n == 0U) {
+  if ((frame->bytes != (uint32_t)k_cam_uyvy_frame_bytes) ||
+      (frame->stride_bytes != (uint32_t)k_cam_line_bytes)) {
     return false;
   }
-  uint32_t lo  = (uint32_t)k_cam_byte_max;
-  uint32_t hi  = 0U;
-  uint32_t sum = 0U;
+  if ((frame->width != (uint16_t)k_cam_image_width_px) ||
+      (frame->height != (uint16_t)k_cam_image_height_px)) {
+    return false;
+  }
+  if (frame->format != k_ra8_camera_format_uyvy422) {
+    return false;
+  }
+  const uint32_t n   = frame->bytes;
+  uint32_t       lo  = (uint32_t)k_cam_byte_max;
+  uint32_t       hi  = 0U;
+  uint32_t       sum = 0U;
   for (uint32_t i = 0U; i < n; i += 1U) {
-    const uint32_t b = (uint32_t)frame[i];
+    const uint32_t b = (uint32_t)frame->data[i];
     if (b < lo) {
       lo = b;
     }
@@ -389,7 +454,7 @@ static void cam_bus_scan(void)
   (void)cam_puts(" scan=");
   for (uint8_t a = (uint8_t)k_cam_scan_lo; a <= (uint8_t)k_cam_scan_hi; a += 1U) {
     bool acked = false;
-    if (ra8_i2c_scan((uint8_t)k_cam_iic_ch, a, &acked) != k_ra8_ok) {
+    if (ra8_i2c_scan((uint8_t)k_ra8_board_camera_i2c_channel, a, &acked) != k_ra8_ok) {
       continue;
     }
     if (!acked) {
@@ -399,7 +464,8 @@ static void cam_bus_scan(void)
     /* Read register 0 (8-bit pointer) as a coarse device-ID fingerprint. */
     const uint8_t reg = 0U;
     uint8_t       v   = 0U;
-    if (ra8_i2c_transfer((uint8_t)k_cam_iic_ch, a, &reg, 1U, &v, 1U) == k_ra8_ok) {
+    if (ra8_i2c_transfer((uint8_t)k_ra8_board_camera_i2c_channel, a, &reg, 1U, &v, 1U) ==
+        k_ra8_ok) {
       (void)cam_puts(":");
       (void)cam_put_hex((uint32_t)v, 2U);
     }
@@ -413,8 +479,12 @@ static void cam_bus_scan(void)
  */
 
 /** @brief Park forever after the self-test has reported its verdict.
+ *  @details Repeatedly enters wait-for-interrupt without returning to startup code.
  *  @pre The verdict banner has been emitted.
+ *  @pre Interrupt state is suitable for the application terminal state.
  *  @post The CPU idles; only reset or a debugger wakes it.
+ *  @post No camera or console state is modified after entry.
+ *  @note This is the intentional terminal state for the HIL image.
  *  @since 0.1.0 */
 static void cam_park(void)
 {
@@ -424,37 +494,11 @@ static void cam_park(void)
 }
 
 /**
- * @brief Force the Camera Expansion Board into parallel (DVP) mode.
- *
- * @details The board multiplexes the camera FFC (J35) between MIPI-CSI
- *          (SW4-6 OFF, the board default) and parallel DVP (SW4-6 ON) via
- *          the U15 PI4IOE5V6408 SW4-override expander. In MIPI mode the
- *          P501 XCLK is not routed to the sensor, so the OV5640 stays
- *          unclocked and never answers SCCB. This clears U15 output bit 5
- *          (SW4-6 -> ON) so the DVP path -- and the P501 XVCLK -- reach the
- *          sensor, without disturbing the other SW4 overrides.
- *
- * @return ra8_err_t; ok when U15 latched SW4-6 = ON.
- * @retval k_ra8_ok Parallel-camera routing selected.
- * @retval k_ra8_err_nack U15 did not ACK.
- *
- * @pre `ra8_mstp_init` has run and the Camera Expansion Board is on J35.
- * @pre The Camera Expansion Board is on J35.
- * @post SW4-6 reads ON; the DVP data/clock path is live.
- * @post U15's other SW4 overrides are unchanged.
- * @note Thread safety: init context only.
- * @since 0.1.0
- */
-static ra8_err_t cam_select_parallel_camera(void)
-{
-  return ra8_board_io_expander_apply_sw4_mask((uint8_t)k_cam_sw46_output, (uint8_t)k_cam_sw46_mask);
-}
-
-/**
  * @brief Bring up clocks, console, SDRAM, XCLK, SCCB and parallel camera.
- *
+ * @details Initializes dependencies in order, starts the sensor clock, and
+ *          selects the U15 parallel-camera route without overwriting unrelated bits.
  * @return ra8_err_t from the first failing bring-up step, or ok.
- * @retval k_ra8_ok Console, SDRAM, XCLK and I2C ch1 are live; SW4-6 = ON.
+ * @retval k_ra8_ok Console, SDRAM, XCLK, and the U15 DVP route are live.
  *
  * @pre Reset_Handler + SystemInit ran.
  * @pre Single-threaded init context.
@@ -490,13 +534,13 @@ static ra8_err_t cam_bringup(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  err = cam_start_xclk();
+  err = ra8_board_camera_xclk_start((uint32_t)k_cam_xclk_hz);
   if (err != k_ra8_ok) {
     return err;
   }
   /* Force only SW4-6 ON so DVP reaches the sensor without overriding the
      physical settings used by unrelated board peripherals. */
-  err = cam_select_parallel_camera();
+  err = ra8_board_camera_select_parallel();
   if (err != k_ra8_ok) {
     return err;
   }
@@ -617,17 +661,18 @@ static void cam_print_sync_probe(const cam_ceu_sync_probe_t* probe)
  */
 static ra8_err_t cam_prepare_capture(void)
 {
-  ra8_err_t err = cam_configure_sensor();
+  s_camera_frame = (ra8_camera_frame_t){};
+  ra8_err_t err  = ra8_ov5640_configure(&s_camera_sensor, k_ra8_ov5640_mode_vga_uyvy);
   if (err == k_ra8_ok) {
     cam_ceu_sync_probe_t sync_probe = {};
     err                             = cam_probe_sync_activity(&sync_probe);
     cam_print_sync_probe(&sync_probe);
   }
   if (err == k_ra8_ok) {
-    err = cam_route_ceu_pins();
+    err = ra8_board_camera_route_parallel_pins();
   }
   if (err == k_ra8_ok) {
-    err = cam_ceu_setup();
+    err = cam_capture_source_bind();
   }
   (void)cam_puts(" ceu=");
   (void)cam_puts((err == k_ra8_ok) ? "OK" : "ERR");
@@ -652,17 +697,21 @@ static bool cam_capture_frame_and_report(bool ready)
 {
   bool frame_ok = false;
   if (ready) {
-    frame_ok = (cam_capture_one() == k_ra8_ok);
+    const ra8_camera_buffer_t capture = {
+      .data     = s_camera_capture,
+      .capacity = (uint32_t)sizeof(s_camera_capture),
+    };
+    frame_ok = (ra8_camera_source_capture(&s_camera_source, &capture, &s_camera_frame) == k_ra8_ok);
   }
   g_cam_frame_ok = frame_ok ? 1U : 0U;
   (void)cam_puts(" bytes=");
-  (void)cam_put_u32(cam_ceu_capture_bytes());
+  (void)cam_put_u32(s_camera_frame.bytes);
   (void)cam_puts(" frame=");
-  (void)cam_puts(frame_ok ? "OK" : "TIMEOUT");
+  (void)cam_puts(frame_ok ? "OK" : "ERR");
 
   /* Emit CETCR so missing sync and invalid timing remain diagnosable. */
   uint32_t cetcr = 0U;
-  (void)cam_ceu_get_status(&cetcr);
+  (void)ra8_camera_source_ceu_get_last_events(&s_camera_source_state, &cetcr);
   (void)cam_puts(" cetcr=");
   (void)cam_put_hex(cetcr, 8U);
   return frame_ok;
@@ -684,9 +733,9 @@ static void cam_finish_verdict(bool frame_ok)
   bool plausible = false;
   bool rgb_ok    = false;
   if (frame_ok) {
-    plausible = cam_frame_is_plausible();
+    plausible = cam_frame_is_plausible(&s_camera_frame);
     if (plausible) {
-      rgb_ok = (cam_image_generate(cam_ceu_frame(), cam_ceu_capture_bytes()) == k_ra8_ok);
+      rgb_ok = (cam_image_generate(s_camera_frame.data, s_camera_frame.bytes) == k_ra8_ok);
     }
   }
   (void)cam_puts(" min=");
@@ -733,6 +782,7 @@ static void cam_capture_and_verdict(void)
  *          and the four RGB SDRAM views are complete.
  *
  * @pre `cam_bringup` returned ok (console + XCLK + SCCB live).
+ * @pre The application owns the camera globals and static capture storage.
  * @post A `cam: ...verdict=...` line has been written to SCI8.
  * @post The result globals reflect the run.
  * @note Thread safety: not thread-safe.
@@ -764,13 +814,17 @@ static void cam_run(void)
   /* The OV5640 needs XVCLK (up in cam_bringup) and must be out of
      hardware reset before it answers on SCCB, so release RST (P709)
      before scanning and probing the sensor. */
-  const ra8_err_t rst_err = cam_reset_sensor();
+  ra8_err_t rst_err = ra8_board_camera_reset();
+  if (rst_err == k_ra8_ok) {
+    rst_err = cam_sensor_bind();
+  }
 
   cam_bus_scan();
 
-  uint16_t   chip  = 0U;
-  const bool id_ok = cam_probe_sensor(&chip);
-  g_cam_chipid     = (uint32_t)chip;
+  uint16_t   chip = 0U;
+  const bool id_ok =
+    (rst_err == k_ra8_ok) && (ra8_ov5640_probe(&s_camera_sensor, &chip) == k_ra8_ok);
+  g_cam_chipid = (uint32_t)chip;
   (void)cam_puts(" chipid=");
   (void)cam_put_hex((uint32_t)chip, 4U);
   (void)cam_puts(" xclk=OK rst=");

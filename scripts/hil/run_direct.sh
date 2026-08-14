@@ -190,7 +190,10 @@ if ((LOCAL_PI == 0)); then
       echo -e "${RED}[HIL]${NC} cannot reach ${PI_HOST}"
       exit 2
     }
-  REMOTE_HEX="/tmp/$(basename "$HEX")"
+  REMOTE_DIR="/tmp/ra8_hil_${APP_NAME}_$$_${RANDOM}"
+  # shellcheck disable=SC2029  # The unique staging path is deliberately composed by this client.
+  ssh "$PI_HOST" "mkdir -p '${REMOTE_DIR}'"
+  REMOTE_HEX="${REMOTE_DIR}/$(basename "$HEX")"
   scp -q "$HEX" "${PI_HOST}:${REMOTE_HEX}"
   # If an ELF sibling exists, copy it too -- the OFS-strip path uses it.
   if [[ -f "${HEX%.hex}.elf" ]]; then
@@ -225,9 +228,13 @@ if ((LOCAL_PI == 0)); then
   # self-contained heredoc precisely so the bench host needs no checkout -- this
   # script sends itself whole and therefore needs one. `cd || exit` fails the
   # run loudly rather than letting it proceed from the wrong directory.
+  REMOTE_RC=0
   # shellcheck disable=SC2029  # ${REMOTE_ENV}/${REMOTE_ARGS}/${PI_REPO} are composed locally for the piped copy of this script.
-  ssh "$PI_HOST" "cd ${PI_REPO}/scripts/hil || exit 2; ${REMOTE_ENV}bash -s -- ${REMOTE_ARGS}" <"$0"
-  exit $?
+  ssh "$PI_HOST" "cd ${PI_REPO}/scripts/hil || exit 2; ${REMOTE_ENV}bash -s -- ${REMOTE_ARGS}" <"$0" ||
+    REMOTE_RC=$?
+  # shellcheck disable=SC2029  # Remove the exact client-generated staging directory after recursion.
+  ssh "$PI_HOST" "rm -rf '${REMOTE_DIR}'" || true
+  exit "$REMOTE_RC"
 fi
 
 echo -e "${YELLOW}[HIL]${NC} app=${APP_NAME}  expect='${EXPECT}'  timeout=${TIMEOUT_S}s"
@@ -243,8 +250,15 @@ if [[ -f "$ELF" ]]; then
   arm-none-eabi-objcopy "${OFS_ARGS[@]}" -O ihex "$ELF" "$STRIPPED_HEX" 2>/dev/null ||
     cp "$HEX" "$STRIPPED_HEX"
 else
-  arm-none-eabi-objcopy -I ihex "${OFS_ARGS[@]}" -O ihex "$HEX" "$STRIPPED_HEX" 2>/dev/null ||
-    cp "$HEX" "$STRIPPED_HEX"
+  mapfile -t MRAM_SECTION_ARGS < <(
+    arm-none-eabi-objdump -h "$HEX" 2>/dev/null |
+      awk '$4 ~ /^020[0-9A-Fa-f]{5}$/ { print "--only-section=" $2 }'
+  )
+  if ((${#MRAM_SECTION_ARGS[@]} == 0)); then
+    echo -e "${RED}[HIL]${NC} no MRAM sections found in ${HEX}" >&2
+    exit 2
+  fi
+  arm-none-eabi-objcopy -I ihex "${MRAM_SECTION_ARGS[@]}" -O ihex "$HEX" "$STRIPPED_HEX"
 fi
 
 # ---- 2. Flash via J-Link (loadfile with OFS-stripped hex) -------------------
@@ -361,7 +375,7 @@ sleep 0.2
 JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$TMP_SCRIPT" \
   >"${LOG_FILE}" 2>&1
 
-if grep -qE "\*\*\*\*\*\* Error|Cannot connect to the probe|could not be halted|RAMCode did not respond" "${LOG_FILE}"; then
+if grep -qE "\*\*\*\*\*\* Error|Cannot connect to the probe|could not be halted|RAMCode did not respond|Writing target memory failed" "${LOG_FILE}"; then
   kill "${READER_PID}" 2>/dev/null
   echo -e "${RED}[HIL]${NC} J-Link error -- log tail:" >&2
   tail -20 "${LOG_FILE}" >&2

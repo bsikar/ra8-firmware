@@ -668,8 +668,8 @@ tools/ra8_emulator/src/engine/emu_seam_longshift.c,391,long_shift_begin,@pre(<2:
 tools/ra8_emulator/src/engine/emu_seam_longshift.c,445,long_shift_commit,@pre(<2:1);@post(<2:1);@since,medium
 tools/ra8_emulator/src/engine/emu_seam_longshift.c,474,on_long_shift,@brief;@details;@param[uc];@param[address];@param[size];@param[user];@pre;@post;@note;@since,high
 tools/ra8_emulator/src/engine/emu_seam_longshift.c,527,install_seg_hooks,@retval;@pre(<2:0);@post(<2:0);@note;@since,medium
-tools/ra8_emulator/src/engine/emu_seam_mve.c,324,mve_q_d,@details;@param[qreg];@param[high];@return;@retval;@pre(<2:0);@post(<2:0);@note;@since,high
-tools/ra8_emulator/src/engine/emu_seam_mve.c,331,mve_exec_one,@details;@param[uc];@param[insn];@return;@retval;@pre(<2:0);@post(<2:0);@note;@since,high
+tools/ra8_emulator/src/engine/emu_seam_mve.c,330,mve_q_d,@details;@param[qreg];@param[high];@return;@retval;@pre(<2:0);@post(<2:0);@note;@since,high
+tools/ra8_emulator/src/engine/emu_seam_mve.c,337,mve_exec_one,@details;@param[uc];@param[insn];@return;@retval;@pre(<2:0);@post(<2:0);@note;@since,high
 tools/ra8_emulator/src/engine/emu_seam_sd.c,98,on_sdmmc_read_block,@brief;@details;@param[uc];@param[address];@param[size];@param[user];@pre;@post;@note;@since,high
 tools/ra8_emulator/src/engine/emu_trace.c,81,on_sym_trace,@brief;@details;@param[uc];@param[address];@param[size];@param[user];@pre;@post;@note;@since,high
 tools/ra8_emulator/src/engine/emu_tz.c,133,emu_tz_find_blxns,@since,low

@@ -22,7 +22,47 @@
 # (no external image), which is all the ra8_io / TrustZone / format / EPUB apps
 # require -- they format or self-provision their own files. An app that must
 # READ a pre-populated card gets an image baked once by the caller and passed
-# in via the environment (EIL_FONT_IMG).
+# in via the environment (EIL_FONT_IMG or RA8_EMU_IMPORT_READER_IMG).
+
+# Build a microSD image carrying import_reader's deterministic EPUB fixture.
+# The caller owns @p output and chooses its lifetime. The helper is shared by
+# smoke.sh and matrix.sh so the deep assertion and breadth gate exercise the
+# same exact card contents.
+# shellcheck disable=SC2154 # ROOT is owned by each sourcing entry point.
+emu_build_import_reader_card() { # <output.img> -> 0 on success
+  local output="${1:?output image path required}"
+  local fixture="$ROOT/examples/ek_ra8d2/hw_pending/import_reader/fixtures/book_src"
+  local mk="$ROOT/tools/mkfontimg"
+  local epub
+
+  [ -d "$fixture" ] || return 1
+  cmake -B "$mk/build" -S "$mk" >/dev/null 2>&1 || return 1
+  cmake --build "$mk/build" >/dev/null 2>&1 || return 1
+  epub="$(mktemp -t ra8_emulator_book.XXXXXX.epub)"
+  if ! python3 - "$fixture" "$epub" <<'PY'; then
+import sys, zipfile
+from pathlib import Path
+
+src, out = Path(sys.argv[1]), Path(sys.argv[2])
+epoch = (1980, 1, 1, 0, 0, 0)
+with zipfile.ZipFile(out, "w") as zf:
+    mimetype = zipfile.ZipInfo("mimetype", epoch)
+    mimetype.compress_type = zipfile.ZIP_STORED
+    zf.writestr(mimetype, b"application/epub+zip")
+    for path in sorted(candidate for candidate in src.rglob("*") if candidate.is_file()):
+        info = zipfile.ZipInfo(path.relative_to(src).as_posix(), epoch)
+        info.compress_type = zipfile.ZIP_STORED
+        zf.writestr(info, path.read_bytes())
+PY
+    rm -f "$epub"
+    return 1
+  fi
+  if ! "$mk/build/mkfontimg" "$epub" "$output" BOOK.EPB >/dev/null 2>&1; then
+    rm -f "$epub"
+    return 1
+  fi
+  rm -f "$epub"
+}
 
 # Extra ra8_emulator arguments for one app.
 #
@@ -49,14 +89,10 @@ emu_extra_args() { # <app> -> extra ra8_emulator args on stdout (may be empty)
       printf -- '--sd-new 64:fat32'
       ;;
     import_reader)
-      # Imports a book onto the card. Without one it asserts at "FAIL sd init"
-      # and traps, which the breadth matrix recorded as a FAULT against the APP
-      # rather than against the missing card. With a blank card it reaches
-      # "card ready" and "volume mounted" and then fails at
-      # "FAIL import compile" -- a real finding about the app, which is the
-      # point: the harness has to supply the device before its verdict means
-      # anything. A pre-populated library fixture (cf. sd_font_render's baked
-      # FONT.OTF card) would take it further still.
+      # Imports BOOK.EPB from a pre-populated card. A blank card reaches mount
+      # and then fails at "FAIL import compile", so attaching --sd-new would
+      # manufacture an app fault out of missing harness data. The parent bakes
+      # the deterministic fixture once and exports its path to every worker.
       #
       # ereader_shelf / ereader_cover / ereader_comic are deliberately NOT here.
       # They were added alongside import_reader on the assumption that "reads a
@@ -65,7 +101,8 @@ emu_extra_args() { # <app> -> extra ra8_emulator args on stdout (may be empty)
       # attaching a blank card changed what it reported and failed the EIL gate.
       # Adding a device an app does not ask for is the same class of harness
       # error as withholding one it needs.
-      printf -- '--sd-new 64:fat32'
+      [ -n "${RA8_EMU_IMPORT_READER_IMG:-}" ] &&
+        printf -- '--sd %s' "$RA8_EMU_IMPORT_READER_IMG"
       ;;
     sd_font_render)
       # Reads FONT.OTF off the card (does not provision one), so it needs a
