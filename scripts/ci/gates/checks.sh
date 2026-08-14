@@ -13,7 +13,9 @@
 # registry here would recreate the drift the single-definition rule exists to
 # prevent.
 #
-# Gates in this file: pre-commit-checks, annotations, doc-attachment, tests-readme, disambig-readmes, init-order-freshness, cite-check, hil-eil-parity
+# Gates in this file: pre-commit-checks, agnostic-registers, annotations,
+# doc-attachment, tests-readme, disambig-readmes, init-order-freshness,
+# cite-check, hil-eil-parity
 
 # --- pre-commit-checks ----------------------------------------------------
 # The check_*.py gate suite. Each entry runs in its default mode -- the same
@@ -366,6 +368,20 @@ gate_pre_commit_checks() (
   _pcc_security_invariants
   _pcc_mcdc_discipline
   _pcc_docs_and_tests
+)
+
+# --- agnostic-registers --------------------------------------------------
+# The existing clock, display, GPIO and timer reach-ins are migration debt
+# under #693. Freeze it before that migration starts: a new concrete symbol
+# outside the HAL, a named backend TU, or a board composition library fails
+# now, while a removed reference passes and can be ratcheted into the baseline. The
+# selftest drives the same scanner first and asserts both directions plus the
+# live-scope floor, so a broken matcher cannot report a clean tree.
+gate_agnostic_registers() (
+  set -e
+  require_cmd python3 "the agnostic-registers gate is a Python source scanner"
+  python3 scripts/checks/check_agnostic_registers.py --selftest
+  python3 scripts/checks/check_agnostic_registers.py --check
 )
 
 # --- shebangs -------------------------------------------------------------
