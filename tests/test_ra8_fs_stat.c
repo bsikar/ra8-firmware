@@ -22,10 +22,9 @@
  *     handles open, which the old open-based implementation could not.
  *
  * The volumes are formatted through the public ``ra8_fs_format()`` over the
- * RAM card in ``tests/test_ra8_fs_format_fixture.h``. A real exFAT DIRECTORY
- * cannot be created here (exFAT `mkdir` is out of scope, #611), so that case
- * is asserted in ``tests/host/exfat_fs_test.c`` against the checked-in image,
- * whose `.fseventsd` entry is a genuine formatter-written directory.
+ * RAM card in ``tests/test_ra8_fs_format_fixture.h``. Timestamp assertions
+ * prove the metadata survives the stat seam instead of stopping at the
+ * on-disk writer.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -58,6 +57,19 @@ static void fill(uint8_t* buf, uint32_t len)
   for (uint32_t i = 0U; i < len; ++i) {
     buf[i] = (uint8_t)((i * (uint32_t)k_stat_stride) + (uint32_t)k_stat_seed);
   }
+}
+
+/** @brief Require the legal no-clock fallback and no invented UTC offset. */
+static void expect_epoch(const ra8_fs_timestamp_t* stamp)
+{
+  TEST_ASSERT(stamp->valid);
+  TEST_ASSERT(!stamp->utc_offset_valid);
+  TEST_ASSERT_EQ(1980U, stamp->value.year);
+  TEST_ASSERT_EQ(1U, stamp->value.month);
+  TEST_ASSERT_EQ(1U, stamp->value.day);
+  TEST_ASSERT_EQ(0U, stamp->value.hour);
+  TEST_ASSERT_EQ(0U, stamp->value.minute);
+  TEST_ASSERT_EQ(0U, stamp->value.second);
 }
 
 /**
@@ -118,6 +130,9 @@ static void test_stat_fat_file_dir_missing(void)
   TEST_ASSERT_EQ(k_stat_payload_bytes, file.size_bytes);
   TEST_ASSERT_EQ(k_ra8_fs_attr_archive, (file.attr & (uint8_t)k_ra8_fs_attr_archive));
   TEST_ASSERT_EQ(0U, (file.attr & (uint8_t)k_ra8_fs_attr_directory));
+  expect_epoch(&file.created);
+  expect_epoch(&file.modified);
+  expect_epoch(&file.accessed);
 
   /* A directory: the bit that says so, and length 0 -- the case that used to
    * come back indistinguishable from an empty file. */
@@ -191,6 +206,9 @@ static void test_stat_root_and_nested(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(h, "/", &root));
   TEST_ASSERT(root.is_directory);
   TEST_ASSERT_EQ(0U, root.size_bytes);
+  TEST_ASSERT(!root.created.valid);
+  TEST_ASSERT(!root.modified.valid);
+  TEST_ASSERT(!root.accessed.valid);
 
   ra8_fs_stat_t empty_path = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(h, "", &empty_path));
@@ -307,6 +325,9 @@ static void test_stat_exfat(void)
   TEST_ASSERT_EQ(k_stat_payload_bytes, file.size_bytes);
   TEST_ASSERT_EQ(k_ra8_fs_attr_archive, (file.attr & (uint8_t)k_ra8_fs_attr_archive));
   TEST_ASSERT(file.first_cluster >= 2U);
+  expect_epoch(&file.created);
+  expect_epoch(&file.modified);
+  expect_epoch(&file.accessed);
 
   /* The leading slash is optional on exFAT, exactly as it is for open (#93). */
   ra8_fs_stat_t no_slash = {};
@@ -321,6 +342,9 @@ static void test_stat_exfat(void)
   TEST_ASSERT(root.is_directory);
   TEST_ASSERT_EQ(0U, root.size_bytes);
   TEST_ASSERT_EQ(h->root_cluster, root.first_cluster);
+  TEST_ASSERT(!root.created.valid);
+  TEST_ASSERT(!root.modified.valid);
+  TEST_ASSERT(!root.accessed.valid);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();

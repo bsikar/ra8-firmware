@@ -143,6 +143,10 @@ static void test_stat(void)
   TEST_ASSERT_EQ(k_t_payload, st.size_bytes);
   TEST_ASSERT(!st.is_directory);
   TEST_ASSERT_EQ(0U, (st.attr & (uint8_t)k_ra8_fs_attr_directory));
+  TEST_ASSERT(st.created.valid);
+  TEST_ASSERT(st.modified.valid);
+  TEST_ASSERT(st.accessed.valid);
+  TEST_ASSERT_EQ(1980U, st.created.value.year);
 
   /* The regression this test exists for: a folder must not look like a file. */
   ra8_io_vfs_stat_t dir = {};
@@ -157,6 +161,9 @@ static void test_stat(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_stat("sd:/", &root));
   TEST_ASSERT(root.exists);
   TEST_ASSERT(root.is_directory);
+  TEST_ASSERT(!root.created.valid);
+  TEST_ASSERT(!root.modified.valid);
+  TEST_ASSERT(!root.accessed.valid);
 
   ra8_io_vfs_stat_t miss = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_stat("sd:/GONE.BIN", &miss));
