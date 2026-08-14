@@ -26,7 +26,6 @@
 #include <curl/curl.h>
 #include <limits.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
@@ -38,29 +37,46 @@
 
 /** @brief Backend tunables. */
 typedef enum : uint32_t {
-  k_curl_max_redirects  = 5,     /**< Redirect hops to follow.                  */
-  k_http_client_err_min = 400,   /**< First HTTP status treated as an error.    */
-  k_http_not_found      = 404,   /**< Absent resource (client error).           */
-  k_http_too_many_req   = 429,   /**< Too Many Requests (throttle).             */
-  k_http_server_err_min = 500,   /**< First HTTP status that is a server error. */
-  k_http_unavailable    = 503,   /**< Service Unavailable (throttle).           */
-  k_connect_timeout_ms  = 15000, /**< TCP/TLS connect budget, ms.               */
-  k_low_speed_bytes     = 64,    /**< Below this many B/s...                    */
-  k_low_speed_secs      = 30,    /**< ...for this long, abort a stalled xfer.   */
-  k_origin_host_max     = 256,   /**< Stored origin-host buffer bytes.          */
+  k_curl_max_redirects   = 5,     /**< Redirect hops to follow.                  */
+  k_http_client_err_min  = 400,   /**< First HTTP status treated as an error.    */
+  k_http_not_found       = 404,   /**< Absent resource (client error).           */
+  k_http_too_many_req    = 429,   /**< Too Many Requests (throttle).             */
+  k_http_server_err_min  = 500,   /**< First HTTP status that is a server error. */
+  k_http_unavailable     = 503,   /**< Service Unavailable (throttle).           */
+  k_connect_timeout_ms   = 15000, /**< TCP/TLS connect budget, ms.               */
+  k_low_speed_bytes      = 64,    /**< Below this many B/s...                    */
+  k_low_speed_secs       = 30,    /**< ...for this long, abort a stalled xfer.   */
+  k_origin_host_max      = 256,   /**< Stored origin-host buffer bytes.          */
+  k_request_header_max   = 256,   /**< Bytes in one conditional-request header.  */
+  k_request_header_count = 2,     /**< ETag and Last-Modified header slots.      */
 } mdl_curl_limits_t;
+
+/** @brief Fixed, stable request-header list retained by the backend context. */
+typedef struct {
+  struct curl_slist nodes[k_request_header_count]; /**< libcurl list nodes. */
+  /** Stable conditional-request header text. */
+  char               values[k_request_header_count][k_request_header_max];
+  struct curl_slist* head;  /**< First active node. */
+  size_t             count; /**< Active node count. */
+} mdl_req_headers_t;
 
 /** @brief Private state of the libcurl backend (the vtable's `ctx`). */
 typedef struct {
-  CURL*       curl;                           /**< Reused easy handle.          */
-  bool        allow_private;                  /**< SSRF opt-in (private peers). */
-  bool        allow_cross_host;               /**< Cross-host redirect opt-in.  */
-  uint64_t    max_bytes;                      /**< Per-response cap (0 = none). */
-  const char* proxy;                          /**< HTTP/HTTPS proxy URL.        */
-  const char* socks5;                         /**< SOCKS5 proxy URL.            */
-  const char* cookie_file;                    /**< Cookie file path.            */
-  char        origin_host[k_origin_host_max]; /**< Host of the current request. */
+  CURL*             curl;                           /**< Reused easy handle.          */
+  bool              allow_private;                  /**< SSRF opt-in (private peers). */
+  bool              allow_cross_host;               /**< Cross-host redirect opt-in.  */
+  uint64_t          max_bytes;                      /**< Per-response cap (0 = none). */
+  const char*       proxy;                          /**< HTTP/HTTPS proxy URL.        */
+  const char*       socks5;                         /**< SOCKS5 proxy URL.            */
+  const char*       cookie_file;                    /**< Cookie file path.            */
+  char              origin_host[k_origin_host_max]; /**< Host of the current request. */
+  mdl_req_headers_t request_headers;                /**< Stable conditional headers.  */
 } mdl_curl_ctx_t;
+
+static_assert(sizeof(mdl_curl_ctx_t) <= k_mdl_net_curl_storage_bytes,
+              "mdl_net_curl_storage_t is too small for the private context");
+static_assert(alignof(mdl_net_curl_storage_t) >= alignof(mdl_curl_ctx_t),
+              "mdl_net_curl_storage_t is insufficiently aligned");
 
 /** @brief Size-bounded FILE* sink state for an image fetch. */
 typedef struct {
@@ -297,35 +313,41 @@ RA8_INTERNAL static bool apply_behavior_opts(CURL* curl, const mdl_curl_ctx_t* n
          ok_code(curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, (long)k_low_speed_secs));
 }
 
-/** @brief Append one header without losing the list when allocation fails. */
-RA8_INTERNAL static bool append_req_header(struct curl_slist** list, const char* value)
+/** @brief Append one bounded header to caller-owned stable list storage. */
+RA8_INTERNAL static bool
+append_req_header(mdl_req_headers_t* headers, const char* name, const char* value)
 {
-  struct curl_slist* next = curl_slist_append(*list, value);
-  if (next == nullptr) {
+  if (headers->count >= (size_t)k_request_header_count) {
     return false;
   }
-  *list = next;
+  const size_t i = headers->count;
+  const int    n = snprintf(headers->values[i], sizeof(headers->values[i]), "%s: %s", name, value);
+  if ((n < 0) || ((size_t)n >= sizeof(headers->values[i]))) {
+    return false;
+  }
+  headers->nodes[i].data = headers->values[i];
+  headers->nodes[i].next = nullptr;
+  if (i == 0U) {
+    headers->head = &headers->nodes[i];
+  } else {
+    headers->nodes[i - 1U].next = &headers->nodes[i];
+  }
+  headers->count += 1U;
   return true;
 }
 
 /** @brief Build conditional request headers (If-None-Match, If-Modified-Since). */
-RA8_INTERNAL static bool build_req_headers(const mdl_net_req_t* req, struct curl_slist** out)
+RA8_INTERNAL static bool build_req_headers(const mdl_net_req_t* req, mdl_req_headers_t* headers)
 {
-  *out = nullptr;
+  *headers = (mdl_req_headers_t){};
   if ((req != nullptr) && (req->if_none_match != nullptr) && (req->if_none_match[0] != '\0')) {
-    char hbuf[256];
-    (void)snprintf(hbuf, sizeof(hbuf), "If-None-Match: %s", req->if_none_match);
-    if (!append_req_header(out, hbuf)) {
+    if (!append_req_header(headers, "If-None-Match", req->if_none_match)) {
       return false;
     }
   }
   if ((req != nullptr) && (req->if_modified_since != nullptr) &&
       (req->if_modified_since[0] != '\0')) {
-    char hbuf[256];
-    (void)snprintf(hbuf, sizeof(hbuf), "If-Modified-Since: %s", req->if_modified_since);
-    if (!append_req_header(out, hbuf)) {
-      curl_slist_free_all(*out);
-      *out = nullptr;
+    if (!append_req_header(headers, "If-Modified-Since", req->if_modified_since)) {
       return false;
     }
   }
@@ -350,16 +372,14 @@ RA8_INTERNAL static bool apply_req(mdl_curl_ctx_t* net, const char* url, const m
   return ok;
 }
 
-/** @brief Detach request headers before freeing; leak rather than leave curl dangling. */
-RA8_INTERNAL static void release_req_headers(CURL* curl, struct curl_slist* headers)
+/** @brief Detach request headers; their backing remains valid in backend state. */
+RA8_INTERNAL static void release_req_headers(CURL* curl, const mdl_req_headers_t* headers)
 {
-  if (headers == nullptr) {
+  if (headers->head == nullptr) {
     return;
   }
   struct curl_slist* const no_headers = nullptr;
-  if (curl_easy_setopt(curl, CURLOPT_HTTPHEADER, no_headers) == CURLE_OK) {
-    curl_slist_free_all(headers);
-  }
+  (void)curl_easy_setopt(curl, CURLOPT_HTTPHEADER, no_headers);
 }
 
 RA8_PRIV ra8_err_t mdl_net_curl_classify(CURLcode code, bool overflow, long status)
@@ -418,24 +438,24 @@ RA8_INTERNAL static ra8_err_t curl_get_buf(void*                ctx,
     return k_ra8_err_invalid_arg; /* refuse file://, gopher://, ... before curl */
   }
 
-  struct curl_slist* req_headers = nullptr;
-  if (!build_req_headers(req, &req_headers)) {
-    return k_ra8_err_no_mem;
+  if (!build_req_headers(req, &net->request_headers)) {
+    return k_ra8_err_invalid_size;
   }
-  buf_sink_t sink = {.buf = buf, .cap = cap, .len = 0U, .overflow = false};
-  hdr_sink_t hdr  = {};
+  struct curl_slist* const req_headers = net->request_headers.head;
+  buf_sink_t               sink        = {.buf = buf, .cap = cap, .len = 0U, .overflow = false};
+  hdr_sink_t               hdr         = {};
   if (!apply_req(net, url, req) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_HTTPHEADER, req_headers)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_HEADERDATA, &hdr)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEFUNCTION, mdl_net_curl_buf_write)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEDATA, &sink))) {
-    release_req_headers(net->curl, req_headers);
+    release_req_headers(net->curl, &net->request_headers);
     return k_ra8_fail;
   }
 
   const CURLcode  code = curl_easy_perform(net->curl);
   const ra8_err_t rc   = finish_transfer(net->curl, code, sink.overflow, &hdr, resp);
-  release_req_headers(net->curl, req_headers);
+  release_req_headers(net->curl, &net->request_headers);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -474,15 +494,16 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
 
   FILE* fp = fopen(tmp_path, "wb");
   if (fp == nullptr) {
+    mdl_atomic_abort(tmp_path);
     return k_ra8_fail;
   }
 
-  struct curl_slist* req_headers = nullptr;
-  if (!build_req_headers(req, &req_headers)) {
+  if (!build_req_headers(req, &net->request_headers)) {
     (void)fclose(fp);
     mdl_atomic_abort(tmp_path);
-    return k_ra8_err_no_mem;
+    return k_ra8_err_invalid_size;
   }
+  struct curl_slist* const req_headers = net->request_headers.head;
   file_sink_t sink = {.fp = fp, .written = 0U, .cap = net->max_bytes, .overflow = false};
   hdr_sink_t  hdr  = {};
   /* MAXFILESIZE_LARGE checks an advertised Content-Length up front; 0 disables
@@ -495,14 +516,14 @@ RA8_INTERNAL static ra8_err_t curl_get_file(void*                ctx,
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEFUNCTION, on_file_write)) ||
       !ok_code(curl_easy_setopt(net->curl, CURLOPT_WRITEDATA, &sink))) {
     (void)fclose(fp);
-    release_req_headers(net->curl, req_headers);
+    release_req_headers(net->curl, &net->request_headers);
     mdl_atomic_abort(tmp_path);
     return k_ra8_fail;
   }
 
   const CURLcode  code = curl_easy_perform(net->curl);
   const ra8_err_t rc   = finish_transfer(net->curl, code, sink.overflow, &hdr, resp);
-  release_req_headers(net->curl, req_headers);
+  release_req_headers(net->curl, &net->request_headers);
 
   const long fsize = ftell(fp);
   if (fclose(fp) != 0) {
@@ -547,7 +568,7 @@ RA8_INTERNAL static void curl_destroy(void* ctx)
   if (net->curl != nullptr) {
     curl_easy_cleanup(net->curl);
   }
-  free(net);
+  *net = (mdl_curl_ctx_t){};
 }
 
 /** @brief The libcurl backend's immutable method table. */
@@ -558,20 +579,24 @@ static const mdl_net_vtable_t s_curl_vtable = {
 };
 
 RA8_DI_SLOT("net_iface")
-mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
+ra8_err_t mdl_net_curl_init(mdl_net_iface_t*        net,
+                            mdl_net_curl_storage_t* storage,
+                            const mdl_net_policy_t* policy)
 {
+  if ((net == nullptr) || (storage == nullptr)) {
+    return k_ra8_err_invalid_arg;
+  }
+  *net                       = (mdl_net_iface_t){};
+  *storage                   = (mdl_net_curl_storage_t){};
   static bool s_global_ready = false;
   if (!s_global_ready) {
     if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
-      return nullptr;
+      return k_ra8_fail;
     }
     s_global_ready = true;
   }
 
-  mdl_curl_ctx_t* ctx = (mdl_curl_ctx_t*)calloc(1U, sizeof(*ctx));
-  if (ctx == nullptr) {
-    return nullptr;
-  }
+  mdl_curl_ctx_t* ctx = (mdl_curl_ctx_t*)storage->bytes;
   if (policy != nullptr) {
     ctx->allow_private    = policy->allow_private_hosts;
     ctx->allow_cross_host = policy->allow_cross_host_redirect;
@@ -582,22 +607,14 @@ mdl_net_iface_t* mdl_net_curl_create(const mdl_net_policy_t* policy)
   }
   ctx->curl = curl_easy_init();
   if (ctx->curl == nullptr) {
-    free(ctx);
-    return nullptr;
+    return k_ra8_fail;
   }
   if (!apply_security_opts(ctx->curl, ctx) || !apply_behavior_opts(ctx->curl, ctx)) {
     curl_easy_cleanup(ctx->curl);
-    free(ctx);
-    return nullptr;
-  }
-
-  mdl_net_iface_t* net = (mdl_net_iface_t*)calloc(1U, sizeof(*net));
-  if (net == nullptr) {
-    curl_easy_cleanup(ctx->curl);
-    free(ctx);
-    return nullptr;
+    *ctx = (mdl_curl_ctx_t){};
+    return k_ra8_fail;
   }
   net->vtable = &s_curl_vtable;
   net->ctx    = ctx;
-  return net;
+  return k_ra8_ok;
 }

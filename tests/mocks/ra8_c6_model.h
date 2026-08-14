@@ -103,6 +103,7 @@ typedef enum : uint8_t {
   k_c6m_mdl_fault_cancelled,
   k_c6m_mdl_fault_cancelled_with_data,
   k_c6m_mdl_fault_downloading_error,
+  k_c6m_mdl_fault_out_of_order,
 } ra8_c6_model_mdl_fault_t;
 
 /**
@@ -137,6 +138,7 @@ typedef struct ra8_c6_model {
   bool                     silent_boot;      /**< Do not answer the announcement.            */
   uint16_t                 transfers;        /**< Transactions the host has clocked.         */
   uint32_t                 delays;           /**< Times the host asked the seam to wait.     */
+  uint16_t                 mdl_cancels;      /**< Media cancel operations accepted.          */
   uint16_t                 last_delay_ms;    /**< Milliseconds the newest wait asked for.    */
   uint32_t                 seen[k_c6m_seen]; /**< Request ids observed, in order.            */
   uint8_t                  seen_n;           /**< Entries in `seen`.                         */

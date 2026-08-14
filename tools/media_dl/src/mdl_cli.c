@@ -32,11 +32,12 @@ void mdl_cli_usage(const char* a0)
 {
   (void)fprintf(stderr,
                 "usage:\n"
+                "  %s --help | --version\n\n"
                 "  series:\n"
                 "    %s --config SITE.conf --series URL [--chapters N] [--from CHAP]\n"
                 "       [--update] [--out DIR] [--format FMT] [--separate] [--seed S]\n"
                 "       [--timeout MS]\n"
-                "       Formats: cbz|cbt|cbr|cbt.xz|cbt.gz|epub|jof|rabook\n"
+                "       Formats: cbz|cbt|cbt.gz|epub|jof\n"
                 "       Default: N chapters combine into ONE <slug>-<lo>-<hi>.<ext>.\n"
                 "       --separate keeps one archive per chapter.\n"
                 "       --from CHAP starts at chapter NUMBERED CHAP (not an index).\n"
@@ -67,6 +68,11 @@ void mdl_cli_usage(const char* a0)
                 "    %s --pack DIR --format FMT\n"
                 "       Package an existing folder of page images (no network).\n\n"
 
+                "  direct artifact:\n"
+                "    %s https://HOST/PATH/BOOK.cbz [--out DIR] [network options]\n"
+                "       Downloads to staging and publishes only after structural\n"
+                "       verification. Verified formats: cbz|cbt|cbt.gz|epub|jof.\n\n"
+
                 "  page:\n"
                 "    %s URL [--out DIR] [--max N] [--attr data-src|src] [--seed S]\n"
                 "       [--timeout MS]\n\n"
@@ -94,6 +100,8 @@ void mdl_cli_usage(const char* a0)
                 a0,
                 a0,
                 a0,
+                a0,
+                a0,
                 a0);
 }
 
@@ -104,8 +112,11 @@ take_opt(char** argv, int argc, int* i, const char* flag, const char** dst, bool
   if ((argv[*i] == nullptr) || (strcmp(argv[*i], flag) != 0)) {
     return false;
   }
-  if ((*i + 1) < argc) {
+  if (((*i + 1) < argc) && (argv[*i + 1] != nullptr) && (argv[*i + 1][0] != '-')) {
     *i += 1;
+    if (*dst != nullptr) {
+      *bad = true;
+    }
     *dst = argv[*i];
   } else {
     *bad = true;
@@ -114,9 +125,12 @@ take_opt(char** argv, int argc, int* i, const char* flag, const char** dst, bool
 }
 
 /** @brief Match a bare boolean flag, setting `*dst` when it is `arg`. */
-RA8_INTERNAL static bool take_flag(const char* arg, const char* flag, bool* dst)
+RA8_INTERNAL static bool take_flag(const char* arg, const char* flag, bool* dst, bool* bad)
 {
   if ((arg != nullptr) && (strcmp(arg, flag) == 0)) {
+    if (*dst) {
+      *bad = true;
+    }
     *dst = true;
     return true;
   }
@@ -126,14 +140,20 @@ RA8_INTERNAL static bool take_flag(const char* arg, const char* flag, bool* dst)
 /** @brief Consume any recognised boolean flag at `arg`. */
 RA8_INTERNAL static bool parse_bool_flags(const char* arg, mdl_args_t* a)
 {
-  return take_flag(arg, "--separate", &a->separate) || take_flag(arg, "--update", &a->update) ||
-         take_flag(arg, "--list", &a->list) || take_flag(arg, "--update-all", &a->update_all) ||
-         take_flag(arg, "--browse", &a->browse) || take_flag(arg, "--polite", &a->polite) ||
-         take_flag(arg, "--ignore-robots", &a->ignore_robots) ||
-         take_flag(arg, "--allow-private", &a->allow_private) ||
-         take_flag(arg, "--cross-host", &a->cross_host) ||
-         take_flag(arg, "--allow-incomplete", &a->allow_incomplete) ||
-         take_flag(arg, "--progress", &a->progress) || take_flag(arg, "--refetch", &a->refetch);
+  return take_flag(arg, "--help", &a->help, &a->bad) || take_flag(arg, "-h", &a->help, &a->bad) ||
+         take_flag(arg, "--version", &a->version, &a->bad) ||
+         take_flag(arg, "--separate", &a->separate, &a->bad) ||
+         take_flag(arg, "--update", &a->update, &a->bad) ||
+         take_flag(arg, "--list", &a->list, &a->bad) ||
+         take_flag(arg, "--update-all", &a->update_all, &a->bad) ||
+         take_flag(arg, "--browse", &a->browse, &a->bad) ||
+         take_flag(arg, "--polite", &a->polite, &a->bad) ||
+         take_flag(arg, "--ignore-robots", &a->ignore_robots, &a->bad) ||
+         take_flag(arg, "--allow-private", &a->allow_private, &a->bad) ||
+         take_flag(arg, "--cross-host", &a->cross_host, &a->bad) ||
+         take_flag(arg, "--allow-incomplete", &a->allow_incomplete, &a->bad) ||
+         take_flag(arg, "--progress", &a->progress, &a->bad) ||
+         take_flag(arg, "--refetch", &a->refetch, &a->bad);
 }
 
 void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
@@ -169,6 +189,9 @@ void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
       continue;
     }
     if ((argv[i] != nullptr) && (strcmp(argv[i], "--verify") == 0)) {
+      if (a->verify) {
+        a->bad = true;
+      }
       a->verify = true;
       if ((i + 1 < argc) && (argv[i + 1] != nullptr) && (argv[i + 1][0] != '-')) {
         i += 1;
@@ -184,11 +207,356 @@ void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
       continue;
     }
     if ((argv[i] != nullptr) && (argv[i][0] != '-')) {
+      if (a->page_url != nullptr) {
+        a->bad = true;
+      }
       a->page_url = argv[i];
       continue;
     }
     a->bad = true;
   }
+}
+
+/** @brief Bit positions for every CLI spelling, used by mode allowlists. */
+typedef enum : uint64_t {
+  k_arg_cfg              = 1ULL << 0U,
+  k_arg_series           = 1ULL << 1U,
+  k_arg_page             = 1ULL << 2U,
+  k_arg_out              = 1ULL << 3U,
+  k_arg_attr             = 1ULL << 4U,
+  k_arg_chapters         = 1ULL << 5U,
+  k_arg_from             = 1ULL << 6U,
+  k_arg_max              = 1ULL << 7U,
+  k_arg_seed             = 1ULL << 8U,
+  k_arg_timeout          = 1ULL << 9U,
+  k_arg_format           = 1ULL << 10U,
+  k_arg_pack             = 1ULL << 11U,
+  k_arg_contact          = 1ULL << 12U,
+  k_arg_max_bytes        = 1ULL << 13U,
+  k_arg_remove           = 1ULL << 14U,
+  k_arg_search           = 1ULL << 15U,
+  k_arg_pick             = 1ULL << 16U,
+  k_arg_proxy            = 1ULL << 17U,
+  k_arg_socks5           = 1ULL << 18U,
+  k_arg_cookie           = 1ULL << 19U,
+  k_arg_verify_dir       = 1ULL << 20U,
+  k_arg_init             = 1ULL << 21U,
+  k_arg_browse           = 1ULL << 22U,
+  k_arg_separate         = 1ULL << 23U,
+  k_arg_update           = 1ULL << 24U,
+  k_arg_list             = 1ULL << 25U,
+  k_arg_update_all       = 1ULL << 26U,
+  k_arg_polite           = 1ULL << 27U,
+  k_arg_ignore_robots    = 1ULL << 28U,
+  k_arg_allow_private    = 1ULL << 29U,
+  k_arg_cross_host       = 1ULL << 30U,
+  k_arg_allow_incomplete = 1ULL << 31U,
+  k_arg_progress         = 1ULL << 32U,
+  k_arg_refetch          = 1ULL << 33U,
+  k_arg_verify           = 1ULL << 34U,
+  k_arg_help             = 1ULL << 35U,
+  k_arg_version          = 1ULL << 36U,
+} mdl_cli_arg_bit_t;
+
+/** @brief Return @p bit when a pointer-valued option is present. */
+RA8_INTERNAL static uint64_t value_bit(const void* value, uint64_t bit)
+{
+  return (value != nullptr) ? bit : 0U;
+}
+
+/** @brief Return @p bit when a boolean option is present. */
+RA8_INTERNAL static uint64_t flag_bit(bool value, uint64_t bit)
+{
+  return value ? bit : 0U;
+}
+
+/** @brief Convert populated fields into an option-presence mask. */
+RA8_INTERNAL static uint64_t args_mask(const mdl_args_t* a)
+{
+  return value_bit(a->cfg, k_arg_cfg) | value_bit(a->series, k_arg_series) |
+         value_bit(a->page_url, k_arg_page) | value_bit(a->out, k_arg_out) |
+         value_bit(a->attr, k_arg_attr) | value_bit(a->chapters, k_arg_chapters) |
+         value_bit(a->from, k_arg_from) | value_bit(a->max, k_arg_max) |
+         value_bit(a->seed, k_arg_seed) | value_bit(a->timeout, k_arg_timeout) |
+         value_bit(a->format, k_arg_format) | value_bit(a->pack, k_arg_pack) |
+         value_bit(a->contact, k_arg_contact) | value_bit(a->max_bytes, k_arg_max_bytes) |
+         value_bit(a->remove_series, k_arg_remove) | value_bit(a->search, k_arg_search) |
+         value_bit(a->pick, k_arg_pick) | value_bit(a->proxy, k_arg_proxy) |
+         value_bit(a->socks5, k_arg_socks5) | value_bit(a->cookie_file, k_arg_cookie) |
+         value_bit(a->verify_dir, k_arg_verify_dir) | value_bit(a->init_site_url, k_arg_init) |
+         flag_bit(a->browse, k_arg_browse) | flag_bit(a->separate, k_arg_separate) |
+         flag_bit(a->update, k_arg_update) | flag_bit(a->list, k_arg_list) |
+         flag_bit(a->update_all, k_arg_update_all) | flag_bit(a->polite, k_arg_polite) |
+         flag_bit(a->ignore_robots, k_arg_ignore_robots) |
+         flag_bit(a->allow_private, k_arg_allow_private) |
+         flag_bit(a->cross_host, k_arg_cross_host) |
+         flag_bit(a->allow_incomplete, k_arg_allow_incomplete) |
+         flag_bit(a->progress, k_arg_progress) | flag_bit(a->refetch, k_arg_refetch) |
+         flag_bit(a->verify, k_arg_verify) | flag_bit(a->help, k_arg_help) |
+         flag_bit(a->version, k_arg_version);
+}
+
+const char* mdl_cli_mode_name(mdl_cli_mode_t mode)
+{
+  static const char* const names[] = {"invalid",
+                                      "series",
+                                      "search",
+                                      "browse",
+                                      "list",
+                                      "update-all",
+                                      "remove",
+                                      "verify",
+                                      "init-site",
+                                      "pack",
+                                      "artifact",
+                                      "page",
+                                      "help",
+                                      "version"};
+  return ((unsigned)mode < (sizeof(names) / sizeof(names[0]))) ? names[mode] : names[0];
+}
+
+RA8_INTERNAL static bool invalid(const char* message)
+{
+  (void)fprintf(stderr, "media_dl: %s\n", message);
+  return false;
+}
+
+/** @brief Record one selected primary mode without preprocessor-generated flow. */
+RA8_INTERNAL static void
+record_mode(bool condition, mdl_cli_mode_t candidate, mdl_cli_mode_t* mode, size_t* count)
+{
+  if (condition) {
+    *mode = candidate;
+    *count += 1U;
+  }
+}
+
+/** @brief ASCII case-insensitive suffix check used before filesystem access. */
+RA8_INTERNAL static bool cli_ends_ci(const char* text, const char* suffix)
+{
+  const size_t tl = strlen(text);
+  const size_t sl = strlen(suffix);
+  if (sl > tl) {
+    return false;
+  }
+  for (size_t i = 0U; i < sl; ++i) {
+    char a = text[tl - sl + i];
+    char b = suffix[i];
+    if ((a >= 'A') && (a <= 'Z')) {
+      a = (char)(a + ('a' - 'A'));
+    }
+    if ((b >= 'A') && (b <= 'Z')) {
+      b = (char)(b + ('a' - 'A'));
+    }
+    if (a != b) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** @brief True for a URL path naming any artifact format known to media_dl. */
+RA8_INTERNAL static bool cli_artifact_url(const char* url)
+{
+  if (url == nullptr) {
+    return false;
+  }
+  const size_t path_len = strcspn(url, "?#");
+  char         path[1024];
+  if ((path_len == 0U) || (path_len >= sizeof(path))) {
+    return false;
+  }
+  memcpy(path, url, path_len);
+  path[path_len] = '\0';
+  static const char* const suffixes[] =
+    {".cbt.gz", ".cbt.xz", ".rabook", ".epub", ".cbz", ".cbr", ".cbt", ".jof"};
+  for (size_t i = 0U; i < sizeof(suffixes) / sizeof(suffixes[0]); ++i) {
+    if (cli_ends_ci(path, suffixes[i])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** @brief Resolve primary-mode fields and count how many were selected. */
+RA8_INTERNAL static mdl_cli_mode_t resolve_mode(const mdl_args_t* a, size_t* count)
+{
+  mdl_cli_mode_t mode = k_mdl_cli_mode_invalid;
+  record_mode(a->series != nullptr, k_mdl_cli_mode_series, &mode, count);
+  record_mode(a->search != nullptr, k_mdl_cli_mode_search, &mode, count);
+  record_mode(a->browse, k_mdl_cli_mode_browse, &mode, count);
+  record_mode(a->list, k_mdl_cli_mode_list, &mode, count);
+  record_mode(a->update_all, k_mdl_cli_mode_update_all, &mode, count);
+  record_mode(a->remove_series != nullptr, k_mdl_cli_mode_remove, &mode, count);
+  record_mode(a->verify, k_mdl_cli_mode_verify, &mode, count);
+  record_mode(a->init_site_url != nullptr, k_mdl_cli_mode_init_site, &mode, count);
+  record_mode(a->pack != nullptr, k_mdl_cli_mode_pack, &mode, count);
+  const bool artifact = cli_artifact_url(a->page_url);
+  record_mode((a->page_url != nullptr) && artifact, k_mdl_cli_mode_artifact, &mode, count);
+  record_mode((a->page_url != nullptr) && !artifact, k_mdl_cli_mode_page, &mode, count);
+  record_mode(a->help, k_mdl_cli_mode_help, &mode, count);
+  record_mode(a->version, k_mdl_cli_mode_version, &mode, count);
+  return mode;
+}
+
+RA8_INTERNAL static const char* option_name(uint64_t bit)
+{
+  static const struct {
+    uint64_t    bit;
+    const char* name;
+  } names[] = {{k_arg_cfg, "--config"},
+               {k_arg_series, "--series"},
+               {k_arg_page, "URL"},
+               {k_arg_out, "--out"},
+               {k_arg_attr, "--attr"},
+               {k_arg_chapters, "--chapters"},
+               {k_arg_from, "--from"},
+               {k_arg_max, "--max"},
+               {k_arg_seed, "--seed"},
+               {k_arg_timeout, "--timeout"},
+               {k_arg_format, "--format"},
+               {k_arg_pack, "--pack"},
+               {k_arg_contact, "--contact"},
+               {k_arg_max_bytes, "--max-bytes"},
+               {k_arg_remove, "--remove"},
+               {k_arg_search, "--search"},
+               {k_arg_pick, "--pick"},
+               {k_arg_proxy, "--proxy"},
+               {k_arg_socks5, "--socks5"},
+               {k_arg_cookie, "--cookie-file"},
+               {k_arg_verify_dir, "DIR"},
+               {k_arg_init, "--init-site"},
+               {k_arg_browse, "--browse"},
+               {k_arg_separate, "--separate"},
+               {k_arg_update, "--update"},
+               {k_arg_list, "--list"},
+               {k_arg_update_all, "--update-all"},
+               {k_arg_polite, "--polite"},
+               {k_arg_ignore_robots, "--ignore-robots"},
+               {k_arg_allow_private, "--allow-private"},
+               {k_arg_cross_host, "--cross-host"},
+               {k_arg_allow_incomplete, "--allow-incomplete"},
+               {k_arg_progress, "--progress"},
+               {k_arg_refetch, "--refetch"},
+               {k_arg_verify, "--verify"},
+               {k_arg_help, "--help"},
+               {k_arg_version, "--version"}};
+  for (size_t i = 0U; i < (sizeof(names) / sizeof(names[0])); ++i) {
+    if ((bit & names[i].bit) != 0U) {
+      return names[i].name;
+    }
+  }
+  return "option";
+}
+
+bool mdl_cli_validate(const mdl_args_t* a, mdl_cli_mode_t* mode)
+{
+  if ((a == nullptr) || (mode == nullptr)) {
+    return false;
+  }
+  *mode = k_mdl_cli_mode_invalid;
+  if (a->bad) {
+    return invalid("unknown, duplicate, or missing-value option");
+  }
+  size_t         primary_count = 0U;
+  mdl_cli_mode_t selected      = resolve_mode(a, &primary_count);
+  if (primary_count == 0U) {
+    return invalid("exactly one command mode is required");
+  }
+  if (primary_count != 1U) {
+    return invalid("command modes are mutually exclusive");
+  }
+
+  const uint64_t net = k_arg_seed | k_arg_timeout | k_arg_contact | k_arg_max_bytes | k_arg_proxy |
+                       k_arg_socks5 | k_arg_cookie | k_arg_polite | k_arg_ignore_robots |
+                       k_arg_allow_private | k_arg_cross_host;
+  const uint64_t download = k_arg_out | k_arg_chapters | k_arg_from | k_arg_format |
+                            k_arg_separate | k_arg_update | k_arg_allow_incomplete |
+                            k_arg_progress | k_arg_refetch;
+  uint64_t       allowed  = 0U;
+  switch (selected) {
+    case k_mdl_cli_mode_series:
+      allowed = k_arg_series | k_arg_cfg | net | download;
+      break;
+    case k_mdl_cli_mode_search:
+      allowed =
+        k_arg_search | k_arg_cfg | k_arg_pick | net | ((a->pick != nullptr) ? download : 0U);
+      break;
+    case k_mdl_cli_mode_browse:
+      allowed =
+        k_arg_browse | k_arg_cfg | k_arg_pick | net | ((a->pick != nullptr) ? download : 0U);
+      break;
+    case k_mdl_cli_mode_list:
+      allowed = k_arg_list | k_arg_out;
+      break;
+    case k_mdl_cli_mode_update_all:
+      allowed = k_arg_update_all | k_arg_cfg | k_arg_out | k_arg_format | k_arg_separate |
+                k_arg_allow_incomplete | k_arg_progress | k_arg_refetch | net;
+      break;
+    case k_mdl_cli_mode_remove:
+      allowed = k_arg_remove | k_arg_out;
+      break;
+    case k_mdl_cli_mode_verify:
+      allowed = k_arg_verify | k_arg_verify_dir | k_arg_out;
+      break;
+    case k_mdl_cli_mode_init_site:
+      allowed = k_arg_init;
+      break;
+    case k_mdl_cli_mode_pack:
+      allowed = k_arg_pack | k_arg_format;
+      break;
+    case k_mdl_cli_mode_artifact:
+      allowed = k_arg_page | k_arg_out | net;
+      break;
+    case k_mdl_cli_mode_page:
+      allowed = k_arg_page | k_arg_out | k_arg_attr | k_arg_max | net;
+      break;
+    case k_mdl_cli_mode_help:
+      allowed = k_arg_help;
+      break;
+    case k_mdl_cli_mode_version:
+      allowed = k_arg_version;
+      break;
+    default:
+      return invalid("invalid command mode");
+  }
+  const uint64_t disallowed = args_mask(a) & ~allowed;
+  if (disallowed != 0U) {
+    (void)fprintf(stderr,
+                  "media_dl: %s is not valid in %s mode\n",
+                  option_name(disallowed),
+                  mdl_cli_mode_name(selected));
+    return false;
+  }
+  if (((selected == k_mdl_cli_mode_series) || (selected == k_mdl_cli_mode_search) ||
+       (selected == k_mdl_cli_mode_browse) || (selected == k_mdl_cli_mode_update_all)) &&
+      ((a->cfg == nullptr) || (a->cfg[0] == '\0'))) {
+    return invalid("this mode requires --config SITE.conf");
+  }
+  if ((selected == k_mdl_cli_mode_search) && (a->search[0] == '\0')) {
+    return invalid("--search requires a non-empty term");
+  }
+  if ((selected == k_mdl_cli_mode_pack) && (a->format == nullptr)) {
+    return invalid("--pack requires an explicit --format");
+  }
+  if ((selected == k_mdl_cli_mode_verify) && (a->verify_dir != nullptr) && (a->out != nullptr)) {
+    return invalid("--verify DIR and --out DIR are alternate directory spellings; use one");
+  }
+  if ((selected == k_mdl_cli_mode_artifact) &&
+      (strncmp(a->page_url, "https://", strlen("https://")) != 0)) {
+    return invalid("direct artifact downloads require an https:// URL");
+  }
+  if ((a->proxy != nullptr) && (a->socks5 != nullptr)) {
+    return invalid("--proxy and --socks5 are mutually exclusive");
+  }
+  if (((a->proxy != nullptr) || (a->socks5 != nullptr)) && !a->allow_private) {
+    return invalid("--proxy/--socks5 requires --allow-private");
+  }
+  if ((a->attr != nullptr) && (strcmp(a->attr, "data-src") != 0) && (strcmp(a->attr, "src") != 0)) {
+    return invalid("--attr expects data-src or src");
+  }
+  *mode = selected;
+  return true;
 }
 
 mdl_run_opts_t mdl_cli_run_opts(const mdl_args_t* a)
@@ -349,8 +717,27 @@ bool mdl_cli_parse_nums(const mdl_args_t* a, mdl_nums_t* n)
   if (!opt_ul("pick", a->pick, 0UL, &pick_ul)) {
     return false;
   }
+  if ((timeout_ul == 0UL) || (timeout_ul > (unsigned long)UINT32_MAX)) {
+    (void)fprintf(stderr, "media_dl: --timeout must be in 1..%u\n", UINT32_MAX);
+    return false;
+  }
+  if ((chapters_ul == 0UL) || ((uintmax_t)chapters_ul > (uintmax_t)SIZE_MAX)) {
+    (void)fprintf(stderr, "media_dl: --chapters must be in 1..%zu\n", SIZE_MAX);
+    return false;
+  }
+  if (max_ul > (unsigned long)UINT32_MAX) {
+    (void)fprintf(stderr, "media_dl: --max must not exceed %u\n", UINT32_MAX);
+    return false;
+  }
+  if ((a->max_bytes != nullptr) && (max_bytes == 0U)) {
+    return invalid("--max-bytes must be greater than zero");
+  }
+  if ((a->pick != nullptr) && ((pick_ul == 0UL) || ((uintmax_t)pick_ul > (uintmax_t)SIZE_MAX))) {
+    (void)fprintf(stderr, "media_dl: --pick must be in 1..%zu\n", SIZE_MAX);
+    return false;
+  }
   n->timeout  = (uint32_t)timeout_ul;
-  n->chapters = (chapters_ul == 0UL) ? 1U : (size_t)chapters_ul;
+  n->chapters = (size_t)chapters_ul;
   n->max_imgs = (uint32_t)max_ul;
   n->pick     = (size_t)pick_ul;
   return true;

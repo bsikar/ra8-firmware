@@ -192,22 +192,20 @@ typedef struct mdl_net_iface {
 } mdl_net_iface_t;
 
 /**
- * @brief Release a network interface returned by a backend factory. NULL-safe.
+ * @brief Deinitialise a caller-owned network interface. NULL-safe.
  *
  * @details
- * Forwards to the backend's `destroy` method to free its private state, then
- * frees the handle itself. The handle must have been produced by a factory
- * that heap-allocated it (e.g. ::mdl_net_curl_create); a stack-constructed
- * handle (as a test fake uses) is owned by its constructor and must not be
- * passed here.
+ * Forwards to the backend's `destroy` method, then clears the caller-owned
+ * handle. Neither the dispatcher nor a conforming backend frees @p net or its
+ * context: concrete composition roots provide all storage explicitly.
  *
  * @param[in] net Interface to release, or NULL.
  *
  * @return Nothing.
  *
- * @pre `net`, when non-NULL, came from a heap-allocating backend factory.
+ * @pre `net`, when non-NULL, was initialised by a backend constructor.
  * @pre No dispatcher call on `net` is in progress.
- * @post `net` and its backend state are freed; the pointer is dangling.
+ * @post Backend resources are released and `net` contains only zero bytes.
  * @post A NULL argument is a no-op.
  *
  * @note Not thread-safe: one interface per worker.

@@ -25,6 +25,7 @@
 #include "mdl_sanitize.h"
 #include "mdl_url_guard.h"
 #include "mdl_urlname.h"
+#include "mdl_verify.h"
 #include "miniz.h"
 #include "ra8_jof.h"
 #include "tiny_jpeg_fixture.h"
@@ -37,12 +38,15 @@ typedef enum : uint16_t {
 
 /** @brief Expected fixture counts (named to avoid bare literals). */
 typedef enum : uint16_t {
-  k_expect_imgs      = 2,   /**< /uploads/ images in the page fixture.       */
-  k_expect_chaps     = 3,   /**< chapter links in the series fixture.        */
-  k_expect_pages     = 2,   /**< pages written into the export fixture.      */
-  k_fixture_bytes    = 4,   /**< bytes per synthetic page file.              */
-  k_name_probe       = 256, /**< zip entry-name probe buffer.                */
-  k_epub_min_entries = 6,   /**< mimetype+container+opf+nav+pages, at least. */
+  k_expect_imgs       = 2,   /**< /uploads/ images in the page fixture.       */
+  k_expect_chaps      = 3,   /**< chapter links in the series fixture.        */
+  k_expect_pages      = 2,   /**< pages written into the export fixture.      */
+  k_fixture_bytes     = 4,   /**< bytes per synthetic page file.              */
+  k_name_probe        = 256, /**< zip entry-name probe buffer.                */
+  k_epub_min_entries  = 6,   /**< mimetype+container+opf+nav+pages, at least. */
+  k_tar_fixture_bytes = 4096,
+  k_tar_member_stride = 1024,
+  k_tar_data_offset   = 512,
 } test_expect_t;
 
 /** @brief Named sizes/values for the hardening tests (no bare literals). */
@@ -61,6 +65,31 @@ typedef enum : uint16_t {
 } mdl_hard_const_t;
 
 static mdl_url_list_t s_list;
+enum { k_test_export_arena_bytes = 8U * 1024U * 1024U };
+static uint8_t s_test_export_arena[k_test_export_arena_bytes];
+
+static ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path)
+{
+  mdl_export_workspace_t ws;
+  mdl_export_workspace_init(&ws, s_test_export_arena, sizeof(s_test_export_arena));
+  return mdl_export_chapter_ws(fmt, chapter_dir, out_path, &ws);
+}
+
+static ra8_err_t mdl_export_chapter_meta(mdl_format_t             fmt,
+                                         const char*              chapter_dir,
+                                         const char*              out_path,
+                                         const mdl_export_meta_t* meta)
+{
+  mdl_export_workspace_t ws;
+  mdl_export_workspace_init(&ws, s_test_export_arena, sizeof(s_test_export_arena));
+  return mdl_export_chapter_meta_ws(fmt, chapter_dir, out_path, meta, &ws);
+}
+static ra8_err_t verify_file(mdl_format_t fmt, const char* path, mdl_verify_report_t* report)
+{
+  mdl_export_workspace_t ws;
+  mdl_export_workspace_init(&ws, s_test_export_arena, sizeof(s_test_export_arena));
+  return mdl_verify_file(fmt, path, &ws, report);
+}
 
 /**
  * @brief Fake robots.txt fetcher state for the cache-consult test.
@@ -115,17 +144,33 @@ static void test_format_mapping(void)
 {
   TEST_BEGIN("format mapping");
   TEST_ASSERT(mdl_format_from_str("cbz") == k_mdl_fmt_cbz);
-  TEST_ASSERT(mdl_format_from_str("cbt.xz") == k_mdl_fmt_cbt_xz);
+  TEST_ASSERT(mdl_format_from_str("cbt.xz") == k_mdl_fmt_invalid);
   TEST_ASSERT(mdl_format_from_str(nullptr) == k_mdl_fmt_loose);
   TEST_ASSERT(mdl_format_from_str("bogus") == k_mdl_fmt_invalid);
+  mdl_format_t inferred = k_mdl_fmt_invalid;
+  TEST_ASSERT(mdl_format_from_path("/tmp/book.CBT.GZ", &inferred) == k_ra8_ok);
+  TEST_ASSERT(inferred == k_mdl_fmt_cbt_gz);
+  TEST_ASSERT(mdl_format_from_path("/tmp/book.cbt.xz", &inferred) == k_ra8_err_not_supported);
+  TEST_ASSERT(inferred == k_mdl_fmt_invalid);
+  TEST_ASSERT(mdl_format_from_path("/tmp/book.epub", &inferred) == k_ra8_ok);
+  TEST_ASSERT(inferred == k_mdl_fmt_epub);
+  TEST_ASSERT(mdl_format_from_path("/tmp/book.INCOMPLETE.cbt.gz", &inferred) == k_ra8_ok);
+  TEST_ASSERT(inferred == k_mdl_fmt_cbt_gz);
+  TEST_ASSERT(mdl_format_from_path("/tmp/book.zip", &inferred) == k_ra8_err_not_supported);
+  TEST_ASSERT(inferred == k_mdl_fmt_invalid);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_cbz), "cbz") == 0);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_cbt_gz), "cbt.gz") == 0);
   TEST_ASSERT(mdl_format_from_str("epub") == k_mdl_fmt_epub);
   TEST_ASSERT(mdl_format_from_str("jof") == k_mdl_fmt_jof);
-  TEST_ASSERT(mdl_format_from_str("rabook") == k_mdl_fmt_rabook);
+  TEST_ASSERT(mdl_format_from_str("rabook") == k_mdl_fmt_invalid);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_epub), "epub") == 0);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_jof), "jof") == 0);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_rabook), "rabook") == 0);
+  TEST_ASSERT(mdl_format_is_verifiable(k_mdl_fmt_cbz));
+  TEST_ASSERT(mdl_format_is_verifiable(k_mdl_fmt_cbt));
+  TEST_ASSERT(mdl_format_is_verifiable(k_mdl_fmt_epub));
+  TEST_ASSERT(mdl_format_is_verifiable(k_mdl_fmt_jof));
+  TEST_ASSERT(mdl_format_is_verifiable(k_mdl_fmt_cbt_gz));
   TEST_END("format mapping");
 }
 
@@ -218,6 +263,9 @@ static void test_export_cbz_roundtrip(void)
 
   const ra8_err_t rc = mdl_export_chapter(k_mdl_fmt_cbz, dir, out);
   TEST_ASSERT(rc == k_ra8_ok);
+  mdl_verify_report_t verified = {};
+  TEST_ASSERT(verify_file(k_mdl_fmt_cbz, out, &verified) == k_ra8_ok);
+  TEST_ASSERT(verified.page_count == k_expect_pages);
 
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
@@ -228,6 +276,9 @@ static void test_export_cbz_roundtrip(void)
   TEST_ASSERT(strcmp(name, "page_001.jpg") == 0);
   (void)mz_zip_reader_get_filename(&zr, 2, name, sizeof(name));
   TEST_ASSERT(strcmp(name, "ComicInfo.xml") == 0);
+  char page[k_fixture_bytes];
+  TEST_ASSERT(mz_zip_reader_extract_file_to_mem(&zr, "page_001.jpg", page, sizeof(page), 0));
+  TEST_ASSERT(page[0] == 'a' && page[k_fixture_bytes - 1U] == 'a');
   (void)mz_zip_reader_end(&zr);
 
   (void)unlink("/tmp/mdl_test_chap/page_001.jpg");
@@ -235,6 +286,50 @@ static void test_export_cbz_roundtrip(void)
   (void)unlink(out);
   (void)rmdir(dir);
   TEST_END("export cbz round-trip");
+}
+/** @test CBT contains sorted source bytes plus a semantic ComicInfo member. */
+static void test_export_cbt_structure(void)
+{
+  TEST_BEGIN("export cbt structure");
+  const char* dir = "/tmp/mdl_cbt_chap";
+  const char* out = "/tmp/mdl_cbt_chap.cbt";
+  const char* gz  = "/tmp/mdl_cbt_chap.cbt.gz";
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
+  write_fixture("/tmp/mdl_cbt_chap/page_001.jpg", 'a');
+  write_fixture("/tmp/mdl_cbt_chap/page_002.jpg", 'b');
+  mdl_export_meta_t meta;
+  mdl_meta_init(&meta);
+  (void)snprintf(meta.language, sizeof(meta.language), "fr");
+  TEST_ASSERT(mdl_export_chapter_meta(k_mdl_fmt_cbt, dir, out, &meta) == k_ra8_ok);
+  mdl_verify_report_t verified = {};
+  TEST_ASSERT(verify_file(k_mdl_fmt_cbt, out, &verified) == k_ra8_ok);
+  TEST_ASSERT(verified.page_count == k_expect_pages);
+  TEST_ASSERT(mdl_export_chapter_meta(k_mdl_fmt_cbt_gz, dir, gz, &meta) == k_ra8_ok);
+  verified = (mdl_verify_report_t){};
+  TEST_ASSERT(verify_file(k_mdl_fmt_cbt_gz, gz, &verified) == k_ra8_ok);
+  TEST_ASSERT(verified.page_count == k_expect_pages);
+
+  uint8_t tar[k_tar_fixture_bytes];
+  FILE*   f = fopen(out, "rb");
+  TEST_ASSERT_NOT_NULL(f);
+  TEST_ASSERT(fread(tar, 1U, sizeof(tar), f) == sizeof(tar));
+  TEST_ASSERT(fgetc(f) == EOF);
+  (void)fclose(f);
+  TEST_ASSERT(strcmp((const char*)&tar[0], "page_001.jpg") == 0);
+  TEST_ASSERT(tar[k_tar_data_offset] == (uint8_t)'a');
+  TEST_ASSERT(strcmp((const char*)&tar[k_tar_member_stride], "page_002.jpg") == 0);
+  TEST_ASSERT(tar[k_tar_member_stride + k_tar_data_offset] == (uint8_t)'b');
+  TEST_ASSERT(strcmp((const char*)&tar[2U * k_tar_member_stride], "ComicInfo.xml") == 0);
+  const char* xml = (const char*)&tar[(2U * k_tar_member_stride) + k_tar_data_offset];
+  TEST_ASSERT(strstr(xml, "<PageCount>2</PageCount>") != nullptr);
+  TEST_ASSERT(strstr(xml, "<LanguageISO>fr</LanguageISO>") != nullptr);
+
+  (void)unlink("/tmp/mdl_cbt_chap/page_001.jpg");
+  (void)unlink("/tmp/mdl_cbt_chap/page_002.jpg");
+  (void)unlink(out);
+  (void)rmdir(dir);
+  (void)unlink(gz);
+  TEST_END("export cbt structure");
 }
 
 /** @test Packaging ingests ONLY page images; sibling output/junk is skipped. */
@@ -304,6 +399,9 @@ static void test_export_epub_roundtrip(void)
   write_fixture("/tmp/mdl_epub_chap/page_001.jpg", 'a');
   write_fixture("/tmp/mdl_epub_chap/page_002.jpg", 'b');
   TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+  mdl_verify_report_t verified = {};
+  TEST_ASSERT(verify_file(k_mdl_fmt_epub, out, &verified) == k_ra8_ok);
+  TEST_ASSERT(verified.page_count == k_expect_pages);
 
   mz_zip_archive zr;
   memset(&zr, 0, sizeof(zr));
@@ -337,6 +435,9 @@ static void test_export_jof_roundtrip(void)
   TEST_ASSERT(!mdl_format_is_dir_output(k_mdl_fmt_cbz));
   TEST_ASSERT(!mdl_format_is_dir_output(k_mdl_fmt_epub));
   TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_jof, dir, dir) == k_ra8_ok);
+  mdl_verify_report_t verified = {};
+  TEST_ASSERT(verify_file(k_mdl_fmt_jof, jof, &verified) == k_ra8_ok);
+  TEST_ASSERT(verified.page_count == 1U);
 
   /* The reported output -- the `.jof` sibling -- actually exists on disk. */
   FILE* f = fopen(jof, "rb");
@@ -876,6 +977,164 @@ static void test_cli_missing_value(void)
   TEST_END("cli missing option value");
 }
 
+/** @brief Parse one vector and assert its validation result/mode. */
+static void assert_cli(int argc, char** argv, bool valid, mdl_cli_mode_t expected)
+{
+  mdl_args_t     args = {};
+  mdl_cli_mode_t mode = k_mdl_cli_mode_invalid;
+  mdl_cli_parse(argc, argv, &args);
+  TEST_ASSERT(mdl_cli_validate(&args, &mode) == valid);
+  TEST_ASSERT(mode == expected);
+}
+
+/** @test Every advertised command mode has an unambiguous option allowlist. */
+static void test_cli_mode_matrix(void)
+{
+  TEST_BEGIN("cli strict mode matrix");
+  char* series[] = {"media_dl",
+                    "--config",
+                    "site.conf",
+                    "--series",
+                    "https://s/x/",
+                    "--out",
+                    "library",
+                    "--chapters",
+                    "2",
+                    "--from",
+                    "1",
+                    "--seed",
+                    "2",
+                    "--timeout",
+                    "100",
+                    "--format",
+                    "loose",
+                    "--contact",
+                    "ops",
+                    "--max-bytes",
+                    "4096",
+                    "--proxy",
+                    "http://p",
+                    "--allow-private",
+                    "--separate",
+                    "--update",
+                    "--polite",
+                    "--ignore-robots",
+                    "--cross-host",
+                    "--allow-incomplete",
+                    "--progress",
+                    "--refetch",
+                    "--cookie-file",
+                    "cookies"};
+  assert_cli((int)(sizeof(series) / sizeof(series[0])), series, true, k_mdl_cli_mode_series);
+
+  char* search[] = {"media_dl", "--config", "site.conf", "--search", "alpha"};
+  assert_cli((int)(sizeof(search) / sizeof(search[0])), search, true, k_mdl_cli_mode_search);
+  char* search_pick[] = {"media_dl",
+                         "--config",
+                         "site.conf",
+                         "--search",
+                         "alpha",
+                         "--pick",
+                         "1",
+                         "--format",
+                         "cbz",
+                         "--out",
+                         "library"};
+  assert_cli((int)(sizeof(search_pick) / sizeof(search_pick[0])),
+             search_pick,
+             true,
+             k_mdl_cli_mode_search);
+  char* browse[] = {"media_dl", "--config", "site.conf", "--browse"};
+  assert_cli((int)(sizeof(browse) / sizeof(browse[0])), browse, true, k_mdl_cli_mode_browse);
+  char* list[] = {"media_dl", "--list", "--out", "library"};
+  assert_cli((int)(sizeof(list) / sizeof(list[0])), list, true, k_mdl_cli_mode_list);
+  char* update_all[] = {"media_dl",
+                        "--update-all",
+                        "--config",
+                        "site.conf",
+                        "--out",
+                        "library",
+                        "--format",
+                        "loose",
+                        "--refetch"};
+  assert_cli((int)(sizeof(update_all) / sizeof(update_all[0])),
+             update_all,
+             true,
+             k_mdl_cli_mode_update_all);
+  char* remove[] = {"media_dl", "--remove", "alpha", "--out", "library"};
+  assert_cli((int)(sizeof(remove) / sizeof(remove[0])), remove, true, k_mdl_cli_mode_remove);
+  char* verify[] = {"media_dl", "--verify", "library"};
+  assert_cli((int)(sizeof(verify) / sizeof(verify[0])), verify, true, k_mdl_cli_mode_verify);
+  char* init[] = {"media_dl", "--init-site", "https://s.example/"};
+  assert_cli((int)(sizeof(init) / sizeof(init[0])), init, true, k_mdl_cli_mode_init_site);
+  char* pack[] = {"media_dl", "--pack", "pages", "--format", "cbz"};
+  assert_cli((int)(sizeof(pack) / sizeof(pack[0])), pack, true, k_mdl_cli_mode_pack);
+  char* page[] = {"media_dl",
+                  "https://s/page",
+                  "--out",
+                  "pages",
+                  "--attr",
+                  "src",
+                  "--max",
+                  "2",
+                  "--socks5",
+                  "socks5://proxy",
+                  "--allow-private"};
+  assert_cli((int)(sizeof(page) / sizeof(page[0])), page, true, k_mdl_cli_mode_page);
+
+  char* conflict[] = {"media_dl", "--list", "--series", "https://s/x", "--config", "s"};
+  assert_cli((int)(sizeof(conflict) / sizeof(conflict[0])),
+             conflict,
+             false,
+             k_mdl_cli_mode_invalid);
+  char* no_mode[] = {"media_dl", "--config", "s"};
+  assert_cli((int)(sizeof(no_mode) / sizeof(no_mode[0])), no_mode, false, k_mdl_cli_mode_invalid);
+  char* no_cfg[] = {"media_dl", "--search", "x"};
+  assert_cli((int)(sizeof(no_cfg) / sizeof(no_cfg[0])), no_cfg, false, k_mdl_cli_mode_invalid);
+  char* no_effect[] = {"media_dl", "--search", "x", "--config", "s", "--format", "cbz"};
+  assert_cli((int)(sizeof(no_effect) / sizeof(no_effect[0])),
+             no_effect,
+             false,
+             k_mdl_cli_mode_invalid);
+  char* pack_default[] = {"media_dl", "--pack", "pages"};
+  assert_cli((int)(sizeof(pack_default) / sizeof(pack_default[0])),
+             pack_default,
+             false,
+             k_mdl_cli_mode_invalid);
+  char* proxy_closed[] = {"media_dl", "https://s/page", "--proxy", "http://p"};
+  assert_cli((int)(sizeof(proxy_closed) / sizeof(proxy_closed[0])),
+             proxy_closed,
+             false,
+             k_mdl_cli_mode_invalid);
+  char* verify_dirs[] = {"media_dl", "--verify", "a", "--out", "b"};
+  assert_cli((int)(sizeof(verify_dirs) / sizeof(verify_dirs[0])),
+             verify_dirs,
+             false,
+             k_mdl_cli_mode_invalid);
+  char* duplicate[] = {"media_dl", "--list", "--list"};
+  assert_cli((int)(sizeof(duplicate) / sizeof(duplicate[0])),
+             duplicate,
+             false,
+             k_mdl_cli_mode_invalid);
+  TEST_END("cli strict mode matrix");
+}
+
+/** @test Numeric values that used to wrap or silently clamp are usage errors. */
+static void test_cli_numeric_bounds(void)
+{
+  TEST_BEGIN("cli numeric bounds");
+  mdl_nums_t nums = {};
+  mdl_args_t args = {.timeout = "0"};
+  TEST_ASSERT(!mdl_cli_parse_nums(&args, &nums));
+  args = (mdl_args_t){.chapters = "0"};
+  TEST_ASSERT(!mdl_cli_parse_nums(&args, &nums));
+  args = (mdl_args_t){.max_bytes = "0"};
+  TEST_ASSERT(!mdl_cli_parse_nums(&args, &nums));
+  args = (mdl_args_t){.pick = "0"};
+  TEST_ASSERT(!mdl_cli_parse_nums(&args, &nums));
+  TEST_END("cli numeric bounds");
+}
+
 /** @test Rich metadata init, key-value parsing, XML parsing, and dir auto-discovery. */
 static void test_meta_init_parse_load(void)
 {
@@ -893,7 +1152,11 @@ static void test_meta_init_parse_load(void)
                            "number = 12.5\n"
                            "summary = A great story <start>\n"
                            "cover = page_002.jpg\n"
-                           "cover_index = 1\n";
+                           "cover_index = 1\n"
+                           "language = ja\n"
+                           "reading_direction = rtl\n"
+                           "identifier = book:test\n"
+                           "modified = 2025-02-03T04:05:06Z\n";
   TEST_ASSERT(mdl_meta_parse(&meta, kv) == k_ra8_ok);
   TEST_ASSERT(strcmp(meta.series_title, "Test Series & Saga") == 0);
   TEST_ASSERT(strcmp(meta.chapter_title, "Chapter 12: Beginning & End") == 0);
@@ -903,6 +1166,10 @@ static void test_meta_init_parse_load(void)
   TEST_ASSERT(strcmp(meta.summary, "A great story <start>") == 0);
   TEST_ASSERT(strcmp(meta.cover_path, "page_002.jpg") == 0);
   TEST_ASSERT_EQ(1, meta.cover_index);
+  TEST_ASSERT(strcmp(meta.language, "ja") == 0);
+  TEST_ASSERT(meta.reading_direction == k_mdl_read_rtl);
+  TEST_ASSERT(strcmp(meta.identifier, "book:test") == 0);
+  TEST_ASSERT(strcmp(meta.modified, "2025-02-03T04:05:06Z") == 0);
 
   /* XML ComicInfo parsing */
   mdl_meta_init(&meta);
@@ -956,16 +1223,22 @@ static void test_comicinfo_xml_generation(void)
   (void)snprintf(meta.writer, sizeof(meta.writer), "Writer & Author");
   (void)snprintf(meta.artist, sizeof(meta.artist), "Artist & Penciller");
   (void)snprintf(meta.summary, sizeof(meta.summary), "Summary & Description");
+  (void)snprintf(meta.language, sizeof(meta.language), "ja");
+  meta.reading_direction = k_mdl_read_rtl;
+  meta.cover_index       = 0;
 
   char xml_buf[4096];
-  TEST_ASSERT(mdl_export_build_comicinfo(&meta, xml_buf, sizeof(xml_buf)) == k_ra8_ok);
+  TEST_ASSERT(mdl_export_build_comicinfo_pages(&meta, 3U, xml_buf, sizeof(xml_buf)) == k_ra8_ok);
   TEST_ASSERT(strstr(xml_buf, "<Series>Comic &amp; Series</Series>") != nullptr);
   TEST_ASSERT(strstr(xml_buf, "<Title>Ch 1: &lt;Origin&gt;</Title>") != nullptr);
   TEST_ASSERT(strstr(xml_buf, "<Number>1</Number>") != nullptr);
   TEST_ASSERT(strstr(xml_buf, "<Writer>Writer &amp; Author</Writer>") != nullptr);
   TEST_ASSERT(strstr(xml_buf, "<Artist>Artist &amp; Penciller</Artist>") != nullptr);
   TEST_ASSERT(strstr(xml_buf, "<Summary>Summary &amp; Description</Summary>") != nullptr);
-  TEST_ASSERT(strstr(xml_buf, "<ComicBookInfo>media_dl</ComicBookInfo>") != nullptr);
+  TEST_ASSERT(strstr(xml_buf, "<PageCount>3</PageCount>") != nullptr);
+  TEST_ASSERT(strstr(xml_buf, "<LanguageISO>ja</LanguageISO>") != nullptr);
+  TEST_ASSERT(strstr(xml_buf, "<Manga>YesAndRightToLeft</Manga>") != nullptr);
+  TEST_ASSERT(strstr(xml_buf, "Image=\"0\" Type=\"FrontCover\"") != nullptr);
 
   /* Export CBZ with metadata and verify ComicInfo.xml inside zip */
   const char* dir = "/tmp/mdl_cbz_meta_chap";
@@ -981,6 +1254,8 @@ static void test_comicinfo_xml_generation(void)
   char* content = zip_entry_str(&zr, "ComicInfo.xml");
   TEST_ASSERT_NOT_NULL(content);
   TEST_ASSERT(strstr(content, "<Series>Comic &amp; Series</Series>") != nullptr);
+  TEST_ASSERT(strstr(content, "<PageCount>1</PageCount>") != nullptr);
+  TEST_ASSERT(strstr(content, "<LanguageISO>ja</LanguageISO>") != nullptr);
   free(content);
   (void)mz_zip_reader_end(&zr);
 
@@ -994,8 +1269,9 @@ static void test_comicinfo_xml_generation(void)
 static void test_epub_metadata_and_uuid(void)
 {
   TEST_BEGIN("EPUB metadata, UUID, and cover image");
-  const char* dir = "/tmp/mdl_epub_meta_chap";
-  const char* out = "/tmp/mdl_epub_meta_chap.epub";
+  const char* dir  = "/tmp/mdl_epub_meta_chap";
+  const char* out  = "/tmp/mdl_epub_meta_chap.epub";
+  const char* out2 = "/tmp/mdl_epub_meta_chap_2.epub";
   (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   write_fixture("/tmp/mdl_epub_meta_chap/page_001.jpg", 'a');
   write_fixture("/tmp/mdl_epub_meta_chap/page_002.jpg", 'b');
@@ -1008,6 +1284,8 @@ static void test_epub_metadata_and_uuid(void)
   (void)snprintf(meta.artist, sizeof(meta.artist), "EPUB Artist");
   (void)snprintf(meta.summary, sizeof(meta.summary), "EPUB Summary");
   meta.cover_index = 1; /* page_002.jpg is cover */
+  (void)snprintf(meta.language, sizeof(meta.language), "ja");
+  meta.reading_direction = k_mdl_read_rtl;
 
   TEST_ASSERT(mdl_export_chapter_meta(k_mdl_fmt_epub, dir, out, &meta) == k_ra8_ok);
 
@@ -1025,6 +1303,9 @@ static void test_epub_metadata_and_uuid(void)
   TEST_ASSERT(strstr(opf, "<dc:creator opf:role=\"aut\">EPUB Writer</dc:creator>") != nullptr);
   TEST_ASSERT(strstr(opf, "<dc:creator opf:role=\"art\">EPUB Artist</dc:creator>") != nullptr);
   TEST_ASSERT(strstr(opf, "<dc:description>EPUB Summary</dc:description>") != nullptr);
+  TEST_ASSERT(strstr(opf, "<dc:language>ja</dc:language>") != nullptr);
+  TEST_ASSERT(strstr(opf, "<meta property=\"schema:numberOfPages\">2</meta>") != nullptr);
+  TEST_ASSERT(strstr(opf, "<spine page-progression-direction=\"rtl\">") != nullptr);
 
   /* Check cover image property on img1 (page_002.jpg) */
   TEST_ASSERT(
@@ -1033,12 +1314,22 @@ static void test_epub_metadata_and_uuid(void)
       "id=\"img1\" href=\"images/page_002.jpg\" media-type=\"image/jpeg\" properties=\"cover-image\"") !=
     nullptr);
 
-  free(opf);
   (void)mz_zip_reader_end(&zr);
+  TEST_ASSERT(mdl_export_chapter_meta(k_mdl_fmt_epub, dir, out2, &meta) == k_ra8_ok);
+  mz_zip_archive zr2;
+  memset(&zr2, 0, sizeof(zr2));
+  TEST_ASSERT(mz_zip_reader_init_file(&zr2, out2, 0) != MZ_FALSE);
+  char* opf2 = zip_entry_str(&zr2, "OEBPS/content.opf");
+  TEST_ASSERT_NOT_NULL(opf2);
+  TEST_ASSERT(strcmp(opf, opf2) == 0);
+  free(opf2);
+  free(opf);
+  (void)mz_zip_reader_end(&zr2);
 
   (void)unlink("/tmp/mdl_epub_meta_chap/page_001.jpg");
   (void)unlink("/tmp/mdl_epub_meta_chap/page_002.jpg");
   (void)unlink(out);
+  (void)unlink(out2);
   (void)rmdir(dir);
   TEST_END("EPUB metadata, UUID, and cover image");
 }
@@ -1161,6 +1452,54 @@ static void test_image_magic_bytes(void)
 
   TEST_END("image magic byte & Content-Type typing");
 }
+/** @test Export workspace fails closed below the name-table bound and reports high-water. */
+static void test_export_workspace_bounds(void)
+{
+  TEST_BEGIN("export workspace bounds");
+  enum { k_names_bytes = 2048U * 256U };
+  const char* dir = "/tmp/mdl_ws_chap";
+  const char* out = "/tmp/mdl_ws_chap.cbz";
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
+  write_fixture("/tmp/mdl_ws_chap/page_001.jpg", 'a');
+
+  mdl_export_workspace_t ws;
+  mdl_export_workspace_init(&ws, s_test_export_arena, k_names_bytes - 1U);
+  TEST_ASSERT(mdl_export_chapter_ws(k_mdl_fmt_cbz, dir, out, &ws) == k_ra8_err_invalid_size);
+  TEST_ASSERT(ws.high_water == 0U);
+
+  mdl_export_workspace_init(&ws, s_test_export_arena, k_names_bytes);
+  TEST_ASSERT(mdl_export_chapter_ws(k_mdl_fmt_cbz, dir, out, &ws) == k_ra8_ok);
+  TEST_ASSERT(ws.high_water == k_names_bytes);
+
+  (void)unlink("/tmp/mdl_ws_chap/page_001.jpg");
+  (void)unlink(out);
+  (void)rmdir(dir);
+  TEST_END("export workspace bounds");
+}
+
+/** @test Every advertised validator rejects a truncated or wrong container. */
+static void test_verify_rejects_truncation(void)
+{
+  TEST_BEGIN("verify rejects truncation");
+  static const struct {
+    const char*  path;
+    mdl_format_t format;
+  } cases[] = {{"/tmp/mdl_bad.cbz", k_mdl_fmt_cbz},
+               {"/tmp/mdl_bad.cbt", k_mdl_fmt_cbt},
+               {"/tmp/mdl_bad.cbt.gz", k_mdl_fmt_cbt_gz},
+               {"/tmp/mdl_bad.epub", k_mdl_fmt_epub},
+               {"/tmp/mdl_bad.jof", k_mdl_fmt_jof}};
+  for (size_t i = 0U; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+    write_fixture(cases[i].path, 'x');
+    mdl_verify_report_t report = {};
+    TEST_ASSERT(verify_file(cases[i].format, cases[i].path, &report) != k_ra8_ok);
+    (void)unlink(cases[i].path);
+  }
+  mdl_format_t inferred = k_mdl_fmt_invalid;
+  TEST_ASSERT(mdl_format_from_path("/tmp/book.cbt.gz.part", &inferred) == k_ra8_err_not_supported);
+  TEST_ASSERT(inferred == k_mdl_fmt_invalid);
+  TEST_END("verify rejects truncation");
+}
 
 /**
  * @brief Run every media_dl unit test in sequence.
@@ -1174,6 +1513,9 @@ int32_t main(void)
   test_extract_anchors();
   test_config_load();
   test_export_cbz_roundtrip();
+  test_export_workspace_bounds();
+  test_export_cbt_structure();
+  test_verify_rejects_truncation();
   test_export_skips_non_images();
   test_export_epub_roundtrip();
   test_export_jof_roundtrip();
@@ -1197,6 +1539,8 @@ int32_t main(void)
   test_robots_cache();
   test_cli_new_flags();
   test_cli_missing_value();
+  test_cli_mode_matrix();
+  test_cli_numeric_bounds();
   test_meta_init_parse_load();
   test_comicinfo_xml_generation();
   test_epub_metadata_and_uuid();

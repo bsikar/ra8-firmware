@@ -117,9 +117,9 @@ void mdl_session_init(mdl_session_t*   session,
  * @param[out] crawl_delay_ms Receives the host's Crawl-delay in ms (0 if none).
  *
  * @return Whether the fetch is permitted.
- * @retval true  Robots allows it (or gating is off, or the host is unparseable).
- * @retval false A `Disallow` (or a 5xx robots.txt) forbids it; a message was
- *               printed to stderr.
+ * @retval true  Robots allows it, or gating was explicitly disabled.
+ * @retval false A rule forbids it, robots is inaccessible/oversized, or the
+ *               URL cannot be parsed safely; a message was printed to stderr.
  *
  * @pre `session` and `url` are non-NULL.
  * @pre `url` uses an http(s) scheme.

@@ -70,6 +70,15 @@ static bool file_exists(const char* path)
   return stat(path, &st) == 0;
 }
 
+/** @brief Replace a fixture file with exactly `text`. */
+static void write_text(const char* path, const char* text)
+{
+  FILE* fp = fopen(path, "wb");
+  TEST_ASSERT_NOT_NULL(fp);
+  TEST_ASSERT_EQ((int64_t)strlen(text), (int64_t)fwrite(text, 1U, strlen(text), fp));
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)fclose(fp));
+}
+
 /**
  * @test test_hash_determinism
  *
@@ -140,7 +149,7 @@ static void test_hash_file(void)
  *
  * @par MC/DC:
  * (No compound decision under test; it pins the three URL-name helpers: the
- * sanitised last segment, the LAST digit-run chapter number, and the
+ * sanitised last segment, explicit decimal chapter number, and the
  * allowlisted lower-cased extension with its jpg default.)
  */
 static void test_urlname(void)
@@ -165,6 +174,20 @@ static void test_urlname(void)
   TEST_ASSERT(mdl_urlname_chapter_value("https://s.example/read/chapter-8/#chapter-777") == 8.0);
   TEST_ASSERT(mdl_urlname_chapter_value(
                 "https://12.example/read/prologue?next=chapter-999#chapter-777") == 0.0);
+  double chapter = -1.0;
+  TEST_ASSERT(mdl_urlname_chapter_parse("https://s.example/read/chapter-0/", &chapter));
+  TEST_ASSERT(chapter == 0.0);
+  TEST_ASSERT(
+    mdl_urlname_chapter_parse("https://www.peppercarrot.com/en/webcomic/ep39_The-Tavern.html",
+                              &chapter));
+  TEST_ASSERT(chapter == 39.0);
+  TEST_ASSERT(!mdl_urlname_chapter_parse("https://s.example/read/book-2026-991/", &chapter));
+  TEST_ASSERT(chapter == 0.0);
+  TEST_ASSERT(
+    !mdl_urlname_chapter_parse("https://12.example/read/prologue?next=chapter-999#chapter-777",
+                               &chapter));
+  TEST_ASSERT(!mdl_urlname_chapter_parse(nullptr, &chapter));
+  TEST_ASSERT(!mdl_urlname_chapter_parse("https://s/read/chapter-1", nullptr));
 
   char ext[k_probe_bytes + 3U];
   mdl_urlname_ext("http://cdn/a.PNG", ext, sizeof(ext));
@@ -221,6 +244,15 @@ static void test_state_chapters_and_pages(void)
   const mdl_page_rec_t* p = mdl_state_find_page(&s_a, (uint64_t)k_uh_a);
   TEST_ASSERT_NOT_NULL(p);
   TEST_ASSERT_EQ((uint64_t)k_ch_a, p->content_hash);
+  TEST_ASSERT(mdl_state_add_page(&s_a,
+                                 (uint64_t)k_uh_a,
+                                 (uint64_t)k_ch_a,
+                                 "c2/page_0001.jpg",
+                                 nullptr,
+                                 nullptr));
+  TEST_ASSERT_EQ((uint32_t)2, s_a.page_rec_count);
+  TEST_ASSERT(strcmp(mdl_state_find_page(&s_a, (uint64_t)k_uh_a)->rel_path, "c1/page_0001.jpg") ==
+              0);
   TEST_ASSERT_NULL(mdl_state_find_page(&s_a, (uint64_t)k_uh_z));
   TEST_END("state chapters + pages");
 }
@@ -343,6 +375,76 @@ static void test_state_load_absent_and_corrupt(void)
 }
 
 /**
+ * @test test_state_rejects_malformed_records
+ *
+ * @details Pins strict parsing of every numeric field and state invariant. A
+ *          damaged or concatenated state file must never be partially trusted.
+ */
+static void test_state_rejects_malformed_records(void)
+{
+  TEST_BEGIN("state rejects malformed records");
+  char path[k_tmp_path_bytes];
+  make_tmp(path, sizeof(path));
+  static const char* const bad[] = {
+    "V\t1junk\n",
+    "V\t1\nV\t1\n",
+    "V\t1\nC\tc1\t1x\t0\t1\t0\t0\thttps://s/c1\n",
+    "V\t1\nC\tc1\t1\t2\t1\t1\t0\thttps://s/c1\n",
+    "V\t1\nC\tc1\t1\t0\t65536\t0\t0\thttps://s/c1\n",
+    "V\t1\nC\tc1\t1\t0\t1\t2\t0\thttps://s/c1\n",
+    "V\t1\nC\tc1\t1\t1\t0\t0\t0\thttps://s/c1\n",
+    "V\t1\nP\t111x\t222\tc1/page.jpg\n",
+    "V\t1\nP\t10000000000000000\t222\tc1/page.jpg\n",
+    "V\t1\nS\tone\textra\n",
+  };
+  for (size_t i = 0U; i < (sizeof(bad) / sizeof(bad[0])); ++i) {
+    write_text(path, bad[i]);
+    TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_load(path, &s_b));
+    TEST_ASSERT_EQ((uint16_t)0, s_b.chapter_count);
+    TEST_ASSERT_EQ((uint32_t)0, s_b.page_rec_count);
+  }
+
+  char overlong[1400];
+  memset(overlong, 'a', sizeof(overlong));
+  memcpy(overlong, "V\t1\nS\t", 6U);
+  overlong[sizeof(overlong) - 2U] = '\n';
+  overlong[sizeof(overlong) - 1U] = '\0';
+  write_text(path, overlong);
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_load(path, &s_b));
+
+  char long_id[k_mdl_chapter_id_max + 1U];
+  memset(long_id, 'x', sizeof(long_id));
+  long_id[sizeof(long_id) - 1U] = '\0';
+  mdl_state_init(&s_a);
+  TEST_ASSERT_NULL(mdl_state_add_chapter(&s_a, long_id, "https://s/c", 1L));
+  TEST_ASSERT_NULL(mdl_state_add_chapter(&s_a, "bad\tid", "https://s/c", 1L));
+  TEST_ASSERT(!mdl_state_add_page(&s_a, 1U, 2U, "bad\tpath", nullptr, nullptr));
+  (void)unlink(path);
+  TEST_END("state rejects malformed records");
+}
+
+/** @test Persistence rejects in-memory corruption before creating a temp file. */
+static void test_state_save_validates_invariants(void)
+{
+  TEST_BEGIN("state save validates invariants");
+  char path[k_tmp_path_bytes];
+  make_tmp(path, sizeof(path));
+  seed_fixture();
+  s_a.chapters[0].pages_done = 0U;
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_save(path, &s_a));
+
+  seed_fixture();
+  (void)snprintf(s_a.chapters[0].source_url, sizeof(s_a.chapters[0].source_url), "bad\turl");
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_save(path, &s_a));
+
+  seed_fixture();
+  memset(s_a.pages[0].rel_path, 'x', sizeof(s_a.pages[0].rel_path));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_save(path, &s_a));
+  (void)unlink(path);
+  TEST_END("state save validates invariants");
+}
+
+/**
  * @test test_state_coverage
  *
  * @par MC/DC:
@@ -385,6 +487,8 @@ int32_t main(void)
   test_state_chapters_and_pages();
   test_state_roundtrip_atomic();
   test_state_load_absent_and_corrupt();
+  test_state_rejects_malformed_records();
+  test_state_save_validates_invariants();
   test_state_coverage();
   (void)fprintf(stderr, "[OK  ] test_media_dl_state.c\n");
   return 0;

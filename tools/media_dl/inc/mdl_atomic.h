@@ -17,7 +17,7 @@
  * half-written one -- and on any failure path the destination is never touched
  * at all.
  *
- * The temp name is a `.mdl-tmp-<pid>-` PREFIX on the leaf, not a suffix,
+ * The temp name is a `.mdl-tmp-<unique>-` PREFIX on the leaf, not a suffix,
  * deliberately:
  *
  *   * It keeps the destination's extension intact, which matters because two
@@ -29,10 +29,9 @@
  *   * It is a sibling, so the `rename()` stays within one filesystem. A temp
  *     in `/tmp` would cross a mount point and fail with `EXDEV`.
  *
- * The `<pid>` makes two concurrent `media_dl` runs writing the same destination
- * collide on the rename (last writer wins, atomically) rather than on the
- * partial file (which would interleave two half-downloads into one corrupt
- * output).
+ * The unique token is created atomically with `mkstemps`, so concurrent runs
+ * never share a partial file and an abandoned file from a reused PID cannot be
+ * truncated. The original extension is retained for tools that inspect it.
  *
  * @see mdl_state_save() The pattern these calls generalise; it has always been
  *      correct and is what the rest of the tool now matches.
@@ -47,25 +46,27 @@
  * @brief Build the sibling temp path a writer should produce its output at.
  *
  * @details
- * Returns `<dir>/.mdl-tmp-<pid>-<leaf>` for a `<dir>/<leaf>` destination, or
- * `.mdl-tmp-<pid>-<leaf>` when @p final_path names a bare leaf. The result is
- * in the destination's own directory so ::mdl_atomic_commit can rename it
- * without crossing a filesystem boundary.
+ * Atomically creates `<dir>/.mdl-tmp-<unique>-<leaf>` for a `<dir>/<leaf>`
+ * destination, or `.mdl-tmp-<unique>-<leaf>` for a bare leaf. The reserved
+ * empty regular file is in the destination's own directory so
+ * ::mdl_atomic_commit can rename it without crossing a filesystem boundary.
  *
  * @param[in]  final_path Destination the caller ultimately wants (never NULL).
  * @param[out] out        Buffer receiving the temp path (never NULL).
  * @param[in]  cap        Capacity of @p out in bytes.
  *
  * @return Whether a temp path was built.
- * @retval true  @p out holds a NUL-terminated sibling temp path.
- * @retval false An argument was NULL/empty, or the path did not fit in @p cap.
+ * @retval true  @p out names a newly-created, unique empty regular file.
+ * @retval false An argument was invalid, the path did not fit, or unique file
+ *               creation failed.
  *
  * @pre @p final_path and @p out are non-NULL; @p final_path is NUL-terminated.
  * @pre @p cap is large enough for the destination plus the ~24-byte prefix.
- * @post On true, @p out is NUL-terminated and differs from @p final_path.
- * @post On false, nothing was created and the caller must not write anything.
+ * @post On true, @p out is NUL-terminated, differs from @p final_path, and
+ *       names a caller-owned empty file that must be committed or aborted.
+ * @post On false, no temp remains and the caller must not write anything.
  *
- * @note Thread-safe: writes only caller-provided storage.
+ * @note Thread-safe: `mkstemps` reserves a distinct file for every caller.
  * @warning A false return must ABORT the write. Falling back to writing
  *          @p final_path directly reintroduces exactly the data-loss bug this
  *          file exists to remove.
@@ -99,21 +100,28 @@ bool mdl_atomic_tmp_path(const char* final_path, char* out, size_t cap);
  * copy -- everything before this point is reversible, and everything after it
  * has replaced the user's data. On a failed rename the temp file is removed so
  * no debris is left behind; the destination is untouched either way, because
- * `rename()` that fails does not modify its target.
+ * `rename()` that fails does not modify its target. Before the rename this
+ * function verifies the temp is a regular non-symlink file and fsyncs it;
+ * after the rename it fsyncs the containing directory.
  *
  * @param[in] tmp_path   Temp file from ::mdl_atomic_tmp_path (never NULL).
  * @param[in] final_path Destination to replace (never NULL).
  *
  * @return Whether the destination now holds the new bytes.
- * @retval true  The rename succeeded; @p tmp_path no longer exists.
- * @retval false The rename failed; @p tmp_path was removed and @p final_path
- *               still holds whatever it held before (possibly nothing).
+ * @retval true  The bytes and directory entry are durably committed; @p tmp_path no longer exists.
+ * @retval false Publication or durability failed. When failure precedes the
+ *               rename, @p final_path is unchanged; when only the directory
+ *               fsync fails, the complete new file is visible but crash
+ *               durability could not be proven.
  *
  * @pre @p tmp_path and @p final_path are non-NULL and NUL-terminated.
  * @pre @p tmp_path names a COMPLETE output -- every stream is closed and every
  *      write has been checked.
  * @post No file named @p tmp_path remains, on either outcome.
- * @post On false, @p final_path is byte-for-byte what it was on entry.
+ * @post On false before rename, @p final_path is byte-for-byte unchanged. If
+ *       the directory fsync itself fails after a successful rename, false
+ *       reports that crash durability could not be proven although the new
+ *       complete file is visible.
  *
  * @note Thread-safe: touches only the two named paths.
  * @see mdl_atomic_tmp_path
@@ -138,7 +146,7 @@ bool mdl_atomic_commit(const char* tmp_path, const char* final_path);
  * @pre @p tmp_path is NULL or a NUL-terminated path from
  *      ::mdl_atomic_tmp_path.
  * @pre Every stream that was writing @p tmp_path is already closed.
- * @post No file named @p tmp_path remains (best effort).
+ * @post Removal of @p tmp_path has been attempted; cleanup is best effort.
  * @post The corresponding destination has not been modified.
  *
  * @note Thread-safe: touches only the named path.

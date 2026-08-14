@@ -25,6 +25,7 @@
 #include "ra8_c6link.h"
 #include "ra8_c6link_internal.h"
 #include "ra8_c6link_mdl.h"
+#include "ra8_c6link_mdl_transfer.h"
 #include "ra8_c6link_wifi.h"
 #include "ra8_err.h"
 #include "unity_minimal.h"
@@ -953,9 +954,7 @@ static void test_media_download_roundtrip(void)
   t_bringup();
 
   ra8_mdl_session_t session = {};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_c6link_mdl_start(&s_link, "https://example.test/book", k_ra8_mdl_format_rabook, &session));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_start(&s_link, "https://example.test/book", &session));
   TEST_ASSERT(session.active);
   TEST_ASSERT(session.job_id != 0U);
 
@@ -975,9 +974,7 @@ static void test_media_download_roundtrip(void)
   TEST_ASSERT_EQ((int64_t)sizeof(received), (int64_t)received_len);
   TEST_ASSERT(memcmp(received, "abcdef", sizeof(received)) == 0);
 
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_c6link_mdl_start(&s_link, "https://example.test/book", k_ra8_mdl_format_rabook, &session));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_start(&s_link, "https://example.test/book", &session));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_cancel(&s_link, &session));
   TEST_ASSERT(!session.active);
   TEST_END("c6link media download roundtrip");
@@ -986,9 +983,7 @@ static void test_media_download_roundtrip(void)
 /** @brief Start a modelled job and consume its one non-terminal data frame. */
 static void t_mdl_before_terminal(ra8_mdl_session_t* session)
 {
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_c6link_mdl_start(&s_link, "https://example.test/book", k_ra8_mdl_format_rabook, session));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_start(&s_link, "https://example.test/book", session));
   ra8_mdl_chunk_t data = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_next(&s_link, session, 6U, &data));
   TEST_ASSERT_EQ((int64_t)6, (int64_t)data.data_len);
@@ -1029,9 +1024,7 @@ static void test_media_download_rejects_bad_terminal_frames(void)
 
   t_bringup();
   session = (ra8_mdl_session_t){};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_c6link_mdl_start(&s_link, "https://example.test/book", k_ra8_mdl_format_rabook, &session));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_c6link_mdl_start(&s_link, "https://example.test/book", &session));
   ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_downloading_error;
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_c6link_mdl_next(&s_link, &session, 6U, &chunk));
   TEST_ASSERT(session.active);
@@ -1079,6 +1072,256 @@ static void test_media_download_terminal_status(void)
   TEST_END("c6link media terminal status");
 }
 
+/** @brief Failure injection and observations for a transactional store. */
+typedef struct {
+  uint8_t   bytes[16];
+  uint16_t  len;
+  ra8_err_t write_error;
+  ra8_err_t validation_error;
+  bool      short_write;
+  uint8_t   begins;
+  uint8_t   validations;
+  uint8_t   commits;
+  uint8_t   aborts;
+} t_mdl_store_t;
+
+/** @brief Failure injection and observations for a streaming hash. */
+typedef struct {
+  uint8_t  bytes[16];
+  uint16_t len;
+  bool     bad_digest;
+} t_mdl_hash_t;
+
+/** @brief One fixed set of coordinator seams. */
+typedef struct {
+  t_mdl_store_t store;
+  t_mdl_hash_t  hash;
+  bool          cancel;
+} t_mdl_transfer_fixture_t;
+
+static t_mdl_transfer_fixture_t s_mdl_transfer;
+
+/** @brief Begin a modelled temporary object. */
+static ra8_err_t t_mdl_store_begin(void* ctx, const char* destination)
+{
+  t_mdl_store_t* store = (t_mdl_store_t*)ctx;
+  if ((store == nullptr) || (strcmp(destination, "/library/book.rabook") != 0)) {
+    return k_ra8_err_invalid_arg;
+  }
+  store->begins += 1U;
+  store->len = 0U;
+  return k_ra8_ok;
+}
+
+/** @brief Append to modelled temporary storage with short/full injection. */
+static ra8_err_t t_mdl_store_write(void* ctx, const uint8_t* data, uint16_t len, uint16_t* written)
+{
+  t_mdl_store_t* store = (t_mdl_store_t*)ctx;
+  *written             = 0U;
+  if (store->write_error != k_ra8_ok) {
+    return store->write_error;
+  }
+  uint16_t accepted = store->short_write ? (uint16_t)(len - 1U) : len;
+  if ((uint32_t)store->len + accepted > sizeof(store->bytes)) {
+    return k_ra8_err_no_mem;
+  }
+  memcpy(&store->bytes[store->len], data, accepted);
+  store->len += accepted;
+  *written = accepted;
+  return k_ra8_ok;
+}
+
+/** @brief Validate the model artifact signature before publication. */
+static ra8_err_t
+t_mdl_store_validate(void* ctx, uint64_t total_bytes, const uint8_t sha256[k_ra8_mdl_sha256_bytes])
+{
+  t_mdl_store_t* store = (t_mdl_store_t*)ctx;
+  store->validations += 1U;
+  if (store->validation_error != k_ra8_ok) {
+    return store->validation_error;
+  }
+  if ((total_bytes != 6U) || (store->len != 6U) || (memcmp(store->bytes, "abcdef", 6U) != 0) ||
+      (sha256[0] != 0xA5U)) {
+    return k_ra8_err_validation_failed;
+  }
+  return k_ra8_ok;
+}
+
+/** @brief Publish the modelled object. */
+static ra8_err_t t_mdl_store_commit(void* ctx)
+{
+  t_mdl_store_t* store = (t_mdl_store_t*)ctx;
+  store->commits += 1U;
+  return k_ra8_ok;
+}
+
+/** @brief Destroy the modelled temporary object. */
+static ra8_err_t t_mdl_store_abort(void* ctx)
+{
+  t_mdl_store_t* store = (t_mdl_store_t*)ctx;
+  store->aborts += 1U;
+  store->len = 0U;
+  return k_ra8_ok;
+}
+
+/** @brief Reset the modelled SHA-256 context. */
+static ra8_err_t t_mdl_sha_init(void* ctx)
+{
+  t_mdl_hash_t* hash = (t_mdl_hash_t*)ctx;
+  hash->len          = 0U;
+  return k_ra8_ok;
+}
+
+/** @brief Record bytes fed to the modelled SHA-256 implementation. */
+static ra8_err_t t_mdl_sha_update(void* ctx, const uint8_t* data, uint16_t len)
+{
+  t_mdl_hash_t* hash = (t_mdl_hash_t*)ctx;
+  if ((uint32_t)hash->len + len > sizeof(hash->bytes)) {
+    return k_ra8_err_no_mem;
+  }
+  memcpy(&hash->bytes[hash->len], data, len);
+  hash->len += len;
+  return k_ra8_ok;
+}
+
+/** @brief Emit the model digest, optionally corrupted. */
+static ra8_err_t t_mdl_sha_final(void* ctx, uint8_t out[k_ra8_mdl_sha256_bytes])
+{
+  const t_mdl_hash_t* hash = (const t_mdl_hash_t*)ctx;
+  memset(out, hash->bad_digest ? 0x5AU : 0xA5U, k_ra8_mdl_sha256_bytes);
+  return k_ra8_ok;
+}
+
+/** @brief Expose cooperative cancellation from the fixture. */
+static bool t_mdl_cancelled(void* ctx)
+{
+  return *(const bool*)ctx;
+}
+
+/** @brief Reset the transfer fixture and fill a complete bounded configuration. */
+static void t_mdl_transfer_cfg(ra8_mdl_transfer_config_t* config)
+{
+  s_mdl_transfer = (t_mdl_transfer_fixture_t){};
+  *config        = (ra8_mdl_transfer_config_t){
+    .storage          = {.begin    = t_mdl_store_begin,
+                         .write    = t_mdl_store_write,
+                         .validate = t_mdl_store_validate,
+                         .commit   = t_mdl_store_commit,
+                         .abort    = t_mdl_store_abort,
+                         .ctx      = &s_mdl_transfer.store},
+    .sha256           = {.init   = t_mdl_sha_init,
+                         .update = t_mdl_sha_update,
+                         .final  = t_mdl_sha_final,
+                         .ctx    = &s_mdl_transfer.hash},
+    .cancel_requested = t_mdl_cancelled,
+    .cancel_ctx       = &s_mdl_transfer.cancel,
+    .chunk_bytes      = 4U,
+    .max_chunks       = 8U,
+  };
+}
+
+/** @brief Run one coordinator transfer with the supplied configuration. */
+static ra8_err_t t_mdl_transfer_run(const ra8_mdl_transfer_config_t* config)
+{
+  ra8_mdl_transfer_result_t result = {};
+  return ra8_c6link_mdl_transfer(&s_link,
+                                 "https://example.test/book",
+                                 "/library/book.rabook",
+                                 config,
+                                 &result);
+}
+
+/**
+ * @par MC/DC:
+ * Exercises the false branch of every failure/cancellation decision and the
+ * COMPLETE branch after three ordered pulls. Other tests below vary each
+ * injected condition independently.
+ */
+static void test_media_transfer_commits_verified_bytes(void)
+{
+  TEST_BEGIN("c6link media transfer verified commit");
+  t_bringup();
+  ra8_mdl_transfer_config_t config = {};
+  t_mdl_transfer_cfg(&config);
+  TEST_ASSERT_EQ(k_ra8_ok, t_mdl_transfer_run(&config));
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.begins);
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.commits);
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.validations);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ((int64_t)6, (int64_t)s_mdl_transfer.store.len);
+  TEST_ASSERT(memcmp(s_mdl_transfer.store.bytes, "abcdef", 6U) == 0);
+  TEST_ASSERT(memcmp(s_mdl_transfer.hash.bytes, "abcdef", 6U) == 0);
+  TEST_END("c6link media transfer verified commit");
+}
+
+/**
+ * @par MC/DC:
+ * V1 full write succeeds; V2 short-write=true alone changes the decision to
+ * invalid-size; V3 write_error=no_mem alone selects media removal/full error.
+ */
+static void test_media_transfer_aborts_storage_failures(void)
+{
+  TEST_BEGIN("c6link media transfer storage failures");
+  ra8_mdl_transfer_config_t config = {};
+  t_bringup();
+  t_mdl_transfer_cfg(&config);
+  s_mdl_transfer.store.short_write = true;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, t_mdl_transfer_run(&config));
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_mdl_transfer.store.commits);
+
+  t_bringup();
+  t_mdl_transfer_cfg(&config);
+  s_mdl_transfer.store.write_error = k_ra8_err_no_mem;
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, t_mdl_transfer_run(&config));
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_mdl_transfer.store.commits);
+  TEST_END("c6link media transfer storage failures");
+}
+
+/** @brief Reject digest mismatch and out-of-order model responses transactionally. */
+static void test_media_transfer_aborts_integrity_failures(void)
+{
+  TEST_BEGIN("c6link media transfer integrity failures");
+  ra8_mdl_transfer_config_t config = {};
+  t_bringup();
+  t_mdl_transfer_cfg(&config);
+  s_mdl_transfer.hash.bad_digest = true;
+  TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, t_mdl_transfer_run(&config));
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
+
+  t_bringup();
+  t_mdl_transfer_cfg(&config);
+  ra8_c6_model()->mdl_fault = k_c6m_mdl_fault_out_of_order;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, t_mdl_transfer_run(&config));
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)ra8_c6_model()->mdl_cancels);
+
+  t_bringup();
+  t_mdl_transfer_cfg(&config);
+  s_mdl_transfer.store.validation_error = k_ra8_err_validation_failed;
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, t_mdl_transfer_run(&config));
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.validations);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_mdl_transfer.store.commits);
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
+  TEST_END("c6link media transfer integrity failures");
+}
+
+/** @brief Cancel before the first pull and abort all local temporary state. */
+static void test_media_transfer_cancellation_is_atomic(void)
+{
+  TEST_BEGIN("c6link media transfer cancellation");
+  t_bringup();
+  ra8_mdl_transfer_config_t config = {};
+  t_mdl_transfer_cfg(&config);
+  s_mdl_transfer.cancel = true;
+  TEST_ASSERT_EQ(k_ra8_err_cancelled, t_mdl_transfer_run(&config));
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)s_mdl_transfer.store.aborts);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)s_mdl_transfer.store.commits);
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)ra8_c6_model()->mdl_cancels);
+  TEST_END("c6link media transfer cancellation");
+}
+
 int32_t main(void)
 {
   test_open_validation();
@@ -1087,6 +1330,10 @@ int32_t main(void)
   test_media_download_rejects_bad_terminal_frames();
   test_media_download_terminal_status();
   test_fw_version_roundtrip();
+  test_media_transfer_commits_verified_bytes();
+  test_media_transfer_aborts_storage_failures();
+  test_media_transfer_aborts_integrity_failures();
+  test_media_transfer_cancellation_is_atomic();
   test_answer_correlation();
   test_wifi_start_sequence();
   test_join_credentials();

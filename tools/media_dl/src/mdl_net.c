@@ -15,7 +15,6 @@
 #include "mdl_net.h"
 
 #include <stddef.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "ra8_attributes.h"
@@ -72,5 +71,5 @@ void mdl_net_destroy(mdl_net_iface_t* net)
   if ((net->vtable != nullptr) && (net->vtable->destroy != nullptr)) {
     net->vtable->destroy(net->ctx);
   }
-  free(net);
+  *net = (mdl_net_iface_t){};
 }

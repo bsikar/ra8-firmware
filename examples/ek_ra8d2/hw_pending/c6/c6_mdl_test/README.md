@@ -1,6 +1,7 @@
 # c6_mdl_test
 
-Cross-build fixture for the generated media protobuf and RA8 c6link client.
+Cross-build fixture for the generated raw-byte protobuf, RA8 c6link client,
+and transactional transfer coordinator.
 It is not hardware-validation evidence: the prior contents were copied from
 `c6_fw_version` and never exercised media download at all.
 

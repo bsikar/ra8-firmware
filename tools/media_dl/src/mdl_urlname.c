@@ -16,10 +16,16 @@
 
 /** @brief On-stack buffers and parse radix for the URL-name helpers. */
 typedef enum : uint16_t {
-  k_urlname_raw_bytes = 256, /**< Pre-sanitise last-segment scratch bytes. */
-  k_urlname_num_bytes = 16,  /**< Digit-run capture buffer bytes.          */
-  k_urlname_case_gap  = 32,  /**< 'a' - 'A': ASCII upper-to-lower offset.  */
+  k_urlname_raw_bytes = 256,  /**< Pre-sanitise last-segment scratch bytes. */
+  k_urlname_case_gap  = 32,   /**< 'a' - 'A': ASCII upper-to-lower offset.  */
+  k_urlname_scan_max  = 2048, /**< Maximum URL bytes inspected.             */
 } mdl_urlname_const_t;
+
+/** @brief Numeric bounds keep conversion loops and sortable values finite. */
+typedef enum : uint32_t {
+  k_chapter_whole_max = 999999999U, /**< Largest accepted integral chapter. */
+  k_chapter_frac_max  = 6U,         /**< Fractional digits retained.        */
+} mdl_chapter_num_limit_t;
 
 /** @brief End offset of a URL's path, past any `?query`/`#fragment`. */
 RA8_INTERNAL static size_t path_end(const char* url)
@@ -83,63 +89,73 @@ last_path_marker(const char* url, size_t begin, size_t end, const char* marker)
   return found;
 }
 
+/** @brief Parse digits at `start`, optionally followed by a decimal fraction. */
+RA8_INTERNAL static bool parse_chapter_digits(const char* start, const char* end, double* out)
+{
+  if ((start >= end) || (*start < '0') || (*start > '9')) {
+    return false;
+  }
+  uint32_t whole = 0U;
+  while ((start < end) && (*start >= '0') && (*start <= '9')) {
+    const uint32_t digit = (uint32_t)(*start - '0');
+    if (whole > (((uint32_t)k_chapter_whole_max - digit) / 10U)) {
+      return false;
+    }
+    whole = (whole * 10U) + digit;
+    ++start;
+  }
+  double value = (double)whole;
+  if ((start < end) && ((*start == '-') || (*start == '.')) && ((start + 1) < end) &&
+      (start[1] >= '0') && (start[1] <= '9')) {
+    ++start;
+    double   scale  = 0.1;
+    uint32_t digits = 0U;
+    while ((start < end) && (*start >= '0') && (*start <= '9')) {
+      if (digits >= (uint32_t)k_chapter_frac_max) {
+        return false;
+      }
+      value += (double)(*start - '0') * scale;
+      scale *= 0.1;
+      ++digits;
+      ++start;
+    }
+  }
+  *out = value;
+  return true;
+}
+
+bool mdl_urlname_chapter_parse(const char* url, double* out)
+{
+  if (out != nullptr) {
+    *out = 0.0;
+  }
+  if ((url == nullptr) || (out == nullptr)) {
+    return false;
+  }
+  const size_t bounded = strnlen(url, (size_t)k_urlname_scan_max);
+  if (bounded == (size_t)k_urlname_scan_max) {
+    return false;
+  }
+  const size_t             end       = path_end(url);
+  const size_t             begin     = path_start(url, end);
+  static const char* const markers[] = {"chapter-", "/ch-", "/ep"};
+  const char*              found     = nullptr;
+  size_t                   skip      = 0U;
+  for (size_t i = 0U; i < (sizeof(markers) / sizeof(markers[0])); ++i) {
+    const char* candidate = last_path_marker(url, begin, end, markers[i]);
+    if ((candidate != nullptr) && ((found == nullptr) || (candidate > found))) {
+      found = candidate;
+      skip  = strlen(markers[i]);
+    }
+  }
+  return (found != nullptr) && parse_chapter_digits(found + skip, url + end, out);
+}
+
 double mdl_urlname_chapter_value(const char* url)
 {
-  if (url == nullptr) {
-    return 0.0;
-  }
-  const size_t end          = path_end(url);
-  const size_t begin        = path_start(url, end);
-  const char*  start        = last_path_marker(url, begin, end, "chapter-");
-  size_t       skip         = strlen("chapter-");
-  const char*  short_marker = last_path_marker(url, begin, end, "/ch-");
-  if ((short_marker != nullptr) && ((start == nullptr) || (short_marker > start))) {
-    start = short_marker;
-    skip  = strlen("/ch-");
-  }
-  if (start != nullptr) {
-    start += skip;
-    char   num[k_urlname_num_bytes];
-    size_t n = 0U;
-    while ((*start >= '0') && (*start <= '9') && (n + 1U < sizeof(num))) {
-      num[n++] = *start++;
-    }
-    if (((*start == '-') || (*start == '.')) && (start[1] >= '0') && (start[1] <= '9') &&
-        (n + 2U < sizeof(num))) {
-      num[n++] = '.';
-      ++start;
-      while ((*start >= '0') && (*start <= '9') && (n + 1U < sizeof(num))) {
-        num[n++] = *start++;
-      }
-    }
-    num[n] = '\0';
-    return (n == 0U) ? 0.0 : strtod(num, nullptr);
-  }
-
-  /* Compatibility fallback for descriptors whose chapter slugs lack a marker. */
-  size_t s = 0U;
-  size_t e = 0U;
-  for (size_t i = begin; i < end; ++i) {
-    if ((url[i] >= '0') && (url[i] <= '9')) {
-      size_t j = i;
-      while ((j < end) && (url[j] >= '0') && (url[j] <= '9')) {
-        ++j;
-      }
-      s = i;
-      e = j;
-      i = j;
-    }
-  }
-  if (e == 0U) {
-    return 0.0;
-  }
-  char   num[k_urlname_num_bytes];
-  size_t n = 0U;
-  for (size_t i = s; (i < e) && (n + 1U < sizeof(num)); ++i) {
-    num[n++] = url[i];
-  }
-  num[n] = '\0';
-  return strtod(num, nullptr);
+  double value = 0.0;
+  (void)mdl_urlname_chapter_parse(url, &value);
+  return value;
 }
 
 long mdl_urlname_chapter_number(const char* url)
