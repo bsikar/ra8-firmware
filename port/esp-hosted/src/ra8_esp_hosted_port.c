@@ -374,3 +374,13 @@ bool ra8_esp_hosted_port_is_ready(void)
 {
   return s_ra8_esp_hosted_port_ready;
 }
+
+bool ra8_esp_hosted_port_rx_pending(void)
+{
+  if (!s_ra8_esp_hosted_port_ready) {
+    return false;
+  }
+  const int level =
+    g_h.funcs->_h_read_gpio(H_GPIO_DATA_READY_Port, (uint32_t)H_GPIO_DATA_READY_Pin);
+  return level == H_DR_VAL_ACTIVE;
+}

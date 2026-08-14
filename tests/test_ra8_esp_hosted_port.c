@@ -232,6 +232,7 @@ static void test_shipped_pin_map_is_consistent(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_pins_check());
   TEST_ASSERT(!ra8_esp_hosted_port_is_ready());
+  TEST_ASSERT(!ra8_esp_hosted_port_rx_pending());
 
   /* The reset net is legitimately unwired until the harness supplies one,
      so it is the one signal the consistency check must NOT demand. */

@@ -7,10 +7,10 @@
 # HAL implementations, named backend translation units, board composition
 # libraries, tests, vendored code, and generated code are outside this ratchet.
 #
-# clock: 518 reference(s)
+# clock: 511 reference(s)
 # display: 9 reference(s)
-# gpio: 106 reference(s)
-# timer: 59 reference(s)
+# gpio: 104 reference(s)
+# timer: 51 reference(s)
 #
 # path<TAB>family<TAB>count
 examples/_unsupported/audio_loopback/main.c	clock	2
@@ -103,7 +103,6 @@ examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/main.c	gpio	1
 examples/ek_ra8d2/hw_pending/modem_at_demo/main.c	clock	3
 examples/ek_ra8d2/hw_pending/mpu_boot_map_hal/main.c	clock	1
 examples/ek_ra8d2/hw_pending/ota_ab_orchestration/main.c	clock	1
-examples/ek_ra8d2/hw_pending/pdm_mic_demo/main.c	clock	2
 examples/ek_ra8d2/hw_pending/ra8_ftl_demo/main.c	clock	3
 examples/ek_ra8d2/hw_pending/ra8_io_mram_demo/main.c	clock	3
 examples/ek_ra8d2/hw_pending/ra8_io_sdhi_demo/main.c	clock	2
@@ -117,9 +116,6 @@ examples/ek_ra8d2/hw_pending/tz_threadx_demo/system_init.c	clock	1
 examples/ek_ra8d2/hw_pending/tz_threadx_demo/trustzone_init.c	clock	1
 examples/ek_ra8d2/hw_pending/tz_threadx_demo/trustzone_init.c	gpio	2
 examples/ek_ra8d2/hw_pending/webp_decode_demo/main.c	clock	2
-examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/main.c	clock	3
-examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/src/c6_cam_camera.c	clock	1
-examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/src/c6_cam_camera.c	timer	4
 examples/ek_ra8d2/hw_validated/c6/c6_fw_version/main.c	clock	3
 examples/ek_ra8d2/hw_validated/c6/c6_hosted_init/main.c	clock	3
 examples/ek_ra8d2/hw_validated/c6/c6_spi_probe/main.c	clock	3
@@ -140,10 +136,9 @@ examples/ek_ra8d2/hw_validated/hil/bscan_selftest/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/cac_accuracy_demo/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/cache_coherency_hil/main.c	clock	1
 examples/ek_ra8d2/hw_validated/hil/cache_mpu_hil/main.c	clock	1
-examples/ek_ra8d2/hw_validated/hil/camera_capture/main.c	clock	3
-examples/ek_ra8d2/hw_validated/hil/camera_capture/main.c	timer	6
+examples/ek_ra8d2/hw_validated/hil/camera_capture/main.c	clock	2
+examples/ek_ra8d2/hw_validated/hil/camera_capture/main.c	timer	2
 examples/ek_ra8d2/hw_validated/hil/camera_capture/src/cam_ceu.c	gpio	2
-examples/ek_ra8d2/hw_validated/hil/camera_capture/src/cam_ov5640.c	gpio	2
 examples/ek_ra8d2/hw_validated/hil/can_classic_loopback/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/canfd_filter_demo/main.c	clock	2
 examples/ek_ra8d2/hw_validated/hil/canfd_loopback/main.c	clock	2

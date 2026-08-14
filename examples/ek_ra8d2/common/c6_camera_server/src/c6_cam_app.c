@@ -23,7 +23,6 @@
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_wifi.h"
-#include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_esp_hosted_c6link.h"
 #include "ra8_esp_hosted_port.h"
@@ -75,15 +74,12 @@ static void c6_cam_halt(void)
  */
 static void c6_cam_setup_or_halt(void)
 {
-  if (ra8_cgc_init() != k_ra8_ok) {
+  ra8_board_clock_rates_t clock_rates = {};
+  if (ra8_board_clocks_init(&clock_rates) != k_ra8_ok) {
     c6_cam_halt();
   }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &s_cpuclk_hz) != k_ra8_ok) {
-    c6_cam_halt();
-  }
-  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &s_pclka_hz) != k_ra8_ok) {
-    c6_cam_halt();
-  }
+  s_cpuclk_hz = clock_rates.cpuclk0_hz;
+  s_pclka_hz  = clock_rates.pclka_hz;
   if (ra8_mstp_init() != k_ra8_ok) {
     c6_cam_halt();
   }
