@@ -182,7 +182,7 @@ gate_artefact_freshness() (
 )
 
 # --- cache-bench ----------------------------------------------------------
-# #147/#160: builds + runs cache_bench (the SLRU decision record), reader_vmem
+# Builds and runs cache_bench (the SLRU decision record), reader_vmem
 # (drives the real ra8_vmem with a reader workload and emits a
 # cache_bench-consumable trace) and glyph_bench (sweeps the real glyph atlas),
 # re-confirming SLRU on the captured reader trace on every push. Both pinned
