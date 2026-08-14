@@ -91,6 +91,7 @@ typedef struct {
   const char* proxy;            /**< --proxy URL: HTTP/HTTPS proxy URL.                         */
   const char* socks5;           /**< --socks5 URL: SOCKS5 proxy URL.                            */
   const char* cookie_file;      /**< --cookie-file FILE: cookie file path for libcurl.          */
+  const char* ca_file;          /**< --ca-file FILE: custom PEM CA bundle for HTTPS.            */
   const char* verify_dir;       /**< --verify [DIR]: directory to verify.                       */
   const char* init_site_url;    /**< --init-site URL: generate site descriptor template.        */
   bool        browse;           /**< --browse: list a site's latest-updates page.               */
@@ -168,7 +169,7 @@ typedef struct {
   size_t   chapters;     /**< --chapters window (clamped to >= 1).        */
   uint32_t max_imgs;     /**< --max page images (0 = all).                */
   bool     from_present; /**< Whether --from was supplied.                */
-  long     from_num;     /**< --from chapter number.                      */
+  double   from_num;     /**< --from chapter number, including decimals. */
   size_t   pick;         /**< --pick discovery hit (1-based; 0 = list).   */
 } mdl_nums_t;
 
@@ -179,8 +180,9 @@ typedef struct {
  * Converts the string-form numeric options (`--timeout`, `--chapters`, `--max`,
  * `--seed`, `--from`, and `--max-bytes` for presence-validation) into typed
  * scalars, rejecting any non-numeric or trailing-garbage value with a usage
- * message on stderr rather than silently substituting 0. `--chapters` of 0 is
- * rejected.
+ * message on stderr rather than silently substituting 0. Decimal chapter
+ * values such as `108.5` are accepted for `--from`; NaN and infinity are not.
+ * `--chapters` of 0 is rejected.
  *
  * @param[in]  a Parsed command-line options (never NULL).
  * @param[out] n Receives the validated scalars (never NULL).

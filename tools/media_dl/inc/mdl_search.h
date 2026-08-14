@@ -140,6 +140,7 @@ bool mdl_search_build_url(const char* tmpl, const char* encoded_term, char* out,
  * @pre @p hits, when non-NULL, was filled by ::mdl_extract_hits.
  * @pre The caller prints a distinct message per returned class.
  * @post No state is modified.
+ * @post The returned class depends only on `count` and `anchors_seen`.
  *
  * @note Thread-safe: reads only its argument.
  * @see mdl_extract_hits
@@ -161,7 +162,9 @@ mdl_search_outcome_t mdl_search_classify(const mdl_hit_list_t* hits);
  * @return Number of entries removed.
  * @retval 0 No entry was removed, or an argument was NULL.
  * @pre @p hits and @p chapter_marker are non-NULL.
+ * @pre Every populated hit URL is NUL-terminated within its fixed buffer.
  * @post @p hits contains only canonical, unique series candidates.
+ * @post The retained candidates preserve their original relative order.
  * @note Thread-safe when callers use distinct hit lists.
  * @since 0.1.0
  */

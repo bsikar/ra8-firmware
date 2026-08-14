@@ -78,10 +78,10 @@ for the integration harness.
 
 **page mode** (debug): fetch one URL and download its `<img>` URLs.
 
-**direct artifact mode**: a bare HTTPS URL ending in `.cbz`, `.cbt`, `.epub`,
-or `.jof` is streamed to a sibling staging file, structurally validated, and
-only then atomically published under `--out`. A failed or unsupported download
-never replaces an existing artifact.
+**direct artifact mode**: a bare HTTPS URL ending in `.cbz`, `.cbt`, `.cbt.gz`,
+`.epub`, or `.jof` is streamed to a sibling staging file, structurally
+validated, and only then atomically published under `--out`. A failed or
+unsupported download never replaces an existing artifact.
 
 The scope is deliberately small (unlike the half-baked Kotlin original): fetch,
 extract, download politely, resumably, package.
@@ -109,7 +109,9 @@ values, and options that have no effect in the selected mode are usage errors
 Network modes additionally accept the applicable identity/security controls:
 `--seed`, `--timeout`, `--contact`, `--max-bytes`, `--proxy` or `--socks5`,
 `--cookie-file`, `--polite`, `--ignore-robots`, `--allow-private`, and
-`--cross-host`. Proxy modes require `--allow-private` because libcurl's proxy
+`--cross-host`. `--ca-file FILE` selects a custom PEM trust bundle for private
+or test HTTPS endpoints without disabling peer or hostname verification. Proxy
+modes require `--allow-private` because libcurl's proxy
 peer callback cannot prove the proxy's target address is public.
 
 `--verify` proves tracked page hashes and structurally parses every recognized
@@ -149,16 +151,22 @@ complete filename.
 - `mdl_cli.{h,c}` -- command-line parsing.
 - `mdl_extract.{h,c}` -- `<img>`/`<a>` tag scanner + relative-URL resolver.
   Replaced on-device by litehtml (already vendored) behind the same signatures.
-- `mdl_config.{h,c}` -- flat key=value **site descriptor** loader. Adding a site
-  is dropping a `.conf` in `sites/`, no rebuild. Fixed-size struct, zero dynamic
-  allocation -- ports to the RA8 unchanged.
+- `mdl_config.{h,c}` -- strict flat key=value **site descriptor** loader. Adding
+  a site is dropping a `.conf` in `sites/`, no rebuild. Descriptors carry
+  chapter/image/discovery rules plus bounded series/chapter metadata selectors,
+  language, and reading direction. Unknown keys, empty/malformed selectors,
+  overlong lines/values, invalid numeric ranges, and contradictory bounds fail
+  configuration instead of being ignored. The fixed-size struct performs no
+  dynamic allocation.
 - `mdl_state.{h,c}` -- **persistent per-series library state**: a versioned,
-  flat, TAB-separated `.mdl_state` file recording the series identity, the site
-  descriptor used, and -- per chapter -- the parsed identifier, source URL, page
-  count, completion status and fetch time, plus a series-wide pool of per-page
-  content identities. Written atomically (temp file + `rename`); a corrupt file
-  degrades to a clear error and a rebuild rather than a crash or silent refetch.
-  Fixed-size struct, zero dynamic allocation.
+  flat, TAB-separated schema-v2 `.mdl_state` file recording the series identity,
+  title, synopsis, writer, artist, verified local/remote cover identity,
+  language/direction, descriptor used, and -- per chapter -- title, explicit
+  fractional-or-missing number, source URL, page count, completion status and
+  fetch time, plus a series-wide pool of per-page content identities. Version 1
+  state is migrated in memory and written as v2. Writes are atomic and durable;
+  corrupt state fails closed and is never silently overwritten. Fixed-size
+  struct, zero dynamic allocation.
 - `mdl_hash.{h,c}` -- FNV-1a 64 content-identity hashing (buffer, string, and a
   streamed file), used to key the URL dedup lookup and to verify a page on disk.
 - `mdl_urlname.{h,c}` -- pure URL-to-name helpers (sanitised last segment ->
@@ -171,11 +179,11 @@ complete filename.
   interrupted run resumes byte-identical).
 - `mdl_library.{h,c}` -- library-wide walk over a directory of tracked series
   (`--list`/`--update-all`) and one-series tree removal (`--remove`).
-- `mdl_politeness.{h,c}` -- seeded, jittered inter-request delay. The blocking
-  sleep is reached through an injectable clock seam (`mdl_politeness_init_clock`)
-  so spacing/backoff timing is unit-tested without real sleeps. The full governor
-  (global per-host token bucket, adaptive 429/503 backoff, Retry-After) is a
-  later milestone.
+- `mdl_politeness.{h,c}` -- seeded, jittered inter-request delay plus the global
+  per-host token-bucket governor, adaptive transport/429/5xx backoff, and both
+  delta-seconds and HTTP-date `Retry-After`. The clock/sleep seams are injectable,
+  so spacing, decay, saturation, and wall-clock conversion are deterministic in
+  unit tests.
 - Return type is `ra8_err_t` from `libs/ra8_core` -- signatures are already
   device-shaped.
 
@@ -246,12 +254,13 @@ Library commands (over `--out`):
 ### Library state (`.mdl_state`)
 
 Each series directory holds a `.mdl_state` file: a versioned, flat,
-TAB-separated, `#`-commented text record (`V` version, `S/T/N/H/G` series/site
-metadata, one `C` line per chapter, one `P` line per fetched page carrying its
-source-URL hash + content hash + relative path). It is written atomically (temp
-file then `rename`), so a kill mid-write cannot corrupt it, and a file that fails
-to parse degrades to a clear error and a rebuild-from-scratch (already-downloaded
-pages are reused by content) rather than a crash or a silent full refetch.
+TAB-separated, `#`-commented text record. Schema v2 uses `S/T/N/H/G` for
+identity/descriptor, `D/W/A/O/K/L/R` for rich series metadata, one `C` line per
+chapter (including title and an explicit known fractional number), and one `P`
+line per fetched page carrying its source-URL hash, content hash, relative path,
+ETag, and Last-Modified value. It is written atomically and durably. A v1 file
+is migrated; a malformed file causes the command to fail closed so it cannot
+erase or silently replace the last known-good state.
 
 Pack mode (re-package a folder, no network):
 
@@ -267,16 +276,26 @@ Page mode (debug):
 
 ## Site descriptors
 
-A `.conf` is flat `key = value` (`#` comments, `[section]` lines ignored). See
-`sites/manhwaus.conf`. Keys: `name`, `host`, `kind`, `chapter_url_contains`,
-`chapter_order` (`asc`|`reverse`|`doc`), `page_img_attr`,
-`page_img_url_contains`, the `*_delay_min/max` politeness bounds, and the
-discovery keys `search_url` (a query template holding one `{q}` placeholder for
-the encoded term), `search_result_contains` (the series-link substring that
-picks result entries out of a search/browse page), and `browse_url` (the
-latest-updates page for `--browse`). A descriptor without `search_url` /
-`browse_url` simply reports that mode as unavailable rather than pretending.
-Sites behind a Cloudflare JS challenge will not work (no challenge solver yet).
+A `.conf` is flat `key = value` (`#` comments, `[section]` lines ignored). The
+qualified descriptors are `sites/manhwaus.conf` and
+`sites/peppercarrot.conf`, each backed by captured series/chapter fixtures.
+Core keys are `name`, `host`, `kind`, `chapter_url_contains`, optional
+`chapter_url_prefix`, `chapter_order` (`asc`|`reverse`|`doc`),
+`page_img_attr`, `page_img_url_contains`, and the `*_delay_min/max` governor
+bounds. Discovery uses `search_url` (one `{q}` placeholder),
+`search_result_contains`, and `browse_url`.
+
+Metadata selectors use one of four bounded forms: `meta:og:title` reads a meta
+content value, `class:post-title` reads cleaned element text, `label:Author(s):`
+reads the value following a visible label, and `literal:David Revoy` supplies a
+descriptor-owned constant. The `series_title_selector`,
+`series_summary_selector`, `series_author_selector`, `series_artist_selector`,
+`series_cover_selector`, and `chapter_title_selector` fields use that grammar;
+`language` is a BCP-47 tag and `reading_direction` is `ltr` or `rtl`. Cover URLs
+are resolved against the series page, fetched through the normal policy path,
+typed by byte signature, persisted locally, and embedded canonically in CBZ and
+EPUB output. A descriptor without search/browse simply reports that mode as
+unavailable. Sites requiring a JavaScript challenge are not claimed supported.
 
 ## Export formats (`--format`)
 
@@ -321,23 +340,31 @@ folding a non-image "page" into the archive.
 
 ### Verifying a build
 
-`tools/media_dl/tests/integration.sh` (also `make test-integration`) is the
-cross-tool end-to-end gate: it packages synthetic, non-copyright pages into
-*every* format and opens each result in the native `rabook_viewer` headless,
-asserting a non-blank render -- the check that catches "packages fine but the
-reader can't open it". Formats whose optional tool is absent (`rar`) are
-skipped, not failed.
+The CTest suite covers strict CLI conjunctions, both site descriptors and their
+captured shapes, schema-v1 migration/schema-v2 round trips, resume/revalidation,
+failure propagation, every advertised exporter and structural verifier, and a
+real loopback HTTP/HTTPS run. The HTTPS fixture creates an ephemeral CA and
+proves that an untrusted server fails, `--ca-file` succeeds without disabling
+verification, corrupt direct artifacts are not published, rich metadata and a
+magic-typed cover reach a real CBZ, and fractional plus numberless chapters
+retain document order. Hardware reader-open qualification is intentionally not
+claimed here; it remains pending while hardware use is on hold.
 
 ## Status / roadmap
 
-Working: config-driven series -> chapter list -> polite, **resumable** download
-with **persistent per-series state** (`--update` incremental pulls, content-hash
-dedup, `--list`/`--update-all`/`--remove`) -> combined (or `--separate`)
-packaging into every reader format, verified end-to-end by `make test-integration`
-and against manhwaus.net. Features added: proxy (`--proxy`/`--socks5`), cookie
-file (`--cookie-file`), terminal progress bar (`--progress`), library integrity
-verification (`--verify`), and starter site descriptor wizard (`--init-site`).
-Known limits: naive extension naming from the URL (Content-Type/magic-byte typing
-is a planned fix -- pages are named `.jpg` even when the bytes are PNG/WebP, though
-the readers sniff the real magic on open), single-site descriptor format (richer
-TOML later). Next: Content-Type-driven page naming.
+Working and host-qualified: strict descriptor-driven series/discovery commands;
+fractional chapter selection; rich series/chapter metadata and covers;
+polite/resumable/revalidated downloads; persistent library operations; direct
+verified HTTPS artifacts; and bounded export/verification for CBZ, CBT, CBT.GZ,
+EPUB, and JOF. Page and cover names are selected from content bytes rather than
+trusted URL suffixes. ManhwaUS and Pepper&Carrot have descriptor fixtures; live
+sites can still change independently and therefore remain observable runtime
+dependencies, not permanent guarantees.
+
+Not yet claimed complete: CBR, CBT.XZ, and RABOOK host export; a fixed-memory
+arbitrary-URL HTTPS implementation on the ESP32-C6 (ESP-IDF's HTTP/TLS stack
+allocates transitively); full scrape/package work on the C6; and real hardware
+reader/RPC qualification. The protobuf RPC coordinator and model tests are real,
+but the current C6 path transfers a prebuilt artifact rather than implementing
+the full scraper/packer promised by issue #665. Those boundaries return or are
+documented as unsupported instead of masquerading as completed functionality.

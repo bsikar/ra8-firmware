@@ -19,7 +19,18 @@
 
 #include "ra8_attributes.h"
 
-/** @brief Zero a caller-supplied response block so early returns leave it clean. */
+/**
+ * @brief Zero a caller-supplied response block so early returns leave it clean.
+ * @details Accepts NULL so dispatcher validation paths can reset unconditionally.
+ * @param[out] resp Optional response metadata block.
+ * @return Nothing.
+ * @pre @p resp is NULL or points to writable ::mdl_net_resp_t storage.
+ * @pre The caller no longer needs the prior metadata.
+ * @post A non-NULL response contains only zero bytes.
+ * @post NULL input has no effect.
+ * @note Not thread-safe when callers share @p resp.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static void resp_reset(mdl_net_resp_t* resp)
 {
   if (resp != nullptr) {

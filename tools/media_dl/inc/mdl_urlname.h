@@ -64,6 +64,7 @@ void mdl_urlname_last_segment(const char* url, char* out, size_t cap);
  * @pre @p url is non-NULL and NUL-terminated.
  * @pre The caller treats 0 as "unnumbered", not "chapter zero" specifically.
  * @post @p url is not modified.
+ * @post The result is the integral truncation of ::mdl_urlname_chapter_value.
  *
  * @note Thread-safe: depends only on its argument.
  * @since 0.1.0
@@ -82,6 +83,7 @@ long mdl_urlname_chapter_number(const char* url);
  * @param[in]  url Absolute or relative URL to inspect.
  * @param[out] out Parsed non-negative value on success.
  *
+ * @return Whether an explicitly marked chapter value was parsed.
  * @retval true  An explicit, bounded chapter value was found.
  * @retval false Arguments were invalid, no marker/value was present, or the
  *               value exceeded the supported bound.
@@ -97,6 +99,29 @@ long mdl_urlname_chapter_number(const char* url);
 bool mdl_urlname_chapter_parse(const char* url, double* out);
 
 /**
+ * @brief Parse a selector result as one complete bounded chapter number.
+ *
+ * @details Trims ASCII whitespace, then accepts only a non-negative decimal
+ * value. Both `108.5` and the URL-style fractional spelling `108-5` represent
+ * chapter 108.5. Signs, exponent notation, labels, NaN/infinity, trailing
+ * bytes, excessive precision, and values above the documented chapter bound
+ * are rejected.
+ *
+ * @param[in] text NUL-terminated selector text to parse.
+ * @param[out] out Parsed non-negative value on success.
+ * @return Whether all non-whitespace input formed one bounded chapter value.
+ * @retval true The complete trimmed input was accepted.
+ * @retval false Arguments were invalid or the text was not a strict value.
+ * @pre A non-NULL @p text is NUL-terminated within the URL-name scan bound.
+ * @pre A non-NULL @p out addresses writable storage for one `double`.
+ * @post On false, a non-NULL @p out is set to 0.0.
+ * @post @p text is never modified.
+ * @note Thread-safe and allocation-free.
+ * @since 0.1.0
+ */
+bool mdl_urlname_chapter_text_parse(const char* text, double* out);
+
+/**
  * @brief Parse a chapter URL as a possibly-decimal chapter value.
  *
  * @details A site slug such as `chapter-108-5` represents chapter 108.5, not
@@ -107,6 +132,15 @@ bool mdl_urlname_chapter_parse(const char* url, double* out);
  * @return Parsed chapter value, or 0.0 for an unnumbered URL. New callers that
  *         must distinguish an absent number from chapter zero use
  *         ::mdl_urlname_chapter_parse.
+ * @retval 0.0 No explicit bounded chapter marker was found.
+ * @retval other The non-negative integral or decimal chapter value.
+ *
+ * @pre A non-NULL @p url is NUL-terminated within the documented URL bound.
+ * @pre A NULL @p url is accepted and treated as unnumbered.
+ * @post The return value is non-negative.
+ * @post @p url is never modified.
+ *
+ * @note Thread-safe: uses only caller-owned storage.
  * @since 0.1.0
  */
 double mdl_urlname_chapter_value(const char* url);
@@ -146,6 +180,7 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap);
  *   - PNG: `89 50 4E 47` -> `.png` / `image/png`
  *   - WebP: `RIFF....WEBP` -> `.webp` / `image/webp`
  *   - GIF: `GIF87a` / `GIF89a` -> `.gif` / `image/gif`
+ *   - BMP: `BM` -> `.bmp` / `image/bmp`
  *
  * @param[in]  buf          Data buffer holding raw magic bytes (may be NULL if buf_len == 0).
  * @param[in]  buf_len      Length of @p buf in bytes.
@@ -155,7 +190,18 @@ void mdl_urlname_ext(const char* url, char* out, size_t cap);
  * @param[out] out_mime     Destination buffer for exact MIME type (e.g. "image/jpeg"). May be NULL.
  * @param[in]  mime_cap     Capacity of @p out_mime in bytes.
  *
- * @return true if an image type was recognized from magic bytes or Content-Type header, false otherwise.
+ * @return Whether a supported image type was recognised.
+ * @retval true  Magic bytes or the HTTP content type identify a supported image.
+ * @retval false Neither input identifies a supported image.
+ *
+ * @pre @p buf is readable for @p buf_len bytes when @p buf_len is non-zero.
+ * @pre Each non-NULL output points to writable storage of its corresponding capacity.
+ * @post On true, each non-empty requested output receives a NUL-terminated canonical value,
+ *       truncated when its capacity is too small.
+ * @post On false, requested output buffers are left unchanged.
+ *
+ * @note Magic bytes take precedence over a conflicting HTTP content type.
+ * @since 0.1.0
  */
 bool mdl_urlname_sniff_image_type(const void* buf,
                                   size_t      buf_len,
@@ -168,6 +214,10 @@ bool mdl_urlname_sniff_image_type(const void* buf,
 /**
  * @brief Sniff true image extension and MIME type from a file on disk.
  *
+ * @details Reads only the bounded signature prefix needed by
+ * ::mdl_urlname_sniff_image_type, then applies the same magic-first type
+ * selection. The file is closed before this function returns.
+ *
  * @param[in]  file_path    Absolute or relative path to the image file on disk.
  * @param[in]  content_type HTTP Content-Type header string (may be NULL or empty).
  * @param[out] out_ext      Destination buffer for lower-case extension (e.g. "jpg"). May be NULL.
@@ -175,7 +225,18 @@ bool mdl_urlname_sniff_image_type(const void* buf,
  * @param[out] out_mime     Destination buffer for exact MIME type (e.g. "image/jpeg"). May be NULL.
  * @param[in]  mime_cap     Capacity of @p out_mime in bytes.
  *
- * @return true if an image type was recognized from magic bytes or Content-Type header, false otherwise.
+ * @return Whether a supported image type was recognised.
+ * @retval true  File magic or the HTTP content type identifies a supported image.
+ * @retval false Neither readable file magic nor @p content_type identifies a supported image.
+ *
+ * @pre @p file_path, when non-NULL, is a NUL-terminated path.
+ * @pre Each non-NULL output points to writable storage of its corresponding capacity.
+ * @post On true, each non-empty requested output receives a NUL-terminated canonical value,
+ *       truncated when its capacity is too small.
+ * @post Any opened input file is closed and is never modified.
+ *
+ * @note A recognised content type may supply the result when file magic is inconclusive.
+ * @since 0.1.0
  */
 bool mdl_urlname_sniff_file(const char* file_path,
                             const char* content_type,

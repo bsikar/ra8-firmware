@@ -30,21 +30,6 @@ endif()
 
 find_package(CURL REQUIRED)
 
-# posix_spawn_file_actions_addchdir() is POSIX.1-2024. macOS 26 ships it and
-# has DEPRECATED the older _np spelling (which -Werror turns into a build
-# failure); glibc 2.36 ships only the _np spelling and does not declare the
-# standard name at all. So neither name works everywhere and neither platform
-# can be assumed from the other -- probe for it and let the source pick.
-include(CheckSymbolExists)
-set(CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
-check_symbol_exists(posix_spawn_file_actions_addchdir "spawn.h" MDL_HAVE_POSIX_SPAWN_ADDCHDIR)
-unset(CMAKE_REQUIRED_DEFINITIONS)
-if(MDL_HAVE_POSIX_SPAWN_ADDCHDIR)
-  set(MDL_ADDCHDIR_DEF MDL_HAVE_POSIX_SPAWN_ADDCHDIR)
-else()
-  set(MDL_ADDCHDIR_DEF)
-endif()
-
 # Vendored miniz (the same third-party ZIP/DEFLATE the firmware comic reader
 # uses) provides CBZ writing and gzip DEFLATE -- so archive export needs no
 # system libraries. SOUP: compiled warning-free, exempt from our style bar.
@@ -86,10 +71,6 @@ set(MDL_JOF_INC
 # WebP arm must be the real transcode. One call; the recipe is shared with the
 # firmware app build and the host test build.
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/ra8_webp_vendor.cmake)
-# rabook shells out to this python emitter (the RBKC container the C path can't
-# write); pass its directory so the CLI can find cbz_compile.py at runtime.
-set(MDL_EPUB_COMPILE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../epub_compile)
-
 add_executable(
   media_dl
   src/main.c
@@ -132,13 +113,7 @@ target_include_directories(
           ${MDL_JOF_INC}
 )
 
-# _GNU_SOURCE: mdl_export.c uses posix_spawn_file_actions_addchdir_np() and
-# `environ`, both of which glibc gates behind it. It must be set on the compile
-# line, not in the source, so it precedes every system header.
-target_compile_definitions(
-  media_dl PRIVATE _GNU_SOURCE RA8_OFF_TARGET ${MDL_ADDCHDIR_DEF}
-                   MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}"
-)
+target_compile_definitions(media_dl PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(media_dl PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(media_dl PRIVATE CURL::libcurl)
 ra8_webp_attach(media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
@@ -177,10 +152,7 @@ target_include_directories(
           ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
           ${MDL_JOF_INC}
 )
-target_compile_definitions(
-  test_media_dl PRIVATE _GNU_SOURCE RA8_OFF_TARGET ${MDL_ADDCHDIR_DEF}
-                        MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}"
-)
+target_compile_definitions(test_media_dl PRIVATE _GNU_SOURCE RA8_OFF_TARGET)
 target_compile_options(test_media_dl PRIVATE -Wall -Wextra -Werror)
 ra8_webp_attach(test_media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 add_test(NAME test_media_dl COMMAND test_media_dl)
@@ -364,6 +336,7 @@ add_test(NAME test_media_dl_sites COMMAND test_media_dl_sites)
 
 # Real socket/libcurl orchestration: deterministic local HTTP, no internet.
 find_program(MDL_BASH_EXECUTABLE NAMES bash REQUIRED)
+find_program(MDL_OPENSSL_EXECUTABLE NAMES openssl REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(
   NAME test_media_dl_http_integration
@@ -373,6 +346,7 @@ add_test(
     $<TARGET_FILE:media_dl>
     ${Python3_EXECUTABLE}
     ${CMAKE_COMMAND}
+    ${MDL_OPENSSL_EXECUTABLE}
 )
 set_tests_properties(
   test_media_dl_http_integration

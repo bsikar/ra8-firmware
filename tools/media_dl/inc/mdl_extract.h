@@ -56,10 +56,10 @@ typedef struct {
  * @struct mdl_hit_list_t
  * @brief Bounded list of titled hits plus the raw anchor tally.
  * @details `anchors_seen` counts every `<a>` with a resolvable href scanned on
- *          the page (before the result filter), so a caller can tell a page that
- *          rendered links but matched none (zero results) from one that carried
- *          no links at all (the markup changed or the request was blocked). Large
- *          enough to prefer file scope over a deep stack.
+ *          the page (before the result filter), so a caller can tell a page
+ * that rendered links but matched none (zero results) from one that carried no
+ * links at all (the markup changed or the request was blocked). Large enough to
+ * prefer file scope over a deep stack.
  * @invariant `count <= k_mdl_max_hits`; every stored URL is unique.
  * @see mdl_extract_hits()
  * @see mdl_search_classify()
@@ -72,6 +72,69 @@ typedef struct {
 } mdl_hit_list_t;
 
 /**
+ * @brief Resolve a possibly relative HTTP(S) URL against an absolute base URL.
+ *
+ * @details Accepts absolute, scheme-relative, root-relative, and path-relative
+ * URLs. Fragment-only and `data:` values are rejected so descriptor-derived
+ * cover links follow the same URL rules as chapter and page-image extraction.
+ *
+ * @param[in]  base    Absolute HTTP(S) page URL.
+ * @param[in]  raw     Raw attribute value to resolve.
+ * @param[out] out     Destination for the absolute URL.
+ * @param[in]  out_cap Capacity of @p out, including the terminator.
+ *
+ * @return Whether a complete absolute URL was written.
+ * @retval true  @p raw was supported and the result fit.
+ * @retval false An argument was NULL, the URL kind was rejected, or it did not
+ * fit.
+ *
+ * @pre @p out points to @p out_cap writable bytes when non-NULL.
+ * @pre @p base and @p raw are NUL-terminated when non-NULL.
+ * @post On true, @p out contains one NUL-terminated absolute URL.
+ * @post On false, callers do not consume @p out.
+ *
+ * @note Thread-safe: uses caller-owned storage only.
+ * @since 0.1.0
+ */
+bool mdl_extract_resolve_url(const char* base, const char* raw, char* out, size_t out_cap);
+
+/**
+ * @brief Extract one bounded metadata value using a site-descriptor selector.
+ *
+ * @details The deliberately small selector grammar is data-driven and portable:
+ * `meta:og:title` reads a matching `<meta property|name>` content value,
+ * `class:post-title` cleans the matching element's visible text,
+ * `label:Author(s):` cleans the next anchor's text, and `literal:en` copies a
+ * descriptor-provided constant. Markup is scanned without allocation.
+ *
+ * @param[in]  html     HTML bytes; need not be NUL-terminated.
+ * @param[in]  html_len Number of readable bytes at @p html.
+ * @param[in]  selector Selector in the grammar above.
+ * @param[out] out      Destination for cleaned UTF-8 bytes.
+ * @param[in]  out_cap  Capacity of @p out, including the terminator.
+ *
+ * @return An ::ra8_err_t extraction result.
+ * @retval k_ra8_ok              A non-empty value was written.
+ * @retval k_ra8_err_not_found   No matching non-empty value exists.
+ * @retval k_ra8_err_invalid_arg A pointer was NULL, capacity was zero, or the
+ * selector was invalid.
+ * @retval k_ra8_err_invalid_size The extracted value did not fit completely.
+ *
+ * @pre @p html, @p selector, and @p out are non-NULL.
+ * @pre @p out points to @p out_cap writable bytes.
+ * @post On success, @p out is NUL-terminated and non-empty.
+ * @post On failure, `out[0]` is the NUL byte when @p out is writable.
+ *
+ * @note Thread-safe: uses caller-owned storage only.
+ * @since 0.1.0
+ */
+ra8_err_t mdl_extract_selector(const char* html,
+                               size_t      html_len,
+                               const char* selector,
+                               char*       out,
+                               size_t      out_cap);
+
+/**
  * @brief Scan `html` for `<img>` image URLs, resolved to absolute form.
  *
  * @param[in]  html         HTML bytes (need not be NUL-terminated).
@@ -79,7 +142,8 @@ typedef struct {
  * @param[in]  base_url     Absolute URL of the page (for relative resolution).
  * @param[in]  prefer_attr  "data-src" or "src"; the other is tried as fallback.
  * @param[in]  url_contains If non-NULL and non-empty, keep only URLs that
- *                          contain this substring (drops loaders/ads/nav icons).
+ *                          contain this substring (drops loaders/ads/nav
+ * icons).
  * @param[out] out          List to fill; `out->count` is reset first.
  *
  * @retval k_ra8_ok            Scan complete (count may be 0).
@@ -143,8 +207,8 @@ ra8_err_t mdl_extract_anchors(const char*     html,
  * @return An ::ra8_err_t scan result.
  * @retval k_ra8_ok               Scan complete (count may be 0).
  * @retval k_ra8_err_invalid_arg  A NULL @p html, @p base_url or @p out.
- * @retval k_ra8_err_no_mem       Reached ::k_mdl_max_hits; the rest were skipped
- *                                but `anchors_seen` still counts them.
+ * @retval k_ra8_err_no_mem       Reached ::k_mdl_max_hits; the rest were
+ * skipped but `anchors_seen` still counts them.
  *
  * @pre @p html, @p base_url and @p out are non-NULL.
  * @pre @p out points to writable ::mdl_hit_list_t storage.

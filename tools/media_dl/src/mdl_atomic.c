@@ -76,7 +76,24 @@ bool mdl_atomic_tmp_path(const char* final_path, char* out, size_t cap)
   return true;
 }
 
-/** @brief Open and fsync a regular temp file without following a symlink. */
+/**
+ * @brief Open and fsync a regular temp file without following a symlink.
+ *
+ * @details Opens @p path read-only with `O_NOFOLLOW`, verifies that the opened
+ * object is a regular file, and flushes its contents and metadata before the
+ * atomic rename. The descriptor is closed on every path.
+ *
+ * @param[in] path NUL-terminated path of the completed temporary file.
+ * @return Whether a regular file was opened and synchronised.
+ * @retval true  The file is regular and `fsync` succeeded.
+ * @retval false Open, type validation, or synchronisation failed.
+ * @pre @p path is non-NULL and NUL-terminated.
+ * @pre The caller has finished writing the temporary file.
+ * @post Any descriptor opened by this function is closed.
+ * @post The filesystem namespace is unchanged.
+ * @note A symbolic link is rejected rather than followed.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool sync_regular(const char* path)
 {
   const int fd = open(path, O_RDONLY | O_NOFOLLOW);
@@ -89,7 +106,23 @@ RA8_INTERNAL static bool sync_regular(const char* path)
   return ok;
 }
 
-/** @brief Open the containing directory so the rename can be made durable. */
+/**
+ * @brief Open the containing directory so the rename can be made durable.
+ *
+ * @details Derives the parent from @p path without modifying the caller's
+ * string. A bare leaf uses the current directory and a root child uses `/`.
+ *
+ * @param[in] path NUL-terminated destination path whose parent is required.
+ * @return An open directory descriptor, or -1 when the path cannot be handled.
+ * @retval -1 The path is empty, too long, or its parent cannot be opened.
+ * @retval other A descriptor that the caller must close.
+ * @pre @p path is non-NULL and NUL-terminated.
+ * @pre The caller accepts a relative path being resolved against `.`.
+ * @post On success the returned descriptor refers to the destination's parent.
+ * @post @p path is never modified.
+ * @note This helper does not create a missing parent directory.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static int open_parent(const char* path)
 {
   char         dir[PATH_MAX];

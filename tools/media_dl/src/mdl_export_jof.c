@@ -70,9 +70,9 @@ typedef enum : uint8_t {
 } mdl_jof_webp_t;
 /** @brief Hard memory ceilings for the non-reentrant transcode workspace. */
 typedef enum : uint32_t {
-  k_jof_source_cap    = 16U * 1024U * 1024U,
-  k_jof_work_cap      = 16U * 1024U * 1024U,
-  k_jof_webp_work_cap = 64U * 1024U * 1024U,
+  k_jof_source_cap    = 16U * 1024U * 1024U, /**< Maximum encoded source bytes. */
+  k_jof_work_cap      = 16U * 1024U * 1024U, /**< Maximum streaming work bytes. */
+  k_jof_webp_work_cap = 64U * 1024U * 1024U, /**< Maximum WebP frame workspace. */
 } mdl_jof_workspace_t;
 
 /** @brief WebP RIFF container tag (page head bytes 0..3). */
@@ -117,14 +117,41 @@ typedef struct {
   size_t         pos;  /**< Read cursor.   */
 } jof_pull_ctx_t;
 
-/** @brief ra8_log byte sink -> stderr (host-safe; avoids the ITM MMIO read). */
+/**
+ * @brief Route one ra8_log byte to host stderr
+ * @details Replaces the firmware ITM sink while the host JOF producer runs.
+ * @param[in] ctx Unused callback context.
+ * @param[in] byte Byte to append to stderr.
+ * @pre stderr is open for byte-oriented output.
+ * @pre @p ctx carries no ownership obligation.
+ * @post Exactly one byte is offered to stderr.
+ * @post No exporter workspace state is modified.
+ * @note Thread-safe only when stderr and the global log sink are serialized.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static void jof_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   (void)fputc((int)byte, stderr);
 }
 
-/** @brief Producer pull callback: hand over the next source bytes. */
+/**
+ * @brief Copy the next encoded source span into a producer buffer
+ * @details Advances a bounded in-memory cursor by at most @p cap bytes and
+ *          reports zero bytes at end of input.
+ * @param[in,out] ctx Pull cursor describing the encoded page.
+ * @param[out] buf Destination passed by the producer.
+ * @param[in] cap Writable capacity of @p buf.
+ * @param[out] got Number of bytes copied.
+ * @return Pull status.
+ * @retval k_ra8_ok A bounded span, possibly empty at EOF, was returned.
+ * @pre All pointers are non-NULL and cursor position does not exceed length.
+ * @pre @p buf addresses @p cap writable bytes.
+ * @post Cursor position advances by exactly `*got`.
+ * @post `*got` never exceeds @p cap or remaining input.
+ * @note Not thread-safe when a cursor is shared.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t jof_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   jof_pull_ctx_t* s = (jof_pull_ctx_t*)ctx;
@@ -138,13 +165,46 @@ RA8_INTERNAL static ra8_err_t jof_pull(void* ctx, uint8_t* buf, size_t cap, size
   return k_ra8_ok;
 }
 
-/** @brief Producer sink callback: append atlas bytes to an open file. */
+/**
+ * @brief Append producer output bytes to an open atlas file
+ * @details Converts fwrite's byte count into the producer error contract.
+ * @param[in,out] ctx Open FILE pointer owned by the caller.
+ * @param[in] buf Atlas bytes to append.
+ * @param[in] len Number of readable bytes at @p buf.
+ * @return Sink status.
+ * @retval k_ra8_ok Every byte was written.
+ * @retval k_ra8_fail The file accepted fewer than @p len bytes.
+ * @pre @p ctx is a FILE open for binary writing.
+ * @pre @p buf holds @p len readable bytes.
+ * @post Success advances the file by @p len bytes.
+ * @post Failure remains visible to the producer.
+ * @note Not thread-safe for a shared FILE.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t jof_sink(void* ctx, const uint8_t* buf, size_t len)
 {
   return (fwrite(buf, 1U, len, (FILE*)ctx) == len) ? k_ra8_ok : k_ra8_fail;
 }
 
-/** @brief Read a whole file into a caller-owned bounded buffer. */
+/**
+ * @brief Read a whole encoded page into caller-owned bounded storage
+ * @details Measures the file before reading and rejects empty or oversized
+ *          input rather than allocating or truncating it.
+ * @param[in] path NUL-terminated input file path.
+ * @param[out] buf Caller-owned destination bytes.
+ * @param[in] cap Capacity of @p buf.
+ * @param[out] out_len Exact byte count read on success.
+ * @return File-read status.
+ * @retval k_ra8_ok The complete nonempty file was read.
+ * @retval k_ra8_err_invalid_size File size exceeds @p cap.
+ * @retval k_ra8_fail Opening, sizing, or reading failed.
+ * @pre Pointers are non-NULL and @p path is NUL-terminated.
+ * @pre @p buf addresses @p cap writable bytes.
+ * @post Success sets `*out_len` to the complete file size.
+ * @post No partial read is reported as success.
+ * @note Thread-safe for distinct files and buffers.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t* buf, size_t cap, size_t* out_len)
 {
   FILE* f = fopen(path, "rb");
@@ -181,12 +241,14 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t* buf, size_t cap, 
  * @param[in]  h        Decoded page height in pixels.
  * @param[out] out_work Receives the arena, or nullptr for a non-WebP page.
  * @param[out] out_cap  Receives the arena size in bytes, or 0.
+ * @param[in,out] ws    Caller-owned arena from which WebP storage is carved.
  * @return Result code.
  * @retval k_ra8_ok               Non-WebP page, or arena carved successfully.
  * @retval k_ra8_err_invalid_size The geometry does not admit a WebP arena.
  * @retval k_ra8_err_no_mem       The host allocator refused the arena.
  * @pre @p src holds @p slen readable bytes.
  * @pre @p out_work and @p out_cap are writable.
+ * @pre @p ws owns writable storage and is exclusive to this conversion.
  * @post On success `*out_work` is nullptr (non-WebP) or owned by the caller.
  * @post On failure `*out_work` is nullptr and nothing was allocated.
  * @note Not thread-safe; the caller owns and must free `*out_work`.
@@ -236,6 +298,7 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t*          src,
  * @param[in]     tile_h   Band height for this page.
  * @param[in]     work_cap Work-arena size, from ::ra8_jof_work_bytes.
  * @param[in,out] out      Open output file the atlas is written to.
+ * @param[in,out] ws       Caller-owned producer workspace.
  *
  * @return Producer result.
  * @retval k_ra8_ok               The atlas was written to @p out.
@@ -244,6 +307,7 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t*          src,
  *
  * @pre @p src holds @p slen readable bytes and @p out is open for writing.
  * @pre @p work_cap is non-zero.
+ * @pre @p ws is exclusive and has not been reset during this page.
  * @post Both scratch arenas are released, on success and on every failure.
  * @post Nothing is written to @p out beyond what the producer emitted.
  *
@@ -292,7 +356,25 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t*          src,
   return rc;
 }
 
-/** @brief Transcode one JPEG / PNG / WebP page to a `.jof` full-width-column atlas. */
+/**
+ * @brief Transcode one JPEG, PNG, or WebP page to a JOF band atlas
+ * @details Bounds the source and producer arenas, probes dimensions through
+ *          the firmware producer, and atomically publishes the completed JOF.
+ * @param[in] in_path NUL-terminated verified source image path.
+ * @param[in] out_path NUL-terminated destination JOF path.
+ * @param[in,out] ws Exclusive caller-owned export workspace.
+ * @return Transcode status.
+ * @retval k_ra8_ok A complete JOF replaced the destination atomically.
+ * @retval k_ra8_err_invalid_size A source or workspace bound was exceeded.
+ * @retval k_ra8_err_not_supported The producer cannot decode the image.
+ * @retval k_ra8_fail File or atomic-publication operations failed.
+ * @pre Paths are non-NULL, NUL-terminated, and stable for the call.
+ * @pre @p ws owns writable storage and is exclusive to this page.
+ * @post Success leaves one complete reader-consumable JOF.
+ * @post Failure aborts the reserved temporary file.
+ * @note Not thread-safe for a shared workspace or destination.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static ra8_err_t
 jof_one(const char* in_path, const char* out_path, mdl_export_workspace_t* ws)
 {

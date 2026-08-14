@@ -67,6 +67,7 @@ typedef struct {
   const char* proxy;                     /**< HTTP/HTTPS proxy URL, or NULL for none.   */
   const char* socks5;                    /**< SOCKS5 proxy URL, or NULL for none.       */
   const char* cookie_file;               /**< Cookie file path for libcurl, or NULL.    */
+  const char* ca_file;                   /**< Custom PEM CA bundle, or NULL for system. */
 } mdl_net_policy_t;
 
 /** @brief Captured-response-field buffer sizes. */

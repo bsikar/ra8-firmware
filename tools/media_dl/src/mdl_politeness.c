@@ -1,6 +1,11 @@
 /**
  * @file mdl_politeness.c
  * @brief Seeded xorshift64 jitter, injectable clock, and the per-host governor.
+ *
+ * @details Implements deterministic jitter, fixed-capacity per-host pacing,
+ * throttle backoff, and `Retry-After` parsing behind injectable clock seams.
+ * Production uses the host clocks; tests can advance virtual time without
+ * sleeping. All governor state remains in caller-owned storage.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -59,7 +64,19 @@ void mdl_politeness_init_clock(mdl_politeness_t* p,
   p->sleep_ctx = sleep_ctx;
 }
 
-/** @brief Advance an xorshift64 state in place and return the new value. */
+/**
+ * @brief Advance an xorshift64 state in place and return the new value.
+ * @details Applies the fixed three-shift recurrence used by every jitter draw.
+ * @param[in,out] state Non-zero PRNG state.
+ * @return The next PRNG value.
+ * @retval other Updated non-zero xorshift64 state.
+ * @pre @p state points to writable storage.
+ * @pre `*state` is non-zero.
+ * @post `*state` equals the returned value.
+ * @post Exactly one PRNG step has been consumed.
+ * @note Not thread-safe when callers share @p state.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static uint64_t next_rand(uint64_t* state)
 {
   uint64_t x = *state;
@@ -70,7 +87,21 @@ RA8_INTERNAL static uint64_t next_rand(uint64_t* state)
   return x;
 }
 
-/** @brief Draw a jittered value in [min_ms, max(min_ms, max_ms)] from `state`. */
+/**
+ * @brief Draw a jittered value in [min_ms, max(min_ms, max_ms)] from `state`.
+ * @details Advances the PRNG once and maps the result across the inclusive range.
+ * @param[in,out] state Non-zero PRNG state.
+ * @param[in] min_ms Inclusive lower bound.
+ * @param[in] max_ms Inclusive upper bound, clamped up to @p min_ms.
+ * @return The selected bounded value.
+ * @retval other A value in the documented inclusive range.
+ * @pre @p state points to writable non-zero state.
+ * @pre Both bounds are expressed in milliseconds.
+ * @post `*state` has advanced exactly once.
+ * @post The return is never below @p min_ms.
+ * @note Not thread-safe when callers share @p state.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static uint32_t draw_range(uint64_t* state, uint32_t min_ms, uint32_t max_ms)
 {
   if (max_ms < min_ms) {
@@ -82,7 +113,18 @@ RA8_INTERNAL static uint32_t draw_range(uint64_t* state, uint32_t min_ms, uint32
   return min_ms + (uint32_t)(next_rand(state) % span);
 }
 
-/** @brief Block for `ms` milliseconds on the host clock. */
+/**
+ * @brief Block for `ms` milliseconds on the host clock.
+ * @details Converts milliseconds to `timespec` and delegates to `nanosleep`.
+ * @param[in] ms Requested duration in milliseconds.
+ * @return Nothing.
+ * @pre @p ms is a finite `uint32_t` duration.
+ * @pre The caller permits the current thread to block.
+ * @post One host sleep has been requested.
+ * @post No caller-owned state is modified.
+ * @note An interrupted sleep is not resumed.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static void host_sleep_ms(uint32_t ms)
 {
   struct timespec ts = {.tv_sec  = (time_t)(ms / k_ms_per_s),
@@ -129,7 +171,20 @@ typedef enum : uint16_t {
   k_def_max_inflight = 1U, /**< Strictly serial per host by default.   */
 } mdl_gov_defaults16_t;
 
-/** @brief Saturating conversion of a signed-seconds delay into a ms delay. */
+/**
+ * @brief Saturating conversion of a signed-seconds delay into a ms delay.
+ * @details Clamps past dates to zero and values above the millisecond range to `UINT32_MAX`.
+ * @param[in] secs Signed duration in seconds.
+ * @return Saturated duration in milliseconds.
+ * @retval 0 @p secs is non-positive.
+ * @retval UINT32_MAX The converted value would overflow.
+ * @pre @p secs uses the same second scale as the parsed date.
+ * @pre Negative values represent elapsed deadlines.
+ * @post The return is within the `uint32_t` range.
+ * @post No state is modified.
+ * @note Thread-safe: pure arithmetic.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static uint32_t ms_from_secs(int64_t secs)
 {
   if (secs <= 0) {
@@ -141,7 +196,20 @@ RA8_INTERNAL static uint32_t ms_from_secs(int64_t secs)
   return (uint32_t)(secs * (int64_t)k_ms_per_s);
 }
 
-/** @brief True when `s` is a non-empty run of ASCII digits. */
+/**
+ * @brief True when `s` is a non-empty run of ASCII digits.
+ * @details Rejects an empty string and any byte outside `0` through `9`.
+ * @param[in] s NUL-terminated candidate string.
+ * @return Whether every byte is an ASCII digit and at least one exists.
+ * @retval true A non-empty digit run was found.
+ * @retval false The string is empty or contains another byte.
+ * @pre @p s is non-NULL and NUL-terminated.
+ * @pre The caller requires locale-independent ASCII classification.
+ * @post @p s is unchanged.
+ * @post No global state is modified.
+ * @note Thread-safe: reads only its argument.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool all_digits(const char* s)
 {
   if (*s == '\0') {
@@ -155,7 +223,22 @@ RA8_INTERNAL static bool all_digits(const char* s)
   return true;
 }
 
-/** @brief Parse an HTTP-date `Retry-After` (IMF-fixdate or RFC 850) into a delay. */
+/**
+ * @brief Parse an HTTP-date `Retry-After` (IMF-fixdate or RFC 850) into a delay.
+ * @details Tries both supported UTC formats and saturates the deadline delta to milliseconds.
+ * @param[in] value NUL-terminated HTTP-date text.
+ * @param[in] now_wall_s Current Unix wall-clock time in seconds.
+ * @param[out] out_ms Parsed non-negative delay.
+ * @return Whether a supported date parsed successfully.
+ * @retval true @p out_ms was written.
+ * @retval false Neither date format was valid.
+ * @pre @p value and @p out_ms are non-NULL.
+ * @pre @p now_wall_s and the parsed date share the Unix epoch.
+ * @post On true, @p out_ms contains a saturated delay.
+ * @post On false, @p out_ms is unchanged.
+ * @note Thread-safe on platforms providing thread-safe `timegm`/`strptime`.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool parse_http_date(const char* value, int64_t now_wall_s, uint32_t* out_ms)
 {
   static const char* const k_fmts[] = {
@@ -198,19 +281,57 @@ bool mdl_retry_after_parse(const char* value, int64_t now_wall_s, uint32_t* out_
  *  Per-host politeness governor (#301)                                     *
  * ======================================================================== */
 
-/** @brief Smaller of two signed millisecond values. */
+/**
+ * @brief Smaller of two signed millisecond values.
+ * @details Performs a direct signed comparison.
+ * @param[in] a First value.
+ * @param[in] b Second value.
+ * @return The smaller value.
+ * @retval other Either @p a or @p b.
+ * @pre Both arguments use the same unit and timeline.
+ * @pre Signed comparison is the intended ordering.
+ * @post No state is modified.
+ * @post The result is no greater than either argument.
+ * @note Thread-safe: pure arithmetic.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static int64_t min_i64(int64_t a, int64_t b)
 {
   return (a < b) ? a : b;
 }
 
-/** @brief Larger of two signed millisecond values. */
+/**
+ * @brief Larger of two signed millisecond values.
+ * @details Performs a direct signed comparison.
+ * @param[in] a First value.
+ * @param[in] b Second value.
+ * @return The larger value.
+ * @retval other Either @p a or @p b.
+ * @pre Both arguments use the same unit and timeline.
+ * @pre Signed comparison is the intended ordering.
+ * @post No state is modified.
+ * @post The result is no less than either argument.
+ * @note Thread-safe: pure arithmetic.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static int64_t max_i64(int64_t a, int64_t b)
 {
   return (a > b) ? a : b;
 }
 
-/** @brief Read the governor's clock: injected `now_fn`, else `CLOCK_MONOTONIC`. */
+/**
+ * @brief Read the governor's clock: injected `now_fn`, else `CLOCK_MONOTONIC`.
+ * @details Preserves the arbitrary monotonic epoch used for rate and backoff differences.
+ * @param[in] g Initialised governor containing the optional clock seam.
+ * @return Current monotonic time in milliseconds.
+ * @retval other A reading on the governor timeline.
+ * @pre @p g is non-NULL and initialised.
+ * @pre An injected clock, when present, does not run backward.
+ * @post Governor state is unchanged.
+ * @post At most one clock source is read.
+ * @note Thread safety follows the injected clock implementation.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static int64_t gov_now(const mdl_governor_t* g)
 {
   if (g->now_fn != nullptr) {
@@ -228,7 +349,19 @@ RA8_INTERNAL static int64_t gov_now(const mdl_governor_t* g)
   return ((int64_t)ts.tv_sec * (int64_t)k_ms_per_s) + ((int64_t)ts.tv_nsec / (int64_t)k_ns_per_ms);
 }
 
-/** @brief Sleep `ms` through the injected sleeper, else the host clock. */
+/**
+ * @brief Sleep `ms` through the injected sleeper, else the host clock.
+ * @details Ignores non-positive delays and saturates positive delays to `uint32_t`.
+ * @param[in,out] g Initialised governor containing the optional sleeper seam.
+ * @param[in] ms Requested signed delay in milliseconds.
+ * @return Nothing.
+ * @pre @p g is non-NULL and initialised.
+ * @pre The caller permits a positive delay to block.
+ * @post Non-positive input performs no sleep.
+ * @post Positive input requests exactly one bounded sleep.
+ * @note Thread safety follows the injected sleeper implementation.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static void gov_sleep(mdl_governor_t* g, int64_t ms)
 {
   if (ms <= 0) {
@@ -242,14 +375,40 @@ RA8_INTERNAL static void gov_sleep(mdl_governor_t* g, int64_t ms)
   }
 }
 
-/** @brief Token interval (ms per request); 0 when rate limiting is disabled. */
+/**
+ * @brief Token interval (ms per request); 0 when rate limiting is disabled.
+ * @details Converts the configured requests-per-minute ceiling by integer division.
+ * @param[in] cfg Governor rate configuration.
+ * @return Milliseconds charged per request.
+ * @retval 0 Rate limiting is disabled.
+ * @retval other Positive request interval.
+ * @pre @p cfg is non-NULL.
+ * @pre `rate_per_min == 0` denotes disabled pacing.
+ * @post @p cfg is unchanged.
+ * @post No state is modified.
+ * @note Thread-safe: pure arithmetic.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static int64_t gov_interval_ms(const mdl_gov_cfg_t* cfg)
 {
   return (cfg->rate_per_min > 0U) ? ((int64_t)k_mdl_gov_ms_per_req / (int64_t)cfg->rate_per_min)
                                   : 0;
 }
 
-/** @brief Token-bucket capacity in ms (`interval * burst`). */
+/**
+ * @brief Token-bucket capacity in ms (`interval * burst`).
+ * @details Expresses the configured burst capacity on the rate-credit timeline.
+ * @param[in] cfg Governor rate and burst configuration.
+ * @return Maximum token credit in milliseconds.
+ * @retval 0 Rate limiting is disabled or burst is zero.
+ * @retval other Product of interval and burst.
+ * @pre @p cfg is non-NULL.
+ * @pre The configuration was clamped by governor initialisation.
+ * @post @p cfg is unchanged.
+ * @post No state is modified.
+ * @note Thread-safe: pure arithmetic.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static int64_t gov_cap_ms(const mdl_gov_cfg_t* cfg)
 {
   return gov_interval_ms(cfg) * (int64_t)cfg->burst;
@@ -290,7 +449,22 @@ RA8_INTERNAL static mdl_host_rec_t* gov_get(mdl_governor_t* g, const char* host,
   return nullptr;
 }
 
-/** @brief Refill credit to `now`, gate on rate + backoff, consume one token. */
+/**
+ * @brief Refill credit to `now`, gate on rate + backoff, consume one token.
+ * @details Caps accrued credit, selects the later rate/backoff gate, and charges one request.
+ * @param[in] g Initialised governor configuration.
+ * @param[in,out] rec Host record to schedule.
+ * @param[in] now Current monotonic time in milliseconds.
+ * @return Required wait before the request may start.
+ * @retval 0 The request may start immediately.
+ * @retval other Positive wait in milliseconds.
+ * @pre @p g and @p rec are non-NULL and belong to the same governor.
+ * @pre @p now is on the governor's monotonic timeline.
+ * @post Credit remains within its configured capacity.
+ * @post @p rec records the scheduled start and consumed token.
+ * @note Not thread-safe: mutates @p rec.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static int64_t gov_schedule(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now)
 {
   const int64_t interval  = gov_interval_ms(&g->cfg);
@@ -385,7 +559,20 @@ void mdl_governor_release(mdl_governor_t* g, const char* host)
   }
 }
 
-/** @brief Exponential backoff window for a level: `min(base << (level-1), ceil)`. */
+/**
+ * @brief Exponential backoff window for a level: `min(base << (level-1), ceil)`.
+ * @details Doubles from the configured base with bounded shifts and ceiling saturation.
+ * @param[in] cfg Governor backoff configuration.
+ * @param[in] level One-based throttle level; zero uses the base window.
+ * @return Bounded backoff window in milliseconds.
+ * @retval other A value no greater than `backoff_max_ms`.
+ * @pre @p cfg is non-NULL.
+ * @pre @p level is bounded by ::k_mdl_gov_level_max in stored state.
+ * @post @p cfg is unchanged.
+ * @post No state is modified.
+ * @note Thread-safe: pure arithmetic.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static int64_t gov_backoff_window(const mdl_gov_cfg_t* cfg, uint16_t level)
 {
   int64_t        window = (int64_t)cfg->backoff_base_ms;
@@ -399,7 +586,21 @@ RA8_INTERNAL static int64_t gov_backoff_window(const mdl_gov_cfg_t* cfg, uint16_
   return window;
 }
 
-/** @brief Apply a throttle: raise the backoff level and push the gate forward. */
+/**
+ * @brief Apply a throttle: raise the backoff level and push the gate forward.
+ * @details Applies capped exponential full jitter while allowing a longer Retry-After to win.
+ * @param[in,out] g Governor whose jitter state advances.
+ * @param[in,out] rec Matching host record.
+ * @param[in] now Current monotonic time in milliseconds.
+ * @param[in] retry_ms Parsed Retry-After delay, or zero.
+ * @return Nothing.
+ * @pre @p g and @p rec are non-NULL and associated.
+ * @pre @p now is on the governor timeline.
+ * @post The backoff level is raised at most to its ceiling.
+ * @post The earliest-next gate never moves backward.
+ * @note Not thread-safe: mutates governor and host state.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static void
 gov_on_throttle(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now, uint32_t retry_ms)
 {
@@ -413,7 +614,22 @@ gov_on_throttle(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now, uint32_t re
   rec->earliest_next_ms = max_i64(rec->earliest_next_ms, gate);
 }
 
-/** @brief Apply a non-throttle outcome: count success, decay, honour Retry-After. */
+/**
+ * @brief Apply a non-throttle outcome: count success, decay, honour Retry-After.
+ * @details Advances the success streak, decays one level at threshold, and applies an optional gate.
+ * @param[in] g Governor providing the decay threshold.
+ * @param[in,out] rec Matching host record.
+ * @param[in] now Current monotonic time in milliseconds.
+ * @param[in] has_retry Whether @p retry_ms came from a valid header.
+ * @param[in] retry_ms Parsed Retry-After delay.
+ * @return Nothing.
+ * @pre @p g and @p rec are non-NULL and associated.
+ * @pre @p now is on the governor timeline.
+ * @post At most one backoff level is removed.
+ * @post A valid Retry-After never moves the gate backward.
+ * @note Not thread-safe: mutates the host record.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static void gov_on_success(mdl_governor_t* g,
                                         mdl_host_rec_t* rec,
                                         int64_t         now,

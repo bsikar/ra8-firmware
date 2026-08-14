@@ -1,6 +1,8 @@
 /**
  * @file test_media_dl_sites.c
  * @brief Qualification fixtures for every shipped media_dl site descriptor.
+ * @details Exercises discovery, chapter/image extraction, and descriptor-driven
+ * metadata selectors against captured current-site HTML for every descriptor.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -24,7 +26,10 @@
 #error "MDL_SHIPPED_SITE_COUNT must count checked-in descriptors"
 #endif
 
-typedef enum : uint32_t { k_fixture_cap = 32768U } site_test_limit_t;
+typedef enum : uint32_t {
+  k_fixture_cap       = 32768U, /**< Captured HTML scratch capacity.       */
+  k_tiny_metadata_cap = 8U,     /**< Deliberately undersized value buffer. */
+} site_test_limit_t;
 static char           s_html[k_fixture_cap];
 static mdl_hit_list_t s_hits;
 static mdl_url_list_t s_urls;
@@ -75,6 +80,40 @@ static void test_manhwaus_descriptor(void)
   TEST_ASSERT_EQ((uint16_t)2, s_urls.count);
   TEST_ASSERT(mdl_urlname_chapter_value(s_urls.urls[0]) == 109.0);
   TEST_ASSERT(mdl_urlname_chapter_value(s_urls.urls[1]) == 108.5);
+  char metadata[k_mdl_url_max];
+  TEST_ASSERT(
+    mdl_extract_selector(s_html, len, site.series_title_selector, metadata, sizeof(metadata)) ==
+    k_ra8_ok);
+  TEST_ASSERT(strcmp(metadata, "The Player Who Returned 10,000 Years Later") == 0);
+  TEST_ASSERT(mdl_extract_selector(s_html, len, "class:post-title", metadata, sizeof(metadata)) ==
+              k_ra8_ok);
+  TEST_ASSERT(strcmp(metadata, "The Player Who Returned 10,000 Years Later") == 0);
+  TEST_ASSERT(
+    mdl_extract_selector(s_html, len, site.series_summary_selector, metadata, sizeof(metadata)) ==
+    k_ra8_ok);
+  TEST_ASSERT(strcmp(metadata, "A player returns & faces a changed world.") == 0);
+  TEST_ASSERT(
+    mdl_extract_selector(s_html, len, site.series_author_selector, metadata, sizeof(metadata)) ==
+    k_ra8_ok);
+  TEST_ASSERT(strcmp(metadata, "Butterfly Valley") == 0);
+  TEST_ASSERT(
+    mdl_extract_selector(s_html, len, site.series_artist_selector, metadata, sizeof(metadata)) ==
+    k_ra8_ok);
+  TEST_ASSERT(strcmp(metadata, "Maeng Ju-gong") == 0);
+  char cover[k_mdl_url_max];
+  TEST_ASSERT(
+    mdl_extract_selector(s_html, len, site.series_cover_selector, metadata, sizeof(metadata)) ==
+    k_ra8_ok);
+  TEST_ASSERT(mdl_extract_resolve_url("https://manhwaus.net/webtoon/player/",
+                                      metadata,
+                                      cover,
+                                      sizeof(cover)));
+  TEST_ASSERT(strcmp(cover, "https://manhwaus.net/uploads/player/cover.png") == 0);
+  char tiny[k_tiny_metadata_cap];
+  TEST_ASSERT(mdl_extract_selector(s_html, len, site.series_title_selector, tiny, sizeof(tiny)) ==
+              k_ra8_err_invalid_size);
+  TEST_ASSERT(mdl_extract_selector(s_html, len, "css:.post-title", metadata, sizeof(metadata)) ==
+              k_ra8_err_invalid_arg);
 
   len = read_fixture("manhwaus_chapter.html");
   TEST_ASSERT(mdl_extract_images(s_html,
@@ -86,10 +125,15 @@ static void test_manhwaus_descriptor(void)
   TEST_ASSERT_EQ((uint16_t)2, s_urls.count);
   TEST_ASSERT(strstr(s_urls.urls[0], "/uploads/") != nullptr);
   TEST_ASSERT(strstr(s_urls.urls[1], "/uploads/") != nullptr);
+  TEST_ASSERT(
+    mdl_extract_selector(s_html, len, site.chapter_title_selector, metadata, sizeof(metadata)) ==
+    k_ra8_ok);
+  TEST_ASSERT(strcmp(metadata, "Chapter 108.5 - The Return") == 0);
   TEST_END("shipped descriptor: manhwaus");
 }
 
-/** @test The Pepper&Carrot descriptor matches its official archive and episode HTML. */
+/** @test The Pepper&Carrot descriptor matches its official archive and episode
+ * HTML. */
 static void test_peppercarrot_descriptor(void)
 {
   TEST_BEGIN("shipped descriptor: peppercarrot");
@@ -125,6 +169,15 @@ static void test_peppercarrot_descriptor(void)
   TEST_ASSERT(mdl_urlname_chapter_number(s_urls.urls[1]) == 38L);
   TEST_ASSERT(strncmp(s_urls.urls[0], site.chapter_url_prefix, strlen(site.chapter_url_prefix)) ==
               0);
+  char metadata[k_mdl_url_max];
+  TEST_ASSERT(
+    mdl_extract_selector(s_html, len, site.series_title_selector, metadata, sizeof(metadata)) ==
+    k_ra8_ok);
+  TEST_ASSERT(strcmp(metadata, "Pepper & Carrot") == 0);
+  TEST_ASSERT(
+    mdl_extract_selector(s_html, len, site.series_author_selector, metadata, sizeof(metadata)) ==
+    k_ra8_ok);
+  TEST_ASSERT(strcmp(metadata, "David Revoy") == 0);
 
   len = read_fixture("peppercarrot_chapter.html");
   TEST_ASSERT(mdl_extract_images(s_html,
@@ -136,6 +189,10 @@ static void test_peppercarrot_descriptor(void)
   TEST_ASSERT_EQ((uint16_t)3, s_urls.count);
   TEST_ASSERT(strstr(s_urls.urls[0], "/0_sources/ep39_The-Tavern/low-res/") != nullptr);
   TEST_ASSERT(strstr(s_urls.urls[2], "E39P02.jpg") != nullptr);
+  TEST_ASSERT(
+    mdl_extract_selector(s_html, len, site.chapter_title_selector, metadata, sizeof(metadata)) ==
+    k_ra8_ok);
+  TEST_ASSERT(strcmp(metadata, "Episode 39: The Tavern") == 0);
   TEST_END("shipped descriptor: peppercarrot");
 }
 

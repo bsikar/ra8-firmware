@@ -49,29 +49,50 @@ typedef struct {
   char contact[k_mdl_contact_max]; /**< Operator contact for the UA.     */
 
   /* Chapter list, found on a series page. */
-  char chapter_url_contains[k_mdl_match_max];    /**< href must contain this.         */
-  char chapter_url_prefix[k_mdl_search_url_max]; /**< Absolute series-chapter prefix. */
-  mdl_chapter_order_t chapter_order;             /**< Ordering to apply.              */
+  char                chapter_url_contains[k_mdl_match_max];    /**< href must contain this.    */
+  char                chapter_url_prefix[k_mdl_search_url_max]; /**< Absolute series-chapter
+                                                    prefix. */
+  mdl_chapter_order_t chapter_order; /**< Ordering to apply.              */
 
   /* Page images, found on a chapter page. */
   char page_img_attr[k_mdl_attr_max];          /**< Preferred attr (fallback other). */
-  char page_img_url_contains[k_mdl_match_max]; /**< Keep only URLs with this.        */
+  char page_img_url_contains[k_mdl_match_max]; /**< Keep only URLs with this. */
 
   /* Search / discovery (#304). Empty when the site descriptor supplies none. */
-  char search_url[k_mdl_search_url_max];        /**< Query template with a `{q}` slot. */
-  char search_result_contains[k_mdl_match_max]; /**< Series-link substring on results. */
-  char browse_url[k_mdl_search_url_max];        /**< Latest-updates page (no `{q}`).   */
+  char search_url[k_mdl_search_url_max];        /**< Query template with a `{q}` slot.
+                                          */
+  char search_result_contains[k_mdl_match_max]; /**< Series-link substring on
+                                                   results. */
+  char browse_url[k_mdl_search_url_max];        /**< Latest-updates page (no `{q}`). */
 
-  /* Politeness jitter (milliseconds); baseline spacing, jittered in [min,max]. */
+  /* Metadata extraction (#306). Selectors use the bounded grammar documented
+   * by mdl_extract_selector(): meta:, class:, label:, or literal:. */
+  char series_title_selector[k_mdl_match_max];   /**< Series display-title
+                                                    selector. */
+  char series_summary_selector[k_mdl_match_max]; /**< Series synopsis selector.
+                                                  */
+  char series_author_selector[k_mdl_match_max];  /**< Series writer selector.  */
+  char series_artist_selector[k_mdl_match_max];  /**< Series artist selector.  */
+  char series_cover_selector[k_mdl_match_max];   /**< Series cover-URL selector. */
+  char chapter_title_selector[k_mdl_match_max];  /**< Per-chapter title selector.
+                                                 */
+  char chapter_number_selector[k_mdl_match_max]; /**< Per-chapter number
+                                                    selector.   */
+  char language[k_mdl_kind_max];                 /**< BCP-47 language tag.           */
+  char reading_direction[k_mdl_kind_max];        /**< `ltr` or `rtl`.                */
+
+  /* Politeness jitter (milliseconds); baseline spacing, jittered in [min,max].
+   */
   uint32_t img_delay_min;     /**< Per-image spacing floor.       */
   uint32_t img_delay_max;     /**< Per-image spacing ceiling.     */
   uint32_t chapter_delay_min; /**< Inter-chapter spacing floor.   */
   uint32_t chapter_delay_max; /**< Inter-chapter spacing ceiling. */
 
-  /* Governor: closed-loop per-host rate/backoff/concurrency (see mdl_politeness). */
+  /* Governor: closed-loop per-host rate/backoff/concurrency (see
+   * mdl_politeness). */
   uint32_t rate_per_min;    /**< Sustained per-host request ceiling (0 = off). */
   uint32_t burst;           /**< Token-bucket capacity, in requests.           */
-  uint32_t backoff_base_ms; /**< First backoff window on a 429/503.            */
+  uint32_t backoff_base_ms; /**< First backoff window on a 429/503. */
   uint32_t backoff_max_ms;  /**< Backoff-window ceiling.                       */
   uint32_t max_inflight;    /**< Per-host in-flight request cap.               */
 } mdl_site_t;
@@ -83,10 +104,11 @@ typedef struct {
  * @param[out] out  Descriptor to fill; defaults are applied first, then the
  *                  file overrides recognised keys.
  *
- * @retval k_ra8_ok            Loaded (unknown keys warned to stderr, ignored).
+ * @retval k_ra8_ok            Loaded and every key/value passed validation.
  * @retval k_ra8_err_invalid_arg  NULL argument.
  * @retval k_ra8_fail          File could not be opened.
- * @retval k_ra8_err_invalid_state  A required field (host) was missing.
+ * @retval k_ra8_err_invalid_state  A line, key, value, or required field was
+ * invalid.
  */
 ra8_err_t mdl_config_load(const char* path, mdl_site_t* out);
 

@@ -7,6 +7,7 @@
 #include "mdl_cli.h"
 
 #include <errno.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -85,6 +86,7 @@ void mdl_cli_usage(const char* a0)
                 "    --proxy <URL>          HTTP/HTTPS proxy (requires --allow-private)\n"
                 "    --socks5 <URL>         SOCKS5 proxy (requires --allow-private)\n"
                 "    --cookie-file <FILE>   Cookie file path for libcurl\n"
+                "    --ca-file <FILE>       Custom PEM CA bundle (verification stays on)\n"
                 "    --max-bytes N          Per-response size cap (default 64 MiB)\n"
                 "    --ignore-robots        Do NOT honour robots.txt (logged loudly)\n"
                 "    --allow-private        Permit loopback/private/link-local "
@@ -105,7 +107,26 @@ void mdl_cli_usage(const char* a0)
                 a0);
 }
 
-/** @brief If argv[*i] == `flag`, store its value in *dst and advance `*i`. */
+/**
+ * @brief Consume one value-bearing option at the current argument.
+ * @details Matches @p flag exactly, records its following non-option value, and
+ *          marks duplicate or missing values through @p bad.
+ * @param[in]     argv Argument vector.
+ * @param[in]     argc Argument count.
+ * @param[in,out] i    Current argument index.
+ * @param[in]     flag Option spelling to match.
+ * @param[in,out] dst  Destination for the borrowed value pointer.
+ * @param[in,out] bad  Accumulated parse-error flag.
+ * @return Whether the current argument matched @p flag.
+ * @retval true  The option matched, whether or not its value was valid.
+ * @retval false The current argument did not match and outputs are unchanged.
+ * @pre All pointer arguments are non-NULL.
+ * @pre `0 <= *i < argc` and `argv[*i]` is readable.
+ * @post On a valid match, @p i advances once and @p dst receives the value.
+ * @post A duplicate or missing value sets @p bad true.
+ * @note Not thread-safe: mutates caller-owned parse state.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool
 take_opt(char** argv, int argc, int* i, const char* flag, const char** dst, bool* bad)
 {
@@ -124,7 +145,24 @@ take_opt(char** argv, int argc, int* i, const char* flag, const char** dst, bool
   return true;
 }
 
-/** @brief Match a bare boolean flag, setting `*dst` when it is `arg`. */
+/**
+ * @brief Consume one bare Boolean option.
+ * @details Matches @p arg against @p flag and treats a repeated flag as a parse
+ *          error while leaving the option selected.
+ * @param[in]     arg  Current argument, or NULL.
+ * @param[in]     flag Option spelling to match.
+ * @param[in,out] dst  Boolean field selected by the option.
+ * @param[in,out] bad  Accumulated parse-error flag.
+ * @return Whether @p arg matched @p flag.
+ * @retval true  The flag matched and @p dst is true.
+ * @retval false The flag did not match and outputs are unchanged.
+ * @pre @p flag, @p dst, and @p bad are non-NULL.
+ * @pre A non-NULL @p arg is NUL-terminated.
+ * @post On a first match, @p dst is true without setting @p bad.
+ * @post On a repeated match, both @p dst and @p bad are true.
+ * @note Not thread-safe: mutates caller-owned parse state.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool take_flag(const char* arg, const char* flag, bool* dst, bool* bad)
 {
   if ((arg != nullptr) && (strcmp(arg, flag) == 0)) {
@@ -182,6 +220,7 @@ void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
     {"--proxy", &a->proxy},
     {"--socks5", &a->socks5},
     {"--cookie-file", &a->cookie_file},
+    {"--ca-file", &a->ca_file},
     {"--init-site", &a->init_site_url},
   };
   for (int i = 1; i < argc; ++i) {
@@ -219,58 +258,97 @@ void mdl_cli_parse(int argc, char** argv, mdl_args_t* a)
 
 /** @brief Bit positions for every CLI spelling, used by mode allowlists. */
 typedef enum : uint64_t {
-  k_arg_cfg              = 1ULL << 0U,
-  k_arg_series           = 1ULL << 1U,
-  k_arg_page             = 1ULL << 2U,
-  k_arg_out              = 1ULL << 3U,
-  k_arg_attr             = 1ULL << 4U,
-  k_arg_chapters         = 1ULL << 5U,
-  k_arg_from             = 1ULL << 6U,
-  k_arg_max              = 1ULL << 7U,
-  k_arg_seed             = 1ULL << 8U,
-  k_arg_timeout          = 1ULL << 9U,
-  k_arg_format           = 1ULL << 10U,
-  k_arg_pack             = 1ULL << 11U,
-  k_arg_contact          = 1ULL << 12U,
-  k_arg_max_bytes        = 1ULL << 13U,
-  k_arg_remove           = 1ULL << 14U,
-  k_arg_search           = 1ULL << 15U,
-  k_arg_pick             = 1ULL << 16U,
-  k_arg_proxy            = 1ULL << 17U,
-  k_arg_socks5           = 1ULL << 18U,
-  k_arg_cookie           = 1ULL << 19U,
-  k_arg_verify_dir       = 1ULL << 20U,
-  k_arg_init             = 1ULL << 21U,
-  k_arg_browse           = 1ULL << 22U,
-  k_arg_separate         = 1ULL << 23U,
-  k_arg_update           = 1ULL << 24U,
-  k_arg_list             = 1ULL << 25U,
-  k_arg_update_all       = 1ULL << 26U,
-  k_arg_polite           = 1ULL << 27U,
-  k_arg_ignore_robots    = 1ULL << 28U,
-  k_arg_allow_private    = 1ULL << 29U,
-  k_arg_cross_host       = 1ULL << 30U,
-  k_arg_allow_incomplete = 1ULL << 31U,
-  k_arg_progress         = 1ULL << 32U,
-  k_arg_refetch          = 1ULL << 33U,
-  k_arg_verify           = 1ULL << 34U,
-  k_arg_help             = 1ULL << 35U,
-  k_arg_version          = 1ULL << 36U,
+  k_arg_cfg              = 1ULL << 0U,  /**< `--config`.           */
+  k_arg_series           = 1ULL << 1U,  /**< `--series`.           */
+  k_arg_page             = 1ULL << 2U,  /**< Positional URL.       */
+  k_arg_out              = 1ULL << 3U,  /**< `--out`.              */
+  k_arg_attr             = 1ULL << 4U,  /**< `--attr`.             */
+  k_arg_chapters         = 1ULL << 5U,  /**< `--chapters`.         */
+  k_arg_from             = 1ULL << 6U,  /**< `--from`.             */
+  k_arg_max              = 1ULL << 7U,  /**< `--max`.              */
+  k_arg_seed             = 1ULL << 8U,  /**< `--seed`.             */
+  k_arg_timeout          = 1ULL << 9U,  /**< `--timeout`.          */
+  k_arg_format           = 1ULL << 10U, /**< `--format`.           */
+  k_arg_pack             = 1ULL << 11U, /**< `--pack`.             */
+  k_arg_contact          = 1ULL << 12U, /**< `--contact`.          */
+  k_arg_max_bytes        = 1ULL << 13U, /**< `--max-bytes`.        */
+  k_arg_remove           = 1ULL << 14U, /**< `--remove`.           */
+  k_arg_search           = 1ULL << 15U, /**< `--search`.           */
+  k_arg_pick             = 1ULL << 16U, /**< `--pick`.             */
+  k_arg_proxy            = 1ULL << 17U, /**< `--proxy`.            */
+  k_arg_socks5           = 1ULL << 18U, /**< `--socks5`.           */
+  k_arg_cookie           = 1ULL << 19U, /**< `--cookie-file`.      */
+  k_arg_verify_dir       = 1ULL << 20U, /**< Optional verify dir.  */
+  k_arg_init             = 1ULL << 21U, /**< `--init-site`.        */
+  k_arg_browse           = 1ULL << 22U, /**< `--browse`.           */
+  k_arg_separate         = 1ULL << 23U, /**< `--separate`.         */
+  k_arg_update           = 1ULL << 24U, /**< `--update`.           */
+  k_arg_list             = 1ULL << 25U, /**< `--list`.             */
+  k_arg_update_all       = 1ULL << 26U, /**< `--update-all`.       */
+  k_arg_polite           = 1ULL << 27U, /**< `--polite`.           */
+  k_arg_ignore_robots    = 1ULL << 28U, /**< `--ignore-robots`.    */
+  k_arg_allow_private    = 1ULL << 29U, /**< `--allow-private`.    */
+  k_arg_cross_host       = 1ULL << 30U, /**< `--cross-host`.       */
+  k_arg_allow_incomplete = 1ULL << 31U, /**< `--allow-incomplete`. */
+  k_arg_progress         = 1ULL << 32U, /**< `--progress`.         */
+  k_arg_refetch          = 1ULL << 33U, /**< `--refetch`.          */
+  k_arg_verify           = 1ULL << 34U, /**< `--verify`.           */
+  k_arg_help             = 1ULL << 35U, /**< `--help`.             */
+  k_arg_version          = 1ULL << 36U, /**< `--version`.          */
+  k_arg_ca_file          = 1ULL << 37U, /**< `--ca-file`.          */
 } mdl_cli_arg_bit_t;
 
-/** @brief Return @p bit when a pointer-valued option is present. */
+/**
+ * @brief Convert pointer presence to an option-mask bit.
+ * @details Returns the supplied single-bit value only for a non-NULL pointer.
+ * @param[in] value Borrowed pointer-valued option.
+ * @param[in] bit   Presence bit assigned to that option.
+ * @return @p bit when present, otherwise zero.
+ * @retval 0 @p value is NULL.
+ * @pre @p bit is zero or one valid option bit.
+ * @pre @p value is borrowed and never dereferenced.
+ * @post No caller or global state is modified.
+ * @post The result contains no bit other than @p bit.
+ * @note Thread-safe: pure value conversion.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static uint64_t value_bit(const void* value, uint64_t bit)
 {
   return (value != nullptr) ? bit : 0U;
 }
 
-/** @brief Return @p bit when a boolean option is present. */
+/**
+ * @brief Convert a Boolean option to an option-mask bit.
+ * @details Returns the supplied single-bit value only when @p value is true.
+ * @param[in] value Boolean option value.
+ * @param[in] bit   Presence bit assigned to that option.
+ * @return @p bit when selected, otherwise zero.
+ * @retval 0 @p value is false.
+ * @pre @p value is a canonical C Boolean.
+ * @pre @p bit is zero or one valid option bit.
+ * @post No caller or global state is modified.
+ * @post The result contains no bit other than @p bit.
+ * @note Thread-safe: pure value conversion.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static uint64_t flag_bit(bool value, uint64_t bit)
 {
   return value ? bit : 0U;
 }
 
-/** @brief Convert populated fields into an option-presence mask. */
+/**
+ * @brief Convert populated CLI fields into one presence mask.
+ * @details Maps every pointer and Boolean option to its named allowlist bit.
+ * @param[in] a Parsed CLI arguments.
+ * @return Bitwise union of all present options.
+ * @retval 0 No tracked option is populated.
+ * @pre @p a is non-NULL.
+ * @pre Pointer fields in @p a are NULL or borrowed NUL-terminated arguments.
+ * @post @p a is unchanged.
+ * @post Every set result bit corresponds to one populated field in @p a.
+ * @note Thread-safe: reads only caller storage.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static uint64_t args_mask(const mdl_args_t* a)
 {
   return value_bit(a->cfg, k_arg_cfg) | value_bit(a->series, k_arg_series) |
@@ -283,11 +361,11 @@ RA8_INTERNAL static uint64_t args_mask(const mdl_args_t* a)
          value_bit(a->remove_series, k_arg_remove) | value_bit(a->search, k_arg_search) |
          value_bit(a->pick, k_arg_pick) | value_bit(a->proxy, k_arg_proxy) |
          value_bit(a->socks5, k_arg_socks5) | value_bit(a->cookie_file, k_arg_cookie) |
-         value_bit(a->verify_dir, k_arg_verify_dir) | value_bit(a->init_site_url, k_arg_init) |
-         flag_bit(a->browse, k_arg_browse) | flag_bit(a->separate, k_arg_separate) |
-         flag_bit(a->update, k_arg_update) | flag_bit(a->list, k_arg_list) |
-         flag_bit(a->update_all, k_arg_update_all) | flag_bit(a->polite, k_arg_polite) |
-         flag_bit(a->ignore_robots, k_arg_ignore_robots) |
+         value_bit(a->ca_file, k_arg_ca_file) | value_bit(a->verify_dir, k_arg_verify_dir) |
+         value_bit(a->init_site_url, k_arg_init) | flag_bit(a->browse, k_arg_browse) |
+         flag_bit(a->separate, k_arg_separate) | flag_bit(a->update, k_arg_update) |
+         flag_bit(a->list, k_arg_list) | flag_bit(a->update_all, k_arg_update_all) |
+         flag_bit(a->polite, k_arg_polite) | flag_bit(a->ignore_robots, k_arg_ignore_robots) |
          flag_bit(a->allow_private, k_arg_allow_private) |
          flag_bit(a->cross_host, k_arg_cross_host) |
          flag_bit(a->allow_incomplete, k_arg_allow_incomplete) |
@@ -315,13 +393,40 @@ const char* mdl_cli_mode_name(mdl_cli_mode_t mode)
   return ((unsigned)mode < (sizeof(names) / sizeof(names[0]))) ? names[mode] : names[0];
 }
 
+/**
+ * @brief Emit one CLI validation diagnostic and return false.
+ * @details Centralises the failure convention used by mode validation.
+ * @param[in] message Human-readable error text.
+ * @return Always false for direct propagation from validation branches.
+ * @retval false The diagnostic was emitted.
+ * @pre @p message is non-NULL.
+ * @pre @p message is NUL-terminated.
+ * @post One newline-terminated diagnostic is attempted on standard error.
+ * @post No parsed argument state is modified.
+ * @note Not thread-safe with concurrent standard-error writers.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool invalid(const char* message)
 {
   (void)fprintf(stderr, "media_dl: %s\n", message);
   return false;
 }
 
-/** @brief Record one selected primary mode without preprocessor-generated flow. */
+/**
+ * @brief Record one selected primary CLI mode.
+ * @details Updates the candidate and selection count only when @p condition is
+ *          true, enabling explicit conjunction-based mode resolution.
+ * @param[in]     condition Whether the candidate mode was selected.
+ * @param[in]     candidate Mode associated with the condition.
+ * @param[in,out] mode      Last selected mode.
+ * @param[in,out] count     Number of selected primary modes.
+ * @pre @p mode and @p count are non-NULL.
+ * @pre @p count can be incremented without `size_t` overflow.
+ * @post On true, @p mode equals @p candidate and @p count grows by one.
+ * @post On false, both outputs are unchanged.
+ * @note Not thread-safe: mutates caller-owned resolution state.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static void
 record_mode(bool condition, mdl_cli_mode_t candidate, mdl_cli_mode_t* mode, size_t* count)
 {
@@ -331,7 +436,22 @@ record_mode(bool condition, mdl_cli_mode_t candidate, mdl_cli_mode_t* mode, size
   }
 }
 
-/** @brief ASCII case-insensitive suffix check used before filesystem access. */
+/**
+ * @brief Test an ASCII suffix without case sensitivity.
+ * @details Compares only the candidate suffix bytes and performs no filesystem
+ *          access or locale-dependent conversion.
+ * @param[in] text   NUL-terminated candidate string.
+ * @param[in] suffix NUL-terminated suffix.
+ * @return Whether @p text ends with @p suffix under ASCII folding.
+ * @retval true  Every suffix byte matches.
+ * @retval false The suffix is longer or at least one byte differs.
+ * @pre @p text and @p suffix are non-NULL.
+ * @pre Both inputs are NUL-terminated.
+ * @post Both inputs are unchanged.
+ * @post No filesystem or locale state is accessed.
+ * @note Thread-safe: reads only caller storage.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool cli_ends_ci(const char* text, const char* suffix)
 {
   const size_t tl = strlen(text);
@@ -355,7 +475,21 @@ RA8_INTERNAL static bool cli_ends_ci(const char* text, const char* suffix)
   return true;
 }
 
-/** @brief True for a URL path naming any artifact format known to media_dl. */
+/**
+ * @brief Recognise an artifact suffix in a URL path.
+ * @details Removes query/fragment text, bounds the path locally, and checks the
+ *          configured archive/book suffix allowlist case-insensitively.
+ * @param[in] url Candidate URL, or NULL.
+ * @return Whether the URL path names a known artifact suffix.
+ * @retval true  One allowlisted suffix matched.
+ * @retval false The URL is NULL, empty/overlong, or has no known suffix.
+ * @pre A non-NULL @p url is NUL-terminated.
+ * @pre @p url remains valid for the call duration.
+ * @post @p url is unchanged.
+ * @post No filesystem or network state is accessed.
+ * @note Thread-safe: uses only automatic and immutable storage.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool cli_artifact_url(const char* url)
 {
   if (url == nullptr) {
@@ -378,7 +512,21 @@ RA8_INTERNAL static bool cli_artifact_url(const char* url)
   return false;
 }
 
-/** @brief Resolve primary-mode fields and count how many were selected. */
+/**
+ * @brief Resolve primary-mode fields and count their selections.
+ * @details Classifies positional URLs as artifacts or pages and records every
+ *          other mutually-exclusive primary-mode option.
+ * @param[in]     a     Parsed CLI arguments.
+ * @param[in,out] count Selection counter, normally initialised to zero.
+ * @return The last selected mode, or ::k_mdl_cli_mode_invalid.
+ * @retval k_mdl_cli_mode_invalid No primary mode was selected.
+ * @pre @p a and @p count are non-NULL.
+ * @pre @p count can grow by the number of primary modes without overflow.
+ * @post @p count grows once per selected primary mode.
+ * @post @p a is unchanged.
+ * @note Thread-safe: mutates only @p count.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static mdl_cli_mode_t resolve_mode(const mdl_args_t* a, size_t* count)
 {
   mdl_cli_mode_t mode = k_mdl_cli_mode_invalid;
@@ -402,8 +550,8 @@ RA8_INTERNAL static mdl_cli_mode_t resolve_mode(const mdl_args_t* a, size_t* cou
 RA8_INTERNAL static const char* option_name(uint64_t bit)
 {
   static const struct {
-    uint64_t    bit;
-    const char* name;
+    uint64_t    bit;  /**< Presence bit to identify. */
+    const char* name; /**< User-facing option name.  */
   } names[] = {{k_arg_cfg, "--config"},
                {k_arg_series, "--series"},
                {k_arg_page, "URL"},
@@ -424,6 +572,7 @@ RA8_INTERNAL static const char* option_name(uint64_t bit)
                {k_arg_proxy, "--proxy"},
                {k_arg_socks5, "--socks5"},
                {k_arg_cookie, "--cookie-file"},
+               {k_arg_ca_file, "--ca-file"},
                {k_arg_verify_dir, "DIR"},
                {k_arg_init, "--init-site"},
                {k_arg_browse, "--browse"},
@@ -468,8 +617,8 @@ bool mdl_cli_validate(const mdl_args_t* a, mdl_cli_mode_t* mode)
   }
 
   const uint64_t net = k_arg_seed | k_arg_timeout | k_arg_contact | k_arg_max_bytes | k_arg_proxy |
-                       k_arg_socks5 | k_arg_cookie | k_arg_polite | k_arg_ignore_robots |
-                       k_arg_allow_private | k_arg_cross_host;
+                       k_arg_socks5 | k_arg_cookie | k_arg_ca_file | k_arg_polite |
+                       k_arg_ignore_robots | k_arg_allow_private | k_arg_cross_host;
   const uint64_t download = k_arg_out | k_arg_chapters | k_arg_from | k_arg_format |
                             k_arg_separate | k_arg_update | k_arg_allow_incomplete |
                             k_arg_progress | k_arg_refetch;
@@ -570,7 +719,8 @@ mdl_run_opts_t mdl_cli_run_opts(const mdl_args_t* a)
                          .max_response_bytes        = max_bytes,
                          .proxy                     = a->proxy,
                          .socks5                    = a->socks5,
-                         .cookie_file               = a->cookie_file},
+                         .cookie_file               = a->cookie_file,
+                         .ca_file                   = a->ca_file},
     .contact          = a->contact,
     .honor_robots     = !a->ignore_robots,
     .polite           = a->polite,
@@ -630,25 +780,38 @@ RA8_INTERNAL static bool parse_ull(const char* s, uint64_t* out)
   return true;
 }
 
-/** @brief Strict decimal signed parse for `--from` (a leading sign is allowed). */
-RA8_INTERNAL static bool parse_l(const char* s, long* out)
+/**
+ * @brief Parse one complete finite decimal chapter number for `--from`.
+ *
+ * @details Uses the C locale numeric grammar exposed by `strtod`, then rejects
+ * overflow, a missing conversion, trailing bytes, NaN, and infinity. A leading
+ * sign and a fractional part are accepted so chapter 0 and chapter 108.5 remain
+ * distinguishable from a missing value.
+ *
+ * @param[in]  s   NUL-terminated option value.
+ * @param[out] out Receives the finite chapter number.
+ *
+ * @return Whether the complete value was accepted.
+ * @retval true  @p out received one finite number.
+ * @retval false An argument or numeric spelling was invalid.
+ *
+ * @pre @p s and @p out are non-NULL for success.
+ * @pre The caller does not consume @p out after false.
+ * @post On true, `isfinite(*out)` is true.
+ * @post No global state other than the temporary `errno` value is retained.
+ *
+ * @note Not thread-safe with code that concurrently depends on `errno`.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool parse_chapter_value(const char* s, double* out)
 {
-  if (s == nullptr) {
+  if ((s == nullptr) || (out == nullptr) || (s[0] == '\0')) {
     return false;
   }
-  if (s[0] == '\0') {
-    return false;
-  }
-  errno          = 0;
-  char*      end = nullptr;
-  const long v   = strtol(s, &end, k_cli_dec_base);
-  if (errno != 0) {
-    return false;
-  }
-  if (end == s) {
-    return false;
-  }
-  if (*end != '\0') {
+  errno            = 0;
+  char*        end = nullptr;
+  const double v   = strtod(s, &end);
+  if ((errno != 0) || (end == s) || (*end != '\0') || !isfinite(v)) {
     return false;
   }
   *out = v;
@@ -706,10 +869,12 @@ bool mdl_cli_parse_nums(const mdl_args_t* a, mdl_nums_t* n)
     return false; /* validate presence-garbage; the default is applied in run_opts */
   }
   n->from_present = (a->from != nullptr);
-  n->from_num     = 0L;
+  n->from_num     = 0.0;
   if (a->from != nullptr) {
-    if (!parse_l(a->from, &n->from_num)) {
-      (void)fprintf(stderr, "media_dl: --from expects an integer, got '%s'\n", a->from);
+    if (!parse_chapter_value(a->from, &n->from_num)) {
+      (void)fprintf(stderr,
+                    "media_dl: --from expects a finite chapter number, got '%s'\n",
+                    a->from);
       return false;
     }
   }

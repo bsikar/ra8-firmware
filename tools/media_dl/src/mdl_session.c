@@ -1,6 +1,11 @@
 /**
  * @file mdl_session.c
  * @brief Implementation of the session identity + robots.txt gating.
+ *
+ * @details Builds the truthful tool identity, derives each request's robots
+ * origin and match target, and connects the bounded robots cache to the
+ * abstract network interface. Policy remains fail-closed for throttling and
+ * server failures without introducing backend-specific dependencies.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -66,7 +71,25 @@ void mdl_session_init(mdl_session_t*   session,
   session->cache        = (mdl_robots_cache_t){};
 }
 
-/** @brief ASCII case-insensitive comparison of one URL prefix. */
+/**
+ * @brief ASCII case-insensitive comparison of one URL prefix.
+ *
+ * @details Lower-cases only bytes read from @p url and compares them with the
+ * already lower-case literal @p prefix. The comparison stops at the end of the
+ * prefix, so trailing URL bytes are intentionally ignored.
+ *
+ * @param[in] url NUL-terminated URL text to inspect.
+ * @param[in] prefix NUL-terminated lower-case ASCII prefix.
+ * @return Whether @p url begins with @p prefix ignoring ASCII case.
+ * @retval true  Every prefix byte matched.
+ * @retval false At least one byte differed.
+ * @pre @p url and @p prefix are non-NULL and NUL-terminated.
+ * @pre @p prefix contains lower-case ASCII comparison text.
+ * @post Neither input string is modified.
+ * @post The result depends only on the first `strlen(prefix)` URL bytes.
+ * @note This is deliberately locale-independent and intended for URL schemes.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool url_prefix(const char* url, const char* prefix)
 {
   size_t i = 0U;
@@ -95,7 +118,26 @@ RA8_INTERNAL static const char* url_scheme(const char* url)
   return nullptr;
 }
 
-/** @brief Extract path plus query, excluding fragment, for RFC 9309 matching. */
+/**
+ * @brief Extract path plus query, excluding fragment, for RFC 9309 matching.
+ *
+ * @details Skips the scheme and authority, preserves a query as part of the
+ * robots match target, and substitutes `/` when the URL has no explicit path.
+ * The fragment is never copied.
+ *
+ * @param[in] url Absolute HTTP(S) URL to inspect.
+ * @param[out] out Destination for the NUL-terminated robots match target.
+ * @param[in] cap Capacity of @p out in bytes.
+ * @return Whether the complete target fit in @p out.
+ * @retval true  A path/query target was written.
+ * @retval false Arguments were invalid, no scheme separator exists, or output is too small.
+ * @pre @p url is NUL-terminated when non-NULL.
+ * @pre @p out is writable for @p cap bytes when non-NULL.
+ * @post On true, @p out begins with `/` and contains no fragment.
+ * @post On a size failure, a non-empty @p out is cleared.
+ * @note This helper extracts syntax only; scheme and host policy are checked separately.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool robots_target(const char* url, char* out, size_t cap)
 {
   if ((url == nullptr) || (out == nullptr) || (cap < 2U)) {
@@ -131,7 +173,26 @@ RA8_INTERNAL static bool robots_target(const char* url, char* out, size_t cap)
   return true;
 }
 
-/** @brief robots.txt fetch callback: map an mdl_net GET to a fetch result. */
+/**
+ * @brief robots.txt fetch callback: map an mdl_net GET to a fetch result.
+ * @details Performs a bounded GET with the session identity and maps transport
+ * and HTTP status classes onto the robots cache's allow/deny convention.
+ * @param[in] ctx Initialised ::mdl_session_t.
+ * @param[in] robots_url Absolute robots.txt URL.
+ * @param[out] buf Caller buffer receiving a successful response body.
+ * @param[in] cap Capacity of @p buf in bytes.
+ * @param[out] out_len Successful body length.
+ * @return Robots fetch outcome class.
+ * @retval k_mdl_robots_fetch_ok A body was retrieved.
+ * @retval k_mdl_robots_fetch_absent A client absence or transport failure permits access.
+ * @retval k_mdl_robots_fetch_denied Throttle or server failure closes access.
+ * @pre Pointer arguments are non-NULL and @p buf is writable for @p cap bytes.
+ * @pre @p ctx contains a usable network interface and User-Agent.
+ * @post On success, @p out_len describes the retrieved body.
+ * @post The session's borrowed identity and backend pointers are unchanged.
+ * @note Thread safety follows the network backend.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static mdl_robots_fetch_result_t
 session_fetch(void* ctx, const char* robots_url, char* buf, size_t cap, size_t* out_len)
 {

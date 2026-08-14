@@ -1,6 +1,9 @@
 /**
  * @file mdl_pack.c
  * @brief Implementation of the downloaded-folder archive packaging.
+ * @details Discovers prepared chapter directories, validates bounded paths,
+ *          and delegates deterministic container creation to the exporter
+ *          using the caller-owned workspace.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -22,7 +25,22 @@ typedef enum : uint16_t {
   k_pack_dir_bytes  = 1024, /**< Directory-path buffer.          */
 } mdl_pack_size_t;
 
-/** @brief True when an snprintf result of `n` fully fit a buffer of `cap`. */
+/**
+ * @brief Test whether an snprintf result fully fit its destination
+ * @details Treats negative encoding errors and the terminating-NUL boundary as
+ *          failures so path construction never accepts truncated output.
+ * @param[in] n Return value produced by snprintf.
+ * @param[in] cap Destination buffer capacity passed to snprintf.
+ * @return Whether the complete formatted string fit.
+ * @retval true @p n is non-negative and strictly smaller than @p cap.
+ * @retval false Formatting failed or required at least @p cap bytes.
+ * @pre @p cap is the exact capacity used by the matching snprintf call.
+ * @pre @p n has not been altered after that call.
+ * @post No state is modified.
+ * @post The result can safely gate subsequent path use.
+ * @note Thread-safe: this is a pure arithmetic predicate.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool snprintf_fit(int n, size_t cap)
 {
   return (n >= 0) && ((size_t)n < cap);
@@ -83,7 +101,27 @@ size_t mdl_pack_one(mdl_format_t            format,
   return mdl_pack_one_meta(format, series_dir, chap_id, nullptr, ws);
 }
 
-/** @brief Package the combined chapter folder `combined_rel` into `format`. */
+/**
+ * @brief Package a combined chapter folder into the selected format
+ * @details Composes guarded input/output paths, auto-loads metadata when
+ *          needed, marks incomplete filenames, and handles directory-output
+ *          formats without claiming that a container file was created.
+ * @param[in] format Output format to write.
+ * @param[in] series_dir Absolute series directory.
+ * @param[in] combined_rel Sanitized combined-directory leaf.
+ * @param[in] incomplete Whether the output filename must be marked incomplete.
+ * @param[in] meta Metadata to embed, or NULL to auto-load it.
+ * @param[in,out] ws Exclusive caller-owned exporter workspace.
+ * @return Count of failures from this operation.
+ * @retval 0U Packaging succeeded.
+ * @retval 1U A path was rejected or export failed.
+ * @pre String arguments are non-NULL, NUL-terminated, and stable.
+ * @pre @p ws owns writable arena storage for the call.
+ * @post Success leaves output matching @p format and @p incomplete.
+ * @post Failure is diagnosed and never counted more than once.
+ * @note Not thread-safe for a shared workspace or output directory.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static size_t pack_combined_dir(mdl_format_t             format,
                                              const char*              series_dir,
                                              const char*              combined_rel,

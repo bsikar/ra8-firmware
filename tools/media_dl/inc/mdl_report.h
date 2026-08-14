@@ -46,10 +46,18 @@ void mdl_report_progress(void* ctx, const mdl_fetch_progress_t* ev);
 /**
  * @brief Per-page progress bar sink: render an in-place terminal progress bar.
  *
+ * @details Rewrites one fixed-width bar with carriage returns and appends a
+ *          newline when the final page completes. Reused pages omit rate data.
+ *
  * @param[in] ctx Unused progress context (kept for the ::mdl_progress_fn ABI).
  * @param[in] ev  The just-completed page's progress event, or NULL (no-op).
  *
  * @return Nothing.
+ * @pre @p ev, when non-NULL, contains a coherent page index and total.
+ * @pre stdout is open and accepts text output.
+ * @post A non-NULL event updates the progress display on stdout.
+ * @post A terminal event leaves stdout positioned on a new line.
+ * @note Thread-safe only when stdout access is serialized by the caller.
  * @since 0.1.0
  */
 void mdl_report_progress_bar(void* ctx, const mdl_fetch_progress_t* ev);

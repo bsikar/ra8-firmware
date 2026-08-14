@@ -1,6 +1,11 @@
 /**
  * @file mdl_urlname.c
  * @brief Pure URL-to-name helpers (last segment, chapter number, extension).
+ *
+ * @details Converts bounded URL path components into safe display and file
+ * names, recognises explicit chapter markers, and identifies supported image
+ * types from signatures or content type. All outputs use caller-owned fixed
+ * buffers and no helper allocates memory.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -25,9 +30,41 @@ typedef enum : uint16_t {
 typedef enum : uint32_t {
   k_chapter_whole_max = 999999999U, /**< Largest accepted integral chapter. */
   k_chapter_frac_max  = 6U,         /**< Fractional digits retained.        */
+  k_chapter_radix     = 10U,        /**< Decimal chapter-number radix.       */
 } mdl_chapter_num_limit_t;
 
-/** @brief End offset of a URL's path, past any `?query`/`#fragment`. */
+/** @brief Initial decimal place multiplier for a fractional chapter. */
+static const double k_chapter_fraction_step = 0.1;
+
+/** @brief Signature byte offsets not already exempted by the numeric policy. */
+typedef enum : uint8_t {
+  k_webp_sig_bytes = 12U, /**< RIFF header plus WEBP form type. */
+  k_webp_e_offset  = 9U,  /**< 'E' in the WEBP form type.      */
+  k_webp_b_offset  = 10U, /**< 'B' in the WEBP form type.      */
+  k_webp_p_offset  = 11U, /**< 'P' in the WEBP form type.      */
+  k_gif_a_offset   = 5U,  /**< 'a' trailer in GIF87a/GIF89a.  */
+} mdl_image_signature_offset_t;
+
+/** @brief Non-ASCII fixed bytes used by the JPEG and PNG signatures. */
+typedef enum : uint8_t {
+  k_jpeg_marker_byte = 0xFFU, /**< JPEG marker prefix.          */
+  k_jpeg_soi_byte    = 0xD8U, /**< JPEG Start Of Image marker. */
+  k_png_lead_byte    = 0x89U, /**< PNG signature lead byte.    */
+} mdl_image_signature_byte_t;
+
+/**
+ * @brief End offset of a URL's path, before any `?query`/`#fragment`.
+ * @details Finds the first query or fragment delimiter, otherwise uses string length.
+ * @param[in] url NUL-terminated URL text.
+ * @return Exclusive path-end offset.
+ * @retval other A value from zero through `strlen(url)`.
+ * @pre @p url is non-NULL and NUL-terminated.
+ * @pre Query and fragment delimiters terminate the path for naming.
+ * @post @p url is unchanged.
+ * @post The return never exceeds the URL length.
+ * @note Thread-safe: reads only its argument.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static size_t path_end(const char* url)
 {
   const char* q = strpbrk(url, "?#");
@@ -60,7 +97,25 @@ void mdl_urlname_last_segment(const char* url, char* out, size_t cap)
   (void)mdl_sanitize_segment(raw, out, cap);
 }
 
-/** @brief Start offset of the path, excluding any URL scheme and authority. */
+/**
+ * @brief Start offset of the path, excluding any URL scheme and authority.
+ *
+ * @details Relative URLs begin at zero. For an absolute URL, the first slash
+ * after `://` begins the path; when no slash exists, the supplied end offset is
+ * returned so authority digits cannot be mistaken for a chapter.
+ *
+ * @param[in] url NUL-terminated URL containing at least @p end readable bytes.
+ * @param[in] end Exclusive end offset of the path scan.
+ * @return Offset of the first path byte within @p url.
+ * @retval 0 @p url is relative or has no scheme separator before @p end.
+ * @retval other The first path slash, or @p end when an authority has no path.
+ * @pre @p url is non-NULL and NUL-terminated.
+ * @pre @p end does not exceed the URL length.
+ * @post The return value is at most @p end.
+ * @post @p url is never modified.
+ * @note Query and fragment removal is handled by the caller when choosing @p end.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static size_t path_start(const char* url, size_t end)
 {
   const char* scheme = strstr(url, "://");
@@ -89,8 +144,30 @@ last_path_marker(const char* url, size_t begin, size_t end, const char* marker)
   return found;
 }
 
-/** @brief Parse digits at `start`, optionally followed by a decimal fraction. */
-RA8_INTERNAL static bool parse_chapter_digits(const char* start, const char* end, double* out)
+/**
+ * @brief Parse digits at `start`, optionally followed by a decimal fraction.
+ *
+ * @details Accumulates a bounded integral value, then accepts `.` or `-` as a
+ * fractional separator when followed by digits. More than the supported number
+ * of fractional digits or an overflowing integral component is rejected.
+ *
+ * @param[in] start First candidate digit.
+ * @param[in] end One-past-last byte available to the parser.
+ * @param[out] out Parsed non-negative chapter value on success.
+ * @param[out] out_next Optional first unconsumed byte on success.
+ * @return Whether a bounded chapter value was parsed.
+ * @retval true  At least one digit was parsed without exceeding a bound.
+ * @retval false Input did not start with a digit or exceeded a numeric bound.
+ * @pre @p start and @p end delimit one readable contiguous range.
+ * @pre @p out points to writable storage for one `double`.
+ * @post On true, @p out contains the parsed non-negative value and a non-NULL
+ *       @p out_next receives the first unconsumed byte.
+ * @post On false, @p out is left unchanged.
+ * @note Bytes following the recognised numeric run are intentionally ignored.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool
+parse_chapter_digits(const char* start, const char* end, double* out, const char** out_next)
 {
   if ((start >= end) || (*start < '0') || (*start > '9')) {
     return false;
@@ -98,29 +175,32 @@ RA8_INTERNAL static bool parse_chapter_digits(const char* start, const char* end
   uint32_t whole = 0U;
   while ((start < end) && (*start >= '0') && (*start <= '9')) {
     const uint32_t digit = (uint32_t)(*start - '0');
-    if (whole > (((uint32_t)k_chapter_whole_max - digit) / 10U)) {
+    if (whole > (((uint32_t)k_chapter_whole_max - digit) / (uint32_t)k_chapter_radix)) {
       return false;
     }
-    whole = (whole * 10U) + digit;
+    whole = (whole * (uint32_t)k_chapter_radix) + digit;
     ++start;
   }
   double value = (double)whole;
   if ((start < end) && ((*start == '-') || (*start == '.')) && ((start + 1) < end) &&
       (start[1] >= '0') && (start[1] <= '9')) {
     ++start;
-    double   scale  = 0.1;
+    double   scale  = k_chapter_fraction_step;
     uint32_t digits = 0U;
     while ((start < end) && (*start >= '0') && (*start <= '9')) {
       if (digits >= (uint32_t)k_chapter_frac_max) {
         return false;
       }
       value += (double)(*start - '0') * scale;
-      scale *= 0.1;
+      scale *= k_chapter_fraction_step;
       ++digits;
       ++start;
     }
   }
   *out = value;
+  if (out_next != nullptr) {
+    *out_next = start;
+  }
   return true;
 }
 
@@ -148,7 +228,38 @@ bool mdl_urlname_chapter_parse(const char* url, double* out)
       skip  = strlen(markers[i]);
     }
   }
-  return (found != nullptr) && parse_chapter_digits(found + skip, url + end, out);
+  return (found != nullptr) && parse_chapter_digits(found + skip, url + end, out, nullptr);
+}
+
+bool mdl_urlname_chapter_text_parse(const char* text, double* out)
+{
+  if (out != nullptr) {
+    *out = 0.0;
+  }
+  if ((text == nullptr) || (out == nullptr)) {
+    return false;
+  }
+  const size_t bounded = strnlen(text, (size_t)k_urlname_scan_max);
+  if (bounded == (size_t)k_urlname_scan_max) {
+    return false;
+  }
+  const char* begin = text;
+  const char* end   = text + bounded;
+  while ((begin < end) && ((*begin == ' ') || (*begin == '\t') || (*begin == '\r') ||
+                           (*begin == '\n') || (*begin == '\f') || (*begin == '\v'))) {
+    ++begin;
+  }
+  while ((end > begin) && ((end[-1] == ' ') || (end[-1] == '\t') || (end[-1] == '\r') ||
+                           (end[-1] == '\n') || (end[-1] == '\f') || (end[-1] == '\v'))) {
+    --end;
+  }
+  const char* next   = nullptr;
+  double      parsed = 0.0;
+  if (!parse_chapter_digits(begin, end, &parsed, &next) || (next != end)) {
+    return false;
+  }
+  *out = parsed;
+  return true;
 }
 
 double mdl_urlname_chapter_value(const char* url)
@@ -163,14 +274,39 @@ long mdl_urlname_chapter_number(const char* url)
   return (long)mdl_urlname_chapter_value(url);
 }
 
-/** @brief Lower-case an ASCII byte. */
+/**
+ * @brief Lower-case an ASCII byte.
+ * @details Maps uppercase ASCII letters and preserves every other byte.
+ * @param[in] c Character to map.
+ * @return Lower-case ASCII equivalent.
+ * @retval other Mapped or unchanged character.
+ * @pre @p c is representable as `char`.
+ * @pre Locale-independent folding is required.
+ * @post No state is modified.
+ * @post Non-uppercase input is unchanged.
+ * @note Thread-safe: pure arithmetic.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static char to_lower_ascii(char c)
 {
   const int lowered = ((c >= 'A') && (c <= 'Z')) ? (c + (int)k_urlname_case_gap) : (int)c;
   return (char)lowered;
 }
 
-/** @brief True when `ext` is one of the accepted raster image extensions. */
+/**
+ * @brief True when `ext` is one of the accepted raster image extensions.
+ * @details Compares against the fixed lower-case extension allowlist.
+ * @param[in] ext NUL-terminated lower-case extension without a dot.
+ * @return Whether the extension is accepted.
+ * @retval true The extension is a supported raster type.
+ * @retval false It is absent from the allowlist.
+ * @pre @p ext is non-NULL and NUL-terminated.
+ * @pre The caller has already normalised ASCII case.
+ * @post @p ext is unchanged.
+ * @post No state is modified.
+ * @note Thread-safe: reads constant storage.
+ * @since 0.1.0
+ */
 RA8_INTERNAL static bool is_known_ext(const char* ext)
 {
   static const char* const k_known[] = {"jpg", "jpeg", "png", "gif", "webp", "bmp"};
@@ -232,9 +368,20 @@ bool mdl_urlname_sniff_image_type(const void* buf,
   if ((buf != nullptr) && (buf_len >= 3U)) {
     const uint8_t* b = (const uint8_t*)buf;
     /* JPEG: FF D8 FF */
-    if ((b[0] == 0xFFU) && (b[1] == 0xD8U) && (b[2] == 0xFFU)) {
+    if ((b[0] == (uint8_t)k_jpeg_marker_byte) && (b[1] == (uint8_t)k_jpeg_soi_byte) &&
+        (b[2] == (uint8_t)k_jpeg_marker_byte)) {
       ext   = "jpg";
       mime  = "image/jpeg";
+      found = true;
+    }
+  }
+
+  if (!found && (buf != nullptr) && (buf_len >= 2U)) {
+    const uint8_t* b = (const uint8_t*)buf;
+    /* BMP: Windows bitmap signature. */
+    if ((b[0] == (uint8_t)'B') && (b[1] == (uint8_t)'M')) {
+      ext   = "bmp";
+      mime  = "image/bmp";
       found = true;
     }
   }
@@ -242,18 +389,19 @@ bool mdl_urlname_sniff_image_type(const void* buf,
   if (!found && (buf != nullptr) && (buf_len >= 4U)) {
     const uint8_t* b = (const uint8_t*)buf;
     /* PNG: 89 50 4E 47 */
-    if ((b[0] == 0x89U) && (b[1] == 0x50U) && (b[2] == 0x4EU) && (b[3] == 0x47U)) {
+    if ((b[0] == (uint8_t)k_png_lead_byte) && (b[1] == (uint8_t)'P') && (b[2] == (uint8_t)'N') &&
+        (b[3] == (uint8_t)'G')) {
       ext   = "png";
       mime  = "image/png";
       found = true;
     }
   }
 
-  if (!found && (buf != nullptr) && (buf_len >= 12U)) {
+  if (!found && (buf != nullptr) && (buf_len >= (size_t)k_webp_sig_bytes)) {
     const uint8_t* b = (const uint8_t*)buf;
     /* WebP: RIFF....WEBP */
     if ((b[0] == 'R') && (b[1] == 'I') && (b[2] == 'F') && (b[3] == 'F') && (b[8] == 'W') &&
-        (b[9] == 'E') && (b[10] == 'B') && (b[11] == 'P')) {
+        (b[k_webp_e_offset] == 'E') && (b[k_webp_b_offset] == 'B') && (b[k_webp_p_offset] == 'P')) {
       ext   = "webp";
       mime  = "image/webp";
       found = true;
@@ -264,7 +412,7 @@ bool mdl_urlname_sniff_image_type(const void* buf,
     const uint8_t* b = (const uint8_t*)buf;
     /* GIF: GIF87a / GIF89a */
     if ((b[0] == 'G') && (b[1] == 'I') && (b[2] == 'F') && (b[3] == '8') &&
-        ((b[4] == '7') || (b[4] == '9')) && (b[5] == 'a')) {
+        ((b[4] == '7') || (b[4] == '9')) && (b[k_gif_a_offset] == 'a')) {
       ext   = "gif";
       mime  = "image/gif";
       found = true;
@@ -295,6 +443,10 @@ bool mdl_urlname_sniff_image_type(const void* buf,
     } else if (strstr(ct_lower, "image/gif") != nullptr) {
       ext   = "gif";
       mime  = "image/gif";
+      found = true;
+    } else if (strstr(ct_lower, "image/bmp") != nullptr) {
+      ext   = "bmp";
+      mime  = "image/bmp";
       found = true;
     }
   }
