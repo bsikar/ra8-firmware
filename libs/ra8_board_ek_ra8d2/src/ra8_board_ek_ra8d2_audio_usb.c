@@ -654,17 +654,20 @@ RA8_INTERNAL static ra8_err_t internal_io_expander_route_pins(void)
  *                        all-DIPs-OFF mechanical default or
  *                        ``k_ra8_board_pi4ioe_output_project_default``
  *                        (0xF2) for this project's wiring.
+ * @param[in] output_mask Bit n = 1 drives U15 pin n as an output; clear bits
+ *                        release that SW4 position to the physical switch.
  * @return ra8_err_t Error code; k_ra8_ok if all three writes ack.
- * @retval k_ra8_ok U15 driving the requested SW4 layout, P0..P7 outputs.
+ * @retval k_ra8_ok U15 driving exactly the positions selected by @p output_mask.
  * @retval k_ra8_err_nack U15 didn't ACK one of the register writes.
  * @pre ra8_i2c_init has already configured channel 1.
  * @pre I2C bus is idle.
- * @post On success, U15 IODIR=0xFF, OUTPUT=output_byte, HIZ=0x00.
+ * @post On success, U15 IODIR=output_mask, OUTPUT=output_byte, HIZ=0x00.
  * @post On failure, s_io_expander_probe records the failing step.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_io_expander_program_u15(uint8_t output_byte)
+RA8_INTERNAL static ra8_err_t internal_io_expander_program_u15(uint8_t output_byte,
+                                                               uint8_t output_mask)
 {
   s_io_expander_probe = (uint32_t)k_io_exp_probe_pre_write_out;
   ra8_err_t err =
@@ -679,39 +682,40 @@ RA8_INTERNAL static ra8_err_t internal_io_expander_program_u15(uint8_t output_by
     return err;
   }
   s_io_expander_probe = (uint32_t)k_io_exp_probe_pre_write_dir;
-  return internal_io_expander_write_reg((uint8_t)k_ra8_board_pi4ioe_reg_iodir,
-                                        (uint8_t)k_ra8_board_pi4ioe_iodir_all_outputs);
+  return internal_io_expander_write_reg((uint8_t)k_ra8_board_pi4ioe_reg_iodir, output_mask);
 }
 
 /**
- * @brief Shared U15 bring-up: route SCL0/SDA0, gate-on IIC_B, then load
+ * @brief Shared U15 bring-up: route SCL1/SDA1, initialize RIIC1, then load
  *        @p output_byte into the expander's output register.
  *
- * @details The two public entry points differ only in the SW4 layout they
- *          program, so factor the PFS-route + MSTP-ungate + IIC_B-init +
- *          U15-write sequence into one helper. The probe word
+ * @details The public entry points differ only in the SW4 layout they
+ *          program, so factor the PFS route + RIIC1 init + U15 write sequence
+ *          into one helper. The probe word
  *          ``s_io_expander_probe`` is updated between steps so a JLink
  *          halt can pinpoint which step NACKed.
  *
  * @param[in] output_byte Value to latch into U15's output register
  *                        (see ``internal_io_expander_program_u15``).
+ * @param[in] output_mask Value to latch into U15's IODIR register.
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok All four bring-up steps completed.
- * @retval k_ra8_err_gpio_conflict P400/P401 already owned.
- * @retval k_ra8_err_hw_init_failed IIC_B0 init failed.
+ * @retval k_ra8_ok All bring-up steps completed.
+ * @retval k_ra8_err_gpio_conflict P512/P511 already owned.
+ * @retval k_ra8_err_hw_init_failed RIIC1 initialization failed.
  * @retval k_ra8_err_nack U15 didn't ACK one of the register writes.
  *
  * @pre IOPORT module powered (reset default).
  * @pre ``ra8_mstp_init`` has run.
- * @post On success P400/P401 are routed to SCL0/SDA0; IIC_B0 is at
- *       100 kHz; U15.P0..P7 are outputs driven to @p output_byte.
+ * @post On success P512/P511 are routed to SCL1/SDA1; RIIC1 is at
+ *       100 kHz; selected U15 pins drive @p output_byte.
  * @post ``s_io_expander_probe`` ends at ``k_io_exp_probe_success`` on OK
  *       or at the failing step on error.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t internal_io_expander_apply(uint8_t output_byte)
+RA8_INTERNAL static ra8_err_t internal_io_expander_apply_mask(uint8_t output_byte,
+                                                              uint8_t output_mask)
 {
   /* Step -1: clock out any wedged peripheral (stuck SDA) before touching
    * the bus, so a prior aborted transfer cannot deadlock every START. */
@@ -750,7 +754,7 @@ RA8_INTERNAL static ra8_err_t internal_io_expander_apply(uint8_t output_byte)
   }
 
   /* Step 4: program U15 in FSP-reference order. */
-  err = internal_io_expander_program_u15(output_byte);
+  err = internal_io_expander_program_u15(output_byte, output_mask);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -760,7 +764,8 @@ RA8_INTERNAL static ra8_err_t internal_io_expander_apply(uint8_t output_byte)
 
 ra8_err_t ra8_board_io_expander_set_usbhs_device_mode(void)
 {
-  return internal_io_expander_apply((uint8_t)k_ra8_board_pi4ioe_output_all_high);
+  return internal_io_expander_apply_mask((uint8_t)k_ra8_board_pi4ioe_output_all_high,
+                                         (uint8_t)k_ra8_board_pi4ioe_iodir_all_outputs);
 }
 
 /**
@@ -773,13 +778,14 @@ ra8_err_t ra8_board_io_expander_set_usbhs_device_mode(void)
  * @pre `ra8_mstp_init` has run.
  * @pre The I2C bus to U15 is reachable.
  * @post U15 outputs 0x72; J7 is in host role.
- * @post IIC_B0 is initialized as a side effect of the shared bring-up.
+ * @post RIIC1 is initialized as a side effect of the shared bring-up.
  * @note Not thread-safe; boot context only.
  * @since 0.1.0
  */
 ra8_err_t ra8_board_io_expander_set_usbhs_host_mode(void)
 {
-  return internal_io_expander_apply((uint8_t)k_ra8_board_pi4ioe_output_usbhs_host);
+  return internal_io_expander_apply_mask((uint8_t)k_ra8_board_pi4ioe_output_usbhs_host,
+                                         (uint8_t)k_ra8_board_pi4ioe_iodir_all_outputs);
 }
 
 /**
@@ -792,16 +798,16 @@ ra8_err_t ra8_board_io_expander_set_usbhs_host_mode(void)
  *          for the full per-bit table.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok All four bring-up steps completed; SW4 layout latched.
- * @retval k_ra8_err_gpio_conflict P400/P401 already owned.
- * @retval k_ra8_err_hw_init_failed IIC_B0 init failed.
+ * @retval k_ra8_ok All bring-up steps completed; SW4 layout latched.
+ * @retval k_ra8_err_gpio_conflict P512/P511 already owned.
+ * @retval k_ra8_err_hw_init_failed RIIC1 initialization failed.
  * @retval k_ra8_err_nack U15 didn't ACK one of the register writes.
  *
  * @pre IOPORT module powered (reset default).
  * @pre ``ra8_mstp_init`` has run.
  * @post On success U15 outputs are 0xF2; the project's expected SW4
  *       layout is active.
- * @post P400/P401 are routed to SCL0/SDA0 and IIC_B0 is brought up at
+ * @post P512/P511 are routed to SCL1/SDA1 and RIIC1 is brought up at
  *       100 kHz, ready for subsequent in-tree I2C work.
  *
  * @note Not thread-safe; call once early in main() before any code that
@@ -810,12 +816,25 @@ ra8_err_t ra8_board_io_expander_set_usbhs_host_mode(void)
  */
 ra8_err_t ra8_board_io_expander_apply_project_sw4_defaults(void)
 {
-  return internal_io_expander_apply((uint8_t)k_ra8_board_pi4ioe_output_project_default);
+  return internal_io_expander_apply_mask((uint8_t)k_ra8_board_pi4ioe_output_project_default,
+                                         (uint8_t)k_ra8_board_pi4ioe_iodir_all_outputs);
+}
+
+ra8_err_t ra8_board_io_expander_apply_sw4(uint8_t output_byte)
+{
+  return internal_io_expander_apply_mask(output_byte,
+                                         (uint8_t)k_ra8_board_pi4ioe_iodir_all_outputs);
+}
+
+ra8_err_t ra8_board_io_expander_apply_sw4_mask(uint8_t output_byte, uint8_t output_mask)
+{
+  return internal_io_expander_apply_mask(output_byte, output_mask);
 }
 
 ra8_err_t ra8_board_io_expander_set_octospi_active(void)
 {
-  return internal_io_expander_apply((uint8_t)k_ra8_board_pi4ioe_output_octospi_active);
+  return internal_io_expander_apply_mask((uint8_t)k_ra8_board_pi4ioe_output_octospi_active,
+                                         (uint8_t)k_ra8_board_pi4ioe_iodir_all_outputs);
 }
 
 /**

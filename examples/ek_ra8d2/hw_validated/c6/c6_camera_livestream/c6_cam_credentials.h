@@ -1,0 +1,18 @@
+/**
+ * @file c6_cam_credentials.h
+ * @brief Wi-Fi credential declarations backed by the private build tree.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#pragma once
+
+/** @brief Configured station SSID, generated into the private build tree.
+ *  @since 0.1.0 */
+extern const char g_c6_cam_wifi_ssid[];
+
+/** @brief Configured station PSK, generated into the private build tree.
+ *  @since 0.1.0 */
+extern const char g_c6_cam_wifi_psk[];

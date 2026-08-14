@@ -38,6 +38,7 @@ appears within the per-app timeout its `hil.conf` declares.
 | App | Expected UART string | Timeout |
 |-----|---------------------|---------|
 | adc_b_demo | `adc: raw=` | 10 s |
+| camera_capture | `verdict=PASS` | 30 s |
 | agt_periodic | `agt: tick` | 10 s |
 | crc_demo | `crc: hw=` | 10 s |
 | crypto_aes_demo | `aes: round-trip OK` | 15 s |
