@@ -14,7 +14,7 @@
  *     (`GeneralSecondaryFlags`, `FirstCluster`, `ValidDataLength`,
  *     `DataLength`) read straight out of the image rather than from the API,
  *     so a handle that lies about itself cannot make an assertion pass;
- *   - `stream_dump_image()`, which writes the volume to a file when
+ *   - `stream_dump_image()`, which writes the filesystem PARTITION to a file when
  *     `RA8_EXFAT_DUMP_DIR` names a directory. That is how the `fsck.exfat -n`
  *     evidence for every scenario in this suite is produced, and it makes that
  *     evidence REPRODUCIBLE rather than a claim:
@@ -321,7 +321,7 @@ stream_set_checksum(const ra8_fs_mount_t* h, uint32_t file_idx, uint32_t count)
 }
 
 /**
- * @brief Write the whole volume image to `$RA8_EXFAT_DUMP_DIR/<tag>.img`.
+ * @brief Write the exFAT partition to `$RA8_EXFAT_DUMP_DIR/<tag>.img`.
  *
  * @details The reproducible half of this suite's `fsck.exfat -n` evidence. It
  *          is a no-op unless the environment names a directory, so CI never
@@ -330,19 +330,21 @@ stream_set_checksum(const ra8_fs_mount_t* h, uint32_t file_idx, uint32_t count)
  *          image per scenario, ready to hand to a host checker.
  *
  * @param[in] tag Scenario name; becomes the file's basename.
+ * @param[in] h   Mounted volume whose partition base starts the dump.
  *
  * @return Nothing. A dump that cannot be written fails the test, because a
  *         silently skipped dump is worse than no dump at all.
  *
  * @pre `s_disk.bytes` holds a formatted volume.
  * @pre @p tag contains no path separators.
+ * @pre @p h is non-NULL and remains mounted.
  * @post With the variable set, the image is on disk and closed.
  * @post With it unset, nothing is written and no state changes.
  *
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static inline void stream_dump_image(const char* tag)
+static inline void stream_dump_image(const char* tag, const ra8_fs_mount_t* h)
 {
   const char* dir = getenv("RA8_EXFAT_DUMP_DIR");
   if ((dir == nullptr) || (s_disk.bytes == nullptr)) {
@@ -355,10 +357,11 @@ static inline void stream_dump_image(const char* tag)
     TEST_FAIL_FMT("cannot open dump file %s", path);
     return;
   }
+  const size_t base  = (size_t)h->partition_base_lba * (size_t)k_mut_block_size;
   const size_t total = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
-  const size_t wrote = fwrite(s_disk.bytes, 1U, total, fp);
+  const size_t wrote = fwrite(&s_disk.bytes[base], 1U, total - base, fp);
   (void)fclose(fp);
-  if (wrote != total) {
+  if (wrote != (total - base)) {
     TEST_FAIL_FMT("short dump write to %s", path);
   }
 }

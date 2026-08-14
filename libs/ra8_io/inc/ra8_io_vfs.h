@@ -15,7 +15,7 @@
  * the caller obtained by mounting an `ra8_fs_backend_t` (typically one produced
  * by ::ra8_io_blockdev_as_fs_backend over any block device).
  *
- * Path-resolving operations (open / unlink / rename / stat / listdir / mkdir)
+ * Path-resolving operations (open / unlink / rename / stat / listdir / mkdir / rmdir)
  * live here; once a file is open the caller drives it with the existing
  * `ra8_fs_read` / `ra8_fs_write` / `ra8_fs_seek` / `ra8_fs_close` file operations.
  *
@@ -44,6 +44,7 @@ extern "C" {
 
 #include "ra8_err.h"
 #include "ra8_fs.h"
+#include "ra8_io_fsfmt.h"
 
 /**
  * @enum ra8_io_vfs_limits_t
@@ -53,8 +54,16 @@ extern "C" {
  */
 typedef enum : uint8_t {
   k_ra8_io_vfs_max_mounts = 4,  /**< Concurrent named mounts.    */
+  k_ra8_io_vfs_max_files  = 4,  /**< Concurrent generic streams. */
   k_ra8_io_vfs_name_max   = 16, /**< Mount name length incl NUL. */
 } ra8_io_vfs_limits_t;
+
+/**
+ * @struct ra8_io_vfs_file_t
+ * @brief Opaque, statically-pooled format-neutral file stream.
+ * @since 0.1.0
+ */
+typedef struct ra8_io_vfs_file ra8_io_vfs_file_t;
 
 /**
  * @struct ra8_io_vfs_stat_t
@@ -68,6 +77,8 @@ typedef enum : uint8_t {
  *          entry, so a folder reports as a folder. Anything built over this --
  *          a file browser, a USB/MTP gateway, an importer -- can tell the two
  *          apart, which it could not when both fields were hardcoded.
+ *          Creation, modification, and access timestamps are carried through
+ *          from the same entry as well.
  *
  * @invariant `is_directory` equals `(attr & k_ra8_fs_attr_directory) != 0`.
  * @invariant `size_bytes` is 0 whenever `is_directory` is true.
@@ -75,11 +86,13 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint64_t size_bytes;   /**< File size in bytes (0 for directories); 64-bit
-                              because an exFAT entry may exceed 4 GiB (#676). */
-  uint8_t  attr;         /**< The entry's own FAT attribute byte.    */
-  bool     is_directory; /**< true => path names a directory.        */
-  bool     exists;       /**< true => the path resolves to an entry. */
+  uint64_t           size_bytes;   /**< File size in bytes (0 for directories). */
+  ra8_fs_timestamp_t created;      /**< Creation time, when present.            */
+  ra8_fs_timestamp_t modified;     /**< Last-modified time, when present.       */
+  ra8_fs_timestamp_t accessed;     /**< Last-accessed time/date, when present.  */
+  uint8_t            attr;         /**< The entry's own FAT attribute byte.     */
+  bool               is_directory; /**< true => path names a directory.         */
+  bool               exists;       /**< true => the path resolves to an entry.  */
 } ra8_io_vfs_stat_t;
 
 /**
@@ -122,6 +135,27 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_io_vfs_mount(const char* name, ra8_fs_mount_t* mount);
+
+/**
+ * @brief Probe and mount a block backend through the registered format ops.
+ *
+ * @param[in] name    Mount name (1..15 chars, no `:` or `/`).
+ * @param[in] backend Device-neutral block backend to probe and mount.
+ *
+ * @retval k_ra8_ok               A registered format claimed and mounted the volume.
+ * @retval k_ra8_err_null_ptr     An argument was NULL.
+ * @retval k_ra8_err_invalid_arg  The mount name was invalid.
+ * @retval k_ra8_err_exists       The name is already mounted.
+ * @retval k_ra8_err_no_mem       The fixed mount table is full.
+ * @retval k_ra8_err_not_found    No registered format claimed the volume.
+ * @retval k_ra8_err_*            The selected format's mount error.
+ *
+ * @pre ::ra8_io_fsfmt_init was called and any foreign formats were registered.
+ * @post On success every VFS operation dispatches through the selected format's ops.
+ * @post ::ra8_io_vfs_unmount releases the owned format context.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_io_vfs_mount_auto(const char* name, const ra8_fs_backend_t* backend);
 
 /**
  * @brief Remove a named mount from the table.
@@ -169,6 +203,49 @@ typedef struct {
  */
 [[nodiscard]] ra8_err_t
 ra8_io_vfs_open(const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file);
+
+/**
+ * @brief Open a format-neutral stream through a mounted format's ops.
+ *
+ * @details Unlike the legacy ::ra8_io_vfs_open native-handle adapter, this
+ *          API works for every registered format. The facade comes from a
+ *          fixed static pool; no heap allocation occurs.
+ *
+ * @param[in]  path     `"name:/path"` string.
+ * @param[in]  mode     Read, write, or append.
+ * @param[out] out_file Opaque VFS stream on success.
+ *
+ * @retval k_ra8_ok                Stream opened.
+ * @retval k_ra8_err_not_supported The format is read-only or lacks the mode.
+ * @retval k_ra8_err_no_mem        The fixed stream table is full.
+ * @retval k_ra8_err_*             Resolution or format error.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_io_vfs_file_open(const char* path, ra8_fs_mode_t mode, ra8_io_vfs_file_t** out_file);
+
+/** @brief Close and always release one format-neutral stream facade. */
+[[nodiscard]] ra8_err_t ra8_io_vfs_file_close(ra8_io_vfs_file_t* file);
+
+/** @brief Read bytes through a format-neutral stream. */
+[[nodiscard]] ra8_err_t
+ra8_io_vfs_file_read(ra8_io_vfs_file_t* file, void* buf, uint32_t bytes, uint32_t* out_read);
+
+/** @brief Write bytes, or return not-supported when capability-gated. */
+[[nodiscard]] ra8_err_t
+ra8_io_vfs_file_write(ra8_io_vfs_file_t* file, const void* buf, uint32_t bytes);
+
+/** @brief Seek a format-neutral stream. */
+[[nodiscard]] ra8_err_t ra8_io_vfs_file_seek(ra8_io_vfs_file_t* file, uint64_t offset_bytes);
+
+/** @brief Report a format-neutral stream's current offset. */
+[[nodiscard]] ra8_err_t ra8_io_vfs_file_tell(const ra8_io_vfs_file_t* file, uint64_t* out_offset);
+
+/** @brief Report a format-neutral stream's size. */
+[[nodiscard]] ra8_err_t ra8_io_vfs_file_size(const ra8_io_vfs_file_t* file, uint64_t* out_bytes);
+
+/** @brief Explicitly sync a stream, or return not-supported when unavailable. */
+[[nodiscard]] ra8_err_t ra8_io_vfs_file_sync(ra8_io_vfs_file_t* file);
 
 /**
  * @brief Delete a file by `"name:/path"`.
@@ -252,6 +329,25 @@ ra8_io_vfs_open(const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file);
 [[nodiscard]] ra8_err_t ra8_io_vfs_stat(const char* path, ra8_io_vfs_stat_t* out);
 
 /**
+ * @brief Copy the truthful capabilities of a named mounted format.
+ * @param[in]  name Mount name without a colon.
+ * @param[out] out  Capability snapshot.
+ * @retval k_ra8_ok Capabilities copied.
+ * @retval k_ra8_err_not_found No mount has that name.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_io_vfs_get_caps(const char* name, ra8_io_fsfmt_caps_t* out);
+
+/**
+ * @brief Query free and total bytes through a mounted format's ops.
+ * @param[in]  name Mount name without a colon.
+ * @param[out] out  Space snapshot.
+ * @retval k_ra8_err_not_supported The format lacks a free-space operation.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_io_vfs_free_space(const char* name, ra8_fs_space_t* out);
+
+/**
  * @brief Enumerate a directory named `"name:/path"`.
  *
  * @param[in] path `"name:/path"` directory string (`"name:/"` for the root).
@@ -280,9 +376,9 @@ ra8_io_vfs_open(const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file);
  * @brief Create a directory named `"name:/path"`.
  *
  * @details Routes to the named mount and delegates to `ra8_fs_mkdir`, which
- *          creates the final path component as a new FAT directory (nested paths
- *          are supported when each intermediate component already exists). exFAT
- *          volumes return ::k_ra8_err_not_supported.
+ *          creates the final path component as a new directory. Nested paths
+ *          are supported on FAT12/16/32 and exFAT when every intermediate
+ *          component already exists.
  *
  * @param[in] path `"name:/path"` directory string.
  *
@@ -292,7 +388,6 @@ ra8_io_vfs_open(const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file);
  * @retval k_ra8_err_invalid_arg   `path` has no `name:` prefix, or a bad leaf.
  * @retval k_ra8_err_not_found     The mount name or a path component is absent.
  * @retval k_ra8_err_exists        The directory already exists.
- * @retval k_ra8_err_not_supported The volume is exFAT.
  *
  * @pre The named volume is mounted.
  * @pre `path` is non-NULL.
@@ -310,9 +405,8 @@ ra8_io_vfs_open(const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file);
  *
  * @details Routes to the named mount and delegates to `ra8_fs_rmdir`, which
  *          removes the final path component when it is an existing directory
- *          holding nothing but its own "." and ".." links. The volume root and
- *          plain files are refused; exFAT volumes return
- *          ::k_ra8_err_not_supported, matching `ra8_io_vfs_mkdir()`.
+ *          holding no live entries. FAT's own "." and ".." links are ignored;
+ *          exFAT has no dot entries. The volume root and plain files are refused.
  *
  * @param[in] path `"name:/path"` directory string.
  *
@@ -323,7 +417,6 @@ ra8_io_vfs_open(const char* path, ra8_fs_mode_t mode, ra8_fs_file_t** out_file);
  *                                  root, or names a file.
  * @retval k_ra8_err_not_found      The mount name or a path component is absent.
  * @retval k_ra8_err_not_empty      The directory still holds entries.
- * @retval k_ra8_err_not_supported  The volume is exFAT.
  *
  * @pre The named volume is mounted.
  * @pre `path` is non-NULL.

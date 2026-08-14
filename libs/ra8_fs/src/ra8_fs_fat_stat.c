@@ -58,6 +58,204 @@ static bool priv_path_is_root(const char* path)
 }
 
 /**
+ * @brief Decode one FAT-format packed date/time pair into a public timestamp.
+ *
+ * @details Reconstructs FAT's even-second field and optional creation
+ *          centiseconds, then rejects every out-of-range calendar component.
+ *
+ * @param[in]  date       Packed FAT date word.
+ * @param[in]  time       Packed FAT time word (zero for date-only access time).
+ * @param[in]  tenth      FAT 10-ms byte (creation only), or zero.
+ * @param[in]  have_tenth true when @p tenth belongs to the stamp.
+ * @param[out] out        Decoded timestamp; invalid when the fields are illegal.
+ *
+ * @return Nothing.
+ * @pre @p out is non-NULL.
+ * @pre @p date and @p time are raw little-endian values already read as host integers.
+ * @post `out->valid` is true exactly when every packed field is legal.
+ * @post `out->utc_offset_valid` is false because FAT stores no zone.
+ * @note Pure decode; FAT carries no UTC-offset field.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void priv_stat_decode_fat(uint16_t            date,
+                                 uint16_t            time,
+                                 uint8_t             tenth,
+                                 bool                have_tenth,
+                                 ra8_fs_timestamp_t* out)
+{
+  ra8_fs_datetime_t v = {};
+  v.year              = (uint16_t)((uint32_t)k_fs_time_epoch_year + (date >> 9U));
+  v.month             = (uint8_t)((date >> 5U) & 0x0FU);
+  v.day               = (uint8_t)(date & 0x1FU);
+  v.hour              = (uint8_t)((time >> 11U) & 0x1FU);
+  v.minute            = (uint8_t)((time >> 5U) & 0x3FU);
+  v.second            = (uint8_t)((time & 0x1FU) * 2U);
+  if (have_tenth) {
+    v.second      = (uint8_t)(v.second + ((tenth >= 100U) ? 1U : 0U));
+    v.centisecond = (uint8_t)(tenth % 100U);
+  }
+  if (v.month == 0U) {
+    *out = (ra8_fs_timestamp_t){};
+    return;
+  }
+  if (v.month > 12U) {
+    *out = (ra8_fs_timestamp_t){};
+    return;
+  }
+  if (v.day == 0U) {
+    *out = (ra8_fs_timestamp_t){};
+    return;
+  }
+  if (v.day > 31U) {
+    *out = (ra8_fs_timestamp_t){};
+    return;
+  }
+  if (v.hour > 23U) {
+    *out = (ra8_fs_timestamp_t){};
+    return;
+  }
+  if (v.minute > 59U) {
+    *out = (ra8_fs_timestamp_t){};
+    return;
+  }
+  if (v.second > 59U) {
+    *out = (ra8_fs_timestamp_t){};
+    return;
+  }
+  if (have_tenth) {
+    if (tenth > 199U) {
+      *out = (ra8_fs_timestamp_t){};
+      return;
+    }
+  }
+  out->value            = v;
+  out->valid            = true;
+  out->utc_offset_valid = false;
+}
+
+/**
+ * @brief Decode one exFAT packed stamp, 10-ms increment, and UTC-offset byte.
+ *
+ * @details Uses the FAT-compatible packed civil fields, then decodes exFAT's
+ *          signed 15-minute UTC offset only when its validity bit is set.
+ *
+ * @param[in]  packed     exFAT 32-bit date/time value.
+ * @param[in]  tenth      Optional 10-ms increment.
+ * @param[in]  have_tenth true for create/modify, false for access.
+ * @param[in]  utc        exFAT UtcOffset byte.
+ * @param[out] out        Decoded timestamp.
+ *
+ * @return Nothing.
+ * @pre @p out is non-NULL.
+ * @pre @p packed, @p tenth, and @p utc are raw fields from one File entry.
+ * @post Invalid calendar bytes produce an all-zero, invalid result.
+ * @post A clear/invalid UTC field never masquerades as UTC+00:00.
+ * @note Pure decode.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void priv_stat_decode_exfat(uint32_t            packed,
+                                   uint8_t             tenth,
+                                   bool                have_tenth,
+                                   uint8_t             utc,
+                                   ra8_fs_timestamp_t* out)
+{
+  const uint16_t date = (uint16_t)(packed >> 16U);
+  const uint16_t time = (uint16_t)(packed & 0xFFFFU);
+  priv_stat_decode_fat(date, time, tenth, have_tenth, out);
+  if (!out->valid) {
+    return;
+  }
+  if ((utc & (uint8_t)k_fs_utc_valid_bit) == 0U) {
+    return;
+  }
+  int32_t steps = (int32_t)(utc & (uint8_t)k_fs_utc_field_mask);
+  if ((steps & 0x40) != 0) {
+    steps -= 128;
+  }
+  const int32_t minutes = steps * (int32_t)k_fs_utc_step_min;
+  if (minutes < (int32_t)k_fs_utc_span_min) {
+    return;
+  }
+  if (minutes > (int32_t)k_fs_utc_span_max) {
+    return;
+  }
+  out->value.utc_offset_min = (int16_t)minutes;
+  out->utc_offset_valid     = true;
+}
+
+/**
+ * @brief Decode all three timestamp fields from one FAT directory entry.
+ *
+ * @details Maps creation, modification, and date-only access fields into the
+ *          corresponding public stat timestamps without mutating the entry.
+ *
+ * @param[in]  entry FAT directory entry of at least 32 bytes.
+ * @param[out] out   Stat result receiving the three timestamps.
+ *
+ * @return Nothing.
+ * @pre @p entry is non-NULL and readable for one directory entry.
+ * @pre @p out is non-NULL and writable.
+ * @post All three timestamp members have been assigned.
+ * @post No non-timestamp stat member is modified.
+ * @note Pure decode; invalid foreign fields remain representable as invalid.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void priv_stat_fat_times(const uint8_t* entry, ra8_fs_stat_t* out)
+{
+  priv_stat_decode_fat(priv_rd16(&entry[k_dir_off_crt_date]),
+                       priv_rd16(&entry[k_dir_off_crt_time]),
+                       entry[k_dir_off_crt_time_tenth],
+                       true,
+                       &out->created);
+  priv_stat_decode_fat(priv_rd16(&entry[k_dir_off_wrt_date]),
+                       priv_rd16(&entry[k_dir_off_wrt_time]),
+                       0U,
+                       false,
+                       &out->modified);
+  priv_stat_decode_fat(priv_rd16(&entry[k_dir_off_lst_acc_date]), 0U, 0U, false, &out->accessed);
+}
+
+/**
+ * @brief Decode all three timestamp fields from one exFAT File entry.
+ *
+ * @details Maps creation, modification, and access stamps plus their UTC
+ *          markers into the corresponding public stat timestamps.
+ *
+ * @param[in]  entry exFAT File entry of at least 32 bytes.
+ * @param[out] out   Stat result receiving the three timestamps.
+ *
+ * @return Nothing.
+ * @pre @p entry is non-NULL and readable for one File entry.
+ * @pre @p out is non-NULL and writable.
+ * @post All three timestamp members have been assigned.
+ * @post No non-timestamp stat member is modified.
+ * @note Pure decode; an unknown UTC offset never becomes a fabricated zero offset.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void priv_stat_exfat_times(const uint8_t* entry, ra8_fs_stat_t* out)
+{
+  priv_stat_decode_exfat(priv_rd32(&entry[k_exfat_off_file_ctime]),
+                         entry[k_exfat_off_file_c10ms],
+                         true,
+                         entry[k_exfat_off_file_cutc],
+                         &out->created);
+  priv_stat_decode_exfat(priv_rd32(&entry[k_exfat_off_file_mtime]),
+                         entry[k_exfat_off_file_m10ms],
+                         true,
+                         entry[k_exfat_off_file_mutc],
+                         &out->modified);
+  priv_stat_decode_exfat(priv_rd32(&entry[k_exfat_off_file_atime]),
+                         0U,
+                         false,
+                         entry[k_exfat_off_file_autc],
+                         &out->accessed);
+}
+
+/**
  * @brief Fill in @p out for the volume root itself.
  *
  * @details The root always exists and is always a directory. Its
@@ -121,6 +319,7 @@ static void priv_entry_to_stat(const uint8_t* entry, ra8_fs_stat_t* out)
   out->is_directory  = (attr & (uint8_t)k_ra8_fs_attr_directory) != 0U;
   out->first_cluster = priv_entry_first_cluster(entry);
   out->size_bytes    = priv_rd32(&entry[k_dir_off_file_size]);
+  priv_stat_fat_times(entry, out);
   if (out->is_directory) {
     out->size_bytes = 0U;
   }
@@ -156,16 +355,32 @@ static void priv_entry_to_stat(const uint8_t* entry, ra8_fs_stat_t* out)
 RA8_INTERNAL
 static ra8_err_t priv_stat_exfat(const ra8_fs_mount_t* m, const char* path, ra8_fs_stat_t* out)
 {
-  uint8_t         strm[k_exfat_entry_bytes] = {};
-  uint8_t         attr                      = 0U;
-  const ra8_err_t err                       = priv_exfat_lookup(m, path, strm, &attr);
+  exfat_dir_t     parent = {};
+  const char*     leaf   = nullptr;
+  const ra8_err_t pe     = priv_exfat_resolve_parent(m, path, &parent, &leaf);
+  if (pe != k_ra8_ok) {
+    return pe;
+  }
+  exfat_setpos_t  pos[k_exfat_set_max_entries] = {};
+  uint32_t        count                        = 0U;
+  uint8_t         file_e[k_exfat_entry_bytes]  = {};
+  uint8_t         strm[k_exfat_entry_bytes]    = {};
+  const ra8_err_t err = priv_exfat_find_set(m,
+                                            &parent,
+                                            leaf,
+                                            pos,
+                                            (uint32_t)k_exfat_set_max_entries,
+                                            &count,
+                                            file_e,
+                                            strm);
   if (err != k_ra8_ok) {
     return err;
   }
-  out->attr          = attr;
-  out->is_directory  = (attr & (uint8_t)k_ra8_fs_attr_directory) != 0U;
+  out->attr          = file_e[k_exfat_off_file_attr];
+  out->is_directory  = (out->attr & (uint8_t)k_ra8_fs_attr_directory) != 0U;
   out->first_cluster = priv_rd32(&strm[k_exfat_strm_off_clus]);
   out->size_bytes    = priv_rd64(&strm[k_exfat_strm_off_dlen]);
+  priv_stat_exfat_times(file_e, out);
   if (out->is_directory) {
     out->size_bytes = 0U;
   }

@@ -267,7 +267,7 @@ static void test_exfat_shrink_contiguous(void)
   TEST_ASSERT_EQ(1U, xt_is_contig(h));
   expect_pat_then_zero(h, "SH.BIN", new_len, new_len, (uint8_t)k_xt_seed);
 
-  stream_dump_image("exfat_shrink_contiguous");
+  stream_dump_image("exfat_shrink_contiguous", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat truncate: contiguous shrink frees the tail");
@@ -305,7 +305,7 @@ static void test_exfat_shrink_to_zero(void)
   TEST_ASSERT_EQ(0U, xt_valid(h));
   expect_pat_then_zero(h, "Z.BIN", 0U, 0U, (uint8_t)k_xt_seed);
 
-  stream_dump_image("exfat_shrink_to_zero");
+  stream_dump_image("exfat_shrink_to_zero", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat truncate: shrink to zero frees the allocation");
@@ -348,7 +348,7 @@ static void test_exfat_grow_sparse(void)
   TEST_ASSERT_EQ(1U, xt_is_contig(h));
   expect_pat_then_zero(h, "GR.BIN", new_len, old_len, (uint8_t)k_xt_seed);
 
-  stream_dump_image("exfat_grow_sparse");
+  stream_dump_image("exfat_grow_sparse", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat truncate: grow raises DataLength, leaves ValidDataLength");
@@ -414,7 +414,7 @@ static void test_exfat_grow_chain_transition(void)
   TEST_ASSERT_EQ(0, memcmp(s_got, s_blk, sizeof s_blk));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fb));
 
-  stream_dump_image("exfat_grow_chain_transition");
+  stream_dump_image("exfat_grow_chain_transition", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat truncate: a blocked grow converts the run to a FAT chain");
@@ -471,7 +471,7 @@ static void test_exfat_shrink_chained(void)
   expect_pat_then_zero(h, "C.BIN", 2U * cb, cb, (uint8_t)k_xt_seed);
   (void)base;
 
-  stream_dump_image("exfat_shrink_chained");
+  stream_dump_image("exfat_shrink_chained", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat truncate: a chained file shrinks via the FAT-walk arm");

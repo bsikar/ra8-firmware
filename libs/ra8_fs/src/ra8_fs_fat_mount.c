@@ -546,6 +546,52 @@ static ra8_err_t priv_mount_probe_bps(const ra8_fs_backend_t* backend, ra8_fs_mo
 }
 
 /**
+ * @brief Parse a backend into temporary state and return only its format type.
+ *
+ * @param[in]  backend  Readable backend to probe.
+ * @param[out] out_type Detected filesystem type.
+ * @return Error code from argument, capacity, partition, or volume validation.
+ * @pre The library lock is held (or none is installed).
+ * @post No mount/allocator slot is claimed and the medium is not written.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+RA8_EXPECTS_LOCK("ra8_fs_lock")
+static ra8_err_t priv_probe_locked(const ra8_fs_backend_t* backend, ra8_fs_type_t* out_type)
+{
+  if (backend == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (out_type == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (backend->read_block == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (backend->get_capacity == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  ra8_fs_mount_t probe = {};
+  probe.backend        = *backend;
+  ra8_err_t err        = priv_mount_probe_bps(backend, &probe);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  err = priv_read_boot_sector(&probe, (uint8_t)k_ra8_fs_partition_auto);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (probe.type != k_ra8_fs_type_exfat) {
+    err = priv_compute_geometry(&probe);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+  }
+  *out_type = probe.type;
+  return k_ra8_ok;
+}
+
+/**
  * @brief Mount a volume -- the guarded body of ::ra8_fs_mount() and
  *        ::ra8_fs_mount_partition().
  *
@@ -699,6 +745,15 @@ ra8_err_t ra8_fs_format(const ra8_fs_backend_t* backend, const ra8_fs_format_opt
 {
   priv_lock_acquire();
   const ra8_err_t err = priv_format_locked(backend, opts);
+  priv_lock_release();
+  return err;
+}
+
+RA8_OWNS_RESOURCE("ra8_fs_lock")
+ra8_err_t ra8_fs_probe(const ra8_fs_backend_t* backend, ra8_fs_type_t* out_type)
+{
+  priv_lock_acquire();
+  const ra8_err_t err = priv_probe_locked(backend, out_type);
   priv_lock_release();
   return err;
 }

@@ -126,7 +126,7 @@ static void test_stream_create_multi_cluster(void)
     stream_set_checksum(h, (uint32_t)k_mut_root_file0_idx, (uint32_t)k_xsm_set_entries),
     stored);
 
-  stream_dump_image("stream_create_multi_cluster");
+  stream_dump_image("stream_create_multi_cluster", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: chunked create across clusters");
@@ -188,7 +188,7 @@ static void test_stream_append_extends(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
   TEST_ASSERT_EQ(k_xsm_one_entry, ctx.count);
 
-  stream_dump_image("stream_append_extends");
+  stream_dump_image("stream_append_extends", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: append resumes at DataLength");
@@ -252,7 +252,7 @@ static void test_stream_truncate_in_place(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
   TEST_ASSERT_EQ(k_xsm_one_entry, ctx.count);
 
-  stream_dump_image("stream_truncate_in_place");
+  stream_dump_image("stream_truncate_in_place", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: write mode truncates in place");
@@ -348,7 +348,7 @@ static void test_stream_seek_overwrite(void)
 
   expect_patched(h, patch_at, patch_len);
 
-  stream_dump_image("stream_seek_overwrite");
+  stream_dump_image("stream_seek_overwrite", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: seek + overwrite keeps DataLength");
@@ -422,7 +422,7 @@ static void test_stream_interleaved_handles(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
   TEST_ASSERT_EQ(k_xsm_two_entries, ctx.count);
 
-  stream_dump_image("stream_interleaved_handles");
+  stream_dump_image("stream_interleaved_handles", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: interleaved handles vs the file table");
@@ -486,7 +486,7 @@ static void test_stream_empty_file(void)
   TEST_ASSERT_EQ(0U, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  stream_dump_image("stream_empty_file");
+  stream_dump_image("stream_empty_file", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: zero-length file is created, not refused");
@@ -530,7 +530,7 @@ static void test_stream_name_guards(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
   TEST_ASSERT_EQ(0U, ctx.count);
 
-  stream_dump_image("stream_name_guards");
+  stream_dump_image("stream_name_guards", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: empty and over-long names refused");

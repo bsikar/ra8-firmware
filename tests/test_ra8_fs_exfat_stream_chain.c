@@ -260,7 +260,7 @@ static void test_stream_fragmentation_forces_chain(void)
   TEST_ASSERT_EQ(k_xs_sub_sector, blk.size_bytes);
   TEST_ASSERT_EQ(first + 1U, blk.first_cluster);
 
-  stream_dump_image("stream_fragmentation_forces_chain");
+  stream_dump_image("stream_fragmentation_forces_chain", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: blocked successor forces the FAT chain");
@@ -320,13 +320,13 @@ static void test_stream_chained_file_reads_and_frees(void)
   const uint32_t strm = stream_strm0_off(h);
   TEST_ASSERT_EQ(k_xsc_flag_chained, s_disk.bytes[strm + (uint32_t)k_xs_off_strm_flags]);
 
-  stream_dump_image("stream_chained_before_unlink");
+  stream_dump_image("stream_chained_before_unlink", h);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "FRAG.BIN"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "PIN.BIN"));
   TEST_ASSERT_EQ(empty_used, alloc_bitmap_used(h));
 
-  stream_dump_image("stream_chained_after_unlink");
+  stream_dump_image("stream_chained_after_unlink", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: a chained file frees every cluster");
@@ -392,7 +392,7 @@ static void test_stream_multi_cluster_run_materializes(void)
   expect_chain_over(h, first, total, first + owned);
   stream_expect_contents(h, "RUN.BIN", total, (uint8_t)k_xs_seed_a);
 
-  stream_dump_image("stream_multi_cluster_run_materializes");
+  stream_dump_image("stream_multi_cluster_run_materializes", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: a multi-cluster run is chained end to end");
@@ -493,7 +493,7 @@ static void test_stream_chained_backward_seek(void)
 
   expect_patched_head(h, total);
 
-  stream_dump_image("stream_chained_backward_seek");
+  stream_dump_image("stream_chained_backward_seek", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: backward seek on a chained file");
@@ -565,7 +565,7 @@ static void test_stream_crosses_bitmap_sector(void)
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(r));
 
-  stream_dump_image("stream_crosses_bitmap_sector");
+  stream_dump_image("stream_crosses_bitmap_sector", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: allocation crosses a bitmap sector");
@@ -633,7 +633,7 @@ static void test_stream_volume_full(void)
   TEST_ASSERT_EQ(k_xs_big_chunk, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(r));
 
-  stream_dump_image("stream_volume_full");
+  stream_dump_image("stream_volume_full", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: a full volume reports no_mem, file stays honest");

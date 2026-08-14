@@ -195,7 +195,7 @@ static void test_stream_read_past_valid_is_zero(void)
     }
   }
 
-  stream_dump_image("stream_read_past_valid");
+  stream_dump_image("stream_read_past_valid", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: reads past ValidDataLength are zeros");
@@ -296,7 +296,7 @@ static void test_stream_append_fills_the_gap(void)
 
   expect_three_regions(h, total);
 
-  stream_dump_image("stream_append_fills_the_gap");
+  stream_dump_image("stream_append_fills_the_gap", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: append past the prefix zero-fills the gap");
@@ -348,7 +348,7 @@ static void test_stream_inverted_lengths_clamped(void)
   TEST_ASSERT_EQ(total, disk_get_u32le(strm + (uint32_t)k_xs_off_strm_dlen));
   TEST_ASSERT_EQ(total, disk_get_u32le(strm + (uint32_t)k_xs_off_strm_valid));
 
-  stream_dump_image("stream_inverted_lengths_clamped");
+  stream_dump_image("stream_inverted_lengths_clamped", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
   TEST_END("exfat stream: an inverted ValidDataLength is clamped");
@@ -393,7 +393,7 @@ static void test_stream_oversized_set_refused(void)
 
   /* Dump BEFORE the patch: what follows is a hand-built fixture, and only the
    * driver's own output belongs in the `fsck.exfat -n` evidence. */
-  stream_dump_image("stream_oversized_set_refused");
+  stream_dump_image("stream_oversized_set_refused", h);
 
   /* Widen the set: raise SecondaryCount and fill the extra slots with real
    * Name entries. A Name entry whose characters all sit past NameLength still
@@ -454,7 +454,7 @@ static void test_stream_over_4gib_accepted(void)
                        (uint8_t)k_xs_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  stream_dump_image("stream_over_4gib_accepted");
+  stream_dump_image("stream_over_4gib_accepted", h);
 
   /* A 4 GiB+ length as another implementation would record it. */
   const uint32_t strm = stream_strm0_off(h);
@@ -519,7 +519,7 @@ static void test_stream_write_over_directory_refused(void)
                        0U,
                        (uint8_t)k_xs_seed_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  stream_dump_image("stream_write_over_directory_refused");
+  stream_dump_image("stream_write_over_directory_refused", h);
   /* There is no exFAT mkdir, so a directory is presented by flipping the
    * attribute bit on a set the driver wrote -- a fixture, hence the dump above
    * rather than below. */

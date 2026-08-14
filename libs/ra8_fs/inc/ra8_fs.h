@@ -237,6 +237,31 @@ extern "C" {
 [[nodiscard]] ra8_err_t ra8_fs_format(const ra8_fs_backend_t*     backend,
                                       const ra8_fs_format_opts_t* opts);
 
+/**
+ * @brief Identify a FAT/exFAT volume without claiming a mount slot.
+ *
+ * @details Runs the same superfloppy/MBR/GPT discovery and BPB/VBR validation
+ *          as ::ra8_fs_mount(), but parses into temporary caller-invisible
+ *          state and returns only the detected type. This is the authoritative
+ *          probe used by the pluggable format registry: partitioned exFAT is
+ *          not mistaken for an unknown format merely because LBA 0 is an MBR.
+ *
+ * @param[in]  backend  Readable block backend.
+ * @param[out] out_type Detected FAT12/16/32 or exFAT type.
+ *
+ * @retval k_ra8_ok                    A supported volume was validated.
+ * @retval k_ra8_err_null_ptr          Either argument was NULL.
+ * @retval k_ra8_err_invalid_arg       Required backend operations/capacity are invalid.
+ * @retval k_ra8_err_validation_failed No supported volume is present.
+ * @retval k_ra8_err_*                 Backend or partition-parse failure.
+ *
+ * @pre No concurrent filesystem call unless a lock is installed.
+ * @post No mount/file slot is consumed and the medium is not modified.
+ * @post On failure @p out_type is untouched.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_fs_probe(const ra8_fs_backend_t* backend, ra8_fs_type_t* out_type);
+
 /* =============================================================================
  * Public API -- mount / unmount
  * =============================================================================
@@ -542,8 +567,14 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
  * directory rather than as a zero-byte file -- which is what opening one would
  * have made it look like, `DIR_FileSize` being 0 by definition.
  *
+ * Creation, modification, and access timestamps are decoded from the same
+ * entry. FAT access time is date-only and FAT carries no UTC offset; exFAT
+ * reports its 10-ms increments and offset-valid bits. A malformed third-party
+ * stamp is returned with `timestamp.valid == false` rather than guessed.
+ *
  * A path naming the volume root (`""`, `"/"`) is answered from the mount
- * geometry: it always exists and is always a directory.
+ * geometry: it always exists and is always a directory. Because the root has
+ * no directory entry of its own, its three timestamp results are invalid.
  *
  * @param[in]  handle Mount handle.
  * @param[in]  path   NUL-terminated path. Nested paths resolve on every
@@ -564,6 +595,8 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
  * @pre Mount is in use.
  * @post On ::k_ra8_ok, `out->is_directory` matches the entry's ATTR_DIRECTORY
  *       bit and `out->size_bytes` is 0 whenever it is set.
+ * @post A non-root entry reports decoded create/modify/access metadata when its
+ *       on-disk fields are legal; the root reports all three invalid.
  * @post No volume state is modified and no file slot is consumed, on any path.
  *
  * @note Not thread-safe unless a lock is installed (see ::ra8_fs_set_lock()).
