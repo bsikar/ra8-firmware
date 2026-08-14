@@ -47,6 +47,9 @@ From a configured HIL host with the bench environment available:
 scripts/hil/camera_picture.sh camera_capture.ppm
 ```
 
+Pass `--skip-build` to reuse an existing `CAMERA_BUILD_DIR` containing the
+matching ELF and HEX, for example when the firmware was cross-built on `ssh dev`.
+
 The command builds and flashes the firmware, requires `rgb=OK` and
 `verdict=PASS`, dumps the raw CEU frame plus four firmware-produced RGB buffers
 over SWD, and saves:

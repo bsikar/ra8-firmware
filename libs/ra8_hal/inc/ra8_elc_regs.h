@@ -151,6 +151,9 @@ typedef enum : uint16_t {
                                               line 134:
                                               `ELC_EVENT_USBFS_RESUME = (0x09B)`
                                               (HUM Ch 19 Table 19.3, Ch 36). */
+  k_ra8_elc_event_pdm_dat0         = 0x0BFU, /**< PDM channel 0 data reception. */
+  k_ra8_elc_event_pdm_dat1         = 0x0C0U, /**< PDM channel 1 data reception. */
+  k_ra8_elc_event_pdm_dat2         = 0x0C1U, /**< PDM channel 2 data reception. */
   k_ra8_elc_event_usbhs_int_resume = 0x2C3U, /**< USBHS combined int + resume.
                                                  Cross-checked against
                                                  `ra/fsp/src/bsp/mcu/ra8d2/bsp_elc.h`

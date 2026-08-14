@@ -17,10 +17,12 @@
 #include <string.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_ether_regs.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
+#include "ra8_mstp.h"
 #include "ra8_pin_validator.h"
 #include "ra8_port_constants.h"
 #include "ra8_port_regs.h"
@@ -361,6 +363,29 @@ static void test_camera_pins(void)
   TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_5, k_ra8_pin_1), k_ra8_board_cam_xclk);
   TEST_ASSERT_EQ(RA8_PIN(k_ra8_port_11, k_ra8_pin_4), k_ra8_board_cam_pclk);
   TEST_END("camera pins match UM Table 35");
+}
+
+/**
+ * @brief Verify both XCLK period bounds independently control rejection.
+ * @par MC/DC:
+ * Decision: libs/ra8_board_ek_ra8d2/src/ra8_board_ek_ra8d2_camera.c@ra8_board_camera_xclk_start.
+ * The PCLKD, 1 Hz, and PCLKD/2 vectors respectively produce periods below,
+ * above, and within the accepted interval.
+ * @pre Fake MMIO and module-stop state can be reset.
+ * @post The two invalid periods are rejected and the valid period starts XCLK.
+ * @since 0.1.0
+ */
+static void test_mcdc_camera_xclk_period_bounds(void)
+{
+  TEST_BEGIN("camera XCLK period bounds");
+  reset_board_hal_state();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
+  uint32_t pclkd_hz = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_get_clock_hz(k_ra8_clock_id_pclkd, &pclkd_hz));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_camera_xclk_start(pclkd_hz));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_camera_xclk_start(1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_camera_xclk_start(pclkd_hz / 2U));
+  TEST_END("camera XCLK period bounds");
 }
 
 /**
@@ -735,6 +760,7 @@ static void (*const s_test_roster[])(void) = {
   test_glcdc_pin_tables_populated,
   test_glcdc_init_invalid_fmt,
   test_camera_pins,
+  test_mcdc_camera_xclk_period_bounds,
   test_xspi_pins,
   test_extmem_sizes,
   test_mipi_dsi_pins,

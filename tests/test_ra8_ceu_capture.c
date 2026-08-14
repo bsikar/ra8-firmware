@@ -221,6 +221,9 @@ static void test_init_data_enable_format(void)
   const uint32_t camcr = *ra8_ceu_reg32(k_ra8_ceu_off_camcr);
   TEST_ASSERT_EQ(k_ra8_ceu_fmt_data_enable,
                  ((camcr & (uint32_t)k_ra8_ceu_camcr_mask_jpg) >> k_ra8_ceu_camcr_shift_jpg));
+  TEST_ASSERT_EQ(0U, *ra8_ceu_reg32(k_ra8_ceu_off_cmcyr));
+  TEST_ASSERT_EQ(0U, *ra8_ceu_reg32(k_ra8_ceu_off_camor));
+  TEST_ASSERT_EQ(0U, *ra8_ceu_reg32(k_ra8_ceu_off_capwr));
   TEST_END("ceu init data-enable format");
 }
 

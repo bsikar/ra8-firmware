@@ -5,7 +5,7 @@
 
 .PHONY: $(RA8_FLASH) $(RA8_DEBUG) $(RA8_OZONE) $(RA8_MONITOR) monitor monitor-help flash-help debug-help ozone-help \
         hil hil-help hil-flash hil-recover hil-flash-retry hil-erase hil-dlm-reset \
-        hil-reflash hil-probe hil-find-jlink hil-all hil-c6 hil-tapo hil-ppps \
+        hil-reflash hil-probe hil-find-jlink hil-all hil-c6 hil-camera-tunnel hil-tapo hil-ppps \
         flash-ocd debug-ocd bench-status bench-selftest bench-hold bench-free \
         bench-extend bench-take bench-log bench-doctor bench-contention
 
@@ -158,6 +158,8 @@ hil-help:
 	@echo "  make hil-all                    run the full HIL suite"
 	@echo "  make hil-c6 [APP=<app>]         run the ESP32-C6 lane (needs SW4 1=OFF 2=OFF 3=ON 4=OFF"
 	@echo "                                  and the C6 harness on J26 -- see the tier README)"
+	@echo "  make hil-camera-tunnel [IP=<camera-ip>] [PORT=8080]"
+	@echo "                                  tunnel the rig-only camera UI to this machine"
 	@echo "  make hil-tapo TARGET=<board|pi|relay> CMD=<status|on|off|cycle>   board/Pi/relay power via Tapo plug"
 	@echo "  make hil-ppps CMD=<off|on|cycle [port]>   per-port USB power"
 
@@ -207,6 +209,9 @@ hil-all:
 # hw_validated/hil/, where the parity gate would rightly demand EIL coverage.
 hil-c6:
 	bash scripts/hil/all.sh --dir examples/ek_ra8d2/hw_validated/c6 $(if $(APP),--only $(APP),)
+
+hil-camera-tunnel:
+	bash scripts/hil/camera_tunnel.sh $(if $(IP),$(IP),) $(if $(PORT),$(PORT),)
 
 hil-tapo:
 	bash scripts/hil/tapo.sh $(or $(TARGET),board) $(or $(CMD),status)

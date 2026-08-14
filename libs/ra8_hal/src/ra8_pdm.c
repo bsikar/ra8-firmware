@@ -23,12 +23,27 @@
 
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_isr.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
 #include "ra8_pdm_regs.h"
 
 static const char* s_tag = "PDM";
+
+/** @brief Per-channel interrupt callback binding. */
+typedef struct {
+  ra8_pdm_data_callback_t callback; /**< Caller callback. */
+  void*                   ctx;      /**< Caller context.  */
+} pdm_stream_state_t;
+
+static pdm_stream_state_t s_streams[k_ra8_pdm_ch_count];
+
+static const ra8_elc_event_t k_pdm_data_events[k_ra8_pdm_ch_count] = {
+  k_ra8_elc_event_pdm_dat0,
+  k_ra8_elc_event_pdm_dat1,
+  k_ra8_elc_event_pdm_dat2,
+};
 
 /**
  * @enum pdm_impl_const_t
@@ -152,6 +167,42 @@ static int32_t pdm_sign_extend20(uint32_t raw)
   return (int32_t)dat;
 }
 
+/**
+ * @brief Drain one PDM FIFO threshold and dispatch its signed samples.
+ * @details Bounds the hardware-reported fill level to the FIFO depth, converts
+ *          each 20-bit word, and invokes the registered channel callback once.
+ * @param[in] ctx Encoded channel index.
+ * @pre Registered only by ::ra8_pdm_stream_enable.
+ * @pre The channel callback remains valid until stream disable completes.
+ * @post Available FIFO samples are consumed and delivered once.
+ * @post Invalid channels and unregistered callbacks return without MMIO access.
+ * @note Runs in interrupt context.
+ * @since 0.1.0
+ */
+static void pdm_data_isr(void* ctx)
+{
+  const uint8_t channel = (uint8_t)(uintptr_t)ctx;
+  if (channel >= (uint8_t)k_ra8_pdm_ch_count) {
+    return;
+  }
+  pdm_stream_state_t* stream = &s_streams[channel];
+  if (stream->callback == nullptr) {
+    return;
+  }
+  volatile r_pdm_ch_regs_t* reg   = ra8_pdm_ch(channel);
+  uint32_t                  count = reg->PDDSR & (uint32_t)k_ra8_pdm_pddsr_num_mask;
+  if (count > (uint32_t)k_ra8_pdm_fifo_depth) {
+    count = (uint32_t)k_ra8_pdm_fifo_depth;
+  }
+  int32_t samples[k_ra8_pdm_fifo_depth];
+  for (uint32_t i = 0U; i < count; ++i) {
+    samples[i] = pdm_sign_extend20(reg->PDDRR);
+  }
+  if (count != 0U) {
+    stream->callback(stream->ctx, samples, count);
+  }
+}
+
 ra8_err_t ra8_pdm_init(void)
 {
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_pdmif);
@@ -234,9 +285,48 @@ ra8_err_t ra8_pdm_read(uint8_t ch, int32_t* out, uint32_t max, uint32_t* out_cou
   return k_ra8_ok;
 }
 
+ra8_err_t
+ra8_pdm_stream_enable(uint8_t ch, ra8_pdm_data_callback_t callback, void* ctx, uint8_t priority)
+{
+  RA8_CHECK_NULL_PTR(callback, s_tag, "callback must not be nullptr");
+  RA8_CHECK_RANGE_TAG(ch, 0, (uint8_t)k_ra8_pdm_ch_count - 1U, k_ra8_err_invalid_arg, s_tag);
+  if (s_streams[ch].callback != nullptr) {
+    return k_ra8_err_exists;
+  }
+  s_streams[ch] = (pdm_stream_state_t){.callback = callback, .ctx = ctx};
+  const ra8_err_t err =
+    ra8_isr_register(k_pdm_data_events[ch], pdm_data_isr, (void*)(uintptr_t)ch, priority, nullptr);
+  if (err != k_ra8_ok) {
+    s_streams[ch] = (pdm_stream_state_t){};
+    return err;
+  }
+  ra8_pdm_ch(ch)->PDICR |= (uint32_t)k_ra8_pdm_pdicr_idre;
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_pdm_stream_disable(uint8_t ch)
+{
+  RA8_CHECK_RANGE_TAG(ch, 0, (uint8_t)k_ra8_pdm_ch_count - 1U, k_ra8_err_invalid_arg, s_tag);
+  if (s_streams[ch].callback == nullptr) {
+    return k_ra8_err_not_initialized;
+  }
+  ra8_pdm_ch(ch)->PDICR &= ~(uint32_t)k_ra8_pdm_pdicr_idre;
+  const ra8_err_t err = ra8_isr_unregister(k_pdm_data_events[ch]);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  s_streams[ch] = (pdm_stream_state_t){};
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_pdm_stop(uint8_t ch)
 {
   RA8_CHECK_RANGE_TAG(ch, 0, (uint8_t)k_ra8_pdm_ch_count - 1U, k_ra8_err_invalid_arg, s_tag);
+
+  if (s_streams[ch].callback != nullptr) {
+    const ra8_err_t stream_err = ra8_pdm_stream_disable(ch);
+    RA8_RETURN_ON_ERROR(stream_err, s_tag, "pdm_stop: stream disable");
+  }
 
   /* HUM Ch 49.2.63 "PDDRCRCHn : Data Read Control Register" p 3227 */
   ra8_pdm_ch(ch)->PDDRCR = 0U;

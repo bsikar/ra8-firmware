@@ -1,16 +1,14 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/camera_capture/src/cam_ceu.c
- * @brief CEU parallel (DVP) capture: DVP pin routing, open, arm/poll, buffer.
+ * @brief GPIO activity diagnostic for the J35 parallel DVP camera signals.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Implements the Capture Engine Unit half of the camera self-test declared in
- * `cam_ceu.h`. Owns the 11-entry DVP pin map, the VGA YUV422 open-time
- * descriptor, the cache-line-aligned packed-frame capture buffer, and the arm +
- * bounded-poll capture wrapper. The raw `ra8_ceu_*` driver is wrapped so the
- * app never touches the ::ra8_ceu_config_t descriptor.
+ * Owns only the 11-entry GPIO pin map and bounded signal-activity sampler used
+ * by the HIL diagnostics. The reusable `ra8_camera_source_ceu` backend owns CEU
+ * dispatch while the application supplies its state and DMA buffer.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -21,41 +19,19 @@
 
 #include <stdint.h>
 
-#include "ra8_cache.h"
-#include "ra8_ceu.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_port_regs.h"
 #include "ra8_port_utils.h"
 #include "ra8_systick.h"
-#include "ra8_time.h"
 
 /* =============================================================================
- * CEU capture constants (typed enums -- no magic numbers)
+ * DVP diagnostic constants (typed enums -- no magic numbers)
  * =============================================================================
  */
 
-/** @brief VGA capture geometry the CEU descriptor is built from. */
-typedef enum : uint16_t {
-  k_cam_width_px   = 640U,  /**< Captured frame width (VGA).  */
-  k_cam_height_px  = 480U,  /**< Captured frame height (VGA). */
-  k_cam_line_bytes = 1280U, /**< Bytes per packed input line. */
-} cam_ceu_geom_t;
-
-/** @brief Cache-line alignment for the CEU frame buffer. */
+/** @brief Bounded GPIO signal-activity sampling constants. */
 typedef enum : uint32_t {
-  k_cam_cache_line_bytes = 32U, /**< Cortex-M85 data-cache line size in bytes. */
-} cam_ceu_buffer_t;
-
-/** @brief Bytes-per-pixel for the packed YUV422 / RGB565 output. */
-typedef enum : uint8_t {
-  k_cam_bytes_per_px = 2U, /**< YUV422 / RGB565 -> 2 bytes/pixel. */
-} cam_ceu_px_t;
-
-/** @brief Bounded capture-completion poll (step + attempt cap). */
-typedef enum : uint32_t {
-  k_cam_capture_poll_ms = 5U,       /**< Poll step while awaiting CETCR.CPE.       */
-  k_cam_capture_tries   = 800U,     /**< Bounded capture wait (~4 s at slow PCLK). */
   k_cam_sync_samples    = 2000000U, /**< GPIO samples for live-sync diagnostic.    */
   k_cam_data_d2_pin_bit = 5U,       /**< P405 bit position for camera D2.          */
   k_cam_data_d5_out_bit = 5U,       /**< Reconstructed byte bit for camera D5.     */
@@ -115,97 +91,6 @@ static const cam_ceu_pin_t s_ceu_pins[] = {
   {k_ra8_port_11, k_ra8_pin_3}, /* HSYNC PB03 (VIO_HD)  */
   {k_ra8_port_11, k_ra8_pin_4}, /* PCLK  PB04 (VIO_CLK) */
 };
-
-/**
- * @var s_frame
- * @brief Capture target for one VGA packed YCbCr 4:2:2 frame (internal SRAM).
- * @details Cache-line aligned so CEU writes can be invalidated without
- *          dropping unrelated dirty bytes from adjacent objects. This also
- *          exceeds the 8-byte CDAYR alignment required by HUM Ch 60.2.13.
- * @warning Written by the CEU bus initiator; do not touch mid-capture.
- * @since 0.1.0
- */
-alignas(k_cam_cache_line_bytes) static uint8_t s_frame[k_cam_frame_bytes];
-static uint32_t s_capture_bytes;
-
-/* =============================================================================
- * CEU descriptor
- * =============================================================================
- */
-
-/**
- * @brief Fill the CEU open-time descriptor for a VGA YUV422 raw grab.
- *
- * @param[out] cfg Descriptor to populate.
- * @return ra8_err_t; ok on a valid fill.
- * @retval k_ra8_ok Descriptor populated.
- * @retval k_ra8_err_null_ptr `cfg` was NULL.
- *
- * @pre `cfg` is non-NULL.
- * @pre The sensor DVP timing matches VGA / 2 bytes-per-pixel.
- * @post `cfg` requests a single-shot data-synchronous 8-bit capture.
- * @post `cfg->dst_stride` equals the packed byte width of one output line.
- * @note Thread safety: pure population of `*cfg`.
- * @since 0.1.0
- */
-static ra8_err_t cam_fill_ceu_config(ra8_ceu_config_t* cfg)
-{
-  RA8_CHECK_NULL_PTR(cfg, "cam", "ceu_cfg");
-  const ra8_ceu_config_t seed = {
-    .width_px        = (uint16_t)k_cam_width_px,
-    .height_px       = (uint16_t)k_cam_height_px,
-    .x_start_px      = 0U,
-    .y_start_px      = 0U,
-    .x_capture_px    = (uint16_t)k_cam_line_bytes,
-    .y_capture_lines = (uint16_t)k_cam_height_px,
-    .dst_stride      = (uint16_t)k_cam_line_bytes,
-    .frame_drop      = 0U,
-    .bytes_per_pixel = (uint8_t)k_cam_bytes_per_px,
-    .interrupts      = 0U,
-    .capture_format  = k_ra8_ceu_fmt_data_synchronous,
-    .capture_mode    = k_ra8_ceu_capture_single,
-    .data_bus        = k_ra8_ceu_bus_8_bit,
-    .hsync_polarity  = k_ra8_ceu_pol_high_active,
-    .vsync_polarity  = k_ra8_ceu_pol_high_active,
-    .field_polarity  = k_ra8_ceu_pol_high_active,
-    .input_order     = k_ra8_ceu_input_cb0_y0_cr0_y1,
-    .output_format   = k_ra8_ceu_output_ycbcr_422,
-    .burst_mode      = k_ra8_ceu_burst_32,
-    .first_field     = k_ra8_ceu_field_immediate,
-    .edge            = {k_ra8_ceu_edge_rising,
-                        k_ra8_ceu_edge_rising,
-                        k_ra8_ceu_edge_rising,
-                        k_ra8_ceu_edge_rising},
-    .byte_swap       = {false, true, true},
-    .scale           = {0U, 0U, 0U, 0U, (uint16_t)k_cam_width_px, (uint16_t)k_cam_height_px},
-    .interlace       = false,
-    .one_field_only  = false,
-    .bundle_write    = false,
-    .low_pass_filter = false,
-    .image_area_size = 0U,
-  };
-  *cfg = seed;
-  return k_ra8_ok;
-}
-
-/* =============================================================================
- * Capture pipeline (public -- contracts in cam_ceu.h)
- * =============================================================================
- */
-
-ra8_err_t cam_route_ceu_pins(void)
-{
-  const uint32_t count = (uint32_t)(sizeof(s_ceu_pins) / sizeof(s_ceu_pins[0]));
-  RA8_CHECK_RANGE(count, 1U, 32U, k_ra8_err_invalid_arg);
-  for (uint32_t i = 0U; i < count; i += 1U) {
-    const ra8_port_pin_t pin = RA8_PIN(s_ceu_pins[i].port, s_ceu_pins[i].pin);
-    const ra8_err_t      err = ra8_pfs_route_peripheral(pin, k_ra8_psel_ceu, "cam.ceu");
-    if (err != k_ra8_ok) {
-      return err;
-    }
-  }
-  return k_ra8_ok;
-}
 
 /**
  * @brief Release a bounded prefix of the temporary camera GPIO claims.
@@ -550,72 +435,4 @@ ra8_err_t cam_probe_sync_activity(cam_ceu_sync_probe_t* out_probe)
   }
   cam_release_probe_pins((uint32_t)(sizeof(s_ceu_pins) / sizeof(s_ceu_pins[0])));
   return err;
-}
-
-ra8_err_t cam_ceu_setup(void)
-{
-  ra8_ceu_config_t cfg = {};
-  ra8_err_t        err = cam_fill_ceu_config(&cfg);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_ceu_init(&cfg);
-}
-
-ra8_err_t cam_capture_one(void)
-{
-  s_capture_bytes = 0U;
-  ra8_err_t err   = ra8_cache_dcache_clean_invalidate_by_addr(s_frame, (uint32_t)k_cam_frame_bytes);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const ra8_ceu_buffers_t buffers = {
-    .y_top             = s_frame,
-    .c_top             = nullptr,
-    .y_bottom          = nullptr,
-    .c_bottom          = nullptr,
-    .y_top_2           = nullptr,
-    .c_top_2           = nullptr,
-    .y_bottom_2        = nullptr,
-    .c_bottom_2        = nullptr,
-    .bundle_size_bytes = 0U,
-  };
-  err = ra8_ceu_capture_start_ex(&buffers);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  for (uint32_t i = 0U; i < (uint32_t)k_cam_capture_tries; i += 1U) {
-    uint32_t evt = 0U;
-    err          = ra8_ceu_get_status(&evt);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if ((evt & (uint32_t)k_ra8_ceu_evt_cpe) != 0U) {
-      err = ra8_cache_dcache_invalidate_by_addr(s_frame, (uint32_t)k_cam_frame_bytes);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      s_capture_bytes = (uint32_t)k_cam_frame_bytes;
-      (void)ra8_ceu_clear_status((uint32_t)k_ra8_ceu_evt_cpe);
-      return k_ra8_ok;
-    }
-    ra8_delay_ms((uint32_t)k_cam_capture_poll_ms);
-  }
-  return k_ra8_err_hw_timeout;
-}
-
-ra8_err_t cam_ceu_get_status(uint32_t* out_evt)
-{
-  RA8_CHECK_NULL_PTR(out_evt, "cam", "ceu_status");
-  return ra8_ceu_get_status(out_evt);
-}
-
-const uint8_t* cam_ceu_frame(void)
-{
-  return s_frame;
-}
-
-uint32_t cam_ceu_capture_bytes(void)
-{
-  return s_capture_bytes;
 }

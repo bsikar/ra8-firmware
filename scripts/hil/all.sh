@@ -90,6 +90,8 @@
 #   HIL_MODE=c6_camera_livestream
 #     HIL_SELF_BUILD=1              -- build in a temporary credential-bearing
 #                                      tree owned by the dedicated verifier
+#     HIL_FRAME_WIDTH=320            -- decoded still-frame width
+#     HIL_FRAME_HEIGHT=240           -- decoded still-frame height
 #     Runs the combined OV5640 + ESP32-C6 HTTP/JPEG end-to-end verifier.
 #
 # Usage:
@@ -344,7 +346,11 @@ run_rtt_scrape() {
 }
 
 run_c6_camera_livestream() {
-  bash "${REPO_ROOT}/scripts/hil/camera_livestream.sh"
+  local app="$1"
+  bash "${REPO_ROOT}/scripts/hil/camera_livestream.sh" \
+    --app-dir "${HIL_DIR}/${app}" \
+    --width "${HIL_FRAME_WIDTH:-320}" \
+    --height "${HIL_FRAME_HEIGHT:-240}"
 }
 
 declare -i pass=0 fail=0 skipped=0

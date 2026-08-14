@@ -46,6 +46,7 @@ appears within the per-app timeout its `hil.conf` declares.
 | elc_event_demo | `elc: en=` | 10 s |
 | eth_loopback | `etha: loopback ok` | 20 s |
 | iwdt_demo | `iwdt: refresh in window` | 15 s |
+| pdm_mic_demo | `pdm: verdict=PASS active=Y` | 12 s |
 | sdram_benchmark | `sdram: w=` | 20 s |
 | threadx_fs_demo | `ospi FAT roundtrip ok` | 20 s |
 | threadx_ipc_demo | `[ipc_demo]` | 15 s |

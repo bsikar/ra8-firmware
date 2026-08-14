@@ -1,7 +1,9 @@
 # pdm_mic_demo
 
 Capture + plausibility demo for the EK-RA8D2 on-board SPH0690 PDM MEMS
-microphones, driving the `ra8_pdm` (PDM-IF) driver. Closes gap issue #129.
+microphones through the caller-owned `ra8_audio` facade and its `ra8_pdm`
+backend. The board layer owns SPH0690 pins/filter policy; the app owns source
+state and PCM storage. Closes gap issue #129.
 
 The app brings up PDM-IF channel 2, captures 20-bit PCM windows, computes
 AC RMS / peak / span and prints a plausibility verdict scraped by
@@ -14,13 +16,13 @@ pdm: rms=598 peak=3120 mean=-2 span=5904 vary=180 active=Y
 ...
 ```
 
-`active=Y` means the captured audio is non-degenerate (not a stuck DC
-constant, not all-zero) and carries plausible acoustic energy
+`active=Y` means at least one captured validation window is non-degenerate (not
+a stuck DC constant, not all-zero) and carries plausible acoustic energy
 (`span >= 8` and `rms >= 16` LSB of the +-524288 full scale). A dead line
 would print `active=N`, and a non-toggling PDM clock would print
-`pdm: no data (FIFO empty) -- clock/mic?`. Make noise or tap near the
-underside mics and `rms` / `peak` track it; the streamed `vary` is the
-RMS spread seen across the first measurement sweep.
+`pdm: no data (FIFO empty) -- clock/mic?`. The reported `vary` is the RMS spread
+across the validation sweep. After the terminal verdict, firmware parks in a
+low-power wait loop so HIL and EIL observe one stable result.
 
 The verdict is also latched in the J-Link-probable global
 `g_pdm_mic_result` (`magic` = `0x50444D31` once the first window
@@ -54,21 +56,21 @@ PDMIFCLK = MOCO 8 MHz
 
 Decimation combo is a HUM Table 49.7 row (order 4). The filter
 coefficients are the RA8D2 reset-default SPH0690 set (HUM Ch 49.2
-register reset values), written explicitly in `k_pdm_demo_cfg`.
+register reset values), owned by the EK-RA8D2 PDM board adapter.
 
 ## Build / run
 
 ```
-cd examples/ek_ra8d2/hw_pending/pdm_mic_demo
+cd examples/ek_ra8d2/hw_validated/hil/pdm_mic_demo
 make                 # -> build/pdm_mic_demo.elf / .hex
-bash ../../../../scripts/hil/flash.sh pdm_mic_demo
+bash ../../../../../scripts/hil/flash.sh pdm_mic_demo
 # scrape SCI8 console @115200:
 ssh star 'stty -F /dev/ttyACM0 115200 raw -echo; timeout 8 cat /dev/ttyACM0 | grep -a "pdm: rms="'
 ```
 
 ## Status
 
-`hw_pending`: builds for the target and is driven end-to-end against the
-`ra8_pdm` register model in the host test (`tests/test_ra8_pdm.c`). Promote
-to `hw_validated/hil` once the `pdm: rms=... active=Y` banner is confirmed
-on a bench EK-RA8D2.
+`hw_validated/hil`: the strict `pdm: verdict=PASS active=Y` result is confirmed
+on the bench EK-RA8D2 and in `ra8_emulator`. The HIL manifest rejects a terminal inactive,
+empty, initialization-failure, and HardFault results; the EIL run exercises the
+same manifest against the PDM register model.

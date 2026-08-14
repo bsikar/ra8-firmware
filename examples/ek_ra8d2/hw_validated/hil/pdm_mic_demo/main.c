@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/pdm_mic_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/pdm_mic_demo/main.c
  * @brief PDM MEMS microphone capture + plausibility demo (SPH0690 / ch 2)
  *
  * @par Tag
@@ -25,13 +25,13 @@
  * Flow:
  *   1. ra8_cgc_init / ra8_mstp_init / ra8_time_init (system runs on MOCO).
  *   2. Route P812/P502 to the PDM function; bring up the SCI8 console.
- *   3. ra8_pdm_init + ra8_pdm_configure(ch2) + ra8_pdm_start(ch2).
- *   4. Wait mic wake-up + filter settling; ra8_pdm_read_enable.
- *   5. Discard the filter transient, then capture windows of PCM.
+ *   3. Query board-owned SPH0690 policy and bind `ra8_audio_source_pdm`.
+ *   4. The backend starts PDM-IF, settles, and discards the filter transient.
+ *   5. Capture caller-owned fixed-size PCM frames through `ra8_audio`.
  *   6. Compute AC RMS / peak / span and a plausibility verdict, print
  *      the banner `pdm: rms=NNN peak=NNN active=Y` (scraped by hil.conf)
  *      and publish it in the J-Link-probable ::g_pdm_mic_result.
- *   7. Keep streaming live windows so a tap near the mic is visible.
+ *   7. Latch the PASS verdict and park in a low-power wait loop.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -40,13 +40,12 @@
 
 #include <stdint.h>
 
+#include "ra8_audio.h"
+#include "ra8_audio_source_pdm.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_mstp.h"
-#include "ra8_pdm.h"
-#include "ra8_port_constants.h"
-#include "ra8_port_utils.h"
 #include "ra8_time.h"
 
 /* =============================================================================
@@ -60,10 +59,9 @@ typedef enum : uint32_t {
   k_pdm_demo_decimal    = 10U,     /**< Radix for integer-to-ASCII.              */
   k_pdm_demo_settle_ms  = 300U,    /**< Mic wake-up + filter settle delay.       */
   k_pdm_demo_window     = 256U,    /**< PCM samples per analysis window.         */
-  k_pdm_demo_discard    = 4U,      /**< Transient windows discarded up front.    */
+  k_pdm_demo_discard    = 1024U,   /**< Transient samples discarded up front.    */
   k_pdm_demo_report_win = 8U,      /**< Windows swept for the verdict banner.    */
   k_pdm_demo_poll_max   = 500000U, /**< Bounded capture poll retries (dead-mic). */
-  k_pdm_demo_live_ms    = 200U,    /**< Delay between live streaming windows.    */
 } pdm_demo_const_t;
 
 /** @brief Plausibility thresholds (20-bit signed full scale = +-524288). */
@@ -82,58 +80,6 @@ typedef enum : uint32_t {
   k_pdm_isqrt_steps = 32U, /**< 32 two-bit steps span a 64-bit radicand.  */
   k_pdm_isqrt_top2  = 62U, /**< Shift to the top 2 bits of a 64-bit word. */
 } pdm_isqrt_const_t;
-
-/** @brief PDM channel the EK-RA8D2 SPH0690 mics are wired to. */
-static const uint8_t k_pdm_demo_channel = (uint8_t)k_ra8_pdm_ch2;
-
-/** @brief PDMCLK2 pin: P812 (SPH0690 CLOCK). */
-static const ra8_port_pin_t k_pdm_demo_pin_clk = RA8_PIN(k_ra8_port_8, k_ra8_pin_12);
-/** @brief PDMDAT2 pin: P502 (SPH0690 DATA). */
-static const ra8_port_pin_t k_pdm_demo_pin_dat = RA8_PIN(k_ra8_port_5, k_ra8_pin_2);
-
-/**
- * @brief Channel-2 configuration: 4th-order sinc, 4 MHz clock, 16 kHz out.
- *
- * @details
- * Decimation from HUM Table 49.7 (sinc order 4, CKDIV 0 -> PDM_CLK 4 MHz,
- * SINCDEC 0x7C -> M=125, SINCRNG 0x05). Coefficients are the RA8D2
- * reset-default SPH0690 filter set (HUM Ch 49.2 reset values).
- */
-/* The decimation codes (SINCDEC/SINCRNG) are a HUM Table 49.7 row and the FIR
- * coefficients are the RA8D2 reset-default SPH0690 filter set (HUM Ch 49.2
- * register reset values) -- a hardware data table, not tunable constants. */
-/* NOLINTBEGIN(readability-magic-numbers) -- HUM Table 49.7 decimation row + reset-default filter coefficients. */
-static const ra8_pdm_channel_cfg_t k_pdm_demo_cfg = {
-  .sinc_order   = 4U,
-  .clock_div    = 0U,
-  .sinc_dec     = 0x7CU,
-  .sinc_range   = 0x05U,
-  .data_shift   = 0U,
-  .edge         = 0U,
-  .hpf_shift    = 0U,
-  .cf_shift     = 0U,
-  .lpf_shift    = 0U,
-  .rx_threshold = 4U,
-  .hpf_s0       = 0x3F61U,
-  .hpf_k1       = 0x3EC1U,
-  .hpf_h        = {0x4000U, 0xC000U},
-  .comp_h       = {0x1FE8U,
-                   0x0039U,
-                   0x003CU,
-                   0x1E56U,
-                   0x01DCU,
-                   0x06E1U,
-                   0x01DCU,
-                   0x1E56U,
-                   0x003CU,
-                   0x0039U,
-                   0x1FE8U},
-  .lpf_h0       = 0x0400U,
-  .lpf_h1       = {0x1FF8U, 0x000AU, 0x1FF0U, 0x0018U, 0x1FDCU, 0x0034U, 0x1FB3U,
-                   0x0076U, 0x1F2EU, 0x0289U, 0x0289U, 0x1F2EU, 0x0076U, 0x1FB3U,
-                   0x0034U, 0x1FDCU, 0x0018U, 0x1FF0U, 0x000AU, 0x1FF8U},
-};
-/* NOLINTEND(readability-magic-numbers) */
 
 /* =============================================================================
  * Captured-window metrics + J-Link-probable result
@@ -169,6 +115,8 @@ typedef struct {
   volatile uint32_t samples; /**< Samples in the latest window.              */
   volatile uint32_t active;  /**< 1 = plausible live audio, 0 = degenerate.  */
   volatile uint32_t windows; /**< Windows captured so far.                   */
+  /** @brief Latest frame capture-start timestamp. */
+  volatile uint32_t timestamp_ms;
 } pdm_mic_result_t;
 
 /** @brief J-Link-probable capture result (read at ``&g_pdm_mic_result``). */
@@ -176,6 +124,12 @@ volatile pdm_mic_result_t g_pdm_mic_result;
 
 /** @brief Static capture buffer (kept off the stack). */
 static int32_t s_pdm_demo_buf[k_pdm_demo_window];
+
+/** @brief Generic caller-owned audio source handle. */
+static ra8_audio_source_t s_pdm_demo_source;
+
+/** @brief Caller-owned PDM backend state. */
+static ra8_audio_source_pdm_state_t s_pdm_demo_source_state;
 
 /** @brief Result magic marker ('PDM1'). */
 typedef enum : uint32_t {
@@ -187,9 +141,11 @@ typedef enum : uint32_t {
  * =============================================================================
  */
 
-static const uint8_t k_pdm_demo_banner_init[]  = "pdm: init ch=2 clk=4mhz fs=16khz\r\n";
-static const uint8_t k_pdm_demo_banner_fail[]  = "pdm: init FAIL\r\n";
-static const uint8_t k_pdm_demo_banner_nodat[] = "pdm: no data (FIFO empty) -- clock/mic?\r\n";
+static const uint8_t k_pdm_demo_banner_init[]     = "pdm: init ch=2 clk=4mhz fs=16khz\r\n";
+static const uint8_t k_pdm_demo_banner_fail[]     = "pdm: init FAIL\r\n";
+static const uint8_t k_pdm_demo_banner_nodat[]    = "pdm: no data (FIFO empty) -- clock/mic?\r\n";
+static const uint8_t k_pdm_demo_banner_pass[]     = "pdm: verdict=PASS active=Y\r\n";
+static const uint8_t k_pdm_demo_banner_inactive[] = "pdm: verdict=FAIL active=N\r\n";
 
 /* =============================================================================
  * Halt + tiny serialisers
@@ -227,6 +183,7 @@ static void pdm_demo_panic_halt(void)
  * @param[out] out   Destination buffer (>= 12 bytes, non-NULL).
  *
  * @return Number of bytes written (excluding the NUL).
+ * @retval uint32_t Decimal character count excluding the terminator.
  *
  * @pre ``out`` is non-NULL.
  * @pre ``out`` has at least ::k_pdm_demo_int_str_cap bytes.
@@ -274,6 +231,7 @@ static uint32_t pdm_demo_i32_to_dec(int32_t value, uint8_t* out)
  * @param[in] value Radicand.
  *
  * @return ``floor(sqrt(value))``.
+ * @retval uint32_t Greatest integer whose square does not exceed `value`.
  *
  * @pre ``value`` is a mean-square accumulation.
  * @pre No FPU dependency is required.
@@ -304,6 +262,7 @@ static uint32_t pdm_demo_isqrt(uint64_t value)
 
 /**
  * @brief Emit a byte run over the SCI8 console.
+ * @details Forwards the exact caller span through the board console without formatting.
  *
  * @param[in] bytes Byte array (non-NULL).
  * @param[in] len   Byte count.
@@ -325,6 +284,7 @@ static void pdm_demo_tx(const uint8_t* bytes, uint32_t len)
 
 /**
  * @brief Emit ``"<label><value>"`` with a decimal integer.
+ * @details Serializes the signed value into fixed stack storage after the label.
  *
  * @param[in] label     Label bytes (non-NULL).
  * @param[in] label_len Label length.
@@ -402,10 +362,7 @@ static void pdm_demo_clocks_or_halt(void)
  */
 static void pdm_demo_io_or_halt(void)
 {
-  if (ra8_pfs_route_peripheral(k_pdm_demo_pin_clk, k_ra8_psel_pdm, "pdm_mic.clk") != k_ra8_ok) {
-    pdm_demo_panic_halt();
-  }
-  if (ra8_pfs_route_peripheral(k_pdm_demo_pin_dat, k_ra8_psel_pdm, "pdm_mic.dat") != k_ra8_ok) {
+  if (ra8_board_pdm_mic_route() != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_pdm_demo_baud) != k_ra8_ok) {
@@ -415,7 +372,7 @@ static void pdm_demo_io_or_halt(void)
 }
 
 /**
- * @brief Configure + start PDM channel 2 and enable data read.
+ * @brief Bind the on-board MIC1 through the reusable PDM audio source.
  *
  * @details Runs the HUM Ch 49.4.1 start flow with the settling delay.
  *          Prints ::k_pdm_demo_banner_fail and parks on any error.
@@ -433,20 +390,23 @@ static void pdm_demo_io_or_halt(void)
 static void pdm_demo_pdm_or_halt(void)
 {
   pdm_demo_tx(k_pdm_demo_banner_init, (uint32_t)(sizeof(k_pdm_demo_banner_init) - 1U));
-  if (ra8_pdm_init() != k_ra8_ok) {
+  ra8_board_pdm_mic_config_t board_cfg = {};
+  if (ra8_board_pdm_mic_get_config(k_ra8_board_pdm_mic1, &board_cfg) != k_ra8_ok) {
     pdm_demo_tx(k_pdm_demo_banner_fail, (uint32_t)(sizeof(k_pdm_demo_banner_fail) - 1U));
     pdm_demo_panic_halt();
   }
-  if (ra8_pdm_configure(k_pdm_demo_channel, &k_pdm_demo_cfg) != k_ra8_ok) {
-    pdm_demo_tx(k_pdm_demo_banner_fail, (uint32_t)(sizeof(k_pdm_demo_banner_fail) - 1U));
-    pdm_demo_panic_halt();
-  }
-  if (ra8_pdm_start(k_pdm_demo_channel) != k_ra8_ok) {
-    pdm_demo_tx(k_pdm_demo_banner_fail, (uint32_t)(sizeof(k_pdm_demo_banner_fail) - 1U));
-    pdm_demo_panic_halt();
-  }
-  ra8_delay_ms((uint32_t)k_pdm_demo_settle_ms);
-  if (ra8_pdm_read_enable(k_pdm_demo_channel) != k_ra8_ok) {
+  const ra8_audio_source_pdm_cfg_t source_cfg = {
+    .pdm               = board_cfg.pdm,
+    .sample_rate_hz    = board_cfg.sample_rate_hz,
+    .samples_per_frame = (uint32_t)k_pdm_demo_window,
+    .settle_ms         = (uint32_t)k_pdm_demo_settle_ms,
+    .discard_samples   = (uint32_t)k_pdm_demo_discard,
+    .poll_attempts     = (uint32_t)k_pdm_demo_poll_max,
+    .channel           = board_cfg.channel,
+    .valid_bits        = board_cfg.valid_bits,
+  };
+  if (ra8_audio_source_pdm_init(&s_pdm_demo_source, &s_pdm_demo_source_state, &source_cfg) !=
+      k_ra8_ok) {
     pdm_demo_tx(k_pdm_demo_banner_fail, (uint32_t)(sizeof(k_pdm_demo_banner_fail) - 1U));
     pdm_demo_panic_halt();
   }
@@ -456,42 +416,6 @@ static void pdm_demo_pdm_or_halt(void)
  * Capture + analysis
  * =============================================================================
  */
-
-/**
- * @brief Poll-fill @p want PCM samples into @p buf.
- *
- * @details Drains the PDM FIFO in bursts until full or the poll budget
- *          (::k_pdm_demo_poll_max) expires -- the latter only if no clock
- *          is toggling on the mic.
- *
- * @param[out] buf  Destination buffer (>= @p want, non-NULL).
- * @param[in]  want Samples requested (>0).
- *
- * @return Number of samples actually captured (0 on a dead FIFO).
- *
- * @pre ::ra8_pdm_read_enable succeeded.
- * @pre ``buf`` has room for ``want`` samples.
- * @post The return value is in ``[0, want]``.
- * @post ``buf[0..return-1]`` hold live PCM.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static uint32_t pdm_demo_capture(int32_t* buf, uint32_t want)
-{
-  uint32_t filled = 0U;
-  for (uint32_t tries = 0U; tries < (uint32_t)k_pdm_demo_poll_max; ++tries) {
-    if (filled >= want) {
-      break;
-    }
-    uint32_t got = 0U;
-    if (ra8_pdm_read(k_pdm_demo_channel, &buf[filled], want - filled, &got) != k_ra8_ok) {
-      break;
-    }
-    filled += got;
-  }
-  return filled;
-}
 
 /**
  * @brief Compute min/max/mean/peak/RMS for a captured window.
@@ -552,6 +476,8 @@ static void pdm_demo_analyze(const int32_t* buf, uint32_t n, pdm_metrics_t* m)
  * @param[in] m Window metrics (non-NULL).
  *
  * @return ``true`` if the window is plausible live audio.
+ * @retval true The span and RMS meet their configured floors.
+ * @retval false At least one activity threshold was not met.
  *
  * @pre ``m`` was filled by ::pdm_demo_analyze.
  * @pre ``m->n`` is greater than zero.
@@ -574,6 +500,7 @@ static bool pdm_demo_is_active(const pdm_metrics_t* m)
 
 /**
  * @brief Print a per-window detail line and latch ::g_pdm_mic_result.
+ * @details Emits each metric as a bounded decimal field before updating the SWD result object.
  *
  * @param[in] m      Window metrics (non-NULL).
  * @param[in] vary   RMS spread across the report sweep so far.
@@ -633,6 +560,8 @@ static void pdm_demo_publish(const pdm_metrics_t* m, int32_t vary, bool active)
  * @param[in,out] out_m Receives the window metrics (non-NULL).
  *
  * @return ``true`` if a window was captured and analysed.
+ * @retval true Capture, analysis, and publication completed.
+ * @retval false The audio source did not provide a frame.
  *
  * @pre The PDM channel is running with data read enabled.
  * @pre ``out_m`` is non-NULL.
@@ -644,14 +573,19 @@ static void pdm_demo_publish(const pdm_metrics_t* m, int32_t vary, bool active)
  */
 static bool pdm_demo_run_window(int32_t vary, pdm_metrics_t* out_m)
 {
-  const uint32_t got = pdm_demo_capture(s_pdm_demo_buf, (uint32_t)k_pdm_demo_window);
-  if (got == 0U) {
+  const ra8_audio_buffer_t buffer = {
+    .data     = s_pdm_demo_buf,
+    .capacity = (uint32_t)sizeof(s_pdm_demo_buf),
+  };
+  ra8_audio_frame_t frame = {};
+  if (ra8_audio_source_capture(&s_pdm_demo_source, &buffer, &frame) != k_ra8_ok) {
     pdm_demo_tx(k_pdm_demo_banner_nodat, (uint32_t)(sizeof(k_pdm_demo_banner_nodat) - 1U));
     return false;
   }
-  pdm_demo_analyze(s_pdm_demo_buf, got, out_m);
+  pdm_demo_analyze(s_pdm_demo_buf, frame.sample_count, out_m);
   const bool active = pdm_demo_is_active(out_m);
   pdm_demo_publish(out_m, vary, active);
+  g_pdm_mic_result.timestamp_ms = frame.timestamp_ms;
   return true;
 }
 
@@ -669,8 +603,8 @@ static bool pdm_demo_run_window(int32_t vary, pdm_metrics_t* out_m)
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU and priority grouping.
- * @post The verdict banner is printed and streaming continues.
- * @post ::g_pdm_mic_result carries the latest verdict.
+ * @post The verdict banner is printed and remains the terminal UART line.
+ * @post ::g_pdm_mic_result carries the validated capture result.
  *
  * @since 0.1.0
  */
@@ -680,15 +614,11 @@ int32_t main(void)
   pdm_demo_io_or_halt();
   pdm_demo_pdm_or_halt();
 
-  /* Flush the sinc/high-pass filter transient before measuring. */
   pdm_metrics_t m = {};
-  for (uint32_t i = 0U; i < (uint32_t)k_pdm_demo_discard; ++i) {
-    (void)pdm_demo_capture(s_pdm_demo_buf, (uint32_t)k_pdm_demo_window);
-  }
-
   /* Sweep windows for the verdict, tracking the RMS spread. */
-  int32_t rms_lo = INT32_MAX;
-  int32_t rms_hi = 0;
+  int32_t  rms_lo         = INT32_MAX;
+  int32_t  rms_hi         = 0;
+  uint32_t active_windows = 0U;
   for (uint32_t w = 0U; w < (uint32_t)k_pdm_demo_report_win; ++w) {
     const int32_t vary = (rms_hi > rms_lo) ? (rms_hi - rms_lo) : 0;
     if (!pdm_demo_run_window(vary, &m)) {
@@ -696,15 +626,15 @@ int32_t main(void)
     }
     rms_lo = (m.rms < rms_lo) ? m.rms : rms_lo;
     rms_hi = (m.rms > rms_hi) ? m.rms : rms_hi;
+    active_windows += (g_pdm_mic_result.active != 0U) ? 1U : 0U;
   }
-
-  /* Live stream so a tap near the underside mics is visible on the wire. */
-  const int32_t vary = (rms_hi > rms_lo) ? (rms_hi - rms_lo) : 0;
+  if (active_windows == 0U) {
+    pdm_demo_tx(k_pdm_demo_banner_inactive, (uint32_t)(sizeof(k_pdm_demo_banner_inactive) - 1U));
+    pdm_demo_panic_halt();
+  }
+  pdm_demo_tx(k_pdm_demo_banner_pass, (uint32_t)(sizeof(k_pdm_demo_banner_pass) - 1U));
   while (1) {
-    if (pdm_demo_run_window(vary, &m)) {
-      (void)ra8_board_led_toggle(k_ra8_board_led1);
-    }
-    ra8_delay_ms((uint32_t)k_pdm_demo_live_ms);
+    __asm__ volatile("wfi");
   }
 
   pdm_demo_panic_halt();

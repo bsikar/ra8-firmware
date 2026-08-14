@@ -7,7 +7,7 @@ code).
 
 ## Summary
 
-- Total functions audited: 7692
+- Total functions audited: 7764
 - Functions with gaps: 1248
 - Total missing-tag instances: 7979
 

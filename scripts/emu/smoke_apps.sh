@@ -263,34 +263,8 @@ book_sd_image=""
 # or mkfontimg is unavailable (the gate then fails loudly, as a missing card is a
 # real setup error for this app).
 build_book_sd_image() {
-  local fixture="$ROOT/examples/ek_ra8d2/hw_pending/import_reader/fixtures/book_src"
-  local mk="$ROOT/tools/mkfontimg"
-  local epub
-  [ -d "$fixture" ] || return 0
-  cmake -B "$mk/build" -S "$mk" >/dev/null 2>&1 || return 0
-  cmake --build "$mk/build" >/dev/null 2>&1 || return 0
-  epub="$(mktemp -t ra8_emulator_book.XXXXXX.epub)"
-  if ! python3 - "$fixture" "$epub" <<'PY'; then
-import sys, zipfile
-from pathlib import Path
-
-src, out = Path(sys.argv[1]), sys.argv[2]
-epoch = (1980, 1, 1, 0, 0, 0)  # fixed timestamp -> byte-deterministic .epub
-with zipfile.ZipFile(out, "w") as zf:
-    mt = zipfile.ZipInfo("mimetype", epoch)
-    mt.compress_type = zipfile.ZIP_STORED
-    zf.writestr(mt, b"application/epub+zip")
-    for path in sorted(p for p in src.rglob("*") if p.is_file()):
-        info = zipfile.ZipInfo(path.relative_to(src).as_posix(), epoch)
-        info.compress_type = zipfile.ZIP_STORED
-        zf.writestr(info, path.read_bytes())
-PY
-    rm -f "$epub"
-    return 0
-  fi
   book_sd_image="$(mktemp -t ra8_emulator_book.XXXXXX.img)"
-  "$mk/build/mkfontimg" "$epub" "$book_sd_image" BOOK.EPB >/dev/null 2>&1 || book_sd_image=""
-  rm -f "$epub"
+  emu_build_import_reader_card "$book_sd_image" || book_sd_image=""
 }
 
 msc_sd_image=""

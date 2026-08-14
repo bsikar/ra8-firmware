@@ -1,6 +1,8 @@
 /**
- * @file c6_cam_credentials.h
+ * @file c6_camera_server_credentials.h
  * @brief Wi-Fi credential declarations backed by the private build tree.
+ * @details The build generates definitions from OpenBao-backed configuration;
+ *          source files consume only these declarations and contain no secret.
  *
  * @details Declares the station credentials generated from the private CMake
  *          inputs. The public source tree contains no credential values.

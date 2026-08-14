@@ -1,6 +1,8 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/c6/c6_camera_livestream/src/c6_cam_console.c
+ * @file examples/ek_ra8d2/common/c6_camera_server/src/c6_cam_console.c
  * @brief Heap-free console formatting for camera livestream diagnostics.
+ * @details Implements bounded string, integer, and IPv4 output through the
+ *          EK-RA8D2 UART console without allocating temporary storage.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -16,7 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "c6_camera_livestream.h"
+#include "c6_camera_server.h"
 #include "ra8_board_ek_ra8d2.h"
 
 /** @brief Bounded formatting sizes and IPv4 extraction constants. */

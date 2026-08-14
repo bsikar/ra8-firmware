@@ -18,181 +18,228 @@
 
 #include <stdint.h>
 
-#include "c6_camera_livestream.h"
-#include "cam_ceu.h"
-#include "cam_ov5640.h"
+#include "c6_camera_server.h"
 #include "ra8_board_ek_ra8d2.h"
-#include "ra8_cgc.h"
-#include "ra8_gpt.h"
-#include "ra8_jpeg_sw.h"
-#include "ra8_port_utils.h"
+#include "ra8_camera.h"
+#include "ra8_camera_codec_jpeg_sw.h"
+#include "ra8_camera_source_ceu.h"
+#include "ra8_ceu.h"
+#include "ra8_ov5640.h"
 #include "ra8_time.h"
 
-/** @brief GPT channel driving the OV5640 XVCLK input on P501. */
-typedef enum : uint8_t {
-  k_c6_cam_xclk_gpt_ch = 12U, /**< GPT channel routed to OV5640 XVCLK. */
-} c6_cam_gpt_t;
+/** @brief Software-camera backend geometry, buffers, and sensor timing. */
+typedef enum : uint32_t {
+  /** @brief OV5640 capture width. */
+  k_sw_cam_source_width = 640U,
+  /** @brief OV5640 capture height. */
+  k_sw_cam_source_height = 480U,
+  /** @brief Packed UYVY row bytes. */
+  k_sw_cam_source_stride = k_sw_cam_source_width * 2U,
+  /** @brief Packed UYVY frame bytes. */
+  k_sw_cam_source_bytes = k_sw_cam_source_stride * k_sw_cam_source_height,
+  /** @brief Encoded JPEG width. */
+  k_sw_cam_stream_width = 320U,
+  /** @brief Encoded JPEG height. */
+  k_sw_cam_stream_height = 240U,
+  /** @brief RGB conversion workspace bytes. */
+  k_sw_cam_rgb_bytes = k_sw_cam_stream_width * k_sw_cam_stream_height * 3U,
+  /** @brief Worst-case JPEG buffer bytes. */
+  k_sw_cam_jpeg_bytes = k_sw_cam_rgb_bytes,
+  /** @brief Software JPEG quality. */
+  k_sw_cam_jpeg_quality = 65U,
+  /** @brief OV5640 input clock. */
+  k_sw_cam_xclk_hz = 24000000U,
+  /** @brief Sensor routing settle delay. */
+  k_sw_cam_mode_settle_ms = 100U,
+  /** @brief CEU completion poll period. */
+  k_sw_cam_poll_ms = 5U,
+  /** @brief CEU completion poll limit. */
+  k_sw_cam_poll_attempts = 800U,
+} sw_cam_cfg_t;
 
-/** @brief U15 address/register and the combined C6 + DVP switch pattern. */
-typedef enum : uint8_t {
-  k_c6_cam_sw46_output = 0xDFU, /**< U15 latch value selecting DVP mode. */
-  k_c6_cam_sw46_mask   = 0x20U, /**< U15 bit mask for SW4-6 only.        */
-} c6_cam_u15_t;
+/** @brief Caller-selected SDRAM buffers for capture, conversion, and JPEG. */
+[[gnu::section(".sdram_data"), gnu::aligned(32)]] static uint8_t s_capture[k_sw_cam_source_bytes];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t  s_rgb[k_sw_cam_rgb_bytes];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t  s_jpeg[k_sw_cam_jpeg_bytes];
+/** @brief Transport-independent OV5640 instance bound to the EK-RA8D2 SCCB bus. */
+static ra8_ov5640_t                     s_camera_sensor;
+static ra8_camera_source_t              s_source;
+static ra8_camera_source_ceu_state_t    s_source_state;
+static ra8_camera_codec_t               s_codec;
+static ra8_camera_codec_jpeg_sw_state_t s_codec_state;
 
-/** @brief BT.601 fixed-point conversion constants and sensor identity. */
-typedef enum : int32_t {
-  k_c6_cam_u8_max         = 255,    /**< Maximum RGB888 component value.       */
-  k_c6_cam_chroma_neutral = 128,    /**< Neutral BT.601 chroma code.           */
-  k_c6_cam_luma_scale     = 298,    /**< BT.601 fixed-point luma coefficient.  */
-  k_c6_cam_red_cr_scale   = 409,    /**< BT.601 red-from-Cr coefficient.       */
-  k_c6_cam_green_cb_scale = 100,    /**< BT.601 green-from-Cb coefficient.     */
-  k_c6_cam_green_cr_scale = 208,    /**< BT.601 green-from-Cr coefficient.     */
-  k_c6_cam_blue_cb_scale  = 516,    /**< BT.601 blue-from-Cb coefficient.      */
-  k_c6_cam_rounding       = 128,    /**< Fixed-point rounding bias.            */
-  k_c6_cam_sensor_id      = 0x5640, /**< Expected OV5640 SCCB chip identifier. */
-} c6_cam_color_t;
-
-/** @brief QVGA RGB work buffer. */
-[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_rgb[k_c6_cam_rgb_bytes];
-/** @brief Encoded JPEG returned to the HTTP server. */
-[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_jpeg[k_c6_cam_jpeg_bytes];
-
-static ra8_err_t c6_cam_start_xclk(void)
+/**
+ * @brief Bind the software-JPEG sensor instance to board SCCB callbacks.
+ * @details Constructs the transport used by the reusable OV5640 driver.
+ * @return Repository error code.
+ * @retval k_ra8_ok The sensor instance was initialized.
+ * @retval k_ra8_err_null_ptr A required transport dependency was absent.
+ * @pre Board camera support is linked into the application.
+ * @pre No capture concurrently uses `s_camera_sensor`.
+ * @post On success, the sensor instance selects the primary SCCB address.
+ * @post Binding performs no sensor register transfer.
+ * @note Probing occurs during camera initialization.
+ * @since 0.1.0
+ */
+static ra8_err_t c6_cam_sensor_bind(void)
 {
-  uint32_t  pclkd_hz = 0U;
-  ra8_err_t err      = ra8_cgc_get_clock_hz(k_ra8_clock_id_pclkd, &pclkd_hz);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const uint32_t period = pclkd_hz / (uint32_t)k_c6_cam_xclk_hz;
-  if ((period < 2U) || (period > (uint32_t)k_c6_cam_gpt_period_max)) {
-    return k_ra8_err_invalid_arg;
-  }
-  const ra8_gpt_cfg_t cfg = {
-    .mode       = k_ra8_gpt_mode_saw_pwm,
-    .prescaler  = k_ra8_gpt_ps_div_1,
-    .period     = period - 1U,
-    .duty_a     = period / 2U,
-    .duty_b     = 0U,
-    .auto_start = true,
+  const ra8_ov5640_bus_t bus = {
+    .read_reg  = ra8_board_camera_sccb_read_reg,
+    .write_reg = ra8_board_camera_sccb_write_reg,
+    .delay_ms  = ra8_board_camera_delay_ms,
+    .ctx       = nullptr,
   };
-  err = ra8_gpt_init((uint8_t)k_c6_cam_xclk_gpt_ch, &cfg);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const ra8_gpt_pwm_pin_cfg_t pin = {
-    .output_enable    = true,
-    .polarity         = k_ra8_gpt_pol_active_high,
-    .stop_level       = k_ra8_gpt_stop_low,
-    .disable_on_fault = k_ra8_gpt_disable_none,
+  return ra8_ov5640_init(&s_camera_sensor, &bus);
+}
+
+/**
+ * @brief Build the CEU configuration for packed VGA capture.
+ * @details Selects one-shot synchronous UYVY output into the static source buffer.
+ * @return Generic CEU source configuration.
+ * @retval ra8_camera_source_ceu_cfg_t Complete packed-camera source configuration.
+ * @pre Geometry constants match the configured OV5640 VGA mode.
+ * @pre The static capture buffer can hold the reported maximum frame bytes.
+ * @post Returned configuration references no temporary storage.
+ * @post Static source and codec state remain unchanged.
+ * @note Software conversion and JPEG encoding occur after CEU capture.
+ * @since 0.1.0
+ */
+static ra8_camera_source_ceu_cfg_t c6_cam_source_config(void)
+{
+  const ra8_ceu_config_t ceu = {
+    .width_px        = (uint16_t)k_sw_cam_source_width,
+    .height_px       = (uint16_t)k_sw_cam_source_height,
+    .x_capture_px    = (uint16_t)k_sw_cam_source_stride,
+    .y_capture_lines = (uint16_t)k_sw_cam_source_height,
+    .dst_stride      = (uint16_t)k_sw_cam_source_stride,
+    .bytes_per_pixel = 2U,
+    .capture_format  = k_ra8_ceu_fmt_data_synchronous,
+    .capture_mode    = k_ra8_ceu_capture_single,
+    .data_bus        = k_ra8_ceu_bus_8_bit,
+    .hsync_polarity  = k_ra8_ceu_pol_high_active,
+    .vsync_polarity  = k_ra8_ceu_pol_high_active,
+    .field_polarity  = k_ra8_ceu_pol_high_active,
+    .input_order     = k_ra8_ceu_input_cb0_y0_cr0_y1,
+    .output_format   = k_ra8_ceu_output_ycbcr_422,
+    .burst_mode      = k_ra8_ceu_burst_32,
+    .first_field     = k_ra8_ceu_field_immediate,
+    .edge            = {k_ra8_ceu_edge_rising,
+                        k_ra8_ceu_edge_rising,
+                        k_ra8_ceu_edge_rising,
+                        k_ra8_ceu_edge_rising},
+    .byte_swap       = {false, true, true},
+    .scale = {0U, 0U, 0U, 0U, (uint16_t)k_sw_cam_source_width, (uint16_t)k_sw_cam_source_height},
   };
-  err = ra8_gpt_pwm_pin_configure((uint8_t)k_c6_cam_xclk_gpt_ch, k_ra8_gpt_pin_a, &pin);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err =
-    ra8_pfs_route_peripheral(RA8_PIN(k_ra8_port_5, k_ra8_pin_1), k_ra8_psel_gpt0, "c6_cam.xclk");
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  return ra8_pfs_set_drive_strength(RA8_PIN(k_ra8_port_5, k_ra8_pin_1),
-                                    k_ra8_pfs_dscr_high_speed_high);
-}
-
-static ra8_err_t c6_cam_select_switches(void)
-{
-  return ra8_board_io_expander_apply_sw4_mask((uint8_t)k_c6_cam_sw46_output,
-                                              (uint8_t)k_c6_cam_sw46_mask);
-}
-
-static uint8_t c6_cam_clamp(int32_t value)
-{
-  if (value < 0) {
-    return 0U;
-  }
-  if (value > k_c6_cam_u8_max) {
-    return (uint8_t)k_c6_cam_u8_max;
-  }
-  return (uint8_t)value;
-}
-
-static void c6_cam_uyvy_to_qvga_rgb(const uint8_t* source)
-{
-  for (uint32_t y = 0U; y < (uint32_t)k_c6_cam_stream_height; y++) {
-    const uint32_t source_row = (y * 2U) * (uint32_t)k_c6_cam_source_stride;
-    const uint32_t output_row = y * (uint32_t)k_c6_cam_stream_width * 3U;
-    for (uint32_t x = 0U; x < (uint32_t)k_c6_cam_stream_width; x++) {
-      const uint32_t pair  = source_row + (x * 4U);
-      const int32_t  cb    = (int32_t)source[pair] - k_c6_cam_chroma_neutral;
-      const int32_t  yy    = (int32_t)source[pair + 1U] - 16;
-      const int32_t  cr    = (int32_t)source[pair + 2U] - k_c6_cam_chroma_neutral;
-      const int32_t  lum   = (yy < 0) ? 0 : (k_c6_cam_luma_scale * yy);
-      const uint32_t pixel = output_row + (x * 3U);
-      s_rgb[pixel] = c6_cam_clamp((lum + (k_c6_cam_red_cr_scale * cr) + k_c6_cam_rounding) >> 8);
-      s_rgb[pixel + 1U] = c6_cam_clamp((lum - (k_c6_cam_green_cb_scale * cb) -
-                                        (k_c6_cam_green_cr_scale * cr) + k_c6_cam_rounding) >>
-                                       8);
-      s_rgb[pixel + 2U] =
-        c6_cam_clamp((lum + (k_c6_cam_blue_cb_scale * cb) + k_c6_cam_rounding) >> 8);
-    }
-  }
+  return (ra8_camera_source_ceu_cfg_t){
+    .ceu = ceu,
+    .output =
+      {
+        .frame_bytes_max = (uint32_t)k_sw_cam_source_bytes,
+        .stride_bytes    = (uint32_t)k_sw_cam_source_stride,
+        .width           = (uint16_t)k_sw_cam_source_width,
+        .height          = (uint16_t)k_sw_cam_source_height,
+        .format          = k_ra8_camera_format_uyvy422,
+      },
+    .poll_interval_ms = (uint32_t)k_sw_cam_poll_ms,
+    .poll_attempts    = (uint32_t)k_sw_cam_poll_attempts,
+  };
 }
 
 ra8_err_t c6_cam_camera_init(void)
 {
-  ra8_err_t err = c6_cam_start_xclk();
+  ra8_err_t err = ra8_board_camera_xclk_start((uint32_t)k_sw_cam_xclk_hz);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = c6_cam_select_switches();
+  err = ra8_board_camera_select_parallel();
   if (err != k_ra8_ok) {
     return err;
   }
-  ra8_delay_ms((uint32_t)k_c6_cam_mode_settle_ms);
-  err = cam_reset_sensor();
+  ra8_delay_ms((uint32_t)k_sw_cam_mode_settle_ms);
+  err = ra8_board_camera_reset();
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  err = c6_cam_sensor_bind();
   if (err != k_ra8_ok) {
     return err;
   }
   uint16_t chip_id = 0U;
-  if (!cam_probe_sensor(&chip_id) || (chip_id != (uint16_t)k_c6_cam_sensor_id)) {
+  if ((ra8_ov5640_probe(&s_camera_sensor, &chip_id) != k_ra8_ok) ||
+      (chip_id != (uint16_t)k_ra8_ov5640_chip_id)) {
     return k_ra8_err_hw_init_failed;
   }
-  err = cam_configure_sensor();
+  err = ra8_ov5640_configure(&s_camera_sensor, k_ra8_ov5640_mode_vga_uyvy);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = cam_route_ceu_pins();
+  err = ra8_board_camera_route_parallel_pins();
   if (err != k_ra8_ok) {
     return err;
   }
-  return cam_ceu_setup();
+  const ra8_camera_source_ceu_cfg_t source_cfg = c6_cam_source_config();
+  err = ra8_camera_source_ceu_init(&s_source, &s_source_state, &source_cfg);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  const ra8_camera_codec_jpeg_sw_cfg_t codec_cfg = {
+    .rgb_workspace          = s_rgb,
+    .rgb_workspace_capacity = (uint32_t)sizeof(s_rgb),
+    .output_width           = (uint16_t)k_sw_cam_stream_width,
+    .output_height          = (uint16_t)k_sw_cam_stream_height,
+    .quality                = (uint8_t)k_sw_cam_jpeg_quality,
+  };
+  return ra8_camera_codec_jpeg_sw_init(&s_codec, &s_codec_state, &codec_cfg);
 }
 
-ra8_err_t c6_cam_camera_capture_jpeg(const uint8_t** out_jpeg, uint32_t* out_bytes)
+ra8_err_t c6_cam_camera_capture_jpeg(const uint8_t**        out_jpeg,
+                                     uint32_t*              out_bytes,
+                                     c6_cam_frame_timing_t* out_timing)
 {
-  if ((out_jpeg == nullptr) || (out_bytes == nullptr)) {
+  if ((out_jpeg == nullptr) || (out_bytes == nullptr) || (out_timing == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  *out_jpeg     = nullptr;
-  *out_bytes    = 0U;
-  ra8_err_t err = cam_capture_one();
+  *out_jpeg                                = nullptr;
+  *out_bytes                               = 0U;
+  *out_timing                              = (c6_cam_frame_timing_t){};
+  const uint32_t capture_start             = ra8_time_ms();
+  out_timing->timestamp_ms                 = capture_start;
+  const ra8_camera_buffer_t capture_buffer = {
+    .data     = s_capture,
+    .capacity = (uint32_t)sizeof(s_capture),
+  };
+  ra8_camera_frame_t captured    = {};
+  ra8_err_t          err         = ra8_camera_source_capture(&s_source, &capture_buffer, &captured);
+  const uint32_t     capture_end = ra8_time_ms();
+  out_timing->capture_ms         = capture_end - capture_start;
   if (err != k_ra8_ok) {
     return err;
   }
-  if (cam_ceu_capture_bytes() != (uint32_t)k_cam_frame_bytes) {
-    return k_ra8_err_invalid_size;
-  }
-  c6_cam_uyvy_to_qvga_rgb(cam_ceu_frame());
-  err = ra8_jpeg_sw_encode(s_rgb,
-                           (uint16_t)k_c6_cam_stream_width,
-                           (uint16_t)k_c6_cam_stream_height,
-                           (uint8_t)k_c6_cam_jpeg_quality,
-                           s_jpeg,
-                           (uint32_t)sizeof(s_jpeg),
-                           out_bytes);
+  const ra8_camera_buffer_t encoded_buffer = {
+    .data     = s_jpeg,
+    .capacity = (uint32_t)sizeof(s_jpeg),
+  };
+  ra8_camera_frame_t encoded = {};
+  err                   = ra8_camera_codec_encode(&s_codec, &captured, &encoded_buffer, &encoded);
+  out_timing->encode_ms = ra8_time_ms() - capture_end;
   if (err != k_ra8_ok) {
     return err;
   }
-  *out_jpeg = s_jpeg;
+  *out_jpeg  = encoded.data;
+  *out_bytes = encoded.bytes;
   return k_ra8_ok;
+}
+
+const char* c6_cam_camera_description(void)
+{
+  return "frame=640x480 UYVY software-codec=320x240 JPEG";
+}
+
+void c6_cam_camera_report_last_error(void)
+{
+  uint32_t events = 0U;
+  if (ra8_camera_source_ceu_get_last_events(&s_source_state, &events) == k_ra8_ok) {
+    c6_cam_puts(" ceu_events=");
+    c6_cam_put_u32(events);
+  }
 }

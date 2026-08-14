@@ -391,6 +391,135 @@ typedef enum : uint16_t {
                       k_ra8_pin_12), /**< CAM I2C SCL (SCL1), P512. EK-RA8D2 UM Table 35 p 48. */
 } ra8_board_camera_pin_t;
 
+/** @brief RIIC controller channel wired to the J35 camera SCCB bus. */
+typedef enum : uint8_t {
+  k_ra8_board_camera_i2c_channel = 1U, /**< RIIC1 serves J35 SCCB. */
+} ra8_board_camera_bus_t;
+
+/**
+ * @brief Start the J35 camera sensor input clock (XCLK) on P501/GTIOC12A.
+ * @details Configures GPT12 saw-PWM from PCLKD and routes its A output to P501.
+ * @param[in] frequency_hz Requested non-zero camera input-clock frequency.
+ * @return Error code.
+ * @retval k_ra8_ok GPT12 is running and P501 is routed.
+ * @retval k_ra8_err_invalid_arg The requested divisor is not representable.
+ * @retval other Propagated clock, GPT, or pin-routing error.
+ * @pre CGC and module-stop services are initialized.
+ * @pre P501 is available for the camera clock function.
+ * @post On success GPT12 runs continuously at the nearest integer divisor.
+ * @post On success P501 uses the high-speed GPT peripheral drive setting.
+ * @note Init-context only; this claims shared board resources.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_camera_xclk_start(uint32_t frequency_hz);
+
+/**
+ * @brief Drive only SW4-6 ON through U15, selecting J35 parallel DVP.
+ * @details Applies a masked U15 override without changing unrelated switches.
+ * @return Error code.
+ * @retval k_ra8_ok U15 selected the parallel-camera path.
+ * @retval other Propagated expander or RIIC error.
+ * @pre Board I/O-expander services and RIIC1 are available.
+ * @pre The Camera Expansion Board is connected at J35.
+ * @post On success SW4-6 is overridden to its ON state.
+ * @post Other U15 SW4 override bits retain their prior values.
+ * @note Init-context only; this changes shared physical routing.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_camera_select_parallel(void);
+
+/**
+ * @brief Route J35 D[7:0], VSYNC, HSYNC and PCLK to the CEU peripheral.
+ * @details Claims and muxes the eleven parallel-camera pads in board order.
+ * @return Error code.
+ * @retval k_ra8_ok Every parallel-camera pin was routed.
+ * @retval other First propagated PFS routing error.
+ * @pre SW4-6 selects the parallel-camera path.
+ * @pre The eleven J35 CEU pins are not claimed by another peripheral.
+ * @post On success every listed pin uses the CEU peripheral function.
+ * @post On failure no later pin in the routing list is touched.
+ * @note Init-context only; partial routing may remain after an error.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_camera_route_parallel_pins(void);
+
+/**
+ * @brief Pulse the J35 camera reset input and leave the sensor released.
+ *
+ * @details Claims P709 as an output, holds reset low, then releases it high.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok P709 was driven low, then high.
+ * @retval other Forwarded GPIO initialization/write error.
+ *
+ * @pre The IOPORT module is powered.
+ * @pre P709 is available for the camera reset function.
+ * @post CAM_RST is high after two 20 ms settle intervals.
+ * @post On success the reset pin remains claimed as a GPIO output.
+ * @note Not thread-safe; call from camera initialization context.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_board_camera_reset(void);
+
+/**
+ * @brief Read one 16-bit-addressed SCCB register on the J35 camera bus.
+ *
+ * @details Signature intentionally matches the transport callback used by
+ * `ra8_ov5640`; the BSP remains independent of that optional sensor library.
+ *
+ * @param[in] ctx Unused transport context; may be `nullptr`.
+ * @param[in] address 7-bit SCCB target address.
+ * @param[in] reg 16-bit sensor register address.
+ * @param[out] out_value Register value on success.
+ * @return ra8_err_t Forwarded RIIC result.
+ * @retval k_ra8_ok One register byte was read.
+ * @retval k_ra8_err_null_ptr @p out_value was `nullptr`.
+ * @retval other Propagated RIIC transfer error.
+ * @pre RIIC1 is initialized for the J35 SCCB bus.
+ * @pre The sensor is clocked and released from reset.
+ * @post On success @p out_value contains the addressed register byte.
+ * @post The RIIC bus is idle after the completed transfer.
+ * @note Not thread-safe with respect to RIIC1.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_board_camera_sccb_read_reg(void* ctx, uint8_t address, uint16_t reg, uint8_t* out_value);
+
+/**
+ * @brief Write one 16-bit-addressed SCCB register on the J35 camera bus.
+ *
+ * @param[in] ctx Unused transport context; may be `nullptr`.
+ * @param[in] address 7-bit SCCB target address.
+ * @param[in] reg 16-bit sensor register address.
+ * @param[in] value Register value to write.
+ * @return ra8_err_t Forwarded RIIC result.
+ * @retval k_ra8_ok The complete address and value payload was written.
+ * @retval other Propagated RIIC write error.
+ * @pre RIIC1 is initialized for the J35 SCCB bus.
+ * @pre The sensor is clocked and released from reset.
+ * @post On success the target accepted the addressed register byte.
+ * @post The RIIC bus is idle after the completed transfer.
+ * @note Not thread-safe with respect to RIIC1.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_board_camera_sccb_write_reg(void* ctx, uint8_t address, uint16_t reg, uint8_t value);
+
+/**
+ * @brief Millisecond delay adapter for transport-independent camera drivers.
+ * @details Ignores @p ctx and delegates the bounded delay to `ra8_delay_ms`.
+ * @param[in] ctx Unused transport context; may be `nullptr`.
+ * @param[in] milliseconds Delay duration.
+ * @return Nothing.
+ * @retval none This function cannot report an error.
+ * @pre The SysTick timebase is initialized.
+ * @pre @p milliseconds is acceptable to the platform delay service.
+ * @post At least the requested delay interval has elapsed.
+ * @post No camera or transport state is modified directly.
+ * @note Blocking and not suitable for interrupt context.
+ * @since 0.1.0
+ */
+void ra8_board_camera_delay_ms(void* ctx, uint32_t milliseconds);
+
 /* =============================================================================
  * 9. Octo-SPI flash + SDRAM (UM Section 6.3 + 6.4, Tables 29 + 30, p 35 + 36)
  * =============================================================================

@@ -21,10 +21,22 @@ BUILD_DIR="${CAMERA_BUILD_DIR:-$APP/build}"
 ELF="$BUILD_DIR/camera_capture.elf"
 HEX="$BUILD_DIR/camera_capture.hex"
 ALL_ROTATIONS=1
-if [[ "${1:-}" == "--single" ]]; then
-  ALL_ROTATIONS=0
+SKIP_BUILD=0
+while [[ "${1:-}" == --* ]]; do
+  case "$1" in
+    --single)
+      ALL_ROTATIONS=0
+      ;;
+    --skip-build)
+      SKIP_BUILD=1
+      ;;
+    *)
+      echo "usage: $0 [--single] [--skip-build] [output.ppm]" >&2
+      exit 2
+      ;;
+  esac
   shift
-fi
+done
 OUTPUT="${1:-$PWD/camera_capture.ppm}"
 OUTPUT_STEM="${OUTPUT%.ppm}"
 RAW="${OUTPUT_STEM}.uyvy"
@@ -54,9 +66,16 @@ cleanup_remote() {
 }
 trap cleanup_local EXIT
 
-cmake -S "$APP" -B "$BUILD_DIR" -DCMAKE_TOOLCHAIN_FILE="$ROOT/cmake/toolchain-ra8d2.cmake" \
-  -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build "$BUILD_DIR" --parallel 4
+if [[ "$SKIP_BUILD" == 0 ]]; then
+  cmake -S "$APP" -B "$BUILD_DIR" -DCMAKE_TOOLCHAIN_FILE="$ROOT/cmake/toolchain-ra8d2.cmake" \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo
+  cmake --build "$BUILD_DIR" --parallel 4
+else
+  [[ -f "$ELF" && -f "$HEX" ]] || {
+    echo "camera artifacts not found in $BUILD_DIR" >&2
+    exit 2
+  }
+fi
 ra8_bench_require "capture and dump camera frame" || exit $?
 # Run remote cleanup before the guard's EXIT handler releases the bench.
 _ra8_bench_add_exit_trap cleanup_remote
@@ -65,7 +84,7 @@ symbol_addr() {
   arm-none-eabi-nm -n "$ELF" | awk -v symbol="$1" '$3 == symbol { print "0x" $1; exit }'
 }
 
-FRAME_ADDR="$(symbol_addr s_frame)"
+FRAME_ADDR="$(symbol_addr s_camera_capture)"
 RGB_0_ADDR="$(symbol_addr g_cam_rgb_0)"
 RGB_90_ADDR="$(symbol_addr g_cam_rgb_90)"
 RGB_180_ADDR="$(symbol_addr g_cam_rgb_180)"

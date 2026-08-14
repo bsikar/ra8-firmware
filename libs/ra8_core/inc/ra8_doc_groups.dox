@@ -53,7 +53,7 @@
 /**
  * @defgroup grp_hal_camera Camera & imaging
  * @ingroup grp_hal
- * @brief CEU, VIN, MIPI-CSI, JPEG codec.
+ * @brief CEU, VIN, and MIPI-CSI camera capture.
  */
 /**
  * @defgroup grp_hal_audio Audio
@@ -85,6 +85,19 @@
  * @defgroup grp_io I/O fabric
  * @brief Central I/O facade: block-device vtables, VFS mounts, targetable
  *        stdio, container/format decode (libs/ra8_io).
+ */
+
+/**
+ * @defgroup grp_camera Camera services
+ * @brief Caller-owned camera sources, interchangeable image codecs, sensor
+ *        control, and optional I/O streaming bridges (libs/ra8_camera,
+ *        ra8_camera_io, ra8_ov5640).
+ */
+
+/**
+ * @defgroup grp_audio Audio services
+ * @brief Caller-owned synchronous and asynchronous PCM capture sources
+ *        (libs/ra8_audio).
  */
 
 /**

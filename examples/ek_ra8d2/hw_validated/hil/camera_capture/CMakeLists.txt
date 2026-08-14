@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# Per-app CMake stub for `camera_capture`. All build logic lives in the shared
+# Per-app CMake entry point for `camera_capture`. All build logic lives in the shared
 # cmake/ra8_add_app.cmake recipe; this file only names the app.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
@@ -33,4 +33,5 @@ ra8_add_app(
   NAME camera_capture
   STACK_BYTES 2200
   DESCRIPTION "OV5640 CEU capture and firmware-side RGB rotations"
+  LIBS ra8_camera ra8_ov5640
 )

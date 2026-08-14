@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# Per-app CMake stub for `pdm_mic_demo`. All build logic lives in the shared
+# Per-app CMake entry point for `pdm_mic_demo`. All build logic lives in the shared
 # cmake/ra8_add_app.cmake recipe; this file only names the app + its deps.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
@@ -33,5 +33,5 @@ ra8_add_app(
   NAME pdm_mic_demo
   STACK_BYTES 2400
   DESCRIPTION "pdm_mic_demo firmware for RA8D2"
-  LIBS ra8_board_ek_ra8d2
+  LIBS ra8_board_ek_ra8d2 ra8_audio
 )
