@@ -1,6 +1,8 @@
 /**
  * @file ra8_c6link_mdl_service.c
  * @brief Portable one-job media service state machine for the ESP32-C6 port.
+ * @details Decodes one bounded request at a time, delegates body I/O to an
+ * injected backend, and packs transactional responses without heap allocation.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -14,15 +16,15 @@
 
 /** @brief Decode arena sized for the bounded start request and URL. */
 typedef enum : uint16_t {
-  k_mdl_decode_arena_bytes = k_ra8_mdl_url_max + 384U,
-  k_mdl_decode_align       = 8U,
-  k_mdl_decode_align_mask  = k_mdl_decode_align - 1U,
+  k_mdl_decode_arena_bytes = k_ra8_mdl_url_max + 384U, /**< Per-dispatch arena size. */
+  k_mdl_decode_align       = 8U,                       /**< Arena allocation alignment. */
+  k_mdl_decode_align_mask  = k_mdl_decode_align - 1U,  /**< Mask used to round sizes. */
 } mdl_svc_const_t;
 
 /** @brief Linear allocator used by protobuf-c; reset after every dispatch. */
 typedef struct {
-  uint8_t bytes[k_mdl_decode_arena_bytes];
-  size_t  used;
+  uint8_t bytes[k_mdl_decode_arena_bytes]; /**< Fixed protobuf decode storage. */
+  size_t  used;                            /**< Bytes already allocated.       */
 } mdl_decode_arena_t;
 
 /**
@@ -235,6 +237,8 @@ static ra8_err_t mdl_dispatch_start(ra8_mdl_service_t*  service,
   return k_ra8_ok;
 }
 
+// Kept linear so capacity is proven before the sole backend read side effect.
+// NOLINTBEGIN(readability-function-size)
 /**
  * @brief Validate one pull, read bounded bytes, and pack a correlated Chunk
  * @details Proves worst-case response capacity before consuming backend bytes.
@@ -346,6 +350,7 @@ static ra8_err_t mdl_dispatch_next(ra8_mdl_service_t*  service,
   }
   return k_ra8_ok;
 }
+// NOLINTEND(readability-function-size)
 
 /**
  * @brief Validate and cancel one correlated active service job

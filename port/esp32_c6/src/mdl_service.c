@@ -27,9 +27,9 @@
 
 /** @brief Fixed HTTP policy values for the concrete ESP-IDF adapter. */
 typedef enum : uint16_t {
-  k_mdl_http_timeout_ms         = 15000U,
-  k_mdl_http_status_success_min = 200U,
-  k_mdl_http_status_redirect    = 300U,
+  k_mdl_http_timeout_ms         = 15000U, /**< Per-operation HTTP timeout. */
+  k_mdl_http_status_success_min = 200U,   /**< Lowest successful HTTP status. */
+  k_mdl_http_status_redirect    = 300U,   /**< First redirect/non-success status. */
 } mdl_http_const_t;
 
 /**
@@ -218,6 +218,8 @@ static ra8_err_t mdl_http_open(mdl_http_state_t* state)
   return k_ra8_ok;
 }
 
+// Kept linear so EOF, truncation, hash finalisation, and reset remain one ordered state transition.
+// NOLINTBEGIN(readability-function-size)
 /**
  * @brief Pull one bounded body span or verified terminal metadata
  * @details Counts and hashes every returned byte and rejects truncated bodies.
@@ -301,6 +303,7 @@ static ra8_err_t mdl_http_read(void*     ctx,
   }
   return k_ra8_ok;
 }
+// NOLINTEND(readability-function-size)
 
 /**
  * @brief Cancel the active HTTP job while retaining one-time objects
