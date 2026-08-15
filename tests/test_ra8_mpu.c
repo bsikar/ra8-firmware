@@ -1,6 +1,8 @@
 /**
+ *
  * @file test_ra8_mpu.c
  * @brief Unit tests for the Cortex-M85 MPU helper (ra8_mpu.c)
+ * @details Exercises MPU region validation, attribute encoding, enable state, register programming, and failure atomicity in hosted registers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -9,10 +11,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mpu.h"
 #include "ra8_mpu_regs.h"
+#include "support/ra8_mpu_test_internal.h"
 #include "unity_minimal.h"
 
 /**
@@ -37,33 +41,38 @@ typedef enum : uint32_t {
   k_test_mpu_mair1         = 0x00000044UL, /**< Test MPU mair1.          */
 } test_mpu_layout_t;
 
-/** @brief Set MPU_TYPE.DREGION so `ra8_mpu_dregion_count()` reports `n`. */
-static void mpu_test_set_dregion(uint8_t n)
+/* see header for full description. */
+RA8_INTERNAL static void internal_set_dregion(uint8_t n)
 {
   ra8_mpu_regs()->TYPE = (uint32_t)((uint32_t)n << 8U);
 }
 
-/**
+/* see header for full description.
+ *
  * @brief Reset the fake MPU register block.
  *
  * @details
- * `ra8_fake_mmap_reset()` zeros every backing region. Tests then write
- * MPU_TYPE.DREGION = 16 directly so `ra8_mpu_dregion_count()` returns
- * a useful value when the helper validates region indices.
+ * `ra8_fake_mmap_reset()` zeros ordinary backing regions, while sanitizer
+ * builds intentionally exclude the architectural MPU window because it lies
+ * in the ASan shadow-gap category. Reset the MPU block explicitly so every
+ * test starts from the same disabled state, then publish DREGION = 16 for
+ * region-index validation.
  */
-static void mpu_test_setup(void)
+RA8_INTERNAL static void internal_setup(void)
 {
   ra8_fake_mmap_reset();
-  mpu_test_set_dregion((uint8_t)k_test_mpu_dregion_count);
+  *ra8_mpu_regs() = (r_mpu_regs_t){0};
+  internal_set_dregion((uint8_t)k_test_mpu_dregion_count);
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_register_layout(void)
+RA8_INTERNAL static void internal_test_register_layout(void)
 {
   TEST_BEGIN("r_mpu_regs_t offsets match Arm Cortex-M85 TRM");
   TEST_ASSERT_EQ(0x00, offsetof(r_mpu_regs_t, TYPE));
@@ -77,30 +86,32 @@ static void test_register_layout(void)
   TEST_END("r_mpu_regs_t offsets match Arm Cortex-M85 TRM");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_configure_null_cfg(void)
+RA8_INTERNAL static void internal_test_configure_null_cfg(void)
 {
   TEST_BEGIN("ra8_mpu_configure(NULL) returns null_ptr");
-  mpu_test_setup();
+  internal_setup();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mpu_configure(nullptr));
   TEST_END("ra8_mpu_configure(NULL) returns null_ptr");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_configure_too_many_regions(void)
+RA8_INTERNAL static void internal_test_configure_too_many_regions(void)
 {
   TEST_BEGIN("ra8_mpu_configure rejects region_count > DREGION");
-  mpu_test_setup();
+  internal_setup();
   /* Pretend silicon only has 8 regions; ask for 16. */
   ra8_mpu_regs()->TYPE     = (uint32_t)(8UL << 8U);
   const ra8_mpu_region_t r = {
@@ -128,16 +139,17 @@ static void test_configure_too_many_regions(void)
   TEST_END("ra8_mpu_configure rejects region_count > DREGION");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_configure_invalid_size(void)
+RA8_INTERNAL static void internal_test_configure_invalid_size(void)
 {
   TEST_BEGIN("ra8_mpu_configure rejects non-power-of-two size");
-  mpu_test_setup();
+  internal_setup();
   const ra8_mpu_region_t r = {
     .base       = (uintptr_t)k_test_mpu_region_base,
     .size       = 0x1500U, /* not a power of two */
@@ -152,16 +164,17 @@ static void test_configure_invalid_size(void)
   TEST_END("ra8_mpu_configure rejects non-power-of-two size");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_configure_misaligned_base(void)
+RA8_INTERNAL static void internal_test_configure_misaligned_base(void)
 {
   TEST_BEGIN("ra8_mpu_configure rejects misaligned base");
-  mpu_test_setup();
+  internal_setup();
   const ra8_mpu_region_t r = {
     .base       = (uintptr_t)(k_test_mpu_region_base + 16U), /* 16 < 32 align */
     .size       = (uint32_t)k_test_mpu_region_size,
@@ -176,16 +189,17 @@ static void test_configure_misaligned_base(void)
   TEST_END("ra8_mpu_configure rejects misaligned base");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_configure_unrepresentable_perms(void)
+RA8_INTERNAL static void internal_test_configure_unrepresentable_perms(void)
 {
   TEST_BEGIN("ra8_mpu_configure rejects priv-RO + unpriv-RW");
-  mpu_test_setup();
+  internal_setup();
   const ra8_mpu_region_t r = {
     .base       = (uintptr_t)k_test_mpu_region_base,
     .size       = (uint32_t)k_test_mpu_region_size,
@@ -200,16 +214,17 @@ static void test_configure_unrepresentable_perms(void)
   TEST_END("ra8_mpu_configure rejects priv-RO + unpriv-RW");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_configure_programs_region_zero(void)
+RA8_INTERNAL static void internal_test_configure_programs_region_zero(void)
 {
   TEST_BEGIN("ra8_mpu_configure programs region 0 RBAR/RLAR");
-  mpu_test_setup();
+  internal_setup();
   const ra8_mpu_region_t r = {
     .base       = (uintptr_t)k_test_mpu_region_base,
     .size       = (uint32_t)k_test_mpu_region_size,
@@ -244,16 +259,17 @@ static void test_configure_programs_region_zero(void)
   TEST_END("ra8_mpu_configure programs region 0 RBAR/RLAR");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_configure_clears_unused_regions(void)
+RA8_INTERNAL static void internal_test_configure_clears_unused_regions(void)
 {
   TEST_BEGIN("ra8_mpu_configure clears regions above region_count");
-  mpu_test_setup();
+  internal_setup();
   /* Pre-poison region 5's RLAR via the same RNR-select mechanism the
    * driver uses, then run configure with a 1-region table -- the
    * driver should walk regions 1..15 clearing RLAR. */
@@ -279,16 +295,17 @@ static void test_configure_clears_unused_regions(void)
   TEST_END("ra8_mpu_configure clears regions above region_count");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_enable_disable(void)
+RA8_INTERNAL static void internal_test_enable_disable(void)
 {
   TEST_BEGIN("ra8_mpu_enable / ra8_mpu_disable toggle CTRL.ENABLE");
-  mpu_test_setup();
+  internal_setup();
   ra8_mpu_regs()->CTRL = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_enable());
   TEST_ASSERT_EQ(k_ra8_mpu_ctrl_enable, (ra8_mpu_regs()->CTRL & (uint32_t)k_ra8_mpu_ctrl_enable));
@@ -297,30 +314,32 @@ static void test_enable_disable(void)
   TEST_END("ra8_mpu_enable / ra8_mpu_disable toggle CTRL.ENABLE");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_set_region_null(void)
+RA8_INTERNAL static void internal_test_set_region_null(void)
 {
   TEST_BEGIN("ra8_mpu_set_region(NULL) returns null_ptr");
-  mpu_test_setup();
+  internal_setup();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mpu_set_region(0U, nullptr));
   TEST_END("ra8_mpu_set_region(NULL) returns null_ptr");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_set_region_out_of_range(void)
+RA8_INTERNAL static void internal_test_set_region_out_of_range(void)
 {
   TEST_BEGIN("ra8_mpu_set_region rejects out-of-range region index");
-  mpu_test_setup();
+  internal_setup();
   const ra8_mpu_region_t r = {
     .base       = (uintptr_t)k_test_mpu_region_base,
     .size       = (uint32_t)k_test_mpu_region_size,
@@ -335,16 +354,17 @@ static void test_set_region_out_of_range(void)
   TEST_END("ra8_mpu_set_region rejects out-of-range region index");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_set_region_writes_pair(void)
+RA8_INTERNAL static void internal_test_set_region_writes_pair(void)
 {
   TEST_BEGIN("ra8_mpu_set_region writes RBAR + RLAR for selected region");
-  mpu_test_setup();
+  internal_setup();
   const ra8_mpu_region_t r = {
     .base       = (uintptr_t)k_test_mpu_region_base,
     .size       = (uint32_t)k_test_mpu_region_size,
@@ -393,10 +413,9 @@ typedef enum : uint32_t {
   k_test_mpu_size_4k          = 0x1000U, /**< Standard 4 KiB region.      */
 } test_mpu_mcdc_t;
 
-/**
- * @brief Build a baseline 4 KiB region descriptor parametrised on perms.
- */
-static ra8_mpu_region_t mcdc_region(ra8_mpu_perm_t priv, ra8_mpu_perm_t unpriv, uint32_t size)
+/* see header for full description. */
+RA8_INTERNAL static ra8_mpu_region_t
+internal_mcdc_region(ra8_mpu_perm_t priv, ra8_mpu_perm_t unpriv, uint32_t size)
 {
   const ra8_mpu_region_t r = {
     .base       = (uintptr_t)k_test_mpu_region_base,
@@ -410,8 +429,9 @@ static ra8_mpu_region_t mcdc_region(ra8_mpu_perm_t priv, ra8_mpu_perm_t unpriv, 
   return r;
 }
 
-/**
- * @test test_validate_region_mcdc_is_pow2
+/* see header for full description.
+ *
+ * @test internal_test_validate_region_mcdc_is_pow2
  *
  * @par MC/DC:
  * Decision: `(value != 0U) && ((value & (value - 1U)) == 0U)`
@@ -427,30 +447,31 @@ static ra8_mpu_region_t mcdc_region(ra8_mpu_perm_t priv, ra8_mpu_perm_t unpriv, 
  * Vectors 1+3 vary C1 with C2 implicitly true; vectors 2+3 vary C2 with
  * C1 held true. N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
  */
-static void test_validate_region_mcdc_is_pow2(void)
+RA8_INTERNAL static void internal_test_validate_region_mcdc_is_pow2(void)
 {
   TEST_BEGIN("ra8_mpu_is_pow2 MC/DC via ra8_mpu_set_region(size)");
-  mpu_test_setup();
+  internal_setup();
 
   /* Vector 1: size=0 -> is_pow2 C1=F. */
   const ra8_mpu_region_t r0 =
-    mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_zero);
+    internal_mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_zero);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_set_region(0U, &r0));
 
   /* Vector 2: size=3 -> is_pow2 C1=T, C2=F. */
   const ra8_mpu_region_t r3 =
-    mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_three);
+    internal_mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_three);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_set_region(0U, &r3));
 
   /* Vector 3: size=32 -> is_pow2 C1=T, C2=T (and >= min). Accepted. */
   const ra8_mpu_region_t r32 =
-    mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_min_ok);
+    internal_mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_min_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_set_region(0U, &r32));
   TEST_END("ra8_mpu_is_pow2 MC/DC via ra8_mpu_set_region(size)");
 }
 
-/**
- * @test test_validate_region_mcdc_size_guard
+/* see header for full description.
+ *
+ * @test internal_test_validate_region_mcdc_size_guard
  *
  * @par MC/DC:
  * Decision: `if (!ra8_mpu_is_pow2(r->size) || r->size < min_region_size)`
@@ -461,30 +482,32 @@ static void test_validate_region_mcdc_is_pow2(void)
  * Vectors 1+2 vary C1 with C2 held false (32 vs 3); vectors 1+3 vary C2
  * with C1 held false (32 vs 16). N+1 = 3 vectors: minimal MC/DC.
  */
-static void test_validate_region_mcdc_size_guard(void)
+RA8_INTERNAL static void internal_test_validate_region_mcdc_size_guard(void)
 {
   TEST_BEGIN("ra8_mpu validate_region MC/DC: !is_pow2 || size < min");
-  mpu_test_setup();
+  internal_setup();
 
   /* Vector 1: pow2 and >= min -> accepted. */
   const ra8_mpu_region_t r_ok =
-    mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_min_ok);
+    internal_mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_min_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_set_region(0U, &r_ok));
 
   /* Vector 2: not pow2 -> C1=T short-circuits, rejected. */
   const ra8_mpu_region_t r_npow2 =
-    mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_three);
+    internal_mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_three);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_set_region(0U, &r_npow2));
 
   /* Vector 3: pow2 but below min -> C1=F, C2=T, rejected. */
-  const ra8_mpu_region_t r_small =
-    mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_pow2_lt_min);
+  const ra8_mpu_region_t r_small = internal_mcdc_region(k_ra8_mpu_perm_rw,
+                                                        k_ra8_mpu_perm_rw,
+                                                        (uint32_t)k_test_mpu_size_pow2_lt_min);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_set_region(0U, &r_small));
   TEST_END("ra8_mpu validate_region MC/DC: !is_pow2 || size < min");
 }
 
-/**
- * @test test_encode_ap_mcdc_priv_rw_unpriv_rw
+/* see header for full description.
+ *
+ * @test internal_test_encode_ap_mcdc_priv_rw_unpriv_rw
  *
  * @par MC/DC:
  * Decision: `if (priv == k_ra8_mpu_perm_rw && unpriv == k_ra8_mpu_perm_rw)`
@@ -508,30 +531,31 @@ static void test_validate_region_mcdc_size_guard(void)
  * is rw rather than ro -- this closes the C1=F gap on those decisions
  * with a single test.
  */
-static void test_encode_ap_mcdc_priv_rw_unpriv_rw(void)
+RA8_INTERNAL static void internal_test_encode_ap_mcdc_priv_rw_unpriv_rw(void)
 {
   TEST_BEGIN("ra8_mpu_encode_ap L65 MC/DC: priv==rw && unpriv==rw");
-  mpu_test_setup();
+  internal_setup();
 
   /* Vector 1: priv=ro, unpriv=rw. */
   const ra8_mpu_region_t r1 =
-    mcdc_region(k_ra8_mpu_perm_ro, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_4k);
+    internal_mcdc_region(k_ra8_mpu_perm_ro, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_4k);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_set_region(0U, &r1));
 
   /* Vector 2: priv=rw, unpriv=ro -- not encodable in AP[1:0]. */
   const ra8_mpu_region_t r2 =
-    mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_ro, (uint32_t)k_test_mpu_size_4k);
+    internal_mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_ro, (uint32_t)k_test_mpu_size_4k);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_set_region(0U, &r2));
 
   /* Vector 3: priv=rw, unpriv=rw -- encodes to AP=01, accepted. */
   const ra8_mpu_region_t r3 =
-    mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_4k);
+    internal_mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_4k);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_set_region(0U, &r3));
   TEST_END("ra8_mpu_encode_ap L65 MC/DC: priv==rw && unpriv==rw");
 }
 
-/**
- * @test test_encode_ap_mcdc_priv_ro_unpriv_none
+/* see header for full description.
+ *
+ * @test internal_test_encode_ap_mcdc_priv_ro_unpriv_none
  *
  * @par MC/DC:
  * Decision: `if (priv == k_ra8_mpu_perm_ro && unpriv == k_ra8_mpu_perm_none)`
@@ -551,30 +575,31 @@ static void test_encode_ap_mcdc_priv_rw_unpriv_rw(void)
  * N+1 = 3 vectors: minimal MC/DC. The L62 decision (rw,none) is also
  * exercised by vector 3 with priv=ro -> C1=F arm.
  */
-static void test_encode_ap_mcdc_priv_ro_unpriv_none(void)
+RA8_INTERNAL static void internal_test_encode_ap_mcdc_priv_ro_unpriv_none(void)
 {
   TEST_BEGIN("ra8_mpu_encode_ap L68 MC/DC: priv==ro && unpriv==none");
-  mpu_test_setup();
+  internal_setup();
 
   /* Vector 1: priv=rw, unpriv=ro -- reaches L68 with C1=F. */
   const ra8_mpu_region_t r1 =
-    mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_ro, (uint32_t)k_test_mpu_size_4k);
+    internal_mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_ro, (uint32_t)k_test_mpu_size_4k);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_set_region(0U, &r1));
 
   /* Vector 2: priv=ro, unpriv=ro -- L68 C1=T, C2=F. Falls to L71=T. */
   const ra8_mpu_region_t r2 =
-    mcdc_region(k_ra8_mpu_perm_ro, k_ra8_mpu_perm_ro, (uint32_t)k_test_mpu_size_4k);
+    internal_mcdc_region(k_ra8_mpu_perm_ro, k_ra8_mpu_perm_ro, (uint32_t)k_test_mpu_size_4k);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_set_region(0U, &r2));
 
   /* Vector 3: priv=ro, unpriv=none -- L68 C1=T, C2=T -> AP=2. */
   const ra8_mpu_region_t r3 =
-    mcdc_region(k_ra8_mpu_perm_ro, k_ra8_mpu_perm_none, (uint32_t)k_test_mpu_size_4k);
+    internal_mcdc_region(k_ra8_mpu_perm_ro, k_ra8_mpu_perm_none, (uint32_t)k_test_mpu_size_4k);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_set_region(0U, &r3));
   TEST_END("ra8_mpu_encode_ap L68 MC/DC: priv==ro && unpriv==none");
 }
 
-/**
- * @test test_validate_cfg_mcdc_region_count_and_regions
+/* see header for full description.
+ *
+ * @test internal_test_validate_cfg_mcdc_region_count_and_regions
  *
  * @par MC/DC:
  * Decision: `if (cfg->region_count > 0U && cfg->regions == nullptr)`
@@ -590,10 +615,10 @@ static void test_encode_ap_mcdc_priv_ro_unpriv_none(void)
  * Vectors 1+3 vary C1 (C2 held T); vectors 2+3 vary C2 (C1 held T).
  * N+1 = 3 vectors: minimal MC/DC.
  */
-static void test_validate_cfg_mcdc_region_count_and_regions(void)
+RA8_INTERNAL static void internal_test_validate_cfg_mcdc_region_count_and_regions(void)
 {
   TEST_BEGIN("ra8_mpu_validate_cfg MC/DC: region_count>0 && regions==NULL");
-  mpu_test_setup();
+  internal_setup();
 
   /* Vector 1: zero regions, regions=NULL is irrelevant (short-circuit). */
   const ra8_mpu_cfg_t cfg_v1 = {
@@ -608,7 +633,7 @@ static void test_validate_cfg_mcdc_region_count_and_regions(void)
 
   /* Vector 2: one region, valid pointer. */
   const ra8_mpu_region_t r =
-    mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_4k);
+    internal_mcdc_region(k_ra8_mpu_perm_rw, k_ra8_mpu_perm_rw, (uint32_t)k_test_mpu_size_4k);
   const ra8_mpu_cfg_t cfg_v2 = {
     .regions      = &r,
     .region_count = 1U,
@@ -657,16 +682,16 @@ typedef enum : uint32_t {
   k_test_boot_dregion_few  = 4U,          /**< DREGION region count below the map's 5. */
 } test_boot_map_t;
 
-/**
+/* see header for full description.
  * @par MC/DC:
  * (no compound decisions in this test -- inspects the driver-owned boot map
  * table and its non-power-of-two region; no `&&` or `||` in the code paths it
  * touches)
  */
-static void test_boot_map_table(void)
+RA8_INTERNAL static void internal_test_boot_map_table(void)
 {
   TEST_BEGIN("ra8_mpu_boot_map exposes the canonical 5-region table");
-  mpu_test_setup();
+  internal_setup();
 
   uint8_t                 count = 0U;
   const ra8_mpu_region_t* map   = ra8_mpu_boot_map(&count);
@@ -698,29 +723,31 @@ static void test_boot_map_table(void)
   TEST_END("ra8_mpu_boot_map exposes the canonical 5-region table");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the NULL-argument guard of a
  * simple accessor; no `&&` or `||` in the code path it touches)
  */
-static void test_boot_map_null(void)
+RA8_INTERNAL static void internal_test_boot_map_null(void)
 {
   TEST_BEGIN("ra8_mpu_boot_map(NULL) returns NULL");
-  mpu_test_setup();
+  internal_setup();
   TEST_ASSERT_EQ(true, ra8_mpu_boot_map(nullptr) == nullptr);
   TEST_END("ra8_mpu_boot_map(NULL) returns NULL");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- drives the boot-map install happy path
  * and reads back the programmed registers via a struct snapshot; no `&&` or
  * `||` in the code path it touches)
  */
-static void test_apply_boot_map_enables(void)
+RA8_INTERNAL static void internal_test_apply_boot_map_enables(void)
 {
   TEST_BEGIN("ra8_mpu_apply_boot_map installs the map and enables the MPU");
-  mpu_test_setup(); /* DREGION = 16; ra8_fake_mmap_reset() zeroed CTRL. */
+  internal_setup(); /* DREGION = 16; ra8_fake_mmap_reset() zeroed CTRL. */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_apply_boot_map());
   TEST_ASSERT_EQ(true, ra8_mpu_is_enabled());
@@ -750,36 +777,38 @@ static void test_apply_boot_map_enables(void)
   TEST_END("ra8_mpu_apply_boot_map installs the map and enables the MPU");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the DREGION precondition of
  * ra8_mpu_apply_boot_map; the `implemented < count` guard is a single relational
  * condition, not a compound decision)
  */
-static void test_apply_boot_map_insufficient_regions(void)
+RA8_INTERNAL static void internal_test_apply_boot_map_insufficient_regions(void)
 {
   TEST_BEGIN("ra8_mpu_apply_boot_map rejects silicon with too few regions");
-  mpu_test_setup();
+  internal_setup();
   /* Pretend the part implements only 4 MPU regions; the 5-region map cannot be
      installed, so apply must fail and leave the MPU disabled (CTRL was zeroed
      by ra8_fake_mmap_reset() and apply must not touch it on the reject path). */
-  mpu_test_set_dregion((uint8_t)k_test_boot_dregion_few);
+  internal_set_dregion((uint8_t)k_test_boot_dregion_few);
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_apply_boot_map());
   TEST_ASSERT_EQ(false, ra8_mpu_is_enabled());
   TEST_END("ra8_mpu_apply_boot_map rejects silicon with too few regions");
 }
 
-/**
+/* see header for full description.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- checks ra8_mpu_is_enabled reflects
  * CTRL.ENABLE both set and clear; `(CTRL & ENABLE) != 0` is a single relational
  * condition, not a compound decision)
  */
-static void test_is_enabled_tracks_ctrl(void)
+RA8_INTERNAL static void internal_test_is_enabled_tracks_ctrl(void)
 {
   TEST_BEGIN("ra8_mpu_is_enabled reflects MPU_CTRL.ENABLE");
-  mpu_test_setup(); /* ra8_fake_mmap_reset() left CTRL == 0. */
+  internal_setup(); /* ra8_fake_mmap_reset() left CTRL == 0. */
   TEST_ASSERT_EQ(false, ra8_mpu_is_enabled());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_enable());
   TEST_ASSERT_EQ(true, ra8_mpu_is_enabled());
@@ -790,28 +819,27 @@ static void test_is_enabled_tracks_ctrl(void)
 
 int32_t main(void)
 {
-  test_register_layout();
-  test_configure_null_cfg();
-  test_configure_too_many_regions();
-  test_configure_invalid_size();
-  test_configure_misaligned_base();
-  test_configure_unrepresentable_perms();
-  test_configure_programs_region_zero();
-  test_configure_clears_unused_regions();
-  test_enable_disable();
-  test_set_region_null();
-  test_set_region_out_of_range();
-  test_set_region_writes_pair();
-  test_validate_region_mcdc_is_pow2();
-  test_validate_region_mcdc_size_guard();
-  test_encode_ap_mcdc_priv_rw_unpriv_rw();
-  test_encode_ap_mcdc_priv_ro_unpriv_none();
-  test_validate_cfg_mcdc_region_count_and_regions();
-  test_boot_map_table();
-  test_boot_map_null();
-  test_apply_boot_map_enables();
-  test_apply_boot_map_insufficient_regions();
-  test_is_enabled_tracks_ctrl();
-  (void)fprintf(stderr, "[OK ] test_ra8_mpu.c\n");
+  internal_test_register_layout();
+  internal_test_configure_null_cfg();
+  internal_test_configure_too_many_regions();
+  internal_test_configure_invalid_size();
+  internal_test_configure_misaligned_base();
+  internal_test_configure_unrepresentable_perms();
+  internal_test_configure_programs_region_zero();
+  internal_test_configure_clears_unused_regions();
+  internal_test_enable_disable();
+  internal_test_set_region_null();
+  internal_test_set_region_out_of_range();
+  internal_test_set_region_writes_pair();
+  internal_test_validate_region_mcdc_is_pow2();
+  internal_test_validate_region_mcdc_size_guard();
+  internal_test_encode_ap_mcdc_priv_rw_unpriv_rw();
+  internal_test_encode_ap_mcdc_priv_ro_unpriv_none();
+  internal_test_validate_cfg_mcdc_region_count_and_regions();
+  internal_test_boot_map_table();
+  internal_test_boot_map_null();
+  internal_test_apply_boot_map_enables();
+  internal_test_apply_boot_map_insufficient_regions();
+  internal_test_is_enabled_tracks_ctrl();
   return 0;
 }
