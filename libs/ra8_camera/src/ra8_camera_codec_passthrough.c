@@ -19,6 +19,7 @@
 
 #include <stddef.h>
 
+#include "ra8_attributes.h"
 #include "ra8_camera_internal.h"
 #include "ra8_err.h"
 
@@ -42,10 +43,10 @@
  * @note Thread-safe because the backend has no state.
  * @since 0.1.0
  */
-static ra8_err_t passthrough_encode(void*                      ctx,
-                                    const ra8_camera_frame_t*  input,
-                                    const ra8_camera_buffer_t* output_buffer,
-                                    ra8_camera_frame_t*        out_frame)
+RA8_INTERNAL static ra8_err_t internal_passthrough_encode(void*                      ctx,
+                                                          const ra8_camera_frame_t*  input,
+                                                          const ra8_camera_buffer_t* output_buffer,
+                                                          ra8_camera_frame_t*        out_frame)
 {
   (void)ctx;
   (void)output_buffer;
@@ -63,8 +64,8 @@ static ra8_err_t passthrough_encode(void*                      ctx,
 }
 
 /** @brief Stateless passthrough codec vtable. */
-static const ra8_camera_codec_iface_t k_passthrough_codec_iface = {
-  .encode = passthrough_encode,
+static const ra8_camera_codec_iface_t s_passthrough_codec_iface = {
+  .encode = internal_passthrough_encode,
 };
 
 ra8_err_t ra8_camera_codec_passthrough_init(ra8_camera_codec_t* codec)
@@ -72,7 +73,7 @@ ra8_err_t ra8_camera_codec_passthrough_init(ra8_camera_codec_t* codec)
   if (codec == nullptr) {
     return k_ra8_err_null_ptr;
   }
-  codec->iface = &k_passthrough_codec_iface;
+  codec->iface = &s_passthrough_codec_iface;
   codec->ctx   = nullptr;
   return k_ra8_ok;
 }
