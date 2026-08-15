@@ -7,8 +7,8 @@
  * index into a freshly scraped list (`--start K`), there was no "fetch only
  * what is new", a kill mid-chapter left an unrecorded partial directory, and
  * two runs (or two chapters) sharing an image re-downloaded it. This module is
- * the on-disk record that fixes all four: one small, versioned state file per
- * series holding the series identity, the site descriptor used, and -- per
+ * the on-disk record that fixes all four: one bounded, versioned state payload
+ * per series holding the series identity, the site descriptor used, and -- per
  * chapter -- the parsed chapter identifier, source URL, page count, completion
  * status and fetch time, plus a series-wide pool of per-page content
  * identities.
@@ -22,56 +22,75 @@
  * already held (::mdl_state_find_page) and a torn file is detected and
  * refetched rather than silently packaged.
  *
- * ### On-disk format (v2)
- * A flat, line-oriented, TAB-separated text file (`.mdl_state` in the series
- * directory), deliberately simple so it is human-readable and ports unchanged
- * to the RA8. A leading `#` marks a comment; blank lines are ignored. Each
+ * ### On-disk payload format (v4)
+ * A flat, line-oriented, TAB-separated text payload under the logical
+ * `.mdl_state` path, deliberately simple so it is human-readable and ports
+ * unchanged to the RA8. A leading `#` marks a comment; blank lines are ignored. Each
  * record is a one-letter type followed by TAB-separated fields:
  *
- *     # media_dl library state v2
- *     V<TAB>2                                         schema version
+ *     # media_dl library state v4
+ *     V<TAB>4                                         schema version
  *     S<TAB><series-url>                              series URL
  *     T<TAB><series-title>                            series title
  *     N<TAB><site-name>                               site descriptor name
  *     H<TAB><site-host>                               site host
  *     G<TAB><config-path>                             descriptor file used
  *     D/W/A/O/K/L/R<TAB>value                         rich series metadata
- *     C<TAB>id<TAB>known<TAB>num<TAB>done<TAB>pages<TAB>ready<TAB>epoch<TAB>url<TAB>title
- *     P<TAB>url_hash_hex<TAB>content_hash_hex<TAB>rel_path              one
- * page
+ *     C<TAB>id<TAB>known<TAB>binary64-hex<TAB>done<TAB>pages<TAB>ready<TAB>epoch<TAB>url<TAB>title
+ *     P<TAB>url_hash_hex<TAB>content_hash_hex<TAB>rel_path<TAB>etag<TAB>last_modified<TAB>epoch<TAB>status
  *
  * Version 1 files remain readable and are migrated in memory; their integral
  * chapter number is considered known only when nonzero because v1 had no
- * explicit presence bit. The next save always emits v2. The file is written
- * atomically (temp file + `rename`, ::mdl_state_save) so a
- * kill mid-write cannot corrupt it, and a file that fails to parse degrades to
- * a clear ::k_ra8_err_invalid_state so the caller can rebuild rather than crash
- * or silently refetch everything.
+ * explicit presence bit. Version 2 decimal-number records are also migrated
+ * with a bounded ASCII-only parser; version 3 stores the exact finite in-memory
+ * binary64 identity as 16 canonical hex digits, independent of locale/libc.
+ * Version 3 page records are migrated with an unknown fetch time/status. The
+ * next save always emits v4. Current saves wrap the
+ * payload in a fixed canonical-big-endian envelope containing a monotonic
+ * sequence, exact payload length, and CRC-32 checksums. Two physical
+ * generations (`.mdl_state` and `.mdl_state.alt`) alternate through validated
+ * create-new transactions, so the newest accepted generation is never removed
+ * before its successor is published. This provides truthful recovery on both
+ * atomic-replace hosts and FAT/VFS backends that cannot replace atomically.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 #pragma once
 
+#include <float.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#if !defined(__STDC_IEC_559__) && !defined(__STDC_IEC_60559_BFP__)
+#error "media_dl state v3 requires IEC 60559 binary floating-point"
+#endif
+
+static_assert(sizeof(double) == 8U, "media_dl state v3 requires binary64 double");
+static_assert(FLT_RADIX == 2, "media_dl state v3 requires radix-2 floating-point");
+static_assert(DBL_MANT_DIG == 53, "media_dl state requires 53-bit binary64 precision");
+static_assert(DBL_MAX_EXP == 1024, "media_dl state requires binary64 exponent range");
+static_assert(DBL_MIN_EXP == -1021, "media_dl state requires binary64 exponent range");
 
 #include "mdl_config.h"
 #include "mdl_extract.h"
 #include "mdl_net.h"
+#include "mdl_storage.h"
 #include "ra8_err.h"
 
 /** @brief Fixed capacities and the schema version (zero dynamic allocation). */
 typedef enum : uint16_t {
-  k_mdl_state_version_v1 = 1,    /**< Legacy schema accepted for migration. */
-  k_mdl_state_version    = 2,    /**< Schema version written by this build. */
-  k_mdl_chapter_id_max   = 128,  /**< Chapter identifier bytes (sanitised). */
-  k_mdl_title_max        = 192,  /**< Series title bytes.                   */
-  k_mdl_summary_max      = 1024, /**< Series summary bytes.                 */
-  k_mdl_person_max       = 128,  /**< Writer/artist bytes.                  */
-  k_mdl_language_max     = 16,   /**< BCP-47 language bytes.                */
-  k_mdl_relpath_max      = 200,  /**< Page path relative to the series dir. */
-  k_mdl_cfgpath_max      = 512,  /**< Site-descriptor path bytes.           */
-  k_mdl_max_chapters     = 512,  /**< Chapters tracked per series.          */
+  k_mdl_state_version_v1 = 1,    /**< Legacy integral schema accepted.       */
+  k_mdl_state_version_v2 = 2,    /**< Legacy decimal schema accepted.        */
+  k_mdl_state_version_v3 = 3,    /**< Legacy cache-metadata schema accepted. */
+  k_mdl_state_version    = 4,    /**< Timestamped cache schema written now.  */
+  k_mdl_chapter_id_max   = 128,  /**< Chapter identifier bytes (sanitised).  */
+  k_mdl_title_max        = 192,  /**< Series title bytes.                    */
+  k_mdl_summary_max      = 1024, /**< Series summary bytes.                  */
+  k_mdl_person_max       = 128,  /**< Writer/artist bytes.                   */
+  k_mdl_language_max     = 16,   /**< BCP-47 language bytes.                 */
+  k_mdl_relpath_max      = 200,  /**< Page path relative to the series dir.  */
+  k_mdl_cfgpath_max      = 512,  /**< Site-descriptor path bytes.            */
+  k_mdl_max_chapters     = 512,  /**< Chapters tracked per series.           */
 } mdl_state_limit_t;
 
 /** @brief Persisted fixed-layout reading direction. */
@@ -124,7 +143,9 @@ typedef struct {
   char     rel_path[k_mdl_relpath_max]; /**< Path under the series directory. */
   char     etag[k_mdl_etag_max];        /**< Cached ETag for conditional GET. */
   /** @brief Cached Last-Modified response value. */
-  char last_modified[k_mdl_last_mod_max];
+  char     last_modified[k_mdl_last_mod_max];
+  int64_t  fetched_at;      /**< Most recent HTTP result time (epoch s).  */
+  uint16_t response_status; /**< Most recent HTTP status; zero if legacy. */
 } mdl_page_rec_t;
 
 /**
@@ -179,6 +200,9 @@ typedef struct {
  *
  * @note Not thread-safe: initialises caller storage.
  * @since 0.1.0
+
+ * @details Uses fixed-capacity state supplied by the caller without allocation.
+ *          Any text retained by the state is copied into bounded records.
  */
 void mdl_state_init(mdl_state_t* st);
 
@@ -202,6 +226,9 @@ void mdl_state_init(mdl_state_t* st);
  *
  * @note Not thread-safe: writes caller storage.
  * @since 0.1.0
+
+ * @details Uses fixed-capacity state supplied by the caller without allocation.
+ *          Any text retained by the state is copied into bounded records.
  */
 void mdl_state_set_series(mdl_state_t* st,
                           const char*  url,
@@ -250,17 +277,17 @@ bool mdl_state_set_series_metadata(mdl_state_t*                  st,
                                    mdl_state_reading_direction_t direction);
 
 /**
- * @brief Load a series' state from disk.
+ * @brief Load a series' newest valid state through injected portable storage.
  *
  * @details
- * Parses both v2 and the migratable v1 format (see the file header). A file
- * that is absent is NOT an error -- @p st is initialised empty and ::k_ra8_ok
- * is returned, so the first run of a new series just starts fresh. A file that
- * exists but does not parse (wrong version, malformed record, over-capacity)
- * leaves @p st initialised empty and returns ::k_ra8_err_invalid_state, giving
- * the caller a clear rebuild path rather than a crash or silent full refetch.
+ * Authenticates both journal generations, chooses the highest valid sequence,
+ * and falls back to the older valid generation if semantic parsing fails. A
+ * legacy unenveloped v1/v2 base file remains readable as sequence zero. When
+ * neither generation exists, @p st is initialized empty and success is
+ * returned. Any final failure also leaves @p st initialized empty.
  *
- * @param[in]  path State file path (never NULL).
+ * @param[in,out] storage Initialized, exclusively-owned storage binding.
+ * @param[in]  path Canonical logical state path (never NULL).
  * @param[out] st   State to fill; always left in a valid (possibly empty) form.
  *
  * @return An ::ra8_err_t result.
@@ -268,45 +295,100 @@ bool mdl_state_set_series_metadata(mdl_state_t*                  st,
  * @retval k_ra8_err_invalid_arg  @p path or @p st was NULL.
  * @retval k_ra8_err_invalid_state The file exists but is corrupt/unsupported.
  *
- * @pre @p path and @p st are non-NULL.
- * @pre The caller treats ::k_ra8_err_invalid_state as "rebuild", not "abort".
+ * @pre All pointers are non-NULL and @p storage was initialized successfully.
+ * @pre The caller exclusively owns every workspace bound to @p storage.
  * @post @p st is always a valid state object on return (empty on any error).
- * @post On ::k_ra8_err_invalid_state a diagnostic naming @p path is printed.
- *
- * @note Not thread-safe.
+ * @post No filesystem generation is modified.
+ * @note Not thread-safe: borrows every workspace in @p storage.
  * @see mdl_state_save
  * @since 0.1.0
  */
-ra8_err_t mdl_state_load(const char* path, mdl_state_t* st);
+ra8_err_t mdl_state_load(mdl_storage_t* storage, const char* path, mdl_state_t* st);
 
 /**
- * @brief Persist a series' state atomically.
+ * @brief Load only an authenticated checksummed state generation.
+ * @details Scans the logical base path and its `.alt` peer, rejects legacy
+ *          unenveloped text, selects the highest valid authenticated sequence,
+ *          and falls back to the older authenticated generation when semantic
+ *          decoding fails. An absent marker initializes @p st empty and
+ *          succeeds; every failure also leaves @p st initialized empty.
+ * @param[in,out] storage Initialized, exclusively-owned storage binding.
+ * @param[in] path Canonical logical state path.
+ * @param[out] st State filled from one authenticated generation.
+ * @return Canonical path, stream, authentication, or schema status.
+ * @retval k_ra8_ok An authenticated generation loaded or both peers were absent.
+ * @retval k_ra8_err_invalid_state Existing generations failed authentication.
+ * @retval k_ra8_err_invalid_arg A pointer, path, or binding is invalid.
+ * @pre Required pointers are non-NULL and @p storage is initialized.
+ * @pre The caller exclusively owns all workspaces bound to @p storage.
+ * @post @p st is a valid state object on every return, empty on failure.
+ * @post No filesystem generation is modified.
+ * @note Use for library trust decisions; ::mdl_state_load preserves import
+ *       compatibility with legacy unenveloped state.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+mdl_state_load_authenticated(mdl_storage_t* storage, const char* path, mdl_state_t* st);
+
+/**
+ * @brief Publish a checksummed successor without sacrificing the newest state.
  *
  * @details
- * Writes to `<path>.tmp` and then `rename`s it over @p path, so a process
- * killed mid-write can never leave a half-written (thus corrupt) state file --
- * the old file survives intact until the complete new one replaces it in one
- * step. This is what makes per-page checkpointing safe: the fetch loop can save
- * after every page without risking the record it is protecting.
+ * Selects the absent, invalid, or older physical generation; removes only that
+ * target; writes a create-new private transaction; independently validates its
+ * canonical envelope, exact length, and payload CRC; then commits it. The
+ * newest accepted generation remains intact until commit. Sequence exhaustion
+ * is reported rather than wrapped. Cleanup failure takes precedence while the
+ * transaction is unpublished. A commit-time durability error can accompany a
+ * true @p out_published and must not be retried as though nothing changed.
  *
- * @param[in] path State file path (never NULL).
+ * @param[in,out] storage Initialized, exclusively-owned storage binding.
+ * @param[in] path Canonical logical state path (never NULL).
  * @param[in] st   State to write (never NULL).
+ * @param[out] out_published False initially; true exactly when the successor
+ *                           became visible, including after durability failure.
  *
  * @return An ::ra8_err_t result.
- * @retval k_ra8_ok              Written and renamed into place.
- * @retval k_ra8_err_invalid_arg @p path or @p st was NULL.
- * @retval k_ra8_fail            The temp file could not be written or renamed.
+ * @retval k_ra8_ok The validated successor was published.
+ * @retval k_ra8_err_invalid_arg A pointer, path, or binding is invalid.
+ * @retval k_ra8_err_invalid_state Existing generations are ambiguous/corrupt.
+ * @retval k_ra8_err_invalid_size The monotonic sequence or I/O bound is exhausted.
+ * @retval other A namespace, transaction, validation, durability, or cleanup error.
  *
- * @pre @p path and @p st are non-NULL.
- * @pre @p path's directory exists and is writable.
- * @post On ::k_ra8_ok @p path holds the complete serialised @p st.
- * @post On failure @p path is left as it was (the temp file is removed).
+ * @pre All pointers are non-NULL and @p storage was initialized successfully.
+ * @pre The caller exclusively owns every workspace bound to @p storage.
+ * @post On success one generation contains the complete serialized @p st.
+ * @post When @p out_published is false, the previously newest valid generation survives.
+ * @post When @p out_published is true, the successor is visible regardless of return status.
  *
- * @note Not thread-safe.
+ * @note Not thread-safe: borrows every workspace in @p storage.
  * @see mdl_state_load
  * @since 0.1.0
  */
-ra8_err_t mdl_state_save(const char* path, const mdl_state_t* st);
+ra8_err_t mdl_state_save(mdl_storage_t*     storage,
+                         const char*        path,
+                         const mdl_state_t* st,
+                         bool*              out_published);
+
+/**
+ * @brief Probe the complete two-generation state marker through portable storage.
+ * @details Reports a tracked marker when either the logical base path or its
+ *          bounded alternate generation exists as a regular file. Integrity
+ *          and schema validation remain the responsibility of ::mdl_state_load.
+ * @param[in,out] storage Initialized, exclusively-owned storage binding.
+ * @param[in] path Canonical logical state path.
+ * @param[out] out_exists Whether at least one regular state generation exists.
+ * @return Canonical namespace/path status.
+ * @retval k_ra8_ok The probe completed and initialized @p out_exists.
+ * @retval k_ra8_err_invalid_arg A pointer/path is invalid or a marker is not a file.
+ * @pre All pointers are non-NULL and @p storage was initialized successfully.
+ * @pre The caller exclusively owns the namespace binding in @p storage.
+ * @post On every return @p out_exists is initialized false unless a marker was found.
+ * @post No filesystem object or state model is modified.
+ * @note Not thread-safe because @p storage is a non-reentrant dependency bundle.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t mdl_state_probe(mdl_storage_t* storage, const char* path, bool* out_exists);
 
 /**
  * @brief Find a chapter record by its stable identifier.
@@ -425,6 +507,10 @@ bool mdl_state_set_chapter_metadata(mdl_chapter_rec_t* chapter,
  *
  * @note Not thread-safe.
  * @since 0.1.0
+
+ * @details Uses fixed-capacity state supplied by the caller without allocation.
+ *          Any text retained by the state is copied into bounded records.
+ * @post Documented outputs and the return value describe the same outcome.
  */
 bool mdl_state_chapter_complete(const mdl_state_t* st, const char* id);
 
@@ -448,6 +534,8 @@ bool mdl_state_chapter_complete(const mdl_state_t* st, const char* id);
  *
  * @note Not thread-safe.
  * @since 0.1.0
+
+ * @post Documented outputs and the return value describe the same outcome.
  */
 uint16_t mdl_state_chapter_pages(const mdl_state_t* st, const char* id);
 
@@ -487,6 +575,8 @@ const mdl_page_rec_t* mdl_state_find_page(const mdl_state_t* st, uint64_t url_ha
  * NULL).
  * @param[in]     etag         Cached ETag, or NULL when unavailable.
  * @param[in]     last_modified Cached Last-Modified, or NULL when unavailable.
+ * @param[in]     fetched_at Most recent fetch completion time in epoch seconds.
+ * @param[in]     response_status Most recent HTTP status, or zero if unknown.
  *
  * @return Whether the record was stored.
  * @retval true  The record was appended or the existing URL record replaced.
@@ -507,7 +597,32 @@ bool mdl_state_add_page(mdl_state_t* st,
                         uint64_t     content_hash,
                         const char*  rel_path,
                         const char*  etag,
-                        const char*  last_modified);
+                        const char*  last_modified,
+                        int64_t      fetched_at,
+                        uint16_t     response_status);
+
+/**
+ * @brief Refresh the observed HTTP result for one existing URL cache entry.
+ * @details Locates the record by its stable URL hash and atomically replaces
+ *          only the completion time and response-status fields.
+ * @param[in,out] st State containing the URL-keyed record.
+ * @param[in] url_hash FNV-1a 64 hash selecting the record.
+ * @param[in] fetched_at Completed request time in epoch seconds.
+ * @param[in] response_status HTTP response status in 100..599.
+ * @return Whether an existing record and valid observation were updated.
+ * @retval true The matching record now carries the supplied observation.
+ * @retval false No record matched or the time/status was invalid.
+ * @pre @p st is non-NULL and exclusively owned.
+ * @pre @p fetched_at is nonnegative.
+ * @post Success changes only the two observation fields.
+ * @post Failure leaves @p st unchanged.
+ * @note Used after a bodyless 304 revalidates already-verified local bytes.
+ * @since 0.1.0
+ */
+bool mdl_state_note_page_response(mdl_state_t* st,
+                                  uint64_t     url_hash,
+                                  int64_t      fetched_at,
+                                  uint16_t     response_status);
 
 /**
  * @brief Render a one-line coverage summary (chapter span, count, gaps).

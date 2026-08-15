@@ -16,9 +16,10 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
+#include <errno.h>
+#include <fcntl.h>
 #include <math.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -29,6 +30,8 @@
 #include "mdl_state.h"
 #include "mdl_storage.h"
 #include "mdl_urlname.h"
+#include "ra8_attributes.h"
+#include "test_media_dl_state_metadata_internal.h"
 #include "unity_minimal.h"
 
 /** @brief Named constants for the state tests (no bare literals). */
@@ -80,34 +83,140 @@ static fs_workspace_t      s_transaction_work;
 static uint8_t             s_io_buffer[k_mdl_storage_io_bytes];
 static mdl_storage_t       s_storage;
 
-/** @brief Create a unique temp file, close it, and return its path in `buf`. */
-static void make_tmp(char* buf, size_t cap)
+/** @brief Create a unique temp file, close it, and return its path in `buf`.
+ * @details Implements this test-only seam with caller-owned fixtures, bounded storage, and explicit propagation of the result observed by its caller.
+ * @param[in,out] buf Caller-owned bounded byte buffer.
+ * @param[in] cap Supplied capacity of the destination buffer, in bytes.
+ * @pre Pointer arguments satisfy their documented readable and writable extents.
+ * @pre The caller retains ownership of every supplied fixture object.
+ * @post Documented outputs reflect the processed fixture on success.
+ * @post Failure preserves caller-owned resources as documented.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_make_tmp(char* buf, size_t cap)
 {
-  (void)snprintf(buf, cap, "%s", "/tmp/mdl_state_test_XXXXXX");
+  (void)__builtin_snprintf(buf, cap, "%s", "/tmp/mdl_state_test_XXXXXX");
   const int fd = mkstemp(buf);
   if (fd >= 0) {
     (void)close(fd);
   }
 }
 
-/** @brief True when a plain file exists at `path`. */
-static bool file_exists(const char* path)
+/** @brief True when a plain file exists at `path`.
+ * @details Implements this test-only seam with caller-owned fixtures, bounded storage, and explicit propagation of the result observed by its caller.
+ * @param[in] path Filesystem path used by this fixture operation.
+ * @return True when the helper condition succeeds; otherwise false.
+ * @retval true The requested fixture condition succeeded.
+ * @retval false The helper rejected or could not complete the condition.
+ * @pre Pointer arguments satisfy their documented readable and writable extents.
+ * @pre The caller retains ownership of every supplied fixture object.
+ * @post Documented outputs reflect the processed fixture on success.
+ * @post Failure preserves caller-owned resources as documented.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_file_exists(const char* path)
 {
   struct stat st;
   return stat(path, &st) == 0;
 }
 
-/** @brief Replace a fixture file with exactly `text`. */
-static void write_text(const char* path, const char* text)
+/**
+ * @brief Replace a fixture file with exactly `text`.
+ * @details Executes the write text scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @param[in] path Filesystem path for the operation.
+ * @param[in] text Text value for this operation.
+ * @pre Assertions are enabled for contract verification.
+ * @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed.
+ * @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_write_text(const char* path, const char* text)
 {
-  FILE* fp = fopen(path, "wb");
-  TEST_ASSERT_NOT_NULL(fp);
-  TEST_ASSERT_EQ((int64_t)strlen(text), (int64_t)fwrite(text, 1U, strlen(text), fp));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)fclose(fp));
+  const int descriptor = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
+  TEST_ASSERT(descriptor >= 0);
+  const size_t length = strlen(text);
+  size_t       offset = 0U;
+  while (offset < length) {
+    const ssize_t written = write(descriptor, &text[offset], length - offset);
+    if (written > 0) {
+      offset += (size_t)written;
+    } else if ((written < 0) && (errno == EINTR)) {
+      continue;
+    } else {
+      break;
+    }
+  }
+  TEST_ASSERT(offset == length);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)close(descriptor));
 }
 
 /**
- * @test test_hash_determinism
+ * @brief Remove both physical generations belonging to one logical state path.
+ * @details Executes the remove state fixture scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @param[in] path Filesystem path for the operation.
+ * @pre Assertions are enabled for contract verification.
+ * @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed.
+ * @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_remove_state_fixture(const char* path)
+{
+  char alternate[k_tmp_path_bytes + 8U];
+  (void)__builtin_snprintf(alternate, sizeof(alternate), "%s.alt", path);
+  (void)unlink(path);
+  (void)unlink(alternate);
+}
+
+/**
+ * @brief Load state through the test's injected portable filesystem.
+ * @details Executes the load state scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @param[in] path Filesystem path for the operation.
+ * @param[in,out] state State value for this operation.
+ * @return Canonical downloader status.
+ * @retval k_ra8_ok The operation completed.
+ * @retval other Validation, capacity, network, or storage failed.
+ * @pre Assertions are enabled for contract verification.
+ * @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed.
+ * @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_load_state(const char* path, mdl_state_t* state)
+{
+  return mdl_state_load(&s_storage, path, state);
+}
+
+/**
+ * @brief Save state and require publication whenever the operation succeeds.
+ * @details Executes the save state scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @param[in] path Filesystem path for the operation.
+ * @param[in] state State value for this operation.
+ * @return Canonical downloader status.
+ * @retval k_ra8_ok The operation completed.
+ * @retval other Validation, capacity, network, or storage failed.
+ * @pre Assertions are enabled for contract verification.
+ * @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed.
+ * @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_save_state(const char* path, const mdl_state_t* state)
+{
+  bool            published = false;
+  const ra8_err_t err       = mdl_state_save(&s_storage, path, state, &published);
+  return ((err == k_ra8_ok) && !published) ? k_ra8_err_invalid_state : err;
+}
+
+/**
+ * @test internal_test_hash_determinism
  *
  * @par MC/DC:
  * Decision: mdl_hash_bytes_seed's guard `(data == NULL) || (len == 0)` (2
@@ -117,8 +226,16 @@ static void write_text(const char* path, const char* text)
  * - V3: data="abc", len=0 -> true  (varies len; returns the seed unchanged)
  * Also pins that equal inputs hash equally, different inputs differ, and a
  * chunked fold equals the single-shot hash.
+ * @brief Exercise the hash determinism media-downloader scenario.
+ * @details Exercises the hash determinism scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_hash_determinism(void)
+RA8_INTERNAL static void internal_test_hash_determinism(void)
 {
   TEST_BEGIN("hash determinism");
   /* V2/V3: an empty or NULL range returns the seed (here, the offset basis). */
@@ -137,7 +254,7 @@ static void test_hash_determinism(void)
 }
 
 /**
- * @test test_hash_file
+ * @test internal_test_hash_file
  *
  * @par MC/DC:
  * Decision: mdl_hash_file's guard `(path == NULL) || (out == NULL)` (2
@@ -147,17 +264,22 @@ static void test_hash_determinism(void)
  * - V3: path set, out=NULL  -> true  (varies out  -> invalid_arg)
  * Also: a missing file, FIFO, symlink, device, and over-limit sparse regular
  * file return their specific errors without publishing a digest.
+ * @brief Exercise the hash file media-downloader scenario.
+ * @details Exercises the hash file scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_hash_file(void)
+RA8_INTERNAL static void internal_test_hash_file(void)
 {
   TEST_BEGIN("hash file");
   char path[k_tmp_path_bytes];
-  make_tmp(path, sizeof(path));
+  internal_make_tmp(path, sizeof(path));
   const char payload[] = "hello";
-  FILE*      fp        = fopen(path, "wb");
-  TEST_ASSERT_NOT_NULL(fp);
-  (void)fwrite(payload, 1U, strlen(payload), fp);
-  (void)fclose(fp);
+  internal_write_text(path, payload);
 
   uint64_t fh = 0U;
   /* V1 control: the file hash equals the same bytes hashed in memory. */
@@ -174,7 +296,7 @@ static void test_hash_file(void)
   TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(&s_storage, "/dev/null", &fh));
   TEST_ASSERT_EQ((uint64_t)k_ch_a, fh);
 
-  make_tmp(path, sizeof(path));
+  internal_make_tmp(path, sizeof(path));
   (void)unlink(path);
   TEST_ASSERT_EQ(0, mkfifo(path, 0600));
   TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(&s_storage, path, &fh));
@@ -182,9 +304,9 @@ static void test_hash_file(void)
   (void)unlink(path);
 
   char target[k_tmp_path_bytes];
-  make_tmp(target, sizeof(target));
-  write_text(target, payload);
-  make_tmp(path, sizeof(path));
+  internal_make_tmp(target, sizeof(target));
+  internal_write_text(target, payload);
+  internal_make_tmp(path, sizeof(path));
   (void)unlink(path);
   TEST_ASSERT_EQ(0, symlink(target, path));
   TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_hash_file(&s_storage, path, &fh));
@@ -192,11 +314,11 @@ static void test_hash_file(void)
   (void)unlink(path);
   (void)unlink(target);
 
-  make_tmp(path, sizeof(path));
-  fp = fopen(path, "wb");
-  TEST_ASSERT_NOT_NULL(fp);
-  TEST_ASSERT_EQ(0, ftruncate(fileno(fp), (off_t)k_hash_oversize_bytes));
-  TEST_ASSERT_EQ(0, fclose(fp));
+  internal_make_tmp(path, sizeof(path));
+  const int descriptor = open(path, O_WRONLY | O_TRUNC | O_CLOEXEC);
+  TEST_ASSERT(descriptor >= 0);
+  TEST_ASSERT_EQ(0, ftruncate(descriptor, (off_t)k_hash_oversize_bytes));
+  TEST_ASSERT_EQ(0, close(descriptor));
   TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_size, mdl_hash_file(&s_storage, path, &fh));
   TEST_ASSERT_EQ((uint64_t)k_ch_a, fh);
   (void)unlink(path);
@@ -204,14 +326,22 @@ static void test_hash_file(void)
 }
 
 /**
- * @test test_urlname
+ * @test internal_test_urlname
  *
  * @par MC/DC:
  * (No compound decision under test; it pins the three URL-name helpers: the
  * sanitised last segment, explicit decimal chapter number, and the
  * allowlisted lower-cased extension with its jpg default.)
+ * @brief Exercise the urlname media-downloader scenario.
+ * @details Exercises the urlname scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_urlname(void)
+RA8_INTERNAL static void internal_test_urlname(void)
 {
   TEST_BEGIN("urlname helpers");
   char seg[k_name_bytes];
@@ -261,7 +391,7 @@ static void test_urlname(void)
 }
 
 /**
- * @test test_state_chapters_and_pages
+ * @test internal_test_state_chapters_and_pages
  *
  * @par MC/DC:
  * Decision: mdl_state_chapter_complete's per-chapter match returns
@@ -269,8 +399,16 @@ static void test_urlname(void)
  * matched-complete chapter (true), a matched-incomplete chapter (false), and an
  * absent id (false). Also proves add is idempotent and page lookup keys on the
  * URL hash.
+ * @brief Exercise the state chapters and pages media-downloader scenario.
+ * @details Exercises the state chapters and pages scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_state_chapters_and_pages(void)
+RA8_INTERNAL static void internal_test_state_chapters_and_pages(void)
 {
   TEST_BEGIN("state chapters + pages");
   mdl_state_init(&s_a);
@@ -299,12 +437,20 @@ static void test_state_chapters_and_pages(void)
                                  (uint64_t)k_ch_a,
                                  "c1/page_0001.jpg",
                                  nullptr,
-                                 nullptr));
+                                 nullptr,
+                                 0,
+                                 0U));
   const mdl_page_rec_t* p = mdl_state_find_page(&s_a, (uint64_t)k_uh_a);
   TEST_ASSERT_NOT_NULL(p);
   TEST_ASSERT_EQ((uint64_t)k_ch_a, p->content_hash);
-  TEST_ASSERT(
-    mdl_state_add_page(&s_a, (uint64_t)k_uh_a, (uint64_t)k_ch_b, "c2/page_0001.png", "e2", "m2"));
+  TEST_ASSERT(mdl_state_add_page(&s_a,
+                                 (uint64_t)k_uh_a,
+                                 (uint64_t)k_ch_b,
+                                 "c2/page_0001.png",
+                                 "e2",
+                                 "m2",
+                                 123456,
+                                 200U));
   TEST_ASSERT_EQ((uint32_t)1, s_a.page_rec_count);
   p = mdl_state_find_page(&s_a, (uint64_t)k_uh_a);
   TEST_ASSERT_NOT_NULL(p);
@@ -312,12 +458,25 @@ static void test_state_chapters_and_pages(void)
   TEST_ASSERT(strcmp(p->rel_path, "c2/page_0001.png") == 0);
   TEST_ASSERT(strcmp(p->etag, "e2") == 0);
   TEST_ASSERT(strcmp(p->last_modified, "m2") == 0);
+  TEST_ASSERT_EQ((int64_t)123456, p->fetched_at);
+  TEST_ASSERT_EQ((uint16_t)200, p->response_status);
+  TEST_ASSERT(mdl_state_note_page_response(&s_a, (uint64_t)k_uh_a, 123457, 304U));
+  TEST_ASSERT_EQ((int64_t)123457, p->fetched_at);
+  TEST_ASSERT_EQ((uint16_t)304, p->response_status);
   TEST_ASSERT_NULL(mdl_state_find_page(&s_a, (uint64_t)k_uh_z));
   TEST_END("state chapters + pages");
 }
 
-/** @brief Populate `s_a` with a two-chapter, two-page fixture. */
-static void seed_fixture(void)
+/** @brief Populate `s_a` with a two-chapter, two-page fixture.
+ * @details Implements this test-only seam with caller-owned fixtures, bounded storage, and explicit propagation of the result observed by its caller.
+ * @pre Pointer arguments satisfy their documented readable and writable extents.
+ * @pre The caller retains ownership of every supplied fixture object.
+ * @post Documented outputs reflect the processed fixture on success.
+ * @post Failure preserves caller-owned resources as documented.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_seed_fixture(void)
 {
   mdl_state_init(&s_a);
   mdl_state_set_series(&s_a,
@@ -348,36 +507,48 @@ static void seed_fixture(void)
                            (uint64_t)k_ch_a,
                            "chapter-1/page_0001.jpg",
                            "e1",
-                           "m1");
+                           "m1",
+                           1001,
+                           200U);
   (void)mdl_state_add_page(&s_a,
                            (uint64_t)k_uh_b,
                            (uint64_t)k_ch_b,
                            "chapter-1/page_0002.jpg",
                            "e2",
-                           "m2");
+                           "m2",
+                           1002,
+                           304U);
 }
 
 /**
- * @test test_state_roundtrip_atomic
+ * @test internal_test_state_roundtrip_atomic
  *
  * @par MC/DC:
  * (No compound decision under test; it proves a saved state reloads field for
  * field and that the atomic write leaves no `.tmp` sidecar behind.)
+ * @brief Exercise the state roundtrip atomic media-downloader scenario.
+ * @details Exercises the state roundtrip atomic scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_state_roundtrip_atomic(void)
+RA8_INTERNAL static void internal_test_state_roundtrip_atomic(void)
 {
   TEST_BEGIN("state round-trip + atomic");
-  seed_fixture();
+  internal_seed_fixture();
   char path[k_tmp_path_bytes];
-  make_tmp(path, sizeof(path));
-  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_state_save(path, &s_a));
+  internal_make_tmp(path, sizeof(path));
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, internal_save_state(path, &s_a));
   /* Atomic write: the file exists and no leftover temp sidecar remains. */
-  TEST_ASSERT(file_exists(path));
+  TEST_ASSERT(internal_file_exists(path));
   char tmp[k_tmp_path_bytes + 8U];
-  (void)snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-  TEST_ASSERT(!file_exists(tmp));
+  (void)__builtin_snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+  TEST_ASSERT(!internal_file_exists(tmp));
 
-  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_state_load(path, &s_b));
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, internal_load_state(path, &s_b));
   TEST_ASSERT_EQ(s_a.chapter_count, s_b.chapter_count);
   TEST_ASSERT_EQ(s_a.page_rec_count, s_b.page_rec_count);
   TEST_ASSERT(strcmp(s_b.series_url, "http://s/series/foo") == 0);
@@ -411,35 +582,37 @@ static void test_state_roundtrip_atomic(void)
   TEST_ASSERT(strcmp(pb->rel_path, "chapter-1/page_0002.jpg") == 0);
   TEST_ASSERT(strcmp(pb->etag, "e2") == 0);
   TEST_ASSERT(strcmp(pb->last_modified, "m2") == 0);
-  (void)unlink(path);
+  TEST_ASSERT_EQ((int64_t)1002, pb->fetched_at);
+  TEST_ASSERT_EQ((uint16_t)304, pb->response_status);
+  internal_remove_state_fixture(path);
   TEST_END("state round-trip + atomic");
 }
 
 /**
- * @test test_state_v1_migration
+ * @test internal_test_state_v1_migration
  *
  * @brief Verify schema-v1 state migrates losslessly where representable.
  * @details Verifies the legacy integral record grammar remains readable, v1's
  *          ambiguous zero migrates as unknown, rich metadata defaults safely,
- *          and the next save upgrades the file to schema v2.
+ *          and the next save upgrades the file to the current schema.
  * @pre The test process may create files under `/tmp`.
  * @pre The state fixture storage is exclusively owned by this test.
- * @post The migrated save begins with schema version 2.
+ * @post The migrated journal remains loadable when only its alternate slot survives.
  * @post Temporary state storage is removed.
  * @note Host-only test with no network access.
  * @since 0.1.0
  */
-static void test_state_v1_migration(void)
+RA8_INTERNAL static void internal_test_state_v1_migration(void)
 {
   TEST_BEGIN("state v1 migration");
   char path[k_tmp_path_bytes];
-  make_tmp(path, sizeof(path));
-  write_text(path,
-             "V\t1\n"
-             "S\thttps://s/series\n"
-             "C\tchapter-7\t7\t1\t1\t1\t42\thttps://s/chapter-7\n"
-             "C\tprologue\t0\t0\t0\t0\t0\thttps://s/prologue\n");
-  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_state_load(path, &s_b));
+  internal_make_tmp(path, sizeof(path));
+  internal_write_text(path,
+                      "V\t1\n"
+                      "S\thttps://s/series\n"
+                      "C\tchapter-7\t7\t1\t1\t1\t42\thttps://s/chapter-7\n"
+                      "C\tprologue\t0\t0\t0\t0\t0\thttps://s/prologue\n");
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, internal_load_state(path, &s_b));
   TEST_ASSERT_EQ((uint16_t)k_mdl_state_version, s_b.version);
   const mdl_chapter_rec_t* numbered = mdl_state_find_chapter(&s_b, "chapter-7");
   const mdl_chapter_rec_t* prologue = mdl_state_find_chapter(&s_b, "prologue");
@@ -453,22 +626,20 @@ static void test_state_v1_migration(void)
   TEST_ASSERT(strcmp(s_b.summary, "") == 0);
   TEST_ASSERT_EQ((int64_t)k_mdl_state_read_ltr, (int64_t)s_b.reading_direction);
 
-  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_state_save(path, &s_b));
-  FILE* fp = fopen(path, "rb");
-  TEST_ASSERT_NOT_NULL(fp);
-  char line[k_name_bytes];
-  TEST_ASSERT_NOT_NULL(fgets(line, (int)sizeof(line), fp));
-  TEST_ASSERT_NOT_NULL(fgets(line, (int)sizeof(line), fp));
-  TEST_ASSERT(strcmp(line, "V\t2\n") == 0);
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)fclose(fp));
-  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_state_load(path, &s_a));
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, internal_save_state(path, &s_b));
+  (void)unlink(path); /* Simulate remount after the legacy/base slot was lost. */
+  bool marker_exists = false;
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_state_probe(&s_storage, path, &marker_exists));
+  TEST_ASSERT(marker_exists);
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, internal_load_state(path, &s_a));
+  TEST_ASSERT_EQ((uint16_t)k_mdl_state_version, s_a.version);
   TEST_ASSERT(!mdl_state_find_chapter(&s_a, "prologue")->number_known);
-  (void)unlink(path);
+  internal_remove_state_fixture(path);
   TEST_END("state v1 migration");
 }
 
 /**
- * @test test_state_load_absent_and_corrupt
+ * @test internal_test_state_load_absent_and_corrupt
  *
  * @par MC/DC:
  * Decision: mdl_state_load's guard `(path == NULL) || (st == NULL)` (2
@@ -478,49 +649,100 @@ static void test_state_v1_migration(void)
  * - V3: path set, st=NULL  -> true  (varies st   -> invalid_arg)
  * Also: an absent file is ok+empty, a garbage file and a wrong-version file
  * both degrade to invalid_state with an empty, valid state left behind.
+ * @brief Exercise the state load absent and corrupt media-downloader scenario.
+ * @details Exercises the state load absent and corrupt scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_state_load_absent_and_corrupt(void)
+RA8_INTERNAL static void internal_test_state_load_absent_and_corrupt(void)
 {
   TEST_BEGIN("state load absent + corrupt");
   char path[k_tmp_path_bytes];
-  make_tmp(path, sizeof(path));
+  internal_make_tmp(path, sizeof(path));
   (void)unlink(path); /* make it absent */
   /* V1: an absent file is not an error; state is empty. */
-  TEST_ASSERT_EQ((int64_t)k_ra8_ok, mdl_state_load(path, &s_b));
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, internal_load_state(path, &s_b));
   TEST_ASSERT_EQ((uint16_t)0, s_b.chapter_count);
   /* V2/V3: NULL arguments are refused. */
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_state_load(nullptr, &s_b));
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, mdl_state_load(path, nullptr));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, internal_load_state(nullptr, &s_b));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_arg, internal_load_state(path, nullptr));
 
   /* A garbage file (no version record) is corrupt -> empty, valid state. */
-  FILE* fp = fopen(path, "wb");
-  TEST_ASSERT_NOT_NULL(fp);
-  (void)fprintf(fp, "this is not a state file\n");
-  (void)fclose(fp);
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_load(path, &s_b));
+  internal_write_text(path, "this is not a state file\n");
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, internal_load_state(path, &s_b));
   TEST_ASSERT_EQ((uint16_t)0, s_b.chapter_count);
 
   /* A wrong-version file is also refused. */
-  fp = fopen(path, "wb");
-  TEST_ASSERT_NOT_NULL(fp);
-  (void)fprintf(fp, "V\t99\n");
-  (void)fclose(fp);
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_load(path, &s_b));
-  (void)unlink(path);
+  internal_write_text(path, "V\t99\n");
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, internal_load_state(path, &s_b));
+
+  /* Current schema is accepted only inside an authenticated journal envelope. */
+  internal_write_text(path, "V\t4\n");
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, internal_load_state(path, &s_b));
+  internal_remove_state_fixture(path);
   TEST_END("state load absent + corrupt");
 }
 
 /**
- * @test test_state_rejects_malformed_records
+ * @test internal_test_state_journal_fallback_and_total_corruption
+ * @brief Recover through one authenticated generation and fail when both are corrupt.
+ * @details Writes two valid journal generations, damages the newer base slot,
+ *          and requires the older alternate generation to load. It then
+ *          damages the alternate slot as unsupported legacy text and requires a
+ *          hard invalid-state result instead of an empty-library success.
+ * @pre The test process may create files under `/tmp`.
+ * @pre The state fixture storage is exclusively owned by this test.
+ * @post One valid authenticated slot remains sufficient for recovery.
+ * @post Two malformed slots leave empty output and return invalid state.
+ * @note Raw current-schema text is never a recovery generation.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_state_journal_fallback_and_total_corruption(void)
+{
+  TEST_BEGIN("state journal fallback + total corruption");
+  char path[k_tmp_path_bytes];
+  char alternate[k_tmp_path_bytes + 8U];
+  internal_make_tmp(path, sizeof(path));
+  (void)__builtin_snprintf(alternate, sizeof(alternate), "%s.alt", path);
+  internal_seed_fixture();
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, internal_save_state(path, &s_a));
+  (void)__builtin_snprintf(s_a.series_title, sizeof(s_a.series_title), "%s", "newer title");
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, internal_save_state(path, &s_a));
+
+  internal_write_text(path, "V\t999\nmalformed base\n");
+  TEST_ASSERT_EQ((int64_t)k_ra8_ok, internal_load_state(path, &s_b));
+  TEST_ASSERT(strcmp(s_b.series_title, "Foo Series") == 0);
+
+  internal_write_text(alternate, "V\t999\nmalformed alternate\n");
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, internal_load_state(path, &s_b));
+  TEST_ASSERT_EQ((uint16_t)0, s_b.chapter_count);
+  TEST_ASSERT_EQ((uint32_t)0, s_b.page_rec_count);
+  internal_remove_state_fixture(path);
+  TEST_END("state journal fallback + total corruption");
+}
+
+/**
+ * @test internal_test_state_rejects_malformed_records
  *
+ * @brief Exercise the state rejects malformed records regression scenario.
  * @details Pins strict parsing of every numeric field and state invariant. A
  *          damaged or concatenated state file must never be partially trusted.
+ * @pre Assertions are enabled for contract verification.
+ * @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed.
+ * @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_state_rejects_malformed_records(void)
+RA8_INTERNAL static void internal_test_state_rejects_malformed_records(void)
 {
   TEST_BEGIN("state rejects malformed records");
   char path[k_tmp_path_bytes];
-  make_tmp(path, sizeof(path));
+  internal_make_tmp(path, sizeof(path));
   static const char* const bad[] = {
     "V\t1junk\n",
     "V\t1\nV\t1\n",
@@ -539,11 +761,18 @@ static void test_state_rejects_malformed_records(void)
     "V\t2\nC\tc1\t1\tnan\t0\t1\t0\t0\thttps://s/c1\ttitle\n",
     "V\t2\nC\tc1\t1\tinf\t0\t1\t0\t0\thttps://s/c1\ttitle\n",
     "V\t2\nC\tc1\t1\t1e9999\t0\t1\t0\t0\thttps://s/c1\ttitle\n",
+    "V\t2\nC\tc1\t1\t 1\t0\t1\t0\t0\thttps://s/c1\ttitle\n",
+    "V\t2\nC\tc1\t1\t+1\t0\t1\t0\t0\thttps://s/c1\ttitle\n",
+    "V\t2\nC\tc1\t1\t1\t0\t1\t0\t+1\thttps://s/c1\ttitle\n",
     "V\t2\nC\tc1\t1\t1\t0\t1\t0\t0\thttps://s/c1\ttitle\textra\n",
+    "V\t3\nC\tc1\t1\t3ff000000000000\t0\t1\t0\t0\thttps://s/c1\ttitle\n",
+    "V\t3\nC\tc1\t1\t3FF0000000000000\t0\t1\t0\t0\thttps://s/c1\ttitle\n",
+    "V\t3\nC\tc1\t1\t7ff8000000000000\t0\t1\t0\t0\thttps://s/c1\ttitle\n",
+    "V\t3\nC\tc1\t0\t8000000000000000\t0\t1\t0\t0\thttps://s/c1\ttitle\n",
   };
   for (size_t i = 0U; i < (sizeof(bad) / sizeof(bad[0])); ++i) {
-    write_text(path, bad[i]);
-    TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_load(path, &s_b));
+    internal_write_text(path, bad[i]);
+    TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, internal_load_state(path, &s_b));
     TEST_ASSERT_EQ((uint16_t)0, s_b.chapter_count);
     TEST_ASSERT_EQ((uint32_t)0, s_b.page_rec_count);
   }
@@ -553,8 +782,8 @@ static void test_state_rejects_malformed_records(void)
   memcpy(overlong, "V\t1\nS\t", 6U);
   overlong[sizeof(overlong) - 2U] = '\n';
   overlong[sizeof(overlong) - 1U] = '\0';
-  write_text(path, overlong);
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_load(path, &s_b));
+  internal_write_text(path, overlong);
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, internal_load_state(path, &s_b));
 
   char long_id[k_mdl_chapter_id_max + 1U];
   memset(long_id, 'x', sizeof(long_id));
@@ -562,105 +791,57 @@ static void test_state_rejects_malformed_records(void)
   mdl_state_init(&s_a);
   TEST_ASSERT_NULL(mdl_state_add_chapter(&s_a, long_id, "https://s/c", 1L));
   TEST_ASSERT_NULL(mdl_state_add_chapter(&s_a, "bad\tid", "https://s/c", 1L));
-  TEST_ASSERT(!mdl_state_add_page(&s_a, 1U, 2U, "bad\tpath", nullptr, nullptr));
-  (void)unlink(path);
+  TEST_ASSERT(!mdl_state_add_page(&s_a, 1U, 2U, "bad\tpath", nullptr, nullptr, 0, 0U));
+  internal_remove_state_fixture(path);
   TEST_END("state rejects malformed records");
 }
 
 /**
- * @test test_state_metadata_setters
- *
- * @brief Verify rich metadata setters enforce all fixed-layout invariants.
- * @details Exercises exact-bound rejection, record-delimiter rejection,
- *          traversal rejection, explicit chapter-zero acceptance, non-finite
- *          rejection, alias-safe replacement, and the all-or-nothing setter
- *          contract.
- * @pre The global state fixture is exclusively owned by this test.
- * @pre C23 finite-double semantics are available.
- * @post Accepted chapter zero remains explicitly known.
- * @post Every rejected tuple leaves the prior metadata unchanged.
- * @note Pure host test with no filesystem or network dependency.
+ * @brief Prove locale-free v2 migration at binary64 and int64 boundaries.
+ * @details Executes the state v2 numeric migration scenario through production interfaces and checks its observable success, rejection, and boundary results.
+ * @pre Assertions are enabled for contract verification.
+ * @pre The test fixture workspace is isolated for this scenario.
+ * @post Normal return means every reached contract assertion passed.
+ * @post The caller receives no transferred fixture ownership.
+ * @note Test helper; an assertion failure terminates the test process.
  * @since 0.1.0
  */
-static void test_state_metadata_setters(void)
+RA8_INTERNAL static void internal_test_state_v2_numeric_migration(void)
 {
-  TEST_BEGIN("state metadata setters");
-  mdl_state_init(&s_a);
-  TEST_ASSERT(mdl_state_set_series_metadata(&s_a,
-                                            "summary",
-                                            "writer",
-                                            "artist",
-                                            "https://s/c.jpg",
-                                            "cover/c.jpg",
-                                            "en",
-                                            k_mdl_state_read_ltr));
-  TEST_ASSERT(mdl_state_set_series_metadata(&s_a,
-                                            s_a.summary,
-                                            s_a.writer,
-                                            s_a.artist,
-                                            s_a.cover_url,
-                                            "cover/new.jpg",
-                                            s_a.language,
-                                            s_a.reading_direction));
-  TEST_ASSERT(strcmp(s_a.summary, "summary") == 0);
-  TEST_ASSERT(strcmp(s_a.writer, "writer") == 0);
-  TEST_ASSERT(strcmp(s_a.artist, "artist") == 0);
-  TEST_ASSERT(strcmp(s_a.cover_url, "https://s/c.jpg") == 0);
-  TEST_ASSERT(strcmp(s_a.cover_path, "cover/new.jpg") == 0);
-  TEST_ASSERT(strcmp(s_a.language, "en") == 0);
-  char too_long[k_mdl_summary_max + 1U];
-  memset(too_long, 'x', sizeof(too_long));
-  too_long[sizeof(too_long) - 1U] = '\0';
-  TEST_ASSERT(!mdl_state_set_series_metadata(&s_a,
-                                             too_long,
-                                             "changed",
-                                             "artist",
-                                             "https://s/c.jpg",
-                                             "cover/c.jpg",
-                                             "en",
-                                             k_mdl_state_read_ltr));
-  TEST_ASSERT(strcmp(s_a.writer, "writer") == 0);
-  TEST_ASSERT(!mdl_state_set_series_metadata(&s_a,
-                                             "bad\tsummary",
-                                             "writer",
-                                             "artist",
-                                             "https://s/c.jpg",
-                                             "cover/c.jpg",
-                                             "en",
-                                             k_mdl_state_read_ltr));
-  TEST_ASSERT(!mdl_state_set_series_metadata(&s_a,
-                                             "summary",
-                                             "writer",
-                                             "artist",
-                                             "https://s/c.jpg",
-                                             "../cover.jpg",
-                                             "en",
-                                             k_mdl_state_read_ltr));
-  TEST_ASSERT(!mdl_state_set_series_metadata(&s_a,
-                                             "summary",
-                                             "writer",
-                                             "artist",
-                                             "https://s/c.jpg",
-                                             "cover/c.jpg",
-                                             "en",
-                                             (mdl_state_reading_direction_t)2));
-
-  mdl_chapter_rec_t* chapter =
-    mdl_state_add_chapter_numbered(&s_a, "chapter-0", "https://s/chapter-0", 0.0, true);
-  TEST_ASSERT_NOT_NULL(chapter);
-  TEST_ASSERT(chapter->number_known);
-  TEST_ASSERT(mdl_state_set_chapter_metadata(chapter, "Chapter Zero", 0.0, true));
-  TEST_ASSERT(!mdl_state_set_chapter_metadata(chapter, "bad\ttitle", 1.0, true));
-  TEST_ASSERT(!mdl_state_set_chapter_metadata(chapter, "title", 1.0, false));
-  TEST_ASSERT(!mdl_state_set_chapter_metadata(chapter, "title", NAN, true));
-  TEST_ASSERT(strcmp(chapter->title, "Chapter Zero") == 0);
-  TEST_ASSERT(chapter->number_known);
-  TEST_ASSERT(chapter->number == 0.0);
-  TEST_END("state metadata setters");
+  TEST_BEGIN("state v2 locale-free numeric migration");
+  typedef struct {
+    const char* payload; /**< Complete legacy-v2 state fixture.        */
+    double      number;  /**< Expected exact binary64 chapter number.  */
+    int64_t     epoch;   /**< Expected signed 64-bit completion epoch. */
+  } migration_t;
+  static const migration_t cases[] = {
+    {"V\t2\nC\tc\t1\t0.10000000000000001\t0\t1\t0\t2147483648\tu\tt\n",
+     0.10000000000000001,
+     INT64_C(2147483648)},
+    {"V\t2\nC\tc\t1\t1.7976931348623157e+308\t0\t1\t0\t9223372036854775807\tu\tt\n",
+     1.7976931348623157e+308,
+     INT64_MAX},
+    {"V\t2\nC\tc\t1\t2.2250738585072014e-308\t0\t1\t0\t-9223372036854775808\tu\tt\n",
+     2.2250738585072014e-308,
+     INT64_MIN},
+    {"V\t2\nC\tc\t1\t4.9406564584124654e-324\t0\t1\t0\t0\tu\tt\n", 4.9406564584124654e-324, 0},
+  };
+  char path[k_tmp_path_bytes];
+  internal_make_tmp(path, sizeof(path));
+  for (size_t i = 0U; i < (sizeof(cases) / sizeof(cases[0])); ++i) {
+    internal_write_text(path, cases[i].payload);
+    TEST_ASSERT_EQ((int64_t)k_ra8_ok, internal_load_state(path, &s_b));
+    const mdl_chapter_rec_t* chapter = mdl_state_find_chapter(&s_b, "c");
+    TEST_ASSERT_NOT_NULL(chapter);
+    TEST_ASSERT(memcmp(&chapter->number, &cases[i].number, sizeof(chapter->number)) == 0);
+    TEST_ASSERT_EQ(cases[i].epoch, chapter->fetched_at);
+  }
+  internal_remove_state_fixture(path);
+  TEST_END("state v2 locale-free numeric migration");
 }
 
 /**
- * @test test_state_save_validates_invariants
+ * @test internal_test_state_save_validates_invariants
  *
  * @brief Verify invalid in-memory state is never serialized.
  * @details Persistence rejects in-memory corruption before creating a temp
@@ -673,43 +854,53 @@ static void test_state_metadata_setters(void)
  * @note Host-only test with no network access.
  * @since 0.1.0
  */
-static void test_state_save_validates_invariants(void)
+RA8_INTERNAL static void internal_test_state_save_validates_invariants(void)
 {
   TEST_BEGIN("state save validates invariants");
   char path[k_tmp_path_bytes];
-  make_tmp(path, sizeof(path));
-  seed_fixture();
+  internal_make_tmp(path, sizeof(path));
+  internal_seed_fixture();
   s_a.chapters[0].pages_done = 0U;
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_save(path, &s_a));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, internal_save_state(path, &s_a));
 
-  seed_fixture();
-  (void)snprintf(s_a.chapters[0].source_url, sizeof(s_a.chapters[0].source_url), "bad\turl");
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_save(path, &s_a));
+  internal_seed_fixture();
+  (void)__builtin_snprintf(s_a.chapters[0].source_url,
+                           sizeof(s_a.chapters[0].source_url),
+                           "bad\turl");
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, internal_save_state(path, &s_a));
 
-  seed_fixture();
+  internal_seed_fixture();
   memset(s_a.pages[0].rel_path, 'x', sizeof(s_a.pages[0].rel_path));
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_save(path, &s_a));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, internal_save_state(path, &s_a));
 
-  seed_fixture();
+  internal_seed_fixture();
   s_a.chapters[0].number_known = false;
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_save(path, &s_a));
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, internal_save_state(path, &s_a));
 
-  seed_fixture();
+  internal_seed_fixture();
   s_a.reading_direction = (mdl_state_reading_direction_t)2;
-  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, mdl_state_save(path, &s_a));
-  (void)unlink(path);
+  TEST_ASSERT_EQ((int64_t)k_ra8_err_invalid_state, internal_save_state(path, &s_a));
+  internal_remove_state_fixture(path);
   TEST_END("state save validates invariants");
 }
 
 /**
- * @test test_state_coverage
+ * @test internal_test_state_coverage
  *
  * @par MC/DC:
  * (No compound decision under test; it checks the coverage line reports the
  * complete-chapter count, the numeric span, and a gap inside that span, plus
  * the empty-library wording.)
+ * @brief Exercise the state coverage media-downloader scenario.
+ * @details Exercises the state coverage scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_state_coverage(void)
+RA8_INTERNAL static void internal_test_state_coverage(void)
 {
   TEST_BEGIN("state coverage");
   char cov[k_name_bytes + k_name_bytes];
@@ -749,18 +940,22 @@ int32_t main(void)
                                   sizeof(s_transaction_work.bytes),
                                   s_io_buffer,
                                   sizeof(s_io_buffer)));
-  test_hash_determinism();
-  test_hash_file();
-  test_urlname();
-  test_state_chapters_and_pages();
-  test_state_roundtrip_atomic();
-  test_state_v1_migration();
-  test_state_load_absent_and_corrupt();
-  test_state_rejects_malformed_records();
-  test_state_metadata_setters();
-  test_state_save_validates_invariants();
-  test_state_coverage();
+  internal_test_hash_determinism();
+  internal_test_hash_file();
+  internal_test_urlname();
+  internal_test_state_chapters_and_pages();
+  internal_test_state_roundtrip_atomic();
+  internal_test_state_v1_migration();
+  internal_test_state_load_absent_and_corrupt();
+  internal_test_state_journal_fallback_and_total_corruption();
+  internal_test_state_rejects_malformed_records();
+  internal_test_state_v2_numeric_migration();
+  priv_test_mdl_state_metadata_run();
+  internal_test_state_save_validates_invariants();
+  internal_test_state_coverage();
   TEST_ASSERT_EQ(k_ra8_ok, fw_fs_posix_deinit(&s_fs_posix));
-  (void)fprintf(stderr, "[OK  ] test_media_dl_state.c\n");
+  (void)write(STDERR_FILENO,
+              "[OK  ] test_media_dl_state.c\n",
+              sizeof("[OK  ] test_media_dl_state.c\n") - 1U);
   return 0;
 }
