@@ -20,26 +20,28 @@
  *   - ra8_flash_blank_check: in_extra RHS evaluation (line 504).
  *
  * Lines 169 and 171 (the default: arm of the set_irq_enable switch) carry
- * GCOVR_EXCL_LINE markers in the source because the src >= k_ra8_flash_irq_count
- * guard at the top of that function rejects every value that could reach
- * the arm, making it genuinely unreachable from any valid call site.
+ * GCOVR_EXCL_LINE markers in the source because the src >=
+ * k_ra8_flash_irq_count guard at the top of that function rejects every value
+ * that could reach the arm, making it genuinely unreachable from any valid call
+ * site.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_flash.h"
 #include "ra8_flash_regs.h"
+#include "ra8_log.h"
 #include "unity_minimal.h"
 
 /**
  * @enum flash_irq_cov_fixture_t
- * @brief The physical quantities the configuration declares, plus the recognizable values moved through the code under test.
+ * @brief The physical quantities the configuration declares, plus the
+ * recognizable values moved through the code under test.
  */
 typedef enum : uint8_t {
   k_flash_core_clock_mhz   = 200U,  /**< Core clock the flash configuration declares, in MHz. */
@@ -142,7 +144,8 @@ static ra8_flash_cfg_t cfg_make(void)
  * ------------------------------------------------------------------------ */
 
 /**
- * @brief Verify ra8_flash_dispatch_isr delivers the extra-MRAM access-error event.
+ * @brief Verify ra8_flash_dispatch_isr delivers the extra-MRAM access-error
+ * event.
  *
  * @details
  * Sets MASTAT.MREAE to 1 and registers a callback, then calls
@@ -332,7 +335,8 @@ static void test_erase_loop_hw_error(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
   /* ABUFEMP satisfies both spin-loops; PRGERRC is detected by the post-write
-   * error check in ra8_flash_write_block -> k_ra8_err_hw_error propagates up. */
+   * error check in ra8_flash_write_block -> k_ra8_err_hw_error propagates up.
+   */
   /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) =
     (uint8_t)(k_ra8_mrcps_mask_abufemp | k_ra8_mrcps_mask_prgerrc);
@@ -349,10 +353,10 @@ static void test_erase_loop_hw_error(void)
  * @brief Verify the ra8_flash_write happy path completes without error.
  *
  * @details
- * Calls ra8_flash_write with a 32-byte buffer aligned to k_ra8_flash_code_start.
- * MRCPS is pre-staged with ABUFEMP so both spin-loops inside
- * ra8_flash_write_block resolve immediately and no error bits are detected.
- * This drives internal_world_for_addr (line 462), the page-loop body
+ * Calls ra8_flash_write with a 32-byte buffer aligned to
+ * k_ra8_flash_code_start. MRCPS is pre-staged with ABUFEMP so both spin-loops
+ * inside ra8_flash_write_block resolve immediately and no error bits are
+ * detected. This drives internal_world_for_addr (line 462), the page-loop body
  * (lines 466-472), and the success return (lines 475-476).
  *
  * @par MC/DC:
@@ -473,6 +477,25 @@ static void test_blank_check_extra_mram_path(void)
   TEST_END("flash blank_check: in_extra RHS evaluated for extra-MRAM addr");
 }
 
+/**
+ * @brief Discard production log bytes during host error-path tests.
+ * @details Redirects the logger away from host-unmapped ITM while leaving the
+ * production error paths and their sanitizer instrumentation intact.
+ * @param[in] context Unused caller context.
+ * @param[in] byte Unused log byte.
+ * @pre Installed before any vector that intentionally triggers an error log.
+ * @pre The host test runs in one process and does not replace the sink concurrently.
+ * @post The supplied byte is discarded without I/O or MMIO access.
+ * @post No test fixture or production state is mutated.
+ * @note This host-only callback does not suppress sanitizer diagnostics.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_log_sink(void* context, uint8_t byte)
+{
+  (void)context;
+  (void)byte;
+}
+
 /* ---------------------------------------------------------------------------
  * Test runner
  * ------------------------------------------------------------------------ */
@@ -490,6 +513,7 @@ static void test_blank_check_extra_mram_path(void)
  */
 int main(void)
 {
+  ra8_log_set_byte_sink(internal_host_log_sink, nullptr);
   test_dispatch_mastat_mreae();
   test_dispatch_mastat_cmdlk();
   test_validate_range_below_code_start_aligned();
@@ -498,6 +522,8 @@ int main(void)
   test_write_happy_path();
   test_write_loop_hw_error();
   test_blank_check_extra_mram_path();
-  (void)fprintf(stderr, "[DONE] test_ra8_flash_irq_cov: all tests passed\n");
+  (void)internal_test_output_fd_text(STDERR_FILENO,
+                                     "[DONE] test_ra8_flash_irq_cov: all tests passed\n");
+  ra8_log_set_byte_sink(nullptr, nullptr);
   return 0;
 }

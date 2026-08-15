@@ -36,7 +36,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -49,11 +48,12 @@
 
 /**
  * @enum flash_config_cov_fixture_t
- * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
+ * @brief Poison values written into out-parameters before a call, so one that
+ * fails without assigning is detectable.
  */
 typedef enum : uint32_t {
-  k_flash_poison_out =
-    0xFFFFFFFFUL, /**< Poison for a count out-param; a failing call that skips it is detectable. */
+  k_flash_poison_out = 0xFFFFFFFFUL, /**< Poison for a count out-param; a failing call that skips
+                       it is detectable. */
 } flash_config_cov_fixture_t;
 
 /**
@@ -121,7 +121,7 @@ typedef enum : uint32_t {
                  -1,
                  0);
   if (a == MAP_FAILED || b == MAP_FAILED) {
-    (void)fprintf(stderr, "arc_pages_install: MAP_FIXED failed\n");
+    (void)internal_test_output_fd_text(STDERR_FILENO, "arc_pages_install: MAP_FIXED failed\n");
     _exit(1);
   }
 }
@@ -454,6 +454,6 @@ int32_t main(void)
   test_set_startup_area_permanent_hw_error();
   test_extra_mram_write_end_past_extra();
 
-  (void)fprintf(stderr, "[OK  ] test_ra8_flash_config_cov.c\n");
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_ra8_flash_config_cov.c\n");
   return 0;
 }

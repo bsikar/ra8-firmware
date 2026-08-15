@@ -25,15 +25,16 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "../examples/ek_ra8d2/hw_pending/ereader_manga/inc/mg_reader.h"
 #include "../examples/ek_ra8d2/hw_pending/ereader_manga/mg_page_fixture.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_jof.h"
 #include "ra8_jof_produce.h"
+#include "ra8_log.h"
 #include "ra8_tile_cache.h"
 #include "unity_minimal.h"
 
@@ -45,7 +46,8 @@ typedef enum : uint8_t {
   k_manga_line_cap = 48, /**< Capacity of the status-line scratch buffer. */
 } app_ereader_manga_fixture_t;
 
-/** @brief The app's geometry + budget constants (kept in lockstep with main.c). */
+/** @brief The app's geometry + budget constants (kept in lockstep with main.c).
+ */
 enum : uint32_t {
   k_t_fb_w       = 1024U,       /**< Panel framebuffer width, pixels.  */
   k_t_fb_h       = 600U,        /**< Panel framebuffer height, pixels. */
@@ -54,7 +56,8 @@ enum : uint32_t {
   k_t_cell_bytes = 256U * 256U, /**< Cache cell = one gray8 256 tile.  */
   /* Cache budget DERIVED from the viewport geometry, in lockstep with main.c's
    * k_mg_cells (#338): the 1:1 frame's tile span (ceil(extent/tile) + 1 for the
-   * viewport not being tile-aligned) plus one tile of pan margin on each axis. */
+   * viewport not being tile-aligned) plus one tile of pan margin on each axis.
+   */
   k_t_view_cols = ((k_t_fb_w + k_t_tile_edge - 1U) / k_t_tile_edge) + 1U, /**< 1:1 cols. */
   /** 1:1 content rows. */
   k_t_view_rows =
@@ -70,6 +73,7 @@ enum : uint32_t {
   k_t_store            = 4U * 1024U * 1024U, /**< Atlas memstore.                             */
   k_t_image_id         = 1U,                 /**< Tile-cache key image id.                    */
   k_t_pan_step         = 256U,               /**< One edge-tap viewport slide.                */
+  k_t_crc_hex_width    = 8U,                 /**< Printed producer-golden CRC width.          */
 };
 
 /** @brief Tile-grid coordinates the pan-prefetch test asserts on. */
@@ -141,8 +145,107 @@ static ra8_tile_cache_t s_cache;
 static mg_tile_src_t s_tile_src;
 /** @brief The reader under test. */
 static mg_reader_t s_reader;
-/** @brief Decoded-tile probe buffer (off-stack: one full 256x256 gray8 tile). */
+/** @brief Decoded-tile probe buffer (off-stack: one full 256x256 gray8 tile).
+ */
 static uint8_t s_probe_cell[k_t_cell_bytes];
+
+/**
+ * @brief Report derived producer-work arena dimensions.
+ * @details Composes the fixed page cap, tile edge, required work bytes, and
+ * available fixture arena through a caller-local diagnostic sink.
+ * @param[in] need Producer work capacity required for this fixture.
+ * @pre ::s_work retains the caller-owned producer arena storage.
+ * @pre @p need is the value returned by the production work-capacity query.
+ * @post One complete arena-information line has been attempted on descriptor 2.
+ * @post No descriptor is closed and no process-global sink is installed.
+ * @note Destination failure does not alter the test verdict.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_report_arena(uint32_t need)
+{
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  (void)internal_test_output_fd_init(&output, &state, STDERR_FILENO);
+  (void)internal_test_output_text(&output, "[INFO] ereader-manga arena: cap=");
+  (void)internal_test_output_u64(&output, (uint64_t)k_t_cap_edge);
+  (void)internal_test_output_text(&output, "x");
+  (void)internal_test_output_u64(&output, (uint64_t)k_t_cap_edge);
+  (void)internal_test_output_text(&output, " tile=");
+  (void)internal_test_output_u64(&output, (uint64_t)k_t_tile_edge);
+  (void)internal_test_output_text(&output, " need=");
+  (void)internal_test_output_u64(&output, need);
+  (void)internal_test_output_text(&output, " have=");
+  (void)internal_test_output_u64(&output, sizeof(s_work));
+  (void)internal_test_output_text(&output, "\n");
+}
+
+/**
+ * @brief Report the production manga render golden fields.
+ * @details Composes parsed page geometry, tile count, atlas size, and the
+ * fixed-width framebuffer CRC used by the hardware banner comparison.
+ * @param[in] crc Observed framebuffer checksum.
+ * @pre ::s_info contains the successfully parsed production atlas geometry.
+ * @pre @p crc was computed after the complete reference render.
+ * @post One complete golden-information line has been attempted on descriptor 2.
+ * @post The parsed atlas and framebuffer remain unchanged.
+ * @note Destination failure does not alter the asserted golden values.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_report_golden(uint32_t crc)
+{
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  (void)internal_test_output_fd_init(&output, &state, STDERR_FILENO);
+  (void)internal_test_output_text(&output, "[INFO] ereader-manga golden: page ");
+  (void)internal_test_output_u64(&output, s_info.width);
+  (void)internal_test_output_text(&output, "x");
+  (void)internal_test_output_u64(&output, s_info.height);
+  (void)internal_test_output_text(&output, " tiles=");
+  (void)internal_test_output_u64(&output, s_info.tile_count);
+  (void)internal_test_output_text(&output, " atlas=");
+  (void)internal_test_output_u64(&output, s_info.total_size);
+  (void)internal_test_output_text(&output, " crc=");
+  (void)internal_test_output_hex64(&output, crc, (uint8_t)k_t_crc_hex_width, true);
+  (void)internal_test_output_text(&output, "\n");
+}
+
+/**
+ * @brief Report both cache budgets' pan-thrash counters.
+ * @details Labels and composes the decode and eviction counts observed with
+ * the undersized stress cache and the viewport-derived production cache.
+ * @param[in] before_decodes Decode count for the stress cache.
+ * @param[in] before_evicts Eviction count for the stress cache.
+ * @param[in] after_decodes Decode count for the production-sized cache.
+ * @param[in] after_evicts Eviction count for the production-sized cache.
+ * @pre All counters were captured after the same deterministic pan sequence.
+ * @pre The cache cell constants match the two fixtures being compared.
+ * @post One complete thrash-information line has been attempted on descriptor 2.
+ * @post No counter or cache state is modified.
+ * @note Destination failure does not alter the thrash assertions.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_report_thrash(uint32_t before_decodes,
+                                                uint32_t before_evicts,
+                                                uint32_t after_decodes,
+                                                uint32_t after_evicts)
+{
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  (void)internal_test_output_fd_init(&output, &state, STDERR_FILENO);
+  (void)internal_test_output_text(&output, "[INFO] ereader-manga pan thrash: stress(");
+  (void)internal_test_output_u64(&output, (uint64_t)k_t_stress_cells);
+  (void)internal_test_output_text(&output, " cells) decodes=");
+  (void)internal_test_output_u64(&output, before_decodes);
+  (void)internal_test_output_text(&output, " evicts=");
+  (void)internal_test_output_u64(&output, before_evicts);
+  (void)internal_test_output_text(&output, " ; sized(");
+  (void)internal_test_output_u64(&output, (uint64_t)k_t_cells);
+  (void)internal_test_output_text(&output, " cells) decodes=");
+  (void)internal_test_output_u64(&output, after_decodes);
+  (void)internal_test_output_text(&output, " evicts=");
+  (void)internal_test_output_u64(&output, after_evicts);
+  (void)internal_test_output_text(&output, "\n");
+}
 
 /**
  * @struct png_cursor_t
@@ -166,7 +269,8 @@ static ra8_err_t png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
   return k_ra8_ok;
 }
 
-/** @brief Produce + parse the atlas and bind the cache + reader (shared setup). */
+/** @brief Produce + parse the atlas and bind the cache + reader (shared setup).
+ */
 static void setup_reader(void)
 {
   png_cursor_t cur = {.data = k_mg_png, .len = k_mg_png_len, .pos = 0U};
@@ -242,14 +346,15 @@ static void t_put_bytes(ra8_jof_memstore_t* st, const uint8_t* p, size_t n)
  * @details A 1x1 image with one 1x1 raw tile: structurally complete and
  *          accepted by ``ra8_jof_parse`` (bpp 3 is a legal header value), but
  *          not gray8 -- so ::mg_reader_init must fail closed on it (#339). The
- *          layout mirrors the writer in test_ra8_jof.c: 32-byte header, the tile
- *          stream, an 8-byte index entry, then the 16-byte footer.
+ *          layout mirrors the writer in test_ra8_jof.c: 32-byte header, the
+ * tile stream, an 8-byte index entry, then the 16-byte footer.
  *
  * @param[out] st Memstore over ::s_store_buf to fill (reset to empty here).
  *
  * @pre ::s_store_buf out-lives @p st.
  * @pre @p st is non-NULL.
- * @post @p st holds a parseable bpp=3 atlas; `st->len` == the footer total_size.
+ * @post @p st holds a parseable bpp=3 atlas; `st->len` == the footer
+ * total_size.
  * @post No other test state is mutated.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
@@ -305,11 +410,12 @@ typedef struct {
 } pan_store_t;
 
 /**
- * @brief Render an oscillating one-tile pan and report decode / eviction totals.
+ * @brief Render an oscillating one-tile pan and report decode / eviction
+ * totals.
  *
  * @details Binds a fresh tile cache of @p store->cell_count cells over the
- *          already-produced atlas (::s_info / ::s_tile_src), renders the initial
- *          1:1 frame, then oscillates the viewport right/left by one tile
+ *          already-produced atlas (::s_info / ::s_tile_src), renders the
+ * initial 1:1 frame, then oscillates the viewport right/left by one tile
  *          ::k_t_pan_cycles times, rendering each step. The cache's cumulative
  *          miss (== decode) and eviction counters are read back at the end.
  *
@@ -394,14 +500,9 @@ static void test_manga_work_arena_covers_advertised_cap(void)
                                            (uint16_t)k_t_cap_edge,
                                            (uint16_t)k_t_tile_edge,
                                            (uint16_t)k_t_tile_edge);
-  (void)fprintf(stderr,
-                "[INFO] ereader-manga arena: cap=%ux%u tile=%u need=%u have=%u\n",
-                (unsigned)k_t_cap_edge,
-                (unsigned)k_t_cap_edge,
-                (unsigned)k_t_tile_edge,
-                (unsigned)need,
-                (unsigned)sizeof(s_work));
-  /* Vector 1: the real configuration -- a usable requirement the arena covers. */
+  internal_report_arena(need);
+  /* Vector 1: the real configuration -- a usable requirement the arena covers.
+   */
   TEST_ASSERT(need != 0U);
   TEST_ASSERT(sizeof(s_work) >= (size_t)need);
   /* Vector 2: nonsense geometry returns 0, which the boot guard rejects. */
@@ -414,8 +515,8 @@ static void test_manga_work_arena_covers_advertised_cap(void)
 
 /**
  * @test test_manga_render_golden
- * @brief produce -> tile-cache -> mg_reader initial render reproduces the golden
- *        banner numbers (page geometry, atlas byte count, framebuffer crc) --
+ * @brief produce -> tile-cache -> mg_reader initial render reproduces the
+ * golden banner numbers (page geometry, atlas byte count, framebuffer crc) --
  *        the exact values hil.conf asserts on ra8_emulator / silicon.
  *
  * @par MC/DC:
@@ -434,13 +535,7 @@ static void test_manga_render_golden(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, mg_reader_render(&s_reader));
   const uint32_t crc = mg_fnv1a(s_fb, (uint32_t)sizeof(s_fb));
-  (void)fprintf(stderr,
-                "[INFO] ereader-manga golden: page %ux%u tiles=%u atlas=%u crc=%08X\n",
-                (unsigned)s_info.width,
-                (unsigned)s_info.height,
-                (unsigned)s_info.tile_count,
-                (unsigned)s_info.total_size,
-                (unsigned)crc);
+  internal_report_golden(crc);
   TEST_ASSERT_EQ(k_t_golden_crc, crc);
   TEST_END("ereader_manga: produce + tile render == golden banner");
 }
@@ -448,7 +543,8 @@ static void test_manga_render_golden(void)
 /**
  * @test test_manga_fixture_pattern
  * @brief One decoded tile matches the generator's page pattern (frame + fill),
- *        so the committed PNG fixture and gen_manga_page_fixture.py cannot drift.
+ *        so the committed PNG fixture and gen_manga_page_fixture.py cannot
+ * drift.
  *
  * @par MC/DC:
  * (fixture-integrity check; the read_tile decode decisions are covered in
@@ -460,7 +556,8 @@ static void test_manga_fixture_pattern(void)
   setup_reader();
   uint16_t tw = 0U;
   uint16_t th = 0U;
-  /* Tile (0,0): black inner frame at the corner, solid gray fill left of label. */
+  /* Tile (0,0): black inner frame at the corner, solid gray fill left of label.
+   */
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jof_read_tile(ra8_jof_memstore_pread,
                                    &s_store,
@@ -598,8 +695,8 @@ static void test_manga_status_text(void)
  *          bpp=3 atlas would be mis-read one byte per pixel and rendered as
  *          garbage. This feeds a genuine, parseable bpp=3 atlas and asserts the
  *          bind fails with ::k_ra8_err_not_supported, then confirms the real
- *          gray8 atlas still binds and renders -- the guard does not regress the
- *          supported format.
+ *          gray8 atlas still binds and renders -- the guard does not regress
+ * the supported format.
  *
  * @par MC/DC:
  * Decision `cfg->info->bpp != k_mg_gray8_bpp` in mg_reader_check_geometry,
@@ -641,9 +738,9 @@ static void test_manga_bpp_guard(void)
  *
  * @details Runs the identical oscillating one-tile pan against two caches over
  *          the same atlas -- the old 4-cell stress budget and the derived
- *          ::k_t_cells budget -- and compares their cumulative decode / eviction
- *          counters. The sized cache holds the whole oscillation working set, so
- *          it evicts nothing and re-decodes nothing; the stress cache thrashes.
+ *          ::k_t_cells budget -- and compares their cumulative decode /
+ * eviction counters. The sized cache holds the whole oscillation working set,
+ * so it evicts nothing and re-decodes nothing; the stress cache thrashes.
  *
  * @par MC/DC:
  * (measurement gate: the tile-cache LRU/eviction decisions carry their vectors
@@ -677,18 +774,11 @@ static void test_manga_pan_no_thrash(void)
   run_pan_thrash(&stress, &before_decodes, &before_evicts);
   run_pan_thrash(&sized, &after_decodes, &after_evicts);
 
-  (void)fprintf(stderr,
-                "[INFO] ereader-manga pan thrash: stress(%u cells) decodes=%u evicts=%u ; "
-                "sized(%u cells) decodes=%u evicts=%u\n",
-                (unsigned)k_t_stress_cells,
-                (unsigned)before_decodes,
-                (unsigned)before_evicts,
-                (unsigned)k_t_cells,
-                (unsigned)after_decodes,
-                (unsigned)after_evicts);
+  internal_report_thrash(before_decodes, before_evicts, after_decodes, after_evicts);
 
   /* The sized cache holds the whole oscillation working set: it never evicts,
-   * so no on-screen tile is ever re-decoded (the thrash is structurally gone). */
+   * so no on-screen tile is ever re-decoded (the thrash is structurally gone).
+   */
   TEST_ASSERT_EQ(0U, after_evicts);
   /* The old 4-cell budget thrashes: it evicts and re-decodes every frame. */
   TEST_ASSERT(before_evicts > 0U);
@@ -697,7 +787,8 @@ static void test_manga_pan_no_thrash(void)
   TEST_END("ereader_manga: sized tile cache stops the pan thrash");
 }
 
-/** @brief Fetch tile (tx,ty) of the reader image through ::s_cache, then release. */
+/** @brief Fetch tile (tx,ty) of the reader image through ::s_cache, then
+ * release. */
 static void assert_tile_resident(uint16_t tx, uint16_t ty)
 {
   const ra8_tile_key_t key = {.image_id = (uint32_t)k_t_image_id,
@@ -712,20 +803,21 @@ static void assert_tile_resident(uint16_t tx, uint16_t ty)
 /**
  * @test test_manga_pan_prefetch
  * @brief After a right pan + render, ::mg_reader_prefetch has warmed the next
- *        column of tiles into the cache, so they are resident before the follow-
- *        on pan needs them -- and the read-ahead evicts no on-screen tile (#341).
+ *        column of tiles into the cache, so they are resident before the
+ * follow- on pan needs them -- and the read-ahead evicts no on-screen tile
+ * (#341).
  *
  * @details The panned 1:1 frame straddles tile columns 1..4, rows 0..2; the
  *          prefetch warms column 5 (rows 0..2) one step ahead in the pan
- *          direction. Residency is proved by the miss counter not moving across a
- *          fetch of the warmed tiles, and the budget bound by the eviction
- *          counter not moving (a warmed lead column plus the visible frame fit
- *          inside the derived ::k_t_cells budget).
+ *          direction. Residency is proved by the miss counter not moving across
+ * a fetch of the warmed tiles, and the budget bound by the eviction counter not
+ * moving (a warmed lead column plus the visible frame fit inside the derived
+ * ::k_t_cells budget).
  *
  * @par MC/DC:
  * (integration gate: the pan-prefetch direction / edge / budget decisions carry
- * their vectors in test_ra8_tile_cache*.c; here the oracle is the miss / eviction
- * counters read back after a real pan + render + prefetch.)
+ * their vectors in test_ra8_tile_cache*.c; here the oracle is the miss /
+ * eviction counters read back after a real pan + render + prefetch.)
  */
 static void test_manga_pan_prefetch(void)
 {
@@ -741,7 +833,8 @@ static void test_manga_pan_prefetch(void)
   TEST_ASSERT_EQ(k_t_pan_step, s_reader.view_x);
   TEST_ASSERT_EQ(k_ra8_ok, mg_reader_render(&s_reader));
 
-  /* Idle-window read-ahead warms the column one tile ahead (col 5, rows 0..2). */
+  /* Idle-window read-ahead warms the column one tile ahead (col 5, rows 0..2).
+   */
   TEST_ASSERT_EQ(k_ra8_ok, mg_reader_prefetch(&s_reader));
 
   uint32_t miss_before = 0U;
@@ -767,17 +860,37 @@ static void test_manga_pan_prefetch(void)
 }
 
 /**
+ * @brief Discard production log bytes during host error-path tests.
+ * @details Redirects the logger away from host-unmapped ITM while leaving the
+ * production error paths and their sanitizer instrumentation intact.
+ * @param[in] context Unused caller context.
+ * @param[in] byte Unused log byte.
+ * @pre Installed before any vector that intentionally triggers an error log.
+ * @pre The host test runs in one process and does not replace the sink concurrently.
+ * @post The supplied byte is discarded without I/O or MMIO access.
+ * @post No test fixture or production state is mutated.
+ * @note This host-only callback does not suppress sanitizer diagnostics.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_log_sink(void* context, uint8_t byte)
+{
+  (void)context;
+  (void)byte;
+}
+
+/**
  * @brief Test entry point -- runs the ereader_manga host-twin gates.
  * @return 0 on success; unity_minimal.h exits non-zero on first failure.
  * @pre None.
  * @pre None.
  * @post Every gate ran (or the process exited on first failure).
- * @post stderr carries the derived golden banner numbers.
+ * @post Raw descriptor 2 carries the derived golden banner numbers.
  * @note Not thread-safe. No SIGALRM / timers used.
  * @since 0.1.0
  */
 int32_t main(void)
 {
+  ra8_log_set_byte_sink(internal_host_log_sink, nullptr);
   test_manga_work_arena_covers_advertised_cap();
   test_manga_render_golden();
   test_manga_fixture_pattern();
@@ -787,6 +900,7 @@ int32_t main(void)
   test_manga_bpp_guard();
   test_manga_pan_no_thrash();
   test_manga_pan_prefetch();
-  (void)fprintf(stderr, "[OK  ] test_app_ereader_manga.c\n");
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_app_ereader_manga.c\n");
+  ra8_log_set_byte_sink(nullptr, nullptr);
   return 0;
 }

@@ -8,12 +8,13 @@
  * @details
  * Companion to the compile-time / gate-time fail-closed enforcement:
  *
- *   - cmake/ra8_add_app.cmake defines RA8_INSECURE_STUB_CRYPTO (OFF by default),
+ *   - cmake/ra8_add_app.cmake defines RA8_INSECURE_STUB_CRYPTO (OFF by
+ * default),
  *   - each stub TU wraps its insecure body in
  *     `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_OFF_TARGET)` with a
  *     fail-closed #else (every entry point returns k_ra8_err_not_supported),
- *   - scripts/checks/check_stub_crypto_guarded.py fails the build at gate time if
- *     any insecure body escapes that guard.
+ *   - scripts/checks/check_stub_crypto_guarded.py fails the build at gate time
+ * if any insecure body escapes that guard.
  *
  * This ctest runs in the host build, which compiles the stub TUs under
  * RA8_OFF_TARGET (the #if branch). It proves the OTHER half of the guard:
@@ -66,10 +67,10 @@ static void test_trng_is_deterministic_stub(void)
   uint8_t a[k_stub_trng_len] = {};
   uint8_t b[k_stub_trng_len] = {};
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_reset());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_read(a, (uint32_t)k_stub_trng_len));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_reset());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_read(b, (uint32_t)k_stub_trng_len));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_read(a, (uint32_t)k_stub_trng_len));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_read(b, (uint32_t)k_stub_trng_len));
 
   /* Two reads after reset are byte-identical: a deterministic PRNG, NOT a real
    * TRNG. This is the #1 insecure property; the fail-closed #else would have
@@ -139,7 +140,8 @@ int32_t main(void)
   test_trng_is_deterministic_stub();
   test_key_vault_challenge_is_reachable();
   test_rsip_key_wrap_roundtrips_stub();
-  (void)fprintf(stderr,
-                "[OK ] test_stub_crypto_gate.c -- stubs reachable + insecure under the guard\n");
+  (void)internal_test_output_fd_text(STDERR_FILENO,
+                                     "[OK ] test_stub_crypto_gate.c -- stubs "
+                                     "reachable + insecure under the guard\n");
   return 0;
 }

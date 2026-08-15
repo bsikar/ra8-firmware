@@ -20,7 +20,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_bench.h"
 #include "ra8_err.h"
@@ -67,13 +66,23 @@ static uint8_t
 // NOLINTNEXTLINE(readability-function-size)
 int main(void)
 {
-  ra8_bench_print_header("bench_ra8_gfx_text");
+  ra8_test_output_t    output       = {};
+  ra8_test_output_fd_t output_state = {};
+  ra8_test_output_t    errors       = {};
+  ra8_test_output_fd_t error_state  = {};
+  if (!internal_test_output_fd_init(&output, &output_state, STDOUT_FILENO) ||
+      !internal_test_output_fd_init(&errors, &error_state, STDERR_FILENO)) {
+    return 1;
+  }
+  (void)internal_bench_print_header(&output, "bench_ra8_gfx_text");
   ra8_err_t e = ra8_gfx_init(s_fb,
                              (uint16_t)k_bench_text_fb_w,
                              (uint16_t)k_bench_text_fb_h,
                              k_ra8_gfx_format_rgb565);
   if (e != k_ra8_ok) {
-    (void)fprintf(stderr, "ra8_gfx_init failed (%d)\n", (int)e);
+    (void)internal_test_output_text(&errors, "ra8_gfx_init failed (");
+    (void)internal_test_output_i64(&errors, (int64_t)e);
+    (void)internal_test_output_text(&errors, ")\n");
     return 1;
   }
 
@@ -82,7 +91,7 @@ int main(void)
   uint64_t bytes_per_iter =
     (uint64_t)k_bench_text_fb_w * (uint64_t)k_bench_text_fb_h * (uint64_t)k_bench_text_bpp;
 
-  RA8_BENCH_TIME("gfx_text_pangram_8x16_rgb565", bytes_per_iter, {
+  RA8_BENCH_TIME(&output, "gfx_text_pangram_8x16_rgb565", bytes_per_iter, {
     (void)ra8_gfx_clear((uint32_t)k_bench_text_bg);
     (void)ra8_gfx_text_out(0,
                            0,

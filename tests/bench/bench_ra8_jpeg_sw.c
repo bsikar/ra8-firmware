@@ -22,7 +22,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_bench.h"
 #include "ra8_err.h"
@@ -94,7 +93,15 @@ static void fill_gradient(void)
 // NOLINTNEXTLINE(readability-function-size)
 int main(void)
 {
-  ra8_bench_print_header("bench_ra8_jpeg_sw");
+  ra8_test_output_t    output       = {};
+  ra8_test_output_fd_t output_state = {};
+  ra8_test_output_t    errors       = {};
+  ra8_test_output_fd_t error_state  = {};
+  if (!internal_test_output_fd_init(&output, &output_state, STDOUT_FILENO) ||
+      !internal_test_output_fd_init(&errors, &error_state, STDERR_FILENO)) {
+    return 1;
+  }
+  (void)internal_bench_print_header(&output, "bench_ra8_jpeg_sw");
   fill_gradient();
 
   /* Encode once (untimed) -- decode is the hot path. */
@@ -107,20 +114,25 @@ int main(void)
                                           (uint32_t)k_bench_jpeg_buf_cap,
                                           &produced);
   if ((e != k_ra8_ok) || (produced == 0U)) {
-    (void)fprintf(stderr, "jpeg encode failed (%d)\n", (int)e);
+    (void)internal_test_output_text(&errors, "jpeg encode failed (");
+    (void)internal_test_output_i64(&errors, (int64_t)e);
+    (void)internal_test_output_text(&errors, ")\n");
     return 1;
   }
-  (void)fprintf(stdout,
-                "# encoded %ux%u JPEG @ q=%u -> %u bytes\n",
-                (unsigned)k_bench_jpeg_w,
-                (unsigned)k_bench_jpeg_h,
-                (unsigned)k_bench_jpeg_quality,
-                (unsigned)produced);
+  (void)internal_test_output_text(&output, "# encoded ");
+  (void)internal_test_output_u64(&output, (uint64_t)k_bench_jpeg_w);
+  (void)internal_test_output_text(&output, "x");
+  (void)internal_test_output_u64(&output, (uint64_t)k_bench_jpeg_h);
+  (void)internal_test_output_text(&output, " JPEG @ q=");
+  (void)internal_test_output_u64(&output, (uint64_t)k_bench_jpeg_quality);
+  (void)internal_test_output_text(&output, " -> ");
+  (void)internal_test_output_u64(&output, produced);
+  (void)internal_test_output_text(&output, " bytes\n");
 
   /* Time the decode. Bytes/iter = JPEG byte-stream length. */
   uint16_t dw = 0U;
   uint16_t dh = 0U;
-  RA8_BENCH_TIME("jpeg_decode_64x64_q75", produced, {
+  RA8_BENCH_TIME(&output, "jpeg_decode_64x64_q75", produced, {
     (void)
       ra8_jpeg_sw_decode(s_jpeg, produced, s_rgb_out, (uint32_t)k_bench_jpeg_rgb_bytes, &dw, &dh);
   });
