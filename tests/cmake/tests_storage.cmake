@@ -216,7 +216,6 @@ target_include_directories(
           ${FW_ROOT}/libs/ra8_tz_secure_boot/inc
           ${FW_ROOT}/port/threadx/inc
           ${FW_ROOT}/libs/third_party/miniz
-          ${FW_ROOT}/libs/third_party/tinyxml2
           ${FW_ROOT}/libs/third_party/stb
           ${FW_ROOT}/src/secure_app/inc
 )

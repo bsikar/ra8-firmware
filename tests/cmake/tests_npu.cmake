@@ -22,7 +22,7 @@
 # test asserts the QBASE / QSIZE / BASEPn / CMD submission sequence. Only ra8_npu.c
 # and the test TU see RA8_DEVICE_RA8P1; the prebuilt ra8_core_hal stays RA8D2, so
 # its own (empty) ra8_npu TU never collides with this one. LINKER_LANGUAGE CXX
-# because ra8_core_hal bundles C++ TUs (tinyxml2 etc.).
+# because ra8_core_hal bundles C++ translation units.
 # ---------------------------------------------------------------------------
 add_executable(
   test_ra8_npu ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_npu.c ${FW_ROOT}/libs/ra8_hal/src/ra8_npu.c
@@ -59,7 +59,7 @@ add_test(NAME test_ra8_npu COMMAND test_ra8_npu)
 # asserts the QBASE / QSIZE / BASEPn / CMD programming plus the int return code.
 # Only these two TUs and the test see RA8_DEVICE_RA8P1; the prebuilt ra8_core_hal
 # stays RA8D2, so its own (empty) ra8_npu / ra8_ethosu_shim TUs never collide with
-# these. LINKER_LANGUAGE CXX because ra8_core_hal bundles C++ TUs (tinyxml2 etc.).
+# these. LINKER_LANGUAGE CXX because ra8_core_hal bundles C++ translation units.
 # ---------------------------------------------------------------------------
 add_executable(
   test_ra8_ethosu_shim
@@ -97,7 +97,7 @@ add_test(NAME test_ra8_ethosu_shim COMMAND test_ra8_ethosu_shim)
 # mirror of the ra8_emulator NPU model. Only these two TUs and the test see
 # RA8_DEVICE_RA8P1; the prebuilt ra8_core_hal stays RA8D2, so its own (empty)
 # ra8_npu / ra8_npu_loader TUs never collide with these. LINKER_LANGUAGE CXX
-# because ra8_core_hal bundles C++ TUs (tinyxml2 etc.).
+# because ra8_core_hal bundles C++ translation units.
 # ---------------------------------------------------------------------------
 add_executable(
   test_ra8_npu_loader
