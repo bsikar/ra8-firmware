@@ -4,11 +4,10 @@
  *
  * @details
  * Regression gate for #144 bug 1 ("large EPUBs fail to open with no_mem"). On
- * the firmware target, miniz's ZIP central directory AND tinyxml2's OPF DOM
- * both allocate from the **same** 96 KiB static arena
- * (`ra8_epub_miniz_alloc` + the arena-backed `operator new` in
- * `ra8_epub_cpp_alloc.cpp`). A big real book (many image files + a large OPF
- * manifest) stresses that shared pool. The original no_mem turned out to be the
+ * the firmware target, miniz's ZIP central directory uses a 96 KiB static
+ * arena while OPF and NCX parsing use fixed caller-owned XML workspaces. A big
+ * real book (many image files + a large OPF manifest) stresses both bounds.
+ * The original no_mem turned out to be the
  * 16 KiB OPF/NCX scratch buffer (fixed in the NCX commit, now 48 KiB), not the
  * arena -- this gate proves the arena itself holds a large-structure book.
  *
@@ -17,7 +16,7 @@
  * entries** / a ~10 KB OPF (more files than the 108-file, 41-chapter real Boox
  * book that triggered the report) -- and asserts:
  *
- *   - `ra8_epub_open` returns `k_ra8_ok` (the shared arena was sufficient),
+ *   - `ra8_epub_open` returns `k_ra8_ok` (all bounded resources were sufficient),
  *   - chapter count == 60 (full spine parsed),
  *   - NCX TOC count == 60 (every navPoint extracted, #144 bug 2),
  *   - the cover-image manifest item resolved (`cover_path` non-empty).
@@ -127,11 +126,11 @@ static void est_setup_or_halt(void)
 }
 
 /**
- * @brief Open the stress EPUB through the shared arena; assert the structure.
+ * @brief Open the stress EPUB through bounded ZIP/XML paths; assert the structure.
  *
- * @details Halts on any failure stage before returning. Proves the 96 KiB
- * shared arena (miniz central directory + tinyxml2 OPF DOM) holds a
- * 125-entry / 60-chapter book and that the NCX + cover both parse.
+ * @details Halts on any failure stage before returning. Proves the miniz arena
+ * and caller-owned XML workspaces handle a 125-entry / 60-chapter book and
+ * that the NCX + cover both parse.
  *
  * @param[out] out_chap Receives the parsed chapter count (== 60 on success).
  * @param[out] out_toc  Receives the parsed NCX TOC count (== 60 on success).
