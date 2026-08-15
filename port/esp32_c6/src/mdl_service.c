@@ -66,7 +66,7 @@ static bool              s_initialised;
  */
 typedef uint32_t (*mdl_component_abi_fn_t)(void);
 
-__attribute__((noinline)) uint32_t ra8_mdl_service_component_abi(void)
+[[gnu::noinline]] uint32_t ra8_mdl_service_component_abi(void)
 {
   return 1U;
 }
