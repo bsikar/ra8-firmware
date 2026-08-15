@@ -2,6 +2,8 @@
 /**
  * \file tf_psa_crypto_config.h
  * \brief PSA crypto configuration options (set of defines)
+ * \details Selects the PSA algorithms and key types exposed by the target
+ * Mbed TLS composition; it contains policy declarations but no runtime state.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
