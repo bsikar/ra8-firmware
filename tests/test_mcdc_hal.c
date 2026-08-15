@@ -406,7 +406,10 @@ RA8_INTERNAL static ra8_err_t internal_jpeg_decode_marker(uint8_t marker_lo)
  * @par MC/DC:
  * Decision: `if (mk >= sof1 && mk <= sof_hi && mk != dht && mk != jpg)`
  * (4 conditions, AND; the unsupported-SOFn classifier,
- * libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c@dec_dispatch_marker). `mk = 0xFF00 | m`
+ * libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c@priv_jpeg_sw_dispatch). The RST0
+ * vector also covers the range decision in
+ * libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c@internal_dec_dispatch_tail.
+ * `mk = 0xFF00 | m`
  * is read from the marker byte of a `FF D8 FF <m>` stream.
  * Vectors (N+1 = 5 for N=4):
  *  - V1: mk=0xFFC2 (SOF2)  -> C1 T, C2 T, C3 T, C4 T -> true  (not_supported).
