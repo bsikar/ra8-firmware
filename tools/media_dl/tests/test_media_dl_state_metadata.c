@@ -6,6 +6,7 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
+#include <math.h>
 #include <string.h>
 
 #include "mdl_state.h"
