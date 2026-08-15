@@ -30,6 +30,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_jpeg_sw.h"
 #include "ra8_jpeg_sw_encode_internal.h"
@@ -201,7 +202,7 @@ static const uint8_t s_hval_ac_chroma[162] = {
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_emit_u8(ra8_jpeg_enc_ctx_t* e, uint8_t b)
+RA8_INTERNAL static void internal_enc_emit_u8(ra8_jpeg_enc_ctx_t* e, uint8_t b)
 {
   if (e->pos >= e->cap) {
     e->overflow = true;
@@ -211,37 +212,37 @@ static void enc_emit_u8(ra8_jpeg_enc_ctx_t* e, uint8_t b)
   e->pos++;
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_enc_emit_u16()` -- big-endian byte pair. */
-RA8_PRIV void ra8_jpeg_sw_priv_enc_emit_u16(ra8_jpeg_enc_ctx_t* e, uint16_t v)
+/** @brief Implementation of `priv_jpeg_sw_enc_emit_u16()` -- big-endian byte pair. */
+RA8_PRIV void priv_jpeg_sw_enc_emit_u16(ra8_jpeg_enc_ctx_t* e, uint16_t v)
 {
-  enc_emit_u8(e, (uint8_t)(v >> k_ra8_jpeg_byte_shift));
-  enc_emit_u8(e, (uint8_t)(v & k_jpeg_byte_mask));
+  internal_enc_emit_u8(e, (uint8_t)(v >> k_ra8_jpeg_byte_shift));
+  internal_enc_emit_u8(e, (uint8_t)(v & k_jpeg_byte_mask));
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_enc_put_bits()` -- T.81 F.1.2.3 stuffing. */
-RA8_PRIV void ra8_jpeg_sw_priv_enc_put_bits(ra8_jpeg_enc_ctx_t* e, uint32_t code, uint8_t n)
+/** @brief Implementation of `priv_jpeg_sw_enc_put_bits()` -- T.81 F.1.2.3 stuffing. */
+RA8_PRIV void priv_jpeg_sw_enc_put_bits(ra8_jpeg_enc_ctx_t* e, uint32_t code, uint8_t n)
 {
   e->bit_buf = (e->bit_buf << n) | (code & ((1U << n) - 1U));
   e->bit_cnt = (uint8_t)(e->bit_cnt + n);
   while (e->bit_cnt >= (uint8_t)k_ra8_jpeg_byte_shift) {
     uint8_t b = (uint8_t)(e->bit_buf >> (e->bit_cnt - k_ra8_jpeg_byte_shift));
-    enc_emit_u8(e, b);
+    internal_enc_emit_u8(e, b);
     if (b == (uint8_t)k_ra8_jpeg_marker_byte) {
-      enc_emit_u8(e, 0U);
+      internal_enc_emit_u8(e, 0U);
     }
     e->bit_cnt = (uint8_t)(e->bit_cnt - k_ra8_jpeg_byte_shift);
   }
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_enc_flush_bits()` -- 1-fill pad. */
-RA8_PRIV void ra8_jpeg_sw_priv_enc_flush_bits(ra8_jpeg_enc_ctx_t* e)
+/** @brief Implementation of `priv_jpeg_sw_enc_flush_bits()` -- 1-fill pad. */
+RA8_PRIV void priv_jpeg_sw_enc_flush_bits(ra8_jpeg_enc_ctx_t* e)
 {
   if (e->bit_cnt > 0U) {
     uint32_t pad = (1U << (k_ra8_jpeg_byte_shift - e->bit_cnt)) - 1U;
-    ra8_jpeg_sw_priv_enc_put_bits(e,
-                                  ((e->bit_buf << (k_ra8_jpeg_byte_shift - e->bit_cnt)) | pad) &
-                                    k_jpeg_byte_mask,
-                                  (uint8_t)(k_ra8_jpeg_byte_shift - e->bit_cnt));
+    priv_jpeg_sw_enc_put_bits(e,
+                              ((e->bit_buf << (k_ra8_jpeg_byte_shift - e->bit_cnt)) | pad) &
+                                k_jpeg_byte_mask,
+                              (uint8_t)(k_ra8_jpeg_byte_shift - e->bit_cnt));
   }
 }
 
@@ -273,11 +274,11 @@ RA8_PRIV void ra8_jpeg_sw_priv_enc_flush_bits(ra8_jpeg_enc_ctx_t* e)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_build_codes(const uint8_t* bits,
-                            const uint8_t* vals,
-                            uint16_t*      codes,
-                            uint8_t*       sizes,
-                            uint16_t       total)
+RA8_INTERNAL static void internal_enc_build_codes(const uint8_t* bits,
+                                                  const uint8_t* vals,
+                                                  uint16_t*      codes,
+                                                  uint8_t*       sizes,
+                                                  uint16_t       total)
 {
   uint8_t  huffsize[k_ra8_jpeg_huff_max + 1U];
   uint16_t k = 0U;
@@ -313,12 +314,12 @@ static void enc_build_codes(const uint8_t* bits,
   }
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_enc_build_huff()` -- four K.3.3 LUT builds. */
-RA8_PRIV void ra8_jpeg_sw_priv_enc_build_huff(ra8_jpeg_enc_ctx_t* e,
-                                              uint16_t*           total_dc_l,
-                                              uint16_t*           total_ac_l,
-                                              uint16_t*           total_dc_c,
-                                              uint16_t*           total_ac_c)
+/** @brief Implementation of `priv_jpeg_sw_enc_build_huff()` -- four K.3.3 LUT builds. */
+RA8_PRIV void priv_jpeg_sw_enc_build_huff(ra8_jpeg_enc_ctx_t* e,
+                                          uint16_t*           total_dc_l,
+                                          uint16_t*           total_ac_l,
+                                          uint16_t*           total_dc_c,
+                                          uint16_t*           total_ac_c)
 {
   *total_dc_l = 0U;
   *total_ac_l = 0U;
@@ -330,10 +331,26 @@ RA8_PRIV void ra8_jpeg_sw_priv_enc_build_huff(ra8_jpeg_enc_ctx_t* e,
     *total_dc_c = (uint16_t)(*total_dc_c + s_hbits_dc_chroma[i]);
     *total_ac_c = (uint16_t)(*total_ac_c + s_hbits_ac_chroma[i]);
   }
-  enc_build_codes(s_hbits_dc_luma, s_hval_dc_luma, e->code_dc_l, e->size_dc_l, *total_dc_l);
-  enc_build_codes(s_hbits_ac_luma, s_hval_ac_luma, e->code_ac_l, e->size_ac_l, *total_ac_l);
-  enc_build_codes(s_hbits_dc_chroma, s_hval_dc_chroma, e->code_dc_c, e->size_dc_c, *total_dc_c);
-  enc_build_codes(s_hbits_ac_chroma, s_hval_ac_chroma, e->code_ac_c, e->size_ac_c, *total_ac_c);
+  internal_enc_build_codes(s_hbits_dc_luma,
+                           s_hval_dc_luma,
+                           e->code_dc_l,
+                           e->size_dc_l,
+                           *total_dc_l);
+  internal_enc_build_codes(s_hbits_ac_luma,
+                           s_hval_ac_luma,
+                           e->code_ac_l,
+                           e->size_ac_l,
+                           *total_ac_l);
+  internal_enc_build_codes(s_hbits_dc_chroma,
+                           s_hval_dc_chroma,
+                           e->code_dc_c,
+                           e->size_dc_c,
+                           *total_dc_c);
+  internal_enc_build_codes(s_hbits_ac_chroma,
+                           s_hval_ac_chroma,
+                           e->code_ac_c,
+                           e->size_ac_c,
+                           *total_ac_c);
 }
 
 /* ------------------------------------------------------------------ */
@@ -357,17 +374,17 @@ RA8_PRIV void ra8_jpeg_sw_priv_enc_build_huff(ra8_jpeg_enc_ctx_t* e,
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_emit_dqt(ra8_jpeg_enc_ctx_t* e)
+RA8_INTERNAL static void internal_enc_emit_dqt(ra8_jpeg_enc_ctx_t* e)
 {
-  ra8_jpeg_sw_priv_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_dqt);
-  ra8_jpeg_sw_priv_enc_emit_u16(e, (uint16_t)(2U + (2U * (1U + (uint16_t)k_ra8_jpeg_block_size))));
-  enc_emit_u8(e, 0U); /* PqTq=0,0. */
+  priv_jpeg_sw_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_dqt);
+  priv_jpeg_sw_enc_emit_u16(e, (uint16_t)(2U + (2U * (1U + (uint16_t)k_ra8_jpeg_block_size))));
+  internal_enc_emit_u8(e, 0U); /* PqTq=0,0. */
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_block_size; i++) {
-    enc_emit_u8(e, e->qy[s_zigzag[i]]);
+    internal_enc_emit_u8(e, e->qy[s_zigzag[i]]);
   }
-  enc_emit_u8(e, 1U); /* PqTq=0,1. */
+  internal_enc_emit_u8(e, 1U); /* PqTq=0,1. */
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_block_size; i++) {
-    enc_emit_u8(e, e->qc[s_zigzag[i]]);
+    internal_enc_emit_u8(e, e->qc[s_zigzag[i]]);
   }
 }
 
@@ -391,20 +408,20 @@ static void enc_emit_dqt(ra8_jpeg_enc_ctx_t* e)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_emit_dht_one(ra8_jpeg_enc_ctx_t* e,
-                             uint8_t             tc_th,
-                             const uint8_t*      bits,
-                             const uint8_t*      vals,
-                             uint16_t            total)
+RA8_INTERNAL static void internal_enc_emit_dht_one(ra8_jpeg_enc_ctx_t* e,
+                                                   uint8_t             tc_th,
+                                                   const uint8_t*      bits,
+                                                   const uint8_t*      vals,
+                                                   uint16_t            total)
 {
-  ra8_jpeg_sw_priv_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_dht);
-  ra8_jpeg_sw_priv_enc_emit_u16(e, (uint16_t)(2U + 1U + (uint16_t)k_ra8_jpeg_huff_lengths + total));
-  enc_emit_u8(e, tc_th);
+  priv_jpeg_sw_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_dht);
+  priv_jpeg_sw_enc_emit_u16(e, (uint16_t)(2U + 1U + (uint16_t)k_ra8_jpeg_huff_lengths + total));
+  internal_enc_emit_u8(e, tc_th);
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_huff_lengths; i++) {
-    enc_emit_u8(e, bits[i]);
+    internal_enc_emit_u8(e, bits[i]);
   }
   for (uint16_t i = 0U; i < total; i++) {
-    enc_emit_u8(e, vals[i]);
+    internal_enc_emit_u8(e, vals[i]);
   }
 }
 
@@ -426,26 +443,26 @@ static void enc_emit_dht_one(ra8_jpeg_enc_ctx_t* e,
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_emit_app0_jfif(ra8_jpeg_enc_ctx_t* e)
+RA8_INTERNAL static void internal_enc_emit_app0_jfif(ra8_jpeg_enc_ctx_t* e)
 {
   /* SOI. */
-  ra8_jpeg_sw_priv_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_soi);
+  priv_jpeg_sw_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_soi);
 
   /* APP0 JFIF header (16 bytes payload). */
-  ra8_jpeg_sw_priv_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_app0);
-  ra8_jpeg_sw_priv_enc_emit_u16(e, 16U);
-  enc_emit_u8(e, 'J');
-  enc_emit_u8(e, 'F');
-  enc_emit_u8(e, 'I');
-  enc_emit_u8(e, 'F');
-  enc_emit_u8(e, 0U);
-  enc_emit_u8(e, 1U);
-  enc_emit_u8(e, 1U); /* Version 1.1.      */
-  enc_emit_u8(e, 0U); /* No density units. */
-  ra8_jpeg_sw_priv_enc_emit_u16(e, 1U);
-  ra8_jpeg_sw_priv_enc_emit_u16(e, 1U); /* Aspect 1:1. */
-  enc_emit_u8(e, 0U);
-  enc_emit_u8(e, 0U); /* No thumbnail. */
+  priv_jpeg_sw_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_app0);
+  priv_jpeg_sw_enc_emit_u16(e, 16U);
+  internal_enc_emit_u8(e, 'J');
+  internal_enc_emit_u8(e, 'F');
+  internal_enc_emit_u8(e, 'I');
+  internal_enc_emit_u8(e, 'F');
+  internal_enc_emit_u8(e, 0U);
+  internal_enc_emit_u8(e, 1U);
+  internal_enc_emit_u8(e, 1U); /* Version 1.1.      */
+  internal_enc_emit_u8(e, 0U); /* No density units. */
+  priv_jpeg_sw_enc_emit_u16(e, 1U);
+  priv_jpeg_sw_enc_emit_u16(e, 1U); /* Aspect 1:1. */
+  internal_enc_emit_u8(e, 0U);
+  internal_enc_emit_u8(e, 0U); /* No thumbnail. */
 }
 
 /**
@@ -467,26 +484,26 @@ static void enc_emit_app0_jfif(ra8_jpeg_enc_ctx_t* e)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_emit_sof0(ra8_jpeg_enc_ctx_t* e, uint16_t w, uint16_t h)
+RA8_INTERNAL static void internal_enc_emit_sof0(ra8_jpeg_enc_ctx_t* e, uint16_t w, uint16_t h)
 {
-  ra8_jpeg_sw_priv_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_sof0);
-  ra8_jpeg_sw_priv_enc_emit_u16(e, k_jpeg_sof_seg_len);
-  enc_emit_u8(e, 8U);
-  ra8_jpeg_sw_priv_enc_emit_u16(e, h);
-  ra8_jpeg_sw_priv_enc_emit_u16(e, w);
-  enc_emit_u8(e, 3U);
+  priv_jpeg_sw_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_sof0);
+  priv_jpeg_sw_enc_emit_u16(e, k_jpeg_sof_seg_len);
+  internal_enc_emit_u8(e, 8U);
+  priv_jpeg_sw_enc_emit_u16(e, h);
+  priv_jpeg_sw_enc_emit_u16(e, w);
+  internal_enc_emit_u8(e, 3U);
   /* Y: id 1, 2x2 sampling, qtab 0. */
-  enc_emit_u8(e, 1U);
-  enc_emit_u8(e, k_jpeg_samp_2x2);
-  enc_emit_u8(e, 0U);
+  internal_enc_emit_u8(e, 1U);
+  internal_enc_emit_u8(e, k_jpeg_samp_2x2);
+  internal_enc_emit_u8(e, 0U);
   /* Cb: id 2, 1x1, qtab 1. */
-  enc_emit_u8(e, 2U);
-  enc_emit_u8(e, k_jpeg_samp_1x1);
-  enc_emit_u8(e, 1U);
+  internal_enc_emit_u8(e, 2U);
+  internal_enc_emit_u8(e, k_jpeg_samp_1x1);
+  internal_enc_emit_u8(e, 1U);
   /* Cr: id 3, 1x1, qtab 1. */
-  enc_emit_u8(e, 3U);
-  enc_emit_u8(e, k_jpeg_samp_1x1);
-  enc_emit_u8(e, 1U);
+  internal_enc_emit_u8(e, 3U);
+  internal_enc_emit_u8(e, k_jpeg_samp_1x1);
+  internal_enc_emit_u8(e, 1U);
 }
 
 /**
@@ -506,39 +523,43 @@ static void enc_emit_sof0(ra8_jpeg_enc_ctx_t* e, uint16_t w, uint16_t h)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_emit_sos(ra8_jpeg_enc_ctx_t* e)
+RA8_INTERNAL static void internal_enc_emit_sos(ra8_jpeg_enc_ctx_t* e)
 {
-  ra8_jpeg_sw_priv_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_sos);
-  ra8_jpeg_sw_priv_enc_emit_u16(e, k_jpeg_sos_seg_len);
-  enc_emit_u8(e, 3U);
-  enc_emit_u8(e, 1U);
-  enc_emit_u8(e, 0x00U); /* Y: dc=0,ac=0. */
-  enc_emit_u8(e, 2U);
-  enc_emit_u8(e, k_jpeg_sos_sel_chroma); /* Cb. */
-  enc_emit_u8(e, 3U);
-  enc_emit_u8(e, k_jpeg_sos_sel_chroma); /* Cr. */
-  enc_emit_u8(e, 0U);
-  enc_emit_u8(e, k_jpeg_spectral_end);
-  enc_emit_u8(e, 0U);
+  priv_jpeg_sw_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_sos);
+  priv_jpeg_sw_enc_emit_u16(e, k_jpeg_sos_seg_len);
+  internal_enc_emit_u8(e, 3U);
+  internal_enc_emit_u8(e, 1U);
+  internal_enc_emit_u8(e, 0x00U); /* Y: dc=0,ac=0. */
+  internal_enc_emit_u8(e, 2U);
+  internal_enc_emit_u8(e, k_jpeg_sos_sel_chroma); /* Cb. */
+  internal_enc_emit_u8(e, 3U);
+  internal_enc_emit_u8(e, k_jpeg_sos_sel_chroma); /* Cr. */
+  internal_enc_emit_u8(e, 0U);
+  internal_enc_emit_u8(e, k_jpeg_spectral_end);
+  internal_enc_emit_u8(e, 0U);
 }
 
-/** @brief Implementation of `ra8_jpeg_sw_priv_enc_headers()` -- JFIF 1.1 segment order. */
-RA8_PRIV void ra8_jpeg_sw_priv_enc_headers(ra8_jpeg_enc_ctx_t* e,
-                                           uint16_t            w,
-                                           uint16_t            h,
-                                           uint16_t            total_dc_l,
-                                           uint16_t            total_ac_l,
-                                           uint16_t            total_dc_c,
-                                           uint16_t            total_ac_c)
+/** @brief Implementation of `priv_jpeg_sw_enc_headers()` -- JFIF 1.1 segment order. */
+RA8_PRIV void priv_jpeg_sw_enc_headers(ra8_jpeg_enc_ctx_t* e,
+                                       uint16_t            w,
+                                       uint16_t            h,
+                                       uint16_t            total_dc_l,
+                                       uint16_t            total_ac_l,
+                                       uint16_t            total_dc_c,
+                                       uint16_t            total_ac_c)
 {
-  enc_emit_app0_jfif(e);
-  enc_emit_dqt(e);
-  enc_emit_sof0(e, w, h);
+  internal_enc_emit_app0_jfif(e);
+  internal_enc_emit_dqt(e);
+  internal_enc_emit_sof0(e, w, h);
 
-  enc_emit_dht_one(e, 0x00U, s_hbits_dc_luma, s_hval_dc_luma, total_dc_l);
-  enc_emit_dht_one(e, 0x10U, s_hbits_ac_luma, s_hval_ac_luma, total_ac_l);
-  enc_emit_dht_one(e, 0x01U, s_hbits_dc_chroma, s_hval_dc_chroma, total_dc_c);
-  enc_emit_dht_one(e, k_jpeg_dht_ac_chroma, s_hbits_ac_chroma, s_hval_ac_chroma, total_ac_c);
+  internal_enc_emit_dht_one(e, 0x00U, s_hbits_dc_luma, s_hval_dc_luma, total_dc_l);
+  internal_enc_emit_dht_one(e, 0x10U, s_hbits_ac_luma, s_hval_ac_luma, total_ac_l);
+  internal_enc_emit_dht_one(e, 0x01U, s_hbits_dc_chroma, s_hval_dc_chroma, total_dc_c);
+  internal_enc_emit_dht_one(e,
+                            k_jpeg_dht_ac_chroma,
+                            s_hbits_ac_chroma,
+                            s_hval_ac_chroma,
+                            total_ac_c);
 
-  enc_emit_sos(e);
+  internal_enc_emit_sos(e);
 }

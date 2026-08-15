@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_jpeg_sw.h"
@@ -86,7 +87,7 @@ typedef struct {
  *       whole point of the table is that refactors must not move it.
  * @since 0.1.0
  */
-static const pt_golden_t k_pt_goldens[] = {
+static const pt_golden_t s_pt_goldens[] = {
   {16, 16, 1, 626, 0x81B00954U, 0xEDE5FA05U},     {16, 16, 10, 632, 0xBB0CBA32U, 0x19D7D1FBU},
   {16, 16, 50, 640, 0x59E04B54U, 0x607F851DU},    {16, 16, 75, 651, 0x7091960CU, 0xA56A5396U},
   {16, 16, 90, 674, 0x44977EA0U, 0x572AAE73U},    {16, 16, 100, 779, 0x309D6043U, 0x3E5A6F09U},
@@ -107,7 +108,7 @@ static const pt_golden_t k_pt_goldens[] = {
 /** @brief Number of golden vectors. */
 enum : uint32_t {
   k_pt_golden_count =
-    (uint32_t)(sizeof(k_pt_goldens) / sizeof(k_pt_goldens[0])), /**< Pt golden count. */
+    (uint32_t)(sizeof(s_pt_goldens) / sizeof(s_pt_goldens[0])), /**< Pt golden count. */
 };
 
 /** @brief Shared scratch buffers (large; keep off the stack). */
@@ -121,8 +122,8 @@ static uint8_t s_pt_window[k_pt_window_cap];
 /** @brief Streaming decoder stripe buffer (worst case 4:2:0). */
 static uint8_t s_pt_stripe[(uint32_t)k_pt_max_w * 16U * 3U];
 
-/** @brief Fold FNV-1a-32 over `n` bytes starting from `h`. */
-static uint32_t pt_fnv1a32(uint32_t h, const uint8_t* p, uint32_t n)
+/** @brief Fold FNV-1a-32 over `n` bytes starting from `h`. @details Exercises the pt fnv1a32 path with bounded caller-owned fixture state and verifies its documented result. @param[in] h Image height value or receiver exercised by this helper. @param[in] p Readable fixture byte sequence. @param[in] n Number of bytes or elements supplied. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_pt_fnv1a32(uint32_t h, const uint8_t* p, uint32_t n)
 {
   for (uint32_t i = 0U; i < n; i++) {
     h ^= p[i];
@@ -131,8 +132,8 @@ static uint32_t pt_fnv1a32(uint32_t h, const uint8_t* p, uint32_t n)
   return h;
 }
 
-/** @brief Fill the shared RGB buffer with the frozen deterministic gradient. */
-static void pt_fill_gradient(uint16_t w, uint16_t h)
+/** @brief Fill the shared RGB buffer with the frozen deterministic gradient. @details Exercises the pt fill gradient path with bounded caller-owned fixture state and verifies its documented result. @param[in] w Image width value or receiver exercised by this helper. @param[in] h Image height value or receiver exercised by this helper. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_pt_fill_gradient(uint16_t w, uint16_t h)
 {
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < w; x++) {
@@ -144,10 +145,10 @@ static void pt_fill_gradient(uint16_t w, uint16_t h)
   }
 }
 
-/** @brief Encode golden vector `g` into `s_pt_jpeg`; returns the length. */
-static uint32_t pt_encode(const pt_golden_t* g)
+/** @brief Encode golden vector `g` into `s_pt_jpeg`; returns the length. @details Exercises the pt encode path with bounded caller-owned fixture state and verifies its documented result. @param[in] g Scalar fixture input. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_pt_encode(const pt_golden_t* g)
 {
-  pt_fill_gradient(g->w, g->h);
+  internal_pt_fill_gradient(g->w, g->h);
   uint32_t len = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -163,15 +164,14 @@ static uint32_t pt_encode(const pt_golden_t* g)
  * (no compound decisions in this test -- a golden byte-parity check: it pins
  * ra8_jpeg_sw_encode's exact output length and FNV-1a-32 hash across 30
  * geometry/quality vectors. It drives no decision to independent influence; the
- * codec's own compound decisions are covered by the ra8_jpeg_sw unit tests.)
- */
-static void test_parity_encoder_bytes(void)
+ * codec's own compound decisions are covered by the ra8_jpeg_sw unit tests.) @details Executes the parity encoder bytes scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_parity_encoder_bytes(void)
 {
   for (uint32_t i = 0U; i < k_pt_golden_count; i++) {
-    const pt_golden_t* g   = &k_pt_goldens[i];
-    uint32_t           len = pt_encode(g);
+    const pt_golden_t* g   = &s_pt_goldens[i];
+    uint32_t           len = internal_pt_encode(g);
     TEST_ASSERT_EQ(g->enc_len, len);
-    TEST_ASSERT_EQ(g->enc_fnv, pt_fnv1a32((uint32_t)k_pt_fnv_offset, s_pt_jpeg, len));
+    TEST_ASSERT_EQ(g->enc_fnv, internal_pt_fnv1a32((uint32_t)k_pt_fnv_offset, s_pt_jpeg, len));
   }
   TEST_END("jpeg_sw parity: encoder byte stream matches goldens");
 }
@@ -185,13 +185,12 @@ static void test_parity_encoder_bytes(void)
  * ra8_jpeg_sw_get_dimensions and ra8_jpeg_sw_decode's exact RGB888 output
  * (FNV-1a-32) across the same 30 vectors. It drives no decision to independent
  * influence; the codec's own compound decisions are covered by the ra8_jpeg_sw
- * unit tests.)
- */
-static void test_parity_decoder_pixels(void)
+ * unit tests.) @details Executes the parity decoder pixels scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_parity_decoder_pixels(void)
 {
   for (uint32_t i = 0U; i < k_pt_golden_count; i++) {
-    const pt_golden_t* g   = &k_pt_goldens[i];
-    uint32_t           len = pt_encode(g);
+    const pt_golden_t* g   = &s_pt_goldens[i];
+    uint32_t           len = internal_pt_encode(g);
 
     uint16_t dw = 0U;
     uint16_t dh = 0U;
@@ -203,7 +202,7 @@ static void test_parity_decoder_pixels(void)
     TEST_ASSERT_EQ(k_ra8_ok,
                    ra8_jpeg_sw_decode(s_pt_jpeg, len, s_pt_dec, sizeof(s_pt_dec), &dw, &dh));
     uint32_t nbytes = (uint32_t)dw * dh * 3U;
-    TEST_ASSERT_EQ(g->dec_fnv, pt_fnv1a32((uint32_t)k_pt_fnv_offset, s_pt_dec, nbytes));
+    TEST_ASSERT_EQ(g->dec_fnv, internal_pt_fnv1a32((uint32_t)k_pt_fnv_offset, s_pt_dec, nbytes));
   }
   TEST_END("jpeg_sw parity: decoder RGB output matches goldens");
 }
@@ -220,8 +219,8 @@ typedef struct {
   uint32_t rows; /**< Total rows emitted.                */
 } pt_sink_t;
 
-/** @brief Pull callback: hands out `s_pt_jpeg` strictly in order. */
-static ra8_err_t pt_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+/** @brief Pull callback: hands out `s_pt_jpeg` strictly in order. @details Exercises the pt pull path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] ctx Injected callback context whose ownership remains with the test. @param[out] buf Byte buffer read or written by the exercised callback. @param[in] cap Capacity of the associated byte buffer in bytes. @param[out] got Receives the number of bytes transferred. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_pt_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   pt_pull_ctx_t* p    = (pt_pull_ctx_t*)ctx;
   size_t         left = (size_t)(p->len - p->pos);
@@ -232,14 +231,14 @@ static ra8_err_t pt_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
   return k_ra8_ok;
 }
 
-/** @brief Geometry callback: hands the decoder the static stripe buffer. */
-static ra8_err_t pt_on_geom(void*     ctx,
-                            uint16_t  width,
-                            uint16_t  height,
-                            uint8_t   channels,
-                            uint16_t  stripe_rows,
-                            uint8_t** out_stripe,
-                            uint32_t* out_stripe_cap)
+/** @brief Geometry callback: hands the decoder the static stripe buffer. @details Exercises the pt on geom path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] ctx Injected callback context whose ownership remains with the test. @param[in] width Image width in pixels. @param[in] height Image height in pixels. @param[in] channels Number of interleaved pixel channels. @param[in] stripe_rows Number of pixel rows in the emitted stripe. @param[out] out_stripe Caller-owned stripe output buffer. @param[out] out_stripe_cap Capacity of @p out_stripe in bytes. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_pt_on_geom(void*     ctx,
+                                                  uint16_t  width,
+                                                  uint16_t  height,
+                                                  uint8_t   channels,
+                                                  uint16_t  stripe_rows,
+                                                  uint8_t** out_stripe,
+                                                  uint32_t* out_stripe_cap)
 {
   (void)ctx;
   (void)width;
@@ -251,17 +250,17 @@ static ra8_err_t pt_on_geom(void*     ctx,
   return k_ra8_ok;
 }
 
-/** @brief Row sink: folds every emitted stripe into the running hash. */
-static ra8_err_t pt_on_rows(void*          ctx,
-                            const uint8_t* px,
-                            uint16_t       width,
-                            uint16_t       y0,
-                            uint16_t       nrows,
-                            uint8_t        channels)
+/** @brief Row sink: folds every emitted stripe into the running hash. @details Exercises the pt on rows path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] ctx Injected callback context whose ownership remains with the test. @param[in] px Readable pixel row bytes. @param[in] width Image width in pixels. @param[in] y0 First image row represented by the stripe. @param[in] nrows Number of consecutive pixel rows. @param[in] channels Number of interleaved pixel channels. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_pt_on_rows(void*          ctx,
+                                                  const uint8_t* px,
+                                                  uint16_t       width,
+                                                  uint16_t       y0,
+                                                  uint16_t       nrows,
+                                                  uint8_t        channels)
 {
   (void)y0;
   pt_sink_t* s = (pt_sink_t*)ctx;
-  s->hash      = pt_fnv1a32(s->hash, px, (uint32_t)width * nrows * channels);
+  s->hash      = internal_pt_fnv1a32(s->hash, px, (uint32_t)width * nrows * channels);
   s->rows += nrows;
   return k_ra8_ok;
 }
@@ -275,23 +274,22 @@ static ra8_err_t pt_on_rows(void*          ctx,
  * stripe decoder ra8_jpeg_sw_decode_stripes must emit the same row count and
  * pixels (FNV-1a-32) as the whole-buffer goldens. It drives no decision to
  * independent influence; the streaming decoder's compound decisions are covered
- * in test_ra8_jpeg_sw_stream.c.)
- */
-static void test_parity_stream_equals_whole_buffer(void)
+ * in test_ra8_jpeg_sw_stream.c.) @details Executes the parity stream equals whole buffer scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_parity_stream_equals_whole_buffer(void)
 {
   for (uint32_t i = 0U; i < k_pt_golden_count; i++) {
-    const pt_golden_t* g   = &k_pt_goldens[i];
-    uint32_t           len = pt_encode(g);
+    const pt_golden_t* g   = &s_pt_goldens[i];
+    uint32_t           len = internal_pt_encode(g);
 
     pt_pull_ctx_t pc = {len, 0U};
     pt_sink_t     sk = {(uint32_t)k_pt_fnv_offset, 0U};
     TEST_ASSERT_EQ(k_ra8_ok,
-                   ra8_jpeg_sw_decode_stripes(pt_pull,
+                   ra8_jpeg_sw_decode_stripes(internal_pt_pull,
                                               &pc,
                                               s_pt_window,
                                               (uint32_t)sizeof(s_pt_window),
-                                              pt_on_geom,
-                                              pt_on_rows,
+                                              internal_pt_on_geom,
+                                              internal_pt_on_rows,
                                               &sk));
     TEST_ASSERT_EQ(g->h, sk.rows);
     TEST_ASSERT_EQ(g->dec_fnv, sk.hash);
@@ -302,9 +300,8 @@ static void test_parity_stream_equals_whole_buffer(void)
 int32_t main(void)
 {
   ra8_fake_mmap_reset();
-  test_parity_encoder_bytes();
-  test_parity_decoder_pixels();
-  test_parity_stream_equals_whole_buffer();
-  (void)fprintf(stderr, "[OK ] test_ra8_jpeg_sw_parity.c\n");
+  internal_test_parity_encoder_bytes();
+  internal_test_parity_decoder_pixels();
+  internal_test_parity_stream_equals_whole_buffer();
   return 0;
 }

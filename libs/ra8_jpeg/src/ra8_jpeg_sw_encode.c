@@ -35,6 +35,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_jpeg_sw.h"
@@ -86,7 +87,7 @@ static const uint8_t s_quant_chroma[64] = {
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void fwd_dct_1d_norm(const int32_t* in, int32_t* out)
+RA8_INTERNAL static void internal_fwd_dct_1d_norm(const int32_t* in, int32_t* out)
 {
   for (uint8_t k = 0U; k < (uint8_t)k_ra8_jpeg_block_dim; k++) {
     int64_t s = 0;
@@ -103,7 +104,7 @@ static void fwd_dct_1d_norm(const int32_t* in, int32_t* out)
 /**
  * @brief 2-D forward DCT of one 8x8 block, in place.
  *
- * @details Separable two-pass transform: `fwd_dct_1d_norm()` over the
+ * @details Separable two-pass transform: `internal_fwd_dct_1d_norm()` over the
  *          rows, then over the columns of the intermediate result.
  *
  * @param[in,out] block 64-entry row-major sample block, DCTed in place.
@@ -116,7 +117,7 @@ static void fwd_dct_1d_norm(const int32_t* in, int32_t* out)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void fdct8x8(int32_t* block)
+RA8_INTERNAL static void internal_fdct8x8(int32_t* block)
 {
   int32_t tmp[(uint32_t)k_ra8_jpeg_block_size];
   int32_t row[(uint32_t)k_ra8_jpeg_block_dim];
@@ -126,7 +127,7 @@ static void fdct8x8(int32_t* block)
     for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
       row[c] = block[(r * (uint8_t)k_ra8_jpeg_block_dim) + c];
     }
-    fwd_dct_1d_norm(row, out);
+    internal_fwd_dct_1d_norm(row, out);
     for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
       tmp[(r * (uint8_t)k_ra8_jpeg_block_dim) + c] = out[c];
     }
@@ -135,7 +136,7 @@ static void fdct8x8(int32_t* block)
     for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
       col[r] = tmp[(r * (uint8_t)k_ra8_jpeg_block_dim) + c];
     }
-    fwd_dct_1d_norm(col, out);
+    internal_fwd_dct_1d_norm(col, out);
     for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
       block[(r * (uint8_t)k_ra8_jpeg_block_dim) + c] = out[r];
     }
@@ -166,7 +167,7 @@ static void fdct8x8(int32_t* block)
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-static uint16_t enc_quality_scale(uint8_t q)
+RA8_INTERNAL static uint16_t internal_enc_quality_scale(uint8_t q)
 {
   if (q < (uint8_t)k_ra8_jpeg_quality_pivot) {
     return (uint16_t)(k_jpeg_q_scale_low / q);
@@ -182,7 +183,7 @@ static uint16_t enc_quality_scale(uint8_t q)
  *
  * @param[in]  base  64-entry Annex K.1 base table.
  * @param[out] dst   64-entry destination table.
- * @param[in]  scale Percentage from `enc_quality_scale()`.
+ * @param[in]  scale Percentage from `internal_enc_quality_scale()`.
  *
  * @pre `base` and `dst` hold 64 valid/writable bytes each.
  * @pre `scale <= 5000` (bounded by the quality curve).
@@ -192,7 +193,7 @@ static uint16_t enc_quality_scale(uint8_t q)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_scale_qtab(const uint8_t* base, uint8_t* dst, uint16_t scale)
+RA8_INTERNAL static void internal_enc_scale_qtab(const uint8_t* base, uint8_t* dst, uint16_t scale)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_block_size; i++) {
     uint32_t t = (((uint32_t)base[i] * (uint32_t)scale) + k_jpeg_q_round_bias) / k_jpeg_q_percent;
@@ -225,7 +226,7 @@ static void enc_scale_qtab(const uint8_t* base, uint8_t* dst, uint16_t scale)
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-static uint8_t enc_bits_needed(int32_t v)
+RA8_INTERNAL static uint8_t internal_enc_bits_needed(int32_t v)
 {
   uint32_t a = (v < 0) ? (uint32_t)(-v) : (uint32_t)v;
   uint8_t  n = 0U;
@@ -250,7 +251,7 @@ static uint8_t enc_bits_needed(int32_t v)
  * @retval 0        `|v|` below half the divisor.
  * @retval non-zero Rounded quotient otherwise.
  *
- * @pre `qv >= 1` in practice (`enc_scale_qtab()` clamps to 1).
+ * @pre `qv >= 1` in practice (`internal_enc_scale_qtab()` clamps to 1).
  * @pre `v` is a valid 2-D DCT output value.
  * @post Sign of the result matches the sign of `v`.
  * @post No state is mutated.
@@ -258,7 +259,7 @@ static uint8_t enc_bits_needed(int32_t v)
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-static int32_t enc_quantize(int32_t v, uint8_t qv)
+RA8_INTERNAL static int32_t internal_enc_quantize(int32_t v, uint8_t qv)
 {
   int32_t q = (int32_t)qv;
   if (q == 0) {
@@ -289,17 +290,17 @@ static int32_t enc_quantize(int32_t v, uint8_t qv)
  * @param[in]     ac_sizes AC Huffman code-length LUT.
  *
  * @pre `z` was produced by the caller's quantize loop.
- * @pre The AC LUTs were built by `ra8_jpeg_sw_priv_enc_build_huff()`.
+ * @pre The AC LUTs were built by `priv_jpeg_sw_enc_build_huff()`.
  * @post All non-zero AC coefficients are in the entropy stream.
  * @post An EOB symbol terminates the block when it ends in zeros.
  *
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_block_ac(ra8_jpeg_enc_ctx_t* e,
-                         const int32_t*      z,
-                         const uint16_t*     ac_codes,
-                         const uint8_t*      ac_sizes)
+RA8_INTERNAL static void internal_enc_block_ac(ra8_jpeg_enc_ctx_t* e,
+                                               const int32_t*      z,
+                                               const uint16_t*     ac_codes,
+                                               const uint8_t*      ac_sizes)
 {
   uint8_t run = 0U;
   for (uint8_t k = 1U; k < (uint8_t)k_ra8_jpeg_block_size; k++) {
@@ -309,21 +310,21 @@ static void enc_block_ac(ra8_jpeg_enc_ctx_t* e,
     }
     while (run >= 16U) {
       /* ZRL = 0xF0. */
-      ra8_jpeg_sw_priv_enc_put_bits(e,
-                                    (uint32_t)ac_codes[k_jpeg_zrl_symbol],
-                                    ac_sizes[k_jpeg_zrl_symbol]);
+      priv_jpeg_sw_enc_put_bits(e,
+                                (uint32_t)ac_codes[k_jpeg_zrl_symbol],
+                                ac_sizes[k_jpeg_zrl_symbol]);
       run = (uint8_t)(run - 16U);
     }
-    uint8_t mb  = enc_bits_needed(z[k]);
+    uint8_t mb  = internal_enc_bits_needed(z[k]);
     uint8_t sym = (uint8_t)((run << k_ra8_jpeg_nibble_shift) | mb);
-    ra8_jpeg_sw_priv_enc_put_bits(e, (uint32_t)ac_codes[sym], ac_sizes[sym]);
+    priv_jpeg_sw_enc_put_bits(e, (uint32_t)ac_codes[sym], ac_sizes[sym]);
     int32_t v = (z[k] < 0) ? (z[k] - 1) : z[k];
-    ra8_jpeg_sw_priv_enc_put_bits(e, (uint32_t)v & ((1U << mb) - 1U), mb);
+    priv_jpeg_sw_enc_put_bits(e, (uint32_t)v & ((1U << mb) - 1U), mb);
     run = 0U;
   }
   if (run > 0U) {
     /* EOB = 0x00. */
-    ra8_jpeg_sw_priv_enc_put_bits(e, (uint32_t)ac_codes[0U], ac_sizes[0U]);
+    priv_jpeg_sw_enc_put_bits(e, (uint32_t)ac_codes[0U], ac_sizes[0U]);
   }
 }
 
@@ -332,7 +333,7 @@ static void enc_block_ac(ra8_jpeg_enc_ctx_t* e,
  *
  * @details Forward-DCTs the spatial block, quantizes it in zig-zag
  *          order, emits the DC difference (T.81 sec F.1.2.1) and hands
- *          the AC coefficients to `enc_block_ac()`.
+ *          the AC coefficients to `internal_enc_block_ac()`.
  *
  * @param[in,out] e        Encoder context (DC predictor + bits mutate).
  * @param[in]     spatial  64-entry level-shifted sample block.
@@ -343,7 +344,7 @@ static void enc_block_ac(ra8_jpeg_enc_ctx_t* e,
  * @param[in]     ac_codes AC Huffman code LUT.
  * @param[in]     ac_sizes AC Huffman code-length LUT.
  *
- * @pre All LUTs were built by `ra8_jpeg_sw_priv_enc_build_huff()`.
+ * @pre All LUTs were built by `priv_jpeg_sw_enc_build_huff()`.
  * @pre `spatial` holds 64 valid samples.
  * @post The block's entropy bits are in the output stream.
  * @post `e->dc_pred[comp_idx]` reflects this block's DC value.
@@ -351,39 +352,39 @@ static void enc_block_ac(ra8_jpeg_enc_ctx_t* e,
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_block(ra8_jpeg_enc_ctx_t* e,
-                      const int32_t*      spatial,
-                      const uint8_t*      qtab,
-                      uint8_t             comp_idx,
-                      const uint16_t*     dc_codes,
-                      const uint8_t*      dc_sizes,
-                      const uint16_t*     ac_codes,
-                      const uint8_t*      ac_sizes)
+RA8_INTERNAL static void internal_enc_block(ra8_jpeg_enc_ctx_t* e,
+                                            const int32_t*      spatial,
+                                            const uint8_t*      qtab,
+                                            uint8_t             comp_idx,
+                                            const uint16_t*     dc_codes,
+                                            const uint8_t*      dc_sizes,
+                                            const uint16_t*     ac_codes,
+                                            const uint8_t*      ac_sizes)
 {
   int32_t blk[(uint32_t)k_ra8_jpeg_block_size];
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_block_size; i++) {
     blk[i] = spatial[i];
   }
-  fdct8x8(blk);
+  internal_fdct8x8(blk);
 
   /* Quantize in zig-zag order. */
   int32_t z[(uint32_t)k_ra8_jpeg_block_size];
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_block_size; i++) {
-    z[i] = enc_quantize(blk[s_zigzag[i]], qtab[s_zigzag[i]]);
+    z[i] = internal_enc_quantize(blk[s_zigzag[i]], qtab[s_zigzag[i]]);
   }
 
   /* DC differential. */
   int32_t diff         = z[0] - e->dc_pred[comp_idx];
   e->dc_pred[comp_idx] = z[0];
-  uint8_t nb           = enc_bits_needed(diff);
-  ra8_jpeg_sw_priv_enc_put_bits(e, (uint32_t)dc_codes[nb], dc_sizes[nb]);
+  uint8_t nb           = internal_enc_bits_needed(diff);
+  priv_jpeg_sw_enc_put_bits(e, (uint32_t)dc_codes[nb], dc_sizes[nb]);
   if (nb != 0U) {
     int32_t v = (diff < 0) ? (diff - 1) : diff;
-    ra8_jpeg_sw_priv_enc_put_bits(e, (uint32_t)v & ((1U << nb) - 1U), nb);
+    priv_jpeg_sw_enc_put_bits(e, (uint32_t)v & ((1U << nb) - 1U), nb);
   }
 
   /* AC. */
-  enc_block_ac(e, z, ac_codes, ac_sizes);
+  internal_enc_block_ac(e, z, ac_codes, ac_sizes);
 }
 
 /* ------------------------------------------------------------------ */
@@ -411,7 +412,8 @@ static void enc_block(ra8_jpeg_enc_ctx_t* e,
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_rgb_to_ycc_row(const uint8_t* rgb, uint16_t n, int32_t* y, int32_t* cb, int32_t* cr)
+RA8_INTERNAL static void
+internal_enc_rgb_to_ycc_row(const uint8_t* rgb, uint16_t n, int32_t* y, int32_t* cb, int32_t* cr)
 {
   for (uint16_t i = 0U; i < n; i++) {
     uint32_t px = (uint32_t)i * (uint32_t)k_ra8_jpeg_rgb_components;
@@ -454,12 +456,12 @@ static void enc_rgb_to_ycc_row(const uint8_t* rgb, uint16_t n, int32_t* y, int32
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_sample_y_block(const int32_t* yplane,
-                               uint16_t       plane_w,
-                               uint16_t       plane_h,
-                               uint16_t       x0,
-                               uint16_t       y0,
-                               int32_t*       out)
+RA8_INTERNAL static void internal_enc_sample_y_block(const int32_t* yplane,
+                                                     uint16_t       plane_w,
+                                                     uint16_t       plane_h,
+                                                     uint16_t       x0,
+                                                     uint16_t       y0,
+                                                     int32_t*       out)
 {
   for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
     uint16_t sy = (uint16_t)(y0 + r);
@@ -484,7 +486,7 @@ static void enc_sample_y_block(const int32_t* yplane,
  * Sums the four plane samples of the 2x2 window whose top-left corner
  * is (sx, sy), clamping each coordinate to the plane edge, and
  * returns the integer mean -- the 4:2:0 sub-sampling kernel of
- * `enc_sample_c_block_420()`.
+ * `internal_enc_sample_c_block_420()`.
  *
  * @param[in] cplane  Chroma plane (`plane_w` samples per row).
  * @param[in] plane_w Plane width in samples.
@@ -503,8 +505,11 @@ static void enc_sample_y_block(const int32_t* yplane,
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static int32_t
-enc_avg_2x2(const int32_t* cplane, uint16_t plane_w, uint16_t plane_h, uint16_t sx, uint16_t sy)
+RA8_INTERNAL static int32_t internal_enc_avg_2x2(const int32_t* cplane,
+                                                 uint16_t       plane_w,
+                                                 uint16_t       plane_h,
+                                                 uint16_t       sx,
+                                                 uint16_t       sy)
 {
   int32_t s = 0;
   uint8_t n = 0U;
@@ -528,7 +533,7 @@ enc_avg_2x2(const int32_t* cplane, uint16_t plane_w, uint16_t plane_h, uint16_t 
 /**
  * @brief Build one 8x8 chroma block by 2x2 averaging from a 16x16 region.
  *
- * @details Each destination sample is the `enc_avg_2x2()` mean of the
+ * @details Each destination sample is the `internal_enc_avg_2x2()` mean of the
  *          matching 2x2 source window, level-shifted by -128 for the
  *          DCT -- the 4:2:0 chroma sub-sampling step.
  *
@@ -547,19 +552,19 @@ enc_avg_2x2(const int32_t* cplane, uint16_t plane_w, uint16_t plane_h, uint16_t 
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static void enc_sample_c_block_420(const int32_t* cplane,
-                                   uint16_t       plane_w,
-                                   uint16_t       plane_h,
-                                   uint16_t       x0,
-                                   uint16_t       y0,
-                                   int32_t*       out)
+RA8_INTERNAL static void internal_enc_sample_c_block_420(const int32_t* cplane,
+                                                         uint16_t       plane_w,
+                                                         uint16_t       plane_h,
+                                                         uint16_t       x0,
+                                                         uint16_t       y0,
+                                                         int32_t*       out)
 {
   for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
     for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
       uint16_t sy = (uint16_t)(y0 + (r * 2U));
       uint16_t sx = (uint16_t)(x0 + (c * 2U));
       out[(r * (uint8_t)k_ra8_jpeg_block_dim) + c] =
-        enc_avg_2x2(cplane, plane_w, plane_h, sx, sy) - (int32_t)k_ra8_jpeg_level_offset;
+        internal_enc_avg_2x2(cplane, plane_w, plane_h, sx, sy) - (int32_t)k_ra8_jpeg_level_offset;
     }
   }
 }
@@ -572,7 +577,7 @@ static void enc_sample_c_block_420(const int32_t* cplane,
  * source pixels (clamp-to-edge) so that the YCbCr strips cover the full
  * `pad_w` width and the requested vertical strip starting at `mby`.
  * Uses the caller-provided scratch RGB buffer for one row at a time, so
- * the chroma sub-sampling later in `enc_sample_c_block_420()` sees
+ * the chroma sub-sampling later in `internal_enc_sample_c_block_420()` sees
  * fully-populated planes.
  *
  * @param[in]  rgb      Source RGB888 image of size w*h.
@@ -593,15 +598,15 @@ static void enc_sample_c_block_420(const int32_t* cplane,
  * @note Not thread-safe; relies on caller-provided scratch buffers.
  * @since 0.1.0
  */
-static void enc_convert_strip_to_ycc(const uint8_t* rgb,
-                                     uint16_t       w,
-                                     uint16_t       h,
-                                     uint16_t       pad_w,
-                                     uint16_t       mby,
-                                     int32_t*       y_strip,
-                                     int32_t*       cb_strip,
-                                     int32_t*       cr_strip,
-                                     uint8_t*       tmp_rgb)
+RA8_INTERNAL static void internal_enc_convert_strip_to_ycc(const uint8_t* rgb,
+                                                           uint16_t       w,
+                                                           uint16_t       h,
+                                                           uint16_t       pad_w,
+                                                           uint16_t       mby,
+                                                           int32_t*       y_strip,
+                                                           int32_t*       cb_strip,
+                                                           int32_t*       cr_strip,
+                                                           uint8_t*       tmp_rgb)
 {
   for (uint8_t r = 0U; r < 16U; r++) {
     uint16_t src_y = mby + r;
@@ -620,11 +625,11 @@ static void enc_convert_strip_to_ycc(const uint8_t* rgb,
       tmp_rgb[didx + 1U] = rgb[sidx + 1U];
       tmp_rgb[didx + 2U] = rgb[sidx + 2U];
     }
-    enc_rgb_to_ycc_row(tmp_rgb,
-                       pad_w,
-                       &y_strip[(size_t)r * pad_w],
-                       &cb_strip[(size_t)r * pad_w],
-                       &cr_strip[(size_t)r * pad_w]);
+    internal_enc_rgb_to_ycc_row(tmp_rgb,
+                                pad_w,
+                                &y_strip[(size_t)r * pad_w],
+                                &cb_strip[(size_t)r * pad_w],
+                                &cr_strip[(size_t)r * pad_w]);
   }
 }
 
@@ -634,7 +639,7 @@ static void enc_convert_strip_to_ycc(const uint8_t* rgb,
  * @details
  * For each MCU column inside `pad_w`, samples four 8x8 luma blocks at
  * (0,0)(8,0)(0,8)(8,8), then two sub-sampled 8x8 chroma blocks (Cb,Cr).
- * Each block is fed through `enc_block()` with the matching quant table
+ * Each block is fed through `internal_enc_block()` with the matching quant table
  * and Huffman LUTs, which emits the entropy-coded bits into the encoder
  * context.
  *
@@ -652,30 +657,37 @@ static void enc_convert_strip_to_ycc(const uint8_t* rgb,
  * @note Not thread-safe; caller serializes via encoder context.
  * @since 0.1.0
  */
-static void enc_encode_mcu_row(ra8_jpeg_enc_ctx_t* e,
-                               uint16_t            pad_w,
-                               const int32_t*      y_strip,
-                               const int32_t*      cb_strip,
-                               const int32_t*      cr_strip)
+RA8_INTERNAL static void internal_enc_encode_mcu_row(ra8_jpeg_enc_ctx_t* e,
+                                                     uint16_t            pad_w,
+                                                     const int32_t*      y_strip,
+                                                     const int32_t*      cb_strip,
+                                                     const int32_t*      cr_strip)
 {
   for (uint16_t mbx = 0U; mbx < pad_w; mbx = (uint16_t)(mbx + 16U)) {
     int32_t blk[(uint32_t)k_ra8_jpeg_block_size];
     /* 4 luma blocks: (0,0) (0,8) (8,0) (8,8). */
     for (uint8_t by = 0U; by < 2U; by++) {
       for (uint8_t bx = 0U; bx < 2U; bx++) {
-        enc_sample_y_block(y_strip,
-                           pad_w,
-                           16U,
-                           (uint16_t)(mbx + (bx * 8U)),
-                           (uint16_t)(by * 8U),
-                           blk);
-        enc_block(e, blk, e->qy, 0U, e->code_dc_l, e->size_dc_l, e->code_ac_l, e->size_ac_l);
+        internal_enc_sample_y_block(y_strip,
+                                    pad_w,
+                                    16U,
+                                    (uint16_t)(mbx + (bx * 8U)),
+                                    (uint16_t)(by * 8U),
+                                    blk);
+        internal_enc_block(e,
+                           blk,
+                           e->qy,
+                           0U,
+                           e->code_dc_l,
+                           e->size_dc_l,
+                           e->code_ac_l,
+                           e->size_ac_l);
       }
     }
-    enc_sample_c_block_420(cb_strip, pad_w, 16U, mbx, 0U, blk);
-    enc_block(e, blk, e->qc, 1U, e->code_dc_c, e->size_dc_c, e->code_ac_c, e->size_ac_c);
-    enc_sample_c_block_420(cr_strip, pad_w, 16U, mbx, 0U, blk);
-    enc_block(e, blk, e->qc, 2U, e->code_dc_c, e->size_dc_c, e->code_ac_c, e->size_ac_c);
+    internal_enc_sample_c_block_420(cb_strip, pad_w, 16U, mbx, 0U, blk);
+    internal_enc_block(e, blk, e->qc, 1U, e->code_dc_c, e->size_dc_c, e->code_ac_c, e->size_ac_c);
+    internal_enc_sample_c_block_420(cr_strip, pad_w, 16U, mbx, 0U, blk);
+    internal_enc_block(e, blk, e->qc, 2U, e->code_dc_c, e->size_dc_c, e->code_ac_c, e->size_ac_c);
   }
 }
 
@@ -710,22 +722,22 @@ static void enc_encode_mcu_row(ra8_jpeg_enc_ctx_t* e,
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t
-enc_run(ra8_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8_t quality)
+RA8_INTERNAL static ra8_err_t
+internal_enc_run(ra8_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8_t quality)
 {
   /* Build quantization tables. */
-  uint16_t qs = enc_quality_scale(quality);
-  enc_scale_qtab(s_quant_luma, e->qy, qs);
-  enc_scale_qtab(s_quant_chroma, e->qc, qs);
+  uint16_t qs = internal_enc_quality_scale(quality);
+  internal_enc_scale_qtab(s_quant_luma, e->qy, qs);
+  internal_enc_scale_qtab(s_quant_chroma, e->qc, qs);
 
   /* Build Huffman code tables from K.3.3 BITS/VALUES. */
   uint16_t total_dc_l;
   uint16_t total_ac_l;
   uint16_t total_dc_c;
   uint16_t total_ac_c;
-  ra8_jpeg_sw_priv_enc_build_huff(e, &total_dc_l, &total_ac_l, &total_dc_c, &total_ac_c);
+  priv_jpeg_sw_enc_build_huff(e, &total_dc_l, &total_ac_l, &total_dc_c, &total_ac_c);
 
-  ra8_jpeg_sw_priv_enc_headers(e, w, h, total_dc_l, total_ac_l, total_dc_c, total_ac_c);
+  priv_jpeg_sw_enc_headers(e, w, h, total_dc_l, total_ac_l, total_dc_c, total_ac_c);
 
   /* Convert source rows to YCbCr 16-row strips. Static buffers
    * keep the host stack small while still respecting NASA Rule 3
@@ -736,18 +748,26 @@ enc_run(ra8_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8
   if ((uint32_t)pad_w > (uint32_t)k_ra8_jpeg_enc_max_w) {
     return k_ra8_err_invalid_arg;
   }
-  static int32_t s_y_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
-  static int32_t s_cb_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
-  static int32_t s_cr_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
-  static uint8_t s_tmp_rgb[3U * (uint32_t)k_ra8_jpeg_enc_max_w];
+  static int32_t local_y_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
+  static int32_t local_cb_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
+  static int32_t local_cr_strip[16U * (uint32_t)k_ra8_jpeg_enc_max_w];
+  static uint8_t local_tmp_rgb[3U * (uint32_t)k_ra8_jpeg_enc_max_w];
 
   for (uint16_t mby = 0U; mby < pad_h; mby = (uint16_t)(mby + 16U)) {
-    enc_convert_strip_to_ycc(rgb, w, h, pad_w, mby, s_y_strip, s_cb_strip, s_cr_strip, s_tmp_rgb);
-    enc_encode_mcu_row(e, pad_w, s_y_strip, s_cb_strip, s_cr_strip);
+    internal_enc_convert_strip_to_ycc(rgb,
+                                      w,
+                                      h,
+                                      pad_w,
+                                      mby,
+                                      local_y_strip,
+                                      local_cb_strip,
+                                      local_cr_strip,
+                                      local_tmp_rgb);
+    internal_enc_encode_mcu_row(e, pad_w, local_y_strip, local_cb_strip, local_cr_strip);
   }
 
-  ra8_jpeg_sw_priv_enc_flush_bits(e);
-  ra8_jpeg_sw_priv_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_eoi);
+  priv_jpeg_sw_enc_flush_bits(e);
+  priv_jpeg_sw_enc_emit_u16(e, (uint16_t)k_ra8_jpeg_marker_eoi);
 
   if (e->overflow) {
     return k_ra8_err_invalid_size;
@@ -777,13 +797,13 @@ ra8_err_t ra8_jpeg_sw_encode(const uint8_t* rgb_buf,
 
   /* Encoder context contains 2KiB of Huffman code/size LUTs; allocate
    * static to avoid the project's stack-usage budget firing. */
-  static ra8_jpeg_enc_ctx_t s_e;
-  ra8_jpeg_enc_ctx_t*       e = &s_e;
+  static ra8_jpeg_enc_ctx_t local_e;
+  ra8_jpeg_enc_ctx_t*       e = &local_e;
   memset(e, 0, sizeof(*e));
   e->dst = out_buf;
   e->cap = out_buf_len;
 
-  ra8_err_t err = enc_run(e, rgb_buf, width, height, quality);
+  ra8_err_t err = internal_enc_run(e, rgb_buf, width, height, quality);
   if (err != k_ra8_ok) {
     return err;
   }

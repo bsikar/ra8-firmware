@@ -37,6 +37,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_jof.h"
 #include "ra8_jof_produce.h"
@@ -82,12 +83,12 @@ typedef enum : uint8_t {
 /* ------------------------------------------------------------------------- */
 
 /** @brief PNG IHDR chunk type tag (raw bytes; no string terminator). */
-static const uint8_t k_png_type_ihdr[] = {'I', 'H', 'D', 'R'};
+static const uint8_t s_png_type_ihdr[] = {'I', 'H', 'D', 'R'};
 /** @brief PNG IDAT chunk type tag (raw bytes; no string terminator). */
-static const uint8_t k_png_type_idat[] = {'I', 'D', 'A', 'T'};
+static const uint8_t s_png_type_idat[] = {'I', 'D', 'A', 'T'};
 
 /** 8x8 VP8L (lossless, -exact): decoded RGB is bit-exact to the pattern. */
-static const uint8_t k_webp_lossless[] = {
+static const uint8_t s_webp_lossless[] = {
   0x52, 0x49, 0x46, 0x46, 0x2C, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56,
   0x50, 0x38, 0x4C, 0x1F, 0x00, 0x00, 0x00, 0x2F, 0x07, 0xC0, 0x01, 0x00, 0xCD,
   0x65, 0x44, 0xFF, 0x63, 0x17, 0x85, 0x28, 0x78, 0xFF, 0x03, 0x42, 0x02, 0xC2,
@@ -95,7 +96,7 @@ static const uint8_t k_webp_lossless[] = {
 };
 
 /** 8x8 VP8 (lossy): proves the lossy decode path normalizes to JOF. */
-static const uint8_t k_webp_lossy[] = {
+static const uint8_t s_webp_lossy[] = {
   0x52, 0x49, 0x46, 0x46, 0x4C, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50,
   0x38, 0x20, 0x40, 0x00, 0x00, 0x00, 0xD0, 0x01, 0x00, 0x9D, 0x01, 0x2A, 0x08, 0x00,
   0x08, 0x00, 0x01, 0x40, 0x26, 0x25, 0xA8, 0x02, 0x74, 0x01, 0x0F, 0x0C, 0x06, 0xC5,
@@ -105,7 +106,7 @@ static const uint8_t k_webp_lossy[] = {
 };
 
 /** 8200x2 VP8L (solid): width exceeds the WebP per-axis cap (8192). */
-static const uint8_t k_webp_wide[] = {
+static const uint8_t s_webp_wide[] = {
   0x52, 0x49, 0x46, 0x46, 0x18, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x4C,
   0x0C, 0x00, 0x00, 0x00, 0x2F, 0x07, 0x60, 0x00, 0x00, 0x28, 0x45, 0x15, 0xEA, 0xD1, 0xFF, 0x00,
 };
@@ -166,8 +167,8 @@ typedef struct {
   size_t         pos; /**< Read cursor.   */
 } t_mem_pull_t;
 
-/** @brief ::ra8_jof_pull_fn over a ::t_mem_pull_t. */
-static ra8_err_t t_mem_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+/** @brief ::ra8_jof_pull_fn over a ::t_mem_pull_t. @details Exercises the t mem pull path with bounded caller-owned fixture state and verifies its documented result. @param[in,out] ctx Injected callback context whose ownership remains with the test. @param[out] buf Byte buffer read or written by the exercised callback. @param[in] cap Capacity of the associated byte buffer in bytes. @param[out] got Receives the number of bytes transferred. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_t_mem_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   t_mem_pull_t* p    = (t_mem_pull_t*)ctx;
   const size_t  left = p->n - p->pos;
@@ -178,8 +179,8 @@ static ra8_err_t t_mem_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
   return k_ra8_ok;
 }
 
-/** @brief The golden RGBA pattern channel at (x, y, c) (matches the fixture). */
-static uint8_t t_pix(uint32_t x, uint32_t y, uint32_t c)
+/** @brief The golden RGBA pattern channel at (x, y, c) (matches the fixture). @details Exercises the t pix path with bounded caller-owned fixture state and verifies its documented result. @param[in] x Pixel column coordinate. @param[in] y Pixel row coordinate. @param[in] c Pixel channel index. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static uint8_t internal_t_pix(uint32_t x, uint32_t y, uint32_t c)
 {
   if (c == 0U) {
     return (uint8_t)((x * 32U) & k_png_byte_mask);
@@ -211,21 +212,20 @@ static uint8_t t_pix(uint32_t x, uint32_t y, uint32_t c)
  * @post On k_ra8_ok the store holds one JOF atlas.
  * @post On error the store may hold a partial (discarded) atlas.
  * @note Not thread-safe (shared work arenas).
- * @since 0.1.0
- */
-static ra8_err_t produce_webp(const uint8_t*      src,
-                              size_t              src_len,
-                              uint8_t*            webp_work,
-                              size_t              webp_cap,
-                              ra8_jof_memstore_t* store,
-                              ra8_jof_info_t*     info)
+ * @since 0.1.0 @details Exercises the produce webp path with bounded caller-owned fixture state and verifies its documented result. @retval k_ra8_ok The fixture operation completed successfully. */
+RA8_INTERNAL static ra8_err_t internal_produce_webp(const uint8_t*      src,
+                                                    size_t              src_len,
+                                                    uint8_t*            webp_work,
+                                                    size_t              webp_cap,
+                                                    ra8_jof_memstore_t* store,
+                                                    ra8_jof_info_t*     info)
 {
-  static t_mem_pull_t s_pull;
-  s_pull = (t_mem_pull_t){.d = src, .n = src_len, .pos = 0U};
-  *store = (ra8_jof_memstore_t){.buf = store->buf, .cap = store->cap, .len = 0U};
+  static t_mem_pull_t local_pull;
+  local_pull = (t_mem_pull_t){.d = src, .n = src_len, .pos = 0U};
+  *store     = (ra8_jof_memstore_t){.buf = store->buf, .cap = store->cap, .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
-    .pull          = t_mem_pull,
-    .pull_ctx      = &s_pull,
+    .pull          = internal_t_mem_pull,
+    .pull_ctx      = &local_pull,
     .sink          = ra8_jof_memstore_sink,
     .sink_ctx      = store,
     .tile_w        = (uint16_t)k_t_tile,
@@ -262,9 +262,8 @@ static ra8_err_t produce_webp(const uint8_t*      src,
  * @post @p p holds @p v most-significant byte first.
  * @post No other memory is touched.
  * @note Not thread-safe with respect to @p p.
- * @since 0.1.0
- */
-static void png_put_be32(uint8_t* p, uint32_t v)
+ * @since 0.1.0 @details Exercises the png put be32 path with bounded caller-owned fixture state and verifies its documented result. */
+RA8_INTERNAL static void internal_png_put_be32(uint8_t* p, uint32_t v)
 {
   p[0] = (uint8_t)((v >> k_png_shift24) & k_png_byte_mask);
   p[1] = (uint8_t)((v >> 16U) & k_png_byte_mask);
@@ -286,16 +285,17 @@ static void png_put_be32(uint8_t* p, uint32_t v)
  * @note Not thread-safe (shared fixture).
  * @since 0.1.0
  */
-static void png_append_chunk(const uint8_t* type, const uint8_t* data, uint32_t len)
+RA8_INTERNAL static void
+internal_png_append_chunk(const uint8_t* type, const uint8_t* data, uint32_t len)
 {
   uint8_t* p = &s_png[s_png_len];
-  png_put_be32(p, len);
+  internal_png_put_be32(p, len);
   memcpy(&p[4], type, 4U);
   if (len > 0U) {
     memcpy(&p[8], data, (size_t)len);
   }
   const uint32_t crc = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], 4U + (size_t)len);
-  png_put_be32(&p[8U + len], crc);
+  internal_png_put_be32(&p[8U + len], crc);
   s_png_len += (size_t)k_png_chunk_overhead + (size_t)len;
 }
 
@@ -303,13 +303,12 @@ static void png_append_chunk(const uint8_t* type, const uint8_t* data, uint32_t 
  * @brief Fill ::s_raw with the golden pattern, one filter byte per scanline.
  * @return Total bytes written to ::s_raw.
  * @pre ::s_raw covers `k_t_dim * (1 + k_t_dim * k_t_bpp)` bytes.
- * @pre ::t_pix is the same oracle the checks use.
+ * @pre ::internal_t_pix is the same oracle the checks use.
  * @post Every scanline is prefixed with filter type 0 (none).
  * @post The return value is the exact length to hand to the compressor.
  * @note Not thread-safe (shared fixture).
- * @since 0.1.0
- */
-static size_t build_raw_scanlines(void)
+ * @since 0.1.0 @details Exercises the build raw scanlines path with bounded caller-owned fixture state and verifies its documented result. @retval value The computed fixture value for the supplied inputs. */
+RA8_INTERNAL static size_t internal_build_raw_scanlines(void)
 {
   size_t o = 0U;
   for (uint32_t y = 0U; y < (uint32_t)k_t_dim; y++) {
@@ -317,7 +316,7 @@ static size_t build_raw_scanlines(void)
     o++;
     for (uint32_t x = 0U; x < (uint32_t)k_t_dim; x++) {
       for (uint32_t c = 0U; c < (uint32_t)k_t_bpp; c++) {
-        s_raw[o] = t_pix(x, y, c);
+        s_raw[o] = internal_t_pix(x, y, c);
         o++;
       }
     }
@@ -325,11 +324,12 @@ static size_t build_raw_scanlines(void)
   return o;
 }
 
-static void build_rgba_png(void)
+/** @brief Prepare the fixture's build rgba png state. @details Exercises the build rgba png path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_build_rgba_png(void)
 {
   static const uint8_t sig[8]        = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
   static const uint8_t k_type_iend[] = {'I', 'E', 'N', 'D'};
-  const size_t         raw_len       = build_raw_scanlines();
+  const size_t         raw_len       = internal_build_raw_scanlines();
 
   uint8_t ihdr[k_png_ihdr_len]   = {};
   ihdr[k_png_ihdr_off_width_lo]  = (uint8_t)k_t_dim;
@@ -339,16 +339,16 @@ static void build_rgba_png(void)
 
   memcpy(s_png, sig, sizeof(sig));
   s_png_len = sizeof(sig);
-  png_append_chunk(k_png_type_ihdr, ihdr, (uint32_t)sizeof(ihdr));
+  internal_png_append_chunk(s_png_type_ihdr, ihdr, (uint32_t)sizeof(ihdr));
 
   mz_ulong zlen = (mz_ulong)sizeof(s_zbuf);
   TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)raw_len));
-  png_append_chunk(k_png_type_idat, s_zbuf, (uint32_t)zlen);
-  png_append_chunk(k_type_iend, nullptr, 0U);
+  internal_png_append_chunk(s_png_type_idat, s_zbuf, (uint32_t)zlen);
+  internal_png_append_chunk(k_type_iend, nullptr, 0U);
 }
 
 /**
- * @brief Compare one decoded tile in ::s_cell against the ::t_pix oracle.
+ * @brief Compare one decoded tile in ::s_cell against the ::internal_t_pix oracle.
  * @param[in] info Atlas geometry, for the bytes-per-pixel stride.
  * @param[in] x0   Tile origin column on the canvas.
  * @param[in] y0   Tile origin row on the canvas.
@@ -359,16 +359,18 @@ static void build_rgba_png(void)
  * @post Every channel of every decoded pixel compared equal to the oracle.
  * @post No fixture state is mutated.
  * @note Not thread-safe (reads the shared ::s_cell).
- * @since 0.1.0
- */
-static void
-assert_golden_tile(const ra8_jof_info_t* info, uint32_t x0, uint32_t y0, uint16_t w, uint16_t h)
+ * @since 0.1.0 @details Exercises the assert golden tile path with bounded caller-owned fixture state and verifies its documented result. */
+RA8_INTERNAL static void internal_assert_golden_tile(const ra8_jof_info_t* info,
+                                                     uint32_t              x0,
+                                                     uint32_t              y0,
+                                                     uint16_t              w,
+                                                     uint16_t              h)
 {
   for (uint32_t r = 0U; r < h; r++) {
     for (uint32_t c = 0U; c < w; c++) {
       for (uint32_t ch = 0U; ch < info->bpp; ch++) {
         const uint8_t got = s_cell[(((r * w) + c) * info->bpp) + ch];
-        TEST_ASSERT_EQ(t_pix(x0 + c, y0 + r, ch), got);
+        TEST_ASSERT_EQ(internal_t_pix(x0 + c, y0 + r, ch), got);
       }
     }
   }
@@ -383,9 +385,9 @@ assert_golden_tile(const ra8_jof_info_t* info, uint32_t x0, uint32_t y0, uint16_
  * @post Every tile byte was compared (test exits on mismatch).
  * @post @p store is unmodified.
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static void check_golden_tiles(ra8_jof_memstore_t* store, const ra8_jof_info_t* info)
+ * @since 0.1.0 @details Exercises the check golden tiles path with bounded caller-owned fixture state and verifies its documented result. */
+RA8_INTERNAL static void internal_check_golden_tiles(ra8_jof_memstore_t*   store,
+                                                     const ra8_jof_info_t* info)
 {
   for (uint16_t ty = 0U; ty < info->tile_rows; ty++) {
     for (uint16_t tx = 0U; tx < info->tile_cols; tx++) {
@@ -405,7 +407,7 @@ static void check_golden_tiles(ra8_jof_memstore_t* store, const ra8_jof_info_t* 
                                        &h));
       const uint32_t x0 = (uint32_t)tx * info->tile_w;
       const uint32_t y0 = (uint32_t)ty * info->tile_h;
-      assert_golden_tile(info, x0, y0, w, h);
+      internal_assert_golden_tile(info, x0, y0, w, h);
     }
   }
 }
@@ -428,9 +430,9 @@ static void check_golden_tiles(ra8_jof_memstore_t* store, const ra8_jof_info_t* 
  *
  * @pre @p lhs is non-null.
  * @pre @p rhs is non-null.
- * @post Neither operand is modified.
- */
-static bool ta_info_equal(const ra8_jof_info_t* lhs, const ra8_jof_info_t* rhs)
+ * @post Neither operand is modified. @retval true The named fixture condition holds. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static bool internal_ta_info_equal(const ra8_jof_info_t* lhs,
+                                                const ra8_jof_info_t* rhs)
 {
   return (lhs->width == rhs->width) && (lhs->height == rhs->height) &&
          (lhs->tile_w == rhs->tile_w) && (lhs->tile_h == rhs->tile_h) &&
@@ -441,7 +443,7 @@ static bool ta_info_equal(const ra8_jof_info_t* lhs, const ra8_jof_info_t* rhs)
 }
 
 /**
- * @test test_webp_lossless_golden
+ * @test internal_test_webp_lossless_golden
  * @brief A lossless WebP normalizes to JOF whose tiles page back byte-exact to
  *        the source pattern, with the `webp_work` arena sized by
  *        `ra8_jof_webp_work_bytes()` proving the sizing guarantee.
@@ -450,25 +452,24 @@ static bool ta_info_equal(const ra8_jof_info_t* lhs, const ra8_jof_info_t* rhs)
  * Decision (WebP sniff): `RIFF(head[0..3]) && WEBP(head[8..11])` (2 conditions)
  * - Vector 1: RIFF + WEBP  -> true  (this test decodes the WebP)
  * - Vector 2: not RIFF     -> false via cond 1 (the JPEG/PNG sibling tests)
- * - Vector 3: RIFF, not WEBP -> false via cond 2 (test_webp_hostile below)
- */
-static void test_webp_lossless_golden(void)
+ * - Vector 3: RIFF, not WEBP -> false via cond 2 (internal_test_webp_hostile below) @details Executes the webp lossless golden scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_webp_lossless_golden(void)
 {
   TEST_BEGIN("produce webp: lossless -> JOF golden pixels + sized arena");
   const uint32_t need =
-    ra8_jof_webp_work_bytes((uint16_t)k_t_dim, (uint16_t)k_t_dim, sizeof(k_webp_lossless));
+    ra8_jof_webp_work_bytes((uint16_t)k_t_dim, (uint16_t)k_t_dim, sizeof(s_webp_lossless));
   TEST_ASSERT(need > 0U);
   TEST_ASSERT(need <= sizeof(s_webp_work));
 
   ra8_jof_memstore_t store = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
   ra8_jof_info_t     info  = {};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 produce_webp(k_webp_lossless,
-                              sizeof(k_webp_lossless),
-                              s_webp_work,
-                              (size_t)need,
-                              &store,
-                              &info));
+                 internal_produce_webp(s_webp_lossless,
+                                       sizeof(s_webp_lossless),
+                                       s_webp_work,
+                                       (size_t)need,
+                                       &store,
+                                       &info));
   TEST_ASSERT_EQ(k_t_bpp, info.bpp);
   TEST_ASSERT_EQ(k_t_dim, info.width);
   TEST_ASSERT_EQ(k_t_dim, info.height);
@@ -477,41 +478,40 @@ static void test_webp_lossless_golden(void)
   ra8_jof_info_t reparsed = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jof_parse(ra8_jof_memstore_pread, &store, (uint64_t)store.len, &reparsed));
-  TEST_ASSERT(ta_info_equal(&info, &reparsed));
-  check_golden_tiles(&store, &info);
+  TEST_ASSERT(internal_ta_info_equal(&info, &reparsed));
+  internal_check_golden_tiles(&store, &info);
   TEST_END("produce webp: lossless -> JOF golden pixels + sized arena");
 }
 
 /**
- * @test test_webp_png_byte_identical
+ * @test internal_test_webp_png_byte_identical
  * @brief The #290 convergence proof: a lossless WebP and an RGBA PNG of the
  *        same pixels produce a **byte-identical** JOF atlas -- the reader sees
  *        one normalized format regardless of source codec.
  *
  * @par MC/DC:
  * (equality of two produced byte streams; the producer's compound decisions
- * carry vectors in the sibling produce tests.)
- */
-static void test_webp_png_byte_identical(void)
+ * carry vectors in the sibling produce tests.) @details Executes the webp png byte identical scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_webp_png_byte_identical(void)
 {
   TEST_BEGIN("produce webp: lossless WebP atlas == RGBA PNG atlas (byte-identical)");
   ra8_jof_memstore_t sa = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
   ra8_jof_info_t     ia = {};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 produce_webp(k_webp_lossless,
-                              sizeof(k_webp_lossless),
-                              s_webp_work,
-                              sizeof(s_webp_work),
-                              &sa,
-                              &ia));
+                 internal_produce_webp(s_webp_lossless,
+                                       sizeof(s_webp_lossless),
+                                       s_webp_work,
+                                       sizeof(s_webp_work),
+                                       &sa,
+                                       &ia));
 
-  build_rgba_png();
-  static t_mem_pull_t s_pull;
-  s_pull                          = (t_mem_pull_t){.d = s_png, .n = s_png_len, .pos = 0U};
+  internal_build_rgba_png();
+  static t_mem_pull_t local_pull;
+  local_pull                      = (t_mem_pull_t){.d = s_png, .n = s_png_len, .pos = 0U};
   ra8_jof_memstore_t          sb  = {.buf = s_store_b, .cap = sizeof(s_store_b), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
-    .pull       = t_mem_pull,
-    .pull_ctx   = &s_pull,
+    .pull       = internal_t_mem_pull,
+    .pull_ctx   = &local_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &sb,
     .tile_w     = (uint16_t)k_t_tile,
@@ -526,7 +526,7 @@ static void test_webp_png_byte_identical(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_produce(&cfg, &ib));
 
   /* Same reported geometry AND the same atlas bytes, end to end. */
-  TEST_ASSERT(ta_info_equal(&ia, &ib));
+  TEST_ASSERT(internal_ta_info_equal(&ia, &ib));
   TEST_ASSERT_EQ(sa.len, sb.len);
   TEST_ASSERT(sa.len > 0U);
   TEST_ASSERT_EQ(0, memcmp(sa.buf, sb.buf, sa.len));
@@ -534,7 +534,7 @@ static void test_webp_png_byte_identical(void)
 }
 
 /**
- * @test test_webp_lossy_path
+ * @test internal_test_webp_lossy_path
  * @brief A lossy (VP8) WebP normalizes to a valid, reparseable JOF atlas; the
  *        whole WebP codec family reaches the one format (pixels not bit-checked,
  *        VP8 is lossy).
@@ -543,20 +543,19 @@ static void test_webp_png_byte_identical(void)
  * No compound decision under test; this drives the lossy VP8 arm end to end (it
  * is the both-false control of the transcode arena-room decision -- ample arena,
  * decode proceeds). The producer's compound decisions carry their vectors in
- * test_webp_hostile and test_webp_work_bytes.
- */
-static void test_webp_lossy_path(void)
+ * internal_test_webp_hostile and internal_test_webp_work_bytes. @details Executes the webp lossy path scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_webp_lossy_path(void)
 {
   TEST_BEGIN("produce webp: lossy VP8 -> valid JOF1");
   ra8_jof_memstore_t store = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
   ra8_jof_info_t     info  = {};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 produce_webp(k_webp_lossy,
-                              sizeof(k_webp_lossy),
-                              s_webp_work,
-                              sizeof(s_webp_work),
-                              &store,
-                              &info));
+                 internal_produce_webp(s_webp_lossy,
+                                       sizeof(s_webp_lossy),
+                                       s_webp_work,
+                                       sizeof(s_webp_work),
+                                       &store,
+                                       &info));
   TEST_ASSERT_EQ(k_t_bpp, info.bpp);
   TEST_ASSERT_EQ(k_t_dim, info.width);
   TEST_ASSERT_EQ(k_t_dim, info.height);
@@ -584,27 +583,26 @@ static void test_webp_lossy_path(void)
 }
 
 /**
- * @test test_webp_hostile
+ * @test internal_test_webp_hostile
  * @brief Untrusted WebP inputs fail closed with the contracted codes, never a
  *        crash or a partial atlas trusted as valid.
  *
  * @par MC/DC:
  * Decision A (WebP sniff, cond 2): `RIFF && WEBP` with RIFF true but WEBP false
  * exercises the "RIFF header that is not WEBP" arm -> the dispatch falls through
- * to `k_ra8_err_not_supported` (pairs with test_webp_lossless_golden's true
+ * to `k_ra8_err_not_supported` (pairs with internal_test_webp_lossless_golden's true
  * vector to prove cond 2 independently flips the outcome).
  *
- * Decision B (transcode arena room, in `ra8_jof_priv_webp_transcode`):
+ * Decision B (transcode arena room, in `priv_jof_webp_transcode`):
  * `if ((used >= acap) || (frame64 >= (uint64_t)(acap - used)))` (2 conditions):
  * - V1: acap large -> false (both false: the decode proceeds; covered by
- *   test_webp_lossless_golden / test_webp_png_byte_identical / lossy).
+ *   internal_test_webp_lossless_golden / internal_test_webp_png_byte_identical / lossy).
  * - V2: acap == used (k_t_webp_cap_srcfill) -> true via cond 1 `used >= acap`
  *   (the aligned source alone fills the arena; cond 2 short-circuited).
  * - V3: used < acap < used + frame (k_t_webp_cap_noframe) -> cond 1 false,
  *   cond 2 `frame64 >= acap - used` true (source fits, the frame does not).
- * V1+V2 prove cond 1's independent influence; V1+V3 prove cond 2's. N+1 = 3.
- */
-static void test_webp_hostile(void)
+ * V1+V2 prove cond 1's independent influence; V1+V3 prove cond 2's. N+1 = 3. @details Executes the webp hostile scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_webp_hostile(void)
 {
   TEST_BEGIN("produce webp: hostile / unsupported WebP fail closed");
   ra8_jof_memstore_t store = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
@@ -613,55 +611,59 @@ static void test_webp_hostile(void)
   /* A valid WebP but no webp_work arena: WebP disabled -> not_supported. */
   TEST_ASSERT_EQ(
     k_ra8_err_not_supported,
-    produce_webp(k_webp_lossless, sizeof(k_webp_lossless), nullptr, 0U, &store, &info));
+    internal_produce_webp(s_webp_lossless, sizeof(s_webp_lossless), nullptr, 0U, &store, &info));
 
   /* RIFF container that is not a WEBP form (sniff condition-2 vector). */
   uint8_t riff_junk[16] =
     {'R', 'I', 'F', 'F', 0x08U, 0U, 0U, 0U, 'X', 'Y', 'Z', 'W', 0U, 0U, 0U, 0U};
-  TEST_ASSERT_EQ(
-    k_ra8_err_not_supported,
-    produce_webp(riff_junk, sizeof(riff_junk), s_webp_work, sizeof(s_webp_work), &store, &info));
-
-  /* Over-cap dimension (8200 wide > 8192): rejected before any tile. */
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 produce_webp(k_webp_wide,
-                              sizeof(k_webp_wide),
-                              s_webp_work,
-                              sizeof(s_webp_work),
-                              &store,
-                              &info));
-
-  /* Truncated lossless bitstream: decode fails closed (no crash). */
-  TEST_ASSERT(k_ra8_ok != produce_webp(k_webp_lossless,
-                                       sizeof(k_webp_lossless) / 2U,
+                 internal_produce_webp(riff_junk,
+                                       sizeof(riff_junk),
                                        s_webp_work,
                                        sizeof(s_webp_work),
                                        &store,
                                        &info));
 
+  /* Over-cap dimension (8200 wide > 8192): rejected before any tile. */
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 internal_produce_webp(s_webp_wide,
+                                       sizeof(s_webp_wide),
+                                       s_webp_work,
+                                       sizeof(s_webp_work),
+                                       &store,
+                                       &info));
+
+  /* Truncated lossless bitstream: decode fails closed (no crash). */
+  TEST_ASSERT(k_ra8_ok != internal_produce_webp(s_webp_lossless,
+                                                sizeof(s_webp_lossless) / 2U,
+                                                s_webp_work,
+                                                sizeof(s_webp_work),
+                                                &store,
+                                                &info));
+
   /* Decision B V2: the aligned source alone fills the arena (used >= acap). */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 produce_webp(k_webp_lossless,
-                              sizeof(k_webp_lossless),
-                              s_webp_work,
-                              (size_t)k_t_webp_cap_srcfill,
-                              &store,
-                              &info));
+                 internal_produce_webp(s_webp_lossless,
+                                       sizeof(s_webp_lossless),
+                                       s_webp_work,
+                                       (size_t)k_t_webp_cap_srcfill,
+                                       &store,
+                                       &info));
 
   /* Decision B V3: source fits but leaves no room for the frame + scratch
    * (frame64 >= acap - used) -> invalid_size. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 produce_webp(k_webp_lossless,
-                              sizeof(k_webp_lossless),
-                              s_webp_work,
-                              (size_t)k_t_webp_cap_noframe,
-                              &store,
-                              &info));
+                 internal_produce_webp(s_webp_lossless,
+                                       sizeof(s_webp_lossless),
+                                       s_webp_work,
+                                       (size_t)k_t_webp_cap_noframe,
+                                       &store,
+                                       &info));
   TEST_END("produce webp: hostile / unsupported WebP fail closed");
 }
 
 /**
- * @test test_webp_work_bytes
+ * @test internal_test_webp_work_bytes
  * @brief The WebP arena calculator rejects nonsense caps and scales sanely.
  *
  * @par MC/DC:
@@ -672,9 +674,8 @@ static void test_webp_hostile(void)
  * - Vector 3: width 9000       -> true  (varies condition 2)
  * - Vector 4: height 0         -> true  (varies condition 3)
  * - Vector 5: height 9000      -> true  (varies condition 4)
- * - Vector 6: src 0            -> true  (varies condition 5)
- */
-static void test_webp_work_bytes(void)
+ * - Vector 6: src 0            -> true  (varies condition 5) @details Executes the webp work bytes scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_webp_work_bytes(void)
 {
   TEST_BEGIN("produce webp: work-arena calculator bounds");
   TEST_ASSERT(ra8_jof_webp_work_bytes(512U, 512U, 4096U) > 0U);
@@ -701,11 +702,10 @@ static void test_webp_work_bytes(void)
  */
 int32_t main(void)
 {
-  test_webp_lossless_golden();
-  test_webp_png_byte_identical();
-  test_webp_lossy_path();
-  test_webp_hostile();
-  test_webp_work_bytes();
-  (void)fprintf(stderr, "[OK  ] test_ra8_jof_produce_webp.c\n");
+  internal_test_webp_lossless_golden();
+  internal_test_webp_png_byte_identical();
+  internal_test_webp_lossy_path();
+  internal_test_webp_hostile();
+  internal_test_webp_work_bytes();
   return 0;
 }
