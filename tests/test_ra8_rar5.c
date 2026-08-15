@@ -4,15 +4,17 @@
  *        compressed-member decode path.
  *
  * @details
- * There is no free tool that *writes* a RAR-compressed stream, so this suite ships a
- * small, spec-conformant RAR5 "method 50" writer: it emits one compressed block with
- * uniform-length canonical Huffman tables (so a symbol's code is its own index) and a
- * literal/match/repeat/filter token program, then wraps it in the block header the
- * decoder validates. The decoder is exercised two ways:
+ * There is no free tool that *writes* a RAR-compressed stream, so this suite
+ * ships a small, spec-conformant RAR5 "method 50" writer: it emits one
+ * compressed block with uniform-length canonical Huffman tables (so a symbol's
+ * code is its own index) and a literal/match/repeat/filter token program, then
+ * wraps it in the block header the decoder validates. The decoder is exercised
+ * two ways:
  *
- *   1. directly through `ra8_rar5_decompress` -- a round-trip oracle over literals,
- *      length/distance matches (every extra-bit leg), remembered-distance and
- *      last-match repeats, the four data filters, and the malformed-input guards, and
+ *   1. directly through `ra8_rar5_decompress` -- a round-trip oracle over
+ * literals, length/distance matches (every extra-bit leg), remembered-distance
+ * and last-match repeats, the four data filters, and the malformed-input
+ * guards, and
  *   2. through the `ra8_comic` facade -- covered by the split sibling
  *      test_ra8_rar5_archive.c; the direct MC/DC drivers for the promoted
  *      decode helpers live in test_ra8_rar5_mcdc.c. This sibling owns leg 1.
@@ -30,6 +32,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_rar.h"
 #include "ra8_rar5.h"
@@ -52,9 +55,9 @@ typedef enum : uint16_t {
   k_t_len_code_bits   = 5U,   /**< Bits per literal code-length entry. */
   k_t_long_run_bits   = 7U,   /**< Bits carrying a long run count.     */
   k_t_lit_code_bits   = 9U,   /**< Code length assigned to every literal, hence the
-                                   bit width of one emitted literal symbol.         */
+                               bit width of one emitted literal symbol. */
   k_t_code_copy_long  = 17U,  /**< Continuation code 17: copy the previous length,
-                                   long run.                                        */
+                                 long run. */
   k_t_code_zero_short = 18U,  /**< Continuation code 18: zero run, short form.          */
   k_t_code_zero_long  = 19U,  /**< Continuation code 19: zero run, long form.           */
   k_t_run_138         = 127U, /**< Long-run payload giving 11 + 127 = 138 entries.      */
@@ -100,7 +103,7 @@ typedef enum : uint32_t {
 typedef enum : uint16_t {
   k_t_src_len       = 600U,  /**< All-literal round-trip source length, bytes. */
   k_t_src_stride    = 7U,    /**< Multiplier of its byte pattern; co-prime with 4
-                                 so the pattern does not repeat per word.          */
+                             so the pattern does not repeat per word.          */
   k_t_lit_prefix    = 300U,  /**< Literal prefix giving far matches a window.       */
   k_t_reuse_dist    = 257U,  /**< Distance reused by the repeat-distance legs.      */
   k_t_notab_flags   = 0x40U, /**< Block header: last block, no tables, bytecount 1. */
@@ -108,100 +111,148 @@ typedef enum : uint16_t {
 } t_r5_fixture_t;
 
 /**
- * @test test_rar5_all_literal_roundtrip
+ * @test internal_test_rar5_all_literal_roundtrip
  * @brief An all-literal RAR5 method-50 block round-trips byte-exactly.
  *
  * @par MC/DC:
- * (no compound decision is varied by this case -- the stream carries only literal
- * tokens (no match/repeat), so ra8_rar5_copy_match is never reached; the decoder
- * runs the token loop to completion and the output is compared byte-for-byte. The
- * LZ decisions `dist == 0 || dist > pos` and the decode-stream loop guard are
- * driven for MC/DC by test_rar5_match_legs and test_ra8_rar5_mcdc.)
+ * (no compound decision is varied by this case -- the stream carries only
+ * literal tokens (no match/repeat), so priv_rar5_copy_match is never reached;
+ * the decoder runs the token loop to completion and the output is compared
+ * byte-for-byte. The LZ decisions `dist == 0 || dist > pos` and the
+ * decode-stream loop guard are driven for MC/DC by
+ * internal_test_rar5_match_legs and test_ra8_rar5_mcdc.)
+ * @details Encodes a deterministic nonrepeating byte pattern entirely as RAR5
+ * literals and compares every decoded byte with the generated source.
+ * @pre The encoder fixture capacity exceeds the generated literal bitstream.
+ * @pre The decompressor is linked with its caller-owned workspace.
+ * @post The decoded byte count equals ::k_t_src_len.
+ * @post Every decoded byte matches the independently generated source pattern.
+ * @note Uses static fixture arrays and therefore runs serially.
+ * @since 0.1.0
  */
-static void test_rar5_all_literal_roundtrip(void)
+RA8_INTERNAL static void internal_test_rar5_all_literal_roundtrip(void)
 {
   TEST_BEGIN("rar5: all-literal round-trip");
-  static uint8_t s_src[k_t_src_len];
-  for (size_t i = 0U; i < sizeof(s_src); ++i) {
-    s_src[i] = (uint8_t)((i * k_t_src_stride) + (i >> 2U) + 3U);
+  static uint8_t source[k_t_src_len];
+  for (size_t i = 0U; i < sizeof(source); ++i) {
+    source[i] = (uint8_t)((i * k_t_src_stride) + (i >> 2U) + 3U);
   }
-  static uint8_t s_pk[k_pk_cap];
-  memset(s_pk, 0, sizeof(s_pk));
-  const size_t pklen = enc_all_literal(s_src, sizeof(s_src), s_pk, sizeof(s_pk));
-  decode_and_check(s_pk, pklen, s_src, sizeof(s_src));
+  static uint8_t packed[k_pk_cap];
+  memset(packed, 0, sizeof(packed));
+  const size_t pklen = enc_all_literal(source, sizeof(source), packed, sizeof(packed));
+  decode_and_check(packed, pklen, source, sizeof(source));
   TEST_END("rar5: all-literal round-trip");
 }
 
 /**
- * @test test_rar5_match_legs
+ * @test internal_test_rar5_match_legs
  * @brief Every LZ token leg (direct/extra-length/extra-distance/low-distance/
  *        hi+low/large-distance match, remembered-distance, last-match repeat)
  *        decodes to the byte pattern the writer built.
  *
  * @par MC/DC:
  * Drives the control legs of the compound decisions the match run touches:
- * - libs/ra8_comic/src/ra8_rar5.c@ra8_rar5_copy_match `dist == 0 || dist > pos`:
- *   every match here has 0 < dist <= pos -> (false, false) control (copy proceeds);
- *   the dist == 0 and dist > pos true legs are driven directly by
- *   test_mcdc_copy_match. `k < length && pos < unp`: each match copies its full
- *   length with pos < unp -> the loop exits on k == length (the (false, true) leg);
- *   the (true, false) clamp leg is driven by test_mcdc_copy_match.
- * - libs/ra8_comic/src/ra8_rar5.c@internal_decode_stream `out_pos < unp && consumed <=
- *   cap_bits`: the token run keeps out_pos < unp with consumed <= cap_bits (true,
- *   true) until the last token, then exits on out_pos == unp -> (false, true),
- *   proving out_pos independently ends the loop. The (true, false) runaway leg is
- *   driven by test_rar5_malformed's truncation sweep; the single-condition block
- *   boundary / last-block breaks are driven by test_mcdc_decode_stream_blocks.
+ * - libs/ra8_comic/src/ra8_rar5.c@priv_rar5_copy_match `dist == 0 || dist >
+ * pos`: every match here has 0 < dist <= pos -> (false, false) control (copy
+ * proceeds); the dist == 0 and dist > pos true legs are driven directly by
+ *   internal_test_mcdc_copy_match. `k < length && pos < unp`: each match copies
+ * its full length with pos < unp -> the loop exits on k == length (the (false,
+ * true) leg); the (true, false) clamp leg is driven by
+ * internal_test_mcdc_copy_match.
+ * - libs/ra8_comic/src/ra8_rar5.c@internal_decode_stream `out_pos < unp &&
+ * consumed <= cap_bits`: the token run keeps out_pos < unp with consumed <=
+ * cap_bits (true, true) until the last token, then exits on out_pos == unp ->
+ * (false, true), proving out_pos independently ends the loop. The (true, false)
+ * runaway leg is driven by internal_test_rar5_malformed's truncation sweep; the
+ * single-condition block boundary / last-block breaks are driven by
+ * internal_test_mcdc_decode_stream_blocks.
+ * @details Emits a literal history followed by every direct, extended, low,
+ * high/low, remembered-distance, and last-match token form while maintaining
+ * an independent expected-output buffer.
+ * @pre The literal prefix is longer than every distance referenced by the
+ * stream.
+ * @pre Encoder and expected-output capacities cover the complete token program.
+ * @post The compressed block decodes to the independently constructed oracle.
+ * @post Every legal distance remains within already produced history.
+ * @note Complements invalid-distance vectors in the MC/DC sibling test.
+ * @since 0.1.0
  */
-static void test_rar5_match_legs(void)
+RA8_INTERNAL static void internal_test_rar5_match_legs(void)
 {
   TEST_BEGIN("rar5: LZ match / repeat legs");
-  static uint8_t s_bodybuf[k_pk_cap];
-  static uint8_t s_exp[k_out_cap];
-  memset(s_bodybuf, 0, sizeof(s_bodybuf));
-  memset(s_exp, 0, sizeof(s_exp));
-  bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
+  static uint8_t body_buffer[k_pk_cap];
+  static uint8_t expected[k_out_cap];
+  memset(body_buffer, 0, sizeof(body_buffer));
+  memset(expected, 0, sizeof(expected));
+  bitw_t body = {.buf = body_buffer, .cap = sizeof(body_buffer)};
   size_t elen = 0U;
   enc_tables(&body);
   /* 300-byte literal prefix so far/large distances have a window. */
   for (uint32_t i = 0U; i < k_t_lit_prefix; ++i) {
-    enc_lit(&body, s_exp, &elen, (uint8_t)(i + 1U));
+    enc_lit(&body, expected, &elen, (uint8_t)(i + 1U));
   }
-  enc_match(&body, s_exp, &elen, 2U, 3U);                        /* len 4, dist 4          */
-  enc_match_lenx(&body, s_exp, &elen, 1U, 1U);                   /* len 11, dist 2         */
-  enc_match_distx(&body, s_exp, &elen, 0U, 1U);                  /* len 2, dist 6          */
-  enc_match_lowdist(&body, s_exp, &elen, 0U, k_t_len_code_bits); /* len 2, dist 38         */
-  enc_match_hilow(&body, s_exp, &elen, 0U, 1U, 2U);              /* len 2, dist 65+16+2=83 */
-  enc_match_big(&body, s_exp, &elen, 0U);                        /* len 3, dist 257        */
-  enc_repdist(&body, s_exp, &elen, 1U, k_t_reuse_dist);          /* len 3, reuse dist 257  */
-  enc_replast(&body, s_exp, &elen, 3U, k_t_reuse_dist);          /* repeat last len/dist   */
-  static uint8_t s_pk[k_pk_cap];
-  memset(s_pk, 0, sizeof(s_pk));
-  const size_t pklen = enc_finish(&body, s_pk);
-  decode_and_check(s_pk, pklen, s_exp, elen);
+  enc_match(&body, expected, &elen, 2U, 3U);                        /* len 4, dist 4          */
+  enc_match_lenx(&body, expected, &elen, 1U, 1U);                   /* len 11, dist 2         */
+  enc_match_distx(&body, expected, &elen, 0U, 1U);                  /* len 2, dist 6          */
+  enc_match_lowdist(&body, expected, &elen, 0U, k_t_len_code_bits); /* len 2, dist 38         */
+  enc_match_hilow(&body, expected, &elen, 0U, 1U, 2U);              /* len 2, dist 65+16+2=83 */
+  enc_match_big(&body, expected, &elen, 0U);                        /* len 3, dist 257        */
+  enc_repdist(&body, expected, &elen, 1U, k_t_reuse_dist);          /* len 3, reuse dist 257  */
+  enc_replast(&body, expected, &elen, 3U, k_t_reuse_dist);          /* repeat last len/dist   */
+  static uint8_t packed[k_pk_cap];
+  memset(packed, 0, sizeof(packed));
+  const size_t pklen = enc_finish(&body, packed);
+  decode_and_check(packed, pklen, expected, elen);
   TEST_END("rar5: LZ match / repeat legs");
 }
 
 /* ---- filter oracles (independent inverse reimplementations) -------------- */
 
-/** @brief Independent delta-filter inverse over @p d (test oracle). */
-static void oracle_delta(uint8_t* d, uint32_t len, uint32_t chan)
+/**
+ * @brief Apply an independent inverse delta filter as a test oracle.
+ * @details Copies the encoded bytes aside, then reconstructs each interleaved
+ * channel with a separate previous-byte accumulator.
+ * @param[in,out] d Buffer transformed in place to expected decoded bytes.
+ * @param[in] len Number of bytes in @p d.
+ * @param[in] chan Number of interleaved delta channels.
+ * @pre @p d is writable for @p len bytes and @p len fits the oracle scratch.
+ * @pre @p chan is nonzero and no greater than @p len.
+ * @post Every input byte contributes exactly once to one channel accumulator.
+ * @post @p d contains the inverse-delta result; unrelated state is unchanged.
+ * @note Independent implementation; it does not call the production filter.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_oracle_delta(uint8_t* d, uint32_t len, uint32_t chan)
 {
-  static uint8_t s_tmp[k_out_cap];
-  memcpy(s_tmp, d, len);
+  static uint8_t scratch[k_out_cap];
+  memcpy(scratch, d, len);
   uint32_t dpos = 0U;
   for (uint32_t ch = 0U; ch < chan; ++ch) {
     uint8_t prev = 0U;
     for (uint32_t i = ch; i < len; i += chan) {
-      prev = (uint8_t)(prev - s_tmp[dpos]);
+      prev = (uint8_t)(prev - scratch[dpos]);
       dpos++;
       d[i] = prev;
     }
   }
 }
 
-/** @brief Independent x86 CALL/JMP inverse over @p d (test oracle). */
-static void oracle_x86(uint8_t* d, uint32_t len, uint32_t filepos, bool e9)
+/**
+ * @brief Apply the independent x86 CALL/JMP relocation inverse.
+ * @details Scans complete five-byte instructions, adjusts little-endian rel32
+ * operands by logical file position, and optionally includes JMP.
+ * @param[in,out] d Candidate instruction bytes transformed in place.
+ * @param[in] len Number of valid bytes in @p d.
+ * @param[in] filepos Logical archive position of the first byte.
+ * @param[in] e9 Whether opcode E9 is transformed in addition to E8.
+ * @pre @p d is writable for @p len bytes.
+ * @pre @p filepos plus @p len is representable using 32-bit modulo arithmetic.
+ * @post Every complete selected opcode has its rel32 operand adjusted once.
+ * @post Partial trailing instructions and unselected opcodes remain unchanged.
+ * @note Independent oracle; it shares no production filter helpers.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_oracle_x86(uint8_t* d, uint32_t len, uint32_t filepos, bool e9)
 {
   if (len < k_t_x86_insn_len) {
     return;
@@ -225,8 +276,21 @@ static void oracle_x86(uint8_t* d, uint32_t len, uint32_t filepos, bool e9)
   }
 }
 
-/** @brief Independent ARM BL inverse over @p d (test oracle). */
-static void oracle_arm(uint8_t* d, uint32_t len, uint32_t filepos)
+/**
+ * @brief Apply the independent ARM BL relocation inverse.
+ * @details Walks four-byte instruction words and adjusts the 24-bit branch
+ * field only when the high opcode byte identifies an ARM BL instruction.
+ * @param[in,out] d Candidate instruction words transformed in place.
+ * @param[in] len Number of valid bytes in @p d.
+ * @param[in] filepos Logical archive position of the first byte.
+ * @pre @p d is writable for @p len bytes.
+ * @pre Whole instruction words begin at offset zero in @p d.
+ * @post Each complete BL word has its 24-bit offset adjusted exactly once.
+ * @post Non-BL words and any incomplete tail remain byte-identical.
+ * @note Independent oracle using only documented instruction layout.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_oracle_arm(uint8_t* d, uint32_t len, uint32_t filepos)
 {
   if (len < 4U) {
     return;
@@ -244,39 +308,56 @@ static void oracle_arm(uint8_t* d, uint32_t len, uint32_t filepos)
   }
 }
 
-/** @brief Round-trip a filter over crafted literals; compare to the test oracle. */
-static void run_filter_case(uint32_t type, uint32_t chan, const uint8_t* raw, uint32_t len)
+/**
+ * @brief Round-trip one RAR5 data filter against an independent oracle.
+ * @details Emits the filter token before its literal-covered range, computes
+ * expected bytes with the corresponding local inverse, and compares a complete
+ * decoder round trip.
+ * @param[in] type RAR5 filter selector: delta, x86 E8, x86 E8E9, or ARM.
+ * @param[in] chan Delta channel count; ignored by non-delta filters.
+ * @param[in] raw Unfiltered literal bytes encoded into the stream.
+ * @param[in] len Number of bytes in @p raw and the filter range.
+ * @pre @p raw is readable for @p len bytes and @p len fits ::k_out_cap.
+ * @pre @p type is one of the four selectors exercised by this suite.
+ * @post Decoder output matches the independently transformed expected buffer.
+ * @post The input @p raw bytes remain unchanged.
+ * @note Uses shared static encoder buffers and is not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void
+internal_run_filter_case(uint32_t type, uint32_t chan, const uint8_t* raw, uint32_t len)
 {
-  static uint8_t s_bodybuf[k_pk_cap];
-  static uint8_t s_exp[k_out_cap];
-  memset(s_bodybuf, 0, sizeof(s_bodybuf));
-  bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
+  static uint8_t body_buffer[k_pk_cap];
+  static uint8_t expected[k_out_cap];
+  memset(body_buffer, 0, sizeof(body_buffer));
+  bitw_t body = {.buf = body_buffer, .cap = sizeof(body_buffer)};
   size_t elen = 0U;
   enc_tables(&body);
-  /* The filter token precedes the range it covers: read at output position 0, it
-   * transforms [0, len) once decoding completes (RAR emits the filter, then data). */
+  /* The filter token precedes the range it covers: read at output position 0,
+   * it transforms [0, len) once decoding completes (RAR emits the filter, then
+   * data). */
   enc_filter(&body, type, 0U, len, chan);
   for (uint32_t i = 0U; i < len; ++i) {
-    enc_lit(&body, s_exp, &elen, raw[i]);
+    enc_lit(&body, expected, &elen, raw[i]);
   }
   /* Expected = the same literals with the decoder's inverse applied. */
   if (type == 0U) {
-    oracle_delta(s_exp, len, chan);
+    internal_oracle_delta(expected, len, chan);
   } else if (type == 1U) {
-    oracle_x86(s_exp, len, 0U, false);
+    internal_oracle_x86(expected, len, 0U, false);
   } else if (type == 2U) {
-    oracle_x86(s_exp, len, 0U, true);
+    internal_oracle_x86(expected, len, 0U, true);
   } else {
-    oracle_arm(s_exp, len, 0U);
+    internal_oracle_arm(expected, len, 0U);
   }
-  static uint8_t s_pk[k_pk_cap];
-  memset(s_pk, 0, sizeof(s_pk));
-  const size_t pklen = enc_finish(&body, s_pk);
-  decode_and_check(s_pk, pklen, s_exp, elen);
+  static uint8_t packed[k_pk_cap];
+  memset(packed, 0, sizeof(packed));
+  const size_t pklen = enc_finish(&body, packed);
+  decode_and_check(packed, pklen, expected, elen);
 }
 
 /**
- * @test test_rar5_filters
+ * @test internal_test_rar5_filters
  * @brief Each RAR5 data filter (delta / x86 E8 / x86 E8E9 / ARM) transforms the
  *        decoded range to match an independent inverse.
  *
@@ -284,27 +365,38 @@ static void run_filter_case(uint32_t type, uint32_t chan, const uint8_t* raw, ui
  * Decision libs/ra8_comic/src/ra8_rar5.c@internal_x86_is_op:
  * `op == 0xE8 || (e9 && op == 0xE9)` (3 conditions)
  * - E8 stream, byte 0xE8 -> true  (op==call true: control)
- * - E8 stream, byte 0xE9 -> false (op!=call, e9 false)          -- varies op vs call
- * - E8E9 stream, byte 0xE9 -> true (e9 true, op==jmp true)      -- varies e9 and jmp
- * The E8-only vs E8E9 cases prove `e9` independently gates the 0xE9 branch, and
- * the 0xE8/0xE9 bytes prove each opcode compare independently affects the outcome.
- * Also drives libs/ra8_comic/src/ra8_rar5.c@ra8_rar5_filter_delta
- * `len > k_ra8_rar5_delta_scratch || channels == 0`: the 32-byte delta range with
+ * - E8 stream, byte 0xE9 -> false (op!=call, e9 false)          -- varies op vs
+ * call
+ * - E8E9 stream, byte 0xE9 -> true (e9 true, op==jmp true)      -- varies e9
+ * and jmp The E8-only vs E8E9 cases prove `e9` independently gates the 0xE9
+ * branch, and the 0xE8/0xE9 bytes prove each opcode compare independently
+ * affects the outcome. Also drives
+ * libs/ra8_comic/src/ra8_rar5.c@priv_rar5_filter_delta `len >
+ * k_ra8_rar5_delta_scratch || channels == 0`: the 32-byte delta range with
  * channels == 3 makes both conditions false (control, transform runs); the
  * over-long and zero-channel true legs (a decoded comic page never carries an
- * over-long or zero-channel delta) are driven directly by test_mcdc_filter_delta.
+ * over-long or zero-channel delta) are driven directly by
+ * internal_test_mcdc_filter_delta.
+ * @details Feeds a common opcode-rich literal vector through all four filter
+ * selectors and checks each result against a separately implemented inverse.
+ * @pre The raw vector contains complete x86 and ARM instruction candidates.
+ * @pre Delta length and channel count fit the production scratch bound.
+ * @post Each filter's decoded range equals its independent oracle result.
+ * @post No filter case reads or writes beyond the 32-byte vector.
+ * @note Filter guard failures live in the MC/DC sibling test.
+ * @since 0.1.0
  */
-static void test_rar5_filters(void)
+RA8_INTERNAL static void internal_test_rar5_filters(void)
 {
   TEST_BEGIN("rar5: delta / x86 / arm filters");
   static const uint8_t k_raw[32] = {0xE8U, 0x10U, 0x20U, 0x30U, 0x40U, 0xE9U, 0x01U, 0x02U,
                                     0x03U, 0x04U, 0x11U, 0x22U, 0x33U, 0xEBU, 0x55U, 0x66U,
                                     0x77U, 0x88U, 0x99U, 0xEBU, 0xA0U, 0xB0U, 0xC0U, 0xD0U,
                                     0xE0U, 0xF0U, 0x12U, 0x34U, 0x56U, 0x78U, 0x9AU, 0xBCU};
-  run_filter_case(0U, 3U, k_raw, sizeof(k_raw)); /* delta, 3 channels */
-  run_filter_case(1U, 1U, k_raw, sizeof(k_raw)); /* x86 E8            */
-  run_filter_case(2U, 1U, k_raw, sizeof(k_raw)); /* x86 E8E9          */
-  run_filter_case(3U, 1U, k_raw, sizeof(k_raw)); /* ARM               */
+  internal_run_filter_case(0U, 3U, k_raw, sizeof(k_raw)); /* delta, 3 channels */
+  internal_run_filter_case(1U, 1U, k_raw, sizeof(k_raw)); /* x86 E8            */
+  internal_run_filter_case(2U, 1U, k_raw, sizeof(k_raw)); /* x86 E8E9          */
+  internal_run_filter_case(3U, 1U, k_raw, sizeof(k_raw)); /* ARM               */
   TEST_END("rar5: delta / x86 / arm filters");
 }
 
@@ -337,8 +429,9 @@ static void test_rar5_filters(void)
  *
  * @see enc_tables()         The literal spelling of the same table.
  * @see enc_tables_bdzero()  The BD zero-run variant.
+ * @since 0.1.0
  */
-static void enc_tables_runs(bitw_t* w)
+RA8_INTERNAL static void internal_enc_tables_runs(bitw_t* w)
 {
   /* BD: 20 lengths of 5. */
   for (uint32_t i = 0U; i < k_t_tbl_bd_entries; ++i) {
@@ -368,130 +461,161 @@ static void enc_tables_runs(bitw_t* w)
 }
 
 /**
- * @test test_rar5_table_runs
- * @brief The length-table continuation codes (copy-previous and zero runs, short
- *        and long) reconstruct a table that then decodes an all-literal payload.
+ * @test internal_test_rar5_table_runs
+ * @brief The length-table continuation codes (copy-previous and zero runs,
+ * short and long) reconstruct a table that then decodes an all-literal payload.
  *
  * @par MC/DC:
  * Provides the vector set for the compound decisions in
- * libs/ra8_comic/src/ra8_rar5_tables.c@ra8_rar5_apply_run:
+ * libs/ra8_comic/src/ra8_rar5_tables.c@priv_rar5_apply_run:
  * - `num == k_r5_tbl_copy_long || num == k_r5_tbl_zero_long` (is_long): code 17
  *   -> first true; code 18 (short) -> both false; code 19 -> second true.
- * - `num == k_r5_tbl_zero_short || num == k_r5_tbl_zero_long` (is_zero): code 17
+ * - `num == k_r5_tbl_zero_short || num == k_r5_tbl_zero_long` (is_zero): code
+ * 17
  *   -> both false; code 18 -> first true; code 19 -> second true.
- * - `!is_zero && *idx == 0`: code 9 first sets tbl[0], so every copy run here has
- *   *idx > 0 -> false (control); the copy-with-no-previous true leg is driven by
- *   test_rar5_malformed. `c < count && i < k_ra8_rar5_huff_total`: each run fills
- *   its full count with i < total -> loop runs then exits on c == count.
- * The stream emits codes 17, 18 and 19, so both operands of each `||` and both
- * operands of the `&&`/loop guard are independently exercised.
+ * - `!is_zero && *idx == 0`: code 9 first sets tbl[0], so every copy run here
+ * has *idx > 0 -> false (control); the copy-with-no-previous true leg is driven
+ * by internal_test_rar5_malformed. `c < count && i < k_ra8_rar5_huff_total`:
+ * each run fills its full count with i < total -> loop runs then exits on c ==
+ * count. The stream emits codes 17, 18 and 19, so both operands of each `||`
+ * and both operands of the `&&`/loop guard are independently exercised.
+ * @details Emits the continuation-code form of a known-valid Huffman table,
+ * appends a short literal payload, and uses byte-exact decode as its oracle.
+ * @pre The bit writer has capacity for all table runs and payload bits.
+ * @pre Continuation run lengths sum to the exact expected table size.
+ * @post The reconstructed tables decode every payload literal correctly.
+ * @post The decoder consumes the complete finalized block without overrun.
+ * @note The literal-table sibling provides an independent equivalent encoding.
+ * @since 0.1.0
  */
-static void test_rar5_table_runs(void)
+RA8_INTERNAL static void internal_test_rar5_table_runs(void)
 {
   TEST_BEGIN("rar5: length-table run codes");
-  static uint8_t s_bodybuf[k_pk_cap];
-  memset(s_bodybuf, 0, sizeof(s_bodybuf));
-  bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
-  enc_tables_runs(&body);
+  static uint8_t body_buffer[k_pk_cap];
+  memset(body_buffer, 0, sizeof(body_buffer));
+  bitw_t body = {.buf = body_buffer, .cap = sizeof(body_buffer)};
+  internal_enc_tables_runs(&body);
   /* Payload: a handful of literals. */
   static const uint8_t k_pay[5] = {0x41U, 0x42U, 0x43U, 0x44U, 0x45U};
   for (uint32_t i = 0U; i < sizeof(k_pay); ++i) {
     bw_put(&body, k_pay[i], k_t_lit_code_bits);
   }
-  static uint8_t s_pk[k_pk_cap];
-  memset(s_pk, 0, sizeof(s_pk));
-  const size_t pklen = enc_finish(&body, s_pk);
-  decode_and_check(s_pk, pklen, k_pay, sizeof(k_pay));
+  static uint8_t packed[k_pk_cap];
+  memset(packed, 0, sizeof(packed));
+  const size_t pklen = enc_finish(&body, packed);
+  decode_and_check(packed, pklen, k_pay, sizeof(k_pay));
   TEST_END("rar5: length-table run codes");
 }
 
 /**
- * @test test_rar5_bd_zero_run
+ * @test internal_test_rar5_bd_zero_run
  * @brief A BD length list that zeroes unused symbols 10..14 via the 15-escape
  *        zero run still decodes an all-literal payload byte-exactly.
  *
  * @par MC/DC:
- * Drives libs/ra8_comic/src/ra8_rar5_tables.c@ra8_rar5_fill_zeros
+ * Drives libs/ra8_comic/src/ra8_rar5_tables.c@priv_rar5_fill_zeros
  * `c < count && i < max`: the 5-entry zero run fills every entry with i < max
- * -> the loop iterates then exits on c == count (both conditions independently end
- * the fill); the i == max short-circuit true leg is a defensive bound the fuzz
- * harness drives. The BD symbols the table actually uses (0/4/6/9) keep length 5,
- * so a byte-exact decode proves the zero-fill left the used codes intact.
+ * -> the loop iterates then exits on c == count (both conditions independently
+ * end the fill); the i == max short-circuit true leg is a defensive bound the
+ * fuzz harness drives. The BD symbols the table actually uses (0/4/6/9) keep
+ * length 5, so a byte-exact decode proves the zero-fill left the used codes
+ * intact.
+ * @details Uses the BD zero-run escape while retaining every symbol required
+ * by a six-byte literal payload, then round-trips that payload.
+ * @pre The encoder emits a five-entry zero run within the BD table bound.
+ * @pre Selected literal symbols retain nonzero code lengths.
+ * @post The zero-run table decodes all six payload bytes byte-exactly.
+ * @post No zero-filled unused symbol is required by the payload.
+ * @note Focuses the production fill-zero helper through a valid stream.
+ * @since 0.1.0
  */
-static void test_rar5_bd_zero_run(void)
+RA8_INTERNAL static void internal_test_rar5_bd_zero_run(void)
 {
   TEST_BEGIN("rar5: BD length-list zero run");
-  static uint8_t s_bodybuf[k_pk_cap];
-  memset(s_bodybuf, 0, sizeof(s_bodybuf));
-  bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
+  static uint8_t body_buffer[k_pk_cap];
+  memset(body_buffer, 0, sizeof(body_buffer));
+  bitw_t body = {.buf = body_buffer, .cap = sizeof(body_buffer)};
   enc_tables_bdzero(&body);
   static const uint8_t k_pay[6] = {0x30U, 0x31U, 0x32U, 0x33U, 0x34U, 0x35U};
   for (uint32_t i = 0U; i < sizeof(k_pay); ++i) {
     bw_put(&body, k_pay[i], k_t_lit_code_bits);
   }
-  static uint8_t s_pk[k_pk_cap];
-  memset(s_pk, 0, sizeof(s_pk));
-  const size_t pklen = enc_finish(&body, s_pk);
-  decode_and_check(s_pk, pklen, k_pay, sizeof(k_pay));
+  static uint8_t packed[k_pk_cap];
+  memset(packed, 0, sizeof(packed));
+  const size_t pklen = enc_finish(&body, packed);
+  decode_and_check(packed, pklen, k_pay, sizeof(k_pay));
   TEST_END("rar5: BD length-list zero run");
 }
 
 /**
- * @test test_rar5_malformed
+ * @test internal_test_rar5_malformed
  * @brief Corrupt headers, truncation, and out-of-range references are rejected
  *        (validation_failed) without a crash.
  *
  * @par MC/DC:
- * (no compound decisions under test -- each malformed input drives one guard leg;
- * the bad-checksum, no-tables, truncation and short-output cases are independent.)
+ * (no compound decisions under test -- each malformed input drives one guard
+ * leg; the bad-checksum, no-tables, truncation and short-output cases are
+ * independent.)
+ * @details Starts from a valid literal stream, corrupts one property per
+ * vector, sweeps every truncation boundary, and emits an impossible backward
+ * match.
+ * @pre The valid source stream is finalized before any copy is corrupted.
+ * @pre All malformed buffers remain within their static capacities.
+ * @post Corrupt checksum, missing tables, and invalid match history are
+ * rejected.
+ * @post Every truncated prefix either decodes cleanly or returns
+ * validation-failed.
+ * @note The sweep asserts safety classification as well as absence of crashes.
+ * @since 0.1.0
  */
-static void test_rar5_malformed(void)
+RA8_INTERNAL static void internal_test_rar5_malformed(void)
 {
   TEST_BEGIN("rar5: malformed / truncated rejects");
   /* A valid all-literal block, then corrupt it. */
   static const uint8_t k_src[8] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
-  static uint8_t       s_pk[k_pk_cap];
-  memset(s_pk, 0, sizeof(s_pk));
-  const size_t pklen = enc_all_literal(k_src, sizeof(k_src), s_pk, sizeof(s_pk));
+  static uint8_t       packed[k_pk_cap];
+  memset(packed, 0, sizeof(packed));
+  const size_t pklen = enc_all_literal(k_src, sizeof(k_src), packed, sizeof(packed));
 
   /* Bad header checksum. */
-  static uint8_t s_bad[k_pk_cap];
-  memcpy(s_bad, s_pk, pklen);
-  s_bad[2] ^= k_t_byte_mask; /* wrong checksum byte (bytecount 1) */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_bad, pklen, sizeof(k_src)));
+  static uint8_t bad[k_pk_cap];
+  memcpy(bad, packed, pklen);
+  bad[2] ^= k_t_byte_mask; /* wrong checksum byte (bytecount 1) */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(bad, pklen, sizeof(k_src)));
 
-  /* Truncated stream (header only) with a large expected size -> short output. */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_pk, 3U, sizeof(k_src)));
+  /* Truncated stream (header only) with a large expected size -> short output.
+   */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(packed, 3U, sizeof(k_src)));
 
-  /* Every truncation length is either a clean parse or a rejection, never a crash. */
+  /* Every truncation length is either a clean parse or a rejection, never a
+   * crash. */
   for (size_t sz = 1U; sz <= pklen; ++sz) {
-    const ra8_err_t r = decode_status(s_pk, sz, sizeof(k_src));
+    const ra8_err_t r = decode_status(packed, sz, sizeof(k_src));
     TEST_ASSERT(r == k_ra8_ok || r == k_ra8_err_validation_failed);
   }
 
   /* A first block that declares no tables must be rejected. */
-  static uint8_t s_notab[16] = {};
-  s_notab[0]                 = k_t_notab_flags; /* last, no tables, bytecount 1 */
-  s_notab[1]                 = 0x02U;           /* block size 2                 */
+  static uint8_t no_tables[16] = {};
+  no_tables[0]                 = k_t_notab_flags; /* last, no tables, bytecount 1 */
+  no_tables[1]                 = 0x02U;           /* block size 2                 */
   /* checksum */
-  s_notab[2] = (uint8_t)(k_t_hdr_csum_seed ^ k_t_notab_flags ^ 0x02U);
-  s_notab[3] = 0x00U;
-  s_notab[4] = 0x00U;
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_notab, 5U, sizeof(k_src)));
+  no_tables[2] = (uint8_t)(k_t_hdr_csum_seed ^ k_t_notab_flags ^ 0x02U);
+  no_tables[3] = 0x00U;
+  no_tables[4] = 0x00U;
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(no_tables, 5U, sizeof(k_src)));
 
-  /* A match whose distance reaches before the member start (solid reference). */
-  static uint8_t s_bodybuf[k_pk_cap];
-  memset(s_bodybuf, 0, sizeof(s_bodybuf));
-  bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
+  /* A match whose distance reaches before the member start (solid reference).
+   */
+  static uint8_t body_buffer[k_pk_cap];
+  memset(body_buffer, 0, sizeof(body_buffer));
+  bitw_t body = {.buf = body_buffer, .cap = sizeof(body_buffer)};
   enc_tables(&body);
-  bw_put(&body,
-         k_t_sym_len_slot0,
-         k_t_lit_code_bits); /* length slot 0 -> length 2                      */
-  bw_put(&body, 3U, 6U);     /* distance slot 3 -> dist 4, but no prior output */
-  static uint8_t s_pk2[k_pk_cap];
-  memset(s_pk2, 0, sizeof(s_pk2));
-  const size_t pklen2 = enc_finish(&body, s_pk2);
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_pk2, pklen2, 2U));
+  bw_put(&body, k_t_sym_len_slot0, k_t_lit_code_bits); /* length slot 0 -> length 2 */
+  bw_put(&body, 3U, 6U);                               /* dist 4 before output      */
+  static uint8_t packed_match[k_pk_cap];
+  memset(packed_match, 0, sizeof(packed_match));
+  const size_t pklen2 = enc_finish(&body, packed_match);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(packed_match, pklen2, 2U));
   TEST_END("rar5: malformed / truncated rejects");
 }
 
@@ -501,12 +625,11 @@ static void test_rar5_malformed(void)
  */
 int32_t main(void)
 {
-  test_rar5_all_literal_roundtrip();
-  test_rar5_match_legs();
-  test_rar5_filters();
-  test_rar5_table_runs();
-  test_rar5_bd_zero_run();
-  test_rar5_malformed();
-  (void)fprintf(stderr, "[OK  ] test_ra8_rar5.c\n");
+  internal_test_rar5_all_literal_roundtrip();
+  internal_test_rar5_match_legs();
+  internal_test_rar5_filters();
+  internal_test_rar5_table_runs();
+  internal_test_rar5_bd_zero_run();
+  internal_test_rar5_malformed();
   return 0;
 }
