@@ -38,6 +38,7 @@
 #include <string.h>
 
 #include "nimble_transport_stubs.h"
+#include "ra8_attributes.h"
 #include "tx_api.h"
 
 /* =============================================================================
@@ -60,8 +61,23 @@ typedef enum : uint32_t {
   k_ble_npl_ms_per_sec      = 1000U,       /**< Helper: ms / second.     */
 } ble_npl_threadx_const_t;
 
-/* Translate an NPL timeout into a ThreadX wait code -- see implementation for details. */
-static ULONG priv_tmo_to_tx(ble_npl_time_t tmo)
+/**
+ * @brief Translate an NPL timeout into a ThreadX wait code.
+ *
+ * @details Preserves finite tick counts and maps the NPL forever sentinel to
+ * ThreadX's exact wait-forever value.
+ *
+ * @param[in] tmo NPL timeout value to translate.
+ * @return ThreadX wait-code representation of @p tmo.
+ * @retval TX_WAIT_FOREVER The input requested an unbounded wait.
+ * @pre @p tmo is a value accepted by the calling NPL primitive.
+ * @pre The configured NPL and ThreadX tick domains use the documented rate.
+ * @post Finite timeout values are returned without mutation.
+ * @post The helper changes no NPL or ThreadX object state.
+ * @note This conversion does not round or rescale finite tick values.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ULONG internal_tmo_to_tx(ble_npl_time_t tmo)
 {
   if (tmo == (ble_npl_time_t)k_ble_npl_threadx_wait_forever) {
     return (ULONG)k_ble_npl_tx_wait_forever;
@@ -90,7 +106,7 @@ ble_npl_error_t ble_npl_mutex_pend(struct ble_npl_mutex* mu, ble_npl_time_t time
   if (mu == nullptr) {
     return BLE_NPL_INVALID_PARAM;
   }
-  const UINT st = tx_mutex_get(&mu->handle, priv_tmo_to_tx(timeout));
+  const UINT st = tx_mutex_get(&mu->handle, internal_tmo_to_tx(timeout));
   if (st == TX_SUCCESS) {
     return BLE_NPL_OK;
   }
@@ -128,7 +144,7 @@ ble_npl_error_t ble_npl_sem_pend(struct ble_npl_sem* sem, ble_npl_time_t timeout
   if (sem == nullptr) {
     return BLE_NPL_INVALID_PARAM;
   }
-  const UINT st = tx_semaphore_get(&sem->handle, priv_tmo_to_tx(timeout));
+  const UINT st = tx_semaphore_get(&sem->handle, internal_tmo_to_tx(timeout));
   if (st == TX_SUCCESS) {
     return BLE_NPL_OK;
   }
@@ -201,7 +217,7 @@ struct ble_npl_event* ble_npl_eventq_get(struct ble_npl_eventq* evq, ble_npl_tim
     return nullptr;
   }
   ULONG slot = 0U; /**< U. */
-  if (tx_queue_receive(&evq->q, &slot, priv_tmo_to_tx(tmo)) != TX_SUCCESS) {
+  if (tx_queue_receive(&evq->q, &slot, internal_tmo_to_tx(tmo)) != TX_SUCCESS) {
     return nullptr;
   }
   struct ble_npl_event* ev = (struct ble_npl_event*)(uintptr_t)slot; /**< Slot. */
@@ -293,8 +309,22 @@ bool ble_npl_eventq_is_empty(struct ble_npl_eventq* evq)
  * =============================================================================
  */
 
-/* ThreadX timer trampoline: posts our event into its eventq -- see implementation for details. */
-static void priv_callout_trampoline(ULONG arg)
+/**
+ * @brief Post a callout event from the ThreadX timer trampoline.
+ *
+ * @details Recovers the caller-owned NPL callout from the timer argument and
+ * queues its embedded event when the recovered pointer is valid.
+ *
+ * @param[in] arg Integer representation of the callout pointer supplied at
+ * timer creation.
+ * @pre A nonzero @p arg identifies a live caller-owned callout object.
+ * @pre The callout's event queue remains bound for the timer lifetime.
+ * @post A valid callout has its embedded event offered to its event queue.
+ * @post A null argument returns without mutating queue state.
+ * @note The queue operation retains the NPL event object's normal ownership.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static void internal_callout_trampoline(ULONG arg)
 {
   struct ble_npl_callout* co = (struct ble_npl_callout*)(uintptr_t)arg;
   if (co == nullptr) {
@@ -318,7 +348,7 @@ void ble_npl_callout_init(struct ble_npl_callout* co,
   co->ev.arg = ev_arg;
   (void)tx_timer_create(&co->handle,
                         "npl_co",
-                        priv_callout_trampoline,
+                        internal_callout_trampoline,
                         (ULONG)(uintptr_t)co,
                         1U, /* initial-ticks (placeholder, reset on arm) */
                         0U, /* reschedule-ticks (one-shot)               */
