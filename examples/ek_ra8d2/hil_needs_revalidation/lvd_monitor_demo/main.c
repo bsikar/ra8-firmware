@@ -43,6 +43,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -77,8 +78,8 @@ typedef enum : uint32_t {
  * key alone) relocks. */
 
 /** @brief Output line tags (2.80 V == k_ra8_lvd_pvdlvl_2_80v). */
-static const uint8_t k_lvd_demo_ok_msg[]  = "lvd: pvd1 thr=2.80V mon=above det=0 ok=Y\r\n";
-static const uint8_t k_lvd_demo_bad_msg[] = "lvd: pvd1 thr=2.80V mon=below ok=N\r\n";
+static const uint8_t s_lvd_demo_ok_msg[]  = "lvd: pvd1 thr=2.80V mon=above det=0 ok=Y\r\n";
+static const uint8_t s_lvd_demo_bad_msg[] = "lvd: pvd1 thr=2.80V mon=below ok=N\r\n";
 
 /**
  * @var g_lvd_ok
@@ -120,39 +121,63 @@ volatile uint32_t g_lvd_cfg_err = 0U;
  */
 volatile uint32_t g_lvd_heartbeat = 0U;
 
-/** @brief Park forever after a fatal init failure. */
-static void lvd_demo_panic_halt(void)
+/**
+ * @brief Park the processor after a fatal initialization failure.
+ *
+ * @details Executes wait-for-interrupt indefinitely so callers cannot continue
+ * with partially initialized clocks, timing, console, or board peripherals.
+ *
+ * @pre The caller has determined that normal execution cannot continue safely.
+ * @pre No recovery action remains pending in the foreground context.
+ * @post This function does not return.
+ * @post The processor remains in a low-activity wait loop.
+ * @note This terminal path intentionally preserves the original failure state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_lvd_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-/** @brief Bring CGC + SysTick + console + LEDs + MSTP up. */
-static void lvd_demo_setup_or_halt(void)
+/**
+ * @brief Bring CGC, SysTick, console, LEDs, and MSTP support up.
+ *
+ * @details Initializes each prerequisite in dependency order and transfers to
+ * ::internal_lvd_demo_panic_halt immediately if any required operation fails.
+ *
+ * @pre The function runs during single-threaded startup before application use.
+ * @pre Board registers are accessible through the EK-RA8D2 platform mapping.
+ * @post On return, timing, console, both LEDs, and MSTP support are initialized.
+ * @post Any initialization failure prevents a return to the caller.
+ * @note The helper centralizes the fatal-on-error startup policy for this demo.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_lvd_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    lvd_demo_panic_halt();
+    internal_lvd_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    lvd_demo_panic_halt();
+    internal_lvd_demo_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    lvd_demo_panic_halt();
+    internal_lvd_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    lvd_demo_panic_halt();
+    internal_lvd_demo_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_lvd_demo_baud) != k_ra8_ok) {
-    lvd_demo_panic_halt();
+    internal_lvd_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    lvd_demo_panic_halt();
+    internal_lvd_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    lvd_demo_panic_halt();
+    internal_lvd_demo_panic_halt();
   }
 }
 
@@ -172,11 +197,15 @@ static void lvd_demo_setup_or_halt(void)
  * bad-arg path). No compound condition.
  *
  * @return ``ra8_err_t`` -- ``k_ra8_ok`` or the init error code.
+ * @retval k_ra8_ok PVD1 accepted the requested flags-only configuration.
  * @pre CGC is up; IRQs masked (single-threaded init).
+ * @pre MSTP support has been initialized for peripheral access.
  * @post PRCR is re-locked on every return path.
+ * @post ``g_lvd_cfg_err`` records zero or the returned error code.
+ * @note No reset, NMI, or maskable interrupt response is armed here.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t lvd_demo_configure(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_lvd_demo_configure(void)
 {
   const ra8_lvd_cfg_t cfg = {
     .threshold    = k_ra8_lvd_pvdlvl_2_80v,
@@ -219,11 +248,14 @@ static void lvd_demo_setup_or_halt(void)
  *
  * @return ``ra8_err_t`` from ``ra8_lvd_get_status``.
  * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
- * @pre PVD1 has been configured by ::lvd_demo_configure.
+ * @pre PVD1 has been configured by ::internal_lvd_demo_configure.
+ * @pre @p out_ok addresses writable storage for one verdict byte.
  * @post ``*out_ok`` is 0 or 1; ``g_lvd_mon_above`` / ``g_lvd_det`` updated.
+ * @post On a status-read error, no healthy verdict is reported by the caller.
+ * @note The verdict requires both an above-threshold level and no latched edge.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t lvd_demo_sample(uint8_t* out_ok)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_lvd_demo_sample(uint8_t* out_ok)
 {
   RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
 
@@ -242,34 +274,34 @@ static void lvd_demo_setup_or_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  lvd_demo_setup_or_halt();
+  internal_lvd_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch: ra8_delay_ms() uses the
    * SysTick tick path only when IRQs are globally enabled, otherwise it
    * busy-waits on DWT_CYCCNT. No NVIC sources are armed (response=none). */
   ra8_isr_globals_enable();
-  if (lvd_demo_configure() != k_ra8_ok) {
-    lvd_demo_panic_halt();
+  if (internal_lvd_demo_configure() != k_ra8_ok) {
+    internal_lvd_demo_panic_halt();
   }
   ra8_delay_ms((uint32_t)k_lvd_demo_stab_ms);
 
   while (1) {
     uint8_t         ok   = 0U;
-    const ra8_err_t err  = lvd_demo_sample(&ok);
+    const ra8_err_t err  = internal_lvd_demo_sample(&ok);
     const uint8_t   good = (err == k_ra8_ok && ok != 0U) ? 1U : 0U;
     g_lvd_ok             = (uint32_t)good;
     if (good != 0U) {
-      (void)ra8_board_uart_console_write(k_lvd_demo_ok_msg,
-                                         (size_t)(sizeof(k_lvd_demo_ok_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_lvd_demo_ok_msg,
+                                         (size_t)(sizeof(s_lvd_demo_ok_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra8_board_uart_console_write(k_lvd_demo_bad_msg,
-                                         (size_t)(sizeof(k_lvd_demo_bad_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_lvd_demo_bad_msg,
+                                         (size_t)(sizeof(s_lvd_demo_bad_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     ++g_lvd_heartbeat;
     ra8_delay_ms(k_lvd_demo_period_ms);
   }
-  lvd_demo_panic_halt();
+  internal_lvd_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

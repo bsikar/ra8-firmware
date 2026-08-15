@@ -53,7 +53,7 @@ ra8_add_app(
 
 # Pin the reader's optimisation level to -Og on this target, independent of the
 # configured build type. Two facts force this:
-#   * At -O0 the fully-linked reader (ra8_epub + miniz + tinyxml2 + stb +
+#   * At -O0 the fully-linked reader (ra8_epub + miniz + bounded XML reader + stb +
 #     ra8_reflow + baked library.h ...) overflows the 1 MiB MRAM code region by
 #     ~17 KiB, so the top-level aggregate build (which defaults to Debug/-O0)
 #     and `make emu-ereader_shelf` cannot link it. A per-target option lands

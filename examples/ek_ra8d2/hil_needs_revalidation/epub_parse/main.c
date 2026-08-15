@@ -3,7 +3,7 @@
  * @brief On-silicon HIL: ra8_epub parse layer runs on the target (#139).
  *
  * @details
- * First firmware app to exercise `ra8_epub` (+ vendored miniz ZIP + tinyxml2)
+ * First firmware app to exercise `ra8_epub` (+ vendored miniz ZIP + bounded XML reader)
  * on real silicon. The EPUB parse path is byte-twiddling C/C++ that has only
  * ever run on the x86 host; this gate runs it on the EK-RA8D2.
  *

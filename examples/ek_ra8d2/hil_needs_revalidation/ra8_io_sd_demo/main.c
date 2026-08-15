@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -69,22 +70,37 @@ typedef enum : uint32_t {
  * =============================================================================
  */
 
-/** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI; CS held by GPIO. */
-static const ra8_port_pin_t k_sd_demo_pin_sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
-static const ra8_port_pin_t k_sd_demo_pin_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
-static const ra8_port_pin_t k_sd_demo_pin_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
-static const ra8_port_pin_t k_sd_demo_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
+/** @brief Pmod2 SCI0 clock pin used by the SD-SPI transport. */
+static const ra8_port_pin_t s_sd_demo_pin_sck = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
+
+/** @brief Pmod2 SCI0 controller-input pin used by the SD-SPI transport. */
+static const ra8_port_pin_t s_sd_demo_pin_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
+
+/** @brief Pmod2 SCI0 controller-output pin used by the SD-SPI transport. */
+static const ra8_port_pin_t s_sd_demo_pin_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
+
+/** @brief Pmod2 GPIO chip-select pin used by the SD-SPI transport. */
+static const ra8_port_pin_t s_sd_demo_pin_cs = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
 
 /* =============================================================================
  * Static message strings (ASCII-only per project policy)
  * =============================================================================
  */
 
-static const uint8_t k_msg_boot[]      = "ra8_io_sd_demo: boot\r\n";
-static const uint8_t k_msg_card_ok[]   = "ra8_io_sd_demo: card ready\r\n";
-static const uint8_t k_msg_init_fail[] = "ra8_io_sd_demo: FAIL init\r\n";
-static const uint8_t k_msg_pass[]      = "ra8_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS\r\n";
-static const uint8_t k_msg_fail[]      = "ra8_io_sd_demo: FAIL\r\n";
+/** @brief HIL banner emitted before SD initialization starts. */
+static const uint8_t s_msg_boot[] = "ra8_io_sd_demo: boot\r\n";
+
+/** @brief HIL banner emitted after the SD card enters SPI mode. */
+static const uint8_t s_msg_card_ok[] = "ra8_io_sd_demo: card ready\r\n";
+
+/** @brief Diagnostic emitted when transport or card initialization fails. */
+static const uint8_t s_msg_init_fail[] = "ra8_io_sd_demo: FAIL init\r\n";
+
+/** @brief HIL success banner emitted after the verified file round-trip. */
+static const uint8_t s_msg_pass[] = "ra8_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS\r\n";
+
+/** @brief Diagnostic emitted when the VFS round-trip fails. */
+static const uint8_t s_msg_fail[] = "ra8_io_sd_demo: FAIL\r\n";
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_io_sd_demo";
@@ -132,13 +148,13 @@ static const ra8_io_roundtrip_params_t s_params = {
  * @note Not thread-safe; call from the single-threaded app context.
  * @since 0.1.0
  */
-static void sd_demo_print(const uint8_t* msg, uint32_t len)
+RA8_INTERNAL static void internal_sd_demo_print(const uint8_t* msg, uint32_t len)
 {
   (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Emit a NUL-terminated literal (length via sizeof at the call site). */
-#define SD_DEMO_PUTS(lit) sd_demo_print((lit), (uint32_t)sizeof(lit) - 1U)
+#define SD_DEMO_PUTS(lit) internal_sd_demo_print((lit), (uint32_t)sizeof(lit) - 1U)
 
 /**
  * @brief Halt forever in WFI -- panic stop on irrecoverable failure.
@@ -157,7 +173,7 @@ static void sd_demo_print(const uint8_t* msg, uint32_t len)
  * @note Not thread-safe; this is a terminal panic path.
  * @since 0.1.0
  */
-static void sd_demo_panic_halt(void)
+RA8_INTERNAL static void internal_sd_demo_panic_halt(void)
 {
   while (true) {
     __asm__ volatile("wfi");
@@ -193,24 +209,24 @@ static void sd_demo_panic_halt(void)
  * @note Not thread-safe; call once from the single-threaded init path.
  * @since 0.1.0
  */
-static void sd_demo_setup_or_halt(uint32_t* out_pclka_hz)
+RA8_INTERNAL static void internal_sd_demo_setup_or_halt(uint32_t* out_pclka_hz)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    sd_demo_panic_halt();
+    internal_sd_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    sd_demo_panic_halt();
+    internal_sd_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) {
-    sd_demo_panic_halt();
+    internal_sd_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    sd_demo_panic_halt();
+    internal_sd_demo_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_sd_demo_uart_baud) != k_ra8_ok) {
-    sd_demo_panic_halt();
+    internal_sd_demo_panic_halt();
   }
   *out_pclka_hz = pclka_hz;
 }
@@ -236,25 +252,25 @@ static void sd_demo_setup_or_halt(uint32_t* out_pclka_hz)
  * @note Not thread-safe; call once after the clocks + console are up.
  * @since 0.1.0
  */
-static void sd_demo_init_card_or_halt(uint32_t pclka_hz)
+RA8_INTERNAL static void internal_sd_demo_init_card_or_halt(uint32_t pclka_hz)
 {
   const ra8_sdmmc_spi_sci_pins_t pins = {
-    .sck  = k_sd_demo_pin_sck,
-    .cipo = k_sd_demo_pin_cipo,
-    .copi = k_sd_demo_pin_copi,
-    .cs   = k_sd_demo_pin_cs,
+    .sck  = s_sd_demo_pin_sck,
+    .cipo = s_sd_demo_pin_cipo,
+    .copi = s_sd_demo_pin_copi,
+    .cs   = s_sd_demo_pin_cs,
   };
   ra8_sdmmc_spi_transport_t transport = {};
   if (ra8_sdmmc_spi_transport_sci((uint8_t)k_sd_demo_spi_channel, pclka_hz, &pins, &transport) !=
       k_ra8_ok) {
-    SD_DEMO_PUTS(k_msg_init_fail);
-    sd_demo_panic_halt();
+    SD_DEMO_PUTS(s_msg_init_fail);
+    internal_sd_demo_panic_halt();
   }
   if (ra8_sdmmc_spi_init(&transport) != k_ra8_ok) {
-    SD_DEMO_PUTS(k_msg_init_fail);
-    sd_demo_panic_halt();
+    SD_DEMO_PUTS(s_msg_init_fail);
+    internal_sd_demo_panic_halt();
   }
-  SD_DEMO_PUTS(k_msg_card_ok);
+  SD_DEMO_PUTS(s_msg_card_ok);
 }
 
 /* =============================================================================
@@ -284,7 +300,7 @@ static void sd_demo_init_card_or_halt(uint32_t pclka_hz)
  * @note Not thread-safe; single-threaded init path only.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t sd_demo_roundtrip(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_sd_demo_roundtrip(void)
 {
   RA8_RETURN_ON_ERROR(ra8_io_vfs_init(), s_tag, "vfs init");
   RA8_RETURN_ON_ERROR(ra8_io_blockdev_sdspi_init(&s_bd), s_tag, "sdspi bind");
@@ -321,19 +337,19 @@ static void sd_demo_init_card_or_halt(uint32_t pclka_hz)
 int main(void)
 {
   uint32_t pclka_hz = 0U;
-  sd_demo_setup_or_halt(&pclka_hz);
+  internal_sd_demo_setup_or_halt(&pclka_hz);
   ra8_isr_globals_enable();
   ra8_log_init();
-  SD_DEMO_PUTS(k_msg_boot);
+  SD_DEMO_PUTS(s_msg_boot);
 
-  sd_demo_init_card_or_halt(pclka_hz);
+  internal_sd_demo_init_card_or_halt(pclka_hz);
 
-  const ra8_err_t r = sd_demo_roundtrip();
+  const ra8_err_t r = internal_sd_demo_roundtrip();
   if (r != k_ra8_ok) {
-    SD_DEMO_PUTS(k_msg_fail);
-    sd_demo_panic_halt();
+    SD_DEMO_PUTS(s_msg_fail);
+    internal_sd_demo_panic_halt();
   }
-  SD_DEMO_PUTS(k_msg_pass);
+  SD_DEMO_PUTS(s_msg_pass);
   (void)ra8_board_uart_console_flush();
 
   while (true) {

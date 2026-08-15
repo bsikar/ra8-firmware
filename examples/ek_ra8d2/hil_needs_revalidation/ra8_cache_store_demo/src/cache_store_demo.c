@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cache_store.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -78,6 +79,8 @@ typedef enum : uint32_t {
 
 /**
  * @brief Fill @p buf with the demo's deterministic byte ramp.
+ * @details Writes a wrapping seed-plus-index pattern over exactly @p len bytes,
+ * returning without modification when the destination is NULL or empty.
  * @param[out] buf  Destination buffer.
  * @param[in]  len  Byte count.
  * @param[in]  seed Ramp seed (`buf[i] == (seed + i) & 0xFF`).
@@ -89,7 +92,7 @@ typedef enum : uint32_t {
  * @note Pure over its arguments (thread-safe).
  * @since 0.1.0
  */
-static void demo_fill(uint8_t* buf, uint32_t len, uint8_t seed)
+RA8_INTERNAL static void internal_demo_fill(uint8_t* buf, uint32_t len, uint8_t seed)
 {
   if (buf == nullptr) {
     return;
@@ -104,6 +107,8 @@ static void demo_fill(uint8_t* buf, uint32_t len, uint8_t seed)
 
 /**
  * @brief Test whether @p buf holds the demo's deterministic byte ramp.
+ * @details Compares every requested byte with the same wrapping seed-plus-index
+ * rule used by ::internal_demo_fill and stops at the first mismatch.
  * @param[in] buf  Buffer to check.
  * @param[in] len  Byte count.
  * @param[in] seed Expected ramp seed.
@@ -117,7 +122,7 @@ static void demo_fill(uint8_t* buf, uint32_t len, uint8_t seed)
  * @note Pure over its arguments (thread-safe).
  * @since 0.1.0
  */
-static bool demo_matches(const uint8_t* buf, uint32_t len, uint8_t seed)
+RA8_INTERNAL static bool internal_demo_matches(const uint8_t* buf, uint32_t len, uint8_t seed)
 {
   if (buf == nullptr) {
     return false;
@@ -135,6 +140,8 @@ static bool demo_matches(const uint8_t* buf, uint32_t len, uint8_t seed)
 
 /**
  * @brief Build an ra8_cache_store init config from the demo config.
+ * @details Copies every injected dependency and storage seam into the public
+ * store configuration while selecting whether this mount formats the media.
  * @param[in]  in     Demo config (injected deps + buffers).
  * @param[in]  format True to format (wipe) before open, false to remount.
  * @param[out] out    Receives the populated store config.
@@ -148,8 +155,8 @@ static bool demo_matches(const uint8_t* buf, uint32_t len, uint8_t seed)
  * @note Not thread-safe; operates only on the caller's structs.
  * @since 0.1.0
  */
-static ra8_err_t
-demo_build_cfg(const cache_store_demo_cfg_t* in, bool format, ra8_cache_store_cfg_t* out)
+RA8_INTERNAL static ra8_err_t
+internal_demo_build_cfg(const cache_store_demo_cfg_t* in, bool format, ra8_cache_store_cfg_t* out)
 {
   RA8_CHECK_NULL_PTR(in, "rcs_demo", "cfg is NULL");
   RA8_CHECK_NULL_PTR(out, "rcs_demo", "out cfg is NULL");
@@ -170,6 +177,8 @@ demo_build_cfg(const cache_store_demo_cfg_t* in, bool format, ra8_cache_store_cf
 
 /**
  * @brief Put a blob, then read it back whole and verify it byte-identical.
+ * @details Fills the shared scratch buffer, seals the keyed blob, reopens it,
+ * validates its length, reads it back, and verifies the deterministic pattern.
  * @param[in,out] st   Initialised store.
  * @param[in]     key  Content key.
  * @param[in]     seed Deterministic fill seed for the blob.
@@ -188,18 +197,18 @@ demo_build_cfg(const cache_store_demo_cfg_t* in, bool format, ra8_cache_store_cf
  * @note Not thread-safe; reuses the single scratch buffer.
  * @since 0.1.0
  */
-static ra8_err_t demo_put_and_verify(ra8_cache_store_t*            st,
-                                     uint32_t                      key,
-                                     uint8_t                       seed,
-                                     uint32_t                      len,
-                                     const cache_store_demo_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_demo_put_and_verify(ra8_cache_store_t*            st,
+                                                           uint32_t                      key,
+                                                           uint8_t                       seed,
+                                                           uint32_t                      len,
+                                                           const cache_store_demo_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(st, "rcs_demo", "store is NULL");
   RA8_CHECK_NULL_PTR(cfg, "rcs_demo", "cfg is NULL");
   if (len > cfg->scratch_bytes) {
     return k_ra8_err_invalid_size;
   }
-  demo_fill(cfg->scratch, len, seed);
+  internal_demo_fill(cfg->scratch, len, seed);
   ra8_err_t rc = ra8_cache_store_put(st, key, cfg->scratch, len);
   if (rc != k_ra8_ok) {
     return rc;
@@ -217,7 +226,7 @@ static ra8_err_t demo_put_and_verify(ra8_cache_store_t*            st,
   if (rc != k_ra8_ok) {
     return rc;
   }
-  if (!demo_matches(cfg->scratch, len, seed)) {
+  if (!internal_demo_matches(cfg->scratch, len, seed)) {
     return k_ra8_err_invalid_state;
   }
   return k_ra8_ok;
@@ -225,6 +234,8 @@ static ra8_err_t demo_put_and_verify(ra8_cache_store_t*            st,
 
 /**
  * @brief Read a sealed blob back and verify it byte-identical (no put).
+ * @details Opens the keyed reader, validates the sealed length, reads into the
+ * shared scratch buffer, and checks the deterministic expected pattern.
  * @param[in] st   Initialised store.
  * @param[in] key  Content key to open.
  * @param[in] seed Deterministic fill seed the blob was written with.
@@ -242,11 +253,11 @@ static ra8_err_t demo_put_and_verify(ra8_cache_store_t*            st,
  * @note Not thread-safe; reuses the single scratch buffer.
  * @since 0.1.0
  */
-static ra8_err_t demo_get_and_verify(const ra8_cache_store_t*      st,
-                                     uint32_t                      key,
-                                     uint8_t                       seed,
-                                     uint32_t                      len,
-                                     const cache_store_demo_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_demo_get_and_verify(const ra8_cache_store_t*      st,
+                                                           uint32_t                      key,
+                                                           uint8_t                       seed,
+                                                           uint32_t                      len,
+                                                           const cache_store_demo_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(st, "rcs_demo", "store is NULL");
   RA8_CHECK_NULL_PTR(cfg, "rcs_demo", "cfg is NULL");
@@ -263,7 +274,7 @@ static ra8_err_t demo_get_and_verify(const ra8_cache_store_t*      st,
   if (rc != k_ra8_ok) {
     return rc;
   }
-  if (!demo_matches(cfg->scratch, len, seed)) {
+  if (!internal_demo_matches(cfg->scratch, len, seed)) {
     return k_ra8_err_invalid_state;
   }
   return k_ra8_ok;
@@ -271,6 +282,8 @@ static ra8_err_t demo_get_and_verify(const ra8_cache_store_t*      st,
 
 /**
  * @brief Seed the store: put + read-verify the four demo blobs.
+ * @details Inserts cover and tile blobs in deterministic order, short-circuiting
+ * after the first failed seal or read-back verification.
  * @param[in,out] st  Initialised store.
  * @param[in]     cfg Demo config.
  * @return Error code (first failure short-circuits).
@@ -284,24 +297,31 @@ static ra8_err_t demo_get_and_verify(const ra8_cache_store_t*      st,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t demo_phase_seed(ra8_cache_store_t* st, const cache_store_demo_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_demo_phase_seed(ra8_cache_store_t*            st,
+                                                       const cache_store_demo_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(st, "rcs_demo", "store is NULL");
   RA8_CHECK_NULL_PTR(cfg, "rcs_demo", "cfg is NULL");
   ra8_err_t rc =
-    demo_put_and_verify(st, k_demo_key_cover, k_demo_seed_cover, k_demo_len_cover, cfg);
+    internal_demo_put_and_verify(st, k_demo_key_cover, k_demo_seed_cover, k_demo_len_cover, cfg);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  rc = demo_put_and_verify(st, k_demo_key_tile_a, k_demo_seed_tile_a, k_demo_len_tile_a, cfg);
+  rc =
+    internal_demo_put_and_verify(st, k_demo_key_tile_a, k_demo_seed_tile_a, k_demo_len_tile_a, cfg);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  rc = demo_put_and_verify(st, k_demo_key_tile_b, k_demo_seed_tile_b, k_demo_len_tile_b, cfg);
+  rc =
+    internal_demo_put_and_verify(st, k_demo_key_tile_b, k_demo_seed_tile_b, k_demo_len_tile_b, cfg);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  return demo_put_and_verify(st, k_demo_key_tile_c, k_demo_seed_tile_c, k_demo_len_tile_c, cfg);
+  return internal_demo_put_and_verify(st,
+                                      k_demo_key_tile_c,
+                                      k_demo_seed_tile_c,
+                                      k_demo_len_tile_c,
+                                      cfg);
 }
 
 /**
@@ -324,7 +344,7 @@ static ra8_err_t demo_phase_seed(ra8_cache_store_t* st, const cache_store_demo_c
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t demo_phase_evict(ra8_cache_store_t* st)
+RA8_INTERNAL static ra8_err_t internal_demo_phase_evict(ra8_cache_store_t* st)
 {
   RA8_CHECK_NULL_PTR(st, "rcs_demo", "store is NULL");
   ra8_err_t rc = ra8_cache_store_pin(st, k_demo_key_cover, true);
@@ -368,25 +388,31 @@ static ra8_err_t demo_phase_evict(ra8_cache_store_t* st)
  * @note Not thread-safe; reuses the single scratch buffer.
  * @since 0.1.0
  */
-static ra8_err_t demo_verify_survivors(const ra8_cache_store_t*      st,
-                                       const cache_store_demo_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_demo_verify_survivors(const ra8_cache_store_t*      st,
+                                                             const cache_store_demo_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(st, "rcs_demo", "store is NULL");
   RA8_CHECK_NULL_PTR(cfg, "rcs_demo", "cfg is NULL");
   ra8_err_t rc =
-    demo_get_and_verify(st, k_demo_key_cover, k_demo_seed_cover, k_demo_len_cover, cfg);
+    internal_demo_get_and_verify(st, k_demo_key_cover, k_demo_seed_cover, k_demo_len_cover, cfg);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  rc = demo_get_and_verify(st, k_demo_key_tile_a, k_demo_seed_tile_a, k_demo_len_tile_a, cfg);
+  rc =
+    internal_demo_get_and_verify(st, k_demo_key_tile_a, k_demo_seed_tile_a, k_demo_len_tile_a, cfg);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  rc = demo_get_and_verify(st, k_demo_key_tile_c, k_demo_seed_tile_c, k_demo_len_tile_c, cfg);
+  rc =
+    internal_demo_get_and_verify(st, k_demo_key_tile_c, k_demo_seed_tile_c, k_demo_len_tile_c, cfg);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  return demo_get_and_verify(st, k_demo_key_tile_d, k_demo_seed_tile_d, k_demo_len_tile_d, cfg);
+  return internal_demo_get_and_verify(st,
+                                      k_demo_key_tile_d,
+                                      k_demo_seed_tile_d,
+                                      k_demo_len_tile_d,
+                                      cfg);
 }
 
 /**
@@ -411,8 +437,8 @@ static ra8_err_t demo_verify_survivors(const ra8_cache_store_t*      st,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t demo_phase_remount(const cache_store_demo_cfg_t* cfg,
-                                    cache_store_demo_result_t*    out)
+RA8_INTERNAL static ra8_err_t internal_demo_phase_remount(const cache_store_demo_cfg_t* cfg,
+                                                          cache_store_demo_result_t*    out)
 {
   RA8_CHECK_NULL_PTR(cfg, "rcs_demo", "cfg is NULL");
   RA8_CHECK_NULL_PTR(out, "rcs_demo", "out is NULL");
@@ -420,7 +446,7 @@ static ra8_err_t demo_phase_remount(const cache_store_demo_cfg_t* cfg,
   (void)memset(cfg->index, 0, (size_t)cfg->index_cap * sizeof(cfg->index[0]));
   (void)memset(cfg->staging, 0, (size_t)cfg->staging_bytes);
   ra8_cache_store_cfg_t cs2 = {};
-  if (demo_build_cfg(cfg, false, &cs2) != k_ra8_ok) {
+  if (internal_demo_build_cfg(cfg, false, &cs2) != k_ra8_ok) {
     out->status = k_cache_store_demo_err_remount;
     return k_ra8_err_invalid_state;
   }
@@ -430,7 +456,7 @@ static ra8_err_t demo_phase_remount(const cache_store_demo_cfg_t* cfg,
     return k_ra8_err_invalid_state;
   }
   out->last_stage = k_cache_store_demo_stage_remounted;
-  if (demo_verify_survivors(&st2, cfg) != k_ra8_ok) {
+  if (internal_demo_verify_survivors(&st2, cfg) != k_ra8_ok) {
     out->status = k_cache_store_demo_err_persist;
     return k_ra8_err_invalid_state;
   }
@@ -464,7 +490,7 @@ ra8_err_t cache_store_demo_run(const cache_store_demo_cfg_t* cfg, cache_store_de
   };
 
   ra8_cache_store_cfg_t cs = {};
-  if (demo_build_cfg(cfg, true, &cs) != k_ra8_ok) {
+  if (internal_demo_build_cfg(cfg, true, &cs) != k_ra8_ok) {
     out->status = k_cache_store_demo_err_mount;
     return k_ra8_err_invalid_state;
   }
@@ -475,21 +501,24 @@ ra8_err_t cache_store_demo_run(const cache_store_demo_cfg_t* cfg, cache_store_de
   }
   out->last_stage = k_cache_store_demo_stage_mounted;
 
-  if (demo_phase_seed(&st, cfg) != k_ra8_ok) {
+  if (internal_demo_phase_seed(&st, cfg) != k_ra8_ok) {
     out->status = k_cache_store_demo_err_seed;
     return k_ra8_err_invalid_state;
   }
   out->last_stage = k_cache_store_demo_stage_seeded;
 
-  if (demo_phase_evict(&st) != k_ra8_ok) {
+  if (internal_demo_phase_evict(&st) != k_ra8_ok) {
     out->status = k_cache_store_demo_err_evict;
     return k_ra8_err_invalid_state;
   }
   out->last_stage = k_cache_store_demo_stage_evicted;
 
   /* Reuse: the sectors tile_b freed now hold tile_d. */
-  if (demo_put_and_verify(&st, k_demo_key_tile_d, k_demo_seed_tile_d, k_demo_len_tile_d, cfg) !=
-      k_ra8_ok) {
+  if (internal_demo_put_and_verify(&st,
+                                   k_demo_key_tile_d,
+                                   k_demo_seed_tile_d,
+                                   k_demo_len_tile_d,
+                                   cfg) != k_ra8_ok) {
     out->status = k_cache_store_demo_err_reuse;
     return k_ra8_err_invalid_state;
   }
@@ -501,8 +530,8 @@ ra8_err_t cache_store_demo_run(const cache_store_demo_cfg_t* cfg, cache_store_de
   }
   out->last_stage = k_cache_store_demo_stage_closed;
 
-  if (demo_phase_remount(cfg, out) != k_ra8_ok) {
-    return k_ra8_err_invalid_state; /* demo_phase_remount set out->status */
+  if (internal_demo_phase_remount(cfg, out) != k_ra8_ok) {
+    return k_ra8_err_invalid_state; /* internal_demo_phase_remount set out->status */
   }
   out->last_stage = k_cache_store_demo_stage_persisted;
   out->status     = k_cache_store_demo_ok;

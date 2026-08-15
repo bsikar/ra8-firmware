@@ -55,6 +55,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_bkup.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
@@ -83,12 +84,46 @@ typedef enum : uint8_t {
   k_bkup_demo_idx_boot     = 31U, /**< Boot-counter word index.            */
 } bkup_demo_layout_t;
 
-/** @brief Output line prefixes. */
-static const uint8_t k_bkup_demo_ok_msg[]  = "bkup: rw=ok ";
-static const uint8_t k_bkup_demo_bad_msg[] = "bkup: rw=BAD ";
-static const uint8_t k_bkup_demo_surv_y[]  = "survived=Y ";
-static const uint8_t k_bkup_demo_surv_n[]  = "survived=N ";
-static const uint8_t k_bkup_demo_crlf[]    = "\r\n";
+/**
+ * @var s_bkup_demo_ok_msg
+ * @brief Prefix for a successful backup-word read/write report.
+ * @details Begins the periodic console line when all 30 pattern words match.
+ * @note Followed by the reset-survival suffix.
+ * @since 0.1.0
+ */
+static const uint8_t s_bkup_demo_ok_msg[] = "bkup: rw=ok ";
+/**
+ * @var s_bkup_demo_bad_msg
+ * @brief Prefix for a failed backup-word read/write report.
+ * @details Identifies either an accessor error or a pattern mismatch.
+ * @note Followed by the reset-survival suffix.
+ * @since 0.1.0
+ */
+static const uint8_t s_bkup_demo_bad_msg[] = "bkup: rw=BAD ";
+/**
+ * @var s_bkup_demo_surv_y
+ * @brief Warm-reset survival suffix.
+ * @details Reports that the retained sentinel was present at startup.
+ * @note Kept the same byte length as the negative suffix.
+ * @since 0.1.0
+ */
+static const uint8_t s_bkup_demo_surv_y[] = "survived=Y ";
+/**
+ * @var s_bkup_demo_surv_n
+ * @brief Cold-start survival suffix.
+ * @details Reports that startup had to plant a new retained sentinel.
+ * @note Kept the same byte length as the affirmative suffix.
+ * @since 0.1.0
+ */
+static const uint8_t s_bkup_demo_surv_n[] = "survived=N ";
+/**
+ * @var s_bkup_demo_crlf
+ * @brief Console line terminator for each periodic report.
+ * @details Uses CRLF to match the board UART diagnostic convention.
+ * @note The terminating null byte is excluded from writes.
+ * @since 0.1.0
+ */
+static const uint8_t s_bkup_demo_crlf[] = "\r\n";
 
 /**
  * @var g_bkup_rw_ok
@@ -122,45 +157,78 @@ volatile uint32_t g_bkup_boot_count = 0U;
  */
 volatile uint32_t g_bkup_heartbeat = 0U;
 
-/** @brief Park forever after a fatal init failure. */
-static void bkup_demo_panic_halt(void)
+/**
+ * @brief Park forever after a fatal initialization failure.
+ * @details Repeatedly executes the target wait-for-interrupt instruction so
+ *          the failed application cannot advance its heartbeat or diagnostics.
+ * @pre A required platform or backup-domain initialization step failed.
+ * @pre The caller accepts that control never returns.
+ * @post The core remains in the permanent wait loop.
+ * @post No success indicator is modified.
+ * @note A debugger can inspect the call site to identify the failed dependency.
+ * @since 0.1.0
+ */
+[[noreturn]] RA8_INTERNAL static void internal_bkup_demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-/** @brief Deterministic pattern for backup word @p i. */
-static uint32_t bkup_demo_pattern(uint8_t i)
+/**
+ * @brief Derive the deterministic pattern for one backup word.
+ * @details Multiplies the word index into repeated bytes and XORs the fixed
+ *          mask, producing visibly distinct values for adjacent slots.
+ * @param[in] i Backup data-word index.
+ * @return Expected 32-bit pattern for ``i``.
+ * @retval 0x00000000..0xFFFFFFFF Deterministic index-derived word.
+ * @pre ``i`` is less than ``k_bkup_demo_data_words``.
+ * @pre The compile-time multiplier and mask retain their documented values.
+ * @post No backup register or global state is accessed.
+ * @post Repeated calls with the same index return the same value.
+ * @note The pattern is diagnostic, not cryptographic.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_bkup_demo_pattern(uint8_t i)
 {
   return ((uint32_t)i * (uint32_t)k_bkup_demo_pat_mult) ^ (uint32_t)k_bkup_demo_pat_xor;
 }
 
-/** @brief Bring CGC + SysTick + SCI8 + LEDs + MSTP up. */
-static void bkup_demo_setup_or_halt(void)
+/**
+ * @brief Initialize clocks, time, console, LEDs, and the backup domain.
+ * @details Brings dependencies up in order, then explicitly enables VBATT
+ *          backup access under the board's VCC-tied supply configuration.
+ * @pre Core reset initialization has completed and peripheral MMIO is accessible.
+ * @pre Configurable interrupts remain globally masked.
+ * @post On success all periodic-report and retained-word dependencies are ready.
+ * @post Any failed step transfers control to the permanent halt loop.
+ * @note The backup access window intentionally remains enabled for this demo.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_bkup_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    bkup_demo_panic_halt();
+    internal_bkup_demo_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    bkup_demo_panic_halt();
+    internal_bkup_demo_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    bkup_demo_panic_halt();
+    internal_bkup_demo_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    bkup_demo_panic_halt();
+    internal_bkup_demo_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_bkup_demo_baud) != k_ra8_ok) {
-    bkup_demo_panic_halt();
+    internal_bkup_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    bkup_demo_panic_halt();
+    internal_bkup_demo_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
-    bkup_demo_panic_halt();
+    internal_bkup_demo_panic_halt();
   }
 
   /* Bring the VBATT backup-register block up before any VBTBKRn touch. Two
@@ -188,7 +256,7 @@ static void bkup_demo_setup_or_halt(void)
     .enable_backup = true,
   };
   if (ra8_bkup_init(&bkup_cfg) != k_ra8_ok) {
-    bkup_demo_panic_halt();
+    internal_bkup_demo_panic_halt();
   }
 }
 
@@ -198,22 +266,25 @@ static void bkup_demo_setup_or_halt(void)
  * @param[out] out_ok 1 if every word read back exactly, else 0.
  *
  * @par MC/DC:
- * Decision ``read != bkup_demo_pattern(i)`` (1 condition). Two vectors:
+ * Decision ``read != internal_bkup_demo_pattern(i)`` (1 condition). Two vectors:
  * match (steady state) and mismatch (covered by the host test, which
  * seeds a differing read-back).
  *
  * @return ``ra8_err_t`` -- first accessor error, or ``k_ra8_ok``.
  * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
  * @pre Backup domain is powered (VBATT tied to VCC on the EVM).
+ * @pre Words 0..29 are available for this destructive pattern check.
  * @post ``*out_ok`` is 0 or 1; words 0..29 hold the pattern.
+ * @post Reserved sentinel and boot-counter words remain unchanged.
+ * @note Accessor errors stop the sweep immediately and leave ``*out_ok`` unspecified.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t bkup_demo_rw_check(uint8_t* out_ok)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_bkup_demo_rw_check(uint8_t* out_ok)
 {
   RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
 
   for (uint8_t i = 0U; i < (uint8_t)k_bkup_demo_data_words; ++i) {
-    const ra8_err_t werr = ra8_bkup_write_word(i, bkup_demo_pattern(i));
+    const ra8_err_t werr = ra8_bkup_write_word(i, internal_bkup_demo_pattern(i));
     if (werr != k_ra8_ok) {
       return werr;
     }
@@ -225,7 +296,7 @@ static void bkup_demo_setup_or_halt(void)
     if (rerr != k_ra8_ok) {
       return rerr;
     }
-    if (got != bkup_demo_pattern(i)) {
+    if (got != internal_bkup_demo_pattern(i)) {
       ok = 0U;
     }
   }
@@ -248,12 +319,16 @@ static void bkup_demo_setup_or_halt(void)
  * covered by the host test.
  *
  * @return ``ra8_err_t`` from the backup accessors.
+ * @retval k_ra8_ok Retained-state diagnostics and counter were updated.
  * @pre Backup domain is powered.
+ * @pre Sentinel and boot-counter slots are reserved for this application.
  * @post ``g_bkup_survived`` / ``g_bkup_boot_count`` reflect this boot; the
  *       sentinel + counter words are written.
+ * @post Pattern-test words 0..29 remain unchanged.
+ * @note A cold boot plants the sentinel and starts the counter at one.
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t bkup_demo_survival_check(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_bkup_demo_survival_check(void)
 {
   uint32_t        sentinel = 0U;
   const ra8_err_t serr     = ra8_bkup_read_word((uint8_t)k_bkup_demo_idx_sentinel, &sentinel);
@@ -285,14 +360,24 @@ static void bkup_demo_setup_or_halt(void)
   return k_ra8_ok;
 }
 
-/** @brief Emit "survived=Y boot=N" suffix as ASCII over SCI8. */
-static void bkup_demo_report_survival(void)
+/**
+ * @brief Emit the fixed-width reset-survival suffix over the console.
+ * @details Selects the affirmative or negative string from the retained-state
+ *          diagnostic and writes its common payload length without allocation.
+ * @pre The board UART console has been initialized.
+ * @pre The two suffix arrays retain equal compile-time lengths.
+ * @post Exactly one survival suffix has been offered to the console backend.
+ * @post Retained-state globals remain unchanged.
+ * @note The boot count is exposed through ``g_bkup_boot_count`` for SWD probes.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_bkup_demo_report_survival(void)
 {
-  const uint8_t* tag = (g_bkup_survived != 0U) ? k_bkup_demo_surv_y : k_bkup_demo_surv_n;
+  const uint8_t* tag = (g_bkup_survived != 0U) ? s_bkup_demo_surv_y : s_bkup_demo_surv_n;
   /* Both suffixes are the same length ("survived=Y " / "survived=N "). */
-  static_assert(sizeof(k_bkup_demo_surv_y) == sizeof(k_bkup_demo_surv_n),
+  static_assert(sizeof(s_bkup_demo_surv_y) == sizeof(s_bkup_demo_surv_n),
                 "survived=Y / survived=N suffixes must be equal length");
-  const uint32_t len = (uint32_t)(sizeof(k_bkup_demo_surv_y) - 1U);
+  const uint32_t len = (uint32_t)(sizeof(s_bkup_demo_surv_y) - 1U);
   (void)ra8_board_uart_console_write(tag, (size_t)len);
 }
 
@@ -300,37 +385,37 @@ static void bkup_demo_report_survival(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  bkup_demo_setup_or_halt();
+  internal_bkup_demo_setup_or_halt();
   /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
    * SysTick path (ra8_emulator does not advance DWT_CYCCNT). No NVIC sources
    * are armed by this demo. */
   ra8_isr_globals_enable();
 
-  if (bkup_demo_survival_check() != k_ra8_ok) {
-    bkup_demo_panic_halt();
+  if (internal_bkup_demo_survival_check() != k_ra8_ok) {
+    internal_bkup_demo_panic_halt();
   }
 
   while (1) {
     uint8_t         rw   = 0U;
-    const ra8_err_t err  = bkup_demo_rw_check(&rw);
+    const ra8_err_t err  = internal_bkup_demo_rw_check(&rw);
     const uint8_t   good = (err == k_ra8_ok && rw != 0U) ? 1U : 0U;
     g_bkup_rw_ok         = (uint32_t)good;
 
     if (good != 0U) {
-      (void)ra8_board_uart_console_write(k_bkup_demo_ok_msg,
-                                         (size_t)(sizeof(k_bkup_demo_ok_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_bkup_demo_ok_msg,
+                                         (size_t)(sizeof(s_bkup_demo_ok_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra8_board_uart_console_write(k_bkup_demo_bad_msg,
-                                         (size_t)(sizeof(k_bkup_demo_bad_msg) - 1U));
+      (void)ra8_board_uart_console_write(s_bkup_demo_bad_msg,
+                                         (size_t)(sizeof(s_bkup_demo_bad_msg) - 1U));
       (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
-    bkup_demo_report_survival();
-    (void)ra8_board_uart_console_write(k_bkup_demo_crlf, (size_t)(sizeof(k_bkup_demo_crlf) - 1U));
+    internal_bkup_demo_report_survival();
+    (void)ra8_board_uart_console_write(s_bkup_demo_crlf, (size_t)(sizeof(s_bkup_demo_crlf) - 1U));
     ++g_bkup_heartbeat;
     ra8_delay_ms(k_bkup_demo_period_ms);
   }
-  bkup_demo_panic_halt();
+  internal_bkup_demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

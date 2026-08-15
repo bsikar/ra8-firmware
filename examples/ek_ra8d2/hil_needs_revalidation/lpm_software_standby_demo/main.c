@@ -39,6 +39,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -66,7 +67,7 @@ typedef enum : uint16_t {
 } lpm_swstd_byte_t;
 
 /** @brief Boot banner -- this is the HIL gate string. */
-static const uint8_t k_lpm_swstd_boot_msg[] = "lpm_swstd: boot\r\n";
+static const uint8_t s_lpm_swstd_boot_msg[] = "lpm_swstd: boot\r\n";
 
 /**
  * @var g_lpm_swstd_wake_count
@@ -80,7 +81,20 @@ static const uint8_t k_lpm_swstd_boot_msg[] = "lpm_swstd: boot\r\n";
  */
 volatile uint32_t g_lpm_swstd_wake_count = 0U;
 
-static void lpm_swstd_panic_halt(void)
+/**
+ * @brief Park the processor after a fatal setup or standby-path failure.
+ *
+ * @details Executes wait-for-interrupt indefinitely so a failed software-
+ * standby sequence cannot continue into application code with partial state.
+ *
+ * @pre The caller has determined that the demo cannot continue safely.
+ * @pre No foreground recovery operation remains capable of restoring state.
+ * @post This function does not return.
+ * @post The processor remains in a low-activity wait loop.
+ * @note The terminal loop preserves the failure state for a debugger probe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_lpm_swstd_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -103,26 +117,27 @@ static void lpm_swstd_panic_halt(void)
  * @post LPM block has LPSCR.LPMD = 0 (System Active) so the first
  *       WFI is a plain CPU sleep until ``ra8_lpm_enter_sleep`` is
  *       called.
+ * @note The helper applies a fail-closed startup policy before IRQs are enabled.
  *
  * @since 0.1.0
  */
-static void lpm_swstd_setup_or_halt(void)
+RA8_INTERNAL static void internal_lpm_swstd_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra8_cgc_init() != k_ra8_ok) {
-    lpm_swstd_panic_halt();
+    internal_lpm_swstd_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    lpm_swstd_panic_halt();
+    internal_lpm_swstd_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    lpm_swstd_panic_halt();
+    internal_lpm_swstd_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_lpm_swstd_baud) != k_ra8_ok) {
-    lpm_swstd_panic_halt();
+    internal_lpm_swstd_panic_halt();
   }
   if (ra8_rtc_init() != k_ra8_ok) {
-    lpm_swstd_panic_halt();
+    internal_lpm_swstd_panic_halt();
   }
   const ra8_rtc_datetime_t seed = {
     .year    = (uint16_t)(k_lpm_swstd_year_base + (uint16_t)k_lpm_swstd_seed_year_lo),
@@ -134,7 +149,7 @@ static void lpm_swstd_setup_or_halt(void)
     .second  = 0U,
   };
   if (ra8_rtc_set(&seed) != k_ra8_ok) {
-    lpm_swstd_panic_halt();
+    internal_lpm_swstd_panic_halt();
   }
   const ra8_lpm_config_t lpm_cfg = {
     .io_port_keep     = false,
@@ -144,12 +159,15 @@ static void lpm_swstd_setup_or_halt(void)
     .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
   if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
-    lpm_swstd_panic_halt();
+    internal_lpm_swstd_panic_halt();
   }
 }
 
 /**
  * @brief Compute @p now + 5 s wrapping over seconds/minutes/hours.
+ *
+ * @details Copies the complete calendar value, then advances the time-of-day
+ * fields with explicit carry propagation through seconds, minutes, and hours.
  *
  * @param[in]  now Current datetime.
  * @param[out] out Receives the +5 s alarm datetime.
@@ -159,10 +177,12 @@ static void lpm_swstd_setup_or_halt(void)
  *
  * @post ``out->second/minute/hour`` reflect the wall-clock advance.
  * @post ``out->year/month/day/weekday`` mirror ``now``.
+ * @note Day rollover wraps the hour to zero; date advancement is out of scope.
  *
  * @since 0.1.0
  */
-static void lpm_swstd_add_offset(const ra8_rtc_datetime_t* now, ra8_rtc_datetime_t* out)
+RA8_INTERNAL static void internal_lpm_swstd_add_offset(const ra8_rtc_datetime_t* now,
+                                                       ra8_rtc_datetime_t*       out)
 {
   *out                = *now;
   const uint16_t s    = (uint16_t)now->second + (uint16_t)k_lpm_swstd_alarm_offset_s;
@@ -178,6 +198,11 @@ static void lpm_swstd_add_offset(const ra8_rtc_datetime_t* now, ra8_rtc_datetime
 /**
  * @brief Arm the +5 s RTC alarm and the WUPEN0.RTCALM wake source.
  *
+ * @details Builds the future alarm, enables the RTC alarm interrupt, and then
+ * enables the corresponding software-standby wake bit.
+ *
+ * @param[in] now Current RTC calendar value used as the alarm base.
+ *
  * @par MC/DC:
  * Compound decision: ``ra8_rtc_set_alarm != ok ||
  * ra8_rtc_set_irq_enable != ok || ra8_lpm_arm_wupen0_bits != ok``.
@@ -185,19 +210,23 @@ static void lpm_swstd_add_offset(const ra8_rtc_datetime_t* now, ra8_rtc_datetime
  * + each branch error path covered in the host unit test.
  *
  * @return Error code from the first failing primitive.
+ * @retval k_ra8_ok The alarm and wake-source bit were armed.
  *
  * @pre RTC has been initialised and seeded.
  * @pre LPM block has been initialised with PRC1 unlocked.
  *
  * @post On success the RTC alarm is set 5 s in the future and
  *       WUPEN0.RTCALMWUPEN is asserted.
+ * @post On failure, later alarm-routing operations are not attempted.
+ * @note The alarm target uses the bounded offset helper and does not change @p now.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t lpm_swstd_arm_wake(const ra8_rtc_datetime_t* now)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t
+internal_lpm_swstd_arm_wake(const ra8_rtc_datetime_t* now)
 {
   ra8_rtc_datetime_t a = {};
-  lpm_swstd_add_offset(now, &a);
+  internal_lpm_swstd_add_offset(now, &a);
   ra8_err_t err = ra8_rtc_set_alarm(&a);
   if (err != k_ra8_ok) {
     return err;
@@ -213,21 +242,21 @@ static void lpm_swstd_add_offset(const ra8_rtc_datetime_t* now, ra8_rtc_datetime
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  lpm_swstd_setup_or_halt();
+  internal_lpm_swstd_setup_or_halt();
   ra8_isr_globals_enable();
 
   /* Emit the boot banner *before* the standby entry so the HIL gate
    * confirms the firmware booted even when the sub-clock crystal is
    * silent (see the SOSC caveat in the file header). */
-  (void)ra8_board_uart_console_write(k_lpm_swstd_boot_msg,
-                                     (size_t)(sizeof(k_lpm_swstd_boot_msg) - 1U));
+  (void)ra8_board_uart_console_write(s_lpm_swstd_boot_msg,
+                                     (size_t)(sizeof(s_lpm_swstd_boot_msg) - 1U));
 
   while (1) {
     ra8_rtc_datetime_t now = {};
     if (ra8_rtc_get(&now) != k_ra8_ok) {
       break;
     }
-    if (lpm_swstd_arm_wake(&now) != k_ra8_ok) {
+    if (internal_lpm_swstd_arm_wake(&now) != k_ra8_ok) {
       break;
     }
     if (ra8_lpm_enter_sleep(k_ra8_sleep_mode_software_std) != k_ra8_ok) {
@@ -239,7 +268,7 @@ int32_t main(void)
      * re-arm the alarm. */
     (void)ra8_rtc_clear_status((uint8_t)k_ra8_rtc_irq_alarm);
   }
-  lpm_swstd_panic_halt();
+  internal_lpm_swstd_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

@@ -12,21 +12,21 @@ epub: chapters=2 ch0_crc=CF23AEEE PASS
 
 ## What it tests
 
-The EPUB parse path is byte-twiddling C/C++ (vendored miniz + tinyxml2)
+The EPUB parse path is bounded C (vendored miniz + the pure-C XML reader)
 that had only ever run on the x86 host. This gate runs it on the
-Cortex-M85, exercising the two allocation paths that the zero-heap
-firmware (NASA Rule 3: `_sbrk` traps) has to route around `malloc`:
+Cortex-M85, exercising the bounded storage paths that the zero-heap
+firmware (NASA Rule 3: `_sbrk` traps) uses:
 
 - **`ra8_epub_open()`** drives `mz_zip_reader_init_mem` to read the ZIP
-  central directory, then tinyxml2 to parse `META-INF/container.xml` and
+  central directory, then the bounded XML reader parses `META-INF/container.xml` and
   the OPF (spine + Dublin Core metadata).
 - **`ra8_epub_load_chapter(0)`** drives `mz_zip_reader_extract_to_mem`,
   i.e. the miniz DEFLATE (tinfl) decompressor, on chapter 0.
 - **`ra8_epub_get_metadata()`** reads the parsed Dublin Core fields.
 
 miniz's allocations go through the `ra8_epub_miniz_alloc` static first-fit
-arena; tinyxml2's `operator new` / `new[]` go through the arena-backed
-override in `ra8_epub_cpp_alloc.cpp`. Neither reaches the trapped heap.
+arena. XML parsing uses explicit caller-owned workspace and performs no
+allocation. Neither path reaches the trapped heap.
 
 The CRC-32 over chapter 0's decompressed XHTML is `0xCF23AEEE`, which is
 byte-exact for the baked seed (`zlib.crc32` of `OEBPS/chapter1.xhtml`),

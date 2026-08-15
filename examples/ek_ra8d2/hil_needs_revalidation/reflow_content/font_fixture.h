@@ -13,8 +13,15 @@
 
 #include <stdint.h>
 
-/** @brief Ahem TTF bytes. */
-static const uint8_t k_ahem_ttf[] = {
+/**
+ * @var s_ahem_ttf
+ * @brief Embedded Ahem TrueType font bytes.
+ * @details Preserves the public-domain fixture byte-for-byte so reflow and
+ *          glyph geometry remain deterministic across HIL runs.
+ * @note Read-only application data; no runtime ownership is transferred.
+ * @since 0.1.0
+ */
+static const uint8_t s_ahem_ttf[] = {
   0x00, 0x01, 0x00, 0x00, 0x00, 0x0B, 0x00, 0x80, 0x00, 0x03, 0x00, 0x30, 0x4F, 0x53, 0x2F, 0x32,
   0x77, 0x60, 0xF9, 0x6F, 0x00, 0x00, 0x01, 0x38, 0x00, 0x00, 0x00, 0x60, 0x63, 0x6D, 0x61, 0x70,
   0xA3, 0x7C, 0xAA, 0xC8, 0x00, 0x00, 0x05, 0x9C, 0x00, 0x00, 0x06, 0x82, 0x67, 0x61, 0x73, 0x70,
@@ -885,5 +892,11 @@ static const uint8_t k_ahem_ttf[] = {
   0x00, 0x08, 0x00, 0x02, 0x00, 0x10, 0x00, 0x01, 0xFF, 0xFF, 0x00, 0x03,
 };
 
-/** @brief Length of ::k_ahem_ttf in bytes. */
-static const uint32_t k_ahem_ttf_len = 13884U;
+/**
+ * @var s_ahem_ttf_len
+ * @brief Exact byte length of ::s_ahem_ttf.
+ * @details Supplies the bounded font span passed to the reflow initializer.
+ * @note Must remain synchronized with the embedded fixture payload.
+ * @since 0.1.0
+ */
+static const uint32_t s_ahem_ttf_len = 13884U;

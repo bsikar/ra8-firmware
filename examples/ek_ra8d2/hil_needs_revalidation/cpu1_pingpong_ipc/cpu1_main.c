@@ -15,6 +15,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_ipc.h"
 
@@ -36,17 +37,11 @@ typedef enum : uint8_t {
   k_cpu1_pingpong_pair_zero = 0U, /**< Cpu1 pingpong pair zero. */
 } cpu1_main_pair_t;
 
-/**
- * @brief CPU1 application loop.
- * @details See file header.
- * @pre Vector table installed.
- * @pre IPC channels reachable.
- * @post Loop never exits.
- * @post IPC channels remain initialized.
- * @note Single-threaded entry.
- * @since 0.1.0
- */
-/* Self-contained IPC for CPU1 -- avoid the M85 HAL whose accessors */ /* LEGACY-OK: ARM bus term */
+/* Self-contained IPC for CPU1 -- avoid the M85 HAL whose accessors */ /* LEGACY-OK:
+                                                                          ARM
+                                                                          bus
+                                                                          term
+                                                                        */
 /* the M33 cannot all reach through its NS-controller view. Channel windows
  * via the NS alias (bit 28 set) so the IPCSAR-attributed channels are
  * reachable. HUM Ch 3.2 p 205. */
@@ -96,14 +91,14 @@ typedef enum : uintptr_t {
  * @see cpu1_sau_reg_t  The registers these are written to.
  */
 typedef enum : uint32_t {
-  k_cpu1_sau_periph_ns_base  = 0x50000000UL, /**< R0 base: peripheral NS alias. */
-  k_cpu1_sau_periph_ns_limit = 0x5FFFFFE1UL, /**< R0 limit | ENABLE.            */
-  k_cpu1_sau_periph_s_base   = 0x40000000UL, /**< R1 base: peripheral S alias.  */
-  k_cpu1_sau_periph_s_limit  = 0x4FFFFFE1UL, /**< R1 limit | ENABLE.            */
-  k_cpu1_sau_ns_sram_base    = 0x22100000UL, /**< R2 base: NS SRAM window.      */
-  k_cpu1_sau_ns_sram_limit   = 0x221FFFE1UL, /**< R2 limit | ENABLE.            */
-  k_cpu1_sau_mram_base       = 0x020C0000UL, /**< R3 base: MRAM_CPU1 image.     */
-  k_cpu1_sau_mram_limit      = 0x020FFFE1UL, /**< R3 limit | ENABLE.            */
+  k_cpu1_sau_periph_ns_base  = 0x50000000UL, /**< R0 NS base.   */
+  k_cpu1_sau_periph_ns_limit = 0x5FFFFFE1UL, /**< R0 limit.     */
+  k_cpu1_sau_periph_s_base   = 0x40000000UL, /**< R1 S base.    */
+  k_cpu1_sau_periph_s_limit  = 0x4FFFFFE1UL, /**< R1 limit.     */
+  k_cpu1_sau_ns_sram_base    = 0x22100000UL, /**< R2 SRAM base. */
+  k_cpu1_sau_ns_sram_limit   = 0x221FFFE1UL, /**< R2 limit.     */
+  k_cpu1_sau_mram_base       = 0x020C0000UL, /**< R3 MRAM base. */
+  k_cpu1_sau_mram_limit      = 0x020FFFE1UL, /**< R3 limit.     */
 } cpu1_sau_region_t;
 
 /**
@@ -117,19 +112,19 @@ typedef enum : uint32_t {
  * @see cpu1_probe_val_t  The sentinel values written to them.
  */
 typedef enum : uintptr_t {
-  k_cpu1_probe_reset_addr   = 0x32100200UL, /**< Reset handler was entered.    */
-  k_cpu1_probe_data_addr    = 0x32100204UL, /**< .data copy completed.         */
-  k_cpu1_probe_bss_addr     = 0x32100208UL, /**< .bss zero-fill completed.     */
-  k_cpu1_probe_main_addr    = 0x3210020CUL, /**< cpu1_main was entered.        */
-  k_cpu1_probe_sau_addr     = 0x32100214UL, /**< SAU programming completed.    */
-  k_cpu1_probe_iter_addr    = 0x32100220UL, /**< IPC loop iteration counter.   */
-  k_cpu1_probe_rxd_addr     = 0x32100224UL, /**< Most recently received word.  */
-  k_cpu1_probe_pong_addr    = 0x32100228UL, /**< Pong-sent counter.            */
-  k_cpu1_probe_preread_addr = 0x32100230UL, /**< Set before each IPC read.     */
-  k_cpu1_probe_sta_addr     = 0x32100234UL, /**< CH2 status read survived.     */
-  k_cpu1_probe_sem_addr     = 0x32100238UL, /**< IPCSEM0 read survived.        */
-  k_cpu1_probe_reset_s_addr = 0x22190200UL, /**< Reset marker, SRAM_CPU1 view. */
-  k_cpu1_ipcsem0_ns_addr    = 0x50020000UL, /**< IPCSEM0 through the NS alias. */
+  k_cpu1_probe_reset_addr   = 0x32100200UL, /**< Reset entry.     */
+  k_cpu1_probe_data_addr    = 0x32100204UL, /**< Data copied.     */
+  k_cpu1_probe_bss_addr     = 0x32100208UL, /**< BSS cleared.     */
+  k_cpu1_probe_main_addr    = 0x3210020CUL, /**< Main entry.      */
+  k_cpu1_probe_sau_addr     = 0x32100214UL, /**< SAU ready.       */
+  k_cpu1_probe_iter_addr    = 0x32100220UL, /**< Loop count.      */
+  k_cpu1_probe_rxd_addr     = 0x32100224UL, /**< Last RX word.    */
+  k_cpu1_probe_pong_addr    = 0x32100228UL, /**< Pong count.      */
+  k_cpu1_probe_preread_addr = 0x32100230UL, /**< Pre-read mark.   */
+  k_cpu1_probe_sta_addr     = 0x32100234UL, /**< CH2 status.      */
+  k_cpu1_probe_sem_addr     = 0x32100238UL, /**< Semaphore.       */
+  k_cpu1_probe_reset_s_addr = 0x22190200UL, /**< SRAM reset mark. */
+  k_cpu1_ipcsem0_ns_addr    = 0x50020000UL, /**< NS semaphore.    */
 } cpu1_probe_addr_t;
 
 /**
@@ -141,12 +136,12 @@ typedef enum : uintptr_t {
  * @see cpu1_probe_addr_t  The addresses these are written to.
  */
 typedef enum : uint32_t {
-  k_cpu1_probe_reset_val = 0xC0DEDEADUL, /**< Written by cpu1_reset_handler.   */
-  k_cpu1_probe_data_val  = 0xB055A55AUL, /**< Written after the .data copy.    */
-  k_cpu1_probe_bss_val   = 0xBEEFCAFEUL, /**< Written after the .bss zero.     */
-  k_cpu1_probe_main_val  = 0x11111111UL, /**< Written on cpu1_main entry.      */
-  k_cpu1_probe_sau_val   = 0x33333333UL, /**< Written once the SAU is enabled. */
-  k_cpu1_probe_pre_val   = 0xAAAAAAAAUL, /**< Written before each IPC read.    */
+  k_cpu1_probe_reset_val = 0xC0DEDEADUL, /**< Reset entry. */
+  k_cpu1_probe_data_val  = 0xB055A55AUL, /**< Data copied. */
+  k_cpu1_probe_bss_val   = 0xBEEFCAFEUL, /**< BSS cleared. */
+  k_cpu1_probe_main_val  = 0x11111111UL, /**< Main entry.  */
+  k_cpu1_probe_sau_val   = 0x33333333UL, /**< SAU ready.   */
+  k_cpu1_probe_pre_val   = 0xAAAAAAAAUL, /**< Pre-read.    */
 } cpu1_probe_val_t;
 
 /**
@@ -157,7 +152,7 @@ typedef enum : uint32_t {
  *          bit-28-clear as Secure. This programmes explicit NS regions for
  *          the peripheral window, the NS SRAM (which now also holds the CPU1
  *          SRAM bank), and the CPU1 MRAM image, then enables the SAU.
- * @pre Called from cpu1_main before any NS peripheral or IPC access.
+ * @pre Called from internal_cpu1_main before any NS peripheral or IPC access.
  * @pre The M33 is still running with its reset-default SAU (disabled).
  * @post Regions 0-3 are programmed and SAU_CTRL.ENABLE is set.
  * @post k_cpu1_probe_sau_addr holds k_cpu1_probe_sau_val, so a bench
@@ -168,7 +163,7 @@ typedef enum : uint32_t {
  *          markers and the CPU1 bank rather than two overlapping ones.
  * @since 0.1.0
  */
-static void cpu1_sau_init(void)
+RA8_INTERNAL static void internal_cpu1_sau_init(void)
 {
   /* Region 0: peripherals NS alias (0x50000000-0x5FFFFFE0). */
   *(volatile uint32_t*)k_cpu1_sau_rnr_addr  = 0x00000000UL;                        /* SAU_RNR  */
@@ -198,12 +193,24 @@ static void cpu1_sau_init(void)
   *(volatile uint32_t*)k_cpu1_probe_sau_addr = (uint32_t)k_cpu1_probe_sau_val; /* SAU configured */
 }
 
-[[noreturn]] static void cpu1_main(void)
+/**
+ * @brief Run the CPU1 side of the ping-pong exchange.
+ * @details Marks entry for the hardware probe, configures CPU1's SAU,
+ *          polls channel 2 for the ping word, and writes the pong word to
+ *          channel 0. Unexpected words are discarded and polling resumes.
+ * @pre The reset handler has copied ``.data`` and cleared ``.bss``.
+ * @pre CPU1 owns channel 2 as receiver and channel 0 as transmitter.
+ * @post Never returns; a valid ping increments the pong probe counter.
+ * @post The latest semaphore, status, and received-word probes remain visible.
+ * @note Single-threaded CPU1 entry; the peer owns the opposite FIFO endpoints.
+ * @since 0.1.0
+ */
+[[noreturn]] RA8_INTERNAL static void internal_cpu1_main(void)
 {
   *(volatile uint32_t*)k_cpu1_probe_main_addr =
-    (uint32_t)k_cpu1_probe_main_val; /* cpu1_main entry */
+    (uint32_t)k_cpu1_probe_main_val; /* internal_cpu1_main entry */
 
-  cpu1_sau_init();
+  internal_cpu1_sau_init();
 
   while (1) {
     *(volatile uint32_t*)k_cpu1_probe_iter_addr += 1U; /* loop iter counter */
@@ -236,7 +243,7 @@ static void cpu1_sau_init(void)
  * @brief CPU1 reset handler.
  *
  * @details Runs the minimal C-runtime init the M33 image needs before
- * branching into ``cpu1_main``:
+ * branching into ``internal_cpu1_main``:
  *   1. Copy ``.data`` from its MRAM_CPU1 load image into SRAM_CPU1.
  *   2. Zero ``.bss`` in SRAM_CPU1.
  *
@@ -245,7 +252,7 @@ static void cpu1_sau_init(void)
  * initialised file-scope statics -- ``.data``) hold whatever pattern
  * SRAM_CPU1 contained at boot. That was the reason CPU1 silently
  * stayed wedged after Agent D embedded the CPU1 binary: the M33
- * jumped straight into ``cpu1_main`` with uninitialised globals, so
+ * jumped straight into ``internal_cpu1_main`` with uninitialised globals, so
  * ``ra8_ipc_init`` / ``ra8_ipc_recv_message`` operated on garbage state
  * structures and the channel pair never came alive.
  *
@@ -255,21 +262,25 @@ static void cpu1_sau_init(void)
  *      ``ra8_cpu1_release`` on CPU0.
  * @post ``.data`` mirrors the MRAM_CPU1 load image.
  * @post ``.bss`` is zero-filled.
- * @post Never returns; ``cpu1_main`` enters its infinite IPC loop.
+ * @post Never returns; ``internal_cpu1_main`` enters its infinite IPC loop.
  *
  * @note Called only from the CPU1 vector table; runs in M33 thread mode.
  * @since 0.1.0
  */
 [[noreturn]] void cpu1_reset_handler(void)
 {
-  /* CPU1 NS-alias-side marker. The M33 here has SECEXT disabled so it */ /* LEGACY-OK: ARM term */
+  /* CPU1 NS-alias-side marker. The M33 here has SECEXT disabled so it */ /* LEGACY-OK:
+                                                                             ARM
+                                                                             term
+                                                                           */
   /* is hardware-locked to the NS controller state; the dedicated SRAM_CPU1
    * bank at 0x22190000 is its physical alias for these BSS reads, but
    * CPU0's J-Link memprobe sees the same bytes through the standard
    * 0x22190000 view. Bench tail: confirm 0xC0DEDEAD before the data
    * copy starts -- it tells us reset_handler actually ran and the
    * MRAM_CPU1 fetch worked. */
-  /* Markers placed in NS_SRAM (CPU0 J-Link memprobe can read this view; */ /* LEGACY-OK: ARM bus */
+  /* Markers placed in NS_SRAM (CPU0 J-Link memprobe can read this view; */ /* LEGACY-OK:
+                                                                               ARM bus */
   /* CPU0's SAU NS_SRAM region 0x22100000-0x221FFFE0 maps NS, and CPU1
    * as a permanent NS controller can write to the same physical bytes
    * through the NS alias 0x32100200). The chip's two views of SRAM
@@ -299,7 +310,7 @@ static void cpu1_sau_init(void)
   *(volatile uint32_t*)k_cpu1_probe_bss_addr =
     (uint32_t)k_cpu1_probe_bss_val; /* survived .bss zero */
 
-  cpu1_main();
+  internal_cpu1_main();
 }
 
 /**
@@ -312,7 +323,7 @@ static void cpu1_sau_init(void)
  * @note Used as default for all exception slots.
  * @since 0.1.0
  */
-[[noreturn]] static void cpu1_fault_handler(void)
+[[noreturn]] RA8_INTERNAL static void internal_cpu1_fault_handler(void)
 {
   while (1) {
     __asm volatile("nop");
@@ -334,11 +345,11 @@ static void cpu1_sau_init(void)
 [[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
   (uintptr_t)&g_ra8_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
-  (uintptr_t)&cpu1_fault_handler,
+  (uintptr_t)&internal_cpu1_fault_handler,
+  (uintptr_t)&internal_cpu1_fault_handler,
+  (uintptr_t)&internal_cpu1_fault_handler,
+  (uintptr_t)&internal_cpu1_fault_handler,
+  (uintptr_t)&internal_cpu1_fault_handler,
+  (uintptr_t)&internal_cpu1_fault_handler,
 };
 #endif
