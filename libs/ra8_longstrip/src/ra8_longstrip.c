@@ -99,7 +99,7 @@ ra8_err_t ra8_longstrip_tile_decode(void*                 ctx,
  */
 RA8_INTERNAL
 static void
-priv_longstrip_bind(ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg, const ra8_jof_info_t* info)
+internal_bind(ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg, const ra8_jof_info_t* info)
 {
   wt->info       = *info;
   wt->canvas_w   = info->width;
@@ -142,8 +142,7 @@ priv_longstrip_bind(ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg, const r
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_longstrip_check_ptrs(const ra8_longstrip_t*     wt,
-                                           const ra8_longstrip_cfg_t* cfg)
+static ra8_err_t internal_check_ptrs(const ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(wt, s_tag, "wt must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -155,7 +154,7 @@ static ra8_err_t priv_longstrip_check_ptrs(const ra8_longstrip_t*     wt,
 
 ra8_err_t ra8_longstrip_open(ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg)
 {
-  const ra8_err_t ptr_err = priv_longstrip_check_ptrs(wt, cfg);
+  const ra8_err_t ptr_err = internal_check_ptrs(wt, cfg);
   if (ptr_err != k_ra8_ok) {
     return ptr_err;
   }
@@ -175,7 +174,7 @@ ra8_err_t ra8_longstrip_open(ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg
   if (info.tile_w != info.width) {
     return k_ra8_err_not_supported;
   }
-  priv_longstrip_bind(wt, cfg, &info);
+  internal_bind(wt, cfg, &info);
   return k_ra8_ok;
 }
 
@@ -260,7 +259,7 @@ ra8_err_t ra8_longstrip_visible_bands(const ra8_longstrip_t* wt,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t wt_sat_add(int32_t a, int32_t b)
+static int32_t internal_sat_add(int32_t a, int32_t b)
 {
   const int64_t sum = (int64_t)a + (int64_t)b;
   if (sum > (int64_t)INT32_MAX) {
@@ -275,7 +274,7 @@ static int32_t wt_sat_add(int32_t a, int32_t b)
 ra8_err_t ra8_longstrip_scroll_by(ra8_longstrip_t* wt, int32_t delta)
 {
   RA8_CHECK_NULL_PTR(wt, s_tag, "wt must not be nullptr");
-  wt->scroll_y = ra8_longstrip_clamp_scroll(wt, wt_sat_add(wt->scroll_y, delta));
+  wt->scroll_y = ra8_longstrip_clamp_scroll(wt, internal_sat_add(wt->scroll_y, delta));
   /* Decision: pinned at either end stops a running fling (2 conditions). */
   if ((wt->scroll_y == 0) || (wt->scroll_y == wt->max_scroll)) {
     wt->velocity = 0;
@@ -306,7 +305,7 @@ ra8_err_t ra8_longstrip_fling(ra8_longstrip_t* wt, int32_t v0)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t wt_apply_friction(int32_t v)
+static int32_t internal_apply_friction(int32_t v)
 {
   return (int32_t)((v * (int32_t)k_wt_fling_num) / (int32_t)k_wt_fling_den);
 }
@@ -327,14 +326,14 @@ static int32_t wt_apply_friction(int32_t v)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool wt_at_top(const ra8_longstrip_t* wt)
+static bool internal_at_top(const ra8_longstrip_t* wt)
 {
   return wt->scroll_y <= 0;
 }
 
 /**
  * @brief Report whether the viewport is pinned at the bottom of the strip.
- * @details Mirror of ::wt_at_top over the `max_scroll` end; the clamp keeps
+ * @details Mirror of ::internal_at_top over the `max_scroll` end; the clamp keeps
  *          `scroll_y <= max_scroll`, so equality is the pinned case.
  * @param[in] wt Opened strip (non-NULL by caller contract).
  * @return `true` when `scroll_y >= max_scroll`, else `false`.
@@ -348,7 +347,7 @@ static bool wt_at_top(const ra8_longstrip_t* wt)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool wt_at_bottom(const ra8_longstrip_t* wt)
+static bool internal_at_bottom(const ra8_longstrip_t* wt)
 {
   return wt->scroll_y >= wt->max_scroll;
 }
@@ -377,9 +376,9 @@ static bool wt_at_bottom(const ra8_longstrip_t* wt)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool wt_fling_should_stop(const ra8_longstrip_t* wt)
+static bool internal_fling_should_stop(const ra8_longstrip_t* wt)
 {
-  return (wt->velocity < 0) ? wt_at_top(wt) : wt_at_bottom(wt);
+  return (wt->velocity < 0) ? internal_at_top(wt) : internal_at_bottom(wt);
 }
 
 bool ra8_longstrip_tick(ra8_longstrip_t* wt)
@@ -390,10 +389,10 @@ bool ra8_longstrip_tick(ra8_longstrip_t* wt)
   if (wt->velocity == 0) {
     return false;
   }
-  wt->scroll_y = ra8_longstrip_clamp_scroll(wt, wt_sat_add(wt->scroll_y, wt->velocity));
-  wt->velocity = wt_apply_friction(wt->velocity);
+  wt->scroll_y = ra8_longstrip_clamp_scroll(wt, internal_sat_add(wt->scroll_y, wt->velocity));
+  wt->velocity = internal_apply_friction(wt->velocity);
   /* Decision: come to rest when the speed hits zero or a boundary is reached. */
-  if ((wt->velocity == 0) || wt_fling_should_stop(wt)) {
+  if ((wt->velocity == 0) || internal_fling_should_stop(wt)) {
     wt->velocity = 0;
     return false;
   }
@@ -416,7 +415,7 @@ bool ra8_longstrip_tick(ra8_longstrip_t* wt)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void wt_warm_band(ra8_longstrip_t* wt, uint16_t band)
+static void internal_warm_band(ra8_longstrip_t* wt, uint16_t band)
 {
   ra8_tile_key_t key = {};
   key.image_id       = wt->image_id;
@@ -461,7 +460,7 @@ ra8_err_t ra8_longstrip_prefetch(ra8_longstrip_t* wt, uint16_t depth)
       }
       target = (uint16_t)(first - i);
     }
-    wt_warm_band(wt, target);
+    internal_warm_band(wt, target);
   }
   return k_ra8_ok;
 }
@@ -485,10 +484,10 @@ ra8_err_t ra8_longstrip_prefetch(ra8_longstrip_t* wt, uint16_t depth)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void wt_accumulate_coverage(const ra8_longstrip_t*        wt,
-                                   int32_t                       dst_y,
-                                   uint16_t                      band_h,
-                                   ra8_longstrip_render_stats_t* stats)
+static void internal_accumulate_coverage(const ra8_longstrip_t*        wt,
+                                         int32_t                       dst_y,
+                                         uint16_t                      band_h,
+                                         ra8_longstrip_render_stats_t* stats)
 {
   int32_t       top = (dst_y > 0) ? dst_y : 0;
   int32_t       bot = dst_y + (int32_t)band_h;
@@ -523,8 +522,10 @@ static void wt_accumulate_coverage(const ra8_longstrip_t*        wt,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-wt_draw_band(ra8_longstrip_t* wt, uint16_t band, int32_t dst_x, ra8_longstrip_render_stats_t* stats)
+static ra8_err_t internal_draw_band(ra8_longstrip_t*              wt,
+                                    uint16_t                      band,
+                                    int32_t                       dst_x,
+                                    ra8_longstrip_render_stats_t* stats)
 {
   ra8_tile_key_t key = {};
   key.image_id       = wt->image_id;
@@ -541,7 +542,7 @@ wt_draw_band(ra8_longstrip_t* wt, uint16_t band, int32_t dst_x, ra8_longstrip_re
     wt->blit(wt->blit_ctx, tile.pixels, tile.width, tile.height, wt->info.bpp, dst_x, dst_y);
   if (berr == k_ra8_ok) {
     stats->bands_drawn++;
-    wt_accumulate_coverage(wt, dst_y, tile.height, stats);
+    internal_accumulate_coverage(wt, dst_y, tile.height, stats);
   } else {
     stats->skipped++;
   }
@@ -562,7 +563,7 @@ ra8_err_t ra8_longstrip_render(ra8_longstrip_t* wt, ra8_longstrip_render_stats_t
   }
   const int32_t dst_x = ((int32_t)wt->viewport_w - (int32_t)wt->canvas_w) / 2;
   for (uint32_t b = (uint32_t)first; b <= (uint32_t)last; b++) { /* bounded by band_count */
-    err = wt_draw_band(wt, (uint16_t)b, dst_x, &local);
+    err = internal_draw_band(wt, (uint16_t)b, dst_x, &local);
     if (err != k_ra8_ok) {
       break;
     }
