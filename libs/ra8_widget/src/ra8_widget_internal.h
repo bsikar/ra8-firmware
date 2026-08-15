@@ -4,16 +4,13 @@
  * @ingroup grp_ereader
  *
  * @details
- * The concrete leaf widgets (::ra8_widget_label_t in `ra8_widget_label.c` and
- * ::ra8_widget_button_t in `ra8_widget_button.c`) both place aligned text and
- * fill a (optionally bordered) box through the injected ::ra8_widget_paint_t
- * backend. Rather than duplicate that geometry in each TU -- which would also
- * duplicate the branch-coverage obligation -- the two small helpers live in
- * `ra8_widget_paint.c` and are declared here as `RA8_PRIV` (module-private,
- * shared across TUs of this one library). They remain pure compute + callback
- * dispatch: they carry no `ra8_gfx` dependency, so the library stays graphics
- * free and the helpers are exercised on the host through the public render
- * callbacks with a recording mock paint.
+ * Concrete widgets share aligned text placement, optionally bordered boxes,
+ * and proportional-fill width through the injected ::ra8_widget_paint_t
+ * backend. Rather than duplicate that geometry and its branch obligations,
+ * the three helpers live in `ra8_widget_paint.c` and are declared here as
+ * `RA8_PRIV` module-private seams. They remain pure compute plus callback
+ * dispatch, carry no `ra8_gfx` dependency, and are exercised through public
+ * render callbacks with a recording host paint.
  *
  * Not part of the public surface: production callers use the widget vtables;
  * the only out-of-TU consumers are the sibling widget TUs and the host tests.
@@ -72,13 +69,13 @@
  *
  * @since 0.1.0
  */
-RA8_PRIV void ra8_widget_priv_text_pos(const ra8_widget_paint_t* paint,
-                                       const ra8_ui_rect_t*      rect,
-                                       const char*               text,
-                                       int16_t                   pad,
-                                       ra8_widget_align_t        align,
-                                       int32_t*                  out_x,
-                                       int32_t*                  out_y);
+RA8_PRIV void priv_widget_text_pos(const ra8_widget_paint_t* paint,
+                                   const ra8_ui_rect_t*      rect,
+                                   const char*               text,
+                                   int16_t                   pad,
+                                   ra8_widget_align_t        align,
+                                   int32_t*                  out_x,
+                                   int32_t*                  out_y);
 
 /**
  * @brief Fill a widget rect with an optional 1-or-more-pixel border.
@@ -113,11 +110,11 @@ RA8_PRIV void ra8_widget_priv_text_pos(const ra8_widget_paint_t* paint,
  *
  * @since 0.1.0
  */
-RA8_PRIV void ra8_widget_priv_fill_box(const ra8_widget_paint_t* paint,
-                                       const ra8_ui_rect_t*      rect,
-                                       uint32_t                  fill,
-                                       uint32_t                  border,
-                                       int16_t                   border_w);
+RA8_PRIV void priv_widget_fill_box(const ra8_widget_paint_t* paint,
+                                   const ra8_ui_rect_t*      rect,
+                                   uint32_t                  fill,
+                                   uint32_t                  border,
+                                   int16_t                   border_w);
 
 /**
  * @brief Filled width in pixels for a `value / total` bar spanning @p width.
@@ -152,4 +149,4 @@ RA8_PRIV void ra8_widget_priv_fill_box(const ra8_widget_paint_t* paint,
  *
  * @since 0.1.0
  */
-RA8_PRIV int32_t ra8_widget_priv_fill_frac(uint32_t value, uint32_t total, int32_t width);
+RA8_PRIV int32_t priv_widget_fill_frac(uint32_t value, uint32_t total, int32_t width);

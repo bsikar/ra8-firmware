@@ -165,7 +165,7 @@ static void test_btn_on_press(ra8_widget_t* w)
  * @test ra8_widget_label render fills its background and places aligned text.
  *
  * @par MC/DC:
- * `ra8_widget_priv_text_pos` alignment branches (each a single condition):
+ * `priv_widget_text_pos` alignment branches (each a single condition):
  * - `align == left` true -> top-left inset (no measure);
  * - `align == left` false + `align == right` true -> right inset;
  * - both false -> centre. The measured (`text_size != NULL`) path is taken for
@@ -305,7 +305,7 @@ static void test_label_init_guards(void)
  * @test ra8_widget_button render paints a bordered face that tracks `pressed`.
  *
  * @par MC/DC:
- * `ra8_widget_priv_fill_box` `border_w <= 0` false arm -> two fills (border +
+ * `priv_widget_fill_box` `border_w <= 0` false arm -> two fills (border +
  * inset face); `internal_button_face` `pressed` arm selects the face colour
  * (false -> released face, true -> pressed face). The `border_w <= 0` true arm
  * is covered by the label (its border_w is 0).

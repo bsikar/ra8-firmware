@@ -1,6 +1,8 @@
 /**
  * @file ra8_widget.c
  * @brief Implementation of the ra8_widget composable-UI layer (#145).
+ * @details Implements bounded widget traversal, invalidation, event routing,
+ * and drawing over caller-owned widget and rendering state.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
