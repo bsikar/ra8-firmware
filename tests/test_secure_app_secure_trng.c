@@ -45,8 +45,8 @@ typedef enum : uint16_t {
 static void test_reset_is_idempotent(void)
 {
   TEST_BEGIN("secure_trng: reset returns ok and reseeds");
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_reset());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_reset());
   TEST_END("secure_trng: reset returns ok and reseeds");
 }
 
@@ -59,10 +59,10 @@ static void test_reset_is_idempotent(void)
 static void test_read_happy_path(void)
 {
   TEST_BEGIN("secure_trng: read fills buffer");
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_reset());
 
   uint8_t buf[k_test_trng_buf_bytes] = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_max));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_max));
 
   /* Deterministic xorshift64* with the documented seed must produce
    * at least one non-zero byte in the first 8 bytes. */
@@ -86,13 +86,14 @@ static void test_read_happy_path(void)
 static void test_read_arg_validation(void)
 {
   TEST_BEGIN("secure_trng: read arg validation");
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_reset());
 
   uint8_t buf[k_test_trng_buf_bytes] = {};
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_secure_trng_read(nullptr, (uint32_t)k_test_trng_len_one));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_secure_trng_read(buf, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 priv_ra8_secure_trng_read(nullptr, (uint32_t)k_test_trng_len_one));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_secure_trng_read(buf, 0U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_too_big));
+                 priv_ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_too_big));
   TEST_END("secure_trng: read arg validation");
 }
 
@@ -118,18 +119,18 @@ static void test_read_arg_validation(void)
 static void test_mcdc_read_length_validation(void)
 {
   TEST_BEGIN("secure_trng MC/DC: len==0 || len>max (secure_trng.c:81)");
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_reset());
   uint8_t buf[k_test_trng_buf_bytes] = {};
 
   /* Vector 1: C1=F, C2=F -> ok. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_one));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_one));
 
   /* Vector 2: C1=F, C2=T -> invalid_arg. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_too_big));
+                 priv_ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_too_big));
 
   /* Vector 3: C1=T short-circuits -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_secure_trng_read(buf, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_secure_trng_read(buf, 0U));
 
   TEST_END("secure_trng MC/DC: len==0 || len>max (secure_trng.c:81)");
 }
@@ -166,7 +167,7 @@ static void test_mcdc_read_length_validation(void)
 static void test_mcdc_read_inner_loop_bound(void)
 {
   TEST_BEGIN("secure_trng MC/DC: inner-loop b<8 && written<len (secure_trng.c:89)");
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_reset());
 
   /* Pre-fill the buffer with a sentinel so we can detect over-write. */
   uint8_t buf[k_test_trng_buf_bytes];
@@ -175,7 +176,7 @@ static void test_mcdc_read_inner_loop_bound(void)
   }
 
   /* Vector 3: len=1 -> at least one body iteration (C1=T,C2=T). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_one));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_one));
   /* Tail (index 1..) remains the sentinel: no over-write. */
   TEST_ASSERT_EQ(0xA5, buf[1]);
 
@@ -183,7 +184,7 @@ static void test_mcdc_read_inner_loop_bound(void)
   for (uint32_t i = 0U; i < (uint32_t)k_test_trng_buf_bytes; ++i) {
     buf[i] = k_t_prefill;
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_seven));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_seven));
   /* Index 7 (the 8th byte) must not have been written. */
   TEST_ASSERT_EQ(0xA5, buf[7]);
 
@@ -192,7 +193,7 @@ static void test_mcdc_read_inner_loop_bound(void)
   for (uint32_t i = 0U; i < (uint32_t)k_test_trng_buf_bytes; ++i) {
     buf[i] = k_t_prefill;
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_eight));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_eight));
   TEST_ASSERT_EQ(0xA5, buf[8]);
 
   TEST_END("secure_trng MC/DC: inner-loop b<8 && written<len (secure_trng.c:89)");
@@ -205,6 +206,5 @@ int32_t main(void)
   test_read_arg_validation();
   test_mcdc_read_length_validation();
   test_mcdc_read_inner_loop_bound();
-  (void)fprintf(stderr, "[OK ] test_secure_app_secure_trng.c\n");
   return 0;
 }

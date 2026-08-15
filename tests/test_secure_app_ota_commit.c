@@ -167,6 +167,5 @@ int32_t main(void)
   test_pending_arg_validation();
   test_bank_config_masking();
   test_mcdc_swap_bank_target_validation();
-  (void)fprintf(stderr, "[OK ] test_secure_app_ota_commit.c\n");
   return 0;
 }

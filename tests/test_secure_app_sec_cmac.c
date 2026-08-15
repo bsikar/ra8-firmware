@@ -7,7 +7,7 @@
  * ARM firmware routes the same API through TF-PSA-Crypto ``psa_mac_*``) to the
  * published NIST SP 800-38B known-answer vectors for AES-128 and AES-256, then
  * exercises the verify verdict (happy path, one-byte tamper, truncated tag)
- * with the MC/DC vector set for the compound decision in ``ra8_sec_cmac_verify``.
+ * with the MC/DC vector set for the compound decision in ``priv_ra8_sec_cmac_verify``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -222,11 +222,12 @@ static void
 test_cmac_one_kat(const uint8_t* key, uint16_t key_len, uint32_t msg_len, const uint8_t* expected)
 {
   uint8_t mac[k_ra8_sec_cmac_tag_bytes] = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_sec_cmac_compute(key, key_len, s_msg, msg_len, mac));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_sec_cmac_compute(key, key_len, s_msg, msg_len, mac));
   TEST_ASSERT_EQ(0, memcmp(mac, expected, (size_t)k_ra8_sec_cmac_tag_bytes));
   /* The same tag must verify. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sec_cmac_verify(key, key_len, s_msg, msg_len, mac, k_ra8_sec_cmac_tag_bytes));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    priv_ra8_sec_cmac_verify(key, key_len, s_msg, msg_len, mac, k_ra8_sec_cmac_tag_bytes));
 }
 
 /**
@@ -254,7 +255,7 @@ static void test_cmac_kat_vectors(void)
  * @par MC/DC:
  * Decision: `if ((mac_len != k_ra8_sec_cmac_tag_bytes) ||
  * !ra8_ct_equal(computed, mac, k_ra8_sec_cmac_tag_bytes))` (2 conditions,
- * src/secure_app/sec_cmac.c ra8_sec_cmac_verify)
+ * src/secure_app/sec_cmac.c priv_ra8_sec_cmac_verify)
  *  - C1 = the supplied tag length is not the expected 16 bytes.
  *  - C2 = the recomputed CMAC does not equal the supplied tag.
  *
@@ -272,38 +273,39 @@ static void test_mcdc_cmac_verify_verdict(void)
 {
   TEST_BEGIN("sec_cmac MC/DC: verify verdict (len-bad || tag-bad)");
   uint8_t good[k_ra8_sec_cmac_tag_bytes] = {};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sec_cmac_compute(s_key128, k_ra8_sec_cmac_key_128, s_msg, k_kat_len_16, good));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    priv_ra8_sec_cmac_compute(s_key128, k_ra8_sec_cmac_key_128, s_msg, k_kat_len_16, good));
 
   /* Vector 1: C1=F, C2=F -> ok. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sec_cmac_verify(s_key128,
-                                     k_ra8_sec_cmac_key_128,
-                                     s_msg,
-                                     k_kat_len_16,
-                                     good,
-                                     k_ra8_sec_cmac_tag_bytes));
+                 priv_ra8_sec_cmac_verify(s_key128,
+                                          k_ra8_sec_cmac_key_128,
+                                          s_msg,
+                                          k_kat_len_16,
+                                          good,
+                                          k_ra8_sec_cmac_tag_bytes));
 
   /* Vector 2: C1=T (truncated tag) -> reject. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_sec_cmac_verify(s_key128,
-                                     k_ra8_sec_cmac_key_128,
-                                     s_msg,
-                                     k_kat_len_16,
-                                     good,
-                                     k_kat_short_len));
+                 priv_ra8_sec_cmac_verify(s_key128,
+                                          k_ra8_sec_cmac_key_128,
+                                          s_msg,
+                                          k_kat_len_16,
+                                          good,
+                                          k_kat_short_len));
 
   /* Vector 3: C1=F, C2=T (one flipped tag byte) -> reject. */
   uint8_t tampered[k_ra8_sec_cmac_tag_bytes] = {};
   (void)memcpy(tampered, good, (size_t)k_ra8_sec_cmac_tag_bytes);
   tampered[k_kat_flip_idx] = (uint8_t)(tampered[k_kat_flip_idx] ^ 1U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_sec_cmac_verify(s_key128,
-                                     k_ra8_sec_cmac_key_128,
-                                     s_msg,
-                                     k_kat_len_16,
-                                     tampered,
-                                     k_ra8_sec_cmac_tag_bytes));
+                 priv_ra8_sec_cmac_verify(s_key128,
+                                          k_ra8_sec_cmac_key_128,
+                                          s_msg,
+                                          k_kat_len_16,
+                                          tampered,
+                                          k_ra8_sec_cmac_tag_bytes));
   TEST_END("sec_cmac MC/DC: verify verdict (len-bad || tag-bad)");
 }
 
@@ -318,39 +320,41 @@ static void test_cmac_arg_validation(void)
   uint8_t mac[k_ra8_sec_cmac_tag_bytes] = {};
 
   /* NULL key / output. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_sec_cmac_compute(nullptr, k_ra8_sec_cmac_key_128, s_msg, k_kat_len_16, mac));
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_sec_cmac_compute(s_key128, k_ra8_sec_cmac_key_128, s_msg, k_kat_len_16, nullptr));
+    priv_ra8_sec_cmac_compute(nullptr, k_ra8_sec_cmac_key_128, s_msg, k_kat_len_16, mac));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    priv_ra8_sec_cmac_compute(s_key128, k_ra8_sec_cmac_key_128, s_msg, k_kat_len_16, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_sec_cmac_verify(s_key128,
-                                     k_ra8_sec_cmac_key_128,
-                                     s_msg,
-                                     k_kat_len_16,
-                                     nullptr,
-                                     k_ra8_sec_cmac_tag_bytes));
+                 priv_ra8_sec_cmac_verify(s_key128,
+                                          k_ra8_sec_cmac_key_128,
+                                          s_msg,
+                                          k_kat_len_16,
+                                          nullptr,
+                                          k_ra8_sec_cmac_tag_bytes));
 
   /* Unsupported key length (192-bit not wired here). */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_sec_cmac_compute(s_key256, k_kat_len_40, s_msg, k_kat_len_16, mac));
+                 priv_ra8_sec_cmac_compute(s_key256, k_kat_len_40, s_msg, k_kat_len_16, mac));
 
   /* NULL message with non-zero length. */
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_sec_cmac_compute(s_key128, k_ra8_sec_cmac_key_128, nullptr, k_kat_len_16, mac));
+    priv_ra8_sec_cmac_compute(s_key128, k_ra8_sec_cmac_key_128, nullptr, k_kat_len_16, mac));
 
   /* Oversize message rejected by the static cap. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_sec_cmac_compute(s_key128,
-                                      k_ra8_sec_cmac_key_128,
-                                      s_msg,
-                                      (uint32_t)k_ra8_sec_cmac_max_msg_bytes + 1U,
-                                      mac));
+                 priv_ra8_sec_cmac_compute(s_key128,
+                                           k_ra8_sec_cmac_key_128,
+                                           s_msg,
+                                           (uint32_t)k_ra8_sec_cmac_max_msg_bytes + 1U,
+                                           mac));
 
   /* Empty message with a NULL pointer is legal. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_sec_cmac_compute(s_key128, k_ra8_sec_cmac_key_128, nullptr, k_kat_len_0, mac));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    priv_ra8_sec_cmac_compute(s_key128, k_ra8_sec_cmac_key_128, nullptr, k_kat_len_0, mac));
   TEST_ASSERT_EQ(0, memcmp(mac, s_tag128_0, (size_t)k_ra8_sec_cmac_tag_bytes));
   TEST_END("sec_cmac: argument validation");
 }
@@ -360,6 +364,5 @@ int32_t main(void)
   test_cmac_kat_vectors();
   test_mcdc_cmac_verify_verdict();
   test_cmac_arg_validation();
-  (void)fprintf(stderr, "[OK ] test_secure_app_sec_cmac.c\n");
   return 0;
 }

@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_key_vault.c
  * @brief Unit tests for the secure key vault + NSC veneer
+ * @details Exercises secure key import, challenge verification, NSC access control, zeroization, and rejection paths with fixed vectors.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -207,6 +208,5 @@ int32_t main(void)
   test_arg_validation();
   test_nsc_veneer_forwards();
   test_mac_key_provisioning();
-  (void)fprintf(stderr, "[OK ] test_ra8_key_vault.c\n");
   return 0;
 }
