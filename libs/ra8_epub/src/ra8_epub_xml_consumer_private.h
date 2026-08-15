@@ -19,29 +19,29 @@
 
 /** @brief Optional attribute span. */
 typedef struct {
-  ra8_xml_span_t span;    /**< Value span. */
+  ra8_xml_span_t span;    /**< Value span.        */
   bool           present; /**< Attribute existed. */
 } priv_attr_t;
 
 /** @brief Mutable state for one validated EPUB navigation pass. */
 typedef struct {
-  const uint8_t*    source;     /**< Immutable navigation document. */
-  size_t            source_len; /**< Navigation-document byte count. */
-  ra8_epub_book_t*  book;       /**< TOC output being populated. */
+  const uint8_t*    source;     /**< Immutable navigation document.          */
+  size_t            source_len; /**< Navigation-document byte count.         */
+  ra8_epub_book_t*  book;       /**< TOC output being populated.             */
   ra8_xml_reader_t* reader;     /**< Reader whose live frames carry markers. */
-  ra8_xml_event_t   selected;   /**< Selected navigation element. */
-  bool              active;     /**< Selected subtree has begun. */
-  bool              saw_ol;     /**< Selected navigation contains its list. */
+  ra8_xml_event_t   selected;   /**< Selected navigation element.            */
+  bool              active;     /**< Selected subtree has begun.             */
+  bool              saw_ol;     /**< Selected navigation contains its list.  */
 } priv_nav_ctx_t;
 
 /** @brief Mutable state for one validated NCX navigation-map pass. */
 typedef struct {
-  const uint8_t*    source;     /**< Immutable NCX document. */
-  size_t            source_len; /**< NCX-document byte count. */
-  ra8_epub_book_t*  book;       /**< TOC output being populated. */
+  const uint8_t*    source;     /**< Immutable NCX document.                 */
+  size_t            source_len; /**< NCX-document byte count.                */
+  ra8_epub_book_t*  book;       /**< TOC output being populated.             */
   ra8_xml_reader_t* reader;     /**< Reader whose live frames carry markers. */
-  ra8_xml_event_t   selected;   /**< Selected navigation-map element. */
-  bool              active;     /**< Selected subtree has begun. */
+  ra8_xml_event_t   selected;   /**< Selected navigation-map element.        */
+  bool              active;     /**< Selected subtree has begun.             */
 } priv_ncx_ctx_t;
 
 /**

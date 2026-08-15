@@ -40,7 +40,7 @@ typedef enum : uintptr_t {
   k_ra8_scb_cfsr  = 0xE000ED28UL, /**< Configurable Fault Status (CFSR).       */
   k_ra8_scb_hfsr  = 0xE000ED2CUL, /**< HardFault Status Register (HFSR).       */
   k_ra8_scb_dfsr  = 0xE000ED30UL, /**< Debug Fault Status Register (DFSR).     */
-  k_ra8_scb_mmfar = 0xE000ED34UL, /**< MemManage Fault Address (MMFAR). */
+  k_ra8_scb_mmfar = 0xE000ED34UL, /**< MemManage Fault Address (MMFAR).        */
   k_ra8_scb_bfar  = 0xE000ED38UL, /**< BusFault Address Register (BFAR).       */
   k_ra8_scb_afsr  = 0xE000ED3CUL, /**< Auxiliary Fault Status (AFSR).          */
   k_ra8_scb_sfsr  = 0xE000EDE4UL, /**< SecureFault Status (SFSR, S-banked).    */

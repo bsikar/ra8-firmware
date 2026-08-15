@@ -30,12 +30,12 @@
 
 /** @brief Fixed disk, workspace, and fixture capacities. */
 typedef enum : uint32_t {
-  k_reader_disk_blocks = 4096U,        /**< RAM block-device capacity.      */
-  k_reader_work_bytes  = 8192U,        /**< Generic backend workspace size. */
+  k_reader_disk_blocks = 4096U,        /**< RAM block-device capacity.       */
+  k_reader_work_bytes  = 8192U,        /**< Generic backend workspace size.  */
   k_reader_io_bytes    = 64U,          /**< Deliberately small read scratch. */
-  k_reader_fixture_max = 768U,         /**< Largest reader fixture.         */
-  k_reader_archive_max = 8192U,        /**< Generated TAR/gzip fixture cap. */
-  k_reader_verify_work = 128U * 1024U, /**< Miniz validation arena.   */
+  k_reader_fixture_max = 768U,         /**< Largest reader fixture.          */
+  k_reader_archive_max = 8192U,        /**< Generated TAR/gzip fixture cap.  */
+  k_reader_verify_work = 128U * 1024U, /**< Miniz validation arena.          */
 } mdl_reader_test_limit_t;
 
 /** @brief Maximally aligned generic backend workspace. */
@@ -47,7 +47,7 @@ typedef union {
 /** @brief Maximally aligned verifier arena. */
 typedef union {
   max_align_t alignment;                   /**< Force maximum alignment. */
-  uint8_t     bytes[k_reader_verify_work]; /**< Miniz workspace bytes.  */
+  uint8_t     bytes[k_reader_verify_work]; /**< Miniz workspace bytes.   */
 } mdl_reader_verify_workspace_t;
 
 /** @brief One expected image signature classification. */
@@ -60,8 +60,8 @@ typedef struct {
 
 /** @brief Expected verifier format, path, and member count. */
 typedef struct {
-  const char*  path;    /**< Canonical fixture path. */
-  mdl_format_t format;  /**< Expected artifact format. */
+  const char*  path;    /**< Canonical fixture path.           */
+  mdl_format_t format;  /**< Expected artifact format.         */
   size_t       members; /**< Expected structural member count. */
 } mdl_reader_verify_case_t;
 

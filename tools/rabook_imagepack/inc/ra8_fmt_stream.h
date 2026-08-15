@@ -28,49 +28,47 @@
 
 /** @brief Revalidate one positioned source against its captured immutable view.
  */
-typedef ra8_err_t (*ra8_fmt_source_validate_fn)(void *ctx,
-                                                uint64_t expected_size);
+typedef ra8_err_t (*ra8_fmt_source_validate_fn)(void* ctx, uint64_t expected_size);
 
 /** @brief Immutable, randomly readable input object. */
 typedef struct {
-  ra8_jof_pread_fn read_at;            /**< Positioned-read callback.    */
+  ra8_jof_pread_fn           read_at;  /**< Positioned-read callback.    */
   ra8_fmt_source_validate_fn validate; /**< Optional stability callback. */
-  void *ctx;                           /**< Backend-owned context.       */
-  uint64_t size;                       /**< Exact object byte length.    */
+  void*                      ctx;      /**< Backend-owned context.       */
+  uint64_t                   size;     /**< Exact object byte length.    */
 } ra8_fmt_source_t;
 
 /** @brief Append text or binary bytes to a bounded backend. */
-typedef ra8_err_t (*ra8_fmt_sink_write_fn)(void *ctx, const uint8_t *bytes,
-                                           size_t len);
+typedef ra8_err_t (*ra8_fmt_sink_write_fn)(void* ctx, const uint8_t* bytes, size_t len);
 
 /** @brief Injected append-only sink. */
 typedef struct {
   ra8_fmt_sink_write_fn write; /**< Exact append callback. */
-  void *ctx;                   /**< Backend-owned context. */
+  void*                 ctx;   /**< Backend-owned context. */
 } ra8_fmt_sink_t;
 
 /** @brief Seal an exact scratch artifact for immutable positioned reads. */
-typedef ra8_err_t (*ra8_fmt_spool_seal_fn)(void *ctx, uint64_t expected_size);
+typedef ra8_err_t (*ra8_fmt_spool_seal_fn)(void* ctx, uint64_t expected_size);
 
 /** @brief Caller-owned scratch artifact with append, seal, and read seams. */
 typedef struct {
-  ra8_jof_pread_fn read_at;     /**< Positioned reader after seal. */
-  ra8_fmt_sink_write_fn append; /**< Append before seal.           */
-  ra8_fmt_spool_seal_fn seal;   /**< Seal exact produced bytes.    */
-  void *ctx;                    /**< Backend-owned state.          */
+  ra8_jof_pread_fn      read_at; /**< Positioned reader after seal. */
+  ra8_fmt_sink_write_fn append;  /**< Append before seal.           */
+  ra8_fmt_spool_seal_fn seal;    /**< Seal exact produced bytes.    */
+  void*                 ctx;     /**< Backend-owned state.          */
 } ra8_fmt_spool_t;
 
 /** @brief Durable artifact-transaction operations. */
 typedef struct {
   ra8_fmt_sink_write_fn append;   /**< Append artifact bytes.       */
-  ra8_err_t (*commit)(void *ctx); /**< Sync and atomically install. */
-  void (*abort)(void *ctx);       /**< Discard owned staging data.  */
+  ra8_err_t (*commit)(void* ctx); /**< Sync and atomically install. */
+  void (*abort)(void* ctx);       /**< Discard owned staging data.  */
 } ra8_fmt_transaction_ops_t;
 
 /** @brief One caller-owned artifact transaction. */
 typedef struct {
-  const ra8_fmt_transaction_ops_t *ops; /**< Transaction implementation. */
-  void *ctx;                            /**< Backend-owned state.        */
+  const ra8_fmt_transaction_ops_t* ops; /**< Transaction implementation. */
+  void*                            ctx; /**< Backend-owned state.        */
 } ra8_fmt_transaction_t;
 
 /** @brief Source geometry and exact arenas required by one JOF conversion. */
@@ -85,9 +83,9 @@ typedef struct {
 
 /** @brief Caller-owned arenas supplied to the streaming JOF converter. */
 typedef struct {
-  uint8_t *work;          /**< Streaming producer arena.   */
+  uint8_t* work;          /**< Streaming producer arena.   */
   uint32_t work_cap;      /**< Bytes available at @p work. */
-  uint8_t *webp_work;     /**< Optional WebP decode arena. */
+  uint8_t* webp_work;     /**< Optional WebP decode arena. */
   uint32_t webp_work_cap; /**< Bytes at @p webp_work.      */
 } ra8_fmt_jof_convert_workspace_t;
 
@@ -95,7 +93,7 @@ typedef struct {
 typedef struct {
   uint16_t width;                /**< Source width in pixels.             */
   uint16_t height;               /**< Source height in pixels.            */
-  uint8_t bpp;                   /**< Decoder output bytes per pixel.     */
+  uint8_t  bpp;                  /**< Decoder output bytes per pixel.     */
   uint16_t band_height;          /**< Subject tile height under test.     */
   uint32_t reference_work_bytes; /**< One-row reference producer arena.   */
   uint32_t banded_work_bytes;    /**< Banded subject producer arena.      */
@@ -111,15 +109,15 @@ typedef struct {
  * passes finish and both spools seal before tile comparison starts.
  */
 typedef struct {
-  uint8_t *work;          /**< Reused producer work arena.      */
+  uint8_t* work;          /**< Reused producer work arena.      */
   uint32_t work_cap;      /**< Bytes available at @p work.      */
-  uint8_t *webp_work;     /**< Optional WebP whole-frame arena. */
+  uint8_t* webp_work;     /**< Optional WebP whole-frame arena. */
   uint32_t webp_work_cap; /**< Bytes at @p webp_work.           */
-  uint8_t *band_tile;     /**< Decoded banded-subject tile.     */
+  uint8_t* band_tile;     /**< Decoded banded-subject tile.     */
   uint32_t band_tile_cap; /**< Bytes at @p band_tile.           */
-  uint8_t *scratch;       /**< Reusable stored-tile staging.    */
+  uint8_t* scratch;       /**< Reusable stored-tile staging.    */
   uint32_t scratch_cap;   /**< Bytes at @p scratch.             */
-  uint8_t *row;           /**< Decoded one-row reference tile.  */
+  uint8_t* row;           /**< Decoded one-row reference tile.  */
   uint32_t row_cap;       /**< Bytes at @p row.                 */
 } ra8_fmt_jof_verify_workspace_t;
 
@@ -129,24 +127,24 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_jof_audit_record_t *records; /**< Audit record array.          */
-  uint32_t record_cap;             /**< Record entries available.    */
-  uint8_t *tile;                   /**< Reusable decoded tile.       */
-  uint32_t tile_cap;               /**< Decoded tile capacity.       */
-  uint8_t *scratch;                /**< Compressed tile staging.     */
-  uint32_t scratch_cap;            /**< Compressed staging capacity. */
+  ra8_jof_audit_record_t* records;     /**< Audit record array.          */
+  uint32_t                record_cap;  /**< Record entries available.    */
+  uint8_t*                tile;        /**< Reusable decoded tile.       */
+  uint32_t                tile_cap;    /**< Decoded tile capacity.       */
+  uint8_t*                scratch;     /**< Compressed tile staging.     */
+  uint32_t                scratch_cap; /**< Compressed staging capacity. */
 } ra8_fmt_jof_inspect_workspace_t;
 
 /** @brief Caller-owned storage for strict streamed RBKC/RABOOK1 inspection. */
 typedef struct {
-  uint64_t *table;         /**< Decoded RBKC offset entries.    */
-  uint32_t table_cap;      /**< Entries available at @p table. */
-  uint8_t *compressed;     /**< One compressed chunk.           */
-  uint32_t compressed_cap; /**< Compressed chunk capacity.      */
-  uint8_t *chunk;          /**< One inflated chunk.             */
-  uint32_t chunk_cap;      /**< Inflated chunk capacity.        */
-  uint8_t *scratch;        /**< Strict validator workspace.     */
-  uint32_t scratch_cap;    /**< Validator workspace capacity.   */
+  uint64_t* table;          /**< Decoded RBKC offset entries.   */
+  uint32_t  table_cap;      /**< Entries available at @p table. */
+  uint8_t*  compressed;     /**< One compressed chunk.          */
+  uint32_t  compressed_cap; /**< Compressed chunk capacity.     */
+  uint8_t*  chunk;          /**< One inflated chunk.            */
+  uint32_t  chunk_cap;      /**< Inflated chunk capacity.       */
+  uint8_t*  scratch;        /**< Strict validator workspace.    */
+  uint32_t  scratch_cap;    /**< Validator workspace capacity.  */
 } ra8_fmt_rabook_inspect_workspace_t;
 
 /**
@@ -159,10 +157,10 @@ typedef struct {
  * @post No allocation occurs and no backend pointer is retained.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
-ra8_fmt_jof_inspect_stream(const ra8_fmt_source_t *source, bool verbose,
-                           ra8_fmt_jof_inspect_workspace_t *workspace,
-                           const ra8_fmt_sink_t *report);
+[[nodiscard]] ra8_err_t ra8_fmt_jof_inspect_stream(const ra8_fmt_source_t*          source,
+                                                   bool                             verbose,
+                                                   ra8_fmt_jof_inspect_workspace_t* workspace,
+                                                   const ra8_fmt_sink_t*            report);
 
 /**
  * @brief Strictly inspect one streamed RBKC container and its RABOOK1 payload.
@@ -176,10 +174,10 @@ ra8_fmt_jof_inspect_stream(const ra8_fmt_source_t *source, bool verbose,
  * on success; no source pointer or workspace pointer is retained.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
-ra8_fmt_rabook_inspect_stream(const ra8_fmt_source_t *source, bool verbose,
-                              ra8_fmt_rabook_inspect_workspace_t *workspace,
-                              const ra8_fmt_sink_t *report);
+[[nodiscard]] ra8_err_t ra8_fmt_rabook_inspect_stream(const ra8_fmt_source_t*             source,
+                                                      bool                                verbose,
+                                                      ra8_fmt_rabook_inspect_workspace_t* workspace,
+                                                      const ra8_fmt_sink_t*               report);
 
 /**
  * @brief Derive source geometry and exact JOF conversion workspace needs.
@@ -199,9 +197,8 @@ ra8_fmt_rabook_inspect_stream(const ra8_fmt_source_t *source, bool verbose,
  * @note Thread-safe for independent source contexts and caller workspaces.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
-ra8_fmt_jof_convert_requirements(const ra8_fmt_source_t *source,
-                                 ra8_fmt_jof_convert_requirements_t *out);
+[[nodiscard]] ra8_err_t ra8_fmt_jof_convert_requirements(const ra8_fmt_source_t*             source,
+                                                         ra8_fmt_jof_convert_requirements_t* out);
 
 /**
  * @brief Stream one encoded image into a durably published JOF artifact.
@@ -224,12 +221,13 @@ ra8_fmt_jof_convert_requirements(const ra8_fmt_source_t *source,
  * @note Performs no allocation and retains no caller pointer.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_jof_convert_stream(
-    const ra8_fmt_source_t *source,
-    const ra8_fmt_jof_convert_requirements_t *requirements,
-    ra8_fmt_jof_convert_workspace_t *workspace,
-    ra8_fmt_transaction_t *transaction, const ra8_fmt_sink_t *report,
-    const char *output_name);
+[[nodiscard]] ra8_err_t
+ra8_fmt_jof_convert_stream(const ra8_fmt_source_t*                   source,
+                           const ra8_fmt_jof_convert_requirements_t* requirements,
+                           ra8_fmt_jof_convert_workspace_t*          workspace,
+                           ra8_fmt_transaction_t*                    transaction,
+                           const ra8_fmt_sink_t*                     report,
+                           const char*                               output_name);
 
 /**
  * @brief Derive exact producer and comparison storage for bounded JOF
@@ -242,9 +240,8 @@ ra8_fmt_jof_convert_requirements(const ra8_fmt_source_t *source,
  * @note Source-kind parsing is bounded by source size and caller storage.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
-ra8_fmt_jof_verify_requirements(const ra8_fmt_source_t *source,
-                                ra8_fmt_jof_verify_requirements_t *out);
+[[nodiscard]] ra8_err_t ra8_fmt_jof_verify_requirements(const ra8_fmt_source_t*            source,
+                                                        ra8_fmt_jof_verify_requirements_t* out);
 
 /**
  * @brief Verify banded JOF pixels against an independently decoded row
@@ -278,10 +275,13 @@ ra8_fmt_jof_verify_requirements(const ra8_fmt_source_t *source,
  * is used.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_fmt_jof_verify_stream(
-    const ra8_fmt_source_t *reference_source,
-    const ra8_fmt_source_t *banded_source,
-    const ra8_fmt_jof_verify_requirements_t *requirements,
-    ra8_fmt_jof_verify_workspace_t *workspace, ra8_fmt_spool_t *reference_spool,
-    ra8_fmt_spool_t *banded_spool, ra8_fmt_transaction_t *dump,
-    const char *dump_name, const ra8_fmt_sink_t *report);
+[[nodiscard]] ra8_err_t
+ra8_fmt_jof_verify_stream(const ra8_fmt_source_t*                  reference_source,
+                          const ra8_fmt_source_t*                  banded_source,
+                          const ra8_fmt_jof_verify_requirements_t* requirements,
+                          ra8_fmt_jof_verify_workspace_t*          workspace,
+                          ra8_fmt_spool_t*                         reference_spool,
+                          ra8_fmt_spool_t*                         banded_spool,
+                          ra8_fmt_transaction_t*                   dump,
+                          const char*                              dump_name,
+                          const ra8_fmt_sink_t*                    report);

@@ -25,7 +25,7 @@
 /** @brief Fixed capacities for the cache contract fixture. */
 typedef enum : uint16_t {
   k_test_body_capacity = 4096U, /**< Returned document scratch bytes. */
-  k_test_path_capacity = 128U,  /**< Temporary-root template bytes.  */
+  k_test_path_capacity = 128U,  /**< Temporary-root template bytes.   */
   k_test_step_max      = 4U,    /**< Scripted responses per scenario. */
 } mdl_cache_test_limit_t;
 
@@ -48,11 +48,11 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  cache_step_t steps[k_test_step_max];                           /**< Responses. */
-  char         if_none_match[k_test_step_max][k_mdl_etag_max];   /**< ETags sent. */
-  char         if_modified[k_test_step_max][k_mdl_last_mod_max]; /**< Dates sent. */
+  cache_step_t steps[k_test_step_max];                           /**< Responses.   */
+  char         if_none_match[k_test_step_max][k_mdl_etag_max];   /**< ETags sent.  */
+  char         if_modified[k_test_step_max][k_mdl_last_mod_max]; /**< Dates sent.  */
   size_t       step_count;                                       /**< Script size. */
-  size_t       calls;                                            /**< Calls made. */
+  size_t       calls;                                            /**< Calls made.  */
 } cache_script_t;
 
 /** @brief Large bounded index workspace kept off the test stack. */

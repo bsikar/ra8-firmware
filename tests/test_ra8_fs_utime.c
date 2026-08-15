@@ -198,7 +198,7 @@ RA8_INTERNAL static void internal_test_utime_fat16(void)
   TEST_ASSERT_EQ(internal_fat_date(2020U, 1U, 2U),
                  internal_img_rd16(off + (uint32_t)k_ut_dir_crtd)); /* unchanged */
   TEST_ASSERT_EQ(internal_fat_date(2019U, 3U, 4U),
-                 internal_img_rd16(off + (uint32_t)k_ut_dir_wrtd)); /* moved     */
+                 internal_img_rd16(off + (uint32_t)k_ut_dir_wrtd)); /* moved */
   TEST_ASSERT_EQ(internal_fat_date(2022U, 11U, 12U),
                  internal_img_rd16(off + (uint32_t)k_ut_dir_accd)); /* unchanged */
 

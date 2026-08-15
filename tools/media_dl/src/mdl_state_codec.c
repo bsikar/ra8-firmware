@@ -57,7 +57,7 @@ typedef enum : uint8_t {
   k_p_epoch     = 6, /**< Most recent fetch epoch (v4).    */
   k_p_status    = 7, /**< Most recent HTTP status (v4).    */
   k_p_fields    = 4, /**< Minimum legacy `P` fields.       */
-  k_p_fields_v4 = 8, /**< Exact fields a v4 `P` needs.   */
+  k_p_fields_v4 = 8, /**< Exact fields a v4 `P` needs.     */
 } mdl_p_col_t;
 
 /* ---- parsing ------------------------------------------------------------- */

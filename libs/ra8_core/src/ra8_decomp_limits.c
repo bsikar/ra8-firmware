@@ -35,12 +35,12 @@ static const char* const s_tag_decomp = "ra8_decomp";
  * @brief Fixed classic-ZIP EOCD geometry used by the entry-cap preflight.
  */
 typedef enum : uint32_t {
-  k_priv_zip_eocd_bytes     = 22U,    /**< Fixed EOCD bytes before its comment. */
-  k_priv_zip_comment_max    = 65535U, /**< Maximum classic ZIP comment bytes. */
+  k_priv_zip_eocd_bytes     = 22U,    /**< Fixed EOCD bytes before its comment.  */
+  k_priv_zip_comment_max    = 65535U, /**< Maximum classic ZIP comment bytes.    */
   k_priv_zip_scan_chunk     = 512U,   /**< Candidate offsets inspected per read. */
-  k_priv_zip_sig_bytes      = 4U,     /**< Bytes in the EOCD signature. */
-  k_priv_zip_entries_offset = 10U,    /**< Total-entry field offset in EOCD. */
-  k_priv_zip_comment_offset = 20U,    /**< Comment-length field offset in EOCD. */
+  k_priv_zip_sig_bytes      = 4U,     /**< Bytes in the EOCD signature.          */
+  k_priv_zip_entries_offset = 10U,    /**< Total-entry field offset in EOCD.     */
+  k_priv_zip_comment_offset = 20U,    /**< Comment-length field offset in EOCD.  */
 } priv_zip_preflight_t;
 
 /** @brief Classic ZIP end-of-central-directory signature bytes. */

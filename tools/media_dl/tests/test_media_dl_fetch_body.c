@@ -40,9 +40,9 @@ typedef struct {
   fw_fs_t               posix_fs;              /**< Real hosted backend.       */
   fw_fs_posix_state_t   posix_state;           /**< POSIX adapter state.       */
   mdl_state_fault_fs_t  fault;                 /**< Fault-injecting wrapper.   */
-  mdl_storage_t         storage;               /**< Downloader storage bundle.*/
+  mdl_storage_t         storage;               /**< Downloader storage bundle. */
   body_test_workspace_t file_workspace;        /**< Stream state.              */
-  body_test_workspace_t transaction_workspace; /**< Transaction state.       */
+  body_test_workspace_t transaction_workspace; /**< Transaction state.         */
   uint8_t               io[k_body_io_bytes];   /**< Validation scratch.        */
 } body_test_fixture_t;
 

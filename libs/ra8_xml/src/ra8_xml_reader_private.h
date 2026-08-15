@@ -18,11 +18,11 @@
 
 /** @brief Incremental decoded-byte cursor used for allocation-free comparison. */
 typedef struct {
-  size_t  position;    /**< Next source byte. */
-  size_t  end;         /**< One-past-last source byte. */
+  size_t  position;    /**< Next source byte.                    */
+  size_t  end;         /**< One-past-last source byte.           */
   uint8_t pending[4];  /**< UTF-8 bytes from the current entity. */
-  uint8_t pending_at;  /**< Next pending byte. */
-  uint8_t pending_len; /**< Pending-byte count. */
+  uint8_t pending_at;  /**< Next pending byte.                   */
+  uint8_t pending_len; /**< Pending-byte count.                  */
 } priv_decode_cursor_t;
 
 /**

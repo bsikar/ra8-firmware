@@ -102,9 +102,9 @@ typedef enum : uint16_t {
  * @see main()
  */
 typedef enum : uint8_t {
-  k_exfat_fs_test_exit_pass    = 0, /**< Every internal_check passed.                */
-  k_exfat_fs_test_exit_failed  = 1, /**< At least one internal_check failed.         */
-  k_exfat_fs_test_exit_fixture = 2, /**< Fixture image could not be loaded. */
+  k_exfat_fs_test_exit_pass    = 0, /**< Every internal_check passed.        */
+  k_exfat_fs_test_exit_failed  = 1, /**< At least one internal_check failed. */
+  k_exfat_fs_test_exit_fixture = 2, /**< Fixture image could not be loaded.  */
 } exfat_fs_test_exit_t;
 
 #ifndef RA8_EXFAT_FIXTURE

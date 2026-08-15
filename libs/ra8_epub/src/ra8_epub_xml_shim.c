@@ -24,11 +24,11 @@
 
 /** @brief Consumer markers stored in live reader frames. */
 typedef enum : uint16_t {
-  k_priv_mark_none             = 0U, /**< Frame carries no metadata role. */
-  k_priv_mark_title            = 1U, /**< Frame is a Dublin Core title. */
-  k_priv_mark_creator          = 2U, /**< Frame is a Dublin Core creator. */
-  k_priv_mark_language         = 3U, /**< Frame is a Dublin Core language. */
-  k_priv_mark_identifier       = 4U, /**< Frame is a fallback identifier. */
+  k_priv_mark_none             = 0U, /**< Frame carries no metadata role.       */
+  k_priv_mark_title            = 1U, /**< Frame is a Dublin Core title.         */
+  k_priv_mark_creator          = 2U, /**< Frame is a Dublin Core creator.       */
+  k_priv_mark_language         = 3U, /**< Frame is a Dublin Core language.      */
+  k_priv_mark_identifier       = 4U, /**< Frame is a fallback identifier.       */
   k_priv_mark_identifier_match = 5U, /**< Frame matches the package identifier. */
 } priv_marker_t;
 

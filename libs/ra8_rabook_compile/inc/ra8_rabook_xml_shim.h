@@ -27,7 +27,7 @@ extern "C" {
 
 /** @brief XHTML consumer limits matching the established format contract. */
 typedef enum : uint16_t {
-  k_ra8_rabook_xml_max_attributes = 32U,  /**< Attributes accepted per element. */
+  k_ra8_rabook_xml_max_attributes = 32U,  /**< Attributes accepted per element.   */
   k_ra8_rabook_xml_body_siblings  = 256U, /**< Direct children searched for body. */
 } ra8_rabook_xml_limits_t;
 

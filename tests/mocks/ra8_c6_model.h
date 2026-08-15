@@ -68,7 +68,7 @@ typedef enum : uint32_t {
        the rest descend from it.                   */
   k_c6m_eth_first             = 0x80U, /**< First octet of the modelled 802.3 frame.      */
   k_c6m_caps_bytes            = 17U,   /**< Octets in the host-capabilities announcement. */
-  k_c6m_mdl_digest_fill       = 0xA5U, /**< Deterministic media digest test octet. */
+  k_c6m_mdl_digest_fill       = 0xA5U, /**< Deterministic media digest test octet.        */
   k_c6m_custom_response_bytes = 1200U, /**< CustomRpc response scratch capacity.          */
 } ra8_c6_model_const_t;
 
@@ -98,16 +98,16 @@ typedef enum : int32_t {
 
 /** @brief Test-only corruption applied to the next media response. */
 typedef enum : uint8_t {
-  k_c6m_mdl_fault_none = 0U,           /**< Leave the next chunk unchanged.  */
-  k_c6m_mdl_fault_complete_no_sha,     /**< Omit the terminal digest.        */
-  k_c6m_mdl_fault_complete_bad_total,  /**< Corrupt the terminal total.      */
-  k_c6m_mdl_fault_failed,              /**< Emit a coherent failure.         */
-  k_c6m_mdl_fault_failed_zero_status,  /**< Emit failure with zero status.   */
-  k_c6m_mdl_fault_cancelled,           /**< Emit coherent cancellation.      */
-  k_c6m_mdl_fault_cancelled_with_data, /**< Attach data to cancellation.     */
-  k_c6m_mdl_fault_downloading_error,   /**< Attach error to active data.     */
-  k_c6m_mdl_fault_out_of_order,        /**< Increment the response sequence. */
-  k_c6m_mdl_fault_corrupt_data,        /**< Corrupt one data response byte.  */
+  k_c6m_mdl_fault_none = 0U,           /**< Leave the next chunk unchanged.   */
+  k_c6m_mdl_fault_complete_no_sha,     /**< Omit the terminal digest.         */
+  k_c6m_mdl_fault_complete_bad_total,  /**< Corrupt the terminal total.       */
+  k_c6m_mdl_fault_failed,              /**< Emit a coherent failure.          */
+  k_c6m_mdl_fault_failed_zero_status,  /**< Emit failure with zero status.    */
+  k_c6m_mdl_fault_cancelled,           /**< Emit coherent cancellation.       */
+  k_c6m_mdl_fault_cancelled_with_data, /**< Attach data to cancellation.      */
+  k_c6m_mdl_fault_downloading_error,   /**< Attach error to active data.      */
+  k_c6m_mdl_fault_out_of_order,        /**< Increment the response sequence.  */
+  k_c6m_mdl_fault_corrupt_data,        /**< Corrupt one data response byte.   */
   k_c6m_mdl_fault_unknown_field,       /**< Append an unknown protobuf field. */
 } ra8_c6_model_mdl_fault_t;
 
@@ -157,7 +157,7 @@ typedef struct ra8_c6_model {
   uint8_t  caps[k_c6m_caps_bytes]; /**< The announcement's octets, as received.   */
   uint8_t  caps_len;               /**< Octets of `caps` the host sent.           */
   uint16_t eth_tx_len;             /**< Length of the last 802.3 frame sent up.   */
-  uint8_t  eth_tx[k_c6m_eth_len];  /**< Its leading octets. */
+  uint8_t  eth_tx[k_c6m_eth_len];  /**< Its leading octets.                       */
   /** Frames to send. */
   uint8_t queue[k_c6m_queue][k_ra8_c6link_frame_bytes];
   /** Next queue slot to transmit. */

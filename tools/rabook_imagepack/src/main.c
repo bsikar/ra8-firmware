@@ -34,16 +34,16 @@ static ra8_fmt_cli_workspace_t s_cli_workspace;
 
 /** @brief Established usage banner and supported-format inventory. */
 static const char s_usage[] =
-    "usage:\n"
-    "  ra8_fmt convert --format <fmt> --in <file> --out <file>\n"
-    "  ra8_fmt inspect <container> [--verbose]\n"
-    "  ra8_fmt verify  --format <fmt> --in <file> [--out <dump.ppm>]\n"
-    "\nformats:\n"
-    "  jof      .jof      [convert] [inspect] [verify] band-tile atlas (JOF): "
-    "display-native, O(1) random access per tile\n"
-    "  rabook   .rabook   [inspect] chunked book container (RBKC): compiled "
-    "book, "
-    "one unit = one book\n";
+  "usage:\n"
+  "  ra8_fmt convert --format <fmt> --in <file> --out <file>\n"
+  "  ra8_fmt inspect <container> [--verbose]\n"
+  "  ra8_fmt verify  --format <fmt> --in <file> [--out <dump.ppm>]\n"
+  "\nformats:\n"
+  "  jof      .jof      [convert] [inspect] [verify] band-tile atlas (JOF): "
+  "display-native, O(1) random access per tile\n"
+  "  rabook   .rabook   [inspect] chunked book container (RBKC): compiled "
+  "book, "
+  "one unit = one book\n";
 
 /**
  * @brief Offer the complete usage banner to the injected diagnostic sink.
@@ -58,9 +58,9 @@ static const char s_usage[] =
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void internal_usage(const ra8_fmt_sink_t *errors) {
-  (void)errors->write(errors->ctx, (const uint8_t *)s_usage,
-                      sizeof(s_usage) - 1U);
+static void internal_usage(const ra8_fmt_sink_t* errors)
+{
+  (void)errors->write(errors->ctx, (const uint8_t*)s_usage, sizeof(s_usage) - 1U);
 }
 
 /**
@@ -81,26 +81,29 @@ static void internal_usage(const ra8_fmt_sink_t *errors) {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int internal_dispatch(int argc, char **argv, bool *handled) {
-  int status =
-      ra8_fmt_try_portable_convert(argc, argv, s_cli_workspace.bytes,
-                                   k_ra8_fmt_cli_convert_arena_bytes, handled);
+static int internal_dispatch(int argc, char** argv, bool* handled)
+{
+  int status = ra8_fmt_try_portable_convert(argc,
+                                            argv,
+                                            s_cli_workspace.bytes,
+                                            k_ra8_fmt_cli_convert_arena_bytes,
+                                            handled);
   if (!*handled) {
     status = ra8_fmt_try_portable_verify(argc, argv, &s_cli_workspace, handled);
   }
   if (!*handled) {
-    status =
-        ra8_fmt_try_portable_inspect(argc, argv, &s_cli_workspace, handled);
+    status = ra8_fmt_try_portable_inspect(argc, argv, &s_cli_workspace, handled);
   }
   return status;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
   ra8_fmt_host_fd_sink_t error_state = {.fd = STDERR_FILENO};
-  const ra8_fmt_sink_t errors = ra8_fmt_host_fd_sink(&error_state);
+  const ra8_fmt_sink_t   errors      = ra8_fmt_host_fd_sink(&error_state);
   ra8_log_set_byte_sink(ra8_fmt_host_log_byte, &error_state);
-  bool handled = false;
-  const int status = internal_dispatch(argc, argv, &handled);
+  bool      handled = false;
+  const int status  = internal_dispatch(argc, argv, &handled);
   if (handled) {
     return status;
   }

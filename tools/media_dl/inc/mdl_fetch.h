@@ -165,7 +165,7 @@ typedef struct {
   mdl_session_t*       session;        /**< Identity + robots + net backend.          */
   mdl_storage_t*       storage;        /**< Portable storage binding + workspaces.    */
   mdl_state_t*         state;          /**< Persistent state, read and updated.       */
-  mdl_cache_t*         cache;          /**< Per-host HTML cache binding.               */
+  mdl_cache_t*         cache;          /**< Per-host HTML cache binding.              */
   const char*          state_path;     /**< Atomic checkpoint target, or NULL.        */
   const char*          series_abs_dir; /**< Absolute series dir (paths resolve here). */
   const char*          series_url;     /**< Series URL, sent as the chapter Referer.  */

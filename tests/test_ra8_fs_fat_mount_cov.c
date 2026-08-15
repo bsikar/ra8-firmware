@@ -772,10 +772,8 @@ RA8_INTERNAL static void internal_test_gpt_non_basic_data_fallback(void)
    * first_lba low=4 (within 10 sectors), high=0. */
   uint8_t* lba2   = &s_disk.bytes[(size_t)2U * (uint32_t)k_mc_blk];
   uint8_t* entry0 = lba2;
-  entry0[0]       = 0x02U; /* GUID byte 0: non-zero, non-basic-data */
-  internal_put32(entry0,
-                 (uint32_t)k_gpt_ent_off_lba_lo,
-                 4U); /* first_lba low = 4                     */
+  entry0[0]       = 0x02U;                                    /* non-basic GUID */
+  internal_put32(entry0, (uint32_t)k_gpt_ent_off_lba_lo, 4U); /* first LBA = 4  */
   /* Entries 1-3 remain all-zero. LBA 4-9 all-zero (no valid BPB). */
   ra8_fs_mount_t* h = nullptr;
   /* The FAT parse at LBA 4 finds no 0x55/0xAA -> k_ra8_err_validation_failed. */

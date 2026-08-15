@@ -44,8 +44,8 @@ typedef struct {
   uint32_t  calls;      /**< Number of authenticated callbacks. */
   bool      saw_alpha;  /**< Alpha authenticated successfully.  */
   bool      saw_beta;   /**< Beta authenticated successfully.   */
-  bool      stop_first; /**< Request clean stop after one call.  */
-  ra8_err_t error;      /**< Error returned by the callback.     */
+  bool      stop_first; /**< Request clean stop after one call. */
+  ra8_err_t error;      /**< Error returned by the callback.    */
 } mdl_library_visit_t;
 
 static uint8_t s_disk[(size_t)k_library_disk_blocks * (size_t)k_ra8_io_block_size_bytes];
