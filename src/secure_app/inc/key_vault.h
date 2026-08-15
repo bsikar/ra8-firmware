@@ -132,7 +132,7 @@ ra8_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint
  *
  * @details
  * The KAK is the secret that keys the AES-CMAC over a wrapped-key blob in
- * ``ra8_key_import_seal``. It is stored in dedicated secure-side storage that
+ * ``priv_ra8_key_import_seal``. It is stored in dedicated secure-side storage that
  * is *separate from the NS-importable slot array*, so it can never be
  * overwritten or read through the ``ra8_key_import_*`` / NSC path a
  * Non-Secure caller reaches. Secure boot (or the host test harness)

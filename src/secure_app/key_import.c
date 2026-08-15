@@ -77,7 +77,7 @@ typedef enum : uint32_t {
  * @brief One bit per vault slot: 1 if currently allocated.
  *
  * @details Bit ``i`` of ``s_slot_used`` is set when slot ``i`` has been
- * imported via ``ra8_key_import_seal``. ``ra8_key_import_reset`` clears
+ * imported via ``priv_ra8_key_import_seal``. ``priv_ra8_key_import_reset`` clears
  * the entire mask.
  *
  * @note Direct modification from anywhere outside this TU is forbidden.
@@ -89,11 +89,11 @@ static uint16_t s_slot_used = 0U;
  * @var s_salt
  * @brief Per-boot 32-bit salt used for handle obfuscation.
  *
- * @details Refreshed on every ``ra8_key_import_reset`` call. The chosen
+ * @details Refreshed on every ``priv_ra8_key_import_reset`` call. The chosen
  * value is intentionally non-zero so the handle for slot 0 never
  * collides with ``k_ra8_key_import_handle_zero``.
  *
- * @warning Do not write directly; call ``ra8_key_import_reset``.
+ * @warning Do not write directly; call ``priv_ra8_key_import_reset``.
  * @since 0.1.0
  */
 static uint32_t s_salt = (uint32_t)k_initial_salt;
@@ -142,7 +142,7 @@ RA8_INTERNAL static uint32_t internal_rotate_left_32(uint32_t value, uint8_t amo
  * @retval Always a value with bit 31 set, never ``0``.
  *
  * @pre ``slot`` was validated by the caller.
- * @pre ``s_salt`` has been initialized by ::ra8_key_import_reset or boot default.
+ * @pre ``s_salt`` has been initialized by ::priv_ra8_key_import_reset or boot default.
  * @post No state is mutated.
  * @post Return value is deterministic for fixed (slot, s_salt).
  *
@@ -162,7 +162,7 @@ RA8_INTERNAL static uint32_t internal_handle_for_slot(uint16_t slot)
  *
  * @details
  * Loads the KAK from the vault, recomputes the AES-CMAC over the 32
- * key bytes via ``ra8_sec_cmac_verify``, and reports whether it
+ * key bytes via ``priv_ra8_sec_cmac_verify``, and reports whether it
  * matches the trailing ``k_ra8_key_import_mac_bytes`` of the blob.
  * The KAK copy is wiped before return so no key material lingers on
  * the secure stack.
@@ -191,12 +191,12 @@ RA8_INTERNAL static ra8_err_t internal_verify_cmac(const uint8_t* blob)
   if (kerr != k_ra8_ok) {
     return kerr;
   }
-  const ra8_err_t verr = ra8_sec_cmac_verify(mac_key,
-                                             mac_key_len,
-                                             blob,
-                                             (uint32_t)k_ra8_key_import_key_bytes,
-                                             &blob[k_ra8_key_import_key_bytes],
-                                             (uint16_t)k_ra8_key_import_mac_bytes);
+  const ra8_err_t verr = priv_ra8_sec_cmac_verify(mac_key,
+                                                  mac_key_len,
+                                                  blob,
+                                                  (uint32_t)k_ra8_key_import_key_bytes,
+                                                  &blob[k_ra8_key_import_key_bytes],
+                                                  (uint16_t)k_ra8_key_import_mac_bytes);
   ra8_secure_memzero(mac_key, sizeof(mac_key));
   return verr;
 }
@@ -221,7 +221,7 @@ RA8_INTERNAL static ra8_err_t internal_verify_cmac(const uint8_t* blob)
  * @note Not thread-safe; reset belongs to the boot/test path.
  * @since 0.1.0
  */
-ra8_err_t ra8_key_import_reset(void)
+ra8_err_t priv_ra8_key_import_reset(void)
 {
   s_slot_used = 0U;
   /* Bump the salt with a fixed mixing constant so successive resets
@@ -262,10 +262,10 @@ ra8_err_t ra8_key_import_reset(void)
  * @post On error, no vault slot is mutated.
  *
  * @note Not thread-safe; secure-side serial dispatch only.
- * @see ra8_key_import_resolve
+ * @see priv_ra8_key_import_resolve
  * @since 0.1.0
  */
-ra8_err_t ra8_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* out_handle)
+ra8_err_t priv_ra8_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* out_handle)
 {
   RA8_CHECK_NULL_PTR(blob, s_tag, "seal: blob");
   RA8_CHECK_NULL_PTR(out_handle, s_tag, "seal: out_handle");
@@ -309,7 +309,7 @@ ra8_err_t ra8_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* 
  * world via the handle itself; this function is the only place
  * that performs the inverse mapping.
  *
- * @param[in]  handle   Opaque handle previously returned by ::ra8_key_import_seal.
+ * @param[in]  handle   Opaque handle previously returned by ::priv_ra8_key_import_seal.
  * @param[out] out_slot Receives the resolved slot index on success.
  *
  * @return ``ra8_err_t`` error code.
@@ -318,15 +318,15 @@ ra8_err_t ra8_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* 
  * @retval k_ra8_err_not_found      Handle does not match any live slot.
  *
  * @pre ``out_slot`` is non-NULL.
- * @pre Caller has previously issued the handle through ::ra8_key_import_seal.
+ * @pre Caller has previously issued the handle through ::priv_ra8_key_import_seal.
  * @post On success, ``*out_slot`` is in [0, k_ra8_key_vault_slots).
  * @post No vault state is mutated.
  *
  * @note Not thread-safe.
- * @see ra8_key_import_seal
+ * @see priv_ra8_key_import_seal
  * @since 0.1.0
  */
-ra8_err_t ra8_key_import_resolve(uint32_t handle, uint16_t* out_slot)
+ra8_err_t priv_ra8_key_import_resolve(uint32_t handle, uint16_t* out_slot)
 {
   RA8_CHECK_NULL_PTR(out_slot, s_tag, "resolve: out_slot");
   for (uint16_t i = 0U; i < (uint16_t)k_ra8_key_vault_slots; ++i) {
@@ -344,7 +344,7 @@ ra8_err_t ra8_key_import_resolve(uint32_t handle, uint16_t* out_slot)
  *
  * @details
  * Copies the key bytes verbatim, computes the AES-CMAC over them with
- * the vault KAK via ``ra8_sec_cmac_compute``, and writes the trailing
+ * the vault KAK via ``priv_ra8_sec_cmac_compute``, and writes the trailing
  * ``k_ra8_key_import_mac_bytes`` of the blob. Provided so provisioning
  * and unit tests can package a key the import path will accept.
  *
@@ -363,10 +363,10 @@ ra8_err_t ra8_key_import_resolve(uint32_t handle, uint16_t* out_slot)
  * @post No global state is mutated.
  *
  * @note Not thread-safe.
- * @see ra8_key_import_seal
+ * @see priv_ra8_key_import_seal
  * @since 0.1.0
  */
-ra8_err_t ra8_key_import_build_blob(const uint8_t* material, uint8_t* out_blob)
+ra8_err_t priv_ra8_key_import_build_blob(const uint8_t* material, uint8_t* out_blob)
 {
   RA8_CHECK_NULL_PTR(material, s_tag, "build_blob: material");
   RA8_CHECK_NULL_PTR(out_blob, s_tag, "build_blob: out_blob");
@@ -380,11 +380,11 @@ ra8_err_t ra8_key_import_build_blob(const uint8_t* material, uint8_t* out_blob)
   for (uint16_t i = 0U; i < (uint16_t)k_ra8_key_import_key_bytes; ++i) {
     out_blob[i] = material[i];
   }
-  const ra8_err_t cerr = ra8_sec_cmac_compute(mac_key,
-                                              mac_key_len,
-                                              material,
-                                              (uint32_t)k_ra8_key_import_key_bytes,
-                                              &out_blob[k_ra8_key_import_key_bytes]);
+  const ra8_err_t cerr = priv_ra8_sec_cmac_compute(mac_key,
+                                                   mac_key_len,
+                                                   material,
+                                                   (uint32_t)k_ra8_key_import_key_bytes,
+                                                   &out_blob[k_ra8_key_import_key_bytes]);
   ra8_secure_memzero(mac_key, sizeof(mac_key));
   return cerr;
 }

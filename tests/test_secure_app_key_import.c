@@ -7,7 +7,7 @@
  * blob is authenticated by a real AES-CMAC (issue #291) keyed from the vault
  * key-authentication key (KAK). Covers the happy path, CMAC tamper rejection,
  * blob truncation rejection, the missing-KAK path, and the targeted MC/DC
- * vector set for the compound decision in ``ra8_key_import_resolve``.
+ * vector set for the compound decision in ``priv_ra8_key_import_resolve``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -67,7 +67,7 @@ static void test_kimp_fill_pattern(uint8_t seed)
  * (no compound decision is under test in this case -- it is a provisioning helper
  * (vault init + KAK set + importer reset) that asserts each step returns ok; no
  * `&&` or `||` in the code under test that this case touches. The compound decision
- * in ra8_key_import_resolve is driven by test_mcdc_resolve_slot_match.)
+ * in priv_ra8_key_import_resolve is driven by test_mcdc_resolve_slot_match.)
  */
 static void test_kimp_provision(void)
 {
@@ -77,7 +77,7 @@ static void test_kimp_provision(void)
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_set_mac_key(kak, (uint16_t)k_test_kimp_kak_bytes));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_key_import_reset());
 }
 
 /**
@@ -89,7 +89,7 @@ static void test_reset_clears_state(void)
 {
   TEST_BEGIN("key_import: reset clears slot bitmap");
   test_kimp_provision();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_key_import_reset());
   TEST_END("key_import: reset clears slot bitmap");
 }
 
@@ -106,13 +106,13 @@ static void test_seal_and_resolve_happy(void)
   test_kimp_fill_pattern(0x10U);
   uint8_t  blob[k_ra8_key_import_blob_bytes] = {};
   uint32_t handle                            = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_build_blob(s_key_pattern, blob));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_key_import_build_blob(s_key_pattern, blob));
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
+                 priv_ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
   TEST_ASSERT(handle != (uint32_t)k_ra8_key_import_handle_zero);
 
   uint16_t slot = k_t_slot_unset;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_resolve(handle, &slot));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_key_import_resolve(handle, &slot));
   TEST_ASSERT(slot < (uint16_t)k_ra8_key_vault_slots);
   TEST_END("key_import: seal then resolve round-trips");
 }
@@ -131,21 +131,21 @@ static void test_seal_arg_validation(void)
   uint32_t handle                            = 0U;
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_key_import_seal(nullptr, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
+                 priv_ra8_key_import_seal(nullptr, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, nullptr));
+                 priv_ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, nullptr));
   /* Truncated / oversized blobs are rejected on length before the CMAC. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_key_import_seal(blob, (uint32_t)k_test_kimp_invalid_size_short, &handle));
+                 priv_ra8_key_import_seal(blob, (uint32_t)k_test_kimp_invalid_size_short, &handle));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_key_import_seal(blob, (uint32_t)k_test_kimp_invalid_size_long, &handle));
+                 priv_ra8_key_import_seal(blob, (uint32_t)k_test_kimp_invalid_size_long, &handle));
 
   /* All-zero blob carries the wrong CMAC (the KAK is secret). */
   for (uint16_t i = 0U; i < (uint16_t)k_ra8_key_import_blob_bytes; ++i) {
     blob[i] = 0U;
   }
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
+                 priv_ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
   TEST_END("key_import: seal arg validation");
 }
 
@@ -162,7 +162,7 @@ static void test_seal_rejects_tampered_blob(void)
   test_kimp_fill_pattern(k_t_fill_arm_c);
   uint8_t  blob[k_ra8_key_import_blob_bytes] = {};
   uint32_t handle                            = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_build_blob(s_key_pattern, blob));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_key_import_build_blob(s_key_pattern, blob));
 
   /* Flip one key byte -> CMAC no longer matches -> reject. */
   uint8_t key_tampered[k_ra8_key_import_blob_bytes];
@@ -170,8 +170,9 @@ static void test_seal_rejects_tampered_blob(void)
     key_tampered[i] = blob[i];
   }
   key_tampered[0] = (uint8_t)(key_tampered[0] ^ (uint8_t)k_test_kimp_xor_flip_bit);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_key_import_seal(key_tampered, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    priv_ra8_key_import_seal(key_tampered, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
 
   /* Flip one CMAC byte -> reject. */
   uint8_t mac_tampered[k_ra8_key_import_blob_bytes];
@@ -180,12 +181,13 @@ static void test_seal_rejects_tampered_blob(void)
   }
   mac_tampered[k_test_kimp_mac_byte0] =
     (uint8_t)(mac_tampered[k_test_kimp_mac_byte0] ^ (uint8_t)k_test_kimp_xor_flip_bit);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_key_import_seal(mac_tampered, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    priv_ra8_key_import_seal(mac_tampered, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
 
   /* The untouched blob still seals. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
+                 priv_ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
   TEST_END("key_import: seal rejects a tampered blob (CMAC authenticates)");
 }
 
@@ -199,14 +201,14 @@ static void test_missing_kak_fails_closed(void)
   TEST_BEGIN("key_import: no vault KAK -> build/seal fail (not_found)");
   /* Init the vault (which clears the KAK) but do NOT provision a KAK. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_init());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_key_import_reset());
 
   test_kimp_fill_pattern(k_t_fill_arm_a);
   uint8_t  blob[k_ra8_key_import_blob_bytes] = {};
   uint32_t handle                            = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_key_import_build_blob(s_key_pattern, blob));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, priv_ra8_key_import_build_blob(s_key_pattern, blob));
   TEST_ASSERT_EQ(k_ra8_err_not_found,
-                 ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
+                 priv_ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
   TEST_END("key_import: no vault KAK -> build/seal fail (not_found)");
 }
 
@@ -221,9 +223,9 @@ static void test_resolve_unknown_handle(void)
   test_kimp_provision();
 
   uint16_t slot = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_key_import_resolve(0xDEADBEEFU, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_ra8_key_import_resolve(0xDEADBEEFU, nullptr));
   /* No imports have happened, so any handle is unknown. */
-  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_key_import_resolve(0xDEADBEEFU, &slot));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, priv_ra8_key_import_resolve(0xDEADBEEFU, &slot));
   TEST_END("key_import: resolve unknown handle returns not_found");
 }
 
@@ -232,7 +234,7 @@ static void test_resolve_unknown_handle(void)
  *
  * @par MC/DC:
  * Decision: `if (((s_slot_used & bit) != 0U) && (internal_handle_for_slot(i) == handle))`
- * (2 conditions, src/secure_app/key_import.c ra8_key_import_resolve)
+ * (2 conditions, src/secure_app/key_import.c priv_ra8_key_import_resolve)
  *  - C1 = slot ``i`` is currently allocated (bit set in s_slot_used)
  *  - C2 = the handle vended for slot ``i`` matches ``handle``
  *
@@ -258,26 +260,26 @@ static void test_mcdc_resolve_slot_match(void)
 
   /* Vector 1: no slot allocated -> C1 always F, decision F for every i. */
   uint16_t slot_v1 = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_key_import_resolve(0x80000001U, &slot_v1));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, priv_ra8_key_import_resolve(0x80000001U, &slot_v1));
 
   /* Allocate slot 0 via a real seal so we have a known good handle. */
   test_kimp_fill_pattern(k_t_fill_arm_b);
   uint8_t  blob[k_ra8_key_import_blob_bytes] = {};
   uint32_t handle                            = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_build_blob(s_key_pattern, blob));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_key_import_build_blob(s_key_pattern, blob));
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
+                 priv_ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
 
   /* Vector 2: slot 0 allocated (C1=T) but probe with a handle that
    * cannot equal the vended one (C2=F). Flip a low bit so the high
    * bit (which the implementation forces) is preserved. */
   const uint32_t bad_handle = handle ^ (uint32_t)k_test_kimp_xor_flip_bit;
   uint16_t       slot_v2    = k_t_slot_unset;
-  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_key_import_resolve(bad_handle, &slot_v2));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, priv_ra8_key_import_resolve(bad_handle, &slot_v2));
 
   /* Vector 3: real handle -> C1=T, C2=T, decision T -> ok. */
   uint16_t slot_v3 = k_t_slot_unset;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_resolve(handle, &slot_v3));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_key_import_resolve(handle, &slot_v3));
   TEST_ASSERT(slot_v3 < (uint16_t)k_ra8_key_vault_slots);
   TEST_END("key_import MC/DC: slot-used && handle-match");
 }
@@ -291,6 +293,5 @@ int32_t main(void)
   test_missing_kak_fails_closed();
   test_resolve_unknown_handle();
   test_mcdc_resolve_slot_match();
-  (void)fprintf(stderr, "[OK ] test_secure_app_key_import.c\n");
   return 0;
 }

@@ -33,7 +33,7 @@ extern "C" {
 
 /**
  * @enum ra8_secure_trng_limits_t
- * @brief Sizing constants for ``ra8_secure_trng_read``.
+ * @brief Sizing constants for ``priv_ra8_secure_trng_read``.
  */
 typedef enum : uint16_t {
   k_ra8_secure_trng_max_bytes = 256U, /**< Max bytes per call. */
@@ -52,7 +52,7 @@ typedef enum : uint16_t {
  * @note Thread safety: secure-world only, single-threaded init.
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_secure_trng_reset(void);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_secure_trng_reset(void);
 
 /**
  * @brief Fill ``[out, out+len)`` with TRNG-quality entropy.
@@ -79,7 +79,7 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_secure_trng_reset(void);
  * @note Thread safety: not thread-safe; the seed is a single static.
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_secure_trng_read(uint8_t* out, uint32_t len);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_secure_trng_read(uint8_t* out, uint32_t len);
 
 #ifdef __cplusplus
 }

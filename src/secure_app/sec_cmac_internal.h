@@ -62,7 +62,7 @@ extern "C" {
  * @invariant ``k_ra8_sec_cmac_tag_bytes`` equals the AES block size.
  * @invariant ``k_ra8_sec_cmac_key_256 >= k_ra8_sec_cmac_key_128``.
  *
- * @see ra8_sec_cmac_compute()
+ * @see priv_ra8_sec_cmac_compute()
  * @see NIST SP 800-38B "The CMAC Mode for Authentication".
  */
 typedef enum : uint16_t {
@@ -106,18 +106,18 @@ typedef enum : uint16_t {
  * @par Example:
  * @code
  * uint8_t tag[k_ra8_sec_cmac_tag_bytes];
- * (void)ra8_sec_cmac_compute(kak, k_ra8_sec_cmac_key_256, blob, 32U, tag);
+ * (void)priv_ra8_sec_cmac_compute(kak, k_ra8_sec_cmac_key_256, blob, 32U, tag);
  * @endcode
  *
- * @see ra8_sec_cmac_verify()
+ * @see priv_ra8_sec_cmac_verify()
  * @see NIST SP 800-38B Sec 6.2 "MAC Generation".
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_sec_cmac_compute(const uint8_t* key,
-                                                      uint16_t       key_len,
-                                                      const uint8_t* msg,
-                                                      uint32_t       msg_len,
-                                                      uint8_t*       out_mac);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_sec_cmac_compute(const uint8_t* key,
+                                                           uint16_t       key_len,
+                                                           const uint8_t* msg,
+                                                           uint32_t       msg_len,
+                                                           uint8_t*       out_mac);
 
 /**
  * @brief Verify an AES-CMAC tag against a message under a symmetric key.
@@ -164,16 +164,16 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_sec_cmac_compute(const uint8_t* key,
  * V1+V2 vary C1 (masked C2); V1+V3 vary C2 with C1 held F. Satisfies
  * DO-178C 6.4.4.2 minimal MC/DC.
  *
- * @see ra8_sec_cmac_compute()
+ * @see priv_ra8_sec_cmac_compute()
  * @see NIST SP 800-38B Sec 6.3 "MAC Verification".
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_sec_cmac_verify(const uint8_t* key,
-                                                     uint16_t       key_len,
-                                                     const uint8_t* msg,
-                                                     uint32_t       msg_len,
-                                                     const uint8_t* mac,
-                                                     uint16_t       mac_len);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_sec_cmac_verify(const uint8_t* key,
+                                                          uint16_t       key_len,
+                                                          const uint8_t* msg,
+                                                          uint32_t       msg_len,
+                                                          const uint8_t* mac,
+                                                          uint16_t       mac_len);
 
 #ifdef __cplusplus
 }
