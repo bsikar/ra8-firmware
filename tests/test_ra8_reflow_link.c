@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "unity_minimal.h"
@@ -61,7 +62,21 @@ typedef enum : uint32_t {
 static ra8_reflow_t s_eng;
 
 /* Helper to run href_split and return just the kind. */
-static ra8_reflow_href_kind_t split_kind(const char* href)
+/**
+ * @brief Verify split kind behavior against the reflow contract.
+ * @details Exercises the split kind path and preserves each documented result and bound.
+ * @param[in] href Caller-supplied href value used by the scenario.
+ * @return Classification of the supplied link target.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
+ * @retval k_ra8_reflow_href_external The target is an external resource.
+ * @retval k_ra8_reflow_href_internal The target is an internal resource or anchor.
+ */
+RA8_INTERNAL static ra8_reflow_href_kind_t internal_split_kind(const char* href)
 {
   ra8_reflow_href_kind_t kind = k_ra8_reflow_href_empty;
   uint32_t               pl   = 0U;
@@ -73,13 +88,13 @@ static ra8_reflow_href_kind_t split_kind(const char* href)
 }
 
 /**
- * @test test_href_split_classify_mcdc
+ * @test internal_test_href_split_classify_mcdc
  *
  * @par MC/DC:
- * Decisions in ra8_reflow_href_split()/priv_href_classify():
+ * Decisions in ra8_reflow_href_split()/internal_href_classify():
  *  (A) `if (hash == 0)` -- same-chapter (path empty) vs cross-chapter.
  *  (B) `has_frag ? ... : ...` -- fragment present vs absent.
- *  (C) priv_has_scheme(): `href[i]=='/'` / `href[i]==':'` -- external scheme.
+ *  (C) internal_has_scheme(): `href[i]=='/'` / `href[i]==':'` -- external scheme.
  *
  * Vectors (each flips one decision, holding the others):
  *  - "#foot"        -> A=T, B=T            -> fragment       (same-chapter).
@@ -91,23 +106,31 @@ static ra8_reflow_href_kind_t split_kind(const char* href)
  *  - "#"            -> A=T, B=T (empty frag)-> fragment.
  *  A T-vs-F pair on hash (#foot vs ch2.xhtml) and on has_frag (ch2.xhtml vs
  *  ch2.xhtml#f) shows each independently flips the outcome.
+ * @brief Verify href split classify mcdc behavior against the reflow contract.
+ * @details Exercises the href split classify mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_href_split_classify_mcdc(void)
+RA8_INTERNAL static void internal_test_href_split_classify_mcdc(void)
 {
   TEST_BEGIN("ra8_reflow_href_split classify MC/DC");
-  TEST_ASSERT_EQ(k_ra8_reflow_href_fragment, split_kind("#foot"));
-  TEST_ASSERT_EQ(k_ra8_reflow_href_chapter, split_kind("ch2.xhtml"));
-  TEST_ASSERT_EQ(k_ra8_reflow_href_chapter_fragment, split_kind("ch2.xhtml#f"));
-  TEST_ASSERT_EQ(k_ra8_reflow_href_external, split_kind("http://x/y"));
-  TEST_ASSERT_EQ(k_ra8_reflow_href_external, split_kind("mailto:a@b"));
-  TEST_ASSERT_EQ(k_ra8_reflow_href_chapter, split_kind("sub/ch.xhtml"));
-  TEST_ASSERT_EQ(k_ra8_reflow_href_empty, split_kind(""));
-  TEST_ASSERT_EQ(k_ra8_reflow_href_fragment, split_kind("#"));
+  TEST_ASSERT_EQ(k_ra8_reflow_href_fragment, internal_split_kind("#foot"));
+  TEST_ASSERT_EQ(k_ra8_reflow_href_chapter, internal_split_kind("ch2.xhtml"));
+  TEST_ASSERT_EQ(k_ra8_reflow_href_chapter_fragment, internal_split_kind("ch2.xhtml#f"));
+  TEST_ASSERT_EQ(k_ra8_reflow_href_external, internal_split_kind("http://x/y"));
+  TEST_ASSERT_EQ(k_ra8_reflow_href_external, internal_split_kind("mailto:a@b"));
+  TEST_ASSERT_EQ(k_ra8_reflow_href_chapter, internal_split_kind("sub/ch.xhtml"));
+  TEST_ASSERT_EQ(k_ra8_reflow_href_empty, internal_split_kind(""));
+  TEST_ASSERT_EQ(k_ra8_reflow_href_fragment, internal_split_kind("#"));
   TEST_END("ra8_reflow_href_split classify MC/DC");
 }
 
 /**
- * @test test_href_split_spans
+ * @test internal_test_href_split_spans
  * @brief The path/fragment spans are returned correctly + null guard.
  *
  * @par MC/DC:
@@ -115,9 +138,16 @@ static void test_href_split_classify_mcdc(void)
  * of ra8_reflow_href_split for one chapter+fragment href ("chap.xhtml#sec3" ->
  * pl=10, fo=11, fl=4) plus the single-condition null-href guard. The href
  * classification branches are single-condition and their branch coverage is owned
- * by test_href_split_classify_mcdc.)
+ * by internal_test_href_split_classify_mcdc.)
+ * @details Exercises the href split spans path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_href_split_spans(void)
+RA8_INTERNAL static void internal_test_href_split_spans(void)
 {
   TEST_BEGIN("ra8_reflow_href_split spans + null guard");
   ra8_reflow_href_kind_t kind = k_ra8_reflow_href_empty;
@@ -136,7 +166,7 @@ static void test_href_split_spans(void)
 }
 
 /**
- * @test test_hit_test_link
+ * @test internal_test_hit_test_link
  * @brief Hit-test resolves a point inside a link rect to its href slice.
  *
  * @par MC/DC:
@@ -146,11 +176,18 @@ static void test_href_split_spans(void)
  * - V1 x=40, y=110 -> C1 T, C2 T, C3 T, C4 T -> T (k_ra8_ok, off=0 len=9).
  * - V2 x=5,  y=110 -> C1 (x >= rect->x) F -> F (k_ra8_err_not_found).
  * V1 vs V2 prove C1's independent influence (C2..C4 held true). Independence of
- * C2/C3/C4 is completed by the sibling test_hit_test_rect_bounds_mcdc (N+1 = 5).
+ * C2/C3/C4 is completed by the sibling internal_test_hit_test_rect_bounds_mcdc (N+1 = 5).
  * The preceding single-condition page filter `rect->page_index != page_idx` is
  * exercised both ways here (page 1 matches; page 0 skips -> k_ra8_err_not_found).
+ * @details Exercises the hit test link path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_hit_test_link(void)
+RA8_INTERNAL static void internal_test_hit_test_link(void)
 {
   TEST_BEGIN("ra8_reflow_hit_test_link");
   memset(&s_eng, 0, sizeof s_eng);
@@ -186,7 +223,7 @@ static void test_hit_test_link(void)
 }
 
 /**
- * @test test_hit_test_rect_bounds_mcdc
+ * @test internal_test_hit_test_rect_bounds_mcdc
  *
  * @par MC/DC:
  * Decision (libs/ra8_reflow/src/ra8_reflow_link.c@ra8_reflow_hit_test_link):
@@ -207,8 +244,16 @@ static void test_hit_test_link(void)
  * Independence: V1 vs V2 flip C1, V1 vs V3 flip C2, V1 vs V4 flip C3, V1 vs V5
  * flip C4 -- each pair leaves the other three conditions true and the outcome
  * flips, proving each condition independently affects the result.
+ * @brief Verify hit test rect bounds mcdc behavior against the reflow contract.
+ * @details Exercises the hit test rect bounds mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_hit_test_rect_bounds_mcdc(void)
+RA8_INTERNAL static void internal_test_hit_test_rect_bounds_mcdc(void)
 {
   TEST_BEGIN("ra8_reflow_hit_test_link rect-bounds MC/DC");
   memset(&s_eng, 0, sizeof s_eng);
@@ -244,7 +289,7 @@ static void test_hit_test_rect_bounds_mcdc(void)
 }
 
 /**
- * @test test_find_anchor
+ * @test internal_test_find_anchor
  * @brief Same-chapter anchor lookup returns the anchor's page.
  *
  * @par MC/DC:
@@ -256,8 +301,15 @@ static void test_hit_test_rect_bounds_mcdc(void)
  * - V3 id="barz", len=4 -> C1 T, C2 (bytes match) F -> F (k_ra8_err_not_found).
  * V1 vs V2 prove C1 independent; V1 vs V3 prove C2. N+1 = 3 vectors for N=2. The
  * `id_len == 0` invalid-arg guard is a separate single-condition check.
+ * @details Exercises the find anchor path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_find_anchor(void)
+RA8_INTERNAL static void internal_test_find_anchor(void)
 {
   TEST_BEGIN("ra8_reflow_find_anchor");
   memset(&s_eng, 0, sizeof s_eng);
@@ -283,7 +335,7 @@ static void test_find_anchor(void)
 }
 
 /**
- * @test test_hit_test_image_mcdc
+ * @test internal_test_hit_test_image_mcdc
  *
  * @par MC/DC:
  * Decision (libs/ra8_reflow/src/ra8_reflow_link.c@ra8_reflow_hit_test_image):
@@ -309,8 +361,15 @@ static void test_find_anchor(void)
  * @details This is the entry point of the reader's tap-to-zoom gesture (#478):
  *          a tap that lands on a laid-out figure resolves to the image whose
  *          retained full-resolution pixels the zoom viewer then magnifies.
+  * @brief Verify hit test image mcdc behavior against the reflow contract.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_hit_test_image_mcdc(void)
+RA8_INTERNAL static void internal_test_hit_test_image_mcdc(void)
 {
   TEST_BEGIN("ra8_reflow_hit_test_image rect-bounds MC/DC");
   memset(&s_eng, 0, sizeof s_eng);
@@ -345,12 +404,11 @@ static void test_hit_test_image_mcdc(void)
  */
 int32_t main(void)
 {
-  test_href_split_classify_mcdc();
-  test_href_split_spans();
-  test_hit_test_link();
-  test_hit_test_rect_bounds_mcdc();
-  test_hit_test_image_mcdc();
-  test_find_anchor();
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_link.c\n");
+  internal_test_href_split_classify_mcdc();
+  internal_test_href_split_spans();
+  internal_test_hit_test_link();
+  internal_test_hit_test_rect_bounds_mcdc();
+  internal_test_hit_test_image_mcdc();
+  internal_test_find_anchor();
   return 0;
 }

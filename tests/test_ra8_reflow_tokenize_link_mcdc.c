@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "fixture_ahem.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "support/reflow_tokenize_test_util.h"
 #include "unity_minimal.h"
@@ -53,8 +54,10 @@ typedef enum : uint32_t {
  *
  * @note Test helper; not thread-safe.
  * @since 0.1.0
+  * @post All assertions for the scenario have passed before this function returns.
+
  */
-static void build_link_flood_doc(char* dst, size_t cap)
+RA8_INTERNAL static void internal_build_link_flood_doc(char* dst, size_t cap)
 {
   uint32_t          pos    = 0U;
   const char* const k_head = "<html><body>";
@@ -82,7 +85,7 @@ static void build_link_flood_doc(char* dst, size_t cap)
 }
 
 /**
- * @test test_intern_link_empty_href
+ * @test internal_test_intern_link_empty_href
  *
  * @par MC/DC:
  * Decision: `(href_len == 0U) || (link_target_count >= max)` -- the intern
@@ -93,8 +96,16 @@ static void build_link_flood_doc(char* dst, size_t cap)
  * V1 vs V2 isolates the `href_len == 0` condition. (The table-full arm needs
  * 255 distinct links and is out of scope here.) Observable: the V1 run's
  * `reserved` link id is non-zero; the V2 run's is zero.
+ * @brief Verify intern link empty href behavior against the reflow contract.
+ * @details Exercises the intern link empty href path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_intern_link_empty_href(void)
+RA8_INTERNAL static void internal_test_intern_link_empty_href(void)
 {
   TEST_BEGIN("priv_intern_link empty-href MC/DC");
 
@@ -125,12 +136,12 @@ static void test_intern_link_empty_href(void)
 }
 
 /**
- * @test test_rel_is_stylesheet_scan
+ * @test internal_test_rel_is_stylesheet_scan
  *
  * @par MC/DC:
  * Decision: the inner match loop `(j < k_klen) && (rel[i+j] == k_kw[j])` of
  * priv_rel_is_stylesheet (ra8_reflow_tokenize.c). The outer guard in
- * priv_handle_link (`find(rel) && find(href) && rel_is_stylesheet`) gates the
+ * internal_handle_link (`find(rel) && find(href) && rel_is_stylesheet`) gates the
  * css_loader call; the observable is the `.lead` colour changing.
  *  - V1 rel="stylesheet"        -> the inner loop runs `rel[i+j]==kw[j]` true
  *    for all 10 chars until j==k_klen (the `j<k_klen` arm ends it) -> match.
@@ -138,8 +149,16 @@ static void test_intern_link_empty_href(void)
  *    char of the candidate window -> that window fails; no full match -> no load.
  * V1 proves the all-equal exit (j<k_klen false); V2 proves the compare arm
  * (rel[i+j]==kw[j] false). A baseline with no loader gives the default colour.
+ * @brief Verify rel is stylesheet scan behavior against the reflow contract.
+ * @details Exercises the rel is stylesheet scan path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_rel_is_stylesheet_scan(void)
+RA8_INTERNAL static void internal_test_rel_is_stylesheet_scan(void)
 {
   TEST_BEGIN("priv_rel_is_stylesheet MC/DC");
 
@@ -168,11 +187,11 @@ static void test_rel_is_stylesheet_scan(void)
 }
 
 /**
- * @test test_link_loader_result
+ * @test internal_test_link_loader_result
  *
  * @par MC/DC:
  * Decision: `(loader(...) == k_ra8_ok) && (css_bytes != nullptr) &&
- * (css_len > 0U)` -- the loader-result guard in priv_handle_link
+ * (css_len > 0U)` -- the loader-result guard in internal_handle_link
  * (ra8_reflow_tokenize.c) before parsing the fetched CSS.
  *  - V1 css_stub returns k_ra8_ok + non-null bytes + len>0 -> all true -> parse
  *    -> the `.lead` colour changes from its no-link default.
@@ -180,8 +199,16 @@ static void test_rel_is_stylesheet_scan(void)
  *    false -> no parse -> colour stays at the default.
  * V1 vs V2 isolates the loader-return-code condition (the null-pointer and
  * zero-length arms are guarded by the same stub on the failure path).
+ * @brief Verify link loader result behavior against the reflow contract.
+ * @details Exercises the link loader result path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_link_loader_result(void)
+RA8_INTERNAL static void internal_test_link_loader_result(void)
 {
   TEST_BEGIN("priv_handle_link loader-result MC/DC");
 
@@ -209,7 +236,7 @@ static void test_link_loader_result(void)
 }
 
 /**
- * @test test_resolve_face_slot_conditions
+ * @test internal_test_resolve_face_slot_conditions
  *
  * @par MC/DC:
  * Decision: `(face_count==0) || ((comp.set & family)==0) || (family_len==0)`
@@ -226,8 +253,16 @@ static void test_link_loader_result(void)
  *    short-circuiting the third condition.
  * The full layout simply succeeds; the value win is reaching the post-guard
  * body (ra8_css_match_face + the face-registry scan) at all.
+ * @brief Verify resolve face slot conditions behavior against the reflow contract.
+ * @details Exercises the resolve face slot conditions path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_resolve_face_slot_conditions(void)
+RA8_INTERNAL static void internal_test_resolve_face_slot_conditions(void)
 {
   TEST_BEGIN("priv_resolve_face_slot MC/DC");
 
@@ -268,7 +303,7 @@ static void test_resolve_face_slot_conditions(void)
  * @brief CSS-loader stub that returns k_ra8_ok with non-null bytes but zero len.
  *
  * @details Drives the `css_len > 0U` false arm of the loader-result guard in
- * priv_handle_link (L1230): the loader succeeds and the bytes pointer is
+ * internal_handle_link (L1230): the loader succeeds and the bytes pointer is
  * non-null, but the length is zero, so the CSS parse step is skipped.
  *
  * @param[in]  ctx       Opaque loader context (unused).
@@ -281,19 +316,23 @@ static void test_resolve_face_slot_conditions(void)
  * @pre `out_bytes` and `out_len` are non-null.
  * @post `*out_bytes` is non-null and `*out_len == 0`.
  * @note Test helper; not thread-safe.
+  * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @since 0.1.0
+
  */
-static ra8_err_t css_zero_len_stub(void*           ctx,
-                                   const char*     href,
-                                   uint32_t        href_len,
-                                   const uint8_t** out_bytes,
-                                   size_t*         out_len)
+RA8_INTERNAL static ra8_err_t internal_css_zero_len_stub(void*           ctx,
+                                                         const char*     href,
+                                                         uint32_t        href_len,
+                                                         const uint8_t** out_bytes,
+                                                         size_t*         out_len)
 {
   (void)ctx;
   (void)href;
   (void)href_len;
   /* Non-null pointer but zero length: drives css_len==0 arm (L1230). */
-  static const uint8_t s_dummy = 0U;
-  *out_bytes                   = &s_dummy;
+  static const uint8_t k_dummy = 0U;
+  *out_bytes                   = &k_dummy;
   *out_len                     = 0U;
   return k_ra8_ok;
 }
@@ -302,7 +341,7 @@ static ra8_err_t css_zero_len_stub(void*           ctx,
  * @brief CSS-loader stub that returns k_ra8_ok with null bytes and zero len.
  *
  * @details Drives the `css_bytes != nullptr` false arm of the loader-result
- * guard in priv_handle_link (L1230): the loader reports success but hands
+ * guard in internal_handle_link (L1230): the loader reports success but hands
  * back a null pointer, so the CSS parse step is skipped.
  *
  * @param[in]  ctx       Opaque loader context (unused).
@@ -315,12 +354,16 @@ static ra8_err_t css_zero_len_stub(void*           ctx,
  * @pre `out_bytes` and `out_len` are non-null.
  * @post `*out_bytes == nullptr` and `*out_len == 0`.
  * @note Test helper; not thread-safe.
+  * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @since 0.1.0
+
  */
-static ra8_err_t css_null_bytes_stub(void*           ctx,
-                                     const char*     href,
-                                     uint32_t        href_len,
-                                     const uint8_t** out_bytes,
-                                     size_t*         out_len)
+RA8_INTERNAL static ra8_err_t internal_css_null_bytes_stub(void*           ctx,
+                                                           const char*     href,
+                                                           uint32_t        href_len,
+                                                           const uint8_t** out_bytes,
+                                                           size_t*         out_len)
 {
   (void)ctx;
   (void)href;
@@ -331,11 +374,11 @@ static ra8_err_t css_null_bytes_stub(void*           ctx,
 }
 
 /**
- * @test test_link_loader_guard_arms
+ * @test internal_test_link_loader_guard_arms
  *
  * @par MC/DC:
  * Decision (L1230): `(loader()==k_ra8_ok) && (css_bytes!=nullptr) && (css_len>0U)`
- * in priv_handle_link.  The existing test_link_loader_result covers:
+ * in internal_handle_link.  The existing internal_test_link_loader_result covers:
  *  - V1 all true  -> CSS parsed -> colour changes.
  *  - V2 loader fail -> first false -> no parse.
  * Still-missing arms at L1230:
@@ -343,8 +386,16 @@ static ra8_err_t css_null_bytes_stub(void*           ctx,
  *  - V4 loader ok, css_bytes non-null, css_len==0 -> third arm false -> no parse.
  * Both V3 and V4 leave the chapter colour at its no-link default because the
  * CSS parse is skipped.
+ * @brief Verify link loader guard arms behavior against the reflow contract.
+ * @details Exercises the link loader guard arms path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_link_loader_guard_arms(void)
+RA8_INTERNAL static void internal_test_link_loader_guard_arms(void)
 {
   TEST_BEGIN("priv_handle_link loader-guard css_bytes/css_len arms (L1230)");
 
@@ -354,7 +405,7 @@ static void test_link_loader_guard_arms(void)
   const uint32_t c_def = first_text_color();
 
   /* V3 loader returns ok but css_bytes==nullptr -> second AND arm false. */
-  s_engine.css_loader     = css_null_bytes_stub;
+  s_engine.css_loader     = internal_css_null_bytes_stub;
   s_engine.css_loader_ctx = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok,
                  walk("<html><head><link rel=\"stylesheet\" href=\"s\"/></head>"
@@ -362,7 +413,7 @@ static void test_link_loader_guard_arms(void)
   TEST_ASSERT_EQ(c_def, first_text_color());
 
   /* V4 loader returns ok, non-null bytes, css_len==0 -> third AND arm false. */
-  s_engine.css_loader = css_zero_len_stub;
+  s_engine.css_loader = internal_css_zero_len_stub;
   TEST_ASSERT_EQ(k_ra8_ok,
                  walk("<html><head><link rel=\"stylesheet\" href=\"s\"/></head>"
                       "<body><p class=\"lead\">x</p></body></html>"));
@@ -373,11 +424,11 @@ static void test_link_loader_guard_arms(void)
 }
 
 /**
- * @test test_intern_link_table_full
+ * @test internal_test_intern_link_table_full
  *
  * @par MC/DC:
  * Decision (L1094): `(href_len == 0U) || (engine->link_target_count >= max)`
- * in priv_intern_link.  The existing test_intern_link_empty_href covers the
+ * in priv_intern_link.  The existing internal_test_intern_link_empty_href covers the
  * first arm (href_len==0).  The still-missing arm is the second:
  * `link_target_count >= k_ra8_reflow_max_links (255)`.
  *  - V-full: prime the engine with 255 links by walking 255 distinct `<a>`
@@ -385,20 +436,28 @@ static void test_link_loader_guard_arms(void)
  *    not interned (returns 0) and the text run carries reserved==0.
  * Observable: after the 256th link walk the text token inside it has
  * reserved==0 (no link id).
+ * @brief Verify intern link table full behavior against the reflow contract.
+ * @details Exercises the intern link table full path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_intern_link_table_full(void)
+RA8_INTERNAL static void internal_test_intern_link_table_full(void)
 {
   TEST_BEGIN("priv_intern_link table-full arm (L1094)");
 
   /* Build a document with exactly k_max_links_count <a> elements to fill the
    * table, then a (max+1)-th whose href should NOT be interned. */
-  static char s_doc[k_flood_doc_cap]; /* static: stays off the stack */
-  build_link_flood_doc(s_doc, sizeof(s_doc));
+  static char doc[k_flood_doc_cap]; /* static: stays off the stack */
+  internal_build_link_flood_doc(doc, sizeof(doc));
 
   s_engine.token_count       = 0U;
   s_engine.text_pool_used    = 0U;
   s_engine.link_target_count = 0U;
-  const ra8_err_t err = priv_reflow_xml_walk(&s_engine, (const uint8_t*)s_doc, strlen(s_doc));
+  const ra8_err_t err        = priv_reflow_xml_walk(&s_engine, (const uint8_t*)doc, strlen(doc));
   /* The walk may succeed or hit a token-pool limit; either way, once the link
    * table is full the 256th href must not be interned (reserved==0 for it). */
   if (err == k_ra8_ok) {
@@ -424,19 +483,19 @@ static void test_intern_link_table_full(void)
   TEST_END("priv_intern_link table-full arm (L1094)");
 }
 /**
- * @test test_resolve_face_slot_family_len_zero
+ * @test internal_test_resolve_face_slot_family_len_zero
  *
  * @par MC/DC:
  * Decision (L1412): `(engine->face_count == 0U) || ((comp->set & family)==0U)
  * || (comp->family_len == 0U)` in priv_resolve_face_slot.  The existing
- * test_resolve_face_slot_conditions covers:
+ * internal_test_resolve_face_slot_conditions covers:
  *  - face_count==0 true (first arm, exercised across the whole suite because no
  *    face is registered for most walks), and
  *  - face_count>0 AND (set & family)!=0 AND family_len>0 -> all three false
  *    -> body entered (priv_resolve_face_slot_conditions test).
  *
  * The THIRD condition `comp->family_len == 0U` is structurally unreachable as
- * an INDEPENDENT true arm: the CSS parser (priv_family_cb) only sets the
+ * an INDEPENDENT true arm: the CSS parser (internal_family_cb) only sets the
  * k_ra8_css_set_family bit when `vlen > 0` (i.e. when family_len > 0); there
  * is no code path that sets the set-bit while leaving family_len == 0.
  * Therefore conditions 2 and 3 are always correlated: set-bit absent <=> family_
@@ -451,11 +510,18 @@ static void test_intern_link_table_full(void)
  * Both correctly return 0 (default face).
  *
  * @note RA8_MCDC_DEACTIVATED: the `comp->family_len == 0U` arm at L1412 is not
- * independently reachable because ra8_reflow_css.c's priv_family_cb only sets
+ * independently reachable because ra8_reflow_css.c's internal_family_cb only sets
  * k_ra8_css_set_family when n>0 (family_len>0); no production code path sets
  * the family set-bit with a zero-length name.
+ * @brief Verify resolve face slot family len zero behavior against the reflow contract.
+ * @details Exercises the resolve face slot family len zero path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_resolve_face_slot_family_len_zero(void)
+RA8_INTERNAL static void internal_test_resolve_face_slot_family_len_zero(void)
 {
   TEST_BEGIN("priv_resolve_face_slot family_len==0 unreachable arm doc (L1412)");
 
@@ -490,11 +556,11 @@ static void test_resolve_face_slot_family_len_zero(void)
 }
 
 /**
- * @test test_resolve_face_slot_family_len_zero_direct_mcdc
+ * @test internal_test_resolve_face_slot_family_len_zero_direct_mcdc
  *
  * @par MC/DC:
  * Decision: `if ((face_count == 0U) || ((comp->set & family) == 0U) ||
- * (comp->family_len == 0U))` in ra8_reflow_tok_resolve_face_slot
+ * (comp->family_len == 0U))` in priv_ra8_reflow_tok_resolve_face_slot
  * (libs/ra8_reflow/src/ra8_reflow_tokenize_attr.c, 3 conditions, OR). Existing
  * cascade-driven vectors cover the no-face (C1 true) and no-family-bit (C2 true)
  * arms. The `(comp->family_len == 0U)` true side is reached by calling the
@@ -502,8 +568,16 @@ static void test_resolve_face_slot_family_len_zero(void)
  * leaves family_len == 0 (a state the cascade never emits, so it is white-box):
  *  - face_count > 0, family bit set, family_len == 0 -> C1 false, C2 false, C3
  *    true -> returns the default slot 0. This completes the C3 independence pair.
+ * @brief Verify resolve face slot family len zero direct mcdc behavior against the reflow contract.
+ * @details Exercises the resolve face slot family len zero direct mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_resolve_face_slot_family_len_zero_direct_mcdc(void)
+RA8_INTERNAL static void internal_test_resolve_face_slot_family_len_zero_direct_mcdc(void)
 {
   TEST_BEGIN("ra8_reflow_tok_resolve_face_slot MC/DC: family_len==0 direct arm");
   uint32_t pages = 0U;
@@ -526,7 +600,7 @@ static void test_resolve_face_slot_family_len_zero_direct_mcdc(void)
   ra8_css_style_t comp = {};
   comp.set             = (uint8_t)k_ra8_css_set_family;
   comp.family_len      = 0U;
-  TEST_ASSERT_EQ(0, ra8_reflow_tok_resolve_face_slot(&s_engine, &comp));
+  TEST_ASSERT_EQ(0, priv_ra8_reflow_tok_resolve_face_slot(&s_engine, &comp));
   (void)pages;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_close(&s_engine));
   TEST_END("ra8_reflow_tok_resolve_face_slot MC/DC: family_len==0 direct arm");
@@ -546,14 +620,13 @@ static void test_resolve_face_slot_family_len_zero_direct_mcdc(void)
  */
 int32_t main(void)
 {
-  test_intern_link_empty_href();
-  test_rel_is_stylesheet_scan();
-  test_link_loader_result();
-  test_resolve_face_slot_conditions();
-  test_link_loader_guard_arms();
-  test_intern_link_table_full();
-  test_resolve_face_slot_family_len_zero();
-  test_resolve_face_slot_family_len_zero_direct_mcdc();
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_tokenize_link_mcdc.c\n");
+  internal_test_intern_link_empty_href();
+  internal_test_rel_is_stylesheet_scan();
+  internal_test_link_loader_result();
+  internal_test_resolve_face_slot_conditions();
+  internal_test_link_loader_guard_arms();
+  internal_test_intern_link_table_full();
+  internal_test_resolve_face_slot_family_len_zero();
+  internal_test_resolve_face_slot_family_len_zero_direct_mcdc();
   return 0;
 }

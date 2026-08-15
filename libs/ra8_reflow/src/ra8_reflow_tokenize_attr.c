@@ -63,7 +63,7 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_attr_name_at(const uint8_t* tag, size_t i, const char* name, size_t name_len)
+static bool internal_attr_name_at(const uint8_t* tag, size_t i, const char* name, size_t name_len)
 {
   for (size_t k = 0U; k < name_len; ++k) {
     if ((tag[i + k] | 0x20U) != (uint8_t)name[k]) {
@@ -96,18 +96,21 @@ static bool priv_attr_name_at(const uint8_t* tag, size_t i, const char* name, si
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool
-priv_attr_quoted_value(const uint8_t* tag, size_t tag_len, size_t pos, size_t* vstart, size_t* vlen)
+static bool internal_attr_quoted_value(const uint8_t* tag,
+                                       size_t         tag_len,
+                                       size_t         pos,
+                                       size_t*        vstart,
+                                       size_t*        vlen)
 {
   size_t j = pos;
-  while ((j < tag_len) && ra8_reflow_tok_is_xml_whitespace((char)tag[j])) {
+  while ((j < tag_len) && priv_ra8_reflow_tok_is_xml_whitespace((char)tag[j])) {
     ++j;
   }
   if ((j >= tag_len) || (tag[j] != '=')) {
     return false;
   }
   ++j;
-  while ((j < tag_len) && ra8_reflow_tok_is_xml_whitespace((char)tag[j])) {
+  while ((j < tag_len) && priv_ra8_reflow_tok_is_xml_whitespace((char)tag[j])) {
     ++j;
   }
   if ((j >= tag_len) || ((tag[j] != '"') && (tag[j] != '\''))) {
@@ -126,7 +129,7 @@ priv_attr_quoted_value(const uint8_t* tag, size_t tag_len, size_t pos, size_t* v
 /**
  * @brief Locate a named attribute's quoted value span within a tag (no copy).
  *
- * @details The non-copying core of ra8_reflow_tok_capture_attr(): returns the value's
+ * @details The non-copying core of priv_ra8_reflow_tok_capture_attr(): returns the value's
  * offset + length *within @p tag* so callers can either copy it to the pool or
  * scan it in place (e.g. an inline `style`).
  *
@@ -146,19 +149,19 @@ priv_attr_quoted_value(const uint8_t* tag, size_t tag_len, size_t pos, size_t* v
  * @note Pure read of @p tag.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_find_attr(const uint8_t* tag,
-                              size_t         tag_len,
-                              const char*    name,
-                              size_t         name_len,
-                              size_t*        out_voff,
-                              size_t*        out_vlen)
+bool priv_ra8_reflow_tok_find_attr(const uint8_t* tag,
+                                   size_t         tag_len,
+                                   const char*    name,
+                                   size_t         name_len,
+                                   size_t*        out_voff,
+                                   size_t*        out_vlen)
 {
   if (tag_len < name_len) {
     return false;
   }
   for (size_t i = 0U; (i + name_len) <= tag_len; ++i) {
-    if (priv_attr_name_at(tag, i, name, name_len) &&
-        priv_attr_quoted_value(tag, tag_len, i + name_len, out_voff, out_vlen)) {
+    if (internal_attr_name_at(tag, i, name, name_len) &&
+        internal_attr_quoted_value(tag, tag_len, i + name_len, out_voff, out_vlen)) {
       return true;
     }
   }
@@ -189,19 +192,19 @@ bool ra8_reflow_tok_find_attr(const uint8_t* tag,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void ra8_reflow_tok_capture_attr(ra8_reflow_t*  engine,
-                                 const uint8_t* tag,
-                                 size_t         tag_len,
-                                 const char*    name,
-                                 size_t         name_len,
-                                 uint32_t*      out_off,
-                                 uint32_t*      out_len)
+void priv_ra8_reflow_tok_capture_attr(ra8_reflow_t*  engine,
+                                      const uint8_t* tag,
+                                      size_t         tag_len,
+                                      const char*    name,
+                                      size_t         name_len,
+                                      uint32_t*      out_off,
+                                      uint32_t*      out_len)
 {
   *out_off      = 0U;
   *out_len      = 0U;
   size_t vstart = 0U;
   size_t vlen   = 0U;
-  if (!ra8_reflow_tok_find_attr(tag, tag_len, name, name_len, &vstart, &vlen)) {
+  if (!priv_ra8_reflow_tok_find_attr(tag, tag_len, name, name_len, &vstart, &vlen)) {
     return;
   }
   if ((vlen == 0U) ||
@@ -236,17 +239,17 @@ void ra8_reflow_tok_capture_attr(ra8_reflow_t*  engine,
  * @since 0.1.0
  */
 ra8_css_element_t
-ra8_reflow_tok_css_element(ra8_reflow_html_tag_t kind, const uint8_t* tag, size_t span)
+priv_ra8_reflow_tok_css_element(ra8_reflow_html_tag_t kind, const uint8_t* tag, size_t span)
 {
   ra8_css_element_t el = {};
   el.tag               = (uint8_t)kind;
   size_t off           = 0U;
   size_t len           = 0U;
-  if (ra8_reflow_tok_find_attr(tag, span, "id", sizeof("id") - 1U, &off, &len)) {
+  if (priv_ra8_reflow_tok_find_attr(tag, span, "id", sizeof("id") - 1U, &off, &len)) {
     el.id     = (const char*)&tag[off];
     el.id_len = (uint16_t)len;
   }
-  if (ra8_reflow_tok_find_attr(tag, span, "class", sizeof("class") - 1U, &off, &len)) {
+  if (priv_ra8_reflow_tok_find_attr(tag, span, "class", sizeof("class") - 1U, &off, &len)) {
     el.class_str = (const char*)&tag[off];
     el.class_len = (uint16_t)len;
   }
@@ -272,12 +275,12 @@ ra8_reflow_tok_css_element(ra8_reflow_html_tag_t kind, const uint8_t* tag, size_
  * @note Pure read of @p tag.
  * @since 0.1.0
  */
-ra8_css_style_t ra8_reflow_tok_css_inline(const uint8_t* tag, size_t span)
+ra8_css_style_t priv_ra8_reflow_tok_css_inline(const uint8_t* tag, size_t span)
 {
   ra8_css_style_t inl = {};
   size_t          off = 0U;
   size_t          len = 0U;
-  if (ra8_reflow_tok_find_attr(tag, span, "style", sizeof("style") - 1U, &off, &len)) {
+  if (priv_ra8_reflow_tok_find_attr(tag, span, "style", sizeof("style") - 1U, &off, &len)) {
     (void)ra8_css_parse_inline((const char*)&tag[off], (uint32_t)len, &inl);
   }
   return inl;
@@ -308,7 +311,7 @@ ra8_css_style_t ra8_reflow_tok_css_inline(const uint8_t* tag, size_t span)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-uint8_t ra8_reflow_tok_intern_link(ra8_reflow_t* engine, uint32_t href_off, uint32_t href_len)
+uint8_t priv_ra8_reflow_tok_intern_link(ra8_reflow_t* engine, uint32_t href_off, uint32_t href_len)
 {
   if ((href_len == 0U) || (engine->link_target_count >= (uint32_t)k_ra8_reflow_max_links)) {
     return 0U;
@@ -340,7 +343,7 @@ uint8_t ra8_reflow_tok_intern_link(ra8_reflow_t* engine, uint32_t href_off, uint
  * @note Pure.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_rel_is_stylesheet(const uint8_t* rel, size_t len)
+bool priv_ra8_reflow_tok_rel_is_stylesheet(const uint8_t* rel, size_t len)
 {
   static const char k_kw[] = "stylesheet";
   const size_t      k_klen = sizeof(k_kw) - 1U;
@@ -375,7 +378,8 @@ bool ra8_reflow_tok_rel_is_stylesheet(const uint8_t* rel, size_t len)
  * @note Pure; not thread-safe only insofar as it reads engine state.
  * @since 0.1.0
  */
-uint8_t ra8_reflow_tok_resolve_face_slot(const ra8_reflow_t* engine, const ra8_css_style_t* comp)
+uint8_t priv_ra8_reflow_tok_resolve_face_slot(const ra8_reflow_t*    engine,
+                                              const ra8_css_style_t* comp)
 {
   if ((engine->face_count == 0U) || ((comp->set & (uint8_t)k_ra8_css_set_family) == 0U) ||
       (comp->family_len == 0U)) {

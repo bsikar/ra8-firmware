@@ -18,15 +18,15 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "support/reflow_svg_test_util.h"
 #include "unity_minimal.h"
 
 /**
- * @test test_ws_class_mcdc
+ * @test internal_test_ws_class_mcdc
  *
  * @par MC/DC:
  * Decision: `priv_ws` ->
@@ -45,8 +45,16 @@
  *  - V6: 'z'     -> all F -> decision F (loop stops treating it as whitespace).
  * Each whitespace vector flips exactly one condition true with the lower-index
  * conditions held false (the OR short-circuit control); V6 holds all false.
+ * @brief Verify ws class mcdc behavior against the reflow contract.
+ * @details Exercises the ws class mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_ws_class_mcdc(void)
+RA8_INTERNAL static void internal_test_ws_class_mcdc(void)
 {
   TEST_BEGIN("priv_ws MC/DC: space/tab/nl/cr/ff separators");
   fb_reset();
@@ -65,11 +73,11 @@ static void test_ws_class_mcdc(void)
 }
 
 /**
- * @test test_hex_digit_mcdc
+ * @test internal_test_hex_digit_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_hex` digit guard `(c>='0')&&(c<='9')` and the letter guard
- * `(l>='a')&&(l<='f')` (libs/ra8_reflow/src/ra8_reflow_svg.c@priv_hex). A
+ * Decision: `internal_hex` digit guard `(c>='0')&&(c<='9')` and the letter guard
+ * `(l>='a')&&(l<='f')` (libs/ra8_reflow/src/ra8_reflow_svg.c@internal_hex). A
  * `#rrggbb` colour drives a hex digit ('0'..'9'), a hex letter ('a'..'f',
  * upper-cased through priv_lc), and -- via a malformed `#` colour with a
  * non-hex glyph -- the "not a hex digit" fall-through that returns
@@ -81,8 +89,16 @@ static void test_ws_class_mcdc(void)
  *  - V2: `#0g0000` -> 'g' fails both guards -> k_svg_no_paint -> skipped.
  * V1 vs V2 vary the digit/letter classification of the second nibble, flipping
  * "valid colour" vs "skip".
+ * @brief Verify hex digit mcdc behavior against the reflow contract.
+ * @details Exercises the hex digit mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_hex_digit_mcdc(void)
+RA8_INTERNAL static void internal_test_hex_digit_mcdc(void)
 {
   TEST_BEGIN("priv_hex MC/DC: digit vs a-f vs invalid nibble");
   fb_reset();
@@ -104,20 +120,27 @@ static void test_hex_digit_mcdc(void)
 }
 
 /**
- * @test test_hex3_shorthand
- * @brief A `#rgb` shorthand expands each nibble (priv_hex_color 3-digit arm),
+ * @test internal_test_hex3_shorthand
+ * @brief A `#rgb` shorthand expands each nibble (internal_hex_color 3-digit arm),
  *        and an invalid shorthand nibble falls through to skip.
  *
  * @par MC/DC:
  * Decision: `if (len == (size_t)k_svg_hex3)` -- the 3-digit shorthand arm of
- * `priv_hex_color` (libs/ra8_reflow/src/ra8_reflow_svg.c) -- combined with
+ * `internal_hex_color` (libs/ra8_reflow/src/ra8_reflow_svg.c) -- combined with
  * the per-nibble validity fall-through.
  * - V1: `#abc` -> shorthand arm TRUE, all nibbles valid -> 0xAABBCC fills.
  * - V2: `#zzz` -> shorthand arm TRUE, first nibble invalid -> no_paint (skip).
- * - V3: `#0a0b0c` (test_hex_digit_mcdc) -> shorthand arm FALSE (6-digit arm).
+ * - V3: `#0a0b0c` (internal_test_hex_digit_mcdc) -> shorthand arm FALSE (6-digit arm).
  * V1 vs V3 vary the length condition; V1 vs V2 vary the nibble validity.
+ * @details Exercises the hex3 shorthand path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_hex3_shorthand(void)
+RA8_INTERNAL static void internal_test_hex3_shorthand(void)
 {
   TEST_BEGIN("svg #rgb shorthand + invalid shorthand");
   fb_reset();
@@ -139,7 +162,7 @@ static void test_hex3_shorthand(void)
 }
 
 /**
- * @test test_num_sign_fraction_mcdc
+ * @test internal_test_num_sign_fraction_mcdc
  *
  * @par MC/DC:
  * Decision: the integer scanner `priv_num` sign arm
@@ -156,8 +179,16 @@ static void test_hex3_shorthand(void)
  *  - V2: viewBox `0 0 100 100` -> sign F, fraction F (the bare-integer control).
  * V1 vs V2 flip the sign and fraction conditions; the rendered colour differs
  * because the viewBox origin shifts.
+ * @brief Verify num sign fraction mcdc behavior against the reflow contract.
+ * @details Exercises the num sign fraction mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_num_sign_fraction_mcdc(void)
+RA8_INTERNAL static void internal_test_num_sign_fraction_mcdc(void)
 {
   TEST_BEGIN("priv_num MC/DC: sign (- / +) and fraction arms");
   fb_reset();
@@ -182,7 +213,7 @@ static void test_num_sign_fraction_mcdc(void)
 }
 
 /**
- * @test test_attr_value_forms_mcdc
+ * @test internal_test_attr_value_forms_mcdc
  *
  * @par MC/DC:
  * Decision: `priv_attr` value delimiter handling --
@@ -200,8 +231,16 @@ static void test_num_sign_fraction_mcdc(void)
  *        path returns false for the malformed attr; the shape still renders with
  *        its default geometry, proving the reject did not crash.
  * V1 vs V2 vary the quote character / whitespace skip; V3 exercises the reject.
+ * @brief Verify attr value forms mcdc behavior against the reflow contract.
+ * @details Exercises the attr value forms mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_attr_value_forms_mcdc(void)
+RA8_INTERNAL static void internal_test_attr_value_forms_mcdc(void)
 {
   TEST_BEGIN("priv_attr MC/DC: single-quote / ws-before-value / no-quote reject");
   fb_reset();
@@ -233,20 +272,27 @@ static void test_attr_value_forms_mcdc(void)
 }
 
 /**
- * @test test_named_color_mismatch
- * @brief Named colours fold case + miss late in priv_ci_eq, and an unknown
+ * @test internal_test_named_color_mismatch
+ * @brief Named colours fold case + miss late in internal_ci_eq, and an unknown
  *        name returns no_paint (the shape is skipped).
  *
  * @par MC/DC:
- * Decision: `priv_ci_eq` mismatch test `priv_lc(s[k]) != priv_lc(lit[k])`
- * (1 condition, per character; libs/ra8_reflow/src/ra8_reflow_svg.c@priv_ci_eq).
+ * Decision: `internal_ci_eq` mismatch test `priv_lc(s[k]) != priv_lc(lit[k])`
+ * (1 condition, per character; libs/ra8_reflow/src/ra8_reflow_svg.c@internal_ci_eq).
  * - V1: `fill="OrAnGe"` -> every folded char matches -> known colour fills.
  * - V2: `fill="oranje"` -> a late char mismatches every table name -> no match
  *       -> no_paint -> skip.
  * V1 vs V2 vary the mismatch condition (all-match vs a mismatch), flipping
  * "filled" vs "skipped".
+ * @details Exercises the named color mismatch path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_named_color_mismatch(void)
+RA8_INTERNAL static void internal_test_named_color_mismatch(void)
 {
   TEST_BEGIN("priv_ci_eq MC/DC: mixed-case match vs late mismatch");
   fb_reset();
@@ -268,7 +314,7 @@ static void test_named_color_mismatch(void)
 }
 
 /**
- * @test test_numf_sign_fraction_mcdc
+ * @test internal_test_numf_sign_fraction_mcdc
  *
  * @par MC/DC:
  * Decision: the float scanner `priv_numf` sign arm
@@ -282,8 +328,16 @@ static void test_named_color_mismatch(void)
  *        fractional offset.
  *  - V2: `transform="translate(30,20)"` -> sign F, fraction F (bare integers).
  * V1 vs V2 flip the sign and fraction conditions; the placement differs.
+ * @brief Verify numf sign fraction mcdc behavior against the reflow contract.
+ * @details Exercises the numf sign fraction mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_numf_sign_fraction_mcdc(void)
+RA8_INTERNAL static void internal_test_numf_sign_fraction_mcdc(void)
 {
   TEST_BEGIN("priv_numf MC/DC: sign (- / +) and fraction arms");
   fb_reset();
@@ -308,13 +362,13 @@ static void test_numf_sign_fraction_mcdc(void)
 }
 
 /**
- * @test test_is_num_start_mcdc
+ * @test internal_test_is_num_start_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_is_num_start` ->
+ * Decision: `internal_is_num_start` ->
  * `digit || (c=='-') || (c=='+') || (c=='.')` (4 conditions, OR;
- * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_is_num_start), reached from the
- * transform argument reader priv_xform_read which stops at the first non-number.
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@internal_is_num_start), reached from the
+ * transform argument reader internal_xform_read which stops at the first non-number.
  * Each leading character class appears as the first transform argument.
  *
  * Vectors (N+1 = 5 for N=4):
@@ -325,8 +379,16 @@ static void test_numf_sign_fraction_mcdc(void)
  *  - V5: `scale()`          -> ')' -> all F -> no arg read (na==0).
  * Each vector flips exactly one condition true with the lower-index conditions
  * held false; V5 holds all false (empty arg list).
+ * @brief Verify is num start mcdc behavior against the reflow contract.
+ * @details Exercises the is num start mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_is_num_start_mcdc(void)
+RA8_INTERNAL static void internal_test_is_num_start_mcdc(void)
 {
   TEST_BEGIN("priv_is_num_start MC/DC: digit/-/+/./none leading arg");
   /* V1 digit. */
@@ -369,11 +431,11 @@ static void test_is_num_start_mcdc(void)
 }
 
 /**
- * @test test_priv_hex_below_zero_nibble_mcdc
+ * @test internal_test_priv_hex_below_zero_nibble_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_hex` digit guard `(c>='0')&&(c<='9')` (L242) and letter guard
- * `(l>='a')&&(l<='f')` (L246; libs/ra8_reflow/src/ra8_reflow_svg.c@priv_hex).
+ * Decision: `internal_hex` digit guard `(c>='0')&&(c<='9')` (L242) and letter guard
+ * `(l>='a')&&(l<='f')` (L246; libs/ra8_reflow/src/ra8_reflow_svg.c@internal_hex).
  * Existing tests cover the digit branch (both T) and the `>'9'` letter `g`
  * (digit `c<='9'` F; letter `l<='f'` F). This adds a nibble BELOW `'0'` (`/`,
  * 0x2F) so the digit `c>='0'` condition and the letter `l>='a'` condition each
@@ -382,8 +444,16 @@ static void test_is_num_start_mcdc(void)
  *        `l>='a'` F) -> not a hex digit -> k_svg_no_paint -> rect skipped.
  * V1 vs the existing valid-hex and `g` vectors flip the lower-bound conditions
  * of both guards independently.
+ * @brief Verify priv hex below zero nibble mcdc behavior against the reflow contract.
+ * @details Exercises the priv hex below zero nibble mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_priv_hex_below_zero_nibble_mcdc(void)
+RA8_INTERNAL static void internal_test_priv_hex_below_zero_nibble_mcdc(void)
 {
   TEST_BEGIN("priv_hex MC/DC: nibble below '0' flips both lower-bound guards");
   fb_reset();
@@ -398,7 +468,7 @@ static void test_priv_hex_below_zero_nibble_mcdc(void)
 }
 
 /**
- * @test test_priv_num_boundary_arms_mcdc
+ * @test internal_test_priv_num_boundary_arms_mcdc
  *
  * @par MC/DC:
  * Decision: the integer scanner `priv_num` -- the leading-separator skip
@@ -419,8 +489,16 @@ static void test_priv_hex_below_zero_nibble_mcdc(void)
  *        below '0' after a fraction digit -> L274 `>='0'` F.
  *  - V4: `width="20."` -> the dot is the last byte -> L274 `*i<len` F.
  * The render result is robust (k_ra8_ok); the scan arms are what matters.
+ * @brief Verify priv num boundary arms mcdc behavior against the reflow contract.
+ * @details Exercises the priv num boundary arms mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_priv_num_boundary_arms_mcdc(void)
+RA8_INTERNAL static void internal_test_priv_num_boundary_arms_mcdc(void)
 {
   TEST_BEGIN("priv_num MC/DC: separator / sign / digit / fraction end-of-slice arms");
   /* V1: an all-separator width slice -> L258 runs to the slice end. */
@@ -456,7 +534,7 @@ static void test_priv_num_boundary_arms_mcdc(void)
 }
 
 /**
- * @test test_priv_numf_boundary_arms_mcdc
+ * @test internal_test_priv_numf_boundary_arms_mcdc
  *
  * @par MC/DC:
  * Decision: the float scanner `priv_numf` -- the leading-separator skip (L559),
@@ -472,8 +550,16 @@ static void test_priv_num_boundary_arms_mcdc(void)
  *        `*i<len` F (and no sign -> L563 sign conditions false).
  *  - V3: `offset="  "` -> an all-separator slice -> L559 `*i<len` F.
  * Rendering the gradient is robust (k_ra8_ok); the float-scan arms are the point.
+ * @brief Verify priv numf boundary arms mcdc behavior against the reflow contract.
+ * @details Exercises the priv numf boundary arms mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_priv_numf_boundary_arms_mcdc(void)
+RA8_INTERNAL static void internal_test_priv_numf_boundary_arms_mcdc(void)
 {
   TEST_BEGIN("priv_numf MC/DC: separator / sign / digit / fraction end-of-slice arms");
   fb_reset();
@@ -494,16 +580,16 @@ static void test_priv_numf_boundary_arms_mcdc(void)
 }
 
 /**
- * @test test_attr_boundary_reject_mcdc
+ * @test internal_test_attr_boundary_reject_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_attr_at` boundary `(at>0)&&!priv_ws(s[at-1])` (L293) and the
+ * Decision: `internal_attr_at` boundary `(at>0)&&!priv_ws(s[at-1])` (L293) and the
  * delimiter `(s[after]=='=')||priv_ws(s[after])` (L300); `priv_attr`'s
  * scan-to-`=` (L316), ws-after-`=` skip (L320), open-quote reject (L323), and
  * value-scan-to-close-quote (L329; libs/ra8_reflow/src/ra8_reflow_svg.c).
  *
  * Vectors:
- *  - V1: a substring `xfill="..."` makes `priv_attr_at("fill")` match preceded
+ *  - V1: a substring `xfill="..."` makes `internal_attr_at("fill")` match preceded
  *        by a non-ws `x` -> L293 `!priv_ws` T (reject); a `fillx="..."` makes
  *        the name match but the char after is neither `=` nor ws -> L300 (F,F)
  *        reject; the genuine ` fill="#ff0000"` then fills the rect red.
@@ -513,8 +599,16 @@ static void test_priv_numf_boundary_arms_mcdc(void)
  *        L323 `j>=len` T (reject) -> default black fill.
  *  - V4: an unterminated `fill="#ff0000` (no close quote before the tag end) ->
  *        L329 `j<len` F; the malformed paint -> k_svg_no_paint -> rect skipped.
+ * @brief Verify attr boundary reject mcdc behavior against the reflow contract.
+ * @details Exercises the attr boundary reject mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_attr_boundary_reject_mcdc(void)
+RA8_INTERNAL static void internal_test_attr_boundary_reject_mcdc(void)
 {
   TEST_BEGIN("priv_attr MC/DC: name-boundary / delimiter / no-= / empty / unterminated");
   /* V1: a non-ws-preceded `xfill` (L293 reject) and a `fillx` followed by a
@@ -553,12 +647,12 @@ static void test_attr_boundary_reject_mcdc(void)
 }
 
 /**
- * @test test_ci_eq_length_arms_mcdc
+ * @test internal_test_ci_eq_length_arms_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_ci_eq` loop guard `(k<len)&&(lit[k]!='\0')` (L355) and the
+ * Decision: `internal_ci_eq` loop guard `(k<len)&&(lit[k]!='\0')` (L355) and the
  * result `(k==len)&&(lit[k]=='\0')` (L360;
- * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_ci_eq). A colour name that is a strict
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@internal_ci_eq). A colour name that is a strict
  * prefix of a table entry exits the loop on `k<len` F (and makes `lit[k]!='\0'`
  * the deciding result condition), while a name longer than every entry exits on
  * `lit[k]!='\0'` F (making `k==len` false).
@@ -569,8 +663,16 @@ static void test_attr_boundary_reject_mcdc(void)
  *  - V2: `fill="reddd"` (longer than `red`) -> L355 exits on `lit[k]!='\0'` F;
  *        L360 `k==len` F -> no match -> rect skipped.
  * V1 vs an exact match flip the length relation; the rect stays white.
+ * @brief Verify ci eq length arms mcdc behavior against the reflow contract.
+ * @details Exercises the ci eq length arms mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_ci_eq_length_arms_mcdc(void)
+RA8_INTERNAL static void internal_test_ci_eq_length_arms_mcdc(void)
 {
   TEST_BEGIN("priv_ci_eq MC/DC: short-prefix vs over-long name");
   /* V1: `blu` is a prefix of `blue` -> runs out of span before the literal. */
@@ -592,11 +694,11 @@ static void test_ci_eq_length_arms_mcdc(void)
 }
 
 /**
- * @test test_is_num_start_above_nine_mcdc
+ * @test internal_test_is_num_start_above_nine_mcdc
  *
  * @par MC/DC:
- * Decision: `priv_is_num_start` digit sub-test `(c>='0')&&(c<='9')` within the
- * OR (L611; libs/ra8_reflow/src/ra8_reflow_svg.c@priv_is_num_start). The existing
+ * Decision: `internal_is_num_start` digit sub-test `(c>='0')&&(c<='9')` within the
+ * OR (L611; libs/ra8_reflow/src/ra8_reflow_svg.c@internal_is_num_start). The existing
  * test covers a digit (both T), `-`, `+`, `.`, and the empty `)` (all F, with
  * `c<'0'`). This adds a leading char ABOVE '9' (`z`) so the digit sub-test's
  * `c<='9'` condition flips false while `c>='0'` stays true and the sign/dot
@@ -606,8 +708,16 @@ static void test_ci_eq_length_arms_mcdc(void)
  *  - `transform="scale(z)"` -> the first transform argument starts with `z`
  *    (>'9') -> `c>='0'` T, `c<='9'` F, not `-`/`+`/`.` -> no argument read ->
  *    a degenerate scale -> the rect collapses (stays white).
+ * @brief Verify is num start above nine mcdc behavior against the reflow contract.
+ * @details Exercises the is num start above nine mcdc path and preserves each documented result and bound.
+ * @pre The referenced fixtures and fixed-capacity buffers are valid.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
+ * @pre Bounded working storage remains available for the complete operation.
+ * @post No state outside the documented outputs is modified by this helper.
  */
-static void test_is_num_start_above_nine_mcdc(void)
+RA8_INTERNAL static void internal_test_is_num_start_above_nine_mcdc(void)
 {
   TEST_BEGIN("priv_is_num_start MC/DC: leading char above '9'");
   fb_reset();
@@ -631,20 +741,19 @@ static void test_is_num_start_above_nine_mcdc(void)
  */
 int32_t main(void)
 {
-  test_ws_class_mcdc();
-  test_hex_digit_mcdc();
-  test_hex3_shorthand();
-  test_num_sign_fraction_mcdc();
-  test_attr_value_forms_mcdc();
-  test_named_color_mismatch();
-  test_numf_sign_fraction_mcdc();
-  test_is_num_start_mcdc();
-  test_priv_hex_below_zero_nibble_mcdc();
-  test_priv_num_boundary_arms_mcdc();
-  test_priv_numf_boundary_arms_mcdc();
-  test_attr_boundary_reject_mcdc();
-  test_ci_eq_length_arms_mcdc();
-  test_is_num_start_above_nine_mcdc();
-  (void)fprintf(stderr, "[OK ] test_ra8_reflow_svg_scan_mcdc.c\n");
+  internal_test_ws_class_mcdc();
+  internal_test_hex_digit_mcdc();
+  internal_test_hex3_shorthand();
+  internal_test_num_sign_fraction_mcdc();
+  internal_test_attr_value_forms_mcdc();
+  internal_test_named_color_mismatch();
+  internal_test_numf_sign_fraction_mcdc();
+  internal_test_is_num_start_mcdc();
+  internal_test_priv_hex_below_zero_nibble_mcdc();
+  internal_test_priv_num_boundary_arms_mcdc();
+  internal_test_priv_numf_boundary_arms_mcdc();
+  internal_test_attr_boundary_reject_mcdc();
+  internal_test_ci_eq_length_arms_mcdc();
+  internal_test_is_num_start_above_nine_mcdc();
   return 0;
 }

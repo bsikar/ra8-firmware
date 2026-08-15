@@ -42,11 +42,11 @@
 /**
  * @brief Return true iff @p tag is a block-level indent tag.
  *
- * @details Pure helper factored out of @c priv_open_block (line 479)
- *          and @c priv_close_block (line 513) so the
+ * @details Pure helper factored out of @c internal_open_block (line 479)
+ *          and @c internal_close_block (line 513) so the
  *          ``tag == li || tag == blockquote`` decision can be driven
  *          directly by host MC/DC tests via
- *          @ref ra8_reflow_internal_is_indent_tag.
+ *          @ref priv_ra8_reflow_internal_is_indent_tag.
  *
  * @param[in] tag Token tag value (raw @c uint8_t storage of
  *                @ref ra8_reflow_html_tag_t).
@@ -64,7 +64,7 @@
  *
  * @since 0.1.0
  */
-bool ra8_reflow_internal_is_indent_tag(uint8_t tag)
+bool priv_ra8_reflow_internal_is_indent_tag(uint8_t tag)
 {
   return (tag == (uint8_t)k_ra8_reflow_tag_li) || (tag == (uint8_t)k_ra8_reflow_tag_blockquote);
 }
@@ -80,7 +80,7 @@ bool ra8_reflow_internal_is_indent_tag(uint8_t tag)
  * @param[in] right_limit Right edge in pixels.
  * @param[in] line_has_content Non-zero iff the line already has glyphs.
  * @return Boolean break-needed predicate.
- * @retval true Caller must call ra8_reflow_layout_newline before emitting.
+ * @retval true Caller must call priv_ra8_reflow_layout_newline before emitting.
  * @retval false Emitting in place is safe.
  * @pre None.
  * @pre None.
@@ -89,10 +89,10 @@ bool ra8_reflow_internal_is_indent_tag(uint8_t tag)
  * @note Pure function; thread-safe.
  * @since 0.1.0
  */
-bool ra8_reflow_internal_right_overflow_break(int32_t cursor_x,
-                                              int32_t advance,
-                                              int32_t right_limit,
-                                              uint8_t line_has_content)
+bool priv_ra8_reflow_internal_right_overflow_break(int32_t cursor_x,
+                                                   int32_t advance,
+                                                   int32_t right_limit,
+                                                   uint8_t line_has_content)
 {
   return (cursor_x + advance > right_limit) && (line_has_content != 0U);
 }
@@ -112,7 +112,7 @@ bool ra8_reflow_internal_right_overflow_break(int32_t cursor_x,
  * @note Pure function; thread-safe.
  * @since 0.1.0
  */
-bool ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t xhtml_len)
+bool priv_ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t xhtml_len)
 {
   return (xhtml_buf == nullptr) || (xhtml_len == 0U);
 }
@@ -132,13 +132,13 @@ bool ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t xhtml_len)
  * @note Pure function; thread-safe.
  * @since 0.1.0
  */
-bool ra8_reflow_internal_final_page_needed(uint32_t page_count, uint32_t token_count)
+bool priv_ra8_reflow_internal_final_page_needed(uint32_t page_count, uint32_t token_count)
 {
   return (page_count == 0U) && (token_count > 0U);
 }
 
-/** @brief Implementation of `ra8_reflow_layout_byte_zero()` -- bounded byte-walk. */
-void ra8_reflow_layout_byte_zero(uint8_t* dst, size_t n)
+/** @brief Implementation of `priv_ra8_reflow_layout_byte_zero()` -- bounded byte-walk. */
+void priv_ra8_reflow_layout_byte_zero(uint8_t* dst, size_t n)
 {
   for (size_t i = 0U; i < n; ++i) {
     dst[i] = 0U;
@@ -154,8 +154,8 @@ void ra8_reflow_layout_byte_zero(uint8_t* dst, size_t n)
  * ===========================================================================
  */
 
-/** @brief Implementation of `ra8_reflow_layout_init_font()` -- parse the TTF blob. */
-ra8_err_t ra8_reflow_layout_init_font(const ra8_reflow_t* engine, stbtt_fontinfo* out_font)
+/** @brief Implementation of `priv_ra8_reflow_layout_init_font()` -- parse the TTF blob. */
+ra8_err_t priv_ra8_reflow_layout_init_font(const ra8_reflow_t* engine, stbtt_fontinfo* out_font)
 {
   const int32_t offset = stbtt_GetFontOffsetForIndex(engine->font_data, 0);
   if (offset < 0) {
@@ -167,8 +167,8 @@ ra8_err_t ra8_reflow_layout_init_font(const ra8_reflow_t* engine, stbtt_fontinfo
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra8_reflow_layout_line_height()` -- scaled integer ratio. */
-uint16_t ra8_reflow_layout_line_height(uint16_t font_px)
+/** @brief Implementation of `priv_ra8_reflow_layout_line_height()` -- scaled integer ratio. */
+uint16_t priv_ra8_reflow_layout_line_height(uint16_t font_px)
 {
   const uint32_t lh = ((uint32_t)font_px * (uint32_t)k_ra8_reflow_line_spacing_num) /
                       (uint32_t)k_ra8_reflow_line_spacing_den;
@@ -192,7 +192,7 @@ uint16_t ra8_reflow_layout_line_height(uint16_t font_px)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint16_t priv_block_font_px(uint16_t body_px, ra8_reflow_html_tag_t tag)
+static uint16_t internal_block_font_px(uint16_t body_px, ra8_reflow_html_tag_t tag)
 {
   uint32_t pct = k_ra8_reflow_pct_full;
   switch (tag) {
@@ -221,8 +221,9 @@ static uint16_t priv_block_font_px(uint16_t body_px, ra8_reflow_html_tag_t tag)
   return (uint16_t)(((uint32_t)body_px * pct) / k_ra8_reflow_pct_full);
 }
 
-/** @brief Implementation of `ra8_reflow_layout_glyph_advance()` -- scaled hmetrics. */
-int32_t ra8_reflow_layout_glyph_advance(const stbtt_fontinfo* font, uint16_t font_px, int32_t cp)
+/** @brief Implementation of `priv_ra8_reflow_layout_glyph_advance()` -- scaled hmetrics. */
+int32_t
+priv_ra8_reflow_layout_glyph_advance(const stbtt_fontinfo* font, uint16_t font_px, int32_t cp)
 {
   const float scale         = stbtt_ScaleForPixelHeight(font, (float)font_px);
   int         advance_units = 0;
@@ -231,15 +232,15 @@ int32_t ra8_reflow_layout_glyph_advance(const stbtt_fontinfo* font, uint16_t fon
   return (int32_t)((float)advance_units * scale);
 }
 
-/** @brief Implementation of `ra8_reflow_layout_push_glyph()` -- append + bounds check. */
-bool ra8_reflow_layout_push_glyph(ra8_reflow_t* engine,
-                                  int32_t       x,
-                                  int32_t       y,
-                                  int32_t       cp,
-                                  uint16_t      font_px,
-                                  uint8_t       style,
-                                  uint32_t      color,
-                                  uint8_t       link_id)
+/** @brief Implementation of `priv_ra8_reflow_layout_push_glyph()` -- append + bounds check. */
+bool priv_ra8_reflow_layout_push_glyph(ra8_reflow_t* engine,
+                                       int32_t       x,
+                                       int32_t       y,
+                                       int32_t       cp,
+                                       uint16_t      font_px,
+                                       uint8_t       style,
+                                       uint32_t      color,
+                                       uint8_t       link_id)
 {
   if (engine->glyph_count >= k_ra8_reflow_max_glyphs) {
     return false;
@@ -256,8 +257,8 @@ bool ra8_reflow_layout_push_glyph(ra8_reflow_t* engine,
   return true;
 }
 
-/** @brief Implementation of `ra8_reflow_layout_finish_page()` -- flush + reset cursor. */
-bool ra8_reflow_layout_finish_page(ra8_reflow_t* engine, priv_cursor_t* cur)
+/** @brief Implementation of `priv_ra8_reflow_layout_finish_page()` -- flush + reset cursor. */
+bool priv_ra8_reflow_layout_finish_page(ra8_reflow_t* engine, priv_cursor_t* cur)
 {
   if (engine->page_count >= k_ra8_reflow_max_pages) {
     return false;
@@ -302,7 +303,7 @@ bool ra8_reflow_layout_finish_page(ra8_reflow_t* engine, priv_cursor_t* cur)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_justify_glyphs(ra8_reflow_t* engine, uint32_t lo, uint32_t hi, int32_t slack)
+static void internal_justify_glyphs(ra8_reflow_t* engine, uint32_t lo, uint32_t hi, int32_t slack)
 {
   uint32_t spaces = 0U;
   for (uint32_t i = lo; i < hi; ++i) {
@@ -335,7 +336,7 @@ static void priv_justify_glyphs(ra8_reflow_t* engine, uint32_t lo, uint32_t hi, 
  * @details Left alignment is a no-op (the default). Centre and right shift every
  * glyph in the range `[cur->line_first_glyph, engine->glyph_count)` so the
  * content edge meets the centre or right margin. Justify distributes the slack
- * across inter-word gaps via @ref priv_justify_glyphs -- but only when
+ * across inter-word gaps via @ref internal_justify_glyphs -- but only when
  * @p allow_justify is true (wrapped lines); the last line of a paragraph keeps
  * its left alignment. A trailing space at the break point is excluded from the
  * content extent before computing the slack so justification does not over-expand.
@@ -355,7 +356,7 @@ static void priv_justify_glyphs(ra8_reflow_t* engine, uint32_t lo, uint32_t hi, 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_finish_line(ra8_reflow_t* engine, priv_cursor_t* cur, bool allow_justify)
+static void internal_finish_line(ra8_reflow_t* engine, priv_cursor_t* cur, bool allow_justify)
 {
   if (cur->align == (uint8_t)k_ra8_reflow_align_left) {
     return;
@@ -377,7 +378,7 @@ static void priv_finish_line(ra8_reflow_t* engine, priv_cursor_t* cur, bool allo
   }
   if (cur->align == (uint8_t)k_ra8_reflow_align_justify) {
     if (allow_justify) {
-      priv_justify_glyphs(engine, lo, hi, slack);
+      internal_justify_glyphs(engine, lo, hi, slack);
     }
     return;
   }
@@ -387,10 +388,10 @@ static void priv_finish_line(ra8_reflow_t* engine, priv_cursor_t* cur, bool allo
   }
 }
 
-/** @brief Implementation of `ra8_reflow_layout_newline()` -- align, advance, page-break. */
-bool ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool allow_justify)
+/** @brief Implementation of `priv_ra8_reflow_layout_newline()` -- align, advance, page-break. */
+bool priv_ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool allow_justify)
 {
-  priv_finish_line(engine, cur, allow_justify);
+  internal_finish_line(engine, cur, allow_justify);
   cur->y += (int32_t)cur->line_height_px;
   cur->line_top         = cur->y;
   cur->x                = (int32_t)k_ra8_reflow_margin_px + (int32_t)cur->indent_px;
@@ -399,7 +400,7 @@ bool ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool al
 
   const int32_t bottom_limit = (int32_t)engine->viewport_h - (int32_t)k_ra8_reflow_margin_px;
   if (cur->y + (int32_t)cur->line_height_px > bottom_limit) {
-    if (!ra8_reflow_layout_finish_page(engine, cur)) {
+    if (!priv_ra8_reflow_layout_finish_page(engine, cur)) {
       return false;
     }
   }
@@ -410,12 +411,12 @@ bool ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool al
  * @brief Append one ASCII code point at the current cursor, wrapping
  *        if it would overflow the right margin.
  *
- * @details Measures the advance width of @p cp via @ref ra8_reflow_layout_glyph_advance,
+ * @details Measures the advance width of @p cp via @ref priv_ra8_reflow_layout_glyph_advance,
  * clamps it to at least `k_priv_min_word_w_px` to prevent zero-width stalls,
  * and checks the right-overflow predicate
- * (@ref ra8_reflow_internal_right_overflow_break). If a line break is needed
- * and the line already has content, @ref ra8_reflow_layout_newline is called before the
- * glyph is pushed. The glyph is then appended via @ref ra8_reflow_layout_push_glyph and
+ * (@ref priv_ra8_reflow_internal_right_overflow_break). If a line break is needed
+ * and the line already has content, @ref priv_ra8_reflow_layout_newline is called before the
+ * glyph is pushed. The glyph is then appended via @ref priv_ra8_reflow_layout_push_glyph and
  * `cur->x` is advanced by the clamped advance. `cur->line_has_content` is set
  * to 1 after the first glyph lands.
  *
@@ -439,34 +440,36 @@ bool ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool al
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_emit_char(ra8_reflow_t*         engine,
-                                priv_cursor_t*        cur,
-                                const stbtt_fontinfo* font,
-                                int32_t               cp,
-                                uint32_t              color,
-                                uint8_t               link_id)
+static ra8_err_t internal_emit_char(ra8_reflow_t*         engine,
+                                    priv_cursor_t*        cur,
+                                    const stbtt_fontinfo* font,
+                                    int32_t               cp,
+                                    uint32_t              color,
+                                    uint8_t               link_id)
 {
-  const int32_t advance = ra8_reflow_layout_glyph_advance(font, cur->active_font_px, cp);
+  const int32_t advance = priv_ra8_reflow_layout_glyph_advance(font, cur->active_font_px, cp);
   const int32_t advance_clamped =
     (advance < (int32_t)k_priv_min_word_w_px) ? (int32_t)k_priv_min_word_w_px : advance;
 
   const int32_t right_limit = (int32_t)engine->viewport_w - (int32_t)k_ra8_reflow_margin_px;
-  if (ra8_reflow_internal_right_overflow_break(cur->x,
-                                               advance_clamped,
-                                               right_limit,
-                                               cur->line_has_content)) {
-    if (!ra8_reflow_layout_newline(engine, cur, true)) { /* wrap -> previous line may justify */
+  if (priv_ra8_reflow_internal_right_overflow_break(cur->x,
+                                                    advance_clamped,
+                                                    right_limit,
+                                                    cur->line_has_content)) {
+    if (!priv_ra8_reflow_layout_newline(engine,
+                                        cur,
+                                        true)) { /* wrap -> previous line may justify */
       return k_ra8_err_no_mem;
     }
   }
-  if (!ra8_reflow_layout_push_glyph(engine,
-                                    cur->x,
-                                    cur->y,
-                                    cp,
-                                    cur->active_font_px,
-                                    cur->active_style,
-                                    color,
-                                    link_id)) {
+  if (!priv_ra8_reflow_layout_push_glyph(engine,
+                                         cur->x,
+                                         cur->y,
+                                         cp,
+                                         cur->active_font_px,
+                                         cur->active_style,
+                                         color,
+                                         link_id)) {
     return k_ra8_err_no_mem;
   }
   cur->x += advance_clamped;
@@ -476,7 +479,7 @@ static ra8_err_t priv_emit_char(ra8_reflow_t*         engine,
 
 /**
  * @brief Lay out one text token: walk byte-by-byte, breaking at
- *        whitespace, and emit each character through `priv_emit_char`.
+ *        whitespace, and emit each character through `internal_emit_char`.
  *
  * @details See implementation.
  * @param[in] engine See implementation.
@@ -493,10 +496,10 @@ static ra8_err_t priv_emit_char(ra8_reflow_t*         engine,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_layout_text(ra8_reflow_t*             engine,
-                                  priv_cursor_t*            cur,
-                                  const stbtt_fontinfo*     font,
-                                  const ra8_reflow_token_t* tok)
+static ra8_err_t internal_layout_text(ra8_reflow_t*             engine,
+                                      priv_cursor_t*            cur,
+                                      const stbtt_fontinfo*     font,
+                                      const ra8_reflow_token_t* tok)
 {
   const uint8_t* base    = engine->text_pool + tok->text_off;
   const uint32_t len     = tok->text_len;
@@ -517,7 +520,7 @@ static ra8_err_t priv_layout_text(ra8_reflow_t*             engine,
     /* Emit any leading whitespace as one space (already collapsed by
      * the parser). */
     if (base[i] == ' ') {
-      ra8_err_t err = priv_emit_char(engine, cur, font, ' ', color, link_id);
+      ra8_err_t err = internal_emit_char(engine, cur, font, ' ', color, link_id);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -529,20 +532,23 @@ static ra8_err_t priv_layout_text(ra8_reflow_t*             engine,
     uint32_t word_end = i;
     int32_t  word_w   = 0;
     while (word_end < len && base[word_end] != ' ') {
-      word_w += ra8_reflow_layout_glyph_advance(font, cur->active_font_px, (int32_t)base[word_end]);
+      word_w +=
+        priv_ra8_reflow_layout_glyph_advance(font, cur->active_font_px, (int32_t)base[word_end]);
       ++word_end;
     }
     const int32_t right_limit = (int32_t)engine->viewport_w - (int32_t)k_ra8_reflow_margin_px;
-    if (ra8_reflow_internal_right_overflow_break(cur->x,
-                                                 word_w,
-                                                 right_limit,
-                                                 cur->line_has_content)) {
-      if (!ra8_reflow_layout_newline(engine, cur, true)) { /* wrap -> previous line may justify */
+    if (priv_ra8_reflow_internal_right_overflow_break(cur->x,
+                                                      word_w,
+                                                      right_limit,
+                                                      cur->line_has_content)) {
+      if (!priv_ra8_reflow_layout_newline(engine,
+                                          cur,
+                                          true)) { /* wrap -> previous line may justify */
         return k_ra8_err_no_mem;
       }
     }
     while (i < word_end) {
-      ra8_err_t err = priv_emit_char(engine, cur, font, (int32_t)base[i], color, link_id);
+      ra8_err_t err = internal_emit_char(engine, cur, font, (int32_t)base[i], color, link_id);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -570,10 +576,11 @@ static ra8_err_t priv_layout_text(ra8_reflow_t*             engine,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_open_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_token_t* tok)
+static bool
+internal_open_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_token_t* tok)
 {
   if (cur->line_has_content != 0U) {
-    if (!ra8_reflow_layout_newline(engine, cur, false)) {
+    if (!priv_ra8_reflow_layout_newline(engine, cur, false)) {
       return false;
     }
   }
@@ -593,11 +600,12 @@ static bool priv_open_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_
   /* CSS `font-size` (#140) on the block-start token wins; else the UA default
    * (body size or heading scale). 0 = no CSS font, so unstyled content is
    * byte-identical. */
-  cur->active_font_px = (tok->css_font_px != 0U)
-                          ? tok->css_font_px
-                          : priv_block_font_px(engine->font_px, (ra8_reflow_html_tag_t)tok->tag);
-  cur->line_height_px = ra8_reflow_layout_line_height(cur->active_font_px);
-  if (ra8_reflow_internal_is_indent_tag((uint8_t)tok->tag)) {
+  cur->active_font_px =
+    (tok->css_font_px != 0U)
+      ? tok->css_font_px
+      : internal_block_font_px(engine->font_px, (ra8_reflow_html_tag_t)tok->tag);
+  cur->line_height_px = priv_ra8_reflow_layout_line_height(cur->active_font_px);
+  if (priv_ra8_reflow_internal_is_indent_tag((uint8_t)tok->tag)) {
     cur->indent_px = k_ra8_reflow_indent_px;
     cur->x         = (int32_t)k_ra8_reflow_margin_px + (int32_t)cur->indent_px;
   }
@@ -622,10 +630,10 @@ static bool priv_open_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_
  */
 RA8_INTERNAL
 static bool
-priv_close_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_token_t* tok)
+internal_close_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_token_t* tok)
 {
   if (cur->line_has_content != 0U) {
-    if (!ra8_reflow_layout_newline(engine, cur, false)) {
+    if (!priv_ra8_reflow_layout_newline(engine, cur, false)) {
       return false;
     }
   }
@@ -633,15 +641,15 @@ priv_close_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_toke
   cur->y += (int32_t)k_ra8_reflow_paragraph_gap_px;
   cur->line_top = cur->y;
   cur->x        = (int32_t)k_ra8_reflow_margin_px;
-  if (ra8_reflow_internal_is_indent_tag((uint8_t)tok->tag)) {
+  if (priv_ra8_reflow_internal_is_indent_tag((uint8_t)tok->tag)) {
     cur->indent_px = 0U;
   }
   cur->active_font_px = engine->font_px;
-  cur->line_height_px = ra8_reflow_layout_line_height(cur->active_font_px);
+  cur->line_height_px = priv_ra8_reflow_layout_line_height(cur->active_font_px);
 
   const int32_t bottom_limit = (int32_t)engine->viewport_h - (int32_t)k_ra8_reflow_margin_px;
   if (cur->y + (int32_t)cur->line_height_px > bottom_limit) {
-    if (!ra8_reflow_layout_finish_page(engine, cur)) {
+    if (!priv_ra8_reflow_layout_finish_page(engine, cur)) {
       return false;
     }
   }
@@ -664,10 +672,10 @@ priv_close_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_toke
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_apply_rule(ra8_reflow_t* engine, priv_cursor_t* cur)
+static bool internal_apply_rule(ra8_reflow_t* engine, priv_cursor_t* cur)
 {
   if (cur->line_has_content != 0U) {
-    if (!ra8_reflow_layout_newline(engine, cur, false)) {
+    if (!priv_ra8_reflow_layout_newline(engine, cur, false)) {
       return false;
     }
   }
@@ -681,7 +689,7 @@ static bool priv_apply_rule(ra8_reflow_t* engine, priv_cursor_t* cur)
  *
  * @details The glyphs are a same-link, same-baseline run on one page. The rect
  * spans from the first glyph's left edge to the last glyph's right edge
- * (measured by `ra8_reflow_layout_glyph_advance`), with a generous vertical band
+ * (measured by `priv_ra8_reflow_layout_glyph_advance`), with a generous vertical band
  * (approximately 1.5 em centered on the baseline) for forgiving tap targets.
  * The `target` field is stored 0-based (link - 1). If the link-rect pool is
  * already full the function returns immediately without modifying state.
@@ -705,12 +713,12 @@ static bool priv_apply_rule(ra8_reflow_t* engine, priv_cursor_t* cur)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_emit_link_rect(ra8_reflow_t*         engine,
-                                const stbtt_fontinfo* font,
-                                uint32_t              lo,
-                                uint32_t              hi,
-                                uint8_t               link,
-                                uint32_t              page)
+static void internal_emit_link_rect(ra8_reflow_t*         engine,
+                                    const stbtt_fontinfo* font,
+                                    uint32_t              lo,
+                                    uint32_t              hi,
+                                    uint8_t               link,
+                                    uint32_t              page)
 {
   if (engine->link_rect_count >= (uint32_t)k_ra8_reflow_max_link_rects) {
     return;
@@ -718,7 +726,8 @@ static void priv_emit_link_rect(ra8_reflow_t*         engine,
   const ra8_reflow_glyph_t* gfirst = &engine->glyphs[lo];
   const ra8_reflow_glyph_t* glast  = &engine->glyphs[hi - 1U];
   const int32_t             fpx    = (int32_t)gfirst->font_px;
-  const int32_t x1 = glast->x + ra8_reflow_layout_glyph_advance(font, glast->font_px, glast->cp);
+  const int32_t             x1 =
+    glast->x + priv_ra8_reflow_layout_glyph_advance(font, glast->font_px, glast->cp);
   ra8_reflow_link_rect_t* rect = &engine->link_rects[engine->link_rect_count];
   rect->x                      = gfirst->x;
   rect->y                      = gfirst->y - fpx;
@@ -729,8 +738,8 @@ static void priv_emit_link_rect(ra8_reflow_t*         engine,
   engine->link_rect_count++;
 }
 
-/** @brief Implementation of `ra8_reflow_layout_build_link_rects()` -- per-page link runs. */
-void ra8_reflow_layout_build_link_rects(ra8_reflow_t* engine, const stbtt_fontinfo* font)
+/** @brief Implementation of `priv_ra8_reflow_layout_build_link_rects()` -- per-page link runs. */
+void priv_ra8_reflow_layout_build_link_rects(ra8_reflow_t* engine, const stbtt_fontinfo* font)
 {
   for (uint32_t p = 0U; p < engine->page_count; ++p) {
     const ra8_reflow_page_t* page = &engine->pages[p];
@@ -748,17 +757,17 @@ void ra8_reflow_layout_build_link_rects(ra8_reflow_t* engine, const stbtt_fontin
              (engine->glyphs[base + e].y == y)) {
         ++e;
       }
-      priv_emit_link_rect(engine, font, base + k, base + e, link, p);
+      internal_emit_link_rect(engine, font, base + k, base + e, link, p);
       k = e;
     }
   }
 }
 
-/** @brief Implementation of `ra8_reflow_layout_apply_token()` -- per-token switch. */
-ra8_err_t ra8_reflow_layout_apply_token(ra8_reflow_t*             engine,
-                                        priv_cursor_t*            cur,
-                                        const stbtt_fontinfo*     font,
-                                        const ra8_reflow_token_t* tok)
+/** @brief Implementation of `priv_ra8_reflow_layout_apply_token()` -- per-token switch. */
+ra8_err_t priv_ra8_reflow_layout_apply_token(ra8_reflow_t*             engine,
+                                             priv_cursor_t*            cur,
+                                             const stbtt_fontinfo*     font,
+                                             const ra8_reflow_token_t* tok)
 {
   /* Pack the per-run embedded-face index (stamped on the token by the cascade,
    * #109) into the free high nibble of the style stamp; bits 0-2 keep the
@@ -769,17 +778,17 @@ ra8_err_t ra8_reflow_layout_apply_token(ra8_reflow_t*             engine,
                                      << (uint32_t)k_ra8_reflow_face_shift));
   switch (tok->kind) {
     case k_ra8_reflow_tok_block_start:
-      return priv_open_block(engine, cur, tok) ? k_ra8_ok : k_ra8_err_no_mem;
+      return internal_open_block(engine, cur, tok) ? k_ra8_ok : k_ra8_err_no_mem;
     case k_ra8_reflow_tok_block_end:
-      return priv_close_block(engine, cur, tok) ? k_ra8_ok : k_ra8_err_no_mem;
+      return internal_close_block(engine, cur, tok) ? k_ra8_ok : k_ra8_err_no_mem;
     case k_ra8_reflow_tok_text:
-      return priv_layout_text(engine, cur, font, tok);
+      return internal_layout_text(engine, cur, font, tok);
     case k_ra8_reflow_tok_break:
-      return ra8_reflow_layout_newline(engine, cur, false) ? k_ra8_ok : k_ra8_err_no_mem;
+      return priv_ra8_reflow_layout_newline(engine, cur, false) ? k_ra8_ok : k_ra8_err_no_mem;
     case k_ra8_reflow_tok_rule:
-      return priv_apply_rule(engine, cur) ? k_ra8_ok : k_ra8_err_no_mem;
+      return internal_apply_rule(engine, cur) ? k_ra8_ok : k_ra8_err_no_mem;
     case k_ra8_reflow_tok_image:
-      return ra8_reflow_layout_apply_image(engine, cur, tok) ? k_ra8_ok : k_ra8_err_no_mem;
+      return priv_ra8_reflow_layout_apply_image(engine, cur, tok) ? k_ra8_ok : k_ra8_err_no_mem;
     default:
       return k_ra8_ok;
   }

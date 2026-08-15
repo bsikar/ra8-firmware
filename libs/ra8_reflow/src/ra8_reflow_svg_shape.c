@@ -47,8 +47,8 @@ static const float s_svg_arc_step = 0.39269908F;
  * @details Reads 'x', 'y', 'width', and 'height' attributes from the tag
  * span @p s[0..len). Axis-aligned solid rects use the @c ra8_gfx_rect
  * fast-path; under a rotating/shearing transform the 4 corners are mapped
- * through the full affine via @c ra8_svgp_map_point and the resulting quad is
- * scanline-filled by @c ra8_svgp_fill_poly or @c ra8_svgp_fill_poly_grad.
+ * through the full affine via @c priv_ra8_svgp_map_point and the resulting quad is
+ * scanline-filled by @c priv_ra8_svgp_fill_poly or @c priv_ra8_svgp_fill_poly_grad.
  * Returns without drawing when both gi < 0 and fill == ::k_svg_no_paint.
  *
  * @param[in] s   Byte span of the element tag; must not be NULL.
@@ -66,36 +66,36 @@ static const float s_svg_arc_step = 0.39269908F;
  *
  * @since 0.1.0
  */
-void ra8_svgp_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t)
+void priv_ra8_svgp_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   int32_t        gi   = -1;
-  const uint32_t fill = ra8_svgp_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
+  const uint32_t fill = priv_ra8_svgp_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
   if ((gi < 0) && (fill == (uint32_t)k_svg_no_paint)) {
     return;
   }
-  const int32_t rx = ra8_svgp_attr_num(s, len, "x", 0);
-  const int32_t ry = ra8_svgp_attr_num(s, len, "y", 0);
-  const int32_t rw = ra8_svgp_attr_num(s, len, "width", 0);
-  const int32_t rh = ra8_svgp_attr_num(s, len, "height", 0);
-  if ((gi < 0) && !ra8_svgp_has_rot(t)) {
-    (void)ra8_gfx_rect(ra8_svgp_mx(t, rx),
-                       ra8_svgp_my(t, ry),
-                       ra8_svgp_sx(t, rw),
-                       ra8_svgp_sx(t, rh),
+  const int32_t rx = priv_ra8_svgp_attr_num(s, len, "x", 0);
+  const int32_t ry = priv_ra8_svgp_attr_num(s, len, "y", 0);
+  const int32_t rw = priv_ra8_svgp_attr_num(s, len, "width", 0);
+  const int32_t rh = priv_ra8_svgp_attr_num(s, len, "height", 0);
+  if ((gi < 0) && !priv_ra8_svgp_has_rot(t)) {
+    (void)ra8_gfx_rect(priv_ra8_svgp_mx(t, rx),
+                       priv_ra8_svgp_my(t, ry),
+                       priv_ra8_svgp_sx(t, rw),
+                       priv_ra8_svgp_sx(t, rh),
                        fill,
                        true);
     return;
   }
   int32_t xs[k_svg_rect_pts] = {};
   int32_t ys[k_svg_rect_pts] = {};
-  ra8_svgp_map_point(t, rx, ry, &xs[0], &ys[0]);
-  ra8_svgp_map_point(t, rx + rw, ry, &xs[1], &ys[1]);
-  ra8_svgp_map_point(t, rx + rw, ry + rh, &xs[2], &ys[2]);
-  ra8_svgp_map_point(t, rx, ry + rh, &xs[3], &ys[3]);
+  priv_ra8_svgp_map_point(t, rx, ry, &xs[0], &ys[0]);
+  priv_ra8_svgp_map_point(t, rx + rw, ry, &xs[1], &ys[1]);
+  priv_ra8_svgp_map_point(t, rx + rw, ry + rh, &xs[2], &ys[2]);
+  priv_ra8_svgp_map_point(t, rx, ry + rh, &xs[3], &ys[3]);
   if (gi >= 0) {
-    ra8_svgp_fill_poly_grad(xs, ys, (int32_t)k_svg_rect_pts, &t->grads->g[gi]);
+    priv_ra8_svgp_fill_poly_grad(xs, ys, (int32_t)k_svg_rect_pts, &t->grads->g[gi]);
   } else {
-    ra8_svgp_fill_poly(xs, ys, (int32_t)k_svg_rect_pts, fill);
+    priv_ra8_svgp_fill_poly(xs, ys, (int32_t)k_svg_rect_pts, fill);
   }
 }
 
@@ -106,7 +106,7 @@ void ra8_svgp_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t)
  * Axis-aligned solid circles use the @c ra8_gfx_circle fast-path; under a
  * rotating/shearing transform the circle is approximated by a @c k_svg_circle_seg
  * N-gon whose vertices are mapped through the full affine, then scanline-filled
- * by @c ra8_svgp_fill_poly or @c ra8_svgp_fill_poly_grad. Returns without drawing
+ * by @c priv_ra8_svgp_fill_poly or @c priv_ra8_svgp_fill_poly_grad. Returns without drawing
  * when both gi < 0 and fill == ::k_svg_no_paint.
  *
  * @param[in] s   Byte span of the element tag; must not be NULL.
@@ -124,18 +124,22 @@ void ra8_svgp_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t)
  *
  * @since 0.1.0
  */
-void ra8_svgp_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t)
+void priv_ra8_svgp_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   int32_t        gi   = -1;
-  const uint32_t fill = ra8_svgp_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
+  const uint32_t fill = priv_ra8_svgp_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
   if ((gi < 0) && (fill == (uint32_t)k_svg_no_paint)) {
     return;
   }
-  const int32_t cx = ra8_svgp_attr_num(s, len, "cx", 0);
-  const int32_t cy = ra8_svgp_attr_num(s, len, "cy", 0);
-  const int32_t r  = ra8_svgp_attr_num(s, len, "r", 0);
-  if ((gi < 0) && !ra8_svgp_has_rot(t)) {
-    (void)ra8_gfx_circle(ra8_svgp_mx(t, cx), ra8_svgp_my(t, cy), ra8_svgp_sx(t, r), fill, true);
+  const int32_t cx = priv_ra8_svgp_attr_num(s, len, "cx", 0);
+  const int32_t cy = priv_ra8_svgp_attr_num(s, len, "cy", 0);
+  const int32_t r  = priv_ra8_svgp_attr_num(s, len, "r", 0);
+  if ((gi < 0) && !priv_ra8_svgp_has_rot(t)) {
+    (void)ra8_gfx_circle(priv_ra8_svgp_mx(t, cx),
+                         priv_ra8_svgp_my(t, cy),
+                         priv_ra8_svgp_sx(t, r),
+                         fill,
+                         true);
     return;
   }
   int32_t xs[k_svg_circle_seg] = {};
@@ -143,16 +147,16 @@ void ra8_svgp_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t)
   /* Bounded: k_svg_circle_seg vertices around the circle. */
   for (int32_t k = 0; k < (int32_t)k_svg_circle_seg; ++k) {
     const float ang = (s_svg_2pi * (float)k) / (float)k_svg_circle_seg;
-    ra8_svgp_map_point(t,
-                       cx + (int32_t)((float)r * cosf(ang)),
-                       cy + (int32_t)((float)r * sinf(ang)),
-                       &xs[k],
-                       &ys[k]);
+    priv_ra8_svgp_map_point(t,
+                            cx + (int32_t)((float)r * cosf(ang)),
+                            cy + (int32_t)((float)r * sinf(ang)),
+                            &xs[k],
+                            &ys[k]);
   }
   if (gi >= 0) {
-    ra8_svgp_fill_poly_grad(xs, ys, (int32_t)k_svg_circle_seg, &t->grads->g[gi]);
+    priv_ra8_svgp_fill_poly_grad(xs, ys, (int32_t)k_svg_circle_seg, &t->grads->g[gi]);
   } else {
-    ra8_svgp_fill_poly(xs, ys, (int32_t)k_svg_circle_seg, fill);
+    priv_ra8_svgp_fill_poly(xs, ys, (int32_t)k_svg_circle_seg, fill);
   }
 }
 
@@ -161,7 +165,7 @@ void ra8_svgp_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t)
  *
  * @details Reads 'stroke' paint, 'x1', 'y1', 'x2', and 'y2' attributes from
  * the tag span @p s[0..len). Both endpoints are mapped through the full affine
- * via @c ra8_svgp_map_point and the result is forwarded to @c ra8_gfx_line.
+ * via @c priv_ra8_svgp_map_point and the result is forwarded to @c ra8_gfx_line.
  * Returns without drawing when 'stroke' is absent or parses to ::k_svg_no_paint.
  * Note: 'fill' is ignored for 'line' elements (SVG specification).
  *
@@ -180,22 +184,22 @@ void ra8_svgp_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t)
  *
  * @since 0.1.0
  */
-void ra8_svgp_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t)
+void priv_ra8_svgp_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
-  const uint32_t stroke = ra8_svgp_attr_paint(s, len, "stroke", (uint32_t)k_svg_no_paint);
+  const uint32_t stroke = priv_ra8_svgp_attr_paint(s, len, "stroke", (uint32_t)k_svg_no_paint);
   if (stroke == (uint32_t)k_svg_no_paint) {
     return;
   }
-  const int32_t x1  = ra8_svgp_attr_num(s, len, "x1", 0);
-  const int32_t y1  = ra8_svgp_attr_num(s, len, "y1", 0);
-  const int32_t x2  = ra8_svgp_attr_num(s, len, "x2", 0);
-  const int32_t y2  = ra8_svgp_attr_num(s, len, "y2", 0);
+  const int32_t x1  = priv_ra8_svgp_attr_num(s, len, "x1", 0);
+  const int32_t y1  = priv_ra8_svgp_attr_num(s, len, "y1", 0);
+  const int32_t x2  = priv_ra8_svgp_attr_num(s, len, "x2", 0);
+  const int32_t y2  = priv_ra8_svgp_attr_num(s, len, "y2", 0);
   int32_t       fx1 = 0;
   int32_t       fy1 = 0;
   int32_t       fx2 = 0;
   int32_t       fy2 = 0;
-  ra8_svgp_map_point(t, x1, y1, &fx1, &fy1);
-  ra8_svgp_map_point(t, x2, y2, &fx2, &fy2);
+  priv_ra8_svgp_map_point(t, x1, y1, &fx1, &fy1);
+  priv_ra8_svgp_map_point(t, x2, y2, &fx2, &fy2);
   (void)ra8_gfx_line(fx1, fy1, fx2, fy2, stroke);
 }
 
@@ -208,8 +212,8 @@ void ra8_svgp_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t)
  * @brief Parse a 'points' attribute value into framebuffer-space vertices.
  *
  * @details Scans @p v[0..vlen) for whitespace/comma-separated x,y integer
- * pairs via @c ra8_svgp_num, maps each pair through the full affine via
- * @c ra8_svgp_map_point, and stores the result in @p xs[@p n] / @p ys[@p n].
+ * pairs via @c priv_ra8_svgp_num, maps each pair through the full affine via
+ * @c priv_ra8_svgp_map_point, and stores the result in @p xs[@p n] / @p ys[@p n].
  * Terminates when @c k_svg_poly_max vertices have been collected or the end
  * of the span is reached. Returns the count of vertex pairs filled.
  *
@@ -236,21 +240,21 @@ void ra8_svgp_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t)
  */
 RA8_INTERNAL
 static int32_t
-priv_parse_points(const uint8_t* v, size_t vlen, const svg_xform_t* t, int32_t* xs, int32_t* ys)
+internal_parse_points(const uint8_t* v, size_t vlen, const svg_xform_t* t, int32_t* xs, int32_t* ys)
 {
   size_t  k = 0U;
   int32_t n = 0;
   /* Bounded: <= k_svg_poly_max pairs; k advances past each number. */
   while (n < (int32_t)k_svg_poly_max) {
-    while ((k < vlen) && (ra8_svgp_ws((char)v[k]) || (v[k] == ','))) {
+    while ((k < vlen) && (priv_ra8_svgp_ws((char)v[k]) || (v[k] == ','))) {
       ++k;
     }
     if (k >= vlen) {
       break;
     }
-    const int32_t ux = ra8_svgp_num(v, vlen, &k);
-    const int32_t uy = ra8_svgp_num(v, vlen, &k);
-    ra8_svgp_map_point(t, ux, uy, &xs[n], &ys[n]);
+    const int32_t ux = priv_ra8_svgp_num(v, vlen, &k);
+    const int32_t uy = priv_ra8_svgp_num(v, vlen, &k);
+    priv_ra8_svgp_map_point(t, ux, uy, &xs[n], &ys[n]);
     ++n;
   }
   return n;
@@ -280,7 +284,7 @@ priv_parse_points(const uint8_t* v, size_t vlen, const svg_xform_t* t, int32_t* 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_sort_i32(int32_t* a, int32_t m)
+static void internal_sort_i32(int32_t* a, int32_t m)
 {
   /* Bounded: m <= k_svg_poly_max. */
   for (int32_t i = 1; i < m; ++i) {
@@ -326,7 +330,7 @@ static void priv_sort_i32(int32_t* a, int32_t m)
  */
 RA8_INTERNAL
 static int32_t
-priv_scanline_x(const int32_t* xs, const int32_t* ys, int32_t n, int32_t y, int32_t* xint)
+internal_scanline_x(const int32_t* xs, const int32_t* ys, int32_t n, int32_t y, int32_t* xint)
 {
   int32_t m = 0;
   /* Bounded: one test per polygon edge (n edges). */
@@ -350,8 +354,8 @@ priv_scanline_x(const int32_t* xs, const int32_t* ys, int32_t n, int32_t y, int3
  * @brief Even-odd scanline fill of polygon (xs,ys)[0..n) with a solid colour.
  *
  * @details Computes the bounding Y range of the polygon, then for each
- * scanline Y in [ymin, ymax] calls @c priv_scanline_x to collect intercepts,
- * sorts them via @c priv_sort_i32, and fills pairs of spans with @c ra8_gfx_line.
+ * scanline Y in [ymin, ymax] calls @c internal_scanline_x to collect intercepts,
+ * sorts them via @c internal_sort_i32, and fills pairs of spans with @c ra8_gfx_line.
  * Returns immediately for polygons with fewer than @c k_svg_poly_min vertices.
  *
  * @param[in] xs    Array of @p n framebuffer X coordinates; must not be NULL.
@@ -370,7 +374,7 @@ priv_scanline_x(const int32_t* xs, const int32_t* ys, int32_t n, int32_t y, int3
  *
  * @since 0.1.0
  */
-void ra8_svgp_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_t color)
+void priv_ra8_svgp_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_t color)
 {
   if (n < (int32_t)k_svg_poly_min) {
     return;
@@ -384,8 +388,8 @@ void ra8_svgp_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_
   /* Bounded: ymax - ymin <= the framebuffer-box height. */
   for (int32_t y = ymin; y <= ymax; ++y) {
     int32_t       xint[k_svg_poly_max] = {};
-    const int32_t m                    = priv_scanline_x(xs, ys, n, y, xint);
-    priv_sort_i32(xint, m);
+    const int32_t m                    = internal_scanline_x(xs, ys, n, y, xint);
+    internal_sort_i32(xint, m);
     for (int32_t k = 0; (k + 1) < m; k += 2) {
       (void)ra8_gfx_line(xint[k], y, xint[k + 1], y, color);
     }
@@ -399,7 +403,7 @@ void ra8_svgp_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_
  * each independently as @c (channel_a + (channel_b - channel_a) * f), and
  * recombines into a 0x00RRGGBB result. The factor @p f is not clamped by this
  * function; the gradient evaluator is responsible for providing a value in [0,1].
- * Used by @c priv_grad_eval to blend adjacent gradient stops.
+ * Used by @c internal_grad_eval to blend adjacent gradient stops.
  *
  * @param[in] a Colour A in 0x00RRGGBB format.
  * @param[in] b Colour B in 0x00RRGGBB format.
@@ -420,7 +424,7 @@ void ra8_svgp_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_col_lerp(uint32_t a, uint32_t b, float f)
+static uint32_t internal_col_lerp(uint32_t a, uint32_t b, float f)
 {
   const int32_t ra = (int32_t)((a >> (uint32_t)k_svg_sh_r) & (uint32_t)k_svg_chan_mask);
   const int32_t ga = (int32_t)((a >> (uint32_t)k_svg_hex_chan) & (uint32_t)k_svg_chan_mask);
@@ -444,7 +448,7 @@ static uint32_t priv_col_lerp(uint32_t a, uint32_t b, float f)
  * the Euclidean distance from (x1, y1) divided by radius x2. The parameter
  * is compared against stop offsets; values before the first stop return the
  * first stop colour, values after the last return the last stop colour, and
- * values between two stops are linearly interpolated by @c priv_col_lerp.
+ * values between two stops are linearly interpolated by @c internal_col_lerp.
  * Returns the default fill colour when @p g->nstops is zero.
  *
  * @param[in] g   Gradient to evaluate; must not be NULL and must have nstops >= 1.
@@ -467,7 +471,7 @@ static uint32_t priv_col_lerp(uint32_t a, uint32_t b, float f)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_grad_eval(const svg_grad_t* g, float px, float py)
+static uint32_t internal_grad_eval(const svg_grad_t* g, float px, float py)
 {
   if (g->nstops == 0U) {
     return (uint32_t)k_svg_def_fill;
@@ -498,7 +502,7 @@ static uint32_t priv_grad_eval(const svg_grad_t* g, float px, float py)
     /* mcdc-deactivated: the loop is entered only when p > stops[0].off, and reaching bracket i without returning requires p to exceed every earlier stop's upper offset, so p >= o0 (== stops[i].off) invariantly holds regardless of stop ordering; (p >= o0) cannot be flipped false. */
     if ((p >= o0) && (p <= o1)) {
       const float f = (o1 > o0) ? ((p - o0) / (o1 - o0)) : 0.0F;
-      return priv_col_lerp(g->stops[i].col, g->stops[i + 1U].col, f);
+      return internal_col_lerp(g->stops[i].col, g->stops[i + 1U].col, f);
     }
   }
   return g->stops[last].col;
@@ -508,10 +512,10 @@ static uint32_t priv_grad_eval(const svg_grad_t* g, float px, float py)
  * @brief Per-pixel gradient scanline fill of polygon (xs,ys)[0..n).
  *
  * @details Computes the bounding box of the polygon, then for each scanline Y
- * in [ymin, ymax] collects edge intercepts via @c priv_scanline_x and sorts
+ * in [ymin, ymax] collects edge intercepts via @c internal_scanline_x and sorts
  * them. For each filled span, iterates over pixels and evaluates the gradient
  * at the bounding-box-relative position @c ((x-xmin)/bw, (y-ymin)/bh) via
- * @c priv_grad_eval. Each pixel is written individually with @c ra8_gfx_pixel.
+ * @c internal_grad_eval. Each pixel is written individually with @c ra8_gfx_pixel.
  * Returns immediately when @p n < @c k_svg_poly_min.
  *
  * @param[in] xs Array of @p n framebuffer X coordinates; must not be NULL.
@@ -531,7 +535,10 @@ static uint32_t priv_grad_eval(const svg_grad_t* g, float px, float py)
  *
  * @since 0.1.0
  */
-void ra8_svgp_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, const svg_grad_t* g)
+void priv_ra8_svgp_fill_poly_grad(const int32_t*    xs,
+                                  const int32_t*    ys,
+                                  int32_t           n,
+                                  const svg_grad_t* g)
 {
   if (n < (int32_t)k_svg_poly_min) {
     return;
@@ -551,13 +558,13 @@ void ra8_svgp_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, co
   /* Bounded: ymax - ymin <= the framebuffer-box height. */
   for (int32_t y = ymin; y <= ymax; ++y) {
     int32_t       xint[k_svg_poly_max] = {};
-    const int32_t m                    = priv_scanline_x(xs, ys, n, y, xint);
-    priv_sort_i32(xint, m);
+    const int32_t m                    = internal_scanline_x(xs, ys, n, y, xint);
+    internal_sort_i32(xint, m);
     const float py = (float)(y - ymin) / bh;
     for (int32_t k = 0; (k + 1) < m; k += 2) {
       /* Bounded: xint[k+1] - xint[k] <= the framebuffer-box width. */
       for (int32_t x = xint[k]; x <= xint[k + 1]; ++x) {
-        (void)ra8_gfx_pixel(x, y, priv_grad_eval(g, (float)(x - xmin) / bw, py));
+        (void)ra8_gfx_pixel(x, y, internal_grad_eval(g, (float)(x - xmin) / bw, py));
       }
     }
   }
@@ -567,8 +574,8 @@ void ra8_svgp_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, co
  * @brief Draw one SVG 'polygon' element as a filled polygon.
  *
  * @details Resolves the fill (solid or gradient), reads the 'points' attribute,
- * parses vertices into framebuffer space via @c priv_parse_points, and fills
- * the resulting polygon with @c ra8_svgp_fill_poly or @c ra8_svgp_fill_poly_grad.
+ * parses vertices into framebuffer space via @c internal_parse_points, and fills
+ * the resulting polygon with @c priv_ra8_svgp_fill_poly or @c priv_ra8_svgp_fill_poly_grad.
  * Returns without drawing when the fill is absent/none or the 'points'
  * attribute is not present.
  *
@@ -587,23 +594,23 @@ void ra8_svgp_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, co
  *
  * @since 0.1.0
  */
-void ra8_svgp_draw_polygon(const uint8_t* s, size_t len, const svg_xform_t* t)
+void priv_ra8_svgp_draw_polygon(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   int32_t        gi   = -1;
-  const uint32_t fill = ra8_svgp_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
+  const uint32_t fill = priv_ra8_svgp_resolve_fill(s, len, t, (uint32_t)k_svg_def_fill, &gi);
   size_t         off  = 0U;
   size_t         vl   = 0U;
   if (((gi < 0) && (fill == (uint32_t)k_svg_no_paint)) ||
-      !ra8_svgp_attr(s, len, "points", &off, &vl)) {
+      !priv_ra8_svgp_attr(s, len, "points", &off, &vl)) {
     return;
   }
   int32_t       xs[k_svg_poly_max] = {};
   int32_t       ys[k_svg_poly_max] = {};
-  const int32_t n                  = priv_parse_points(&s[off], vl, t, xs, ys);
+  const int32_t n                  = internal_parse_points(&s[off], vl, t, xs, ys);
   if (gi >= 0) {
-    ra8_svgp_fill_poly_grad(xs, ys, n, &t->grads->g[gi]);
+    priv_ra8_svgp_fill_poly_grad(xs, ys, n, &t->grads->g[gi]);
   } else {
-    ra8_svgp_fill_poly(xs, ys, n, fill);
+    priv_ra8_svgp_fill_poly(xs, ys, n, fill);
   }
 }
 
@@ -611,7 +618,7 @@ void ra8_svgp_draw_polygon(const uint8_t* s, size_t len, const svg_xform_t* t)
  * @brief Draw one SVG 'polyline' element as connected stroke line segments.
  *
  * @details Reads the 'stroke' paint and the 'points' attribute. Parses vertex
- * pairs into framebuffer space via @c priv_parse_points and connects adjacent
+ * pairs into framebuffer space via @c internal_parse_points and connects adjacent
  * vertices with @c ra8_gfx_line. Returns without drawing when the stroke colour
  * is absent/none or the 'points' attribute is not present.
  *
@@ -630,17 +637,17 @@ void ra8_svgp_draw_polygon(const uint8_t* s, size_t len, const svg_xform_t* t)
  *
  * @since 0.1.0
  */
-void ra8_svgp_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* t)
+void priv_ra8_svgp_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
-  const uint32_t stroke = ra8_svgp_attr_paint(s, len, "stroke", (uint32_t)k_svg_no_paint);
+  const uint32_t stroke = priv_ra8_svgp_attr_paint(s, len, "stroke", (uint32_t)k_svg_no_paint);
   size_t         off    = 0U;
   size_t         vl     = 0U;
-  if ((stroke == (uint32_t)k_svg_no_paint) || !ra8_svgp_attr(s, len, "points", &off, &vl)) {
+  if ((stroke == (uint32_t)k_svg_no_paint) || !priv_ra8_svgp_attr(s, len, "points", &off, &vl)) {
     return;
   }
   int32_t       xs[k_svg_poly_max] = {};
   int32_t       ys[k_svg_poly_max] = {};
-  const int32_t n                  = priv_parse_points(&s[off], vl, t, xs, ys);
+  const int32_t n                  = internal_parse_points(&s[off], vl, t, xs, ys);
   /* Bounded: n - 1 segments. */
   for (int32_t i = 0; (i + 1) < n; ++i) {
     (void)ra8_gfx_line(xs[i], ys[i], xs[i + 1], ys[i + 1], stroke);
@@ -651,7 +658,7 @@ void ra8_svgp_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* t)
  * @brief Compute the absolute value of a float without using libm @c fabsf.
  *
  * @details Returns @c -v when @p v is negative, otherwise returns @p v unchanged.
- * Used in @c priv_arc_center and @c priv_arc_segs to avoid dragging in the full
+ * Used in @c internal_arc_center and @c internal_arc_segs to avoid dragging in the full
  * libm dependency for a trivial operation that the compiler can inline.
  *
  * @param[in] v Float value whose absolute value is needed.
@@ -672,7 +679,7 @@ void ra8_svgp_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* t)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static float priv_absf(float v)
+static float internal_absf(float v)
 {
   return (v < 0.0F) ? -v : v;
 }
@@ -681,7 +688,7 @@ static float priv_absf(float v)
  * @struct svg_arc_t
  * @brief Centre-parametrisation of an SVG elliptical arc.
  *
- * @details Result of ::priv_arc_center -- the centre, the (radius-corrected)
+ * @details Result of ::internal_arc_center -- the centre, the (radius-corrected)
  * semi-axes, the x-axis rotation (as cos/sin), and the start angle + signed
  * sweep, ready to sample. @c ok is false for a degenerate arc (zero radius or
  * coincident endpoints), in which case the caller draws a straight line.
@@ -701,7 +708,7 @@ typedef struct {
 /**
  * @brief Solve an arc's centre + start/sweep angles (F.6.5.2 / F.6.5.5-6).
  *
- * @details Finishes @c priv_arc_center from its rotated half-chord @p (x1p,y1p),
+ * @details Finishes @c internal_arc_center from its rotated half-chord @p (x1p,y1p),
  * the (radius-corrected) semi-axes @p (rx,ry), and the endpoint midpoint
  * @p (mx,my). Fills @p a's centre, start angle, signed sweep, radii, and sets
  * @p a->ok to true. The @c cos_phi / @c sin_phi fields of @p a must already be
@@ -730,15 +737,15 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_arc_solve(svg_arc_t* a,
-                           float      x1p,
-                           float      y1p,
-                           float      rx,
-                           float      ry,
-                           float      mx,
-                           float      my,
-                           bool       large,
-                           bool       sweep)
+static void internal_arc_solve(svg_arc_t* a,
+                               float      x1p,
+                               float      y1p,
+                               float      rx,
+                               float      ry,
+                               float      mx,
+                               float      my,
+                               bool       large,
+                               bool       sweep)
 {
   const float rx2 = rx * rx;
   const float ry2 = ry * ry;
@@ -770,7 +777,7 @@ static void priv_arc_solve(svg_arc_t* a,
  *
  * @details Implements the SVG 1.1 implementation-notes F.6.5 algorithm:
  * out-of-range radii are scaled up (F.6.6.2), the centre is solved via
- * @c priv_arc_solve (F.6.5.2), and the start angle plus signed sweep are
+ * @c internal_arc_solve (F.6.5.2), and the start angle plus signed sweep are
  * derived (F.6.5.5/6) honouring the large-arc and sweep flags. Pure
  * (no MMIO/heap); uses libm @c cosf, @c sinf, @c sqrtf.
  *
@@ -800,17 +807,17 @@ static void priv_arc_solve(svg_arc_t* a,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static svg_arc_t priv_arc_center(svg_pt_t p0,
-                                 svg_pt_t p_end,
-                                 int32_t  rx_in,
-                                 int32_t  ry_in,
-                                 int32_t  rot_deg,
-                                 bool     large,
-                                 bool     sweep)
+static svg_arc_t internal_arc_center(svg_pt_t p0,
+                                     svg_pt_t p_end,
+                                     int32_t  rx_in,
+                                     int32_t  ry_in,
+                                     int32_t  rot_deg,
+                                     bool     large,
+                                     bool     sweep)
 {
   svg_arc_t a  = {};
-  float     rx = priv_absf((float)rx_in);
-  float     ry = priv_absf((float)ry_in);
+  float     rx = internal_absf((float)rx_in);
+  float     ry = internal_absf((float)ry_in);
   if ((rx == 0.0F) || (ry == 0.0F) || ((p0.x == p_end.x) && (p0.y == p_end.y))) {
     a.ok = false;
     return a;
@@ -830,7 +837,7 @@ static svg_arc_t priv_arc_center(svg_pt_t p0,
   }
   const float mx = (float)(p0.x + p_end.x) * s_svg_half;
   const float my = (float)(p0.y + p_end.y) * s_svg_half;
-  priv_arc_solve(&a, x1p, y1p, rx, ry, mx, my, large, sweep);
+  internal_arc_solve(&a, x1p, y1p, rx, ry, mx, my, large, sweep);
   return a;
 }
 
@@ -859,9 +866,9 @@ static svg_arc_t priv_arc_center(svg_pt_t p0,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_arc_segs(float dt)
+static int32_t internal_arc_segs(float dt)
 {
-  int32_t segs = (int32_t)(priv_absf(dt) / s_svg_arc_step) + 1;
+  int32_t segs = (int32_t)(internal_absf(dt) / s_svg_arc_step) + 1;
   if (segs > (int32_t)k_svg_arc_seg_max) {
     segs = (int32_t)k_svg_arc_seg_max;
   }
@@ -872,9 +879,9 @@ static int32_t priv_arc_segs(float dt)
  * @brief Flatten an SVG elliptical arc into the polygon vertex array.
  *
  * @details Converts the endpoint-parametrised arc (P0 to @p p_end, with
- * radii, rotation, and flags from @p args) to centre form via @c priv_arc_center.
+ * radii, rotation, and flags from @p args) to centre form via @c internal_arc_center.
  * When the arc is degenerate (@c ok==false), appends a single line-to @p p_end.
- * Otherwise samples the arc at @c priv_arc_segs(@p a.dt) parameter values using
+ * Otherwise samples the arc at @c internal_arc_segs(@p a.dt) parameter values using
  * trigonometry (the ellipse equation in the rotated frame) and appends each
  * mapped framebuffer point. Bounded by @c k_svg_poly_max.
  *
@@ -897,29 +904,29 @@ static int32_t priv_arc_segs(float dt)
  *
  * @since 0.1.0
  */
-void ra8_svgp_flatten_arc(const svg_xform_t* t,
-                          svg_pt_t           p0,
-                          const int32_t*     args,
-                          svg_pt_t           p_end,
-                          int32_t*           xs,
-                          int32_t*           ys,
-                          int32_t*           n)
+void priv_ra8_svgp_flatten_arc(const svg_xform_t* t,
+                               svg_pt_t           p0,
+                               const int32_t*     args,
+                               svg_pt_t           p_end,
+                               int32_t*           xs,
+                               int32_t*           ys,
+                               int32_t*           n)
 {
-  const svg_arc_t a = priv_arc_center(p0,
-                                      p_end,
-                                      args[k_svg_arc_rx],
-                                      args[k_svg_arc_ry],
-                                      args[k_svg_arc_rot],
-                                      args[k_svg_arc_large] != 0,
-                                      args[k_svg_arc_sweep] != 0);
+  const svg_arc_t a = internal_arc_center(p0,
+                                          p_end,
+                                          args[k_svg_arc_rx],
+                                          args[k_svg_arc_ry],
+                                          args[k_svg_arc_rot],
+                                          args[k_svg_arc_large] != 0,
+                                          args[k_svg_arc_sweep] != 0);
   if (!a.ok) {
     if (*n < (int32_t)k_svg_poly_max) {
-      ra8_svgp_map_point(t, p_end.x, p_end.y, &xs[*n], &ys[*n]);
+      priv_ra8_svgp_map_point(t, p_end.x, p_end.y, &xs[*n], &ys[*n]);
       ++(*n);
     }
     return;
   }
-  const int32_t segs = priv_arc_segs(a.dt);
+  const int32_t segs = internal_arc_segs(a.dt);
   /* Bounded: segs (<= k_svg_arc_seg_max) samples, capped by k_svg_poly_max. */
   for (int32_t j = 1; (j <= segs) && (*n < (int32_t)k_svg_poly_max); ++j) {
     const float th = a.t1 + (a.dt * ((float)j / (float)segs));
@@ -927,7 +934,7 @@ void ra8_svgp_flatten_arc(const svg_xform_t* t,
     const float ey = a.ry * sinf(th);
     const float px = a.cx + (a.cos_phi * ex) - (a.sin_phi * ey);
     const float py = a.cy + (a.sin_phi * ex) + (a.cos_phi * ey);
-    ra8_svgp_map_point(t, (int32_t)px, (int32_t)py, &xs[*n], &ys[*n]);
+    priv_ra8_svgp_map_point(t, (int32_t)px, (int32_t)py, &xs[*n], &ys[*n]);
     ++(*n);
   }
 }

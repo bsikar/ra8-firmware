@@ -32,10 +32,10 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_reflow.h"
@@ -52,8 +52,15 @@
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @details Exercises the null and preinit guards init path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_null_and_preinit_guards_init(void)
+RA8_INTERNAL static void internal_test_null_and_preinit_guards_init(void)
 {
   TEST_BEGIN("test_null_and_preinit_guards_init");
 
@@ -113,8 +120,15 @@ static void test_null_and_preinit_guards_init(void)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @details Exercises the null and preinit guards ops path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_null_and_preinit_guards_ops(void)
+RA8_INTERNAL static void internal_test_null_and_preinit_guards_ops(void)
 {
   TEST_BEGIN("test_null_and_preinit_guards_ops");
 
@@ -126,13 +140,13 @@ static void test_null_and_preinit_guards_ops(void)
   uint32_t pages = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_reflow_layout_chapter(nullptr,
-                                           (const uint8_t*)k_xhtml_simple,
-                                           strlen(k_xhtml_simple),
+                                           (const uint8_t*)s_xhtml_simple,
+                                           strlen(s_xhtml_simple),
                                            &pages));
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
                  ra8_reflow_layout_chapter(&closed,
-                                           (const uint8_t*)k_xhtml_simple,
-                                           strlen(k_xhtml_simple),
+                                           (const uint8_t*)s_xhtml_simple,
+                                           strlen(s_xhtml_simple),
                                            &pages));
 
   /* render_page() / get_page_count() / set_font_size() guards. */
@@ -148,13 +162,20 @@ static void test_null_and_preinit_guards_ops(void)
 /**
  * @brief Parse a simple `<h1>Title</h1><p>Body</p>` and confirm
  *        layout returns >= 1 page with > 0 glyphs.
-  *
-  * @par MC/DC:
-  * (no compound decisions in this test -- exercises the public-API
-  * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ * @details Exercises the simple layout path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_simple_layout(void)
+RA8_INTERNAL static void internal_test_simple_layout(void)
 {
   TEST_BEGIN("test_simple_layout");
 
@@ -170,8 +191,8 @@ static void test_simple_layout(void)
 
   uint32_t  pages = 0U;
   ra8_err_t err   = ra8_reflow_layout_chapter(&s_engine,
-                                              (const uint8_t*)k_xhtml_simple,
-                                              strlen(k_xhtml_simple),
+                                              (const uint8_t*)s_xhtml_simple,
+                                              strlen(s_xhtml_simple),
                                               &pages);
   TEST_ASSERT_EQ(k_ra8_ok, err);
   TEST_ASSERT(pages >= 1U);
@@ -193,13 +214,20 @@ static void test_simple_layout(void)
 /**
  * @brief Render the simple page and verify non-zero pixel coverage in
  *        the upper-left region (where the 'T' of "Title" lives).
-  *
-  * @par MC/DC:
-  * (no compound decisions in this test -- exercises the public-API
-  * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ * @details Exercises the render pixels around title path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_render_pixels_around_title(void)
+RA8_INTERNAL static void internal_test_render_pixels_around_title(void)
 {
   TEST_BEGIN("test_render_pixels_around_title");
 
@@ -215,8 +243,8 @@ static void test_render_pixels_around_title(void)
   uint32_t pages = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_reflow_layout_chapter(&s_engine,
-                                           (const uint8_t*)k_xhtml_simple,
-                                           strlen(k_xhtml_simple),
+                                           (const uint8_t*)s_xhtml_simple,
+                                           strlen(s_xhtml_simple),
                                            &pages));
   TEST_ASSERT(s_engine.glyph_count > 0U);
 
@@ -224,7 +252,7 @@ static void test_render_pixels_around_title(void)
    * leading whitespace before it). */
   TEST_ASSERT_EQ('T', s_engine.glyphs[0].cp);
 
-  priv_bind_gfx();
+  internal_priv_bind_gfx();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
 
   /* The 'T' lives in the upper-left quadrant -- verify pixel
@@ -233,7 +261,7 @@ static void test_render_pixels_around_title(void)
   const int32_t  y0  = 0;
   const int32_t  x1  = (int32_t)k_test_viewport_w / 2;
   const int32_t  y1  = (int32_t)k_test_viewport_h / 2;
-  const uint32_t lit = priv_count_lit_pixels(x0, y0, x1, y1);
+  const uint32_t lit = internal_priv_count_lit_pixels(x0, y0, x1, y1);
   TEST_ASSERT(lit > 0U);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_close(&s_engine));
@@ -249,8 +277,15 @@ static void test_render_pixels_around_title(void)
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
+ * @details Exercises the render at origin path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_render_at_origin(void)
+RA8_INTERNAL static void internal_test_render_at_origin(void)
 {
   TEST_BEGIN("test_render_at_origin");
 
@@ -266,8 +301,8 @@ static void test_render_at_origin(void)
   uint32_t pages = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_reflow_layout_chapter(&s_engine,
-                                           (const uint8_t*)k_xhtml_simple,
-                                           strlen(k_xhtml_simple),
+                                           (const uint8_t*)s_xhtml_simple,
+                                           strlen(s_xhtml_simple),
                                            &pages));
   TEST_ASSERT(s_engine.glyph_count > 0U);
 
@@ -278,28 +313,28 @@ static void test_render_at_origin(void)
 
   /* render_page() must equal render_page_at(0, 0): same origin, identical
    * output (a self-consistency check independent of any clipping). */
-  priv_bind_gfx();
+  internal_priv_bind_gfx();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page_at(&s_engine, 0U, 0, 0));
-  const uint32_t lit_at0 = priv_count_lit_pixels(0, 0, fbw, fbh);
+  const uint32_t lit_at0 = internal_priv_count_lit_pixels(0, 0, fbw, fbh);
   TEST_ASSERT(lit_at0 > 0U);
-  priv_bind_gfx();
+  internal_priv_bind_gfx();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
-  TEST_ASSERT_EQ(lit_at0, priv_count_lit_pixels(0, 0, fbw, fbh));
+  TEST_ASSERT_EQ(lit_at0, internal_priv_count_lit_pixels(0, 0, fbw, fbh));
 
   /* At origin (0,0) the text occupies the top-left corner box. */
-  priv_bind_gfx();
+  internal_priv_bind_gfx();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page_at(&s_engine, 0U, 0, 0));
-  TEST_ASSERT(priv_count_lit_pixels(0, 0, dx, dy) > 0U);
+  TEST_ASSERT(internal_priv_count_lit_pixels(0, 0, dx, dy) > 0U);
 
   /* Offset by (dx, dy): the pre-offset corner is now empty (every glyph
    * shifted past it) and ink lands in the shifted region. This proves the
    * origin translation without depending on edge clipping (the large h1
    * line clips at the top at origin, so total pixel counts are not equal
    * across offsets). */
-  priv_bind_gfx();
+  internal_priv_bind_gfx();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page_at(&s_engine, 0U, dx, dy));
-  TEST_ASSERT_EQ(0U, priv_count_lit_pixels(0, 0, dx, dy));
-  TEST_ASSERT(priv_count_lit_pixels(dx, dy, fbw, fbh) > 0U);
+  TEST_ASSERT_EQ(0U, internal_priv_count_lit_pixels(0, 0, dx, dy));
+  TEST_ASSERT(internal_priv_count_lit_pixels(dx, dy, fbw, fbh) > 0U);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_close(&s_engine));
 
@@ -309,13 +344,20 @@ static void test_render_at_origin(void)
 /**
  * @brief Multi-paragraph layout produces glyphs spanning multiple
  *        block-start / block-end pairs.
-  *
-  * @par MC/DC:
-  * (no compound decisions in this test -- exercises the public-API
-  * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ * @details Exercises the multi paragraph path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_multi_paragraph(void)
+RA8_INTERNAL static void internal_test_multi_paragraph(void)
 {
   TEST_BEGIN("test_multi_paragraph");
 
@@ -331,8 +373,8 @@ static void test_multi_paragraph(void)
   uint32_t pages = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_reflow_layout_chapter(&s_engine,
-                                           (const uint8_t*)k_xhtml_multi,
-                                           strlen(k_xhtml_multi),
+                                           (const uint8_t*)s_xhtml_multi,
+                                           strlen(s_xhtml_multi),
                                            &pages));
   TEST_ASSERT(pages >= 1U);
   TEST_ASSERT(s_engine.glyph_count > 0U);
@@ -354,13 +396,20 @@ static void test_multi_paragraph(void)
 
 /**
  * @brief Bold / italic propagate the style stamp onto laid-out glyphs.
-  *
-  * @par MC/DC:
-  * (no compound decisions in this test -- exercises the public-API
-  * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ * @details Exercises the bold italic toggling path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_bold_italic_toggling(void)
+RA8_INTERNAL static void internal_test_bold_italic_toggling(void)
 {
   TEST_BEGIN("test_bold_italic_toggling");
 
@@ -376,8 +425,8 @@ static void test_bold_italic_toggling(void)
   uint32_t pages = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_reflow_layout_chapter(&s_engine,
-                                           (const uint8_t*)k_xhtml_styled,
-                                           strlen(k_xhtml_styled),
+                                           (const uint8_t*)s_xhtml_styled,
+                                           strlen(s_xhtml_styled),
                                            &pages));
   TEST_ASSERT(s_engine.glyph_count > 0U);
 
@@ -407,13 +456,20 @@ static void test_bold_italic_toggling(void)
 
 /**
  * @brief Larger font size yields >= as many pages as the smaller size.
-  *
-  * @par MC/DC:
-  * (no compound decisions in this test -- exercises the public-API
-  * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ * @details Exercises the set font size reflows path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_set_font_size_reflows(void)
+RA8_INTERNAL static void internal_test_set_font_size_reflows(void)
 {
   TEST_BEGIN("test_set_font_size_reflows");
 
@@ -429,8 +485,8 @@ static void test_set_font_size_reflows(void)
   uint32_t pages_small = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_reflow_layout_chapter(&s_engine,
-                                           (const uint8_t*)k_xhtml_multi,
-                                           strlen(k_xhtml_multi),
+                                           (const uint8_t*)s_xhtml_multi,
+                                           strlen(s_xhtml_multi),
                                            &pages_small));
   const uint32_t glyphs_small = s_engine.glyph_count;
 
@@ -454,13 +510,20 @@ static void test_set_font_size_reflows(void)
 
 /**
  * @brief set_font_size before any layout yields invalid_state.
-  *
-  * @par MC/DC:
-  * (no compound decisions in this test -- exercises the public-API
-  * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ * @details Exercises the set font size without layout path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_set_font_size_without_layout(void)
+RA8_INTERNAL static void internal_test_set_font_size_without_layout(void)
 {
   TEST_BEGIN("test_set_font_size_without_layout");
 
@@ -482,13 +545,20 @@ static void test_set_font_size_without_layout(void)
 
 /**
  * @brief layout_chapter rejects an empty buffer.
-  *
-  * @par MC/DC:
-  * (no compound decisions in this test -- exercises the public-API
-  * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ * @details Exercises the layout rejects empty input path and preserves each documented result and bound.
+ * @pre The referenced fixture inputs are valid for this scenario.
+ * @pre Fixed-capacity output buffers are initialized before the operation.
+ * @post All assertions for the scenario have passed before this function returns.
+ * @post Caller-owned fixture storage remains valid for subsequent vectors.
+ * @note Test helpers use caller-owned or fixed-capacity fixture storage.
+ * @since 0.1.0
  */
-static void test_layout_rejects_empty_input(void)
+RA8_INTERNAL static void internal_test_layout_rejects_empty_input(void)
 {
   TEST_BEGIN("test_layout_rejects_empty_input");
 
@@ -503,7 +573,7 @@ static void test_layout_rejects_empty_input(void)
                                  &s_engine));
   uint32_t pages = (uint32_t)k_test_pages_poison;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_reflow_layout_chapter(&s_engine, (const uint8_t*)k_xhtml_simple, 0U, &pages));
+                 ra8_reflow_layout_chapter(&s_engine, (const uint8_t*)s_xhtml_simple, 0U, &pages));
   /* Malformed XHTML rejected as validation_failed. */
   static const char* const k_bad = "<<<not xml";
   TEST_ASSERT_EQ(
@@ -523,7 +593,8 @@ static void test_layout_rejects_empty_input(void)
  *
  * @return 0 on success (all tests passed, or clean guards-only skip).
  *
- * @pre Host environment provides a filesystem and stderr.
+ * @pre Host environment provides the font fixture and raw diagnostic
+ * descriptor.
  * @post The layout / render / guard behaviours above are validated.
  *
  * @note Not thread-safe (single-threaded test runner).
@@ -531,32 +602,34 @@ static void test_layout_rejects_empty_input(void)
  */
 int main(void)
 {
-  if (!priv_load_font()) {
+  if (!internal_priv_load_font()) {
     /* If the font is unreachable in the test sandbox, skip cleanly:
      * the suite still validates the public API guards by running the
      * NULL-arg tests against a minimal synthetic blob. */
-    (void)fprintf(stderr,
-                  "[SKIP] test_ra8_reflow: Literata-Regular.ttf not loadable -- "
-                  "running guards-only path\n");
+    (void)internal_test_output_fd_text(
+      STDERR_FILENO,
+      "[SKIP] test_ra8_reflow: Literata-Regular.ttf not loadable -- "
+      "running guards-only path\n");
     /* Substitute a small synthetic blob so init() succeeds where the
      * size check is the only guard exercised. */
     (void)memset(s_font_buf, (int)k_test_stub_fill, 32U);
     s_font_len = 32U;
-    test_null_and_preinit_guards_init();
-    test_null_and_preinit_guards_ops();
+    internal_test_null_and_preinit_guards_init();
+    internal_test_null_and_preinit_guards_ops();
     return 0;
   }
 
-  test_null_and_preinit_guards_init();
-  test_null_and_preinit_guards_ops();
-  test_simple_layout();
-  test_render_pixels_around_title();
-  test_render_at_origin();
-  test_multi_paragraph();
-  test_bold_italic_toggling();
-  test_set_font_size_reflows();
-  test_set_font_size_without_layout();
-  test_layout_rejects_empty_input();
-  (void)fprintf(stderr, "[OK  ] test_ra8_reflow: layout/render/guard tests passed\n");
+  internal_test_null_and_preinit_guards_init();
+  internal_test_null_and_preinit_guards_ops();
+  internal_test_simple_layout();
+  internal_test_render_pixels_around_title();
+  internal_test_render_at_origin();
+  internal_test_multi_paragraph();
+  internal_test_bold_italic_toggling();
+  internal_test_set_font_size_reflows();
+  internal_test_set_font_size_without_layout();
+  internal_test_layout_rejects_empty_input();
+  (void)internal_test_output_fd_text(STDERR_FILENO,
+                                     "[OK  ] test_ra8_reflow: layout/render/guard tests passed\n");
   return 0;
 }

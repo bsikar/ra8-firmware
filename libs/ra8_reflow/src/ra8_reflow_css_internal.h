@@ -51,7 +51,7 @@
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_reflow_css_is_ws(char c);
+RA8_PRIV bool priv_ra8_reflow_css_is_ws(char c);
 
 /**
  * @brief ASCII-fold one byte to lower case.
@@ -75,13 +75,13 @@ RA8_PRIV bool ra8_reflow_css_is_ws(char c);
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
-RA8_PRIV char ra8_reflow_css_lower(char c);
+RA8_PRIV char priv_ra8_reflow_css_lower(char c);
 
 /**
  * @brief Case-insensitive compare of span @p s[0..len) against NUL literal @p lit.
  *
  * @details Compares exactly @p len bytes of @p s against the NUL-terminated
- * string @p lit using ASCII case folding via ra8_reflow_css_lower(). Returns true
+ * string @p lit using ASCII case folding via priv_ra8_reflow_css_lower(). Returns true
  * only when the span and the literal have equal length and all bytes fold equal.
  * Either null pointer causes an immediate false return without dereferencing.
  *
@@ -101,12 +101,12 @@ RA8_PRIV char ra8_reflow_css_lower(char c);
  * @note Thread-safe; no shared mutable state.
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_reflow_css_ci_eq(const char* s, size_t len, const char* lit);
+RA8_PRIV bool priv_ra8_reflow_css_ci_eq(const char* s, size_t len, const char* lit);
 
 /**
  * @brief Trim leading + trailing whitespace from @p s[0..*len); returns start.
  *
- * @details Advances past leading ra8_reflow_css_is_ws() bytes and shrinks past
+ * @details Advances past leading priv_ra8_reflow_css_is_ws() bytes and shrinks past
  * trailing ones, writing the trimmed length back through @p len and returning a
  * pointer to the first retained byte. Used to normalise property names, values,
  * and selector spans before classification.
@@ -125,7 +125,7 @@ RA8_PRIV bool ra8_reflow_css_ci_eq(const char* s, size_t len, const char* lit);
  * @note Thread-safe; operates only on caller-owned memory.
  * @since 0.1.0
  */
-RA8_PRIV const char* ra8_reflow_css_trim(const char* s, size_t* len);
+RA8_PRIV const char* priv_ra8_reflow_css_trim(const char* s, size_t* len);
 
 /**
  * @brief Parse a `prop:value; ...` declaration body (no braces) into @p out.
@@ -151,7 +151,7 @@ RA8_PRIV const char* ra8_reflow_css_trim(const char* s, size_t* len);
  * @note Thread-safe with respect to distinct @p out instances.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_reflow_css_parse_decls(const char* s, size_t len, ra8_css_style_t* out);
+RA8_PRIV void priv_ra8_reflow_css_parse_decls(const char* s, size_t len, ra8_css_style_t* out);
 
 /**
  * @brief Dispatch one `selector|@rule { block }`: at-rule vs. style rule.
@@ -178,8 +178,8 @@ RA8_PRIV void ra8_reflow_css_parse_decls(const char* s, size_t len, ra8_css_styl
  * @note Thread-safe with respect to distinct @p sheet instances.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_reflow_css_parse_one_block(ra8_css_sheet_t* sheet,
-                                             const char*      sel,
-                                             size_t           sel_len,
-                                             const char*      block,
-                                             size_t           block_len);
+RA8_PRIV void priv_ra8_reflow_css_parse_one_block(ra8_css_sheet_t* sheet,
+                                                  const char*      sel,
+                                                  size_t           sel_len,
+                                                  const char*      block,
+                                                  size_t           block_len);

@@ -11,7 +11,7 @@
  * back and re-laying the row at the top of a fresh page when it would
  * overflow).
  *
- * The driver enters this module through @ref ra8_reflow_layout_table; the
+ * The driver enters this module through @ref priv_ra8_reflow_layout_table; the
  * core inline-flow helpers it reuses (line height, glyph advance/push, line
  * wrap, page flush) are shared via `ra8_reflow_layout_internal.h`.
  *
@@ -65,7 +65,7 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_match_block_end(const ra8_reflow_t* engine, uint32_t start, uint32_t limit)
+static uint32_t internal_match_block_end(const ra8_reflow_t* engine, uint32_t start, uint32_t limit)
 {
   const uint8_t tag   = engine->tokens[start].tag;
   int32_t       depth = 1;
@@ -91,7 +91,7 @@ static uint32_t priv_match_block_end(const ra8_reflow_t* engine, uint32_t start,
  *
  * @details Checks both the token kind (must be `block_start`) and the tag
  * (must be `k_ra8_reflow_tag_td` or `k_ra8_reflow_tag_th`). Used by
- * `priv_table_columns` and `priv_row_cells` to locate cell boundaries in the
+ * `internal_table_columns` and `internal_row_cells` to locate cell boundaries in the
  * flat token stream without recursion.
  *
  * @param[in] engine Engine holding the token stream.
@@ -110,7 +110,7 @@ static uint32_t priv_match_block_end(const ra8_reflow_t* engine, uint32_t start,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_is_cell_start(const ra8_reflow_t* engine, uint32_t i)
+static bool internal_is_cell_start(const ra8_reflow_t* engine, uint32_t i)
 {
   const ra8_reflow_token_t* tok = &engine->tokens[i];
   return (tok->kind == (uint8_t)k_ra8_reflow_tok_block_start) &&
@@ -121,8 +121,8 @@ static bool priv_is_cell_start(const ra8_reflow_t* engine, uint32_t i)
  * @brief True iff token @p i opens a table row (`<tr>`).
  *
  * @details Checks both the token kind (must be `block_start`) and the tag
- * (must be `k_ra8_reflow_tag_tr`). Used by `priv_table_columns` and
- * `ra8_reflow_layout_table` to locate row boundaries while scanning the flat
+ * (must be `k_ra8_reflow_tag_tr`). Used by `internal_table_columns` and
+ * `priv_ra8_reflow_layout_table` to locate row boundaries while scanning the flat
  * token stream between a table block-start and its matching block-end.
  *
  * @param[in] engine Engine holding the token stream.
@@ -141,7 +141,7 @@ static bool priv_is_cell_start(const ra8_reflow_t* engine, uint32_t i)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_is_row_start(const ra8_reflow_t* engine, uint32_t i)
+static bool internal_is_row_start(const ra8_reflow_t* engine, uint32_t i)
 {
   const ra8_reflow_token_t* tok = &engine->tokens[i];
   return (tok->kind == (uint8_t)k_ra8_reflow_tok_block_start) &&
@@ -153,7 +153,7 @@ static bool priv_is_row_start(const ra8_reflow_t* engine, uint32_t i)
  *
  * @details Scans the token range `(start, end)` for `<tr>` block-starts.
  * For each row it counts `<td>` / `<th>` block-start tokens between the row
- * open and its matching close (via @ref priv_match_block_end). The maximum
+ * open and its matching close (via @ref internal_match_block_end). The maximum
  * across all rows is returned; zero is returned for a table with no cells.
  * The scan advances by full row spans so deeply nested same-tag elements do
  * not distort the count.
@@ -174,19 +174,19 @@ static bool priv_is_row_start(const ra8_reflow_t* engine, uint32_t i)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_table_columns(const ra8_reflow_t* engine, uint32_t start, uint32_t end)
+static uint32_t internal_table_columns(const ra8_reflow_t* engine, uint32_t start, uint32_t end)
 {
   uint32_t cols = 0U;
   uint32_t i    = start + 1U;
   while (i < end) {
-    if (!priv_is_row_start(engine, i)) {
+    if (!internal_is_row_start(engine, i)) {
       i++;
       continue;
     }
-    const uint32_t tr_end = priv_match_block_end(engine, i, end);
+    const uint32_t tr_end = internal_match_block_end(engine, i, end);
     uint32_t       cells  = 0U;
     for (uint32_t j = i + 1U; j < tr_end; ++j) {
-      if (priv_is_cell_start(engine, j)) {
+      if (internal_is_cell_start(engine, j)) {
         cells++;
       }
     }
@@ -208,7 +208,7 @@ static uint32_t priv_table_columns(const ra8_reflow_t* engine, uint32_t start, u
  * leading whitespace on wrapped lines). Each word is pre-measured; if the word
  * plus the current pen x would exceed @p cell_right and the pen is not already
  * at the left edge, the pen wraps to `cell_x` on the next line and
- * `(*lines)++`. Glyphs are pushed via @ref ra8_reflow_layout_push_glyph with
+ * `(*lines)++`. Glyphs are pushed via @ref priv_ra8_reflow_layout_push_glyph with
  * style 0 and link_id 0 (table cells are always plain body text in v1).
  *
  * @param[in,out] engine     Engine whose glyph pool grows.
@@ -235,27 +235,28 @@ static uint32_t priv_table_columns(const ra8_reflow_t* engine, uint32_t start, u
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_cell_text(ra8_reflow_t*             engine,
-                           const stbtt_fontinfo*     font,
-                           const ra8_reflow_token_t* tok,
-                           int32_t                   cell_x,
-                           int32_t                   cell_right,
-                           uint16_t                  font_px,
-                           uint32_t                  color,
-                           int32_t*                  cx,
-                           int32_t*                  cy,
-                           uint32_t*                 lines)
+static void internal_cell_text(ra8_reflow_t*             engine,
+                               const stbtt_fontinfo*     font,
+                               const ra8_reflow_token_t* tok,
+                               int32_t                   cell_x,
+                               int32_t                   cell_right,
+                               uint16_t                  font_px,
+                               uint32_t                  color,
+                               int32_t*                  cx,
+                               int32_t*                  cy,
+                               uint32_t*                 lines)
 {
-  const int32_t  line_h = (int32_t)ra8_reflow_layout_line_height(font_px);
+  const int32_t  line_h = (int32_t)priv_ra8_reflow_layout_line_height(font_px);
   const uint8_t* base   = engine->text_pool + tok->text_off;
   const uint32_t len    = tok->text_len;
   uint32_t       i      = 0U;
   while (i < len) {
     if (base[i] == ' ') {
-      const int32_t adv = ra8_reflow_layout_glyph_advance(font, font_px, (int32_t)' ');
-      /* mcdc-deactivated: ra8_reflow_tok_stash_run collapses leading whitespace of every text run (last_ws starts true), so a cell text token never begins with a space, and the pen always advances past cell_x after a word is emitted; a space is therefore only ever seen with *cx > cell_x, making the (*cx > cell_x) false arm unreachable. */
+      const int32_t adv = priv_ra8_reflow_layout_glyph_advance(font, font_px, (int32_t)' ');
+      /* mcdc-deactivated: priv_ra8_reflow_tok_stash_run collapses leading whitespace of every text run (last_ws starts true), so a cell text token never begins with a space, and the pen always advances past cell_x after a word is emitted; a space is therefore only ever seen with *cx > cell_x, making the (*cx > cell_x) false arm unreachable. */
       if ((*cx > cell_x) && ((*cx + adv) <= cell_right)) {
-        (void)ra8_reflow_layout_push_glyph(engine, *cx, *cy, (int32_t)' ', font_px, 0U, color, 0U);
+        (void)
+          priv_ra8_reflow_layout_push_glyph(engine, *cx, *cy, (int32_t)' ', font_px, 0U, color, 0U);
         *cx += adv;
       }
       ++i;
@@ -264,7 +265,7 @@ static void priv_cell_text(ra8_reflow_t*             engine,
     uint32_t word_end = i;
     int32_t  word_w   = 0;
     while ((word_end < len) && (base[word_end] != ' ')) {
-      word_w += ra8_reflow_layout_glyph_advance(font, font_px, (int32_t)base[word_end]);
+      word_w += priv_ra8_reflow_layout_glyph_advance(font, font_px, (int32_t)base[word_end]);
       ++word_end;
     }
     if (((*cx + word_w) > cell_right) && (*cx > cell_x)) {
@@ -273,9 +274,15 @@ static void priv_cell_text(ra8_reflow_t*             engine,
       (*lines)++;
     }
     while (i < word_end) {
-      const int32_t adv = ra8_reflow_layout_glyph_advance(font, font_px, (int32_t)base[i]);
-      (void)
-        ra8_reflow_layout_push_glyph(engine, *cx, *cy, (int32_t)base[i], font_px, 0U, color, 0U);
+      const int32_t adv = priv_ra8_reflow_layout_glyph_advance(font, font_px, (int32_t)base[i]);
+      (void)priv_ra8_reflow_layout_push_glyph(engine,
+                                              *cx,
+                                              *cy,
+                                              (int32_t)base[i],
+                                              font_px,
+                                              0U,
+                                              color,
+                                              0U);
       *cx += adv;
       ++i;
     }
@@ -286,7 +293,7 @@ static void priv_cell_text(ra8_reflow_t*             engine,
  * @brief Lay out one cell's text tokens within a fixed column box (left-flow).
  *
  * @details Iterates over tokens `[tstart, tend)` and, for each
- * `k_ra8_reflow_tok_text` token, delegates to @ref priv_cell_text which
+ * `k_ra8_reflow_tok_text` token, delegates to @ref internal_cell_text which
  * performs greedy word-wrap within `[cell_x, cell_x + cell_w)` from @p top_y.
  * Non-text tokens inside the cell are ignored (v1 table cells hold plain text).
  * The running pen and line counter are local to this call; the return value
@@ -314,14 +321,14 @@ static void priv_cell_text(ra8_reflow_t*             engine,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_layout_cell(ra8_reflow_t*         engine,
-                                 const stbtt_fontinfo* font,
-                                 int32_t               cell_x,
-                                 int32_t               cell_w,
-                                 int32_t               top_y,
-                                 uint32_t              color,
-                                 uint32_t              tstart,
-                                 uint32_t              tend)
+static uint32_t internal_layout_cell(ra8_reflow_t*         engine,
+                                     const stbtt_fontinfo* font,
+                                     int32_t               cell_x,
+                                     int32_t               cell_w,
+                                     int32_t               top_y,
+                                     uint32_t              color,
+                                     uint32_t              tstart,
+                                     uint32_t              tend)
 {
   const int32_t  cell_right = cell_x + cell_w;
   const uint16_t font_px    = engine->font_px;
@@ -331,7 +338,7 @@ static uint32_t priv_layout_cell(ra8_reflow_t*         engine,
   for (uint32_t t = tstart; t < tend; ++t) {
     const ra8_reflow_token_t* tok = &engine->tokens[t];
     if (tok->kind == (uint8_t)k_ra8_reflow_tok_text) {
-      priv_cell_text(engine, font, tok, cell_x, cell_right, font_px, color, &cx, &cy, &lines);
+      internal_cell_text(engine, font, tok, cell_x, cell_right, font_px, color, &cx, &cy, &lines);
     }
   }
   return lines;
@@ -344,7 +351,7 @@ static uint32_t priv_layout_cell(ra8_reflow_t*         engine,
  * block-starts. Each cell maps to a zero-based column index; the content area
  * starts at `margin + col * col_w + pad` and has width `col_w - 2 * pad`
  * (with `pad = k_priv_cell_pad_px`). Each cell is flowed by
- * @ref priv_layout_cell and the returned line count updates the per-row
+ * @ref internal_layout_cell and the returned line count updates the per-row
  * maximum. Cells beyond the column count are placed but may overflow the
  * viewport (caller ensures the column count is non-zero before calling).
  *
@@ -367,12 +374,12 @@ static uint32_t priv_layout_cell(ra8_reflow_t*         engine,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_row_cells(ra8_reflow_t*         engine,
-                               const stbtt_fontinfo* font,
-                               uint32_t              tr_start,
-                               uint32_t              tr_end,
-                               int32_t               col_w,
-                               int32_t               row_y)
+static uint32_t internal_row_cells(ra8_reflow_t*         engine,
+                                   const stbtt_fontinfo* font,
+                                   uint32_t              tr_start,
+                                   uint32_t              tr_end,
+                                   int32_t               col_w,
+                                   int32_t               row_y)
 {
   const int32_t  pad   = (int32_t)k_priv_cell_pad_px;
   const uint32_t color = engine->body_color;
@@ -380,15 +387,15 @@ static uint32_t priv_row_cells(ra8_reflow_t*         engine,
   uint32_t       col   = 0U;
   uint32_t       i     = tr_start + 1U;
   while (i < tr_end) {
-    if (!priv_is_cell_start(engine, i)) {
+    if (!internal_is_cell_start(engine, i)) {
       i++;
       continue;
     }
-    const uint32_t cell_end = priv_match_block_end(engine, i, tr_end);
+    const uint32_t cell_end = internal_match_block_end(engine, i, tr_end);
     const int32_t  cell_x   = (int32_t)k_ra8_reflow_margin_px + ((int32_t)col * col_w) + pad;
     const int32_t  cell_w   = col_w - (2 * pad);
     const uint32_t lines =
-      priv_layout_cell(engine, font, cell_x, cell_w, row_y, color, i + 1U, cell_end);
+      internal_layout_cell(engine, font, cell_x, cell_w, row_y, color, i + 1U, cell_end);
     if (lines > rows) {
       rows = lines;
     }
@@ -401,12 +408,12 @@ static uint32_t priv_row_cells(ra8_reflow_t*         engine,
 /**
  * @brief Lay out one table row, page-breaking before it if it would overflow.
  *
- * @details First lays the row tentatively at `cur->y` via @ref priv_row_cells,
+ * @details First lays the row tentatively at `cur->y` via @ref internal_row_cells,
  * computing `row_h = lines * line_h`. If the row's bottom `(cur->y + row_h)`
  * exceeds the page bottom margin and the cursor is not already at the top margin
  * (i.e. there is content above to preserve), the tentative glyphs are rolled
  * back by restoring `engine->glyph_count` to its value before the call, a page
- * flush is issued via @ref ra8_reflow_layout_finish_page, and the row is re-laid
+ * flush is issued via @ref priv_ra8_reflow_layout_finish_page, and the row is re-laid
  * from the top of the fresh page. The cursor is always advanced past the row by
  * `row_h + k_priv_row_gap_px` before returning.
  *
@@ -429,46 +436,46 @@ static uint32_t priv_row_cells(ra8_reflow_t*         engine,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_layout_row(ra8_reflow_t*         engine,
-                                priv_cursor_t*        cur,
-                                const stbtt_fontinfo* font,
-                                uint32_t              tr_start,
-                                uint32_t              table_end,
-                                int32_t               col_w)
+static uint32_t internal_layout_row(ra8_reflow_t*         engine,
+                                    priv_cursor_t*        cur,
+                                    const stbtt_fontinfo* font,
+                                    uint32_t              tr_start,
+                                    uint32_t              table_end,
+                                    int32_t               col_w)
 {
-  const uint32_t tr_end       = priv_match_block_end(engine, tr_start, table_end);
-  const int32_t  line_h       = (int32_t)ra8_reflow_layout_line_height(engine->font_px);
+  const uint32_t tr_end       = internal_match_block_end(engine, tr_start, table_end);
+  const int32_t  line_h       = (int32_t)priv_ra8_reflow_layout_line_height(engine->font_px);
   const int32_t  bottom_limit = (int32_t)engine->viewport_h - (int32_t)k_ra8_reflow_margin_px;
 
   const uint32_t glyphs_before = engine->glyph_count;
-  uint32_t       row_lines     = priv_row_cells(engine, font, tr_start, tr_end, col_w, cur->y);
+  uint32_t       row_lines     = internal_row_cells(engine, font, tr_start, tr_end, col_w, cur->y);
   int32_t        row_h         = (int32_t)row_lines * line_h;
 
   if (((cur->y + row_h) > bottom_limit) && (cur->y > (int32_t)k_ra8_reflow_margin_px)) {
     engine->glyph_count = glyphs_before; /* roll the row back ... */
-    (void)ra8_reflow_layout_finish_page(engine,
-                                        cur); /* ... flush the page (cur->y -> margin) ... */
+    (void)priv_ra8_reflow_layout_finish_page(engine,
+                                             cur); /* ... flush the page (cur->y -> margin) ... */
     /* ... re-lay it */
-    row_lines = priv_row_cells(engine, font, tr_start, tr_end, col_w, cur->y);
+    row_lines = internal_row_cells(engine, font, tr_start, tr_end, col_w, cur->y);
     row_h     = (int32_t)row_lines * line_h;
   }
   cur->y += row_h + (int32_t)k_priv_row_gap_px;
   return tr_end + 1U;
 }
 
-ra8_err_t ra8_reflow_layout_table(ra8_reflow_t*         engine,
-                                  priv_cursor_t*        cur,
-                                  const stbtt_fontinfo* font,
-                                  uint32_t              start,
-                                  uint32_t*             out_next)
+ra8_err_t priv_ra8_reflow_layout_table(ra8_reflow_t*         engine,
+                                       priv_cursor_t*        cur,
+                                       const stbtt_fontinfo* font,
+                                       uint32_t              start,
+                                       uint32_t*             out_next)
 {
   if (cur->line_has_content != 0U) {
-    if (!ra8_reflow_layout_newline(engine, cur, false)) {
+    if (!priv_ra8_reflow_layout_newline(engine, cur, false)) {
       return k_ra8_err_no_mem;
     }
   }
-  const uint32_t end  = priv_match_block_end(engine, start, engine->token_count);
-  const uint32_t cols = priv_table_columns(engine, start, end);
+  const uint32_t end  = internal_match_block_end(engine, start, engine->token_count);
+  const uint32_t cols = internal_table_columns(engine, start, end);
   if (cols == 0U) {
     *out_next = (end < engine->token_count) ? (end + 1U) : engine->token_count;
     return k_ra8_ok;
@@ -478,8 +485,8 @@ ra8_err_t ra8_reflow_layout_table(ra8_reflow_t*         engine,
 
   uint32_t i = start + 1U;
   while (i < end) {
-    if (priv_is_row_start(engine, i)) {
-      i = priv_layout_row(engine, cur, font, i, end, col_w);
+    if (internal_is_row_start(engine, i)) {
+      i = internal_layout_row(engine, cur, font, i, end, col_w);
     } else {
       i++;
     }

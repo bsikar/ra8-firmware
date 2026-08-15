@@ -123,6 +123,7 @@ if(RA8_REFLOW_USE_LITEHTML)
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
             ${FW_ROOT}/libs/ra8_core/inc
             ${FW_ROOT}/libs/ra8_reflow/inc
+            ${FW_ROOT}/libs/ra8_mem/inc
             ${FW_ROOT}/libs/third_party/litehtml/include
             ${FW_ROOT}/libs/third_party/stb
             ${CMAKE_CURRENT_SOURCE_DIR}/mocks

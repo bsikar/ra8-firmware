@@ -97,7 +97,7 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_suppressed(const tok_ctx_t* ctx)
+static bool internal_suppressed(const tok_ctx_t* ctx)
 {
   return ctx->suppress_sp != 0U;
 }
@@ -128,28 +128,28 @@ static bool priv_suppressed(const tok_ctx_t* ctx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_handle_cdata(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
+static ra8_err_t internal_handle_cdata(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
 {
   const size_t inner = *pi + strlen("<![CDATA[");
   size_t       close = inner;
   while (((close + 3U) <= len) && (memcmp(&buf[close], "]]>", 3U) != 0)) {
     ++close;
   }
-  if ((ctx->sp > 0U) && !priv_suppressed(ctx)) {
+  if ((ctx->sp > 0U) && !internal_suppressed(ctx)) {
     uint32_t off     = ctx->engine->text_pool_used;
     bool     last_ws = true;
     for (size_t k = inner; k < close; ++k) {
-      if (!ra8_reflow_tok_feed(ctx->engine, (char)buf[k], &last_ws)) {
+      if (!priv_ra8_reflow_tok_feed(ctx->engine, (char)buf[k], &last_ws)) {
         return k_ra8_err_no_mem;
       }
     }
     const uint32_t tlen = ctx->engine->text_pool_used - off;
-    if ((tlen > 0U) && !ra8_reflow_tok_emit(ctx->engine,
-                                            k_ra8_reflow_tok_text,
-                                            k_ra8_reflow_tag_unknown,
-                                            ctx->style,
-                                            off,
-                                            tlen)) {
+    if ((tlen > 0U) && !priv_ra8_reflow_tok_emit(ctx->engine,
+                                                 k_ra8_reflow_tok_text,
+                                                 k_ra8_reflow_tag_unknown,
+                                                 ctx->style,
+                                                 off,
+                                                 tlen)) {
       return k_ra8_err_no_mem;
     }
     if (tlen > 0U) {
@@ -180,7 +180,7 @@ static ra8_err_t priv_handle_cdata(tok_ctx_t* ctx, const uint8_t* buf, size_t* p
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
+static ra8_err_t internal_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
 {
   size_t i = *pi + 2U; /* past "</" */
   while ((i < len) && (buf[i] != '>')) {
@@ -199,8 +199,8 @@ static ra8_err_t priv_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi,
   ctx->family_off                 = ctx->stack_fam_off[ctx->sp];
   ctx->family_len                 = ctx->stack_fam_len[ctx->sp];
   ctx->face_slot                  = ctx->stack_face[ctx->sp];
-  if (ra8_reflow_tok_is_block(tag) && !priv_suppressed(ctx) &&
-      !ra8_reflow_tok_emit(ctx->engine, k_ra8_reflow_tok_block_end, tag, ctx->style, 0U, 0U)) {
+  if (priv_ra8_reflow_tok_is_block(tag) && !internal_suppressed(ctx) &&
+      !priv_ra8_reflow_tok_emit(ctx->engine, k_ra8_reflow_tok_block_end, tag, ctx->style, 0U, 0U)) {
     return k_ra8_err_no_mem;
   }
   /* Exited the display:none subtree once we pop back above its depth. */
@@ -231,16 +231,17 @@ static ra8_err_t priv_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi,
  */
 RA8_INTERNAL
 static ra8_reflow_html_tag_t
-priv_parse_start(const uint8_t* buf, size_t* pi, size_t len, bool* selfclose)
+internal_parse_start(const uint8_t* buf, size_t* pi, size_t len, bool* selfclose)
 {
   size_t       i      = *pi + 1U; /* past '<' */
   const size_t nstart = i;
   while ((i < len) && (buf[i] != '>') && (buf[i] != '/') &&
-         !ra8_reflow_tok_is_xml_whitespace((char)buf[i])) {
+         !priv_ra8_reflow_tok_is_xml_whitespace((char)buf[i])) {
     ++i;
   }
-  const ra8_reflow_html_tag_t tag = ra8_reflow_tok_classify((const char*)&buf[nstart], i - nstart);
-  *selfclose                      = false;
+  const ra8_reflow_html_tag_t tag =
+    priv_ra8_reflow_tok_classify((const char*)&buf[nstart], i - nstart);
+  *selfclose = false;
   while ((i < len) && (buf[i] != '>')) {
     const char c = (char)buf[i];
     if ((c == '"') || (c == '\'')) {
@@ -281,27 +282,33 @@ priv_parse_start(const uint8_t* buf, size_t* pi, size_t len, bool* selfclose)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_open_attrs(tok_ctx_t*             ctx,
-                                 const uint8_t*         tag,
-                                 size_t                 span,
-                                 ra8_reflow_html_tag_t  kind,
-                                 bool                   block,
-                                 const ra8_css_style_t* comp,
-                                 uint16_t               css_font_px)
+static ra8_err_t internal_open_attrs(tok_ctx_t*             ctx,
+                                     const uint8_t*         tag,
+                                     size_t                 span,
+                                     ra8_reflow_html_tag_t  kind,
+                                     bool                   block,
+                                     const ra8_css_style_t* comp,
+                                     uint16_t               css_font_px)
 {
-  if (priv_suppressed(ctx)) {
+  if (internal_suppressed(ctx)) {
     return k_ra8_ok; /* inside a display:none subtree -> emit nothing */
   }
   if (block) {
     uint32_t id_off = 0U;
     uint32_t id_len = 0U;
-    ra8_reflow_tok_capture_attr(ctx->engine, tag, span, "id", sizeof("id") - 1U, &id_off, &id_len);
-    if (!ra8_reflow_tok_emit(ctx->engine,
-                             k_ra8_reflow_tok_block_start,
-                             kind,
-                             ctx->style,
-                             id_off,
-                             id_len)) {
+    priv_ra8_reflow_tok_capture_attr(ctx->engine,
+                                     tag,
+                                     span,
+                                     "id",
+                                     sizeof("id") - 1U,
+                                     &id_off,
+                                     &id_len);
+    if (!priv_ra8_reflow_tok_emit(ctx->engine,
+                                  k_ra8_reflow_tok_block_start,
+                                  kind,
+                                  ctx->style,
+                                  id_off,
+                                  id_len)) {
       return k_ra8_err_no_mem;
     }
     /* Stash the block's cascaded alignment + CSS font px on the block-start token
@@ -317,14 +324,14 @@ static ra8_err_t priv_open_attrs(tok_ctx_t*             ctx,
   if (kind == k_ra8_reflow_tag_a) {
     uint32_t href_off = 0U;
     uint32_t href_len = 0U;
-    ra8_reflow_tok_capture_attr(ctx->engine,
-                                tag,
-                                span,
-                                "href",
-                                sizeof("href") - 1U,
-                                &href_off,
-                                &href_len);
-    ctx->active_link = ra8_reflow_tok_intern_link(ctx->engine, href_off, href_len);
+    priv_ra8_reflow_tok_capture_attr(ctx->engine,
+                                     tag,
+                                     span,
+                                     "href",
+                                     sizeof("href") - 1U,
+                                     &href_off,
+                                     &href_len);
+    ctx->active_link = priv_ra8_reflow_tok_intern_link(ctx->engine, href_off, href_len);
   }
   return k_ra8_ok;
 }
@@ -351,7 +358,7 @@ static ra8_err_t priv_open_attrs(tok_ctx_t*             ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_handle_link(tok_ctx_t* ctx, const uint8_t* buf, size_t tag_lt, size_t end)
+static void internal_handle_link(tok_ctx_t* ctx, const uint8_t* buf, size_t tag_lt, size_t end)
 {
   if (ctx->engine->css_loader == nullptr) {
     return;
@@ -362,9 +369,14 @@ static void priv_handle_link(tok_ctx_t* ctx, const uint8_t* buf, size_t tag_lt, 
   size_t         rel_len  = 0U;
   size_t         href_off = 0U;
   size_t         href_len = 0U;
-  if (!ra8_reflow_tok_find_attr(tagbuf, span, "rel", sizeof("rel") - 1U, &rel_off, &rel_len) ||
-      !ra8_reflow_tok_find_attr(tagbuf, span, "href", sizeof("href") - 1U, &href_off, &href_len) ||
-      !ra8_reflow_tok_rel_is_stylesheet(&tagbuf[rel_off], rel_len)) {
+  if (!priv_ra8_reflow_tok_find_attr(tagbuf, span, "rel", sizeof("rel") - 1U, &rel_off, &rel_len) ||
+      !priv_ra8_reflow_tok_find_attr(tagbuf,
+                                     span,
+                                     "href",
+                                     sizeof("href") - 1U,
+                                     &href_off,
+                                     &href_len) ||
+      !priv_ra8_reflow_tok_rel_is_stylesheet(&tagbuf[rel_off], rel_len)) {
     return;
   }
   const uint8_t* css_bytes = nullptr;
@@ -405,32 +417,33 @@ static void priv_handle_link(tok_ctx_t* ctx, const uint8_t* buf, size_t tag_lt, 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_handle_void(tok_ctx_t*            ctx,
-                             const uint8_t*        buf,
-                             size_t                tag_lt,
-                             size_t                end,
-                             ra8_reflow_html_tag_t tag,
-                             ra8_err_t*            out_err)
+static bool internal_handle_void(tok_ctx_t*            ctx,
+                                 const uint8_t*        buf,
+                                 size_t                tag_lt,
+                                 size_t                end,
+                                 ra8_reflow_html_tag_t tag,
+                                 ra8_err_t*            out_err)
 {
   if (tag == k_ra8_reflow_tag_link) {
-    priv_handle_link(ctx, buf, tag_lt, end); /* external stylesheet (no token) */
+    internal_handle_link(ctx, buf, tag_lt, end); /* external stylesheet (no token) */
     *out_err = k_ra8_ok;
     return true;
   }
   const bool is_void =
     (tag == k_ra8_reflow_tag_br) || (tag == k_ra8_reflow_tag_hr) || (tag == k_ra8_reflow_tag_img);
-  if (is_void && priv_suppressed(ctx)) {
+  if (is_void && internal_suppressed(ctx)) {
     *out_err = k_ra8_ok; /* void tag inside a display:none subtree -> drop */
     return true;
   }
   if (tag == k_ra8_reflow_tag_br) {
-    *out_err = ra8_reflow_tok_emit(ctx->engine, k_ra8_reflow_tok_break, tag, ctx->style, 0U, 0U)
-                 ? k_ra8_ok
-                 : k_ra8_err_no_mem;
+    *out_err =
+      priv_ra8_reflow_tok_emit(ctx->engine, k_ra8_reflow_tok_break, tag, ctx->style, 0U, 0U)
+        ? k_ra8_ok
+        : k_ra8_err_no_mem;
     return true;
   }
   if (tag == k_ra8_reflow_tag_hr) {
-    *out_err = ra8_reflow_tok_emit(ctx->engine, k_ra8_reflow_tok_rule, tag, ctx->style, 0U, 0U)
+    *out_err = priv_ra8_reflow_tok_emit(ctx->engine, k_ra8_reflow_tok_rule, tag, ctx->style, 0U, 0U)
                  ? k_ra8_ok
                  : k_ra8_err_no_mem;
     return true;
@@ -439,17 +452,21 @@ static bool priv_handle_void(tok_ctx_t*            ctx,
     uint32_t     src_off = 0U;
     uint32_t     src_len = 0U;
     const size_t span    = (end > tag_lt) ? (end - tag_lt) : 0U;
-    ra8_reflow_tok_capture_attr(ctx->engine,
-                                &buf[tag_lt],
-                                span,
-                                "src",
-                                sizeof("src") - 1U,
-                                &src_off,
-                                &src_len);
-    *out_err =
-      ra8_reflow_tok_emit(ctx->engine, k_ra8_reflow_tok_image, tag, ctx->style, src_off, src_len)
-        ? k_ra8_ok
-        : k_ra8_err_no_mem;
+    priv_ra8_reflow_tok_capture_attr(ctx->engine,
+                                     &buf[tag_lt],
+                                     span,
+                                     "src",
+                                     sizeof("src") - 1U,
+                                     &src_off,
+                                     &src_len);
+    *out_err = priv_ra8_reflow_tok_emit(ctx->engine,
+                                        k_ra8_reflow_tok_image,
+                                        tag,
+                                        ctx->style,
+                                        src_off,
+                                        src_len)
+                 ? k_ra8_ok
+                 : k_ra8_err_no_mem;
     return true;
   }
   return false;
@@ -475,7 +492,7 @@ static bool priv_handle_void(tok_ctx_t*            ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint16_t priv_css_font_px(const tok_ctx_t* ctx, const ra8_css_style_t* comp)
+static uint16_t internal_css_font_px(const tok_ctx_t* ctx, const ra8_css_style_t* comp)
 {
   if ((comp->set & (uint8_t)k_ra8_css_set_fontsize) == 0U) {
     return ctx->css_font_px; /* inherit (0 = none -> UA default) */
@@ -499,11 +516,11 @@ static uint16_t priv_css_font_px(const tok_ctx_t* ctx, const ra8_css_style_t* co
  *
  * @details Builds the element's CSS identity and inherited run style, runs the
  * author `<style>` rules + inline `style` attribute through `ra8_css_cascade_ctx()`
- * (#111 / #140), emits the block-start via `priv_open_attrs()` carrying the
+ * (#111 / #140), emits the block-start via `internal_open_attrs()` carrying the
  * cascaded alignment + font size, and updates `ctx->style`, `ctx->color`,
  * `ctx->css_font_px`, `ctx->family_off`/`len`, and `ctx->face_slot` for
  * descendant content. Unstyled content lays out byte-identically to the
- * pre-CSS engine. Factored out of `priv_handle_start()` to stay within the
+ * pre-CSS engine. Factored out of `internal_handle_start()` to stay within the
  * NASA Rule 4 function-length budget.
  *
  * @param[in,out] ctx    Tokenizer context (element already pushed onto stack).
@@ -522,13 +539,13 @@ static uint16_t priv_css_font_px(const tok_ctx_t* ctx, const ra8_css_style_t* co
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_open_styled(tok_ctx_t*            ctx,
-                                  const uint8_t*        tagbuf,
-                                  size_t                span,
-                                  ra8_reflow_html_tag_t tag,
-                                  bool                  block)
+static ra8_err_t internal_open_styled(tok_ctx_t*            ctx,
+                                      const uint8_t*        tagbuf,
+                                      size_t                span,
+                                      ra8_reflow_html_tag_t tag,
+                                      bool                  block)
 {
-  const uint8_t           base = (uint8_t)(ctx->style | ra8_reflow_tok_style_for(tag));
+  const uint8_t           base = (uint8_t)(ctx->style | priv_ra8_reflow_tok_style_for(tag));
   const ra8_css_element_t el   = ctx->stack_el[ctx->sp - 1U]; /* pushed by the caller */
   ra8_css_style_t         inh  = {.set = (uint8_t)k_priv_style_mask, .style = base};
   if (ctx->color != (uint32_t)k_ra8_reflow_color_inherit) {
@@ -542,20 +559,20 @@ static ra8_err_t priv_open_styled(tok_ctx_t*            ctx,
     inh.family_off = ctx->family_off;
     inh.family_len = ctx->family_len;
   }
-  const ra8_css_style_t inl = ra8_reflow_tok_css_inline(tagbuf, span);
+  const ra8_css_style_t inl = priv_ra8_reflow_tok_css_inline(tagbuf, span);
   /* Ancestors = the open-element stack below this one (stack_el[0 .. sp-2]). */
   const uint8_t         n_anc = (uint8_t)(ctx->sp - 1U);
   const ra8_css_style_t comp =
     ra8_css_cascade_ctx(&ctx->engine->css, &el, inh, inl, ctx->stack_el, n_anc);
-  const uint16_t fpx = priv_css_font_px(ctx, &comp);
+  const uint16_t fpx = internal_css_font_px(ctx, &comp);
   /* display:none (#140): begin suppressing this element + its subtree at the
-   * current depth; priv_open_attrs and the emit sites then drop every token
+   * current depth; internal_open_attrs and the emit sites then drop every token
    * until the matching close pops back above this depth. */
   const bool hidden = ((comp.set & (uint8_t)k_ra8_css_set_display) != 0U) && (comp.display != 0U);
   if (hidden && (ctx->suppress_sp == 0U)) {
     ctx->suppress_sp = ctx->sp;
   }
-  const ra8_err_t aerr = priv_open_attrs(ctx, tagbuf, span, tag, block, &comp, fpx);
+  const ra8_err_t aerr = internal_open_attrs(ctx, tagbuf, span, tag, block, &comp, fpx);
   if (aerr != k_ra8_ok) {
     return aerr;
   }
@@ -571,7 +588,7 @@ static ra8_err_t priv_open_styled(tok_ctx_t*            ctx,
     ctx->family_off = comp.family_off;
     ctx->family_len = comp.family_len;
   }
-  ctx->face_slot = ra8_reflow_tok_resolve_face_slot(ctx->engine, &comp);
+  ctx->face_slot = priv_ra8_reflow_tok_resolve_face_slot(ctx->engine, &comp);
   return k_ra8_ok;
 }
 
@@ -581,7 +598,7 @@ static ra8_err_t priv_open_styled(tok_ctx_t*            ctx,
  * @details Parses the tag name and self-close flag, then dispatches: void tags
  * (br / hr / img) emit a single token and return; self-closing block tags emit
  * an empty block-start / block-end pair; ordinary tags push the element onto
- * the style stack (after bounds-checking depth) and call `priv_open_styled()`
+ * the style stack (after bounds-checking depth) and call `internal_open_styled()`
  * to cascade + apply CSS and emit any block-start token.
  *
  * @param[in,out] ctx Tokenizer context.
@@ -599,30 +616,35 @@ static ra8_err_t priv_open_styled(tok_ctx_t*            ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
+static ra8_err_t internal_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
 {
   const size_t                tag_lt    = *pi; /* index of '<' before parse */
   bool                        selfclose = false;
-  const ra8_reflow_html_tag_t tag       = priv_parse_start(buf, pi, len, &selfclose);
+  const ra8_reflow_html_tag_t tag       = internal_parse_start(buf, pi, len, &selfclose);
   ctx->saw_element                      = true;
 
   ra8_err_t verr = k_ra8_ok;
-  if (priv_handle_void(ctx, buf, tag_lt, *pi, tag, &verr)) {
+  if (internal_handle_void(ctx, buf, tag_lt, *pi, tag, &verr)) {
     return verr;
   }
 
-  const bool block = ra8_reflow_tok_is_block(tag);
+  const bool block = priv_ra8_reflow_tok_is_block(tag);
   if (selfclose) {
-    if (block && !priv_suppressed(ctx)) {
-      if (!ra8_reflow_tok_emit(ctx->engine,
-                               k_ra8_reflow_tok_block_start,
-                               tag,
-                               ctx->style,
-                               0U,
-                               0U)) {
+    if (block && !internal_suppressed(ctx)) {
+      if (!priv_ra8_reflow_tok_emit(ctx->engine,
+                                    k_ra8_reflow_tok_block_start,
+                                    tag,
+                                    ctx->style,
+                                    0U,
+                                    0U)) {
         return k_ra8_err_no_mem;
       }
-      if (!ra8_reflow_tok_emit(ctx->engine, k_ra8_reflow_tok_block_end, tag, ctx->style, 0U, 0U)) {
+      if (!priv_ra8_reflow_tok_emit(ctx->engine,
+                                    k_ra8_reflow_tok_block_end,
+                                    tag,
+                                    ctx->style,
+                                    0U,
+                                    0U)) {
         return k_ra8_err_no_mem;
       }
     }
@@ -636,7 +658,7 @@ static ra8_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* p
   /* Record the element's full identity (tag + id + class, aliasing the chapter
    * buffer) so the cascade reads it back and descendant selectors can match it
    * as an ancestor of a later element. */
-  ctx->stack_el[ctx->sp]      = ra8_reflow_tok_css_element(tag, &buf[tag_lt], span);
+  ctx->stack_el[ctx->sp]      = priv_ra8_reflow_tok_css_element(tag, &buf[tag_lt], span);
   ctx->stack_style[ctx->sp]   = ctx->style;
   ctx->stack_link[ctx->sp]    = ctx->active_link;
   ctx->stack_color[ctx->sp]   = ctx->color;
@@ -645,7 +667,7 @@ static ra8_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* p
   ctx->stack_fam_len[ctx->sp] = ctx->family_len;
   ctx->stack_face[ctx->sp]    = ctx->face_slot;
   ctx->sp++;
-  return priv_open_styled(ctx, &buf[tag_lt], span, tag, block);
+  return internal_open_styled(ctx, &buf[tag_lt], span, tag, block);
 }
 
 /**
@@ -669,9 +691,9 @@ static ra8_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* p
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_tag_is(const uint8_t* buf, size_t i, size_t len, const char* name)
+static bool internal_tag_is(const uint8_t* buf, size_t i, size_t len, const char* name)
 {
-  if (!ra8_reflow_tok_starts_with(buf, i, len, name)) {
+  if (!priv_ra8_reflow_tok_starts_with(buf, i, len, name)) {
     return false;
   }
   const size_t n = strlen(name);
@@ -679,7 +701,7 @@ static bool priv_tag_is(const uint8_t* buf, size_t i, size_t len, const char* na
     return true;
   }
   const char c = (char)buf[i + n];
-  return (c == '>') || (c == '/') || ra8_reflow_tok_is_xml_whitespace(c);
+  return (c == '>') || (c == '/') || priv_ra8_reflow_tok_is_xml_whitespace(c);
 }
 
 /**
@@ -705,16 +727,16 @@ static bool priv_tag_is(const uint8_t* buf, size_t i, size_t len, const char* na
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_handle_raw_text(tok_ctx_t*     ctx,
-                                 const uint8_t* buf,
-                                 size_t*        pi,
-                                 size_t         len,
-                                 const char*    close_lit,
-                                 bool           is_style)
+static void internal_handle_raw_text(tok_ctx_t*     ctx,
+                                     const uint8_t* buf,
+                                     size_t*        pi,
+                                     size_t         len,
+                                     const char*    close_lit,
+                                     bool           is_style)
 {
   ctx->saw_element      = true;
-  const size_t open_end = ra8_reflow_tok_skip_past(buf, *pi, len, ">");
-  const size_t close_at = ra8_reflow_tok_find_lit(buf, open_end, len, close_lit);
+  const size_t open_end = priv_ra8_reflow_tok_skip_past(buf, *pi, len, ">");
+  const size_t close_at = priv_ra8_reflow_tok_find_lit(buf, open_end, len, close_lit);
   if (is_style && (close_at > open_end)) {
     (void)ra8_css_parse(&ctx->engine->css,
                         (const char*)&buf[open_end],
@@ -743,35 +765,35 @@ static void priv_handle_raw_text(tok_ctx_t*     ctx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_handle_lt(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
+static ra8_err_t internal_handle_lt(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
 {
-  if (ra8_reflow_tok_starts_with(buf, *pi, len, "<!--")) {
-    *pi = ra8_reflow_tok_skip_past(buf, *pi + 4U, len, "-->");
+  if (priv_ra8_reflow_tok_starts_with(buf, *pi, len, "<!--")) {
+    *pi = priv_ra8_reflow_tok_skip_past(buf, *pi + 4U, len, "-->");
     return k_ra8_ok;
   }
-  if (ra8_reflow_tok_starts_with(buf, *pi, len, "<![CDATA[")) {
-    return priv_handle_cdata(ctx, buf, pi, len);
+  if (priv_ra8_reflow_tok_starts_with(buf, *pi, len, "<![CDATA[")) {
+    return internal_handle_cdata(ctx, buf, pi, len);
   }
-  if (ra8_reflow_tok_starts_with(buf, *pi, len, "<?")) {
-    *pi = ra8_reflow_tok_skip_past(buf, *pi + 2U, len, "?>");
+  if (priv_ra8_reflow_tok_starts_with(buf, *pi, len, "<?")) {
+    *pi = priv_ra8_reflow_tok_skip_past(buf, *pi + 2U, len, "?>");
     return k_ra8_ok;
   }
-  if (ra8_reflow_tok_starts_with(buf, *pi, len, "<!")) {
-    *pi = ra8_reflow_tok_skip_past(buf, *pi + 2U, len, ">");
+  if (priv_ra8_reflow_tok_starts_with(buf, *pi, len, "<!")) {
+    *pi = priv_ra8_reflow_tok_skip_past(buf, *pi + 2U, len, ">");
     return k_ra8_ok;
   }
-  if (priv_tag_is(buf, *pi, len, "<style")) {
-    priv_handle_raw_text(ctx, buf, pi, len, "</style>", true);
+  if (internal_tag_is(buf, *pi, len, "<style")) {
+    internal_handle_raw_text(ctx, buf, pi, len, "</style>", true);
     return k_ra8_ok;
   }
-  if (priv_tag_is(buf, *pi, len, "<script")) {
-    priv_handle_raw_text(ctx, buf, pi, len, "</script>", false);
+  if (internal_tag_is(buf, *pi, len, "<script")) {
+    internal_handle_raw_text(ctx, buf, pi, len, "</script>", false);
     return k_ra8_ok;
   }
   if (((*pi + 1U) < len) && (buf[*pi + 1U] == '/')) {
-    return priv_handle_end(ctx, buf, pi, len);
+    return internal_handle_end(ctx, buf, pi, len);
   }
-  return priv_handle_start(ctx, buf, pi, len);
+  return internal_handle_start(ctx, buf, pi, len);
 }
 
 /**
@@ -795,25 +817,25 @@ static ra8_err_t priv_handle_lt(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_emit_text_run(tok_ctx_t* ctx, const uint8_t* buf, size_t run, size_t end)
+static bool internal_emit_text_run(tok_ctx_t* ctx, const uint8_t* buf, size_t run, size_t end)
 {
-  if ((ctx->sp == 0U) || priv_suppressed(ctx)) {
+  if ((ctx->sp == 0U) || internal_suppressed(ctx)) {
     return true; /* outside any element, or inside display:none -> drop */
   }
   uint32_t off = 0U;
   uint32_t tln = 0U;
-  if (!ra8_reflow_tok_stash_run(ctx->engine, buf, run, end, &off, &tln)) {
+  if (!priv_ra8_reflow_tok_stash_run(ctx->engine, buf, run, end, &off, &tln)) {
     return false;
   }
   if (tln == 0U) {
     return true;
   }
-  if (!ra8_reflow_tok_emit(ctx->engine,
-                           k_ra8_reflow_tok_text,
-                           k_ra8_reflow_tag_unknown,
-                           ctx->style,
-                           off,
-                           tln)) {
+  if (!priv_ra8_reflow_tok_emit(ctx->engine,
+                                k_ra8_reflow_tok_text,
+                                k_ra8_reflow_tag_unknown,
+                                ctx->style,
+                                off,
+                                tln)) {
     return false;
   }
   ctx->engine->tokens[ctx->engine->token_count - 1U].reserved   = ctx->active_link;
@@ -843,9 +865,9 @@ ra8_err_t priv_reflow_xml_walk(ra8_reflow_t* engine, const uint8_t* xhtml_buf, s
    * module-static storage instead of on the stack and reset it on entry.
    * Safe: priv_reflow_xml_walk has a single, non-recursive, single-threaded
    * caller (priv_reflow_parse), so the shared instance never overlaps. */
-  static tok_ctx_t s_walk_ctx;
-  s_walk_ctx     = (tok_ctx_t){};
-  tok_ctx_t* ctx = &s_walk_ctx;
+  static tok_ctx_t walk_ctx;
+  walk_ctx       = (tok_ctx_t){};
+  tok_ctx_t* ctx = &walk_ctx;
   ctx->engine    = engine;
   ctx->style     = (uint8_t)k_ra8_reflow_style_normal;
   ctx->color     = (uint32_t)k_ra8_reflow_color_inherit;
@@ -853,7 +875,7 @@ ra8_err_t priv_reflow_xml_walk(ra8_reflow_t* engine, const uint8_t* xhtml_buf, s
   size_t i = 0U;
   while (i < xhtml_len) {
     if (xhtml_buf[i] == '<') {
-      const ra8_err_t err = priv_handle_lt(ctx, xhtml_buf, &i, xhtml_len);
+      const ra8_err_t err = internal_handle_lt(ctx, xhtml_buf, &i, xhtml_len);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -863,7 +885,7 @@ ra8_err_t priv_reflow_xml_walk(ra8_reflow_t* engine, const uint8_t* xhtml_buf, s
     while ((i < xhtml_len) && (xhtml_buf[i] != '<')) {
       ++i;
     }
-    if (!priv_emit_text_run(ctx, xhtml_buf, run, i)) {
+    if (!internal_emit_text_run(ctx, xhtml_buf, run, i)) {
       return k_ra8_err_no_mem;
     }
   }
