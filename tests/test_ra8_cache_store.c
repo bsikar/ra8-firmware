@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_cache_store.c
- * @brief Unit tests for ra8_cache_store over LevelX standalone + a RAM NOR fake (#201).
+ * @brief Unit tests for ra8_cache_store over LevelX standalone + a RAM NOR fake
+ * (#201).
  *
  * @details
  * Drives the persistent key->blob store end to end on the host: put/get random
@@ -22,156 +23,10 @@
 #include "ra8_cache_store.h"
 #include "ra8_cache_store_internal.h"
 #include "ra8_err.h"
+#include "ra8_log.h"
 #include "ra8_vsource.h"
+#include "support/ra8_cache_store_fixture.h"
 #include "unity_minimal.h"
-
-/**
- * @enum cs_seed_t
- * @brief Payload fill seeds handed to ::t_fill, which stamps `buf[i] = seed + i`.
- *
- * @details
- * The absolute values carry no meaning. What matters is that the entries one
- * test writes are seeded differently, so a stale sector, a swapped index entry
- * or a short read surfaces as a `memcmp` mismatch instead of passing by luck.
- * One seed per (test, entry) pair.
- */
-typedef enum : uint8_t {
-  k_cs_seed_roundtrip            = 7U,    /**< Entry of the put/get round-trip.        */
-  k_cs_seed_vsource              = 33U,   /**< Entry paged back via ra8_vsource.       */
-  k_cs_seed_evict_reuse          = 9U,    /**< Entry evicted, then re-put over itself. */
-  k_cs_seed_pinned               = 5U,    /**< Entry pinned while an evict is tried.   */
-  k_cs_seed_checkpoint_a         = 11U,   /**< Key A across a clean close + reopen.    */
-  k_cs_seed_checkpoint_b         = 22U,   /**< Key B beside it: catches a run mix-up.  */
-  k_cs_seed_replay_a             = 44U,   /**< Key A committed before the crash.       */
-  k_cs_seed_replay_b             = 55U,   /**< Key B committed before the crash.       */
-  k_cs_seed_post_replay          = 66U,   /**< Entry put after replay: store usable.   */
-  k_cs_seed_torn_tail            = 0x5AU, /**< The header-less "torn write" sector.    */
-  k_cs_seed_evicted_before_crash = 12U,   /**< Evicted entry that must stay gone.      */
-  k_cs_seed_survives_crash       = 34U,   /**< Entry that must outlive that crash.     */
-  k_cs_seed_bad_header_scan      = 21U,   /**< The one real entry among planted junk.  */
-  k_cs_seed_corrupt_super_base   = 70U,   /**< `+ variant` separates the two rounds.   */
-} cs_seed_t;
-
-/**
- * @enum cs_plant_t
- * @brief Hand-planted on-media fixtures: where a bogus header goes and what it claims.
- *
- * @details
- * Each sector below sits in the free region past the committed entries, so a
- * replay scan reaches it; each stamped field trips exactly one of the scan's
- * validation guards. Sectors are spaced two apart to keep the runs disjoint.
- */
-typedef enum : uint16_t {
-  k_cs_plant_sector_bad_start  = 20U,    /**< Header whose start_sector disagrees.   */
-  k_cs_plant_sector_zero_count = 22U,    /**< Header claiming a zero-sector run.     */
-  k_cs_plant_sector_overrun    = 24U,    /**< Header whose run overshoots the media. */
-  k_cs_plant_sector_bad_crc    = 26U,    /**< Header sealed with a wrong CRC.        */
-  k_cs_plant_start_mismatch    = 999U,   /**< A start_sector no header can sit at.   */
-  k_cs_plant_count_past_media  = 60000U, /**< A run length past the end of media.    */
-} cs_plant_t;
-
-/**
- * @enum cs_bytes_t
- * @brief Payload sizes, chosen against the fixture's 512-byte logical sector.
- *
- * @details
- * Sizes are picked for how many sectors they occupy, not for the number
- * itself: sub-sector, two-sector and three-sector runs exercise the whole /
- * sliced / partial-tail read paths, and neighbouring entries differ in length
- * so a swapped index record cannot pass a size assertion.
- */
-typedef enum : uint16_t {
-  k_cs_bytes_index_filler   = 100,   /**< One sector: hits the index cap first.        */
-  k_cs_bytes_sub_sector     = 300,   /**< Under one sector; also a slice length.       */
-  k_cs_bytes_post_replay    = 400,   /**< Put after a replay: allocation still ok.     */
-  k_cs_bytes_survives_crash = 500,   /**< Entry outliving the evict-then-crash run.    */
-  k_cs_bytes_two_sector     = 600,   /**< Smallest size that makes a two-sector run.   */
-  k_cs_bytes_entry_a        = 700,   /**< Key A: two sectors, so evicting frees a run. */
-  k_cs_bytes_replay_b       = 900,   /**< Key B: a different run length from A.        */
-  k_cs_bytes_evict_reuse    = 1000,  /**< Re-put at this exact size after an evict.    */
-  k_cs_bytes_checkpoint_b   = 1300,  /**< Longer than A across the checkpoint.         */
-  k_cs_bytes_three_sector   = 1500,  /**< Three sectors: cross-sector + partial tail.  */
-  k_cs_bytes_budget_hog     = 24000, /**< Big enough that a few puts exhaust budget.   */
-} cs_bytes_t;
-
-/**
- * @enum cs_offset_t
- * @brief Read-path offsets, and the keys and loop bound of the budget probe.
- */
-typedef enum : uint16_t {
-  k_cs_tail_frame_payload_bytes = 476U,  /**< Real bytes in the last 512-byte frame
-                                              of a 1500-byte entry; the rest is
-                                              zero padding.                        */
-  k_cs_key_budget_base          = 2000U, /**< First key of the budget-exhaustion
-                                              run, clear of the index-cap keys.    */
-  k_cs_budget_put_attempts      = 20U,   /**< Cap on that run: a safety bound, not
-                                              an expected count -- the budget is
-                                              meant to run out first.              */
-} cs_offset_t;
-
-/**
- * @enum cs_corrupt_t
- * @brief Values stamped where a valid magic or CRC belongs, to force a recovery path.
- *
- * @details
- * Each is deliberately not the value the reader expects, so the store must
- * fall back from "trust the checkpoint" to "replay the log" (or discard the
- * record) rather than accepting corrupt metadata.
- */
-typedef enum : uint32_t {
-  k_cs_plant_key_base      = 0xDEAD0000U, /**< Planted-header key base; + sector. */
-  k_cs_super_crc_corrupt   = 0xDEADBEEFU, /**< Wrong superblock CRC.              */
-  k_cs_super_magic_corrupt = 0x0BADC0DEU, /**< Wrong superblock magic.            */
-  k_cs_hdr_crc_corrupt     = 0x1234ABCDU, /**< Wrong entry-header CRC.            */
-} cs_corrupt_t;
-
-/**
- * @enum cs_cfg_reject_t
- * @brief Configuration values init() must refuse.
- */
-typedef enum : uint8_t {
-  k_cs_overprovision_pct_rejected = 99U, /**< Above the accepted overprovision range. */
-} cs_cfg_reject_t;
-
-/**
- * @enum t_cs_const_t
- * @brief Fixture geometry for the tests.
- * @since 0.1.0
- */
-typedef enum : uint32_t {
-  k_t_index_cap    = 16U,         /**< Index slots.                   */
-  k_t_logical      = 200U,        /**< Usable LevelX logical sectors. */
-  k_t_sector_bytes = 512U,        /**< LevelX logical-sector size.    */
-  k_t_key_a        = 0xA1A1A1A1U, /**< Test key A.                    */
-  k_t_key_b        = 0xB2B2B2B2U, /**< Test key B.                    */
-  k_t_key_c        = 0xC3C3C3C3U, /**< Test key C.                    */
-} t_cs_const_t;
-
-/** @brief Shared staging sector (caller-owned). */
-static uint8_t s_staging[k_t_sector_bytes];
-/** @brief Shared index array (caller-owned). */
-static ra8_cache_store_entry_t s_index[k_t_index_cap];
-
-/**
- * @enum t_pool_const_t
- * @brief Size of the LevelX control-block pool.
- * @since 0.1.0
- */
-typedef enum : uint32_t {
-  k_t_flash_pool = 40U, /**< Distinct control blocks across the whole suite. */
-} t_pool_const_t;
-
-/**
- * @var s_flash_pool
- * @brief Pool of LevelX control blocks; each open takes a fresh one.
- * @details The crash tests intentionally never close a store, so a control block
- *          must never be re-opened (that corrupts LevelX's global open list).
- *          Handing out a fresh block per open sidesteps that entirely.
- * @since 0.1.0
- */
-static LX_NOR_FLASH s_flash_pool[k_t_flash_pool];
-/** @brief Next free control block in ::s_flash_pool. */
-static uint32_t s_flash_next;
 
 /**
  * @brief Hand out a fresh, zeroed LevelX control block.
@@ -182,7 +37,7 @@ static uint32_t s_flash_next;
  * @post The pool cursor advances by one.
  * @since 0.1.0
  */
-static LX_NOR_FLASH* t_next_flash(void)
+RA8_INTERNAL static LX_NOR_FLASH* internal_next_flash(void)
 {
   TEST_ASSERT(s_flash_next < (uint32_t)k_t_flash_pool);
   LX_NOR_FLASH* f = &s_flash_pool[s_flash_next];
@@ -193,16 +48,20 @@ static LX_NOR_FLASH* t_next_flash(void)
 
 /**
  * @brief Build an init config over the fixture buffers.
+ * @details Binds one fresh LevelX control block to the suite's fixed index,
+ * staging sector, geometry, and optional format request.
  * @param[in] f      LevelX control block to bind.
  * @param[in] format True to format (wipe) before open.
  * @return A populated config.
+ * @retval ra8_cache_store_cfg_t Configuration referencing the bounded fixture.
  * @pre @p f points at caller-owned control-block storage.
  * @pre The fixture buffers are file-static and alive.
  * @post The returned config references the fixture buffers.
  * @post No global state is changed.
+ * @note The returned pointers remain valid for the lifetime of the test binary.
  * @since 0.1.0
  */
-static ra8_cache_store_cfg_t t_cfg(LX_NOR_FLASH* f, bool format)
+RA8_INTERNAL static ra8_cache_store_cfg_t internal_cfg(LX_NOR_FLASH* f, bool format)
 {
   return (ra8_cache_store_cfg_t){.nor_flash         = f,
                                  .nor_driver_init   = lx_nor_fake_ram_init,
@@ -218,6 +77,8 @@ static ra8_cache_store_cfg_t t_cfg(LX_NOR_FLASH* f, bool format)
 
 /**
  * @brief Fill @p buf with a deterministic byte pattern.
+ * @details Generates a seed-offset ramp so stale, swapped, and short payloads
+ * fail bytewise comparisons deterministically.
  * @param[out] buf  Destination buffer.
  * @param[in]  len  Byte count.
  * @param[in]  seed Pattern seed.
@@ -226,9 +87,10 @@ static ra8_cache_store_cfg_t t_cfg(LX_NOR_FLASH* f, bool format)
  * @pre @p len is the intended pattern length.
  * @post `buf[i] == (seed + i) & 0xFF` for every i.
  * @post No state outside @p buf changes.
+ * @note Arithmetic intentionally wraps to eight bits.
  * @since 0.1.0
  */
-static void t_fill(uint8_t* buf, uint32_t len, uint8_t seed)
+RA8_INTERNAL static void internal_fill(uint8_t* buf, uint32_t len, uint8_t seed)
 {
   for (uint32_t i = 0U; i < len; i++) {
     buf[i] = (uint8_t)(seed + (uint8_t)i);
@@ -238,20 +100,28 @@ static void t_fill(uint8_t* buf, uint32_t len, uint8_t seed)
 /**
  * @test put_get_roundtrip
  * @brief A sealed entry streams back byte-identical, across sector boundaries.
+ * @details Stores a three-sector pattern, reads the full entry and a slice,
+ * and confirms an overrun request fails.
+ * @pre The fake NOR can be wiped and formatted.
+ * @pre Fixture control-block capacity has not been exhausted.
+ * @post Whole and sliced reads equal the source bytes.
+ * @post The opened cache store is closed cleanly.
+ * @note This vector covers both aligned and cross-sector reads.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- exercises put, get, whole + sliced +
  * out-of-range reads through ra8_cache_store_read)
  */
-static void test_put_get_roundtrip(void)
+RA8_INTERNAL static void internal_test_put_get_roundtrip(void)
 {
   TEST_BEGIN("put/get roundtrip");
   lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
-  ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
   uint8_t data[k_cs_bytes_three_sector];
-  t_fill(data, sizeof(data), k_cs_seed_roundtrip);
+  internal_fill(data, sizeof(data), k_cs_seed_roundtrip);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
 
   ra8_cache_store_reader_t rd = {};
@@ -273,21 +143,30 @@ static void test_put_get_roundtrip(void)
 
 /**
  * @test vsource_integration
- * @brief A cached entry pages through ra8_vsource_add_paged / ra8_vsource_loader.
+ * @brief A cached entry pages through ra8_vsource_add_paged /
+ * ra8_vsource_loader.
+ * @details Adapts a cache reader to a paged virtual source and checks the
+ * complete first frame plus zero padding after the final partial frame.
+ * @pre The fake NOR can be wiped and formatted.
+ * @pre One virtual-source object slot is available.
+ * @post Paged bytes match the stored payload.
+ * @post Tail bytes beyond the payload are zero filled.
+ * @note The cache store is closed after the adapter checks.
+ * @since 0.1.0
  * @par MC/DC:
- * (no compound decisions under test -- binds ra8_cache_store_read into a vsource
- * and checks a full frame plus a zero-padded tail frame)
+ * (no compound decisions under test -- binds ra8_cache_store_read into a
+ * vsource and checks a full frame plus a zero-padded tail frame)
  */
-static void test_vsource_integration(void)
+RA8_INTERNAL static void internal_test_vsource_integration(void)
 {
   TEST_BEGIN("vsource integration");
   lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
-  ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
   uint8_t data[k_cs_bytes_three_sector];
-  t_fill(data, sizeof(data), k_cs_seed_vsource);
+  internal_fill(data, sizeof(data), k_cs_seed_vsource);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
   ra8_cache_store_reader_t rd = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_get(&st, k_t_key_a, &rd));
@@ -316,22 +195,30 @@ static void test_vsource_integration(void)
 /**
  * @test put_edge_cases
  * @brief Missing key, duplicate put, and NULL/size guards behave.
+ * @details Exercises the public validation boundary before and after inserting
+ * one valid entry.
+ * @pre The fake NOR can be wiped and formatted.
+ * @pre The fixture payload buffer is addressable.
+ * @post Every invalid request returns its documented error.
+ * @post The valid entry remains coherent until close.
+ * @note No malformed request is permitted to mutate media state.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- validation guards are single-condition)
  */
-static void test_put_edge_cases(void)
+RA8_INTERNAL static void internal_test_put_edge_cases(void)
 {
   TEST_BEGIN("put edge cases");
   lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
-  ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
   ra8_cache_store_reader_t rd = {};
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_cache_store_get(&st, k_t_key_a, &rd));
 
   uint8_t data[k_cs_bytes_two_sector];
-  t_fill(data, sizeof(data), 1U);
+  internal_fill(data, sizeof(data), 1U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
   TEST_ASSERT_EQ(k_ra8_err_exists, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
 
@@ -345,19 +232,27 @@ static void test_put_edge_cases(void)
 /**
  * @test evict_reuse
  * @brief Eviction frees the key and its sectors for a later put.
+ * @details Records the live-sector count, evicts one entry, then proves an
+ * equal-size replacement can reuse the released run.
+ * @pre A formatted store can accept the fixture entry.
+ * @pre The entry is not pinned.
+ * @post The evicted key is absent before replacement.
+ * @post The replacement restores the prior live-sector count.
+ * @note Evicting an unrelated key first must report not found.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- put, evict, re-get miss, re-put)
  */
-static void test_evict_reuse(void)
+RA8_INTERNAL static void internal_test_evict_reuse(void)
 {
   TEST_BEGIN("evict + reuse");
   lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
-  ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
   uint8_t data[k_cs_bytes_evict_reuse];
-  t_fill(data, sizeof(data), k_cs_seed_evict_reuse);
+  internal_fill(data, sizeof(data), k_cs_seed_evict_reuse);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
   uint32_t live_after_put = st.live_sectors;
   TEST_ASSERT(live_after_put > 0U);
@@ -378,19 +273,27 @@ static void test_evict_reuse(void)
 /**
  * @test pin_blocks_evict
  * @brief A pinned entry refuses eviction until unpinned.
+ * @details Pins one stored key, verifies eviction reports busy, unpins it, and
+ * then confirms eviction succeeds.
+ * @pre A formatted store can accept the fixture entry.
+ * @pre The key is initially unpinned.
+ * @post The pinned eviction attempt leaves the entry intact.
+ * @post The unpinned entry is evicted and the store closes cleanly.
+ * @note Pinning a missing key is also rejected.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- pin, evict->busy, unpin, evict->ok)
  */
-static void test_pin_blocks_evict(void)
+RA8_INTERNAL static void internal_test_pin_blocks_evict(void)
 {
   TEST_BEGIN("pin blocks evict");
   lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
-  ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
   uint8_t data[k_cs_bytes_sub_sector];
-  t_fill(data, sizeof(data), k_cs_seed_pinned);
+  internal_fill(data, sizeof(data), k_cs_seed_pinned);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_pin(&st, k_t_key_a, true));
   TEST_ASSERT_EQ(k_ra8_err_busy, ra8_cache_store_evict(&st, k_t_key_a));
@@ -404,21 +307,29 @@ static void test_pin_blocks_evict(void)
 /**
  * @test recovery_clean
  * @brief A clean close reloads the index (and pins) from the checkpoint.
+ * @details Writes two entries, checkpoints through close, reopens with a fresh
+ * LevelX control block, and verifies content and pin metadata.
+ * @pre Persistent fake-NOR bytes survive control-block replacement.
+ * @pre Two fresh LevelX control blocks remain available.
+ * @post Both checkpointed entries are discoverable after reopen.
+ * @post The pin survives and both opened stores close cleanly.
+ * @note Differing payload lengths detect swapped checkpoint records.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- close then reopen over the same media)
  */
-static void test_recovery_clean(void)
+RA8_INTERNAL static void internal_test_recovery_clean(void)
 {
   TEST_BEGIN("recovery: clean checkpoint");
   lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
-  ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
   uint8_t a[k_cs_bytes_entry_a];
   uint8_t b[k_cs_bytes_checkpoint_b];
-  t_fill(a, sizeof(a), k_cs_seed_checkpoint_a);
-  t_fill(b, sizeof(b), k_cs_seed_checkpoint_b);
+  internal_fill(a, sizeof(a), k_cs_seed_checkpoint_a);
+  internal_fill(b, sizeof(b), k_cs_seed_checkpoint_b);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_b, b, sizeof(b)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_pin(&st, k_t_key_a, true));
@@ -426,7 +337,7 @@ static void test_recovery_clean(void)
 
   /* Reboot: fresh control block over the same (persisted) backing. */
   ra8_cache_store_t     st2  = {};
-  ra8_cache_store_cfg_t cfg2 = t_cfg(t_next_flash(), false);
+  ra8_cache_store_cfg_t cfg2 = internal_cfg(internal_next_flash(), false);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st2, &cfg2));
 
   ra8_cache_store_reader_t rd = {};
@@ -446,39 +357,47 @@ static void test_recovery_clean(void)
 /**
  * @test recovery_crash_replay
  * @brief An unclean shutdown replays the log and discards a torn tail.
+ * @details Leaves the first store unclosed after planting a payload-only tail,
+ * then reopens and verifies only committed records are indexed.
+ * @pre Persistent fake-NOR bytes survive an unclean control-block replacement.
+ * @pre The planted torn sector lies after both committed runs.
+ * @post Replay restores both committed keys and ignores the torn tail.
+ * @post A new post-replay put succeeds and the recovered store closes.
+ * @note The original store intentionally remains unclosed to model a crash.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- commit two entries, plant a
  * header-less payload, reopen without close, verify a scan recovers only the
  * committed entries)
  */
-static void test_recovery_crash_replay(void)
+RA8_INTERNAL static void internal_test_recovery_crash_replay(void)
 {
   TEST_BEGIN("recovery: crash replay");
   lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
-  ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
   uint8_t a[k_cs_bytes_entry_a];
   uint8_t b[k_cs_bytes_replay_b];
-  t_fill(a, sizeof(a), k_cs_seed_replay_a);
-  t_fill(b, sizeof(b), k_cs_seed_replay_b);
+  internal_fill(a, sizeof(a), k_cs_seed_replay_a);
+  internal_fill(b, sizeof(b), k_cs_seed_replay_b);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_b, b, sizeof(b)));
   uint32_t live_committed = st.live_sectors;
 
   /* Simulate a torn put: write a payload sector with NO header in front of it,
    * in the free region past B (header slot left blank). */
-  int32_t sb = ra8_cs_index_find(&st, k_t_key_b);
+  int32_t sb = priv_cache_store_index_find(&st, k_t_key_b);
   TEST_ASSERT(sb >= 0);
   uint32_t torn_header = st.index[sb].start_sector + st.index[sb].sector_count;
   uint8_t  garbage[k_t_sector_bytes];
-  t_fill(garbage, sizeof(garbage), k_cs_seed_torn_tail);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_cs_sector_write(&st, torn_header + 1U, garbage));
+  internal_fill(garbage, sizeof(garbage), k_cs_seed_torn_tail);
+  TEST_ASSERT_EQ(k_ra8_ok, priv_cache_store_sector_write(&st, torn_header + 1U, garbage));
 
   /* Crash: no close. Reopen a fresh control block over the same backing. */
   ra8_cache_store_t     st2  = {};
-  ra8_cache_store_cfg_t cfg2 = t_cfg(t_next_flash(), false);
+  ra8_cache_store_cfg_t cfg2 = internal_cfg(internal_next_flash(), false);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st2, &cfg2));
 
   ra8_cache_store_reader_t rd = {};
@@ -489,7 +408,7 @@ static void test_recovery_crash_replay(void)
 
   /* The store is fully usable after replay. */
   uint8_t c[k_cs_bytes_post_replay];
-  t_fill(c, sizeof(c), k_cs_seed_post_replay);
+  internal_fill(c, sizeof(c), k_cs_seed_post_replay);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st2, k_t_key_c, c, sizeof(c)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_get(&st2, k_t_key_c, &rd));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_close(&st2));
@@ -499,46 +418,62 @@ static void test_recovery_crash_replay(void)
 /**
  * @test helper_guards
  * @brief The internal helpers reject bad arguments per contract.
+ * @details Calls CRC, index, and sector helpers directly with null, empty, and
+ * unbound inputs while retaining one nonempty CRC control case.
+ * @pre The bounded local buffers are addressable.
+ * @pre No cache-store initialization is required for guard evaluation.
+ * @post Invalid inputs return sentinel or null-pointer results.
+ * @post The nonempty CRC control produces a nonzero checksum.
+ * @note This is white-box coverage of private validation seams.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- each guard is a single-condition check
  * exercised directly: crc NULL/empty, index find/add NULL store + NULL index,
  * sector read/write/release NULL guards)
  */
-static void test_helper_guards(void)
+RA8_INTERNAL static void internal_test_helper_guards(void)
 {
   TEST_BEGIN("helper guards");
   uint8_t buf[8];
-  t_fill(buf, sizeof(buf), 1U); /* the ramp 1,2,..,8 -- any non-empty input will do */
-  TEST_ASSERT_EQ(0, ra8_cs_crc32(NULL, 8U));
-  TEST_ASSERT_EQ(0, ra8_cs_crc32(buf, 0U));
-  TEST_ASSERT(ra8_cs_crc32(buf, 8U) != 0U);
+  internal_fill(buf, sizeof(buf), 1U); /* the ramp 1,2,..,8 -- any non-empty input will do */
+  TEST_ASSERT_EQ(0, priv_cache_store_crc32(NULL, 8U));
+  TEST_ASSERT_EQ(0, priv_cache_store_crc32(buf, 0U));
+  TEST_ASSERT(priv_cache_store_crc32(buf, 8U) != 0U);
 
   ra8_cache_store_t empty = {};
-  TEST_ASSERT_EQ(-1, ra8_cs_index_find(NULL, 0U));
-  TEST_ASSERT_EQ(-1, ra8_cs_index_find(&empty, 0U)); /* index == NULL */
-  TEST_ASSERT_EQ(-1, ra8_cs_index_add(NULL, 0U, 0U, 1U, 0U, false));
-  TEST_ASSERT_EQ(-1, ra8_cs_index_add(&empty, 0U, 0U, 1U, 0U, false)); /* index == NULL */
+  TEST_ASSERT_EQ(-1, priv_cache_store_index_find(NULL, 0U));
+  TEST_ASSERT_EQ(-1, priv_cache_store_index_find(&empty, 0U)); /* index == NULL */
+  TEST_ASSERT_EQ(-1, priv_cache_store_index_add(NULL, 0U, 0U, 1U, 0U, false));
+  TEST_ASSERT_EQ(-1, priv_cache_store_index_add(&empty, 0U, 0U, 1U, 0U, false)); /* index == NULL */
 
   uint8_t sect[k_t_sector_bytes];
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cs_sector_read(NULL, 0U, sect));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cs_sector_read(&empty, 0U, NULL));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cs_sector_write(NULL, 0U, sect));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cs_sector_release(NULL, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_cache_store_sector_read(NULL, 0U, sect));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_cache_store_sector_read(&empty, 0U, NULL));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_cache_store_sector_write(NULL, 0U, sect));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_cache_store_sector_release(NULL, 0U));
   TEST_END("helper guards");
 }
 
 /**
  * @test init_validation
  * @brief init() rejects every missing dependency / bad geometry input.
+ * @details Mutates one configuration field at a time and then exercises every
+ * public operation against an uninitialized store.
+ * @pre A valid base configuration can be constructed.
+ * @pre Each mutation starts from that unchanged base value.
+ * @post Every invalid configuration returns its documented error.
+ * @post Uninitialized public operations refuse access without mutation.
+ * @note Single-field mutations keep each rejection cause unambiguous.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- one bad field per call, each a
  * single-condition validation guard)
  */
-static void test_init_validation(void)
+RA8_INTERNAL static void internal_test_init_validation(void)
 {
   TEST_BEGIN("init validation");
   ra8_cache_store_t     st   = {};
-  ra8_cache_store_cfg_t base = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t base = internal_cfg(internal_next_flash(), true);
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cache_store_init(NULL, &base));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cache_store_init(&st, NULL));
@@ -583,20 +518,28 @@ static void test_init_validation(void)
 /**
  * @test limits_and_sync
  * @brief Index-full and capacity-budget puts fail; sync checkpoints mid-run.
+ * @details Fills every index slot, checkpoints, evicts the fillers, and then
+ * inserts bounded large records until the sector budget is exhausted.
+ * @pre A formatted store and the bounded large payload are available.
+ * @pre The probe loop cap exceeds the number of successful large puts.
+ * @post Index and media exhaustion both report no memory.
+ * @post At least one large entry succeeds before bounded exhaustion.
+ * @note The loop cap prevents a broken budget check from running forever.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- fill to the index cap then the sector
  * budget, checking each no_mem, with a sync between)
  */
-static void test_limits_and_sync(void)
+RA8_INTERNAL static void internal_test_limits_and_sync(void)
 {
   TEST_BEGIN("limits + sync");
   lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
-  ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
   uint8_t tiny[k_cs_bytes_index_filler];
-  t_fill(tiny, sizeof(tiny), 3U);
+  internal_fill(tiny, sizeof(tiny), 3U);
   for (uint32_t i = 0U; i < (uint32_t)k_t_index_cap; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, 1000U + i, tiny, sizeof(tiny)));
   }
@@ -608,12 +551,12 @@ static void test_limits_and_sync(void)
   for (uint32_t i = 0U; i < (uint32_t)k_t_index_cap; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_evict(&st, 1000U + i));
   }
-  static uint8_t s_big[k_cs_bytes_budget_hog];
-  t_fill(s_big, sizeof(s_big), 4U);
+  static uint8_t local_big[k_cs_bytes_budget_hog];
+  internal_fill(local_big, sizeof(local_big), 4U);
   ra8_err_t rc = k_ra8_ok;
   uint32_t  n  = 0U;
   for (uint32_t i = 0U; i < k_cs_budget_put_attempts; i++) {
-    rc = ra8_cache_store_put(&st, k_cs_key_budget_base + i, s_big, sizeof(s_big));
+    rc = ra8_cache_store_put(&st, k_cs_key_budget_base + i, local_big, sizeof(local_big));
     if (rc != k_ra8_ok) {
       break;
     }
@@ -628,29 +571,37 @@ static void test_limits_and_sync(void)
 /**
  * @test evict_then_crash
  * @brief An entry evicted before a crash stays gone after the replay.
+ * @details Commits two entries, evicts the first without closing, and reopens
+ * from the persistent bytes to validate release-log replay.
+ * @pre Persistent fake-NOR bytes survive the simulated crash.
+ * @pre Two fresh LevelX control blocks remain available.
+ * @post The evicted key remains absent after replay.
+ * @post The surviving key remains readable and the recovered store closes.
+ * @note The first store intentionally remains open to simulate power loss.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- evict A, crash-reopen, assert A absent
  * and B present)
  */
-static void test_evict_then_crash(void)
+RA8_INTERNAL static void internal_test_evict_then_crash(void)
 {
   TEST_BEGIN("evict then crash");
   lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
-  ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
   uint8_t a[k_cs_bytes_entry_a];
   uint8_t b[k_cs_bytes_survives_crash];
-  t_fill(a, sizeof(a), k_cs_seed_evicted_before_crash);
-  t_fill(b, sizeof(b), k_cs_seed_survives_crash);
+  internal_fill(a, sizeof(a), k_cs_seed_evicted_before_crash);
+  internal_fill(b, sizeof(b), k_cs_seed_survives_crash);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_b, b, sizeof(b)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_evict(&st, k_t_key_a));
 
   /* Crash (no close): released sectors must not resurrect on replay. */
   ra8_cache_store_t     st2  = {};
-  ra8_cache_store_cfg_t cfg2 = t_cfg(t_next_flash(), false);
+  ra8_cache_store_cfg_t cfg2 = internal_cfg(internal_next_flash(), false);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st2, &cfg2));
   ra8_cache_store_reader_t rd = {};
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_cache_store_get(&st2, k_t_key_a, &rd));
@@ -661,6 +612,8 @@ static void test_evict_then_crash(void)
 
 /**
  * @brief Plant a hand-built superblock at sector 0 of an open store.
+ * @details Serializes either a validly sealed or deliberately corrupt clean
+ * superblock directly into the metadata sector.
  * @param[in,out] st       Open store to write.
  * @param[in]     magic    Magic to stamp (valid or corrupt).
  * @param[in]     good_crc True to seal with a correct CRC, false to corrupt it.
@@ -669,9 +622,10 @@ static void test_evict_then_crash(void)
  * @pre `st->staging` is available (we use a local buffer instead).
  * @post Sector 0 holds the planted record.
  * @post The record is clean-marked but magic/CRC may be invalid per args.
+ * @note This helper bypasses public publication to target recovery branches.
  * @since 0.1.0
  */
-static void t_plant_super(ra8_cache_store_t* st, uint32_t magic, bool good_crc)
+RA8_INTERNAL static void internal_plant_super(ra8_cache_store_t* st, uint32_t magic, bool good_crc)
 {
   ra8_cs_super_t sb = {.magic           = magic,
                        .version         = (uint32_t)k_ra8_cs_format_version,
@@ -684,41 +638,50 @@ static void t_plant_super(ra8_cache_store_t* st, uint32_t magic, bool good_crc)
                        .data_capacity   = st->data_capacity,
                        .logical_sectors = st->logical_sectors,
                        .crc             = 0U};
-  sb.crc = good_crc ? ra8_cs_crc32((const uint8_t*)&sb, (uint32_t)(sizeof(sb) - sizeof(sb.crc)))
-                    : k_cs_super_crc_corrupt;
+  sb.crc = good_crc
+             ? priv_cache_store_crc32((const uint8_t*)&sb, (uint32_t)(sizeof(sb) - sizeof(sb.crc)))
+             : k_cs_super_crc_corrupt;
   uint8_t buf[k_t_sector_bytes];
   (void)memset(buf, 0, sizeof(buf));
   (void)memcpy(buf, &sb, sizeof(sb));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_cs_sector_write(st, 0U, buf));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_cache_store_sector_write(st, 0U, buf));
 }
 
 /**
  * @test corrupt_super_replays
  * @brief A bad-magic or bad-CRC superblock falls back to a safe log replay.
+ * @details Runs independent bad-CRC and bad-magic rounds, reopening after each
+ * planted superblock and finding the committed entry through log replay.
+ * @pre The fake NOR can be reset between variants.
+ * @pre Fresh LevelX controls remain for each write and reopen pair.
+ * @post Each corrupt checkpoint is rejected.
+ * @post The committed entry survives both replay variants.
+ * @note Each variant closes only its recovered store.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- plant each corrupt superblock variant,
  * reopen, and confirm the committed entry survives via a scan)
  */
-static void test_corrupt_super_replays(void)
+RA8_INTERNAL static void internal_test_corrupt_super_replays(void)
 {
   TEST_BEGIN("corrupt super replays");
   for (uint32_t variant = 0U; variant < 2U; variant++) {
     lx_nor_fake_ram_wipe();
     ra8_cache_store_t     st  = {};
-    ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+    ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
     uint8_t a[k_cs_bytes_two_sector];
-    t_fill(a, sizeof(a), (uint8_t)(k_cs_seed_corrupt_super_base + variant));
+    internal_fill(a, sizeof(a), (uint8_t)(k_cs_seed_corrupt_super_base + variant));
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
 
     if (variant == 0U) {
-      t_plant_super(&st, (uint32_t)k_ra8_cs_super_magic, false); /* good magic, bad CRC */
+      internal_plant_super(&st, (uint32_t)k_ra8_cs_super_magic, false); /* good magic, bad CRC */
     } else {
-      t_plant_super(&st, k_cs_super_magic_corrupt, true); /* bad magic */
+      internal_plant_super(&st, k_cs_super_magic_corrupt, true); /* bad magic */
     }
 
     ra8_cache_store_t     st2  = {};
-    ra8_cache_store_cfg_t cfg2 = t_cfg(t_next_flash(), false);
+    ra8_cache_store_cfg_t cfg2 = internal_cfg(internal_next_flash(), false);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st2, &cfg2));
     ra8_cache_store_reader_t rd = {};
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_get(&st2, k_t_key_a, &rd));
@@ -729,23 +692,27 @@ static void test_corrupt_super_replays(void)
 
 /**
  * @brief Plant a hand-built entry header at @p at_sector of an open store.
+ * @details Encodes caller-selected start, count, and CRC fields into one log
+ * sector so replay validation can reject each malformed shape independently.
  * @param[in,out] st         Open store to write.
  * @param[in]     at_sector  Logical sector to place the header at.
  * @param[in]     self_field Value to stamp in the header's `start_sector`.
  * @param[in]     count      Value to stamp in the header's `sector_count`.
- * @param[in]     good_crc   True to seal with a correct CRC, false to corrupt it.
+ * @param[in]     good_crc   True to seal with a correct CRC, false to corrupt
+ * it.
  * @return Nothing.
  * @pre @p st is an open store; @p at_sector is in the log region.
  * @pre @p self_field / @p count select which validation branch fires.
  * @post @p at_sector holds the planted header record.
  * @post The record's magic is always valid (other fields vary per args).
+ * @note Payload sectors are unnecessary because every planted header is rejected first.
  * @since 0.1.0
  */
-static void t_plant_hdr(ra8_cache_store_t* st,
-                        uint32_t           at_sector,
-                        uint32_t           self_field,
-                        uint16_t           count,
-                        bool               good_crc)
+RA8_INTERNAL static void internal_plant_hdr(ra8_cache_store_t* st,
+                                            uint32_t           at_sector,
+                                            uint32_t           self_field,
+                                            uint16_t           count,
+                                            bool               good_crc)
 {
   ra8_cs_entry_hdr_t h = {.magic        = (uint32_t)k_ra8_cs_entry_magic,
                           .seq          = 1U,
@@ -755,53 +722,62 @@ static void t_plant_hdr(ra8_cache_store_t* st,
                           .sector_count = count,
                           .flags        = 0U,
                           .hdr_crc      = 0U};
-  h.hdr_crc = good_crc ? ra8_cs_crc32((const uint8_t*)&h, (uint32_t)(sizeof(h) - sizeof(h.hdr_crc)))
-                       : k_cs_hdr_crc_corrupt;
+  h.hdr_crc =
+    good_crc ? priv_cache_store_crc32((const uint8_t*)&h, (uint32_t)(sizeof(h) - sizeof(h.hdr_crc)))
+             : k_cs_hdr_crc_corrupt;
   uint8_t buf[k_t_sector_bytes];
   (void)memset(buf, 0, sizeof(buf));
   (void)memcpy(buf, &h, sizeof(h));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_cs_sector_write(st, at_sector, buf));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_cache_store_sector_write(st, at_sector, buf));
 }
 
 /**
  * @test scan_rejects_bad_headers
  * @brief The replay scan rejects every malformed header shape.
+ * @details Plants mismatched-start, zero-count, overrun, and bad-CRC headers
+ * beside one committed entry, then reopens through the replay scanner.
+ * @pre Every planted sector lies within the fake media.
+ * @pre The valid control entry is committed before the simulated crash.
+ * @post The valid entry remains indexed after replay.
+ * @post None of the malformed planted keys becomes visible.
+ * @note The original store remains unclosed to force scan recovery.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- plant headers that trip each single
  * validation guard, reopen, and confirm none become entries)
  */
-static void test_scan_rejects_bad_headers(void)
+RA8_INTERNAL static void internal_test_scan_rejects_bad_headers(void)
 {
   TEST_BEGIN("scan rejects bad headers");
   lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
-  ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
   uint8_t a[k_cs_bytes_two_sector];
-  t_fill(a, sizeof(a), k_cs_seed_bad_header_scan);
+  internal_fill(a, sizeof(a), k_cs_seed_bad_header_scan);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
 
-  t_plant_hdr(&st,
-              k_cs_plant_sector_bad_start,
-              k_cs_plant_start_mismatch,
-              2U,
-              true); /* start_sector mismatch */
-  t_plant_hdr(&st,
-              k_cs_plant_sector_zero_count,
-              k_cs_plant_sector_zero_count,
-              0U,
-              true); /* sector_count == 0 */
-  t_plant_hdr(&st,
-              k_cs_plant_sector_overrun,
-              k_cs_plant_sector_overrun,
-              k_cs_plant_count_past_media,
-              true); /* run runs past the media */
+  internal_plant_hdr(&st,
+                     k_cs_plant_sector_bad_start,
+                     k_cs_plant_start_mismatch,
+                     2U,
+                     true); /* start_sector mismatch */
+  internal_plant_hdr(&st,
+                     k_cs_plant_sector_zero_count,
+                     k_cs_plant_sector_zero_count,
+                     0U,
+                     true); /* sector_count == 0 */
+  internal_plant_hdr(&st,
+                     k_cs_plant_sector_overrun,
+                     k_cs_plant_sector_overrun,
+                     k_cs_plant_count_past_media,
+                     true); /* run runs past the media */
   /* bad CRC */
-  t_plant_hdr(&st, k_cs_plant_sector_bad_crc, k_cs_plant_sector_bad_crc, 2U, false);
+  internal_plant_hdr(&st, k_cs_plant_sector_bad_crc, k_cs_plant_sector_bad_crc, 2U, false);
 
   /* Crash: leave st open (unclosed) and reopen a fresh block over the media. */
   ra8_cache_store_t     st2  = {};
-  ra8_cache_store_cfg_t cfg2 = t_cfg(t_next_flash(), false);
+  ra8_cache_store_cfg_t cfg2 = internal_cfg(internal_next_flash(), false);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st2, &cfg2));
   ra8_cache_store_reader_t rd = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_get(&st2, k_t_key_a, &rd));
@@ -814,20 +790,28 @@ static void test_scan_rejects_bad_headers(void)
 /**
  * @test write_fault_propagates
  * @brief A LevelX write failure surfaces as an error from put.
+ * @details Makes the store dirty with one successful put, injects the next
+ * fake-NOR write failure, and observes the second put's hardware error.
+ * @pre The fake NOR fault counter can be set and cleared.
+ * @pre The first entry has already made the store dirty.
+ * @post The injected write failure is returned to the caller.
+ * @post The fake-NOR fault counter is cleared for later tests.
+ * @note Dirty state ensures the fault reaches payload/header publication.
+ * @since 0.1.0
  * @par MC/DC:
  * (no compound decisions under test -- inject a write fault and assert put
  * returns the hardware error)
  */
-static void test_write_fault_propagates(void)
+RA8_INTERNAL static void internal_test_write_fault_propagates(void)
 {
   TEST_BEGIN("write fault propagates");
   lx_nor_fake_ram_wipe();
   ra8_cache_store_t     st  = {};
-  ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
+  ra8_cache_store_cfg_t cfg = internal_cfg(internal_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
   uint8_t a[k_cs_bytes_sub_sector];
-  t_fill(a, sizeof(a), 8U);
+  internal_fill(a, sizeof(a), 8U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
 
   /* Store is now dirty; the next put skips the mark-dirty write and fails on
@@ -839,9 +823,28 @@ static void test_write_fault_propagates(void)
 }
 
 /**
+ * @brief Discard production log bytes during host error-path tests.
+ * @details Redirects the logger away from host-unmapped ITM while leaving the
+ * production error paths and their sanitizer instrumentation intact.
+ * @param[in] context Unused caller context.
+ * @param[in] byte Unused log byte.
+ * @pre Installed before any vector that intentionally triggers an error log.
+ * @pre The host test runs in one process and does not replace the sink concurrently.
+ * @post The supplied byte is discarded without I/O or MMIO access.
+ * @post No test fixture or production state is mutated.
+ * @note This host-only callback does not suppress sanitizer diagnostics.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_log_sink(void* context, uint8_t byte)
+{
+  (void)context;
+  (void)byte;
+}
+
+/**
  * @brief Run every ra8_cache_store test.
  * @return 0 on success (a failing assertion exits non-zero before returning).
- * @pre The host provides stdio for the Unity-style macros.
+ * @pre Raw-descriptor test output is available for the Unity-style macros.
  * @pre The RAM NOR fake backing is available (static storage).
  * @post Every registered test has run.
  * @post A non-zero exit indicates the first failing assertion.
@@ -849,20 +852,22 @@ static void test_write_fault_propagates(void)
  */
 int main(void)
 {
-  test_put_get_roundtrip();
-  test_vsource_integration();
-  test_put_edge_cases();
-  test_evict_reuse();
-  test_pin_blocks_evict();
-  test_recovery_clean();
-  test_recovery_crash_replay();
-  test_helper_guards();
-  test_init_validation();
-  test_limits_and_sync();
-  test_evict_then_crash();
-  test_corrupt_super_replays();
-  test_scan_rejects_bad_headers();
-  test_write_fault_propagates();
-  (void)fprintf(stderr, "[DONE] ra8_cache_store\n");
+  ra8_log_set_byte_sink(internal_host_log_sink, nullptr);
+  internal_test_put_get_roundtrip();
+  internal_test_vsource_integration();
+  internal_test_put_edge_cases();
+  internal_test_evict_reuse();
+  internal_test_pin_blocks_evict();
+  internal_test_recovery_clean();
+  internal_test_recovery_crash_replay();
+  internal_test_helper_guards();
+  internal_test_init_validation();
+  internal_test_limits_and_sync();
+  internal_test_evict_then_crash();
+  internal_test_corrupt_super_replays();
+  internal_test_scan_rejects_bad_headers();
+  internal_test_write_fault_propagates();
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[DONE] ra8_cache_store\n");
+  ra8_log_set_byte_sink(nullptr, nullptr);
   return 0;
 }

@@ -5,8 +5,8 @@
 #
 # Opt-in via -DRA8_BENCH=ON so the normal host test build (and ctest in
 # CI) is unaffected. Each bench target is a standalone executable that
-# links against the existing ra8_core_hal OBJECT library and prints CSV
-# results to stdout. See docs/PERFORMANCE.md for how to run and what
+# links against the existing ra8_core_hal OBJECT library and writes CSV
+# results to raw descriptor 1. See docs/PERFORMANCE.md for how to run and what
 # the columns mean.
 #
 # Build + run via:
@@ -69,6 +69,19 @@ foreach(_t ${RA8_BENCH_TARGETS})
     )
   endif()
 endforeach()
+
+# The software-JPEG bench includes its public decoder contract directly.
+target_include_directories(bench_ra8_jpeg_sw PRIVATE ${FW_ROOT}/libs/ra8_jpeg/inc)
+
+# The deterministic output golden needs no production object library: it
+# exercises only the caller-owned RAM sink and typed benchmark renderer.
+add_executable(test_ra8_bench_output ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_bench_output.c)
+target_compile_options(test_ra8_bench_output PRIVATE -Wall -Wextra -Werror)
+target_include_directories(
+  test_ra8_bench_output PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${FW_ROOT}/libs/ra8_core/inc
+)
+add_test(NAME test_ra8_bench_output COMMAND test_ra8_bench_output)
+list(APPEND RA8_BENCH_TARGETS test_ra8_bench_output)
 
 # Convenience aggregate target -- `cmake --build . --target ra8_bench_all`.
 add_custom_target(

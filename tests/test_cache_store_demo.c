@@ -3,16 +3,17 @@
  * @brief Host unit test for the ra8_cache_store_demo example core (#257).
  *
  * @details
- * Drives the exact `cache_store_demo_run` core the ARM example runs, bound to the
- * same RAM-backed LevelX NOR driver (`lx_nor_ram_init`) the example uses on the
- * target -- so the host test and the ra8_emulator gate exercise byte-identical
- * logic. Asserts the end-to-end verdict (mount, put/get, pin, forced eviction,
- * reuse, checkpoint-close, remount-persistence), the survivor count, and the
- * NULL-argument guards. LevelX runs standalone (`LX_STANDALONE_ENABLE`).
+ * Drives the exact `cache_store_demo_run` core the ARM example runs, bound to
+ * the same RAM-backed LevelX NOR driver (`lx_nor_ram_init`) the example uses on
+ * the target -- so the host test and the ra8_emulator gate exercise
+ * byte-identical logic. Asserts the end-to-end verdict (mount, put/get, pin,
+ * forced eviction, reuse, checkpoint-close, remount-persistence), the survivor
+ * count, and the NULL-argument guards. LevelX runs standalone
+ * (`LX_STANDALONE_ENABLE`).
  *
  * The store's own primitives (put/get/evict/pin/recovery + their MC/DC vectors)
- * are covered separately in test_ra8_cache_store.c; this test proves the example
- * wrapper drives them correctly end to end.
+ * are covered separately in test_ra8_cache_store.c; this test proves the
+ * example wrapper drives them correctly end to end.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -24,6 +25,7 @@
 #include "lx_api.h"
 #include "lx_nor_ram.h"
 #include "ra8_err.h"
+#include "ra8_log.h"
 #include "unity_minimal.h"
 
 /**
@@ -133,9 +135,28 @@ static void test_demo_arg_guards(void)
 }
 
 /**
+ * @brief Discard production log bytes during host error-path tests.
+ * @details Redirects the logger away from host-unmapped ITM while leaving the
+ * production error paths and their sanitizer instrumentation intact.
+ * @param[in] context Unused caller context.
+ * @param[in] byte Unused log byte.
+ * @pre Installed before any vector that intentionally triggers an error log.
+ * @pre The host test runs in one process and does not replace the sink concurrently.
+ * @post The supplied byte is discarded without I/O or MMIO access.
+ * @post No test fixture or production state is mutated.
+ * @note This host-only callback does not suppress sanitizer diagnostics.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_log_sink(void* context, uint8_t byte)
+{
+  (void)context;
+  (void)byte;
+}
+
+/**
  * @brief Run every ra8_cache_store_demo host test.
  * @return 0 on success (a failing assertion exits non-zero before returning).
- * @pre The host provides stdio for the Unity-style macros.
+ * @pre Raw-descriptor test output is available for the Unity-style macros.
  * @pre The RAM NOR driver backing is available (static storage).
  * @post Every registered test has run.
  * @post A non-zero exit indicates the first failing assertion.
@@ -143,9 +164,11 @@ static void test_demo_arg_guards(void)
  */
 int main(void)
 {
+  ra8_log_set_byte_sink(internal_host_log_sink, nullptr);
   test_demo_end_to_end();
   test_demo_rerunnable();
   test_demo_arg_guards();
-  (void)fprintf(stderr, "[DONE] cache_store_demo\n");
+  (void)internal_test_output_fd_text(STDERR_FILENO, "[DONE] cache_store_demo\n");
+  ra8_log_set_byte_sink(nullptr, nullptr);
   return 0;
 }
