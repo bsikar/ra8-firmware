@@ -172,15 +172,16 @@ static const uint8_t s_dht_then_sof0[] = {
 /**
  * @test internal_test_mcdc_get_dimensions_pad_and_marker
  * @par MC/DC:
- * Five decisions in ra8_jpeg_sw_get_dimensions (libs/ra8_jpeg/src/ra8_jpeg_sw.c
- * lines 1071, 1080, 1087, 1100, 1105). Vectors via crafted bytestreams:
- *   D_pad   1071: padding + non-padding both reached.
- *   D_soi   1080: SOI/EOI marker mid-walk -> continue (true), other DT -> false.
- *   D_seg   1087: seglen=1 (C1=T) and seglen huge (C1=F C2=T).
- *   D_w0h0  1100: w=0 (C1=T) and h=0 (C1=F C2=T).
- *   D_sof   1105: 4-condition AND. Representative subset: SOF2 (all T
- *           not_supported), DHT (C3=F skipped), SOS (C2=F skipped).
- *           Dead rows documented per DO-178C 6.4.4.3 deactivated code. @brief Verify mcdc get dimensions pad and marker behavior. @details Executes the mcdc get dimensions pad and marker scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+ * Five decisions in the split dimension walker. Vectors via crafted streams:
+ * - `libs/ra8_jpeg/src/ra8_jpeg_sw.c@internal_dims_next_marker`: D_pad,
+ *   with padding and non-padding both reached.
+ * - `libs/ra8_jpeg/src/ra8_jpeg_sw.c@internal_dims_step`: D_soi, D_seg,
+ *   and D_sof. SOI/EOI and a sized marker vary D_soi; seglen=1 and a huge
+ *   seglen vary D_seg; D_sof is a four-condition AND with SOF2 (all true,
+ *   not_supported), DHT (C3=F skipped), and SOS (C2=F skipped).
+ *   Dead rows are documented per DO-178C 6.4.4.3 deactivated code.
+ * - `libs/ra8_jpeg/src/ra8_jpeg_sw.c@internal_dims_parse_sof0`: D_w0h0,
+ *   with w=0 (C1=T) and h=0 (C1=F,C2=T). @brief Verify mcdc get dimensions pad and marker behavior. @details Executes the mcdc get dimensions pad and marker scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
 RA8_INTERNAL static void internal_test_mcdc_get_dimensions_pad_and_marker(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC get_dimensions: pad+marker+seg+wh decisions");
@@ -217,20 +218,13 @@ RA8_INTERNAL static void internal_test_mcdc_get_dimensions_pad_and_marker(void)
  * @test internal_test_mcdc_decode_pad_and_rst_marker
  * @par MC/DC:
  * Decisions in ra8_jpeg_sw_decode and dec_decode_scan:
- *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@br_fill  D_res bit-reader refill
- *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@ra8_jpeg_sw_get_dimensions D_pad pad-skip
- *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@ra8_jpeg_sw_get_dimensions D_sof unsupported (else-if)
- *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@ra8_jpeg_sw_get_dimensions D_rst RST0..RST7 (else-if)
- *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@dec_dispatch_marker D_sof unsupported (extracted)
- *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@dec_dispatch_marker D_rst RST0..RST7 (extracted)
- * D_pad pad-skip exercised by encoder round-trip (yields natural padding).
+ *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@internal_br_fill D_res refill
+ *   - libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c@priv_jpeg_sw_dispatch D_sof
  * D_sof 4-cond unsupported via SOF2 (0xFFC2): co-dependence rationale
  * documented inline in production source (markers >= 0xFFC1 are by spec
  * <= 0xFFCF, so the upper-bound cannot independently flip on any
- * reachable SOFn). D_rst RST0..RST7 in-band path: exercised structurally
- * by round-trip of restart-free streams (decision stays F throughout the
- * loop). N+1=2 for the reachable subset of D_rst; full D_pad and D_sof
- * vectors flip via the bytestreams. D_res (bit-reader reservoir refill)
+ * reachable SOFn). The full D_sof vectors flip via the crafted bytestreams.
+ * D_res (bit-reader reservoir refill)
  * is driven by the full decode: the refill loop runs while nbits is low
  * and stops on either the byte budget (first operand F) or end-of-image
  * (had_eoi T). @brief Verify mcdc decode pad and rst marker behavior. @details Executes the mcdc decode pad and rst marker scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
