@@ -7,9 +7,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef RA8_SDMMC_SPI_IO_CONTRACTS_H
-/** @brief Include guard for the SD block-I/O helper contracts. */
-#define RA8_SDMMC_SPI_IO_CONTRACTS_H
+#pragma once
 
 #include "ra8_sdmmc_spi_internal.h"
 
@@ -275,5 +273,3 @@ RA8_INTERNAL static ra8_err_t internal_fs_erase_block(void* ctx, uint64_t lba, u
  */
 RA8_INTERNAL static ra8_err_t
 internal_fs_get_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size);
-
-#endif

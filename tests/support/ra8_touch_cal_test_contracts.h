@@ -7,9 +7,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef TESTS_SUPPORT_RA8_TOUCH_CAL_TEST_CONTRACTS_H
-/** @brief Include guard for touch-calibration test contracts. */
-#define TESTS_SUPPORT_RA8_TOUCH_CAL_TEST_CONTRACTS_H
+#pragma once
 
 /**
  * @brief Record a requested calibration target in the LCD stub.
@@ -307,5 +305,3 @@ RA8_INTERNAL static void internal_test_mcdc_run_cfg_out_null_or(void);
  * @since 0.1.0
  */
 RA8_INTERNAL static void internal_test_mcdc_apply_run_screen_dim_pair(void);
-
-#endif /* TESTS_SUPPORT_RA8_TOUCH_CAL_TEST_CONTRACTS_H */
