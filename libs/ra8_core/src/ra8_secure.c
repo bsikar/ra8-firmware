@@ -5,6 +5,9 @@
  * @par Tag
  * [Ring 1 / Core] {World: S}
  *
+ * @details Implements constant-work byte comparison and explicit memory
+ * clearing primitives used at security-sensitive ownership boundaries.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

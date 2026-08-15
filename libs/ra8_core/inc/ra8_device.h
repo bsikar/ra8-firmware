@@ -1,6 +1,7 @@
 /**
  * @file ra8_device.h
- * @brief Compile-time device selection for the RA8 multi-chip build (RA8D2 / RA8P1)
+ * @brief Compile-time device selection for the RA8 multi-chip build (RA8D2 /
+ * RA8P1)
  * @ingroup grp_core
  *
  * @details
@@ -28,19 +29,20 @@
  * - The device identity (`ra8_device_id_t`, `k_ra8_device_current`).
  * - Feature-presence flags (`RA8_HAS_*` build-config macros + a typed-enum
  *   mirror `ra8_device_feature_t` for runtime code and clang-tidy hygiene).
- * - The device memory map (`ra8_device_mem_base_t` / `ra8_device_mem_size_t`) as
- *   the single source of truth shared by C code and, by mirror, the linker
+ * - The device memory map (`ra8_device_mem_base_t` / `ra8_device_mem_size_t`)
+ * as the single source of truth shared by C code and, by mirror, the linker
  *   scripts.
  *
  * ## What does NOT live here
  *
- * Peripheral register bases stay in `libs/ra8_hal/inc/ra8d2_*_regs.h`. Every one
- * of the 155 bases the RA8D2 defines is byte-identical on the RA8P1, so those
- * headers need NO device-conditional edits. Only genuinely NEW peripherals get
- * a new header (see `ra8_npu_regs.h` for the Ethos-U55, RA8P1-only). If a future
- * device ever DID shift a base, the fix is local: wrap that one enum value in
- * `#if defined(RA8_DEVICE_RA8P1)` in its own register header -- the base-address
- * enum is deliberately the seam.
+ * Peripheral register bases stay in `libs/ra8_hal/inc/ra8d2_*_regs.h`. Every
+ * one of the 155 bases the RA8D2 defines is byte-identical on the RA8P1, so
+ * those headers need NO device-conditional edits. Only genuinely NEW
+ * peripherals get a new header (see `ra8_npu_regs.h` for the Ethos-U55,
+ * RA8P1-only). If a future device ever DID shift a base, the fix is local: wrap
+ * that one enum value in
+ * `#if defined(RA8_DEVICE_RA8P1)` in its own register header -- the
+ * base-address enum is deliberately the seam.
  *
  * @note This header is host-friendly: it defines only compile-time constants
  *       and touches no hardware, so it compiles unchanged under
@@ -85,7 +87,7 @@ extern "C" {
  * @details
  * The value is the two hex nibbles of the marketing part name so it reads
  * clearly in a debugger (`0x8D2` for the RA8D2, `0x8P1` is not valid hex so
- * the RA8P1 uses `0x8F1`). Used by `k_ra8_device_current` and any runtime code
+ * the RA8P1 uses `0x8F1`). Includes `k_ra8_device_current` for runtime code
  * that must branch on the build target.
  *
  * @invariant Exactly one of `RA8_DEVICE_RA8D2` / `RA8_DEVICE_RA8P1` is defined
@@ -97,23 +99,12 @@ extern "C" {
 typedef enum : uint16_t {
   k_ra8_device_ra8d2 = 0x8D2U, /**< Renesas RA8D2, R7KA8D2KFLCAC (HUM R01UH1065EJ). */
   k_ra8_device_ra8p1 = 0x8F1U, /**< Renesas RA8P1, R7KA8P1KFLCAC (HUM R01UH1064EJ). */
-} ra8_device_id_t;
-
-/**
- * @var k_ra8_device_current
- * @brief The device this translation unit is being compiled for.
- *
- * @details Resolves to `k_ra8_device_ra8d2` or `k_ra8_device_ra8p1` at compile
- *          time from the active `RA8_DEVICE_*` selection macro.
- *
- * @note Access only; a compile-time constant, never modified.
- * @since 0.1.0
- */
 #ifdef RA8_DEVICE_RA8P1
-static const ra8_device_id_t k_ra8_device_current = k_ra8_device_ra8p1;
+  k_ra8_device_current = k_ra8_device_ra8p1 /**< Device selected by this build. */
 #else
-static const ra8_device_id_t k_ra8_device_current = k_ra8_device_ra8d2;
+  k_ra8_device_current = k_ra8_device_ra8d2 /**< Device selected by this build. */
 #endif
+} ra8_device_id_t;
 
 /* -------------------------------------------------------------------------- */
 /* Feature-presence flags */
@@ -137,9 +128,9 @@ static const ra8_device_id_t k_ra8_device_current = k_ra8_device_ra8d2;
  * based at 0x40354000 (that window is USBHS 0x40351000 / SCI 0x40358000 /
  * SPI 0x4035C000). The token "EDMAC" appears only in the Buses chapter, where
  * BOTH manuals state verbatim that "EDMAC ... means the GWCA function of ESWM"
- * -- the descriptor-DMA bus initiator of the shared R-Switch, which the RA8D2 has
- * too. The RA8P1's only Ethernet is the same R-Switch / ESWM subsystem as the
- * RA8D2 (identical HUM chapters 30-36 and register bases), so there is no
+ * -- the descriptor-DMA bus initiator of the shared R-Switch, which the RA8D2
+ * has too. The RA8P1's only Ethernet is the same R-Switch / ESWM subsystem as
+ * the RA8D2 (identical HUM chapters 30-36 and register bases), so there is no
  * ETHERC feature flag. Do not re-add one without a primary-source register map.
  *
  * NOTE (issue #516): an earlier draft also listed "OFS3 / WDT1 option register"
@@ -156,7 +147,9 @@ static const ra8_device_id_t k_ra8_device_current = k_ra8_device_ra8d2;
  */
 #ifdef RA8_DEVICE_RA8P1
 /** @brief RA8 HAS NPU. */
-#define RA8_HAS_NPU (1) /**< Arm Ethos-U55 NPU present (see ra8_npu_regs.h). */
+#define RA8_HAS_NPU                                                                                \
+  (1) /**< Arm Ethos-U55 NPU present (see ra8_npu_regs.h).   \
+                         */
 /** @brief RA8 HAS NPUCLK. */
 #define RA8_HAS_NPUCLK (1) /**< CGC drives a dedicated NPUCLK domain. */
 #else
@@ -211,13 +204,13 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uintptr_t {
-  k_ra8_mem_mram_base     = 0x02000000U, /**< Code MRAM (non-volatile), 1 MB.         */
-  k_ra8_mem_itcm_base     = 0x00000000U, /**< M85 instruction TCM window.             */
-  k_ra8_mem_dtcm_base     = 0x20000000U, /**< M85 data TCM window.                    */
-  k_ra8_mem_sram_base     = 0x22000000U, /**< On-chip system SRAM (ECC), 1664 KB.     */
+  k_ra8_mem_mram_base     = 0x02000000U, /**< Code MRAM (non-volatile), 1 MB. */
+  k_ra8_mem_itcm_base     = 0x00000000U, /**< M85 instruction TCM window. */
+  k_ra8_mem_dtcm_base     = 0x20000000U, /**< M85 data TCM window. */
+  k_ra8_mem_sram_base     = 0x22000000U, /**< On-chip system SRAM (ECC), 1664 KB. */
   k_ra8_mem_sdram_base    = 0x68000000U, /**< External SDRAM data window (EK: 64 MB). */
-  k_ra8_mem_ospi_cs0_base = 0x80000000U, /**< OSPI/xSPI CS0 XIP window.               */
-  k_ra8_mem_ospi_cs1_base = 0x90000000U, /**< OSPI/xSPI CS1 XIP window.               */
+  k_ra8_mem_ospi_cs0_base = 0x80000000U, /**< OSPI/xSPI CS0 XIP window. */
+  k_ra8_mem_ospi_cs1_base = 0x90000000U, /**< OSPI/xSPI CS1 XIP window. */
 } ra8_device_mem_base_t;
 
 /**
@@ -237,8 +230,8 @@ typedef enum : uintptr_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_mem_mram_size = 0x00100000U, /**< 1 MB code MRAM (both parts).             */
-  k_ra8_mem_sram_size = 0x001A0000U, /**< 1664 KB system SRAM (both parts).        */
+  k_ra8_mem_mram_size = 0x00100000U, /**< 1 MB code MRAM (both parts). */
+  k_ra8_mem_sram_size = 0x001A0000U, /**< 1664 KB system SRAM (both parts). */
   k_ra8_mem_itcm_size = 0x00010000U, /**< 64 KB ITCM (linker floor; see @details). */
   k_ra8_mem_dtcm_size = 0x00010000U, /**< 64 KB DTCM (linker floor; see @details). */
 } ra8_device_mem_size_t;

@@ -3,7 +3,7 @@
  * @brief Default implementation of the fatal-error sink
  *
  * @details
- * Default implementation of `internal_ra8_fatal_error()`. This function
+ * Default implementation of `ra8_fatal_error()`. This function
  * is called for every assertion failure and every failed
  * `RA8_ERROR_CHECK`. It:
  *
@@ -130,7 +130,7 @@ RA8_INTERNAL static inline void internal_wfi(void)
  *
  * @since 0.1.0
  */
-[[gnu::weak]] void internal_ra8_fatal_error(const char* tag, const char* message, uint32_t err)
+[[gnu::weak]] void ra8_fatal_error(const char* tag, const char* message, uint32_t err)
 {
   internal_disable_irq();
 

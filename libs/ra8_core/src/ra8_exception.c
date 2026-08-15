@@ -4,7 +4,7 @@
  *
  * @details
  * Reads the SCB fault status registers and logs the stacked
- * exception frame before halting via `internal_ra8_fatal_error()`.
+ * exception frame before halting via `ra8_fatal_error()`.
  *
  * ## Installing as the HardFault handler
  *
@@ -44,9 +44,9 @@
 
 #ifdef RA8_OFF_TARGET
 /* Host-side test builds get the legacy halt-via-fatal-error path so
- * tests can override `internal_ra8_fatal_error` to longjmp out. */
+ * tests can override `ra8_fatal_error` to longjmp out. */
 /** @brief RA8 EXCEPTION HALT. */
-#define RA8_EXCEPTION_HALT(tag, msg, exc) internal_ra8_fatal_error((tag), (msg), (exc))
+#define RA8_EXCEPTION_HALT(tag, msg, exc) ra8_fatal_error((tag), (msg), (exc))
 #else
 /** @brief RA8 EXCEPTION HALT. */
 #define RA8_EXCEPTION_HALT(tag, msg, exc)                                                          \
@@ -54,7 +54,7 @@
     (void)(tag);                                                                                   \
     (void)(msg);                                                                                   \
     (void)(exc);                                                                                   \
-    ra8_exception_halt_loop();                                                                     \
+    internal_exception_halt_loop();                                                                \
   } while (0)
 #endif
 
@@ -109,7 +109,8 @@ void ra8_exception_capture_diagnostics(ra8_exception_diagnostics_t* out)
   }
 }
 
-/** @brief Definition of `g_ra8_exception_last` -- contract documented in ra8_exception.h. */
+/** @brief Definition of `g_ra8_exception_last` -- contract documented in
+ * ra8_exception.h. */
 volatile ra8_exception_last_t g_ra8_exception_last;
 
 /**
@@ -149,7 +150,8 @@ static volatile uint32_t s_ra8_exception_nmi_stage;
  */
 static ra8_exception_persist_fn s_ra8_exception_persist;
 
-/** @brief Implementation of `ra8_exception_set_persist_hook()` -- store the sink pointer. */
+/** @brief Implementation of `ra8_exception_set_persist_hook()` -- store the
+ * sink pointer. */
 void ra8_exception_set_persist_hook(ra8_exception_persist_fn hook)
 {
   s_ra8_exception_persist = hook;
@@ -175,7 +177,7 @@ void ra8_exception_set_persist_hook(ra8_exception_persist_fn hook)
  *
  * @since 0.1.0
  */
-[[noreturn, gnu::noinline]] static void ra8_exception_halt_loop(void)
+[[noreturn, gnu::noinline]] RA8_INTERNAL static void internal_exception_halt_loop(void)
 {
   __asm__ volatile("cpsid i" ::: "memory");
   while (1) {
@@ -249,7 +251,7 @@ RA8_INTERNAL static void internal_log_fault_dump(const ra8_exception_frame_t*   
  * (ra8_log silently drops every byte from a fault context on the default
  * ITM backend; a registered byte sink still emits, see
  * libs/ra8_core/src/ra8_log.c). Finally parks the CPU at the named
- * `ra8_exception_halt_loop` symbol on target so the debugger can give
+ * `internal_exception_halt_loop` symbol on target so the debugger can give
  * the halt a clean backtrace instead of escalating to LOCKUP at
  * PC=0xEFFFFFFE.
  *
@@ -306,7 +308,7 @@ void ra8_exception_report(const ra8_exception_frame_t* frame, uint32_t exc_numbe
   internal_log_fault_dump(frame, exc_number, &diag, g_ra8_exception_last.nmisr);
 
   /* Step 3: halt at a named symbol. On target we do NOT call
-   * internal_ra8_fatal_error from a fault context -- that path issues
+   * ra8_fatal_error from a fault context -- that path issues
    * `bkpt #0`, which on a board without an attached debugger re-enters
    * HardFault and can escalate to LOCKUP at PC=0xEFFFFFFE. The
    * dedicated halt loop parks PC at a symbol the debugger can name.
@@ -315,7 +317,8 @@ void ra8_exception_report(const ra8_exception_frame_t* frame, uint32_t exc_numbe
   RA8_EXCEPTION_HALT("EXC", "fault", exc_number);
 }
 
-/** @brief Implementation of `ra8_exception_report_nmi()` -- stage the ICU cause, then chain. */
+/** @brief Implementation of `ra8_exception_report_nmi()` -- stage the ICU
+ * cause, then chain. */
 void ra8_exception_report_nmi(const ra8_exception_frame_t* frame, uint32_t nmisr)
 {
   /* Plain SRAM store first (cannot fault), so even a secondary fault

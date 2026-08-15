@@ -18,7 +18,7 @@
  *     TrustZone `SFSR` / `SFAR` pair) and populate an
  *     `ra8_exception_diagnostics_t`.
  *  3. Emit a single log line summarising the fault.
- *  4. Call `internal_ra8_fatal_error()` to halt.
+ *  4. Call `ra8_fatal_error()` to halt.
  *
  * The same record path serves the RA8D2 NMI: the board-layer NMI
  * handler reads the ICU's NMISR cause register and forwards it here
@@ -222,7 +222,7 @@ void ra8_exception_capture_diagnostics(ra8_exception_diagnostics_t* out);
  *
  * @details
  * Logs the exception frame + diagnostics at ERROR level, then calls
- * `internal_ra8_fatal_error()` which halts. Meant to be called from a
+ * `ra8_fatal_error()` which halts. Meant to be called from a
  * naked assembly trampoline installed in place of the weak
  * `HardFault_Handler` alias -- see the example in `ra8_exception.c`.
  *

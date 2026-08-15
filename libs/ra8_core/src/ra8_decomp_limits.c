@@ -22,11 +22,29 @@
  */
 #include "ra8_decomp_limits.h"
 
+#include <string.h>
+
 #include "ra8_attributes.h"
 #include "ra8_check.h"
 
 /** @brief Log tag for decompression-policy diagnostics. */
 static const char* const s_tag_decomp = "ra8_decomp";
+
+/**
+ * @enum priv_zip_preflight_t
+ * @brief Fixed classic-ZIP EOCD geometry used by the entry-cap preflight.
+ */
+typedef enum : uint32_t {
+  k_priv_zip_eocd_bytes     = 22U,    /**< Fixed EOCD bytes before its comment. */
+  k_priv_zip_comment_max    = 65535U, /**< Maximum classic ZIP comment bytes. */
+  k_priv_zip_scan_chunk     = 512U,   /**< Candidate offsets inspected per read. */
+  k_priv_zip_sig_bytes      = 4U,     /**< Bytes in the EOCD signature. */
+  k_priv_zip_entries_offset = 10U,    /**< Total-entry field offset in EOCD. */
+  k_priv_zip_comment_offset = 20U,    /**< Comment-length field offset in EOCD. */
+} priv_zip_preflight_t;
+
+/** @brief Classic ZIP end-of-central-directory signature bytes. */
+static const uint8_t s_zip_eocd_signature[k_priv_zip_sig_bytes] = {0x50U, 0x4BU, 0x05U, 0x06U};
 
 ra8_decomp_limits_t ra8_decomp_limits_default(void)
 {
@@ -194,6 +212,67 @@ ra8_decomp_check_declared(const ra8_decomp_limits_t* limits, uint64_t comp_size,
   }
   if (out_size > internal_ratio_bound(limits, comp_size)) {
     return k_ra8_err_decomp_ratio;
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Decode one little-endian 16-bit ZIP field.
+ * @details Combines two already-bounds-checked bytes without an unaligned load.
+ * @param[in] bytes Address of two readable bytes.
+ * @return Decoded unsigned value.
+ * @retval 0 The encoded field is zero.
+ * @pre @p bytes is non-NULL.
+ * @pre At least two bytes are readable at @p bytes.
+ * @post No source byte is modified.
+ * @post The result depends only on the two source bytes.
+ * @note ZIP metadata is always little-endian.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static uint16_t internal_zip_u16(const uint8_t* bytes)
+{
+  return (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8U));
+}
+
+ra8_err_t ra8_decomp_zip_entry_preflight(ra8_decomp_read_fn read, void* ctx, uint64_t archive_size)
+{
+  RA8_CHECK_NULL_PTR(read, s_tag_decomp, "zip preflight: null reader");
+  if (archive_size < (uint64_t)k_priv_zip_eocd_bytes) {
+    return k_ra8_ok;
+  }
+  const uint64_t candidates = archive_size - (uint64_t)k_priv_zip_eocd_bytes + 1U;
+  const uint64_t window     = (uint64_t)k_priv_zip_comment_max + 1U;
+  const uint64_t lower      = (candidates > window) ? (candidates - window) : 0U;
+  uint64_t       end        = candidates;
+  uint8_t        chunk[k_priv_zip_scan_chunk + k_priv_zip_sig_bytes - 1U];
+  uint8_t        eocd[k_priv_zip_eocd_bytes];
+  while (end > lower) {
+    const uint64_t start = ((end - lower) > (uint64_t)k_priv_zip_scan_chunk)
+                             ? (end - (uint64_t)k_priv_zip_scan_chunk)
+                             : lower;
+    const size_t   count = (size_t)(end - start);
+    if (read(ctx, start, chunk, count + k_priv_zip_sig_bytes - 1U) !=
+        count + k_priv_zip_sig_bytes - 1U) {
+      return k_ra8_ok;
+    }
+    for (size_t i = count; i > 0U; --i) {
+      const size_t at = i - 1U;
+      if (memcmp(&chunk[at], s_zip_eocd_signature, k_priv_zip_sig_bytes) != 0) {
+        continue;
+      }
+      const uint64_t position = start + (uint64_t)at;
+      if (read(ctx, position, eocd, sizeof(eocd)) != sizeof(eocd)) {
+        continue;
+      }
+      const uint16_t comment = internal_zip_u16(&eocd[k_priv_zip_comment_offset]);
+      if ((position + sizeof(eocd) + (uint64_t)comment) != archive_size) {
+        continue;
+      }
+      const uint16_t entries = internal_zip_u16(&eocd[k_priv_zip_entries_offset]);
+      return ((uint32_t)entries > (uint32_t)k_ra8_decomp_def_max_entries) ? k_ra8_err_decomp_entries
+                                                                          : k_ra8_ok;
+    }
+    end = start;
   }
   return k_ra8_ok;
 }

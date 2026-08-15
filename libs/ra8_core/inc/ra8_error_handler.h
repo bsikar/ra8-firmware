@@ -4,7 +4,7 @@
  * @ingroup grp_core
  *
  * @details
- * `internal_ra8_fatal_error()` is the single entry point for "stop
+ * `ra8_fatal_error()` is the single entry point for "stop
  * running and alert the developer". Every `RA8_ASSERT` and every
  * `RA8_ERROR_CHECK` that fails eventually lands here.
  *
@@ -16,7 +16,7 @@
  *
  * The loop is deliberate: we do not want to reset silently because
  * that erases the state the developer needs to diagnose the fault.
- * Field deployments can override `internal_ra8_fatal_error()` with a
+ * Field deployments can override `ra8_fatal_error()` with a
  * weak symbol to add a watchdog reset.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -44,7 +44,7 @@ extern "C" {
  * @warning Do not call from time-critical ISR paths unless you accept
  *          that the system will not come back.
  */
-[[noreturn]] void internal_ra8_fatal_error(const char* tag, const char* message, uint32_t err);
+[[noreturn]] void ra8_fatal_error(const char* tag, const char* message, uint32_t err);
 
 #ifdef __cplusplus
 }

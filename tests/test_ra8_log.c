@@ -19,11 +19,12 @@
 #include <stdint.h>
 #include <string.h>
 
-/* Make every level visible so the macros bind to the internal_*
+/* Make every level visible so the macros bind to the ra8_log_emit_*
  * entry points rather than no-ops. */
 /** @brief RA8 LOG LEVEL. */
 #define RA8_LOG_LEVEL k_ra8_log_level_debug
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_log.h"
@@ -85,13 +86,25 @@ typedef enum : uintptr_t {
 
 /**
  * @brief Arm the ITM registers so internal_itm_ready() returns true.
-  *
-  * @par MC/DC:
-  * (no compound decisions in this test -- exercises the public-API
-  * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
+ *
+ * @details Programs the fake TCR, TENR, and stimulus registers with the
+ * values needed to exercise the logger's ready path without real ITM hardware.
+ *
+ * @pre The fake MMIO map has been reset for the current test vector.
+ * @pre The three test register addresses match the production logger constants.
+ * @post ITM enable and stimulus-port-zero enable bits are set.
+ * @post Stimulus port zero reports writable capacity.
+ *
+ * @note This helper changes only the host fake-MMIO fixture.
+ *
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
  */
-static void test_itm_arm(void)
+RA8_INTERNAL static void internal_itm_arm(void)
 {
   /* ITMENA (TCR bit 0) and stimulus port 0 (TENR bit 0). */
   *(volatile uint32_t*)k_test_itm_tcr  = 0x00000001UL;
@@ -102,12 +115,26 @@ static void test_itm_arm(void)
 }
 
 /**
+ * @brief Verify logger initialization returns normally on the host fixture.
+ *
+ * @details Resets fake MMIO, initializes the logger, and records the Unity
+ * case outcome without requiring an active ITM stimulus port.
+ *
+ * @pre Unity output is initialized by the test process.
+ * @pre The fake MMIO backend is linked into the test executable.
+ * @post Logger initialization completes without a fault.
+ * @post The Unity case is reported as passed.
+ *
+ * @note The host logger legitimately drops bytes while ITM is unarmed.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_init_runs(void)
+RA8_INTERNAL static void internal_test_log_init_runs(void)
 {
   TEST_BEGIN("ra8_log_init runs");
   ra8_fake_mmap_reset();
@@ -116,73 +143,148 @@ static void test_log_init_runs(void)
 }
 
 /**
+ * @brief Verify an unbound hosted logger never touches target ITM addresses.
+ * @details Clears the optional byte sink and emits a diagnostic before the
+ * fake MMIO fixture has mapped any architectural register range.
+ * @pre The test executable is built with `RA8_OFF_TARGET`.
+ * @pre No earlier vector has initialized the fake MMIO map.
+ * @post The log call returns without a host memory access or signal.
+ * @post No byte sink or fake register state is modified.
+ * @note Sanitizer execution makes a target-address dereference observable.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_test_log_unbound_host_drops(void)
+{
+  TEST_BEGIN("ra8_log drops hosted output when no sink is bound");
+  ra8_log_set_byte_sink(nullptr, nullptr);
+  ra8_log_emit_warn("HOST", "drop without ITM access");
+  TEST_END("ra8_log drops hosted output when no sink is bound");
+}
+
+/**
+ * @brief Exercise every plain-message log-level backend.
+ *
+ * @details Initializes the host logger and invokes the four published emit
+ * functions directly so each weak default backend is linked and callable.
+ *
+ * @pre The fake MMIO backend is available.
+ * @pre All four published emitter declarations match their definitions.
+ * @post Every plain emitter returns without touching invalid host MMIO.
+ * @post The Unity case is reported as passed.
+ *
+ * @note Exact byte formatting is exercised separately with armed fake ITM.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_levels_plain(void)
+RA8_INTERNAL static void internal_test_log_levels_plain(void)
 {
   TEST_BEGIN("ra8_log plain tag/message at every level");
   ra8_fake_mmap_reset();
   ra8_log_init();
 
-  internal_ra8_log_error("TAG", "error line");
-  internal_ra8_log_warn("TAG", "warn line");
-  internal_ra8_log_info("TAG", "info line");
-  internal_ra8_log_debug("TAG", "debug line");
+  ra8_log_emit_error("TAG", "error line");
+  ra8_log_emit_warn("TAG", "warn line");
+  ra8_log_emit_info("TAG", "info line");
+  ra8_log_emit_debug("TAG", "debug line");
 
   TEST_END("ra8_log plain tag/message at every level");
 }
 
 /**
+ * @brief Exercise every valued log-level backend.
+ *
+ * @details Calls the unsigned ERROR, WARN, and INFO emitters plus the signed
+ * DEBUG emitter with distinct values after host logger initialization.
+ *
+ * @pre The fake MMIO backend is available.
+ * @pre The published valued-emitter declarations match their definitions.
+ * @post Every valued emitter returns without invalid host access.
+ * @post Both unsigned and signed formatting entry points are reached.
+ *
+ * @note Register-byte verification is outside this linkage coverage vector.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_levels_val(void)
+RA8_INTERNAL static void internal_test_log_levels_val(void)
 {
   TEST_BEGIN("ra8_log with companion value at every level");
   ra8_fake_mmap_reset();
   ra8_log_init();
 
-  internal_ra8_log_error_val("TAG", "value", k_log_val_hex_small);
-  internal_ra8_log_warn_val("TAG", "value", k_log_val_hex_mid);
-  internal_ra8_log_info_val("TAG", "value", k_log_val_hex_full);
-  internal_ra8_log_debug_val("TAG", "value", (int32_t)-k_log_val_small_signed);
+  ra8_log_emit_error_val("TAG", "value", k_log_val_hex_small);
+  ra8_log_emit_warn_val("TAG", "value", k_log_val_hex_mid);
+  ra8_log_emit_info_val("TAG", "value", k_log_val_hex_full);
+  ra8_log_emit_debug_val("TAG", "value", (int32_t)-k_log_val_small_signed);
 
   TEST_END("ra8_log with companion value at every level");
 }
 
 /**
+ * @brief Exercise unsigned and signed numeric edge values.
+ *
+ * @details Sends zero, UINT32_MAX, negative one, INT32_MIN, and a positive
+ * signed value through the published value emitters.
+ *
+ * @pre The fake MMIO backend is available.
+ * @pre The fixture constants represent the intended integer edge values.
+ * @post Unsigned zero and maximum paths are exercised.
+ * @post Signed negative, minimum, and positive paths are exercised.
+ *
+ * @note The test asserts safe completion because ITM is deliberately unarmed.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_val_edge_cases(void)
+RA8_INTERNAL static void internal_test_log_val_edge_cases(void)
 {
   TEST_BEGIN("ra8_log value edge cases");
   ra8_fake_mmap_reset();
   ra8_log_init();
 
-  internal_ra8_log_info_val("ZERO", "v", 0U);
-  internal_ra8_log_info_val("MAX", "v", k_log_val_u32_max);
-  internal_ra8_log_debug_val("NEG", "v", (int32_t)-1);
-  internal_ra8_log_debug_val("MIN", "v", (int32_t)(-k_log_val_i32_max - 1));
-  internal_ra8_log_debug_val("POS", "v", (int32_t)k_log_val_positive_decimal);
+  ra8_log_emit_info_val("ZERO", "v", 0U);
+  ra8_log_emit_info_val("MAX", "v", k_log_val_u32_max);
+  ra8_log_emit_debug_val("NEG", "v", (int32_t)-1);
+  ra8_log_emit_debug_val("MIN", "v", (int32_t)(-k_log_val_i32_max - 1));
+  ra8_log_emit_debug_val("POS", "v", (int32_t)k_log_val_positive_decimal);
 
   TEST_END("ra8_log value edge cases");
 }
 
 /**
+ * @brief Verify public logging macros dispatch to the enabled backends.
+ *
+ * @details Invokes every plain and valued macro at DEBUG log level so the
+ * preprocessor surface is checked independently from direct emitter calls.
+ *
+ * @pre RA8_LOG_LEVEL is set to the debug level before including ra8_log.h.
+ * @pre The fake MMIO backend is linked and resettable.
+ * @post Every enabled macro dispatches without a host fault.
+ * @post Both plain and valued macro families are exercised.
+ *
+ * @note Disabled-level no-op expansion is a compile-time configuration path.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_macros(void)
+RA8_INTERNAL static void internal_test_log_macros(void)
 {
   TEST_BEGIN("ra8_log_*_val macros through public header");
   ra8_fake_mmap_reset();
@@ -201,86 +303,156 @@ static void test_log_macros(void)
 }
 
 /**
+ * @brief Verify repeated valued logging remains bounded and safe.
+ *
+ * @details Emits thirty-two consecutive INFO values to exercise repeated
+ * calls and loop-driven caller behavior against the unarmed host backend.
+ *
+ * @pre Logger initialization succeeds on the fake-MMIO backend.
+ * @pre The loop bound remains within the uint32_t fixture range.
+ * @post Exactly thirty-two emitter calls return normally.
+ * @post The Unity case is reported as passed.
+ *
+ * @note This is a repetition/liveness vector, not a timing benchmark.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_many_calls(void)
+RA8_INTERNAL static void internal_test_log_many_calls(void)
 {
   TEST_BEGIN("ra8_log many calls do not crash");
   ra8_fake_mmap_reset();
   ra8_log_init();
   for (uint32_t i = 0U; i < 32U; ++i) {
-    internal_ra8_log_info_val("LOOP", "i", i);
+    ra8_log_emit_info_val("LOOP", "i", i);
   }
   TEST_END("ra8_log many calls do not crash");
 }
 
 /**
+ * @brief Exercise every plain emitter with fake ITM armed.
+ *
+ * @details Arms the fake stimulus registers and calls all four level emitters
+ * so their full tag, level, message, and line-ending paths execute.
+ *
+ * @pre The fake MMIO map is reset and writable.
+ * @pre ::internal_itm_arm programs the production-compatible ready values.
+ * @post All four plain emit paths reach the armed fake ITM registers.
+ * @post No call exceeds its bounded stimulus polling contract.
+ *
+ * @note The fake register stores are the observable host-side sink.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_ready_plain(void)
+RA8_INTERNAL static void internal_test_log_ready_plain(void)
 {
   TEST_BEGIN("ra8_log plain writes walk the ITM path when armed");
   ra8_fake_mmap_reset();
-  test_itm_arm();
-  internal_ra8_log_error("RDY", "error msg");
-  internal_ra8_log_warn("RDY", "warn msg");
-  internal_ra8_log_info("RDY", "info msg");
-  internal_ra8_log_debug("RDY", "debug msg");
+  internal_itm_arm();
+  ra8_log_emit_error("RDY", "error msg");
+  ra8_log_emit_warn("RDY", "warn msg");
+  ra8_log_emit_info("RDY", "info msg");
+  ra8_log_emit_debug("RDY", "debug msg");
   TEST_END("ra8_log plain writes walk the ITM path when armed");
 }
 
 /**
+ * @brief Exercise unsigned valued emitters with fake ITM armed.
+ *
+ * @details Sends zero, all-ones, a mid-width value, and one digit through
+ * the unsigned formatting path while the fake stimulus port is writable.
+ *
+ * @pre The fake MMIO map is reset and armed.
+ * @pre Fixture values cover zero, short, medium, and maximum widths.
+ * @post Both the zero fast path and bounded digit loop execute.
+ * @post ERROR, WARN, and INFO valued level prefixes execute.
+ *
+ * @note Signed formatting is covered by a separate vector.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_ready_val_unsigned(void)
+RA8_INTERNAL static void internal_test_log_ready_val_unsigned(void)
 {
   TEST_BEGIN("ra8_log unsigned-value writes walk the ITM path when armed");
   ra8_fake_mmap_reset();
-  test_itm_arm();
+  internal_itm_arm();
   /* Zero triggers the fast-path inside internal_itm_put_u32. */
-  internal_ra8_log_info_val("RDY", "zero", 0U);
+  ra8_log_emit_info_val("RDY", "zero", 0U);
   /* Non-zero walks the digit loop. */
-  internal_ra8_log_info_val("RDY", "big", k_log_all_ones);
-  internal_ra8_log_error_val("RDY", "mid", k_log_val_mid_decimal);
-  internal_ra8_log_warn_val("RDY", "small", k_log_val_single_digit);
+  ra8_log_emit_info_val("RDY", "big", k_log_all_ones);
+  ra8_log_emit_error_val("RDY", "mid", k_log_val_mid_decimal);
+  ra8_log_emit_warn_val("RDY", "small", k_log_val_single_digit);
   TEST_END("ra8_log unsigned-value writes walk the ITM path when armed");
 }
 
 /**
+ * @brief Exercise signed valued emission with fake ITM armed.
+ *
+ * @details Sends negative, positive, minimum, maximum, and zero int32 values
+ * through the DEBUG valued backend to cover sign and magnitude handling.
+ *
+ * @pre The fake MMIO map is reset and armed.
+ * @pre Fixture casts produce the intended int32_t boundary values.
+ * @post Negative and nonnegative formatting branches execute.
+ * @post INT32_MIN is converted without signed-overflow behavior.
+ *
+ * @note This vector targets decimal conversion rather than level dispatch.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_ready_val_signed(void)
+RA8_INTERNAL static void internal_test_log_ready_val_signed(void)
 {
   TEST_BEGIN("ra8_log signed-value writes walk the ITM path when armed");
   ra8_fake_mmap_reset();
-  test_itm_arm();
-  internal_ra8_log_debug_val("RDY", "neg", (int32_t)-k_log_val_small_signed);
-  internal_ra8_log_debug_val("RDY", "pos", (int32_t)k_log_val_small_signed);
-  internal_ra8_log_debug_val("RDY", "min", (int32_t)(-k_log_val_i32_max - 1));
-  internal_ra8_log_debug_val("RDY", "max", (int32_t)k_log_val_i32_max);
-  internal_ra8_log_debug_val("RDY", "zero", (int32_t)0);
+  internal_itm_arm();
+  ra8_log_emit_debug_val("RDY", "neg", (int32_t)-k_log_val_small_signed);
+  ra8_log_emit_debug_val("RDY", "pos", (int32_t)k_log_val_small_signed);
+  ra8_log_emit_debug_val("RDY", "min", (int32_t)(-k_log_val_i32_max - 1));
+  ra8_log_emit_debug_val("RDY", "max", (int32_t)k_log_val_i32_max);
+  ra8_log_emit_debug_val("RDY", "zero", (int32_t)0);
   TEST_END("ra8_log signed-value writes walk the ITM path when armed");
 }
 
 /**
+ * @brief Verify a cleared ITMENA bit suppresses log emission.
+ *
+ * @details Programs a writable stimulus port but clears TCR.ITMENA, then
+ * emits INFO to exercise the readiness rejection at the first condition.
+ *
+ * @pre The fake MMIO map is reset and writable.
+ * @pre TENR and STIM0 are configured so only TCR blocks readiness.
+ * @post The emitter returns without writing a log byte.
+ * @post The Unity case is reported as passed.
+ *
+ * @note This isolates the TCR half of the readiness predicate.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_ready_tcr_disabled(void)
+RA8_INTERNAL static void internal_test_log_ready_tcr_disabled(void)
 {
   TEST_BEGIN("ra8_log bails out when TCR.ITMENA is clear");
   ra8_fake_mmap_reset();
@@ -288,34 +460,62 @@ static void test_log_ready_tcr_disabled(void)
   *(volatile uint32_t*)k_test_itm_tcr   = 0x00000000UL;
   *(volatile uint32_t*)k_test_itm_tenr  = 0x00000001UL;
   *(volatile uint32_t*)k_test_itm_stim0 = k_log_all_ones;
-  internal_ra8_log_info("OFF", "should drop");
+  ra8_log_emit_info("OFF", "should drop");
   TEST_END("ra8_log bails out when TCR.ITMENA is clear");
 }
 
 /**
+ * @brief Verify a disabled stimulus port suppresses log emission.
+ *
+ * @details Enables TCR and presents writable STIM0 while clearing TENR port
+ * zero, isolating the second readiness qualification before INFO emission.
+ *
+ * @pre The fake MMIO map is reset and writable.
+ * @pre TCR and STIM0 are configured so only TENR blocks readiness.
+ * @post The emitter returns without writing a log byte.
+ * @post The Unity case is reported as passed.
+ *
+ * @note This isolates the TENR half of the readiness predicate.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_ready_tenr_disabled(void)
+RA8_INTERNAL static void internal_test_log_ready_tenr_disabled(void)
 {
   TEST_BEGIN("ra8_log bails out when TENR port 0 is clear");
   ra8_fake_mmap_reset();
   *(volatile uint32_t*)k_test_itm_tcr   = 0x00000001UL;
   *(volatile uint32_t*)k_test_itm_tenr  = 0x00000000UL;
   *(volatile uint32_t*)k_test_itm_stim0 = k_log_all_ones;
-  internal_ra8_log_info("OFF", "should drop");
+  ra8_log_emit_info("OFF", "should drop");
   TEST_END("ra8_log bails out when TENR port 0 is clear");
 }
 
 /**
+ * @brief Verify a full stimulus FIFO causes bounded log-byte dropping.
+ *
+ * @details Enables TCR and TENR but leaves STIM0 at zero, exercising the
+ * bounded unavailable path without hanging the host test.
+ *
+ * @pre The fake MMIO map is reset and writable.
+ * @pre TCR and TENR enable the logger while STIM0 reports no capacity.
+ * @post The attempted INFO line is dropped after bounded readiness checks.
+ * @post The test returns without an unbounded poll.
+ *
+ * @note The production policy deliberately drops bytes when the sink is full.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_log_ready_fifo_full(void)
+RA8_INTERNAL static void internal_test_log_ready_fifo_full(void)
 {
   TEST_BEGIN("ra8_log drops byte when STIM0 is zero for the full poll");
   ra8_fake_mmap_reset();
@@ -324,7 +524,7 @@ static void test_log_ready_fifo_full(void)
   *(volatile uint32_t*)k_test_itm_tcr   = 0x00000001UL;
   *(volatile uint32_t*)k_test_itm_tenr  = 0x00000001UL;
   *(volatile uint32_t*)k_test_itm_stim0 = 0x00000000UL;
-  internal_ra8_log_info("FULL", "should drop");
+  ra8_log_emit_info("FULL", "should drop");
   TEST_END("ra8_log drops byte when STIM0 is zero for the full poll");
 }
 
@@ -395,12 +595,26 @@ static const test_err_entry_t s_all_err_codes[] = {
 };
 
 /**
+ * @brief Verify every declared ra8_err_t value has the expected string.
+ *
+ * @details Walks the complete table of error enumerators and compares each
+ * returned immutable string against the canonical expected spelling.
+ *
+ * @pre ::s_all_err_codes contains each declared error enumerator once.
+ * @pre Every expected text pointer is a valid NUL-terminated string.
+ * @post Every table entry returns a non-NULL string.
+ * @post Every returned string exactly matches its canonical spelling.
+ *
+ * @note The explicit table also documents the public diagnostic vocabulary.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_err_to_str_every_code(void)
+RA8_INTERNAL static void internal_test_err_to_str_every_code(void)
 {
   TEST_BEGIN("ra8_err_to_str covers every enum value");
   ra8_fake_mmap_reset();
@@ -416,12 +630,26 @@ static void test_err_to_str_every_code(void)
 }
 
 /**
+ * @brief Verify out-of-enum errors map to the unknown diagnostic.
+ *
+ * @details Casts a deliberately unused numeric code to ra8_err_t and checks
+ * the default switch result for non-NULL exact text.
+ *
+ * @pre k_log_err_code_unknown is not assigned to a public error enumerator.
+ * @pre ::ra8_err_to_str accepts arbitrary ra8_err_t bit patterns.
+ * @post The returned pointer is non-NULL.
+ * @post The returned text is exactly `unknown`.
+ *
+ * @note This directly covers the switch default rather than a valid code.
+ *
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_err_to_str_unknown_default(void)
+RA8_INTERNAL static void internal_test_err_to_str_unknown_default(void)
 {
   TEST_BEGIN("ra8_err_to_str returns 'unknown' for out-of-enum value");
   ra8_fake_mmap_reset();
@@ -432,12 +660,26 @@ static void test_err_to_str_unknown_default(void)
 }
 
 /**
- * @test test_mcdc_itm_put_u32_loop
+ * @test internal_test_mcdc_itm_put_u32_loop
+ *
+ * @brief Demonstrate MC/DC coverage of the bounded uint32 digit loop.
+ *
+ * @details Emits zero, one, and UINT32_MAX while fake ITM is armed, giving
+ * the condition pairs needed to show independent control of value and bound.
+ *
+ * @pre The fake MMIO map is reset and armed before the three vectors.
+ * @pre k_log_val_u32_max requires the formatter's full ten-digit capacity.
+ * @post The zero vector bypasses the digit loop.
+ * @post The one and maximum vectors exercise value and bound termination.
+ *
+ * @note The structural-bound rationale below explains the within-vector pair.
+ *
+ * @since 0.1.0
  *
  * @par MC/DC:
  * Decision: `while (value != 0U && i < k_ra8_u32_max_digits)`
  * (2 conditions, libs/ra8_core/src/ra8_log.c line 244 -- gap row 148 in CSV)
- * Exercised indirectly via `internal_ra8_log_info_val()` once the ITM
+ * Exercised indirectly via `ra8_log_emit_info_val()` once the ITM
  * is armed so the emit path actually reaches `internal_itm_put_u32()`.
  * - Vector 1: value=0           -> C1=F (early-return path before loop;
  *   loop predicate evaluated zero times so decision F controls entry)
@@ -462,45 +704,45 @@ static void test_err_to_str_unknown_default(void)
  * 6.4.4.3 representative-subset coverage where structural bounds
  * preclude an isolated single-vector demonstration.
  */
-static void test_mcdc_itm_put_u32_loop(void)
+RA8_INTERNAL static void internal_test_mcdc_itm_put_u32_loop(void)
 {
   TEST_BEGIN("ra8_log put_u32 MC/DC: value!=0 && i<max_digits");
   ra8_fake_mmap_reset();
-  test_itm_arm();
+  internal_itm_arm();
   ra8_log_init();
 
   /* Vector 1: value == 0 -> early return path (C1=F at first check). */
-  internal_ra8_log_info_val("V1", "zero", 0U);
+  ra8_log_emit_info_val("V1", "zero", 0U);
 
   /* Vector 2: value == 1 -> single loop iteration (C1=T, C2=T then
    * value becomes 0 so C1 flips to F on the second predicate). */
-  internal_ra8_log_info_val("V2", "one", 1U);
+  ra8_log_emit_info_val("V2", "one", 1U);
 
   /* Vector 3: value == UINT32_MAX -> 10 iterations exhausting the
    * digit budget so C2 transitions T->F at iteration 10 with C1 still
    * T -- proves C2 independently controls loop exit. */
-  internal_ra8_log_info_val("V3", "max", k_log_val_u32_max);
+  ra8_log_emit_info_val("V3", "max", k_log_val_u32_max);
 
   TEST_END("ra8_log put_u32 MC/DC: value!=0 && i<max_digits");
 }
 
 int32_t main(void)
 {
-  test_log_init_runs();
-  test_log_levels_plain();
-  test_log_levels_val();
-  test_log_val_edge_cases();
-  test_log_macros();
-  test_log_many_calls();
-  test_log_ready_plain();
-  test_log_ready_val_unsigned();
-  test_log_ready_val_signed();
-  test_log_ready_tcr_disabled();
-  test_log_ready_tenr_disabled();
-  test_log_ready_fifo_full();
-  test_err_to_str_every_code();
-  test_err_to_str_unknown_default();
-  test_mcdc_itm_put_u32_loop();
-  (void)fprintf(stderr, "[OK  ] test_ra8_log.c\n");
+  internal_test_log_unbound_host_drops();
+  internal_test_log_init_runs();
+  internal_test_log_levels_plain();
+  internal_test_log_levels_val();
+  internal_test_log_val_edge_cases();
+  internal_test_log_macros();
+  internal_test_log_many_calls();
+  internal_test_log_ready_plain();
+  internal_test_log_ready_val_unsigned();
+  internal_test_log_ready_val_signed();
+  internal_test_log_ready_tcr_disabled();
+  internal_test_log_ready_tenr_disabled();
+  internal_test_log_ready_fifo_full();
+  internal_test_err_to_str_every_code();
+  internal_test_err_to_str_unknown_default();
+  internal_test_mcdc_itm_put_u32_loop();
   return 0;
 }
