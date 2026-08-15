@@ -26,7 +26,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "ra8_img_arena.h"
@@ -322,6 +321,5 @@ int32_t main(void)
   test_realloc_non_null_fail();
   test_realloc_zero_oldsz();
   test_realloc_shrink();
-  (void)fprintf(stderr, "[OK ] test_ra8_img_arena_cov.c\n");
   return 0;
 }

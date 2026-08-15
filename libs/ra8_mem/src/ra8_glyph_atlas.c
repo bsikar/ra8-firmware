@@ -58,8 +58,8 @@ static const char* const s_tag = "ra8_glyph_atlas";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_glyph_render(void* ctx, const void* key, uint8_t* cell, uint32_t cell_bytes, void* user)
+RA8_INTERNAL static ra8_err_t
+internal_glyph_render(void* ctx, const void* key, uint8_t* cell, uint32_t cell_bytes, void* user)
 {
   const ra8_glyph_atlas_t* atlas = (const ra8_glyph_atlas_t*)ctx;
   const ra8_glyph_key_t*   gk    = (const ra8_glyph_key_t*)key;
@@ -94,7 +94,7 @@ ra8_err_t ra8_glyph_atlas_init(ra8_glyph_atlas_t* atlas, const ra8_glyph_atlas_c
   kcfg.meta               = cfg->meta;
   kcfg.buckets            = cfg->buckets;
   kcfg.bucket_count       = cfg->bucket_count;
-  kcfg.render             = priv_glyph_render;
+  kcfg.render             = internal_glyph_render;
   kcfg.render_ctx         = atlas;
   return ra8_keycache_init(&atlas->kc, &kcfg);
 }

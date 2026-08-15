@@ -59,8 +59,8 @@ static const char* const s_tag = "ra8_tile_cache";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_tile_decode(void* ctx, const void* key, uint8_t* cell, uint32_t cell_bytes, void* user)
+RA8_INTERNAL static ra8_err_t
+internal_tile_decode(void* ctx, const void* key, uint8_t* cell, uint32_t cell_bytes, void* user)
 {
   const ra8_tile_cache_t* tc   = (const ra8_tile_cache_t*)ctx;
   const ra8_tile_key_t*   tk   = (const ra8_tile_key_t*)key;
@@ -94,7 +94,7 @@ priv_tile_decode(void* ctx, const void* key, uint8_t* cell, uint32_t cell_bytes,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint16_t priv_clamp_tile(uint32_t index, uint16_t count)
+RA8_INTERNAL static uint16_t internal_clamp_tile(uint32_t index, uint16_t count)
 {
   const uint32_t last = (uint32_t)count - 1U;
   return (uint16_t)((index > last) ? last : index);
@@ -121,10 +121,10 @@ ra8_err_t ra8_tile_rect_of_pixels(uint32_t         px,
     ra8_log_error(s_tag, "tile geometry must be non-zero on every axis");
     return k_ra8_err_invalid_arg;
   }
-  out->tx0 = priv_clamp_tile(px / (uint32_t)tile_w, tile_cols);
-  out->ty0 = priv_clamp_tile(py / (uint32_t)tile_h, tile_rows);
-  out->tx1 = priv_clamp_tile(((px + pw) - 1U) / (uint32_t)tile_w, tile_cols);
-  out->ty1 = priv_clamp_tile(((py + ph) - 1U) / (uint32_t)tile_h, tile_rows);
+  out->tx0 = internal_clamp_tile(px / (uint32_t)tile_w, tile_cols);
+  out->ty0 = internal_clamp_tile(py / (uint32_t)tile_h, tile_rows);
+  out->tx1 = internal_clamp_tile(((px + pw) - 1U) / (uint32_t)tile_w, tile_cols);
+  out->ty1 = internal_clamp_tile(((py + ph) - 1U) / (uint32_t)tile_h, tile_rows);
   return k_ra8_ok;
 }
 
@@ -147,7 +147,7 @@ ra8_err_t ra8_tile_cache_init(ra8_tile_cache_t* tc, const ra8_tile_cache_cfg_t* 
   kcfg.meta               = cfg->meta;
   kcfg.buckets            = cfg->buckets;
   kcfg.bucket_count       = cfg->bucket_count;
-  kcfg.render             = priv_tile_decode;
+  kcfg.render             = internal_tile_decode;
   kcfg.render_ctx         = tc;
   return ra8_keycache_init(&tc->kc, &kcfg);
 }
@@ -232,7 +232,7 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_validate_req(const ra8_tile_prefetch_req_t* req)
+RA8_INTERNAL static ra8_err_t internal_validate_req(const ra8_tile_prefetch_req_t* req)
 {
   const ra8_tile_rect_t v = req->view;
   if (v.tx0 > v.tx1) {
@@ -265,7 +265,7 @@ static ra8_err_t priv_validate_req(const ra8_tile_prefetch_req_t* req)
  * @retval true  `*out` holds the run to walk.
  * @retval false Nothing to warm (`*out` is untouched).
  *
- * @pre `req` passed ::priv_validate_req; `out` is writable.
+ * @pre `req` passed ::internal_validate_req; `out` is writable.
  * @pre `req->view` lies inside the tile grid.
  * @post A true return leaves `*out` fully populated.
  * @post No cache or request state is modified.
@@ -274,7 +274,7 @@ static ra8_err_t priv_validate_req(const ra8_tile_prefetch_req_t* req)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_pan_line(const ra8_tile_prefetch_req_t* req, priv_pan_line_t* out)
+RA8_INTERNAL static bool internal_pan_line(const ra8_tile_prefetch_req_t* req, priv_pan_line_t* out)
 {
   const ra8_tile_rect_t v     = req->view;
   const uint16_t        v_run = (uint16_t)((v.ty1 - v.ty0) + 1U);
@@ -335,12 +335,12 @@ ra8_err_t ra8_tile_cache_prefetch_pan(ra8_tile_cache_t*              tc,
   if (out_warmed != nullptr) {
     *out_warmed = 0U;
   }
-  const ra8_err_t verr = priv_validate_req(req);
+  const ra8_err_t verr = internal_validate_req(req);
   if (verr != k_ra8_ok) {
     return verr;
   }
   priv_pan_line_t line = {};
-  if (!priv_pan_line(req, &line)) {
+  if (!internal_pan_line(req, &line)) {
     return k_ra8_ok; /* at an image edge or not panning: nothing to warm */
   }
   const uint16_t cap    = (uint16_t)((line.count < req->max_tiles) ? line.count : req->max_tiles);

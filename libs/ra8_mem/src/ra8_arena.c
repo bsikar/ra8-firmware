@@ -45,7 +45,7 @@ static const char* const s_tag = "ra8_arena";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_is_pow2(uint32_t v)
+RA8_INTERNAL static bool internal_is_pow2(uint32_t v)
 {
   if (v == 0U) {
     return false;
@@ -73,7 +73,7 @@ ra8_err_t ra8_arena_carve(ra8_arena_t* arena, uint32_t bytes, uint32_t align, vo
   if (bytes == 0U) {
     return k_ra8_err_invalid_size;
   }
-  if (!priv_is_pow2(align)) {
+  if (!internal_is_pow2(align)) {
     return k_ra8_err_invalid_arg;
   }
   const uintptr_t cur     = (uintptr_t)arena->base + (uintptr_t)arena->used;

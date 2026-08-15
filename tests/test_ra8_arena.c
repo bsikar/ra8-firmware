@@ -14,7 +14,9 @@
 #include <stdint.h>
 
 #include "ra8_arena.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_log.h"
 #include "unity_minimal.h"
 
 /**
@@ -28,11 +30,22 @@ typedef enum : uint32_t {
 [[gnu::aligned(16)]] static uint8_t s_region[(size_t)k_t_region_bytes];
 
 /**
+ * @brief Verify aligned arena carving, accounting, and no-memory atomicity.
+ * @details Carves two differently aligned extents, checks separation and
+ * remaining capacity, then attempts an oversized carve.
+ * @pre The aligned file-scope arena region is writable.
+ * @pre The region capacity exceeds both successful fixture allocations.
+ * @post Successful extents meet their requested alignments and do not overlap.
+ * @post The rejected oversized carve leaves the remaining count unchanged.
+ * @note The test observes capacity before and after failure to pin failure
+ * atomicity.
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions under test -- carves honour alignment, do not overlap,
  * and shrink the remaining count; an oversized carve returns no_mem)
  */
-static void test_carve_align(void)
+RA8_INTERNAL static void internal_test_carve_align(void)
 {
   TEST_BEGIN("arena carve / align / remaining");
   ra8_arena_t a = {};
@@ -64,11 +77,22 @@ static void test_carve_align(void)
 }
 
 /**
+ * @brief Verify every public arena argument and geometry guard.
+ * @details Exercises null arena, region, output, zero-size, zero-alignment, and
+ * non-power-of-two alignment inputs.
+ * @pre The fixture region is available for the one valid initialization.
+ * @pre The validation calls are independent and may reuse the arena object.
+ * @post Each malformed input returns its documented error category.
+ * @post The final remaining-capacity null guards complete without dereferencing
+ * null.
+ * @note No successful carve is required by this validation-only vector.
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions under test -- each guard is an independent
  * single-condition check)
  */
-static void test_validation(void)
+RA8_INTERNAL static void internal_test_validation(void)
 {
   TEST_BEGIN("arena validation");
   ra8_arena_t a   = {};
@@ -89,10 +113,29 @@ static void test_validation(void)
   TEST_END("arena validation");
 }
 
+/**
+ * @brief Consume one host-test log byte without touching target ITM MMIO.
+ * @details Implements the injected logger sink as an intentional no-op for expected-error vectors.
+ * @param[in] context Unused sink context.
+ * @param[in] byte Unused diagnostic byte emitted by the production path.
+ * @pre The test process owns the logger sink for the suite lifetime.
+ * @pre No vector depends on observing diagnostic text.
+ * @post No memory, descriptor, or hardware state is modified.
+ * @post Control returns to the production logger immediately.
+ * @note Installing this sink keeps sanitizer runs away from the target-only ITM address window.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_log_sink(void* context, uint8_t byte)
+{
+  (void)context;
+  (void)byte;
+}
+
 int32_t main(void)
 {
-  test_carve_align();
-  test_validation();
-  (void)fprintf(stderr, "[OK  ] test_ra8_arena.c\n");
+  ra8_log_set_byte_sink(internal_host_log_sink, nullptr);
+  internal_test_carve_align();
+  internal_test_validation();
+  ra8_log_set_byte_sink(nullptr, nullptr);
   return 0;
 }
