@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -433,11 +434,11 @@ static void test_rabook_cov_set_metadata_failed(void)
  * @brief finalize rejects a layout whose 64-bit total overflows 32-bit offsets.
  *
  * @par MC/DC:
- * The `total > (uint64_t)UINT32_MAX` guard in s_compute_layout is a single
+ * The `total > (uint64_t)UINT32_MAX` guard in internal_compute_layout is a single
  * relational condition. A hand-built context (mirroring the empty-body test's
  * white-box construction) sets `string_size` and `image_pool_size` to
  * 0xFFFFFFFF each so the computed total is ~8.6 GiB; the guard takes its true
- * arm, s_compute_layout returns @ref k_ra8_err_invalid_size, and finalize
+ * arm, internal_compute_layout returns @ref k_ra8_err_invalid_size, and finalize
  * propagates it. No blob is written (finalize returns before s_write_blob), so
  * the oversized counts never touch the real, small arenas.
  */
@@ -498,7 +499,7 @@ static void test_rabook_cov_finalize_out_cap(void)
  * @post The byte is discarded.
  * @note Not thread-safe (host single-thread test driver).
  */
-static void s_log_sink(void* ctx, uint8_t byte)
+RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   (void)byte;
@@ -506,7 +507,7 @@ static void s_log_sink(void* ctx, uint8_t byte)
 
 int32_t main(void)
 {
-  ra8_log_set_byte_sink(s_log_sink, nullptr);
+  ra8_log_set_byte_sink(internal_log_sink, nullptr);
   test_rabook_cov_null_ctx();
   test_rabook_cov_intern_errors();
   test_rabook_cov_add_element_errors();

@@ -50,6 +50,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "miniz.h"
 #include "ra8_book.h"
 #include "ra8_epub.h"
@@ -738,7 +739,7 @@ static void test_streamed_compile_corrupt_fat(void)
  * @post The byte is discarded.
  * @note Not thread-safe (host single-thread test driver).
  */
-static void s_log_sink(void* ctx, uint8_t byte)
+RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   (void)byte;
@@ -746,7 +747,7 @@ static void s_log_sink(void* ctx, uint8_t byte)
 
 int32_t main(void)
 {
-  ra8_log_set_byte_sink(s_log_sink, nullptr);
+  ra8_log_set_byte_sink(internal_log_sink, nullptr);
   test_streamed_compile_matches_desktop_golden();
   test_streamed_compile_bounded_high_water();
   test_streamed_adapter_guards();

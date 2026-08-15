@@ -121,7 +121,7 @@ ra8_err_t ra8_unarch_tar_open(ra8_unarch_tar_t*          t,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_read_block(const ra8_unarch_tar_t* t, uint64_t off, uint8_t* block)
+static ra8_err_t internal_read_block(const ra8_unarch_tar_t* t, uint64_t off, uint8_t* block)
 {
   const uint64_t need = (uint64_t)k_ra8_unarch_tar_block;
   if (off > (t->size - need)) {
@@ -153,7 +153,7 @@ static ra8_err_t s_read_block(const ra8_unarch_tar_t* t, uint64_t off, uint8_t* 
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_next_off(uint64_t off, uint64_t dsize, uint64_t* next)
+static ra8_err_t internal_next_off(uint64_t off, uint64_t dsize, uint64_t* next)
 {
   const uint64_t blk = (uint64_t)k_ra8_unarch_tar_block;
   if (dsize > (UINT64_MAX - (blk - 1U))) {
@@ -175,7 +175,7 @@ static ra8_err_t s_next_off(uint64_t off, uint64_t dsize, uint64_t* next)
  * @var s_tar_meta_scratch
  * @brief File-scope scratch for one pax / GNU-longname meta data area.
  * @details Sized to ::k_ra8_unarch_tar_pax_max. Held here rather than on the
- *          stack so s_meta_consume keeps its frame under the 2 KiB first-party
+ *          stack so internal_meta_consume keeps its frame under the 2 KiB first-party
  *          budget; only the freshly-read `dsize` bytes are ever consumed, so no
  *          per-call clear is needed.
  * @note Not thread-safe; the tar walker is single-threaded and non-reentrant
@@ -208,11 +208,11 @@ static uint8_t s_tar_meta_scratch[k_ra8_unarch_tar_pax_max];
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_meta_consume(const ra8_unarch_tar_t* t,
-                                ra8_tar_type_t          type,
-                                uint64_t                doff,
-                                uint64_t                dsize,
-                                tar_meta_t*             meta)
+static ra8_err_t internal_meta_consume(const ra8_unarch_tar_t* t,
+                                       ra8_tar_type_t          type,
+                                       uint64_t                doff,
+                                       uint64_t                dsize,
+                                       tar_meta_t*             meta)
 {
   if (dsize > (uint64_t)k_ra8_unarch_tar_pax_max) {
     return k_ra8_err_validation_failed; /* meta flood: reject the member */
@@ -264,7 +264,7 @@ static ra8_err_t s_meta_consume(const ra8_unarch_tar_t* t,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static void s_ustar_name(const uint8_t* block, tar_meta_t* meta)
+static void internal_ustar_name(const uint8_t* block, tar_meta_t* meta)
 {
   const void*  nz    = memchr(&block[k_ra8_tar_off_name], 0, (size_t)k_ra8_tar_len_name);
   const size_t n_len = (nz != nullptr) ? (size_t)((const uint8_t*)nz - &block[k_ra8_tar_off_name])
@@ -305,7 +305,7 @@ static void s_ustar_name(const uint8_t* block, tar_meta_t* meta)
  * @return ra8_err_t status.
  * @retval k_ra8_ok                    Header decoded.
  * @retval k_ra8_err_validation_failed Checksum / magic / size failure.
- * @pre @p block is a full block read by ::s_read_block.
+ * @pre @p block is a full block read by ::internal_read_block.
  * @pre The out-pointers are caller-owned locals.
  * @post On k_ra8_ok every output is populated.
  * @post On any error the member must be rejected.
@@ -313,11 +313,11 @@ static void s_ustar_name(const uint8_t* block, tar_meta_t* meta)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_decode_header(const uint8_t*  block,
-                                 uint64_t        off,
-                                 ra8_tar_type_t* type,
-                                 uint64_t*       dsize,
-                                 uint64_t*       next)
+static ra8_err_t internal_decode_header(const uint8_t*  block,
+                                        uint64_t        off,
+                                        ra8_tar_type_t* type,
+                                        uint64_t*       dsize,
+                                        uint64_t*       next)
 {
   if (!ra8_unarch_tar_checksum_ok(block)) {
     return k_ra8_err_validation_failed;
@@ -331,7 +331,7 @@ static ra8_err_t s_decode_header(const uint8_t*  block,
     return serr;
   }
   *type = ra8_unarch_tar_classify(block[k_ra8_tar_off_type]);
-  return s_next_off(off, *dsize, next);
+  return internal_next_off(off, *dsize, next);
 }
 
 /**
@@ -354,7 +354,7 @@ static ra8_err_t s_decode_header(const uint8_t*  block,
  *                                     or the advance would wrap.
  * @retval k_ra8_err_decomp_output_cap The member exceeds the policy cap.
  * @retval k_ra8_err_decomp_entries    The entry budget is exhausted.
- * @pre @p block passed ::s_decode_header.
+ * @pre @p block passed ::internal_decode_header.
  * @pre @p out was zeroed by the caller.
  * @post On k_ra8_ok, `out->next_off > off`.
  * @post On any error @p out is re-zeroed by the caller's error path.
@@ -362,20 +362,20 @@ static ra8_err_t s_decode_header(const uint8_t*  block,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_finish_member(ra8_unarch_tar_t*       t,
-                                 const uint8_t*          block,
-                                 uint64_t                off,
-                                 ra8_tar_type_t          type,
-                                 uint64_t                dsize,
-                                 tar_meta_t*             meta,
-                                 ra8_unarch_tar_entry_t* out)
+static ra8_err_t internal_finish_member(ra8_unarch_tar_t*       t,
+                                        const uint8_t*          block,
+                                        uint64_t                off,
+                                        ra8_tar_type_t          type,
+                                        uint64_t                dsize,
+                                        tar_meta_t*             meta,
+                                        ra8_unarch_tar_entry_t* out)
 {
   uint64_t msize = dsize;
   if (meta->have_size) {
     msize = meta->size_ovr; /* pax size record overrides the header field */
   }
   uint64_t        next = 0U;
-  const ra8_err_t aerr = s_next_off(off, msize, &next);
+  const ra8_err_t aerr = internal_next_off(off, msize, &next);
   if (aerr != k_ra8_ok) {
     return aerr;
   }
@@ -392,7 +392,7 @@ static ra8_err_t s_finish_member(ra8_unarch_tar_t*       t,
     return eerr;
   }
   if (!meta->have_path) {
-    s_ustar_name(block, meta);
+    internal_ustar_name(block, meta);
   }
   out->data_off = doff;
   out->size     = msize;
@@ -429,7 +429,7 @@ ra8_err_t ra8_unarch_tar_next(ra8_unarch_tar_t*       t,
       return k_ra8_err_not_found; /* clean EOF without an end marker */
     }
     uint8_t         block[k_ra8_unarch_tar_block] = {};
-    const ra8_err_t rerr                          = s_read_block(t, cur, block);
+    const ra8_err_t rerr                          = internal_read_block(t, cur, block);
     if (rerr != k_ra8_ok) {
       return rerr;
     }
@@ -439,7 +439,7 @@ ra8_err_t ra8_unarch_tar_next(ra8_unarch_tar_t*       t,
     ra8_tar_type_t  type  = k_ra8_tar_type_other;
     uint64_t        dsize = 0U;
     uint64_t        next  = 0U;
-    const ra8_err_t herr  = s_decode_header(block, cur, &type, &dsize, &next);
+    const ra8_err_t herr  = internal_decode_header(block, cur, &type, &dsize, &next);
     if (herr != k_ra8_ok) {
       return herr;
     }
@@ -448,7 +448,7 @@ ra8_err_t ra8_unarch_tar_next(ra8_unarch_tar_t*       t,
       if (dsize > (t->size - doff)) {
         return k_ra8_err_validation_failed; /* meta data overruns archive */
       }
-      const ra8_err_t merr = s_meta_consume(t, type, doff, dsize, &meta);
+      const ra8_err_t merr = internal_meta_consume(t, type, doff, dsize, &meta);
       if (merr != k_ra8_ok) {
         return merr;
       }
@@ -459,7 +459,7 @@ ra8_err_t ra8_unarch_tar_next(ra8_unarch_tar_t*       t,
       cur = next; /* skipped meta ('g' global, 'K' longlink) */
       continue;
     }
-    const ra8_err_t ferr = s_finish_member(t, block, cur, type, dsize, &meta, out);
+    const ra8_err_t ferr = internal_finish_member(t, block, cur, type, dsize, &meta, out);
     if (ferr != k_ra8_ok) {
       *out = (ra8_unarch_tar_entry_t){};
       return ferr;

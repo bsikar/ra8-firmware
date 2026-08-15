@@ -48,7 +48,7 @@
 /**
  * @enum ra8_xhtml_limits_t
  * @brief Static bounds for the iterative DFS to satisfy NASA Rule 2.
- * @details Every turn of @ref s_walk_body_subtree pops one frame and pushes at
+ * @details Every turn of @ref internal_walk_body_subtree pops one frame and pushes at
  *          most two (next_sibling, then first_child), so the stack grows by one
  *          frame only where the walk descends into a first_child whose parent
  *          also had a next_sibling.  A pure sibling step is net zero: it pops
@@ -123,7 +123,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-const XMLElement* s_find_body(const XMLDocument& doc)
+RA8_INTERNAL static const XMLElement* internal_find_body(const XMLDocument& doc)
 {
   const XMLElement* root = doc.RootElement();
   if (root == nullptr) {
@@ -159,7 +159,8 @@ const XMLElement* s_find_body(const XMLDocument& doc)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-uint16_t s_collect_attrs(const XMLElement* elem, ra8_rabook_ctx_t* ctx, ra8_book_attr_t* out)
+RA8_INTERNAL static uint16_t
+internal_collect_attrs(const XMLElement* elem, ra8_rabook_ctx_t* ctx, ra8_book_attr_t* out)
 {
   uint16_t            count = 0U;
   const XMLAttribute* a     = elem->FirstAttribute();
@@ -195,12 +196,12 @@ uint16_t s_collect_attrs(const XMLElement* elem, ra8_rabook_ctx_t* ctx, ra8_book
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-uint32_t s_emit_node(ra8_rabook_ctx_t* ctx, const XMLNode* node)
+RA8_INTERNAL static uint32_t internal_emit_node(ra8_rabook_ctx_t* ctx, const XMLNode* node)
 {
   const XMLElement* elem = node->ToElement();
   if (elem != nullptr) {
     ra8_book_attr_t attrs[k_xhtml_max_attrs] = {};
-    const uint16_t  ac                       = s_collect_attrs(elem, ctx, attrs);
+    const uint16_t  ac                       = internal_collect_attrs(elem, ctx, attrs);
     return ra8_rabook_add_element(ctx, ra8_rabook_intern(ctx, elem->Name()), attrs, ac);
   }
 
@@ -243,11 +244,11 @@ uint32_t s_emit_node(ra8_rabook_ctx_t* ctx, const XMLNode* node)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-uint16_t s_push_frame(ra8_xhtml_frame_t* stack,
-                      uint16_t           top,
-                      const XMLNode*     node,
-                      uint32_t           parent_idx,
-                      uint32_t           prev_sib_idx)
+RA8_INTERNAL static uint16_t internal_push_frame(ra8_xhtml_frame_t* stack,
+                                                 uint16_t           top,
+                                                 const XMLNode*     node,
+                                                 uint32_t           parent_idx,
+                                                 uint32_t           prev_sib_idx)
 {
   // mcdc-deactivated: DO-178C 6.4.4.3 -- C2 (top < k_xhtml_max_stack) is invariantly true. Each turn of the walk pops one frame and pushes at most two, so the stack grows only where the DFS descends into a first_child whose parent also had a next_sibling; a sibling step is net zero. The high-water mark is therefore the node-depth of the deepest node measured from `<body>` (depth + 1), NOT 2 * depth. tinyxml2 aborts the parse once nesting reaches TINYXML2_MAX_ELEMENT_DEPTH -- 500 in the vendored 11.0.0 snapshot, not the 100 this rationale claimed before #625 -- so the deepest node it admits is at absolute depth 499 and `<body>` occupies absolute depth >= 1, bounding top at 499 - 1 = 498 < k_xhtml_max_stack (512). The bound is measured, not asserted: test_deep_at_tinyxml2_cap compiles the deepest document tinyxml2 accepts in the shape that maximises the stack (top == 498) and checks all 996 nodes are emitted, and test_deep_beyond_tinyxml2_cap confirms one level deeper is rejected by the parser, so the shim reports an error instead of truncating. The static_assert on ra8_xhtml_limits_t binds this premise to the vendored constant, failing the build if a re-vendor raises the cap. C1 (node != nullptr) is the live condition and both its arms are covered.
   if (node != nullptr && top < (uint16_t)k_xhtml_max_stack) {
@@ -260,7 +261,7 @@ uint16_t s_push_frame(ra8_xhtml_frame_t* stack,
 /**
  * @brief Walk @p body's subtree in DFS pre-order, building the chapter DOM.
  * @details Iterative (NASA Rule 1: no recursion) pre-order walk over an explicit
- *          frame stack.  Each popped node is emitted via @ref s_emit_node, linked
+ *          frame stack.  Each popped node is emitted via @ref internal_emit_node, linked
  *          into its parent / preceding-sibling chain, then its next_sibling is
  *          pushed before its first_child so first_child is popped first (correct
  *          left-to-right pre-order).
@@ -274,15 +275,16 @@ uint16_t s_push_frame(ra8_xhtml_frame_t* stack,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-void s_walk_body_subtree(ra8_rabook_ctx_t* ctx, const XMLElement* body, uint32_t chapter_root)
+RA8_INTERNAL static void
+internal_walk_body_subtree(ra8_rabook_ctx_t* ctx, const XMLElement* body, uint32_t chapter_root)
 {
   ra8_xhtml_frame_t stack[k_xhtml_max_stack] = {};
   uint16_t          top                      = 0U;
-  top = s_push_frame(stack, top, body->FirstChild(), chapter_root, k_ra8_book_nil);
+  top = internal_push_frame(stack, top, body->FirstChild(), chapter_root, k_ra8_book_nil);
 
   while (top > 0U) {
     const ra8_xhtml_frame_t frame   = stack[--top];
-    const uint32_t          new_idx = s_emit_node(ctx, frame.node);
+    const uint32_t          new_idx = internal_emit_node(ctx, frame.node);
 
     if (new_idx != k_ra8_book_nil) {
       /* Link into the parent's child list or the preceding sibling chain. */
@@ -297,11 +299,11 @@ void s_walk_body_subtree(ra8_rabook_ctx_t* ctx, const XMLElement* body, uint32_t
     const uint32_t sib_prev = (new_idx != k_ra8_book_nil) ? new_idx : frame.prev_sib_idx;
 
     /* Push next_sibling BEFORE first_child (LIFO: first_child popped first). */
-    top = s_push_frame(stack, top, frame.node->NextSibling(), frame.parent_idx, sib_prev);
+    top = internal_push_frame(stack, top, frame.node->NextSibling(), frame.parent_idx, sib_prev);
 
     const XMLElement* elem = frame.node->ToElement();
     if (elem != nullptr && new_idx != k_ra8_book_nil) {
-      top = s_push_frame(stack, top, elem->FirstChild(), new_idx, k_ra8_book_nil);
+      top = internal_push_frame(stack, top, elem->FirstChild(), new_idx, k_ra8_book_nil);
     }
   }
 }
@@ -324,10 +326,10 @@ void s_walk_body_subtree(ra8_rabook_ctx_t* ctx, const XMLElement* body, uint32_t
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-ra8_err_t s_check_parse_args(const uint8_t*          xhtml_bytes,
-                             const ra8_rabook_ctx_t* ctx,
-                             const char*             chapter_href,
-                             const char*             chapter_title)
+RA8_INTERNAL static ra8_err_t internal_check_parse_args(const uint8_t*          xhtml_bytes,
+                                                        const ra8_rabook_ctx_t* ctx,
+                                                        const char*             chapter_href,
+                                                        const char*             chapter_title)
 {
   RA8_CHECK_NULL_PTR(xhtml_bytes, s_tag, "xhtml_bytes");
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
@@ -351,7 +353,8 @@ ra8_err_t ra8_rabook_xml_parse_chapter(const uint8_t*    xhtml_bytes,
                                        const char*       chapter_href,
                                        const char*       chapter_title)
 {
-  const ra8_err_t arg_err = s_check_parse_args(xhtml_bytes, ctx, chapter_href, chapter_title);
+  const ra8_err_t arg_err =
+    internal_check_parse_args(xhtml_bytes, ctx, chapter_href, chapter_title);
   if (arg_err != k_ra8_ok) {
     return arg_err;
   }
@@ -369,7 +372,7 @@ ra8_err_t ra8_rabook_xml_parse_chapter(const uint8_t*    xhtml_bytes,
     return k_ra8_err_no_mem;
   }
 
-  const tinyxml2::XMLElement* body = s_find_body(doc);
+  const tinyxml2::XMLElement* body = internal_find_body(doc);
   if (body == nullptr) {
     ra8_log_error(s_tag, "no root element in XHTML");
     return k_ra8_err_no_mem;
@@ -377,11 +380,11 @@ ra8_err_t ra8_rabook_xml_parse_chapter(const uint8_t*    xhtml_bytes,
 
   /* Add the <body> element as the chapter root, then walk its subtree. */
   ra8_book_attr_t body_attrs[k_xhtml_max_attrs] = {};
-  const uint16_t  body_ac                       = s_collect_attrs(body, ctx, body_attrs);
+  const uint16_t  body_ac                       = internal_collect_attrs(body, ctx, body_attrs);
   const uint32_t  chapter_root =
     ra8_rabook_add_element(ctx, ra8_rabook_intern(ctx, body->Name()), body_attrs, body_ac);
 
-  s_walk_body_subtree(ctx, body, chapter_root);
+  internal_walk_body_subtree(ctx, body, chapter_root);
 
   const uint32_t title_off   = ra8_rabook_intern(ctx, chapter_title);
   const uint32_t href_off    = ra8_rabook_intern(ctx, chapter_href);

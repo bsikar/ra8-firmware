@@ -131,7 +131,7 @@ typedef enum : uint8_t {
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static uint16_t s_le16(const uint8_t* p)
+static uint16_t internal_le16(const uint8_t* p)
 {
   uint16_t v = 0U;
   (void)memcpy(&v, p, sizeof(v));
@@ -153,7 +153,7 @@ static uint16_t s_le16(const uint8_t* p)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static uint32_t s_le32(const uint8_t* p)
+static uint32_t internal_le32(const uint8_t* p)
 {
   uint32_t v = 0U;
   (void)memcpy(&v, p, sizeof(v));
@@ -184,7 +184,7 @@ static uint32_t s_le32(const uint8_t* p)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static bool s_vint(const uint8_t* buf, size_t len, size_t* pos, uint64_t* val)
+static bool internal_vint(const uint8_t* buf, size_t len, size_t* pos, uint64_t* val)
 {
   uint32_t       words[2] = {0U, 0U}; /* [0] = low 32 bits, [1] = high 32 bits */
   uint32_t       shift    = 0U;
@@ -237,14 +237,14 @@ static bool s_vint(const uint8_t* buf, size_t len, size_t* pos, uint64_t* val)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static uint16_t s_copy_name(const ra8_rar_t* rar,
-                            uint64_t         name_abs,
-                            const uint8_t*   scratch,
-                            size_t           n,
-                            size_t           in_pos,
-                            uint64_t         name_len,
-                            char*            name_buf,
-                            uint16_t         name_cap)
+static uint16_t internal_copy_name(const ra8_rar_t* rar,
+                                   uint64_t         name_abs,
+                                   const uint8_t*   scratch,
+                                   size_t           n,
+                                   size_t           in_pos,
+                                   uint64_t         name_len,
+                                   char*            name_buf,
+                                   uint16_t         name_cap)
 {
   if (name_buf == nullptr) {
     return 0U;
@@ -287,29 +287,29 @@ static uint16_t s_copy_name(const ra8_rar_t* rar,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static bool s_rar4_file(const ra8_rar_t* rar,
-                        uint64_t         off,
-                        const uint8_t*   scratch,
-                        size_t           n,
-                        uint16_t         flags,
-                        uint16_t         hsize,
-                        char*            nbuf,
-                        uint16_t         ncap,
-                        ra8_rar_entry_t* out)
+static bool internal_rar4_file(const ra8_rar_t* rar,
+                               uint64_t         off,
+                               const uint8_t*   scratch,
+                               size_t           n,
+                               uint16_t         flags,
+                               uint16_t         hsize,
+                               char*            nbuf,
+                               uint16_t         ncap,
+                               ra8_rar_entry_t* out)
 {
   const bool   large   = (flags & (uint16_t)k_rar4_flag_large) != 0U;
   const size_t needfix = large ? (size_t)k_rar4_off_name_large : (size_t)k_rar4_off_name;
   if (n < needfix) {
     return false;
   }
-  uint64_t       pack   = (uint64_t)s_le32(&scratch[k_rar4_off_add]);
-  uint64_t       unp    = (uint64_t)s_le32(&scratch[k_rar4_off_unp]);
+  uint64_t       pack   = (uint64_t)internal_le32(&scratch[k_rar4_off_add]);
+  uint64_t       unp    = (uint64_t)internal_le32(&scratch[k_rar4_off_unp]);
   const uint8_t  method = scratch[k_rar4_off_method];
-  const uint16_t namesz = s_le16(&scratch[k_rar4_off_namesz]);
+  const uint16_t namesz = internal_le16(&scratch[k_rar4_off_namesz]);
   size_t         pos    = (size_t)k_rar4_off_name;
   if (large) {
-    pack |= (uint64_t)s_le32(&scratch[k_rar4_off_name]) << (uint32_t)k_rar_hi_sh;
-    unp |= (uint64_t)s_le32(&scratch[(size_t)k_rar4_off_name + (size_t)k_rar_w32])
+    pack |= (uint64_t)internal_le32(&scratch[k_rar4_off_name]) << (uint32_t)k_rar_hi_sh;
+    unp |= (uint64_t)internal_le32(&scratch[(size_t)k_rar4_off_name + (size_t)k_rar_w32])
            << (uint32_t)k_rar_hi_sh;
     pos = (size_t)k_rar4_off_name_large;
   }
@@ -322,14 +322,14 @@ static bool s_rar4_file(const ra8_rar_t* rar,
   out->data_off  = off + (uint64_t)hsize;
   out->next_off  = off + (uint64_t)hsize + pack;
   out->name_len =
-    s_copy_name(rar, off + (uint64_t)pos, scratch, n, pos, (uint64_t)namesz, nbuf, ncap);
+    internal_copy_name(rar, off + (uint64_t)pos, scratch, n, pos, (uint64_t)namesz, nbuf, ncap);
   return true;
 }
 
 /**
  * @brief Walk one RAR4 block at @p off.
  * @details Reads the fixed 7-byte base header (plus ADD_SIZE when the LONG flag is
- *          set), then dispatches file blocks to ::s_rar4_file and treats every
+ *          set), then dispatches file blocks to ::internal_rar4_file and treats every
  *          other block type as a skip (data-less unless LONG). Guarantees a
  *          strictly advancing `next_off`.
  * @param[in]  rar  Bound archive.
@@ -348,8 +348,11 @@ static bool s_rar4_file(const ra8_rar_t* rar,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-s_rar4_block(const ra8_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra8_rar_entry_t* out)
+static ra8_err_t internal_rar4_block(const ra8_rar_t* rar,
+                                     uint64_t         off,
+                                     char*            nbuf,
+                                     uint16_t         ncap,
+                                     ra8_rar_entry_t* out)
 {
   uint8_t      scratch[k_ra8_rar_hdr_scratch] = {};
   const size_t n                              = rar->read(rar->ctx, off, scratch, sizeof(scratch));
@@ -357,8 +360,8 @@ s_rar4_block(const ra8_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra8_
     return k_ra8_err_validation_failed;
   }
   const uint8_t  type  = scratch[k_rar4_off_type];
-  const uint16_t flags = s_le16(&scratch[k_rar4_off_flags]);
-  const uint16_t hsize = s_le16(&scratch[k_rar4_off_size]);
+  const uint16_t flags = internal_le16(&scratch[k_rar4_off_flags]);
+  const uint16_t hsize = internal_le16(&scratch[k_rar4_off_size]);
   if (hsize < (uint16_t)k_rar4_base_len) {
     return k_ra8_err_validation_failed;
   }
@@ -366,11 +369,11 @@ s_rar4_block(const ra8_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra8_
   uint64_t   add    = 0U;
   if (islong) {
     if (n >= ((size_t)k_rar4_off_add + (size_t)k_rar_w32)) {
-      add = (uint64_t)s_le32(&scratch[k_rar4_off_add]);
+      add = (uint64_t)internal_le32(&scratch[k_rar4_off_add]);
     }
   }
   if (type == (uint8_t)k_rar4_type_file) {
-    if (!s_rar4_file(rar, off, scratch, n, flags, hsize, nbuf, ncap, out)) {
+    if (!internal_rar4_file(rar, off, scratch, n, flags, hsize, nbuf, ncap, out)) {
       return k_ra8_err_validation_failed;
     }
   } else {
@@ -407,23 +410,23 @@ s_rar4_block(const ra8_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra8_
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static bool s_rar5_file_vints(const uint8_t* scratch,
-                              size_t         n,
-                              size_t*        pos,
-                              uint64_t*      fflags,
-                              uint64_t*      unp,
-                              uint64_t*      cinfo,
-                              uint64_t*      namesz)
+static bool internal_rar5_file_vints(const uint8_t* scratch,
+                                     size_t         n,
+                                     size_t*        pos,
+                                     uint64_t*      fflags,
+                                     uint64_t*      unp,
+                                     uint64_t*      cinfo,
+                                     uint64_t*      namesz)
 {
   uint64_t attr   = 0U;
   uint64_t hostos = 0U;
-  if (!s_vint(scratch, n, pos, fflags)) {
+  if (!internal_vint(scratch, n, pos, fflags)) {
     return false;
   }
-  if (!s_vint(scratch, n, pos, unp)) {
+  if (!internal_vint(scratch, n, pos, unp)) {
     return false;
   }
-  if (!s_vint(scratch, n, pos, &attr)) {
+  if (!internal_vint(scratch, n, pos, &attr)) {
     return false;
   }
   if ((*fflags & (uint64_t)k_rar5_fflag_mtime) != 0U) {
@@ -432,13 +435,13 @@ static bool s_rar5_file_vints(const uint8_t* scratch,
   if ((*fflags & (uint64_t)k_rar5_fflag_crc) != 0U) {
     *pos += (size_t)k_rar5_fixed_field;
   }
-  if (!s_vint(scratch, n, pos, cinfo)) {
+  if (!internal_vint(scratch, n, pos, cinfo)) {
     return false;
   }
-  if (!s_vint(scratch, n, pos, &hostos)) {
+  if (!internal_vint(scratch, n, pos, &hostos)) {
     return false;
   }
-  if (!s_vint(scratch, n, pos, namesz)) {
+  if (!internal_vint(scratch, n, pos, namesz)) {
     return false;
   }
   (void)attr;   /* decoded to advance the vint stream; value unused here */
@@ -474,22 +477,22 @@ static bool s_rar5_file_vints(const uint8_t* scratch,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static bool s_rar5_file(const ra8_rar_t* rar,
-                        uint64_t         off,
-                        const uint8_t*   scratch,
-                        size_t           n,
-                        size_t           pos,
-                        uint64_t         data_off,
-                        uint64_t         dsize,
-                        char*            nbuf,
-                        uint16_t         ncap,
-                        ra8_rar_entry_t* out)
+static bool internal_rar5_file(const ra8_rar_t* rar,
+                               uint64_t         off,
+                               const uint8_t*   scratch,
+                               size_t           n,
+                               size_t           pos,
+                               uint64_t         data_off,
+                               uint64_t         dsize,
+                               char*            nbuf,
+                               uint16_t         ncap,
+                               ra8_rar_entry_t* out)
 {
   uint64_t fflags = 0U;
   uint64_t unp    = 0U;
   uint64_t cinfo  = 0U;
   uint64_t namesz = 0U;
-  if (!s_rar5_file_vints(scratch, n, &pos, &fflags, &unp, &cinfo, &namesz)) {
+  if (!internal_rar5_file_vints(scratch, n, &pos, &fflags, &unp, &cinfo, &namesz)) {
     return false;
   }
   const uint8_t method =
@@ -501,7 +504,7 @@ static bool s_rar5_file(const ra8_rar_t* rar,
   out->unp_size  = unp;
   out->pack_size = dsize;
   out->data_off  = data_off;
-  out->name_len  = s_copy_name(rar, off + (uint64_t)pos, scratch, n, pos, namesz, nbuf, ncap);
+  out->name_len = internal_copy_name(rar, off + (uint64_t)pos, scratch, n, pos, namesz, nbuf, ncap);
   return true;
 }
 
@@ -509,7 +512,7 @@ static bool s_rar5_file(const ra8_rar_t* rar,
  * @brief Walk one RAR5 block at @p off.
  * @details Decodes CRC + header-size vint (which fixes the data-area and
  *          next-block offsets), then the header type/flags and the optional
- *          extra-area-size / data-size vints; file blocks go to ::s_rar5_file, all
+ *          extra-area-size / data-size vints; file blocks go to ::internal_rar5_file, all
  *          others are skipped with a valid `next_off`.
  * @param[in]  rar  Bound archive.
  * @param[in]  off  Block offset (`< rar->size`).
@@ -527,41 +530,44 @@ static bool s_rar5_file(const ra8_rar_t* rar,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-s_rar5_block(const ra8_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra8_rar_entry_t* out)
+static ra8_err_t internal_rar5_block(const ra8_rar_t* rar,
+                                     uint64_t         off,
+                                     char*            nbuf,
+                                     uint16_t         ncap,
+                                     ra8_rar_entry_t* out)
 {
   uint8_t      scratch[k_ra8_rar_hdr_scratch] = {};
   const size_t n                              = rar->read(rar->ctx, off, scratch, sizeof(scratch));
   size_t       pos   = (size_t)k_rar_w32; /* skip the 4-byte header CRC32 */
   uint64_t     hsize = 0U;
-  if (!s_vint(scratch, n, &pos, &hsize)) {
+  if (!internal_vint(scratch, n, &pos, &hsize)) {
     return k_ra8_err_validation_failed;
   }
   const uint64_t data_off = off + (uint64_t)pos + hsize; /* header data ends here */
   uint64_t       htype    = 0U;
   uint64_t       hflags   = 0U;
-  if (!s_vint(scratch, n, &pos, &htype)) {
+  if (!internal_vint(scratch, n, &pos, &htype)) {
     return k_ra8_err_validation_failed;
   }
-  if (!s_vint(scratch, n, &pos, &hflags)) {
+  if (!internal_vint(scratch, n, &pos, &hflags)) {
     return k_ra8_err_validation_failed;
   }
   uint64_t extra = 0U;
   if ((hflags & (uint64_t)k_rar5_hflag_extra) != 0U) {
-    if (!s_vint(scratch, n, &pos, &extra)) {
+    if (!internal_vint(scratch, n, &pos, &extra)) {
       return k_ra8_err_validation_failed;
     }
   }
   (void)extra; /* extra-area length is skipped via the header-size vint */
   uint64_t dsize = 0U;
   if ((hflags & (uint64_t)k_rar5_hflag_data) != 0U) {
-    if (!s_vint(scratch, n, &pos, &dsize)) {
+    if (!internal_vint(scratch, n, &pos, &dsize)) {
       return k_ra8_err_validation_failed;
     }
   }
   out->next_off = data_off + dsize;
   if (htype == (uint64_t)k_rar5_type_file) {
-    if (!s_rar5_file(rar, off, scratch, n, pos, data_off, dsize, nbuf, ncap, out)) {
+    if (!internal_rar5_file(rar, off, scratch, n, pos, data_off, dsize, nbuf, ncap, out)) {
       return k_ra8_err_validation_failed;
     }
   }
@@ -592,7 +598,7 @@ s_rar5_block(const ra8_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra8_
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static void s_rar_match_signature(const uint8_t* hdr, size_t got, ra8_rar_t* rar)
+static void internal_rar_match_signature(const uint8_t* hdr, size_t got, ra8_rar_t* rar)
 {
   static const char k_sig5[] = "Rar!\x1A\x07\x01"; /* + implicit NUL = 8-byte RAR5 sig    */
   static const char k_sig4[] = "Rar!\x1A\x07";     /* + implicit NUL = 7-byte RAR4 marker */
@@ -624,7 +630,7 @@ ra8_err_t ra8_rar_open(ra8_rar_t* rar, ra8_rar_read_fn read, void* ctx, uint64_t
   if (got < (size_t)k_ra8_rar_sig4_len) {
     return k_ra8_err_invalid_size;
   }
-  s_rar_match_signature(hdr, got, rar);
+  internal_rar_match_signature(hdr, got, rar);
   if (rar->version == k_ra8_rar_ver_none) {
     return k_ra8_err_not_supported;
   }
@@ -650,9 +656,9 @@ ra8_err_t ra8_rar_next(const ra8_rar_t* rar,
     return k_ra8_err_invalid_arg;
   }
   if (rar->version == k_ra8_rar_ver_5) {
-    return s_rar5_block(rar, off, name_buf, name_cap, out);
+    return internal_rar5_block(rar, off, name_buf, name_cap, out);
   }
-  return s_rar4_block(rar, off, name_buf, name_cap, out);
+  return internal_rar4_block(rar, off, name_buf, name_cap, out);
 }
 
 /**
@@ -678,7 +684,8 @@ ra8_err_t ra8_rar_next(const ra8_rar_t* rar,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_rar_check_stored(const ra8_rar_t* rar, const ra8_rar_entry_t* ent, size_t cap)
+static ra8_err_t
+internal_rar_check_stored(const ra8_rar_t* rar, const ra8_rar_entry_t* ent, size_t cap)
 {
   if (rar->version == k_ra8_rar_ver_none) {
     return k_ra8_err_invalid_state;
@@ -721,7 +728,8 @@ static ra8_err_t s_rar_check_stored(const ra8_rar_t* rar, const ra8_rar_entry_t*
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static bool s_rar_read_exact(const ra8_rar_t* rar, uint64_t data_off, uint64_t need, uint8_t* buf)
+static bool
+internal_rar_read_exact(const ra8_rar_t* rar, uint64_t data_off, uint64_t need, uint8_t* buf)
 {
   size_t total = 0U;
   while ((uint64_t)total < need) { /* bound: need fixed; each pass reads >=1 or breaks */
@@ -746,11 +754,11 @@ ra8_err_t ra8_rar_extract_stored(const ra8_rar_t*       rar,
   RA8_CHECK_NULL_PTR(buf, s_tag_rar, "extract: null buf");
   RA8_CHECK_NULL_PTR(got, s_tag_rar, "extract: null got");
   *got                   = 0U;
-  const ra8_err_t vcheck = s_rar_check_stored(rar, ent, cap);
+  const ra8_err_t vcheck = internal_rar_check_stored(rar, ent, cap);
   if (vcheck != k_ra8_ok) {
     return vcheck;
   }
-  if (!s_rar_read_exact(rar, ent->data_off, ent->unp_size, buf)) {
+  if (!internal_rar_read_exact(rar, ent->data_off, ent->unp_size, buf)) {
     return k_ra8_err_invalid_size;
   }
   *got = (size_t)ent->unp_size;
@@ -778,10 +786,10 @@ ra8_err_t ra8_rar_extract_stored(const ra8_rar_t*       rar,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_rar_extract_reject_null(const ra8_rar_t*       rar,
-                                           const ra8_rar_entry_t* ent,
-                                           const uint8_t*         buf,
-                                           const size_t*          got)
+static ra8_err_t internal_rar_extract_reject_null(const ra8_rar_t*       rar,
+                                                  const ra8_rar_entry_t* ent,
+                                                  const uint8_t*         buf,
+                                                  const size_t*          got)
 {
   RA8_CHECK_NULL_PTR(rar, s_tag_rar, "extract: null rar");
   RA8_CHECK_NULL_PTR(ent, s_tag_rar, "extract: null ent");
@@ -797,7 +805,7 @@ ra8_err_t ra8_rar_extract(const ra8_rar_t*       rar,
                           ra8_rar5_state_t*      st,
                           size_t*                got)
 {
-  const ra8_err_t nchk = s_rar_extract_reject_null(rar, ent, buf, got);
+  const ra8_err_t nchk = internal_rar_extract_reject_null(rar, ent, buf, got);
   if (nchk != k_ra8_ok) {
     return nchk;
   }

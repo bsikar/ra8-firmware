@@ -37,7 +37,13 @@ class AnnotatedSymbol:
     file: str
     line: int
     annotations: list[str] = field(default_factory=list)
+    #: True only when the declaration actually spells the ``static`` storage
+    #: class required by RA8_INTERNAL.
     is_static: bool = False
+    #: True for every internal-linkage function, including C++ anonymous
+    #: namespaces. The external-linkage gate needs this broader language
+    #: property and must not confuse it with an actual ``static`` specifier.
+    has_internal_linkage: bool = False
     has_inline: bool = False
     section: str | None = None
     return_type: str = ""
@@ -57,6 +63,23 @@ class AnnotatedSymbol:
     #: prototype in a header is an exported contract, a prototype in a
     #: `.c` is a forward declaration and exports nothing.
     decl_files: set[str] = field(default_factory=set)
+
+
+@dataclass
+class DataSymbol:
+    """One data definition relevant to the ``s_`` naming contract.
+
+    The naming rule distinguishes file-scope objects with internal linkage
+    from automatic locals and externally-linked globals.  Libclang exposes
+    all three as ``VAR_DECL`` cursors, so preserving the scope and linkage
+    here avoids guessing from source text.
+    """
+
+    name: str
+    file: str
+    line: int
+    is_file_scope: bool
+    has_internal_linkage: bool
 
 
 @dataclass
@@ -91,6 +114,17 @@ class ParseStats:
     missing_includes: set[tuple[str, str]] = field(default_factory=set)
     #: Translation units libclang refused to parse at all.
     unparsed: list[str] = field(default_factory=list)
+
+
+@dataclass
+class WalkState:
+    """Collections filled by one or more translation-unit AST walks."""
+
+    symbols: dict[str, AnnotatedSymbol] = field(default_factory=dict)
+    data_symbols: dict[str, DataSymbol] = field(default_factory=dict)
+    calls: list[CallSite] = field(default_factory=list)
+    vector_entries: set[str] = field(default_factory=set)
+    stats: ParseStats = field(default_factory=ParseStats)
 
 
 @dataclass

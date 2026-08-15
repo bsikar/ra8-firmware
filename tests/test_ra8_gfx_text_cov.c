@@ -186,7 +186,7 @@ static void test_uninitialized_guards(void)
  * This coverage companion drives the RGB565 arm of the internal_put_pixel switch
  * (a switch, not a boolean decision). The compound guards traversed on the way --
  * ra8_gfx_init's range checks, ra8_gfx_pixel's
- * `(x<0)||(y<0)||(x>=width)||(y>=height)` bounds check, and s_gfx_text_plot's clip
+ * `(x<0)||(y<0)||(x>=width)||(y>=height)` bounds check, and priv_gfx_text_plot's clip
  * ORs -- are all reached as all-false control vectors; their independence vectors
  * live in test_ra8_gfx_text.c. No new compound vector is introduced here.
  */
@@ -215,7 +215,7 @@ static void test_put_pixel_565_path(void)
  * This drives the RGB565 and RGB888 arms of the internal_get_pixel switch (a
  * switch, not a boolean decision) by varying only the source format. The
  * `(src_w==0)||(src_h==0)||!internal_format_ok(src_format)` guard in ra8_gfx_blit
- * and s_gfx_text_plot's clip ORs are traversed as all-false control vectors; the
+ * and priv_gfx_text_plot's clip ORs are traversed as all-false control vectors; the
  * independence vectors for those decisions live in test_ra8_gfx_text.c.
  */
 static void test_blit_get_pixel_565_888(void)
@@ -352,7 +352,7 @@ static void test_blit_gray8_565_fast_path(void)
  * This drives the single-condition `if (format != k_ra8_gfx_format_rgb565)`
  * dispatch in ra8_gfx_blit_gray8 to its true branch (the non-RGB565 per-pixel
  * slow path); the false branch is test_blit_gray8_565_fast_path. The
- * `(src==nullptr)||(w<=0)||(h<=0)` guard and s_gfx_text_plot's clip ORs are
+ * `(src==nullptr)||(w<=0)||(h<=0)` guard and priv_gfx_text_plot's clip ORs are
  * all-false control vectors, covered for independence in test_ra8_gfx_text.c.
  */
 static void test_blit_gray8_slow_path(void)

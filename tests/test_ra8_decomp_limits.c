@@ -87,7 +87,7 @@ static void test_decomp_default_policy(void)
  * @brief Binding rejects a policy with any single zero field.
  *
  * @par MC/DC:
- * (no compound decisions under test -- `s_limits_usable` is six independent
+ * (no compound decisions under test -- `internal_limits_usable` is six independent
  * single-condition early returns; each vector below drives exactly one.)
  */
 static void test_decomp_zero_field_rejected(void)

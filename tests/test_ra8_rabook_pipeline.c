@@ -37,7 +37,7 @@
  *
  * @par MC/DC:
  * The pipeline's only compound decision is `if (ow == sw && oh == sh)` in
- * s_downscale_if_needed; @ref test_pipeline_raster_images_transcoded drives the
+ * internal_downscale_if_needed; @ref test_pipeline_raster_images_transcoded drives the
  * true arm (a 2x2 image copied in place) and the width-varying false arm (a
  * 1601x1 image downscaled), and @ref test_pipeline_gray_scratch_too_small drives
  * the height-varying leg, giving the N+1 = 3 vectors. All other branches touched
@@ -145,10 +145,10 @@ static void test_pipeline_text_only_no_cover(void)
  *        still compiles to a valid coverless .rabook.
  *
  * @par MC/DC:
- * Drives s_add_manifest_image's decode-failure arm: cover.bin is an image
+ * Drives internal_add_manifest_image's decode-failure arm: cover.bin is an image
  * manifest item (media-type image/png), so the image loop attempts a transcode;
  * stb_image rejects the
- * garbage bytes and s_transcode_image returns nil, taking the
+ * garbage bytes and internal_transcode_image returns nil, taking the
  * `if (idx == nil) continue` skip arm -- the same try/except pass the desktop
  * epub_compile.py uses, so one bad image never fails the whole compile. The cover
  * index stays nil because no image was added to match epub->cover_path.
@@ -206,7 +206,7 @@ static void test_pipeline_undecodable_cover_skipped(void)
  * both arrays with `make rabook-golden-update` after any format/emitter change.
  *
  * @par MC/DC:
- * Drives the false arm of `if (scr->skip_images)` in s_compile_images (single
+ * Drives the false arm of `if (scr->skip_images)` in internal_compile_images (single
  * condition): skip_images is left unset, so the SVG cover IS emitted. Paired
  * with @ref test_pipeline_parity_noimg_byte_identical (which drives the true
  * arm), the two vectors (skip=false image emitted) + (skip=true image dropped)
@@ -276,7 +276,7 @@ static void test_pipeline_parity_byte_identical(void)
  * compares it to the baked @c s_parity_golden_noimg.
  *
  * @par MC/DC:
- * Drives the true arm of `if (scr->skip_images)` in s_compile_images (single
+ * Drives the true arm of `if (scr->skip_images)` in internal_compile_images (single
  * condition); the with-images parity test above drives its false arm. Vectors
  * (skip=false image emitted) + (skip=true image dropped) cover the guard.
  *
@@ -417,7 +417,7 @@ static void test_pipeline_parity_realbook_byte_identical(void)
 
 int32_t main(void)
 {
-  ra8_log_set_byte_sink(s_log_sink, nullptr);
+  ra8_log_set_byte_sink(internal_log_sink, nullptr);
   test_pipeline_text_only_no_cover();
   test_pipeline_undecodable_cover_skipped();
   test_pipeline_parity_byte_identical();

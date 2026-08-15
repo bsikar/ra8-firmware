@@ -404,7 +404,7 @@ static void test_xz_unwrap_hostile_reader(void)
  *
  * @par MC/DC:
  * (no compound decisions under test -- each rejection exercises one
- * single-condition mapping arm of `s_xz_map_err` / the unwrap loop.)
+ * single-condition mapping arm of `internal_xz_map_err` / the unwrap loop.)
  */
 static void test_xz_unwrap_rejects_hostile_streams(void)
 {

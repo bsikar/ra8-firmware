@@ -7,7 +7,7 @@
  * needs that the scale-to-fit blitters deliberately lack -- a source-rect ->
  * dest-rect copy that magnifies (or reproduces 1:1) without decimating source
  * pixels. It shares the single ra8_gfx framebuffer binding and the clipped
- * per-pixel plotter (s_gfx_text_plot) with the rest of the rasteriser, so a lens
+ * per-pixel plotter (priv_gfx_text_plot) with the rest of the rasteriser, so a lens
  * window is clipped to the active clip rectangle exactly like every other draw.
  *
  * The source pixel format is the reader's native 4-bit grayscale: two pixels per
@@ -76,7 +76,7 @@ static uint32_t internal_gray4_color(const uint8_t* src, int32_t src_w, int32_t 
  *
  * @details Writes one magnified source pixel: a solid @p zoom-square block whose
  * top-left is (@p bx, @p by). Each destination pixel is plotted through
- * s_gfx_text_plot(), which clips against the active clip rectangle, so a block
+ * priv_gfx_text_plot(), which clips against the active clip rectangle, so a block
  * straddling a clip edge writes only its visible pixels.
  *
  * @param[in] bx    Block left edge in framebuffer pixels.
@@ -96,7 +96,7 @@ static void internal_gray4_block(int32_t bx, int32_t by, int32_t zoom, uint32_t 
 {
   for (int32_t dy = 0; dy < zoom; ++dy) {
     for (int32_t dx = 0; dx < zoom; ++dx) {
-      s_gfx_text_plot(bx + dx, by + dy, color);
+      priv_gfx_text_plot(bx + dx, by + dy, color);
     }
   }
 }

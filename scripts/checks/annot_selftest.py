@@ -27,7 +27,7 @@ import tempfile
 
 from annot_clang import cindex
 from annot_loopbound import run_loopbound_selftest
-from annot_model import AnnotatedSymbol, CallSite, ParseStats, Violation
+from annot_model import AnnotatedSymbol, Violation, WalkState
 from annot_rules import enforce_rules
 from annot_scope import SOURCE_SUFFIXES, override_repo_root
 from annot_walk import walk_tu
@@ -273,6 +273,65 @@ void other_host_caller(void)
   host_priv_helper();
 }
 """,
+    # --- naming/linkage vocabulary: both failing and passing shapes ------
+    "libs/mod_name/inc/mod_name.h": """
+#pragma once
+void naming_public_entry(void);
+void internal_external_bad(void);
+void priv_public_bad(void);
+static void header_static_bad(void) {}
+static inline void naming_inline_public(void) {}
+""",
+    "libs/mod_name/src/mod_name_internal.h": """
+#pragma once
+[[clang::annotate("ra8_priv")]] void priv_naming_good(void);
+[[clang::annotate("ra8_priv")]] void bad_priv_name(void);
+""",
+    "libs/mod_name/src/naming.c": """
+#include "mod_name.h"
+#include "mod_name_internal.h"
+
+[[clang::annotate("ra8_internal")]] static void internal_naming_good(void) {}
+static void internal_missing_annotation(void) {}
+[[clang::annotate("ra8_internal")]] static void wrong_internal_name(void) {}
+[[clang::annotate("ra8_internal")]] static void s_bad_function(void) {}
+[[clang::annotate("ra8_internal")]] void internal_annotated_external_bad(void) {}
+[[clang::annotate("ra8_internal")]]
+[[clang::annotate("ra8_priv")]] static void internal_conflict_bad(void) {}
+[[clang::annotate("ra8_test_helper")]] static void internal_static_test_helper_bad(void) {}
+
+static int s_good_data;
+static int bad_static_data;
+
+void priv_naming_good(void) {}
+void bad_priv_name(void) {}
+[[clang::annotate("ra8_priv")]] void priv_missing_header(void) {}
+void internal_external_bad(void) {}
+void priv_public_bad(void) {}
+[[clang::annotate("ra8_test_helper")]] void naming_test_helper_good(void) {}
+
+void naming_public_entry(void)
+{
+  int s_bad_local = 0;
+  internal_naming_good();
+  internal_missing_annotation();
+  wrong_internal_name();
+  s_bad_function();
+  internal_annotated_external_bad();
+  internal_conflict_bad();
+  internal_static_test_helper_bad();
+  naming_test_helper_good();
+  naming_inline_public();
+  s_good_data = s_bad_local;
+  bad_static_data = s_good_data;
+}
+""",
+    "libs/mod_name/src/naming_cpp.cpp": """
+namespace {
+void anonymous_namespace_bad() {}
+[[clang::annotate("ra8_internal")]] static void internal_cpp_good() {}
+}
+""",
 }
 
 #: What run_selftest() expects the linkage rule to report, by symbol name.
@@ -306,10 +365,7 @@ _SELFTEST_LINKAGE_CLEAN = (
 
 #: What _selftest_parse() returns: the symbol table, the call list and the
 #: set of USRs a vector table names.
-_SelftestParse = tuple[dict[str, AnnotatedSymbol], list[CallSite], set[str]]
-
-
-def _selftest_parse(root: pathlib.Path) -> _SelftestParse:
+def _selftest_parse(root: pathlib.Path) -> WalkState:
     """Write the synthetic tree under ``root`` and walk every TU in it."""
     tu_paths: list[pathlib.Path] = []
     for rel, body in _SELFTEST_SOURCES.items():
@@ -319,25 +375,27 @@ def _selftest_parse(root: pathlib.Path) -> _SelftestParse:
         if path.suffix in SOURCE_SUFFIXES:
             tu_paths.append(path)
 
-    args = [
-        "-std=c23",
-        "-x",
-        "c",
+    include_args = [
         f"-I{root}/libs/mod_link/inc",
         f"-I{root}/libs/mod_link/src",
+        f"-I{root}/libs/mod_name/inc",
+        f"-I{root}/libs/mod_name/src",
     ]
-    symbols: dict[str, AnnotatedSymbol] = {}
-    calls: list[CallSite] = []
-    vector_entries: set[str] = set()
+    state = WalkState()
     index = cindex.Index.create()
     for path in tu_paths:
+        language_args = (
+            ["-std=c++23", "-x", "c++"]
+            if path.suffix == ".cpp"
+            else ["-std=c23", "-x", "c"]
+        )
         tu = index.parse(
             str(path),
-            args=args,
+            args=[*language_args, *include_args],
             options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
         )
-        walk_tu(tu, path, symbols, calls, ParseStats(), vector_entries)
-    return symbols, calls, vector_entries
+        walk_tu(tu, state)
+    return state
 
 
 def _names_matching(violations: list[Violation], rule: str, pattern: str) -> set[str]:
@@ -356,7 +414,11 @@ def _check_priv_namesakes(
     violations: list[Violation], symbols: dict[str, AnnotatedSymbol]
 ) -> list[str]:
     """RA8_PRIV must separate namesakes by USR without going toothless."""
-    offenders = {pathlib.Path(v.file).name for v in violations if v.rule == "ra8_priv"}
+    offenders = {
+        pathlib.Path(v.file).name
+        for v in violations
+        if v.rule == "ra8_priv" and "called from outside" in v.message
+    }
     failures: list[str] = []
     if "other.c" in offenders:
         failures.append(
@@ -389,6 +451,62 @@ def _check_priv_namesakes(
             f"symbol table merged namesakes: expected {expected_namesakes} distinct "
             f"'shared_helper' entries, found {len(namesakes)}"
         )
+    return failures
+
+
+def _check_naming_contract(violations: list[Violation]) -> list[str]:
+    """Naming/linkage prefixes must agree with AST storage and scope."""
+    fixture = [v for v in violations if "mod_name" in pathlib.Path(v.file).parts]
+    # The generic helper returns only group 1; every naming message deliberately
+    # puts the subject in the first quoted field, so collect it directly here.
+    naming = {
+        match.group(1)
+        for finding in fixture
+        if finding.rule == "ra8_naming"
+        if (match := re.search(r"'([^']+)'", finding.message)) is not None
+    }
+    expected = {
+        "internal_missing_annotation",
+        "wrong_internal_name",
+        "s_bad_function",
+        "internal_annotated_external_bad",
+        "bad_static_data",
+        "s_bad_local",
+        "priv_missing_header",
+        "internal_external_bad",
+        "priv_public_bad",
+        "header_static_bad",
+        "internal_conflict_bad",
+        "internal_static_test_helper_bad",
+        "anonymous_namespace_bad",
+    }
+    clean = {
+        "internal_naming_good",
+        "s_good_data",
+        "priv_naming_good",
+        "naming_inline_public",
+        "internal_cpp_good",
+        "naming_test_helper_good",
+    }
+    failures = [
+        f"ra8_naming went toothless: broken fixture '{name}' was not reported"
+        for name in sorted(expected - naming)
+    ]
+    failures.extend(
+        f"ra8_naming false positive: conforming fixture '{name}' was reported"
+        for name in sorted(clean & naming)
+    )
+
+    priv = {
+        match.group(1)
+        for finding in fixture
+        if finding.rule == "ra8_naming" and "RA8_PRIV function" in finding.message
+        if (match := re.search(r"'([^']+)'", finding.message)) is not None
+    }
+    if "bad_priv_name" not in priv:
+        failures.append("ra8_priv accepted a module-private function without the priv_ prefix")
+    if "priv_naming_good" in priv:
+        failures.append("ra8_priv rejected the conforming non-static priv_ fixture")
     return failures
 
 
@@ -504,15 +622,19 @@ def run_selftest() -> int:
     with tempfile.TemporaryDirectory() as td:
         root = pathlib.Path(td).resolve()
         with override_repo_root(root):
-            symbols, calls, vector_entries = _selftest_parse(root)
-            violations = enforce_rules(symbols, calls, vector_entries)
+            state = _selftest_parse(root)
+            violations = enforce_rules(
+                state,
+                naming_contract=True,
+            )
 
     failures = [
-        *_check_priv_namesakes(violations, symbols),
+        *_check_priv_namesakes(violations, state.symbols),
         *_check_linkage(violations),
         *_check_expects_lock(violations),
         *_check_rule3(violations),
-        *_check_fixtures_parsed(symbols),
+        *_check_naming_contract(violations),
+        *_check_fixtures_parsed(state.symbols),
         # The loop-bound scan is textual and libclang-free, so it self-tests on
         # synthetic source strings rather than the parsed synthetic tree.
         *run_loopbound_selftest(),
@@ -528,6 +650,7 @@ def run_selftest() -> int:
         "NASA rule 3 fires on untagged firmware allocation and stays quiet on the "
         "documented waiver and on host-only code; RA8_EXPECTS_LOCK fires on an "
         "unheld call and stays quiet on RA8_OWNS_RESOURCE / propagated holders; "
+        "linkage prefixes agree with static/data scope and their annotations; "
         "loop-bound scan fires on a "
         "mis-attached marker and a stale RA8_BOUNDED_LOOP statement, stays quiet on "
         "correct markers and on #define/comment/string mentions)"

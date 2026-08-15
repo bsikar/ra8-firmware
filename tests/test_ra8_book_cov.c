@@ -10,7 +10,7 @@
  * per-chunk inflate stage, and entry-point null guards all execute. The focus
  * is plain line coverage (gcovr), not MC/DC: each malformed or edge container
  * is shaped to run one previously-unexecuted branch of the loader
- * (`ra8_book_container_header_fields`, `s_container_view`, `s_inflate_chunks`)
+ * (`ra8_book_container_header_fields`, `internal_container_view`, `internal_inflate_chunks`)
  * and the returned ::ra8_err_t is asserted.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -356,7 +356,7 @@ static void bc_expect_open(ra8_err_t             want,
  *        geometrically inconsistent files.
  *
  * @par Targeted code:
- * `s_container_view`'s short-file return, then every
+ * `internal_container_view`'s short-file return, then every
  * `ra8_book_container_header_fields` rejection reached through `ra8_book_open`:
  * the magic mismatch, the zero `chunk_bytes`, the zero `inflated_total`, the
  * non-zero `reserved` word, and a `chunk_count` disagreeing with
@@ -434,7 +434,7 @@ static void test_mcdc_container_header_fields(void)
  *        and malformed tables.
  *
  * @par Targeted code:
- * `s_container_view` after a good header parse: the header-plus-table
+ * `internal_container_view` after a good header parse: the header-plus-table
  * short-file return, the `total > scratch_cap` return, the `offset[0] != 0`
  * rejection, the non-monotonic-entry rejection, and the
  * `offset[chunk_count] != payload_len` rejection.
@@ -510,7 +510,7 @@ static void test_ra8_book_open_container_geometry(void)
  *        disagreement, and a post-inflate CRC mismatch.
  *
  * @par Targeted code:
- * `s_inflate_chunks`: the inflater-error pass-through and the
+ * `internal_inflate_chunks`: the inflater-error pass-through and the
  * `produced != expected` size guard, plus the post-inflate `ra8_book_validate`
  * failure pass-through in `ra8_book_open`.
  *
@@ -566,7 +566,7 @@ static void test_ra8_book_open_inflate_stage(void)
  * @brief A well-formed single-chunk container inflates and validates end-to-end.
  *
  * @par Targeted code:
- * `s_container_view`'s success return, `s_inflate_chunks`' single-iteration
+ * `internal_container_view`'s success return, `internal_inflate_chunks`' single-iteration
  * success, and the `ra8_book_open` tail that publishes `*out_base`/`*out_size`.
  * Confirms the published base aliases scratch and the size equals the blob
  * length.
@@ -637,8 +637,8 @@ bc_pack_multi(uint8_t* out, const uint8_t* blob, uint32_t blob_len, uint32_t chu
  * @brief A multi-chunk container reassembles the blob across the chunk loop.
  *
  * @par Targeted code:
- * `s_inflate_chunks`' loop across several chunks including the short final
- * chunk (`expected < chunk_bytes` clamp), and `s_container_view`'s table walk
+ * `internal_inflate_chunks`' loop across several chunks including the short final
+ * chunk (`expected < chunk_bytes` clamp), and `internal_container_view`'s table walk
  * over more than one entry. The reassembled blob must pass validation and the
  * open must publish the full blob length.
  *

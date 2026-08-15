@@ -54,7 +54,7 @@ static void open_s_epub(ra8_epub_book_t* book)
  *        resolves to the small image.
  *
  * @par MC/DC:
- * Decision: `if (ow == sw && oh == sh)` in s_downscale_if_needed (2 conditions).
+ * Decision: `if (ow == sw && oh == sh)` in internal_downscale_if_needed (2 conditions).
  * The 2x2 image hits ow==sw && oh==sh -> true (copy in place); the 1601x1 image
  * hits ow!=sw -> false (downscale). N+1 = 3 vectors:
  * - Vector 1: ow==sw, oh==sh (2x2)            -> true  (control: both equal).
@@ -104,7 +104,7 @@ static void test_pipeline_raster_images_transcoded(void)
  * @par Targeted code:
  * The new opt-out arm of the transcode stage: `scr->max_image_edge == 0`
  * skips ra8_rabook_gray4_output_dims entirely, so ow/oh stay the source
- * dimensions and s_downscale_if_needed takes its copy-in-place arm with no
+ * dimensions and internal_downscale_if_needed takes its copy-in-place arm with no
  * gray scratch needed (issue #210: full-resolution sources for the zoom
  * loupe).
  *
@@ -163,7 +163,7 @@ static void test_pipeline_default_preserves_resolution(void)
  * @par MC/DC:
  * Drives the gray-capacity guard `if ((uint32_t)ow * oh > scr->gray_cap)` true
  * arm (single condition): the 1601x1 image needs a 1600-pixel scratch but only 4
- * are offered, so s_downscale_if_needed returns nullptr and s_transcode_image
+ * are offered, so internal_downscale_if_needed returns nullptr and internal_transcode_image
  * takes its `gray_src == nullptr` cleanup-and-skip arm. The 2x2 image needs no
  * scratch (copy in place), so it still adds -- one decodable image survives.
  * The false arm of the same guard is driven by
@@ -209,7 +209,7 @@ static void test_pipeline_gray_scratch_too_small(void)
  *        height-varying leg of the downscale decision.
  *
  * @par MC/DC:
- * Completes `if (ow == sw && oh == sh)` in s_downscale_if_needed (2 conditions):
+ * Completes `if (ow == sw && oh == sh)` in internal_downscale_if_needed (2 conditions):
  * the 1 x 1601 cover clamps to 1 x 1600, so ow == sw (1 == 1 -> C1 true) while
  * oh != sh (1600 != 1601 -> C2 false) -- the (true, false) vector that isolates
  * the height condition. Paired with test_pipeline_raster_images_transcoded's
@@ -259,7 +259,7 @@ static void test_pipeline_tall_image_height_downscaled(void)
  *
  * @par MC/DC:
  * Drives the true arm of `if (scr->pixel_format == k_ra8_book_pixfmt_gray8)` in
- * s_encode_gray (single condition): the profile selects the 8-bpp copy, so each
+ * internal_encode_gray (single condition): the profile selects the 8-bpp copy, so each
  * raster's `raw_size` equals width*height (not the ceil(w*h/2) of the 4-bpp pack)
  * and its `pixel_format` reads back gray8. The false (gray4) arm is driven by
  * @ref test_pipeline_raster_images_transcoded. `format` stays gray4 (raster) --
@@ -306,11 +306,11 @@ static void test_pipeline_gray8_profile(void)
 
 /**
  * @test test_pipeline_toc_titles_resolved
- * @brief Each spine chapter picks up its TOC title via s_chapter_title.
+ * @brief Each spine chapter picks up its TOC title via internal_chapter_title.
  *
  * @par MC/DC:
  * Decision: `if (toc_to_chapter() == k_ra8_ok && ch_idx == chapter_idx)` in
- * s_chapter_title (2 conditions), exercised over two chapters with a three-entry
+ * internal_chapter_title (2 conditions), exercised over two chapters with a three-entry
  * nav whose first entry ("orphan.xhtml") maps to no spine chapter. N+1 = 3:
  * - V1: entry resolves and ch_idx == chapter_idx -> C1 true, C2 true (control:
  *   entry 1 for chapter 0, entry 2 for chapter 1 -> a title is copied).
@@ -361,7 +361,7 @@ static void test_pipeline_toc_titles_resolved(void)
  *        like the desktop "only if present" rule.
  *
  * @par MC/DC:
- * Drives the `if (err == k_ra8_err_not_found)` true arm in s_compile_stylesheets
+ * Drives the `if (err == k_ra8_err_not_found)` true arm in internal_compile_stylesheets
  * (single condition): the manifest declares style.css but the ZIP omits it, so
  * ra8_epub_get_resource returns not_found and the stage `continue`s rather than
  * failing. The false arm (a present stylesheet) is exercised by the parity
@@ -408,8 +408,8 @@ static void test_pipeline_css_absent_skipped(void)
  * Drives the `if (err != k_ra8_ok)` true arm of the stylesheet resource load
  * (single condition): the stylesheet is present but the load buffer is sized to
  * three bytes, so ra8_epub_get_resource returns k_ra8_err_no_mem -- neither ok nor
- * not_found -- and s_compile_stylesheets returns it. That error then propagates
- * the true arm of the stylesheet-stage guard in s_compile_to_blob and the
+ * not_found -- and internal_compile_stylesheets returns it. That error then propagates
+ * the true arm of the stylesheet-stage guard in internal_compile_to_blob and the
  * compile-failure guard in ra8_rabook_compile_from_epub (no file is written).
  */
 static void test_pipeline_css_load_error_propagates(void)
@@ -441,7 +441,7 @@ static void test_pipeline_css_load_error_propagates(void)
  *
  * @par MC/DC:
  * Drives the `if (err != k_ra8_ok)` true arm of the resource load in
- * s_add_manifest_image (single condition): the manifest declares missing.png but
+ * internal_add_manifest_image (single condition): the manifest declares missing.png but
  * the archive omits it, so ra8_epub_get_resource fails and the item returns nil
  * (skipped) -- the desktop try/except pass. The false arm is exercised whenever a
  * present image loads (the raster + parity fixtures).
@@ -484,9 +484,9 @@ static void test_pipeline_image_resource_absent_skipped(void)
  *
  * @par MC/DC:
  * Drives the `if (err != k_ra8_ok)` true arm of the chapter-load guard in
- * s_compile_chapters (single condition): the XHTML scratch is sized to four
+ * internal_compile_chapters (single condition): the XHTML scratch is sized to four
  * bytes, so ra8_epub_load_chapter returns k_ra8_err_no_mem and the stage returns
- * it, which propagates the chapter-stage guard in s_compile_to_blob and the
+ * it, which propagates the chapter-stage guard in internal_compile_to_blob and the
  * compile-failure guard in the filesystem entry point. The false arm is the
  * happy load every passing compile exercises.
  */
@@ -519,9 +519,9 @@ static void test_pipeline_chapter_load_too_small(void)
  *
  * @par MC/DC:
  * Drives the `if (err != k_ra8_ok)` true arm of the parse guard in
- * s_compile_chapters (single condition): the chapter body is plain text with no
+ * internal_compile_chapters (single condition): the chapter body is plain text with no
  * element, so ra8_rabook_xml_parse_chapter finds no `<body>` root and returns
- * k_ra8_err_no_mem, which the stage and s_compile_to_blob propagate. The false arm
+ * k_ra8_err_no_mem, which the stage and internal_compile_to_blob propagate. The false arm
  * is the well-formed chapter every passing compile parses.
  */
 static void test_pipeline_malformed_chapter_propagates(void)
@@ -628,13 +628,13 @@ static void test_pipeline_fs_null_guards(void)
 /**
  * @test test_pipeline_compile_init_rejects_bad_buffers
  * @brief A NULL builder-arena member fails ra8_rabook_compile_init and propagates
- *        out of s_compile_to_blob.
+ *        out of internal_compile_to_blob.
  *
  * @par MC/DC:
  * Drives the `if (err != k_ra8_ok)` true arm of the builder-init guard in
- * s_compile_to_blob (single condition): the top-level pointers are all non-NULL
+ * internal_compile_to_blob (single condition): the top-level pointers are all non-NULL
  * (so the shared-arg check passes) but @p bufs->out is NULL, so
- * ra8_rabook_compile_init rejects the arenas and s_compile_to_blob returns its
+ * ra8_rabook_compile_init rejects the arenas and internal_compile_to_blob returns its
  * error. The false arm is every passing compile.
  */
 static void test_pipeline_compile_init_rejects_bad_buffers(void)
@@ -666,10 +666,10 @@ static void test_pipeline_compile_init_rejects_bad_buffers(void)
  *
  * @par MC/DC:
  * Drives the `if (err != k_ra8_ok)` true arm of the chapter-count guard in
- * s_compile_chapters (single condition): the book is zero-initialised
+ * internal_compile_chapters (single condition): the book is zero-initialised
  * (in_use == 0), so the empty manifest yields no stylesheets / images and
  * ra8_epub_get_chapter_count then returns k_ra8_err_not_initialized, which the
- * stage and s_compile_to_blob propagate. The false arm is the open-book compile.
+ * stage and internal_compile_to_blob propagate. The false arm is the open-book compile.
  */
 static void test_pipeline_closed_book_chapter_count_fails(void)
 {
@@ -692,7 +692,7 @@ static void test_pipeline_closed_book_chapter_count_fails(void)
 
 int32_t main(void)
 {
-  ra8_log_set_byte_sink(s_log_sink, nullptr);
+  ra8_log_set_byte_sink(internal_log_sink, nullptr);
   test_pipeline_raster_images_transcoded();
   test_pipeline_default_preserves_resolution();
   test_pipeline_gray_scratch_too_small();

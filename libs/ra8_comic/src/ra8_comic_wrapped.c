@@ -86,15 +86,15 @@ typedef enum : uint16_t {
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_unwrap(ra8_comic_read_fn read,
-                          void*             ctx,
-                          uint64_t          size,
-                          bool              is_gzip,
-                          uint8_t*          payload,
-                          size_t            payload_cap,
-                          void*             xz_scratch,
-                          uint32_t          xz_scratch_len,
-                          size_t*           out_len)
+static ra8_err_t internal_unwrap(ra8_comic_read_fn read,
+                                 void*             ctx,
+                                 uint64_t          size,
+                                 bool              is_gzip,
+                                 uint8_t*          payload,
+                                 size_t            payload_cap,
+                                 void*             xz_scratch,
+                                 uint32_t          xz_scratch_len,
+                                 size_t*           out_len)
 {
   if (is_gzip) {
     return ra8_unarch_gzip_unwrap(read, ctx, size, payload, payload_cap, nullptr, out_len);
@@ -146,15 +146,15 @@ ra8_err_t ra8_comic_open_wrapped(ra8_comic_t*      c,
   uint8_t*        payload     = &arena[k_wrap_hdr_bytes];
   const size_t    payload_cap = arena_cap - (size_t)k_wrap_hdr_bytes;
   size_t          inner_len   = 0U;
-  const ra8_err_t uerr        = s_unwrap(read,
-                                         ctx,
-                                         size,
-                                         is_gzip,
-                                         payload,
-                                         payload_cap,
-                                         xz_scratch,
-                                         xz_scratch_len,
-                                         &inner_len);
+  const ra8_err_t uerr        = internal_unwrap(read,
+                                                ctx,
+                                                size,
+                                                is_gzip,
+                                                payload,
+                                                payload_cap,
+                                                xz_scratch,
+                                                xz_scratch_len,
+                                                &inner_len);
   if (uerr != k_ra8_ok) {
     return uerr;
   }

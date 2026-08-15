@@ -62,6 +62,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_epub.h"
 #include "ra8_err.h"
@@ -926,7 +927,7 @@ static void test_m33_adapter_no_fallback_on_other_error(void)
  * @post The byte is discarded.
  * @note Not thread-safe (host single-thread test driver).
  */
-static void s_log_sink(void* ctx, uint8_t byte)
+RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   (void)byte;
@@ -934,7 +935,7 @@ static void s_log_sink(void* ctx, uint8_t byte)
 
 int32_t main(void)
 {
-  ra8_log_set_byte_sink(s_log_sink, nullptr);
+  ra8_log_set_byte_sink(internal_log_sink, nullptr);
   test_m33_adapter_writes_validated_blob();
   test_m33_adapter_rejects_corrupt_blob();
   test_m33_adapter_propagates_dispatch_error();

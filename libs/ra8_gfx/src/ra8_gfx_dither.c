@@ -231,7 +231,7 @@ ra8_gfx_blit_gray8_dither(const uint8_t* src, int32_t w, int32_t h, int32_t dst_
       const uint8_t level =
         internal_quantise(src[((size_t)row * (size_t)w) + (size_t)col],
                           s_ra8_gfx_dither_mask[internal_mask_index(dst_x + col, dst_y + row)]);
-      s_gfx_text_plot(dst_x + col, dst_y + row, internal_level_to_color(level));
+      priv_gfx_text_plot(dst_x + col, dst_y + row, internal_level_to_color(level));
     }
   }
   return k_ra8_ok;

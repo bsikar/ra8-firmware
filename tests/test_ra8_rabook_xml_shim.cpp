@@ -25,18 +25,18 @@
  * @par MC/DC decisions exercised (ra8_rabook_xml_shim.cpp):
  *   - @c doc.Parse(...) != XML_SUCCESS -- single condition.
  *       T: test_malformed_xml (unclosed element). F: every well-formed fixture.
- *   - @c root == nullptr in s_find_body -- single condition. F: every fixture has
+ *   - @c root == nullptr in internal_find_body -- single condition. F: every fixture has
  *       a root element. T is unreachable through the public entry point (a
  *       document with no root makes doc.Parse fail first), so it is a defensive
  *       guard with no independent-influence vector (documented, not testable).
- *   - @c std::strcmp(e->Name(), "body") == 0 in s_find_body -- single condition.
+ *   - @c std::strcmp(e->Name(), "body") == 0 in internal_find_body -- single condition.
  *       T: test_html_wrapper_body_fallback (<body> found under <html>).
  *       F: the same scan steps past <head/> before matching <body>.
- *   - @c elem != nullptr in s_emit_node -- single condition.
+ *   - @c elem != nullptr in internal_emit_node -- single condition.
  *       T: any element fixture. F: text/CDATA fixtures fall through to ToText().
- *   - @c text->CData() in s_emit_node -- single condition.
+ *   - @c text->CData() in internal_emit_node -- single condition.
  *       T: test_cdata_skipped (CDATA dropped). F: any real text node.
- *   - @c val != nullptr && val[0] != '\0' in s_emit_node -- COMPOUND AND, but the
+ *   - @c val != nullptr && val[0] != '\0' in internal_emit_node -- COMPOUND AND, but the
  *       first condition is structurally always true: it is reached only after
  *       @c node->ToText() returned non-null, and tinyxml2's XMLText::Value()
  *       never returns nullptr (it returns the empty string ""). So
@@ -46,7 +46,7 @@
  *       condition @c val[0] != '\0' is the live one and BOTH its arms are covered:
  *         - true  -> text emitted: test_simple_p_with_text ("Hello").
  *         - false -> text skipped: test_empty_text_skipped (<p></p>, val[0]=='\0').
- *   - @c node != nullptr && top < k_xhtml_max_stack in s_push_frame -- COMPOUND
+ *   - @c node != nullptr && top < k_xhtml_max_stack in internal_push_frame -- COMPOUND
  *       AND. The first condition is live (a null FirstChild/NextSibling stops a
  *       branch): T covered by any fixture with children, F by leaf/last-sibling
  *       nodes (test_nested_siblings_preorder exercises both). The second is the
@@ -58,10 +58,10 @@
  *       case and test_deep_beyond_tinyxml2_cap pins the rejection one level
  *       deeper, so the deactivation rests on a measurement rather than on the
  *       false cap-of-100 claim it carried before #625.
- *   - @c frame.prev_sib_idx == k_ra8_book_nil in s_walk_body_subtree -- single
+ *   - @c frame.prev_sib_idx == k_ra8_book_nil in internal_walk_body_subtree -- single
  *       condition. T (first child) and F (later sibling) both in
  *       test_nested_siblings_preorder.
- *   - @c elem != nullptr && new_idx != k_ra8_book_nil in s_walk_body_subtree --
+ *   - @c elem != nullptr && new_idx != k_ra8_book_nil in internal_walk_body_subtree --
  *       COMPOUND AND. elem!=nullptr varies (element vs text node) and
  *       new_idx!=nil varies (emitted vs skipped); test_nested_siblings_preorder
  *       supplies element-with-children (both true -> push children) and text
@@ -81,6 +81,7 @@
 #include <string>
 
 extern "C" {
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -213,7 +214,7 @@ constexpr const char* k_xhtml_with_comment = "<?xml version=\"1.0\"?>"
                                              "</body>";
 
 /* A real CDATA section: tinyxml2 models it as an XMLText with CData()==true, so
- * s_emit_node must DROP it (not emit a text node) per B's fix. The CDATA sits
+ * internal_emit_node must DROP it (not emit a text node) per B's fix. The CDATA sits
  * before a real <p> so the visible element still lands as body's second walked
  * child. If CDATA were wrongly emitted, node_count would be 4 instead of 3. */
 constexpr const char* k_xhtml_with_cdata = "<?xml version=\"1.0\"?>"
@@ -409,7 +410,7 @@ void test_html_wrapper_body_fallback()
  * @brief Two XML comments are dropped; only <p>Visible</p> survives.
  *
  * @par MC/DC:
- * Exercises the @c text != nullptr / @c text->CData() path in s_emit_node for
+ * Exercises the @c text != nullptr / @c text->CData() path in internal_emit_node for
  * comment nodes: tinyxml2 models a comment as an XMLComment, so @c ToText()
  * returns null and the node is skipped without ever reaching add_text. Two
  * comments + one element + its text -> exactly 3 emitted nodes.
@@ -439,7 +440,7 @@ void test_comment_skipped()
  * @brief A <![CDATA[...]]> section is dropped, never emitted as a text node.
  *
  * @par MC/DC:
- * Covers the TRUE arm of @c if (text->CData()) in s_emit_node (B's fix): the
+ * Covers the TRUE arm of @c if (text->CData()) in internal_emit_node (B's fix): the
  * CDATA node returns k_ra8_book_nil and is not added. The fixture is
  * @c <body><![CDATA[...]]><p>After</p></body>; if the CDATA were wrongly emitted
  * the node_count would be 4. Asserting node_count == 3 (body, p, "After") and
@@ -485,7 +486,7 @@ void test_cdata_skipped()
  *
  * @par MC/DC:
  * Covers the FALSE arm of the live @c val[0] != '\0' condition in the compound
- * @c val != nullptr && val[0] != '\0' decision (s_emit_node): @c <p></p> yields
+ * @c val != nullptr && val[0] != '\0' decision (internal_emit_node): @c <p></p> yields
  * an empty Value() string, so @c val[0] == '\0' and no text node is added.
  * The TRUE arm (non-empty text emitted) is covered by test_simple_p_with_text.
  */
@@ -543,11 +544,11 @@ ra8_rabook_ctx_t make_ctx_capped(uint32_t node_cap)
 /**
  * @test test_find_body_many_siblings
  * @brief A root with more direct children than the sibling-scan bound exercises
- *        the loop-bound leg of s_find_body's compound condition.
+ *        the loop-bound leg of internal_find_body's compound condition.
  *
  * @par MC/DC:
  * Drives the second-condition-false leg of `e != nullptr && tries <
- * k_xhtml_max_siblings` in s_find_body: a `<root>` with 257 non-`<body>`
+ * k_xhtml_max_siblings` in internal_find_body: a `<root>` with 257 non-`<body>`
  * children makes `tries` reach 256, so the second condition is false while the
  * first is still true (C1 true, C2 false) and the scan gives up (returning the
  * root). The (true, true) scanning control and the (false, true) exhausted-scan
@@ -567,7 +568,7 @@ void test_find_body_many_siblings()
                                                      &ctx,
                                                      "wide.xhtml",
                                                      "Wide");
-  /* No <body> among 257 children -> s_find_body gives up on the scan bound and
+  /* No <body> among 257 children -> internal_find_body gives up on the scan bound and
    * returns the root; the walk then serialises it without error. */
   check(err == k_ra8_ok, "many-siblings: parse ok (scan-bound leg)");
   check(ctx.chapter_count == 1U, "many-siblings: one chapter");
@@ -576,11 +577,11 @@ void test_find_body_many_siblings()
 /**
  * @test test_collect_attrs_overflow
  * @brief An element carrying more attributes than the collect bound exercises the
- *        loop-bound leg of s_collect_attrs and latches the builder failure.
+ *        loop-bound leg of internal_collect_attrs and latches the builder failure.
  *
  * @par MC/DC:
  * Drives the second-condition-false leg of `a != nullptr && count <
- * k_xhtml_max_attrs` in s_collect_attrs: a `<p>` with 33 attributes makes `count`
+ * k_xhtml_max_attrs` in internal_collect_attrs: a `<p>` with 33 attributes makes `count`
  * reach 32, so the second condition is false while more attributes remain (C1
  * true, C2 false); the helper then latches ctx->failed so finalize surfaces the
  * overflow. The (true, true) collecting control (an element with a few
@@ -613,7 +614,7 @@ void test_collect_attrs_overflow()
  *
  * @par MC/DC:
  * Drives the second-condition-false leg of `elem != nullptr && new_idx !=
- * k_ra8_book_nil` in s_walk_body_subtree: with the node table capped at 3, the
+ * k_ra8_book_nil` in internal_walk_body_subtree: with the node table capped at 3, the
  * nested `<span>` in `<body><div><p><span>x</span></p></div></body>` is the
  * fourth element and ra8_rabook_add_element returns nil for it, so the second
  * condition is false while the node is still an element (C1 true, C2 false) and
@@ -703,7 +704,7 @@ std::string make_deep_doc(int depth)
  *
  * @par MC/DC:
  * This is the non-vacuity witness for the `top < k_xhtml_max_stack`
- * deactivation in s_push_frame, which claims the condition cannot go false on
+ * deactivation in internal_push_frame, which claims the condition cannot go false on
  * any reachable input. It drives the walk to its provable worst case -- a frame
  * high-water mark of TINYXML2_MAX_ELEMENT_DEPTH - 2 == 498 against a capacity of
  * 512 -- and checks the emitted node count exactly. A dropped frame loses an
@@ -739,7 +740,7 @@ void test_deep_at_tinyxml2_cap()
  * @brief One level past the cap is rejected by the parser, never truncated.
  *
  * @par MC/DC:
- * The other side of the cap, and the reason the s_push_frame safety valve stays
+ * The other side of the cap, and the reason the internal_push_frame safety valve stays
  * unreachable: tinyxml2 refuses the document outright with
  * XML_ELEMENT_DEPTH_EXCEEDED, so the walk never starts and the shim returns an
  * error rather than emitting a partial chapter. Together with
@@ -766,7 +767,7 @@ void test_deep_beyond_tinyxml2_cap()
 /* Log sink redirect (avoid ITM hardware access on host) */
 /* -------------------------------------------------------------------------- */
 
-void s_log_sink(void* /*ctx*/, uint8_t byte)
+RA8_INTERNAL static void internal_log_sink(void* /*ctx*/, uint8_t byte)
 {
   (void)std::fputc(static_cast<int>(byte), stderr);
 }
@@ -779,7 +780,7 @@ void s_log_sink(void* /*ctx*/, uint8_t byte)
 
 int main()
 {
-  ra8_log_set_byte_sink(s_log_sink, nullptr);
+  ra8_log_set_byte_sink(internal_log_sink, nullptr);
   std::printf("=== test_ra8_rabook_xml_shim ===\n");
 
   test_null_xhtml_bytes();

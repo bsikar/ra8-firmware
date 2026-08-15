@@ -65,8 +65,10 @@ typedef enum : uint32_t {
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-s_add_member(ra8_comic_t* c, const ra8_unarch_tar_entry_t* ent, const char* name, uint16_t nlen)
+static ra8_err_t internal_add_member(ra8_comic_t*                  c,
+                                     const ra8_unarch_tar_entry_t* ent,
+                                     const char*                   name,
+                                     uint16_t                      nlen)
 {
   if (ent->is_file == 0U) {
     return k_ra8_ok;
@@ -102,7 +104,7 @@ ra8_err_t ra8_comic_cbt_open(ra8_comic_t* c)
     if (nerr != k_ra8_ok) {
       return nerr; /* malformed / lying / over-policy member: reject */
     }
-    const ra8_err_t ae = s_add_member(c, &ent, nb, ent.name_len);
+    const ra8_err_t ae = internal_add_member(c, &ent, nb, ent.name_len);
     if (ae != k_ra8_ok) {
       return ae; /* index / arena full -- a real capacity error, propagate */
     }

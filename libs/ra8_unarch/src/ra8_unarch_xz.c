@@ -145,7 +145,7 @@ ra8_unarch_xz_stream_begin(ra8_unarch_xz_stream_t* xs, void* scratch, uint32_t s
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_xz_map_err(enum xz_ret ret)
+static ra8_err_t internal_xz_map_err(enum xz_ret ret)
 {
   if (ret == XZ_MEMLIMIT_ERROR) {
     return k_ra8_err_no_mem;
@@ -208,7 +208,7 @@ ra8_err_t ra8_unarch_xz_stream_run(ra8_unarch_xz_stream_t* xs,
   if (ret == XZ_OK) {
     return k_ra8_ok;
   }
-  return s_xz_map_err(ret);
+  return internal_xz_map_err(ret);
 }
 
 void ra8_unarch_xz_stream_end(ra8_unarch_xz_stream_t* xs)
@@ -244,10 +244,10 @@ void ra8_unarch_xz_stream_end(ra8_unarch_xz_stream_t* xs)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_unwrap_reject_null(ra8_unarch_read_fn read,
-                                      const uint8_t*     out,
-                                      const void*        scratch,
-                                      const size_t*      out_len)
+static ra8_err_t internal_unwrap_reject_null(ra8_unarch_read_fn read,
+                                             const uint8_t*     out,
+                                             const void*        scratch,
+                                             const size_t*      out_len)
 {
   RA8_CHECK_NULL_PTR((const void*)read, s_tag_xz, "unwrap: null read");
   RA8_CHECK_NULL_PTR(out, s_tag_xz, "unwrap: null out");
@@ -303,7 +303,7 @@ typedef struct {
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_unwrap_pass(xz_unwrap_state_t* st, bool* end)
+static ra8_err_t internal_unwrap_pass(xz_unwrap_state_t* st, bool* end)
 {
   const ra8_err_t ierr = ra8_decomp_budget_charge_iter(&st->budget);
   if (ierr != k_ra8_ok) {
@@ -356,7 +356,7 @@ ra8_err_t ra8_unarch_xz_unwrap(ra8_unarch_read_fn         read,
                                const ra8_decomp_limits_t* limits,
                                size_t*                    out_len)
 {
-  const ra8_err_t nerr = s_unwrap_reject_null(read, out, scratch, out_len);
+  const ra8_err_t nerr = internal_unwrap_reject_null(read, out, scratch, out_len);
   if (nerr != k_ra8_ok) {
     return nerr;
   }
@@ -384,7 +384,7 @@ ra8_err_t ra8_unarch_xz_unwrap(ra8_unarch_read_fn         read,
   bool      end  = false;
   ra8_err_t perr = k_ra8_ok;
   while (!end) { /* bound: every pass charges the policy iteration budget */
-    perr = s_unwrap_pass(&st, &end);
+    perr = internal_unwrap_pass(&st, &end);
     if (perr != k_ra8_ok) {
       break;
     }

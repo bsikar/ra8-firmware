@@ -146,7 +146,7 @@ static void test_rar5_all_literal_roundtrip(void)
  *   test_mcdc_copy_match. `k < length && pos < unp`: each match copies its full
  *   length with pos < unp -> the loop exits on k == length (the (false, true) leg);
  *   the (true, false) clamp leg is driven by test_mcdc_copy_match.
- * - libs/ra8_comic/src/ra8_rar5.c@s_decode_stream `out_pos < unp && consumed <=
+ * - libs/ra8_comic/src/ra8_rar5.c@internal_decode_stream `out_pos < unp && consumed <=
  *   cap_bits`: the token run keeps out_pos < unp with consumed <= cap_bits (true,
  *   true) until the last token, then exits on out_pos == unp -> (false, true),
  *   proving out_pos independently ends the loop. The (true, false) runaway leg is
@@ -281,7 +281,7 @@ static void run_filter_case(uint32_t type, uint32_t chan, const uint8_t* raw, ui
  *        decoded range to match an independent inverse.
  *
  * @par MC/DC:
- * Decision libs/ra8_comic/src/ra8_rar5.c@s_x86_is_op:
+ * Decision libs/ra8_comic/src/ra8_rar5.c@internal_x86_is_op:
  * `op == 0xE8 || (e9 && op == 0xE9)` (3 conditions)
  * - E8 stream, byte 0xE8 -> true  (op==call true: control)
  * - E8 stream, byte 0xE9 -> false (op!=call, e9 false)          -- varies op vs call

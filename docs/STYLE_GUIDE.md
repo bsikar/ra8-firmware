@@ -208,15 +208,26 @@ clang-format owns the spacing around those.
 | Private types | `snake_case_t` | `ra8_drv_state_t` |
 | Macros / `#define` | `SCREAMING_SNAKE` | `RA8_RETURN_ON_ERROR` |
 | Enum values | `k_<scope>_<name>` | `k_ra8_ok`, `k_ra8_pin_led1` |
-| Static functions | `internal_<verb>` | `internal_validate_freq` |
-| Private (file-local) functions | `priv_<verb>` | `priv_unlock_pwpr` |
-| Static variables | `s_<name>` | `s_tag` |
+| File-local (`static`) functions | `internal_<verb>` | `internal_validate_freq` |
+| Cross-TU module-private functions | `priv_<verb>` | `priv_unlock_pwpr` |
+| File-scope static data / constants | `s_<name>` | `s_tag` |
 | Global variables (avoid) | `g_<name>` | `g_ra8_vector_table_start` |
 | Linker symbols | `g_ra8_ls_<name>` | `g_ra8_ls_stack_top` |
 
 The `g_ra8_ls_` prefix on linker symbols is mandatory: it keeps them
 out of the leading-underscore reserved namespace that ISO C and
 `cert-dcl37-c` reject.
+
+The three private prefixes describe linkage; they are not interchangeable
+abbreviations. A file-local helper is declared `RA8_INTERNAL static` and uses
+`internal_`. A helper intentionally shared by multiple translation units in
+one `libs/<module>` or `tools/<tool>` is non-`static`, uses `RA8_PRIV` and the
+`priv_` prefix, and is declared in that module's `*_internal.h`. The `s_`
+prefix is data-only: it is never a function name and never names automatic or
+externally-linked data. Public functions use their published API name and no
+private linkage annotation; `RA8_TEST_HELPER` is the explicit test-only
+external-linkage exception. `scripts/checks/check_annotations.py` enforces
+these pairings against the AST rather than inferring linkage from spelling.
 
 ## Types and constants (C23)
 

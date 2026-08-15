@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_img_arena.h"
 #include "ra8_rabook_gray4.h"
 #include "ra8_webp.h"
@@ -46,7 +47,7 @@ typedef enum : uint16_t {
  * @note Pure and thread-safe.
  * @since 0.1.0
  */
-static bool s_is_webp(const uint8_t* source, size_t source_size)
+RA8_INTERNAL static bool internal_is_webp(const uint8_t* source, size_t source_size)
 {
   static const uint8_t k_riff[] = {'R', 'I', 'F', 'F'};
   static const uint8_t k_webp[] = {'W', 'E', 'B', 'P'};
@@ -69,7 +70,7 @@ static bool s_is_webp(const uint8_t* source, size_t source_size)
  * @note Pure with respect to global state; thread-safe for distinct frames.
  * @since 0.1.0
  */
-static void s_rgba_to_gray(uint8_t* rgba, uint32_t pixels)
+RA8_INTERNAL static void internal_rgba_to_gray(uint8_t* rgba, uint32_t pixels)
 {
   for (uint32_t i = 0U; i < pixels; ++i) {
     const size_t   p = (size_t)i * (size_t)k_raster_webp_bytes_per_px;
@@ -96,11 +97,11 @@ static void s_rgba_to_gray(uint8_t* rgba, uint32_t pixels)
  * @note Pure and thread-safe.
  * @since 0.1.0
  */
-static void s_output_dims(uint16_t  source_width,
-                          uint16_t  source_height,
-                          uint16_t  max_edge,
-                          uint16_t* out_width,
-                          uint16_t* out_height)
+RA8_INTERNAL static void internal_output_dims(uint16_t  source_width,
+                                              uint16_t  source_height,
+                                              uint16_t  max_edge,
+                                              uint16_t* out_width,
+                                              uint16_t* out_height)
 {
   if (max_edge == 0U) {
     *out_width  = source_width;
@@ -133,13 +134,13 @@ static void s_output_dims(uint16_t  source_width,
  * @note Thread-safe for distinct workspaces.
  * @since 0.1.0
  */
-static ra8_err_t s_scale(const uint8_t*                 source_gray,
-                         uint16_t                       source_width,
-                         uint16_t                       source_height,
-                         uint16_t                       out_width,
-                         uint16_t                       out_height,
-                         ra8_rabook_raster_workspace_t* workspace,
-                         const uint8_t**                out_gray)
+RA8_INTERNAL static ra8_err_t internal_scale(const uint8_t*                 source_gray,
+                                             uint16_t                       source_width,
+                                             uint16_t                       source_height,
+                                             uint16_t                       out_width,
+                                             uint16_t                       out_height,
+                                             ra8_rabook_raster_workspace_t* workspace,
+                                             const uint8_t**                out_gray)
 {
   if ((source_width == out_width) && (source_height == out_height)) {
     *out_gray = source_gray;
@@ -183,13 +184,13 @@ static ra8_err_t s_scale(const uint8_t*                 source_gray,
  * @note Thread-safe for distinct buffers.
  * @since 0.1.0
  */
-static ra8_err_t s_encode(const uint8_t* gray,
-                          uint16_t       width,
-                          uint16_t       height,
-                          uint8_t        pixel_format,
-                          uint8_t*       encoded,
-                          size_t         encoded_cap,
-                          uint32_t*      out_size)
+RA8_INTERNAL static ra8_err_t internal_encode(const uint8_t* gray,
+                                              uint16_t       width,
+                                              uint16_t       height,
+                                              uint8_t        pixel_format,
+                                              uint8_t*       encoded,
+                                              size_t         encoded_cap,
+                                              uint32_t*      out_size)
 {
   if (encoded_cap > UINT32_MAX) {
     encoded_cap = UINT32_MAX;
@@ -223,12 +224,12 @@ static ra8_err_t s_encode(const uint8_t* gray,
  * @note Not thread-safe because the WebP allocator binding is global.
  * @since 0.1.0
  */
-static ra8_err_t s_decode_webp(const uint8_t*                 source,
-                               size_t                         source_size,
-                               ra8_rabook_raster_workspace_t* workspace,
-                               const uint8_t**                out_gray,
-                               uint16_t*                      out_width,
-                               uint16_t*                      out_height)
+RA8_INTERNAL static ra8_err_t internal_decode_webp(const uint8_t*                 source,
+                                                   size_t                         source_size,
+                                                   ra8_rabook_raster_workspace_t* workspace,
+                                                   const uint8_t**                out_gray,
+                                                   uint16_t*                      out_width,
+                                                   uint16_t*                      out_height)
 {
   uint32_t  width  = 0U;
   uint32_t  height = 0U;
@@ -257,7 +258,7 @@ static ra8_err_t s_decode_webp(const uint8_t*                 source,
     return rc;
   }
   const uint32_t pixels = width * height;
-  s_rgba_to_gray(workspace->rgba, pixels);
+  internal_rgba_to_gray(workspace->rgba, pixels);
   *out_gray   = workspace->rgba;
   *out_width  = (uint16_t)width;
   *out_height = (uint16_t)height;
@@ -288,12 +289,12 @@ static ra8_err_t s_decode_webp(const uint8_t*                 source,
  * @note Not thread-safe because the stb allocator binding is global.
  * @since 0.1.0
  */
-static ra8_err_t s_decode_stb(const uint8_t*                 source,
-                              size_t                         source_size,
-                              ra8_rabook_raster_workspace_t* workspace,
-                              uint8_t**                      out_gray,
-                              uint16_t*                      out_width,
-                              uint16_t*                      out_height)
+RA8_INTERNAL static ra8_err_t internal_decode_stb(const uint8_t*                 source,
+                                                  size_t                         source_size,
+                                                  ra8_rabook_raster_workspace_t* workspace,
+                                                  uint8_t**                      out_gray,
+                                                  uint16_t*                      out_width,
+                                                  uint16_t*                      out_height)
 {
   if ((workspace->stb_arena == nullptr) || (source_size > (size_t)INT_MAX)) {
     return (source_size > (size_t)INT_MAX) ? k_ra8_err_invalid_size : k_ra8_err_no_mem;
@@ -345,15 +346,23 @@ ra8_err_t ra8_rabook_raster_encode(const uint8_t*                 source,
     return k_ra8_err_invalid_arg;
   }
 
-  const bool     webp          = s_is_webp(source, source_size);
+  const bool     webp          = internal_is_webp(source, source_size);
   uint8_t*       stb_pixels    = nullptr;
   const uint8_t* source_gray   = nullptr;
   uint16_t       source_width  = 0U;
   uint16_t       source_height = 0U;
-  ra8_err_t      rc =
-    webp
-      ? s_decode_webp(source, source_size, workspace, &source_gray, &source_width, &source_height)
-      : s_decode_stb(source, source_size, workspace, &stb_pixels, &source_width, &source_height);
+  ra8_err_t      rc            = webp ? internal_decode_webp(source,
+                                                             source_size,
+                                                             workspace,
+                                                             &source_gray,
+                                                             &source_width,
+                                                             &source_height)
+                                      : internal_decode_stb(source,
+                                                            source_size,
+                                                            workspace,
+                                                            &stb_pixels,
+                                                            &source_width,
+                                                            &source_height);
   if (!webp) {
     source_gray = stb_pixels;
   }
@@ -363,17 +372,23 @@ ra8_err_t ra8_rabook_raster_encode(const uint8_t*                 source,
 
   uint16_t out_width  = 0U;
   uint16_t out_height = 0U;
-  s_output_dims(source_width, source_height, max_edge, &out_width, &out_height);
+  internal_output_dims(source_width, source_height, max_edge, &out_width, &out_height);
   const uint8_t* scaled = nullptr;
-  rc = s_scale(source_gray, source_width, source_height, out_width, out_height, workspace, &scaled);
+  rc                    = internal_scale(source_gray,
+                                         source_width,
+                                         source_height,
+                                         out_width,
+                                         out_height,
+                                         workspace,
+                                         &scaled);
   if (rc == k_ra8_ok) {
-    rc = s_encode(scaled,
-                  out_width,
-                  out_height,
-                  pixel_format,
-                  encoded,
-                  encoded_cap,
-                  &result->encoded_size);
+    rc = internal_encode(scaled,
+                         out_width,
+                         out_height,
+                         pixel_format,
+                         encoded,
+                         encoded_cap,
+                         &result->encoded_size);
   }
   if (!webp) {
     stbi_image_free(stb_pixels); /* alloc-allow: caller-bound ra8_img_arena */

@@ -70,7 +70,7 @@ typedef enum : uint16_t {
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static mz_zip_archive* s_zip(ra8_comic_t* c)
+static mz_zip_archive* internal_zip(ra8_comic_t* c)
 {
   /* Reinterpret the aligned byte arena as the archive via a `void*` seam (as
    * `ra8_epub` does): a direct `uint8_t* -> mz_zip_archive*` cast would trip
@@ -99,7 +99,7 @@ static mz_zip_archive* s_zip(ra8_comic_t* c)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static size_t s_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size_t n)
+static size_t internal_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size_t n)
 {
   const ra8_comic_stream_t* sm = (const ra8_comic_stream_t*)opaque;
   if (sm == nullptr) {
@@ -130,7 +130,7 @@ static size_t s_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size_t 
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static void s_set_alloc(mz_zip_archive* zip)
+static void internal_set_alloc(mz_zip_archive* zip)
 {
 #ifndef RA8_OFF_TARGET
   zip->m_pAlloc        = ra8_epub_miniz_alloc;
@@ -161,7 +161,7 @@ static void s_set_alloc(mz_zip_archive* zip)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_add_entry(ra8_comic_t* c, mz_zip_archive* zip, mz_uint i)
+static ra8_err_t internal_add_entry(ra8_comic_t* c, mz_zip_archive* zip, mz_uint i)
 {
   if (mz_zip_reader_is_file_a_directory(zip, i) != MZ_FALSE) {
     return k_ra8_ok;
@@ -201,10 +201,10 @@ static ra8_err_t s_add_entry(ra8_comic_t* c, mz_zip_archive* zip, mz_uint i)
 ra8_err_t ra8_comic_cbz_open(ra8_comic_t* c)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_cbz, "cbz open: null c");
-  mz_zip_archive* zip = s_zip(c);
+  mz_zip_archive* zip = internal_zip(c);
   (void)memset(zip, 0, sizeof(*zip));
-  s_set_alloc(zip);
-  zip->m_pRead      = s_stream_read;
+  internal_set_alloc(zip);
+  zip->m_pRead      = internal_stream_read;
   zip->m_pIO_opaque = &c->stream;
   if (mz_zip_reader_init(zip, (mz_uint64)c->size, 0U) == MZ_FALSE) {
     return k_ra8_err_validation_failed;
@@ -219,7 +219,7 @@ ra8_err_t ra8_comic_cbz_open(ra8_comic_t* c)
     return k_ra8_err_decomp_entries;
   }
   for (mz_uint i = 0U; i < num; ++i) { /* bound: finite central-directory count */
-    const ra8_err_t e = s_add_entry(c, zip, i);
+    const ra8_err_t e = internal_add_entry(c, zip, i);
     if (e != k_ra8_ok) {
       (void)ra8_comic_cbz_close(c);
       return e;
@@ -245,7 +245,7 @@ ra8_err_t ra8_comic_cbz_extract(ra8_comic_t*            c,
   if ((uint64_t)cap < p->raw_size) {
     return k_ra8_err_no_mem;
   }
-  mz_zip_archive* zip = s_zip(c);
+  mz_zip_archive* zip = internal_zip(c);
   if (mz_zip_reader_extract_to_mem(zip, (mz_uint)p->zip_index, buf, cap, 0U) == MZ_FALSE) {
     return k_ra8_err_validation_failed;
   }
@@ -257,7 +257,7 @@ ra8_err_t ra8_comic_cbz_close(ra8_comic_t* c)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_cbz, "cbz close: null c");
   if (c->zip_active != 0U) {
-    (void)mz_zip_reader_end(s_zip(c));
+    (void)mz_zip_reader_end(internal_zip(c));
     c->zip_active = 0U;
   }
   return k_ra8_ok;

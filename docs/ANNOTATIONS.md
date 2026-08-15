@@ -2,13 +2,12 @@
 
 This document is the authoritative reference for the `RA8_*` annotation
 macros defined in `libs/ra8_core/inc/ra8_attributes.h`. The macros are
-metadata-only: they expand to `__attribute__((annotate("...")))` under
-clang and to a comment-only no-op under other toolchains. They produce
+metadata-only: they expand to `[[clang::annotate("...")]]` under clang
+and to a comment-only no-op under other toolchains. They produce
 no codegen and have zero runtime cost.
 
-The libclang-based enforcement script that consumes these annotations
-will land in a follow-up. Until then, the annotations are documentation
-contracts that humans (and the citation gate) verify by hand.
+The libclang-based enforcement script consumes these annotations in CI and
+cross-checks their storage, naming, declaration, and call-graph contracts.
 
 ## Citation policy
 
@@ -37,7 +36,8 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 ### 2. `RA8_INTERNAL`
 
 - **Purpose:** marker that a function is intended to be `static`.
-- **Enforcement:** libclang verifies storage class is `static`.
+- **Enforcement:** libclang verifies storage class is `static` and the
+  function uses the `internal_` prefix.
 - **Example:**
 
   ```c
@@ -47,8 +47,9 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 ### 3. `RA8_PRIV`
 
 - **Purpose:** module-private helper shared across TUs inside one library.
-- **Enforcement:** libclang verifies callers reside in the same
-  `libs/<module>/` directory.
+- **Enforcement:** libclang verifies the definition is non-`static`, uses the
+  `priv_` prefix, is declared in that module's `*_internal.h`, and has no
+  production caller outside its `libs/<module>/` or `tools/<tool>/` boundary.
 - **Example:**
 
   ```c
@@ -339,8 +340,8 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 
 ## Backend notes
 
-The macros expand under clang to `__attribute__((annotate("ra8_<tag>")))`
-or `__attribute__((annotate("ra8_<tag>:<arg>")))`. Clang preserves the
+The macros expand under clang to `[[clang::annotate("ra8_<tag>")]]`
+or `[[clang::annotate("ra8_<tag>:<arg>")]]`. Clang preserves the
 annotation in the AST and exposes it through libclang
 (`clang_Cursor_getAnnotations`). GCC parses the same syntax silently and
 emits no warning, but does not surface it through a public API. The
@@ -353,7 +354,7 @@ cleanly.
 The static enforcement framework lives at
 [`scripts/checks/check_annotations.py`](../scripts/checks/check_annotations.py).
 It walks the AST of every C/C++ TU under `libs/`, `src/`, `examples/`,
-`tests/`, and `port/` via the Python `libclang` bindings and applies
+`tests/`, `port/`, and `tools/` via the Python `libclang` bindings and applies
 the rules documented above, plus the linkage rule below. Excluded
 subtrees: `build/`, `_deps/`, `third_party/`, and the various `build-*/`
 host-test directories.
@@ -363,7 +364,9 @@ host-test directories.
 Every non-`static` function definition in first-party code has to say why
 it has external linkage. It passes when any of these holds:
 
-- it carries `RA8_PRIV`, `RA8_INTERNAL` or `RA8_TEST_HELPER`;
+- it carries a linkage annotation whose own contract passes (`RA8_PRIV` is
+  non-`static` module-private, `RA8_INTERNAL` is `static` file-local, and
+  `RA8_TEST_HELPER` is externally linked but test-only);
 - a header publishes it -- a library's public `inc/` header, an
   application's local header, a mock's header, or the vendored SOUP
   header whose interface it implements. An `*_internal.h` prototype does
@@ -448,6 +451,14 @@ python3 scripts/checks/check_annotations.py --list
 
 # Regression-test the checker itself against synthetic TUs
 python3 scripts/checks/check_annotations.py --selftest
+
+# Audit the complete prefix/storage contract. This is deliberately explicit
+# while the historical tree-wide inventory is being repaired; it is not a
+# suppressing baseline, and every finding remains visible and fatal here.
+python3 scripts/checks/check_annotations.py --naming-audit
+
+# Emit that same complete inventory for tooling or agent hand-off.
+python3 scripts/checks/check_annotations.py --naming-audit --json
 ```
 
 ### Dependency

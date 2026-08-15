@@ -15,15 +15,15 @@
  *
  * ## Why annotations?
  *
- * The macros expand to `__attribute__((annotate("...")))` under clang,
+ * The macros expand to `[[clang::annotate("...")]]` under clang,
  * which preserves the metadata in the IR for libclang-based enforcement
  * scripts to inspect. They produce no codegen and have no runtime cost.
  * Under non-clang toolchains the macros expand to a comment-only
  * no-op so portable builds compile without warning.
  *
  * The full reference (purpose, enforcement script, examples) lives in
- * `docs/ANNOTATIONS.md`. will introduce the libclang-based
- * checker that reads these annotations from the AST.
+ * `docs/ANNOTATIONS.md`. The libclang-based checker reads these annotations
+ * from the AST and verifies their storage, naming, and call-graph contracts.
  *
  * ## Citation policy
  *
@@ -137,7 +137,8 @@ extern "C" {
  * `internal_` name prefix from the project naming convention.
  *
  * @par Enforcement:
- * libclang checks that the symbol's storage class is `static`.
+ * libclang checks that the symbol's storage class is `static` and that its
+ * name uses the `internal_` prefix.
  *
  * @par Example:
  * @code
@@ -160,8 +161,10 @@ extern "C" {
  * public API. Pairs with the `priv_` name prefix.
  *
  * @par Enforcement:
- * libclang verifies callers reside in the same `libs/<module>/` directory
- * as the definition.
+ * libclang verifies the symbol is non-`static`, uses the `priv_` prefix, is
+ * declared in the module's `*_internal.h`, is absent from public headers, and
+ * has no production caller outside its `libs/<module>/` or `tools/<tool>/`
+ * boundary.
  *
  * @par Example:
  * @code

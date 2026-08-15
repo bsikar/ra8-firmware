@@ -78,6 +78,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
 #include "ra8_rabook_gray4.h"
@@ -806,7 +807,7 @@ static void test_downscale_zero_src_h(void)
 /* main */
 /* -------------------------------------------------------------------------- */
 
-static void s_log_sink(void* ctx, uint8_t byte)
+RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   (void)fputc((int)byte, stderr);
@@ -814,7 +815,7 @@ static void s_log_sink(void* ctx, uint8_t byte)
 
 int main(void)
 {
-  ra8_log_set_byte_sink(s_log_sink, nullptr);
+  ra8_log_set_byte_sink(internal_log_sink, nullptr);
   printf("=== ra8_rabook_gray4 unit tests ===\n");
 
   test_dims_no_scale();

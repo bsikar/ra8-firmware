@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_io_compress.h"
 
@@ -51,7 +52,7 @@ static const uint8_t s_rbkc_magic[k_ra8_book_container_magic_len] = {'R', 'B', '
  * @note Thread-safe for distinct output buffers.
  * @since 0.1.0
  */
-static void s_put_u32(uint8_t* out, uint32_t value)
+RA8_INTERNAL static void internal_put_u32(uint8_t* out, uint32_t value)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_rbkc_u32_bytes; i++) {
     out[i] = (uint8_t)(value >> ((uint32_t)i * (uint32_t)k_rbkc_bits_per_byte));
@@ -70,7 +71,7 @@ static void s_put_u32(uint8_t* out, uint32_t value)
  * @note Thread-safe for distinct output buffers.
  * @since 0.1.0
  */
-static void s_put_u64(uint8_t* out, uint64_t value)
+RA8_INTERNAL static void internal_put_u64(uint8_t* out, uint64_t value)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_rbkc_u64_bytes; i++) {
     out[i] = (uint8_t)(value >> ((uint32_t)i * (uint32_t)k_rbkc_bits_per_byte));
@@ -96,11 +97,11 @@ static void s_put_u64(uint8_t* out, uint64_t value)
  * @note Not thread-safe unless the supplied backend context is synchronized.
  * @since 0.1.0
  */
-static ra8_err_t s_write_exact(ra8_rabook_write_at_fn write_at,
-                               void*                  ctx,
-                               uint64_t               offset,
-                               const uint8_t*         src,
-                               uint32_t               len)
+RA8_INTERNAL static ra8_err_t internal_write_exact(ra8_rabook_write_at_fn write_at,
+                                                   void*                  ctx,
+                                                   uint64_t               offset,
+                                                   const uint8_t*         src,
+                                                   uint32_t               len)
 {
   uint32_t        written = 0U;
   const ra8_err_t err     = write_at(ctx, offset, src, len, &written);
@@ -133,13 +134,13 @@ static ra8_err_t s_write_exact(ra8_rabook_write_at_fn write_at,
  * @note Thread-safe for distinct argument objects.
  * @since 0.1.0
  */
-static ra8_err_t s_validate(ra8_rabook_flat_read_fn                 read,
-                            uint32_t                                flat_len,
-                            uint32_t                                chunk_bytes,
-                            ra8_rabook_write_at_fn                  write_at,
-                            const ra8_rabook_container_workspace_t* ws,
-                            const uint64_t*                         out_len,
-                            uint32_t*                               out_count)
+RA8_INTERNAL static ra8_err_t internal_validate(ra8_rabook_flat_read_fn                 read,
+                                                uint32_t                                flat_len,
+                                                uint32_t                                chunk_bytes,
+                                                ra8_rabook_write_at_fn                  write_at,
+                                                const ra8_rabook_container_workspace_t* ws,
+                                                const uint64_t*                         out_len,
+                                                uint32_t*                               out_count)
 {
   if ((read == nullptr) || (write_at == nullptr) || (ws == nullptr) || (out_len == nullptr) ||
       (out_count == nullptr)) {
@@ -177,28 +178,28 @@ static ra8_err_t s_validate(ra8_rabook_flat_read_fn                 read,
  * @return Prefix-write status.
  * @retval k_ra8_ok Header and complete table reservation were written.
  * @retval k_ra8_err_invalid_size A successful callback was short.
- * @pre Arguments were accepted by ::s_validate.
+ * @pre Arguments were accepted by ::internal_validate.
  * @pre The destination is a private empty or overwrite-safe staging object.
  * @post Success reserves bytes through the future payload offset.
  * @post Failure is explicit and the caller will abort the staging object.
  * @note Not thread-safe with respect to @p ctx.
  * @since 0.1.0
  */
-static ra8_err_t s_write_prefix(ra8_rabook_write_at_fn write_at,
-                                void*                  ctx,
-                                uint32_t               flat_len,
-                                uint32_t               chunk_bytes,
-                                uint32_t               count)
+RA8_INTERNAL static ra8_err_t internal_write_prefix(ra8_rabook_write_at_fn write_at,
+                                                    void*                  ctx,
+                                                    uint32_t               flat_len,
+                                                    uint32_t               chunk_bytes,
+                                                    uint32_t               count)
 {
   uint8_t header[k_ra8_book_container_header_len] = {};
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_book_container_magic_len; i++) {
     header[i] = s_rbkc_magic[i];
   }
-  s_put_u32(&header[k_rbkc_chunk_bytes_off], chunk_bytes);
-  s_put_u64(&header[k_rbkc_total_off], (uint64_t)flat_len);
-  s_put_u32(&header[k_rbkc_count_off], count);
-  s_put_u32(&header[k_rbkc_reserved_off], 0U);
-  ra8_err_t err = s_write_exact(write_at, ctx, 0U, header, (uint32_t)sizeof(header));
+  internal_put_u32(&header[k_rbkc_chunk_bytes_off], chunk_bytes);
+  internal_put_u64(&header[k_rbkc_total_off], (uint64_t)flat_len);
+  internal_put_u32(&header[k_rbkc_count_off], count);
+  internal_put_u32(&header[k_rbkc_reserved_off], 0U);
+  ra8_err_t err = internal_write_exact(write_at, ctx, 0U, header, (uint32_t)sizeof(header));
   if (err != k_ra8_ok) {
     return err;
   }
@@ -206,7 +207,7 @@ static ra8_err_t s_write_prefix(ra8_rabook_write_at_fn write_at,
   for (uint32_t i = 0U; i <= count; i++) {
     const uint64_t at = (uint64_t)k_ra8_book_container_header_len +
                         ((uint64_t)i * (uint64_t)k_ra8_book_container_entry_len);
-    err               = s_write_exact(write_at, ctx, at, zero, (uint32_t)sizeof(zero));
+    err               = internal_write_exact(write_at, ctx, at, zero, (uint32_t)sizeof(zero));
     if (err != k_ra8_ok) {
       return err;
     }
@@ -230,22 +231,22 @@ static ra8_err_t s_write_prefix(ra8_rabook_write_at_fn write_at,
  * @return Source, compression, or destination status.
  * @retval k_ra8_ok Every stream and the terminal table offset were produced.
  * @retval k_ra8_err_invalid_size A callback was short or an offset overflowed.
- * @pre Prefix/table reservation succeeded and all arguments passed ::s_validate.
+ * @pre Prefix/table reservation succeeded and all arguments passed ::internal_validate.
  * @pre @p ws buffers do not overlap and remain live throughout the loop.
  * @post Success sets offsets `[0..count]` monotonically with offset zero first.
  * @post Failure leaves no successful final-length claim.
  * @note Not thread-safe with respect to callback contexts or @p ws.
  * @since 0.1.0
  */
-static ra8_err_t s_write_chunks(ra8_rabook_flat_read_fn           read,
-                                void*                             read_ctx,
-                                uint32_t                          flat_len,
-                                uint32_t                          chunk_bytes,
-                                ra8_rabook_write_at_fn            write_at,
-                                void*                             write_ctx,
-                                ra8_rabook_container_workspace_t* ws,
-                                uint32_t                          count,
-                                uint64_t                          payload_off)
+RA8_INTERNAL static ra8_err_t internal_write_chunks(ra8_rabook_flat_read_fn           read,
+                                                    void*                             read_ctx,
+                                                    uint32_t                          flat_len,
+                                                    uint32_t                          chunk_bytes,
+                                                    ra8_rabook_write_at_fn            write_at,
+                                                    void*                             write_ctx,
+                                                    ra8_rabook_container_workspace_t* ws,
+                                                    uint32_t                          count,
+                                                    uint64_t                          payload_off)
 {
   uint32_t flat_off    = 0U;
   uint64_t payload_len = 0U;
@@ -276,7 +277,8 @@ static ra8_err_t s_write_chunks(ra8_rabook_flat_read_fn           read,
       return k_ra8_err_invalid_size;
     }
     ws->offsets[i] = payload_len;
-    err = s_write_exact(write_at, write_ctx, payload_off + payload_len, ws->compressed, packed);
+    err =
+      internal_write_exact(write_at, write_ctx, payload_off + payload_len, ws->compressed, packed);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -298,24 +300,25 @@ static ra8_err_t s_write_chunks(ra8_rabook_flat_read_fn           read,
  * @return Table-write status.
  * @retval k_ra8_ok Every offset entry was stored exactly.
  * @retval k_ra8_err_invalid_size A successful callback was short.
- * @pre ::s_write_chunks succeeded and populated all entries.
- * @pre The table reservation from ::s_write_prefix still exists.
+ * @pre ::internal_write_chunks succeeded and populated all entries.
+ * @pre The table reservation from ::internal_write_prefix still exists.
  * @post Success makes the complete payload independently addressable.
  * @post Backend errors are propagated unchanged.
  * @note Not thread-safe with respect to @p ctx.
  * @since 0.1.0
  */
-static ra8_err_t s_write_table(ra8_rabook_write_at_fn                  write_at,
-                               void*                                   ctx,
-                               const ra8_rabook_container_workspace_t* ws,
-                               uint32_t                                count)
+RA8_INTERNAL static ra8_err_t internal_write_table(ra8_rabook_write_at_fn                  write_at,
+                                                   void*                                   ctx,
+                                                   const ra8_rabook_container_workspace_t* ws,
+                                                   uint32_t                                count)
 {
   uint8_t encoded[k_ra8_book_container_entry_len];
   for (uint32_t i = 0U; i <= count; i++) {
-    s_put_u64(encoded, ws->offsets[i]);
-    const uint64_t  at  = (uint64_t)k_ra8_book_container_header_len +
-                          ((uint64_t)i * (uint64_t)k_ra8_book_container_entry_len);
-    const ra8_err_t err = s_write_exact(write_at, ctx, at, encoded, (uint32_t)sizeof(encoded));
+    internal_put_u64(encoded, ws->offsets[i]);
+    const uint64_t  at = (uint64_t)k_ra8_book_container_header_len +
+                         ((uint64_t)i * (uint64_t)k_ra8_book_container_entry_len);
+    const ra8_err_t err =
+      internal_write_exact(write_at, ctx, at, encoded, (uint32_t)sizeof(encoded));
     if (err != k_ra8_ok) {
       return err;
     }
@@ -336,26 +339,27 @@ ra8_err_t ra8_rabook_container_write(ra8_rabook_flat_read_fn           read,
     *out_len = 0U;
   }
   uint32_t        count = 0U;
-  const ra8_err_t valid = s_validate(read, flat_len, chunk_bytes, write_at, ws, out_len, &count);
+  const ra8_err_t valid =
+    internal_validate(read, flat_len, chunk_bytes, write_at, ws, out_len, &count);
   if (valid != k_ra8_ok) {
     return valid;
   }
   const uint64_t table_bytes = ((uint64_t)count + 1U) * (uint64_t)k_ra8_book_container_entry_len;
   const uint64_t payload_off = (uint64_t)k_ra8_book_container_header_len + table_bytes;
-  ra8_err_t      err         = s_write_prefix(write_at, write_ctx, flat_len, chunk_bytes, count);
+  ra8_err_t      err = internal_write_prefix(write_at, write_ctx, flat_len, chunk_bytes, count);
   if (err == k_ra8_ok) {
-    err = s_write_chunks(read,
-                         read_ctx,
-                         flat_len,
-                         chunk_bytes,
-                         write_at,
-                         write_ctx,
-                         ws,
-                         count,
-                         payload_off);
+    err = internal_write_chunks(read,
+                                read_ctx,
+                                flat_len,
+                                chunk_bytes,
+                                write_at,
+                                write_ctx,
+                                ws,
+                                count,
+                                payload_off);
   }
   if (err == k_ra8_ok) {
-    err = s_write_table(write_at, write_ctx, ws, count);
+    err = internal_write_table(write_at, write_ctx, ws, count);
   }
   if (err == k_ra8_ok) {
     if (ws->offsets[count] > (UINT64_MAX - payload_off)) {

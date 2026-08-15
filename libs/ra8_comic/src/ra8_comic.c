@@ -77,7 +77,7 @@ typedef enum : uint8_t {
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static uint8_t s_lower(uint8_t c)
+static uint8_t internal_lower(uint8_t c)
 {
   const uint8_t up =
     (uint8_t)(((uint8_t)(c - (uint8_t)k_ascii_upper_a) < (uint8_t)k_ascii_alpha_n) ? 1U : 0U);
@@ -87,7 +87,7 @@ static uint8_t s_lower(uint8_t c)
 /**
  * @brief Case-insensitive test that @p name ends with @p ext.
  * @details Compares the tail of @p name against @p ext byte-for-byte through
- *          ::s_lower. A name shorter than @p ext cannot match.
+ *          ::internal_lower. A name shorter than @p ext cannot match.
  * @param[in] name Entry name bytes.
  * @param[in] len  Length of @p name.
  * @param[in] ext  NUL-terminated extension (e.g. ".png"), <= k_comic_ext_max.
@@ -102,7 +102,7 @@ static uint8_t s_lower(uint8_t c)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static bool s_ends_with_ci(const char* name, uint16_t len, const char* ext)
+static bool internal_ends_with_ci(const char* name, uint16_t len, const char* ext)
 {
   size_t elen = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_comic_ext_max; ++i) { /* bound: fixed max ext */
@@ -116,7 +116,7 @@ static bool s_ends_with_ci(const char* name, uint16_t len, const char* ext)
   }
   const char* tail = &name[(size_t)len - elen];
   for (size_t i = 0U; i < elen; ++i) { /* bound: elen <= k_comic_ext_max */
-    if (s_lower((uint8_t)tail[i]) != s_lower((uint8_t)ext[i])) {
+    if (internal_lower((uint8_t)tail[i]) != internal_lower((uint8_t)ext[i])) {
       return false;
     }
   }
@@ -140,12 +140,12 @@ static bool s_ends_with_ci(const char* name, uint16_t len, const char* ext)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static bool s_is_image_ext(const char* name, uint16_t len)
+static bool internal_is_image_ext(const char* name, uint16_t len)
 {
   static const char* const k_exts[] = {".jpg", ".jpeg", ".png", ".gif", ".bmp"};
   for (uint8_t i = 0U; i < (uint8_t)(sizeof(k_exts) / sizeof(k_exts[0]));
        ++i) { /* bound: fixed table */
-    if (s_ends_with_ci(name, len, k_exts[i])) {
+    if (internal_ends_with_ci(name, len, k_exts[i])) {
       return true;
     }
   }
@@ -174,7 +174,7 @@ bool ra8_comic_is_page_name(const char* name, uint16_t len)
       return false; /* hidden entry or macOS AppleDouble resource fork */
     }
   }
-  return s_is_image_ext(name, len);
+  return internal_is_image_ext(name, len);
 }
 
 ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
@@ -231,7 +231,7 @@ ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static int32_t s_name_cmp(const char* a, uint16_t alen, const char* b, uint16_t blen)
+static int32_t internal_name_cmp(const char* a, uint16_t alen, const char* b, uint16_t blen)
 {
   const uint16_t m = (alen < blen) ? alen : blen;
   const int      c = memcmp(a, b, (size_t)m);
@@ -255,13 +255,13 @@ static int32_t s_name_cmp(const char* a, uint16_t alen, const char* b, uint16_t 
  * @param[in,out] c Comic whose `pages[0..page_count)` is sorted in place.
  * @pre `c->page_count <= c->page_cap` and the name arena is populated.
  * @pre Every page's `name_off`/`name_len` addresses the arena.
- * @post `pages` is non-decreasing under ::s_name_cmp.
+ * @post `pages` is non-decreasing under ::internal_name_cmp.
  * @post `page_count` is unchanged.
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static void s_sort(ra8_comic_t* c)
+static void internal_sort(ra8_comic_t* c)
 {
   for (uint32_t i = 1U; i < c->page_count; ++i) { /* bound: page_count <= page_cap */
     const ra8_comic_page_t key = c->pages[i];
@@ -269,7 +269,7 @@ static void s_sort(ra8_comic_t* c)
     uint32_t               j   = i;
     while (j > 0U) { /* bound: j strictly decreases toward 0 */
       const ra8_comic_page_t prev = c->pages[j - 1U];
-      if (s_name_cmp(&c->names[prev.name_off], prev.name_len, kn, key.name_len) <= 0) {
+      if (internal_name_cmp(&c->names[prev.name_off], prev.name_len, kn, key.name_len) <= 0) {
         break;
       }
       c->pages[j] = prev;
@@ -295,7 +295,7 @@ static void s_sort(ra8_comic_t* c)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static bool s_is_zip(const uint8_t* s)
+static bool internal_is_zip(const uint8_t* s)
 {
   if (s[0] != (uint8_t)k_zip_b0) {
     return false;
@@ -331,10 +331,10 @@ static bool s_is_zip(const uint8_t* s)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_open_reject_null(const ra8_comic_t*      c,
-                                    ra8_comic_read_fn       read,
-                                    const ra8_comic_page_t* pages,
-                                    const char*             names)
+static ra8_err_t internal_open_reject_null(const ra8_comic_t*      c,
+                                           ra8_comic_read_fn       read,
+                                           const ra8_comic_page_t* pages,
+                                           const char*             names)
 {
   RA8_CHECK_NULL_PTR(c, s_tag_comic, "open: null c");
   RA8_CHECK_NULL_PTR((const void*)read, s_tag_comic, "open: null read");
@@ -362,14 +362,14 @@ static ra8_err_t s_open_reject_null(const ra8_comic_t*      c,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_open_detect(ra8_comic_t* c)
+static ra8_err_t internal_open_detect(ra8_comic_t* c)
 {
   uint8_t      sig[k_ra8_comic_magic_len] = {};
   const size_t got                        = c->read(c->ctx, 0U, sig, sizeof(sig));
   if (got < (size_t)k_comic_sig_min) {
     return k_ra8_err_invalid_size;
   }
-  if (s_is_zip(sig)) {
+  if (internal_is_zip(sig)) {
     c->kind        = k_ra8_comic_kind_cbz;
     c->stream.read = c->read;
     c->stream.ctx  = c->ctx;
@@ -400,7 +400,7 @@ ra8_err_t ra8_comic_open(ra8_comic_t*      c,
                          char*             names,
                          uint32_t          names_cap)
 {
-  const ra8_err_t nerr = s_open_reject_null(c, read, pages, names);
+  const ra8_err_t nerr = internal_open_reject_null(c, read, pages, names);
   if (nerr != k_ra8_ok) {
     return nerr;
   }
@@ -422,7 +422,7 @@ ra8_err_t ra8_comic_open(ra8_comic_t*      c,
   c->names     = names;
   c->names_cap = names_cap;
 
-  const ra8_err_t err = s_open_detect(c);
+  const ra8_err_t err = internal_open_detect(c);
   if (err != k_ra8_ok) {
     (void)ra8_comic_close(c);
     return err;
@@ -431,7 +431,7 @@ ra8_err_t ra8_comic_open(ra8_comic_t*      c,
     (void)ra8_comic_close(c);
     return k_ra8_err_not_found;
   }
-  s_sort(c);
+  internal_sort(c);
   return k_ra8_ok;
 }
 

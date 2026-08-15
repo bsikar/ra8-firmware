@@ -88,12 +88,12 @@ static const char* const s_tag = "ra8_rabook_pipeline";
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static const uint8_t* s_downscale_if_needed(const ra8_rabook_pipeline_scratch_t* scr,
-                                            const uint8_t*                       pixels,
-                                            uint16_t                             sw,
-                                            uint16_t                             sh,
-                                            uint16_t                             ow,
-                                            uint16_t                             oh)
+static const uint8_t* internal_downscale_if_needed(const ra8_rabook_pipeline_scratch_t* scr,
+                                                   const uint8_t*                       pixels,
+                                                   uint16_t                             sw,
+                                                   uint16_t                             sh,
+                                                   uint16_t                             ow,
+                                                   uint16_t                             oh)
 {
   if (ow == sw && oh == sh) {
     return pixels;
@@ -132,11 +132,11 @@ static const uint8_t* s_downscale_if_needed(const ra8_rabook_pipeline_scratch_t*
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_encode_gray(const ra8_rabook_pipeline_scratch_t* scr,
-                               const uint8_t*                       gray_src,
-                               uint16_t                             ow,
-                               uint16_t                             oh,
-                               uint32_t*                            out_size)
+static ra8_err_t internal_encode_gray(const ra8_rabook_pipeline_scratch_t* scr,
+                                      const uint8_t*                       gray_src,
+                                      uint16_t                             ow,
+                                      uint16_t                             oh,
+                                      uint32_t*                            out_size)
 {
   if (scr->pixel_format == (uint8_t)k_ra8_book_pixfmt_gray8) {
     return ra8_rabook_gray8_encode(gray_src,
@@ -177,10 +177,10 @@ static ra8_err_t s_encode_gray(const ra8_rabook_pipeline_scratch_t* scr,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static uint32_t s_transcode_image(ra8_rabook_ctx_t*                    ctx,
-                                  const ra8_rabook_pipeline_scratch_t* scr,
-                                  uint32_t                             id_off,
-                                  size_t                               raw_len)
+static uint32_t internal_transcode_image(ra8_rabook_ctx_t*                    ctx,
+                                         const ra8_rabook_pipeline_scratch_t* scr,
+                                         uint32_t                             id_off,
+                                         size_t                               raw_len)
 {
   int sw   = 0;
   int sh   = 0;
@@ -207,7 +207,8 @@ static uint32_t s_transcode_image(ra8_rabook_ctx_t*                    ctx,
     ra8_rabook_gray4_output_dims((uint16_t)sw, (uint16_t)sh, scr->max_image_edge, &ow, &oh);
   }
 
-  const uint8_t* gray_src = s_downscale_if_needed(scr, pixels, (uint16_t)sw, (uint16_t)sh, ow, oh);
+  const uint8_t* gray_src =
+    internal_downscale_if_needed(scr, pixels, (uint16_t)sw, (uint16_t)sh, ow, oh);
   if (gray_src == nullptr) {
     stbi_image_free(pixels); /* alloc-allow: stb backed by ra8_img_arena */
     ra8_img_arena_unbind();
@@ -215,7 +216,7 @@ static uint32_t s_transcode_image(ra8_rabook_ctx_t*                    ctx,
   }
 
   uint32_t  encoded_size = 0U;
-  ra8_err_t enc_err      = s_encode_gray(scr, gray_src, ow, oh, &encoded_size);
+  ra8_err_t enc_err      = internal_encode_gray(scr, gray_src, ow, oh, &encoded_size);
   stbi_image_free(pixels); /* alloc-allow: stb backed by ra8_img_arena */
   ra8_img_arena_unbind();
 
@@ -255,10 +256,10 @@ static uint32_t s_transcode_image(ra8_rabook_ctx_t*                    ctx,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static const char* s_chapter_title(const ra8_epub_book_t* epub,
-                                   uint16_t               chapter_idx,
-                                   uint16_t               toc_count,
-                                   ra8_epub_toc_entry_t*  entry_buf)
+static const char* internal_chapter_title(const ra8_epub_book_t* epub,
+                                          uint16_t               chapter_idx,
+                                          uint16_t               toc_count,
+                                          ra8_epub_toc_entry_t*  entry_buf)
 {
   for (uint16_t ti = 0U; ti < toc_count; ti++) {
     uint16_t ch_idx = 0U;
@@ -292,9 +293,9 @@ static const char* s_chapter_title(const ra8_epub_book_t* epub,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_check_compile_common(const ra8_epub_book_t*               epub,
-                                        const ra8_rabook_buffers_t*          bufs,
-                                        const ra8_rabook_pipeline_scratch_t* scr)
+static ra8_err_t internal_check_compile_common(const ra8_epub_book_t*               epub,
+                                               const ra8_rabook_buffers_t*          bufs,
+                                               const ra8_rabook_pipeline_scratch_t* scr)
 {
   RA8_CHECK_NULL_PTR(epub, s_tag, "epub");
   RA8_CHECK_NULL_PTR(bufs, s_tag, "bufs");
@@ -326,9 +327,9 @@ static ra8_err_t s_check_compile_common(const ra8_epub_book_t*               epu
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_compile_stylesheets(ra8_rabook_ctx_t*                    ctx,
-                                       const ra8_rabook_pipeline_scratch_t* scr,
-                                       ra8_epub_book_t*                     epub)
+static ra8_err_t internal_compile_stylesheets(ra8_rabook_ctx_t*                    ctx,
+                                              const ra8_rabook_pipeline_scratch_t* scr,
+                                              ra8_epub_book_t*                     epub)
 {
   const uint16_t count = ra8_epub_manifest_count(epub);
   for (uint16_t i = 0U; i < count; i++) {
@@ -360,7 +361,7 @@ static ra8_err_t s_compile_stylesheets(ra8_rabook_ctx_t*                    ctx,
  * @details Mirrors the desktop epub_compile.py image arm exactly: a
  *          @c image/svg+xml item is stored verbatim (vector, width=height=0); any
  *          other @c image/ * item is decoded + transcoded to 4-bpp gray via
- *          @ref s_transcode_image (downscaled only above the panel edge). The item
+ *          @ref internal_transcode_image (downscaled only above the panel edge). The item
  *          href is interned as the image id. A non-image item, an item absent from
  *          the archive, or one that fails to decode is skipped (returns nil) -- the
  *          desktop's @c try/except @c pass -- so one bad image never fails the
@@ -380,10 +381,10 @@ static ra8_err_t s_compile_stylesheets(ra8_rabook_ctx_t*                    ctx,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static uint32_t s_add_manifest_image(ra8_rabook_ctx_t*                    ctx,
-                                     const ra8_rabook_pipeline_scratch_t* scr,
-                                     ra8_epub_book_t*                     epub,
-                                     const ra8_epub_manifest_item_t*      item)
+static uint32_t internal_add_manifest_image(ra8_rabook_ctx_t*                    ctx,
+                                            const ra8_rabook_pipeline_scratch_t* scr,
+                                            ra8_epub_book_t*                     epub,
+                                            const ra8_epub_manifest_item_t*      item)
 {
   const char* const img_prefix = "image/";
   uint8_t           fmt        = (uint8_t)k_ra8_book_image_gray4;
@@ -418,7 +419,7 @@ static uint32_t s_add_manifest_image(ra8_rabook_ctx_t*                    ctx,
                                 (uint32_t)got);
   }
 #ifndef RA8_RABOOK_NO_RASTER
-  return s_transcode_image(ctx, scr, id_off, got);
+  return internal_transcode_image(ctx, scr, id_off, got);
 #else
   return (uint32_t)k_ra8_book_nil; /* unreachable: raster returned nil above */
 #endif
@@ -428,7 +429,7 @@ static uint32_t s_add_manifest_image(ra8_rabook_ctx_t*                    ctx,
  * @brief Compile every manifest image into the builder, resolving the cover.
  * @details Walks the manifest in OPF document order -- the same order the desktop
  *          epub_compile.py iterates @c manifest.items() -- adding each image item
- *          via @ref s_add_manifest_image so the image table indices match. The
+ *          via @ref internal_add_manifest_image so the image table indices match. The
  *          cover index is the table index of the item whose href equals
  *          @c epub->cover_path (ra8_epub already resolves that from
  *          `properties="cover-image"` or the legacy `<meta name="cover">`), which
@@ -454,10 +455,10 @@ static uint32_t s_add_manifest_image(ra8_rabook_ctx_t*                    ctx,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_compile_images(ra8_rabook_ctx_t*                    ctx,
-                                  const ra8_rabook_pipeline_scratch_t* scr,
-                                  ra8_epub_book_t*                     epub,
-                                  uint32_t*                            cover_index_out)
+static ra8_err_t internal_compile_images(ra8_rabook_ctx_t*                    ctx,
+                                         const ra8_rabook_pipeline_scratch_t* scr,
+                                         ra8_epub_book_t*                     epub,
+                                         uint32_t*                            cover_index_out)
 {
   *cover_index_out = (uint32_t)k_ra8_book_nil;
   if (scr->skip_images) {
@@ -469,7 +470,7 @@ static ra8_err_t s_compile_images(ra8_rabook_ctx_t*                    ctx,
     if (item == nullptr) {
       continue;
     }
-    const uint32_t idx = s_add_manifest_image(ctx, scr, epub, item);
+    const uint32_t idx = internal_add_manifest_image(ctx, scr, epub, item);
     if (idx == (uint32_t)k_ra8_book_nil) {
       continue;
     }
@@ -500,9 +501,9 @@ static ra8_err_t s_compile_images(ra8_rabook_ctx_t*                    ctx,
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_compile_chapters(ra8_epub_book_t*                     epub,
-                                    const ra8_rabook_pipeline_scratch_t* scr,
-                                    ra8_rabook_ctx_t*                    ctx)
+static ra8_err_t internal_compile_chapters(ra8_epub_book_t*                     epub,
+                                           const ra8_rabook_pipeline_scratch_t* scr,
+                                           ra8_rabook_ctx_t*                    ctx)
 {
   uint16_t  chapter_count = 0U;
   ra8_err_t err           = ra8_epub_get_chapter_count(epub, &chapter_count);
@@ -522,7 +523,7 @@ static ra8_err_t s_compile_chapters(ra8_epub_book_t*                     epub,
       return err;
     }
 
-    const char* ch_title = s_chapter_title(epub, ci, toc_count, &toc_entry);
+    const char* ch_title = internal_chapter_title(epub, ci, toc_count, &toc_entry);
     const char* ch_href  = epub->chapter_paths[ci];
 
     err = ra8_rabook_xml_parse_chapter(scr->xhtml, got_len, ctx, ch_href, ch_title);
@@ -555,7 +556,7 @@ static ra8_err_t s_compile_chapters(ra8_epub_book_t*                     epub,
  */
 RA8_INTERNAL
 static ra8_err_t
-s_compile_metadata(ra8_rabook_ctx_t* ctx, ra8_epub_book_t* epub, uint32_t cover_image_index)
+internal_compile_metadata(ra8_rabook_ctx_t* ctx, ra8_epub_book_t* epub, uint32_t cover_image_index)
 {
   ra8_epub_metadata_t meta = {};
   ra8_err_t           err  = ra8_epub_get_metadata(epub, &meta);
@@ -597,11 +598,11 @@ s_compile_metadata(ra8_rabook_ctx_t* ctx, ra8_epub_book_t* epub, uint32_t cover_
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t s_compile_to_blob(ra8_epub_book_t*                     epub,
-                                   const ra8_rabook_buffers_t*          bufs,
-                                   const ra8_rabook_pipeline_scratch_t* scr,
-                                   const void**                         out_blob,
-                                   uint32_t*                            out_len)
+static ra8_err_t internal_compile_to_blob(ra8_epub_book_t*                     epub,
+                                          const ra8_rabook_buffers_t*          bufs,
+                                          const ra8_rabook_pipeline_scratch_t* scr,
+                                          const void**                         out_blob,
+                                          uint32_t*                            out_len)
 {
   ra8_rabook_ctx_t ctx = {};
   ra8_err_t        err = ra8_rabook_compile_init(&ctx, bufs);
@@ -610,20 +611,20 @@ static ra8_err_t s_compile_to_blob(ra8_epub_book_t*                     epub,
   }
   /* Emit in the desktop epub_compile.py order so the blob is byte-identical:
    * stylesheets, images (cover resolved within), chapters, metadata interned LAST. */
-  err = s_compile_stylesheets(&ctx, scr, epub);
+  err = internal_compile_stylesheets(&ctx, scr, epub);
   if (err != k_ra8_ok) {
     return err;
   }
   uint32_t cover_image_index = (uint32_t)k_ra8_book_nil;
-  err                        = s_compile_images(&ctx, scr, epub, &cover_image_index);
+  err                        = internal_compile_images(&ctx, scr, epub, &cover_image_index);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = s_compile_chapters(epub, scr, &ctx);
+  err = internal_compile_chapters(epub, scr, &ctx);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = s_compile_metadata(&ctx, epub, cover_image_index);
+  err = internal_compile_metadata(&ctx, epub, cover_image_index);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -640,13 +641,13 @@ ra8_err_t ra8_rabook_compile_from_epub_to_buffer(ra8_epub_book_t*               
                                                  const void**                         out_blob,
                                                  uint32_t*                            out_len)
 {
-  ra8_err_t err = s_check_compile_common(epub, bufs, scr);
+  ra8_err_t err = internal_check_compile_common(epub, bufs, scr);
   if (err != k_ra8_ok) {
     return err;
   }
   RA8_CHECK_NULL_PTR(out_blob, s_tag, "out_blob");
   RA8_CHECK_NULL_PTR(out_len, s_tag, "out_len");
-  return s_compile_to_blob(epub, bufs, scr, out_blob, out_len);
+  return internal_compile_to_blob(epub, bufs, scr, out_blob, out_len);
 }
 
 ra8_err_t ra8_rabook_compile_from_epub(ra8_epub_book_t*                     epub,
@@ -655,7 +656,7 @@ ra8_err_t ra8_rabook_compile_from_epub(ra8_epub_book_t*                     epub
                                        ra8_fs_mount_t*                      mount,
                                        const char*                          out_path)
 {
-  ra8_err_t err = s_check_compile_common(epub, bufs, scr);
+  ra8_err_t err = internal_check_compile_common(epub, bufs, scr);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -664,7 +665,7 @@ ra8_err_t ra8_rabook_compile_from_epub(ra8_epub_book_t*                     epub
 
   const void* blob     = nullptr;
   uint32_t    blob_len = 0U;
-  err                  = s_compile_to_blob(epub, bufs, scr, &blob, &blob_len);
+  err                  = internal_compile_to_blob(epub, bufs, scr, &blob, &blob_len);
   if (err != k_ra8_ok) {
     return err;
   }

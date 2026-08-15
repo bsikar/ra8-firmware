@@ -56,7 +56,7 @@ ra8_decomp_limits_t ra8_decomp_limits_default(void)
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
-RA8_INTERNAL static bool s_limits_usable(const ra8_decomp_limits_t* lim)
+RA8_INTERNAL static bool internal_limits_usable(const ra8_decomp_limits_t* lim)
 {
   if (lim->max_output_bytes == 0U) {
     return false;
@@ -96,7 +96,7 @@ RA8_INTERNAL static bool s_limits_usable(const ra8_decomp_limits_t* lim)
  * @note Thread-safe: pure computation.
  * @since Version 0.1.0
  */
-RA8_INTERNAL static uint64_t s_ratio_bound(const ra8_decomp_limits_t* lim, uint64_t in_total)
+RA8_INTERNAL static uint64_t internal_ratio_bound(const ra8_decomp_limits_t* lim, uint64_t in_total)
 {
   const uint64_t ratio = (uint64_t)lim->max_ratio;
   if (in_total > (UINT64_MAX / ratio)) {
@@ -118,7 +118,7 @@ ra8_err_t ra8_decomp_budget_init(ra8_decomp_budget_t* b, const ra8_decomp_limits
     b->limits = ra8_decomp_limits_default();
     return k_ra8_ok;
   }
-  if (!s_limits_usable(limits)) {
+  if (!internal_limits_usable(limits)) {
     return k_ra8_err_invalid_arg;
   }
   b->limits = *limits;
@@ -138,7 +138,7 @@ ra8_decomp_budget_charge_output(ra8_decomp_budget_t* b, uint64_t in_total, uint6
   if (b->out_bytes > b->limits.max_output_bytes) {
     return k_ra8_err_decomp_output_cap;
   }
-  if (b->out_bytes > s_ratio_bound(&b->limits, in_total)) {
+  if (b->out_bytes > internal_ratio_bound(&b->limits, in_total)) {
     return k_ra8_err_decomp_ratio;
   }
   return k_ra8_ok;
@@ -192,7 +192,7 @@ ra8_decomp_check_declared(const ra8_decomp_limits_t* limits, uint64_t comp_size,
   if (out_size > limits->max_output_bytes) {
     return k_ra8_err_decomp_output_cap;
   }
-  if (out_size > s_ratio_bound(limits, comp_size)) {
+  if (out_size > internal_ratio_bound(limits, comp_size)) {
     return k_ra8_err_decomp_ratio;
   }
   return k_ra8_ok;

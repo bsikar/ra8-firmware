@@ -24,11 +24,10 @@ module's file-local helper of the same name.
 from __future__ import annotations
 
 import contextlib
-import pathlib
 import re
 
 from annot_clang import SECTION_ATTR_KIND, cindex
-from annot_model import AnnotatedSymbol, CallSite, ParseStats
+from annot_model import AnnotatedSymbol, CallSite, DataSymbol, WalkState
 from annot_rulekeys import ANNOTATION_PREFIXES
 from annot_source import source_lines
 
@@ -142,15 +141,13 @@ class _Walker:
 
     def __init__(
         self,
-        symbols: dict[str, AnnotatedSymbol],
-        calls: list[CallSite],
-        stats: ParseStats,
-        vector_entries: set[str],
+        state: WalkState,
     ) -> None:
-        self.symbols = symbols
-        self.calls = calls
-        self.stats = stats
-        self.vector_entries = vector_entries
+        self.symbols = state.symbols
+        self.data_symbols = state.data_symbols
+        self.calls = state.calls
+        self.stats = state.stats
+        self.vector_entries = state.vector_entries
 
     def _record_vector_entries(self, node: cindex.Cursor) -> None:
         """Collect the USR of every function named in a vector table."""
@@ -162,6 +159,39 @@ class _Walker:
             self.vector_entries.add(symbol_key(node.referenced))
         for child in node.get_children():
             self._record_vector_entries(child)
+
+    def _record_data(self, node: cindex.Cursor) -> None:
+        """Record one data definition without confusing locals with statics."""
+        if node.location.file is None:
+            return
+        parent = node.semantic_parent
+        file_scope = parent is not None and parent.kind in (
+            cindex.CursorKind.TRANSLATION_UNIT,
+            cindex.CursorKind.NAMESPACE,
+        )
+        # C's uninitialised file-scope ``static`` is a tentative definition;
+        # libclang reports ``is_definition() == false`` even though the TU
+        # owns storage for it.  It is still exactly the data the naming rule
+        # must classify.
+        if not node.is_definition() and not (
+            file_scope and node.storage_class == cindex.StorageClass.STATIC
+        ):
+            return
+        internal = (
+            node.linkage == cindex.LinkageKind.INTERNAL
+            or node.storage_class == cindex.StorageClass.STATIC
+        )
+        key = usr_of(node) or f"{_file_of(node)}:{node.location.line}:{node.spelling}"
+        self.data_symbols.setdefault(
+            key,
+            DataSymbol(
+                name=node.spelling,
+                file=_file_of(node),
+                line=node.location.line,
+                is_file_scope=file_scope,
+                has_internal_linkage=internal,
+            ),
+        )
 
     def _symbol_for(self, node: cindex.Cursor) -> AnnotatedSymbol:
         """Return (creating if needed) the table entry for a function cursor."""
@@ -179,7 +209,14 @@ class _Walker:
         for a in collect_annotations(node):
             if a not in sym.annotations:
                 sym.annotations.append(a)
-        sym.is_static = node.linkage == cindex.LinkageKind.INTERNAL or sym.is_static
+        # RA8_INTERNAL promises the declaration actually spells ``static``.
+        # C++ anonymous namespaces also have internal linkage, but that is a
+        # different mechanism and must not satisfy a contract about storage
+        # class by accident.
+        sym.is_static = node.storage_class == cindex.StorageClass.STATIC or sym.is_static
+        sym.has_internal_linkage = (
+            node.linkage == cindex.LinkageKind.INTERNAL or sym.has_internal_linkage
+        )
         sym.return_type = node.result_type.spelling
         if any(arg.type.kind == cindex.TypeKind.POINTER for arg in node.get_arguments()):
             sym.has_pointer_param = True
@@ -254,6 +291,9 @@ class _Walker:
             self._visit_function(node, current_func)
             return
 
+        if node.kind == cindex.CursorKind.VAR_DECL:
+            self._record_data(node)
+
         if is_vector_table(node):
             self._record_vector_entries(node)
 
@@ -269,11 +309,7 @@ class _Walker:
 
 def walk_tu(
     tu: cindex.TranslationUnit,
-    _tu_path: pathlib.Path,
-    symbols: dict[str, AnnotatedSymbol],
-    calls: list[CallSite],
-    stats: ParseStats,
-    vector_entries: set[str],
+    state: WalkState,
 ) -> None:
-    """Single-pass AST walk filling ``symbols``, ``calls`` and ``vector_entries``."""
-    _Walker(symbols, calls, stats, vector_entries).visit(tu.cursor, None)
+    """Fill function, data, call-site, and vector-table records in one pass."""
+    _Walker(state).visit(tu.cursor, None)
