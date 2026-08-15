@@ -48,6 +48,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ra8p1.h"
 #include "ra8_cgc.h"
 #include "ra8_device.h"
@@ -130,7 +131,7 @@ static uint8_t s_npu_weights[k_npu_smoke_arena_bytes];
  * @var s_npu_input
  * @brief Region 1 input tensor: seeded with a deterministic byte pattern.
  * @details The NPU (fake) reads this and writes input+K to the output arena.
- * @note Seeded by npu_smoke_seed_arenas().
+ * @note Seeded by internal_npu_smoke_seed_arenas().
  * @since 0.1.0
  */
 static uint8_t s_npu_input[k_npu_smoke_arena_bytes];
@@ -186,14 +187,17 @@ volatile uint32_t g_npu_smoke_pass = 0U;
  * @details Reserved for failures BEFORE a verdict can be emitted (CGC or the
  *          SCI8 console did not come up), so a ra8_emulator gate that scans for a
  *          `*panic_halt` terminal PC correctly reads this as a failed run. The
- *          normal post-verdict terminal is ::npu_smoke_park, which is NOT a
+ *          normal post-verdict terminal is ::internal_npu_smoke_park, which is NOT a
  *          panic and must not be flagged as one.
  *
  * @pre Called only after a fatal init error, before the verdict banner.
+ * @pre No initialized console path can publish a normal run verdict.
  * @post CPU is parked; only a debugger or reset wakes it.
+ * @post No NPU or console access occurs after entry.
+ * @note The panic suffix is consumed by emulator failure classification.
  * @since 0.1.0
  */
-static void npu_smoke_panic_halt(void)
+RA8_INTERNAL static void internal_npu_smoke_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -203,7 +207,7 @@ static void npu_smoke_panic_halt(void)
 /**
  * @brief Park the CPU forever in WFI after the verdict banner (a clean stop).
  *
- * @details Distinct from ::npu_smoke_panic_halt on purpose: a run that reached
+ * @details Distinct from ::internal_npu_smoke_panic_halt on purpose: a run that reached
  *          the verdict -- PASS or FAIL -- has done its job and parks here, whose
  *          name deliberately does NOT match the `*panic_halt` / `*_halt_loop`
  *          patterns a ra8_emulator gate treats as a give-up. The authoritative
@@ -211,10 +215,13 @@ static void npu_smoke_panic_halt(void)
  *          ::g_npu_smoke_pass for a memprobe), never the parked PC.
  *
  * @pre The verdict banner has been emitted over the SCI8 console.
+ * @pre Run-result globals contain their final diagnostic values.
  * @post CPU is parked; only a debugger or reset wakes it.
+ * @post The verdict remains stable for an attached memory probe.
+ * @note Reaching this clean terminal does not imply PASS; the banner is authoritative.
  * @since 0.1.0
  */
-static void npu_smoke_park(void)
+RA8_INTERNAL static void internal_npu_smoke_park(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -228,16 +235,19 @@ static void npu_smoke_park(void)
  *          console (PCLKA/SCICLK) is set up here so the verdict can be printed.
  *
  * @pre Reset_Handler has initialised .data / .bss.
+ * @pre The application remains in single-threaded boot context.
  * @post On return CGC is up and the SCI8 console is ready for writes.
+ * @post Any mandatory setup error transfers to the panic halt.
+ * @note NPU initialization is intentionally deferred until after diagnostics work.
  * @since 0.1.0
  */
-static void npu_smoke_setup_or_halt(void)
+RA8_INTERNAL static void internal_npu_smoke_setup_or_halt(void)
 {
   if (ra8_cgc_init() != k_ra8_ok) {
-    npu_smoke_panic_halt();
+    internal_npu_smoke_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_npu_smoke_baud) != k_ra8_ok) {
-    npu_smoke_panic_halt();
+    internal_npu_smoke_panic_halt();
   }
 }
 
@@ -248,10 +258,13 @@ static void npu_smoke_setup_or_halt(void)
  *          source region, destination region, byte count, constant addend.
  *
  * @pre s_npu_cmd_stream has k_ra8_npu_fake_word_num words.
+ * @pre No active NPU job is reading the command stream.
  * @post s_npu_cmd_stream describes an add-constant of region 1 -> region 2.
+ * @post Only the defined fake-command header words are modified.
+ * @note The stream exercises driver plumbing with a deterministic stand-in op.
  * @since 0.1.0
  */
-static void npu_smoke_build_stream(void)
+RA8_INTERNAL static void internal_npu_smoke_build_stream(void)
 {
   s_npu_cmd_stream[k_ra8_npu_fake_word_op] =
     (uint32_t)k_ra8_npu_fake_magic | (uint32_t)k_ra8_npu_fake_op_addk;
@@ -264,11 +277,16 @@ static void npu_smoke_build_stream(void)
 /**
  * @brief Seed the input arena with a deterministic pattern and zero the output.
  *
+ * @details Generates the fixed affine byte sequence used by verification and
+ * clears every output byte so stale data cannot produce a false pass.
  * @pre The arenas are k_npu_smoke_arena_bytes long.
+ * @pre The current run exclusively owns both static arenas.
  * @post s_npu_input holds the pattern; s_npu_output is all zero.
+ * @post The weights and command-stream regions remain unchanged.
+ * @note Deterministic seeding makes the emitted checkword reproducible.
  * @since 0.1.0
  */
-static void npu_smoke_seed_arenas(void)
+RA8_INTERNAL static void internal_npu_smoke_seed_arenas(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_npu_smoke_arena_bytes; i++) {
     s_npu_input[i] =
@@ -281,14 +299,19 @@ static void npu_smoke_seed_arenas(void)
 /**
  * @brief Submit + run + wait for the NPU job.
  *
+ * @details Builds a descriptor over the static regions, submits it, starts the
+ * NPU, and synchronously returns the completion wait result.
  * @return `ra8_err_t` from the first failing driver call, else k_ra8_ok.
  * @retval k_ra8_ok Job completed (command stream consumed).
  *
  * @pre The command stream and arenas are populated.
+ * @pre The NPU is initialized and has no active job.
  * @post On k_ra8_ok the output arena holds the NPU result.
+ * @post On failure no later driver stage is invoked by this helper.
+ * @note All referenced region storage remains owned by the application.
  * @since 0.1.0
  */
-static ra8_err_t npu_smoke_run_job(void)
+RA8_INTERNAL static ra8_err_t internal_npu_smoke_run_job(void)
 {
   ra8_npu_job_t job                           = {};
   job.cmd_stream                              = s_npu_cmd_stream;
@@ -312,14 +335,21 @@ static ra8_err_t npu_smoke_run_job(void)
 /**
  * @brief Verify the output arena equals input+K and fold it into a checkword.
  *
+ * @details Compares every output byte to the wrapped add-constant expectation
+ * while accumulating an FNV-1a digest independent of the verdict.
  * @param[out] out_check FNV-1a digest of the output bytes (for the banner).
  * @return true when every output byte matches the expected add-constant result.
+ * @retval true Every result byte matches its expected value.
+ * @retval false One or more result bytes differ.
  *
  * @pre out_check is non-NULL; the job has completed.
+ * @pre Input and output arenas contain the same completed run.
  * @post *out_check holds the output digest regardless of the verdict.
+ * @post Neither arena is modified during verification.
+ * @note The digest is diagnostic evidence, not a cryptographic authenticator.
  * @since 0.1.0
  */
-static bool npu_smoke_verify(uint32_t* out_check)
+RA8_INTERNAL static bool internal_npu_smoke_verify(uint32_t* out_check)
 {
   uint32_t check = (uint32_t)k_npu_smoke_fnv_offset;
   bool     ok    = true;
@@ -338,16 +368,22 @@ static bool npu_smoke_verify(uint32_t* out_check)
 /**
  * @brief Format and print the one-line verdict banner over the SCI8 console.
  *
+ * @details Formats the device ID, driver result, output digest, and verdict into
+ * a bounded local line, then writes and flushes it once.
  * @param[in] id     NPU_ID read after init.
  * @param[in] run_ok Whether the submit/run/wait sequence returned k_ra8_ok.
- * @param[in] check  Output checkword from npu_smoke_verify().
+ * @param[in] check  Output checkword from internal_npu_smoke_verify().
  * @param[in] pass   Final verdict (id valid AND run_ok AND output matched).
  *
  * @pre The SCI8 console is initialised.
+ * @pre All supplied values are final snapshots for the completed run.
  * @post One banner line has been written and flushed to the console.
+ * @post NPU arenas and published result globals remain unchanged.
+ * @note A nonpositive formatter result suppresses output safely.
  * @since 0.1.0
  */
-static void npu_smoke_emit(uint32_t id, bool run_ok, uint32_t check, bool pass)
+RA8_INTERNAL static void
+internal_npu_smoke_emit(uint32_t id, bool run_ok, uint32_t check, bool pass)
 {
   char      line[k_npu_smoke_line_cap];
   const int n = snprintf(line,
@@ -376,7 +412,7 @@ static void npu_smoke_emit(uint32_t id, bool run_ok, uint32_t check, bool pass)
  */
 int32_t main(void)
 {
-  npu_smoke_setup_or_halt();
+  internal_npu_smoke_setup_or_halt();
 
   bool     run_ok = false;
   uint32_t id     = 0U;
@@ -387,23 +423,23 @@ int32_t main(void)
     (void)ra8_npu_read_id(&id);
     g_npu_smoke_id = id;
 
-    npu_smoke_build_stream();
-    npu_smoke_seed_arenas();
-    run_ok = (npu_smoke_run_job() == k_ra8_ok);
+    internal_npu_smoke_build_stream();
+    internal_npu_smoke_seed_arenas();
+    run_ok = (internal_npu_smoke_run_job() == k_ra8_ok);
 
     ra8_npu_status_t st = {};
     if (ra8_npu_read_status(&st) == k_ra8_ok) {
       g_npu_smoke_status = st.raw;
     }
-    const bool matched = npu_smoke_verify(&check);
+    const bool matched = internal_npu_smoke_verify(&check);
     g_npu_smoke_check  = check;
     pass               = run_ok && matched && (id != 0U);
   }
 
   g_npu_smoke_pass = pass ? 1U : 0U;
-  npu_smoke_emit(id, run_ok, check, pass);
+  internal_npu_smoke_emit(id, run_ok, check, pass);
 
-  npu_smoke_park();
+  internal_npu_smoke_park();
   return 0;
 }
 #pragma GCC diagnostic pop

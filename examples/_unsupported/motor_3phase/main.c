@@ -48,7 +48,7 @@
  * Pin-mux notes: the J-tag connector pin allocation for an external
  * motor driver IC was not confirmed against the EK-RA8D2 v1 User's
  * Manual at authoring time; the placeholder pin macros in this
- * file (``k_motor_3phase_pin_u`` etc.) need a hardware bring-up
+ * file (``s_motor_3phase_pin_u`` etc.) need a hardware bring-up
  * pass before live PWM will reach a motor driver. The application
  * still compiles cleanly and exercises ``ra8_gpt_init``,
  * ``ra8_gpt_three_phase_open``, ``ra8_gpt_pwm_pin_configure``,
@@ -68,6 +68,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -143,14 +144,14 @@ typedef enum : uint16_t {
  * with the SCI8 / LED pins. Update once the manual table is read.
  */
 // TODO(board-rev): no public GTIOC0A on EK-RA8D2 v1; pins conflict with debug UART per UM. Use P105/P103/Pmod-GTIOC10A or a custom carrier board.
-static const ra8_port_pin_t k_motor_3phase_pin_u = RA8_PIN(k_ra8_port_4, k_ra8_pin_8);
-static const ra8_port_pin_t k_motor_3phase_pin_v = RA8_PIN(k_ra8_port_4, k_ra8_pin_9);
-static const ra8_port_pin_t k_motor_3phase_pin_w = RA8_PIN(k_ra8_port_4, k_ra8_pin_10);
+static const ra8_port_pin_t s_motor_3phase_pin_u = RA8_PIN(k_ra8_port_4, k_ra8_pin_8);
+static const ra8_port_pin_t s_motor_3phase_pin_v = RA8_PIN(k_ra8_port_4, k_ra8_pin_9);
+static const ra8_port_pin_t s_motor_3phase_pin_w = RA8_PIN(k_ra8_port_4, k_ra8_pin_10);
 
 /** @brief Diagnostic banner emitted every 100 ms. */
-static const uint8_t k_motor_3phase_msg_prefix[] = "duty UVW ";
-static const uint8_t k_motor_3phase_msg_sep[]    = " ";
-static const uint8_t k_motor_3phase_msg_eol[]    = "\r\n";
+static const uint8_t s_motor_3phase_msg_prefix[] = "duty UVW ";
+static const uint8_t s_motor_3phase_msg_sep[]    = " ";
+static const uint8_t s_motor_3phase_msg_eol[]    = "\r\n";
 
 /**
  * @brief Compile-time sine table, normalised to 0..period.
@@ -171,13 +172,21 @@ static uint16_t s_motor_3phase_step;
 /**
  * @brief Halt forever in WFI -- used as a panic stop on init failure.
  *
+ * @details Repeatedly enters the architectural wait state while retaining the
+ * failed initialization context for debugger inspection.
+ *
  * @pre Called only after a fatal error in boot.
+ * @pre The application has no safe motor-control recovery path remaining.
  *
  * @post CPU is parked; only a debugger or external reset wakes it.
+ * @post No additional PWM or pin configuration is attempted.
+ *
+ * @note Hardware fault containment must already have disabled unsafe drive
+ * outputs before this software-only halt is reached.
  *
  * @since 0.1.0
  */
-static void motor_3phase_panic_halt(void)
+RA8_INTERNAL static void internal_motor_3phase_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -200,13 +209,18 @@ static void motor_3phase_panic_halt(void)
  * For x in [pi, 2*pi] we reflect the result negative.
  *
  * @pre Called once at startup before any timer update.
+ * @pre ``s_motor_3phase_sine`` is not being read by another context.
  *
  * @post ``s_motor_3phase_sine[i]`` holds duty counts for the
  *       sample at phase ``2*pi*i/N``.
+ * @post Every generated duty value is clamped to the configured PWM period.
+ *
+ * @note The approximation is chosen for deterministic integer-only startup,
+ * not for precision motor-control applications.
  *
  * @since 0.1.0
  */
-static void motor_3phase_build_sine(void)
+RA8_INTERNAL static void internal_motor_3phase_build_sine(void)
 {
   /* Use a Q16 representation of pi and 2*pi for the Bhaskara math. */
   enum : uint64_t {
@@ -245,6 +259,9 @@ static void motor_3phase_build_sine(void)
 /**
  * @brief Route the three GTIOC pins.
  *
+ * @details Claims and routes the U, V, and W pads in order, returning as soon
+ * as a routing request fails so no later pad is touched after an error.
+ *
  * @return Error code from the first failing route call, or k_ra8_ok.
  *
  * @retval k_ra8_ok                       All pins routed.
@@ -256,27 +273,35 @@ static void motor_3phase_build_sine(void)
  * @pre Caller is single-threaded init context.
  *
  * @post On success the three GTIOC pins are routed.
+ * @post On failure previously successful routes remain claimed.
+ *
+ * @note Callers treat partial routing as fatal and park until reset.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t motor_3phase_pins_init(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_motor_3phase_pins_init(void)
 {
   ra8_err_t err =
-    ra8_pfs_route_peripheral(k_motor_3phase_pin_u, k_ra8_psel_gpt0, "motor_3phase.gtioc0a");
+    ra8_pfs_route_peripheral(s_motor_3phase_pin_u, k_ra8_psel_gpt0, "motor_3phase.gtioc0a");
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_pfs_route_peripheral(k_motor_3phase_pin_v, k_ra8_psel_gpt0, "motor_3phase.gtioc1a");
+  err = ra8_pfs_route_peripheral(s_motor_3phase_pin_v, k_ra8_psel_gpt0, "motor_3phase.gtioc1a");
   if (err != k_ra8_ok) {
     return err;
   }
-  return ra8_pfs_route_peripheral(k_motor_3phase_pin_w, k_ra8_psel_gpt0, "motor_3phase.gtioc2a");
+  return ra8_pfs_route_peripheral(s_motor_3phase_pin_w, k_ra8_psel_gpt0, "motor_3phase.gtioc2a");
 }
 
 /**
  * @brief Configure GTIOR for the three GTIOCnA outputs (active high).
  *
+ * @details Applies one common output policy and dead-time pair to each of the
+ * synchronized U/V/W channels, stopping at the first driver error.
+ *
  * @return Error code from the first failing call, or k_ra8_ok.
+ * @retval k_ra8_ok All three outputs and dead-time pairs were configured.
+ * @retval k_ra8_err_invalid_arg A channel or timing argument was rejected.
  *
  * @pre ``ra8_gpt_three_phase_open`` already returned k_ra8_ok.
  * @pre IRQs masked.
@@ -284,9 +309,12 @@ static void motor_3phase_build_sine(void)
  * @post Each channel's GTIOR.OAE is set so the pin actually drives.
  * @post Each channel's polarity is active-high with stop-low.
  *
+ * @note Partial configuration is not rolled back because the caller halts
+ * before enabling normal motor updates.
+ *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t motor_3phase_pin_configure_all(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_motor_3phase_pin_configure_all(void)
 {
   enum : uint8_t {
     k_phase_count = 3U, /**< Phase count. */
@@ -323,33 +351,36 @@ static void motor_3phase_build_sine(void)
  * NASA Power-of-10 60-line function-size cap.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
+ * @pre Peripheral interrupts remain masked during the boot sequence.
  *
  * @post On success the CGC, SysTick, pin mux, and LED1 are live.
  * @post Halts in WFI on init failure.
  *
+ * @note Pin routing occurs only after MSTP and time services are available.
+ *
  * @since 0.1.0
  */
-static void motor_3phase_init_clocks_and_led(void)
+RA8_INTERNAL static void internal_motor_3phase_init_clocks_and_led(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    motor_3phase_panic_halt();
+    internal_motor_3phase_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    motor_3phase_panic_halt();
+    internal_motor_3phase_panic_halt();
   }
   if (ra8_mstp_init() != k_ra8_ok) {
-    motor_3phase_panic_halt();
+    internal_motor_3phase_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    motor_3phase_panic_halt();
+    internal_motor_3phase_panic_halt();
   }
-  if (motor_3phase_pins_init() != k_ra8_ok) {
-    motor_3phase_panic_halt();
+  if (internal_motor_3phase_pins_init() != k_ra8_ok) {
+    internal_motor_3phase_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    motor_3phase_panic_halt();
+    internal_motor_3phase_panic_halt();
   }
 }
 
@@ -367,12 +398,14 @@ static void motor_3phase_init_clocks_and_led(void)
  * @post The console SCI8 channel is enabled.
  * @post Halts in WFI on init failure.
  *
+ * @note Diagnostic output is best-effort after initialization succeeds.
+ *
  * @since 0.1.0
  */
-static void motor_3phase_init_console(void)
+RA8_INTERNAL static void internal_motor_3phase_init_console(void)
 {
   if (ra8_board_uart_console_init((uint32_t)k_motor_3phase_baud) != k_ra8_ok) {
-    motor_3phase_panic_halt();
+    internal_motor_3phase_panic_halt();
   }
 }
 
@@ -391,11 +424,14 @@ static void motor_3phase_init_console(void)
  * @post All three GPT channels are running synchronized.
  * @post Halts in WFI on init failure.
  *
+ * @note The initial 50 percent pattern is loaded only after pin and dead-time
+ * configuration have both succeeded.
+ *
  * @since 0.1.0
  */
-static void motor_3phase_init_pwm(void)
+RA8_INTERNAL static void internal_motor_3phase_init_pwm(void)
 {
-  /* MSTP enable is now performed in motor_3phase_init_clocks_and_led so
+  /* MSTP enable is now performed in internal_motor_3phase_init_clocks_and_led so
    * the canonical CGC -> MSTP -> IOPORT -> TIME -> peripheral order is
    * preserved (see audit_init_order). */
   const ra8_gpt_three_phase_cfg_t three_phase_cfg = {
@@ -408,37 +444,47 @@ static void motor_3phase_init_pwm(void)
     .initial_duty_w = k_motor_3phase_half_period,
   };
   if (ra8_gpt_three_phase_open(&three_phase_cfg) != k_ra8_ok) {
-    motor_3phase_panic_halt();
+    internal_motor_3phase_panic_halt();
   }
-  if (motor_3phase_pin_configure_all() != k_ra8_ok) {
-    motor_3phase_panic_halt();
+  if (internal_motor_3phase_pin_configure_all() != k_ra8_ok) {
+    internal_motor_3phase_panic_halt();
   }
 
-  motor_3phase_build_sine();
+  internal_motor_3phase_build_sine();
   s_motor_3phase_step = 0U;
 
   /* Initial test pattern: 50 % duty on all three phases. */
   if (ra8_gpt_three_phase_set_duty(k_motor_3phase_half_period,
                                    k_motor_3phase_half_period,
                                    k_motor_3phase_half_period) != k_ra8_ok) {
-    motor_3phase_panic_halt();
+    internal_motor_3phase_panic_halt();
   }
 }
 
 /**
  * @brief Convert a 32-bit unsigned integer into ASCII decimal.
  *
+ * @details Accumulates decimal digits in reverse order in a bounded local
+ * array, then copies them most-significant digit first into ``buf``.
+ *
  * @param[in]  value Integer value.
  * @param[out] buf   Caller buffer, must hold at least 11 bytes.
  * @return Number of bytes written into ``buf``.
+ * @retval 1 One byte was written for zero.
+ * @retval 2..10 The decimal digit count for a nonzero uint32_t value.
  *
  * @pre buf is non-NULL with room for 11 bytes.
+ * @pre The caller tracks the returned length rather than expecting a NUL.
  *
  * @post Buffer holds the decimal MSD-first representation.
+ * @post Bytes after the returned digit sequence remain unchanged.
+ *
+ * @note This formatter is intentionally independent of the C stdio library.
+ *
  *
  * @since 0.1.0
  */
-static uint32_t motor_3phase_u32_to_dec(uint32_t value, uint8_t* buf)
+RA8_INTERNAL static uint32_t internal_motor_3phase_u32_to_dec(uint32_t value, uint8_t* buf)
 {
   enum : uint8_t {
     k_ascii_zero = 0x30U, /**< Ascii zero.     */
@@ -465,18 +511,26 @@ static uint32_t motor_3phase_u32_to_dec(uint32_t value, uint8_t* buf)
 /**
  * @brief Print "duty UVW <u> <v> <w>\\r\\n" over SCI8.
  *
+ * @details Formats each phase count into one reusable bounded buffer and emits
+ * the fixed separators with allocation-free BSP console writes.
+ *
  * @param[in] u_duty U-phase compare value.
  * @param[in] v_duty V-phase compare value.
  * @param[in] w_duty W-phase compare value.
  *
  * @pre SCI8 is initialized.
+ * @pre Each duty argument is within the configured GPT period.
  *
  * @post Seven writes have been issued on SCI8.
  * @post No heap or dynamic allocations.
  *
+ * @note Write failures are ignored because diagnostic loss must not perturb
+ * the real-time duty update loop.
+ *
  * @since 0.1.0
  */
-static void motor_3phase_print_duty(uint32_t u_duty, uint32_t v_duty, uint32_t w_duty)
+RA8_INTERNAL static void
+internal_motor_3phase_print_duty(uint32_t u_duty, uint32_t v_duty, uint32_t w_duty)
 {
   enum : uint8_t {
     k_dec_buf = 12U, /**< Dec buffer. */
@@ -484,38 +538,46 @@ static void motor_3phase_print_duty(uint32_t u_duty, uint32_t v_duty, uint32_t w
   uint8_t  digits[k_dec_buf];
   uint32_t n = 0U;
 
-  (void)ra8_board_uart_console_write(k_motor_3phase_msg_prefix,
-                                     (size_t)(sizeof(k_motor_3phase_msg_prefix) - 1U));
-  n = motor_3phase_u32_to_dec(u_duty, digits);
+  (void)ra8_board_uart_console_write(s_motor_3phase_msg_prefix,
+                                     (size_t)(sizeof(s_motor_3phase_msg_prefix) - 1U));
+  n = internal_motor_3phase_u32_to_dec(u_duty, digits);
   (void)ra8_board_uart_console_write(digits, (size_t)n);
-  (void)ra8_board_uart_console_write(k_motor_3phase_msg_sep,
-                                     (size_t)(sizeof(k_motor_3phase_msg_sep) - 1U));
-  n = motor_3phase_u32_to_dec(v_duty, digits);
+  (void)ra8_board_uart_console_write(s_motor_3phase_msg_sep,
+                                     (size_t)(sizeof(s_motor_3phase_msg_sep) - 1U));
+  n = internal_motor_3phase_u32_to_dec(v_duty, digits);
   (void)ra8_board_uart_console_write(digits, (size_t)n);
-  (void)ra8_board_uart_console_write(k_motor_3phase_msg_sep,
-                                     (size_t)(sizeof(k_motor_3phase_msg_sep) - 1U));
-  n = motor_3phase_u32_to_dec(w_duty, digits);
+  (void)ra8_board_uart_console_write(s_motor_3phase_msg_sep,
+                                     (size_t)(sizeof(s_motor_3phase_msg_sep) - 1U));
+  n = internal_motor_3phase_u32_to_dec(w_duty, digits);
   (void)ra8_board_uart_console_write(digits, (size_t)n);
-  (void)ra8_board_uart_console_write(k_motor_3phase_msg_eol,
-                                     (size_t)(sizeof(k_motor_3phase_msg_eol) - 1U));
+  (void)ra8_board_uart_console_write(s_motor_3phase_msg_eol,
+                                     (size_t)(sizeof(s_motor_3phase_msg_eol) - 1U));
 }
 
 /**
  * @brief Advance the U/V/W phase by one update tick.
+ *
+ * @details Reads three table entries separated by approximately 120 degrees,
+ * returns their duties, then advances the shared phase modulo 256.
  *
  * @param[out] out_u Pointer that receives the new U-phase compare value.
  * @param[out] out_v Pointer that receives the new V-phase compare value.
  * @param[out] out_w Pointer that receives the new W-phase compare value.
  *
  * @pre out_u / out_v / out_w are non-NULL.
+ * @pre The sine table has been initialized and is not concurrently modified.
  *
  * @post ``s_motor_3phase_step`` advanced by one (mod sine-table size).
  * @post ``*out_u``, ``*out_v``, ``*out_w`` are valid duty counts in
  *       ``[0, k_motor_3phase_period]``.
  *
+ * @note The integer phase offsets intentionally approximate one third and two
+ * thirds of the 256-entry table.
+ *
  * @since 0.1.0
  */
-static void motor_3phase_advance(uint32_t* out_u, uint32_t* out_v, uint32_t* out_w)
+RA8_INTERNAL static void
+internal_motor_3phase_advance(uint32_t* out_u, uint32_t* out_v, uint32_t* out_w)
 {
   const uint16_t i_u = s_motor_3phase_step;
   const uint16_t i_v =
@@ -545,9 +607,9 @@ static void motor_3phase_advance(uint32_t* out_u, uint32_t* out_v, uint32_t* out
  */
 int32_t main(void)
 {
-  motor_3phase_init_clocks_and_led();
-  motor_3phase_init_console();
-  motor_3phase_init_pwm();
+  internal_motor_3phase_init_clocks_and_led();
+  internal_motor_3phase_init_console();
+  internal_motor_3phase_init_pwm();
 
   ra8_isr_globals_enable();
 
@@ -558,7 +620,7 @@ int32_t main(void)
     uint32_t v_duty = 0U;
     uint32_t w_duty = 0U;
 
-    motor_3phase_advance(&u_duty, &v_duty, &w_duty);
+    internal_motor_3phase_advance(&u_duty, &v_duty, &w_duty);
 
     if (ra8_gpt_three_phase_set_duty(u_duty, v_duty, w_duty) != k_ra8_ok) {
       break;
@@ -567,14 +629,14 @@ int32_t main(void)
     print_accum_ms += k_motor_3phase_update_ms;
     if (print_accum_ms >= k_motor_3phase_print_period) {
       print_accum_ms = 0U;
-      motor_3phase_print_duty(u_duty, v_duty, w_duty);
+      internal_motor_3phase_print_duty(u_duty, v_duty, w_duty);
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     }
 
     ra8_delay_ms(k_motor_3phase_update_ms);
   }
 
-  motor_3phase_panic_halt();
+  internal_motor_3phase_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

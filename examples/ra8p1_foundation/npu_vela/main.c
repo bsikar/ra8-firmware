@@ -45,6 +45,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_device.h"
@@ -126,10 +127,13 @@ volatile uint32_t g_npu_vela_pass = 0U;
  *          `*panic_halt` terminal PC correctly reads this as a failed run.
  *
  * @pre Called only after a fatal init error, before the verdict banner.
+ * @pre No initialized diagnostic path can publish a normal verdict.
  * @post CPU is parked; only a debugger or reset wakes it.
+ * @post No NPU loader, driver, or console operation follows entry.
+ * @note Emulator automation uses the panic suffix to classify boot failure.
  * @since 0.1.0
  */
-static void npu_vela_panic_halt(void)
+RA8_INTERNAL static void internal_npu_vela_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -139,16 +143,19 @@ static void npu_vela_panic_halt(void)
 /**
  * @brief Park the CPU forever in WFI after the verdict banner (a clean stop).
  *
- * @details Distinct from ::npu_vela_panic_halt on purpose: a run that reached the
+ * @details Distinct from ::internal_npu_vela_panic_halt on purpose: a run that reached the
  *          verdict has done its job and parks here, whose name deliberately does
  *          NOT match the `*panic_halt` patterns a ra8_emulator gate treats as a
  *          give-up. The authoritative verdict is the emitted banner.
  *
  * @pre The verdict banner has been emitted over the SCI8 console.
+ * @pre Published ID, checkword, and pass values are final.
  * @post CPU is parked; only a debugger or reset wakes it.
+ * @post Run evidence remains stable for debugger or memory-probe inspection.
+ * @note The banner, rather than this terminal PC, determines PASS or FAIL.
  * @since 0.1.0
  */
-static void npu_vela_park(void)
+RA8_INTERNAL static void internal_npu_vela_park(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -162,30 +169,41 @@ static void npu_vela_park(void)
  *          console (PCLKA/SCICLK) is set up here so the verdict can be printed.
  *
  * @pre Reset_Handler has initialised .data / .bss.
+ * @pre The application remains in single-threaded boot context.
  * @post On return CGC is up and the SCI8 console is ready for writes.
+ * @post Any mandatory setup error transfers to the panic halt.
+ * @note NPU initialization is deferred until diagnostics are known operational.
  * @since 0.1.0
  */
-static void npu_vela_setup_or_halt(void)
+RA8_INTERNAL static void internal_npu_vela_setup_or_halt(void)
 {
   if (ra8_cgc_init() != k_ra8_ok) {
-    npu_vela_panic_halt();
+    internal_npu_vela_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_npu_vela_baud) != k_ra8_ok) {
-    npu_vela_panic_halt();
+    internal_npu_vela_panic_halt();
   }
 }
 
 /**
  * @brief Read a little-endian command-stream word from the loaded job.
+ *
+ * @details Computes the byte offset for the requested fake-command word and
+ * delegates endian-safe decoding to the blob reader.
  * @param[in] job   Loaded job whose cmd_stream is byte-addressable.
  * @param[in] widx  Word index within the SE55 command stream.
  * @return The 32-bit word at @p widx.
+ * @retval 0..UINT32_MAX The decoded little-endian command word.
  *
  * @pre job->cmd_stream is non-NULL and at least (widx+1) words long.
+ * @pre ``widx`` names a defined word within the loaded command header.
  * @post No state is modified; the function is pure.
+ * @post The job's stream position and region mappings remain unchanged.
+ * @note The helper intentionally performs no bounds check beyond its contract.
  * @since 0.1.0
  */
-static uint32_t npu_vela_cmd_word(const ra8_npu_job_t* job, ra8_npu_fake_word_idx_t widx)
+RA8_INTERNAL static uint32_t internal_npu_vela_cmd_word(const ra8_npu_job_t*    job,
+                                                        ra8_npu_fake_word_idx_t widx)
 {
   return ra8_npu_blob_read_word((const uint8_t*)job->cmd_stream,
                                 (uint32_t)widx * (uint32_t)k_npu_vela_word_bytes);
@@ -202,17 +220,22 @@ static uint32_t npu_vela_cmd_word(const ra8_npu_job_t* job, ra8_npu_fake_word_id
  * @param[in]  job       Job returned by ra8_npu_load() (regions resolved).
  * @param[out] out_check FNV-1a digest of the output bytes (for the banner).
  * @return true when every output byte matches the expected add-constant result.
+ * @retval true Every byte matches the command stream's add-constant operation.
+ * @retval false One or more bytes differ from the deterministic expectation.
  *
  * @pre out_check is non-NULL; the job has completed.
+ * @pre Input and output region mappings cover the command's declared byte count.
  * @post *out_check holds the output digest regardless of the verdict.
+ * @post The job, command stream, and data regions are not modified.
+ * @note The FNV digest is diagnostic evidence rather than an integrity primitive.
  * @since 0.1.0
  */
-static bool npu_vela_verify(const ra8_npu_job_t* job, uint32_t* out_check)
+RA8_INTERNAL static bool internal_npu_vela_verify(const ra8_npu_job_t* job, uint32_t* out_check)
 {
   const uint8_t* input  = (const uint8_t*)(uintptr_t)job->region_base[k_ra8_npu_region_1];
   const uint8_t* output = (const uint8_t*)(uintptr_t)job->region_base[k_ra8_npu_region_2];
-  const uint32_t konst  = npu_vela_cmd_word(job, k_ra8_npu_fake_word_const);
-  const uint32_t count  = npu_vela_cmd_word(job, k_ra8_npu_fake_word_count);
+  const uint32_t konst  = internal_npu_vela_cmd_word(job, k_ra8_npu_fake_word_const);
+  const uint32_t count  = internal_npu_vela_cmd_word(job, k_ra8_npu_fake_word_count);
   uint32_t       check  = (uint32_t)k_npu_vela_fnv_offset;
   bool           ok     = true;
   for (uint32_t i = 0U; i < count; i++) {
@@ -229,14 +252,21 @@ static bool npu_vela_verify(const ra8_npu_job_t* job, uint32_t* out_check)
 /**
  * @brief Load the golden blob, submit + run + wait for the NPU job.
  *
+ * @details Resolves the generated container into the static arena, submits its
+ * descriptor, starts the NPU, and waits synchronously for completion.
  * @param[out] out_job Filled with the loaded, run job descriptor on success.
  * @return `ra8_err_t` from the first failing loader / driver call, else k_ra8_ok.
+ * @retval k_ra8_ok The container loaded and the NPU job completed.
+ * @retval non-k_ra8_ok The loader, submission, run, or wait stage failed.
  *
  * @pre out_job is non-NULL; ra8_npu_init() previously succeeded.
+ * @pre The static Vela arena is not owned by another job.
  * @post On k_ra8_ok the output region of *out_job holds the NPU result.
+ * @post On failure no later loader or driver stage is attempted.
+ * @note Region storage remains application-owned for the complete synchronous run.
  * @since 0.1.0
  */
-static ra8_err_t npu_vela_run_job(ra8_npu_job_t* out_job)
+RA8_INTERNAL static ra8_err_t internal_npu_vela_run_job(ra8_npu_job_t* out_job)
 {
   const ra8_npu_arena_t arena = {.base = s_npu_vela_arena, .bytes = (uint32_t)k_npu_vela_arena};
   const ra8_err_t       ld =
@@ -258,17 +288,23 @@ static ra8_err_t npu_vela_run_job(ra8_npu_job_t* out_job)
 /**
  * @brief Format and print the one-line verdict banner over the SCI8 console.
  *
+ * @details Formats load, run, output, and verdict evidence into a bounded local
+ * line, then writes and flushes it when formatting succeeds.
  * @param[in] id      NPU_ID read after init.
  * @param[in] load_ok Whether ra8_npu_load() succeeded.
  * @param[in] run_ok  Whether the submit/run/wait sequence returned k_ra8_ok.
- * @param[in] check   Output checkword from npu_vela_verify().
+ * @param[in] check   Output checkword from internal_npu_vela_verify().
  * @param[in] pass    Final verdict (id valid AND load AND run AND output matched).
  *
  * @pre The SCI8 console is initialised.
+ * @pre All supplied status values are final snapshots for this run.
  * @post One banner line has been written and flushed to the console.
+ * @post The NPU job, arena, and published globals remain unchanged.
+ * @note A nonpositive formatting result safely suppresses console output.
  * @since 0.1.0
  */
-static void npu_vela_emit(uint32_t id, bool load_ok, bool run_ok, uint32_t check, bool pass)
+RA8_INTERNAL static void
+internal_npu_vela_emit(uint32_t id, bool load_ok, bool run_ok, uint32_t check, bool pass)
 {
   char      line[k_npu_vela_line_cap];
   const int n = snprintf(line,
@@ -298,7 +334,7 @@ static void npu_vela_emit(uint32_t id, bool load_ok, bool run_ok, uint32_t check
  */
 int32_t main(void)
 {
-  npu_vela_setup_or_halt();
+  internal_npu_vela_setup_or_halt();
 
   bool     load_ok = false;
   bool     run_ok  = false;
@@ -311,22 +347,22 @@ int32_t main(void)
     g_npu_vela_id = id;
 
     ra8_npu_job_t   job = {};
-    const ra8_err_t rc  = npu_vela_run_job(&job);
+    const ra8_err_t rc  = internal_npu_vela_run_job(&job);
     load_ok             = (job.cmd_stream != nullptr); /* load leaves it null on failure */
     run_ok              = (rc == k_ra8_ok);
 
     /* Gate verify on load_ok as well: a successful run implies the load
      * populated cmd_stream, but stating it explicitly lets the static analyzer
-     * see that npu_vela_verify() never dereferences a null cmd_stream. */
-    const bool matched = run_ok && load_ok && npu_vela_verify(&job, &check);
+     * see that internal_npu_vela_verify() never dereferences a null cmd_stream. */
+    const bool matched = run_ok && load_ok && internal_npu_vela_verify(&job, &check);
     g_npu_vela_check   = check;
     pass               = load_ok && run_ok && matched && (id != 0U);
   }
 
   g_npu_vela_pass = pass ? 1U : 0U;
-  npu_vela_emit(id, load_ok, run_ok, check, pass);
+  internal_npu_vela_emit(id, load_ok, run_ok, check, pass);
 
-  npu_vela_park();
+  internal_npu_vela_park();
   return 0;
 }
 #pragma GCC diagnostic pop
