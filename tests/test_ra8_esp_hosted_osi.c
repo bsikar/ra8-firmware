@@ -50,6 +50,7 @@
 #include "esp_hosted_os_abstraction.h"
 #include "esp_hosted_transport_config.h"
 #include "port_esp_hosted_host_os.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_esp_hosted_osi_internal.h"
 #include "ra8_esp_hosted_pins.h"
@@ -73,7 +74,7 @@
  * uint8_t payload[k_t_osi_payload_bytes] = {};
  * @endcode
  *
- * @see ra8_esp_hosted_osi_dispatch_event
+ * @see priv_ra8_esp_hosted_osi_dispatch_event
  */
 typedef enum : uint32_t {
   k_t_osi_payload_bytes = 4U,    /**< Bytes in the event / transfer fixtures. */
@@ -109,7 +110,7 @@ typedef enum : uint32_t {
  * TEST_ASSERT_EQ(1, s_event.calls);
  * @endcode
  *
- * @see t_event_cb
+ * @see internal_t_event_cb
  */
 typedef struct t_event_record {
   uint32_t    calls;                          /**< Invocations since reset.   */
@@ -122,9 +123,9 @@ typedef struct t_event_record {
 
 /**
  * @var s_event
- * @brief Latest observation made by ::t_event_cb.
+ * @brief Latest observation made by ::internal_t_event_cb.
  * @details Written only by the test handler; read by the dispatch tests.
- * @note Cleared by ::t_event_reset before each observation.
+ * @note Cleared by ::internal_t_event_reset before each observation.
  * @warning Not thread-safe; the host test driver is single-threaded.
  */
 static t_event_record_t s_event;
@@ -144,14 +145,18 @@ static t_event_record_t s_event;
  * @param[in] data_len Payload length in bytes.
  *
  * @pre @p base is a non-null NUL-terminated string.
- * @pre ::t_event_reset has run since the last observation.
+ * @pre ::internal_t_event_reset has run since the last observation.
  * @post ::s_event holds every argument this call received.
  * @post The invocation count has grown by one.
  *
  * @note Not thread-safe; single-threaded host test driver.
+ * @since 0.1.0
  */
-static void
-t_event_cb(void* ctx, const char* base, int32_t event_id, const void* data, size_t data_len)
+RA8_INTERNAL static void internal_t_event_cb(void*       ctx,
+                                             const char* base,
+                                             int32_t     event_id,
+                                             const void* data,
+                                             size_t      data_len)
 {
   s_event.calls++;
   s_event.ctx      = ctx;
@@ -178,8 +183,9 @@ t_event_cb(void* ctx, const char* base, int32_t event_id, const void* data, size
  * @post The recorded namespace is the empty string.
  *
  * @note Not thread-safe; single-threaded host test driver.
+ * @since 0.1.0
  */
-static void t_event_reset(void)
+RA8_INTERNAL static void internal_t_event_reset(void)
 {
   s_event         = (t_event_record_t){};
   s_event.base[0] = '\0';
@@ -203,8 +209,9 @@ static void t_event_reset(void)
  * @post The byte is discarded.
  *
  * @note Not thread-safe; single-threaded host test driver.
+ * @since 0.1.0
  */
-static void t_log_sink(void* ctx, uint8_t byte)
+RA8_INTERNAL static void internal_t_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   (void)byte;
@@ -232,7 +239,7 @@ static void t_log_sink(void* ctx, uint8_t byte)
  *
  * @note Not thread-safe; single-threaded host test driver.
  */
-static void t_drive_ctx_buffer_row(int (*row)(void*, uint8_t*, uint16_t))
+RA8_INTERNAL static void internal_t_drive_ctx_buffer_row(int (*row)(void*, uint8_t*, uint16_t))
 {
   uint8_t ctx                                = 0U;
   uint8_t buf[(size_t)k_t_osi_payload_bytes] = {};
@@ -247,7 +254,7 @@ static void t_drive_ctx_buffer_row(int (*row)(void*, uint8_t*, uint16_t))
  * @brief Drive an SDIO register or block row through its four vectors.
  *
  * @details
- * The same validation as ::t_drive_ctx_buffer_row, behind the wider SDIO
+ * The same validation as ::internal_t_drive_ctx_buffer_row, behind the wider SDIO
  * signature that also carries a register offset and a bus-lock request --
  * neither of which participates in the decision, which is itself worth
  * pinning: varying them must not change the answer.
@@ -263,7 +270,8 @@ static void t_drive_ctx_buffer_row(int (*row)(void*, uint8_t*, uint16_t))
  *
  * @note Not thread-safe; single-threaded host test driver.
  */
-static void t_drive_sdio_row(int (*row)(void*, uint32_t, uint8_t*, uint16_t, bool))
+RA8_INTERNAL static void
+internal_t_drive_sdio_row(int (*row)(void*, uint32_t, uint8_t*, uint16_t, bool))
 {
   uint8_t        ctx                                = 0U;
   uint8_t        buf[(size_t)k_t_osi_payload_bytes] = {};
@@ -279,7 +287,7 @@ static void t_drive_sdio_row(int (*row)(void*, uint32_t, uint8_t*, uint16_t, boo
 }
 
 /**
- * @test test_is_complete
+ * @test internal_test_is_complete
  *
  * @brief The completeness scan rejects a null table and any null row.
  *
@@ -306,32 +314,34 @@ static void t_drive_sdio_row(int (*row)(void*, uint32_t, uint8_t*, uint16_t, boo
  * @post No module state is modified.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_is_complete(void)
+RA8_INTERNAL static void internal_test_is_complete(void)
 {
   TEST_BEGIN("osi completeness scan");
   hosted_osi_funcs_t table = {};
 
-  TEST_ASSERT(!ra8_esp_hosted_osi_is_complete(nullptr));
-  TEST_ASSERT(!ra8_esp_hosted_osi_is_complete(&table));
+  TEST_ASSERT(!priv_ra8_esp_hosted_osi_is_complete(nullptr));
+  TEST_ASSERT(!priv_ra8_esp_hosted_osi_is_complete(&table));
 
   /* Every byte set: no row can be null, whatever the row count is. */
   (void)memset(&table, (int)k_t_osi_all_bits, sizeof table);
-  TEST_ASSERT(ra8_esp_hosted_osi_is_complete(&table));
+  TEST_ASSERT(priv_ra8_esp_hosted_osi_is_complete(&table));
 
   /* Exactly one early row cleared. */
   table._h_memcpy = nullptr;
-  TEST_ASSERT(!ra8_esp_hosted_osi_is_complete(&table));
+  TEST_ASSERT(!priv_ra8_esp_hosted_osi_is_complete(&table));
 
   /* ...and exactly one late row, so a scan that stopped early could not pass. */
   (void)memset(&table, (int)k_t_osi_all_bits, sizeof table);
   table._h_event_post = nullptr;
-  TEST_ASSERT(!ra8_esp_hosted_osi_is_complete(&table));
+  TEST_ASSERT(!priv_ra8_esp_hosted_osi_is_complete(&table));
   TEST_END("osi completeness scan");
 }
 
 /**
- * @test test_bind_absent_fills_exactly_its_rows
+ * @test internal_test_bind_absent_fills_exactly_its_rows
  *
  * @brief The absent binder fills its sixteen rows and touches nothing else.
  *
@@ -349,16 +359,18 @@ static void test_is_complete(void)
  * @post No module state is modified.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_bind_absent_fills_exactly_its_rows(void)
+RA8_INTERNAL static void internal_test_bind_absent_fills_exactly_its_rows(void)
 {
   TEST_BEGIN("osi absent binder");
   hosted_osi_funcs_t table = {};
 
   /* A null table is refused rather than dereferenced. */
-  ra8_esp_hosted_osi_bind_absent(nullptr);
+  priv_ra8_esp_hosted_osi_bind_absent(nullptr);
 
-  ra8_esp_hosted_osi_bind_absent(&table);
+  priv_ra8_esp_hosted_osi_bind_absent(&table);
 
   int (*const wait_intr)(void*, uint32_t) =
     table._h_sdio_wait_slave_intr; /* LEGACY-OK: vendored vtable field name */
@@ -390,12 +402,12 @@ static void test_bind_absent_fills_exactly_its_rows(void)
   TEST_ASSERT_NULL((const void*)table._h_read_gpio);
   TEST_ASSERT_NULL((const void*)table._h_do_bus_transfer);
   TEST_ASSERT_NULL((const void*)table._h_event_post);
-  TEST_ASSERT(!ra8_esp_hosted_osi_is_complete(&table));
+  TEST_ASSERT(!priv_ra8_esp_hosted_osi_is_complete(&table));
   TEST_END("osi absent binder");
 }
 
 /**
- * @test test_absent_sdio_rows
+ * @test internal_test_absent_sdio_rows
  *
  * @brief Every SDIO row separates a malformed request from an absent bus.
  *
@@ -424,7 +436,7 @@ static void test_bind_absent_fills_exactly_its_rows(void)
  *   (varies the length only)
  * A1 pairs with each of A2, A3 and A4 to prove that condition independently
  * affects the outcome. N+1 = 4 vectors for N=3: minimal MC/DC, driven four
- * times over -- once per row -- through ::t_drive_sdio_row.
+ * times over -- once per row -- through ::internal_t_drive_sdio_row.
  *
  * Decision B: `if (ctx == nullptr)` in the card init, card deinit and
  * interrupt-wait rows (1 condition, 2 vectors each)
@@ -435,14 +447,16 @@ static void test_bind_absent_fills_exactly_its_rows(void)
  * @post No board or module state is modified.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_absent_sdio_rows(void)
+RA8_INTERNAL static void internal_test_absent_sdio_rows(void)
 {
   TEST_BEGIN("osi absent sdio rows");
   hosted_osi_funcs_t table = {};
   uint8_t            ctx   = 0U;
 
-  ra8_esp_hosted_osi_bind_absent(&table);
+  priv_ra8_esp_hosted_osi_bind_absent(&table);
 
   int (*const wait_intr)(void*, uint32_t) =
     table._h_sdio_wait_slave_intr; /* LEGACY-OK: vendored vtable field name */
@@ -454,10 +468,10 @@ static void test_absent_sdio_rows(void)
   TEST_ASSERT_EQ(RET_FAIL, table._h_sdio_card_deinit(&ctx));
   TEST_ASSERT_EQ(RET_INVALID, table._h_sdio_card_deinit(nullptr));
 
-  t_drive_sdio_row(table._h_sdio_read_reg);
-  t_drive_sdio_row(table._h_sdio_write_reg);
-  t_drive_sdio_row(table._h_sdio_read_block);
-  t_drive_sdio_row(table._h_sdio_write_block);
+  internal_t_drive_sdio_row(table._h_sdio_read_reg);
+  internal_t_drive_sdio_row(table._h_sdio_write_reg);
+  internal_t_drive_sdio_row(table._h_sdio_read_block);
+  internal_t_drive_sdio_row(table._h_sdio_write_block);
 
   TEST_ASSERT_EQ(RET_FAIL, wait_intr(&ctx, (uint32_t)k_t_osi_ticks));
   TEST_ASSERT_EQ(RET_INVALID, wait_intr(nullptr, (uint32_t)k_t_osi_ticks));
@@ -468,7 +482,7 @@ static void test_absent_sdio_rows(void)
 }
 
 /**
- * @test test_absent_spi_hd_rows
+ * @test internal_test_absent_spi_hd_rows
  *
  * @brief Every half-duplex SPI row reports the transport as absent.
  *
@@ -523,8 +537,10 @@ static void test_absent_sdio_rows(void)
  * @post No board or module state is modified.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_absent_spi_hd_rows(void)
+RA8_INTERNAL static void internal_test_absent_spi_hd_rows(void)
 {
   TEST_BEGIN("osi absent half-duplex spi rows");
   hosted_osi_funcs_t table                              = {};
@@ -532,7 +548,7 @@ static void test_absent_spi_hd_rows(void)
   uint8_t            buf[(size_t)k_t_osi_payload_bytes] = {};
   const uint32_t     reg                                = (uint32_t)k_t_osi_reg;
 
-  ra8_esp_hosted_osi_bind_absent(&table);
+  priv_ra8_esp_hosted_osi_bind_absent(&table);
 
   TEST_ASSERT_EQ(RET_FAIL, table._h_spi_hd_read_reg(reg, &word, 0, false));
   TEST_ASSERT_EQ(RET_INVALID, table._h_spi_hd_read_reg(reg, nullptr, 0, false));
@@ -559,7 +575,7 @@ static void test_absent_spi_hd_rows(void)
 }
 
 /**
- * @test test_absent_uart_rows
+ * @test internal_test_absent_uart_rows
  *
  * @brief Every UART row reports that no serial link to the C6 exists.
  *
@@ -582,7 +598,7 @@ static void test_absent_spi_hd_rows(void)
  * - Vector A3: ctx=valid, data=null,  size=4 -> false, true          -> true
  * - Vector A4: ctx=valid, data=valid, size=0 -> false, false, true   -> true
  * A1 pairs with each of A2, A3, A4 to prove independent influence. N+1 = 4
- * vectors for N=3: minimal MC/DC, driven through ::t_drive_ctx_buffer_row.
+ * vectors for N=3: minimal MC/DC, driven through ::internal_t_drive_ctx_buffer_row.
  *
  * Decision B: `if (ctx == nullptr)` in the flush row (1 condition, 2 vectors)
  * - Vector B1: ctx=valid -> false; the absence is reported
@@ -592,17 +608,19 @@ static void test_absent_spi_hd_rows(void)
  * @post No board or module state is modified.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_absent_uart_rows(void)
+RA8_INTERNAL static void internal_test_absent_uart_rows(void)
 {
   TEST_BEGIN("osi absent uart rows");
   hosted_osi_funcs_t table = {};
   uint8_t            ctx   = 0U;
 
-  ra8_esp_hosted_osi_bind_absent(&table);
+  priv_ra8_esp_hosted_osi_bind_absent(&table);
 
-  t_drive_ctx_buffer_row(table._h_uart_read);
-  t_drive_ctx_buffer_row(table._h_uart_write);
+  internal_t_drive_ctx_buffer_row(table._h_uart_read);
+  internal_t_drive_ctx_buffer_row(table._h_uart_write);
 
   TEST_ASSERT_EQ(RET_FAIL, table._h_uart_flush_input(&ctx));
   TEST_ASSERT_EQ(RET_INVALID, table._h_uart_flush_input(nullptr));
@@ -610,7 +628,7 @@ static void test_absent_uart_rows(void)
 }
 
 /**
- * @test test_set_event_cb
+ * @test internal_test_set_event_cb
  *
  * @brief Registration refuses a context with no handler to hand it to.
  *
@@ -637,28 +655,30 @@ static void test_absent_uart_rows(void)
  * @post No handler is registered when this test returns.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_set_event_cb(void)
+RA8_INTERNAL static void internal_test_set_event_cb(void)
 {
   TEST_BEGIN("osi event handler registration");
   uint8_t app_state = 0U;
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_set_event_cb(t_event_cb, &app_state));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_set_event_cb(internal_t_event_cb, &app_state));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_port_set_event_cb(nullptr, &app_state));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_set_event_cb(nullptr, nullptr));
 
   /* The rejected call must not have taken effect: with the handler removed by
      the third call, a post is reported unconsumed. */
-  TEST_ASSERT_EQ(RET_FAIL, ra8_esp_hosted_osi_dispatch_event("B", 1, nullptr, 0U));
+  TEST_ASSERT_EQ(RET_FAIL, priv_ra8_esp_hosted_osi_dispatch_event("B", 1, nullptr, 0U));
 
   /* A handler with no context is also legitimate. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_set_event_cb(t_event_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_set_event_cb(internal_t_event_cb, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_set_event_cb(nullptr, nullptr));
   TEST_END("osi event handler registration");
 }
 
 /**
- * @test test_dispatch_event
+ * @test internal_test_dispatch_event
  *
  * @brief Dispatch distinguishes no handler, a bad payload and a delivery.
  *
@@ -671,7 +691,7 @@ static void test_set_event_cb(void)
  *
  * @par MC/DC:
  * All three decisions below belong to
- * `port/esp-hosted/src/ra8_esp_hosted_osi.c@ra8_esp_hosted_osi_dispatch_event`
+ * `port/esp-hosted/src/ra8_esp_hosted_osi.c@priv_ra8_esp_hosted_osi_dispatch_event`
  * and are taken in the order it evaluates them.
  * Decision A: `if (s_ra8_esp_hosted_event_cb == nullptr) { return RET_FAIL; }`
  * (1 condition, 2 vectors)
@@ -698,8 +718,10 @@ static void test_set_event_cb(void)
  * @post No handler is registered when this test returns.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_dispatch_event(void)
+RA8_INTERNAL static void internal_test_dispatch_event(void)
 {
   TEST_BEGIN("osi event dispatch");
   uint8_t       app_state                              = 0U;
@@ -707,19 +729,19 @@ static void test_dispatch_event(void)
   const int32_t event_id                               = (int32_t)k_t_osi_event_id;
 
   /* No handler: reported unconsumed rather than dropped quietly. */
-  t_event_reset();
+  internal_t_event_reset();
   TEST_ASSERT_EQ(
     RET_FAIL,
-    ra8_esp_hosted_osi_dispatch_event("TEST_EVENT", event_id, payload, sizeof payload));
+    priv_ra8_esp_hosted_osi_dispatch_event("TEST_EVENT", event_id, payload, sizeof payload));
   TEST_ASSERT_EQ(0, s_event.calls);
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_set_event_cb(t_event_cb, &app_state));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_set_event_cb(internal_t_event_cb, &app_state));
 
   /* A consistent payload is delivered whole. */
-  t_event_reset();
+  internal_t_event_reset();
   TEST_ASSERT_EQ(
     RET_OK,
-    ra8_esp_hosted_osi_dispatch_event("TEST_EVENT", event_id, payload, sizeof payload));
+    priv_ra8_esp_hosted_osi_dispatch_event("TEST_EVENT", event_id, payload, sizeof payload));
   TEST_ASSERT_EQ(1, s_event.calls);
   TEST_ASSERT(strcmp("TEST_EVENT", s_event.base) == 0);
   TEST_ASSERT_EQ(event_id, s_event.event_id);
@@ -729,22 +751,23 @@ static void test_dispatch_event(void)
 
   /* A null pointer with a non-zero length is a contradiction, and is refused
      without the handler ever seeing it. */
-  t_event_reset();
+  internal_t_event_reset();
   TEST_ASSERT_EQ(
     RET_INVALID,
-    ra8_esp_hosted_osi_dispatch_event("TEST_EVENT", event_id, nullptr, sizeof payload));
+    priv_ra8_esp_hosted_osi_dispatch_event("TEST_EVENT", event_id, nullptr, sizeof payload));
   TEST_ASSERT_EQ(0, s_event.calls);
 
   /* A null pointer with a zero length is an empty payload, which is fine. */
-  t_event_reset();
-  TEST_ASSERT_EQ(RET_OK, ra8_esp_hosted_osi_dispatch_event("TEST_EVENT", event_id, nullptr, 0U));
+  internal_t_event_reset();
+  TEST_ASSERT_EQ(RET_OK,
+                 priv_ra8_esp_hosted_osi_dispatch_event("TEST_EVENT", event_id, nullptr, 0U));
   TEST_ASSERT_EQ(1, s_event.calls);
   TEST_ASSERT_NULL(s_event.data);
   TEST_ASSERT_EQ(0, s_event.data_len);
 
   /* A null namespace reaches the handler as an empty string, never as null. */
-  t_event_reset();
-  TEST_ASSERT_EQ(RET_OK, ra8_esp_hosted_osi_dispatch_event(nullptr, event_id, nullptr, 0U));
+  internal_t_event_reset();
+  TEST_ASSERT_EQ(RET_OK, priv_ra8_esp_hosted_osi_dispatch_event(nullptr, event_id, nullptr, 0U));
   TEST_ASSERT_EQ(1, s_event.calls);
   TEST_ASSERT(strcmp("", s_event.base) == 0);
 
@@ -753,12 +776,12 @@ static void test_dispatch_event(void)
 }
 
 /**
- * @test test_bind_all_and_non_slice_rows
+ * @test internal_test_bind_all_and_non_slice_rows
  *
  * @brief The full binder leaves no null row, and its own rows behave.
  *
  * @details
- * ``ra8_esp_hosted_osi_bind_all`` is the function the port's bring-up path
+ * ``priv_ra8_esp_hosted_osi_bind_all`` is the function the port's bring-up path
  * calls, and its contract is that a slice which gains a row and forgets to
  * bind it becomes a failure here rather than a null dereference inside the
  * vendored core. The rows the file owns itself -- the two event posts, the
@@ -776,11 +799,11 @@ static void test_dispatch_event(void)
  * - Vector A1: out=null  -> true;  the null-pointer error is returned
  * - Vector A2: out=valid -> false; binding proceeds
  *
- * Decision B: `if (!ra8_esp_hosted_osi_is_complete(out))` (1 condition, 2 vectors)
+ * Decision B: `if (!priv_ra8_esp_hosted_osi_is_complete(out))` (1 condition, 2 vectors)
  * - Vector B1: every slice bound its rows -> false; success is returned
  * - Vector B2: the true arm is not reachable from a test without breaking a
  *   sibling binder, which no test may do. The equivalent scan failure is
- *   driven directly in ::test_is_complete, where a table with one null row is
+ *   driven directly in ::internal_test_is_complete, where a table with one null row is
  *   fed to the same function.
  *
  * Decision C: the event rows' shared dispatch decision -- both the generic and
@@ -792,31 +815,33 @@ static void test_dispatch_event(void)
  * @post No handler is registered when this test returns.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_bind_all_and_non_slice_rows(void)
+RA8_INTERNAL static void internal_test_bind_all_and_non_slice_rows(void)
 {
   TEST_BEGIN("osi full binder and non-slice rows");
   hosted_osi_funcs_t table                                  = {};
   uint8_t            app_state                              = 0U;
   uint8_t            payload[(size_t)k_t_osi_payload_bytes] = {};
 
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_esp_hosted_osi_bind_all(nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_ra8_esp_hosted_osi_bind_all(nullptr));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_osi_bind_all(&table));
-  TEST_ASSERT(ra8_esp_hosted_osi_is_complete(&table));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_osi_bind_all(&table));
+  TEST_ASSERT(priv_ra8_esp_hosted_osi_is_complete(&table));
 
   /* With no handler registered, both event rows report the post unconsumed. */
   TEST_ASSERT_EQ(RET_FAIL, table._h_event_post("TEST_EVENT", 1, payload, sizeof payload, 0U));
   TEST_ASSERT_EQ(RET_FAIL, table._h_event_wifi_post(1, payload, sizeof payload, 0U));
 
   /* With one registered, the Wi-Fi row supplies its own fixed namespace. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_set_event_cb(t_event_cb, &app_state));
-  t_event_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_port_set_event_cb(internal_t_event_cb, &app_state));
+  internal_t_event_reset();
   TEST_ASSERT_EQ(RET_OK, table._h_event_wifi_post(2, payload, sizeof payload, 0U));
   TEST_ASSERT_EQ(1, s_event.calls);
   TEST_ASSERT(strcmp("WIFI_EVENT", s_event.base) == 0);
 
-  t_event_reset();
+  internal_t_event_reset();
   TEST_ASSERT_EQ(RET_OK, table._h_event_post("OTHER", 3, payload, sizeof payload, 0U));
   TEST_ASSERT(strcmp("OTHER", s_event.base) == 0);
   TEST_ASSERT_EQ(3, s_event.event_id);
@@ -837,7 +862,7 @@ static void test_bind_all_and_non_slice_rows(void)
 }
 
 /**
- * @test test_default_spi_config
+ * @test internal_test_default_spi_config
  *
  * @brief The published SPI configuration is derived from the port's pin map.
  *
@@ -858,8 +883,10 @@ static void test_bind_all_and_non_slice_rows(void)
  * @post No module state is modified.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_default_spi_config(void)
+RA8_INTERNAL static void internal_test_default_spi_config(void)
 {
   TEST_BEGIN("osi default spi configuration");
   const struct esp_hosted_spi_config cfg = esp_hosted_get_default_spi_config();
@@ -886,19 +913,18 @@ static void test_default_spi_config(void)
 int32_t main(void)
 {
   ra8_log_init();
-  ra8_log_set_byte_sink(t_log_sink, nullptr);
+  ra8_log_set_byte_sink(internal_t_log_sink, nullptr);
 
-  test_is_complete();
-  test_bind_absent_fills_exactly_its_rows();
-  test_absent_sdio_rows();
-  test_absent_spi_hd_rows();
-  test_absent_uart_rows();
-  test_set_event_cb();
-  test_dispatch_event();
-  test_bind_all_and_non_slice_rows();
-  test_default_spi_config();
+  internal_test_is_complete();
+  internal_test_bind_absent_fills_exactly_its_rows();
+  internal_test_absent_sdio_rows();
+  internal_test_absent_spi_hd_rows();
+  internal_test_absent_uart_rows();
+  internal_test_set_event_cb();
+  internal_test_dispatch_event();
+  internal_test_bind_all_and_non_slice_rows();
+  internal_test_default_spi_config();
 
   ra8_log_set_byte_sink(nullptr, nullptr);
-  (void)fprintf(stderr, "[OK  ] test_ra8_esp_hosted_osi.c\n");
   return 0;
 }

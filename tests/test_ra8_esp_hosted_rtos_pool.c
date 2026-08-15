@@ -24,11 +24,11 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "esp_hosted_os_abstraction.h"
 #include "port_esp_hosted_host_os.h"
+#include "ra8_attributes.h"
 #include "ra8_esp_hosted_port.h"
 #include "ra8_esp_hosted_rtos_internal.h"
 #include "ra8_esp_hosted_tx_shim_sync_internal.h"
@@ -58,7 +58,7 @@
  * uint8_t sent[(size_t)k_t_pool_msg_bytes] = {};
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_pool_stats
+ * @see priv_ra8_esp_hosted_rtos_pool_stats
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -78,18 +78,25 @@ typedef enum : uint32_t {
 /** Vtable every test drives the port through. */
 static hosted_osi_funcs_t s_funcs;
 
-/** Bring the port down (if up), clear the ThreadX model, bring it back up. */
-static void reset_port(void)
+/** Bring the port down (if up), clear the ThreadX model, bring it back up.
+ * @brief Verify reset port.
+ * @details Implements the fixture-only reset port operation with bounded static state.
+ * @pre Host mock storage is initialized. @pre Pointer arguments follow their directions.
+ * @post The mock transition is observable. @post No physical hardware is accessed.
+ * @note Host-only deterministic fixture code; it does not access physical hardware.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_reset_port(void)
 {
-  if (ra8_esp_hosted_rtos_is_ready()) {
-    (void)ra8_esp_hosted_rtos_deinit();
+  if (priv_ra8_esp_hosted_rtos_is_ready()) {
+    (void)priv_ra8_esp_hosted_rtos_deinit();
   }
-  ra8_esp_hosted_tx_shim_reset();
+  internal_ra8_esp_hosted_tx_shim_reset();
   (void)memset(&s_funcs, 0, sizeof(s_funcs));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_rtos_init());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_rtos_bind(&s_funcs));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_rtos_bind_pool(&s_funcs));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_rtos_bind_sync(&s_funcs));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_rtos_init());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_rtos_bind(&s_funcs));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_rtos_bind_pool(&s_funcs));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_rtos_bind_sync(&s_funcs));
 }
 
 /* ---------------------------------------------------------------------------
@@ -98,7 +105,7 @@ static void reset_port(void)
  */
 
 /**
- * @test test_aligned_alloc_returns_aligned_and_frees
+ * @test internal_test_aligned_alloc_returns_aligned_and_frees
  *
  * @brief A 64-byte-aligned request really is aligned and releases correctly.
  *
@@ -113,7 +120,7 @@ static void reset_port(void)
  * @par MC/DC:
  * Decision `(align == 0U) || (align > k_align_max) || ((align & (align-1U)) != 0U)`
  * in
- * `port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c@ra8_esp_hosted_rtos_alloc`
+ * `port/esp-hosted/src/ra8_esp_hosted_rtos_pool.c@priv_ra8_esp_hosted_rtos_alloc`
  * (3 conditions):
  * - Vector 1: align=64  -> false,false,false -> allocates (control).
  * - Vector 2: align=0   -> true              -> refused (varies zero test).
@@ -128,19 +135,21 @@ static void reset_port(void)
  * @post Every block allocated here is released.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_aligned_alloc_returns_aligned_and_frees(void)
+RA8_INTERNAL static void internal_test_aligned_alloc_returns_aligned_and_frees(void)
 {
   TEST_BEGIN("malloc_align returns a genuinely aligned block that frees");
-  reset_port();
+  internal_reset_port();
   void* const p = s_funcs._h_malloc_align(100U, HOSTED_MEM_ALIGNMENT_64);
   TEST_ASSERT_NOT_NULL(p);
   TEST_ASSERT_EQ(0U, (uintptr_t)p % (uintptr_t)HOSTED_MEM_ALIGNMENT_64);
 
   size_t recorded = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_rtos_block_size(p, &recorded));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_rtos_block_size(p, &recorded));
   TEST_ASSERT_EQ(100U, recorded);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_rtos_release(p));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_rtos_release(p));
 
   TEST_ASSERT_NULL(s_funcs._h_malloc_align(100U, 0U));
   TEST_ASSERT_NULL(s_funcs._h_malloc_align(100U, 128U));
@@ -148,14 +157,14 @@ static void test_aligned_alloc_returns_aligned_and_frees(void)
   TEST_ASSERT_NULL(s_funcs._h_malloc(0U));
   TEST_ASSERT_NULL(s_funcs._h_malloc(8193U));
 
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_esp_hosted_rtos_release(NULL));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_ra8_esp_hosted_rtos_release(NULL));
   uint8_t foreign[(size_t)k_t_pool_foreign_bytes] = {};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_esp_hosted_rtos_release(&foreign[32]));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, priv_ra8_esp_hosted_rtos_release(&foreign[32]));
   TEST_END("malloc_align returns a genuinely aligned block that frees");
 }
 
 /**
- * @test test_realloc_preserves_contents_growing_and_shrinking
+ * @test internal_test_realloc_preserves_contents_growing_and_shrinking
  *
  * @brief realloc copies min(old,new) bytes and honours its null/zero cases.
  *
@@ -176,11 +185,13 @@ static void test_aligned_alloc_returns_aligned_and_frees(void)
  * @post Every block allocated here is released.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_realloc_preserves_contents_growing_and_shrinking(void)
+RA8_INTERNAL static void internal_test_realloc_preserves_contents_growing_and_shrinking(void)
 {
   TEST_BEGIN("realloc preserves contents growing and shrinking");
-  reset_port();
+  internal_reset_port();
   uint8_t* small = (uint8_t*)s_funcs._h_realloc(NULL, 32U);
   TEST_ASSERT_NOT_NULL(small);
   for (uint32_t i = 0U; i < 32U; ++i) {
@@ -193,7 +204,7 @@ static void test_realloc_preserves_contents_growing_and_shrinking(void)
     TEST_ASSERT_EQ((i + 1U), grown[i]);
   }
   size_t recorded = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_rtos_block_size(grown, &recorded));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_rtos_block_size(grown, &recorded));
   TEST_ASSERT_EQ(k_t_pool_grow_bytes, recorded);
 
   uint8_t* shrunk = (uint8_t*)s_funcs._h_realloc(grown, 16U);
@@ -201,16 +212,16 @@ static void test_realloc_preserves_contents_growing_and_shrinking(void)
   for (uint32_t i = 0U; i < 16U; ++i) {
     TEST_ASSERT_EQ((i + 1U), shrunk[i]);
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_rtos_block_size(shrunk, &recorded));
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_rtos_block_size(shrunk, &recorded));
   TEST_ASSERT_EQ(16U, recorded);
 
   TEST_ASSERT_NULL(s_funcs._h_realloc(shrunk, 0U));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_esp_hosted_rtos_block_size(NULL, &recorded));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, priv_ra8_esp_hosted_rtos_block_size(NULL, &recorded));
   TEST_END("realloc preserves contents growing and shrinking");
 }
 
 /**
- * @test test_calloc_zeroes_and_refuses_overflow
+ * @test internal_test_calloc_zeroes_and_refuses_overflow
  *
  * @brief calloc zeroes its block and refuses a product that cannot be served.
  *
@@ -234,11 +245,13 @@ static void test_realloc_preserves_contents_growing_and_shrinking(void)
  * @post The allocated block is released.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_calloc_zeroes_and_refuses_overflow(void)
+RA8_INTERNAL static void internal_test_calloc_zeroes_and_refuses_overflow(void)
 {
   TEST_BEGIN("calloc zeroes its block and refuses an overflowing product");
-  reset_port();
+  internal_reset_port();
   uint8_t* const p = (uint8_t*)s_funcs._h_calloc(8U, 16U);
   TEST_ASSERT_NOT_NULL(p);
   for (uint32_t i = 0U; i < k_t_pool_calloc_bytes; ++i) {
@@ -253,7 +266,7 @@ static void test_calloc_zeroes_and_refuses_overflow(void)
 }
 
 /**
- * @test test_pool_exhaustion_reports_null
+ * @test internal_test_pool_exhaustion_reports_null
  *
  * @brief A refused pool allocation becomes a null return, never a fault.
  *
@@ -285,14 +298,16 @@ static void test_calloc_zeroes_and_refuses_overflow(void)
  * @post The pool is left drained; the next test resets the port.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_pool_exhaustion_reports_null(void)
+RA8_INTERNAL static void internal_test_pool_exhaustion_reports_null(void)
 {
   TEST_BEGIN("pool exhaustion reports null");
-  reset_port();
-  ra8_esp_hosted_tx_shim_arm(k_ra8_esp_hosted_tx_shim_family_pool, TX_NO_MEMORY);
+  internal_reset_port();
+  internal_ra8_esp_hosted_tx_shim_arm(k_ra8_esp_hosted_tx_shim_family_pool, TX_NO_MEMORY);
   TEST_ASSERT_NULL(s_funcs._h_malloc(64U));
-  ra8_esp_hosted_tx_shim_arm(k_ra8_esp_hosted_tx_shim_family_pool, TX_SUCCESS);
+  internal_ra8_esp_hosted_tx_shim_arm(k_ra8_esp_hosted_tx_shim_family_pool, TX_SUCCESS);
   TEST_ASSERT_NULL(s_funcs._h_malloc(64U));
   TEST_ASSERT_NOT_NULL(s_funcs._h_malloc(64U));
 
@@ -308,7 +323,7 @@ static void test_pool_exhaustion_reports_null(void)
 }
 
 /**
- * @test test_pool_stats_report_live_numbers
+ * @test internal_test_pool_stats_report_live_numbers
  *
  * @brief Pool statistics come from ThreadX and move when the pool moves.
  *
@@ -327,36 +342,38 @@ static void test_pool_exhaustion_reports_null(void)
  * @post The port is left initialised.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_pool_stats_report_live_numbers(void)
+RA8_INTERNAL static void internal_test_pool_stats_report_live_numbers(void)
 {
   TEST_BEGIN("pool stats report live ThreadX byte-pool numbers");
-  reset_port();
+  internal_reset_port();
   uint32_t before_avail = 0U;
   uint32_t before_frags = 0U;
-  ra8_esp_hosted_rtos_pool_stats(&before_avail, &before_frags);
+  priv_ra8_esp_hosted_rtos_pool_stats(&before_avail, &before_frags);
   TEST_ASSERT(before_avail > 0U);
 
   TEST_ASSERT_NOT_NULL(s_funcs._h_malloc(1600U));
   uint32_t after_avail = 0U;
   uint32_t after_frags = 0U;
-  ra8_esp_hosted_rtos_pool_stats(&after_avail, &after_frags);
+  priv_ra8_esp_hosted_rtos_pool_stats(&after_avail, &after_frags);
   TEST_ASSERT(after_avail < before_avail);
   TEST_ASSERT(after_frags > before_frags);
 
-  ra8_esp_hosted_rtos_pool_stats(NULL, NULL);
+  priv_ra8_esp_hosted_rtos_pool_stats(NULL, NULL);
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_rtos_deinit());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_rtos_deinit());
   uint32_t down_avail = k_t_pool_stat_poison;
   uint32_t down_frags = k_t_pool_stat_poison;
-  ra8_esp_hosted_rtos_pool_stats(&down_avail, &down_frags);
+  priv_ra8_esp_hosted_rtos_pool_stats(&down_avail, &down_frags);
   TEST_ASSERT_EQ(0U, down_avail);
   TEST_ASSERT_EQ(0U, down_frags);
   TEST_END("pool stats report live ThreadX byte-pool numbers");
 }
 
 /**
- * @test test_memcpy_and_memset_guard_null
+ * @test internal_test_memcpy_and_memset_guard_null
  *
  * @brief The copy and fill rows work and report a null argument by returning null.
  *
@@ -380,11 +397,13 @@ static void test_pool_stats_report_live_numbers(void)
  * @post Only local buffers are written.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_memcpy_and_memset_guard_null(void)
+RA8_INTERNAL static void internal_test_memcpy_and_memset_guard_null(void)
 {
   TEST_BEGIN("memcpy and memset rows work and guard null arguments");
-  reset_port();
+  internal_reset_port();
   const uint8_t src[8] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
   uint8_t       dst[8] = {};
   TEST_ASSERT(s_funcs._h_memcpy(dst, src, sizeof(src)) == dst);
@@ -406,7 +425,7 @@ static void test_memcpy_and_memset_guard_null(void)
  */
 
 /**
- * @test test_queue_roundtrip_and_nonblocking_dequeue
+ * @test internal_test_queue_roundtrip_and_nonblocking_dequeue
  *
  * @brief A message survives the ring, and an empty queue fails without waiting.
  *
@@ -435,7 +454,7 @@ static void test_memcpy_and_memset_guard_null(void)
  * The resolver carries two more compound decisions. Its entry guard
  * `(handle == nullptr) || !s_pool.ready` takes the false-false control and
  * the null-handle arm here -- every live call and every `NULL` call above --
- * and its not-ready arm in ::test_queue_create_bounds_and_table_exhaustion,
+ * and its not-ready arm in ::internal_test_queue_create_bounds_and_table_exhaustion,
  * which presents a handle that was live before the pool was torn down.
  * Its row match `(handle == &s_pool.queues[i]) && s_pool.queues[i].used`
  * takes the occupied-and-matching control here, and the stale-handle vector
@@ -443,18 +462,20 @@ static void test_memcpy_and_memset_guard_null(void)
  * matches a row whose `used` flag has been cleared, so the second condition
  * alone turns the outcome false and a stale handle reports RET_INVALID
  * instead of reaching a freed ring. The address-mismatch vector comes from
- * ::test_queue_create_bounds_and_table_exhaustion, where eight live queues
+ * ::internal_test_queue_create_bounds_and_table_exhaustion, where eight live queues
  * mean the scan crosses non-matching rows before it reaches the wanted one.
  *
  * @pre The port is initialised.
  * @post The queue is destroyed.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_queue_roundtrip_and_nonblocking_dequeue(void)
+RA8_INTERNAL static void internal_test_queue_roundtrip_and_nonblocking_dequeue(void)
 {
   TEST_BEGIN("queue round-trip; empty dequeue fails without blocking");
-  reset_port();
+  internal_reset_port();
   void* const q = s_funcs._h_create_queue(2U, k_t_pool_msg_bytes);
   TEST_ASSERT_NOT_NULL(q);
   TEST_ASSERT_EQ(0, s_funcs._h_queue_msg_waiting(q));
@@ -488,7 +509,7 @@ static void test_queue_roundtrip_and_nonblocking_dequeue(void)
 }
 
 /**
- * @test test_queue_full_send_requests_an_unbounded_wait
+ * @test internal_test_queue_full_send_requests_an_unbounded_wait
  *
  * @brief A full queue reports a timeout, having asked ThreadX to block.
  *
@@ -501,17 +522,19 @@ static void test_queue_roundtrip_and_nonblocking_dequeue(void)
  * @par MC/DC:
  * Single-condition decision `rc == TX_QUEUE_FULL` selecting RET_FAIL_TIMEOUT
  * over RET_FAIL. Vectors: the full ring here, and the ordinary success in
- * test_queue_roundtrip_and_nonblocking_dequeue.
+ * internal_test_queue_roundtrip_and_nonblocking_dequeue.
  *
  * @pre The port is initialised.
  * @post The queue is destroyed and its ring returned.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_queue_full_send_requests_an_unbounded_wait(void)
+RA8_INTERNAL static void internal_test_queue_full_send_requests_an_unbounded_wait(void)
 {
   TEST_BEGIN("full queue reports a timeout after asking to block forever");
-  reset_port();
+  internal_reset_port();
   void* const q = s_funcs._h_create_queue(2U, k_t_pool_msg_bytes);
   TEST_ASSERT_NOT_NULL(q);
   uint8_t msg[(size_t)k_t_pool_msg_bytes] = {};
@@ -528,7 +551,7 @@ static void test_queue_full_send_requests_an_unbounded_wait(void)
 }
 
 /**
- * @test test_queue_create_bounds_and_table_exhaustion
+ * @test internal_test_queue_create_bounds_and_table_exhaustion
  *
  * @brief Bad geometry is refused and the fixed queue table never grows.
  *
@@ -555,11 +578,13 @@ static void test_queue_full_send_requests_an_unbounded_wait(void)
  * @post Every queue created here is destroyed.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_queue_create_bounds_and_table_exhaustion(void)
+RA8_INTERNAL static void internal_test_queue_create_bounds_and_table_exhaustion(void)
 {
   TEST_BEGIN("queue create bounds and fixed-table exhaustion");
-  reset_port();
+  internal_reset_port();
   TEST_ASSERT_NULL(s_funcs._h_create_queue(4U, k_t_pool_msg_over_bytes));
   TEST_ASSERT_NULL(s_funcs._h_create_queue(0U, k_t_pool_msg_bytes));
   TEST_ASSERT_NULL(s_funcs._h_create_queue(k_t_pool_depth_over, k_t_pool_msg_bytes));
@@ -577,7 +602,7 @@ static void test_queue_create_bounds_and_table_exhaustion(void)
   TEST_ASSERT_NOT_NULL(survivor);
 
   /* Not ready: the port must refuse rather than touch a dead pool. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_rtos_deinit());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_rtos_deinit());
   TEST_ASSERT_NULL(s_funcs._h_create_queue(4U, k_t_pool_msg_bytes));
   /* A handle that was live until the teardown is refused on the readiness
      condition alone -- its address still names a real row. */
@@ -591,7 +616,7 @@ static void test_queue_create_bounds_and_table_exhaustion(void)
  */
 
 /**
- * @test test_semaphore_starts_at_one_so_the_vendored_drain_empties_it
+ * @test internal_test_semaphore_starts_at_one_so_the_vendored_drain_empties_it
  *
  * @brief Create then one zero-timeout take leaves the semaphore empty.
  *
@@ -615,11 +640,14 @@ static void test_queue_create_bounds_and_table_exhaustion(void)
  * @post Every semaphore created here is destroyed.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_semaphore_starts_at_one_so_the_vendored_drain_empties_it(void)
+RA8_INTERNAL static void
+internal_test_semaphore_starts_at_one_so_the_vendored_drain_empties_it(void)
 {
   TEST_BEGIN("semaphore create + one try-take leaves it empty");
-  reset_port();
+  internal_reset_port();
   void* const sem = s_funcs._h_create_semaphore(3);
   TEST_ASSERT_NOT_NULL(sem);
   /* The drain every vendored call site performs. */
@@ -644,7 +672,7 @@ static void test_semaphore_starts_at_one_so_the_vendored_drain_empties_it(void)
 }
 
 /**
- * @test test_semaphore_table_exhaustion
+ * @test internal_test_semaphore_table_exhaustion
  *
  * @brief The semaphore table refuses the ninth request and never grows.
  *
@@ -662,11 +690,13 @@ static void test_semaphore_starts_at_one_so_the_vendored_drain_empties_it(void)
  * @post Every semaphore created here is destroyed.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_semaphore_table_exhaustion(void)
+RA8_INTERNAL static void internal_test_semaphore_table_exhaustion(void)
 {
   TEST_BEGIN("semaphore table refuses beyond its fixed budget");
-  reset_port();
+  internal_reset_port();
   void* sems[k_ra8_esp_hosted_max_semaphores] = {};
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_esp_hosted_max_semaphores; ++i) {
     sems[i] = s_funcs._h_create_semaphore(1);
@@ -681,7 +711,7 @@ static void test_semaphore_table_exhaustion(void)
 }
 
 /**
- * @test test_mutex_lock_unlock_and_unbalanced_release
+ * @test internal_test_mutex_lock_unlock_and_unbalanced_release
  *
  * @brief Locks nest, an unbalanced release is reported, and the table is fixed.
  *
@@ -700,11 +730,13 @@ static void test_semaphore_table_exhaustion(void)
  * @post Every mutex created here is destroyed.
  * @note Not thread-safe; single-threaded test context.
  * @since 0.1.0
+ * @pre Static fixture storage needed by this scenario is available.
+ * @post The focused scenario leaves no unverified result.
  */
-static void test_mutex_lock_unlock_and_unbalanced_release(void)
+RA8_INTERNAL static void internal_test_mutex_lock_unlock_and_unbalanced_release(void)
 {
   TEST_BEGIN("mutex lock/unlock, unbalanced release, fixed table");
-  reset_port();
+  internal_reset_port();
   void* const m = s_funcs._h_create_mutex();
   TEST_ASSERT_NOT_NULL(m);
   TEST_ASSERT_EQ(TX_INHERIT, ((const TX_MUTEX*)m)->inherit);
@@ -728,7 +760,7 @@ static void test_mutex_lock_unlock_and_unbalanced_release(void)
     TEST_ASSERT_EQ(RET_OK, s_funcs._h_destroy_mutex(mutexes[i]));
   }
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_rtos_deinit());
+  TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_rtos_deinit());
   TEST_ASSERT_NULL(s_funcs._h_create_mutex());
   TEST_END("mutex lock/unlock, unbalanced release, fixed table");
 }
@@ -740,21 +772,20 @@ static void test_mutex_lock_unlock_and_unbalanced_release(void)
 
 int32_t main(void)
 {
-  test_aligned_alloc_returns_aligned_and_frees();
-  test_realloc_preserves_contents_growing_and_shrinking();
-  test_calloc_zeroes_and_refuses_overflow();
-  test_pool_exhaustion_reports_null();
-  test_pool_stats_report_live_numbers();
-  test_memcpy_and_memset_guard_null();
-  test_queue_roundtrip_and_nonblocking_dequeue();
-  test_queue_full_send_requests_an_unbounded_wait();
-  test_queue_create_bounds_and_table_exhaustion();
-  test_semaphore_starts_at_one_so_the_vendored_drain_empties_it();
-  test_semaphore_table_exhaustion();
-  test_mutex_lock_unlock_and_unbalanced_release();
-  if (ra8_esp_hosted_rtos_is_ready()) {
-    (void)ra8_esp_hosted_rtos_deinit();
+  internal_test_aligned_alloc_returns_aligned_and_frees();
+  internal_test_realloc_preserves_contents_growing_and_shrinking();
+  internal_test_calloc_zeroes_and_refuses_overflow();
+  internal_test_pool_exhaustion_reports_null();
+  internal_test_pool_stats_report_live_numbers();
+  internal_test_memcpy_and_memset_guard_null();
+  internal_test_queue_roundtrip_and_nonblocking_dequeue();
+  internal_test_queue_full_send_requests_an_unbounded_wait();
+  internal_test_queue_create_bounds_and_table_exhaustion();
+  internal_test_semaphore_starts_at_one_so_the_vendored_drain_empties_it();
+  internal_test_semaphore_table_exhaustion();
+  internal_test_mutex_lock_unlock_and_unbalanced_release();
+  if (priv_ra8_esp_hosted_rtos_is_ready()) {
+    (void)priv_ra8_esp_hosted_rtos_deinit();
   }
-  (void)fprintf(stderr, "[OK  ] test_ra8_esp_hosted_rtos_pool.c\n");
   return 0;
 }

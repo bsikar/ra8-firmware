@@ -65,7 +65,7 @@ static const char* s_tag = "ESPH_SYNC";
  * @code
  * static_assert(k_ra8_esp_hosted_sem_initial == 1U, "one drain empties it");
  * @endcode
- * @see ra8_esp_hosted_rtos_bind_sync
+ * @see priv_ra8_esp_hosted_rtos_bind_sync
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -84,7 +84,7 @@ typedef enum : uint32_t {
  * @code
  * TEST_ASSERT_NOT_NULL(funcs._h_create_mutex());
  * @endcode
- * @see ra8_esp_hosted_rtos_sync_init
+ * @see priv_ra8_esp_hosted_rtos_sync_init
  * @since 0.1.0
  */
 typedef struct {
@@ -99,7 +99,7 @@ typedef struct {
  * @var s_sync
  * @brief Singleton state of the mutex and semaphore half.
  * @details Zero-initialised at link time; brought up by
- * ::ra8_esp_hosted_rtos_sync_init.
+ * ::priv_ra8_esp_hosted_rtos_sync_init.
  * @note Static; do not access outside this TU.
  * @warning Direct modification bypasses every ThreadX consistency check.
  * @since 0.1.0
@@ -131,7 +131,7 @@ RA8_INTERNAL static void* internal_h_create_mutex(void)
     return nullptr;
   }
   const uint32_t idx =
-    ra8_esp_hosted_rtos_slot_take(s_sync.mutex_used, k_ra8_esp_hosted_max_mutexes);
+    priv_ra8_esp_hosted_rtos_slot_take(s_sync.mutex_used, k_ra8_esp_hosted_max_mutexes);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_mutexes) {
     ra8_log_error(s_tag, "mutex table exhausted");
     return nullptr;
@@ -164,16 +164,16 @@ RA8_INTERNAL static void* internal_h_create_mutex(void)
  */
 RA8_INTERNAL static int internal_h_lock_mutex(void* mutex_handle, int timeout_ms)
 {
-  const uint32_t idx = ra8_esp_hosted_rtos_slot_index(mutex_handle,
-                                                      s_sync.mutexes,
-                                                      sizeof(s_sync.mutexes[0]),
-                                                      k_ra8_esp_hosted_max_mutexes,
-                                                      s_sync.mutex_used);
+  const uint32_t idx = priv_ra8_esp_hosted_rtos_slot_index(mutex_handle,
+                                                           s_sync.mutexes,
+                                                           sizeof(s_sync.mutexes[0]),
+                                                           k_ra8_esp_hosted_max_mutexes,
+                                                           s_sync.mutex_used);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_mutexes) {
     return RET_INVALID;
   }
   const UINT rc =
-    tx_mutex_get(&s_sync.mutexes[idx], (ULONG)ra8_esp_hosted_rtos_ms_to_ticks(timeout_ms));
+    tx_mutex_get(&s_sync.mutexes[idx], (ULONG)priv_ra8_esp_hosted_rtos_ms_to_ticks(timeout_ms));
   return (rc == TX_SUCCESS) ? RET_OK : RET_FAIL_TIMEOUT;
 }
 
@@ -196,11 +196,11 @@ RA8_INTERNAL static int internal_h_lock_mutex(void* mutex_handle, int timeout_ms
  */
 RA8_INTERNAL static int internal_h_unlock_mutex(void* mutex_handle)
 {
-  const uint32_t idx = ra8_esp_hosted_rtos_slot_index(mutex_handle,
-                                                      s_sync.mutexes,
-                                                      sizeof(s_sync.mutexes[0]),
-                                                      k_ra8_esp_hosted_max_mutexes,
-                                                      s_sync.mutex_used);
+  const uint32_t idx = priv_ra8_esp_hosted_rtos_slot_index(mutex_handle,
+                                                           s_sync.mutexes,
+                                                           sizeof(s_sync.mutexes[0]),
+                                                           k_ra8_esp_hosted_max_mutexes,
+                                                           s_sync.mutex_used);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_mutexes) {
     return RET_INVALID;
   }
@@ -226,11 +226,11 @@ RA8_INTERNAL static int internal_h_unlock_mutex(void* mutex_handle)
  */
 RA8_INTERNAL static int internal_h_destroy_mutex(void* mutex_handle)
 {
-  const uint32_t idx = ra8_esp_hosted_rtos_slot_index(mutex_handle,
-                                                      s_sync.mutexes,
-                                                      sizeof(s_sync.mutexes[0]),
-                                                      k_ra8_esp_hosted_max_mutexes,
-                                                      s_sync.mutex_used);
+  const uint32_t idx = priv_ra8_esp_hosted_rtos_slot_index(mutex_handle,
+                                                           s_sync.mutexes,
+                                                           sizeof(s_sync.mutexes[0]),
+                                                           k_ra8_esp_hosted_max_mutexes,
+                                                           s_sync.mutex_used);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_mutexes) {
     return RET_INVALID;
   }
@@ -276,7 +276,7 @@ RA8_INTERNAL static void* internal_h_create_semaphore(int max_count)
     return nullptr;
   }
   const uint32_t idx =
-    ra8_esp_hosted_rtos_slot_take(s_sync.sem_used, k_ra8_esp_hosted_max_semaphores);
+    priv_ra8_esp_hosted_rtos_slot_take(s_sync.sem_used, k_ra8_esp_hosted_max_semaphores);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_semaphores) {
     ra8_log_error(s_tag, "semaphore table exhausted");
     return nullptr;
@@ -310,16 +310,16 @@ RA8_INTERNAL static void* internal_h_create_semaphore(int max_count)
  */
 RA8_INTERNAL static int internal_h_get_semaphore(void* semaphore_handle, int timeout_ms)
 {
-  const uint32_t idx = ra8_esp_hosted_rtos_slot_index(semaphore_handle,
-                                                      s_sync.sems,
-                                                      sizeof(s_sync.sems[0]),
-                                                      k_ra8_esp_hosted_max_semaphores,
-                                                      s_sync.sem_used);
+  const uint32_t idx = priv_ra8_esp_hosted_rtos_slot_index(semaphore_handle,
+                                                           s_sync.sems,
+                                                           sizeof(s_sync.sems[0]),
+                                                           k_ra8_esp_hosted_max_semaphores,
+                                                           s_sync.sem_used);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_semaphores) {
     return RET_INVALID;
   }
   const UINT rc =
-    tx_semaphore_get(&s_sync.sems[idx], (ULONG)ra8_esp_hosted_rtos_ms_to_ticks(timeout_ms));
+    tx_semaphore_get(&s_sync.sems[idx], (ULONG)priv_ra8_esp_hosted_rtos_ms_to_ticks(timeout_ms));
   return (rc == TX_SUCCESS) ? RET_OK : RET_FAIL_TIMEOUT;
 }
 
@@ -343,11 +343,11 @@ RA8_INTERNAL static int internal_h_get_semaphore(void* semaphore_handle, int tim
  */
 RA8_INTERNAL static int internal_h_post_semaphore(void* semaphore_handle)
 {
-  const uint32_t idx = ra8_esp_hosted_rtos_slot_index(semaphore_handle,
-                                                      s_sync.sems,
-                                                      sizeof(s_sync.sems[0]),
-                                                      k_ra8_esp_hosted_max_semaphores,
-                                                      s_sync.sem_used);
+  const uint32_t idx = priv_ra8_esp_hosted_rtos_slot_index(semaphore_handle,
+                                                           s_sync.sems,
+                                                           sizeof(s_sync.sems[0]),
+                                                           k_ra8_esp_hosted_max_semaphores,
+                                                           s_sync.sem_used);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_semaphores) {
     return RET_INVALID;
   }
@@ -374,11 +374,11 @@ RA8_INTERNAL static int internal_h_post_semaphore(void* semaphore_handle)
  */
 RA8_INTERNAL RA8_ISR_SAFE static int internal_h_post_semaphore_from_isr(void* semaphore_handle)
 {
-  const uint32_t idx = ra8_esp_hosted_rtos_slot_index(semaphore_handle,
-                                                      s_sync.sems,
-                                                      sizeof(s_sync.sems[0]),
-                                                      k_ra8_esp_hosted_max_semaphores,
-                                                      s_sync.sem_used);
+  const uint32_t idx = priv_ra8_esp_hosted_rtos_slot_index(semaphore_handle,
+                                                           s_sync.sems,
+                                                           sizeof(s_sync.sems[0]),
+                                                           k_ra8_esp_hosted_max_semaphores,
+                                                           s_sync.sem_used);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_semaphores) {
     return RET_INVALID;
   }
@@ -404,11 +404,11 @@ RA8_INTERNAL RA8_ISR_SAFE static int internal_h_post_semaphore_from_isr(void* se
  */
 RA8_INTERNAL static int internal_h_destroy_semaphore(void* semaphore_handle)
 {
-  const uint32_t idx = ra8_esp_hosted_rtos_slot_index(semaphore_handle,
-                                                      s_sync.sems,
-                                                      sizeof(s_sync.sems[0]),
-                                                      k_ra8_esp_hosted_max_semaphores,
-                                                      s_sync.sem_used);
+  const uint32_t idx = priv_ra8_esp_hosted_rtos_slot_index(semaphore_handle,
+                                                           s_sync.sems,
+                                                           sizeof(s_sync.sems[0]),
+                                                           k_ra8_esp_hosted_max_semaphores,
+                                                           s_sync.sem_used);
   if (idx == (uint32_t)k_ra8_esp_hosted_max_semaphores) {
     return RET_INVALID;
   }
@@ -417,7 +417,7 @@ RA8_INTERNAL static int internal_h_destroy_semaphore(void* semaphore_handle)
   return rc;
 }
 
-ra8_err_t ra8_esp_hosted_rtos_sync_init(void)
+ra8_err_t priv_ra8_esp_hosted_rtos_sync_init(void)
 {
   if (s_sync.ready) {
     ra8_log_error(s_tag, "sync tables already initialised");
@@ -428,7 +428,7 @@ ra8_err_t ra8_esp_hosted_rtos_sync_init(void)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_esp_hosted_rtos_sync_deinit(void)
+ra8_err_t priv_ra8_esp_hosted_rtos_sync_deinit(void)
 {
   if (!s_sync.ready) {
     ra8_log_error(s_tag, "sync tables not initialised");
@@ -449,7 +449,7 @@ ra8_err_t ra8_esp_hosted_rtos_sync_deinit(void)
   return worst;
 }
 
-ra8_err_t ra8_esp_hosted_rtos_bind_sync(hosted_osi_funcs_t* out)
+ra8_err_t priv_ra8_esp_hosted_rtos_bind_sync(hosted_osi_funcs_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "vtable is NULL");
   out->_h_create_mutex            = internal_h_create_mutex;

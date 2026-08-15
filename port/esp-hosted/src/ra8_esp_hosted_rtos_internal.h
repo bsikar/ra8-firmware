@@ -98,18 +98,18 @@
  *
  * @par Example:
  * @code
- * if (ra8_esp_hosted_rtos_init() != k_ra8_ok) { report(); }
+ * if (priv_ra8_esp_hosted_rtos_init() != k_ra8_ok) { report(); }
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_deinit
- * @see ra8_esp_hosted_rtos_bind
+ * @see priv_ra8_esp_hosted_rtos_deinit
+ * @see priv_ra8_esp_hosted_rtos_bind
  * @since 0.1.0
  *
  * @par NASA Power of 10 Compliance:
  * - Rule 3: the only allocation is this init-time pool carve.
  * - Rule 5: two preconditions and two postconditions are checked.
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_init(void);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_rtos_init(void);
 
 /**
  * @brief Tear the RTOS substrate down, deleting every outstanding object.
@@ -137,17 +137,17 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_init(void);
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_rtos_deinit();
+ * (void)priv_ra8_esp_hosted_rtos_deinit();
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_init
+ * @see priv_ra8_esp_hosted_rtos_init
  * @since 0.1.0
  *
  * @par NASA Power of 10 Compliance:
  * - Rule 2: every table walk is bounded by its compile-time table size.
  * - Rule 5: two preconditions and two postconditions are checked.
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_deinit(void);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_rtos_deinit(void);
 
 /**
  * @brief Report whether the RTOS substrate is currently initialised.
@@ -158,7 +158,7 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_deinit(void);
  * the state machine without reaching into the module.
  *
  * @return Whether the substrate is up.
- * @retval true ::ra8_esp_hosted_rtos_init completed and no teardown has run.
+ * @retval true ::priv_ra8_esp_hosted_rtos_init completed and no teardown has run.
  * @retval false The substrate has never been up, failed, or was torn down.
  *
  * @pre None; safe to call at any time, including before any init.
@@ -170,13 +170,13 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_deinit(void);
  *
  * @par Example:
  * @code
- * if (ra8_esp_hosted_rtos_is_ready()) { (void)ra8_esp_hosted_rtos_deinit(); }
+ * if (priv_ra8_esp_hosted_rtos_is_ready()) { (void)priv_ra8_esp_hosted_rtos_deinit(); }
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_init
+ * @see priv_ra8_esp_hosted_rtos_init
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] bool ra8_esp_hosted_rtos_is_ready(void);
+RA8_PRIV [[nodiscard]] bool priv_ra8_esp_hosted_rtos_is_ready(void);
 
 /**
  * @brief Read live transport-pool occupancy.
@@ -203,13 +203,13 @@ RA8_PRIV [[nodiscard]] bool ra8_esp_hosted_rtos_is_ready(void);
  * @code
  * uint32_t avail = 0U;
  * uint32_t frags = 0U;
- * ra8_esp_hosted_rtos_pool_stats(&avail, &frags);
+ * priv_ra8_esp_hosted_rtos_pool_stats(&avail, &frags);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_init
+ * @see priv_ra8_esp_hosted_rtos_init
  * @since 0.1.0
  */
-RA8_PRIV void ra8_esp_hosted_rtos_pool_stats(uint32_t* out_available, uint32_t* out_fragments);
+RA8_PRIV void priv_ra8_esp_hosted_rtos_pool_stats(uint32_t* out_available, uint32_t* out_fragments);
 
 /**
  * @brief Populate the thread, sleep, timer and clock slots of the vtable.
@@ -218,7 +218,7 @@ RA8_PRIV void ra8_esp_hosted_rtos_pool_stats(uint32_t* out_available, uint32_t* 
  * Writes the ten rows this translation unit implements. It does **not** call
  * the sibling binders: each unit binds only the rows whose implementations it
  * can see, so a row can never be assigned from a unit that cannot name the
- * function behind it. ``ra8_esp_hosted_osi_bind_all`` calls all three.
+ * function behind it. ``priv_ra8_esp_hosted_osi_bind_all`` calls all three.
  * Every slot outside this group -- memory, queue, mutex, semaphore, GPIO,
  * bus, logging, transport -- is left exactly as the caller had it.
  *
@@ -229,7 +229,7 @@ RA8_PRIV void ra8_esp_hosted_rtos_pool_stats(uint32_t* out_available, uint32_t* 
  * @retval k_ra8_err_null_ptr ``out`` was null.
  *
  * @pre ``out`` points at storage that outlives the vendored core.
- * @pre ::ra8_esp_hosted_rtos_init has run, or the slots will report failures.
+ * @pre ::priv_ra8_esp_hosted_rtos_init has run, or the slots will report failures.
  * @post Every slot in this group is non-null.
  * @post No slot outside this group is written.
  *
@@ -239,14 +239,14 @@ RA8_PRIV void ra8_esp_hosted_rtos_pool_stats(uint32_t* out_available, uint32_t* 
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_rtos_bind(&g_hosted_osi_funcs);
+ * (void)priv_ra8_esp_hosted_rtos_bind(&g_hosted_osi_funcs);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_bind_pool
- * @see ra8_esp_hosted_rtos_bind_sync
+ * @see priv_ra8_esp_hosted_rtos_bind_pool
+ * @see priv_ra8_esp_hosted_rtos_bind_sync
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_bind(hosted_osi_funcs_t* out);
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_rtos_bind(hosted_osi_funcs_t* out);
 
 /**
  * @brief Populate the memory and queue slots of the vtable.
@@ -254,7 +254,7 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_bind(hosted_osi_funcs_t* out);
  * @details
  * The binder of the pool translation unit, which owns the byte pools the
  * allocators and queue rings draw from. Called by
- * ``ra8_esp_hosted_osi_bind_all`` alongside the other two binders.
+ * ``priv_ra8_esp_hosted_osi_bind_all`` alongside the other two binders.
  *
  * @param[out] out Vtable to populate. Must be non-null.
  *
@@ -263,7 +263,7 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_bind(hosted_osi_funcs_t* out);
  * @retval k_ra8_err_null_ptr ``out`` was null.
  *
  * @pre ``out`` points at storage that outlives the vendored core.
- * @pre ::ra8_esp_hosted_rtos_init has run, or the slots will report failures.
+ * @pre ::priv_ra8_esp_hosted_rtos_init has run, or the slots will report failures.
  * @post The eight memory slots and six queue slots are non-null.
  * @post No other slot is written.
  *
@@ -271,20 +271,20 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_bind(hosted_osi_funcs_t* out);
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_rtos_bind_pool(&funcs);
+ * (void)priv_ra8_esp_hosted_rtos_bind_pool(&funcs);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_bind
+ * @see priv_ra8_esp_hosted_rtos_bind
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_bind_pool(hosted_osi_funcs_t* out);
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_rtos_bind_pool(hosted_osi_funcs_t* out);
 
 /**
  * @brief Populate the mutex and semaphore slots of the vtable.
  *
  * @details
  * The binder of the synchronisation translation unit, which owns the mutex
- * and semaphore tables. Called by ``ra8_esp_hosted_osi_bind_all`` alongside
+ * and semaphore tables. Called by ``priv_ra8_esp_hosted_osi_bind_all`` alongside
  * the other two binders. There are no mempool-lock rows to fill; see the
  * file-level note on ``H_USE_MEMPOOL``.
  *
@@ -295,7 +295,7 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_bind_pool(hosted_osi_funcs_t* out);
  * @retval k_ra8_err_null_ptr ``out`` was null.
  *
  * @pre ``out`` points at storage that outlives the vendored core.
- * @pre ::ra8_esp_hosted_rtos_init has run, or the slots will report failures.
+ * @pre ::priv_ra8_esp_hosted_rtos_init has run, or the slots will report failures.
  * @post The four mutex slots and five semaphore slots are non-null.
  * @post No other slot is written.
  *
@@ -303,19 +303,19 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_bind_pool(hosted_osi_funcs_t* out);
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_rtos_bind_sync(&funcs);
+ * (void)priv_ra8_esp_hosted_rtos_bind_sync(&funcs);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_bind
+ * @see priv_ra8_esp_hosted_rtos_bind
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_bind_sync(hosted_osi_funcs_t* out);
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_rtos_bind_sync(hosted_osi_funcs_t* out);
 
 /**
  * @brief Clear the mutex and semaphore tables and mark them usable.
  *
  * @details
- * The synchronisation half of ::ra8_esp_hosted_rtos_init. Separated so the
+ * The synchronisation half of ::priv_ra8_esp_hosted_rtos_init. Separated so the
  * unit that owns the tables also owns their lifecycle, and so a test can
  * bring the locks up without the allocator.
  *
@@ -332,19 +332,19 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_bind_sync(hosted_osi_funcs_t* out);
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_rtos_sync_init();
+ * (void)priv_ra8_esp_hosted_rtos_sync_init();
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_sync_deinit
+ * @see priv_ra8_esp_hosted_rtos_sync_deinit
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_sync_init(void);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_rtos_sync_init(void);
 
 /**
  * @brief Delete every outstanding mutex and semaphore.
  *
  * @details
- * The synchronisation half of ::ra8_esp_hosted_rtos_deinit: walks both tables
+ * The synchronisation half of ::priv_ra8_esp_hosted_rtos_deinit: walks both tables
  * and deletes whatever is still in use, then clears the state so a later
  * create fails cleanly rather than touching a dead control block.
  *
@@ -362,13 +362,13 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_sync_init(void);
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_rtos_sync_deinit();
+ * (void)priv_ra8_esp_hosted_rtos_sync_deinit();
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_sync_init
+ * @see priv_ra8_esp_hosted_rtos_sync_init
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_sync_deinit(void);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_rtos_sync_deinit(void);
 
 /* ----------------------------------------------------------------------- */
 /* Fixed-table helpers */
@@ -407,13 +407,13 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_sync_deinit(void);
  *
  * @par Example:
  * @code
- * const uint32_t idx = ra8_esp_hosted_rtos_slot_take(s_used, k_max);
+ * const uint32_t idx = priv_ra8_esp_hosted_rtos_slot_take(s_used, k_max);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_slot_index
+ * @see priv_ra8_esp_hosted_rtos_slot_index
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] uint32_t ra8_esp_hosted_rtos_slot_take(bool* used, uint32_t count);
+RA8_PRIV [[nodiscard]] uint32_t priv_ra8_esp_hosted_rtos_slot_take(bool* used, uint32_t count);
 
 /**
  * @brief Resolve an opaque handle to its row index in a fixed table.
@@ -455,24 +455,24 @@ RA8_PRIV [[nodiscard]] uint32_t ra8_esp_hosted_rtos_slot_take(bool* used, uint32
  *
  * @par Example:
  * @code
- * const uint32_t idx = ra8_esp_hosted_rtos_slot_index(
+ * const uint32_t idx = priv_ra8_esp_hosted_rtos_slot_index(
  *   h, s_rows, sizeof(s_rows[0]), k_max, s_used);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_slot_take
+ * @see priv_ra8_esp_hosted_rtos_slot_take
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] uint32_t ra8_esp_hosted_rtos_slot_index(const void* handle,
-                                                               const void* base,
-                                                               size_t      stride,
-                                                               uint32_t    count,
-                                                               const bool* used);
+RA8_PRIV [[nodiscard]] uint32_t priv_ra8_esp_hosted_rtos_slot_index(const void* handle,
+                                                                    const void* base,
+                                                                    size_t      stride,
+                                                                    uint32_t    count,
+                                                                    const bool* used);
 
 /**
  * @brief Create the two byte pools over their static backing arrays.
  *
  * @details
- * The pool half of ::ra8_esp_hosted_rtos_init. Separated so the memory
+ * The pool half of ::priv_ra8_esp_hosted_rtos_init. Separated so the memory
  * translation unit owns both the arrays and the control blocks, and so a test
  * can bring the allocator up without the thread and timer tables.
  *
@@ -490,19 +490,19 @@ RA8_PRIV [[nodiscard]] uint32_t ra8_esp_hosted_rtos_slot_index(const void* handl
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_rtos_pool_init();
+ * (void)priv_ra8_esp_hosted_rtos_pool_init();
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_pool_deinit
+ * @see priv_ra8_esp_hosted_rtos_pool_deinit
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_pool_init(void);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_rtos_pool_init(void);
 
 /**
  * @brief Destroy every queue and both byte pools.
  *
  * @details
- * The pool half of ::ra8_esp_hosted_rtos_deinit: deletes any queue still in
+ * The pool half of ::priv_ra8_esp_hosted_rtos_deinit: deletes any queue still in
  * use, releases its storage, then deletes both pools and clears the pool
  * state so a later allocation fails cleanly rather than touching a dead
  * control block.
@@ -521,13 +521,13 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_pool_init(void);
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_rtos_pool_deinit();
+ * (void)priv_ra8_esp_hosted_rtos_pool_deinit();
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_pool_init
+ * @see priv_ra8_esp_hosted_rtos_pool_init
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_pool_deinit(void);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_rtos_pool_deinit(void);
 
 /* ----------------------------------------------------------------------- */
 /* Testable arithmetic */
@@ -575,13 +575,13 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_rtos_pool_deinit(void);
  *
  * @par Example:
  * @code
- * const ULONG wait = (ULONG)ra8_esp_hosted_rtos_ms_to_ticks(timeout_ms);
+ * const ULONG wait = (ULONG)priv_ra8_esp_hosted_rtos_ms_to_ticks(timeout_ms);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_queue_words
+ * @see priv_ra8_esp_hosted_rtos_queue_words
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] uint32_t ra8_esp_hosted_rtos_ms_to_ticks(int timeout_ms);
+RA8_PRIV [[nodiscard]] uint32_t priv_ra8_esp_hosted_rtos_ms_to_ticks(int timeout_ms);
 
 /**
  * @brief Round an esp-hosted queue element size up to whole ThreadX words.
@@ -622,13 +622,13 @@ RA8_PRIV [[nodiscard]] uint32_t ra8_esp_hosted_rtos_ms_to_ticks(int timeout_ms);
  *
  * @par Example:
  * @code
- * const uint32_t words = ra8_esp_hosted_rtos_queue_words((uint32_t)qitem_size);
+ * const uint32_t words = priv_ra8_esp_hosted_rtos_queue_words((uint32_t)qitem_size);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_ms_to_ticks
+ * @see priv_ra8_esp_hosted_rtos_ms_to_ticks
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] uint32_t ra8_esp_hosted_rtos_queue_words(uint32_t item_bytes);
+RA8_PRIV [[nodiscard]] uint32_t priv_ra8_esp_hosted_rtos_queue_words(uint32_t item_bytes);
 
 /**
  * @brief Size the busy-wait loop that stands in for a microsecond delay.
@@ -674,13 +674,14 @@ RA8_PRIV [[nodiscard]] uint32_t ra8_esp_hosted_rtos_queue_words(uint32_t item_by
  *
  * @par Example:
  * @code
- * const uint32_t iters = ra8_esp_hosted_rtos_us_spin_iters(cpu_hz, 250U);
+ * const uint32_t iters = priv_ra8_esp_hosted_rtos_us_spin_iters(cpu_hz, 250U);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_ms_to_ticks
+ * @see priv_ra8_esp_hosted_rtos_ms_to_ticks
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] uint32_t ra8_esp_hosted_rtos_us_spin_iters(uint32_t cpu_hz, uint32_t usec);
+RA8_PRIV [[nodiscard]] uint32_t priv_ra8_esp_hosted_rtos_us_spin_iters(uint32_t cpu_hz,
+                                                                       uint32_t usec);
 
 /* ----------------------------------------------------------------------- */
 /* Fixed-storage allocator */
@@ -730,25 +731,25 @@ RA8_PRIV [[nodiscard]] uint32_t ra8_esp_hosted_rtos_us_spin_iters(uint32_t cpu_h
  * @post On failure the pool is left exactly as it was.
  *
  * @note Thread-safe; ThreadX serialises the pool internally.
- * @warning The block must be released with ::ra8_esp_hosted_rtos_release, not
+ * @warning The block must be released with ::priv_ra8_esp_hosted_rtos_release, not
  *          with ``tx_byte_release``, or the padding leaks.
  *
  * @par Example:
  * @code
- * void* p = ra8_esp_hosted_rtos_alloc(1600U, 64U);
+ * void* p = priv_ra8_esp_hosted_rtos_alloc(1600U, 64U);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_release
+ * @see priv_ra8_esp_hosted_rtos_release
  * @since 0.1.0
  *
  * @par NASA Power of 10 Compliance:
  * - Rule 3: draws from a fixed init-time pool; never grows.
  * - Rule 5: three preconditions and two postconditions are checked.
  */
-RA8_PRIV [[nodiscard]] void* ra8_esp_hosted_rtos_alloc(size_t size, size_t align);
+RA8_PRIV [[nodiscard]] void* priv_ra8_esp_hosted_rtos_alloc(size_t size, size_t align);
 
 /**
- * @brief Release a block obtained from ::ra8_esp_hosted_rtos_alloc.
+ * @brief Release a block obtained from ::priv_ra8_esp_hosted_rtos_alloc.
  *
  * @details
  * Reads the header immediately below ``ptr``, checks its sentinel, and hands
@@ -767,7 +768,7 @@ RA8_PRIV [[nodiscard]] void* ra8_esp_hosted_rtos_alloc(size_t size, size_t align
  * @retval k_ra8_err_invalid_arg The header sentinel did not match.
  * @retval k_ra8_err_rtos_error ThreadX refused the release.
  *
- * @pre ``ptr`` came from ::ra8_esp_hosted_rtos_alloc.
+ * @pre ``ptr`` came from ::priv_ra8_esp_hosted_rtos_alloc.
  * @pre The block has not already been released.
  * @post On success the pool reports the block's bytes as available again.
  * @post On failure no pool state changes.
@@ -778,13 +779,13 @@ RA8_PRIV [[nodiscard]] void* ra8_esp_hosted_rtos_alloc(size_t size, size_t align
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_rtos_release(p);
+ * (void)priv_ra8_esp_hosted_rtos_release(p);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_alloc
+ * @see priv_ra8_esp_hosted_rtos_alloc
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_release(void* ptr);
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_rtos_release(void* ptr);
 
 /**
  * @brief Read back the payload size recorded for an allocated block.
@@ -792,7 +793,7 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_release(void* ptr);
  * @details
  * Exists because ``_h_realloc`` has to copy ``min(old, new)`` bytes and
  * ThreadX byte pools do not record a block's size. The value comes from the
- * header ::ra8_esp_hosted_rtos_alloc wrote, so it is the size the caller
+ * header ::priv_ra8_esp_hosted_rtos_alloc wrote, so it is the size the caller
  * asked for, not the rounded pool footprint.
  *
  * @param[in] ptr Payload pointer previously returned by the allocator.
@@ -803,7 +804,7 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_release(void* ptr);
  * @retval k_ra8_err_null_ptr ``ptr`` or ``out_size`` was null.
  * @retval k_ra8_err_invalid_arg The header sentinel did not match.
  *
- * @pre ``ptr`` came from ::ra8_esp_hosted_rtos_alloc.
+ * @pre ``ptr`` came from ::priv_ra8_esp_hosted_rtos_alloc.
  * @pre ``out_size`` is writable.
  * @post On success ``*out_size`` is the size originally requested.
  * @post No pool state is modified.
@@ -813,10 +814,10 @@ RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_release(void* ptr);
  * @par Example:
  * @code
  * size_t n = 0U;
- * (void)ra8_esp_hosted_rtos_block_size(p, &n);
+ * (void)priv_ra8_esp_hosted_rtos_block_size(p, &n);
  * @endcode
  *
- * @see ra8_esp_hosted_rtos_alloc
+ * @see priv_ra8_esp_hosted_rtos_alloc
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_esp_hosted_rtos_block_size(const void* ptr, size_t* out_size);
+RA8_PRIV ra8_err_t priv_ra8_esp_hosted_rtos_block_size(const void* ptr, size_t* out_size);

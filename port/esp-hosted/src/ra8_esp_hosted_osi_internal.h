@@ -65,14 +65,14 @@
  * @par Example:
  * @code
  * hosted_osi_funcs_t table = {};
- * TEST_ASSERT_EQ(k_ra8_ok, ra8_esp_hosted_osi_bind_all(&table));
+ * TEST_ASSERT_EQ(k_ra8_ok, priv_ra8_esp_hosted_osi_bind_all(&table));
  * @endcode
  *
- * @see ra8_esp_hosted_osi_is_complete
+ * @see priv_ra8_esp_hosted_osi_is_complete
  * @since 0.1.0
  */
 RA8_PRIV
-[[nodiscard]] ra8_err_t ra8_esp_hosted_osi_bind_all(hosted_osi_funcs_t* out);
+[[nodiscard]] ra8_err_t priv_ra8_esp_hosted_osi_bind_all(hosted_osi_funcs_t* out);
 
 /**
  * @brief Fill the rows belonging to transports this board does not carry.
@@ -93,25 +93,25 @@ RA8_PRIV
  * @post Every SDIO, half-duplex SPI and UART row is non-null.
  * @post No other row is modified.
  *
- * @note Not thread-safe; run once from ``ra8_esp_hosted_osi_bind_all``.
+ * @note Not thread-safe; run once from ``priv_ra8_esp_hosted_osi_bind_all``.
  *
  * @par MC/DC:
  * Promoted from `static` so a test can assert the rows are filled without
- * building the whole table. Tests and ``ra8_esp_hosted_osi_bind_all``
+ * building the whole table. Tests and ``priv_ra8_esp_hosted_osi_bind_all``
  * only.
  *
  * @par Example:
  * @code
  * hosted_osi_funcs_t table = {};
- * ra8_esp_hosted_osi_bind_absent(&table);
+ * priv_ra8_esp_hosted_osi_bind_absent(&table);
  * TEST_ASSERT_NOT_NULL((void*)table._h_sdio_card_init);
  * @endcode
  *
- * @see ra8_esp_hosted_osi_bind_all
+ * @see priv_ra8_esp_hosted_osi_bind_all
  * @since 0.1.0
  */
 RA8_PRIV
-void ra8_esp_hosted_osi_bind_absent(hosted_osi_funcs_t* out);
+void priv_ra8_esp_hosted_osi_bind_absent(hosted_osi_funcs_t* out);
 
 /**
  * @brief Report whether every row of a table is populated.
@@ -140,18 +140,18 @@ void ra8_esp_hosted_osi_bind_absent(hosted_osi_funcs_t* out);
  * @par MC/DC:
  * Promoted from `static` so the null-table guard and the null-row
  * detection can be driven independently. Tests and
- * ``ra8_esp_hosted_osi_bind_all`` only.
+ * ``priv_ra8_esp_hosted_osi_bind_all`` only.
  *
  * @par Example:
  * @code
- * TEST_ASSERT(!ra8_esp_hosted_osi_is_complete(&(hosted_osi_funcs_t){}));
+ * TEST_ASSERT(!priv_ra8_esp_hosted_osi_is_complete(&(hosted_osi_funcs_t){}));
  * @endcode
  *
- * @see ra8_esp_hosted_osi_bind_all
+ * @see priv_ra8_esp_hosted_osi_bind_all
  * @since 0.1.0
  */
 RA8_PRIV
-[[nodiscard]] bool ra8_esp_hosted_osi_is_complete(const hosted_osi_funcs_t* table);
+[[nodiscard]] bool priv_ra8_esp_hosted_osi_is_complete(const hosted_osi_funcs_t* table);
 
 /**
  * @brief Deliver one posted event to the registered application handler.
@@ -187,14 +187,14 @@ RA8_PRIV
  *
  * @par Example:
  * @code
- * TEST_ASSERT_EQ(RET_FAIL, ra8_esp_hosted_osi_dispatch_event("B", 1, nullptr, 0U));
+ * TEST_ASSERT_EQ(RET_FAIL, priv_ra8_esp_hosted_osi_dispatch_event("B", 1, nullptr, 0U));
  * @endcode
  *
  * @see ra8_esp_hosted_port_set_event_cb
  * @since 0.1.0
  */
 RA8_PRIV
-int ra8_esp_hosted_osi_dispatch_event(const char* base,
-                                      int32_t     event_id,
-                                      const void* data,
-                                      size_t      data_len);
+int priv_ra8_esp_hosted_osi_dispatch_event(const char* base,
+                                           int32_t     event_id,
+                                           const void* data,
+                                           size_t      data_len);

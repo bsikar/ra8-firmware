@@ -53,7 +53,7 @@
  * static_assert(k_ra8_esp_hosted_spi_mode == 3U, "C6 is built CONFIG_ESP_SPI_MODE=3");
  * @endcode
  *
- * @see ra8_esp_hosted_spi_open
+ * @see priv_ra8_esp_hosted_spi_open
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -78,7 +78,7 @@ typedef enum : uint8_t {
  * @retval k_ra8_err_null_ptr @p out was null.
  *
  * @pre @p out points at storage that out-lives the vendored core.
- * @pre ::ra8_esp_hosted_spi_open has run, or will run before the vendored
+ * @pre ::priv_ra8_esp_hosted_spi_open has run, or will run before the vendored
  *      transport is started.
  * @post The three transport rows of @p out are non-null.
  * @post No non-transport row of @p out is modified.
@@ -87,13 +87,13 @@ typedef enum : uint8_t {
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_spi_bind(&g_hosted_osi_funcs);
+ * (void)priv_ra8_esp_hosted_spi_bind(&g_hosted_osi_funcs);
  * @endcode
  *
- * @see ra8_esp_hosted_gpio_bind
+ * @see priv_ra8_esp_hosted_gpio_bind
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_spi_bind(hosted_osi_funcs_t* out);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_spi_bind(hosted_osi_funcs_t* out);
 
 /**
  * @brief Route the Pmod1 SPI pins and open the SCI Simple-SPI channel.
@@ -134,20 +134,20 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_spi_bind(hosted_osi_funcs_t* out
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_spi_open(cfg->sci_channel, cfg->pclk_hz, cfg->sck_hz);
+ * (void)priv_ra8_esp_hosted_spi_open(cfg->sci_channel, cfg->pclk_hz, cfg->sck_hz);
  * @endcode
  *
- * @see ra8_esp_hosted_spi_close
+ * @see priv_ra8_esp_hosted_spi_close
  * @since 0.1.0
  */
 RA8_PRIV [[nodiscard]] ra8_err_t
-ra8_esp_hosted_spi_open(uint8_t sci_channel, uint32_t pclk_hz, uint32_t sck_hz);
+priv_ra8_esp_hosted_spi_open(uint8_t sci_channel, uint32_t pclk_hz, uint32_t sck_hz);
 
 /**
  * @brief Close the SCI Simple-SPI channel and release every pin it took.
  *
  * @details
- * Exact reverse of ::ra8_esp_hosted_spi_open: the channel is disabled and its
+ * Exact reverse of ::priv_ra8_esp_hosted_spi_open: the channel is disabled and its
  * module-stop gate released, then the chip select and the three routed data
  * pins are handed back to the pin validator. The bound bus handle is cleared
  * so a later transfer attempt fails rather than driving a dead channel.
@@ -159,20 +159,20 @@ ra8_esp_hosted_spi_open(uint8_t sci_channel, uint32_t pclk_hz, uint32_t sck_hz);
  *
  * @pre The vendored transport has stopped clocking frames.
  * @pre No transfer is in flight.
- * @post Every pin ::ra8_esp_hosted_spi_open claimed is released.
+ * @post Every pin ::priv_ra8_esp_hosted_spi_open claimed is released.
  * @post A later ``_h_do_bus_transfer`` reports failure rather than clocking.
  *
  * @note Not thread-safe; call from the same context as the open.
  *
  * @par Example:
  * @code
- * (void)ra8_esp_hosted_spi_close();
+ * (void)priv_ra8_esp_hosted_spi_close();
  * @endcode
  *
- * @see ra8_esp_hosted_spi_open
+ * @see priv_ra8_esp_hosted_spi_open
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_spi_close(void);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_ra8_esp_hosted_spi_close(void);
 
 /**
  * @brief Report whether the SCI Simple-SPI channel is currently open.
@@ -182,7 +182,7 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_spi_close(void);
  * is needed and tests can assert the open/close state machine without
  * reaching into the module.
  *
- * @return Whether ::ra8_esp_hosted_spi_open has completed with no close
+ * @return Whether ::priv_ra8_esp_hosted_spi_open has completed with no close
  *         since.
  * @retval true The channel is open and bound.
  * @retval false The channel was never opened, failed to open, or was closed.
@@ -196,20 +196,20 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_esp_hosted_spi_close(void);
  *
  * @par Example:
  * @code
- * if (ra8_esp_hosted_spi_is_open()) { (void)ra8_esp_hosted_spi_close(); }
+ * if (priv_ra8_esp_hosted_spi_is_open()) { (void)priv_ra8_esp_hosted_spi_close(); }
  * @endcode
  *
- * @see ra8_esp_hosted_spi_open
+ * @see priv_ra8_esp_hosted_spi_open
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] bool ra8_esp_hosted_spi_is_open(void);
+RA8_PRIV [[nodiscard]] bool priv_ra8_esp_hosted_spi_is_open(void);
 
 /**
  * @brief Replace the SPI bus the transfer slot clocks frames through.
  *
  * @details
  * Dependency-injection seam. Production leaves it unset, in which case the
- * slot uses the handle ::ra8_esp_hosted_spi_open bound to the SCI channel.
+ * slot uses the handle ::priv_ra8_esp_hosted_spi_open bound to the SCI channel.
  * Host tests point it at a recording ``ra8_io_spi_bus_iface`` so the whole
  * transfer path -- argument validation, chip-select sequencing, error
  * propagation -- runs with no silicon and no open channel.
@@ -228,13 +228,13 @@ RA8_PRIV [[nodiscard]] bool ra8_esp_hosted_spi_is_open(void);
  *
  * @par Example:
  * @code
- * ra8_esp_hosted_spi_set_bus(&mock_bus);
+ * priv_ra8_esp_hosted_spi_set_bus(&mock_bus);
  * @endcode
  *
- * @see ra8_esp_hosted_spi_open
+ * @see priv_ra8_esp_hosted_spi_open
  * @since 0.1.0
  */
-RA8_PRIV RA8_DI_SLOT("spi_bus") void ra8_esp_hosted_spi_set_bus(const ra8_io_spi_bus_t* bus);
+RA8_PRIV RA8_DI_SLOT("spi_bus") void priv_ra8_esp_hosted_spi_set_bus(const ra8_io_spi_bus_t* bus);
 
 /**
  * @brief Replace the pin driver the transfer slot drives chip select with.
@@ -260,11 +260,11 @@ RA8_PRIV RA8_DI_SLOT("spi_bus") void ra8_esp_hosted_spi_set_bus(const ra8_io_spi
  *
  * @par Example:
  * @code
- * ra8_esp_hosted_spi_set_pin_interface(&mock_pin_iface);
+ * priv_ra8_esp_hosted_spi_set_pin_interface(&mock_pin_iface);
  * @endcode
  *
- * @see ra8_esp_hosted_spi_set_bus
+ * @see priv_ra8_esp_hosted_spi_set_bus
  * @since 0.1.0
  */
-RA8_PRIV RA8_DI_SLOT("chip_select") void ra8_esp_hosted_spi_set_pin_interface(
+RA8_PRIV RA8_DI_SLOT("chip_select") void priv_ra8_esp_hosted_spi_set_pin_interface(
   const ra8_pin_interface_t* iface);
