@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_bit_constants.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -163,7 +164,7 @@ uint8_t ra8_mstp_id_bit(ra8_mstp_t id)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static bool internal_decode(ra8_mstp_t id, uint8_t* out_reg, uint8_t* out_bit)
+RA8_INTERNAL static bool internal_decode(ra8_mstp_t id, uint8_t* out_reg, uint8_t* out_bit)
 {
   const ra8_mstp_reg_t reg_id = ra8_mstp_id_reg(id);
   const uint8_t        reg    = (uint8_t)reg_id;
@@ -188,7 +189,7 @@ static bool internal_decode(ra8_mstp_t id, uint8_t* out_reg, uint8_t* out_bit)
  * ``[reg]`` indexing is unambiguous and matches the layout asserted
  * by the static_assert in ``ra8_mstp_regs.h``.
  */
-static volatile uint32_t* internal_reg_ptr(uint8_t reg)
+RA8_INTERNAL static volatile uint32_t* internal_reg_ptr(uint8_t reg)
 {
   return &(&ra8_mstp()->MSTPCRA)[reg];
 }
@@ -221,7 +222,8 @@ static volatile uint32_t* internal_reg_ptr(uint8_t reg)
  * @post No register is modified by this function.
  * @since 0.1.0
  */
-static ra8_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_stopped)
+RA8_INTERNAL static ra8_err_t
+internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_stopped)
 {
   volatile const uint32_t* p    = internal_reg_ptr(reg);
   const uint32_t           mask = (uint32_t)1U << bit;
@@ -242,8 +244,8 @@ static ra8_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_
   return k_ra8_err_hw_timeout;
 }
 
-/** @brief Implementation of `ra8_mstp_wait_reg_settle_internal()` -- masked settle poll. */
-ra8_err_t ra8_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32_t care_mask)
+/** @brief Implementation of `priv_ra8_mstp_wait_reg_settle_internal()` -- masked settle poll. */
+ra8_err_t priv_ra8_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32_t care_mask)
 {
   volatile const uint32_t* p = internal_reg_ptr(reg);
   for (uint16_t i = 0U; i < k_ra8_mstp_readback_spin; ++i) {
@@ -262,8 +264,8 @@ ra8_err_t ra8_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32
   return k_ra8_err_hw_timeout;
 }
 
-/** @brief Implementation of `ra8_mstp_ns_mask_internal()` -- reads PSARB..E. */
-uint32_t ra8_mstp_ns_mask_internal(uint8_t reg)
+/** @brief Implementation of `priv_ra8_mstp_ns_mask_internal()` -- reads PSARB..E. */
+uint32_t priv_ra8_mstp_ns_mask_internal(uint8_t reg)
 {
   /* MSTPCRA has no PSAR: always fully Secure-owned. */
   static const uintptr_t k_psar_addr[k_ra8_mstp_reg_count] = {
@@ -329,8 +331,8 @@ ra8_err_t ra8_mstp_init(void)
    * tolerating the by-design Non-secure ones. On a non-TrustZone system the
    * mask is all-ones, so the check stays fully strict. */
   for (uint8_t reg = 0U; reg < k_ra8_mstp_reg_count; ++reg) {
-    const uint32_t care = ~ra8_mstp_ns_mask_internal(reg);
-    if (ra8_mstp_wait_reg_settle_internal(reg, k_init_vals[reg], care) != k_ra8_ok) {
+    const uint32_t care = ~priv_ra8_mstp_ns_mask_internal(reg);
+    if (priv_ra8_mstp_wait_reg_settle_internal(reg, k_init_vals[reg], care) != k_ra8_ok) {
       ra8_log_error_val(s_tag, "init read-back failed reg", (uint32_t)reg);
       return k_ra8_err_hw_timeout;
     }

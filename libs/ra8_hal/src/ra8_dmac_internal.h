@@ -59,9 +59,9 @@ extern "C" {
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_dmac_internal_mode_disables_dts(uint32_t mode_normal_val,
-                                         uint32_t mode_repeat_block_val,
-                                         uint32_t mode);
+bool priv_ra8_dmac_internal_mode_disables_dts(uint32_t mode_normal_val,
+                                              uint32_t mode_repeat_block_val,
+                                              uint32_t mode);
 
 /**
  * @brief Pure predicate for the DMINT "extra IRQ bits" decision.
@@ -95,9 +95,9 @@ bool ra8_dmac_internal_mode_disables_dts(uint32_t mode_normal_val,
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_dmac_internal_dmint_extra_irq(bool     irq_each,
-                                       uint32_t mode_repeat_block_val,
-                                       uint32_t mode);
+bool priv_ra8_dmac_internal_dmint_extra_irq(bool     irq_each,
+                                            uint32_t mode_repeat_block_val,
+                                            uint32_t mode);
 
 #ifdef __cplusplus
 }

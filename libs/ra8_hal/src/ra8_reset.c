@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_intrinsics.h"
@@ -97,7 +98,7 @@ static ra8_reset_state_t s_state;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_read_raw(ra8_reset_raw_t* out)
+RA8_INTERNAL static void internal_read_raw(ra8_reset_raw_t* out)
 {
   /* HUM Ch 6.2.2 "RSTSR0 : Reset Status Register 0", p 257 */
   out->rstsr0 = *ra8_reset_rstsr0();
@@ -131,7 +132,7 @@ static void internal_read_raw(ra8_reset_raw_t* out)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-static ra8_reset_cause_t internal_decode_rstsr0(uint8_t rstsr0)
+RA8_INTERNAL static ra8_reset_cause_t internal_decode_rstsr0(uint8_t rstsr0)
 {
   if ((rstsr0 & k_ra8_reset_rstsr0_porf_msk) != 0U) {
     return k_ra8_reset_cause_power_on;
@@ -178,7 +179,7 @@ static ra8_reset_cause_t internal_decode_rstsr0(uint8_t rstsr0)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-static ra8_reset_cause_t internal_decode_rstsr1(uint32_t rstsr1)
+RA8_INTERNAL static ra8_reset_cause_t internal_decode_rstsr1(uint32_t rstsr1)
 {
   if ((rstsr1 & k_ra8_reset_rstsr1_iwdtrf_msk) != 0U) {
     return k_ra8_reset_cause_iwdt;
@@ -237,7 +238,7 @@ static ra8_reset_cause_t internal_decode_rstsr1(uint32_t rstsr1)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-static ra8_reset_cause_t internal_decode_rstsr3(uint8_t rstsr3)
+RA8_INTERNAL static ra8_reset_cause_t internal_decode_rstsr3(uint8_t rstsr3)
 {
   if ((rstsr3 & k_ra8_reset_rstsr3_cvmrf_msk) != 0U) {
     return k_ra8_reset_cause_core_voltage;
@@ -276,7 +277,7 @@ static ra8_reset_cause_t internal_decode_rstsr3(uint8_t rstsr3)
  * @note Not thread-safe with respect to concurrent RSTSRn flag clears.
  * @since 0.1.0
  */
-static ra8_reset_cause_t internal_decode(const ra8_reset_raw_t* raw)
+RA8_INTERNAL static ra8_reset_cause_t internal_decode(const ra8_reset_raw_t* raw)
 {
   ra8_reset_cause_t cause = internal_decode_rstsr0(raw->rstsr0);
   if (cause != k_ra8_reset_cause_unknown) {
@@ -443,7 +444,8 @@ void ra8_reset_software_reset(void)
  * @note Not thread-safe; pure address resolution.
  * @since 0.1.0
  */
-static bool internal_source_loc(ra8_reset_source_t source, volatile uint8_t** reg, uint8_t* mask)
+RA8_INTERNAL static bool
+internal_source_loc(ra8_reset_source_t source, volatile uint8_t** reg, uint8_t* mask)
 {
   switch (source) {
     case k_ra8_reset_source_iwdt:

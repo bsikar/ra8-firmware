@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_i2c.h"
@@ -70,7 +71,7 @@ typedef enum : uint32_t {
  * @note Thread safety: pure mapping, no state.
  * @since 0.1.0
  */
-static ra8_mstp_t internal_i2c_mstp_id(uint8_t channel)
+RA8_INTERNAL static ra8_mstp_t internal_i2c_mstp_id(uint8_t channel)
 {
   if (channel == 0U) {
     return k_ra8_mstp_iic0;
@@ -103,7 +104,7 @@ static ra8_mstp_t internal_i2c_mstp_id(uint8_t channel)
  * @note Thread safety: pure on the supplied pointer; thread-safe.
  * @since 0.1.0
  */
-static uint8_t internal_i2c_pick_cks(uint32_t* total)
+RA8_INTERNAL static uint8_t internal_i2c_pick_cks(uint32_t* total)
 {
   uint32_t cks = 0U;
   for (uint32_t i = 0U; i <= (uint32_t)k_ra8_i2c_cks_max; i++) { /* GCOVR_EXCL_BR_LINE */
@@ -139,7 +140,7 @@ static uint8_t internal_i2c_pick_cks(uint32_t* total)
  * @note Thread safety: pure; thread-safe.
  * @since 0.1.0
  */
-static uint8_t internal_i2c_clamp_half(uint32_t total)
+RA8_INTERNAL static uint8_t internal_i2c_clamp_half(uint32_t total)
 {
   uint32_t half = total / (uint32_t)k_ra8_i2c_period_split;
   if (half == 0U) {
@@ -179,15 +180,15 @@ static uint8_t internal_i2c_clamp_half(uint32_t total)
  * @note Thread safety: pure; thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_i2c_bitrate(uint32_t bus_hz,
-                                      uint32_t pclkb_hz,
-                                      uint8_t* out_cks,
-                                      uint8_t* out_brh,
-                                      uint8_t* out_brl)
+RA8_INTERNAL static ra8_err_t internal_i2c_bitrate(uint32_t bus_hz,
+                                                   uint32_t pclkb_hz,
+                                                   uint8_t* out_cks,
+                                                   uint8_t* out_brh,
+                                                   uint8_t* out_brl)
 {
-  RA8_CHECK_NULL_PTR(out_cks, s_i2c_tag, "bitrate: out_cks");
-  RA8_CHECK_NULL_PTR(out_brh, s_i2c_tag, "bitrate: out_brh");
-  if (ra8_i2c_internal_clk_invalid(bus_hz, pclkb_hz)) {
+  RA8_CHECK_NULL_PTR(out_cks, g_i2c_tag, "bitrate: out_cks");
+  RA8_CHECK_NULL_PTR(out_brh, g_i2c_tag, "bitrate: out_brh");
+  if (priv_ra8_i2c_internal_clk_invalid(bus_hz, pclkb_hz)) {
     return k_ra8_err_invalid_arg;
   }
 
@@ -223,7 +224,7 @@ static ra8_err_t internal_i2c_bitrate(uint32_t bus_hz,
  * @note Thread safety: pure; thread-safe.
  * @since 0.1.0
  */
-static uint8_t internal_i2c_decode_errors(uint8_t icsr2)
+RA8_INTERNAL static uint8_t internal_i2c_decode_errors(uint8_t icsr2)
 {
   uint8_t mask = (uint8_t)k_ra8_i2c_err_none;
   if ((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_al) != 0U) {
@@ -266,11 +267,11 @@ static uint8_t internal_i2c_decode_errors(uint8_t icsr2)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void internal_i2c_apply_init_regs(volatile r_i2c_regs_t* reg,
-                                         uint8_t                cks,
-                                         uint8_t                brh,
-                                         uint8_t                brl,
-                                         bool                   fast_plus)
+RA8_INTERNAL static void internal_i2c_apply_init_regs(volatile r_i2c_regs_t* reg,
+                                                      uint8_t                cks,
+                                                      uint8_t                brh,
+                                                      uint8_t                brl,
+                                                      bool                   fast_plus)
 {
   /* Initial-settings step 1 (Figure 39.5): ICE = 0, pins inactive.
    * HUM Ch 39.2.1 "ICCR1 : I2C Bus Control Register 1" p 2369 */
@@ -306,8 +307,8 @@ static void internal_i2c_apply_init_regs(volatile r_i2c_regs_t* reg,
 
 ra8_err_t ra8_i2c_init(uint8_t channel, const ra8_i2c_cfg_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, s_i2c_tag, "i2c_init: cfg");
-  if (ra8_i2c_internal_clk_invalid(cfg->bus_hz, cfg->pclkb_hz)) {
+  RA8_CHECK_NULL_PTR(cfg, g_i2c_tag, "i2c_init: cfg");
+  if (priv_ra8_i2c_internal_clk_invalid(cfg->bus_hz, cfg->pclkb_hz)) {
     return k_ra8_err_invalid_arg;
   }
   volatile r_i2c_regs_t* reg = ra8_i2c_regs(channel);
@@ -316,13 +317,13 @@ ra8_err_t ra8_i2c_init(uint8_t channel, const ra8_i2c_cfg_t* cfg)
   }
 
   const ra8_err_t mst_err = ra8_mstp_enable(internal_i2c_mstp_id(channel));
-  RA8_RETURN_ON_ERROR(mst_err, s_i2c_tag, "i2c_init: mstp"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(mst_err, g_i2c_tag, "i2c_init: mstp"); /* GCOVR_EXCL_BR_LINE */
 
   uint8_t         cks    = 0U;
   uint8_t         brh    = 0U;
   uint8_t         brl    = 0U;
   const ra8_err_t br_err = internal_i2c_bitrate(cfg->bus_hz, cfg->pclkb_hz, &cks, &brh, &brl);
-  RA8_RETURN_ON_ERROR(br_err, s_i2c_tag, "i2c_init: bitrate"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(br_err, g_i2c_tag, "i2c_init: bitrate"); /* GCOVR_EXCL_BR_LINE */
 
   internal_i2c_apply_init_regs(reg,
                                cks,
@@ -333,7 +334,7 @@ ra8_err_t ra8_i2c_init(uint8_t channel, const ra8_i2c_cfg_t* cfg)
   s_i2c_state[channel].initialized = true;
   s_i2c_state[channel].bus_held    = false;
 
-  ra8_log_info_val(s_i2c_tag, "i2c_init channel", (uint32_t)channel);
+  ra8_log_info_val(g_i2c_tag, "i2c_init channel", (uint32_t)channel);
   return k_ra8_ok;
 }
 
@@ -382,7 +383,7 @@ ra8_err_t ra8_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclkb_hz)
 
 ra8_err_t ra8_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
 {
-  RA8_CHECK_NULL_PTR(out_mask, s_i2c_tag, "i2c_get_errors: out_mask");
+  RA8_CHECK_NULL_PTR(out_mask, g_i2c_tag, "i2c_get_errors: out_mask");
   volatile const r_i2c_regs_t* reg = ra8_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;

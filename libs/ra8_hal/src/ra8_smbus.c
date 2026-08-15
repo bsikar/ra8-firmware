@@ -106,7 +106,7 @@ static ra8_smbus_state_t s_state = {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t pec_update(uint8_t crc, uint8_t b)
+RA8_INTERNAL static uint8_t internal_pec_update(uint8_t crc, uint8_t b)
 {
   uint8_t c = (uint8_t)(crc ^ b);
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_smbus_msb_for_byte; ++i) {
@@ -126,7 +126,7 @@ uint8_t ra8_smbus_pec(const uint8_t* data, uint32_t len)
   }
   uint8_t c = (uint8_t)k_ra8_smbus_pec_init;
   for (uint32_t i = 0U; i < len; ++i) {
-    c = pec_update(c, data[i]);
+    c = internal_pec_update(c, data[i]);
   }
   return c;
 }
@@ -138,7 +138,7 @@ uint8_t ra8_smbus_pec(const uint8_t* data, uint32_t len)
 
 /* Build the on-the-wire address byte for a 7-bit target -- see implementation for details. */
 RA8_INTERNAL
-static uint8_t make_addr_byte(uint8_t target_7b, uint8_t rw_bit)
+RA8_INTERNAL static uint8_t internal_make_addr_byte(uint8_t target_7b, uint8_t rw_bit)
 {
   return (uint8_t)(((uint32_t)target_7b << (uint32_t)k_ra8_smbus_addr_shift) |
                    ((uint32_t)rw_bit & 1U));
@@ -199,9 +199,9 @@ ra8_err_t ra8_smbus_send_byte(uint8_t target_7b, uint8_t data)
   uint32_t len = 0U;
   buf[len++]   = data;
   if (s_state.pec_enabled) {
-    const uint8_t addr_b = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
-    uint8_t       pec    = pec_update((uint8_t)k_ra8_smbus_pec_init, addr_b);
-    pec                  = pec_update(pec, data);
+    const uint8_t addr_b = internal_make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
+    uint8_t       pec    = internal_pec_update((uint8_t)k_ra8_smbus_pec_init, addr_b);
+    pec                  = internal_pec_update(pec, data);
     buf[len++]           = pec;
   }
   return s_state.bus.write(s_state.bus.ctx, target_7b, buf, len, true);
@@ -220,9 +220,9 @@ ra8_err_t ra8_smbus_receive_byte(uint8_t target_7b, uint8_t* out_data)
     return err;
   }
   if (s_state.pec_enabled) {
-    const uint8_t addr_b = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_read);
-    uint8_t       pec    = pec_update((uint8_t)k_ra8_smbus_pec_init, addr_b);
-    pec                  = pec_update(pec, buf[0]);
+    const uint8_t addr_b = internal_make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_read);
+    uint8_t       pec    = internal_pec_update((uint8_t)k_ra8_smbus_pec_init, addr_b);
+    pec                  = internal_pec_update(pec, buf[0]);
     if (pec != buf[1]) {
       ra8_log_error(s_tag, "receive_byte: PEC mismatch");
       return k_ra8_err_crc_mismatch;
@@ -247,10 +247,10 @@ ra8_err_t ra8_smbus_write_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t data
   buf[len++]   = cmd;
   buf[len++]   = data;
   if (s_state.pec_enabled) {
-    const uint8_t addr_b = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
-    uint8_t       pec    = pec_update((uint8_t)k_ra8_smbus_pec_init, addr_b);
-    pec                  = pec_update(pec, cmd);
-    pec                  = pec_update(pec, data);
+    const uint8_t addr_b = internal_make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
+    uint8_t       pec    = internal_pec_update((uint8_t)k_ra8_smbus_pec_init, addr_b);
+    pec                  = internal_pec_update(pec, cmd);
+    pec                  = internal_pec_update(pec, data);
     buf[len++]           = pec;
   }
   return s_state.bus.write(s_state.bus.ctx, target_7b, buf, len, true);
@@ -271,12 +271,12 @@ ra8_err_t ra8_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_
     return err;
   }
   if (s_state.pec_enabled) {
-    const uint8_t addr_w = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
-    const uint8_t addr_r = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_read);
-    uint8_t       pec    = pec_update((uint8_t)k_ra8_smbus_pec_init, addr_w);
-    pec                  = pec_update(pec, cmd);
-    pec                  = pec_update(pec, addr_r);
-    pec                  = pec_update(pec, rx[0]);
+    const uint8_t addr_w = internal_make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
+    const uint8_t addr_r = internal_make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_read);
+    uint8_t       pec    = internal_pec_update((uint8_t)k_ra8_smbus_pec_init, addr_w);
+    pec                  = internal_pec_update(pec, cmd);
+    pec                  = internal_pec_update(pec, addr_r);
+    pec                  = internal_pec_update(pec, rx[0]);
     if (pec != rx[1]) {
       ra8_log_error(s_tag, "read_byte_data: PEC mismatch");
       return k_ra8_err_crc_mismatch;
@@ -312,10 +312,10 @@ ra8_err_t ra8_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* d
     frame[fi++] = data[i];
   }
   if (s_state.pec_enabled) {
-    const uint8_t addr_b = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
-    uint8_t       pec    = pec_update((uint8_t)k_ra8_smbus_pec_init, addr_b);
+    const uint8_t addr_b = internal_make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
+    uint8_t       pec    = internal_pec_update((uint8_t)k_ra8_smbus_pec_init, addr_b);
     for (uint32_t i = 0U; i < fi; ++i) {
-      pec = pec_update(pec, frame[i]);
+      pec = internal_pec_update(pec, frame[i]);
     }
     frame[fi++] = pec;
   }
@@ -356,14 +356,14 @@ static ra8_err_t internal_block_read_pec_check(uint8_t        target_7b,
                                                uint8_t        count,
                                                uint8_t        pec_rx)
 {
-  const uint8_t addr_w = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
-  const uint8_t addr_r = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_read);
-  uint8_t       pec    = pec_update((uint8_t)k_ra8_smbus_pec_init, addr_w);
-  pec                  = pec_update(pec, cmd);
-  pec                  = pec_update(pec, addr_r);
-  pec                  = pec_update(pec, count);
+  const uint8_t addr_w = internal_make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
+  const uint8_t addr_r = internal_make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_read);
+  uint8_t       pec    = internal_pec_update((uint8_t)k_ra8_smbus_pec_init, addr_w);
+  pec                  = internal_pec_update(pec, cmd);
+  pec                  = internal_pec_update(pec, addr_r);
+  pec                  = internal_pec_update(pec, count);
   for (uint8_t i = 0U; i < count; ++i) {
-    pec = pec_update(pec, buf[i]);
+    pec = internal_pec_update(pec, buf[i]);
   }
   if (pec != pec_rx) {
     ra8_log_error(s_tag, "block_read: PEC mismatch");

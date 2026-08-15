@@ -56,6 +56,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -136,7 +137,8 @@ typedef enum : uint32_t {
  * @note Not thread-safe; designed for single-caller polling paths.
  * @since 0.1.0
  */
-static ra8_err_t internal_target_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mask)
+RA8_INTERNAL static ra8_err_t internal_target_wait_spsr(volatile r_spi_regs_t* reg,
+                                                        uint32_t               flag_mask)
 {
   /* Bounded busy-poll of SPSR. On the host test build the ra8_hw_err MMIO fault
    * seam (ra8_fake_mmio_*) drives this real loop to succeed-after-N or to time out,
@@ -170,7 +172,7 @@ static ra8_err_t internal_target_wait_spsr(volatile r_spi_regs_t* reg, uint32_t 
  * @note Pure; no side effects; thread-safe.
  * @since 0.1.0
  */
-static uint32_t internal_target_spcr(void)
+RA8_INTERNAL static uint32_t internal_target_spcr(void)
 {
   uint32_t v = 0U;
   /* SPCR.MSTR (bit 30) is NOT set -- Peripheral (Target) mode. */
@@ -210,7 +212,7 @@ static uint32_t internal_target_spcr(void)
  * @note Pure; no side effects; thread-safe.
  * @since 0.1.0
  */
-static uint32_t internal_spcmd_target(const ra8_spi_cfg_t* cfg)
+RA8_INTERNAL static uint32_t internal_spcmd_target(const ra8_spi_cfg_t* cfg)
 {
   uint32_t v = 0U;
   switch (cfg->mode) {
@@ -259,7 +261,8 @@ static uint32_t internal_spcmd_target(const ra8_spi_cfg_t* cfg)
  * @note Not thread-safe; caller must serialise channel access.
  * @since 0.1.0
  */
-static void internal_target_program_regs(volatile r_spi_regs_t* reg, const ra8_spi_cfg_t* cfg)
+RA8_INTERNAL static void internal_target_program_regs(volatile r_spi_regs_t* reg,
+                                                      const ra8_spi_cfg_t*   cfg)
 {
   /* HUM Ch 43.2.13 "SPSRC : SPI Status Clear Register" p 2905 */
   reg->SPSRC = (uint32_t)k_ra8_spsrc_mask_all;

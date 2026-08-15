@@ -14,6 +14,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
@@ -87,7 +88,8 @@ typedef enum : uint16_t {
   k_test_usb_dcp_max_packet = 64U, /**< Test USB dcp maximum packet. */
 } test_usb_dcp_t;
 
-static void prep(void)
+/** @brief Provide the file-local prep test helper. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
@@ -97,12 +99,11 @@ static void prep(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_fs_happy_path(void)
+ * code under test that this case touches) @brief Verify init fs happy path behavior. @details Executes the init fs happy path scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_fs_happy_path(void)
 {
   TEST_BEGIN("ra8_usb_device_init FS sets SYSCFG SCKE+USBE + IRQ enables");
-  prep();
+  internal_prep();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
@@ -131,12 +132,11 @@ static void test_init_fs_happy_path(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_hs_sets_hse(void)
+ * code under test that this case touches) @brief Verify init hs sets hse behavior. @details Executes the init hs sets hse scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_hs_sets_hse(void)
 {
   TEST_BEGIN("ra8_usb_device_init HS sets HSE bit in SYSCFG");
-  prep();
+  internal_prep();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_hs));
   volatile r_usb_regs_t* reg   = ra8_usb_hs();
@@ -150,12 +150,11 @@ static void test_init_hs_sets_hse(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_bad_speed(void)
+ * code under test that this case touches) @brief Verify init bad speed behavior. @details Executes the init bad speed scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_bad_speed(void)
 {
   TEST_BEGIN("ra8_usb_device_init rejects bogus speed");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_device_init((ra8_usb_speed_t)9U));
   TEST_END("ra8_usb_device_init rejects bogus speed");
 }
@@ -164,12 +163,11 @@ static void test_init_bad_speed(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_attach_sets_dprpu(void)
+ * code under test that this case touches) @brief Verify attach sets dprpu behavior. @details Executes the attach sets dprpu scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_sets_dprpu(void)
 {
   TEST_BEGIN("ra8_usb_device_attach true sets DPRPU");
-  prep();
+  internal_prep();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_attach(k_ra8_usb_speed_fs, true));
@@ -185,12 +183,11 @@ static void test_attach_sets_dprpu(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_attach_clears_dprpu(void)
+ * code under test that this case touches) @brief Verify attach clears dprpu behavior. @details Executes the attach clears dprpu scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_clears_dprpu(void)
 {
   TEST_BEGIN("ra8_usb_device_attach false clears DPRPU");
-  prep();
+  internal_prep();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_attach(k_ra8_usb_speed_fs, true));
@@ -207,12 +204,11 @@ static void test_attach_clears_dprpu(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_attach_hs(void)
+ * code under test that this case touches) @brief Verify attach hs behavior. @details Executes the attach hs scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_hs(void)
 {
   TEST_BEGIN("ra8_usb_device_attach HS branch");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_hs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_attach(k_ra8_usb_speed_hs, true));
   volatile r_usb_regs_t* reg   = ra8_usb_hs();
@@ -226,7 +222,8 @@ static void test_attach_hs(void)
 static uint32_t s_usb_cb_count;
 static uint16_t s_usb_cb_last_mask;
 
-static void stub_usb_cb(void* ctx, ra8_usb_speed_t speed, uint16_t mask)
+/** @brief Provide the file-local stub usb cb test helper. @details Implements the stub usb cb fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] speed Fixture argument governed by the exercised interface contract. @param[in] mask Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_stub_usb_cb(void* ctx, ra8_usb_speed_t speed, uint16_t mask)
 {
   (void)ctx;
   (void)speed;
@@ -234,9 +231,10 @@ static void stub_usb_cb(void* ctx, ra8_usb_speed_t speed, uint16_t mask)
   s_usb_cb_last_mask = mask;
 }
 
-static void prep_cb(void)
+/** @brief Provide the file-local prep cb test helper. @details Implements the prep cb fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep_cb(void)
 {
-  prep();
+  internal_prep();
   s_usb_cb_count     = 0U;
   s_usb_cb_last_mask = 0U;
 }
@@ -245,12 +243,11 @@ static void prep_cb(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_deinit(void)
+ * code under test that this case touches) @brief Verify deinit behavior. @details Executes the deinit scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_deinit(void)
 {
   TEST_BEGIN("usb deinit");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_deinit(k_ra8_usb_speed_fs));
   /* deinit clears INTENB0 + SYSCFG. */
@@ -264,12 +261,11 @@ static void test_deinit(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_status_read_and_clear(void)
+ * code under test that this case touches) @brief Verify status read and clear behavior. @details Executes the status read and clear scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_status_read_and_clear(void)
 {
   TEST_BEGIN("usb status read + clear");
-  prep_cb();
+  internal_prep_cb();
   ra8_usb_fs()->INTSTS0 = (uint16_t)k_t_intsts_fs_a;
   uint16_t mask         = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_get_status(k_ra8_usb_speed_fs, &mask));
@@ -285,14 +281,14 @@ static void test_status_read_and_clear(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_attach_and_dispatch(void)
+ * code under test that this case touches) @brief Verify attach and dispatch behavior. @details Executes the attach and dispatch scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_and_dispatch(void)
 {
   TEST_BEGIN("usb attach + dispatch");
-  prep_cb();
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_usb_attach_handler(k_ra8_usb_speed_fs, stub_usb_cb, (void*)(uintptr_t)0xAAU));
+  internal_prep_cb();
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_usb_attach_handler(k_ra8_usb_speed_fs, internal_stub_usb_cb, (void*)(uintptr_t)0xAAU));
   ra8_usb_fs()->INTSTS0 = (uint16_t)k_t_intsts_fs_b;
   ra8_usb_dispatch(k_ra8_usb_speed_fs);
   TEST_ASSERT_EQ(1, s_usb_cb_count);
@@ -304,12 +300,11 @@ static void test_attach_and_dispatch(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_power_transition(void)
+ * code under test that this case touches) @brief Verify power transition behavior. @details Executes the power transition scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_power_transition(void)
 {
   TEST_BEGIN("usb power transition");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_enter_stop(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_exit_stop(k_ra8_usb_speed_fs));
@@ -322,12 +317,11 @@ static void test_power_transition(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_address(void)
+ * code under test that this case touches) @brief Verify set address behavior. @details Executes the set address scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_address(void)
 {
   TEST_BEGIN("ra8_usb_set_address writes USBADDR low 7 bits");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_set_address(k_ra8_usb_speed_fs, 42U));
   TEST_ASSERT_EQ(42, (ra8_usb_fs()->USBADDR & 0x7FU));
@@ -340,12 +334,11 @@ static void test_set_address(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_get_device_state(void)
+ * code under test that this case touches) @brief Verify get device state behavior. @details Executes the get device state scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_get_device_state(void)
 {
   TEST_BEGIN("ra8_usb_get_device_state decodes DVSQ");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   ra8_usb_dev_state_t state = k_ra8_usb_dev_state_powered;
@@ -380,9 +373,8 @@ static void test_get_device_state(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void configure_endpoint_rejects_ids(void)
+ * code under test that this case touches) @details Implements the configure endpoint rejects ids fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_configure_endpoint_rejects_ids(void)
 {
   /* Bogus speed. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -424,8 +416,8 @@ static void configure_endpoint_rejects_ids(void)
                                             64U));
 }
 
-/** @brief Rejection legs: bogus direction, type, and max packet. */
-static void configure_endpoint_rejects_shape(void)
+/** @brief Rejection legs: bogus direction, type, and max packet. @details Implements the configure endpoint rejects shape fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_configure_endpoint_rejects_shape(void)
 {
   /* Bogus direction / type. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -456,16 +448,15 @@ static void configure_endpoint_rejects_shape(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_configure_endpoint(void)
+ * code under test that this case touches) @brief Verify configure endpoint behavior. @details Executes the configure endpoint scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_configure_endpoint(void)
 {
   TEST_BEGIN("ra8_usb_configure_endpoint validates args + writes PIPECFG");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
-  configure_endpoint_rejects_ids();
-  configure_endpoint_rejects_shape();
+  internal_configure_endpoint_rejects_ids();
+  internal_configure_endpoint_rejects_shape();
 
   /* Valid call. */
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -490,12 +481,11 @@ static void test_configure_endpoint(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_stall_endpoint(void)
+ * code under test that this case touches) @brief Verify stall endpoint behavior. @details Executes the stall endpoint scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_stall_endpoint(void)
 {
   TEST_BEGIN("ra8_usb_stall_endpoint sets PID = STALL");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_stall_endpoint(k_ra8_usb_speed_fs, 0U));
@@ -521,12 +511,11 @@ static void test_stall_endpoint(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_control_response(void)
+ * code under test that this case touches) @brief Verify control response behavior. @details Executes the control response scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_control_response(void)
 {
   TEST_BEGIN("ra8_usb_control_response programs DCPCTR PID + CCPL");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_control_response(k_ra8_usb_speed_fs, true));
@@ -545,12 +534,11 @@ static void test_control_response(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_read_setup(void)
+ * code under test that this case touches) @brief Verify read setup behavior. @details Executes the read setup scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_setup(void)
 {
   TEST_BEGIN("ra8_usb_read_setup_if_valid decodes USBREQ/USBVAL/USBINDX/USBLENG");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   ra8_usb_setup_t setup = {};
@@ -581,12 +569,11 @@ static void test_read_setup(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_read_setup_unconditional(void)
+ * code under test that this case touches) @brief Verify read setup unconditional behavior. @details Executes the read setup unconditional scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_setup_unconditional(void)
 {
   TEST_BEGIN("ra8_usb_read_setup_unconditional drains latch when VALID=0");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   volatile r_usb_regs_t* reg = ra8_usb_fs();
@@ -624,12 +611,11 @@ static void test_read_setup_unconditional(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_queue_in_arg_validation(void)
+ * code under test that this case touches) @brief Verify queue in arg validation behavior. @details Executes the queue in arg validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_queue_in_arg_validation(void)
 {
   TEST_BEGIN("ra8_usb_queue_in arg validation");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   uint8_t buf[8] = {};
@@ -655,12 +641,11 @@ static void test_queue_in_arg_validation(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_queue_out_arg_validation(void)
+ * code under test that this case touches) @brief Verify queue out arg validation behavior. @details Executes the queue out arg validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_queue_out_arg_validation(void)
 {
   TEST_BEGIN("ra8_usb_queue_out arg validation");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   uint8_t  buf[8] = {};
@@ -685,17 +670,17 @@ static void test_queue_out_arg_validation(void)
   TEST_END("ra8_usb_queue_out arg validation");
 }
 
-static volatile uint16_t* test_usb_cfifoh(volatile r_usb_regs_t* reg)
+RA8_INTERNAL static volatile uint16_t* internal_test_usb_cfifoh(volatile r_usb_regs_t* reg)
 {
   return (volatile uint16_t*)((uintptr_t)&reg->CFIFO + 2U);
 }
 
-static volatile uint8_t* test_usb_cfifohh(volatile r_usb_regs_t* reg)
+RA8_INTERNAL static volatile uint8_t* internal_test_usb_cfifohh(volatile r_usb_regs_t* reg)
 {
   return (volatile uint8_t*)((uintptr_t)&reg->CFIFO + 3U);
 }
 
-static volatile uint32_t* test_usb_cfifo32(volatile r_usb_regs_t* reg)
+RA8_INTERNAL static volatile uint32_t* internal_test_usb_cfifo32(volatile r_usb_regs_t* reg)
 {
   return (volatile uint32_t*)(uintptr_t)&reg->CFIFO;
 }
@@ -703,12 +688,11 @@ static volatile uint32_t* test_usb_cfifo32(volatile r_usb_regs_t* reg)
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises FIFO width/tail
- * branch coverage through the public queue_in API)
- */
-static void test_queue_in_fifo_tail_paths(void)
+ * branch coverage through the public queue_in API) @brief Verify queue in fifo tail paths behavior. @details Executes the queue in fifo tail paths scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_queue_in_fifo_tail_paths(void)
 {
   TEST_BEGIN("ra8_usb_queue_in covers FS and HS FIFO tail paths");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   uint8_t                fs_odd[3] = {k_t_fs_odd_b0, k_t_fs_odd_b1, k_t_fs_odd_b2};
@@ -719,12 +703,12 @@ static void test_queue_in_fifo_tail_paths(void)
    * byte instead of a uint16 store. The even loop stores 0x2211 first,
    * then the byte write replaces the LOW byte with 0x33, so CFIFO reads
    * back as 0x2233 in the fake (where MMIO has no DTLN model). Mirrors
-   * FSP hw_usb_write_fifo8 for USBFS; see internal_fifo_write in
+   * FSP hw_usb_write_fifo8 for USBFS; see priv_fifo_write in
    * libs/ra8_hal/src/ra8_usb.c (HUM Ch 36.2.6 CFIFOSEL.MBW). */
   TEST_ASSERT_EQ(0x2233U, freg->CFIFO);
   TEST_ASSERT_EQ(0x33U, *(volatile uint8_t*)(uintptr_t)&freg->CFIFO);
 
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_hs));
   volatile r_usb_regs_t* hreg = ra8_usb_hs();
   const uint16_t         hsel = (uint16_t)(k_ra8_fifosel_mbw_32 | k_ra8_fifosel_isel | 1U);
@@ -732,19 +716,19 @@ static void test_queue_in_fifo_tail_paths(void)
   uint8_t hs_head[4] = {0x10U, 0x20U, k_t_hs_head_b2, k_t_hs_head_b3};
   hreg->CFIFOCTR     = (uint16_t)k_ra8_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_in(k_ra8_usb_speed_hs, 1U, hs_head, 4U));
-  TEST_ASSERT_EQ(0x40302010U, (*test_usb_cfifo32(hreg)));
+  TEST_ASSERT_EQ(0x40302010U, (*internal_test_usb_cfifo32(hreg)));
   TEST_ASSERT_EQ(hsel, hreg->CFIFOSEL);
 
   uint8_t hs_half_tail[2] = {k_t_hs_tail2_b0, k_t_hs_tail2_b1};
   hreg->CFIFOCTR          = (uint16_t)k_ra8_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_in(k_ra8_usb_speed_hs, 1U, hs_half_tail, 2U));
-  TEST_ASSERT_EQ(0x6655U, (*test_usb_cfifoh(hreg)));
+  TEST_ASSERT_EQ(0x6655U, (*internal_test_usb_cfifoh(hreg)));
   TEST_ASSERT_EQ(hsel, hreg->CFIFOSEL);
 
   uint8_t hs_byte_tail[3] = {k_t_hs_tail3_b0, k_t_hs_tail3_b1, k_t_hs_tail3_b2};
   hreg->CFIFOCTR          = (uint16_t)k_ra8_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_in(k_ra8_usb_speed_hs, 1U, hs_byte_tail, 3U));
-  TEST_ASSERT_EQ(0x99U, (*test_usb_cfifohh(hreg)));
+  TEST_ASSERT_EQ(0x99U, (*internal_test_usb_cfifohh(hreg)));
   TEST_ASSERT_EQ(hsel, hreg->CFIFOSEL);
 
   TEST_END("ra8_usb_queue_in covers FS and HS FIFO tail paths");
@@ -755,11 +739,10 @@ static void test_queue_in_fifo_tail_paths(void)
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises FIFO width/tail
- * branch coverage through the public queue_out API)
- */
-static void queue_out_fs_tails(void)
+ * branch coverage through the public queue_out API) @details Implements the queue out fs tails fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_queue_out_fs_tails(void)
 {
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   uint8_t                out[4]   = {};
@@ -807,17 +790,17 @@ static void queue_out_fs_tails(void)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void assert_hs_tail_read(volatile r_usb_regs_t* hreg,
-                                uint16_t               pipe_bit,
-                                uint32_t               word,
-                                uint16_t               tail,
-                                const uint8_t*         expect)
+RA8_INTERNAL static void internal_assert_hs_tail_read(volatile r_usb_regs_t* hreg,
+                                                      uint16_t               pipe_bit,
+                                                      uint32_t               word,
+                                                      uint16_t               tail,
+                                                      const uint8_t*         expect)
 {
-  uint8_t  out[4]         = {};
-  uint16_t len            = tail;
-  hreg->BRDYSTS           = pipe_bit;
-  hreg->CFIFOCTR          = (uint16_t)(k_ra8_fifoctr_frdy | tail);
-  *test_usb_cfifo32(hreg) = word;
+  uint8_t  out[4]                  = {};
+  uint16_t len                     = tail;
+  hreg->BRDYSTS                    = pipe_bit;
+  hreg->CFIFOCTR                   = (uint16_t)(k_ra8_fifoctr_frdy | tail);
+  *internal_test_usb_cfifo32(hreg) = word;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_hs, 1U, out, &len, true));
   TEST_ASSERT_EQ(tail, len);
   for (uint16_t i = 0U; i < tail; ++i) {
@@ -825,34 +808,33 @@ static void assert_hs_tail_read(volatile r_usb_regs_t* hreg,
   }
 }
 
-/** @brief HS leg: 4/2/3-byte CFIFO tail reads at MBW=32 via queue_out. */
-static void queue_out_hs_tails(void)
+/** @brief HS leg: 4/2/3-byte CFIFO tail reads at MBW=32 via queue_out. @details Implements the queue out hs tails fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_queue_out_hs_tails(void)
 {
   static const uint16_t pipe_bit = (uint16_t)(1U << 1U);
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_hs));
   volatile r_usb_regs_t* hreg = ra8_usb_hs();
 
   static const uint8_t k_tail4[4] = {0x11U, 0x22U, 0x33U, 0x44U};
-  assert_hs_tail_read(hreg, pipe_bit, k_t_fifo_word_tail4, 4U, k_tail4);
+  internal_assert_hs_tail_read(hreg, pipe_bit, k_t_fifo_word_tail4, 4U, k_tail4);
 
   static const uint8_t k_tail2[2] = {0x55U, 0x66U};
-  assert_hs_tail_read(hreg, pipe_bit, k_t_fifo_word_tail2, 2U, k_tail2);
+  internal_assert_hs_tail_read(hreg, pipe_bit, k_t_fifo_word_tail2, 2U, k_tail2);
 
   static const uint8_t k_tail3[3] = {0x66U, 0x77U, 0x88U};
-  assert_hs_tail_read(hreg, pipe_bit, k_t_fifo_word_tail3, 3U, k_tail3);
+  internal_assert_hs_tail_read(hreg, pipe_bit, k_t_fifo_word_tail3, 3U, k_tail3);
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises FIFO width/tail
- * branch coverage through the public queue_out API)
- */
-static void test_queue_out_fifo_tail_paths(void)
+ * branch coverage through the public queue_out API) @brief Verify queue out fifo tail paths behavior. @details Executes the queue out fifo tail paths scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_queue_out_fifo_tail_paths(void)
 {
   TEST_BEGIN("ra8_usb_queue_out covers FS and HS FIFO tail paths");
-  queue_out_fs_tails();
-  queue_out_hs_tails();
+  internal_queue_out_fs_tails();
+  internal_queue_out_hs_tails();
   TEST_END("ra8_usb_queue_out covers FS and HS FIFO tail paths");
 }
 
@@ -860,12 +842,11 @@ static void test_queue_out_fifo_tail_paths(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_hs_paths(void)
+ * code under test that this case touches) @brief Verify hs paths behavior. @details Executes the hs paths scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_hs_paths(void)
 {
   TEST_BEGIN("usb HS paths");
-  prep_cb();
+  internal_prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_hs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_deinit(k_ra8_usb_speed_hs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_hs));
@@ -874,7 +855,8 @@ static void test_hs_paths(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_get_status(k_ra8_usb_speed_hs, &mask));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_clear_status(k_ra8_usb_speed_hs, (uint16_t)0x0002U));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_attach_handler(k_ra8_usb_speed_hs, stub_usb_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_attach_handler(k_ra8_usb_speed_hs, internal_stub_usb_cb, nullptr));
   ra8_usb_hs()->INTSTS0 = (uint16_t)k_t_intsts_hs;
   ra8_usb_dispatch(k_ra8_usb_speed_hs);
   TEST_ASSERT_EQ(1, s_usb_cb_count);
@@ -895,28 +877,28 @@ static void test_hs_paths(void)
  * @note Order is significant: cases run top to bottom, exactly as before.
  */
 static void (*const s_test_roster[])(void) = {
-  test_init_fs_happy_path,
-  test_init_hs_sets_hse,
-  test_init_bad_speed,
-  test_attach_sets_dprpu,
-  test_attach_clears_dprpu,
-  test_attach_hs,
-  test_deinit,
-  test_status_read_and_clear,
-  test_attach_and_dispatch,
-  test_power_transition,
-  test_set_address,
-  test_get_device_state,
-  test_configure_endpoint,
-  test_stall_endpoint,
-  test_control_response,
-  test_read_setup,
-  test_read_setup_unconditional,
-  test_queue_in_arg_validation,
-  test_queue_out_arg_validation,
-  test_queue_in_fifo_tail_paths,
-  test_queue_out_fifo_tail_paths,
-  test_hs_paths,
+  internal_test_init_fs_happy_path,
+  internal_test_init_hs_sets_hse,
+  internal_test_init_bad_speed,
+  internal_test_attach_sets_dprpu,
+  internal_test_attach_clears_dprpu,
+  internal_test_attach_hs,
+  internal_test_deinit,
+  internal_test_status_read_and_clear,
+  internal_test_attach_and_dispatch,
+  internal_test_power_transition,
+  internal_test_set_address,
+  internal_test_get_device_state,
+  internal_test_configure_endpoint,
+  internal_test_stall_endpoint,
+  internal_test_control_response,
+  internal_test_read_setup,
+  internal_test_read_setup_unconditional,
+  internal_test_queue_in_arg_validation,
+  internal_test_queue_out_arg_validation,
+  internal_test_queue_in_fifo_tail_paths,
+  internal_test_queue_out_fifo_tail_paths,
+  internal_test_hs_paths,
 };
 
 int32_t main(void)
@@ -924,6 +906,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK ] test_ra8_usb.c\n");
   return 0;
 }

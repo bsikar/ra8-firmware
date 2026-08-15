@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_crc_regs.h"
 #include "ra8_err.h"
@@ -70,7 +71,7 @@ typedef enum : uint8_t {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static inline bool ra8_crc_is_32bit_poly(ra8_crc_poly_t poly)
+RA8_INTERNAL static inline bool internal_ra8_crc_is_32bit_poly(ra8_crc_poly_t poly)
 {
   return (poly == k_ra8_crc_poly_32_ieee802_3) || (poly == k_ra8_crc_poly_32c_rev);
 }
@@ -114,7 +115,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe; caller must serialize.
  * @since 0.1.0
  */
-static inline void internal_crc_feed_words(const uint8_t* data, uint32_t len)
+RA8_INTERNAL static inline void internal_crc_feed_words(const uint8_t* data, uint32_t len)
 {
   volatile r_crc_regs_t* reg        = ra8_crc();
   const uint32_t         word_count = len >> 2U;
@@ -145,7 +146,7 @@ static inline void internal_crc_feed_words(const uint8_t* data, uint32_t len)
  * @note Not thread-safe; caller must serialize.
  * @since 0.1.0
  */
-static inline void internal_crc_feed_bytes(const uint8_t* data, uint32_t len)
+RA8_INTERNAL static inline void internal_crc_feed_bytes(const uint8_t* data, uint32_t len)
 {
   volatile r_crc_regs_t* reg = ra8_crc();
   for (uint32_t i = 0U; i < len; i++) {
@@ -193,7 +194,7 @@ ra8_err_t ra8_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
   /* HUM Ch 48.2.1 "CRCCR0 : CRC Control Register 0" p 3181 -- GPS lives
    * in the low 3 bits of CRCCR0. */
   const ra8_crc_poly_t poly      = (ra8_crc_poly_t)(reg->CRCCR0 & k_ra8_crccr0_gps_mask);
-  const bool           is_32_bit = ra8_crc_is_32bit_poly(poly);
+  const bool           is_32_bit = internal_ra8_crc_is_32bit_poly(poly);
 
   /* HUM Ch 48.2.4 "CRCDOR : CRC Data Output Register" p 3182 documents
    * CRCDOR as a 32-bit read/write register; "Because its initial value

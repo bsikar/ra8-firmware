@@ -77,7 +77,7 @@ static uint32_t internal_compose_gwdcc(const ra8_eth_gwca_queue_cfg_t* cfg)
   return value;
 }
 
-void ra8_eth_gwca_set_linkfix_entry(ra8_gwca_basic_descriptor_t* entry, const void* chain_head)
+void priv_ra8_eth_gwca_set_linkfix_entry(ra8_gwca_basic_descriptor_t* entry, const void* chain_head)
 {
   enum : uintptr_t {
     k_ra8_linkfix_ptr_upper_shift = 32U,           /**< RA8 linkfix pointer upper shift. */
@@ -98,7 +98,7 @@ void ra8_eth_gwca_set_linkfix_entry(ra8_gwca_basic_descriptor_t* entry, const vo
  * GWDCC value from cfg's DQT / DCP / SL bits via
  * internal_compose_gwdcc, writes it to GWDCC[queue_index], then
  * promotes the LINKFIX entry to LINKFIX via
- * ra8_eth_gwca_set_linkfix_entry.
+ * priv_ra8_eth_gwca_set_linkfix_entry.
  *
  * @param[in,out] linkfix_table Same table passed to install_linkfix.
  * @param[in]     queue_index    Queue 0..31.
@@ -135,7 +135,7 @@ ra8_err_t ra8_eth_gwca_configure_queue(ra8_gwca_basic_descriptor_t*    linkfix_t
     return k_ra8_err_invalid_arg;
   }
   *gwdcc = internal_compose_gwdcc(cfg);
-  ra8_eth_gwca_set_linkfix_entry(&linkfix_table[queue_index], cfg->chain_head);
+  priv_ra8_eth_gwca_set_linkfix_entry(&linkfix_table[queue_index], cfg->chain_head);
   return k_ra8_ok;
 }
 
@@ -235,8 +235,8 @@ ra8_eth_gwca_init_ring(ra8_gwca_basic_descriptor_t* chain, uint32_t ring_depth, 
   }
 
   /* Last entry: LINK back to chain[0] so the chip wraps. */
-  ra8_eth_gwca_set_linkfix_entry(&chain[ring_depth - 1U], &chain[0]);
-  /* Override dt: ra8_eth_gwca_set_linkfix_entry writes LINKFIX, but for
+  priv_ra8_eth_gwca_set_linkfix_entry(&chain[ring_depth - 1U], &chain[0]);
+  /* Override dt: priv_ra8_eth_gwca_set_linkfix_entry writes LINKFIX, but for
    * mid-chain wrap we want LINK (interchangeable per HUM Ch
    * 34.5.1.3.2; LINK is the standard chain-continuation type). */
   chain[ring_depth - 1U].dt = (uint8_t)k_ra8_gwdcc_dt_link;
@@ -246,7 +246,7 @@ ra8_eth_gwca_init_ring(ra8_gwca_basic_descriptor_t* chain, uint32_t ring_depth, 
 /**
  * @brief Set a descriptor's data-buffer pointer.
  *
- * @details Wraps ::ra8_eth_gwca_set_linkfix_entry-style address split
+ * @details Wraps ::priv_ra8_eth_gwca_set_linkfix_entry-style address split
  * for external callers wiring buffer pointers into FEMPTY slots.
  *
  * @param[in,out] desc   Descriptor to update.
@@ -418,7 +418,7 @@ ra8_err_t ra8_eth_gwca_find_slot(const ra8_gwca_basic_descriptor_t* chain,
   return k_ra8_err_no_data;
 }
 
-uint8_t* ra8_eth_gwca_decode_ptr(const ra8_gwca_basic_descriptor_t* desc)
+uint8_t* priv_ra8_eth_gwca_decode_ptr(const ra8_gwca_basic_descriptor_t* desc)
 {
   if (desc == nullptr) {
     return nullptr;
@@ -488,7 +488,7 @@ ra8_err_t ra8_eth_gwca_tx_frame(ra8_gwca_basic_descriptor_t* chain,
   if (err != k_ra8_ok) {
     return err;
   }
-  uint8_t* const buf = ra8_eth_gwca_decode_ptr(&chain[slot]);
+  uint8_t* const buf = priv_ra8_eth_gwca_decode_ptr(&chain[slot]);
   if (buf == nullptr) {
     return k_ra8_err_invalid_arg;
   }

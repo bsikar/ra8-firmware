@@ -88,7 +88,7 @@ uint8_t ra8_usb_host_ctrl_stage(void)
  * @note Single-device bring-up: no hub fields (UPPHUB/HUBPORT) are set.
  * @since 0.1.0
  */
-void internal_host_program_devadd(volatile r_usb_regs_t* reg, uint8_t dev_addr)
+void priv_host_program_devadd(volatile r_usb_regs_t* reg, uint8_t dev_addr)
 {
   const uint16_t  rhst = (uint16_t)(reg->DVSTCTR0 & (uint16_t)k_ra8_usb_rhst_mask);
   const uintptr_t off =
@@ -159,7 +159,7 @@ static ra8_err_t internal_host_dcp_in_wait(volatile r_usb_regs_t* reg)
     }
     if ((reg->NRDYSTS & (uint16_t)k_ra8_usb_dcp_pipe0_bit) != 0U) {
       reg->NRDYSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
-      internal_dcp_pid(reg, k_ra8_pid_buf);
+      priv_dcp_pid(reg, k_ra8_pid_buf);
     }
   }
   return k_ra8_err_hw_timeout;
@@ -204,7 +204,7 @@ static ra8_err_t internal_host_setup_wait(volatile r_usb_regs_t* reg)
    * test pre-loaded and the poll below would never observe it. */
   reg->INTSTS1 = (uint16_t)~(uint16_t)(sack | sign);
 #endif
-  internal_rmw16(&reg->DCPCTR, sureq, 0U);
+  priv_rmw16(&reg->DCPCTR, sureq, 0U);
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_usb_ctrl_poll_limit; ++i) {
     const uint16_t sts1 = reg->INTSTS1;
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
@@ -252,25 +252,25 @@ static ra8_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra8_
     /* A SETUP issued with the port inactive (e.g. before any device was
      * attached) leaves SUREQ wedged. The USBHS instance provides
      * SUREQCLR to abort it; try that before reporting busy. */
-    if (internal_is_hs(reg)) {
-      internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_sureqclr), 0U);
+    if (priv_is_hs(reg)) {
+      priv_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_sureqclr), 0U);
     }
     if ((reg->DCPCTR & sureq) != 0U) {
       return k_ra8_err_busy;
     }
   }
-  internal_dcp_pid(reg, k_ra8_pid_nak);
+  priv_dcp_pid(reg, k_ra8_pid_nak);
   /* Clear any stale CCPL left by a prior transfer's status stage. With
    * CCPL still set, arming PID=BUF for the new DATA stage makes the SIE
    * run a status stage instead, so the data stage never moves (observed
    * as stage=2 with DCPCTR=0x0004 on hardware). */
-  internal_rmw16(&reg->DCPCTR, 0U, (uint16_t)(1U << k_ra8_dcpctr_bit_ccpl));
+  priv_rmw16(&reg->DCPCTR, 0U, (uint16_t)(1U << k_ra8_dcpctr_bit_ccpl));
   /* Refresh the DEVADD slot of the address the DCP currently targets
    * (DCPMAXP.DEVSEL); 0 before SET_ADDRESS, the assigned address after
    * ra8_usb_host_set_target. */
   const uint8_t devsel = (uint8_t)((uint16_t)(reg->DCPMAXP >> (uint16_t)k_ra8_usb_devsel_shift) &
                                    (uint16_t)k_ra8_usb_devsel_field_mask);
-  internal_host_program_devadd(reg, devsel);
+  priv_host_program_devadd(reg, devsel);
 #ifdef RA8_OFF_TARGET
   /* BEMPSTS/BRDYSTS are W1C: on hardware, writing ~DCP clears every set status
    * bit EXCEPT the DCP pipe. A plain-RAM fake would blind-assign 0xFFFE and zero
@@ -317,19 +317,19 @@ static ra8_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra8_
 RA8_INTERNAL
 static void internal_host_ctrl_data_arm(volatile r_usb_regs_t* reg)
 {
-  internal_select_cfifo(reg, 0U, false);
+  priv_select_cfifo(reg, 0U, false);
   reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
   reg->BRDYENB  = (uint16_t)(reg->BRDYENB | (uint16_t)k_ra8_usb_dcp_pipe0_bit);
   reg->NRDYENB  = (uint16_t)(reg->NRDYENB | (uint16_t)k_ra8_usb_dcp_pipe0_bit);
-  internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_sqset), 0U);
-  internal_dcp_pid(reg, k_ra8_pid_buf);
+  priv_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_sqset), 0U);
+  priv_dcp_pid(reg, k_ra8_pid_buf);
 }
 
 /**
  * @brief Run the DATA-IN stage of a host control read into @p data.
  *
  * @details Arms the DCP for IN (PID=BUF, BRDY/NRDY status enabled), then
- * loops reading BRDY-gated CFIFO packets via ::internal_fifo_read until a
+ * loops reading BRDY-gated CFIFO packets via ::priv_fifo_read until a
  * short packet or @p want bytes, parking the pipe NAK on exit.
  *
  * @param[in]  reg     Selected controller register block.
@@ -360,13 +360,13 @@ static ra8_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
   while (!done) {
     const ra8_err_t br = internal_host_dcp_in_wait(reg);
     if (br != k_ra8_ok) {
-      internal_dcp_pid(reg, k_ra8_pid_nak);
+      priv_dcp_pid(reg, k_ra8_pid_nak);
       return br;
     }
     s_host_ctrl_stage = (uint8_t)k_ra8_usb_cs_data_pkt;
-    internal_select_cfifo(reg, 0U, false);
-    if (internal_wait_frdy(reg) != k_ra8_ok) {
-      internal_dcp_pid(reg, k_ra8_pid_nak);
+    priv_select_cfifo(reg, 0U, false);
+    if (priv_wait_frdy(reg) != k_ra8_ok) {
+      priv_dcp_pid(reg, k_ra8_pid_nak);
       return k_ra8_err_hw_timeout;
     }
     const uint16_t dtln  = (uint16_t)(reg->CFIFOCTR & k_ra8_fifoctr_dtln);
@@ -375,7 +375,7 @@ static ra8_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
       chunk = (uint16_t)(want - rx);
     }
     if (chunk > 0U) {
-      internal_fifo_read(reg, &data[rx], chunk);
+      priv_fifo_read(reg, &data[rx], chunk);
     }
     reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
     rx            = (uint16_t)(rx + dtln);
@@ -387,7 +387,7 @@ static ra8_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
       done = true;
     }
   }
-  internal_dcp_pid(reg, k_ra8_pid_nak);
+  priv_dcp_pid(reg, k_ra8_pid_nak);
   *out_rx = rx;
   return k_ra8_ok;
 }
@@ -432,12 +432,12 @@ static ra8_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool writ
    * control-READ OUT-ZLP status keeps the default DIR and is best-effort).
    * HUM Ch 36.2.18 "DCPCFG : DCP Configuration" p 1989. */
   if (!write_zlp) {
-    internal_rmw16(&reg->DCPCFG, 0U, (uint16_t)(1U << (uint8_t)k_ra8_dcpcfg_bit_dir));
+    priv_rmw16(&reg->DCPCFG, 0U, (uint16_t)(1U << (uint8_t)k_ra8_dcpcfg_bit_dir));
   }
   /* The status stage is always DATA1; force the DCP sequence bit so the
    * device does not NAK a toggle mismatch (seen as NRDYSTS bit 0). */
-  internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_sqset), 0U);
-  internal_select_cfifo(reg, 0U, write_zlp);
+  priv_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_sqset), 0U);
+  priv_select_cfifo(reg, 0U, write_zlp);
   if (write_zlp) {
     /* Control-read status is an OUT the host must drive: enqueue a
      * zero-length packet (BVAL, no CFIFO write) and assert CCPL. This is
@@ -445,11 +445,11 @@ static ra8_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool writ
      * hand, and a fresh SETUP re-syncs the control endpoint regardless, so
      * a slow/NAKed OUT status does not invalidate the transfer. */
     reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bval;
-    internal_dcp_pid(reg, k_ra8_pid_buf);
-    internal_rmw16(&reg->DCPCTR, ccpl, 0U);
+    priv_dcp_pid(reg, k_ra8_pid_buf);
+    priv_rmw16(&reg->DCPCTR, ccpl, 0U);
     (void)internal_host_wait_sts(&reg->BEMPSTS, k_ra8_usb_dcp_pipe0_bit);
-    internal_dcp_pid(reg, k_ra8_pid_nak);
-    internal_rmw16(&reg->DCPCTR, 0U, ccpl);
+    priv_dcp_pid(reg, k_ra8_pid_nak);
+    priv_rmw16(&reg->DCPCTR, 0U, ccpl);
     return k_ra8_ok;
   }
   /* Control-write / no-data status is an IN: free the DCP receive buffer
@@ -460,11 +460,11 @@ static ra8_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool writ
    * marks the device's status ZLP received. */
   reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
   reg->NRDYSTS  = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
-  internal_dcp_pid(reg, k_ra8_pid_buf);
-  internal_rmw16(&reg->DCPCTR, ccpl, 0U);
+  priv_dcp_pid(reg, k_ra8_pid_buf);
+  priv_rmw16(&reg->DCPCTR, ccpl, 0U);
   const ra8_err_t ierr = internal_host_dcp_in_wait(reg);
-  internal_dcp_pid(reg, k_ra8_pid_nak);
-  internal_rmw16(&reg->DCPCTR, 0U, ccpl);
+  priv_dcp_pid(reg, k_ra8_pid_nak);
+  priv_rmw16(&reg->DCPCTR, 0U, ccpl);
   /* Drain the status ZLP so it cannot alias the next data stage. */
   reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
   reg->BRDYSTS  = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
@@ -477,7 +477,7 @@ static ra8_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool writ
  * @details The host-side mirror of ::internal_host_ctrl_data_in: selects the
  * DCP write window, discards any stale bank, forces the DATA1 start toggle
  * (the first data packet after a SETUP is always DATA1), then pushes the
- * payload to the device in MPS-sized CFIFO packets via ::internal_dcp_push_chunk
+ * payload to the device in MPS-sized CFIFO packets via ::priv_dcp_push_chunk
  * (BVAL) + PID=BUF, waiting for the buffer-empty (BEMP) event after each, and
  * parks the DCP NAK on exit. This is what lets a class control write carry a
  * data stage host -> device -- e.g. a DFU_DNLOAD firmware block.
@@ -508,14 +508,14 @@ static ra8_err_t internal_host_ctrl_data_out(volatile r_usb_regs_t* reg,
    * IN token in its write-data stage and flags CTSQ = SQER, dropping the
    * payload (CFIFOSEL.ISEL only sets the CPU FIFO-access direction, not the
    * wire token direction). HUM Ch 36.2.18 "DCPCFG : DCP Configuration" p 1989. */
-  internal_rmw16(&reg->DCPCFG, (uint16_t)(1U << (uint8_t)k_ra8_dcpcfg_bit_dir), 0U);
-  internal_select_cfifo(reg, 0U, true);
+  priv_rmw16(&reg->DCPCFG, (uint16_t)(1U << (uint8_t)k_ra8_dcpcfg_bit_dir), 0U);
+  priv_select_cfifo(reg, 0U, true);
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 -- discard
    * any stale bank so FRDY re-asserts for the fresh write. */
   reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
   /* First data packet after SETUP is DATA1; force the DCP sequence bit so the
    * device does not drop it on a toggle mismatch. */
-  internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_sqset), 0U);
+  priv_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra8_dcpctr_bit_sqset), 0U);
   reg->BEMPSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
   reg->BEMPENB = (uint16_t)(reg->BEMPENB | (uint16_t)k_ra8_usb_dcp_pipe0_bit);
 
@@ -526,12 +526,12 @@ static ra8_err_t internal_host_ctrl_data_out(volatile r_usb_regs_t* reg,
     if (chunk > step) {
       chunk = step;
     }
-    const ra8_err_t perr = internal_dcp_push_chunk(reg, &data[off], chunk);
+    const ra8_err_t perr = priv_dcp_push_chunk(reg, &data[off], chunk);
     if (perr != k_ra8_ok) {
-      internal_dcp_pid(reg, k_ra8_pid_nak);
+      priv_dcp_pid(reg, k_ra8_pid_nak);
       return perr;
     }
-    internal_dcp_pid(reg, k_ra8_pid_buf);
+    priv_dcp_pid(reg, k_ra8_pid_buf);
     /* Best-effort drain wait. The DCP BEMP completion indication is unreliable
      * on this silicon (see ::internal_host_ctrl_status) -- gating hard on it
      * deadlocks an OUT that actually landed. Give the bank a bounded window to
@@ -541,7 +541,7 @@ static ra8_err_t internal_host_ctrl_data_out(volatile r_usb_regs_t* reg,
     reg->BEMPSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
     off          = (uint16_t)(off + chunk);
   }
-  internal_dcp_pid(reg, k_ra8_pid_nak);
+  priv_dcp_pid(reg, k_ra8_pid_nak);
   return k_ra8_ok;
 }
 
@@ -569,7 +569,7 @@ static ra8_err_t internal_host_ctrl_data_out(volatile r_usb_regs_t* reg,
  */
 ra8_err_t ra8_usb_dcp_out_arm(ra8_usb_speed_t speed)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -583,19 +583,19 @@ ra8_err_t ra8_usb_dcp_out_arm(ra8_usb_speed_t speed)
    * PID=BUF so the SIE ACKs the OUT token.
    * HUM Ch 36.2.21 "DCPCTR" p 1991 (SQSET) / Ch 36.2.11 "BRDYENB" p 1982 /
    * Ch 36.2.8 "CFIFOCTR" p 1979 (BCLR). */
-  internal_dcp_pid(reg, k_ra8_pid_nak);
+  priv_dcp_pid(reg, k_ra8_pid_nak);
   /* Clear any stale CCPL left by the previous transfer's status stage. With
    * CCPL still set, arming PID=BUF makes the SIE run a status stage instead of
    * accepting the data stage -- CTSQ goes to SQER and the OUT data never lands.
    * Device-side mirror of the host guard in ::internal_host_ctrl_setup.
    * HUM Ch 36.2.21 "DCPCTR : DCP Control Register" p 1991 (CCPL). */
-  internal_rmw16(&reg->DCPCTR, 0U, (uint16_t)(1U << (uint8_t)k_ra8_dcpctr_bit_ccpl));
+  priv_rmw16(&reg->DCPCTR, 0U, (uint16_t)(1U << (uint8_t)k_ra8_dcpctr_bit_ccpl));
   reg->BRDYSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
-  internal_select_cfifo(reg, 0U, false);
+  priv_select_cfifo(reg, 0U, false);
   reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
   reg->BRDYENB  = (uint16_t)(reg->BRDYENB | (uint16_t)k_ra8_usb_dcp_pipe0_bit);
-  internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << (uint8_t)k_ra8_dcpctr_bit_sqset), 0U);
-  internal_dcp_pid(reg, k_ra8_pid_buf);
+  priv_rmw16(&reg->DCPCTR, (uint16_t)(1U << (uint8_t)k_ra8_dcpctr_bit_sqset), 0U);
+  priv_dcp_pid(reg, k_ra8_pid_buf);
   if ((reg->BRDYENB & (uint16_t)k_ra8_usb_dcp_pipe0_bit) == 0U) {
     /* The line above OR-set the DCP bit into BRDYENB and no helper touches
      * BRDYENB before this re-read of the same word, so under RA8_OFF_TARGET
@@ -633,7 +633,7 @@ ra8_err_t ra8_usb_dcp_out_arm(ra8_usb_speed_t speed)
  */
 ra8_err_t ra8_usb_dcp_out_read(ra8_usb_speed_t speed, uint8_t* buf, uint16_t cap, uint16_t* out_rx)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -654,9 +654,9 @@ ra8_err_t ra8_usb_dcp_out_read(ra8_usb_speed_t speed, uint8_t* buf, uint16_t cap
   reg->BRDYENB = (uint16_t)(reg->BRDYENB & (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit);
   reg->BRDYSTS = (uint16_t)~(uint16_t)k_ra8_usb_dcp_pipe0_bit;
 
-  internal_select_cfifo(reg, 0U, false);
-  if (internal_wait_frdy(reg) != k_ra8_ok) {
-    internal_dcp_pid(reg, k_ra8_pid_nak);
+  priv_select_cfifo(reg, 0U, false);
+  if (priv_wait_frdy(reg) != k_ra8_ok) {
+    priv_dcp_pid(reg, k_ra8_pid_nak);
     return k_ra8_err_hw_timeout;
   }
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
@@ -665,10 +665,10 @@ ra8_err_t ra8_usb_dcp_out_read(ra8_usb_speed_t speed, uint8_t* buf, uint16_t cap
     reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
   } else {
     const uint16_t take = (dtln < cap) ? dtln : cap;
-    internal_fifo_read(reg, buf, take);
+    priv_fifo_read(reg, buf, take);
   }
   *out_rx = dtln;
-  internal_dcp_pid(reg, k_ra8_pid_nak);
+  priv_dcp_pid(reg, k_ra8_pid_nak);
   return k_ra8_ok;
 }
 
@@ -690,7 +690,7 @@ ra8_err_t ra8_usb_dcp_out_read(ra8_usb_speed_t speed, uint8_t* buf, uint16_t cap
  *      stage runs (no-data control transfer), and returns k_ra8_ok.
  *
  * @param[in]  reg         Selected USB controller register block; must have
- *                         been returned by ::internal_pick (non-NULL).
+ *                         been returned by ::priv_pick (non-NULL).
  * @param[in]  setup       SETUP packet just delivered to the device; used for
  *                         bmRequestType direction bit and wLength.
  * @param[in,out] data     Buffer for the data stage: source bytes for DATA-OUT,
@@ -767,7 +767,7 @@ ra8_err_t ra8_usb_host_control_xfer(ra8_usb_speed_t        speed,
                                     uint16_t*              out_received)
 {
   RA8_CHECK_NULL_PTR(setup, s_tag, "host_control_xfer: setup");
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }

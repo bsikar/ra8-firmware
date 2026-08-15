@@ -2,12 +2,15 @@
  * @file test_ra8_usb_phid.c
  * @brief Unit tests for the native USB device-side HID class layer
  *
+ * @details Exercises HID descriptor, report, idle, protocol, endpoint, and unsupported-request behavior with bounded device fixtures.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
@@ -85,7 +88,8 @@ static int32_t   s_setup_cb_calls       = 0;
 static uint8_t   s_setup_cb_last_breq   = 0U;
 static ra8_err_t s_setup_cb_return_code = k_ra8_ok;
 
-static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
+/** @brief Verify setup cb behavior. @details Executes the setup cb scenario with bounded fixture state and asserts the contract-specific result. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] setup Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
 {
   (void)ctx;
   s_setup_cb_calls++;
@@ -93,7 +97,8 @@ static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
   return s_setup_cb_return_code;
 }
 
-static void prep(void)
+/** @brief Provide the file-local prep test helper. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
@@ -107,12 +112,11 @@ static void prep(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_fs(void)
+ * code under test that this case touches) @brief Verify init fs behavior. @details Executes the init fs scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_fs(void)
 {
   TEST_BEGIN("ra8_usb_phid_init succeeds on FS");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
   TEST_END("ra8_usb_phid_init succeeds on FS");
 }
@@ -121,12 +125,11 @@ static void test_init_fs(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_bad_speed(void)
+ * code under test that this case touches) @brief Verify init bad speed behavior. @details Executes the init bad speed scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_bad_speed(void)
 {
   TEST_BEGIN("ra8_usb_phid_init rejects bogus speed");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_phid_init((ra8_usb_speed_t)9U));
   TEST_END("ra8_usb_phid_init rejects bogus speed");
 }
@@ -135,12 +138,11 @@ static void test_init_bad_speed(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_hs_default_protocol(void)
+ * code under test that this case touches) @brief Verify init hs default protocol behavior. @details Executes the init hs default protocol scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_hs_default_protocol(void)
 {
   TEST_BEGIN("ra8_usb_phid_init seeds protocol=report and idle=0");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_hs));
 
   uint8_t idle = k_t_breq_unknown;
@@ -161,9 +163,8 @@ static void test_init_hs_default_protocol(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_class_request_codes(void)
+ * code under test that this case touches) @brief Verify class request codes behavior. @details Executes the class request codes scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_class_request_codes(void)
 {
   TEST_BEGIN("HID class request codes match USB HID 1.11 spec");
   TEST_ASSERT_EQ(0x01, k_ra8_phid_req_get_report);
@@ -179,12 +180,11 @@ static void test_class_request_codes(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_pre_init_calls(void)
+ * code under test that this case touches) @brief Verify pre init calls behavior. @details Executes the pre init calls scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pre_init_calls(void)
 {
   TEST_BEGIN("PHID API rejects calls before init");
-  prep();
+  internal_prep();
 
   uint8_t                        buf[8] = {};
   uint16_t                       got    = 0U;
@@ -201,7 +201,7 @@ static void test_pre_init_calls(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_phid_send_report(0U, buf, 4U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_phid_recv_report(0U, buf, 8U, &got));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
-                 ra8_usb_phid_attach_setup_handler(test_setup_cb, nullptr));
+                 ra8_usb_phid_attach_setup_handler(internal_test_setup_cb, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_phid_handle_setup(&setup));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_phid_get_idle(&idle));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_phid_get_protocol(&proto));
@@ -212,12 +212,11 @@ static void test_pre_init_calls(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_descriptors(void)
+ * code under test that this case touches) @brief Verify set descriptors behavior. @details Executes the set descriptors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_descriptors(void)
 {
   TEST_BEGIN("ra8_usb_phid_set_descriptors stores pointers + lengths");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -239,12 +238,11 @@ static void test_set_descriptors(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_descriptors_validation(void)
+ * code under test that this case touches) @brief Verify set descriptors validation behavior. @details Executes the set descriptors validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_descriptors_validation(void)
 {
   TEST_BEGIN("ra8_usb_phid_set_descriptors rejects null / zero len");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -274,12 +272,11 @@ static void test_set_descriptors_validation(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_send_report_validation(void)
+ * code under test that this case touches) @brief Verify send report validation behavior. @details Executes the send report validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_send_report_validation(void)
 {
   TEST_BEGIN("ra8_usb_phid_send_report validates args");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
   uint8_t buf[4] = {0x01U, 0x02U, 0x03U, 0x04U};
@@ -297,7 +294,7 @@ static void test_send_report_validation(void)
   /* Valid argument shape: every pre-check inside ra8_usb_phid_send_report
    * passes and the call forwards into ra8_usb_queue_in. The FRDY wait
    * converges on its first poll via the unarmed ra8_fake_mmio seam (see
-   * internal_wait_frdy), so a well-formed call returns k_ra8_ok -- the
+   * priv_wait_frdy), so a well-formed call returns k_ra8_ok -- the
    * arg-validation path is exercised end-to-end. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_send_report(0U, buf, 4U));
   TEST_END("ra8_usb_phid_send_report validates args");
@@ -307,18 +304,17 @@ static void test_send_report_validation(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_send_report_with_id(void)
+ * code under test that this case touches) @brief Verify send report with id behavior. @details Executes the send report with id scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_send_report_with_id(void)
 {
   TEST_BEGIN("ra8_usb_phid_send_report prepends report ID when non-zero");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
   uint8_t payload[3] = {k_t_report_b0, k_t_report_b1, k_t_report_b2};
   /* report_id=2 means framed_len = 1 + 3 = 4, fits inside FS default 8.
    * The FRDY wait converges via the unarmed ra8_fake_mmio seam (see
-   * internal_wait_frdy), so a well-formed call returns k_ra8_ok; the
+   * priv_wait_frdy), so a well-formed call returns k_ra8_ok; the
    * arg-validation path is fully exercised. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_send_report(2U, payload, 3U));
 
@@ -332,12 +328,11 @@ static void test_send_report_with_id(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_recv_report_validation(void)
+ * code under test that this case touches) @brief Verify recv report validation behavior. @details Executes the recv report validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_recv_report_validation(void)
 {
   TEST_BEGIN("ra8_usb_phid_recv_report validates args");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
   uint8_t  buf[8] = {};
@@ -353,15 +348,14 @@ static void test_recv_report_validation(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_attach_setup_handler(void)
+ * code under test that this case touches) @brief Verify attach setup handler behavior. @details Executes the attach setup handler scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_setup_handler(void)
 {
   TEST_BEGIN("ra8_usb_phid_attach_setup_handler stores callback");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_attach_setup_handler(internal_test_setup_cb, nullptr));
 
   /* Drive a SET_IDLE class request through; the callback must fire. */
   ra8_usb_setup_t setup = {
@@ -390,12 +384,11 @@ static void test_attach_setup_handler(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_handle_setup_set_protocol(void)
+ * code under test that this case touches) @brief Verify handle setup set protocol behavior. @details Executes the handle setup set protocol scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_handle_setup_set_protocol(void)
 {
   TEST_BEGIN("ra8_usb_phid_handle_setup updates protocol shadow");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
   ra8_usb_setup_t setup = {
@@ -422,12 +415,11 @@ static void test_handle_setup_set_protocol(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_handle_setup_rejects_standard(void)
+ * code under test that this case touches) @brief Verify handle setup rejects standard behavior. @details Executes the handle setup rejects standard scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_handle_setup_rejects_standard(void)
 {
   TEST_BEGIN("ra8_usb_phid_handle_setup rejects non-class SETUPs and NULL");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
   ra8_usb_setup_t setup = {
@@ -452,12 +444,11 @@ static void test_handle_setup_rejects_standard(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_handle_setup_get_report_acks(void)
+ * code under test that this case touches) @brief Verify handle setup get report acks behavior. @details Executes the handle setup get report acks scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_handle_setup_get_report_acks(void)
 {
   TEST_BEGIN("ra8_usb_phid_handle_setup ACKs GET_REPORT");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
   ra8_usb_setup_t setup = {
@@ -480,14 +471,13 @@ static void test_handle_setup_get_report_acks(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_handle_setup_callback_stalls(void)
+ * code under test that this case touches) @brief Verify handle setup callback stalls behavior. @details Executes the handle setup callback stalls scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_handle_setup_callback_stalls(void)
 {
   TEST_BEGIN("ra8_usb_phid_handle_setup stalls EP0 when callback returns error");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_attach_setup_handler(internal_test_setup_cb, nullptr));
 
   s_setup_cb_return_code = k_ra8_err_not_supported;
   ra8_usb_setup_t setup  = {
@@ -534,18 +524,17 @@ static const uint8_t s_dummy_desc_b[8] = {};
  * @pre None.
  * @post FS/HS accept, the bad speed rejects, and the device is left at FS.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void phid_mcdc_init(void)
+ * @since 0.1.0 @details Implements the phid mcdc init fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_phid_mcdc_init(void)
 {
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_hs));
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_phid_init((ra8_usb_speed_t)k_test_phid_speed_bad));
 
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 }
 
@@ -554,9 +543,8 @@ static void phid_mcdc_init(void)
  * @pre The device is initialised.
  * @post Each C/D vector returned (or avoided) invalid_arg as documented.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void phid_mcdc_send_report(void)
+ * @since 0.1.0 @details Implements the phid mcdc send report fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_phid_mcdc_send_report(void)
 {
   uint8_t buf[8] = {};
   /* C-V3: NULL with len -> null_ptr. */
@@ -583,11 +571,10 @@ static void phid_mcdc_send_report(void)
  * @pre The device is initialised.
  * @post Each envelope and request-code vector returned its documented code.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void phid_mcdc_handle_setup(void)
+ * @since 0.1.0 @details Implements the phid mcdc handle setup fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_phid_mcdc_handle_setup(void)
 {
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_attach_setup_handler(internal_test_setup_cb, nullptr));
   ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_test_phid_iface_in,
     .b_request       = (uint8_t)k_ra8_phid_req_get_report,
@@ -624,7 +611,7 @@ static void phid_mcdc_handle_setup(void)
 }
 
 /**
- * @test test_mcdc_phid
+ * @test internal_test_mcdc_phid
  *
  * @par MC/DC:
  * Covers every compound decision flagged in docs/MCDC_GAPS.csv for
@@ -658,14 +645,13 @@ static void phid_mcdc_handle_setup(void)
  *
  * Decision F (lines 178-180, 6-condition OR chain inside
  * `internal_is_known_class_request`): per DO-178C 6.4.4.3
- * representative-subset: 6 lone-true vectors + 1 all-false (7 total).
- */
-static void test_mcdc_phid(void)
+ * representative-subset: 6 lone-true vectors + 1 all-false (7 total). @brief Verify mcdc phid behavior. @details Executes the mcdc phid scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_phid(void)
 {
   TEST_BEGIN("phid MC/DC: init/desc/send_report/handle_setup compound decisions");
 
   /* Decision A: init speed gate. */
-  phid_mcdc_init();
+  internal_phid_mcdc_init();
 
   /* Decision B: set_descriptors len OR. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_set_descriptors(s_dummy_desc_a, 8U, s_dummy_desc_b, 8U));
@@ -675,16 +661,16 @@ static void test_mcdc_phid(void)
                  ra8_usb_phid_set_descriptors(s_dummy_desc_a, 8U, s_dummy_desc_b, 0U));
 
   /* Decision C + D: send_report. */
-  phid_mcdc_send_report();
+  internal_phid_mcdc_send_report();
 
   /* Decision E + F: handle_setup. */
-  phid_mcdc_handle_setup();
+  internal_phid_mcdc_handle_setup();
 
   TEST_END("phid MC/DC: init/desc/send_report/handle_setup compound decisions");
 }
 
 /**
- * @test test_mcdc_phid_known_class_request_or_chain
+ * @test internal_test_mcdc_phid_known_class_request_or_chain
  *
  * @par MC/DC:
  * Decision (libs/ra8_hal/src/ra8_usb_phid.c lines 220-222,
@@ -700,9 +686,8 @@ static void test_mcdc_phid(void)
  * disjoint-constant construction), plus one all-F vector. Each Ci's
  * independence follows from (Ci=T) vs all-F, per DO-178C 6.4.4.3
  * source-text equivalence. Mirror is byte-identical (constant-folding
- * only).
- */
-static bool mirror_phid_is_known_class_request(uint8_t b_request)
+ * only). @brief Provide the file-local mirror phid is known class request test helper. @details Implements the mirror phid is known class request fixture operation used only by this focused test executable. @param[in] b_request Fixture argument governed by the exercised interface contract. @return Whether the named fixture condition holds. @retval true The named fixture condition holds. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static bool internal_mirror_phid_is_known_class_request(uint8_t b_request)
 {
   return (b_request == (uint8_t)k_ra8_phid_req_get_report) ||
          (b_request == (uint8_t)k_ra8_phid_req_set_report) ||
@@ -716,40 +701,42 @@ static bool mirror_phid_is_known_class_request(uint8_t b_request)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_mcdc_phid_known_class_request_or_chain(void)
+ * code under test that this case touches) @brief Verify mcdc phid known class request or chain behavior. @details Executes the mcdc phid known class request or chain scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_phid_known_class_request_or_chain(void)
 {
   TEST_BEGIN("phid MC/DC: 6-cond known-class-request OR (lines 220-222)");
-  TEST_ASSERT_EQ(1, mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_get_report));
-  TEST_ASSERT_EQ(1, mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_set_report));
-  TEST_ASSERT_EQ(1, mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_get_idle));
-  TEST_ASSERT_EQ(1, mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_set_idle));
-  TEST_ASSERT_EQ(1, mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_get_protocol));
-  TEST_ASSERT_EQ(1, mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_set_protocol));
-  TEST_ASSERT_EQ(0, mirror_phid_is_known_class_request(0xFFU));
+  TEST_ASSERT_EQ(1,
+                 internal_mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_get_report));
+  TEST_ASSERT_EQ(1,
+                 internal_mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_set_report));
+  TEST_ASSERT_EQ(1, internal_mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_get_idle));
+  TEST_ASSERT_EQ(1, internal_mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_set_idle));
+  TEST_ASSERT_EQ(1,
+                 internal_mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_get_protocol));
+  TEST_ASSERT_EQ(1,
+                 internal_mirror_phid_is_known_class_request((uint8_t)k_ra8_phid_req_set_protocol));
+  TEST_ASSERT_EQ(0, internal_mirror_phid_is_known_class_request(0xFFU));
   TEST_END("phid MC/DC: 6-cond known-class-request OR (lines 220-222)");
 }
 
 int32_t main(void)
 {
-  test_init_fs();
-  test_init_bad_speed();
-  test_init_hs_default_protocol();
-  test_class_request_codes();
-  test_pre_init_calls();
-  test_set_descriptors();
-  test_set_descriptors_validation();
-  test_send_report_validation();
-  test_send_report_with_id();
-  test_recv_report_validation();
-  test_attach_setup_handler();
-  test_handle_setup_set_protocol();
-  test_handle_setup_rejects_standard();
-  test_handle_setup_get_report_acks();
-  test_handle_setup_callback_stalls();
-  test_mcdc_phid();
-  test_mcdc_phid_known_class_request_or_chain();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_phid.c\n");
+  internal_test_init_fs();
+  internal_test_init_bad_speed();
+  internal_test_init_hs_default_protocol();
+  internal_test_class_request_codes();
+  internal_test_pre_init_calls();
+  internal_test_set_descriptors();
+  internal_test_set_descriptors_validation();
+  internal_test_send_report_validation();
+  internal_test_send_report_with_id();
+  internal_test_recv_report_validation();
+  internal_test_attach_setup_handler();
+  internal_test_handle_setup_set_protocol();
+  internal_test_handle_setup_rejects_standard();
+  internal_test_handle_setup_get_report_acks();
+  internal_test_handle_setup_callback_stalls();
+  internal_test_mcdc_phid();
+  internal_test_mcdc_phid_known_class_request_or_chain();
   return 0;
 }

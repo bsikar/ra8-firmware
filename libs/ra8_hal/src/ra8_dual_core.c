@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -90,7 +91,7 @@ static ra8_dual_core_fake_state_t s_fake = {
  * @note Host-shim only; not thread-safe.
  * @since 0.1.0
  */
-static inline uint16_t internal_actcsr_read(void)
+RA8_INTERNAL static inline uint16_t internal_actcsr_read(void)
 {
   return s_fake.actcsr;
 }
@@ -113,7 +114,7 @@ static inline uint16_t internal_actcsr_read(void)
  * @note Host-shim only; not thread-safe.
  * @since 0.1.0
  */
-static inline void internal_actcsr_write(uint16_t value)
+RA8_INTERNAL static inline void internal_actcsr_write(uint16_t value)
 {
   const uint16_t key =
     (uint16_t)((value >> (uint16_t)k_ra8_dual_core_actcsr_key_shift) & k_dc_byte_mask);
@@ -146,7 +147,7 @@ static inline void internal_actcsr_write(uint16_t value)
  * @note Host-shim only; not thread-safe.
  * @since 0.1.0
  */
-static inline void internal_waitcr_write(uint8_t value)
+RA8_INTERNAL static inline void internal_waitcr_write(uint8_t value)
 {
   s_fake.waitcr = (uint8_t)(value & (uint8_t)k_ra8_dual_core_waitcr_cpuwait_mask);
 }
@@ -171,7 +172,7 @@ static inline void internal_waitcr_write(uint8_t value)
  * @note Host-shim only; not thread-safe.
  * @since 0.1.0
  */
-static inline uint8_t internal_waitcr_read(void)
+RA8_INTERNAL static inline uint8_t internal_waitcr_read(void)
 {
   return s_fake.waitcr;
 }
@@ -194,7 +195,7 @@ static inline uint8_t internal_waitcr_read(void)
  * @note Host-shim only; not thread-safe.
  * @since 0.1.0
  */
-static inline void internal_initvtor_write(uint32_t value)
+RA8_INTERNAL static inline void internal_initvtor_write(uint32_t value)
 {
   s_fake.initvtor = value;
 }
@@ -218,7 +219,7 @@ volatile const void* ra8_dual_core_test_actcsr_key(void)
  * @note Pure address arithmetic.
  * @since 0.1.0
  */
-static inline volatile uint16_t* internal_actcsr_ptr(void)
+RA8_INTERNAL static inline volatile uint16_t* internal_actcsr_ptr(void)
 {
   return (volatile uint16_t*)((uintptr_t)k_ra8_dual_core_ctrl_base_addr +
                               (uintptr_t)k_ra8_dual_core_off_cpu1_actcsr);
@@ -234,7 +235,7 @@ static inline volatile uint16_t* internal_actcsr_ptr(void)
  * @note Pure address arithmetic.
  * @since 0.1.0
  */
-static inline volatile uint8_t* internal_waitcr_ptr(void)
+RA8_INTERNAL static inline volatile uint8_t* internal_waitcr_ptr(void)
 {
   return (volatile uint8_t*)((uintptr_t)k_ra8_dual_core_ctrl_base_addr +
                              (uintptr_t)k_ra8_dual_core_off_cpu1_waitcr);
@@ -250,7 +251,7 @@ static inline volatile uint8_t* internal_waitcr_ptr(void)
  * @note Pure address arithmetic.
  * @since 0.1.0
  */
-static inline volatile uint32_t* internal_initvtor_ptr(void)
+RA8_INTERNAL static inline volatile uint32_t* internal_initvtor_ptr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_dual_core_ctrl_base_addr +
                               (uintptr_t)k_ra8_dual_core_off_cpu1_initvtor);
@@ -276,7 +277,7 @@ static inline volatile uint32_t* internal_initvtor_ptr(void)
  * @note Re-entrant (read-only volatile access).
  * @since 0.1.0
  */
-static inline uint16_t internal_actcsr_read(void)
+RA8_INTERNAL static inline uint16_t internal_actcsr_read(void)
 {
   return *internal_actcsr_ptr();
 }
@@ -297,7 +298,7 @@ static inline uint16_t internal_actcsr_read(void)
  * @note Not thread-safe; serialise CPU1 lifecycle ops at a higher layer.
  * @since 0.1.0
  */
-static inline void internal_actcsr_write(uint16_t value)
+RA8_INTERNAL static inline void internal_actcsr_write(uint16_t value)
 {
   *internal_actcsr_ptr() = value;
 }
@@ -320,7 +321,7 @@ static inline void internal_actcsr_write(uint16_t value)
  * @note Not thread-safe; serialise CPU1 lifecycle ops.
  * @since 0.1.0
  */
-static inline void internal_waitcr_write(uint8_t value)
+RA8_INTERNAL static inline void internal_waitcr_write(uint8_t value)
 {
   *internal_waitcr_ptr() = value;
 }
@@ -344,7 +345,7 @@ static inline void internal_waitcr_write(uint8_t value)
  * @note Re-entrant (read-only volatile access).
  * @since 0.1.0
  */
-static inline uint8_t internal_waitcr_read(void)
+RA8_INTERNAL static inline uint8_t internal_waitcr_read(void)
 {
   return *internal_waitcr_ptr();
 }
@@ -366,7 +367,7 @@ static inline uint8_t internal_waitcr_read(void)
  * @note Not thread-safe; serialise CPU1 lifecycle ops.
  * @since 0.1.0
  */
-static inline void internal_initvtor_write(uint32_t value)
+RA8_INTERNAL static inline void internal_initvtor_write(uint32_t value)
 {
   *internal_initvtor_ptr() = value;
 }
@@ -394,7 +395,7 @@ static inline void internal_initvtor_write(uint32_t value)
  * @note Re-entrant; pure function.
  * @since 0.1.0
  */
-static inline bool internal_is_cpu0(void)
+RA8_INTERNAL static inline bool internal_is_cpu0(void)
 {
 #ifdef RA8_BUILD_FOR_CPU1
   return false;
@@ -426,7 +427,7 @@ static inline bool internal_is_cpu0(void)
  * @note Not thread-safe; part of the serialised CPU1 lifecycle path.
  * @since 0.1.0
  */
-static ra8_err_t internal_wait_act_set(void)
+RA8_INTERNAL static ra8_err_t internal_wait_act_set(void)
 {
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
   volatile const void* act_key = ra8_dual_core_test_actcsr_key();

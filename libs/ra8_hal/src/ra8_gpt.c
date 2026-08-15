@@ -112,10 +112,10 @@ typedef enum : uint32_t {
  *       boot context before any GPT channel is enabled.
  * @since 0.1.0
  */
-static void internal_gpt_clock_block_init(void)
+RA8_INTERNAL static void internal_gpt_clock_block_init(void)
 {
-  static bool s_gpt_clock_inited = false;
-  if (s_gpt_clock_inited) {
+  static bool local_gpt_clock_inited = false;
+  if (local_gpt_clock_inited) {
     return;
   }
   /* Enable GTCLK source for the GPT block. */
@@ -123,7 +123,7 @@ static void internal_gpt_clock_block_init(void)
   /* HUM Ch 22.10.1 "Clock and Pin Setup" p 1146 */
   volatile uint32_t* gtclkcr = (volatile uint32_t*)k_ra8_gpt_gtclk_addr;
   *gtclkcr                   = (uint32_t)k_ra8_gptclkcr_bpen;
-  s_gpt_clock_inited         = true;
+  local_gpt_clock_inited     = true;
 }
 
 /**
@@ -266,7 +266,7 @@ typedef struct {
 static ra8_gpt_state_t s_gpt_state[k_ra8_gpt_channel_count];
 
 /* internal_gtcr -- see header for full description. */
-static uint32_t internal_gtcr(ra8_gpt_mode_t mode, ra8_gpt_prescaler_t ps)
+RA8_INTERNAL static uint32_t internal_gtcr(ra8_gpt_mode_t mode, ra8_gpt_prescaler_t ps)
 {
   return ((uint32_t)mode << k_ra8_gpt_gtcr_md_shift) | ((uint32_t)ps << k_ra8_gpt_gtcr_tpcs_shift);
 }
@@ -670,7 +670,7 @@ ra8_err_t ra8_gpt_counter_set(uint8_t channel, uint32_t value)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static uint32_t internal_gtio_pattern(ra8_gpt_pwm_polarity_t polarity)
+RA8_INTERNAL static uint32_t internal_gtio_pattern(ra8_gpt_pwm_polarity_t polarity)
 {
   if (polarity == k_ra8_gpt_pol_active_low) {
     return k_ra8_gpt_gtio_active_low;
@@ -768,8 +768,8 @@ static ra8_gpt_three_phase_state_t s_three_phase;
  * @retval k_ra8_ok Success path.
  * @retval k_ra8_err_invalid_arg Caller violated a precondition.
  */
-static ra8_err_t internal_three_phase_init_subs(const ra8_gpt_three_phase_cfg_t* cfg,
-                                                uint32_t*                        out_mask)
+RA8_INTERNAL static ra8_err_t internal_three_phase_init_subs(const ra8_gpt_three_phase_cfg_t* cfg,
+                                                             uint32_t* out_mask)
 {
   const uint32_t initial_duties[k_ra8_gpt_three_phase_count] = {
     cfg->initial_duty_u,
@@ -890,7 +890,7 @@ ra8_err_t ra8_gpt_three_phase_close(void)
 /* ---- ISR dispatch ---------------------------------------------------- */
 
 /* internal_dispatch -- see header for full description. */
-static void internal_dispatch(uint8_t channel, uint32_t status_mask)
+RA8_INTERNAL static void internal_dispatch(uint8_t channel, uint32_t status_mask)
 {
   if (channel >= (uint8_t)k_ra8_gpt_channel_count) {
     return;

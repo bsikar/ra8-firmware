@@ -16,7 +16,7 @@
  * All the mutable callback function-pointer and context statics, plus
  * the per-VC format shadow and saved-VCIE arrays, live here. The
  * lifecycle code in ``ra8_mipi_csi.c`` detaches every callback through
- * the promoted ::ra8_mipi_csi_detach_all_handlers helper so that the
+ * the promoted ::priv_ra8_mipi_csi_detach_all_handlers helper so that the
  * mutable state stays owned by a single translation unit.
  *
  * Every register access carries a HUM Ch 66 citation immediately
@@ -358,7 +358,7 @@ void ra8_mipi_csi_dispatch_short_packet(void)
   }
 }
 
-void ra8_mipi_csi_detach_all_handlers(void)
+void priv_ra8_mipi_csi_detach_all_handlers(void)
 {
   s_mipi_csi_fn      = nullptr;
   s_mipi_csi_ctx     = nullptr;

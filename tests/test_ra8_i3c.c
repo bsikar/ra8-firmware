@@ -14,6 +14,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_i3c.h"
@@ -66,18 +67,20 @@ static uint32_t s_i3c_cb_count;
 static uint32_t s_i3c_cb_last_mask;
 
 /** @brief Native-mode bring-up config used by the native-path tests. */
-static const ra8_i3c_cfg_t k_native_cfg = {.mode     = k_ra8_i3c_mode_native,
+static const ra8_i3c_cfg_t s_native_cfg = {.mode     = k_ra8_i3c_mode_native,
                                            .bus_hz   = 0U,
                                            .pclka_hz = 0U};
 
-static void stub_i3c_cb(void* ctx, uint32_t mask)
+/** @brief Provide the file-local stub i3c cb test helper. @details Implements the stub i3c cb fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] mask Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_stub_i3c_cb(void* ctx, uint32_t mask)
 {
   (void)ctx;
   ++s_i3c_cb_count;
   s_i3c_cb_last_mask = mask;
 }
 
-static void prep(void)
+/** @brief Provide the file-local prep test helper. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
@@ -89,13 +92,12 @@ static void prep(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init(void)
+ * code under test that this case touches) @brief Verify init behavior. @details Executes the init scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init(void)
 {
   TEST_BEGIN("i3c init");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   /* CECTL.CLKE must be set after init. */
   TEST_ASSERT_EQ(1, (ra8_i3c()->CECTL & 0x1U));
   /* RSTCTL must be released after init. */
@@ -107,13 +109,12 @@ static void test_init(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_deinit(void)
+ * code under test that this case touches) @brief Verify deinit behavior. @details Executes the deinit scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_deinit(void)
 {
   TEST_BEGIN("i3c deinit");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_deinit(0U));
   TEST_ASSERT_EQ(0, (ra8_i3c()->CECTL & 0x1U));
   TEST_END("i3c deinit");
@@ -123,12 +124,11 @@ static void test_deinit(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_status_read_and_clear(void)
+ * code under test that this case touches) @brief Verify status read and clear behavior. @details Executes the status read and clear scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_status_read_and_clear(void)
 {
   TEST_BEGIN("i3c status read + clear");
-  prep();
+  internal_prep();
   ra8_i3c()->INST = k_i3c_probe_word;
 
   uint32_t mask = 0U;
@@ -145,13 +145,13 @@ static void test_status_read_and_clear(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_attach_and_dispatch(void)
+ * code under test that this case touches) @brief Verify attach and dispatch behavior. @details Executes the attach and dispatch scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_and_dispatch(void)
 {
   TEST_BEGIN("i3c attach + dispatch");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_attach_handler(0U, stub_i3c_cb, (void*)(uintptr_t)0x13U));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_i3c_attach_handler(0U, internal_stub_i3c_cb, (void*)(uintptr_t)0x13U));
   ra8_i3c()->INST = k_i3c_probe_inst_a;
   ra8_i3c_dispatch(0U);
   TEST_ASSERT_EQ(1, s_i3c_cb_count);
@@ -168,13 +168,12 @@ static void test_attach_and_dispatch(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_address(void)
+ * code under test that this case touches) @brief Verify set address behavior. @details Executes the set address scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_address(void)
 {
   TEST_BEGIN("i3c set address");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   /* Valid 7-bit address: bits [22:16] hold the value, bit 31 marks valid. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_set_address(0x42U));
   const uint32_t expect = (0x42U << 16) | 0x80000000U;
@@ -188,13 +187,12 @@ static void test_set_address(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_bus_enable(void)
+ * code under test that this case touches) @brief Verify bus enable behavior. @details Executes the bus enable scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_bus_enable(void)
 {
   TEST_BEGIN("i3c bus enable");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_bus_enable(true));
   /* BCTL.BUSE is bit 31 per FSP R_I3C0_BCTL_BUSE_Pos = 31. */
   TEST_ASSERT_EQ(1, ((ra8_i3c()->BCTL >> 31) & 0x1U));
@@ -207,13 +205,12 @@ static void test_bus_enable(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_power_transition(void)
+ * code under test that this case touches) @brief Verify power transition behavior. @details Executes the power transition scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_power_transition(void)
 {
   TEST_BEGIN("i3c power transition");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_enter_stop());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_exit_stop());
   TEST_END("i3c power transition");
@@ -228,11 +225,12 @@ static void test_power_transition(void)
   * code under test that this case touches)
  * --------------------------------------------------------------------------- */
 
-static void test_dynamic_address_assign(void)
+/** @brief Verify dynamic address assign behavior. @details Executes the dynamic address assign scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dynamic_address_assign(void)
 {
   TEST_BEGIN("i3c dynamic_address_assign (ENTDAA)");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
 
   /* Pre-stage one PID/BCR/DCR response in the fake NTDTBP0 cell --
    * with a single backing word the driver's two consecutive reads return
@@ -245,7 +243,7 @@ static void test_dynamic_address_assign(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_dynamic_address_assign(targets, 2U));
 
   /* Verify the driver issued at least the two-word command descriptor (the
-   * cell was zeroed by ``prep()`` and the second word the driver writes is
+   * cell was zeroed by ``internal_prep()`` and the second word the driver writes is
    * 0, leaving NCMDQP == 0).  The interesting side-effect is the populated
    * targets[] array: pid[0..3] should equal the staged 32-bit word LE. */
   TEST_ASSERT_EQ(0x11U, targets[0].pid[0]);
@@ -266,13 +264,12 @@ static void test_dynamic_address_assign(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_dynamic_address(void)
+ * code under test that this case touches) @brief Verify set dynamic address behavior. @details Executes the set dynamic address scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_dynamic_address(void)
 {
   TEST_BEGIN("i3c set_dynamic_address (SETDASA)");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_set_dynamic_address(0x12U, 0x34U));
   /* Last write to NCMDQP was the dynamic-address payload byte (cmd2). */
@@ -287,13 +284,12 @@ static void test_set_dynamic_address(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_reset_dynamic_addresses(void)
+ * code under test that this case touches) @brief Verify reset dynamic addresses behavior. @details Executes the reset dynamic addresses scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_reset_dynamic_addresses(void)
 {
   TEST_BEGIN("i3c reset_dynamic_addresses (RSTDAA)");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   /* Pre-seed NCMDQP with a sentinel so the driver's two writes (cmd1 +
    * cmd2=0) result in NCMDQP == 0 by the end -- this proves the driver
    * touched the queue at least twice. */
@@ -308,13 +304,12 @@ static void test_reset_dynamic_addresses(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_send_ccc_broadcast(void)
+ * code under test that this case touches) @brief Verify send ccc broadcast behavior. @details Executes the send ccc broadcast scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_send_ccc_broadcast(void)
 {
   TEST_BEGIN("i3c send_ccc broadcast (ENEC, no payload)");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   /* Pre-seed NCMDQP with a sentinel; broadcast ENEC + zero payload causes
    * the driver to write cmd1 then cmd2 = 0, so the cell ends as 0 -- proof
    * the queue saw at least one write. */
@@ -329,13 +324,12 @@ static void test_send_ccc_broadcast(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_send_ccc_directed_with_payload(void)
+ * code under test that this case touches) @brief Verify send ccc directed with payload behavior. @details Executes the send ccc directed with payload scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_send_ccc_directed_with_payload(void)
 {
   TEST_BEGIN("i3c send_ccc directed with payload");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   const uint8_t payload[3] = {0xAAU, 0xBBU, 0xCCU};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_send_ccc(0x80U, 0x42U, payload, 3U));
   /* Last NCMDQP write was the immediate-data word (LE pack of payload). */
@@ -350,13 +344,12 @@ static void test_send_ccc_directed_with_payload(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_recv_ccc_directed(void)
+ * code under test that this case touches) @brief Verify recv ccc directed behavior. @details Executes the recv ccc directed scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_recv_ccc_directed(void)
 {
   TEST_BEGIN("i3c recv_ccc directed");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   /* Pre-load NTDTBP0 with one word of receive data. */
   ra8_i3c()->NTDTBP0 = k_i3c_probe_ascending;
 
@@ -379,13 +372,12 @@ static void test_recv_ccc_directed(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_immediate(void)
+ * code under test that this case touches) @brief Verify write immediate behavior. @details Executes the write immediate scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_immediate(void)
 {
   TEST_BEGIN("i3c write (immediate-data)");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   const uint8_t data[2] = {0xDEU, 0xADU};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_write(0U, 0x55U, data, 2U, false));
   /* Last NCMDQP write is the immediate data packed LE. */
@@ -399,13 +391,12 @@ static void test_write_immediate(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_regular(void)
+ * code under test that this case touches) @brief Verify write regular behavior. @details Executes the write regular scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_regular(void)
 {
   TEST_BEGIN("i3c write (regular FIFO)");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   const uint8_t data[8] = {1, 2, 3, 4, 5, 6, 7, 8};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_write(0U, 0x55U, data, sizeof(data), false));
   /* The FIFO backing memory holds the LAST word that was written --
@@ -419,13 +410,12 @@ static void test_write_regular(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_read_happy(void)
+ * code under test that this case touches) @brief Verify read happy behavior. @details Executes the read happy scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_happy(void)
 {
   TEST_BEGIN("i3c read (happy path)");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   ra8_i3c()->NTDTBP0 = k_i3c_probe_word_alt;
   uint8_t buf[4]     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_read(0U, 0x12U, buf, 4U, false));
@@ -443,13 +433,12 @@ static void test_read_happy(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_ibi_read_empty(void)
+ * code under test that this case touches) @brief Verify ibi read empty behavior. @details Executes the ibi read empty scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_ibi_read_empty(void)
 {
   TEST_BEGIN("i3c ibi_read empty queue");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   ra8_i3c_ibi_t ibi = {};
   /* NTST.IBIQEFF (bit 2) is zero by default -> queue empty. */
   TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_i3c_ibi_read(&ibi));
@@ -461,13 +450,12 @@ static void test_ibi_read_empty(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_ibi_read_one(void)
+ * code under test that this case touches) @brief Verify ibi read one behavior. @details Executes the ibi read one scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_ibi_read_one(void)
 {
   TEST_BEGIN("i3c ibi_read one IBI");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
 
   /* Flag the queue as non-empty (NTST.IBIQEFF bit 2). */
   ra8_i3c()->NTST = (uint32_t)k_ra8_i3c_ntst_ibiqeff_mask;
@@ -497,13 +485,12 @@ static void test_ibi_read_one(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_hdr_mode_ddr(void)
+ * code under test that this case touches) @brief Verify set hdr mode ddr behavior. @details Executes the set hdr mode ddr scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_hdr_mode_ddr(void)
 {
   TEST_BEGIN("i3c set_hdr_mode DDR encodes [27:26]=01");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_set_hdr_mode(0x42U, k_ra8_i3c_hdr_mode_ddr));
   /* NCMDQP word should carry the DDR mode bits (1U << 26) and the target
@@ -518,13 +505,12 @@ static void test_set_hdr_mode_ddr(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_hdr_mode_ts_and_validation(void)
+ * code under test that this case touches) @brief Verify set hdr mode ts and validation behavior. @details Executes the set hdr mode ts and validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_hdr_mode_ts_and_validation(void)
 {
   TEST_BEGIN("i3c set_hdr_mode TS + validation");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_set_hdr_mode(0x10U, k_ra8_i3c_hdr_mode_ts));
   TEST_ASSERT(((ra8_i3c()->NCMDQP >> 26) & 0x3U) == 2U);
@@ -540,13 +526,12 @@ static void test_set_hdr_mode_ts_and_validation(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_ibi_enable_writes_ntibivctl(void)
+ * code under test that this case touches) @brief Verify ibi enable writes ntibivctl behavior. @details Executes the ibi enable writes ntibivctl scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_ibi_enable_writes_ntibivctl(void)
 {
   TEST_BEGIN("i3c ibi_enable writes NTIBIVCTL.VLCNT=1");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_ibi_enable(0x55U));
   /* VLCNT field [7:0] should equal 1. */
@@ -561,13 +546,12 @@ static void test_ibi_enable_writes_ntibivctl(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_ibi_drain_aliases_read(void)
+ * code under test that this case touches) @brief Verify ibi drain aliases read behavior. @details Executes the ibi drain aliases read scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_ibi_drain_aliases_read(void)
 {
   TEST_BEGIN("i3c ibi_drain mirrors ibi_read semantics");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
 
   /* Empty queue path. */
   ra8_i3c_ibi_t ibi = {};
@@ -587,13 +571,12 @@ static void test_ibi_drain_aliases_read(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_target_open_sets_slve_and_nsdvad(void)
+ * code under test that this case touches) @brief Verify target open sets slve and nsdvad behavior. @details Executes the target open sets slve and nsdvad scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_target_open_sets_slve_and_nsdvad(void)
 {
   TEST_BEGIN("i3c target_open sets BCTL.SLVE and NSDVAD");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_target_open(0x33U));
   /* BCTL.SLVE (bit 16) set; BCTL.BUSE (bit 31) cleared. */
@@ -608,7 +591,7 @@ static void test_target_open_sets_slve_and_nsdvad(void)
 }
 
 /**
- * @test test_mcdc_i3c
+ * @test internal_test_mcdc_i3c
  *
  * @par MC/DC:
  * Three 2-condition decisions in libs/ra8_hal/src/ra8_i3c.c:
@@ -630,13 +613,12 @@ static void test_target_open_sets_slve_and_nsdvad(void)
  * ``if ((len > 0U) && (payload == nullptr))``
  * - V1: len=0           -> C1=F (short-circuits) -> dec F (ok)
  * - V2: len>0, payload!=NULL -> C1=T,C2=F -> dec F (ok)
- * - V3: len>0, payload=NULL  -> C1=T,C2=T -> dec T (null_ptr)
- */
-static void test_mcdc_i3c(void)
+ * - V3: len>0, payload=NULL  -> C1=T,C2=T -> dec T (null_ptr) @brief Verify mcdc i3c behavior. @details Executes the mcdc i3c scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_i3c(void)
 {
   TEST_BEGIN("i3c MC/DC: three 2-cond arg decisions");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
 
   /* Decision A: dynamic_address_assign */
   ra8_i3c_daa_target_t one         = {};
@@ -660,7 +642,7 @@ static void test_mcdc_i3c(void)
 }
 
 /**
- * @test test_mcdc_i3c_write_read_arg_pairs
+ * @test internal_test_mcdc_i3c_write_read_arg_pairs
  *
  * @par MC/DC:
  * Decision A (libs/ra8_hal/src/ra8_i3c.c ra8_i3c_write):
@@ -677,13 +659,12 @@ static void test_mcdc_i3c(void)
  * - V1: len=4              -> C1=F, C2=F -> dec F.
  * - V2: len=0              -> C1=T short -> dec T -> invalid_arg.
  * - V3: len=0x10000        -> C1=F, C2=T -> dec T -> invalid_arg.
- * V1+V2 isolate C1; V1+V3 isolate C2.
- */
-static void test_mcdc_i3c_write_read_arg_pairs(void)
+ * V1+V2 isolate C1; V1+V3 isolate C2. @brief Verify mcdc i3c write read arg pairs behavior. @details Executes the mcdc i3c write read arg pairs scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_i3c_write_read_arg_pairs(void)
 {
   TEST_BEGIN("i3c MC/DC: write+read len/ptr pairs");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &s_native_cfg));
   const uint8_t data[4] = {0xDEU, 0xADU, 0xBEU, 0xEFU};
   uint8_t       buf[8]  = {0U};
 
@@ -707,7 +688,7 @@ static void test_mcdc_i3c_write_read_arg_pairs(void)
 }
 
 /**
- * @test test_mcdc_i3c_internal_recv_ccc_invalid
+ * @test internal_test_mcdc_i3c_internal_recv_ccc_invalid
  *
  * @par MC/DC:
  * Decision at libs/ra8_hal/src/ra8_i3c.c (call site) -> helper at
@@ -716,19 +697,18 @@ static void test_mcdc_i3c_write_read_arg_pairs(void)
  * - V1: target<=mask, max_len>0 -> false
  * - V2: target>mask,  max_len>0 -> true (varies left)
  * - V3: target<=mask, max_len=0 -> true (varies right)
- * N+1 = 3.
- */
-static void test_mcdc_i3c_internal_recv_ccc_invalid(void)
+ * N+1 = 3. @brief Verify mcdc i3c internal recv ccc invalid behavior. @details Executes the mcdc i3c internal recv ccc invalid scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_i3c_internal_recv_ccc_invalid(void)
 {
   TEST_BEGIN("i3c MC/DC: recv_ccc_invalid OR");
-  TEST_ASSERT(!ra8_i3c_internal_recv_ccc_invalid(0x7FU, 0x10U, 4U));
-  TEST_ASSERT(ra8_i3c_internal_recv_ccc_invalid(0x7FU, 0xFFU, 4U));
-  TEST_ASSERT(ra8_i3c_internal_recv_ccc_invalid(0x7FU, 0x10U, 0U));
+  TEST_ASSERT(!priv_ra8_i3c_internal_recv_ccc_invalid(0x7FU, 0x10U, 4U));
+  TEST_ASSERT(priv_ra8_i3c_internal_recv_ccc_invalid(0x7FU, 0xFFU, 4U));
+  TEST_ASSERT(priv_ra8_i3c_internal_recv_ccc_invalid(0x7FU, 0x10U, 0U));
   TEST_END("i3c MC/DC: recv_ccc_invalid OR");
 }
 
 /**
- * @test test_mcdc_i3c_internal_hdr_mode_invalid
+ * @test internal_test_mcdc_i3c_internal_hdr_mode_invalid
  *
  * @par MC/DC:
  * Decision at libs/ra8_hal/src/ra8_i3c.c (call site) -> helper at
@@ -738,27 +718,26 @@ static void test_mcdc_i3c_internal_recv_ccc_invalid(void)
  * - V2: mode=DDR -> false (DDR varies vs V4)
  * - V3: mode=TS  -> false (TS varies vs V4)
  * - V4: mode=99  -> true  (control: all true)
- * N+1 = 4.
- */
-static void test_mcdc_i3c_internal_hdr_mode_invalid(void)
+ * N+1 = 4. @brief Verify mcdc i3c internal hdr mode invalid behavior. @details Executes the mcdc i3c internal hdr mode invalid scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_i3c_internal_hdr_mode_invalid(void)
 {
   TEST_BEGIN("i3c MC/DC: hdr_mode_invalid AND");
-  TEST_ASSERT(!ra8_i3c_internal_hdr_mode_invalid((uint32_t)k_ra8_i3c_hdr_mode_sdr,
-                                                 (uint32_t)k_ra8_i3c_hdr_mode_ddr,
-                                                 (uint32_t)k_ra8_i3c_hdr_mode_ts,
-                                                 (uint32_t)k_ra8_i3c_hdr_mode_sdr));
-  TEST_ASSERT(!ra8_i3c_internal_hdr_mode_invalid((uint32_t)k_ra8_i3c_hdr_mode_sdr,
-                                                 (uint32_t)k_ra8_i3c_hdr_mode_ddr,
-                                                 (uint32_t)k_ra8_i3c_hdr_mode_ts,
-                                                 (uint32_t)k_ra8_i3c_hdr_mode_ddr));
-  TEST_ASSERT(!ra8_i3c_internal_hdr_mode_invalid((uint32_t)k_ra8_i3c_hdr_mode_sdr,
-                                                 (uint32_t)k_ra8_i3c_hdr_mode_ddr,
-                                                 (uint32_t)k_ra8_i3c_hdr_mode_ts,
-                                                 (uint32_t)k_ra8_i3c_hdr_mode_ts));
-  TEST_ASSERT(ra8_i3c_internal_hdr_mode_invalid((uint32_t)k_ra8_i3c_hdr_mode_sdr,
-                                                (uint32_t)k_ra8_i3c_hdr_mode_ddr,
-                                                (uint32_t)k_ra8_i3c_hdr_mode_ts,
-                                                99U));
+  TEST_ASSERT(!priv_ra8_i3c_internal_hdr_mode_invalid((uint32_t)k_ra8_i3c_hdr_mode_sdr,
+                                                      (uint32_t)k_ra8_i3c_hdr_mode_ddr,
+                                                      (uint32_t)k_ra8_i3c_hdr_mode_ts,
+                                                      (uint32_t)k_ra8_i3c_hdr_mode_sdr));
+  TEST_ASSERT(!priv_ra8_i3c_internal_hdr_mode_invalid((uint32_t)k_ra8_i3c_hdr_mode_sdr,
+                                                      (uint32_t)k_ra8_i3c_hdr_mode_ddr,
+                                                      (uint32_t)k_ra8_i3c_hdr_mode_ts,
+                                                      (uint32_t)k_ra8_i3c_hdr_mode_ddr));
+  TEST_ASSERT(!priv_ra8_i3c_internal_hdr_mode_invalid((uint32_t)k_ra8_i3c_hdr_mode_sdr,
+                                                      (uint32_t)k_ra8_i3c_hdr_mode_ddr,
+                                                      (uint32_t)k_ra8_i3c_hdr_mode_ts,
+                                                      (uint32_t)k_ra8_i3c_hdr_mode_ts));
+  TEST_ASSERT(priv_ra8_i3c_internal_hdr_mode_invalid((uint32_t)k_ra8_i3c_hdr_mode_sdr,
+                                                     (uint32_t)k_ra8_i3c_hdr_mode_ddr,
+                                                     (uint32_t)k_ra8_i3c_hdr_mode_ts,
+                                                     99U));
   TEST_END("i3c MC/DC: hdr_mode_invalid AND");
 }
 
@@ -773,33 +752,33 @@ static void test_mcdc_i3c_internal_hdr_mode_invalid(void)
  * @note Order is significant: cases run top to bottom, exactly as before.
  */
 static void (*const s_test_roster[])(void) = {
-  test_init,
-  test_deinit,
-  test_status_read_and_clear,
-  test_attach_and_dispatch,
-  test_set_address,
-  test_bus_enable,
-  test_power_transition,
-  test_dynamic_address_assign,
-  test_set_dynamic_address,
-  test_reset_dynamic_addresses,
-  test_send_ccc_broadcast,
-  test_send_ccc_directed_with_payload,
-  test_recv_ccc_directed,
-  test_write_immediate,
-  test_write_regular,
-  test_read_happy,
-  test_ibi_read_empty,
-  test_ibi_read_one,
-  test_set_hdr_mode_ddr,
-  test_set_hdr_mode_ts_and_validation,
-  test_ibi_enable_writes_ntibivctl,
-  test_ibi_drain_aliases_read,
-  test_target_open_sets_slve_and_nsdvad,
-  test_mcdc_i3c,
-  test_mcdc_i3c_write_read_arg_pairs,
-  test_mcdc_i3c_internal_recv_ccc_invalid,
-  test_mcdc_i3c_internal_hdr_mode_invalid,
+  internal_test_init,
+  internal_test_deinit,
+  internal_test_status_read_and_clear,
+  internal_test_attach_and_dispatch,
+  internal_test_set_address,
+  internal_test_bus_enable,
+  internal_test_power_transition,
+  internal_test_dynamic_address_assign,
+  internal_test_set_dynamic_address,
+  internal_test_reset_dynamic_addresses,
+  internal_test_send_ccc_broadcast,
+  internal_test_send_ccc_directed_with_payload,
+  internal_test_recv_ccc_directed,
+  internal_test_write_immediate,
+  internal_test_write_regular,
+  internal_test_read_happy,
+  internal_test_ibi_read_empty,
+  internal_test_ibi_read_one,
+  internal_test_set_hdr_mode_ddr,
+  internal_test_set_hdr_mode_ts_and_validation,
+  internal_test_ibi_enable_writes_ntibivctl,
+  internal_test_ibi_drain_aliases_read,
+  internal_test_target_open_sets_slve_and_nsdvad,
+  internal_test_mcdc_i3c,
+  internal_test_mcdc_i3c_write_read_arg_pairs,
+  internal_test_mcdc_i3c_internal_recv_ccc_invalid,
+  internal_test_mcdc_i3c_internal_hdr_mode_invalid,
 };
 
 int32_t main(void)
@@ -807,6 +786,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK  ] test_ra8_i3c.c\n");
   return 0;
 }

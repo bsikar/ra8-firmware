@@ -244,8 +244,8 @@ static ra8_err_t internal_mipi_phy_validate_pll(const ra8_mipi_phy_pll_t* pll)
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `internal_mipi_phy_write_timing()` -- packs DPHYTIM1..6. */
-void internal_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t)
+/** @brief Implementation of `priv_mipi_phy_write_timing()` -- packs DPHYTIM1..6. */
+void priv_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t)
 {
   /* HUM Ch 64.2.8 "DPHYTIM1 : D-PHY Timing Control Register 1", p 3827 */
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_tim1) =
@@ -453,7 +453,7 @@ ra8_err_t ra8_mipi_phy_init(const ra8_mipi_phy_config_t* cfg)
   }
 
   /* Step 10 -- HUM Ch 64.2.8 "DPHYTIM1 : D-PHY Timing Control Register 1", p 3827 */
-  internal_mipi_phy_write_timing(cfg->p_timing);
+  priv_mipi_phy_write_timing(cfg->p_timing);
 
   /* Step 11 -- HUM Ch 64.2.7 "DPHYOCR : D-PHY Operation Control Register", p 3827 */
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_ocr) = k_ra8_mipi_phy_ocr_dphyen;
@@ -816,7 +816,7 @@ ra8_err_t ra8_mipi_phy_validate_pll_band(const ra8_mipi_phy_pll_t* pll, uint8_t 
                       "validate_pll_band: NMUL out of range"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 64.2.2 "DPHYPLFCR : D-PHY PLL Frequency Control Register" p 3824 */
-  const uint32_t f_mhz = internal_mipi_phy_compute_freq(pll, mosc_mhz);
+  const uint32_t f_mhz = priv_mipi_phy_compute_freq(pll, mosc_mhz);
   uint16_t       lo    = 0U;
   uint16_t       hi    = 0U;
   switch (pll->pmul) {

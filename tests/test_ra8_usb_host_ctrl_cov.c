@@ -40,7 +40,7 @@
  *  - ``BRDYSTS`` DCP bit + ``CFIFOCTR.DTLN`` + ``CFIFO`` drive the control-OUT
  *    drain in ``ra8_usb_dcp_out_read`` (no-data / ZLP / non-zero DTLN). That
  *    entry point has NO SETUP stage, so a pre-seeded BRDY edge and a NON-ZERO
- *    DTLN both survive; it is what exercises the ``internal_fifo_read`` copy of
+ *    DTLN both survive; it is what exercises the ``priv_fifo_read`` copy of
  *    a real payload. The control-READ receive body reads its length from
  *    ``CFIFOCTR.DTLN``, but ``internal_host_ctrl_data_arm`` re-clears CFIFOCTR
  *    to BCLR (DTLN = 0) before the first read, so every control-read drains as
@@ -59,6 +59,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
@@ -137,28 +138,26 @@ typedef enum : uint8_t {
  * @details Clears every mapped register region so a prior test's writes cannot
  * leak into the next, and disarms any ``ra8_fake_mmio`` wait faults a prior case
  * armed so an armed timeout cannot bleed into a later stage's bounded wait. The
- * host control engine needs no MSTP or device-init bring-up: ``internal_pick``
+ * host control engine needs no MSTP or device-init bring-up: ``priv_pick``
  * resolves a fixed controller base and the engine only touches that register
- * block.
- */
-static void prep(void)
+ * block. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
 }
 
 /**
- * @test test_control_xfer_guards
+ * @test internal_test_control_xfer_guards
  *
  * @par MC/DC:
  * (no compound decisions in the code under test that this case touches --
- * the ``setup`` NULL guard and the ``internal_pick`` NULL check are separate
- * single-condition guards, each driven in isolation; no ``&&`` or ``||``.)
- */
-static void test_control_xfer_guards(void)
+ * the ``setup`` NULL guard and the ``priv_pick`` NULL check are separate
+ * single-condition guards, each driven in isolation; no ``&&`` or ``||``.) @brief Verify control xfer guards behavior. @details Executes the control xfer guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_control_xfer_guards(void)
 {
   TEST_BEGIN("control_xfer rejects NULL setup and a bogus speed");
-  prep();
+  internal_prep();
 
   ra8_usb_setup_t setup             = {};
   uint8_t         buf[k_thc_buf_in] = {};
@@ -168,7 +167,7 @@ static void test_control_xfer_guards(void)
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
     ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, nullptr, buf, (uint16_t)k_thc_buf_in, &rx));
-  /* Bogus speed -> internal_pick returns nullptr. */
+  /* Bogus speed -> priv_pick returns nullptr. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_usb_host_control_xfer((ra8_usb_speed_t)k_thc_speed_bogus,
                                            &setup,
@@ -180,15 +179,14 @@ static void test_control_xfer_guards(void)
 }
 
 /**
- * @test test_setup_error_legs
+ * @test internal_test_setup_error_legs
  *
  * @par MC/DC:
  * (no compound decisions in the code under test that this case touches --
  * ``internal_host_setup_wait`` tests the SACK and SIGN bits in separate
  * single-condition ``if`` statements; each leg is selected by pre-loading
- * INTSTS1, no ``&&`` or ``||``.)
- */
-static void test_setup_error_legs(void)
+ * INTSTS1, no ``&&`` or ``||``.) @brief Verify setup error legs behavior. @details Executes the setup error legs scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_setup_error_legs(void)
 {
   TEST_BEGIN("control_xfer surfaces the SETUP SIGN error and timeout legs");
 
@@ -206,7 +204,7 @@ static void test_setup_error_legs(void)
    * later stage); the driver then reads the pre-seeded SIGN from RAM and reports
    * hw_error. The polled register is exactly the reg->INTSTS1 the SETUP wait
    * spins on. */
-  prep();
+  internal_prep();
   ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sign_bit;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&ra8_usb_fs()->INTSTS1));
   TEST_ASSERT_EQ(
@@ -218,7 +216,7 @@ static void test_setup_error_legs(void)
   /* Neither SACK nor SIGN latched: arm the same INTSTS1 poll to fail so the
    * bounded SETUP wait terminates at the SETUP stage with hw_timeout instead of
    * the fake seam succeeding the SACK poll and advancing into a later stage. */
-  prep();
+  internal_prep();
   ra8_usb_fs()->INTSTS1 = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&ra8_usb_fs()->INTSTS1));
   TEST_ASSERT_EQ(
@@ -229,15 +227,14 @@ static void test_setup_error_legs(void)
 }
 
 /**
- * @test test_setup_sureq_busy_fs_hs
+ * @test internal_test_setup_sureq_busy_fs_hs
  *
  * @par MC/DC:
  * (no compound decisions in the code under test that this case touches --
  * the pending-SUREQ guard is a single-condition ``if``; the FS vs HS split
- * is a single-condition ``internal_is_hs`` branch that gates the USBHS
- * SUREQCLR abort. No ``&&`` or ``||``.)
- */
-static void test_setup_sureq_busy_fs_hs(void)
+ * is a single-condition ``priv_is_hs`` branch that gates the USBHS
+ * SUREQCLR abort. No ``&&`` or ``||``.) @brief Verify setup sureq busy fs hs behavior. @details Executes the setup sureq busy fs hs scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_setup_sureq_busy_fs_hs(void)
 {
   TEST_BEGIN("control_xfer aborts busy when DCPCTR.SUREQ is already set (FS + HS)");
 
@@ -250,14 +247,14 @@ static void test_setup_sureq_busy_fs_hs(void)
   uint16_t rx                = 0U;
 
   /* FS: SUREQ wedged, no SUREQCLR path -> busy. */
-  prep();
+  internal_prep();
   ra8_usb_fs()->DCPCTR = (uint16_t)k_thc_sureq_bit;
   TEST_ASSERT_EQ(
     k_ra8_err_busy,
     ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &setup, buf, (uint16_t)k_thc_buf_in, &rx));
 
   /* HS: the SUREQCLR abort is attempted, SUREQ stays set -> still busy. */
-  prep();
+  internal_prep();
   ra8_usb_hs()->DCPCTR = (uint16_t)k_thc_sureq_bit;
   TEST_ASSERT_EQ(
     k_ra8_err_busy,
@@ -272,13 +269,12 @@ static void test_setup_sureq_busy_fs_hs(void)
  * @pre None (prepares its own controller state).
  * @post The transfer timed out at the IN status stage with rx == 0.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void thc_vector_write_data(uint8_t* data)
+ * @since 0.1.0 @details Implements the thc vector write data fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_thc_vector_write_data(uint8_t* data)
 {
   /* V1: control-WRITE with a data stage -> DATA-OUT drives, IN status times out.
    * mps=4 with wLength=10 forces the multi-packet loop (chunk > step clamp). */
-  prep();
+  internal_prep();
   ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
   ra8_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_multi;
   ra8_usb_setup_t wr    = {
@@ -299,13 +295,12 @@ static void thc_vector_write_data(uint8_t* data)
  * @pre None (prepares its own controller state).
  * @post The transfer reached the DATA-IN stage and timed out.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static void thc_vector_read(void)
+ * @since 0.1.0 @details Implements the thc vector read fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_thc_vector_read(void)
 {
   /* V3: control-READ -> DATA-IN entered; NRDYSTS pre-seeded drives the NRDY
    * re-arm; wLength (64) > buffer (8) exercises the want clamp. */
-  prep();
+  internal_prep();
   ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
   ra8_usb_fs()->NRDYSTS = (uint16_t)k_thc_dcp_bit;
   ra8_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_dcp;
@@ -323,7 +318,7 @@ static void thc_vector_read(void)
 }
 
 /**
- * @test test_mcdc_data_phase_direction
+ * @test internal_test_mcdc_data_phase_direction
  *
  * @par MC/DC:
  * Decision (``internal_host_data_phase`` DATA-OUT selector, 3 conditions):
@@ -345,9 +340,8 @@ static void thc_vector_read(void)
  * not a wire failure. V3 pre-seeds NO BRDYSTS edge, so its DATA-IN deliberately
  * takes the arm + NRDY re-arm + bounded-wait timeout leg; the BRDY-satisfied
  * receive body and the OUT-ZLP status stage are driven by
- * ``test_control_read_completes``.
- */
-static void test_mcdc_data_phase_direction(void)
+ * ``internal_test_control_read_completes``. @brief Verify mcdc data phase direction behavior. @details Executes the mcdc data phase direction scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_data_phase_direction(void)
 {
   TEST_BEGIN("control_xfer DATA-phase direction MC/DC (write / no-data / read / null)");
 
@@ -355,10 +349,10 @@ static void test_mcdc_data_phase_direction(void)
     {1U, 2U, 3U, 4U, k_t_out_b4, 6U, k_t_out_b6, 8U, k_t_out_b8, k_t_out_b9};
   uint16_t rx = 0U;
 
-  thc_vector_write_data(data);
+  internal_thc_vector_write_data(data);
 
   /* V2: no-data control (wLength == 0) -> no data stage, IN status times out. */
-  prep();
+  internal_prep();
   ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
   ra8_usb_setup_t nd    = {
     .bm_request_type = (uint8_t)k_thc_dir_in,
@@ -369,11 +363,11 @@ static void test_mcdc_data_phase_direction(void)
                  ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &nd, data, 0U, &rx));
   TEST_ASSERT_EQ(k_thc_stage_status, ra8_usb_host_ctrl_stage());
 
-  thc_vector_read();
+  internal_thc_vector_read();
 
   /* V4: control-WRITE with wLength > 0 but a NULL data pointer -> C3 false, no
    * data stage; IN status times out. Isolates the data!=NULL condition. */
-  prep();
+  internal_prep();
   ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
   ra8_usb_setup_t wn    = {
     .bm_request_type = (uint8_t)k_thc_dir_out,
@@ -388,18 +382,17 @@ static void test_mcdc_data_phase_direction(void)
 }
 
 /**
- * @test test_control_write_mxps_zero
+ * @test internal_test_control_write_mxps_zero
  *
  * @par MC/DC:
  * (no compound decisions in the code under test that this case touches --
  * ``internal_host_ctrl_data_out``'s ``step = (mxps == 0U) ? 1U : mxps`` is a
  * single-condition ternary and ``chunk > step`` is a single-condition ``if``;
- * no ``&&`` or ``||``.)
- */
-static void test_control_write_mxps_zero(void)
+ * no ``&&`` or ``||``.) @brief Verify control write mxps zero behavior. @details Executes the control write mxps zero scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_control_write_mxps_zero(void)
 {
   TEST_BEGIN("control_xfer DATA-OUT falls back to step==1 when DCPMAXP.MXPS is 0");
-  prep();
+  internal_prep();
 
   /* DCPMAXP == 0 -> mxps == 0 -> the data-out loop uses a 1-byte step, so a
    * 3-byte payload drives three single-byte chunks (chunk > step clamp). */
@@ -421,7 +414,7 @@ static void test_control_write_mxps_zero(void)
 }
 
 /**
- * @test test_control_read_completes
+ * @test internal_test_control_read_completes
  *
  * @par MC/DC:
  * (no compound decisions in the code under test that this case touches -- the
@@ -435,12 +428,11 @@ static void test_control_write_mxps_zero(void)
  * observes it, and the receive body executes. ``internal_host_ctrl_data_arm``
  * re-clears CFIFOCTR to BCLR before the first ``CFIFOCTR.DTLN`` read, so DTLN
  * reads 0 and the packet drains as a zero-length read (rx == 0); the non-zero
- * ``internal_fifo_read`` copy of the same loop is credited via
+ * ``priv_fifo_read`` copy of the same loop is credited via
  * ``ra8_usb_dcp_out_read``. Because the data stage completes, the control-read
  * OUT-ZLP status branch (``internal_host_ctrl_status`` with write_zlp == true)
- * runs, so the transfer closes k_ra8_ok and the stage advances to done.
- */
-static void test_control_read_completes(void)
+ * runs, so the transfer closes k_ra8_ok and the stage advances to done. @brief Verify control read completes behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_control_read_completes(void)
 {
   TEST_BEGIN("control_xfer control-READ completes through the OUT-ZLP status stage");
 
@@ -450,7 +442,7 @@ static void test_control_read_completes(void)
   /* Short / ZLP read: the pre-seeded BRDYSTS DCP bit survives SETUP, the
    * receive loop exits on dtln (0) < mxps, and the OUT-ZLP status stage
    * closes the transfer. wLength (8) < mxps (64) so a single packet ends it. */
-  prep();
+  internal_prep();
   ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
   ra8_usb_fs()->BRDYSTS = (uint16_t)k_thc_dcp_bit;
   ra8_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_dcp;
@@ -468,7 +460,7 @@ static void test_control_read_completes(void)
 
   /* Exact / satisfied read: want == 0 (data_len 0) also drives the rx >= want
    * loop-exit condition; the transfer still closes through the OUT-ZLP status. */
-  prep();
+  internal_prep();
   ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
   ra8_usb_fs()->BRDYSTS = (uint16_t)k_thc_dcp_bit;
   ra8_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_dcp;
@@ -486,11 +478,11 @@ static void test_control_read_completes(void)
 }
 
 /**
- * @test test_data_in_frdy_timeout
+ * @test internal_test_data_in_frdy_timeout
  *
  * @par MC/DC:
  * (no compound decisions in the code under test that this case touches --
- * the FRDY poll in ``internal_wait_frdy`` is a single-condition loop
+ * the FRDY poll in ``priv_wait_frdy`` is a single-condition loop
  * exit; the armed fail drives the DATA-IN drain's timeout leg)
  *
  * @details A control-READ whose SETUP succeeds (pre-seeded SACK) and whose
@@ -498,13 +490,12 @@ static void test_control_read_completes(void)
  * with the ra8_fake_mmio seam armed on CFIFOCTR so the packet drain's FRDY
  * wait runs to its budget. The transfer must surface ``k_ra8_err_hw_timeout``
  * with the DCP parked NAK and the stage latched at the first DATA packet --
- * the leg that was host-dead while ``internal_wait_frdy`` short-circuited
- * under RA8_OFF_TARGET.
- */
-static void test_data_in_frdy_timeout(void)
+ * the leg that was host-dead while ``priv_wait_frdy`` short-circuited
+ * under RA8_OFF_TARGET. @brief Verify data in frdy timeout behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_data_in_frdy_timeout(void)
 {
   TEST_BEGIN("control_xfer DATA-IN drain surfaces the FRDY timeout leg");
-  prep();
+  internal_prep();
 
   uint8_t  buf[k_thc_buf_in] = {};
   uint16_t rx                = k_t_rx_poison;
@@ -530,29 +521,28 @@ static void test_data_in_frdy_timeout(void)
 }
 
 /**
- * @test test_dcp_out_arm_speeds
+ * @test internal_test_dcp_out_arm_speeds
  *
  * @par MC/DC:
  * (no compound decisions in the code under test that this case touches --
  * the ``reg == nullptr`` guard and the BRDYENB read-back check are separate
- * single-condition ``if`` statements; no ``&&`` or ``||``.)
- */
-static void test_dcp_out_arm_speeds(void)
+ * single-condition ``if`` statements; no ``&&`` or ``||``.) @brief Verify dcp out arm speeds behavior. @details Executes the dcp out arm speeds scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dcp_out_arm_speeds(void)
 {
   TEST_BEGIN("dcp_out_arm rejects a bad speed and arms the DCP on FS + HS");
 
-  /* Bogus speed -> internal_pick returns nullptr. */
-  prep();
+  /* Bogus speed -> priv_pick returns nullptr. */
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_dcp_out_arm((ra8_usb_speed_t)k_thc_speed_bogus));
 
   /* FS: arm succeeds; BRDYENB carries the DCP bit and PID is BUF. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_dcp_out_arm(k_ra8_usb_speed_fs));
   TEST_ASSERT((ra8_usb_fs()->BRDYENB & (uint16_t)k_thc_dcp_bit) != 0U);
   TEST_ASSERT_EQ(k_ra8_pid_buf, (ra8_usb_fs()->DCPCTR & (uint16_t)k_ra8_pid_mask));
 
   /* HS: arm succeeds on the high-speed controller too. */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_dcp_out_arm(k_ra8_usb_speed_hs));
   TEST_ASSERT((ra8_usb_hs()->BRDYENB & (uint16_t)k_thc_dcp_bit) != 0U);
 
@@ -560,7 +550,7 @@ static void test_dcp_out_arm_speeds(void)
 }
 
 /**
- * @test test_mcdc_dcp_out_read
+ * @test internal_test_mcdc_dcp_out_read
  *
  * @par MC/DC:
  * Decision (``ra8_usb_dcp_out_read`` argument guard, 2 conditions):
@@ -572,34 +562,33 @@ static void test_dcp_out_arm_speeds(void)
  * the same for ``out_rx``. The W1 (both non-NULL) path is exercised three ways
  * -- BRDY-absent no-data, a zero-length packet, and a non-zero DTLN drain --
  * so the receive-body branches (``dtln == 0`` release vs the FIFO copy) are
- * both reached without a SETUP stage clobbering the pre-seeded BRDY edge.
- */
-static void test_mcdc_dcp_out_read(void)
+ * both reached without a SETUP stage clobbering the pre-seeded BRDY edge. @brief Verify mcdc dcp out read behavior. @details Executes the mcdc dcp out read scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_dcp_out_read(void)
 {
   TEST_BEGIN("dcp_out_read: arg-guard MC/DC + no-data / ZLP / DTLN drain legs");
 
   uint8_t  buf[k_thc_cap] = {};
   uint16_t rx             = 0U;
 
-  /* Bad speed -> internal_pick returns nullptr (before the arg guard). */
-  prep();
+  /* Bad speed -> priv_pick returns nullptr (before the arg guard). */
+  internal_prep();
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_arg,
     ra8_usb_dcp_out_read((ra8_usb_speed_t)k_thc_speed_bogus, buf, (uint16_t)k_thc_cap, &rx));
 
   /* W2: buf == NULL -> invalid_arg (first OR condition true). */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_usb_dcp_out_read(k_ra8_usb_speed_fs, nullptr, (uint16_t)k_thc_cap, &rx));
 
   /* W3: out_rx == NULL -> invalid_arg (second OR condition true). */
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_usb_dcp_out_read(k_ra8_usb_speed_fs, buf, (uint16_t)k_thc_cap, nullptr));
 
   /* W1 (a): both pointers valid but no BRDY edge -> the OUT packet has not
    * landed, so the drain reports no-data. */
-  prep();
+  internal_prep();
   ra8_usb_fs()->BRDYSTS = 0U;
   rx                    = k_t_rx_poison;
   TEST_ASSERT_EQ(k_ra8_err_no_data,
@@ -607,7 +596,7 @@ static void test_mcdc_dcp_out_read(void)
   TEST_ASSERT_EQ(0U, rx);
 
   /* W1 (b): BRDY set, DTLN == 0 -> a zero-length packet is released via BCLR. */
-  prep();
+  internal_prep();
   ra8_usb_fs()->BRDYSTS  = (uint16_t)k_thc_dcp_bit;
   ra8_usb_fs()->CFIFOCTR = 0U;
   rx                     = k_t_rx_poison;
@@ -616,7 +605,7 @@ static void test_mcdc_dcp_out_read(void)
 
   /* W1 (c): BRDY set, DTLN == 4 (< cap) -> the packet drains through the
    * CFIFO and the host's byte count is reported. */
-  prep();
+  internal_prep();
   ra8_usb_fs()->BRDYSTS  = (uint16_t)k_thc_dcp_bit;
   ra8_usb_fs()->CFIFOCTR = (uint16_t)k_thc_dtln;
   ra8_usb_fs()->CFIFO    = (uint16_t)k_thc_cfifo_seed;
@@ -630,22 +619,21 @@ static void test_mcdc_dcp_out_read(void)
 }
 
 /**
- * @test test_dcp_out_read_frdy_timeout
+ * @test internal_test_dcp_out_read_frdy_timeout
  *
  * @par MC/DC:
  * (no compound decisions in the code under test that this case touches --
- * the FRDY poll in ``internal_wait_frdy`` is a single-condition loop
+ * the FRDY poll in ``priv_wait_frdy`` is a single-condition loop
  * exit; the armed fail drives the dcp_out_read timeout leg)
  *
  * @details Pre-seeds the DCP BRDY latch so the drain proceeds past the
  * no-data guard, then arms the ra8_fake_mmio seam on CFIFOCTR to fail so
  * the FRDY wait runs to its budget. ``ra8_usb_dcp_out_read`` must report
- * ``k_ra8_err_hw_timeout`` with the DCP parked NAK and a zero byte count.
- */
-static void test_dcp_out_read_frdy_timeout(void)
+ * ``k_ra8_err_hw_timeout`` with the DCP parked NAK and a zero byte count. @brief Verify dcp out read frdy timeout behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dcp_out_read_frdy_timeout(void)
 {
   TEST_BEGIN("dcp_out_read surfaces the FRDY timeout leg");
-  prep();
+  internal_prep();
 
   uint8_t  buf[k_thc_cap] = {};
   uint16_t rx             = k_t_rx_poison;
@@ -664,16 +652,15 @@ static void test_dcp_out_read_frdy_timeout(void)
 
 int32_t main(void)
 {
-  test_control_xfer_guards();
-  test_setup_error_legs();
-  test_setup_sureq_busy_fs_hs();
-  test_mcdc_data_phase_direction();
-  test_control_write_mxps_zero();
-  test_control_read_completes();
-  test_data_in_frdy_timeout();
-  test_dcp_out_arm_speeds();
-  test_mcdc_dcp_out_read();
-  test_dcp_out_read_frdy_timeout();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_host_ctrl_cov.c\n");
+  internal_test_control_xfer_guards();
+  internal_test_setup_error_legs();
+  internal_test_setup_sureq_busy_fs_hs();
+  internal_test_mcdc_data_phase_direction();
+  internal_test_control_write_mxps_zero();
+  internal_test_control_read_completes();
+  internal_test_data_in_frdy_timeout();
+  internal_test_dcp_out_arm_speeds();
+  internal_test_mcdc_dcp_out_read();
+  internal_test_dcp_out_read_frdy_timeout();
   return 0;
 }

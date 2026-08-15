@@ -1,6 +1,8 @@
 /**
  * @file ra8_crc.h
  * @brief CRC hardware calculator driver header
+ *
+ * @details Declares the RA8 CRC engine configuration and bounded byte-stream calculation interface for supported polynomials.
  * @ingroup grp_hal_analog
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

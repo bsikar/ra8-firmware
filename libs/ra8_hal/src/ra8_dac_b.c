@@ -61,7 +61,7 @@ typedef enum : uint8_t {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static inline uint16_t internal_ra8_dac_b_clamp(uint16_t value)
+RA8_INTERNAL static inline uint16_t internal_ra8_dac_b_clamp(uint16_t value)
 {
   if ((uint32_t)value > (uint32_t)k_ra8_dac_b_max_value) {
     return k_ra8_dac_b_max_value;
@@ -89,7 +89,7 @@ static inline uint16_t internal_ra8_dac_b_clamp(uint16_t value)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_disable_channel(uint8_t channel)
+RA8_INTERNAL static void internal_disable_channel(uint8_t channel)
 {
   volatile r_dac_b_regs_t* reg = ra8_dac_b(channel);
   if (reg == nullptr) {
@@ -116,7 +116,7 @@ static void internal_disable_channel(uint8_t channel)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_start_channel(uint8_t channel)
+RA8_INTERNAL static void internal_start_channel(uint8_t channel)
 {
   volatile r_dac_b_regs_t* reg = ra8_dac_b(channel);
   if (reg == nullptr) {
@@ -140,7 +140,7 @@ static void internal_start_channel(uint8_t channel)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_stop_channel(uint8_t channel)
+RA8_INTERNAL static void internal_stop_channel(uint8_t channel)
 {
   volatile r_dac_b_regs_t* reg = ra8_dac_b(channel);
   if (reg == nullptr) {
@@ -206,7 +206,7 @@ static ra8_dac_b_state_t s_dac_b_state;
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_apply_cfg(uint8_t channel, const ra8_dac_b_cfg_t* cfg)
+RA8_INTERNAL static void internal_apply_cfg(uint8_t channel, const ra8_dac_b_cfg_t* cfg)
 {
   volatile r_dac_b_regs_t* reg = ra8_dac_b(channel);
   if (reg == nullptr) {

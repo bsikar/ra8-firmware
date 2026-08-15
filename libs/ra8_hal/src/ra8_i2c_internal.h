@@ -1,6 +1,8 @@
 /**
  * @file ra8_i2c_internal.h
  * @brief Test-access surface for ra8_i2c internal helpers (MC/DC).
+ *
+ * @details Declares bounded module-private RIIC predicates and transfer helpers shared across the I2C driver translation units.
  * @ingroup grp_hal_comms
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -51,10 +53,10 @@ extern "C" {
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_i2c_internal_clk_invalid(uint32_t bus_hz, uint32_t pclkb_hz);
+bool priv_ra8_i2c_internal_clk_invalid(uint32_t bus_hz, uint32_t pclkb_hz);
 
 /**
- * @var s_i2c_tag
+ * @var g_i2c_tag
  * @brief Log tag shared by the I2C transfer and configuration planes.
  *
  * @details
@@ -66,7 +68,7 @@ bool ra8_i2c_internal_clk_invalid(uint32_t bus_hz, uint32_t pclkb_hz);
  *
  * @since 0.1.0
  */
-extern const char* const s_i2c_tag;
+extern const char* const g_i2c_tag;
 
 /**
  * @struct ra8_i2c_state_t
@@ -158,7 +160,7 @@ extern ra8_i2c_state_t s_i2c_state[k_ra8_i2c_channel_count];
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_i2c_internal_peripheral_poll_done(uint8_t icsr1, uint8_t icsr2);
+bool priv_ra8_i2c_internal_peripheral_poll_done(uint8_t icsr1, uint8_t icsr2);
 
 /**
  * @brief Receive-loop predicate: keep draining while no STOP and room remains.
@@ -192,7 +194,9 @@ bool ra8_i2c_internal_peripheral_poll_done(uint8_t icsr1, uint8_t icsr2);
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_i2c_internal_peripheral_rx_continue(uint8_t icsr2, uint32_t received, uint32_t capacity);
+bool priv_ra8_i2c_internal_peripheral_rx_continue(uint8_t  icsr2,
+                                                  uint32_t received,
+                                                  uint32_t capacity);
 
 /**
  * @brief Drain controller-write data bytes from ICDRR into ``buf``.
@@ -200,7 +204,7 @@ bool ra8_i2c_internal_peripheral_rx_continue(uint8_t icsr2, uint32_t received, u
  * @details
  * The per-byte receive loop extracted from ``ra8_i2c_peripheral_receive`` so the
  * public entry stays within the NASA Rule 4 statement budget. Each iteration
- * waits for ICSR2.RDRF or STOP, then -- while ``ra8_i2c_internal_peripheral_rx_continue``
+ * waits for ICSR2.RDRF or STOP, then -- while ``priv_ra8_i2c_internal_peripheral_rx_continue``
  * holds (no STOP and room remains) -- copies one ICDRR byte. On STOP or a full
  * buffer it drains a final pending byte (only when RDRF is set and room is
  * left) and stops. The loop is bounded by ``capacity + 1`` (NASA P10 Rule 2).
@@ -235,10 +239,10 @@ bool ra8_i2c_internal_peripheral_rx_continue(uint8_t icsr2, uint32_t received, u
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t ra8_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
-                                           uint8_t*               buf,
-                                           uint32_t               capacity,
-                                           uint32_t*              out_count);
+ra8_err_t priv_ra8_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
+                                                uint8_t*               buf,
+                                                uint32_t               capacity,
+                                                uint32_t*              out_count);
 
 /**
  * @brief Transmit-completion predicate: the controller ended the read.
@@ -270,7 +274,7 @@ ra8_err_t ra8_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_i2c_internal_peripheral_tx_done(uint8_t icsr2);
+bool priv_ra8_i2c_internal_peripheral_tx_done(uint8_t icsr2);
 
 /**
  * @brief Transmit-loop predicate: keep sending while no NACK and data remains.
@@ -304,7 +308,7 @@ bool ra8_i2c_internal_peripheral_tx_done(uint8_t icsr2);
  * @since 0.1.0
  */
 RA8_PRIV
-bool ra8_i2c_internal_peripheral_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t len);
+bool priv_ra8_i2c_internal_peripheral_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t len);
 
 #ifdef __cplusplus
 }

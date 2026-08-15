@@ -1,6 +1,8 @@
 /**
  * @file ra8_rmac_phy_internal.h
  * @brief Test-access surface for ra8_rmac_phy internal helpers (MC/DC).
+ *
+ * @details Declares module-private PHY decode predicates shared by the RMAC driver and focused host tests.
  * @ingroup grp_hal_net
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -49,7 +51,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_rmac_phy_internal_speed_ok(ra8_err_t err, uint16_t reg_value, uint16_t mask);
+RA8_PRIV bool priv_ra8_rmac_phy_internal_speed_ok(ra8_err_t err, uint16_t reg_value, uint16_t mask);
 
 #ifdef __cplusplus
 }

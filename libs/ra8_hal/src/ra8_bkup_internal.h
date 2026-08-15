@@ -39,7 +39,7 @@ extern "C" {
 #include "ra8_attributes.h"
 
 /**
- * @var s_bkup_tag
+ * @var g_bkup_tag
  * @brief Log tag every TU of this driver logs under.
  *
  * @details
@@ -50,7 +50,7 @@ extern "C" {
  * @note Read-only after definition; never reassigned.
  * @since 0.1.0
  */
-extern const char* s_bkup_tag;
+extern const char* g_bkup_tag;
 
 /**
  * @var s_bkup_initialized
@@ -104,7 +104,7 @@ extern bool s_bkup_initialized;
  * @since 0.1.0
  */
 RA8_PRIV void
-ra8_bkup_internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enable, uint16_t unlock_val);
+priv_ra8_bkup_internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enable, uint16_t unlock_val);
 
 #ifdef __cplusplus
 }

@@ -68,16 +68,16 @@ static const char* s_tag = "LVD";
 ra8_err_t ra8_lvd_enable_irq(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_irq: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {
     return k_ra8_err_not_supported;
   }
   /* set RIE. */
   /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305 */
-  ra8_lvd_internal_cr0_rmw(&map, 0U, k_ra8_lvd_cr0_mask_rie);
+  priv_ra8_lvd_internal_cr0_rmw(&map, 0U, k_ra8_lvd_cr0_mask_rie);
   return k_ra8_ok;
 }
 
@@ -106,15 +106,15 @@ ra8_err_t ra8_lvd_enable_irq(ra8_lvd_channel_t channel)
 ra8_err_t ra8_lvd_disable_irq(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_irq: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {
     return k_ra8_err_not_supported;
   }
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-  ra8_lvd_internal_cr0_rmw(&map, k_ra8_lvd_cr0_mask_rie, 0U);
+  priv_ra8_lvd_internal_cr0_rmw(&map, k_ra8_lvd_cr0_mask_rie, 0U);
   return k_ra8_ok;
 }
 
@@ -142,18 +142,20 @@ ra8_err_t ra8_lvd_disable_irq(ra8_lvd_channel_t channel)
 ra8_err_t ra8_lvd_enable_reset(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_reset: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (map.has_irq) {
     /* m channel: set RI then RIE. */
     /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-    ra8_lvd_internal_cr0_rmw(&map, 0U, (uint8_t)(k_ra8_lvd_cr0_mask_ri | k_ra8_lvd_cr0_mask_rie));
+    priv_ra8_lvd_internal_cr0_rmw(&map,
+                                  0U,
+                                  (uint8_t)(k_ra8_lvd_cr0_mask_ri | k_ra8_lvd_cr0_mask_rie));
   } else {
     /* n channel: set RE only -- it is the only response option. */
     /* HUM Ch 8.2.5 "PVDnCR0" p 306 */
-    ra8_lvd_internal_cr0_rmw(&map, 0U, k_ra8_lvd_cr0_mask_re);
+    priv_ra8_lvd_internal_cr0_rmw(&map, 0U, k_ra8_lvd_cr0_mask_re);
   }
   return k_ra8_ok;
 }
@@ -182,16 +184,16 @@ ra8_err_t ra8_lvd_enable_reset(ra8_lvd_channel_t channel)
 ra8_err_t ra8_lvd_disable_reset(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_reset: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
   uint8_t enable_bit = k_ra8_lvd_cr0_mask_re;
   if (map.has_irq) {
     enable_bit = k_ra8_lvd_cr0_mask_rie;
   }
-  ra8_lvd_internal_cr0_rmw(&map, enable_bit, 0U);
+  priv_ra8_lvd_internal_cr0_rmw(&map, enable_bit, 0U);
   return k_ra8_ok;
 }
 
@@ -220,12 +222,12 @@ ra8_err_t ra8_lvd_disable_reset(ra8_lvd_channel_t channel)
 ra8_err_t ra8_lvd_enable_cmpe(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_cmpe: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-  ra8_lvd_internal_cr0_rmw(&map, 0U, k_ra8_lvd_cr0_mask_cmpe);
+  priv_ra8_lvd_internal_cr0_rmw(&map, 0U, k_ra8_lvd_cr0_mask_cmpe);
   return k_ra8_ok;
 }
 
@@ -253,12 +255,12 @@ ra8_err_t ra8_lvd_enable_cmpe(ra8_lvd_channel_t channel)
 ra8_err_t ra8_lvd_disable_cmpe(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_cmpe: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-  ra8_lvd_internal_cr0_rmw(&map, k_ra8_lvd_cr0_mask_cmpe, 0U);
+  priv_ra8_lvd_internal_cr0_rmw(&map, k_ra8_lvd_cr0_mask_cmpe, 0U);
   return k_ra8_ok;
 }
 
@@ -295,25 +297,25 @@ ra8_err_t
 ra8_lvd_set_filter(ra8_lvd_channel_t channel, ra8_lvd_loco_div_t filter_div, bool filter_en)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_filter: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_err_t div_err = ra8_lvd_internal_validate_div(filter_div);
+  const ra8_err_t div_err = priv_ra8_lvd_internal_validate_div(filter_div);
   RA8_RETURN_ON_ERROR(div_err, s_tag, "lvd_set_filter: bad div"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
 
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 / HUM Ch 8.2.5 "PVDnCR0" p 306
    * -- FSAMP can only be modified while DFDIS = 1. */
-  ra8_lvd_internal_cr0_rmw(&map, 0U, k_ra8_lvd_cr0_mask_dfdis);
+  priv_ra8_lvd_internal_cr0_rmw(&map, 0U, k_ra8_lvd_cr0_mask_dfdis);
 
   const uint8_t fsamp_bits =
     (uint8_t)(((uint8_t)filter_div << k_ra8_lvd_cr0_shift_fsamp) & k_ra8_lvd_cr0_mask_fsamp);
-  ra8_lvd_internal_cr0_rmw(&map, k_ra8_lvd_cr0_mask_fsamp, fsamp_bits);
+  priv_ra8_lvd_internal_cr0_rmw(&map, k_ra8_lvd_cr0_mask_fsamp, fsamp_bits);
 
   if (filter_en) {
     /* Drop DFDIS only after FSAMP has landed. */
-    ra8_lvd_internal_cr0_rmw(&map, k_ra8_lvd_cr0_mask_dfdis, 0U);
+    priv_ra8_lvd_internal_cr0_rmw(&map, k_ra8_lvd_cr0_mask_dfdis, 0U);
   }
   return k_ra8_ok;
 }
@@ -346,7 +348,7 @@ ra8_lvd_set_filter(ra8_lvd_channel_t channel, ra8_lvd_loco_div_t filter_div, boo
 ra8_err_t ra8_lvd_set_hysteresis_mode(ra8_lvd_channel_t channel, ra8_lvd_hysteresis_t hyst)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err,
                       s_tag,
                       "lvd_set_hysteresis_mode: bad channel"); /* GCOVR_EXCL_BR_LINE */
@@ -355,13 +357,13 @@ ra8_err_t ra8_lvd_set_hysteresis_mode(ra8_lvd_channel_t channel, ra8_lvd_hystere
     return k_ra8_err_invalid_arg;
   }
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
 
   /* HUM Ch 8.2.8 "PVDmFCR" p 308 last bullet -- "RHSEL must not be set
    * to 1 when PVDmCR0.RI = 0." Enforce only on m channels (n channels
    * have no RI bit; their RHSEL is always legal). */
   if (map.has_irq && (hyst == k_ra8_lvd_hysteresis_hvd)) {
-    if (ra8_lvd_internal_read_ri(&map) == 0U) {
+    if (priv_ra8_lvd_internal_read_ri(&map) == 0U) {
       return k_ra8_err_invalid_state;
     }
   }
@@ -407,10 +409,10 @@ ra8_err_t ra8_lvd_set_hysteresis_mode(ra8_lvd_channel_t channel, ra8_lvd_hystere
 ra8_err_t ra8_lvd_set_negate_mode(ra8_lvd_channel_t channel, ra8_lvd_negate_t negate)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_negate_mode: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {
     return k_ra8_err_not_supported;
   }
@@ -428,9 +430,10 @@ ra8_err_t ra8_lvd_set_negate_mode(ra8_lvd_channel_t channel, ra8_lvd_negate_t ne
   }
 
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-  ra8_lvd_internal_cr0_rmw(&map,
-                           k_ra8_lvd_cr0_mask_rn,
-                           (negate == k_ra8_lvd_negate_after_assert) ? k_ra8_lvd_cr0_mask_rn : 0U);
+  priv_ra8_lvd_internal_cr0_rmw(&map,
+                                k_ra8_lvd_cr0_mask_rn,
+                                (negate == k_ra8_lvd_negate_after_assert) ? k_ra8_lvd_cr0_mask_rn
+                                                                          : 0U);
   return k_ra8_ok;
 }
 
@@ -469,10 +472,10 @@ ra8_err_t ra8_lvd_get_status(ra8_lvd_channel_t channel, ra8_lvd_status_t* out)
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
 
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_get_status: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {
     return k_ra8_err_not_supported;
   }
@@ -509,10 +512,10 @@ ra8_err_t ra8_lvd_get_status(ra8_lvd_channel_t channel, ra8_lvd_status_t* out)
 ra8_err_t ra8_lvd_clear_status(ra8_lvd_channel_t channel)
 {
   uint8_t         idx     = 0U;
-  const ra8_err_t map_err = ra8_lvd_internal_channel_to_idx(channel, &idx);
+  const ra8_err_t map_err = priv_ra8_lvd_internal_channel_to_idx(channel, &idx);
   RA8_RETURN_ON_ERROR(map_err, s_tag, "lvd_clear_status: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_lvd_channel_map_t map = s_lvd_map[idx];
+  const ra8_lvd_channel_map_t map = g_lvd_map[idx];
   if (!map.has_irq) {
     return k_ra8_err_not_supported;
   }

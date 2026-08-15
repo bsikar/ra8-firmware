@@ -110,14 +110,14 @@ internal_host_wait_pipe(volatile r_usb_regs_t* reg, volatile const uint16_t* sts
  */
 ra8_err_t ra8_usb_host_set_target(ra8_usb_speed_t speed, uint8_t dev_addr)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
   if (dev_addr > (uint8_t)k_ra8_usb_dev_addr_max) {
     return k_ra8_err_invalid_arg;
   }
-  internal_host_program_devadd(reg, dev_addr);
+  priv_host_program_devadd(reg, dev_addr);
   const uint16_t mxps = (uint16_t)(reg->DCPMAXP & (uint16_t)k_ra8_usb_dcpmaxp_mxps);
   reg->DCPMAXP =
     (uint16_t)((uint16_t)((uint16_t)dev_addr << (uint16_t)k_ra8_usb_devsel_shift) | mxps);
@@ -203,7 +203,7 @@ ra8_err_t ra8_usb_host_pipe_setup(ra8_usb_speed_t speed,
                                   bool            device_to_host,
                                   uint16_t        max_packet)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -211,18 +211,16 @@ ra8_err_t ra8_usb_host_pipe_setup(ra8_usb_speed_t speed,
   if (arg_err != k_ra8_ok) {
     return arg_err;
   }
-  internal_pipe_quiesce(reg, pipe_num);
+  priv_pipe_quiesce(reg, pipe_num);
   const ra8_usb_ep_dir_t cfg_dir = device_to_host ? k_ra8_usb_ep_dir_out : k_ra8_usb_ep_dir_in;
   reg->PIPESEL                   = pipe_num;
-  reg->PIPECFG  = internal_pipecfg_word(ep_num, cfg_dir, k_ra8_usb_ep_type_bulk, true);
-  reg->PIPEBUF  = internal_pipebuf_word(pipe_num, max_packet);
+  reg->PIPECFG                   = priv_pipecfg_word(ep_num, cfg_dir, k_ra8_usb_ep_type_bulk, true);
+  reg->PIPEBUF                   = priv_pipebuf_word(pipe_num, max_packet);
   reg->PIPEMAXP = (uint16_t)((uint16_t)((uint16_t)dev_addr << (uint16_t)k_ra8_usb_devsel_shift) |
                              (uint16_t)(max_packet & (uint16_t)k_ra8_usb_pipemaxp_mxps));
   reg->PIPEPERI = 0U;
   reg->PIPESEL  = 0U;
-  internal_rmw16(&reg->PIPECTR[(uint8_t)(pipe_num - 1U)],
-                 (uint16_t)(1U << k_ra8_dcpctr_bit_sqclr),
-                 0U);
+  priv_rmw16(&reg->PIPECTR[(uint8_t)(pipe_num - 1U)], (uint16_t)(1U << k_ra8_dcpctr_bit_sqclr), 0U);
   const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
   reg->BRDYSTS            = (uint16_t)~pipe_bit;
   reg->NRDYSTS            = (uint16_t)~pipe_bit;
@@ -254,7 +252,7 @@ ra8_err_t
 ra8_usb_host_bulk_out(ra8_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, uint16_t len)
 {
   RA8_CHECK_NULL_PTR(data, s_tag, "host_bulk_out: data");
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -272,7 +270,7 @@ ra8_usb_host_bulk_out(ra8_usb_speed_t speed, uint8_t pipe_num, const uint8_t* da
     return qerr;
   }
   const ra8_err_t werr = internal_host_wait_pipe(reg, &reg->BEMPSTS, pipe_num);
-  internal_pipe_pid(reg, pipe_num, k_ra8_pid_nak);
+  priv_pipe_pid(reg, pipe_num, k_ra8_pid_nak);
   reg->BEMPSTS = (uint16_t)~pipe_bit;
   return werr;
 }
@@ -320,8 +318,8 @@ static ra8_err_t internal_host_bulk_rx_packet(volatile r_usb_regs_t* reg,
    * afterwards wipes that new edge (observed as the follow-up packet
    * stuck with BSTS=1 while the wait times out). */
   reg->BRDYSTS = (uint16_t)~(uint16_t)(1U << pipe_num);
-  internal_select_cfifo(reg, (uint16_t)pipe_num, false);
-  const ra8_err_t ferr = internal_wait_frdy(reg);
+  priv_select_cfifo(reg, (uint16_t)pipe_num, false);
+  const ra8_err_t ferr = priv_wait_frdy(reg);
   if (ferr != k_ra8_ok) {
     return ferr;
   }
@@ -331,7 +329,7 @@ static ra8_err_t internal_host_bulk_rx_packet(volatile r_usb_regs_t* reg,
     copy = room;
   }
   if (copy > 0U) {
-    internal_fifo_read(reg, dst, copy);
+    priv_fifo_read(reg, dst, copy);
   }
   if (copy < dtln) {
     reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
@@ -430,7 +428,7 @@ ra8_err_t ra8_usb_host_bulk_in(ra8_usb_speed_t speed,
 {
   RA8_CHECK_NULL_PTR(buf, s_tag, "host_bulk_in: buf");
   RA8_CHECK_NULL_PTR(out_received, s_tag, "host_bulk_in: out_received");
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -453,10 +451,10 @@ ra8_err_t ra8_usb_host_bulk_in(ra8_usb_speed_t speed,
    * BRDY is already latched -- clearing it would strand that packet in
    * the buffer (observed as BSTS=1 with the wait timing out). */
   reg->BRDYENB = (uint16_t)(reg->BRDYENB | pipe_bit);
-  internal_pipe_pid(reg, pipe_num, k_ra8_pid_buf);
+  priv_pipe_pid(reg, pipe_num, k_ra8_pid_buf);
   uint16_t        rx  = 0U;
   const ra8_err_t err = internal_host_bulk_rx_loop(reg, pipe_num, buf, max_len, mps, &rx);
-  internal_pipe_pid(reg, pipe_num, k_ra8_pid_nak);
+  priv_pipe_pid(reg, pipe_num, k_ra8_pid_nak);
   *out_received = rx;
   return err;
 }
@@ -476,7 +474,7 @@ ra8_err_t ra8_usb_host_bulk_in(ra8_usb_speed_t speed,
  */
 uint16_t ra8_usb_host_line_state(ra8_usb_speed_t speed)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return 0U;
   }

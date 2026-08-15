@@ -218,7 +218,7 @@ static uint32_t internal_pack_cdocr(const ra8_ceu_config_t* cfg)
   return cdocr;
 }
 
-void ra8_ceu_program_geometry(const ra8_ceu_config_t* cfg)
+void priv_ra8_ceu_program_geometry(const ra8_ceu_config_t* cfg)
 {
   if (cfg->capture_format == k_ra8_ceu_fmt_data_enable) {
     /* HUM Ch 60.2.4-60.2.6: data-enable fetch does not use cycle
@@ -253,7 +253,7 @@ void ra8_ceu_program_geometry(const ra8_ceu_config_t* cfg)
   *ra8_ceu_reg32(k_ra8_ceu_off_capwr) = capwr;
 }
 
-void ra8_ceu_program_format(const ra8_ceu_config_t* cfg)
+void priv_ra8_ceu_program_format(const ra8_ceu_config_t* cfg)
 {
   *ra8_ceu_reg32(k_ra8_ceu_off_cflcr) = internal_pack_cflcr(cfg);
   *ra8_ceu_reg32(k_ra8_ceu_off_caifr) = internal_pack_caifr(cfg);
@@ -261,7 +261,7 @@ void ra8_ceu_program_format(const ra8_ceu_config_t* cfg)
   *ra8_ceu_reg32(k_ra8_ceu_off_camcr) = internal_pack_camcr(cfg);
 }
 
-void ra8_ceu_program_destination(const ra8_ceu_config_t* cfg)
+void priv_ra8_ceu_program_destination(const ra8_ceu_config_t* cfg)
 {
   /* HUM Ch 60.2.11 "CFSZR : Capture Filter Size Clip Register" p 3653 */
   *ra8_ceu_reg32(k_ra8_ceu_off_cfszr) = internal_pack_cfszr(cfg);

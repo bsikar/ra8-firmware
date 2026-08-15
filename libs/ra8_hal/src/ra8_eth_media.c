@@ -26,13 +26,13 @@
 ra8_err_t ra8_eth_rgmii_select(ra8_eth_mii_port_t port)
 {
   /** @brief Log tag -- block scope: this is the only function here that logs. */
-  static const char* const s_eth_media_tag = "ETH";
+  static const char* const local_eth_media_tag = "ETH";
 
   RA8_CHECK_RANGE_TAG((uint32_t)port,
                       0U,
                       (uint32_t)k_ra8_eth_mii_port_1,
                       k_ra8_err_invalid_arg,
-                      s_eth_media_tag);
+                      local_eth_media_tag);
 
   /* Port m -> MIICRm control register + MIIRR.RGRSTm enable bit. */
   volatile uint32_t* miicr = (port == k_ra8_eth_mii_port_0) ? ra8_eswm_miicr0() : ra8_eswm_miicr1();
@@ -54,6 +54,6 @@ ra8_err_t ra8_eth_rgmii_select(ra8_eth_mii_port_t port)
   /* HUM Ch 29.2.1.2 "MIIRR : Media-independent Interface Reset Register" p 1289 */
   *ra8_eswm_miirr() = miirr;
 
-  ra8_log_info(s_eth_media_tag, "rgmii_select");
+  ra8_log_info(local_eth_media_tag, "rgmii_select");
   return k_ra8_ok;
 }

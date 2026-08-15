@@ -138,7 +138,7 @@ static ra8_wdt_sub_t s_wdt_subs[k_ra8_wdt_max_subs];
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_default_ofs_reader(uintptr_t ofs_addr, uint32_t* out_word)
+RA8_INTERNAL static ra8_err_t internal_default_ofs_reader(uintptr_t ofs_addr, uint32_t* out_word)
 {
   if (out_word == nullptr) {
     return k_ra8_err_null_ptr;
@@ -187,7 +187,7 @@ typedef enum : uint16_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static bool internal_clock_div_is_valid(ra8_wdt_clock_div_t div)
+RA8_INTERNAL static bool internal_clock_div_is_valid(ra8_wdt_clock_div_t div)
 {
   /* HUM Ch 27.2.2 "WDTCR : WDT Control Register", p 1258 -- legal
    * CKS[3:0] encodings are 0x1, 0x4, 0x6, 0x7, 0x8, 0xF only. */
@@ -219,7 +219,7 @@ static bool internal_clock_div_is_valid(ra8_wdt_clock_div_t div)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static bool internal_timeout_sel_is_valid(ra8_wdt_timeout_sel_t sel)
+RA8_INTERNAL static bool internal_timeout_sel_is_valid(ra8_wdt_timeout_sel_t sel)
 {
   /* HUM Ch 27.2.2 "WDTCR" p 1259 */
   bool ok = false;
@@ -252,7 +252,7 @@ static bool internal_timeout_sel_is_valid(ra8_wdt_timeout_sel_t sel)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint16_t internal_pack_wdtcr(const ra8_wdt_cfg_t* cfg)
+RA8_INTERNAL static uint16_t internal_pack_wdtcr(const ra8_wdt_cfg_t* cfg)
 {
   /* HUM Ch 27.2.2 "WDTCR : WDT Control Register", p 1258 */
   const uint16_t tops = (uint16_t)((uint16_t)cfg->timeout & k_ra8_wdt_mask_tops);
@@ -279,7 +279,7 @@ static uint16_t internal_pack_wdtcr(const ra8_wdt_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_subs_clear_all(void)
+RA8_INTERNAL static void internal_subs_clear_all(void)
 {
   for (uint8_t i = 0U; i < k_ra8_wdt_max_subs; ++i) {
     s_wdt_subs[i].fn  = nullptr;
@@ -671,7 +671,7 @@ void ra8_wdt_dispatch(void)
  * @note Thread-safe: pure function of its arguments.
  * @since 0.1.0
  */
-static bool internal_sel_field_uniform(uint32_t sel, uint32_t shift, uint32_t mask)
+RA8_INTERNAL static bool internal_sel_field_uniform(uint32_t sel, uint32_t shift, uint32_t mask)
 {
   const uint32_t field = (sel >> shift) & mask;
   return (field == 0U) || (field == mask);
@@ -705,7 +705,7 @@ static bool internal_sel_field_uniform(uint32_t sel, uint32_t shift, uint32_t ma
  *
  * @since 0.1.0
  */
-static bool internal_ofs3_sel_is_legal(uint32_t sel)
+RA8_INTERNAL static bool internal_ofs3_sel_is_legal(uint32_t sel)
 {
   return internal_sel_field_uniform(sel, k_ra8_wdt_ofs_shift_tops, k_ra8_wdt_ofs_mask_tops) &&
          internal_sel_field_uniform(sel, k_ra8_wdt_ofs_shift_cks, k_ra8_wdt_ofs_mask_cks) &&
@@ -740,7 +740,7 @@ static bool internal_ofs3_sel_is_legal(uint32_t sel)
  * @note Not thread-safe: reads the module-scope reader hook.
  * @since 0.1.0
  */
-static ra8_err_t internal_read_wdt1_word(uint32_t* out_word)
+RA8_INTERNAL static ra8_err_t internal_read_wdt1_word(uint32_t* out_word)
 {
   /* Single-exit (MISRA C 2012 Rule 15.5): the three reads chain on ``e``
    * rather than returning early, so a failure at any word falls straight
@@ -791,7 +791,7 @@ static ra8_err_t internal_read_wdt1_word(uint32_t* out_word)
  * @note Thread-safe: touches only its arguments.
  * @since 0.1.0
  */
-static void internal_decode_ofs_word(uint32_t ofsm, ra8_wdt_ofs_decoded_t* out)
+RA8_INTERNAL static void internal_decode_ofs_word(uint32_t ofsm, ra8_wdt_ofs_decoded_t* out)
 {
   const uint8_t strt = (uint8_t)((ofsm >> k_ra8_wdt_ofs_shift_strt) & k_ra8_wdt_ofs_mask_strt);
   const uint8_t tops = (uint8_t)((ofsm >> k_ra8_wdt_ofs_shift_tops) & k_ra8_wdt_ofs_mask_tops);

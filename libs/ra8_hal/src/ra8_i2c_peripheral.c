@@ -96,24 +96,26 @@ typedef enum : uint8_t {
  * =============================================================================
  */
 
-bool ra8_i2c_internal_peripheral_poll_done(uint8_t icsr1, uint8_t icsr2)
+bool priv_ra8_i2c_internal_peripheral_poll_done(uint8_t icsr1, uint8_t icsr2)
 {
   return ((icsr1 & (uint8_t)k_ra8_i2c_msk_icsr1_match) != 0U) ||
          ((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_stop) != 0U);
 }
 
-bool ra8_i2c_internal_peripheral_rx_continue(uint8_t icsr2, uint32_t received, uint32_t capacity)
+bool priv_ra8_i2c_internal_peripheral_rx_continue(uint8_t  icsr2,
+                                                  uint32_t received,
+                                                  uint32_t capacity)
 {
   return ((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_stop) == 0U) && (received < capacity);
 }
 
-bool ra8_i2c_internal_peripheral_tx_done(uint8_t icsr2)
+bool priv_ra8_i2c_internal_peripheral_tx_done(uint8_t icsr2)
 {
   return ((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_nackf) != 0U) ||
          ((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_tend) != 0U);
 }
 
-bool ra8_i2c_internal_peripheral_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t len)
+bool priv_ra8_i2c_internal_peripheral_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t len)
 {
   return ((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_nackf) == 0U) && (sent < len);
 }
@@ -146,7 +148,8 @@ bool ra8_i2c_internal_peripheral_tx_continue(uint8_t icsr2, uint32_t sent, uint3
  * @note Thread safety: pure; thread-safe.
  * @since 0.1.0
  */
-static ra8_i2c_peripheral_event_t internal_i2c_target_classify(uint8_t icsr1, uint8_t iccr2)
+RA8_INTERNAL static ra8_i2c_peripheral_event_t internal_i2c_target_classify(uint8_t icsr1,
+                                                                            uint8_t iccr2)
 {
   if ((icsr1 & (uint8_t)k_ra8_i2c_msk_icsr1_match) == 0U) {
     return k_ra8_i2c_peripheral_event_none;
@@ -179,7 +182,8 @@ static ra8_i2c_peripheral_event_t internal_i2c_target_classify(uint8_t icsr1, ui
  * @note Thread safety: not thread-safe (reads a single channel).
  * @since 0.1.0
  */
-static ra8_err_t internal_i2c_target_wait(volatile const r_i2c_regs_t* reg, uint8_t mask)
+RA8_INTERNAL static ra8_err_t internal_i2c_target_wait(volatile const r_i2c_regs_t* reg,
+                                                       uint8_t                      mask)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_i2c_peripheral_poll_limit;
        i++) { /* GCOVR_EXCL_BR_LINE */
@@ -211,7 +215,8 @@ static ra8_err_t internal_i2c_target_wait(volatile const r_i2c_regs_t* reg, uint
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static void internal_i2c_target_set_addr(volatile r_i2c_regs_t* reg, uint8_t slot, uint8_t addr_7b)
+RA8_INTERNAL static void
+internal_i2c_target_set_addr(volatile r_i2c_regs_t* reg, uint8_t slot, uint8_t addr_7b)
 {
   const uint8_t sarl = (uint8_t)((uint32_t)addr_7b << (uint32_t)k_ra8_i2c_peripheral_addr_shift);
   switch (slot) {
@@ -257,7 +262,7 @@ static void internal_i2c_target_set_addr(volatile r_i2c_regs_t* reg, uint8_t slo
  * @note Thread safety: pure; thread-safe.
  * @since 0.1.0
  */
-static uint8_t internal_i2c_target_icser_mask(uint8_t slot, bool general_call)
+RA8_INTERNAL static uint8_t internal_i2c_target_icser_mask(uint8_t slot, bool general_call)
 {
   uint8_t mask = (uint8_t)((uint32_t)k_ra8_i2c_msk_icser_sar0e << (uint32_t)slot);
   if (general_call) {
@@ -266,11 +271,11 @@ static uint8_t internal_i2c_target_icser_mask(uint8_t slot, bool general_call)
   return mask;
 }
 
-/** @brief Implementation of `ra8_i2c_internal_target_drain_rx()` -- trailing-byte ICDRR drain. */
-ra8_err_t ra8_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
-                                           uint8_t*               buf,
-                                           uint32_t               capacity,
-                                           uint32_t*              out_count)
+/** @brief Implementation of `priv_ra8_i2c_internal_target_drain_rx()` -- trailing-byte ICDRR drain. */
+ra8_err_t priv_ra8_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
+                                                uint8_t*               buf,
+                                                uint32_t               capacity,
+                                                uint32_t*              out_count)
 {
   uint32_t  count = 0U;
   ra8_err_t err   = k_ra8_ok;
@@ -283,7 +288,7 @@ ra8_err_t ra8_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
     }
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
     const uint8_t icsr2 = reg->ICSR2;
-    if (!ra8_i2c_internal_peripheral_rx_continue(icsr2, count, capacity)) {
+    if (!priv_ra8_i2c_internal_peripheral_rx_continue(icsr2, count, capacity)) {
       /* STOP detected or buffer full: drain a final pending byte if room. */
       if (((icsr2 & (uint8_t)k_ra8_i2c_msk_icsr2_rdrf) != 0U) && (count < capacity)) {
         /* HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
@@ -308,7 +313,7 @@ ra8_err_t ra8_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
  * @details
  * The per-byte transmit loop extracted from ``ra8_i2c_peripheral_transmit``. Each
  * iteration waits for ICSR2.TDRE, then -- while
- * ``ra8_i2c_internal_peripheral_tx_continue`` holds (no controller NACK and bytes
+ * ``priv_ra8_i2c_internal_peripheral_tx_continue`` holds (no controller NACK and bytes
  * remain) -- writes one byte to ICDRT. Stops on NACK, on a TDRE timeout, or
  * when every byte is queued. The loop is bounded by ``len + 1`` (NASA P10
  * Rule 2). The completion status is left to ``internal_i2c_target_finish_tx``.
@@ -325,10 +330,10 @@ ra8_err_t ra8_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
  * @note Thread safety: not thread-safe (drives a single channel).
  * @since 0.1.0
  */
-static void internal_i2c_target_fill_tx(volatile r_i2c_regs_t* reg,
-                                        const uint8_t*         data,
-                                        uint32_t               len,
-                                        uint32_t*              out_sent)
+RA8_INTERNAL static void internal_i2c_target_fill_tx(volatile r_i2c_regs_t* reg,
+                                                     const uint8_t*         data,
+                                                     uint32_t               len,
+                                                     uint32_t*              out_sent)
 {
   uint32_t sent = 0U;
   for (uint32_t i = 0U; i <= len; i++) {
@@ -339,7 +344,7 @@ static void internal_i2c_target_fill_tx(volatile r_i2c_regs_t* reg,
     }
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
     const uint8_t icsr2 = reg->ICSR2;
-    if (!ra8_i2c_internal_peripheral_tx_continue(icsr2, sent, len)) {
+    if (!priv_ra8_i2c_internal_peripheral_tx_continue(icsr2, sent, len)) {
       break;
     }
     /* HUM Ch 39.2.17 "ICDRT : I2C Bus Transmit Data Register" p 2393 */
@@ -355,7 +360,7 @@ static void internal_i2c_target_fill_tx(volatile r_i2c_regs_t* reg,
  * @details
  * Implements steps 4-7 of HUM Ch 39.3.5 p 2405: wait for the controller's
  * TEND or NACK, snapshot whether the frame ended cleanly via
- * ``ra8_i2c_internal_peripheral_tx_done``, dummy-read ICDRR to release SCL, then
+ * ``priv_ra8_i2c_internal_peripheral_tx_done``, dummy-read ICDRR to release SCL, then
  * clear NACKF and STOP (W0C) for the next transfer.
  *
  * @param[in] reg Channel register block.
@@ -371,14 +376,14 @@ static void internal_i2c_target_fill_tx(volatile r_i2c_regs_t* reg,
  * @note Thread safety: not thread-safe (drives a single channel).
  * @since 0.1.0
  */
-static bool internal_i2c_target_finish_tx(volatile r_i2c_regs_t* reg)
+RA8_INTERNAL static bool internal_i2c_target_finish_tx(volatile r_i2c_regs_t* reg)
 {
   /* Step 4: wait for the controller's TEND or NACK to mark frame end. */
   (void)internal_i2c_target_wait(
     reg,
     (uint8_t)((uint8_t)k_ra8_i2c_msk_icsr2_tend | (uint8_t)k_ra8_i2c_msk_icsr2_nackf));
   /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-  const bool ended = ra8_i2c_internal_peripheral_tx_done(reg->ICSR2);
+  const bool ended = priv_ra8_i2c_internal_peripheral_tx_done(reg->ICSR2);
 
   /* Step 5: dummy-read ICDRR to release SCL.
    * HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
@@ -399,8 +404,8 @@ static bool internal_i2c_target_finish_tx(volatile r_i2c_regs_t* reg)
 ra8_err_t ra8_i2c_peripheral_init(uint8_t channel, const ra8_i2c_peripheral_cfg_t* cfg)
 {
   volatile r_i2c_regs_t* reg = ra8_i2c_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_i2c_tag, "i2c_target_init: channel");
-  RA8_CHECK_NULL_PTR(cfg, s_i2c_tag, "i2c_target_init: cfg");
+  RA8_CHECK_NULL_PTR(reg, g_i2c_tag, "i2c_target_init: channel");
+  RA8_CHECK_NULL_PTR(cfg, g_i2c_tag, "i2c_target_init: cfg");
   if (cfg->own_addr_7b > (uint8_t)k_ra8_i2c_peripheral_addr_7b_max) {
     return k_ra8_err_invalid_arg;
   }
@@ -450,8 +455,8 @@ ra8_err_t ra8_i2c_peripheral_deinit(uint8_t channel)
 ra8_err_t ra8_i2c_peripheral_poll(uint8_t channel, ra8_i2c_peripheral_event_t* out_event)
 {
   volatile const r_i2c_regs_t* reg = ra8_i2c_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_i2c_tag, "i2c_target_poll: channel");
-  RA8_CHECK_NULL_PTR(out_event, s_i2c_tag, "i2c_target_poll: out_event");
+  RA8_CHECK_NULL_PTR(reg, g_i2c_tag, "i2c_target_poll: channel");
+  RA8_CHECK_NULL_PTR(out_event, g_i2c_tag, "i2c_target_poll: out_event");
   *out_event = k_ra8_i2c_peripheral_event_none;
   if (!s_i2c_state[channel].peripheral_active) {
     return k_ra8_err_not_initialized;
@@ -463,7 +468,7 @@ ra8_err_t ra8_i2c_peripheral_poll(uint8_t channel, ra8_i2c_peripheral_event_t* o
     const uint8_t icsr1 = reg->ICSR1;
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
     const uint8_t icsr2 = reg->ICSR2;
-    if (ra8_i2c_internal_peripheral_poll_done(icsr1, icsr2)) { /* GCOVR_EXCL_BR_LINE */
+    if (priv_ra8_i2c_internal_peripheral_poll_done(icsr1, icsr2)) { /* GCOVR_EXCL_BR_LINE */
       break;
     }
   }
@@ -480,9 +485,9 @@ ra8_err_t
 ra8_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint32_t* out_received)
 {
   volatile r_i2c_regs_t* reg = ra8_i2c_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_i2c_tag, "i2c_target_receive: channel");
-  RA8_CHECK_NULL_PTR(buf, s_i2c_tag, "i2c_target_receive: buf");
-  RA8_CHECK_NULL_PTR(out_received, s_i2c_tag, "i2c_target_receive: out_received");
+  RA8_CHECK_NULL_PTR(reg, g_i2c_tag, "i2c_target_receive: channel");
+  RA8_CHECK_NULL_PTR(buf, g_i2c_tag, "i2c_target_receive: buf");
+  RA8_CHECK_NULL_PTR(out_received, g_i2c_tag, "i2c_target_receive: out_received");
   *out_received = 0U;
   if (capacity == 0U) {
     return k_ra8_err_invalid_arg;
@@ -503,7 +508,7 @@ ra8_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uin
 
   /* Steps 4-5: drain data bytes until STOP or the buffer fills. */
   uint32_t count = 0U;
-  err            = ra8_i2c_internal_target_drain_rx(reg, buf, capacity, &count);
+  err            = priv_ra8_i2c_internal_target_drain_rx(reg, buf, capacity, &count);
 
   /* Step 6: clear the STOP flag (W0C) for the next transfer.
    * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2 -- STOP W0C" p 2384 */
@@ -516,9 +521,9 @@ ra8_err_t
 ra8_i2c_peripheral_transmit(uint8_t channel, const uint8_t* data, uint32_t len, uint32_t* out_sent)
 {
   volatile r_i2c_regs_t* reg = ra8_i2c_regs(channel);
-  RA8_CHECK_NULL_PTR(reg, s_i2c_tag, "i2c_target_transmit: channel");
-  RA8_CHECK_NULL_PTR(data, s_i2c_tag, "i2c_target_transmit: data");
-  RA8_CHECK_NULL_PTR(out_sent, s_i2c_tag, "i2c_target_transmit: out_sent");
+  RA8_CHECK_NULL_PTR(reg, g_i2c_tag, "i2c_target_transmit: channel");
+  RA8_CHECK_NULL_PTR(data, g_i2c_tag, "i2c_target_transmit: data");
+  RA8_CHECK_NULL_PTR(out_sent, g_i2c_tag, "i2c_target_transmit: out_sent");
   *out_sent = 0U;
   if (len == 0U) {
     return k_ra8_err_invalid_arg;
@@ -574,7 +579,7 @@ ra8_i2c_peripheral_transmit(uint8_t channel, const uint8_t* data, uint32_t len, 
  * @note Thread safety: pure; thread-safe.
  * @since 0.1.0
  */
-static ra8_i2c_peripheral_event_t
+RA8_INTERNAL static ra8_i2c_peripheral_event_t
 internal_i2c_dispatch_event(uint8_t icsr1, uint8_t icsr2, uint8_t iccr2)
 {
   const ra8_i2c_peripheral_event_t match = internal_i2c_target_classify(icsr1, iccr2);

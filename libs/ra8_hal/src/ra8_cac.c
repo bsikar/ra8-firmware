@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cac_regs.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -78,7 +79,7 @@ typedef enum : uint8_t {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static inline void internal_cac_wait_cfme(volatile r_cac_regs_t* reg, uint8_t expect)
+RA8_INTERNAL static inline void internal_cac_wait_cfme(volatile r_cac_regs_t* reg, uint8_t expect)
 {
   for (uint32_t i = 0U; i < k_ra8_cac_cfme_settle_iters; i++) { /* GCOVR_EXCL_BR_LINE */
     if (reg->CACR0 == expect) {                                 /* GCOVR_EXCL_BR_LINE */

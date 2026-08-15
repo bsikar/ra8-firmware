@@ -16,7 +16,7 @@
  * SET_CONFIGURATION requests during enumeration) and the standard
  * descriptor / BOT wrapper sizes. It is NOT part of the public API: the
  * public contract lives in `ra8_usb_hmsc.h`, and the shadow-state singleton
- * `s_usb_hmsc_state` is shared through `ra8_hal_internal.h`.
+ * `g_usb_hmsc_state` is shared through `ra8_hal_internal.h`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

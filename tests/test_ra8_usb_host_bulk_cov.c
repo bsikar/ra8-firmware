@@ -22,7 +22,7 @@
  * PIPECTR.PID[1] asynchronously; both callers force PID=BUF before the
  * synchronous spin so the RAM fake never shows STALL). The FRDY-timeout
  * return in ``internal_host_bulk_rx_packet`` is reached by arming the
- * ra8_fake_mmio fault seam on CFIFOCTR, which ``internal_wait_frdy``
+ * ra8_fake_mmio fault seam on CFIFOCTR, which ``priv_wait_frdy``
  * consults on every poll of its real bounded loop.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
@@ -84,34 +85,32 @@ typedef enum : uint16_t {
  *
  * @details Clears every mapped register region so a prior test's writes
  * cannot leak into the next; the host bulk engine needs no MSTP or
- * device-init bring-up because it only touches the USB register block.
- */
-static void prep(void)
+ * device-init bring-up because it only touches the USB register block. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
 }
 
-/** @brief Pipe-bit helper matching (1 << pipe_num) used by the module. */
-static uint16_t thb_pipe_bit(uint8_t pipe_num)
+/** @brief Pipe-bit helper matching (1 << pipe_num) used by the module. @details Implements the thb pipe bit fixture operation used only by this focused test executable. @param[in] pipe_num Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static uint16_t internal_thb_pipe_bit(uint8_t pipe_num)
 {
   return (uint16_t)(1U << pipe_num);
 }
 
 /**
- * @test test_set_target_rejects_and_applies
+ * @test internal_test_set_target_rejects_and_applies
  *
  * @par MC/DC:
  * (no compound decisions in this test -- ``ra8_usb_host_set_target``
  * uses only single-condition guards; each is exercised on its own,
- * no ``&&`` or ``||`` in the code under test that this case touches)
- */
-static void test_set_target_rejects_and_applies(void)
+ * no ``&&`` or ``||`` in the code under test that this case touches) @brief Verify set target rejects and applies behavior. @details Executes the set target rejects and applies scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_target_rejects_and_applies(void)
 {
   TEST_BEGIN("ra8_usb_host_set_target rejects bad speed / addr, applies DEVSEL");
-  prep();
+  internal_prep();
 
-  /* Bogus speed -> internal_pick returns nullptr. */
+  /* Bogus speed -> priv_pick returns nullptr. */
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_arg,
     ra8_usb_host_set_target((ra8_usb_speed_t)k_thb_speed_bogus, (uint8_t)k_thb_dev_addr));
@@ -140,73 +139,70 @@ static void test_set_target_rejects_and_applies(void)
  * @pre The host controller mock is prepared.
  * @post No state beyond the pipe register bank is modified.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static ra8_err_t
-thb_setup(ra8_usb_speed_t speed, uint8_t pipe, uint8_t dev, uint8_t ep, uint16_t mps)
+ * @since 0.1.0 @details Implements the thb setup fixture operation used only by this focused test executable. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static ra8_err_t
+internal_thb_setup(ra8_usb_speed_t speed, uint8_t pipe, uint8_t dev, uint8_t ep, uint16_t mps)
 {
   return ra8_usb_host_pipe_setup(speed, pipe, dev, ep, false, mps);
 }
 
 /**
- * @test test_pipe_setup_arg_validation
+ * @test internal_test_pipe_setup_arg_validation
  *
  * @par MC/DC:
  * (no compound decisions in this test -- ``internal_host_pipe_args_ok``
  * splits every range check into its own single-condition ``if``; each
  * rejection is driven in isolation with the other arguments valid, so
- * there is no ``&&`` or ``||`` decision to vectorize)
- */
-static void test_pipe_setup_arg_validation(void)
+ * there is no ``&&`` or ``||`` decision to vectorize) @brief Verify pipe setup arg validation behavior. @details Executes the pipe setup arg validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipe_setup_arg_validation(void)
 {
   TEST_BEGIN("ra8_usb_host_pipe_setup validates every argument field");
-  prep();
+  internal_prep();
 
   const uint8_t  pipe = (uint8_t)k_thb_pipe;
   const uint8_t  dev  = (uint8_t)k_thb_dev_addr;
   const uint8_t  ep   = (uint8_t)k_thb_ep;
   const uint16_t mps  = (uint16_t)k_thb_mps;
 
-  /* Bogus speed -> internal_pick returns nullptr. */
+  /* Bogus speed -> priv_pick returns nullptr. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 thb_setup((ra8_usb_speed_t)k_thb_speed_bogus, pipe, dev, ep, mps));
+                 internal_thb_setup((ra8_usb_speed_t)k_thb_speed_bogus, pipe, dev, ep, mps));
   /* pipe_num == 0. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 thb_setup(k_ra8_usb_speed_fs, (uint8_t)k_thb_pipe_zero, dev, ep, mps));
+                 internal_thb_setup(k_ra8_usb_speed_fs, (uint8_t)k_thb_pipe_zero, dev, ep, mps));
   /* pipe_num > max. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 thb_setup(k_ra8_usb_speed_fs, (uint8_t)k_thb_pipe_hi, dev, ep, mps));
+                 internal_thb_setup(k_ra8_usb_speed_fs, (uint8_t)k_thb_pipe_hi, dev, ep, mps));
   /* dev_addr > max. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 thb_setup(k_ra8_usb_speed_fs, pipe, (uint8_t)k_thb_dev_addr_hi, ep, mps));
+                 internal_thb_setup(k_ra8_usb_speed_fs, pipe, (uint8_t)k_thb_dev_addr_hi, ep, mps));
   /* ep_num == 0. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 thb_setup(k_ra8_usb_speed_fs, pipe, dev, (uint8_t)k_thb_ep_zero, mps));
+                 internal_thb_setup(k_ra8_usb_speed_fs, pipe, dev, (uint8_t)k_thb_ep_zero, mps));
   /* ep_num > mask. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 thb_setup(k_ra8_usb_speed_fs, pipe, dev, (uint8_t)k_thb_ep_hi, mps));
+                 internal_thb_setup(k_ra8_usb_speed_fs, pipe, dev, (uint8_t)k_thb_ep_hi, mps));
   /* max_packet == 0. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 thb_setup(k_ra8_usb_speed_fs, pipe, dev, ep, (uint16_t)k_thb_mps_zero));
+                 internal_thb_setup(k_ra8_usb_speed_fs, pipe, dev, ep, (uint16_t)k_thb_mps_zero));
   /* max_packet > mxps. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 thb_setup(k_ra8_usb_speed_fs, pipe, dev, ep, (uint16_t)k_thb_mps_hi));
+                 internal_thb_setup(k_ra8_usb_speed_fs, pipe, dev, ep, (uint16_t)k_thb_mps_hi));
 
   TEST_END("ra8_usb_host_pipe_setup validates every argument field");
 }
 
 /**
- * @test test_pipe_setup_happy_path
+ * @test internal_test_pipe_setup_happy_path
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the configuration
  * body and its register writes; no ``&&`` or ``||`` in the code under
- * test that this case touches)
- */
-static void test_pipe_setup_happy_path(void)
+ * test that this case touches) @brief Verify pipe setup happy path behavior. @details Executes the pipe setup happy path scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipe_setup_happy_path(void)
 {
   TEST_BEGIN("ra8_usb_host_pipe_setup configures a bulk pipe and clears status");
-  prep();
+  internal_prep();
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_usb_host_pipe_setup(k_ra8_usb_speed_fs,
@@ -226,7 +222,7 @@ static void test_pipe_setup_happy_path(void)
   /* PIPEMAXP encodes DEVSEL(dev_addr) in the high nibble and MPS low. */
   TEST_ASSERT_EQ(k_thb_mps, (reg->PIPEMAXP & (uint16_t)k_ra8_usb_pipemaxp_mxps));
   /* The pipe's status bits were acknowledged (cleared for pipe_num). */
-  const uint16_t pipe_bit = thb_pipe_bit((uint8_t)k_thb_pipe);
+  const uint16_t pipe_bit = internal_thb_pipe_bit((uint8_t)k_thb_pipe);
   TEST_ASSERT_EQ(0U, (reg->BRDYSTS & pipe_bit));
   TEST_ASSERT_EQ(0U, (reg->BEMPSTS & pipe_bit));
 
@@ -234,18 +230,17 @@ static void test_pipe_setup_happy_path(void)
 }
 
 /**
- * @test test_bulk_out_arg_rejects
+ * @test internal_test_bulk_out_arg_rejects
  *
  * @par MC/DC:
  * (no compound decisions in this test -- ``ra8_usb_host_bulk_out`` guards
  * are single-condition; the queue rejection is driven by an out-of-range
  * length, no ``&&`` or ``||`` in the code under test that this case
- * touches)
- */
-static void test_bulk_out_arg_rejects(void)
+ * touches) @brief Verify bulk out arg rejects behavior. @details Executes the bulk out arg rejects scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_bulk_out_arg_rejects(void)
 {
   TEST_BEGIN("ra8_usb_host_bulk_out rejects bad pointer / speed / pipe / length");
-  prep();
+  internal_prep();
 
   uint8_t data[k_thb_len_ok] = {1U, 2U, 3U, 4U};
 
@@ -285,18 +280,17 @@ static void test_bulk_out_arg_rejects(void)
 }
 
 /**
- * @test test_bulk_out_wait_timeout
+ * @test internal_test_bulk_out_wait_timeout
  *
  * @par MC/DC:
  * (no compound decisions in this test -- drives the bounded status wait
  * to its timeout; ``internal_host_wait_pipe`` uses separate
  * single-condition ``if`` checks, no ``&&`` or ``||`` in the code under
- * test that this case touches)
- */
-static void test_bulk_out_wait_timeout(void)
+ * test that this case touches) @brief Verify bulk out wait timeout behavior. @details Executes the bulk out wait timeout scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_bulk_out_wait_timeout(void)
 {
   TEST_BEGIN("ra8_usb_host_bulk_out arms BEMP then times out with no BEMP event");
-  prep();
+  internal_prep();
 
   uint8_t data[k_thb_len_ok] = {0x10U, 0x20U, k_t_payload_b2, k_t_payload_b3};
 
@@ -308,25 +302,24 @@ static void test_bulk_out_wait_timeout(void)
 
   /* BEMP was enabled for the pipe before the wait. */
   volatile r_usb_regs_t* reg      = ra8_usb_fs();
-  const uint16_t         pipe_bit = thb_pipe_bit((uint8_t)k_thb_pipe);
+  const uint16_t         pipe_bit = internal_thb_pipe_bit((uint8_t)k_thb_pipe);
   TEST_ASSERT((reg->BEMPENB & pipe_bit) != 0U);
 
   TEST_END("ra8_usb_host_bulk_out arms BEMP then times out with no BEMP event");
 }
 
 /**
- * @test test_bulk_in_arg_rejects
+ * @test internal_test_bulk_in_arg_rejects
  *
  * @par MC/DC:
  * (no compound decisions in this test -- every ``ra8_usb_host_bulk_in``
  * guard is single-condition; the unconfigured-pipe path is reached via
  * PIPEMAXP == 0, no ``&&`` or ``||`` in the code under test that this
- * case touches)
- */
-static void test_bulk_in_arg_rejects(void)
+ * case touches) @brief Verify bulk in arg rejects behavior. @details Executes the bulk in arg rejects scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_bulk_in_arg_rejects(void)
 {
   TEST_BEGIN("ra8_usb_host_bulk_in rejects bad pointers / speed / pipe / unconfigured pipe");
-  prep();
+  internal_prep();
 
   uint8_t  buf[k_thb_mps] = {};
   uint16_t got            = 0U;
@@ -375,21 +368,20 @@ static void test_bulk_in_arg_rejects(void)
 }
 
 /**
- * @test test_bulk_in_short_packet
+ * @test internal_test_bulk_in_short_packet
  *
  * @par MC/DC:
  * (no compound decisions in this test -- the receive loop and its drain
  * helper use single-condition ``if`` checks; the short-packet exit is
  * driven by DTLN < mps, no ``&&`` or ``||`` in the code under test that
- * this case touches)
- */
-static void test_bulk_in_short_packet(void)
+ * this case touches) @brief Verify bulk in short packet behavior. @details Executes the bulk in short packet scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_bulk_in_short_packet(void)
 {
   TEST_BEGIN("ra8_usb_host_bulk_in consumes one short packet and ends the transfer");
-  prep();
+  internal_prep();
 
   volatile r_usb_regs_t* reg      = ra8_usb_fs();
-  const uint16_t         pipe_bit = thb_pipe_bit((uint8_t)k_thb_pipe);
+  const uint16_t         pipe_bit = internal_thb_pipe_bit((uint8_t)k_thb_pipe);
   reg->PIPEMAXP                   = (uint16_t)k_thb_mps;        /* mps = 64          */
   reg->BRDYSTS                    = pipe_bit;                   /* pending BRDY edge */
   reg->CFIFOCTR                   = (uint16_t)k_thb_dtln_short; /* DTLN = 8 (< mps)  */
@@ -408,20 +400,19 @@ static void test_bulk_in_short_packet(void)
 }
 
 /**
- * @test test_bulk_in_overflow_clamps
+ * @test internal_test_bulk_in_overflow_clamps
  *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the copy-clamp and
  * remainder-drop drain branches, each a single-condition ``if``; no
- * ``&&`` or ``||`` in the code under test that this case touches)
- */
-static void test_bulk_in_overflow_clamps(void)
+ * ``&&`` or ``||`` in the code under test that this case touches) @brief Verify bulk in overflow clamps behavior. @details Executes the bulk in overflow clamps scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_bulk_in_overflow_clamps(void)
 {
   TEST_BEGIN("ra8_usb_host_bulk_in clamps a packet larger than the destination");
-  prep();
+  internal_prep();
 
   volatile r_usb_regs_t* reg      = ra8_usb_fs();
-  const uint16_t         pipe_bit = thb_pipe_bit((uint8_t)k_thb_pipe);
+  const uint16_t         pipe_bit = internal_thb_pipe_bit((uint8_t)k_thb_pipe);
   reg->PIPEMAXP                   = (uint16_t)k_thb_mps;
   reg->BRDYSTS                    = pipe_bit;
   reg->CFIFOCTR                   = (uint16_t)k_thb_dtln_short; /* device sent 8 bytes */
@@ -442,20 +433,19 @@ static void test_bulk_in_overflow_clamps(void)
 }
 
 /**
- * @test test_bulk_in_zero_length_packet
+ * @test internal_test_bulk_in_zero_length_packet
  *
  * @par MC/DC:
  * (no compound decisions in this test -- drives the zero-length-packet
  * release branch, a single-condition ``if (dtln == 0U)``; no ``&&`` or
- * ``||`` in the code under test that this case touches)
- */
-static void test_bulk_in_zero_length_packet(void)
+ * ``||`` in the code under test that this case touches) @brief Verify bulk in zero length packet behavior. @details Executes the bulk in zero length packet scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_bulk_in_zero_length_packet(void)
 {
   TEST_BEGIN("ra8_usb_host_bulk_in releases a zero-length packet and ends");
-  prep();
+  internal_prep();
 
   volatile r_usb_regs_t* reg      = ra8_usb_fs();
-  const uint16_t         pipe_bit = thb_pipe_bit((uint8_t)k_thb_pipe);
+  const uint16_t         pipe_bit = internal_thb_pipe_bit((uint8_t)k_thb_pipe);
   reg->PIPEMAXP                   = (uint16_t)k_thb_mps;
   reg->BRDYSTS                    = pipe_bit;
   reg->CFIFOCTR                   = 0U; /* DTLN = 0 -> ZLP */
@@ -473,18 +463,17 @@ static void test_bulk_in_zero_length_packet(void)
 }
 
 /**
- * @test test_bulk_in_wait_timeout
+ * @test internal_test_bulk_in_wait_timeout
  *
  * @par MC/DC:
  * (no compound decisions in this test -- with no pending BRDY the drain
  * helper's bounded wait times out and the loop's single-condition error
  * check ends the transfer; no ``&&`` or ``||`` in the code under test
- * that this case touches)
- */
-static void test_bulk_in_wait_timeout(void)
+ * that this case touches) @brief Verify bulk in wait timeout behavior. @details Executes the bulk in wait timeout scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_bulk_in_wait_timeout(void)
 {
   TEST_BEGIN("ra8_usb_host_bulk_in times out when no packet ever arrives");
-  prep();
+  internal_prep();
 
   volatile r_usb_regs_t* reg = ra8_usb_fs();
   reg->PIPEMAXP              = (uint16_t)k_thb_mps;
@@ -501,21 +490,20 @@ static void test_bulk_in_wait_timeout(void)
 }
 
 /**
- * @test test_bulk_in_fills_buffer
+ * @test internal_test_bulk_in_fills_buffer
  *
  * @par MC/DC:
  * (no compound decisions in this test -- ends the transfer on the
  * byte-count branch ``if (rx >= max_len)`` with a full packet, a
  * single-condition ``if``; no ``&&`` or ``||`` in the code under test
- * that this case touches)
- */
-static void test_bulk_in_fills_buffer(void)
+ * that this case touches) @brief Verify bulk in fills buffer behavior. @details Executes the bulk in fills buffer scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_bulk_in_fills_buffer(void)
 {
   TEST_BEGIN("ra8_usb_host_bulk_in ends when the destination buffer fills");
-  prep();
+  internal_prep();
 
   volatile r_usb_regs_t* reg      = ra8_usb_fs();
-  const uint16_t         pipe_bit = thb_pipe_bit((uint8_t)k_thb_pipe);
+  const uint16_t         pipe_bit = internal_thb_pipe_bit((uint8_t)k_thb_pipe);
   /* mps == max_len == 4: a full (non-short) packet exactly fills buf, so
    * the loop ends on the rx >= max_len branch rather than on dtln < mps. */
   reg->PIPEMAXP = (uint16_t)k_thb_room_small;
@@ -537,17 +525,16 @@ static void test_bulk_in_fills_buffer(void)
 }
 
 /**
- * @test test_line_state
+ * @test internal_test_line_state
  *
  * @par MC/DC:
  * (no compound decisions in this test -- ``ra8_usb_host_line_state`` has a
  * single nullptr guard and a pure read; no ``&&`` or ``||`` in the code
- * under test that this case touches)
- */
-static void test_line_state(void)
+ * under test that this case touches) @brief Verify line state behavior. @details Executes the line state scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_line_state(void)
 {
   TEST_BEGIN("ra8_usb_host_line_state returns 0 for bad speed, LNST otherwise");
-  prep();
+  internal_prep();
 
   /* Bogus speed -> 0. */
   TEST_ASSERT_EQ(0U, ra8_usb_host_line_state((ra8_usb_speed_t)k_thb_speed_bogus));
@@ -561,27 +548,26 @@ static void test_line_state(void)
 }
 
 /**
- * @test test_bulk_in_frdy_timeout
+ * @test internal_test_bulk_in_frdy_timeout
  *
  * @par MC/DC:
  * (no compound decisions in this test -- the FRDY poll in
- * ``internal_wait_frdy`` is a single-condition loop exit; the armed
+ * ``priv_wait_frdy`` is a single-condition loop exit; the armed
  * fail drives its timeout leg through ``internal_host_bulk_rx_packet``)
  *
  * @details Pre-seeds a pending BRDY edge so the pipe wait passes, then
  * arms the ra8_fake_mmio seam on CFIFOCTR to fail so the packet drain's
  * FRDY wait runs to its budget. ``ra8_usb_host_bulk_in`` must surface
  * ``k_ra8_err_hw_timeout`` with a zero partial count and park the pipe
- * NAK -- the leg that was host-dead while ``internal_wait_frdy``
- * short-circuited under RA8_OFF_TARGET.
- */
-static void test_bulk_in_frdy_timeout(void)
+ * NAK -- the leg that was host-dead while ``priv_wait_frdy``
+ * short-circuited under RA8_OFF_TARGET. @brief Verify bulk in frdy timeout behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_bulk_in_frdy_timeout(void)
 {
   TEST_BEGIN("ra8_usb_host_bulk_in surfaces the rx-packet FRDY timeout");
-  prep();
+  internal_prep();
 
   volatile r_usb_regs_t* reg      = ra8_usb_fs();
-  const uint16_t         pipe_bit = thb_pipe_bit((uint8_t)k_thb_pipe);
+  const uint16_t         pipe_bit = internal_thb_pipe_bit((uint8_t)k_thb_pipe);
   reg->PIPEMAXP                   = (uint16_t)k_thb_mps; /* mps = 64          */
   reg->BRDYSTS                    = pipe_bit;            /* pending BRDY edge */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
@@ -599,19 +585,18 @@ static void test_bulk_in_frdy_timeout(void)
 
 int32_t main(void)
 {
-  test_set_target_rejects_and_applies();
-  test_pipe_setup_arg_validation();
-  test_pipe_setup_happy_path();
-  test_bulk_out_arg_rejects();
-  test_bulk_out_wait_timeout();
-  test_bulk_in_arg_rejects();
-  test_bulk_in_short_packet();
-  test_bulk_in_overflow_clamps();
-  test_bulk_in_zero_length_packet();
-  test_bulk_in_wait_timeout();
-  test_bulk_in_frdy_timeout();
-  test_bulk_in_fills_buffer();
-  test_line_state();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_host_bulk_cov.c\n");
+  internal_test_set_target_rejects_and_applies();
+  internal_test_pipe_setup_arg_validation();
+  internal_test_pipe_setup_happy_path();
+  internal_test_bulk_out_arg_rejects();
+  internal_test_bulk_out_wait_timeout();
+  internal_test_bulk_in_arg_rejects();
+  internal_test_bulk_in_short_packet();
+  internal_test_bulk_in_overflow_clamps();
+  internal_test_bulk_in_zero_length_packet();
+  internal_test_bulk_in_wait_timeout();
+  internal_test_bulk_in_frdy_timeout();
+  internal_test_bulk_in_fills_buffer();
+  internal_test_line_state();
   return 0;
 }

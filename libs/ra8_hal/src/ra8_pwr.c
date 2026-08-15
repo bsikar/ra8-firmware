@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -70,7 +71,7 @@ typedef enum : uint8_t {
  * The WUPEN registers live inside the SYSC block at the offsets
  * defined in ``ra8_lpm_regs.h``.
  */
-static volatile uint32_t* internal_wupen_ptr(uint8_t reg)
+RA8_INTERNAL static volatile uint32_t* internal_wupen_ptr(uint8_t reg)
 {
   const uintptr_t base = k_ra8_system_base_addr;
   if (reg == 0U) {
@@ -96,7 +97,8 @@ static volatile uint32_t* internal_wupen_ptr(uint8_t reg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static bool internal_decode_wake(ra8_pwr_wake_t source, uint8_t* out_reg, uint8_t* out_bit)
+RA8_INTERNAL static bool
+internal_decode_wake(ra8_pwr_wake_t source, uint8_t* out_reg, uint8_t* out_bit)
 {
   const uint8_t reg = (uint8_t)(((uint16_t)source >> 8) & k_pwr_byte_mask);
   const uint8_t bit = (uint8_t)((uint16_t)source & k_pwr_byte_mask);
@@ -126,7 +128,7 @@ static bool internal_decode_wake(ra8_pwr_wake_t source, uint8_t* out_reg, uint8_
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline void internal_wfi(void)
+RA8_INTERNAL static inline void internal_wfi(void)
 {
   ra8_hw_wfi();
 }

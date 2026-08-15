@@ -157,7 +157,7 @@ static void internal_hash_pull_digest(uint8_t* digest, uint32_t to_read)
      * fiction), not a literal enumerator -- the analyzer can't see that. */
     // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed digest-word offset, not an enumerator.
     const uint32_t word = *ra8_rsip_reg32((ra8_rsip_off_t)off);
-    internal_unpack_le(word, &digest[i]);
+    priv_unpack_le(word, &digest[i]);
     i += (uint32_t)k_ra8_rsip_trng_word_bytes;
     off += (uint32_t)k_ra8_rsip_trng_word_bytes;
   }
@@ -185,11 +185,11 @@ ra8_err_t ra8_rsip_hash(ra8_rsip_hash_alg_t alg,
   *ra8_rsip_reg32(k_ra8_rsip_off_hash_ctrl) = (uint32_t)alg;
 
   if (msg_len > 0U) {
-    internal_push_bytes_to_port(k_ra8_rsip_off_hash_data_in, msg, msg_len);
+    priv_push_bytes_to_port(k_ra8_rsip_off_hash_data_in, msg, msg_len);
   }
 
   /* Wait for DONE; the bounded poll routes through the host wait seam. */
-  const ra8_err_t wait_err = internal_hash_wait_done();
+  const ra8_err_t wait_err = priv_hash_wait_done();
   RA8_RETURN_ON_ERROR(wait_err, s_tag, "rsip_hash: hash done");
 
   /* Read digest_len for SHAKE; algo-natural otherwise. */
@@ -235,7 +235,7 @@ ra8_err_t ra8_rsip_hmac(const ra8_rsip_key_handle_t* key,
   }
   /* Stage HMAC key handle, then drive the hash unit in HMAC mode. */
   *ra8_rsip_reg32(k_ra8_rsip_off_hash_hmac) = key->alg;
-  internal_load_handle(key);
+  priv_load_handle(key);
   return ra8_rsip_hash(k_ra8_rsip_hash_sha256, msg, msg_len, mac, needed);
 }
 
@@ -261,7 +261,7 @@ void internal_asym_push(ra8_rsip_off_t off, const uint8_t* buf, uint32_t len)
 {
   uint32_t i = 0U;
   while ((i + (uint32_t)k_ra8_rsip_trng_word_bytes) <= len) {
-    *ra8_rsip_reg32(off) = internal_pack_le(&buf[i]);
+    *ra8_rsip_reg32(off) = priv_pack_le(&buf[i]);
     i += (uint32_t)k_ra8_rsip_trng_word_bytes;
   }
   if (i < len) {
@@ -278,7 +278,7 @@ void internal_asym_pull(ra8_rsip_off_t off, uint8_t* buf, uint32_t len)
 {
   uint32_t i = 0U;
   while ((i + (uint32_t)k_ra8_rsip_trng_word_bytes) <= len) {
-    internal_unpack_le(*ra8_rsip_reg32(off), &buf[i]);
+    priv_unpack_le(*ra8_rsip_reg32(off), &buf[i]);
     i += (uint32_t)k_ra8_rsip_trng_word_bytes;
   }
   if (i < len) {
@@ -330,7 +330,7 @@ static ra8_err_t internal_kv_op(ra8_rsip_kv_op_t op, uint8_t slot)
   *ra8_rsip_reg32(k_ra8_rsip_off_kv_slot) = slot;
   *ra8_rsip_reg32(k_ra8_rsip_off_kv_ctrl) = (uint32_t)op;
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op) = (uint32_t)op;
-  return internal_complete(k_ra8_rsip_mask_isr_kv_done);
+  return priv_complete(k_ra8_rsip_mask_isr_kv_done);
 }
 
 ra8_err_t ra8_rsip_kv_read(uint8_t slot, uint8_t* out)
@@ -345,7 +345,7 @@ ra8_err_t ra8_rsip_kv_read(uint8_t slot, uint8_t* out)
   }
   for (uint32_t w = 0U; w < k_ra8_rsip_kv_slot_w; ++w) {
     const uint32_t word = *ra8_rsip_reg32(k_ra8_rsip_off_kv_data);
-    internal_unpack_le(word, &out[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
+    priv_unpack_le(word, &out[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
   }
   return k_ra8_ok;
 }
@@ -358,7 +358,7 @@ ra8_err_t ra8_rsip_kv_write(uint8_t slot, const uint8_t* in)
   }
   for (uint32_t w = 0U; w < k_ra8_rsip_kv_slot_w; ++w) {
     *ra8_rsip_reg32(k_ra8_rsip_off_kv_data) =
-      internal_pack_le(&in[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
+      priv_pack_le(&in[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
   }
   return internal_kv_op(k_ra8_rsip_kv_op_write, slot);
 }
@@ -408,8 +408,10 @@ RA8_INTERNAL
 static void internal_kw_stage_kek(const ra8_rsip_key_handle_t* kek, const uint8_t* iv)
 {
   *ra8_rsip_reg32(k_ra8_rsip_off_kw_kek) = kek->alg;
-  internal_push_handle_body(kek);
-  internal_push_iv_lanes(k_ra8_rsip_off_kw_iv0, iv);
+  priv_push_handle_body(kek);
+  priv_push_iv_lanes(k_ra8_rsip_off_kw_iv0,
+                     iv,
+                     (uint32_t)k_ra8_rsip_iv_words * (uint32_t)k_ra8_rsip_trng_word_bytes);
 }
 
 /* Stream the wrap-engine output blob (16 words) into a byte buffer -- see implementation for details. */
@@ -418,7 +420,7 @@ static void internal_kw_pull_blob(uint8_t* blob)
 {
   for (uint32_t w = 0U; w < k_ra8_rsip_kv_slot_w; ++w) {
     const uint32_t word = *ra8_rsip_reg32(k_ra8_rsip_off_kw_blob_out);
-    internal_unpack_le(word, &blob[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
+    priv_unpack_le(word, &blob[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
   }
 }
 
@@ -441,7 +443,7 @@ ra8_err_t ra8_rsip_key_wrap(const ra8_rsip_key_handle_t* kek,
   RA8_CHECK_NULL_PTR(iv, s_tag, "iv must not be nullptr");
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(blob, s_tag, "blob must not be nullptr");
-  if (internal_aes_alg_byte(kek->alg) == 0U) {
+  if (priv_aes_alg_byte(kek->alg) == 0U) {
     return k_ra8_err_invalid_arg;
   }
   internal_kw_stage_kek(kek, iv);
@@ -449,7 +451,7 @@ ra8_err_t ra8_rsip_key_wrap(const ra8_rsip_key_handle_t* kek,
   *ra8_rsip_reg32(k_ra8_rsip_off_kw_ctrl) = k_ra8_rsip_kw_op_wrap;
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op) = k_ra8_rsip_kw_op_wrap;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_done);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -463,7 +465,7 @@ static ra8_err_t internal_kw_pull_handle(ra8_rsip_key_handle_t* dest)
 {
   /* Pull the unwrapped algorithm + body out. */
   dest->alg            = *ra8_rsip_reg32(k_ra8_rsip_off_kw_handle);
-  const uint32_t words = internal_handle_words_for((ra8_rsip_oem_cmd_t)dest->alg);
+  const uint32_t words = priv_handle_words_for((ra8_rsip_oem_cmd_t)dest->alg);
   if (words == 0U) {
     return k_ra8_err_hw_error;
   }
@@ -484,18 +486,18 @@ ra8_err_t ra8_rsip_key_unwrap(const ra8_rsip_key_handle_t* kek,
   RA8_CHECK_NULL_PTR(iv, s_tag, "iv must not be nullptr");
   RA8_CHECK_NULL_PTR(blob, s_tag, "blob must not be nullptr");
   RA8_CHECK_NULL_PTR(dest, s_tag, "dest must not be nullptr");
-  if (internal_aes_alg_byte(kek->alg) == 0U) {
+  if (priv_aes_alg_byte(kek->alg) == 0U) {
     return k_ra8_err_invalid_arg;
   }
   internal_kw_stage_kek(kek, iv);
   for (uint32_t w = 0U; w < k_ra8_rsip_kv_slot_w; ++w) {
     *ra8_rsip_reg32(k_ra8_rsip_off_kw_blob_in) =
-      internal_pack_le(&blob[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
+      priv_pack_le(&blob[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
   }
   *ra8_rsip_reg32(k_ra8_rsip_off_kw_ctrl) = k_ra8_rsip_kw_op_unwrap;
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op) = k_ra8_rsip_kw_op_unwrap;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_done);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -549,13 +551,13 @@ static void internal_kdf_stage(ra8_rsip_kdf_op_t            op,
   *ra8_rsip_reg32(k_ra8_rsip_off_kdf_len)  = out_len;
   if (ikm != nullptr) {
     *ra8_rsip_reg32(k_ra8_rsip_off_kdf_ikm) = ikm->alg;
-    internal_push_handle_body(ikm);
+    priv_push_handle_body(ikm);
   }
   if (label_len > 0U) {
-    internal_push_bytes_to_port(k_ra8_rsip_off_kdf_label, label, label_len);
+    priv_push_bytes_to_port(k_ra8_rsip_off_kdf_label, label, label_len);
   }
   if (salt_len > 0U) {
-    internal_push_bytes_to_port(k_ra8_rsip_off_kdf_salt, salt, salt_len);
+    priv_push_bytes_to_port(k_ra8_rsip_off_kdf_salt, salt, salt_len);
   }
 }
 
@@ -588,7 +590,7 @@ ra8_err_t ra8_rsip_kdf(ra8_rsip_kdf_op_t            op,
   internal_kdf_stage(op, ikm, label, label_len, salt, salt_len, out_len);
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op) = (uint32_t)op;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_kdf_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_kdf_done);
   if (err != k_ra8_ok) {
     return err;
   }

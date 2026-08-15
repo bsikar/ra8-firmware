@@ -9,14 +9,14 @@
  * Control-plane companion translation unit to ``ra8_i3c_i2c.c``. Holds the
  * non-data-path operations of the polling IIC_B driver:
  *
- * - ``internal_i3c_i2c_abort``        cancel an in-flight transaction.
- * - ``internal_i3c_i2c_scan``         single-byte address-only bus probe.
- * - ``internal_i3c_i2c_get_errors`` / ``internal_i3c_i2c_clear_errors``
+ * - ``ra8_i3c_i2c_abort``        cancel an in-flight transaction.
+ * - ``ra8_i3c_i2c_scan``         single-byte address-only bus probe.
+ * - ``ra8_i3c_i2c_get_errors`` / ``ra8_i3c_i2c_clear_errors``
  *                                     latched bus-status decode + scrub.
- * - ``internal_i3c_i2c_attach_handler`` register a completion / error
+ * - ``ra8_i3c_i2c_attach_handler`` register a completion / error
  *                                     callback and toggle the IIC_B IRQ
  *                                     enable bits as a group.
- * - ``internal_i3c_i2c_dispatch_eri`` ERI service routine that decodes,
+ * - ``ra8_i3c_i2c_dispatch_eri`` ERI service routine that decodes,
  *                                     clears, and forwards errors.
  *
  * These functions share the ``s_iic_b_state`` channel table and the promoted
@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_i3c_i2c.h"
@@ -74,7 +75,7 @@ typedef enum : uint32_t {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static uint8_t internal_i3c_i2c_decode_errors(uint32_t bst)
+RA8_INTERNAL static uint8_t internal_i3c_i2c_decode_errors(uint32_t bst)
 {
   uint8_t mask = k_ra8_i3c_i2c_err_none;
   if ((bst & k_ra8_i3c_i2c_msk_bst_alf) != 0U) {
@@ -94,7 +95,7 @@ static uint8_t internal_i3c_i2c_decode_errors(uint32_t bst)
  * =============================================================================
  */
 
-ra8_err_t internal_i3c_i2c_abort(uint8_t channel)
+ra8_err_t ra8_i3c_i2c_abort(uint8_t channel)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
@@ -106,8 +107,8 @@ ra8_err_t internal_i3c_i2c_abort(uint8_t channel)
   reg->BIE  = 0U;
   reg->NTIE = 0U;
 
-  internal_i3c_i2c_stop(reg);
-  internal_i3c_i2c_clear_bst(reg);
+  priv_i3c_i2c_stop(reg);
+  priv_i3c_i2c_clear_bst(reg);
   s_iic_b_state[channel].bus_held = false;
   return k_ra8_ok;
 }
@@ -117,21 +118,21 @@ ra8_err_t internal_i3c_i2c_abort(uint8_t channel)
  * =============================================================================
  */
 
-ra8_err_t internal_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
+ra8_err_t ra8_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "iic_b_scan: channel");
   RA8_CHECK_NULL_PTR(out_acked, s_tag, "iic_b_scan: out_acked");
 
   *out_acked = false;
-  internal_i3c_i2c_clear_bst(reg);
-  internal_i3c_i2c_start(reg);
+  priv_i3c_i2c_clear_bst(reg);
+  priv_i3c_i2c_start(reg);
 
   const uint8_t address_byte = (uint8_t)(((uint32_t)target_7b << k_ra8_i3c_i2c_ctrl_addr_shift) |
                                          k_ra8_i3c_i2c_ctrl_addr_rw_write);
-  ra8_err_t     err          = internal_i3c_i2c_send_address(reg, address_byte);
+  ra8_err_t     err          = priv_i3c_i2c_send_address(reg, address_byte);
   if (err != k_ra8_ok) {
-    internal_i3c_i2c_stop(reg);
+    priv_i3c_i2c_stop(reg);
     return err;
   }
 
@@ -148,8 +149,8 @@ ra8_err_t internal_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_ac
   }
 
   /* Stop is best-effort -- record the outcome of the probe regardless. */
-  internal_i3c_i2c_stop(reg);
-  internal_i3c_i2c_clear_bst(reg);
+  priv_i3c_i2c_stop(reg);
+  priv_i3c_i2c_clear_bst(reg);
   return err;
 }
 
@@ -158,7 +159,7 @@ ra8_err_t internal_i3c_i2c_scan(uint8_t channel, uint8_t target_7b, bool* out_ac
  * =============================================================================
  */
 
-ra8_err_t internal_i3c_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
+ra8_err_t ra8_i3c_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
 {
   RA8_CHECK_NULL_PTR(out_mask, s_tag, "iic_b_get_errors: out_mask");
   volatile const r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
@@ -169,7 +170,7 @@ ra8_err_t internal_i3c_i2c_get_errors(uint8_t channel, uint8_t* out_mask)
   return k_ra8_ok;
 }
 
-ra8_err_t internal_i3c_i2c_clear_errors(uint8_t channel)
+ra8_err_t ra8_i3c_i2c_clear_errors(uint8_t channel)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
@@ -189,7 +190,7 @@ ra8_err_t internal_i3c_i2c_clear_errors(uint8_t channel)
  * =============================================================================
  */
 
-ra8_err_t internal_i3c_i2c_attach_handler(uint8_t channel, ra8_i3c_i2c_complete_fn_t fn, void* ctx)
+ra8_err_t ra8_i3c_i2c_attach_handler(uint8_t channel, ra8_i3c_i2c_complete_fn_t fn, void* ctx)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
@@ -216,16 +217,16 @@ ra8_err_t internal_i3c_i2c_attach_handler(uint8_t channel, ra8_i3c_i2c_complete_
   return k_ra8_ok;
 }
 
-void internal_i3c_i2c_dispatch_eri(uint8_t channel)
+void ra8_i3c_i2c_dispatch_eri(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_i3c_i2c_channel_count) {
     return;
   }
   uint8_t mask = 0U;
-  (void)internal_i3c_i2c_get_errors(channel, &mask);
-  (void)internal_i3c_i2c_clear_errors(channel);
+  (void)ra8_i3c_i2c_get_errors(channel, &mask);
+  (void)ra8_i3c_i2c_clear_errors(channel);
   const ra8_i3c_i2c_complete_fn_t cb = s_iic_b_state[channel].cb;
-  if (internal_i3c_i2c_should_dispatch(mask, (const void*)cb)) {
+  if (priv_i3c_i2c_should_dispatch(mask, (const void*)cb)) {
     cb(s_iic_b_state[channel].ctx, mask);
   }
 }

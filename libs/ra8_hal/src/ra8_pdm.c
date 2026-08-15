@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
@@ -39,7 +40,7 @@ typedef struct {
 
 static pdm_stream_state_t s_streams[k_ra8_pdm_ch_count];
 
-static const ra8_elc_event_t k_pdm_data_events[k_ra8_pdm_ch_count] = {
+static const ra8_elc_event_t s_pdm_data_events[k_ra8_pdm_ch_count] = {
   k_ra8_elc_event_pdm_dat0,
   k_ra8_elc_event_pdm_dat1,
   k_ra8_elc_event_pdm_dat2,
@@ -76,7 +77,8 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void pdm_write_mode(volatile r_pdm_ch_regs_t* reg, const ra8_pdm_channel_cfg_t* cfg)
+RA8_INTERNAL static void internal_pdm_write_mode(volatile r_pdm_ch_regs_t*    reg,
+                                                 const ra8_pdm_channel_cfg_t* cfg)
 {
   uint32_t pdmdsr = (uint32_t)(cfg->edge & (uint8_t)k_ra8_pdm_pdmdsr_inpsel);
   pdmdsr |= ((uint32_t)cfg->sinc_order & k_pdm_field_3bit) << k_ra8_pdm_pdmdsr_sfmd_pos;
@@ -115,7 +117,8 @@ static void pdm_write_mode(volatile r_pdm_ch_regs_t* reg, const ra8_pdm_channel_
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void pdm_write_coeffs(volatile r_pdm_ch_regs_t* reg, const ra8_pdm_channel_cfg_t* cfg)
+RA8_INTERNAL static void internal_pdm_write_coeffs(volatile r_pdm_ch_regs_t*    reg,
+                                                   const ra8_pdm_channel_cfg_t* cfg)
 {
   /* HUM Ch 49.2 "Filter coefficient registers" p 3210 */
   reg->PDHFCS0R = (uint32_t)cfg->hpf_s0;
@@ -158,7 +161,7 @@ static void pdm_write_coeffs(volatile r_pdm_ch_regs_t* reg, const ra8_pdm_channe
  * @note Pure helper, thread-safe.
  * @since 0.1.0
  */
-static int32_t pdm_sign_extend20(uint32_t raw)
+RA8_INTERNAL static int32_t internal_pdm_sign_extend20(uint32_t raw)
 {
   const uint32_t dat = raw & (uint32_t)k_ra8_pdm_pddrr_dat_mask;
   if ((dat & (uint32_t)k_ra8_pdm_pddrr_sign_bit) != 0U) {
@@ -179,7 +182,7 @@ static int32_t pdm_sign_extend20(uint32_t raw)
  * @note Runs in interrupt context.
  * @since 0.1.0
  */
-static void pdm_data_isr(void* ctx)
+RA8_INTERNAL static void internal_pdm_data_isr(void* ctx)
 {
   const uint8_t channel = (uint8_t)(uintptr_t)ctx;
   if (channel >= (uint8_t)k_ra8_pdm_ch_count) {
@@ -189,14 +192,16 @@ static void pdm_data_isr(void* ctx)
   if (stream->callback == nullptr) {
     return;
   }
-  volatile r_pdm_ch_regs_t* reg   = ra8_pdm_ch(channel);
-  uint32_t                  count = reg->PDDSR & (uint32_t)k_ra8_pdm_pddsr_num_mask;
+  volatile r_pdm_ch_regs_t* reg = ra8_pdm_ch(channel);
+  /* HUM Ch 49.2.66 "PDDSRCHn : Data Status Register" p 3228 */
+  uint32_t count = reg->PDDSR & (uint32_t)k_ra8_pdm_pddsr_num_mask;
   if (count > (uint32_t)k_ra8_pdm_fifo_depth) {
     count = (uint32_t)k_ra8_pdm_fifo_depth;
   }
   int32_t samples[k_ra8_pdm_fifo_depth];
   for (uint32_t i = 0U; i < count; ++i) {
-    samples[i] = pdm_sign_extend20(reg->PDDRR);
+    /* HUM Ch 49.2.65 "PDDRRCHn : Data Read Register" p 3227 */
+    samples[i] = internal_pdm_sign_extend20(reg->PDDRR);
   }
   if (count != 0U) {
     stream->callback(stream->ctx, samples, count);
@@ -231,8 +236,8 @@ ra8_err_t ra8_pdm_configure(uint8_t ch, const ra8_pdm_channel_cfg_t* cfg)
   RA8_CHECK_RANGE_TAG(ch, 0, (uint8_t)k_ra8_pdm_ch_count - 1U, k_ra8_err_invalid_arg, s_tag);
 
   volatile r_pdm_ch_regs_t* reg = ra8_pdm_ch(ch);
-  pdm_write_mode(reg, cfg);
-  pdm_write_coeffs(reg, cfg);
+  internal_pdm_write_mode(reg, cfg);
+  internal_pdm_write_coeffs(reg, cfg);
   /* HUM Ch 49.2.59 "PDDBCRCHn : Data Buffer Control Register" p 3225 */
   reg->PDDBCR = (uint32_t)cfg->rx_threshold;
   return k_ra8_ok;
@@ -279,7 +284,7 @@ ra8_err_t ra8_pdm_read(uint8_t ch, int32_t* out, uint32_t max, uint32_t* out_cou
   const uint32_t n     = (avail < max) ? avail : max;
   for (uint32_t i = 0U; i < n; ++i) {
     /* HUM Ch 49.2.65 "PDDRRCHn : Data Read Register" p 3227 */
-    out[i] = pdm_sign_extend20(reg->PDDRR);
+    out[i] = internal_pdm_sign_extend20(reg->PDDRR);
   }
   *out_count = n;
   return k_ra8_ok;
@@ -293,13 +298,17 @@ ra8_pdm_stream_enable(uint8_t ch, ra8_pdm_data_callback_t callback, void* ctx, u
   if (s_streams[ch].callback != nullptr) {
     return k_ra8_err_exists;
   }
-  s_streams[ch] = (pdm_stream_state_t){.callback = callback, .ctx = ctx};
-  const ra8_err_t err =
-    ra8_isr_register(k_pdm_data_events[ch], pdm_data_isr, (void*)(uintptr_t)ch, priority, nullptr);
+  s_streams[ch]       = (pdm_stream_state_t){.callback = callback, .ctx = ctx};
+  const ra8_err_t err = ra8_isr_register(s_pdm_data_events[ch],
+                                         internal_pdm_data_isr,
+                                         (void*)(uintptr_t)ch,
+                                         priority,
+                                         nullptr);
   if (err != k_ra8_ok) {
     s_streams[ch] = (pdm_stream_state_t){};
     return err;
   }
+  /* HUM Ch 49.2.15 "PDICRCHn : Interrupt Control Register" p 3205 */
   ra8_pdm_ch(ch)->PDICR |= (uint32_t)k_ra8_pdm_pdicr_idre;
   return k_ra8_ok;
 }
@@ -310,8 +319,9 @@ ra8_err_t ra8_pdm_stream_disable(uint8_t ch)
   if (s_streams[ch].callback == nullptr) {
     return k_ra8_err_not_initialized;
   }
+  /* HUM Ch 49.2.15 "PDICRCHn : Interrupt Control Register" p 3205 */
   ra8_pdm_ch(ch)->PDICR &= ~(uint32_t)k_ra8_pdm_pdicr_idre;
-  const ra8_err_t err = ra8_isr_unregister(k_pdm_data_events[ch]);
+  const ra8_err_t err = ra8_isr_unregister(s_pdm_data_events[ch]);
   if (err != k_ra8_ok) {
     return err;
   }

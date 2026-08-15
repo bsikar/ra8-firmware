@@ -39,16 +39,17 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_flash_internal.h"
 #include "ra8_flash_regs.h"
 #include "ra8_log.h"
 
-const char* s_flash_tag = "FLASH";
+const char* g_flash_tag = "FLASH";
 
 /**
- * @var s_flash_rt
+ * @var g_flash_rt
  * @brief Single shared ra8_flash runtime-state instance.
  *
  * @details
@@ -62,7 +63,7 @@ const char* s_flash_tag = "FLASH";
  * @warning Do not redefine; this is the sole owner of the state.
  * @since 0.1.0
  */
-ra8_flash_runtime_t s_flash_rt = {};
+ra8_flash_runtime_t g_flash_rt = {};
 
 /* =============================================================================
  * Internal helpers
@@ -88,7 +89,7 @@ ra8_flash_runtime_t s_flash_rt = {};
  * @since 0.1.0
  * @post Documented side effects are visible on success.
  */
-static ra8_err_t internal_wait_buffer_ready(uint32_t limit)
+RA8_INTERNAL static ra8_err_t internal_wait_buffer_ready(uint32_t limit)
 {
   for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
@@ -120,7 +121,7 @@ static ra8_err_t internal_wait_buffer_ready(uint32_t limit)
  * @note Test-access only.
  * @since 0.1.0
  */
-ra8_err_t ra8_flash_internal_wait_buffer_ready_call(uint32_t limit)
+ra8_err_t priv_ra8_flash_internal_wait_buffer_ready_call(uint32_t limit)
 {
   return internal_wait_buffer_ready(limit);
 }
@@ -144,7 +145,7 @@ ra8_err_t ra8_flash_internal_wait_buffer_ready_call(uint32_t limit)
  * @since 0.1.0
  * @post Documented side effects are visible on success.
  */
-static ra8_err_t internal_wait_commit_done(uint32_t limit)
+RA8_INTERNAL static ra8_err_t internal_wait_commit_done(uint32_t limit)
 {
   for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
@@ -176,7 +177,7 @@ static ra8_err_t internal_wait_commit_done(uint32_t limit)
  * @note Test-access only.
  * @since 0.1.0
  */
-ra8_err_t ra8_flash_internal_wait_commit_done_call(uint32_t limit)
+ra8_err_t priv_ra8_flash_internal_wait_commit_done_call(uint32_t limit)
 {
   return internal_wait_commit_done(limit);
 }
@@ -200,7 +201,7 @@ ra8_err_t ra8_flash_internal_wait_commit_done_call(uint32_t limit)
  * @since 0.1.0
  * @post Documented side effects are visible on success.
  */
-ra8_err_t ra8_flash_internal_wait_mrdy(uint32_t limit)
+ra8_err_t priv_ra8_flash_internal_wait_mrdy(uint32_t limit)
 {
   for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3568 */
@@ -229,7 +230,7 @@ ra8_err_t ra8_flash_internal_wait_mrdy(uint32_t limit)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static void internal_set_program_gate(ra8_flash_world_t world, bool enable)
+RA8_INTERNAL static void internal_set_program_gate(ra8_flash_world_t world, bool enable)
 {
   const uint16_t off =
     (world == k_ra8_flash_world_s) ? k_ra8_mram_off_mrcpc1 : k_ra8_mram_off_mrcpc0;
@@ -267,7 +268,7 @@ static void internal_set_program_gate(ra8_flash_world_t world, bool enable)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static void internal_set_hsp_mode(bool enable)
+RA8_INTERNAL static void internal_set_hsp_mode(bool enable)
 {
   /* HUM Ch 59 "MRPSC : MRAM Program Speed Control Register" p 3575 */
   uint8_t mrpsc = 0U;
@@ -293,7 +294,7 @@ static void internal_set_hsp_mode(bool enable)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-void ra8_flash_internal_set_prefetch(bool enable)
+void priv_ra8_flash_internal_set_prefetch(bool enable)
 {
   /* HUM Ch 59.5.1 "MRCPFB : Code MRAM Pre-Fetch Buffer Enable Register" p 3551 */
   uint8_t mrcpfb = 0U;
@@ -301,7 +302,7 @@ void ra8_flash_internal_set_prefetch(bool enable)
     mrcpfb = 1U;
   }
   *ra8_mram_reg8(k_ra8_mram_off_mrcpfb) = mrcpfb;
-  s_flash_rt.prefetch_on                = enable;
+  g_flash_rt.prefetch_on                = enable;
 }
 
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
@@ -338,7 +339,7 @@ void ra8_flash_internal_maci_log_reset(void)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-void ra8_flash_internal_maci_cmd8(uint8_t byte)
+void priv_ra8_flash_internal_maci_cmd8(uint8_t byte)
 {
   /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
   *ra8_mram_cmd8() = byte;
@@ -366,7 +367,7 @@ void ra8_flash_internal_maci_cmd8(uint8_t byte)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-void ra8_flash_internal_maci_cmd16(uint16_t half)
+void priv_ra8_flash_internal_maci_cmd16(uint16_t half)
 {
   /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
   *ra8_mram_cmd16() = half;
@@ -385,7 +386,7 @@ void ra8_flash_internal_maci_cmd16(uint16_t half)
 
 ra8_err_t ra8_flash_init(const ra8_flash_cfg_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, s_flash_tag, "cfg must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg, g_flash_tag, "cfg must not be nullptr");
   if (cfg->mrcfreq_mhz > (uint16_t)k_ra8_flash_max_mrcfreq_mhz) {
     return k_ra8_err_invalid_arg;
   }
@@ -394,7 +395,7 @@ ra8_err_t ra8_flash_init(const ra8_flash_cfg_t* cfg)
   }
 
   /* Frequency-down procedure -- HUM Ch 59.4.3 Figure 59.6 p 3550. */
-  ra8_flash_internal_set_prefetch(false);
+  priv_ra8_flash_internal_set_prefetch(false);
 
   /* HUM Ch 59.5.2 "MRCFREQ : Code MRAM Frequency Notifications Register" p 3551 */
   const uint32_t mrcfreq_word =
@@ -420,7 +421,7 @@ ra8_err_t ra8_flash_init(const ra8_flash_cfg_t* cfg)
   }
   *ra8_mram_reg16(k_ra8_mram_off_mrcdecc) = (uint16_t)(k_ra8_mrcdecc_key_shift | mrcdecc_bits);
 
-  ra8_flash_internal_set_prefetch(cfg->prefetch_en);
+  priv_ra8_flash_internal_set_prefetch(cfg->prefetch_en);
 
   /* Lock both program gates so no stray store can program MRAM. */
   internal_set_program_gate(k_ra8_flash_world_ns, false);
@@ -435,11 +436,11 @@ ra8_err_t ra8_flash_init(const ra8_flash_cfg_t* cfg)
   /* HUM Ch 59 "MRERAES : Extra MRAM Read Access Error Status" p 3557 */
   *ra8_mram_reg8(k_ra8_mram_off_mreraes) = 0U;
 
-  s_flash_rt.initialized = true;
-  s_flash_rt.cb          = nullptr;
-  s_flash_rt.user_ctx    = nullptr;
+  g_flash_rt.initialized = true;
+  g_flash_rt.cb          = nullptr;
+  g_flash_rt.user_ctx    = nullptr;
 
-  ra8_log_info_val(s_flash_tag, "flash_init mrcfreq", (uint32_t)cfg->mrcfreq_mhz);
+  ra8_log_info_val(g_flash_tag, "flash_init mrcfreq", (uint32_t)cfg->mrcfreq_mhz);
   return k_ra8_ok;
 }
 
@@ -454,11 +455,11 @@ ra8_err_t ra8_flash_deinit(void)
   *ra8_mram_reg16(k_ra8_mram_off_mentryr) = k_ra8_mentryr_read_mode;
   /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   *ra8_mram_reg8(k_ra8_mram_off_mrcps) = k_ra8_mrcps_mask_errors;
-  ra8_flash_internal_set_prefetch(true);
+  priv_ra8_flash_internal_set_prefetch(true);
 
-  s_flash_rt.initialized = false;
-  s_flash_rt.cb          = nullptr;
-  s_flash_rt.user_ctx    = nullptr;
+  g_flash_rt.initialized = false;
+  g_flash_rt.cb          = nullptr;
+  g_flash_rt.user_ctx    = nullptr;
   return k_ra8_ok;
 }
 
@@ -469,7 +470,7 @@ ra8_err_t ra8_flash_deinit(void)
 
 ra8_err_t ra8_flash_get_status(uint8_t* out_status)
 {
-  RA8_CHECK_NULL_PTR(out_status, s_flash_tag, "out_status must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_status, g_flash_tag, "out_status must not be nullptr");
   /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   *out_status = *ra8_mram_reg8(k_ra8_mram_off_mrcps);
   return k_ra8_ok;
@@ -477,7 +478,7 @@ ra8_err_t ra8_flash_get_status(uint8_t* out_status)
 
 ra8_err_t ra8_flash_get_extended_status(ra8_flash_status_ext_t* out)
 {
-  RA8_CHECK_NULL_PTR(out, s_flash_tag, "out must not be nullptr");
+  RA8_CHECK_NULL_PTR(out, g_flash_tag, "out must not be nullptr");
   /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3577 */
   out->mrcps = *ra8_mram_reg8(k_ra8_mram_off_mrcps);
   /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3562 */
@@ -508,20 +509,20 @@ ra8_err_t ra8_flash_set_rww_disable(bool disable)
   if (disable) {
     prefetch = false;
   }
-  ra8_flash_internal_set_prefetch(prefetch);
+  priv_ra8_flash_internal_set_prefetch(prefetch);
   return k_ra8_ok;
 }
 
 /**
  * @brief Pure (state-free) window allow/deny predicate -- see
- *        @ref ra8_flash_internal_window_allows_pure in
+ *        @ref priv_ra8_flash_internal_window_allows_pure in
  *        ra8_flash_internal.h for the full contract.
  *
  * @details Promoted as a pure helper so the
  *          ``win_low == 0U && win_high == 0U`` AND-decision can be
  *          driven directly by host MC/DC tests with synthetic inputs
  *          rather than mutating module state. The state-reading
- *          wrapper @c ra8_flash_internal_window_allows simply forwards.
+ *          wrapper @c priv_ra8_flash_internal_window_allows simply forwards.
  *
  * @param[in] addr     Start address of the candidate region.
  * @param[in] len      Length in bytes of the candidate region.
@@ -541,10 +542,10 @@ ra8_err_t ra8_flash_set_rww_disable(bool disable)
  *
  * @since 0.1.0
  */
-bool ra8_flash_internal_window_allows_pure(uintptr_t addr,
-                                           uint32_t  len,
-                                           uintptr_t win_low,
-                                           uintptr_t win_high)
+bool priv_ra8_flash_internal_window_allows_pure(uintptr_t addr,
+                                                uint32_t  len,
+                                                uintptr_t win_low,
+                                                uintptr_t win_high)
 {
   if (win_low == 0U && win_high == 0U) {
     return true;
@@ -567,7 +568,7 @@ bool ra8_flash_internal_window_allows_pure(uintptr_t addr,
  * stored in driver state rather than in the silicon (RA8D2 has no
  * FAWMON / FAWMR; HUM Ch 59 substitutes block-protect bits). A window
  * with ``win_low == win_high == 0`` is treated as disabled (allow all).
- * Forwards to @ref ra8_flash_internal_window_allows_pure.
+ * Forwards to @ref priv_ra8_flash_internal_window_allows_pure.
  *
  * @param[in] addr Start address of the candidate operation.
  * @param[in] len  Length in bytes (must be > 0 if the caller is writing).
@@ -585,9 +586,12 @@ bool ra8_flash_internal_window_allows_pure(uintptr_t addr,
  *
  * @since 0.1.0
  */
-bool ra8_flash_internal_window_allows(uintptr_t addr, uint32_t len)
+bool priv_ra8_flash_internal_window_allows(uintptr_t addr, uint32_t len)
 {
-  return ra8_flash_internal_window_allows_pure(addr, len, s_flash_rt.win_low, s_flash_rt.win_high);
+  return priv_ra8_flash_internal_window_allows_pure(addr,
+                                                    len,
+                                                    g_flash_rt.win_low,
+                                                    g_flash_rt.win_high);
 }
 
 /* =============================================================================
@@ -619,7 +623,7 @@ bool ra8_flash_internal_window_allows(uintptr_t addr, uint32_t len)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static ra8_err_t internal_validate_write_block(uint32_t mram_addr, uint32_t len)
+RA8_INTERNAL static ra8_err_t internal_validate_write_block(uint32_t mram_addr, uint32_t len)
 {
   if (len == 0U || len > k_ra8_mram_write_size_bytes) {
     return k_ra8_err_invalid_arg;
@@ -636,7 +640,7 @@ static ra8_err_t internal_validate_write_block(uint32_t mram_addr, uint32_t len)
   if ((mram_addr & ~page_mask) != ((end_excl - 1U) & ~page_mask)) {
     return k_ra8_err_invalid_arg;
   }
-  if (!ra8_flash_internal_window_allows((uintptr_t)mram_addr, len)) {
+  if (!priv_ra8_flash_internal_window_allows((uintptr_t)mram_addr, len)) {
     return k_ra8_err_out_of_range;
   }
   return k_ra8_ok;
@@ -674,12 +678,12 @@ static ra8_err_t internal_validate_write_block(uint32_t mram_addr, uint32_t len)
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
-static ra8_err_t internal_flash_program_window(uint32_t          mram_addr,
-                                               const uint8_t*    src,
-                                               uint32_t          len,
-                                               ra8_flash_world_t world)
+RA8_INTERNAL static ra8_err_t internal_flash_program_window(uint32_t          mram_addr,
+                                                            const uint8_t*    src,
+                                                            uint32_t          len,
+                                                            ra8_flash_world_t world)
 {
-  ra8_flash_internal_set_prefetch(false);
+  priv_ra8_flash_internal_set_prefetch(false);
   internal_set_hsp_mode(true);
   internal_set_program_gate(world, true);
 
@@ -697,7 +701,7 @@ static ra8_err_t internal_flash_program_window(uint32_t          mram_addr,
   /* Tear down regardless of err so the gate cannot stay open. */
   internal_set_program_gate(world, false);
   internal_set_hsp_mode(false);
-  ra8_flash_internal_set_prefetch(true);
+  priv_ra8_flash_internal_set_prefetch(true);
 
   return err;
 }
@@ -705,24 +709,24 @@ static ra8_err_t internal_flash_program_window(uint32_t          mram_addr,
 ra8_err_t
 ra8_flash_write_block(uint32_t mram_addr, const uint8_t* src, uint32_t len, ra8_flash_world_t world)
 {
-  RA8_CHECK_NULL_PTR(src, s_flash_tag, "src must not be nullptr");
+  RA8_CHECK_NULL_PTR(src, g_flash_tag, "src must not be nullptr");
   const ra8_err_t v_err = internal_validate_write_block(mram_addr, len);
-  RA8_RETURN_ON_ERROR(v_err, s_flash_tag, "flash_write: validate"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(v_err, g_flash_tag, "flash_write: validate"); /* GCOVR_EXCL_BR_LINE */
 
   /* Step 1: wait for the controller to be idle. */
   ra8_err_t err = internal_wait_buffer_ready(k_ra8_flash_busy_spin_limit);
-  RA8_RETURN_ON_ERROR(err, s_flash_tag, "flash_write: busy wait"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, g_flash_tag, "flash_write: busy wait"); /* GCOVR_EXCL_BR_LINE */
 
   /* Steps 2-6: gate, write, flush, commit, teardown. */
   err = internal_flash_program_window(mram_addr, src, len, world);
-  RA8_RETURN_ON_ERROR(err, s_flash_tag, "flash_write: commit wait"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(err, g_flash_tag, "flash_write: commit wait"); /* GCOVR_EXCL_BR_LINE */
 
   /* Step 7: error check.
    * HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
   const uint8_t status = *ra8_mram_reg8(k_ra8_mram_off_mrcps);
   if ((status & k_ra8_mrcps_mask_errors) != 0U) {
     *ra8_mram_reg8(k_ra8_mram_off_mrcps) = k_ra8_mrcps_mask_errors;
-    ra8_log_error_val(s_flash_tag, "flash_write: hw error", (uint32_t)status);
+    ra8_log_error_val(g_flash_tag, "flash_write: hw error", (uint32_t)status);
     return k_ra8_err_hw_error;
   }
   return k_ra8_ok;
@@ -734,12 +738,12 @@ ra8_err_t ra8_flash_erase_block(uint32_t mram_addr, ra8_flash_world_t world)
     return k_ra8_err_invalid_arg;
   }
   /* MRAM has no separate erase: erase == program-to-all-ones. */
-  static const uint8_t s_ones[k_ra8_mram_block_size_bytes] = {
+  static const uint8_t local_ones[k_ra8_mram_block_size_bytes] = {
     0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
     0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
     0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
   };
-  return ra8_flash_write_block(mram_addr, s_ones, k_ra8_mram_block_size_bytes, world);
+  return ra8_flash_write_block(mram_addr, local_ones, k_ra8_mram_block_size_bytes, world);
 }
 
 /* =============================================================================
@@ -777,7 +781,7 @@ ra8_err_t ra8_flash_block_protect_set(ra8_flash_world_t world, bool lock, bool p
    * persistent fuse to ``ra8_flash_config_set_write`` for callers who
    * truly want it. The HUM Ch 7 p 278 OFS layout is the trust anchor. */
   if (permanent) {
-    ra8_log_warn(s_flash_tag, "permanent block protect requires config-set");
+    ra8_log_warn(g_flash_tag, "permanent block protect requires config-set");
   }
   return k_ra8_ok;
 }
@@ -789,7 +793,7 @@ ra8_err_t ra8_flash_block_protect_set(ra8_flash_world_t world, bool lock, bool p
 
 ra8_err_t ra8_flash_enter_pe_mode(void)
 {
-  ra8_flash_internal_set_prefetch(false);
+  priv_ra8_flash_internal_set_prefetch(false);
   /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
   *ra8_mram_reg16(k_ra8_mram_off_mentryr) = k_ra8_mentryr_pe_enter;
 
@@ -812,7 +816,7 @@ ra8_err_t ra8_flash_exit_pe_mode(void)
     /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3571 */
     const uint16_t v = *ra8_mram_reg16(k_ra8_mram_off_mentryr);
     if ((v & k_ra8_mentryr_mask_pe_mode) == 0U) { /* GCOVR_EXCL_BR_LINE */
-      ra8_flash_internal_set_prefetch(s_flash_rt.prefetch_on);
+      priv_ra8_flash_internal_set_prefetch(g_flash_rt.prefetch_on);
       return k_ra8_ok;
     }
   }
@@ -898,8 +902,8 @@ ra8_err_t ra8_flash_lock_set(uintptr_t addr, uint16_t lock_bits)
 ra8_err_t ra8_flash_force_stop(void)
 {
   /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
-  ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_forced_stop);
-  ra8_err_t err = ra8_flash_internal_wait_mrdy(k_ra8_flash_maci_spin_limit);
+  priv_ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_forced_stop);
+  ra8_err_t err = priv_ra8_flash_internal_wait_mrdy(k_ra8_flash_maci_spin_limit);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -914,7 +918,7 @@ ra8_err_t ra8_flash_force_stop(void)
 
 ra8_err_t ra8_flash_reset(void)
 {
-  RA8_VALIDATE_INIT(s_flash_rt.initialized, s_flash_tag, "flash_reset before init");
+  RA8_VALIDATE_INIT(g_flash_rt.initialized, g_flash_tag, "flash_reset before init");
   ra8_err_t err = ra8_flash_enter_pe_mode();
   if (err != k_ra8_ok) {
     return err;
@@ -922,8 +926,8 @@ ra8_err_t ra8_flash_reset(void)
   ra8_err_t stop_err = ra8_flash_force_stop();
   /* Clear status whether or not the stop succeeded. */
   /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
-  ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_status_clear);
-  (void)ra8_flash_internal_wait_mrdy(k_ra8_flash_maci_spin_limit);
+  priv_ra8_flash_internal_maci_cmd8(k_ra8_maci_cmd_status_clear);
+  (void)priv_ra8_flash_internal_wait_mrdy(k_ra8_flash_maci_spin_limit);
   ra8_err_t exit_err = ra8_flash_exit_pe_mode();
   if (stop_err != k_ra8_ok) {
     return stop_err;
