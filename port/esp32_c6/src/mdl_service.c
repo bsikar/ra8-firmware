@@ -19,11 +19,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "esp_crt_bundle.h"
-#include "esp_err.h"
-#include "esp_http_client.h"
-#include "mbedtls/sha256.h"
+#include "esp_idf_mdl_compat_internal.h"
+#include "ra8_attributes.h"
 #include "ra8_c6link_mdl_msg.h"
+#include "ra8_mdl_service.h"
 
 /** @brief Fixed HTTP policy values for the concrete ESP-IDF adapter. */
 typedef enum : uint16_t {
@@ -65,8 +64,6 @@ static bool              s_initialised;
  * @note Thread-safe and allocation-free.
  * @since 0.1.0
  */
-uint32_t ra8_mdl_service_component_abi(void);
-
 typedef uint32_t (*mdl_component_abi_fn_t)(void);
 
 __attribute__((noinline)) uint32_t ra8_mdl_service_component_abi(void)
@@ -92,7 +89,7 @@ static mdl_component_abi_fn_t volatile s_component_abi = ra8_mdl_service_compone
  * @warning ESP-IDF close/reconnect internals may still release/allocate heap.
  * @since 0.1.0
  */
-static void mdl_http_reset_job(mdl_http_state_t* state)
+RA8_INTERNAL static void internal_mdl_http_reset_job(mdl_http_state_t* state)
 {
   if (state->http != nullptr) {
     (void)esp_http_client_close(state->http); /* alloc-allow: ESP-IDF teardown */
@@ -121,7 +118,7 @@ static void mdl_http_reset_job(mdl_http_state_t* state)
  * @warning This concrete adapter remains an ESP-IDF heap exception.
  * @since 0.1.0
  */
-static ra8_err_t mdl_http_init(mdl_http_state_t* state)
+RA8_INTERNAL static ra8_err_t internal_mdl_http_init(mdl_http_state_t* state)
 {
   const esp_http_client_config_t cfg = {
     .url                   = "https://127.0.0.1/",
@@ -149,7 +146,7 @@ static ra8_err_t mdl_http_init(mdl_http_state_t* state)
  * @retval k_ra8_err_invalid_arg URL is not a non-empty HTTPS URL.
  * @retval k_ra8_err_invalid_size URL exceeds the fixed buffer.
  * @retval k_ra8_fail ESP-IDF URL setup or SHA setup failed.
- * @pre @p ctx completed ::mdl_http_init.
+ * @pre @p ctx completed ::internal_mdl_http_init.
  * @pre No read callback executes concurrently.
  * @post Success leaves a closed client ready for lazy network open.
  * @post Failure leaves no active job.
@@ -157,7 +154,7 @@ static ra8_err_t mdl_http_init(mdl_http_state_t* state)
  * @warning esp_http_client_set_url may allocate internally.
  * @since 0.1.0
  */
-static ra8_err_t mdl_http_begin(void* ctx, const char* url)
+RA8_INTERNAL static ra8_err_t internal_mdl_http_begin(void* ctx, const char* url)
 {
   mdl_http_state_t* state            = (mdl_http_state_t*)ctx;
   const size_t      https_prefix_len = sizeof("https://") - 1U;
@@ -165,18 +162,18 @@ static ra8_err_t mdl_http_begin(void* ctx, const char* url)
       (strncmp(url, "https://", https_prefix_len) != 0) || (url[https_prefix_len] == '\0')) {
     return k_ra8_err_invalid_arg;
   }
-  mdl_http_reset_job(state);
+  internal_mdl_http_reset_job(state);
   const size_t len = strnlen(url, sizeof(state->url));
   if ((len == 0U) || (len >= sizeof(state->url))) {
     return k_ra8_err_invalid_size;
   }
   memcpy(state->url, url, len + 1U);
   if (esp_http_client_set_url(state->http, state->url) != ESP_OK) { /* alloc-allow: URL state */
-    mdl_http_reset_job(state);
+    internal_mdl_http_reset_job(state);
     return k_ra8_fail;
   }
   if (mbedtls_sha256_starts(&state->sha, 0) != 0) {
-    mdl_http_reset_job(state);
+    internal_mdl_http_reset_job(state);
     return k_ra8_fail;
   }
   state->hashing = true;
@@ -191,7 +188,7 @@ static ra8_err_t mdl_http_begin(void* ctx, const char* url)
  * @retval k_ra8_ok Headers describe a successful HTTP response.
  * @retval k_ra8_fail ESP-IDF failed to open the HTTPS connection.
  * @retval k_ra8_err_protocol_error HTTP status is outside 200..299.
- * @pre @p state completed ::mdl_http_begin successfully.
+ * @pre @p state completed ::internal_mdl_http_begin successfully.
  * @pre No concurrent request uses the retained client.
  * @post Success marks the response opened and records advertised length.
  * @post Failure does not publish body bytes.
@@ -199,7 +196,7 @@ static ra8_err_t mdl_http_begin(void* ctx, const char* url)
  * @warning TLS connection/reconnection may allocate internally.
  * @since 0.1.0
  */
-static ra8_err_t mdl_http_open(mdl_http_state_t* state)
+RA8_INTERNAL static ra8_err_t internal_mdl_http_open(mdl_http_state_t* state)
 {
   if (state->opened) {
     return k_ra8_ok;
@@ -236,46 +233,46 @@ static ra8_err_t mdl_http_open(mdl_http_state_t* state)
  * @retval k_ra8_err_invalid_size Received-byte count overflowed.
  * @retval k_ra8_fail ESP-IDF or SHA processing failed.
  * @pre Every output pointer is non-null and @p cap is bounded by the protocol.
- * @pre ::mdl_http_begin succeeded for this job.
+ * @pre ::internal_mdl_http_begin succeeded for this job.
  * @post A data response advances `received` by exactly @p got.
  * @post Terminal success closes job state after digest finalisation.
  * @note Not thread-safe; service dispatch serializes calls.
  * @since 0.1.0
  */
-static ra8_err_t mdl_http_read(void*     ctx,
-                               uint8_t*  out,
-                               uint16_t  cap,
-                               uint16_t* got,
-                               uint64_t* total_bytes,
-                               bool*     complete,
-                               uint8_t   sha256[k_ra8_mdl_sha256_bytes])
+RA8_INTERNAL static ra8_err_t internal_mdl_http_read(void*     ctx,
+                                                     uint8_t*  out,
+                                                     uint16_t  cap,
+                                                     uint16_t* got,
+                                                     uint64_t* total_bytes,
+                                                     bool*     complete,
+                                                     uint8_t   sha256[k_ra8_mdl_sha256_bytes])
 {
   *got                     = 0U;
   *total_bytes             = 0U;
   *complete                = false;
   mdl_http_state_t* state  = (mdl_http_state_t*)ctx;
-  const ra8_err_t   opened = mdl_http_open(state);
+  const ra8_err_t   opened = internal_mdl_http_open(state);
   if (opened != k_ra8_ok) {
-    mdl_http_reset_job(state);
+    internal_mdl_http_reset_job(state);
     return opened;
   }
   const int read = esp_http_client_read(state->http, (char*)out, cap);
   if ((read < 0) || ((uint32_t)read > (uint32_t)cap)) {
-    mdl_http_reset_job(state);
+    internal_mdl_http_reset_job(state);
     return k_ra8_fail;
   }
   if (read > 0) {
     if (state->received > (UINT64_MAX - (uint64_t)read)) {
-      mdl_http_reset_job(state);
+      internal_mdl_http_reset_job(state);
       return k_ra8_err_invalid_size;
     }
     const uint64_t next_received = state->received + (uint64_t)read;
     if (state->total_known && (next_received > state->total)) {
-      mdl_http_reset_job(state);
+      internal_mdl_http_reset_job(state);
       return k_ra8_err_protocol_error;
     }
     if (mbedtls_sha256_update(&state->sha, out, (size_t)read) != 0) {
-      mdl_http_reset_job(state);
+      internal_mdl_http_reset_job(state);
       return k_ra8_fail;
     }
     state->received = next_received;
@@ -285,11 +282,11 @@ static ra8_err_t mdl_http_read(void*     ctx,
     const bool body_complete  = esp_http_client_is_complete_data_received(state->http);
     const bool length_matches = !state->total_known || (state->received == state->total);
     if ((!body_complete) || (!length_matches)) {
-      mdl_http_reset_job(state);
+      internal_mdl_http_reset_job(state);
       return k_ra8_err_protocol_error;
     }
     if (mbedtls_sha256_finish(&state->sha, sha256) != 0) {
-      mdl_http_reset_job(state);
+      internal_mdl_http_reset_job(state);
       return k_ra8_fail;
     }
     /* A close-delimited or chunked response has no advertised length. Publish
@@ -299,7 +296,7 @@ static ra8_err_t mdl_http_read(void*     ctx,
     }
     *total_bytes = state->total;
     *complete    = true;
-    mdl_http_reset_job(state);
+    internal_mdl_http_reset_job(state);
   }
   return k_ra8_ok;
 }
@@ -318,9 +315,9 @@ static ra8_err_t mdl_http_read(void*     ctx,
  * @note Not thread-safe; service dispatch serializes calls.
  * @since 0.1.0
  */
-static ra8_err_t mdl_http_cancel(void* ctx)
+RA8_INTERNAL static ra8_err_t internal_mdl_http_cancel(void* ctx)
 {
-  mdl_http_reset_job((mdl_http_state_t*)ctx);
+  internal_mdl_http_reset_job((mdl_http_state_t*)ctx);
   return k_ra8_ok;
 }
 
@@ -359,12 +356,12 @@ esp_err_t esp_hosted_custom_rpc_sync_handler(uint32_t       message_id,
     return ESP_FAIL;
   }
   if (!s_initialised) {
-    if (mdl_http_init(&s_http) != k_ra8_ok) {
+    if (internal_mdl_http_init(&s_http) != k_ra8_ok) {
       return ESP_FAIL;
     }
-    const ra8_mdl_service_backend_t backend = {.begin  = mdl_http_begin,
-                                               .read   = mdl_http_read,
-                                               .cancel = mdl_http_cancel,
+    const ra8_mdl_service_backend_t backend = {.begin  = internal_mdl_http_begin,
+                                               .read   = internal_mdl_http_read,
+                                               .cancel = internal_mdl_http_cancel,
                                                .ctx    = &s_http};
     if (ra8_mdl_service_init(&s_service, &backend) != k_ra8_ok) {
       return ESP_FAIL;

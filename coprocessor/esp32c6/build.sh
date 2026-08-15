@@ -120,6 +120,10 @@ rm -rf "${COMPONENT_DIR}"
 mkdir -p "${COMPONENT_DIR}/include" "${COMPONENT_DIR}/src"
 cp "${SCRIPT_DIR}/../../port/esp32_c6/CMakeLists.txt" "${COMPONENT_DIR}/CMakeLists.txt"
 cp "${SCRIPT_DIR}/../../port/esp32_c6/src/mdl_service.c" "${COMPONENT_DIR}/src/mdl_service.c"
+cp "${SCRIPT_DIR}/../../port/esp32_c6/src/esp_idf_mdl_compat_internal.h" \
+  "${COMPONENT_DIR}/src/esp_idf_mdl_compat_internal.h"
+cp "${SCRIPT_DIR}/../../port/esp32_c6/inc/ra8_mdl_service.h" \
+  "${COMPONENT_DIR}/include/ra8_mdl_service.h"
 cp "${SCRIPT_DIR}/../../libs/ra8_c6link/src/ra8_c6link_mdl_service.c" \
   "${COMPONENT_DIR}/src/ra8_c6link_mdl_service.c"
 cp "${SCRIPT_DIR}/../../libs/ra8_c6link/src/ra8_media_download.pb-c.c" \
@@ -131,6 +135,8 @@ cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_mdl_protocol.h" \
 cp "${SCRIPT_DIR}/../../libs/ra8_c6link/inc/ra8_media_download.pb-c.h" \
   "${COMPONENT_DIR}/include/ra8_media_download.pb-c.h"
 cp "${SCRIPT_DIR}/../../libs/ra8_core/inc/ra8_err.h" "${COMPONENT_DIR}/include/ra8_err.h"
+cp "${SCRIPT_DIR}/../../libs/ra8_core/inc/ra8_attributes.h" \
+  "${COMPONENT_DIR}/include/ra8_attributes.h"
 
 # ---- 3. drop in the proven sdkconfig.defaults ----
 echo "==> installing sdkconfig.defaults"
