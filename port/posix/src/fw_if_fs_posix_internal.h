@@ -2,6 +2,14 @@
  * @file fw_if_fs_posix_internal.h
  * @brief Shared errno/descriptor helpers for the POSIX filesystem port.
  * @ingroup grp_io
+ *
+ * @details
+ * Defines the fixed caller-workspace layouts and bounded helper contracts used
+ * across the POSIX adapter translation units. These declarations keep hosted
+ * descriptor, timestamp, path, and transaction-name policy private to the
+ * port while avoiding duplicated platform logic.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 

@@ -3,6 +3,9 @@
  * @brief Bounded structural validators for native archive formats.
  * @details Validates container framing, member paths, required metadata, and
  *          page presence using only the caller-provided export workspace.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #include "mdl_verify.h"
 
@@ -23,14 +26,14 @@ typedef struct {
 
 /** @brief POSIX tar field layout and record sizing used by the verifier. */
 typedef enum : uint16_t {
-  k_tar_name_bytes      = 100U, /**< Width of the header name field.       */
-  k_tar_type_offset     = 156U, /**< Header typeflag byte offset.          */
-  k_tar_size_offset     = 124U, /**< Header file-size field offset.        */
-  k_tar_size_bytes      = 12U,  /**< Width of the file-size field.         */
-  k_tar_checksum_offset = 148U, /**< Header checksum field offset.         */
-  k_tar_checksum_end    = 156U, /**< First byte after the checksum field.  */
-  k_tar_padding_mask    = 511U, /**< Block-rounding mask.                  */
-  k_tar_block_bytes     = 512U, /**< POSIX tar record size.                */
+  k_tar_name_bytes      = 100U, /**< Width of the header name field.      */
+  k_tar_type_offset     = 156U, /**< Header typeflag byte offset.         */
+  k_tar_size_offset     = 124U, /**< Header file-size field offset.       */
+  k_tar_size_bytes      = 12U,  /**< Width of the file-size field.        */
+  k_tar_checksum_offset = 148U, /**< Header checksum field offset.        */
+  k_tar_checksum_end    = 156U, /**< First byte after the checksum field. */
+  k_tar_padding_mask    = 511U, /**< Block-rounding mask.                 */
+  k_tar_block_bytes     = 512U, /**< POSIX tar record size.               */
 } mdl_verify_tar_layout_t;
 
 /** @brief RFC 1952 fixed-header and trailer constants. */
@@ -41,7 +44,7 @@ typedef enum : uint8_t {
   k_gzip_header_bytes   = 10U,   /**< Fixed gzip header size emitted here. */
   k_gzip_trailer_bytes  = 8U,    /**< CRC32 and ISIZE trailer size.        */
   k_gzip_min_bytes      = 18U,   /**< Header plus trailer minimum size.    */
-  k_archive_arena_align = 8U,    /**< Workspace alignment for byte spans. */
+  k_archive_arena_align = 8U,    /**< Workspace alignment for byte spans.  */
 } mdl_verify_gzip_layout_t;
 
 /** @brief Byte shifts for decoding a little-endian 32-bit integer. */
@@ -143,7 +146,7 @@ ra8_err_t mdl_format_from_path(const char* path, mdl_format_t* out_format)
     return k_ra8_err_invalid_arg;
   }
   static const struct {
-    const char*  suffix; /**< Complete artifact suffix. */
+    const char*  suffix; /**< Complete artifact suffix.  */
     mdl_format_t fmt;    /**< Format mapped from suffix. */
   } suffixes[] = {{".cbt.gz", k_mdl_fmt_cbt_gz},
                   {".epub", k_mdl_fmt_epub},

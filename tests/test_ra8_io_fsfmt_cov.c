@@ -2,6 +2,12 @@
  * @file test_ra8_io_fsfmt_cov.c
  * @brief Validation and capability-consistency vectors for filesystem formats.
  *
+ * @details
+ * Builds fixed fake backend operation tables to cover required callbacks,
+ * mutually dependent capability flags, duplicate registration, capacity
+ * limits, and lookup behavior. The vectors verify that inconsistent filesystem
+ * implementations are rejected before they enter the global format registry.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

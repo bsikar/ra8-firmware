@@ -626,12 +626,12 @@ typedef struct {
 
 /** @brief Number of resident body segments before the image-pool payload. */
 typedef enum : uint8_t {
-  k_rabook_segment_chapters = 0U, /**< Chapter table.                 */
-  k_rabook_segment_nodes    = 1U, /**< DOM node table.                */
-  k_rabook_segment_attrs    = 2U, /**< DOM attribute table.           */
-  k_rabook_segment_styles   = 3U, /**< Stylesheet table.              */
-  k_rabook_segment_images   = 4U, /**< Image descriptor table.        */
-  k_rabook_segment_strings  = 5U, /**< Interned string pool.          */
+  k_rabook_segment_chapters = 0U, /**< Chapter table.                    */
+  k_rabook_segment_nodes    = 1U, /**< DOM node table.                   */
+  k_rabook_segment_attrs    = 2U, /**< DOM attribute table.              */
+  k_rabook_segment_styles   = 3U, /**< Stylesheet table.                 */
+  k_rabook_segment_images   = 4U, /**< Image descriptor table.           */
+  k_rabook_segment_strings  = 5U, /**< Interned string pool.             */
   k_rabook_segment_count    = 6U, /**< Five tables plus the string pool. */
 } ra8_rabook_segment_count_t;
 

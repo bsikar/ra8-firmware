@@ -24,12 +24,12 @@
 
 /** @brief RBKC fixed-field sizes and offsets. */
 typedef enum : uint8_t {
-  k_rbkc_chunk_bytes_off = 4U,  /**< uint32 chunk size.      */
-  k_rbkc_total_off       = 8U,  /**< uint64 inflated total.  */
-  k_rbkc_count_off       = 16U, /**< uint32 chunk count.     */
-  k_rbkc_reserved_off    = 20U, /**< uint32 reserved zero.   */
-  k_rbkc_u32_bytes       = 4U,  /**< Little-endian uint32.   */
-  k_rbkc_u64_bytes       = 8U,  /**< Little-endian uint64.   */
+  k_rbkc_chunk_bytes_off = 4U,  /**< uint32 chunk size.     */
+  k_rbkc_total_off       = 8U,  /**< uint64 inflated total. */
+  k_rbkc_count_off       = 16U, /**< uint32 chunk count.    */
+  k_rbkc_reserved_off    = 20U, /**< uint32 reserved zero.  */
+  k_rbkc_u32_bytes       = 4U,  /**< Little-endian uint32.  */
+  k_rbkc_u64_bytes       = 8U,  /**< Little-endian uint64.  */
 } rbkc_layout_t;
 
 /** @brief Number of bits shifted per little-endian output byte. */

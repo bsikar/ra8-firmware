@@ -49,7 +49,7 @@ extern "C" {
 /** @brief Clock rates published by the standard EK-RA8D2 bring-up. */
 typedef struct {
   uint32_t cpuclk0_hz; /**< Main Cortex-M85 clock rate in hertz. */
-  uint32_t pclka_hz;   /**< Peripheral clock A rate in hertz.   */
+  uint32_t pclka_hz;   /**< Peripheral clock A rate in hertz.    */
 } ra8_board_clock_rates_t;
 
 /**

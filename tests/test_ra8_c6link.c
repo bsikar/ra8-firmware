@@ -50,7 +50,7 @@ typedef enum : uint32_t {
   k_t_throttle_high       = 80U,   /**< Flow-control high-water mark it advertises.       */
   k_t_throttle_low        = 60U,   /**< Its low-water mark.                               */
   k_t_mdl_digest_fill     = 0xA5U, /**< Expected model media digest octet.                */
-  k_t_mdl_bad_digest_fill = 0x5AU, /**< Deliberately mismatched digest octet.         */
+  k_t_mdl_bad_digest_fill = 0x5AU, /**< Deliberately mismatched digest octet.             */
 } t_c6_const_t;
 
 /** @brief Decode arena handed to the link under test. */

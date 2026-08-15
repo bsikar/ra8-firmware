@@ -38,7 +38,7 @@
 /** @brief Backend tunables. */
 typedef enum : uint32_t {
   k_curl_max_redirects   = 5,     /**< Redirect hops to follow.                  */
-  k_http_not_modified    = 304,   /**< Conditional GET reused the held entity.  */
+  k_http_not_modified    = 304,   /**< Conditional GET reused the held entity.   */
   k_http_client_err_min  = 400,   /**< First HTTP status treated as an error.    */
   k_http_not_found       = 404,   /**< Absent resource (client error).           */
   k_http_too_many_req    = 429,   /**< Too Many Requests (throttle).             */
@@ -70,7 +70,7 @@ typedef struct {
   const char*       proxy;                          /**< HTTP/HTTPS proxy URL.        */
   const char*       socks5;                         /**< SOCKS5 proxy URL.            */
   const char*       cookie_file;                    /**< Cookie file path.            */
-  const char*       ca_file;                        /**< Custom PEM CA bundle.         */
+  const char*       ca_file;                        /**< Custom PEM CA bundle.        */
   char              origin_host[k_origin_host_max]; /**< Host of the current request. */
   mdl_req_headers_t request_headers;                /**< Stable conditional headers.  */
 } mdl_curl_ctx_t;

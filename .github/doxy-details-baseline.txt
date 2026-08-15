@@ -125,15 +125,8 @@ tools/media_dl/src/mdl_extract.c
 tools/media_dl/src/mdl_fetch.c
 tools/media_dl/src/mdl_hash.c
 tools/media_dl/src/mdl_library.c
-tools/media_dl/src/mdl_pack.c
 tools/media_dl/src/mdl_pathfs.c
-tools/media_dl/src/mdl_politeness.c
-tools/media_dl/src/mdl_report.c
-tools/media_dl/src/mdl_robots.c
 tools/media_dl/src/mdl_sanitize.c
-tools/media_dl/src/mdl_search.c
-tools/media_dl/src/mdl_session.c
 tools/media_dl/src/mdl_state.c
 tools/media_dl/src/mdl_url_guard.c
-tools/media_dl/src/mdl_urlname.c
 tools/media_dl/tests/tiny_jpeg_fixture.h

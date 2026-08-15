@@ -6,6 +6,12 @@
  * @par Tag
  * [Ring 4 / Host Port] {World: Host}
  *
+ * @details
+ * Implements portable filesystem operations relative to one opened root
+ * descriptor. Component-wise no-follow traversal rejects parent escapes and
+ * symlinks, while caller-owned file and transaction workspaces provide bounded
+ * streaming, listing, metadata, and staged publication on hosted systems.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

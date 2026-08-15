@@ -3,6 +3,9 @@
  * @brief Bounded, no-heap structural validation of media_dl artifacts.
  * @details Declares path-based format inference and structural validation that
  *          reports artifact contents while using caller-owned scratch storage.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

@@ -1,6 +1,13 @@
 /**
  * @file test_ra8_rabook_import_crc.c
  * @brief Fault tests for bounded RABOOK import source-key streaming.
+ *
+ * @details
+ * Drives the importer CRC seam through exact completion, preflight rejection,
+ * short and oversized reads, appended data, callback failures, and exhausted
+ * read budgets. Sentinel outputs prove that no partial source identity is
+ * published when the stable size and EOF contract is violated.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

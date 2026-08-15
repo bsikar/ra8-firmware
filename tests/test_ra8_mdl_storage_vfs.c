@@ -24,28 +24,28 @@
 
 /** @brief Fixture capacities and payload constants. */
 typedef enum : uint32_t {
-  k_disk_blocks        = 16384U, /**< 8 MiB FAT16 RAM disk. */
-  k_payload_len        = 300U,   /**< Crosses several transfer writes. */
-  k_compare_chunk_len  = 64U,    /**< Bounded validation read chunk. */
+  k_disk_blocks        = 16384U, /**< 8 MiB FAT16 RAM disk.             */
+  k_payload_len        = 300U,   /**< Crosses several transfer writes.  */
+  k_compare_chunk_len  = 64U,    /**< Bounded validation read chunk.    */
   k_payload_multiplier = 29U,    /**< Deterministic payload multiplier. */
-  k_payload_offset     = 7U,     /**< Deterministic payload offset. */
-  k_byte_mask          = 0xFFU,  /**< Low-byte payload mask. */
-  k_digest_tag         = 0xA5U,  /**< Test validator digest marker. */
+  k_payload_offset     = 7U,     /**< Deterministic payload offset.     */
+  k_byte_mask          = 0xFFU,  /**< Low-byte payload mask.            */
+  k_digest_tag         = 0xA5U,  /**< Test validator digest marker.     */
   k_written_sentinel   = 99U,    /**< Detect failure-path output reset. */
 } test_limits_t;
 
 /** @brief Backend fault controller wrapped around the real RAM bridge. */
 typedef struct {
-  ra8_fs_backend_t inner;       /**< Real blockdev-to-fs bridge. */
+  ra8_fs_backend_t inner;       /**< Real blockdev-to-fs bridge.   */
   ra8_err_t        write_error; /**< Injected write failure or OK. */
-  bool             removed;     /**< All access fails while true. */
+  bool             removed;     /**< All access fails while true.  */
 } fault_backend_t;
 
 /** @brief Artifact-validator fixture. */
 typedef struct {
-  const uint8_t* expected;     /**< Expected staged bytes. */
-  uint32_t       expected_len; /**< Expected length. */
-  uint32_t       calls;        /**< Invocation count. */
+  const uint8_t* expected;     /**< Expected staged bytes.    */
+  uint32_t       expected_len; /**< Expected length.          */
+  uint32_t       calls;        /**< Invocation count.         */
   bool           fail;         /**< Force validation failure. */
 } validator_t;
 

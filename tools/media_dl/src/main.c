@@ -99,13 +99,13 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct {
-  char                          title[k_mdl_title_max];       /**< Display title.          */
-  char                          summary[k_mdl_summary_max];   /**< Synopsis/description.   */
-  char                          writer[k_mdl_person_max];     /**< Writer/author.           */
-  char                          artist[k_mdl_person_max];     /**< Artist/illustrator.      */
-  char                          cover_url[k_mdl_url_max];     /**< Resolved remote cover.   */
-  char                          language[k_mdl_language_max]; /**< BCP-47 language tag.     */
-  mdl_state_reading_direction_t direction;                    /**< Page progression.        */
+  char                          title[k_mdl_title_max];       /**< Display title.            */
+  char                          summary[k_mdl_summary_max];   /**< Synopsis/description.     */
+  char                          writer[k_mdl_person_max];     /**< Writer/author.            */
+  char                          artist[k_mdl_person_max];     /**< Artist/illustrator.       */
+  char                          cover_url[k_mdl_url_max];     /**< Resolved remote cover.    */
+  char                          language[k_mdl_language_max]; /**< BCP-47 language tag.      */
+  mdl_state_reading_direction_t direction;                    /**< Page progression.         */
   bool                          title_selected;               /**< Title selector succeeded. */
 } mdl_series_metadata_t;
 
@@ -1321,7 +1321,7 @@ RA8_INTERNAL static int run_series(const series_run_t* r)
 }
 
 typedef struct {
-  size_t found;      /**< Tracked series encountered.     */
+  size_t found;      /**< Tracked series encountered.      */
   size_t unreadable; /**< Invalid state files encountered. */
 } list_ctx_t;
 

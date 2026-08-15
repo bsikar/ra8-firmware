@@ -64,14 +64,14 @@ typedef ra8_err_t (*ra8_rabook_write_at_fn)(void*          ctx,
 
 /** @brief Caller-owned transient storage for one RBKC write. */
 typedef struct {
-  uint8_t*  input;          /**< One uncompressed flat chunk.                  */
-  uint8_t*  compressed;     /**< One complete zlib stream.                     */
-  void*     compressor;     /**< `tdefl_compressor` storage, 8-byte aligned.   */
-  uint64_t* offsets;        /**< Payload-relative offset table.                */
-  uint32_t  input_cap;      /**< Writable bytes at @p input.                   */
-  uint32_t  compressed_cap; /**< Writable bytes at @p compressed.              */
-  uint32_t  compressor_cap; /**< Writable bytes at @p compressor.              */
-  uint32_t  offset_cap;     /**< Number of uint64 entries at @p offsets.       */
+  uint8_t*  input;          /**< One uncompressed flat chunk.                */
+  uint8_t*  compressed;     /**< One complete zlib stream.                   */
+  void*     compressor;     /**< `tdefl_compressor` storage, 8-byte aligned. */
+  uint64_t* offsets;        /**< Payload-relative offset table.              */
+  uint32_t  input_cap;      /**< Writable bytes at @p input.                 */
+  uint32_t  compressed_cap; /**< Writable bytes at @p compressed.            */
+  uint32_t  compressor_cap; /**< Writable bytes at @p compressor.            */
+  uint32_t  offset_cap;     /**< Number of uint64 entries at @p offsets.     */
 } ra8_rabook_container_workspace_t;
 
 /**

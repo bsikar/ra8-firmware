@@ -83,9 +83,9 @@ typedef enum : uint16_t {
 
 /** @brief Radices and bounded XML/EPUB text expansion sizes. */
 typedef enum : uint16_t {
-  k_decimal_radix       = 10U,  /**< Decimal integer parsing radix.        */
+  k_decimal_radix       = 10U,  /**< Decimal integer parsing radix.       */
   k_xml_amp_entity_len  = 5U,   /**< Bytes in the XML entity "&amp;".     */
-  k_meta_line_slack     = 128U, /**< Key/delimiter space beyond a path.    */
+  k_meta_line_slack     = 128U, /**< Key/delimiter space beyond a path.   */
   k_epub_creator_factor = 12U,  /**< Writer plus artist expansion factor. */
   k_epub_fragment_slack = 64U,  /**< Fixed bytes around an XML fragment.  */
   k_epub_creator_slack  = 128U, /**< Fixed bytes around all creators.     */
@@ -100,7 +100,7 @@ typedef enum : uint8_t {
 
 /** @brief FNV-1a values used to derive deterministic publication UUIDs. */
 typedef enum : uint64_t {
-  k_uuid_fnv_prime = UINT64_C(1099511628211),        /**< FNV-1a 64-bit prime.       */
+  k_uuid_fnv_prime = UINT64_C(1099511628211),        /**< FNV-1a 64-bit prime.      */
   k_uuid_seed_one  = UINT64_C(14695981039346656037), /**< Primary FNV offset basis. */
   k_uuid_seed_two  = UINT64_C(7809847782465536322),  /**< Independent second seed.  */
 } mdl_uuid_hash_t;
@@ -108,7 +108,7 @@ typedef enum : uint64_t {
 /** @brief RFC 4122 UUID byte layout, masks, and version/variant bits. */
 typedef enum : uint8_t {
   k_uuid_separator       = 0xFFU, /**< Separator mixed between hash fields. */
-  k_uuid_byte_count      = 16U,   /**< Bytes in an RFC 4122 UUID.            */
+  k_uuid_byte_count      = 16U,   /**< Bytes in an RFC 4122 UUID.           */
   k_uuid_half_bytes      = 8U,    /**< Bytes contributed by each hash.      */
   k_uuid_top_shift       = 56U,   /**< Shift selecting the top hash byte.   */
   k_uuid_version_byte    = 6U,    /**< UUID version field byte index.       */
@@ -123,9 +123,9 @@ typedef enum : uint8_t {
 
 /** @brief Validated external cover details retained without owning storage. */
 typedef struct {
-  const char* source;                     /**< Trusted caller-owned source path. */
-  char        entry[k_cover_entry_bytes]; /**< Canonical relative member path.   */
-  char        mime[k_cover_mime_bytes];   /**< MIME derived from magic bytes.    */
+  const char* source;                     /**< Trusted caller-owned source path.  */
+  char        entry[k_cover_entry_bytes]; /**< Canonical relative member path.    */
+  char        mime[k_cover_mime_bytes];   /**< MIME derived from magic bytes.     */
   bool        external;                   /**< True when a separate cover exists. */
 } mdl_external_cover_t;
 
@@ -272,17 +272,17 @@ RA8_INTERNAL static ra8_err_t validate_source_url(const char* url)
 
 /** @brief Metadata stored immediately before each miniz arena allocation. */
 typedef struct {
-  max_align_t alignment; /**< Forces following payload to maximum alignment. */
+  max_align_t alignment; /**< Forces following payload to maximum alignment.   */
   size_t      span;      /**< Aligned header-plus-payload bytes in this block. */
-  size_t      bytes;     /**< Requested payload bytes currently preserved.    */
+  size_t      bytes;     /**< Requested payload bytes currently preserved.     */
   bool        free;      /**< Whether this block may satisfy a later request.  */
 } mdl_zip_block_t;
 
 /** @brief Per-writer adapter from miniz allocation callbacks to one workspace. */
 typedef struct {
-  mdl_export_workspace_t* ws;        /**< Exclusive caller-owned workspace. */
+  mdl_export_workspace_t* ws;        /**< Exclusive caller-owned workspace.  */
   mdl_zip_block_t*        first;     /**< First miniz block, or NULL.        */
-  size_t                  floor;     /**< Cursor restored after writer end. */
+  size_t                  floor;     /**< Cursor restored after writer end.  */
   bool                    exhausted; /**< A callback exceeded bounded space. */
 } mdl_zip_allocator_t;
 
@@ -1893,8 +1893,7 @@ RA8_INTERNAL static ra8_err_t export_cbz(const char*              dir,
     zip_workspace_release(&zip_alloc);
     return zip_rc;
   }
-  if (cover.external && (mz_zip_writer_add_file(/* alloc-allow: callbacks use caller arena */
-                                                &zip,
+  if (cover.external && (mz_zip_writer_add_file(&zip, /* alloc-allow: callbacks use caller arena */
                                                 cover.entry,
                                                 cover.source,
                                                 nullptr,
@@ -1908,8 +1907,7 @@ RA8_INTERNAL static ra8_err_t export_cbz(const char*              dir,
   for (size_t i = 0U; i < count; ++i) {
     char src[PATH_MAX];
     (void)snprintf(src, sizeof(src), "%s/%s", dir, names[i]);
-    if (mz_zip_writer_add_file(/* alloc-allow: callbacks use caller arena */
-                               &zip,
+    if (mz_zip_writer_add_file(&zip, /* alloc-allow: callbacks use caller arena */
                                names[i],
                                src,
                                nullptr,
@@ -1999,12 +1997,12 @@ RA8_INTERNAL static ra8_err_t export_tar_wrapped(const char*              dir,
  *          long-name chapter package rather than error.
  */
 typedef enum : uint32_t {
-  k_epub_name_esc_max   = 1536U, /**< XML-escaped page name (k_name_max * 6). */
+  k_epub_name_esc_max   = 1536U, /**< XML-escaped page name (k_name_max * 6).       */
   k_epub_frag_max       = 2048U, /**< One manifest fragment (fixed + escaped name). */
-  k_epub_xhtml_max      = 2048U, /**< One page's xhtml document (embeds the name). */
+  k_epub_xhtml_max      = 2048U, /**< One page's xhtml document (embeds the name).  */
   k_epub_entry_max      = 320U,  /**< A zip entry path ("OEBPS/images/" + name).    */
-  k_epub_base_bytes     = 4096U, /**< Fixed opf/nav overhead.     */
-  k_epub_per_page_bytes = 2048U, /**< Per-page opf/nav accumulator growth. */
+  k_epub_base_bytes     = 4096U, /**< Fixed opf/nav overhead.                       */
+  k_epub_per_page_bytes = 2048U, /**< Per-page opf/nav accumulator growth.          */
   k_epub_workspace_cap  = k_epub_base_bytes + (k_max_pages * k_epub_per_page_bytes),
   /**< Maximum bounded XML accumulator bytes. */
 } mdl_epub_size_t;
@@ -2106,8 +2104,7 @@ RA8_INTERNAL static bool str_cat(char* dst, size_t cap, const char* text)
  */
 RA8_INTERNAL static bool epub_add_str(mz_zip_archive* zip, const char* name, const char* body)
 {
-  return mz_zip_writer_add_mem(/* alloc-allow: callbacks use caller arena */
-                               zip,
+  return mz_zip_writer_add_mem(zip, /* alloc-allow: callbacks use caller arena */
                                name,
                                body,
                                strlen(body),
@@ -2143,8 +2140,7 @@ RA8_INTERNAL static ra8_err_t epub_add_external_cover(mz_zip_archive*           
   char      archive_entry[k_epub_entry_max];
   const int entry_len = snprintf(archive_entry, sizeof(archive_entry), "OEBPS/%s", cover->entry);
   if (!snprintf_fit(entry_len, sizeof(archive_entry)) ||
-      (mz_zip_writer_add_file(/* alloc-allow: callbacks use caller arena */
-                              zip,
+      (mz_zip_writer_add_file(zip, /* alloc-allow: callbacks use caller arena */
                               archive_entry,
                               cover->source,
                               nullptr,
@@ -2287,8 +2283,7 @@ RA8_INTERNAL static ra8_err_t epub_add_page(mz_zip_archive*          zip,
   if (!snprintf_fit(en, sizeof(entry))) {
     return k_ra8_fail;
   }
-  if (mz_zip_writer_add_file(/* alloc-allow: callbacks use caller arena */
-                             zip,
+  if (mz_zip_writer_add_file(zip, /* alloc-allow: callbacks use caller arena */
                              entry,
                              src,
                              nullptr,

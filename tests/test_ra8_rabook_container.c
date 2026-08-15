@@ -26,7 +26,7 @@ typedef enum : uint32_t {
   k_t_flat_bytes       = 5000U,                /**< Flat fixture length.           */
   k_t_chunk_bytes      = 1024U,                /**< Inflated bytes per chunk.      */
   k_t_chunk_count      = 5U,                   /**< Expected ceiling division.     */
-  k_t_offset_count     = k_t_chunk_count + 1U, /**< Table entries including end.  */
+  k_t_offset_count     = k_t_chunk_count + 1U, /**< Table entries including end.   */
   k_t_packed_bytes     = 16384U,               /**< RBKC destination capacity.     */
   k_t_compressed_bytes = 2048U,                /**< One zlib-stream capacity.      */
   k_t_no_fault         = UINT32_MAX,           /**< Disabled callback-fault index. */
@@ -41,22 +41,24 @@ typedef enum : uint8_t {
 
 /** @brief Memory-backed source/destination plus deterministic fault injection. */
 typedef struct {
-  const uint8_t* src;              /**< Flat source bytes.                   */
-  uint8_t*       dst;              /**< RBKC destination bytes.              */
-  uint32_t       src_len;          /**< Readable source length.               */
-  uint32_t       dst_cap;          /**< Writable destination capacity.        */
-  uint32_t       read_calls;       /**< Source callback invocation count.     */
+  const uint8_t* src;              /**< Flat source bytes.                     */
+  uint8_t*       dst;              /**< RBKC destination bytes.                */
+  uint32_t       src_len;          /**< Readable source length.                */
+  uint32_t       dst_cap;          /**< Writable destination capacity.         */
+  uint32_t       read_calls;       /**< Source callback invocation count.      */
   uint32_t       write_calls;      /**< Destination callback invocation count. */
-  uint32_t       short_read_call;  /**< Call that reports one byte short.     */
-  uint32_t       short_write_call; /**< Call that reports one byte short.     */
-  uint32_t       fail_read_call;   /**< Call that returns a backend error.    */
-  uint32_t       fail_write_call;  /**< Call that returns a backend error.    */
+  uint32_t       short_read_call;  /**< Call that reports one byte short.      */
+  uint32_t       short_write_call; /**< Call that reports one byte short.      */
+  uint32_t       fail_read_call;   /**< Call that returns a backend error.     */
+  uint32_t       fail_write_call;  /**< Call that returns a backend error.     */
 } t_io_t;
 
 /** @brief Compressor scratch with at least max_align_t alignment. */
 typedef union {
-  max_align_t align; /**< Forces conservative host/target alignment. */
-  uint8_t     bytes[k_ra8_io_compress_scratch_bytes]; /**< tdefl storage. */
+  /** @brief Forces portable scratch alignment. */
+  max_align_t align;
+  /** @brief tdefl storage. */
+  uint8_t bytes[k_ra8_io_compress_scratch_bytes];
 } t_compressor_t;
 
 static uint8_t        s_flat[k_t_flat_bytes];

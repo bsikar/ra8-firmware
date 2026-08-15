@@ -26,8 +26,8 @@
 typedef enum : uint32_t {
   k_test_codec_arena_bytes = 1U << 20U, /**< One MiB per codec arena. */
   k_test_rgba_bytes        = 256U,      /**< 8 x 8 x RGBA fixture.    */
-  k_test_gray_bytes        = 64U,       /**< 8 x 8 gray workspace.   */
-  k_test_encoded_bytes     = 64U,       /**< Largest gray8 output.   */
+  k_test_gray_bytes        = 64U,       /**< 8 x 8 gray workspace.    */
+  k_test_encoded_bytes     = 64U,       /**< Largest gray8 output.    */
   k_test_webp_dim          = 8U,        /**< WebP fixture edge.       */
   k_test_bmp_dim           = 2U,        /**< BMP fixture edge.        */
 } test_raster_limits_t;

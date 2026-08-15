@@ -24,28 +24,28 @@ typedef enum : uint16_t {
   k_state_max_flds = 10,   /**< Max TAB fields split from a line. */
   k_state_hex_base = 16,   /**< Radix for the hex hash fields.    */
   k_state_dec_base = 10,   /**< Radix for the decimal fields.     */
-  k_state_gap_cap = 12,    /**< Max missing chapters listed.      */
+  k_state_gap_cap  = 12,   /**< Max missing chapters listed.      */
 } mdl_state_parse_t;
 
 /** @brief Field index of each column on a `C` (chapter) record line. */
 typedef enum : uint8_t {
-  k_c_id = 1,         /**< Chapter identifier.                 */
-  k_c_known = 2,      /**< Explicit parsed-number flag (v2).   */
-  k_c_number = 3,     /**< Parsed chapter number (v2).         */
-  k_c_done = 4,       /**< Complete flag (0/1).                */
-  k_c_pages = 5,      /**< Total page count.                   */
-  k_c_ready = 6,      /**< Pages fetched + verified.           */
-  k_c_epoch = 7,      /**< Fetch time (epoch s).               */
-  k_c_url = 8,        /**< Source URL.                         */
-  k_c_title = 9,      /**< Display title (v2).                 */
-  k_c_fields_v2 = 10, /**< Fields a v2 `C` line needs.         */
-  k_c_v1_number = 2,  /**< Integral parsed chapter number.     */
-  k_c_v1_done = 3,    /**< Complete flag (0/1).                */
-  k_c_v1_pages = 4,   /**< Total page count.                   */
-  k_c_v1_ready = 5,   /**< Pages fetched + verified.           */
-  k_c_v1_epoch = 6,   /**< Fetch time (epoch s).               */
-  k_c_v1_url = 7,     /**< Source URL.                         */
-  k_c_fields_v1 = 8,  /**< Fields a legacy `C` line needs.     */
+  k_c_id        = 1,  /**< Chapter identifier.               */
+  k_c_known     = 2,  /**< Explicit parsed-number flag (v2). */
+  k_c_number    = 3,  /**< Parsed chapter number (v2).       */
+  k_c_done      = 4,  /**< Complete flag (0/1).              */
+  k_c_pages     = 5,  /**< Total page count.                 */
+  k_c_ready     = 6,  /**< Pages fetched + verified.         */
+  k_c_epoch     = 7,  /**< Fetch time (epoch s).             */
+  k_c_url       = 8,  /**< Source URL.                       */
+  k_c_title     = 9,  /**< Display title (v2).               */
+  k_c_fields_v2 = 10, /**< Fields a v2 `C` line needs.       */
+  k_c_v1_number = 2,  /**< Integral parsed chapter number.   */
+  k_c_v1_done   = 3,  /**< Complete flag (0/1).              */
+  k_c_v1_pages  = 4,  /**< Total page count.                 */
+  k_c_v1_ready  = 5,  /**< Pages fetched + verified.         */
+  k_c_v1_epoch  = 6,  /**< Fetch time (epoch s).             */
+  k_c_v1_url    = 7,  /**< Source URL.                       */
+  k_c_fields_v1 = 8,  /**< Fields a legacy `C` line needs.   */
 } mdl_c_col_t;
 
 /** @brief Field index of each column on a `P` (page) record line. */
@@ -53,12 +53,13 @@ typedef enum : uint8_t {
   k_p_urlhash = 1, /**< Source-URL hash (hex).           */
   k_p_content = 2, /**< Content hash (hex).              */
   k_p_relpath = 3, /**< Path under the series.           */
-  k_p_etag = 4,    /**< Cached ETag (optional).          */
+  k_p_etag    = 4, /**< Cached ETag (optional).          */
   k_p_lastmod = 5, /**< Cached Last-Modified (optional). */
-  k_p_fields = 4,  /**< Minimum fields a `P` line needs. */
+  k_p_fields  = 4, /**< Minimum fields a `P` line needs. */
 } mdl_p_col_t;
 
-void mdl_state_init(mdl_state_t *st) {
+void mdl_state_init(mdl_state_t* st)
+{
   if (st == nullptr) {
     return;
   }
@@ -67,14 +68,16 @@ void mdl_state_init(mdl_state_t *st) {
 }
 
 /** @brief Copy `val` into a bounded field when `val` is non-NULL. */
-RA8_INTERNAL static void set_opt(char *dst, size_t cap, const char *val) {
+RA8_INTERNAL static void set_opt(char* dst, size_t cap, const char* val)
+{
   if (val != nullptr) {
     (void)snprintf(dst, cap, "%s", val);
   }
 }
 
 /** @brief True when a record field fits and cannot inject a line or column. */
-RA8_INTERNAL static bool field_valid(const char *text, size_t cap) {
+RA8_INTERNAL static bool field_valid(const char* text, size_t cap)
+{
   if (text == nullptr) {
     return false;
   }
@@ -98,7 +101,8 @@ RA8_INTERNAL static bool field_valid(const char *text, size_t cap) {
  * @note Thread-safe: reads only caller storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool relative_path_valid(const char *path, size_t cap) {
+RA8_INTERNAL static bool relative_path_valid(const char* path, size_t cap)
+{
   if (!field_valid(path, cap)) {
     return false;
   }
@@ -108,9 +112,9 @@ RA8_INTERNAL static bool relative_path_valid(const char *path, size_t cap) {
   if ((path[0] == '/') || (path[0] == '\\')) {
     return false;
   }
-  const char *part = path;
+  const char* part = path;
   while (*part != '\0') {
-    const char *end = strpbrk(part, "/\\");
+    const char*  end = strpbrk(part, "/\\");
     const size_t len = (end != nullptr) ? (size_t)(end - part) : strlen(part);
     if ((len == 0U) || ((len == 2U) && (part[0] == '.') && (part[1] == '.'))) {
       return false;
@@ -138,12 +142,14 @@ RA8_INTERNAL static bool relative_path_valid(const char *path, size_t cap) {
  * @note Thread-safe: has no shared state.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool chapter_number_valid(double number, bool known) {
+RA8_INTERNAL static bool chapter_number_valid(double number, bool known)
+{
   return isfinite(number) && (known || (number == 0.0));
 }
 
 /** @brief Validate every bound and cross-field invariant before persistence. */
-RA8_INTERNAL static bool state_valid(const mdl_state_t *st) {
+RA8_INTERNAL static bool state_valid(const mdl_state_t* st)
+{
   if ((st->version != (uint16_t)k_mdl_state_version) ||
       (st->chapter_count > (uint16_t)k_mdl_max_chapters) ||
       (st->page_rec_count > (uint32_t)k_mdl_max_page_recs) ||
@@ -163,19 +169,19 @@ RA8_INTERNAL static bool state_valid(const mdl_state_t *st) {
     return false;
   }
   for (uint16_t i = 0U; i < st->chapter_count; ++i) {
-    const mdl_chapter_rec_t *chapter = &st->chapters[i];
+    const mdl_chapter_rec_t* chapter = &st->chapters[i];
     if (!field_valid(chapter->chapter_id, sizeof(chapter->chapter_id)) ||
         !field_valid(chapter->source_url, sizeof(chapter->source_url)) ||
         !field_valid(chapter->title, sizeof(chapter->title)) ||
         !chapter_number_valid(chapter->number, chapter->number_known) ||
         (chapter->pages_done > chapter->page_count) ||
-        (chapter->complete && ((chapter->page_count == 0U) ||
-                               (chapter->pages_done != chapter->page_count)))) {
+        (chapter->complete &&
+         ((chapter->page_count == 0U) || (chapter->pages_done != chapter->page_count)))) {
       return false;
     }
   }
   for (uint32_t i = 0U; i < st->page_rec_count; ++i) {
-    const mdl_page_rec_t *page = &st->pages[i];
+    const mdl_page_rec_t* page = &st->pages[i];
     if (!field_valid(page->rel_path, sizeof(page->rel_path)) ||
         !field_valid(page->etag, sizeof(page->etag)) ||
         !field_valid(page->last_modified, sizeof(page->last_modified))) {
@@ -185,27 +191,29 @@ RA8_INTERNAL static bool state_valid(const mdl_state_t *st) {
   return true;
 }
 
-bool mdl_state_set_series_metadata(mdl_state_t *st, const char *summary,
-                                   const char *writer, const char *artist,
-                                   const char *cover_url,
-                                   const char *cover_path, const char *language,
-                                   mdl_state_reading_direction_t direction) {
+bool mdl_state_set_series_metadata(mdl_state_t*                  st,
+                                   const char*                   summary,
+                                   const char*                   writer,
+                                   const char*                   artist,
+                                   const char*                   cover_url,
+                                   const char*                   cover_path,
+                                   const char*                   language,
+                                   mdl_state_reading_direction_t direction)
+{
   if ((st == nullptr) || !field_valid(summary, sizeof(st->summary)) ||
-      !field_valid(writer, sizeof(st->writer)) ||
-      !field_valid(artist, sizeof(st->artist)) ||
+      !field_valid(writer, sizeof(st->writer)) || !field_valid(artist, sizeof(st->artist)) ||
       !field_valid(cover_url, sizeof(st->cover_url)) ||
       !relative_path_valid(cover_path, sizeof(st->cover_path)) ||
       !field_valid(language, sizeof(st->language)) ||
-      ((direction != k_mdl_state_read_ltr) &&
-       (direction != k_mdl_state_read_rtl))) {
+      ((direction != k_mdl_state_read_ltr) && (direction != k_mdl_state_read_rtl))) {
     return false;
   }
-  char next_summary[k_mdl_summary_max] = {};
-  char next_writer[k_mdl_person_max] = {};
-  char next_artist[k_mdl_person_max] = {};
-  char next_cover_url[k_mdl_url_max] = {};
+  char next_summary[k_mdl_summary_max]    = {};
+  char next_writer[k_mdl_person_max]      = {};
+  char next_artist[k_mdl_person_max]      = {};
+  char next_cover_url[k_mdl_url_max]      = {};
   char next_cover_path[k_mdl_relpath_max] = {};
-  char next_language[k_mdl_language_max] = {};
+  char next_language[k_mdl_language_max]  = {};
   (void)snprintf(next_summary, sizeof(next_summary), "%s", summary);
   (void)snprintf(next_writer, sizeof(next_writer), "%s", writer);
   (void)snprintf(next_artist, sizeof(next_artist), "%s", artist);
@@ -222,9 +230,13 @@ bool mdl_state_set_series_metadata(mdl_state_t *st, const char *summary,
   return true;
 }
 
-void mdl_state_set_series(mdl_state_t *st, const char *url, const char *title,
-                          const char *site_name, const char *site_host,
-                          const char *config_path) {
+void mdl_state_set_series(mdl_state_t* st,
+                          const char*  url,
+                          const char*  title,
+                          const char*  site_name,
+                          const char*  site_host,
+                          const char*  config_path)
+{
   if (st == nullptr) {
     return;
   }
@@ -235,7 +247,8 @@ void mdl_state_set_series(mdl_state_t *st, const char *url, const char *title,
   set_opt(st->config_path, sizeof(st->config_path), config_path);
 }
 
-mdl_chapter_rec_t *mdl_state_find_chapter(mdl_state_t *st, const char *id) {
+mdl_chapter_rec_t* mdl_state_find_chapter(mdl_state_t* st, const char* id)
+{
   if ((st == nullptr) || (id == nullptr)) {
     return nullptr;
   }
@@ -247,54 +260,59 @@ mdl_chapter_rec_t *mdl_state_find_chapter(mdl_state_t *st, const char *id) {
   return nullptr;
 }
 
-mdl_chapter_rec_t *mdl_state_add_chapter(mdl_state_t *st, const char *id,
-                                         const char *url, long number) {
-  return mdl_state_add_chapter_numbered(st, id, url, (double)number,
-                                        number != 0L);
+mdl_chapter_rec_t*
+mdl_state_add_chapter(mdl_state_t* st, const char* id, const char* url, long number)
+{
+  return mdl_state_add_chapter_numbered(st, id, url, (double)number, number != 0L);
 }
 
-mdl_chapter_rec_t *
-mdl_state_add_chapter_numbered(mdl_state_t *st, const char *id, const char *url,
-                               double number, bool number_known) {
+mdl_chapter_rec_t* mdl_state_add_chapter_numbered(mdl_state_t* st,
+                                                  const char*  id,
+                                                  const char*  url,
+                                                  double       number,
+                                                  bool         number_known)
+{
   if ((st == nullptr) || (id == nullptr) || (url == nullptr)) {
     return nullptr;
   }
-  if (!field_valid(id, k_mdl_chapter_id_max) ||
-      !field_valid(url, k_mdl_url_max) ||
+  if (!field_valid(id, k_mdl_chapter_id_max) || !field_valid(url, k_mdl_url_max) ||
       !chapter_number_valid(number, number_known)) {
     return nullptr;
   }
-  mdl_chapter_rec_t *existing = mdl_state_find_chapter(st, id);
+  mdl_chapter_rec_t* existing = mdl_state_find_chapter(st, id);
   if (existing != nullptr) {
     return existing;
   }
   if (st->chapter_count >= (uint16_t)k_mdl_max_chapters) {
     return nullptr;
   }
-  mdl_chapter_rec_t *rec = &st->chapters[st->chapter_count];
+  mdl_chapter_rec_t* rec = &st->chapters[st->chapter_count];
   memset(rec, 0, sizeof(*rec));
   (void)snprintf(rec->chapter_id, sizeof(rec->chapter_id), "%s", id);
   (void)snprintf(rec->source_url, sizeof(rec->source_url), "%s", url);
-  rec->number = number;
+  rec->number       = number;
   rec->number_known = number_known;
   st->chapter_count += 1U;
   return rec;
 }
 
-bool mdl_state_set_chapter_metadata(mdl_chapter_rec_t *chapter,
-                                    const char *title, double number,
-                                    bool number_known) {
+bool mdl_state_set_chapter_metadata(mdl_chapter_rec_t* chapter,
+                                    const char*        title,
+                                    double             number,
+                                    bool               number_known)
+{
   if ((chapter == nullptr) || !field_valid(title, sizeof(chapter->title)) ||
       !chapter_number_valid(number, number_known)) {
     return false;
   }
   (void)snprintf(chapter->title, sizeof(chapter->title), "%s", title);
-  chapter->number = number;
+  chapter->number       = number;
   chapter->number_known = number_known;
   return true;
 }
 
-bool mdl_state_chapter_complete(const mdl_state_t *st, const char *id) {
+bool mdl_state_chapter_complete(const mdl_state_t* st, const char* id)
+{
   if ((st == nullptr) || (id == nullptr)) {
     return false;
   }
@@ -306,7 +324,8 @@ bool mdl_state_chapter_complete(const mdl_state_t *st, const char *id) {
   return false;
 }
 
-uint16_t mdl_state_chapter_pages(const mdl_state_t *st, const char *id) {
+uint16_t mdl_state_chapter_pages(const mdl_state_t* st, const char* id)
+{
   if ((st == nullptr) || (id == nullptr)) {
     return 0U;
   }
@@ -318,8 +337,8 @@ uint16_t mdl_state_chapter_pages(const mdl_state_t *st, const char *id) {
   return 0U;
 }
 
-const mdl_page_rec_t *mdl_state_find_page(const mdl_state_t *st,
-                                          uint64_t url_hash) {
+const mdl_page_rec_t* mdl_state_find_page(const mdl_state_t* st, uint64_t url_hash)
+{
   if (st == nullptr) {
     return nullptr;
   }
@@ -331,19 +350,22 @@ const mdl_page_rec_t *mdl_state_find_page(const mdl_state_t *st,
   return nullptr;
 }
 
-bool mdl_state_add_page(mdl_state_t *st, uint64_t url_hash,
-                        uint64_t content_hash, const char *rel_path,
-                        const char *etag, const char *last_modified) {
+bool mdl_state_add_page(mdl_state_t* st,
+                        uint64_t     url_hash,
+                        uint64_t     content_hash,
+                        const char*  rel_path,
+                        const char*  etag,
+                        const char*  last_modified)
+{
   if ((st == nullptr) || (rel_path == nullptr)) {
     return false;
   }
   if (!field_valid(rel_path, k_mdl_relpath_max) ||
       !field_valid((etag != nullptr) ? etag : "", k_mdl_etag_max) ||
-      !field_valid((last_modified != nullptr) ? last_modified : "",
-                   k_mdl_last_mod_max)) {
+      !field_valid((last_modified != nullptr) ? last_modified : "", k_mdl_last_mod_max)) {
     return false;
   }
-  mdl_page_rec_t *rec = nullptr;
+  mdl_page_rec_t* rec = nullptr;
   for (uint32_t i = 0U; i < st->page_rec_count; ++i) {
     if (st->pages[i].url_hash == url_hash) {
       rec = &st->pages[i];
@@ -357,12 +379,13 @@ bool mdl_state_add_page(mdl_state_t *st, uint64_t url_hash,
     rec = &st->pages[st->page_rec_count];
     st->page_rec_count += 1U;
   }
-  rec->url_hash = url_hash;
+  rec->url_hash     = url_hash;
   rec->content_hash = content_hash;
   (void)snprintf(rec->rel_path, sizeof(rec->rel_path), "%s", rel_path);
-  (void)snprintf(rec->etag, sizeof(rec->etag), "%s",
-                 (etag != nullptr) ? etag : "");
-  (void)snprintf(rec->last_modified, sizeof(rec->last_modified), "%s",
+  (void)snprintf(rec->etag, sizeof(rec->etag), "%s", (etag != nullptr) ? etag : "");
+  (void)snprintf(rec->last_modified,
+                 sizeof(rec->last_modified),
+                 "%s",
                  (last_modified != nullptr) ? last_modified : "");
   return true;
 }
@@ -371,13 +394,13 @@ bool mdl_state_add_page(mdl_state_t *st, uint64_t url_hash,
 
 /** @brief Write `val` as one line `type<TAB>val`, TAB/newlines mapped to space.
  */
-RA8_INTERNAL static bool write_kv(FILE *fp, char type, const char *val) {
+RA8_INTERNAL static bool write_kv(FILE* fp, char type, const char* val)
+{
   if ((fputc(type, fp) == EOF) || (fputc('\t', fp) == EOF)) {
     return false;
   }
-  for (const char *c = val; *c != '\0'; ++c) {
-    const char ch =
-        (char)(((*c == '\t') || (*c == '\n') || (*c == '\r')) ? ' ' : *c);
+  for (const char* c = val; *c != '\0'; ++c) {
+    const char ch = (char)(((*c == '\t') || (*c == '\n') || (*c == '\r')) ? ' ' : *c);
     if (fputc(ch, fp) == EOF) {
       return false;
     }
@@ -386,22 +409,32 @@ RA8_INTERNAL static bool write_kv(FILE *fp, char type, const char *val) {
 }
 
 /** @brief Serialise every chapter and page record to an open stream. */
-RA8_INTERNAL static bool write_records(FILE *fp, const mdl_state_t *st) {
+RA8_INTERNAL static bool write_records(FILE* fp, const mdl_state_t* st)
+{
   for (uint16_t i = 0U; i < st->chapter_count; ++i) {
-    const mdl_chapter_rec_t *c = &st->chapters[i];
-    if (fprintf(fp, "C\t%s\t%d\t%.17g\t%d\t%u\t%u\t%lld\t%s\t%s\n",
-                c->chapter_id, c->number_known ? 1 : 0, c->number,
-                c->complete ? 1 : 0, (unsigned)c->page_count,
-                (unsigned)c->pages_done, (long long)c->fetched_at,
-                c->source_url, c->title) < 0) {
+    const mdl_chapter_rec_t* c = &st->chapters[i];
+    if (fprintf(fp,
+                "C\t%s\t%d\t%.17g\t%d\t%u\t%u\t%lld\t%s\t%s\n",
+                c->chapter_id,
+                c->number_known ? 1 : 0,
+                c->number,
+                c->complete ? 1 : 0,
+                (unsigned)c->page_count,
+                (unsigned)c->pages_done,
+                (long long)c->fetched_at,
+                c->source_url,
+                c->title) < 0) {
       return false;
     }
   }
   for (uint32_t i = 0U; i < st->page_rec_count; ++i) {
-    const mdl_page_rec_t *p = &st->pages[i];
-    if (fprintf(fp, "P\t%016llx\t%016llx\t%s\t%s\t%s\n",
+    const mdl_page_rec_t* p = &st->pages[i];
+    if (fprintf(fp,
+                "P\t%016llx\t%016llx\t%s\t%s\t%s\n",
                 (unsigned long long)p->url_hash,
-                (unsigned long long)p->content_hash, p->rel_path, p->etag,
+                (unsigned long long)p->content_hash,
+                p->rel_path,
+                p->etag,
                 p->last_modified) < 0) {
       return false;
     }
@@ -411,14 +444,15 @@ RA8_INTERNAL static bool write_records(FILE *fp, const mdl_state_t *st) {
 
 /** @brief Flush file bytes and the containing directory before reporting
  * success. */
-RA8_INTERNAL static bool sync_parent(const char *path) {
-  char dir[k_state_line_max];
+RA8_INTERNAL static bool sync_parent(const char* path)
+{
+  char         dir[k_state_line_max];
   const size_t len = strnlen(path, sizeof(dir));
   if ((len == 0U) || (len >= sizeof(dir))) {
     return false;
   }
   memcpy(dir, path, len + 1U);
-  char *slash = strrchr(dir, '/');
+  char* slash = strrchr(dir, '/');
   if (slash == nullptr) {
     (void)snprintf(dir, sizeof(dir), ".");
   } else if (slash == dir) {
@@ -435,14 +469,15 @@ RA8_INTERNAL static bool sync_parent(const char *path) {
   return ok;
 }
 
-ra8_err_t mdl_state_save(const char *path, const mdl_state_t *st) {
+ra8_err_t mdl_state_save(const char* path, const mdl_state_t* st)
+{
   if ((path == nullptr) || (st == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
   if (!state_valid(st)) {
     return k_ra8_err_invalid_state;
   }
-  char tmp[k_state_line_max];
+  char      tmp[k_state_line_max];
   const int tn = snprintf(tmp, sizeof(tmp), "%s.tmp.XXXXXX", path);
   if ((tn < 0) || ((size_t)tn >= sizeof(tmp))) {
     return k_ra8_fail;
@@ -451,30 +486,28 @@ ra8_err_t mdl_state_save(const char *path, const mdl_state_t *st) {
   if (fd < 0) {
     return k_ra8_fail;
   }
-  FILE *fp = fdopen(fd, "w");
+  FILE* fp = fdopen(fd, "w");
   if (fp == nullptr) {
     (void)close(fd);
     (void)remove(tmp);
     return k_ra8_fail;
   }
-  bool io_ok = fprintf(fp, "# media_dl library state v%u\n",
-                       (unsigned)k_mdl_state_version) >= 0;
-  io_ok = io_ok && (fprintf(fp, "V\t%u\n", (unsigned)k_mdl_state_version) >= 0);
-  io_ok = io_ok && write_kv(fp, 'S', st->series_url);
-  io_ok = io_ok && write_kv(fp, 'T', st->series_title);
-  io_ok = io_ok && write_kv(fp, 'N', st->site_name);
-  io_ok = io_ok && write_kv(fp, 'H', st->site_host);
-  io_ok = io_ok && write_kv(fp, 'G', st->config_path);
-  io_ok = io_ok && write_kv(fp, 'D', st->summary);
-  io_ok = io_ok && write_kv(fp, 'W', st->writer);
-  io_ok = io_ok && write_kv(fp, 'A', st->artist);
-  io_ok = io_ok && write_kv(fp, 'O', st->cover_url);
-  io_ok = io_ok && write_kv(fp, 'K', st->cover_path);
-  io_ok = io_ok && write_kv(fp, 'L', st->language);
-  io_ok =
-      io_ok && (fprintf(fp, "R\t%u\n", (unsigned)st->reading_direction) >= 0);
-  io_ok = io_ok && write_records(fp, st);
-  io_ok = io_ok && (fflush(fp) == 0) && (fsync(fd) == 0) && (ferror(fp) == 0);
+  bool io_ok = fprintf(fp, "# media_dl library state v%u\n", (unsigned)k_mdl_state_version) >= 0;
+  io_ok      = io_ok && (fprintf(fp, "V\t%u\n", (unsigned)k_mdl_state_version) >= 0);
+  io_ok      = io_ok && write_kv(fp, 'S', st->series_url);
+  io_ok      = io_ok && write_kv(fp, 'T', st->series_title);
+  io_ok      = io_ok && write_kv(fp, 'N', st->site_name);
+  io_ok      = io_ok && write_kv(fp, 'H', st->site_host);
+  io_ok      = io_ok && write_kv(fp, 'G', st->config_path);
+  io_ok      = io_ok && write_kv(fp, 'D', st->summary);
+  io_ok      = io_ok && write_kv(fp, 'W', st->writer);
+  io_ok      = io_ok && write_kv(fp, 'A', st->artist);
+  io_ok      = io_ok && write_kv(fp, 'O', st->cover_url);
+  io_ok      = io_ok && write_kv(fp, 'K', st->cover_path);
+  io_ok      = io_ok && write_kv(fp, 'L', st->language);
+  io_ok      = io_ok && (fprintf(fp, "R\t%u\n", (unsigned)st->reading_direction) >= 0);
+  io_ok      = io_ok && write_records(fp, st);
+  io_ok      = io_ok && (fflush(fp) == 0) && (fsync(fd) == 0) && (ferror(fp) == 0);
   if ((fclose(fp) != 0) || !io_ok) {
     (void)remove(tmp);
     return k_ra8_fail;
@@ -492,13 +525,14 @@ ra8_err_t mdl_state_save(const char *path, const mdl_state_t *st) {
 /* ---- parsing ------------------------------------------------------------- */
 
 /** @brief Split `line` in place on TAB into `fld`; return the field count. */
-RA8_INTERNAL static size_t split_tabs(char *line, char *fld[], size_t max) {
+RA8_INTERNAL static size_t split_tabs(char* line, char* fld[], size_t max)
+{
   size_t n = 0U;
-  fld[n] = line;
+  fld[n]   = line;
   ++n;
-  for (char *c = line; (*c != '\0') && (n < max); ++c) {
+  for (char* c = line; (*c != '\0') && (n < max); ++c) {
     if (*c == '\t') {
-      *c = '\0';
+      *c     = '\0';
       fld[n] = c + 1;
       ++n;
     }
@@ -510,12 +544,13 @@ RA8_INTERNAL static size_t split_tabs(char *line, char *fld[], size_t max) {
 }
 
 /** @brief Parse a complete signed long field, rejecting overflow and tails. */
-RA8_INTERNAL static bool parse_long_field(const char *text, long *out) {
+RA8_INTERNAL static bool parse_long_field(const char* text, long* out)
+{
   if ((text == nullptr) || (text[0] == '\0')) {
     return false;
   }
-  errno = 0;
-  char *end = nullptr;
+  errno            = 0;
+  char*      end   = nullptr;
   const long value = strtol(text, &end, (int)k_state_dec_base);
   if ((errno != 0) || (end == text) || (*end != '\0')) {
     return false;
@@ -539,12 +574,13 @@ RA8_INTERNAL static bool parse_long_field(const char *text, long *out) {
  * @note Thread-safe except for the C-library thread-local `errno`.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool parse_double_field(const char *text, double *out) {
+RA8_INTERNAL static bool parse_double_field(const char* text, double* out)
+{
   if ((text == nullptr) || (text[0] == '\0')) {
     return false;
   }
-  errno = 0;
-  char *end = nullptr;
+  errno              = 0;
+  char*        end   = nullptr;
   const double value = strtod(text, &end);
   if ((errno != 0) || (end == text) || (*end != '\0') || !isfinite(value)) {
     return false;
@@ -554,14 +590,13 @@ RA8_INTERNAL static bool parse_double_field(const char *text, double *out) {
 }
 
 /** @brief Parse a complete uint64 field in `base`, rejecting overflow/tails. */
-RA8_INTERNAL static bool parse_u64_field(const char *text, int base,
-                                         uint64_t *out) {
-  if ((text == nullptr) || (text[0] == '\0') || (text[0] == '-') ||
-      (text[0] == '+')) {
+RA8_INTERNAL static bool parse_u64_field(const char* text, int base, uint64_t* out)
+{
+  if ((text == nullptr) || (text[0] == '\0') || (text[0] == '-') || (text[0] == '+')) {
     return false;
   }
-  errno = 0;
-  char *end = nullptr;
+  errno                          = 0;
+  char*                    end   = nullptr;
   const unsigned long long value = strtoull(text, &end, base);
   if ((errno != 0) || (end == text) || (*end != '\0')) {
     return false;
@@ -571,12 +606,13 @@ RA8_INTERNAL static bool parse_u64_field(const char *text, int base,
 }
 
 /** @brief Parse a complete signed 64-bit epoch field. */
-RA8_INTERNAL static bool parse_i64_field(const char *text, int64_t *out) {
+RA8_INTERNAL static bool parse_i64_field(const char* text, int64_t* out)
+{
   if ((text == nullptr) || (text[0] == '\0')) {
     return false;
   }
-  errno = 0;
-  char *end = nullptr;
+  errno                 = 0;
+  char*           end   = nullptr;
   const long long value = strtoll(text, &end, (int)k_state_dec_base);
   if ((errno != 0) || (end == text) || (*end != '\0')) {
     return false;
@@ -586,7 +622,8 @@ RA8_INTERNAL static bool parse_i64_field(const char *text, int64_t *out) {
 }
 
 /** @brief Strip a trailing CR/LF pair from a fgets() line. */
-RA8_INTERNAL static void chomp(char *s) {
+RA8_INTERNAL static void chomp(char* s)
+{
   size_t n = strlen(s);
   while ((n > 0U) && ((s[n - 1U] == '\n') || (s[n - 1U] == '\r'))) {
     s[n - 1U] = '\0';
@@ -618,25 +655,28 @@ RA8_INTERNAL static void chomp(char *s) {
  * @note Not thread-safe: mutates @p st.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool apply_chapter_values(mdl_state_t *st, char *fld[],
-                                              double number, bool number_known,
-                                              uint64_t done, uint64_t pages,
-                                              uint64_t ready, int64_t epoch,
-                                              size_t url_col,
-                                              const char *title) {
-  if ((done > 1U) || (pages > UINT16_MAX) || (ready > UINT16_MAX) ||
-      (ready > pages) ||
+RA8_INTERNAL static bool apply_chapter_values(mdl_state_t* st,
+                                              char*        fld[],
+                                              double       number,
+                                              bool         number_known,
+                                              uint64_t     done,
+                                              uint64_t     pages,
+                                              uint64_t     ready,
+                                              int64_t      epoch,
+                                              size_t       url_col,
+                                              const char*  title)
+{
+  if ((done > 1U) || (pages > UINT16_MAX) || (ready > UINT16_MAX) || (ready > pages) ||
       ((done != 0U) && ((pages == 0U) || (ready != pages))) ||
       (mdl_state_find_chapter(st, fld[k_c_id]) != nullptr)) {
     return false;
   }
-  mdl_chapter_rec_t *rec = mdl_state_add_chapter_numbered(
-      st, fld[k_c_id], fld[url_col], number, number_known);
-  if ((rec == nullptr) ||
-      !mdl_state_set_chapter_metadata(rec, title, number, number_known)) {
+  mdl_chapter_rec_t* rec =
+    mdl_state_add_chapter_numbered(st, fld[k_c_id], fld[url_col], number, number_known);
+  if ((rec == nullptr) || !mdl_state_set_chapter_metadata(rec, title, number, number_known)) {
     return false;
   }
-  rec->complete = done != 0U;
+  rec->complete   = done != 0U;
   rec->page_count = (uint16_t)pages;
   rec->pages_done = (uint16_t)ready;
   rec->fetched_at = epoch;
@@ -659,16 +699,16 @@ RA8_INTERNAL static bool apply_chapter_values(mdl_state_t *st, char *fld[],
  * @note Not thread-safe: mutates @p st.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool apply_chapter_v1(mdl_state_t *st, char *fld[],
-                                          size_t nf) {
+RA8_INTERNAL static bool apply_chapter_v1(mdl_state_t* st, char* fld[], size_t nf)
+{
   if (nf != (size_t)k_c_fields_v1) {
     return false;
   }
-  long number = 0L;
-  uint64_t done = 0U;
-  uint64_t pages = 0U;
-  uint64_t ready = 0U;
-  int64_t epoch = 0;
+  long     number = 0L;
+  uint64_t done   = 0U;
+  uint64_t pages  = 0U;
+  uint64_t ready  = 0U;
+  int64_t  epoch  = 0;
   if (!parse_long_field(fld[k_c_v1_number], &number) ||
       !parse_u64_field(fld[k_c_v1_done], (int)k_state_dec_base, &done) ||
       !parse_u64_field(fld[k_c_v1_pages], (int)k_state_dec_base, &pages) ||
@@ -676,8 +716,16 @@ RA8_INTERNAL static bool apply_chapter_v1(mdl_state_t *st, char *fld[],
       !parse_i64_field(fld[k_c_v1_epoch], &epoch)) {
     return false;
   }
-  return apply_chapter_values(st, fld, (double)number, number != 0L, done,
-                              pages, ready, epoch, (size_t)k_c_v1_url, "");
+  return apply_chapter_values(st,
+                              fld,
+                              (double)number,
+                              number != 0L,
+                              done,
+                              pages,
+                              ready,
+                              epoch,
+                              (size_t)k_c_v1_url,
+                              "");
 }
 
 /**
@@ -696,17 +744,17 @@ RA8_INTERNAL static bool apply_chapter_v1(mdl_state_t *st, char *fld[],
  * @note Not thread-safe: mutates @p st.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool apply_chapter_v2(mdl_state_t *st, char *fld[],
-                                          size_t nf) {
+RA8_INTERNAL static bool apply_chapter_v2(mdl_state_t* st, char* fld[], size_t nf)
+{
   if (nf != (size_t)k_c_fields_v2) {
     return false;
   }
-  uint64_t known = 0U;
-  double number = 0.0;
-  uint64_t done = 0U;
-  uint64_t pages = 0U;
-  uint64_t ready = 0U;
-  int64_t epoch = 0;
+  uint64_t known  = 0U;
+  double   number = 0.0;
+  uint64_t done   = 0U;
+  uint64_t pages  = 0U;
+  uint64_t ready  = 0U;
+  int64_t  epoch  = 0;
   if (!parse_u64_field(fld[k_c_known], (int)k_state_dec_base, &known) ||
       !parse_double_field(fld[k_c_number], &number) ||
       !parse_u64_field(fld[k_c_done], (int)k_state_dec_base, &done) ||
@@ -715,13 +763,22 @@ RA8_INTERNAL static bool apply_chapter_v2(mdl_state_t *st, char *fld[],
       !parse_i64_field(fld[k_c_epoch], &epoch) || (known > 1U)) {
     return false;
   }
-  return apply_chapter_values(st, fld, number, known != 0U, done, pages, ready,
-                              epoch, (size_t)k_c_url, fld[k_c_title]);
+  return apply_chapter_values(st,
+                              fld,
+                              number,
+                              known != 0U,
+                              done,
+                              pages,
+                              ready,
+                              epoch,
+                              (size_t)k_c_url,
+                              fld[k_c_title]);
 }
 
 /** @brief Apply one `P` record line; false when it is malformed/over-capacity.
  */
-RA8_INTERNAL static bool apply_page(mdl_state_t *st, char *fld[], size_t nf) {
+RA8_INTERNAL static bool apply_page(mdl_state_t* st, char* fld[], size_t nf)
+{
   if ((nf < (size_t)k_p_fields) || (nf > ((size_t)k_p_lastmod + 1U))) {
     return false;
   }
@@ -731,8 +788,8 @@ RA8_INTERNAL static bool apply_page(mdl_state_t *st, char *fld[], size_t nf) {
       !parse_u64_field(fld[k_p_content], (int)k_state_hex_base, &ch)) {
     return false;
   }
-  const char *etag = (nf > (size_t)k_p_etag) ? fld[k_p_etag] : "";
-  const char *lastmod = (nf > (size_t)k_p_lastmod) ? fld[k_p_lastmod] : "";
+  const char* etag    = (nf > (size_t)k_p_etag) ? fld[k_p_etag] : "";
+  const char* lastmod = (nf > (size_t)k_p_lastmod) ? fld[k_p_lastmod] : "";
   return mdl_state_add_page(st, uh, ch, fld[k_p_relpath], etag, lastmod);
 }
 
@@ -753,8 +810,8 @@ RA8_INTERNAL static bool apply_page(mdl_state_t *st, char *fld[], size_t nf) {
  * @note Not thread-safe: writes caller storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool apply_kv(char *dst, size_t cap, char *fld[],
-                                  size_t nf) {
+RA8_INTERNAL static bool apply_kv(char* dst, size_t cap, char* fld[], size_t nf)
+{
   if ((nf != 2U) || !field_valid(fld[1], cap)) {
     return false;
   }
@@ -779,8 +836,9 @@ RA8_INTERNAL static bool apply_kv(char *dst, size_t cap, char *fld[],
  * @note Not thread-safe: mutates parser state.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool apply_line(mdl_state_t *st, char *fld[], size_t nf,
-                                    uint16_t *schema_version) {
+RA8_INTERNAL static bool
+apply_line(mdl_state_t* st, char* fld[], size_t nf, uint16_t* schema_version)
+{
   const char type = fld[0][0];
   if ((fld[0][1] != '\0')) {
     return false; /* a record type is exactly one character */
@@ -788,8 +846,7 @@ RA8_INTERNAL static bool apply_line(mdl_state_t *st, char *fld[], size_t nf,
   if (*schema_version == 0U) {
     /* The first record MUST be a version line this build understands. */
     uint64_t version = 0U;
-    if ((type != 'V') || (nf != 2U) ||
-        !parse_u64_field(fld[1], (int)k_state_dec_base, &version) ||
+    if ((type != 'V') || (nf != 2U) || !parse_u64_field(fld[1], (int)k_state_dec_base, &version) ||
         ((version != (uint64_t)k_mdl_state_version_v1) &&
          (version != (uint64_t)k_mdl_state_version))) {
       return false;
@@ -798,66 +855,65 @@ RA8_INTERNAL static bool apply_line(mdl_state_t *st, char *fld[], size_t nf,
     return true;
   }
   switch (type) {
-  case 'V':
-    return false; /* duplicate headers make corruption/concatenation visible */
-  case 'S':
-    return apply_kv(st->series_url, sizeof(st->series_url), fld, nf);
-  case 'T':
-    return apply_kv(st->series_title, sizeof(st->series_title), fld, nf);
-  case 'N':
-    return apply_kv(st->site_name, sizeof(st->site_name), fld, nf);
-  case 'H':
-    return apply_kv(st->site_host, sizeof(st->site_host), fld, nf);
-  case 'G':
-    return apply_kv(st->config_path, sizeof(st->config_path), fld, nf);
-  case 'D':
-    return (*schema_version == (uint16_t)k_mdl_state_version) &&
-           apply_kv(st->summary, sizeof(st->summary), fld, nf);
-  case 'W':
-    return (*schema_version == (uint16_t)k_mdl_state_version) &&
-           apply_kv(st->writer, sizeof(st->writer), fld, nf);
-  case 'A':
-    return (*schema_version == (uint16_t)k_mdl_state_version) &&
-           apply_kv(st->artist, sizeof(st->artist), fld, nf);
-  case 'O':
-    return (*schema_version == (uint16_t)k_mdl_state_version) &&
-           apply_kv(st->cover_url, sizeof(st->cover_url), fld, nf);
-  case 'K':
-    return (*schema_version == (uint16_t)k_mdl_state_version) && (nf == 2U) &&
-           relative_path_valid(fld[1], sizeof(st->cover_path)) &&
-           apply_kv(st->cover_path, sizeof(st->cover_path), fld, nf);
-  case 'L':
-    return (*schema_version == (uint16_t)k_mdl_state_version) &&
-           apply_kv(st->language, sizeof(st->language), fld, nf);
-  case 'R': {
-    uint64_t direction = 0U;
-    if ((*schema_version != (uint16_t)k_mdl_state_version) || (nf != 2U) ||
-        !parse_u64_field(fld[1], (int)k_state_dec_base, &direction) ||
-        (direction > (uint64_t)k_mdl_state_read_rtl)) {
-      return false;
+    case 'V':
+      return false; /* duplicate headers make corruption/concatenation visible */
+    case 'S':
+      return apply_kv(st->series_url, sizeof(st->series_url), fld, nf);
+    case 'T':
+      return apply_kv(st->series_title, sizeof(st->series_title), fld, nf);
+    case 'N':
+      return apply_kv(st->site_name, sizeof(st->site_name), fld, nf);
+    case 'H':
+      return apply_kv(st->site_host, sizeof(st->site_host), fld, nf);
+    case 'G':
+      return apply_kv(st->config_path, sizeof(st->config_path), fld, nf);
+    case 'D':
+      return (*schema_version == (uint16_t)k_mdl_state_version) &&
+             apply_kv(st->summary, sizeof(st->summary), fld, nf);
+    case 'W':
+      return (*schema_version == (uint16_t)k_mdl_state_version) &&
+             apply_kv(st->writer, sizeof(st->writer), fld, nf);
+    case 'A':
+      return (*schema_version == (uint16_t)k_mdl_state_version) &&
+             apply_kv(st->artist, sizeof(st->artist), fld, nf);
+    case 'O':
+      return (*schema_version == (uint16_t)k_mdl_state_version) &&
+             apply_kv(st->cover_url, sizeof(st->cover_url), fld, nf);
+    case 'K':
+      return (*schema_version == (uint16_t)k_mdl_state_version) && (nf == 2U) &&
+             relative_path_valid(fld[1], sizeof(st->cover_path)) &&
+             apply_kv(st->cover_path, sizeof(st->cover_path), fld, nf);
+    case 'L':
+      return (*schema_version == (uint16_t)k_mdl_state_version) &&
+             apply_kv(st->language, sizeof(st->language), fld, nf);
+    case 'R': {
+      uint64_t direction = 0U;
+      if ((*schema_version != (uint16_t)k_mdl_state_version) || (nf != 2U) ||
+          !parse_u64_field(fld[1], (int)k_state_dec_base, &direction) ||
+          (direction > (uint64_t)k_mdl_state_read_rtl)) {
+        return false;
+      }
+      st->reading_direction = (mdl_state_reading_direction_t)direction;
+      return true;
     }
-    st->reading_direction = (mdl_state_reading_direction_t)direction;
-    return true;
-  }
-  case 'C':
-    return (*schema_version == (uint16_t)k_mdl_state_version_v1)
-               ? apply_chapter_v1(st, fld, nf)
-               : apply_chapter_v2(st, fld, nf);
-  case 'P':
-    return apply_page(st, fld, nf);
-  default:
-    return false;
+    case 'C':
+      return (*schema_version == (uint16_t)k_mdl_state_version_v1) ? apply_chapter_v1(st, fld, nf)
+                                                                   : apply_chapter_v2(st, fld, nf);
+    case 'P':
+      return apply_page(st, fld, nf);
+    default:
+      return false;
   }
 }
 
 /** @brief Parse an open state stream into `st`; false on the first malformed
  * line. */
-RA8_INTERNAL static bool parse_stream(FILE *fp, mdl_state_t *st) {
-  char line[k_state_line_max];
+RA8_INTERNAL static bool parse_stream(FILE* fp, mdl_state_t* st)
+{
+  char     line[k_state_line_max];
   uint16_t schema_version = 0U;
   while (fgets(line, (int)sizeof(line), fp) != nullptr) {
-    if ((strchr(line, '\n') == nullptr) && (strchr(line, '\r') == nullptr) &&
-        (feof(fp) == 0)) {
+    if ((strchr(line, '\n') == nullptr) && (strchr(line, '\r') == nullptr) && (feof(fp) == 0)) {
       return false; /* overlong record: do not parse its continuation as another
                        record */
     }
@@ -865,10 +921,9 @@ RA8_INTERNAL static bool parse_stream(FILE *fp, mdl_state_t *st) {
     if ((line[0] == '\0') || (line[0] == '#')) {
       continue; /* blank or comment */
     }
-    char *fld[k_state_max_flds];
+    char*        fld[k_state_max_flds];
     const size_t nf = split_tabs(line, fld, (size_t)k_state_max_flds);
-    if ((nf > (size_t)k_state_max_flds) ||
-        !apply_line(st, fld, nf, &schema_version)) {
+    if ((nf > (size_t)k_state_max_flds) || !apply_line(st, fld, nf, &schema_version)) {
       return false;
     }
   }
@@ -876,12 +931,13 @@ RA8_INTERNAL static bool parse_stream(FILE *fp, mdl_state_t *st) {
          (ferror(fp) == 0); /* no version or a read error is corrupt */
 }
 
-ra8_err_t mdl_state_load(const char *path, mdl_state_t *st) {
+ra8_err_t mdl_state_load(const char* path, mdl_state_t* st)
+{
   if ((path == nullptr) || (st == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
   mdl_state_init(st);
-  FILE *fp = fopen(path, "r");
+  FILE* fp = fopen(path, "r");
   if (fp == nullptr) {
     if (errno == ENOENT) {
       return k_ra8_ok; /* first run of this series: start empty */
@@ -890,14 +946,13 @@ ra8_err_t mdl_state_load(const char *path, mdl_state_t *st) {
     return k_ra8_err_invalid_state;
   }
   bool ok = parse_stream(fp, st);
-  ok = (fclose(fp) == 0) && ok;
+  ok      = (fclose(fp) == 0) && ok;
   if (!ok) {
     mdl_state_init(st);
-    (void)fprintf(
-        stderr,
-        "media_dl: state '%s' is corrupt or unsupported; rebuilding "
-        "from scratch (already-downloaded pages are reused by content)\n",
-        path);
+    (void)fprintf(stderr,
+                  "media_dl: state '%s' is corrupt or unsupported; rebuilding "
+                  "from scratch (already-downloaded pages are reused by content)\n",
+                  path);
     return k_ra8_err_invalid_state;
   }
   return k_ra8_ok;
@@ -920,10 +975,9 @@ ra8_err_t mdl_state_load(const char *path, mdl_state_t *st) {
  * @note Thread-safe: reads only caller storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool
-chapter_number_as_long(const mdl_chapter_rec_t *chapter, long *out) {
-  if (!chapter->number_known ||
-      ((long double)chapter->number < (long double)LONG_MIN) ||
+RA8_INTERNAL static bool chapter_number_as_long(const mdl_chapter_rec_t* chapter, long* out)
+{
+  if (!chapter->number_known || ((long double)chapter->number < (long double)LONG_MIN) ||
       ((long double)chapter->number > (long double)LONG_MAX)) {
     return false;
   }
@@ -936,12 +990,12 @@ chapter_number_as_long(const mdl_chapter_rec_t *chapter, long *out) {
 }
 
 /** @brief Number span [lo,hi] of complete integral chapters. */
-RA8_INTERNAL static bool complete_span(const mdl_state_t *st, long *lo,
-                                       long *hi, size_t *n) {
+RA8_INTERNAL static bool complete_span(const mdl_state_t* st, long* lo, long* hi, size_t* n)
+{
   bool any = false;
-  *n = 0U;
+  *n       = 0U;
   for (uint16_t i = 0U; i < st->chapter_count; ++i) {
-    const mdl_chapter_rec_t *chapter = &st->chapters[i];
+    const mdl_chapter_rec_t* chapter = &st->chapters[i];
     if (!chapter->complete) {
       continue;
     }
@@ -963,11 +1017,11 @@ RA8_INTERNAL static bool complete_span(const mdl_state_t *st, long *lo,
 }
 
 /** @brief True when a complete chapter with parsed number `num` exists. */
-RA8_INTERNAL static bool has_complete_number(const mdl_state_t *st, long num) {
+RA8_INTERNAL static bool has_complete_number(const mdl_state_t* st, long num)
+{
   for (uint16_t i = 0U; i < st->chapter_count; ++i) {
     long chapter_number = 0L;
-    if (st->chapters[i].complete &&
-        chapter_number_as_long(&st->chapters[i], &chapter_number) &&
+    if (st->chapters[i].complete && chapter_number_as_long(&st->chapters[i], &chapter_number) &&
         (chapter_number == num)) {
       return true;
     }
@@ -976,18 +1030,20 @@ RA8_INTERNAL static bool has_complete_number(const mdl_state_t *st, long num) {
 }
 
 /** @brief Append the missing-chapter list within [lo,hi] to `buf` (bounded). */
-RA8_INTERNAL static void append_gaps(const mdl_state_t *st, long lo, long hi,
-                                     char *buf, size_t cap) {
-  size_t len = strlen(buf);
+RA8_INTERNAL static void append_gaps(const mdl_state_t* st, long lo, long hi, char* buf, size_t cap)
+{
+  size_t len    = strlen(buf);
   size_t listed = 0U;
-  bool wrote = false;
-  for (long num = lo; (num <= hi) && (listed < (size_t)k_state_gap_cap);
-       ++num) {
+  bool   wrote  = false;
+  for (long num = lo; (num <= hi) && (listed < (size_t)k_state_gap_cap); ++num) {
     if (has_complete_number(st, num)) {
       continue;
     }
-    const int w = snprintf(&buf[len], (len < cap) ? (cap - len) : 0U, "%s%ld",
-                           wrote ? ", " : ", missing ", num);
+    const int w = snprintf(&buf[len],
+                           (len < cap) ? (cap - len) : 0U,
+                           "%s%ld",
+                           wrote ? ", " : ", missing ",
+                           num);
     if ((w < 0) || ((size_t)w >= ((len < cap) ? (cap - len) : 0U))) {
       return; /* out of room: stop rather than truncate mid-number */
     }
@@ -997,13 +1053,14 @@ RA8_INTERNAL static void append_gaps(const mdl_state_t *st, long lo, long hi,
   }
 }
 
-void mdl_state_coverage(const mdl_state_t *st, char *buf, size_t cap) {
+void mdl_state_coverage(const mdl_state_t* st, char* buf, size_t cap)
+{
   if ((st == nullptr) || (buf == nullptr) || (cap == 0U)) {
     return;
   }
-  long lo = 0;
-  long hi = 0;
-  size_t n = 0U;
+  long   lo = 0;
+  long   hi = 0;
+  size_t n  = 0U;
   if (!complete_span(st, &lo, &hi, &n)) {
     size_t complete = 0U;
     for (uint16_t i = 0U; i < st->chapter_count; ++i) {

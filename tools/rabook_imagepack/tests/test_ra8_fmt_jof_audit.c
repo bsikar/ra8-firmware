@@ -2,6 +2,12 @@
  * @file test_ra8_fmt_jof_audit.c
  * @brief Exact-capacity and corruption tests for the portable JOF audit.
  *
+ * @details
+ * Constructs a minimal in-memory atlas to verify exact workspace discovery,
+ * capacity rejection, tile coverage and ordering failures, positioned-read
+ * errors, and duplicate-content diagnostics. Separate uniform and non-uniform
+ * repeated tiles confirm that valid repeated imagery is never rejected.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0

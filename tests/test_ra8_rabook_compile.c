@@ -73,16 +73,16 @@ static uint8_t               s_external_pool[k_t_imgpool_cap];
 
 /** @brief Bounded read/write fixture used by the streaming-finalizer tests. */
 typedef struct {
-  const uint8_t* read_data;   /**< External image-pool bytes.          */
-  uint8_t*       write_data;  /**< Stream destination bytes.           */
-  uint32_t       read_len;    /**< Readable external-pool byte count.   */
-  uint32_t       write_cap;   /**< Writable destination byte count.    */
-  uint32_t       write_used;  /**< Bytes appended so far.              */
-  uint32_t       read_calls;  /**< Read callback invocation count.     */
-  uint32_t       write_calls; /**< Write callback invocation count.    */
-  uint32_t       max_read;    /**< Largest one-call read request.      */
-  bool           short_read;  /**< Return one byte short once.         */
-  bool           short_write; /**< Return one byte short once.         */
+  const uint8_t* read_data;   /**< External image-pool bytes.         */
+  uint8_t*       write_data;  /**< Stream destination bytes.          */
+  uint32_t       read_len;    /**< Readable external-pool byte count. */
+  uint32_t       write_cap;   /**< Writable destination byte count.   */
+  uint32_t       write_used;  /**< Bytes appended so far.             */
+  uint32_t       read_calls;  /**< Read callback invocation count.    */
+  uint32_t       write_calls; /**< Write callback invocation count.   */
+  uint32_t       max_read;    /**< Largest one-call read request.     */
+  bool           short_read;  /**< Return one byte short once.        */
+  bool           short_write; /**< Return one byte short once.        */
 } rabook_stream_io_t;
 
 /**

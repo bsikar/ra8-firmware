@@ -6,6 +6,12 @@
  * @par Tag
  * [Ring 4 / PAL] {World: NS}
  *
+ * @details
+ * Binds the portable filesystem operations to one caller-selected, already
+ * mounted `ra8_io_vfs` volume. The adapter prefixes bounded portable paths,
+ * translates metadata and directory callbacks, and stages transactional
+ * writes in caller-owned storage without POSIX APIs or dynamic allocation.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

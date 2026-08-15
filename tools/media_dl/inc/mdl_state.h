@@ -62,21 +62,21 @@
 
 /** @brief Fixed capacities and the schema version (zero dynamic allocation). */
 typedef enum : uint16_t {
-  k_mdl_state_version_v1 = 1, /**< Legacy schema accepted for migration.   */
-  k_mdl_state_version = 2,    /**< Schema version written by this build.   */
-  k_mdl_chapter_id_max = 128, /**< Chapter identifier bytes (sanitised).    */
-  k_mdl_title_max = 192,      /**< Series title bytes.                      */
-  k_mdl_summary_max = 1024,   /**< Series summary bytes.                    */
-  k_mdl_person_max = 128,     /**< Writer/artist bytes.                     */
-  k_mdl_language_max = 16,    /**< BCP-47 language bytes.                   */
-  k_mdl_relpath_max = 200,    /**< Page path relative to the series dir.    */
-  k_mdl_cfgpath_max = 512,    /**< Site-descriptor path bytes.              */
-  k_mdl_max_chapters = 512,   /**< Chapters tracked per series.             */
+  k_mdl_state_version_v1 = 1,    /**< Legacy schema accepted for migration. */
+  k_mdl_state_version    = 2,    /**< Schema version written by this build. */
+  k_mdl_chapter_id_max   = 128,  /**< Chapter identifier bytes (sanitised). */
+  k_mdl_title_max        = 192,  /**< Series title bytes.                   */
+  k_mdl_summary_max      = 1024, /**< Series summary bytes.                 */
+  k_mdl_person_max       = 128,  /**< Writer/artist bytes.                  */
+  k_mdl_language_max     = 16,   /**< BCP-47 language bytes.                */
+  k_mdl_relpath_max      = 200,  /**< Page path relative to the series dir. */
+  k_mdl_cfgpath_max      = 512,  /**< Site-descriptor path bytes.           */
+  k_mdl_max_chapters     = 512,  /**< Chapters tracked per series.          */
 } mdl_state_limit_t;
 
 /** @brief Persisted fixed-layout reading direction. */
 typedef enum : uint8_t {
-  k_mdl_state_read_ltr = 0, /**< Left-to-right page progression.  */
+  k_mdl_state_read_ltr = 0, /**< Left-to-right page progression. */
   k_mdl_state_read_rtl = 1, /**< Right-to-left page progression. */
 } mdl_state_reading_direction_t;
 
@@ -96,15 +96,15 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  char chapter_id[k_mdl_chapter_id_max]; /**< Stable identifier (URL leaf). */
-  char source_url[k_mdl_url_max];        /**< Chapter page URL.             */
-  char title[k_mdl_title_max];           /**< Display title, or empty.       */
-  double number;                         /**< Parsed number; 0 may be valid. */
-  bool number_known;                     /**< Whether @ref number is known.  */
-  uint16_t page_count;                   /**< Total pages known (0 = ?).    */
-  uint16_t pages_done;                   /**< Pages fetched and verified.   */
-  bool complete;                         /**< All pages present + verified. */
-  int64_t fetched_at;                    /**< Completion time (epoch s).    */
+  char     chapter_id[k_mdl_chapter_id_max]; /**< Stable identifier (URL leaf).  */
+  char     source_url[k_mdl_url_max];        /**< Chapter page URL.              */
+  char     title[k_mdl_title_max];           /**< Display title, or empty.       */
+  double   number;                           /**< Parsed number; 0 may be valid. */
+  bool     number_known;                     /**< Whether @ref number is known.  */
+  uint16_t page_count;                       /**< Total pages known (0 = ?).     */
+  uint16_t pages_done;                       /**< Pages fetched and verified.    */
+  bool     complete;                         /**< All pages present + verified.  */
+  int64_t  fetched_at;                       /**< Completion time (epoch s).     */
 } mdl_chapter_rec_t;
 
 /**
@@ -119,11 +119,12 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint64_t url_hash;                /**< FNV-1a 64 of the source URL.     */
-  uint64_t content_hash;            /**< FNV-1a 64 of the fetched bytes.  */
-  char rel_path[k_mdl_relpath_max]; /**< Path under the series directory. */
-  char etag[k_mdl_etag_max];        /**< Cached ETag for conditional GET. */
-  char last_modified[k_mdl_last_mod_max]; /**< Cached Last-Modified. */
+  uint64_t url_hash;                    /**< FNV-1a 64 of the source URL.     */
+  uint64_t content_hash;                /**< FNV-1a 64 of the fetched bytes.  */
+  char     rel_path[k_mdl_relpath_max]; /**< Path under the series directory. */
+  char     etag[k_mdl_etag_max];        /**< Cached ETag for conditional GET. */
+  /** @brief Cached Last-Modified response value. */
+  char last_modified[k_mdl_last_mod_max];
 } mdl_page_rec_t;
 
 /**
@@ -140,23 +141,28 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint16_t version;                    /**< Schema version.        */
-  char series_url[k_mdl_url_max];      /**< Series page URL.       */
-  char series_title[k_mdl_title_max];  /**< Series title.          */
-  char site_name[k_mdl_name_max];      /**< Descriptor name.       */
-  char site_host[k_mdl_host_max];      /**< Site host.             */
-  char config_path[k_mdl_cfgpath_max]; /**< Descriptor used.       */
-  char summary[k_mdl_summary_max];     /**< Series synopsis.       */
-  char writer[k_mdl_person_max];       /**< Writer/author.         */
-  char artist[k_mdl_person_max];       /**< Artist/illustrator.    */
-  char cover_url[k_mdl_url_max];       /**< Remote cover URL.      */
-  char cover_path[k_mdl_relpath_max];  /**< Local cover path.      */
-  char language[k_mdl_language_max];   /**< BCP-47 language tag.   */
-  mdl_state_reading_direction_t reading_direction; /**< Page progression. */
-  uint16_t chapter_count;                         /**< Chapters recorded.     */
-  uint32_t page_rec_count;                        /**< Page records recorded. */
-  mdl_chapter_rec_t chapters[k_mdl_max_chapters]; /**< Per-chapter coverage.  */
-  mdl_page_rec_t pages[k_mdl_max_page_recs];      /**< Per-page identities.   */
+  uint16_t version;                        /**< Schema version.      */
+  char     series_url[k_mdl_url_max];      /**< Series page URL.     */
+  char     series_title[k_mdl_title_max];  /**< Series title.        */
+  char     site_name[k_mdl_name_max];      /**< Descriptor name.     */
+  char     site_host[k_mdl_host_max];      /**< Site host.           */
+  char     config_path[k_mdl_cfgpath_max]; /**< Descriptor used.     */
+  char     summary[k_mdl_summary_max];     /**< Series synopsis.     */
+  char     writer[k_mdl_person_max];       /**< Writer/author.       */
+  char     artist[k_mdl_person_max];       /**< Artist/illustrator.  */
+  char     cover_url[k_mdl_url_max];       /**< Remote cover URL.    */
+  char     cover_path[k_mdl_relpath_max];  /**< Local cover path.    */
+  char     language[k_mdl_language_max];   /**< BCP-47 language tag. */
+  /** @brief Page progression. */
+  mdl_state_reading_direction_t reading_direction;
+  /** @brief Chapters recorded. */
+  uint16_t chapter_count;
+  /** @brief Page records recorded. */
+  uint32_t page_rec_count;
+  /** @brief Per-chapter coverage. */
+  mdl_chapter_rec_t chapters[k_mdl_max_chapters];
+  /** @brief Per-page identities. */
+  mdl_page_rec_t pages[k_mdl_max_page_recs];
 } mdl_state_t;
 
 /**
@@ -174,7 +180,7 @@ typedef struct {
  * @note Not thread-safe: initialises caller storage.
  * @since 0.1.0
  */
-void mdl_state_init(mdl_state_t *st);
+void mdl_state_init(mdl_state_t* st);
 
 /**
  * @brief Record the series identity and the descriptor used.
@@ -197,9 +203,12 @@ void mdl_state_init(mdl_state_t *st);
  * @note Not thread-safe: writes caller storage.
  * @since 0.1.0
  */
-void mdl_state_set_series(mdl_state_t *st, const char *url, const char *title,
-                          const char *site_name, const char *site_host,
-                          const char *config_path);
+void mdl_state_set_series(mdl_state_t* st,
+                          const char*  url,
+                          const char*  title,
+                          const char*  site_name,
+                          const char*  site_host,
+                          const char*  config_path);
 
 /**
  * @brief Set the optional rich metadata persisted for a series.
@@ -231,10 +240,13 @@ void mdl_state_set_series(mdl_state_t *st, const char *url, const char *title,
  * @note Not thread-safe: writes caller storage.
  * @since 0.1.0
  */
-bool mdl_state_set_series_metadata(mdl_state_t *st, const char *summary,
-                                   const char *writer, const char *artist,
-                                   const char *cover_url,
-                                   const char *cover_path, const char *language,
+bool mdl_state_set_series_metadata(mdl_state_t*                  st,
+                                   const char*                   summary,
+                                   const char*                   writer,
+                                   const char*                   artist,
+                                   const char*                   cover_url,
+                                   const char*                   cover_path,
+                                   const char*                   language,
                                    mdl_state_reading_direction_t direction);
 
 /**
@@ -265,7 +277,7 @@ bool mdl_state_set_series_metadata(mdl_state_t *st, const char *summary,
  * @see mdl_state_save
  * @since 0.1.0
  */
-ra8_err_t mdl_state_load(const char *path, mdl_state_t *st);
+ra8_err_t mdl_state_load(const char* path, mdl_state_t* st);
 
 /**
  * @brief Persist a series' state atomically.
@@ -294,7 +306,7 @@ ra8_err_t mdl_state_load(const char *path, mdl_state_t *st);
  * @see mdl_state_load
  * @since 0.1.0
  */
-ra8_err_t mdl_state_save(const char *path, const mdl_state_t *st);
+ra8_err_t mdl_state_save(const char* path, const mdl_state_t* st);
 
 /**
  * @brief Find a chapter record by its stable identifier.
@@ -312,7 +324,7 @@ ra8_err_t mdl_state_save(const char *path, const mdl_state_t *st);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-mdl_chapter_rec_t *mdl_state_find_chapter(mdl_state_t *st, const char *id);
+mdl_chapter_rec_t* mdl_state_find_chapter(mdl_state_t* st, const char* id);
 
 /**
  * @brief Find or append a chapter record, returning it.
@@ -334,8 +346,8 @@ mdl_chapter_rec_t *mdl_state_find_chapter(mdl_state_t *st, const char *id);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-mdl_chapter_rec_t *mdl_state_add_chapter(mdl_state_t *st, const char *id,
-                                         const char *url, long number);
+mdl_chapter_rec_t*
+mdl_state_add_chapter(mdl_state_t* st, const char* id, const char* url, long number);
 
 /**
  * @brief Find or append a chapter with explicit parsed-number presence.
@@ -362,9 +374,11 @@ mdl_chapter_rec_t *mdl_state_add_chapter(mdl_state_t *st, const char *id,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-mdl_chapter_rec_t *
-mdl_state_add_chapter_numbered(mdl_state_t *st, const char *id, const char *url,
-                               double number, bool number_known);
+mdl_chapter_rec_t* mdl_state_add_chapter_numbered(mdl_state_t* st,
+                                                  const char*  id,
+                                                  const char*  url,
+                                                  double       number,
+                                                  bool         number_known);
 
 /**
  * @brief Set a chapter's display title and explicit parsed number.
@@ -390,9 +404,10 @@ mdl_state_add_chapter_numbered(mdl_state_t *st, const char *id, const char *url,
  * @note Not thread-safe: writes caller storage.
  * @since 0.1.0
  */
-bool mdl_state_set_chapter_metadata(mdl_chapter_rec_t *chapter,
-                                    const char *title, double number,
-                                    bool number_known);
+bool mdl_state_set_chapter_metadata(mdl_chapter_rec_t* chapter,
+                                    const char*        title,
+                                    double             number,
+                                    bool               number_known);
 
 /**
  * @brief Whether a chapter is recorded fully fetched and verified.
@@ -411,7 +426,7 @@ bool mdl_state_set_chapter_metadata(mdl_chapter_rec_t *chapter,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-bool mdl_state_chapter_complete(const mdl_state_t *st, const char *id);
+bool mdl_state_chapter_complete(const mdl_state_t* st, const char* id);
 
 /**
  * @brief Recorded page count for a chapter (0 when unknown).
@@ -434,7 +449,7 @@ bool mdl_state_chapter_complete(const mdl_state_t *st, const char *id);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-uint16_t mdl_state_chapter_pages(const mdl_state_t *st, const char *id);
+uint16_t mdl_state_chapter_pages(const mdl_state_t* st, const char* id);
 
 /**
  * @brief Find a page record by its source-URL hash (the dedup lookup).
@@ -453,8 +468,7 @@ uint16_t mdl_state_chapter_pages(const mdl_state_t *st, const char *id);
  * @see mdl_state_add_page
  * @since 0.1.0
  */
-const mdl_page_rec_t *mdl_state_find_page(const mdl_state_t *st,
-                                          uint64_t url_hash);
+const mdl_page_rec_t* mdl_state_find_page(const mdl_state_t* st, uint64_t url_hash);
 
 /**
  * @brief Add or replace a URL-keyed page cache record.
@@ -488,9 +502,12 @@ const mdl_page_rec_t *mdl_state_find_page(const mdl_state_t *st,
  * @see mdl_state_find_page
  * @since 0.1.0
  */
-bool mdl_state_add_page(mdl_state_t *st, uint64_t url_hash,
-                        uint64_t content_hash, const char *rel_path,
-                        const char *etag, const char *last_modified);
+bool mdl_state_add_page(mdl_state_t* st,
+                        uint64_t     url_hash,
+                        uint64_t     content_hash,
+                        const char*  rel_path,
+                        const char*  etag,
+                        const char*  last_modified);
 
 /**
  * @brief Render a one-line coverage summary (chapter span, count, gaps).
@@ -514,4 +531,4 @@ bool mdl_state_add_page(mdl_state_t *st, uint64_t url_hash,
  * @note Not thread-safe: writes caller storage.
  * @since 0.1.0
  */
-void mdl_state_coverage(const mdl_state_t *st, char *buf, size_t cap);
+void mdl_state_coverage(const mdl_state_t* st, char* buf, size_t cap);

@@ -50,8 +50,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra8_attributes.h"
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_epub.h"
 #include "ra8_err.h"

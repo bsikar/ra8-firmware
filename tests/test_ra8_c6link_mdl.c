@@ -18,19 +18,19 @@
 
 /** @brief Fixed capacities and sentinels owned by this service fixture. */
 typedef enum : uint16_t {
-  k_t_mdl_request_bytes  = 700U,  /**< Packed request scratch capacity. */
+  k_t_mdl_request_bytes  = 700U,  /**< Packed request scratch capacity.  */
   k_t_mdl_response_bytes = 1200U, /**< Packed response scratch capacity. */
-  k_t_mdl_len_sentinel   = 99U,   /**< Non-zero output-length sentinel. */
-  k_t_mdl_digest_fill    = 0xA5U, /**< Deterministic digest test octet. */
+  k_t_mdl_len_sentinel   = 99U,   /**< Non-zero output-length sentinel.  */
+  k_t_mdl_digest_fill    = 0xA5U, /**< Deterministic digest test octet.  */
 } t_mdl_const_t;
 
 /** @brief State for the deterministic media backend. */
 typedef struct {
-  const uint8_t* bytes;               /**< Modelled response body.         */
-  size_t         len;                 /**< Total response body length.     */
-  size_t         at;                  /**< Offset of the next body byte.   */
-  uint32_t       begins;              /**< Successful begin call count.    */
-  uint32_t       cancels;             /**< Successful cancel call count.   */
+  const uint8_t* bytes;               /**< Modelled response body.       */
+  size_t         len;                 /**< Total response body length.   */
+  size_t         at;                  /**< Offset of the next body byte. */
+  uint32_t       begins;              /**< Successful begin call count.  */
+  uint32_t       cancels;             /**< Successful cancel call count. */
   bool           terminal_total_zero; /**< Corrupt terminal-total fault. */
 } fake_backend_t;
 
