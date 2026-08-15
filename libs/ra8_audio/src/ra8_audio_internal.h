@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "ra8_attributes.h"
 #include "ra8_audio.h"
 
 /** @brief Operations supplied by every audio source backend. */
