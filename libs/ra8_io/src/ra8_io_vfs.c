@@ -770,6 +770,99 @@ ra8_err_t ra8_io_vfs_listdir(const char* path, ra8_fs_listdir_cb_t cb, void* ctx
   return slot->format->ops->listdir(slot->mount_ctx, sub, cb, ctx);
 }
 
+ra8_err_t ra8_io_vfs_dir_requirements(const char* path,
+                                      uint32_t*   out_bytes,
+                                      uint8_t*    out_align,
+                                      uint16_t*   out_max_open)
+{
+  if ((path == nullptr) || (out_bytes == nullptr) || (out_align == nullptr) ||
+      (out_max_open == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  *out_bytes               = 0U;
+  *out_align               = 0U;
+  *out_max_open            = 0U;
+  vfs_slot_t*     slot     = nullptr;
+  const char*     sub      = nullptr;
+  const ra8_err_t resolved = internal_resolve(path, &slot, nullptr, &sub);
+  (void)sub;
+  if (resolved != k_ra8_ok) {
+    return resolved;
+  }
+  if (!slot->format->caps.supports_dir_cursor) {
+    return k_ra8_err_not_supported;
+  }
+  *out_bytes    = slot->format->caps.directory_workspace_bytes;
+  *out_align    = slot->format->caps.directory_workspace_align;
+  *out_max_open = slot->format->caps.max_open_directories;
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_io_vfs_dir_open(const char*       path,
+                              ra8_io_vfs_dir_t* directory,
+                              void*             workspace,
+                              uint32_t          workspace_bytes)
+{
+  if ((path == nullptr) || (directory == nullptr) || (workspace == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  if (directory->is_open) {
+    return k_ra8_err_busy;
+  }
+  vfs_slot_t*     slot     = nullptr;
+  const char*     sub      = nullptr;
+  const ra8_err_t resolved = internal_resolve(path, &slot, nullptr, &sub);
+  if (resolved != k_ra8_ok) {
+    return resolved;
+  }
+  const ra8_io_fsfmt_caps_t* caps = &slot->format->caps;
+  if (!caps->supports_dir_cursor) {
+    return k_ra8_err_not_supported;
+  }
+  if (workspace_bytes < caps->directory_workspace_bytes) {
+    return k_ra8_err_no_mem;
+  }
+  if (((uintptr_t)workspace % (uintptr_t)caps->directory_workspace_align) != 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  const ra8_err_t opened =
+    slot->format->ops->dir_open(slot->mount_ctx, sub, workspace, workspace_bytes);
+  if (opened != k_ra8_ok) {
+    return opened;
+  }
+  *directory = (ra8_io_vfs_dir_t){.format      = slot->format,
+                                  .state       = workspace,
+                                  .state_bytes = workspace_bytes,
+                                  .is_open     = true};
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_io_vfs_dir_next(ra8_io_vfs_dir_t* directory, ra8_fs_dirent_t* out, bool* out_entry)
+{
+  if ((directory == nullptr) || (out == nullptr) || (out_entry == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  if (!directory->is_open || (directory->format == nullptr)) {
+    return k_ra8_err_invalid_state;
+  }
+  *out       = (ra8_fs_dirent_t){};
+  *out_entry = false;
+  return directory->format->ops->dir_next(directory->state, out, out_entry);
+}
+
+ra8_err_t ra8_io_vfs_dir_close(ra8_io_vfs_dir_t* directory)
+{
+  if (directory == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  if (!directory->is_open || (directory->format == nullptr)) {
+    return k_ra8_err_invalid_state;
+  }
+  const ra8_err_t closed = directory->format->ops->dir_close(directory->state);
+  *directory             = (ra8_io_vfs_dir_t){};
+  return closed;
+}
+
 ra8_err_t ra8_io_vfs_mkdir(const char* path)
 {
   RA8_CHECK_NULL_PTR(path, s_tag, "path must not be nullptr");

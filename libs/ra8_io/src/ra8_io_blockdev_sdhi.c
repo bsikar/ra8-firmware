@@ -71,7 +71,8 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t sdhi_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_sdhi_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -108,7 +109,8 @@ static ra8_err_t sdhi_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t sdhi_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_sdhi_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -141,7 +143,7 @@ static ra8_err_t sdhi_write(void* ctx, uint32_t lba, uint32_t count, const uint8
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t sdhi_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
+RA8_INTERNAL static ra8_err_t internal_sdhi_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   (void)ctx;
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -161,18 +163,18 @@ static ra8_err_t sdhi_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 }
 
 /** @brief Native-SDHI backend vtable. `erase`/`sync` are NULL (no host erase, no buffering). */
-static const ra8_io_blockdev_iface_t k_sdhi_iface = {
-  .read     = sdhi_read,
-  .write    = sdhi_write,
+static const ra8_io_blockdev_iface_t s_sdhi_iface = {
+  .read     = internal_sdhi_read,
+  .write    = internal_sdhi_write,
   .erase    = nullptr,
-  .get_caps = sdhi_get_caps,
+  .get_caps = internal_sdhi_get_caps,
   .sync     = nullptr,
 };
 
 ra8_err_t ra8_io_blockdev_sdhi_init(ra8_io_blockdev_t* bd)
 {
   RA8_CHECK_NULL_PTR(bd, s_tag, "bd must not be nullptr");
-  bd->iface = &k_sdhi_iface;
+  bd->iface = &s_sdhi_iface;
   bd->ctx   = nullptr;
   return k_ra8_ok;
 }

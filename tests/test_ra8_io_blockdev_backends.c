@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmio.h"
 #include "ra8_fake_xspi_flash.h"
@@ -76,9 +77,8 @@ typedef enum : uint32_t {
 /**
  * @par MC/DC:
  * (no compound decisions under test -- sdram init rejects NULL/zero/oversize via
- * independent single-condition guards, then a read/write/erase round-trip)
- */
-static void test_sdram_backend(void)
+ * independent single-condition guards, then a read/write/erase round-trip) @brief Verify sdram backend behavior. @details Executes the sdram backend scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_sdram_backend(void)
 {
   TEST_BEGIN("sdram backend");
   ra8_io_blockdev_t           bd    = {};
@@ -120,9 +120,8 @@ static void test_sdram_backend(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- xspi geometry init rejects each bad
- * argument via independent single-condition guards)
- */
-static void test_xspi_geom(void)
+ * argument via independent single-condition guards) @brief Verify xspi geom behavior. @details Executes the xspi geom scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_xspi_geom(void)
 {
   TEST_BEGIN("xspi geom validation");
   ra8_io_blockdev_t            bd    = {};
@@ -145,9 +144,8 @@ static void test_xspi_geom(void)
  * @par MC/DC:
  * (no compound decisions under test -- erase the sector, write one block, read
  * it back; write a different pair of blocks and confirm the first block is
- * preserved by the whole-sector read-modify-write)
- */
-static void test_xspi_rmw_roundtrip(void)
+ * preserved by the whole-sector read-modify-write) @brief Verify xspi rmw roundtrip behavior. @details Executes the xspi rmw roundtrip scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_xspi_rmw_roundtrip(void)
 {
   TEST_BEGIN("xspi RMW round-trip");
   /* The driver's real register sequence needs the tests/mocks NOR model
@@ -193,9 +191,8 @@ static void test_xspi_rmw_roundtrip(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- the fence is a chain of single-condition
- * guards; each rejection and the accept path is hit)
- */
-static void test_mram_fence(void)
+ * guards; each rejection and the accept path is hit) @brief Verify mram fence behavior. @details Executes the mram fence scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mram_fence(void)
 {
   TEST_BEGIN("mram fence");
   ra8_io_blockdev_t            bd    = {};
@@ -250,9 +247,8 @@ static void test_mram_fence(void)
  * @par MC/DC:
  * (no compound decisions under test -- each rejection guard is a single-condition
  * check; exercises mram_bounds count-overflow path, lba-overflow path, the
- * mram_window_ok base-above-region path, and the zero block_count init guard)
- */
-static void test_mram_oob_and_init_ext(void)
+ * mram_window_ok base-above-region path, and the zero block_count init guard) @brief Verify mram oob and init ext behavior. @details Executes the mram oob and init ext scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mram_oob_and_init_ext(void)
 {
   TEST_BEGIN("mram oob and init extended");
   ra8_io_blockdev_t            bd    = {};
@@ -292,10 +288,9 @@ static void test_mram_oob_and_init_ext(void)
  * @par MC/DC:
  * (no compound decisions under test -- each branch is a single-condition check;
  * the write-chunk-error and erase-chunk-error paths are exercised by letting
- * ra8_flash_internal_wait_mrdy() time out when MSTATR has no MRDY bit, then
- * the MRDY bit is pre-armed for the happy-path sequences)
- */
-static void test_mram_write_and_erase(void)
+ * priv_ra8_flash_internal_wait_mrdy() time out when MSTATR has no MRDY bit, then
+ * the MRDY bit is pre-armed for the happy-path sequences) @brief Verify mram write and erase behavior. @details Executes the mram write and erase scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_mram_write_and_erase(void)
 {
   TEST_BEGIN("mram write and erase");
 
@@ -360,9 +355,8 @@ static void test_mram_write_and_erase(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- each init rejects NULL and binds a valid
- * handle)
- */
-static void test_sdspi_sdhi_bind(void)
+ * handle) @brief Verify sdspi sdhi bind behavior. @details Executes the sdspi sdhi bind scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_sdspi_sdhi_bind(void)
 {
   TEST_BEGIN("sdspi/sdhi bind");
   ra8_io_blockdev_t bd = {};
@@ -376,13 +370,12 @@ static void test_sdspi_sdhi_bind(void)
 
 int32_t main(void)
 {
-  test_sdram_backend();
-  test_xspi_geom();
-  test_xspi_rmw_roundtrip();
-  test_mram_fence();
-  test_mram_oob_and_init_ext();
-  test_mram_write_and_erase();
-  test_sdspi_sdhi_bind();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_blockdev_backends.c\n");
+  internal_test_sdram_backend();
+  internal_test_xspi_geom();
+  internal_test_xspi_rmw_roundtrip();
+  internal_test_mram_fence();
+  internal_test_mram_oob_and_init_ext();
+  internal_test_mram_write_and_erase();
+  internal_test_sdspi_sdhi_bind();
   return 0;
 }

@@ -7,9 +7,9 @@
  *
  * @details
  * Accumulates stream bytes into a sector buffer; a full sector is committed via
- * ::ra8_io_blockdev_write and the LBA advances. A flush zero-pads and commits the
- * partial trailing sector. The sector buffer lives in the caller-owned state, so
- * there is no allocation.
+ * ::ra8_io_blockdev_write and the LBA advances. A flush zero-pads and commits
+ * the partial trailing sector. The sector buffer lives in the caller-owned
+ * state, so there is no allocation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -25,7 +25,7 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
-#include "ra8_io_stream_internal.h"
+#include "ra8_io_stream_backend.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_io_stream_blockdev";
@@ -46,9 +46,9 @@ typedef enum : uint32_t {
  *
  * @details
  * Writes the full `sector` buffer to the device at the current LBA via
- * ::ra8_io_blockdev_write. On success the LBA advances by one block and the fill
- * counter is reset to zero; on failure the error is returned and the state is
- * left unchanged so the caller can decide how to report it.
+ * ::ra8_io_blockdev_write. On success the LBA advances by one block and the
+ * fill counter is reset to zero; on failure the error is returned and the state
+ * is left unchanged so the caller can decide how to report it.
  *
  * @param[in,out] st Block-device sink state with a sector ready to commit.
  *
@@ -65,8 +65,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t bdsink_commit_sector(ra8_io_stream_blockdev_state_t* st)
+RA8_INTERNAL static ra8_err_t internal_bdsink_commit_sector(ra8_io_stream_blockdev_state_t* st)
 {
   RA8_CHECK_NULL_PTR(st, s_tag, "st must not be nullptr");
   RA8_CHECK_NULL_PTR(st->bd, s_tag, "st->bd must not be nullptr");
@@ -85,8 +84,8 @@ static ra8_err_t bdsink_commit_sector(ra8_io_stream_blockdev_state_t* st)
  * @details
  * Copies up to a full sector's worth of bytes -- limited by both the bytes that
  * remain in the source (`len - done`) and the room left in the sector buffer --
- * then advances both the fill counter and the consumed count. Performs no device
- * I/O; committing a now-full sector is the caller's responsibility.
+ * then advances both the fill counter and the consumed count. Performs no
+ * device I/O; committing a now-full sector is the caller's responsibility.
  *
  * @param[in,out] st      Block-device sink state receiving the bytes.
  * @param[in]     buf     Source bytes.
@@ -108,11 +107,10 @@ static ra8_err_t bdsink_commit_sector(ra8_io_stream_blockdev_state_t* st)
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static uint32_t bdsink_fill_chunk(ra8_io_stream_blockdev_state_t* st,
-                                  const uint8_t*                  buf,
-                                  uint32_t                        len,
-                                  uint32_t*                       done)
+RA8_INTERNAL static uint32_t internal_bdsink_fill_chunk(ra8_io_stream_blockdev_state_t* st,
+                                                        const uint8_t*                  buf,
+                                                        uint32_t                        len,
+                                                        uint32_t*                       done)
 {
   const uint32_t room  = (uint32_t)k_ra8_io_block_size_bytes - st->fill;
   const uint32_t rem   = len - *done;
@@ -127,16 +125,16 @@ static uint32_t bdsink_fill_chunk(ra8_io_stream_blockdev_state_t* st,
  * @brief Commit the buffered sector iff it is exactly full.
  *
  * @details
- * Helper for ::bdsink_write -- writes the staged sector through
- * ::bdsink_commit_sector only when `fill` has reached one logical block,
- * otherwise it is a no-op. Extracted so ::bdsink_write stays within the
- * nesting-depth limit.
+ * Helper for ::internal_bdsink_write -- writes the staged sector through
+ * ::internal_bdsink_commit_sector only when `fill` has reached one logical
+ * block, otherwise it is a no-op. Extracted so ::internal_bdsink_write stays
+ * within the nesting-depth limit.
  *
  * @param[in] st Block-device sink state.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok    Sector committed, or none was full yet.
- * @retval k_ra8_err_* Propagated from ::bdsink_commit_sector.
+ * @retval k_ra8_err_* Propagated from ::internal_bdsink_commit_sector.
  *
  * @pre `st` is a populated block-device sink state.
  * @pre `st->fill` is in [0, k_ra8_io_block_size_bytes].
@@ -147,11 +145,10 @@ static uint32_t bdsink_fill_chunk(ra8_io_stream_blockdev_state_t* st,
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t bdsink_commit_if_full(ra8_io_stream_blockdev_state_t* st)
+RA8_INTERNAL static ra8_err_t internal_bdsink_commit_if_full(ra8_io_stream_blockdev_state_t* st)
 {
   if (st->fill == (uint32_t)k_ra8_io_block_size_bytes) {
-    return bdsink_commit_sector(st);
+    return internal_bdsink_commit_sector(st);
   }
   return k_ra8_ok;
 }
@@ -160,8 +157,9 @@ static ra8_err_t bdsink_commit_if_full(ra8_io_stream_blockdev_state_t* st)
  * @brief Block-device sink: buffer bytes, auto-committing full sectors.
  *
  * @details
- * Copies bytes into the sector buffer in chunks; whenever the buffer fills it is
- * written as one logical block and the LBA advances. Reports the consumed count.
+ * Copies bytes into the sector buffer in chunks; whenever the buffer fills it
+ * is written as one logical block and the LBA advances. Reports the consumed
+ * count.
  *
  * @param[in]  ctx         Block-device sink state (as a void cookie).
  * @param[in]  buf         Source bytes.
@@ -182,16 +180,16 @@ static ra8_err_t bdsink_commit_if_full(ra8_io_stream_blockdev_state_t* st)
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t bdsink_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t* out_written)
+RA8_INTERNAL static ra8_err_t
+internal_bdsink_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t* out_written)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   ra8_io_stream_blockdev_state_t* st   = (ra8_io_stream_blockdev_state_t*)ctx;
   uint32_t                        done = 0;
   while (done < len) {
-    (void)bdsink_fill_chunk(st, buf, len, &done);
-    const ra8_err_t e = bdsink_commit_if_full(st);
+    (void)internal_bdsink_fill_chunk(st, buf, len, &done);
+    const ra8_err_t e = internal_bdsink_commit_if_full(st);
     if (e != k_ra8_ok) {
       if (out_written != nullptr) {
         *out_written = done;
@@ -228,8 +226,7 @@ static ra8_err_t bdsink_write(void* ctx, const uint8_t* buf, uint32_t len, uint3
  *
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t bdsink_flush(void* ctx)
+RA8_INTERNAL static ra8_err_t internal_bdsink_flush(void* ctx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   ra8_io_stream_blockdev_state_t* st = (ra8_io_stream_blockdev_state_t*)ctx;
@@ -238,13 +235,13 @@ static ra8_err_t bdsink_flush(void* ctx)
   }
   const size_t pad = (size_t)((uint32_t)k_ra8_io_block_size_bytes - st->fill);
   (void)memset(&st->sector[st->fill], (int)k_bd_pad_byte, pad);
-  return bdsink_commit_sector(st);
+  return internal_bdsink_commit_sector(st);
 }
 
 /** @brief Block-device stream sink vtable. */
-static const ra8_io_stream_iface_t k_bd_iface = {
-  .write = bdsink_write,
-  .flush = bdsink_flush,
+static const ra8_io_stream_iface_t s_bd_iface = {
+  .write = internal_bdsink_write,
+  .flush = internal_bdsink_flush,
 };
 
 ra8_err_t ra8_io_stream_blockdev_init(ra8_io_stream_t*                s,
@@ -258,7 +255,5 @@ ra8_err_t ra8_io_stream_blockdev_init(ra8_io_stream_t*                s,
   state->bd   = bd;
   state->lba  = start_lba;
   state->fill = 0;
-  s->iface    = &k_bd_iface;
-  s->ctx      = state;
-  return k_ra8_ok;
+  return ra8_io_stream_bind(s, &s_bd_iface, state);
 }

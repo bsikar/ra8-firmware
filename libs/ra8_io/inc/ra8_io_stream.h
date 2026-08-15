@@ -14,10 +14,11 @@
  * / `write` / `put_u32` / `put_hex` call lands wherever the bound backend sends
  * it, exactly as a block-device backend is chosen for storage.
  *
- * The formatted helpers are deliberately varargs-free. The firmware traps `_sbrk`
- * and bans the newlib `printf` family (its `vfprintf` blows the bounded-stack
- * budget), so this layer offers small, bounded, no-allocation primitives instead
- * of a `fprintf`: integers go out through ::ra8_io_stream_put_u32 /
+ * The formatted helpers are deliberately varargs-free. The firmware traps
+ * `_sbrk` and bans the newlib `printf` family (its `vfprintf` blows the
+ * bounded-stack budget), so this layer offers small, bounded, no-allocation
+ * primitives instead of a `fprintf`: integers go out through
+ * ::ra8_io_stream_put_u32 /
  * ::ra8_io_stream_put_hex, strings through ::ra8_io_stream_puts.
  *
  * @code
@@ -47,13 +48,14 @@ extern "C" {
 
 /**
  * @struct ra8_io_stream_iface
- * @brief Opaque to applications -- backends implement this internally and
- *        export a binding helper through their own header.
+ * @brief Opaque to stream users; backend implementers use the public backend
+ *        contract in `ra8_io_stream_backend.h`.
  *
  * @details
- * The concrete vtable layout lives in `src/ra8_io_stream_internal.h`. Apps never
- * construct one; they call a sink's `_init()` helper, which binds the sink's
- * const vtable into a caller-owned ::ra8_io_stream_t.
+ * Ordinary stream users never construct this table; they call a sink's
+ * `_init()` helper. Portable backend implementers include
+ * `ra8_io_stream_backend.h`, define an immutable table, and bind it into a
+ * caller-owned ::ra8_io_stream_t with ::ra8_io_stream_bind.
  *
  * @since 0.1.0
  */
@@ -96,11 +98,15 @@ typedef struct {
  * @retval k_ra8_err_null_ptr        `s` or `buf` was NULL.
  * @retval k_ra8_err_not_initialized No sink is bound to `s`.
  * @retval k_ra8_err_no_mem          A bounded sink could not accept all bytes.
+ * @retval k_ra8_err_protocol_error  Backend reported an impossible count or
+ *                                   success after a short write.
  *
  * @pre A sink has been bound into `s`.
  * @pre `buf` is readable for `len` bytes.
  * @post On success the sink has consumed all `len` bytes.
- * @post `*out_written` (when provided) holds the accepted byte count.
+ * @post `*out_written` (when provided) holds the accepted byte count unless a
+ *       backend published an impossible over-request count, in which case it
+ *       is preserved and ::k_ra8_err_protocol_error is returned.
  *
  * @note Not thread-safe with respect to the same stream.
  *
@@ -158,7 +164,8 @@ ra8_io_stream_write(ra8_io_stream_t* s, const uint8_t* buf, uint32_t len, uint32
  *
  * @details
  * Scans up to a bounded maximum for the terminator (NASA Power-of-10 Rule 2),
- * then writes that many bytes. Strings longer than the bound are truncated.
+ * then writes that many bytes. An unterminated or overlong string is rejected;
+ * it is never silently truncated.
  *
  * @param[in] s   Bound stream handle.
  * @param[in] str NUL-terminated string.
@@ -168,6 +175,8 @@ ra8_io_stream_write(ra8_io_stream_t* s, const uint8_t* buf, uint32_t len, uint32
  * @retval k_ra8_err_null_ptr        `s` or `str` was NULL.
  * @retval k_ra8_err_not_initialized No sink is bound to `s`.
  * @retval k_ra8_err_no_mem          A bounded sink could not accept all bytes.
+ * @retval k_ra8_err_invalid_size    No terminator appeared inside the scan
+ * bound.
  *
  * @pre A sink has been bound into `s`.
  * @pre `str` is NUL-terminated.
@@ -202,6 +211,23 @@ ra8_io_stream_write(ra8_io_stream_t* s, const uint8_t* buf, uint32_t len, uint32
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_io_stream_put_u32(ra8_io_stream_t* s, uint32_t value);
+
+/**
+ * @brief Write `value` as unsigned 64-bit decimal ASCII without leading zeros.
+ * @param[in] s Bound stream handle.
+ * @param[in] value Value to render.
+ * @return Canonical stream status.
+ * @retval k_ra8_ok Digits written.
+ * @retval k_ra8_err_null_ptr @p s was null.
+ * @retval k_ra8_err_not_initialized No sink is bound to @p s.
+ * @retval k_ra8_err_no_mem A bounded sink could not accept the digits.
+ * @pre A sink has been bound into @p s and the stream is idle.
+ * @post Success writes the exact base-10 identity of @p value.
+ * @post At most twenty ASCII digits are produced.
+ * @note Not thread-safe for concurrent use of one stream.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_io_stream_put_u64(ra8_io_stream_t* s, uint64_t value);
 
 /**
  * @brief Write `value` as lowercase hex ASCII, zero-padded to `min_digits`.

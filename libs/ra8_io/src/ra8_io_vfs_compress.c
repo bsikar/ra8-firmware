@@ -64,11 +64,12 @@ static const char* const s_tag = "ra8_io_vfs_compress";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ra8_io_vfs_compress_write_validate(const char*     path,
-                                                    const uint8_t*  src,
-                                                    const void*     scratch,
-                                                    const uint8_t*  blob_buf,
-                                                    const uint32_t* out_blob_len)
+RA8_INTERNAL static ra8_err_t
+internal_ra8_io_vfs_compress_write_validate(const char*     path,
+                                            const uint8_t*  src,
+                                            const void*     scratch,
+                                            const uint8_t*  blob_buf,
+                                            const uint32_t* out_blob_len)
 {
   RA8_CHECK_NULL_PTR(path, s_tag, "path must not be nullptr");
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
@@ -106,8 +107,8 @@ static ra8_err_t ra8_io_vfs_compress_write_validate(const char*     path,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-ra8_io_vfs_compress_store_blob(const char* path, const uint8_t* blob, uint32_t blob_len)
+RA8_INTERNAL static ra8_err_t
+internal_ra8_io_vfs_compress_store_blob(const char* path, const uint8_t* blob, uint32_t blob_len)
 {
   ra8_fs_file_t* f = nullptr;
   RA8_RETURN_ON_ERROR(ra8_io_vfs_open(path, k_ra8_fs_mode_write, &f), s_tag, "open write");
@@ -132,7 +133,7 @@ ra8_err_t ra8_io_vfs_write_compressed(const char*    path,
                                       uint32_t*      out_blob_len)
 {
   RA8_RETURN_ON_ERROR(
-    ra8_io_vfs_compress_write_validate(path, src, scratch, blob_buf, out_blob_len),
+    internal_ra8_io_vfs_compress_write_validate(path, src, scratch, blob_buf, out_blob_len),
     s_tag,
     "validate args");
 
@@ -142,7 +143,9 @@ ra8_err_t ra8_io_vfs_write_compressed(const char*    path,
     s_tag,
     "compress");
 
-  RA8_RETURN_ON_ERROR(ra8_io_vfs_compress_store_blob(path, blob_buf, blob_len), s_tag, "store");
+  RA8_RETURN_ON_ERROR(internal_ra8_io_vfs_compress_store_blob(path, blob_buf, blob_len),
+                      s_tag,
+                      "store");
   *out_blob_len = blob_len;
   return k_ra8_ok;
 }
@@ -177,10 +180,10 @@ ra8_err_t ra8_io_vfs_write_compressed(const char*    path,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ra8_io_vfs_compress_read_validate(const char*     path,
-                                                   const uint8_t*  blob_buf,
-                                                   const uint8_t*  out,
-                                                   const uint32_t* out_len)
+RA8_INTERNAL static ra8_err_t internal_ra8_io_vfs_compress_read_validate(const char*     path,
+                                                                         const uint8_t*  blob_buf,
+                                                                         const uint8_t*  out,
+                                                                         const uint32_t* out_len)
 {
   RA8_CHECK_NULL_PTR(path, s_tag, "path must not be nullptr");
   RA8_CHECK_NULL_PTR(blob_buf, s_tag, "blob_buf must not be nullptr");
@@ -222,10 +225,10 @@ static ra8_err_t ra8_io_vfs_compress_read_validate(const char*     path,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t ra8_io_vfs_compress_load_blob(const char* path,
-                                               uint8_t*    blob_buf,
-                                               uint32_t    blob_cap,
-                                               uint32_t*   out_blob_len)
+RA8_INTERNAL static ra8_err_t internal_ra8_io_vfs_compress_load_blob(const char* path,
+                                                                     uint8_t*    blob_buf,
+                                                                     uint32_t    blob_cap,
+                                                                     uint32_t*   out_blob_len)
 {
   ra8_fs_file_t* f = nullptr;
   RA8_RETURN_ON_ERROR(ra8_io_vfs_open(path, k_ra8_fs_mode_read, &f), s_tag, "open read");
@@ -252,12 +255,12 @@ ra8_err_t ra8_io_vfs_read_compressed(const char* path,
                                      uint32_t    out_cap,
                                      uint32_t*   out_len)
 {
-  RA8_RETURN_ON_ERROR(ra8_io_vfs_compress_read_validate(path, blob_buf, out, out_len),
+  RA8_RETURN_ON_ERROR(internal_ra8_io_vfs_compress_read_validate(path, blob_buf, out, out_len),
                       s_tag,
                       "validate args");
 
   uint32_t blob_len = 0;
-  RA8_RETURN_ON_ERROR(ra8_io_vfs_compress_load_blob(path, blob_buf, blob_cap, &blob_len),
+  RA8_RETURN_ON_ERROR(internal_ra8_io_vfs_compress_load_blob(path, blob_buf, blob_cap, &blob_len),
                       s_tag,
                       "load");
 

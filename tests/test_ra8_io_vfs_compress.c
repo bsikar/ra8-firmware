@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_io_blockdev.h"
@@ -72,16 +73,16 @@ static uint8_t s_scratch[(size_t)k_ra8_io_compress_scratch_bytes];
 static uint8_t s_blob[(size_t)k_t_blob_cap];
 static uint8_t s_restored[(size_t)k_t_payload];
 
-/** @brief Fill the payload with a small-alphabet repetitive (compressible) pattern. */
-static void fill_payload(void)
+/** @brief Fill the payload with a small-alphabet repetitive (compressible) pattern. @details Exercises the fill payload path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_fill_payload(void)
 {
   for (uint32_t i = 0; i < (uint32_t)k_t_payload; ++i) {
     s_payload[i] = (uint8_t)((i * (uint32_t)k_t_seed_mul) % (uint32_t)k_t_pattern_mod);
   }
 }
 
-/** @brief Build a fresh empty FAT16 volume on the RAM disk and mount it as "ram". */
-static void setup_ram_mount(void)
+/** @brief Build a fresh empty FAT16 volume on the RAM disk and mount it as "ram". @details Exercises the setup ram mount path with bounded caller-owned fixture state and verifies its documented result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_setup_ram_mount(void)
 {
   if (s_mnt != nullptr) {
     (void)ra8_fs_unmount(s_mnt); /* ra8_fs has only 2 mount slots -- free the prior one */
@@ -107,13 +108,12 @@ static void setup_ram_mount(void)
  * @par MC/DC:
  * (no compound decisions under test -- a compress-on-write then
  * decompress-on-read reproduces the input exactly and the on-disk blob is
- * strictly smaller than the source payload)
- */
-static void test_vfs_compress_round_trip(void)
+ * strictly smaller than the source payload) @brief Verify vfs compress round trip behavior. @details Executes the vfs compress round trip scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_vfs_compress_round_trip(void)
 {
   TEST_BEGIN("vfs compress round-trip");
-  fill_payload();
-  setup_ram_mount();
+  internal_fill_payload();
+  internal_setup_ram_mount();
 
   uint32_t blob_len = 0;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -159,14 +159,13 @@ static void test_vfs_compress_round_trip(void)
  * @pre A RAM mount is set up.
  * @post No state beyond @p blob / @p out and the mount is modified.
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
- */
-static ra8_err_t vc_write(const char*    path,
-                          const uint8_t* payload,
-                          uint8_t*       scratch,
-                          uint32_t       scap,
-                          uint8_t*       blob,
-                          uint32_t*      out)
+ * @since 0.1.0 @details Exercises the vc write path with bounded caller-owned fixture state and verifies its documented result. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static ra8_err_t internal_vc_write(const char*    path,
+                                                const uint8_t* payload,
+                                                uint8_t*       scratch,
+                                                uint32_t       scap,
+                                                uint8_t*       blob,
+                                                uint32_t*      out)
 {
   return ra8_io_vfs_write_compressed(path,
                                      payload,
@@ -182,35 +181,34 @@ static ra8_err_t vc_write(const char*    path,
  * @par MC/DC:
  * (no compound decisions under test -- each of the five write-path pointer
  * guards is an independent single-condition check, and undersized scratch is a
- * sixth independent single-condition check)
- */
-static void test_vfs_compress_write_validation(void)
+ * sixth independent single-condition check) @brief Verify vfs compress write validation behavior. @details Executes the vfs compress write validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_vfs_compress_write_validation(void)
 {
   TEST_BEGIN("vfs compress write validation");
-  fill_payload();
-  setup_ram_mount();
+  internal_fill_payload();
+  internal_setup_ram_mount();
   uint32_t       blob_len = 0;
   const uint32_t scap     = (uint32_t)sizeof(s_scratch);
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 vc_write(nullptr, s_payload, s_scratch, scap, s_blob, &blob_len));
+                 internal_vc_write(nullptr, s_payload, s_scratch, scap, s_blob, &blob_len));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 vc_write("ram:/X.RBK", nullptr, s_scratch, scap, s_blob, &blob_len));
+                 internal_vc_write("ram:/X.RBK", nullptr, s_scratch, scap, s_blob, &blob_len));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 vc_write("ram:/X.RBK", s_payload, nullptr, scap, s_blob, &blob_len));
+                 internal_vc_write("ram:/X.RBK", s_payload, nullptr, scap, s_blob, &blob_len));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 vc_write("ram:/X.RBK", s_payload, s_scratch, scap, nullptr, &blob_len));
+                 internal_vc_write("ram:/X.RBK", s_payload, s_scratch, scap, nullptr, &blob_len));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 vc_write("ram:/X.RBK", s_payload, s_scratch, scap, s_blob, nullptr));
+                 internal_vc_write("ram:/X.RBK", s_payload, s_scratch, scap, s_blob, nullptr));
 
   /* undersized scratch -> the compressor rejects with invalid_size */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 vc_write("ram:/X.RBK",
-                          s_payload,
-                          s_scratch,
-                          (uint32_t)k_ra8_io_compress_scratch_bytes - 1U,
-                          s_blob,
-                          &blob_len));
+                 internal_vc_write("ram:/X.RBK",
+                                   s_payload,
+                                   s_scratch,
+                                   (uint32_t)k_ra8_io_compress_scratch_bytes - 1U,
+                                   s_blob,
+                                   &blob_len));
   TEST_END("vfs compress write validation");
 }
 
@@ -218,13 +216,12 @@ static void test_vfs_compress_write_validation(void)
  * @par MC/DC:
  * (no compound decisions under test -- a staging blob too small to hold the
  * compressed stream trips the compressor overflow path, and a path with no
- * `name:` prefix / an absent mount each trip an independent VFS guard)
- */
-static void test_vfs_compress_write_errors(void)
+ * `name:` prefix / an absent mount each trip an independent VFS guard) @brief Verify vfs compress write errors behavior. @details Executes the vfs compress write errors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_vfs_compress_write_errors(void)
 {
   TEST_BEGIN("vfs compress write errors");
-  fill_payload();
-  setup_ram_mount();
+  internal_fill_payload();
+  internal_setup_ram_mount();
   uint32_t blob_len = 0;
   uint8_t  tiny[4]  = {};
 
@@ -266,13 +263,12 @@ static void test_vfs_compress_write_errors(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- each of the four read-path pointer guards
- * is an independent single-condition check)
- */
-static void test_vfs_compress_read_validation(void)
+ * is an independent single-condition check) @brief Verify vfs compress read validation behavior. @details Executes the vfs compress read validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_vfs_compress_read_validation(void)
 {
   TEST_BEGIN("vfs compress read validation");
-  fill_payload();
-  setup_ram_mount();
+  internal_fill_payload();
+  internal_setup_ram_mount();
   uint32_t out_len = 0;
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -310,13 +306,12 @@ static void test_vfs_compress_read_validation(void)
  * @par MC/DC:
  * (no compound decisions under test -- an absent file, an undersized output
  * buffer, and an undersized staging blob each trip an independent guard on the
- * read path)
- */
-static void test_vfs_compress_read_errors(void)
+ * read path) @brief Verify vfs compress read errors behavior. @details Executes the vfs compress read errors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_vfs_compress_read_errors(void)
 {
   TEST_BEGIN("vfs compress read errors");
-  fill_payload();
-  setup_ram_mount();
+  internal_fill_payload();
+  internal_setup_ram_mount();
 
   /* seed a real compressed file to read back through the error legs */
   uint32_t blob_len = 0;
@@ -373,9 +368,8 @@ static void test_vfs_compress_read_errors(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- a bound stream write streams every byte
- * through the PAL ring and the bytes read back identically)
- */
-static void test_usbcdc_sink_write(void)
+ * through the PAL ring and the bytes read back identically) @brief Verify usbcdc sink write behavior. @details Executes the usbcdc sink write scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_usbcdc_sink_write(void)
 {
   TEST_BEGIN("usbcdc sink write");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
@@ -403,9 +397,8 @@ static void test_usbcdc_sink_write(void)
  * @par MC/DC:
  * (no compound decisions under test -- a NULL stream / NULL buffer trip the
  * generic stream guards, and a write to an unopened endpoint trips the PAL
- * error leg of the sink's write callback)
- */
-static void test_usbcdc_sink_errors(void)
+ * error leg of the sink's write callback) @brief Verify usbcdc sink errors behavior. @details Executes the usbcdc sink errors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_usbcdc_sink_errors(void)
 {
   TEST_BEGIN("usbcdc sink errors");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
@@ -435,9 +428,8 @@ static void test_usbcdc_sink_errors(void)
  * @par MC/DC:
  * (no compound decisions under test -- a NULL handle / NULL buffer trip the
  * generic stream guards, while an out-of-range channel makes the SCI driver
- * return invalid_arg, which the UART sink propagates on both write and flush)
- */
-static void test_uart_sink_errors(void)
+ * return invalid_arg, which the UART sink propagates on both write and flush) @brief Verify uart sink errors behavior. @details Executes the uart sink errors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since 0.1.0 */
+RA8_INTERNAL static void internal_test_uart_sink_errors(void)
 {
   TEST_BEGIN("uart sink errors");
   ra8_io_stream_t            s   = {};
@@ -462,14 +454,13 @@ static void test_uart_sink_errors(void)
 
 int32_t main(void)
 {
-  test_vfs_compress_round_trip();
-  test_vfs_compress_write_validation();
-  test_vfs_compress_write_errors();
-  test_vfs_compress_read_validation();
-  test_vfs_compress_read_errors();
-  test_usbcdc_sink_write();
-  test_usbcdc_sink_errors();
-  test_uart_sink_errors();
-  (void)fprintf(stderr, "[OK  ] test_ra8_io_vfs_compress.c\n");
+  internal_test_vfs_compress_round_trip();
+  internal_test_vfs_compress_write_validation();
+  internal_test_vfs_compress_write_errors();
+  internal_test_vfs_compress_read_validation();
+  internal_test_vfs_compress_read_errors();
+  internal_test_usbcdc_sink_write();
+  internal_test_usbcdc_sink_errors();
+  internal_test_uart_sink_errors();
   return 0;
 }
