@@ -27,9 +27,9 @@
 
 #include <stdint.h>
 
-#include "ra8_attributes.h"
 #include "ra8_agt.h"
 #include "ra8_agt_regs.h"
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -208,8 +208,7 @@ RA8_INTERNAL static void internal_format_tick(uint32_t tick, uint8_t* digits)
   uint8_t digits[k_agt_pulse_hex_digits] = {};
   internal_format_tick(tick, digits);
   ra8_err_t err =
-    ra8_board_uart_console_write(s_agt_pulse_msg_head,
-                                 (size_t)(sizeof(s_agt_pulse_msg_head) - 1U));
+    ra8_board_uart_console_write(s_agt_pulse_msg_head, (size_t)(sizeof(s_agt_pulse_msg_head) - 1U));
   if (err != k_ra8_ok) {
     return err;
   }

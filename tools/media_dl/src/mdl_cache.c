@@ -18,10 +18,10 @@
 
 /** @brief HTTP response bounds used by the cache state machine. */
 typedef enum : uint16_t {
-  k_cache_http_success_min  = 200U, /**< First successful status.     */
-  k_cache_http_success_max  = 299U, /**< Last successful status.      */
+  k_cache_http_success_min  = 200U, /**< First successful status.    */
+  k_cache_http_success_max  = 299U, /**< Last successful status.     */
   k_cache_http_not_modified = 304U, /**< Conditional reuse response. */
-  k_cache_http_status_max   = 599U, /**< Last canonical HTTP status.  */
+  k_cache_http_status_max   = 599U, /**< Last canonical HTTP status. */
 } mdl_cache_http_t;
 
 /**

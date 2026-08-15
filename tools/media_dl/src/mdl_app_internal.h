@@ -90,19 +90,19 @@ typedef struct {
 
 /** @brief Parameters of one series download. */
 typedef struct {
-  const char*           cfg_path;     /**< Site descriptor path.          */
-  const char*           series_url;   /**< Series page URL.               */
-  const char*           out_dir;      /**< Output library root.           */
+  const char*           cfg_path;     /**< Site descriptor path.           */
+  const char*           series_url;   /**< Series page URL.                */
+  const char*           out_dir;      /**< Output library root.            */
   const char*           cache_dir;    /**< Per-host persistent cache root. */
-  mdl_format_t          format;       /**< Output container.              */
-  bool                  combine;      /**< Combine into one archive.      */
-  bool                  update;       /**< Incremental (skip complete).   */
-  bool                  from_present; /**< Whether from_num applies.      */
-  double                from_num;     /**< First chapter number to fetch. */
-  size_t                chapters;     /**< Max chapters (window mode).    */
-  uint64_t              seed;         /**< Politeness jitter seed.        */
-  uint32_t              timeout;      /**< Per-request budget, ms.        */
-  const mdl_run_opts_t* opts;         /**< Identity/security knobs.       */
+  mdl_format_t          format;       /**< Output container.               */
+  bool                  combine;      /**< Combine into one archive.       */
+  bool                  update;       /**< Incremental (skip complete).    */
+  bool                  from_present; /**< Whether from_num applies.       */
+  double                from_num;     /**< First chapter number to fetch.  */
+  size_t                chapters;     /**< Max chapters (window mode).     */
+  uint64_t              seed;         /**< Politeness jitter seed.         */
+  uint32_t              timeout;      /**< Per-request budget, ms.         */
+  const mdl_run_opts_t* opts;         /**< Identity/security knobs.        */
 } series_run_t;
 
 /** @brief Shared bounded process state behind one module-private accessor. */

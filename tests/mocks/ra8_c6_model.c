@@ -516,7 +516,7 @@ typedef struct c6m_rich {
   RpcRespGetMacAddress           mac;     /**< `Resp_GetMACAddress` body.           */
   RpcRespWifiStaGetApInfo        ap;      /**< `Resp_WifiStaGetApInfo` body.        */
   WifiApRecord                   rec;     /**< The AP record inside that answer.    */
-  uint8_t octets[k_ra8_c6link_mac_bytes]; /**< The modelled station address. */
+  uint8_t octets[k_ra8_c6link_mac_bytes]; /**< The modelled station address.        */
   uint8_t ssid[4];                        /**< The modelled AP's SSID.              */
   char    target[8];                      /**< The modelled `CONFIG_IDF_TARGET`.    */
 } c6m_rich_t;

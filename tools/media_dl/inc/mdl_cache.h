@@ -23,7 +23,7 @@
 /** @brief Persistent cache schema and fixed-capacity record bound. */
 typedef enum : uint16_t {
   k_mdl_cache_schema_version = 1U,   /**< Current binary index schema. */
-  k_mdl_cache_record_max     = 128U, /**< Records retained per host.  */
+  k_mdl_cache_record_max     = 128U, /**< Records retained per host.   */
 } mdl_cache_limit_t;
 
 /**
@@ -35,14 +35,14 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct {
-  char     url[k_mdl_url_max];                /**< Exact canonical request URL.       */
+  char     url[k_mdl_url_max];                /**< Exact canonical request URL.    */
   char     relative_path[k_mdl_relpath_max];  /**< Body leaf beneath the host dir. */
-  char     etag[k_mdl_etag_max];              /**< Last response ETag, or empty.       */
+  char     etag[k_mdl_etag_max];              /**< Last response ETag, or empty.   */
   char     last_modified[k_mdl_last_mod_max]; /**< Last-Modified, or empty.        */
-  uint64_t url_hash;                          /**< FNV identity accelerator.           */
-  uint64_t content_hash;                      /**< Exact persisted body identity.      */
-  int64_t  fetched_at;                        /**< Completion epoch seconds.           */
-  uint16_t response_status;                   /**< Last observed HTTP status.          */
+  uint64_t url_hash;                          /**< FNV identity accelerator.       */
+  uint64_t content_hash;                      /**< Exact persisted body identity.  */
+  int64_t  fetched_at;                        /**< Completion epoch seconds.       */
+  uint16_t response_status;                   /**< Last observed HTTP status.      */
 } mdl_cache_record_t;
 
 /**
@@ -55,7 +55,7 @@ typedef struct {
   mdl_cache_record_t records[k_mdl_cache_record_max]; /**< Retained observations. */
   uint64_t           host_hash;                       /**< Bound host identity.   */
   uint16_t           schema_version;                  /**< Binary schema version. */
-  uint16_t           record_count;                    /**< Populated rows.         */
+  uint16_t           record_count;                    /**< Populated rows.        */
 } mdl_cache_index_t;
 
 /**
@@ -93,7 +93,7 @@ typedef struct {
   mdl_storage_t*     storage;    /**< Injected portable storage binding. */
   mdl_cache_index_t* index;      /**< Caller-owned index workspace.      */
   const char*        root;       /**< Canonical cache root.              */
-  ra8_io_stream_t*   diagnostic; /**< Optional cache event sink.       */
+  ra8_io_stream_t*   diagnostic; /**< Optional cache event sink.         */
   bool               refetch;    /**< Force a network revalidation.      */
 } mdl_cache_t;
 
@@ -104,7 +104,7 @@ typedef struct {
  */
 typedef struct {
   int64_t  age_seconds;     /**< Age before this operation, or -1 if unknown. */
-  uint16_t observed_status; /**< Network or retained status.                */
+  uint16_t observed_status; /**< Network or retained status.                  */
   bool     body_reused;     /**< Returned bytes came from verified storage.   */
   bool     revalidated;     /**< A network request was issued.                */
   bool     index_rebuilt;   /**< A corrupt index was discarded first.         */

@@ -101,18 +101,18 @@ typedef enum : uint32_t {
 
 /** @brief Static properties and workspace requirements of one bound port. */
 typedef struct {
-  uint64_t max_file_bytes;              /**< Largest supported regular file. */
-  uint32_t flags;                       /**< OR of ::fw_fs_capability_t.     */
-  uint32_t file_workspace_bytes;        /**< State bytes required by open.   */
-  uint32_t directory_workspace_bytes;   /**< State bytes required by dir open. */
-  uint32_t transaction_workspace_bytes; /**< State bytes required by begin.  */
-  uint16_t path_max_bytes;              /**< Path bytes including NUL.       */
-  uint16_t name_max_bytes;              /**< Component bytes excluding NUL.  */
-  uint16_t max_open_files;              /**< Concurrent backend file limit.  */
-  uint16_t max_open_directories;        /**< Concurrent directory cursors.    */
-  uint8_t  file_workspace_align;        /**< Required file-state alignment.  */
+  uint64_t max_file_bytes;              /**< Largest supported regular file.     */
+  uint32_t flags;                       /**< OR of ::fw_fs_capability_t.         */
+  uint32_t file_workspace_bytes;        /**< State bytes required by open.       */
+  uint32_t directory_workspace_bytes;   /**< State bytes required by dir open.   */
+  uint32_t transaction_workspace_bytes; /**< State bytes required by begin.      */
+  uint16_t path_max_bytes;              /**< Path bytes including NUL.           */
+  uint16_t name_max_bytes;              /**< Component bytes excluding NUL.      */
+  uint16_t max_open_files;              /**< Concurrent backend file limit.      */
+  uint16_t max_open_directories;        /**< Concurrent directory cursors.       */
+  uint8_t  file_workspace_align;        /**< Required file-state alignment.      */
   uint8_t  directory_workspace_align;   /**< Required directory-state alignment. */
-  uint8_t  transaction_workspace_align; /**< Required transaction alignment. */
+  uint8_t  transaction_workspace_align; /**< Required transaction alignment.     */
 } fw_fs_caps_t;
 
 /** @brief Backend-neutral civil time with nanosecond precision. */
@@ -162,7 +162,7 @@ typedef struct {
   char              name[k_fw_fs_path_cap]; /**< Copied NUL-terminated leaf. */
   uint64_t          size_bytes;             /**< File length; zero for dirs. */
   uint16_t          name_bytes;             /**< Bytes excluding the NUL.    */
-  fw_fs_node_type_t type;                   /**< Entry kind.                  */
+  fw_fs_node_type_t type;                   /**< Entry kind.                 */
 } fw_fs_dirent_value_t;
 
 /** @brief Portable volume usage snapshot. */

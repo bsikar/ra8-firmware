@@ -23,8 +23,8 @@
 
 /** @brief Bounds and attribute bits used by listing assertions. */
 typedef enum : uint32_t {
-  k_exfat_listing_cap            = 32U,   /**< Maximum entries retained.       */
-  k_exfat_listing_name_cap       = 80U,   /**< Bytes in each retained name.    */
+  k_exfat_listing_cap            = 32U,   /**< Maximum entries retained.      */
+  k_exfat_listing_name_cap       = 80U,   /**< Bytes in each retained name.   */
   k_exfat_listing_attr_directory = 0x10U, /**< exFAT directory attribute bit. */
 } exfat_listing_limit_t;
 
@@ -34,10 +34,10 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t count;                                                /**< Entries reported. */
-  char     names[k_exfat_listing_cap][k_exfat_listing_name_cap]; /**< Names in order. */
+  uint32_t count;                                                /**< Entries reported.         */
+  char     names[k_exfat_listing_cap][k_exfat_listing_name_cap]; /**< Names in order.           */
   uint8_t  attrs[k_exfat_listing_cap];                           /**< Matching attribute bytes. */
-  uint32_t sizes[k_exfat_listing_cap];                           /**< Matching sizes. */
+  uint32_t sizes[k_exfat_listing_cap];                           /**< Matching sizes.           */
 } name_ctx_t;
 
 /**

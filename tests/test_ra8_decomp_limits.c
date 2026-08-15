@@ -48,8 +48,8 @@ typedef enum : uint32_t {
  * @brief Immutable source and fault state for ZIP preflight vectors.
  */
 typedef struct {
-  const uint8_t* bytes;      /**< Immutable container bytes. */
-  size_t         size;       /**< Exact readable byte count. */
+  const uint8_t* bytes;      /**< Immutable container bytes.            */
+  size_t         size;       /**< Exact readable byte count.            */
   bool           short_read; /**< Return one fewer byte than requested. */
 } td_zip_source_t;
 

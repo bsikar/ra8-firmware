@@ -33,7 +33,7 @@ typedef enum : uint32_t {
   k_mdl_state_fault_media             = 1UL << 15U, /**< Report media unavailable.    */
   k_mdl_state_fault_dir_open          = 1UL << 16U, /**< Fail directory-cursor open.  */
   k_mdl_state_fault_dir_next          = 1UL << 17U, /**< Fail directory-cursor next.  */
-  k_mdl_state_fault_stream_seek       = 1UL << 18U, /**< Fail open-stream seeks.       */
+  k_mdl_state_fault_stream_seek       = 1UL << 18U, /**< Fail open-stream seeks.      */
 } mdl_state_fault_flag_t;
 
 /** @brief Wrapper context and bound facade. */

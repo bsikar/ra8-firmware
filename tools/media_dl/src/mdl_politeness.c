@@ -9,13 +9,14 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
+#include "mdl_politeness.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-#include "mdl_politeness.h"
 #include "ra8_attributes.h"
 
 /**

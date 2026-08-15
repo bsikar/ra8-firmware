@@ -8,8 +8,6 @@
  * @since 0.1.0
  */
 
-#include "ra8_fmt_stream.h"
-
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -17,19 +15,20 @@
 #include "miniz.h"
 #include "ra8_attributes.h"
 #include "ra8_book_chunked.h"
+#include "ra8_fmt_stream.h"
 
 /** @brief Bounded report formatting constants. */
 typedef enum : uint32_t {
-  k_report_radix = 10U,     /**< Decimal digit radix.             */
-  k_report_digits = 20U,    /**< Digits required for `uint64_t`.  */
-  k_report_rows = 4096U,    /**< Maximum verbose inventory rows.  */
-  k_report_idx_width = 5U,  /**< Legacy entry-column width.       */
-  k_report_num_width = 10U, /**< Legacy byte-column width.        */
+  k_report_radix     = 10U,   /**< Decimal digit radix.            */
+  k_report_digits    = 20U,   /**< Digits required for `uint64_t`. */
+  k_report_rows      = 4096U, /**< Maximum verbose inventory rows. */
+  k_report_idx_width = 5U,    /**< Legacy entry-column width.      */
+  k_report_num_width = 10U,   /**< Legacy byte-column width.       */
 } report_constant_t;
 
 /** @brief Positioned-source binding for the exact book-reader callback. */
 typedef struct {
-  const ra8_fmt_source_t *source; /**< Borrowed immutable source. */
+  const ra8_fmt_source_t* source; /**< Borrowed immutable source. */
 } source_adapter_t;
 
 /**
@@ -48,8 +47,9 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_text(const ra8_fmt_sink_t *report, const char *text) {
-  return report->write(report->ctx, (const uint8_t *)text, strlen(text));
+static ra8_err_t internal_text(const ra8_fmt_sink_t* report, const char* text)
+{
+  return report->write(report->ctx, (const uint8_t*)text, strlen(text));
 }
 
 /**
@@ -70,10 +70,10 @@ static ra8_err_t internal_text(const ra8_fmt_sink_t *report, const char *text) {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_u64(const ra8_fmt_sink_t *report, uint64_t value,
-                              uint32_t width) {
-  char reverse[k_report_digits];
-  char rendered[k_report_digits];
+static ra8_err_t internal_u64(const ra8_fmt_sink_t* report, uint64_t value, uint32_t width)
+{
+  char     reverse[k_report_digits];
+  char     rendered[k_report_digits];
   uint32_t count = 0U;
   do {
     reverse[count++] = (char)('0' + (char)(value % k_report_radix));
@@ -89,7 +89,7 @@ static ra8_err_t internal_u64(const ra8_fmt_sink_t *report, uint64_t value,
   for (uint32_t i = 0U; i < count; ++i) {
     rendered[i] = reverse[count - i - 1U];
   }
-  return report->write(report->ctx, (const uint8_t *)rendered, count);
+  return report->write(report->ctx, (const uint8_t*)rendered, count);
 }
 
 /**
@@ -109,8 +109,8 @@ static ra8_err_t internal_u64(const ra8_fmt_sink_t *report, uint64_t value,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_field(const ra8_fmt_sink_t *report, const char *label,
-                                uint64_t value) {
+static ra8_err_t internal_field(const ra8_fmt_sink_t* report, const char* label, uint64_t value)
+{
   ra8_err_t rc = internal_text(report, label);
   if (rc == k_ra8_ok) {
     rc = internal_u64(report, value, 0U);
@@ -137,23 +137,21 @@ static ra8_err_t internal_field(const ra8_fmt_sink_t *report, const char *label,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_exact_read(void *opaque, uint64_t offset,
-                                     uint8_t *bytes, uint32_t len) {
-  source_adapter_t *adapter = (source_adapter_t *)opaque;
-  if ((adapter == nullptr) || (adapter->source == nullptr) ||
-      ((bytes == nullptr) && (len != 0U))) {
+static ra8_err_t internal_exact_read(void* opaque, uint64_t offset, uint8_t* bytes, uint32_t len)
+{
+  source_adapter_t* adapter = (source_adapter_t*)opaque;
+  if ((adapter == nullptr) || (adapter->source == nullptr) || ((bytes == nullptr) && (len != 0U))) {
     return k_ra8_err_null_ptr;
   }
-  const ra8_fmt_source_t *source = adapter->source;
+  const ra8_fmt_source_t* source = adapter->source;
   if ((offset > source->size) || ((uint64_t)len > (source->size - offset))) {
     return k_ra8_err_invalid_size;
   }
   size_t done = 0U;
   while (done < (size_t)len) {
-    size_t got = 0U;
-    const size_t ask = (size_t)len - done;
-    const ra8_err_t rc =
-        source->read_at(source->ctx, offset + done, &bytes[done], ask, &got);
+    size_t          got = 0U;
+    const size_t    ask = (size_t)len - done;
+    const ra8_err_t rc  = source->read_at(source->ctx, offset + done, &bytes[done], ask, &got);
     if (rc != k_ra8_ok) {
       return rc;
     }
@@ -184,15 +182,18 @@ static ra8_err_t internal_exact_read(void *opaque, uint64_t offset,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_inflate(const void *src, size_t src_len, void *dst,
-                                  size_t dst_cap, size_t *out_len) {
+static ra8_err_t
+internal_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len)
+{
   if ((src == nullptr) || (dst == nullptr) || (out_len == nullptr)) {
     return k_ra8_err_null_ptr;
   }
   const size_t result = tinfl_decompress_mem_to_mem(
-      dst, dst_cap, src, src_len,
-      (int)(TINFL_FLAG_PARSE_ZLIB_HEADER |
-            TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF));
+    dst,
+    dst_cap,
+    src,
+    src_len,
+    (int)(TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF));
   if (result == TINFL_DECOMPRESS_MEM_TO_MEM_FAILED) {
     return k_ra8_err_validation_failed;
   }
@@ -218,9 +219,10 @@ static ra8_err_t internal_inflate(const void *src, size_t src_len, void *dst,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_header(const ra8_fmt_sink_t *report,
-                                 const ra8_fmt_source_t *source,
-                                 const ra8_book_chunked_t *reader) {
+static ra8_err_t internal_header(const ra8_fmt_sink_t*     report,
+                                 const ra8_fmt_source_t*   source,
+                                 const ra8_book_chunked_t* reader)
+{
   ra8_err_t rc = internal_text(report, "RBKC rabook container: ");
   if (rc == k_ra8_ok) {
     rc = internal_u64(report, source->size, 0U);
@@ -237,8 +239,7 @@ static ra8_err_t internal_header(const ra8_fmt_sink_t *report,
   if (rc == k_ra8_ok) {
     rc = internal_field(report, "  chunk_count    : ", reader->chunk_count);
   }
-  return (rc == k_ra8_ok) ? internal_field(report, "  reserved       : ", 0U)
-                          : rc;
+  return (rc == k_ra8_ok) ? internal_field(report, "  reserved       : ", 0U) : rc;
 }
 
 /**
@@ -260,8 +261,9 @@ static ra8_err_t internal_header(const ra8_fmt_sink_t *report,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_row(const ra8_fmt_sink_t *report, uint32_t idx,
-                              uint64_t begin, uint64_t end) {
+static ra8_err_t
+internal_row(const ra8_fmt_sink_t* report, uint32_t idx, uint64_t begin, uint64_t end)
+{
   ra8_err_t rc = internal_text(report, "  ");
   if (rc == k_ra8_ok) {
     rc = internal_u64(report, idx, k_report_idx_width);
@@ -295,22 +297,21 @@ static ra8_err_t internal_row(const ra8_fmt_sink_t *report, uint32_t idx,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_table(const ra8_fmt_sink_t *report,
-                                const ra8_book_chunked_t *reader,
-                                bool verbose) {
+static ra8_err_t
+internal_table(const ra8_fmt_sink_t* report, const ra8_book_chunked_t* reader, bool verbose)
+{
   if (!verbose) {
     return k_ra8_ok;
   }
-  ra8_err_t rc =
-      internal_text(report, "  entry     start        end       length\n");
-  uint32_t rows = reader->chunk_count;
+  ra8_err_t rc   = internal_text(report, "  entry     start        end       length\n");
+  uint32_t  rows = reader->chunk_count;
   if (rows > k_report_rows) {
     rows = k_report_rows;
   }
   for (uint32_t i = 0U; (i < rows) && (rc == k_ra8_ok); ++i) {
     const uint64_t begin = reader->payload_off + reader->table[i];
-    const uint64_t end = reader->payload_off + reader->table[i + 1U];
-    rc = internal_row(report, i, begin, end);
+    const uint64_t end   = reader->payload_off + reader->table[i + 1U];
+    rc                   = internal_row(report, i, begin, end);
   }
   return rc;
 }
@@ -334,50 +335,56 @@ static ra8_err_t internal_table(const ra8_fmt_sink_t *report,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_report(const ra8_fmt_sink_t *report,
-                                 const ra8_fmt_source_t *source,
-                                 const ra8_book_chunked_t *reader,
-                                 bool verbose) {
+static ra8_err_t internal_report(const ra8_fmt_sink_t*     report,
+                                 const ra8_fmt_source_t*   source,
+                                 const ra8_book_chunked_t* reader,
+                                 bool                      verbose)
+{
   ra8_err_t rc = internal_header(report, source, reader);
   if (rc == k_ra8_ok) {
     rc = internal_table(report, reader, verbose);
   }
   return (rc == k_ra8_ok)
-             ? internal_text(
-                   report,
-                   "verdict: VALID (chunk table monotonic and complete)\n")
-             : rc;
+           ? internal_text(report, "verdict: VALID (chunk table monotonic and complete)\n")
+           : rc;
 }
 
-ra8_err_t
-ra8_fmt_rabook_inspect_stream(const ra8_fmt_source_t *source, bool verbose,
-                              ra8_fmt_rabook_inspect_workspace_t *workspace,
-                              const ra8_fmt_sink_t *report) {
-  if ((source == nullptr) || (source->read_at == nullptr) ||
-      (workspace == nullptr) || (workspace->table == nullptr) ||
-      (workspace->compressed == nullptr) || (workspace->chunk == nullptr) ||
-      (workspace->scratch == nullptr) || (report == nullptr) ||
+ra8_err_t ra8_fmt_rabook_inspect_stream(const ra8_fmt_source_t*             source,
+                                        bool                                verbose,
+                                        ra8_fmt_rabook_inspect_workspace_t* workspace,
+                                        const ra8_fmt_sink_t*               report)
+{
+  if ((source == nullptr) || (source->read_at == nullptr) || (workspace == nullptr) ||
+      (workspace->table == nullptr) || (workspace->compressed == nullptr) ||
+      (workspace->chunk == nullptr) || (workspace->scratch == nullptr) || (report == nullptr) ||
       (report->write == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  source_adapter_t adapter = {.source = source};
-  ra8_book_chunked_t reader = {};
-  ra8_err_t rc = ra8_book_chunked_open(
-      &reader, internal_exact_read, &adapter, source->size, internal_inflate,
-      workspace->table, workspace->table_cap, workspace->compressed,
-      workspace->compressed_cap);
-  ra8_book_header_t header = {};
+  source_adapter_t   adapter = {.source = source};
+  ra8_book_chunked_t reader  = {};
+  ra8_err_t          rc      = ra8_book_chunked_open(&reader,
+                                                     internal_exact_read,
+                                                     &adapter,
+                                                     source->size,
+                                                     internal_inflate,
+                                                     workspace->table,
+                                                     workspace->table_cap,
+                                                     workspace->compressed,
+                                                     workspace->compressed_cap);
+  ra8_book_header_t  header  = {};
   if (rc == k_ra8_ok) {
-    rc = ra8_book_chunked_validate_strict(
-        &reader, workspace->chunk, workspace->chunk_cap, workspace->scratch,
-        workspace->scratch_cap, &header);
+    rc = ra8_book_chunked_validate_strict(&reader,
+                                          workspace->chunk,
+                                          workspace->chunk_cap,
+                                          workspace->scratch,
+                                          workspace->scratch_cap,
+                                          &header);
   }
   if ((rc == k_ra8_ok) && (source->validate != nullptr)) {
     rc = source->validate(source->ctx, source->size);
   }
   if (rc != k_ra8_ok) {
-    (void)internal_text(
-        report, "verdict: INVALID (strict RBKC/RABOOK1 validation failed)\n");
+    (void)internal_text(report, "verdict: INVALID (strict RBKC/RABOOK1 validation failed)\n");
     return rc;
   }
   return internal_report(report, source, &reader, verbose);

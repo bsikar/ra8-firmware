@@ -25,55 +25,55 @@
 
 /** @brief Mock descriptor identities and buffer capacities. */
 typedef enum : size_t {
-  k_mock_read_fd   = 40,  /**< Injected source descriptor. */
-  k_mock_parent_fd = 41,  /**< Injected parent descriptor. */
-  k_mock_temp_fd   = 42,  /**< Injected staging descriptor. */
+  k_mock_read_fd   = 40,  /**< Injected source descriptor.           */
+  k_mock_parent_fd = 41,  /**< Injected parent descriptor.           */
+  k_mock_temp_fd   = 42,  /**< Injected staging descriptor.          */
   k_mock_data_cap  = 32U, /**< Bytes in the injected fixture buffer. */
 } mock_limit_t;
 
 /** @brief Fault-injectable raw operation identifiers. */
 typedef enum : uint8_t {
-  k_mock_open_path = 0U, /**< Open a complete path. */
-  k_mock_open_at,        /**< Open a parent-relative leaf. */
-  k_mock_stat_fd,        /**< Inspect an open descriptor. */
+  k_mock_open_path = 0U, /**< Open a complete path.           */
+  k_mock_open_at,        /**< Open a parent-relative leaf.    */
+  k_mock_stat_fd,        /**< Inspect an open descriptor.     */
   k_mock_stat_at,        /**< Inspect a parent-relative leaf. */
-  k_mock_read_at,        /**< Read at a fixed offset. */
-  k_mock_write_at,       /**< Write at a fixed offset. */
-  k_mock_sync_fd,        /**< Synchronize a descriptor. */
-  k_mock_rename_at,      /**< Publish a staged leaf. */
-  k_mock_unlink_at,      /**< Remove an unpublished leaf. */
-  k_mock_close_fd,       /**< Close one descriptor. */
-  k_mock_op_count,       /**< Number of injected operations. */
+  k_mock_read_at,        /**< Read at a fixed offset.         */
+  k_mock_write_at,       /**< Write at a fixed offset.        */
+  k_mock_sync_fd,        /**< Synchronize a descriptor.       */
+  k_mock_rename_at,      /**< Publish a staged leaf.          */
+  k_mock_unlink_at,      /**< Remove an unpublished leaf.     */
+  k_mock_close_fd,       /**< Close one descriptor.           */
+  k_mock_op_count,       /**< Number of injected operations.  */
 } mock_op_t;
 
 /** @brief Caller-owned model backing one injected operation table. */
 typedef struct {
-  size_t      calls[k_mock_op_count];           /**< Per-operation call counts. */
-  size_t      eintr_remaining[k_mock_op_count]; /**< Interrupted calls remaining. */
-  size_t      fail_call[k_mock_op_count];       /**< One failing call, or zero. */
-  int         fail_error[k_mock_op_count];      /**< Error for that failing call. */
-  struct stat before;                           /**< Initial input metadata. */
-  struct stat after;                            /**< Final input metadata. */
-  uint8_t     source[k_mock_data_cap];          /**< Injected input bytes. */
-  size_t      source_length;                    /**< Injected input size. */
-  uint8_t     written[k_mock_data_cap];         /**< Captured staged output. */
-  size_t      written_length;                   /**< Captured staged size. */
-  size_t      read_chunk;                       /**< Positive short-read cap. */
-  size_t      write_chunk;                      /**< Positive short-write cap. */
-  size_t      collisions;                       /**< Initial temp collisions. */
-  size_t      read_stat_calls;                  /**< Input fstat sequence. */
-  int         open_path_flags;                  /**< Captured path-open flags. */
-  int         open_at_flags;                    /**< Captured temp-open flags. */
-  mode_t      open_at_mode;                     /**< Captured temp mode. */
-  mode_t      destination_mode;                 /**< Existing destination mode. */
-  bool        destination_exists;               /**< Destination stat succeeds. */
-  bool        read_zero;                        /**< Next successful read stalls. */
+  size_t      calls[k_mock_op_count];           /**< Per-operation call counts.    */
+  size_t      eintr_remaining[k_mock_op_count]; /**< Interrupted calls remaining.  */
+  size_t      fail_call[k_mock_op_count];       /**< One failing call, or zero.    */
+  int         fail_error[k_mock_op_count];      /**< Error for that failing call.  */
+  struct stat before;                           /**< Initial input metadata.       */
+  struct stat after;                            /**< Final input metadata.         */
+  uint8_t     source[k_mock_data_cap];          /**< Injected input bytes.         */
+  size_t      source_length;                    /**< Injected input size.          */
+  uint8_t     written[k_mock_data_cap];         /**< Captured staged output.       */
+  size_t      written_length;                   /**< Captured staged size.         */
+  size_t      read_chunk;                       /**< Positive short-read cap.      */
+  size_t      write_chunk;                      /**< Positive short-write cap.     */
+  size_t      collisions;                       /**< Initial temp collisions.      */
+  size_t      read_stat_calls;                  /**< Input fstat sequence.         */
+  int         open_path_flags;                  /**< Captured path-open flags.     */
+  int         open_at_flags;                    /**< Captured temp-open flags.     */
+  mode_t      open_at_mode;                     /**< Captured temp mode.           */
+  mode_t      destination_mode;                 /**< Existing destination mode.    */
+  bool        destination_exists;               /**< Destination stat succeeds.    */
+  bool        read_zero;                        /**< Next successful read stalls.  */
   bool        write_zero;                       /**< Next successful write stalls. */
-  bool        extra_byte;                       /**< EOF probe sees growth. */
+  bool        extra_byte;                       /**< EOF probe sees growth.        */
   bool        final_size_wrong;                 /**< Final staged size mismatches. */
-  bool        renamed;                          /**< Transaction published. */
-  bool        unlinked;                         /**< Temp cleanup ran. */
-  unsigned    generation;                       /**< Visible target generation. */
+  bool        renamed;                          /**< Transaction published.        */
+  bool        unlinked;                         /**< Temp cleanup ran.             */
+  unsigned    generation;                       /**< Visible target generation.    */
 } mock_file_t;
 
 /** @brief Set portable nanosecond timestamps on one metadata value.

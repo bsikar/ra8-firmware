@@ -27,47 +27,47 @@
 
 /** @brief Fixture path, retry, and transaction bounds. */
 typedef enum : size_t {
-  k_ra8_test_file_path_cap      = 4096U, /**< Maximum path including NUL.       */
-  k_ra8_test_file_leaf_cap      = 240U,  /**< Maximum final-component bytes.    */
+  k_ra8_test_file_path_cap      = 4096U, /**< Maximum path including NUL.           */
+  k_ra8_test_file_leaf_cap      = 240U,  /**< Maximum final-component bytes.        */
   k_ra8_test_file_temp_cap      = 256U,  /**< Maximum temporary leaf including NUL. */
-  k_ra8_test_file_retry_limit   = 16U,   /**< EINTR retries per operation.      */
-  k_ra8_test_file_temp_attempts = 16U,   /**< Candidate temporary names.        */
+  k_ra8_test_file_retry_limit   = 16U,   /**< EINTR retries per operation.          */
+  k_ra8_test_file_temp_attempts = 16U,   /**< Candidate temporary names.            */
 } ra8_test_file_limit_t;
 
 /** @brief Result classes for bounded fixture operations. */
 typedef enum : uint8_t {
-  k_ra8_test_file_ok = 0U,    /**< The complete operation succeeded.       */
-  k_ra8_test_file_invalid,    /**< An argument, bound, or callback failed.  */
+  k_ra8_test_file_ok = 0U,    /**< The complete operation succeeded.         */
+  k_ra8_test_file_invalid,    /**< An argument, bound, or callback failed.   */
   k_ra8_test_file_capacity,   /**< Caller storage was smaller than required. */
   k_ra8_test_file_nonregular, /**< The opened or destination node was special.
                                */
   k_ra8_test_file_short,      /**< Positioned I/O stopped making progress. */
-  k_ra8_test_file_changed,    /**< Input identity or metadata changed.      */
+  k_ra8_test_file_changed,    /**< Input identity or metadata changed.     */
   k_ra8_test_file_collision,  /**< All bounded temporary names existed.    */
-  k_ra8_test_file_error,      /**< A host operation reported an error.      */
+  k_ra8_test_file_error,      /**< A host operation reported an error.     */
 } ra8_test_file_status_t;
 
 /** @brief Complete result of a fixture read or replacement. */
 typedef struct {
-  ra8_test_file_status_t status;        /**< Primary completion class.          */
-  size_t                 required;      /**< Exact bytes required by the file.  */
-  size_t                 supplied;      /**< Effective caller capacity.         */
+  ra8_test_file_status_t status;        /**< Primary completion class.              */
+  size_t                 required;      /**< Exact bytes required by the file.      */
+  size_t                 supplied;      /**< Effective caller capacity.             */
   size_t                 transferred;   /**< Committed bytes; zero on read failure. */
-  int                    os_error;      /**< Primary host error, or zero.       */
-  int                    cleanup_error; /**< First cleanup/close error, or zero. */
-  bool                   published;     /**< Replacement became visible.       */
+  int                    os_error;      /**< Primary host error, or zero.           */
+  int                    cleanup_error; /**< First cleanup/close error, or zero.    */
+  bool                   published;     /**< Replacement became visible.            */
 } ra8_test_file_result_t;
 
 /** @brief Caller-injected raw host operations used by fixture I/O. */
 typedef struct {
-  void* context; /**< Caller-owned syscall or fault-model context. */
-  int (*open_path)(void* context, const char* path, int flags, mode_t mode); /**< `open`. */
+  void* context;                                                             /**< Fault context. */
+  int (*open_path)(void* context, const char* path, int flags, mode_t mode); /**< `open`.        */
   int (*open_at)(void*       context,
                  int         dir_fd,
                  const char* path,
                  int         flags,
                  mode_t      mode);                                   /**< `openat`. */
-  int (*stat_fd)(void* context, int descriptor, struct stat* status); /**< `fstat`. */
+  int (*stat_fd)(void* context, int descriptor, struct stat* status); /**< `fstat`.  */
   int (*stat_at)(void*        context,
                  int          dir_fd,
                  const char*  path,
@@ -83,14 +83,14 @@ typedef struct {
                       const void* source,
                       size_t      length,
                       off_t       offset);       /**< `pwrite`. */
-  int (*sync_fd)(void* context, int descriptor); /**< `fsync`. */
+  int (*sync_fd)(void* context, int descriptor); /**< `fsync`.  */
   int (*rename_at)(void*       context,
                    int         old_dir_fd,
                    const char* old_path,
                    int         new_dir_fd,
                    const char* new_path);                                   /**< `renameat`. */
   int (*unlink_at)(void* context, int dir_fd, const char* path, int flags); /**< `unlinkat`. */
-  int (*close_fd)(void* context, int descriptor);                           /**< `close`. */
+  int (*close_fd)(void* context, int descriptor);                           /**< `close`.    */
 } ra8_test_file_ops_t;
 
 /** @brief Return the smaller of two capacities.

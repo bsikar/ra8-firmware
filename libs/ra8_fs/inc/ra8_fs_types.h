@@ -270,8 +270,8 @@ typedef struct {
 
 /** @brief Caller-owned opaque directory cursor. */
 typedef struct {
-  alignas(uint64_t) uint8_t state[k_ra8_fs_dir_state_bytes]; /**< Private cursor state. */
-  bool is_open; /**< Lifecycle guard owned by the facade. */
+  alignas(uint64_t) uint8_t state[k_ra8_fs_dir_state_bytes]; /**< Opaque cursor state.    */
+  bool is_open;                                              /**< Facade lifecycle guard. */
 } ra8_fs_dir_t;
 
 /**

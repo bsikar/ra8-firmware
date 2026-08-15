@@ -16,9 +16,9 @@
 /** @brief Complete paths and host identity derived for one request. */
 typedef struct {
   char     host[k_mdl_gov_host_max];     /**< Lowercase host and optional port. */
-  char     directory[k_fw_fs_path_cap];  /**< Host-specific cache directory. */
-  char     index_path[k_fw_fs_path_cap]; /**< Versioned host index path.     */
-  uint64_t host_hash;                    /**< Stable host identity.           */
+  char     directory[k_fw_fs_path_cap];  /**< Host-specific cache directory.    */
+  char     index_path[k_fw_fs_path_cap]; /**< Versioned host index path.        */
+  uint64_t host_hash;                    /**< Stable host identity.             */
 } mdl_cache_paths_t;
 
 /**
