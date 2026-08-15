@@ -37,6 +37,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -155,14 +156,20 @@ void SysTick_Handler(void)
 /**
  * @brief Convert a single nibble to its ASCII hex character.
  *
+ * @details Masks the input to four bits, then maps the value through the
+ * numeric or uppercase alphabetic ASCII range.
  * @param[in] nibble Low 4 bits of an arbitrary uint8_t.
- *
  * @return ASCII char in '0'..'9' or 'A'..'F'.
- *
+ * @retval '0'..'9' Numeric hexadecimal digit.
+ * @retval 'A'..'F' Alphabetic hexadecimal digit.
  * @pre 0 <= nibble <= 15.
+ * @pre The execution character set uses contiguous decimal and A-F digits.
  * @post Returned byte is a printable ASCII hex digit.
+ * @post No file-scope or caller-owned state is modified.
+ * @note Inputs above 15 are deterministically reduced to their low nibble.
+ * @since 0.1.0
  */
-static char sdcard_nibble_to_hex(uint8_t nibble)
+RA8_INTERNAL static char internal_sdcard_nibble_to_hex(uint8_t nibble)
 {
   const uint8_t n = (uint8_t)(nibble & (uint8_t)k_sdcard_hex_nibble_mask);
   if (n < (uint8_t)k_sdcard_hex_alpha_threshold) {
@@ -174,21 +181,27 @@ static char sdcard_nibble_to_hex(uint8_t nibble)
 /**
  * @brief Format ``len`` bytes from ``in`` into "XX XX ..." ASCII.
  *
+ * @details Expands each source byte to two uppercase hex digits followed by a
+ * space, using no terminator so the caller controls final framing.
  * @param[in]  in     Source buffer.
  * @param[in]  len    Number of source bytes to format.
  * @param[out] out    Destination buffer; must hold ``len * 3`` bytes.
  *
  * @pre  in / out non-NULL; out has space for len * 3 bytes.
+ * @pre Source and destination spans do not overlap.
  * @post out holds an ASCII hex dump (no NUL terminator written).
+ * @post Exactly ``len * 3`` destination bytes are written.
+ * @note The caller appends the NUL terminator used by console logging.
+ * @since 0.1.0
  */
-static void sdcard_hex_dump(const uint8_t* in, uint8_t len, char* out)
+RA8_INTERNAL static void internal_sdcard_hex_dump(const uint8_t* in, uint8_t len, char* out)
 {
   for (uint8_t i = 0U; i < len; i++) {
     const uint8_t b = in[i];
     out[i * k_sdcard_hex_chars_per_byte + 0U] =
-      sdcard_nibble_to_hex((uint8_t)(b >> k_sdcard_hex_nibble_shift));
+      internal_sdcard_nibble_to_hex((uint8_t)(b >> k_sdcard_hex_nibble_shift));
     out[i * k_sdcard_hex_chars_per_byte + 1U] =
-      sdcard_nibble_to_hex((uint8_t)(b & (uint8_t)k_sdcard_hex_nibble_mask));
+      internal_sdcard_nibble_to_hex((uint8_t)(b & (uint8_t)k_sdcard_hex_nibble_mask));
     out[i * k_sdcard_hex_chars_per_byte + 2U] = ' ';
   }
 }
@@ -196,12 +209,18 @@ static void sdcard_hex_dump(const uint8_t* in, uint8_t len, char* out)
 /**
  * @brief Push a NUL-terminated ASCII string out the J-Link OB VCOM.
  *
+ * @details Measures a non-NULL string and submits exactly the payload bytes to
+ * the BSP console without heap allocation.
  * @param[in] s NUL-terminated string. NULL is a no-op.
  *
  * @pre ra8_board_uart_console_init has succeeded.
+ * @pre A non-NULL ``s`` denotes a readable NUL-terminated string.
  * @post Bytes have been handed to SCI3 TDR (or silently dropped on err).
+ * @post NULL input returns without accessing the console.
+ * @note Diagnostic write errors do not stop the periodic card read loop.
+ * @since 0.1.0
  */
-static void sdcard_log(const char* s)
+RA8_INTERNAL static void internal_sdcard_log(const char* s)
 {
   if (s == nullptr) {
     return;
@@ -220,47 +239,59 @@ static void sdcard_log(const char* s)
 /**
  * @brief Read sector 0 into ``s_sdcard_block`` and log status / hex dump.
  *
+ * @details Performs one block read, formats the first fixed-size prefix on the
+ * stack, and emits either the formatted prefix or an error line.
  * @pre ra8_sdcard_init has succeeded.
+ * @pre The worker thread exclusively owns ``s_sdcard_block``.
  * @post Either the dump line has been emitted or an error line has.
+ * @post At most one sector is read during this invocation.
+ * @note Read failure is recoverable; the outer loop retries after its delay.
+ * @since 0.1.0
  */
-static void sdcard_one_pass(void)
+RA8_INTERNAL static void internal_sdcard_one_pass(void)
 {
   const ra8_err_t err = ra8_sdcard_read_blocks(0U, s_sdcard_block, 1U);
   if (err != k_ra8_ok) {
-    sdcard_log("sdcard: read block 0 failed\r\n");
+    internal_sdcard_log("sdcard: read block 0 failed\r\n");
     return;
   }
   char dump[k_sdcard_dump_bytes * k_sdcard_hex_chars_per_byte + 1U] = {};
-  sdcard_hex_dump(s_sdcard_block, (uint8_t)k_sdcard_dump_bytes, dump);
+  internal_sdcard_hex_dump(s_sdcard_block, (uint8_t)k_sdcard_dump_bytes, dump);
   dump[k_sdcard_dump_bytes * k_sdcard_hex_chars_per_byte] = '\0';
-  sdcard_log("sdcard: blk0[0..15] = ");
-  sdcard_log(dump);
-  sdcard_log("\r\n");
+  internal_sdcard_log("sdcard: blk0[0..15] = ");
+  internal_sdcard_log(dump);
+  internal_sdcard_log("\r\n");
 }
 
 /**
  * @brief Thread entry: init the card once, then loop reading sector 0.
  *
+ * @details Initializes the fixed SDHI instance and, on success, performs a
+ * read/log/LED/sleep cycle forever; failed initialization sleeps without I/O.
  * @param[in] thread_input Unused (ThreadX cookie).
  *
  * @pre Pins routed; console initialized; ThreadX scheduler running.
+ * @pre The static worker stack and sector buffer are exclusively assigned here.
  * @post Loops forever: read + dump + LED1 toggle + sleep.
+ * @post The ThreadX input cookie is not interpreted or modified.
+ * @note Initialization failure is intentionally non-busy and waits each cycle.
+ * @since 0.1.0
  */
-static void sdcard_thread_entry(ULONG thread_input)
+RA8_INTERNAL static void internal_sdcard_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
 
   const ra8_sdcard_cfg_t cfg = {.instance = k_sdcard_sdhi_instance};
   if (ra8_sdcard_init(&cfg) != k_ra8_ok) {
-    sdcard_log("sdcard: init failed (no card / bad pinmux?)\r\n");
+    internal_sdcard_log("sdcard: init failed (no card / bad pinmux?)\r\n");
     while (1) {
       (void)tx_thread_sleep((ULONG)k_sdcard_loop_ticks);
     }
   }
-  sdcard_log("sdcard: card initialized\r\n");
+  internal_sdcard_log("sdcard: card initialized\r\n");
 
   while (1) {
-    sdcard_one_pass();
+    internal_sdcard_one_pass();
     (void)ra8_board_led_toggle(k_ra8_board_led1);
     (void)tx_thread_sleep((ULONG)k_sdcard_loop_ticks);
   }
@@ -299,7 +330,7 @@ void tx_application_define(void* first_unused_memory)
 
   const UINT err = tx_thread_create(&s_sdcard_thread,
                                     "sdcard",
-                                    sdcard_thread_entry,
+                                    internal_sdcard_thread_entry,
                                     0U,
                                     s_sdcard_stack,
                                     (ULONG)k_sdcard_thread_stack_bytes,

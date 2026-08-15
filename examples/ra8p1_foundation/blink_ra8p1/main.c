@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ra8p1.h"
 #include "ra8_device.h"
 #include "ra8_err.h"
@@ -72,8 +73,17 @@ volatile uint32_t g_blink_ra8p1_tick = 0U;
 
 /**
  * @brief Park the CPU forever in WFI -- used as a panic stop.
+ *
+ * @details Preserves the failing initialization context while preventing any
+ * further timer, LED, or interrupt activity.
+ * @pre A mandatory timebase or LED initialization step has failed.
+ * @pre No safe application loop can run for this boot attempt.
+ * @post The CPU repeatedly enters WFI until debugger intervention or reset.
+ * @post The observable tick and peripheral state remain unchanged after entry.
+ * @note No console exists in this minimal foundation app, so failure is silent.
+ * @since 0.1.0
  */
-static void blink_ra8p1_panic_halt(void)
+RA8_INTERNAL static void internal_blink_ra8p1_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -85,10 +95,10 @@ static void blink_ra8p1_panic_halt(void)
 int32_t main(void)
 {
   if (ra8_time_init(k_blink_cpu_hz_at_reset) != k_ra8_ok) {
-    blink_ra8p1_panic_halt();
+    internal_blink_ra8p1_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    blink_ra8p1_panic_halt();
+    internal_blink_ra8p1_panic_halt();
   }
 
   ra8_isr_globals_enable();
@@ -101,7 +111,7 @@ int32_t main(void)
     ra8_delay_ms(k_blink_half_period_ms);
   }
 
-  blink_ra8p1_panic_halt();
+  internal_blink_ra8p1_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop
