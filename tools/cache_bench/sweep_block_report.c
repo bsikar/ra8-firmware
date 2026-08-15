@@ -32,33 +32,38 @@ static const double s_cbs_ns_per_s_f = 1000000000.0;
 /** @brief Nanoseconds per microsecond as a double, for latency maths. */
 static const double s_cbs_ns_per_us_f = 1000.0;
 
-/** @brief Implementation of `cbs_priv_print_row()` -- one key=value line. */
-void cbs_priv_print_row(const cbs_row_t* r)
+/** @brief Implementation of `priv_print_row()` -- one key=value line. */
+RA8_PRIV
+int priv_print_row(cb_sink_t* sink, const cbs_row_t* r)
 {
   if ((r == nullptr) || (r->reads == 0U)) {
-    return;
+    return 0;
   }
   const uint64_t wall = (r->wall_ns == 0U) ? 1U : r->wall_ns;
   const double   mib_s =
     ((double)r->reads * (double)k_cbs_req_bytes / s_cbs_mib_f) / ((double)wall / s_cbs_ns_per_s_f);
-  (void)printf("sweep-block backend=%s leg=%s block=%u frames=%u reads=%llu hits=%llu "
-               "misses=%llu evictions=%llu backend_calls=%llu backend_bytes=%llu "
-               "src_bytes=%llu backing_bytes=%llu wall_us=%llu mib_s=%.1f ns_per_read=%.1f\n",
-               r->backend,
-               r->leg,
-               r->block_bytes,
-               r->frames,
-               (unsigned long long)r->reads,
-               (unsigned long long)r->hits,
-               (unsigned long long)r->misses,
-               (unsigned long long)r->evictions,
-               (unsigned long long)r->be_calls,
-               (unsigned long long)r->be_bytes,
-               (unsigned long long)r->src_bytes,
-               (unsigned long long)r->backing_bytes,
-               (unsigned long long)(wall / (uint64_t)k_cbs_ns_per_us),
-               mib_s,
-               (double)wall / (double)r->reads);
+  return (cb_sink_format(
+            sink,
+            "sweep-block backend=%s leg=%s block=%u frames=%u reads=%llu hits=%llu "
+            "misses=%llu evictions=%llu backend_calls=%llu backend_bytes=%llu "
+            "src_bytes=%llu backing_bytes=%llu wall_us=%llu mib_s=%.1f ns_per_read=%.1f\n",
+            r->backend,
+            r->leg,
+            r->block_bytes,
+            r->frames,
+            (unsigned long long)r->reads,
+            (unsigned long long)r->hits,
+            (unsigned long long)r->misses,
+            (unsigned long long)r->evictions,
+            (unsigned long long)r->be_calls,
+            (unsigned long long)r->be_bytes,
+            (unsigned long long)r->src_bytes,
+            (unsigned long long)r->backing_bytes,
+            (unsigned long long)(wall / (uint64_t)k_cbs_ns_per_us),
+            mib_s,
+            (double)wall / (double)r->reads) == k_cb_io_ok)
+           ? 0
+           : 1;
 }
 
 /**
@@ -80,7 +85,8 @@ void cbs_priv_print_row(const cbs_row_t* r)
  * @note Not thread-safe: writes the caller's buffer (no shared state).
  * @since 0.1.0
  */
-static void cbs_block_label(uint32_t block, char* out, size_t cap)
+RA8_INTERNAL
+static void internal_block_label(uint32_t block, char* out, size_t cap)
 {
   if ((out == nullptr) || (cap == 0U)) {
     return;
@@ -93,8 +99,12 @@ static void cbs_block_label(uint32_t block, char* out, size_t cap)
 }
 
 /** @brief Find the row for (backend, leg, block), or NULL. */
-static const cbs_row_t*
-cbs_find_row(const cbs_row_t* rows, uint32_t n, const char* be, const char* leg, uint32_t block)
+RA8_INTERNAL
+static const cbs_row_t* internal_find_row(const cbs_row_t* rows,
+                                          uint32_t         n,
+                                          const char*      be,
+                                          const char*      leg,
+                                          uint32_t         block)
 {
   if ((rows == nullptr) || (be == nullptr) || (leg == nullptr)) {
     return nullptr;
@@ -129,7 +139,8 @@ cbs_find_row(const cbs_row_t* rows, uint32_t n, const char* be, const char* leg,
  * @note Thread-safe over a quiescent row (pure read).
  * @since 0.1.0
  */
-static double cbs_row_mibs(const cbs_row_t* r)
+RA8_INTERNAL
+static double internal_row_mibs(const cbs_row_t* r)
 {
   if ((r == nullptr) || (r->reads == 0U)) {
     return 0.0;
@@ -139,21 +150,28 @@ static double cbs_row_mibs(const cbs_row_t* r)
          ((double)wall / s_cbs_ns_per_s_f);
 }
 
-/** @brief Implementation of `cbs_priv_print_seq_table()` -- Ch 23.2 miss-cost split. */
-void cbs_priv_print_seq_table(const cbs_row_t* rows,
-                              uint32_t         nrows,
-                              const char*      be,
-                              const uint32_t*  blocks,
-                              uint32_t         nblocks)
+/** @brief Implementation of `priv_print_seq_table()` -- Ch 23.2 miss-cost split. */
+RA8_PRIV
+int priv_print_seq_table(cb_sink_t*       sink,
+                         const cbs_row_t* rows,
+                         uint32_t         nrows,
+                         const char*      be,
+                         const uint32_t*  blocks,
+                         uint32_t         nblocks)
 {
-  (void)printf("\n### `%s` -- sequential whole-object scan (leg a)\n\n", be);
-  (void)printf("| block | frames | MiB/s | ns/read | est us/miss | backend calls | src MiB | "
-               "backing MiB |\n");
-  (void)printf("|------:|-------:|------:|--------:|------------:|--------------:|--------:|"
-               "------------:|\n");
+  if ((cb_sink_format(sink, "\n### `%s` -- sequential whole-object scan (leg a)\n\n", be) !=
+       k_cb_io_ok) ||
+      (cb_sink_format(sink,
+                      "| block | frames | MiB/s | ns/read | est us/miss | backend calls | "
+                      "src MiB | backing MiB |\n") != k_cb_io_ok) ||
+      (cb_sink_format(sink,
+                      "|------:|-------:|------:|--------:|------------:|--------------:|"
+                      "--------:|------------:|\n") != k_cb_io_ok)) {
+    return 1;
+  }
   for (uint32_t i = 0U; i < nblocks; ++i) {
-    const cbs_row_t* s = cbs_find_row(rows, nrows, be, "seq", blocks[i]);
-    const cbs_row_t* h = cbs_find_row(rows, nrows, be, "hot", blocks[i]);
+    const cbs_row_t* s = internal_find_row(rows, nrows, be, "seq", blocks[i]);
+    const cbs_row_t* h = internal_find_row(rows, nrows, be, "hot", blocks[i]);
     if ((s == nullptr) || (h == nullptr) || (s->reads == 0U) || (h->reads == 0U)) {
       continue;
     }
@@ -164,48 +182,61 @@ void cbs_priv_print_seq_table(const cbs_row_t* rows,
       miss_ns = 0.0;
     }
     char label[16] = {};
-    cbs_block_label(blocks[i], label, sizeof(label));
-    (void)printf("| %5s | %6u | %5.0f | %7.1f | %11.1f | %13llu | %7.2f | %11.2f |\n",
-                 label,
-                 s->frames,
-                 cbs_row_mibs(s),
-                 (double)s->wall_ns / (double)s->reads,
-                 miss_ns / s_cbs_ns_per_us_f,
-                 (unsigned long long)s->be_calls,
-                 (double)s->src_bytes / s_cbs_mib_f,
-                 (double)s->backing_bytes / s_cbs_mib_f);
+    internal_block_label(blocks[i], label, sizeof(label));
+    if (cb_sink_format(sink,
+                       "| %5s | %6u | %5.0f | %7.1f | %11.1f | %13llu | %7.2f | %11.2f |\n",
+                       label,
+                       s->frames,
+                       internal_row_mibs(s),
+                       (double)s->wall_ns / (double)s->reads,
+                       miss_ns / s_cbs_ns_per_us_f,
+                       (unsigned long long)s->be_calls,
+                       (double)s->src_bytes / s_cbs_mib_f,
+                       (double)s->backing_bytes / s_cbs_mib_f) != k_cb_io_ok) {
+      return 1;
+    }
   }
+  return 0;
 }
 
-/** @brief Implementation of `cbs_priv_print_hot_table()` -- pure hit-path table. */
-void cbs_priv_print_hot_table(const cbs_row_t* rows,
-                              uint32_t         nrows,
-                              const char*      be,
-                              const uint32_t*  blocks,
-                              uint32_t         nblocks)
+/** @brief Implementation of `priv_print_hot_table()` -- pure hit-path table. */
+RA8_PRIV
+int priv_print_hot_table(cb_sink_t*       sink,
+                         const cbs_row_t* rows,
+                         uint32_t         nrows,
+                         const char*      be,
+                         const uint32_t*  blocks,
+                         uint32_t         nblocks)
 {
-  (void)printf("\n### `%s` -- same-block re-read (leg b, pure hit path)\n\n", be);
-  (void)printf("| block | ns/read | hits | misses |\n");
-  (void)printf("|------:|--------:|-----:|-------:|\n");
+  if ((cb_sink_format(sink, "\n### `%s` -- same-block re-read (leg b, pure hit path)\n\n", be) !=
+       k_cb_io_ok) ||
+      (cb_sink_format(sink, "| block | ns/read | hits | misses |\n") != k_cb_io_ok) ||
+      (cb_sink_format(sink, "|------:|--------:|-----:|-------:|\n") != k_cb_io_ok)) {
+    return 1;
+  }
   for (uint32_t i = 0U; i < nblocks; ++i) {
-    const cbs_row_t* h = cbs_find_row(rows, nrows, be, "hot", blocks[i]);
+    const cbs_row_t* h = internal_find_row(rows, nrows, be, "hot", blocks[i]);
     if ((h == nullptr) || (h->reads == 0U)) {
       continue;
     }
     char label[16] = {};
-    cbs_block_label(blocks[i], label, sizeof(label));
-    (void)printf("| %5s | %7.1f | %llu | %6llu |\n",
-                 label,
-                 (double)h->wall_ns / (double)h->reads,
-                 (unsigned long long)h->hits,
-                 (unsigned long long)h->misses);
+    internal_block_label(blocks[i], label, sizeof(label));
+    if (cb_sink_format(sink,
+                       "| %5s | %7.1f | %llu | %6llu |\n",
+                       label,
+                       (double)h->wall_ns / (double)h->reads,
+                       (unsigned long long)h->hits,
+                       (unsigned long long)h->misses) != k_cb_io_ok) {
+      return 1;
+    }
   }
+  return 0;
 }
 
 /**
  * @struct cbs_knee_t
  * @brief The computed crossover of the chunked backend's sequential sweep.
- * @details Filled by ::cbs_find_knee; `knee_block` is the smallest size whose
+ * @details Filled by ::internal_find_knee; `knee_block` is the smallest size whose
  *          throughput reaches ::k_cbs_knee_pct percent of `peak_mibs`.
  * @invariant Both `knee_block` and `peak_block` always name swept sizes.
  * @since 0.1.0
@@ -243,19 +274,20 @@ typedef struct {
  * @note Thread-safe over quiescent rows (pure read).
  * @since 0.1.0
  */
-static bool cbs_find_knee(const cbs_row_t* rows,
-                          uint32_t         nrows,
-                          const uint32_t*  blocks,
-                          uint32_t         nblocks,
-                          cbs_knee_t*      out)
+RA8_INTERNAL
+static bool internal_find_knee(const cbs_row_t* rows,
+                               uint32_t         nrows,
+                               const uint32_t*  blocks,
+                               uint32_t         nblocks,
+                               cbs_knee_t*      out)
 {
   if ((out == nullptr) || (blocks == nullptr)) {
     return false;
   }
   *out = (cbs_knee_t){};
   for (uint32_t i = 0U; i < nblocks; ++i) {
-    const cbs_row_t* s = cbs_find_row(rows, nrows, "rbkc-z9", "seq", blocks[i]);
-    const double     m = cbs_row_mibs(s);
+    const cbs_row_t* s = internal_find_row(rows, nrows, "rbkc-z9", "seq", blocks[i]);
+    const double     m = internal_row_mibs(s);
     if (m > out->peak_mibs) {
       out->peak_mibs  = m;
       out->peak_block = blocks[i];
@@ -268,8 +300,8 @@ static bool cbs_find_knee(const cbs_row_t* rows,
   out->knee_block  = out->peak_block;
   out->knee_mibs   = out->peak_mibs;
   for (uint32_t i = 0U; i < nblocks; ++i) {
-    const cbs_row_t* s = cbs_find_row(rows, nrows, "rbkc-z9", "seq", blocks[i]);
-    const double     m = cbs_row_mibs(s);
+    const cbs_row_t* s = internal_find_row(rows, nrows, "rbkc-z9", "seq", blocks[i]);
+    const double     m = internal_row_mibs(s);
     if (m >= bar) {
       out->knee_block = blocks[i];
       out->knee_mibs  = m;
@@ -279,52 +311,103 @@ static bool cbs_find_knee(const cbs_row_t* rows,
   return true;
 }
 
-/** @brief Implementation of `cbs_priv_print_crossover()` -- knee verdict prose. */
-void cbs_priv_print_crossover(const cbs_row_t* rows,
-                              uint32_t         nrows,
-                              const uint32_t*  blocks,
-                              uint32_t         nblocks)
+/**
+ * @brief Publish the knee/default relationship as one bounded paragraph.
+ * @details Selects the equal, below-default, or above-default explanation and
+ *          writes it through the injected report sink.
+ * @param[in,out] sink Report destination.
+ * @param[in] knee Measured peak and knee result.
+ * @param[in] knee_label Human-readable measured knee size.
+ * @param[in] default_label Human-readable configured default size.
+ * @param[in] knee_pct Knee throughput as a percentage of peak.
+ * @return Zero after complete publication, otherwise one.
+ * @retval 0 The selected paragraph was accepted by @p sink.
+ * @retval 1 The sink rejected the paragraph.
+ * @pre All pointer parameters are non-NULL.
+ * @pre @p knee contains a successful ::internal_find_knee result.
+ * @post Exactly one relationship paragraph is attempted.
+ * @post @p knee and label bytes are not modified.
+ * @note The paragraph is advisory; hardware confirmation remains required.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static int internal_print_verdict(cb_sink_t*        sink,
+                                  const cbs_knee_t* knee,
+                                  const char*       knee_label,
+                                  const char*       default_label,
+                                  double            knee_pct)
+{
+  if (knee->knee_block == (uint32_t)k_cbs_default_chunk) {
+    return (cb_sink_format(sink,
+                           "The measured knee lands on the current %s `.rabook` chunk default "
+                           "(#204): keep it.\n",
+                           default_label) == k_cb_io_ok)
+             ? 0
+             : 1;
+  }
+  if (knee->knee_block < (uint32_t)k_cbs_default_chunk) {
+    return (cb_sink_format(sink,
+                           "The knee sits BELOW the current %s default: %s already reaches "
+                           "%.1f%% of peak on this backend, at a smaller per-miss inflate "
+                           "latency and less RAM per frame.\n",
+                           default_label,
+                           knee_label,
+                           knee_pct) == k_cb_io_ok)
+             ? 0
+             : 1;
+  }
+  return (cb_sink_format(sink,
+                         "The knee sits ABOVE the current %s default: sequential throughput "
+                         "is still climbing past it; consider a larger chunk if per-miss "
+                         "latency allows.\n",
+                         default_label) == k_cb_io_ok)
+           ? 0
+           : 1;
+}
+
+/** @brief Implementation of `priv_print_crossover()` -- knee verdict prose. */
+RA8_PRIV
+int priv_print_crossover(cb_sink_t*       sink,
+                         const cbs_row_t* rows,
+                         uint32_t         nrows,
+                         const uint32_t*  blocks,
+                         uint32_t         nblocks)
 {
   cbs_knee_t k = {};
-  if (!cbs_find_knee(rows, nrows, blocks, nblocks, &k)) {
-    (void)printf("\n(no rbkc-z9 sequential rows; crossover not computed)\n");
-    return;
+  if (!internal_find_knee(rows, nrows, blocks, nblocks, &k)) {
+    return (cb_sink_format(sink, "\n(no rbkc-z9 sequential rows; crossover not computed)\n") ==
+            k_cb_io_ok)
+             ? 0
+             : 1;
   }
   const double knee_pct   = s_cbs_pct_f * k.knee_mibs / k.peak_mibs;
   char         peak_l[16] = {};
   char         knee_l[16] = {};
   char         def_l[16]  = {};
-  cbs_block_label(k.peak_block, peak_l, sizeof(peak_l));
-  cbs_block_label(k.knee_block, knee_l, sizeof(knee_l));
-  cbs_block_label((uint32_t)k_cbs_default_chunk, def_l, sizeof(def_l));
-  (void)printf("\n### Measured crossover (rbkc-z9, sequential)\n\n");
-  (void)printf("Peak %.0f MiB/s at %s; knee (first size within %u%% of peak) at %s "
-               "(%.0f MiB/s, %.1f%% of peak).\n",
-               k.peak_mibs,
-               peak_l,
-               (unsigned)k_cbs_knee_pct,
-               knee_l,
-               k.knee_mibs,
-               knee_pct);
-  if (k.knee_block == (uint32_t)k_cbs_default_chunk) {
-    (void)printf("The measured knee lands on the current %s `.rabook` chunk default (#204): "
-                 "keep it.\n",
-                 def_l);
-  } else if (k.knee_block < (uint32_t)k_cbs_default_chunk) {
-    (void)printf("The knee sits BELOW the current %s default: %s already reaches %.1f%% of "
-                 "peak on this backend, at a smaller per-miss inflate latency and less RAM "
-                 "per frame.\n",
-                 def_l,
-                 knee_l,
-                 knee_pct);
-  } else {
-    (void)printf("The knee sits ABOVE the current %s default: sequential throughput is still "
-                 "climbing past it; consider a larger chunk if per-miss latency allows.\n",
-                 def_l);
+  internal_block_label(k.peak_block, peak_l, sizeof(peak_l));
+  internal_block_label(k.knee_block, knee_l, sizeof(knee_l));
+  internal_block_label((uint32_t)k_cbs_default_chunk, def_l, sizeof(def_l));
+  if ((cb_sink_format(sink, "\n### Measured crossover (rbkc-z9, sequential)\n\n") != k_cb_io_ok) ||
+      (cb_sink_format(sink,
+                      "Peak %.0f MiB/s at %s; knee (first size within %u%% of peak) at %s "
+                      "(%.0f MiB/s, %.1f%% of peak).\n",
+                      k.peak_mibs,
+                      peak_l,
+                      (unsigned)k_cbs_knee_pct,
+                      knee_l,
+                      k.knee_mibs,
+                      knee_pct) != k_cb_io_ok)) {
+    return 1;
   }
-  (void)printf("Caveat: these are host numbers -- per-request cost here is only the chunk "
-               "lookup + zlib stream setup. SD-over-SPI adds real per-command overhead "
-               "(CMD17 loops, #202), which pushes the knee toward larger blocks; the "
-               "hardware leg of #208 must re-run this sweep on the bench before shrinking "
-               "the chunk size below the default.\n");
+  if (internal_print_verdict(sink, &k, knee_l, def_l, knee_pct) != 0) {
+    return 1;
+  }
+  return (cb_sink_format(sink,
+                         "Caveat: these are host numbers -- per-request cost here is only the "
+                         "chunk lookup + zlib stream setup. SD-over-SPI adds real per-command "
+                         "overhead (CMD17 loops, #202), which pushes the knee toward larger "
+                         "blocks; the hardware leg of #208 must re-run this sweep on the bench "
+                         "before shrinking the chunk size below the default.\n") == k_cb_io_ok)
+           ? 0
+           : 1;
 }
