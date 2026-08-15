@@ -171,7 +171,7 @@ static const uint8_t s_dht_then_sof0[] = {
 /**
  * @test test_mcdc_get_dimensions_pad_and_marker
  * @par MC/DC:
- * Five decisions in ra8_jpeg_sw_get_dimensions (libs/ra8_hal/src/ra8_jpeg_sw.c
+ * Five decisions in ra8_jpeg_sw_get_dimensions (libs/ra8_jpeg/src/ra8_jpeg_sw.c
  * lines 1071, 1080, 1087, 1100, 1105). Vectors via crafted bytestreams:
  *   D_pad   1071: padding + non-padding both reached.
  *   D_soi   1080: SOI/EOI marker mid-walk -> continue (true), other DT -> false.
@@ -217,12 +217,12 @@ static void test_mcdc_get_dimensions_pad_and_marker(void)
  * @test test_mcdc_decode_pad_and_rst_marker
  * @par MC/DC:
  * Decisions in ra8_jpeg_sw_decode and dec_decode_scan:
- *   - libs/ra8_hal/src/ra8_jpeg_sw.c@br_fill  D_res bit-reader refill
- *   - libs/ra8_hal/src/ra8_jpeg_sw.c@ra8_jpeg_sw_get_dimensions D_pad pad-skip
- *   - libs/ra8_hal/src/ra8_jpeg_sw.c@ra8_jpeg_sw_get_dimensions D_sof unsupported (else-if)
- *   - libs/ra8_hal/src/ra8_jpeg_sw.c@ra8_jpeg_sw_get_dimensions D_rst RST0..RST7 (else-if)
- *   - libs/ra8_hal/src/ra8_jpeg_sw.c@dec_dispatch_marker D_sof unsupported (extracted)
- *   - libs/ra8_hal/src/ra8_jpeg_sw.c@dec_dispatch_marker D_rst RST0..RST7 (extracted)
+ *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@br_fill  D_res bit-reader refill
+ *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@ra8_jpeg_sw_get_dimensions D_pad pad-skip
+ *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@ra8_jpeg_sw_get_dimensions D_sof unsupported (else-if)
+ *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@ra8_jpeg_sw_get_dimensions D_rst RST0..RST7 (else-if)
+ *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@dec_dispatch_marker D_sof unsupported (extracted)
+ *   - libs/ra8_jpeg/src/ra8_jpeg_sw.c@dec_dispatch_marker D_rst RST0..RST7 (extracted)
  * D_pad pad-skip exercised by encoder round-trip (yields natural padding).
  * D_sof 4-cond unsupported via SOF2 (0xFFC2): co-dependence rationale
  * documented inline in production source (markers >= 0xFFC1 are by spec
@@ -322,7 +322,7 @@ static const uint8_t s_dht_bad_th[] = {
  * @test test_mcdc_decode_dqt_dht_validation
  * @par MC/DC:
  * Three internal decoder decisions reachable via crafted bytestreams
- * (libs/ra8_hal/src/ra8_jpeg_sw.c lines 751, 761, 782, 792):
+ * (libs/ra8_jpeg/src/ra8_jpeg_sw.c lines 751, 761, 782, 792):
  *   D_dqt_len, D_dqt_pq, D_dht_id (each 2-cond OR/||).
  * Vectors: V_dqt_short (seglen=1), V_dqt_bad_pq (pq=1), V_dqt_bad_tq
  * (tq>=quant_tabs), V_dht_bad_tc (tc>=classes), V_dht_bad_th
@@ -371,7 +371,7 @@ static void test_mcdc_decode_dqt_dht_validation(void)
 /**
  * @test test_mcdc_decode_sof0_chroma_subsampling
  * @par MC/DC:
- * Three SOF0 decisions in libs/ra8_hal/src/ra8_jpeg_sw.c (lines 842, 869,
+ * Three SOF0 decisions in libs/ra8_jpeg/src/ra8_jpeg_sw.c (lines 842, 869,
  * 870, 872):
  *   D_ncomp: `ncomp != 1 && ncomp != 3`
  *   D_is444: 2 cond, D_is420: 6 cond, D_unsup: 2 cond

@@ -513,7 +513,7 @@ static void test_mcdc_decode_sos_dc_ac_id_independent(void)
  * @test test_mcdc_get_dimensions_padding_truncated
  *
  * @par MC/DC:
- * Decision at libs/ra8_hal/src/ra8_jpeg_sw.c
+ * Decision at libs/ra8_jpeg/src/ra8_jpeg_sw.c
  *   ``while (i < jpeg_len && jpeg_buf[i] == 0xFF)`` (2 cond AND).
  * Existing tests cover (T,T) and (T,F); this fixture closes the
  * C1-pair by feeding a stream whose pad-byte run extends to EOF
@@ -540,7 +540,7 @@ static void test_mcdc_get_dimensions_padding_truncated(void)
  * @test test_mcdc_get_dimensions_soi_mid_walk
  *
  * @par MC/DC:
- * Decision at libs/ra8_hal/src/ra8_jpeg_sw.c
+ * Decision at libs/ra8_jpeg/src/ra8_jpeg_sw.c
  *   ``if (mk == SOI || mk == EOI)`` (2 cond OR).
  * Existing tests cover (F,F) and (F,T mk==EOI); this fixture closes
  * the C1-pair by emitting a second SOI (0xFFD8) mid-stream.
@@ -585,7 +585,7 @@ static void test_mcdc_get_dimensions_soi_mid_walk(void)
  * @test test_mcdc_get_dimensions_skip_appn
  *
  * @par MC/DC:
- * Decision at libs/ra8_hal/src/ra8_jpeg_sw.c
+ * Decision at libs/ra8_jpeg/src/ra8_jpeg_sw.c
  *   ``if (mk >= 0xFFC0 && mk <= 0xFFCF && mk != DHT && mk != 0xFFC8)``
  *   (4-cond AND). Existing tests cover (T,T,T,T) sof2 and (T,T,F,-)
  *   dht; this fixture supplies (F,-,-,-) via APP0 (0xFFE0) skip and
@@ -636,7 +636,7 @@ static void test_mcdc_get_dimensions_skip_appn(void)
  * @test test_mcdc_decode_skip_appn_marker
  *
  * @par MC/DC:
- * Decision at libs/ra8_hal/src/ra8_jpeg_sw.c (decode_scan)
+ * Decision at libs/ra8_jpeg/src/ra8_jpeg_sw.c (decode_scan)
  *   ``else if (mk >= 0xFFC1 && mk <= 0xFFCF && mk != DHT && mk != 0xFFC8)``
  *   (4-cond AND). Existing round-trip covers (T,T,T,T) and structurally
  *   exercises C2/C3/C4 false rows via DQT/DHT/SOS path. This fixture

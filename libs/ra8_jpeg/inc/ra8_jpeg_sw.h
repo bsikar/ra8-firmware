@@ -1,10 +1,10 @@
 /**
  * @file ra8_jpeg_sw.h
  * @brief Pure-software baseline JPEG (ISO/IEC 10918-1 / ITU-T T.81) codec
- * @ingroup grp_hal_camera
+ * @ingroup grp_ereader
  *
  * @par Tag
- * [Ring 3 / HAL] {World: NS}
+ * [Ring 4 / Domain] {World: NS}
  *
  * @details
  * The RA8D2 has no hardware JPEG block. This module implements a

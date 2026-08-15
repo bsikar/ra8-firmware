@@ -291,7 +291,7 @@ typedef enum : uint8_t {
 /**
  * @test test_mcdc_encode_dim_zero
  * @par MC/DC:
- * Decision (libs/ra8_hal/src/ra8_jpeg_sw.c line 1818, 2 conditions):
+ * Decision (libs/ra8_jpeg/src/ra8_jpeg_sw.c line 1818, 2 conditions):
  * `width == 0 || height == 0`. V1 16x16 (F ok), V2 0x16 (C1=T invalid_arg),
  * V3 16x0 (C1=F C2=T invalid_arg). N+1=3.
  */
@@ -332,7 +332,7 @@ static void test_mcdc_encode_dim_zero(void)
 /**
  * @test test_mcdc_encode_quality_range
  * @par MC/DC:
- * Decision (libs/ra8_hal/src/ra8_jpeg_sw.c line 1821, 2 conditions):
+ * Decision (libs/ra8_jpeg/src/ra8_jpeg_sw.c line 1821, 2 conditions):
  * `quality < min || quality > max`. V1 q=high (F ok), V2 q=0 (C1=T),
  * V3 q=101 (C1=F C2=T). N+1=3.
  */

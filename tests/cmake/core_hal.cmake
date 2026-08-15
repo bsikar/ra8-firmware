@@ -17,6 +17,7 @@ add_library(
   ra8_core_hal OBJECT
   ${RA8_CORE_SOURCES}
   ${RA8_HAL_SOURCES}
+  ${RA8_JPEG_SOURCES}
   ${RA8_NET_PAL_SOURCES}
   ${RA8_MODEM_AT_SOURCES}
   ${RA8_TLS_SOURCES}
@@ -117,6 +118,7 @@ target_include_directories(
   ra8_core_hal
   PUBLIC ${FW_ROOT}/libs/ra8_core/inc
          ${FW_ROOT}/libs/ra8_hal/inc
+         ${FW_ROOT}/libs/ra8_jpeg/inc
          ${FW_ROOT}/libs/ra8_net_pal/inc
          ${FW_ROOT}/libs/ra8_modem_at/inc
          ${FW_ROOT}/libs/ra8_usb_pal/inc
@@ -196,6 +198,7 @@ target_include_directories(
          # vectors on production source text. Only first-party libs are listed.
          ${FW_ROOT}/libs/ra8_core/src
          ${FW_ROOT}/libs/ra8_hal/src
+         ${FW_ROOT}/libs/ra8_jpeg/src
          ${FW_ROOT}/libs/ra8_net_pal/src
          ${FW_ROOT}/libs/ra8_modem_at/src
          ${FW_ROOT}/libs/ra8_tls/src
