@@ -48,6 +48,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_device.h"
@@ -200,10 +201,13 @@ volatile uint32_t g_npu_infer_pass = 0U;
  *          terminal PC correctly reads this as a failed run.
  *
  * @pre Called only after a fatal init error, before the verdict banner.
+ * @pre No initialized diagnostic path can report a normal verdict.
  * @post CPU is parked; only a debugger or reset wakes it.
+ * @post No NPU job or console operation is attempted after entry.
+ * @note The distinct panic symbol lets emulator automation classify boot failure.
  * @since 0.1.0
  */
-static void npu_infer_panic_halt(void)
+RA8_INTERNAL static void internal_npu_infer_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -213,15 +217,18 @@ static void npu_infer_panic_halt(void)
 /**
  * @brief Park the CPU forever in WFI after the verdict banner (a clean stop).
  *
- * @details Distinct from ::npu_infer_panic_halt: a run that reached the verdict
+ * @details Distinct from ::internal_npu_infer_panic_halt: a run that reached the verdict
  *          parks here, whose name deliberately does NOT match the `*panic_halt`
  *          pattern a ra8_emulator gate treats as a give-up.
  *
  * @pre The verdict banner has been emitted over the SCI8 console.
+ * @pre All run-result globals contain their final values.
  * @post CPU is parked; only a debugger or reset wakes it.
+ * @post The published verdict and checkword remain stable for inspection.
+ * @note This clean terminal is intentionally distinct from the panic path.
  * @since 0.1.0
  */
-static void npu_infer_park(void)
+RA8_INTERNAL static void internal_npu_infer_park(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -235,30 +242,38 @@ static void npu_infer_park(void)
  *          (PCLKA/SCICLK) prints the verdict and ra8_isr routes the NPU IRQ.
  *
  * @pre Reset_Handler has initialised .data / .bss.
+ * @pre The application is still in single-threaded boot context.
  * @post On return CGC + SCI8 console + ra8_isr table are ready.
+ * @post Any mandatory initialization error transfers to the panic halt.
+ * @note NPU initialization is deferred until the executable test routine.
  * @since 0.1.0
  */
-static void npu_infer_setup_or_halt(void)
+RA8_INTERNAL static void internal_npu_infer_setup_or_halt(void)
 {
   if (ra8_cgc_init() != k_ra8_ok) {
-    npu_infer_panic_halt();
+    internal_npu_infer_panic_halt();
   }
   if (ra8_board_uart_console_init((uint32_t)k_npu_infer_baud) != k_ra8_ok) {
-    npu_infer_panic_halt();
+    internal_npu_infer_panic_halt();
   }
   if (ra8_isr_init() != k_ra8_ok) {
-    npu_infer_panic_halt();
+    internal_npu_infer_panic_halt();
   }
 }
 
 /**
  * @brief Fill the command stream (add-constant op) per the stand-in convention.
  *
+ * @details Writes the fixed opcode, region indexes, byte count, and addend used
+ * by the deterministic inference-path exercise.
  * @pre s_npu_cmd_stream has k_ra8_npu_fake_word_num words.
+ * @pre No NPU job is concurrently reading the command stream.
  * @post s_npu_cmd_stream describes an add-constant of region 1 -> region 2.
+ * @post Words outside the defined fake command header remain untouched.
+ * @note This stand-in stream validates orchestration rather than a trained model.
  * @since 0.1.0
  */
-static void npu_infer_build_stream(void)
+RA8_INTERNAL static void internal_npu_infer_build_stream(void)
 {
   s_npu_cmd_stream[k_ra8_npu_fake_word_op] =
     (uint32_t)k_ra8_npu_fake_magic | (uint32_t)k_ra8_npu_fake_op_addk;
@@ -271,14 +286,19 @@ static void npu_infer_build_stream(void)
 /**
  * @brief Seed the float input, quantize it to UINT8, and zero the output arenas.
  *
+ * @details Builds a deterministic float pattern, clears stale output bytes, and
+ * invokes the production quantizer with the configured scale and zero point.
  * @return `ra8_err_t` from ra8_npu_quantize_u8(), else k_ra8_ok.
  * @retval k_ra8_ok The input arena holds the quantized pattern.
  *
  * @pre The arenas are k_npu_infer_arena_bytes long.
+ * @pre The input and output arenas are exclusively owned by this test run.
  * @post s_npu_input holds quantize_u8(s_infer_input_f); s_npu_output is zero.
+ * @post On quantizer error no NPU submission occurs in the caller.
+ * @note The fixed pattern makes host and hardware checkwords reproducible.
  * @since 0.1.0
  */
-static ra8_err_t npu_infer_prepare_input(void)
+RA8_INTERNAL static ra8_err_t internal_npu_infer_prepare_input(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_npu_infer_arena_bytes; i++) {
     s_infer_input_f[i] = s_infer_scale * (float)((int32_t)i & (int32_t)k_npu_infer_seed_mask);
@@ -294,14 +314,19 @@ static ra8_err_t npu_infer_prepare_input(void)
 /**
  * @brief Submit the job, arm the IRQ latch, kick it, and await the NPU interrupt.
  *
+ * @details Constructs a job over the static regions, submits it, arms completion,
+ * starts execution, and returns the first driver error or IRQ-wait result.
  * @return `ra8_err_t` from the first failing driver call, else k_ra8_ok.
  * @retval k_ra8_ok Job completed via the interrupt path (STATUS.cmd_end latched).
  *
  * @pre The command stream + input arena are populated and the NPU IRQ is routed.
+ * @pre The NPU has been initialized and no earlier job is active.
  * @post On k_ra8_ok the output arena holds the NPU result.
+ * @post On failure no later submission stage is attempted by this helper.
+ * @note Region storage remains caller-owned throughout the synchronous wait.
  * @since 0.1.0
  */
-static ra8_err_t npu_infer_run_job_irq(void)
+RA8_INTERNAL static ra8_err_t internal_npu_infer_run_job_irq(void)
 {
   ra8_npu_job_t job                           = {};
   job.cmd_stream                              = s_npu_cmd_stream;
@@ -329,14 +354,21 @@ static ra8_err_t npu_infer_run_job_irq(void)
 /**
  * @brief Verify quantize + NPU op + dequantize, folding the output to a checkword.
  *
+ * @details Checks each pipeline stage against its deterministic expectation and
+ * accumulates an FNV-1a digest even when one or more samples mismatch.
  * @param[out] out_check FNV-1a digest of the output bytes (for the banner).
  * @return true when every stage matches its deterministic expectation.
+ * @retval true Quantized input, NPU output, and dequantized values all match.
+ * @retval false At least one stage differs from its expected value.
  *
  * @pre out_check is non-NULL; the job has completed and been dequantized.
+ * @pre All input, output, and float arenas contain the current run's data.
  * @post *out_check holds the output digest regardless of the verdict.
+ * @post Verification does not modify any inference arena.
+ * @note Float comparison uses the configured absolute tolerance.
  * @since 0.1.0
  */
-static bool npu_infer_verify(uint32_t* out_check)
+RA8_INTERNAL static bool internal_npu_infer_verify(uint32_t* out_check)
 {
   uint32_t check = (uint32_t)k_npu_infer_fnv_offset;
   bool     ok    = true;
@@ -367,17 +399,23 @@ static bool npu_infer_verify(uint32_t* out_check)
 /**
  * @brief Format and print the one-line verdict banner over the SCI8 console.
  *
+ * @details Formats every run dimension into a bounded stack buffer and emits
+ * one line followed by a console flush when formatting succeeds.
  * @param[in] id      NPU_ID read after init.
  * @param[in] tflm_ok Whether the real TFLite-micro Ethos-U op is registered.
  * @param[in] run_ok  Whether the submit/arm/run/wait-irq sequence returned ok.
- * @param[in] check   Output checkword from npu_infer_verify().
+ * @param[in] check   Output checkword from internal_npu_infer_verify().
  * @param[in] pass    Final verdict (all stages matched).
  *
  * @pre The SCI8 console is initialised.
+ * @pre The supplied flags and checkword are final snapshots for this run.
  * @post One banner line has been written and flushed to the console.
+ * @post File-scope verdict globals and NPU arenas remain unchanged.
+ * @note A formatting failure suppresses the write rather than emitting garbage.
  * @since 0.1.0
  */
-static void npu_infer_emit(uint32_t id, bool tflm_ok, bool run_ok, uint32_t check, bool pass)
+RA8_INTERNAL static void
+internal_npu_infer_emit(uint32_t id, bool tflm_ok, bool run_ok, uint32_t check, bool pass)
 {
   char      line[k_npu_infer_line_cap];
   const int n = snprintf(line,
@@ -397,18 +435,25 @@ static void npu_infer_emit(uint32_t id, bool tflm_ok, bool run_ok, uint32_t chec
 /**
  * @brief Bring up the NPU, register its completion IRQ, and run one inference.
  *
+ * @details Initializes the device, publishes its identity, registers the IRQ,
+ * prepares static regions, executes the job, dequantizes, and verifies it.
  * @param[out] out_id    NPU_ID captured after init.
  * @param[out] out_tflm  Whether the real TFLite-micro Ethos-U op is registered.
  * @param[out] out_check Output checkword (valid only when the return is true).
  * @return true when init + IRQ registration + the quantize/op/dequantize pipeline
  *         all succeeded and every stage matched its expectation.
+ * @retval true All initialization, execution, and verification stages passed.
+ * @retval false The first failing stage stopped the remaining pipeline.
  *
- * @pre The console + ra8_isr substrate are up (npu_infer_setup_or_halt ran).
+ * @pre The console + ra8_isr substrate are up (internal_npu_infer_setup_or_halt ran).
  * @pre out_id / out_tflm / out_check are non-NULL.
  * @post *out_id / *out_tflm / *out_check reflect the run.
+ * @post No second NPU job remains queued after this synchronous execution.
+ * @note Output values are initialized before any fallible operation for diagnostics.
  * @since 0.1.0
  */
-static bool npu_infer_execute(uint32_t* out_id, bool* out_tflm, uint32_t* out_check)
+RA8_INTERNAL static bool
+internal_npu_infer_execute(uint32_t* out_id, bool* out_tflm, uint32_t* out_check)
 {
   *out_id    = 0U;
   *out_tflm  = (ra8_ethosu_kernel_available() == 1);
@@ -429,11 +474,11 @@ static bool npu_infer_execute(uint32_t* out_id, bool* out_tflm, uint32_t* out_ch
   }
   ra8_isr_globals_enable();
 
-  npu_infer_build_stream();
-  if (npu_infer_prepare_input() != k_ra8_ok) {
+  internal_npu_infer_build_stream();
+  if (internal_npu_infer_prepare_input() != k_ra8_ok) {
     return false;
   }
-  if (npu_infer_run_job_irq() != k_ra8_ok) {
+  if (internal_npu_infer_run_job_irq() != k_ra8_ok) {
     return false;
   }
   if (ra8_npu_dequantize_u8(s_npu_output,
@@ -443,7 +488,7 @@ static bool npu_infer_execute(uint32_t* out_id, bool* out_tflm, uint32_t* out_ch
                             (int32_t)k_npu_infer_zero_point) != k_ra8_ok) {
     return false;
   }
-  return npu_infer_verify(out_check);
+  return internal_npu_infer_verify(out_check);
 }
 
 #pragma GCC diagnostic push
@@ -459,7 +504,7 @@ static bool npu_infer_execute(uint32_t* out_id, bool* out_tflm, uint32_t* out_ch
  */
 int32_t main(void)
 {
-  npu_infer_setup_or_halt();
+  internal_npu_infer_setup_or_halt();
 
   uint32_t id    = 0U;
   bool     tflm  = false;
@@ -467,13 +512,13 @@ int32_t main(void)
   /* run_ok = init + IRQ-driven quantize/op/dequantize pipeline all matched. The
    * TFLite-micro registration (tflm) is a separate leg reported on its own field;
    * the verdict is PASS only when every leg holds. */
-  const bool run_ok = npu_infer_execute(&id, &tflm, &check);
+  const bool run_ok = internal_npu_infer_execute(&id, &tflm, &check);
   const bool pass   = run_ok && tflm && (id != 0U);
 
   g_npu_infer_pass = pass ? 1U : 0U;
-  npu_infer_emit(id, tflm, run_ok, check, pass);
+  internal_npu_infer_emit(id, tflm, run_ok, check, pass);
 
-  npu_infer_park();
+  internal_npu_infer_park();
   return 0;
 }
 #pragma GCC diagnostic pop

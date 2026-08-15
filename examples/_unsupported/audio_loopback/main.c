@@ -44,6 +44,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -75,8 +76,8 @@ typedef enum : uint32_t {
 } audio_loopback_block_t;
 
 /** @brief Diagnostic banner emitted every k_audio_loopback_print_period blocks. */
-static const uint8_t k_audio_loopback_msg_prefix[] = "audio: ";
-static const uint8_t k_audio_loopback_msg_suffix[] = " blocks played\r\n";
+static const uint8_t s_audio_loopback_msg_prefix[] = "audio: ";
+static const uint8_t s_audio_loopback_msg_suffix[] = " blocks played\r\n";
 
 /**
  * @brief Static stereo silence buffer fed to the CODEC each iteration.
@@ -86,18 +87,26 @@ static const uint8_t k_audio_loopback_msg_suffix[] = " blocks played\r\n";
  * audible output. Replace with a sine LUT (or a pull from an iso-OUT
  * USB endpoint) to produce a tone.
  */
-static const int16_t k_audio_loopback_silence[k_audio_loopback_block_samples] = {};
+static const int16_t s_audio_loopback_silence[k_audio_loopback_block_samples] = {};
 
 /**
  * @brief Halt forever in WFI -- used as a panic stop on init failure.
  *
+ * @details Masks no additional interrupts; repeated WFI instructions keep the
+ * core quiescent while preserving register state for a debugger.
+ *
  * @pre Called only after a fatal error in boot.
+ * @pre No recovery path remains for the current boot attempt.
  *
  * @post CPU is parked; only a debugger or external reset wakes it.
+ * @post No peripheral state is changed after entry.
+ *
+ * @note This helper deliberately does not attempt logging because the console
+ * may be the peripheral whose initialization failed.
  *
  * @since 0.1.0
  */
-static void audio_loopback_panic_halt(void)
+RA8_INTERNAL static void internal_audio_loopback_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -117,23 +126,26 @@ static void audio_loopback_panic_halt(void)
  * @post On success the CGC, SysTick, and LED1 are live.
  * @post Halts in WFI on init failure.
  *
+ * @note Initialization is deliberately fail-stop so playback never begins
+ * with a partially configured clock or GPIO tree.
+ *
  * @since 0.1.0
  */
-static void audio_loopback_init_clocks_and_led(void)
+RA8_INTERNAL static void internal_audio_loopback_init_clocks_and_led(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
   if (ra8_cgc_init() != k_ra8_ok) {
-    audio_loopback_panic_halt();
+    internal_audio_loopback_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
-    audio_loopback_panic_halt();
+    internal_audio_loopback_panic_halt();
   }
   if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
-    audio_loopback_panic_halt();
+    internal_audio_loopback_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    audio_loopback_panic_halt();
+    internal_audio_loopback_panic_halt();
   }
 }
 
@@ -150,12 +162,14 @@ static void audio_loopback_init_clocks_and_led(void)
  * @post SCI8 is enabled for diagnostic output.
  * @post Halts in WFI on init failure.
  *
+ * @note Console writes remain best-effort after this routine returns.
+ *
  * @since 0.1.0
  */
-static void audio_loopback_init_console(void)
+RA8_INTERNAL static void internal_audio_loopback_init_console(void)
 {
   if (ra8_board_uart_console_init((uint32_t)k_audio_loopback_baud) != k_ra8_ok) {
-    audio_loopback_panic_halt();
+    internal_audio_loopback_panic_halt();
   }
 }
 
@@ -174,32 +188,44 @@ static void audio_loopback_init_console(void)
  * @post DA7212 + SSIE0 are live and ready for sample-block writes.
  * @post Halts in WFI on init failure.
  *
+ * @note The BSP owns board-specific pin routing and codec control traffic.
+ *
  * @since 0.1.0
  */
-static void audio_loopback_init_codec(void)
+RA8_INTERNAL static void internal_audio_loopback_init_codec(void)
 {
   const ra8_err_t err = ra8_board_audio_init(k_audio_loopback_sample_rate,
                                              (uint8_t)k_audio_loopback_bit_depth,
                                              (uint8_t)k_audio_loopback_channels);
   if (err != k_ra8_ok) {
-    audio_loopback_panic_halt();
+    internal_audio_loopback_panic_halt();
   }
 }
 
 /**
  * @brief Convert a 32-bit unsigned integer into an ASCII decimal string.
  *
+ * @details Builds digits least-significant first in a bounded local array,
+ * then reverses them into the caller's output buffer without heap use.
+ *
  * @param[in]  value Integer value to convert.
  * @param[out] buf   Caller buffer, must hold at least 11 bytes.
  * @return Number of bytes written into ``buf`` (does not include a NUL).
+ * @retval 1 One byte was written for the value zero.
+ * @retval 2..10 The number of decimal digits written for a nonzero value.
  *
  * @pre buf is non-NULL and has room for 11 bytes.
+ * @pre The caller does not require a terminating NUL byte.
  *
  * @post Buffer holds the decimal representation, MSD first.
+ * @post Bytes beyond the returned length are left unchanged.
+ *
+ * @note The 11-byte capacity precondition leaves room for all uint32_t values
+ * even though this helper writes at most ten digits.
  *
  * @since 0.1.0
  */
-static uint32_t audio_loopback_u32_to_dec(uint32_t value, uint8_t* buf)
+RA8_INTERNAL static uint32_t internal_audio_loopback_u32_to_dec(uint32_t value, uint8_t* buf)
 {
   enum : uint8_t {
     k_ascii_zero = 0x30U, /**< '0'.                            */
@@ -226,28 +252,35 @@ static uint32_t audio_loopback_u32_to_dec(uint32_t value, uint8_t* buf)
 /**
  * @brief Print "audio: <count> blocks played\\r\\n" over the BSP console.
  *
+ * @details Formats the count into a bounded stack buffer and emits the prefix,
+ * digits, and suffix as three allocation-free console writes.
+ *
  * @param[in] block_count Cumulative block count.
  *
  * @pre The BSP console is initialized.
+ * @pre ``block_count`` is the monotonic playback-loop counter snapshot.
  *
  * @post Three writes have been issued on the BSP console.
  * @post No heap or dynamic allocations.
  *
+ * @note Individual write failures are intentionally ignored because this is
+ * diagnostic output and must not stop audio playback.
+ *
  * @since 0.1.0
  */
-static void audio_loopback_print_count(uint32_t block_count)
+RA8_INTERNAL static void internal_audio_loopback_print_count(uint32_t block_count)
 {
   enum : uint8_t {
     k_dec_buf = 12U, /**< Dec buffer. */
   };
   uint8_t  digits[k_dec_buf];
-  uint32_t n = audio_loopback_u32_to_dec(block_count, digits);
+  uint32_t n = internal_audio_loopback_u32_to_dec(block_count, digits);
 
-  (void)ra8_board_uart_console_write(k_audio_loopback_msg_prefix,
-                                     (size_t)(sizeof(k_audio_loopback_msg_prefix) - 1U));
+  (void)ra8_board_uart_console_write(s_audio_loopback_msg_prefix,
+                                     (size_t)(sizeof(s_audio_loopback_msg_prefix) - 1U));
   (void)ra8_board_uart_console_write(digits, (size_t)n);
-  (void)ra8_board_uart_console_write(k_audio_loopback_msg_suffix,
-                                     (size_t)(sizeof(k_audio_loopback_msg_suffix) - 1U));
+  (void)ra8_board_uart_console_write(s_audio_loopback_msg_suffix,
+                                     (size_t)(sizeof(s_audio_loopback_msg_suffix) - 1U));
 }
 
 #pragma GCC diagnostic push
@@ -267,27 +300,27 @@ static void audio_loopback_print_count(uint32_t block_count)
  */
 int32_t main(void)
 {
-  audio_loopback_init_clocks_and_led();
-  audio_loopback_init_console();
-  audio_loopback_init_codec();
+  internal_audio_loopback_init_clocks_and_led();
+  internal_audio_loopback_init_console();
+  internal_audio_loopback_init_codec();
 
   ra8_isr_globals_enable();
 
   uint32_t block_count = 0U;
 
   while (1) {
-    if (ra8_board_audio_play_sample_block(k_audio_loopback_silence,
+    if (ra8_board_audio_play_sample_block(s_audio_loopback_silence,
                                           k_audio_loopback_block_samples) != k_ra8_ok) {
       break;
     }
     block_count++;
     if ((block_count % k_audio_loopback_print_period) == 0U) {
-      audio_loopback_print_count(block_count);
+      internal_audio_loopback_print_count(block_count);
       (void)ra8_board_led_toggle(k_ra8_board_led1);
     }
   }
 
-  audio_loopback_panic_halt();
+  internal_audio_loopback_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop

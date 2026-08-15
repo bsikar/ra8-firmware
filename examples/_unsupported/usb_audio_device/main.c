@@ -67,6 +67,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -131,7 +132,7 @@ typedef enum : int16_t {
  * Index 0 = sin(0), 12 = sin(pi/2) = +0x4000, 24 = sin(pi) = 0,
  * 36 = sin(3pi/2) = -0x4000, ... back to 0 at index 48.
  */
-static const uint8_t k_usb_audio_sine_lut[k_usb_audio_lut_bytes] = {
+static const uint8_t s_usb_audio_sine_lut[k_usb_audio_lut_bytes] = {
   /* sample 0  : 0x0000 L,R */ 0x00U, 0x00U, 0x00U, 0x00U,
   /* sample 1  : 0x086FU    */ 0x6FU, 0x08U, 0x6FU, 0x08U,
   /* sample 2  : 0x10B5U    */ 0xB5U, 0x10U, 0xB5U, 0x10U,
@@ -185,12 +186,19 @@ static const uint8_t k_usb_audio_sine_lut[k_usb_audio_lut_bytes] = {
 /**
  * @brief Park the CPU forever in WFI on fatal init failure.
  *
+ * @details Re-enters WFI indefinitely so the failing boot context remains
+ * available to a debugger without executing additional peripheral accesses.
+ *
  * @pre Called only after a fatal error in boot.
+ * @pre No safe continuation path remains for the current initialization.
  * @post CPU is parked; only a debugger or external reset wakes it.
+ * @post USB and console state remain unchanged after entry.
+ *
+ * @note Logging is avoided because the console itself may have failed.
  *
  * @since 0.1.0
  */
-static void usb_audio_panic_halt(void)
+RA8_INTERNAL static void internal_usb_audio_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -200,15 +208,22 @@ static void usb_audio_panic_halt(void)
 /**
  * @brief Send a NUL-terminated ASCII line over SCI8 (best-effort).
  *
+ * @details Measures the string locally and forwards exactly its payload bytes
+ * to the BSP console without a terminator or dynamic allocation.
+ *
  * @param[in] s ASCII string (NUL-terminated). May be ``nullptr``.
  *
  * @pre ra8_board_uart_console_init() succeeded for the BSP console.
+ * @pre If non-NULL, ``s`` points to a readable NUL-terminated byte sequence.
  * @post Bytes have been polled out of TXD8 (or silently discarded on
  *       backpressure -- this is logging only).
+ * @post A NULL argument performs no console write.
+ *
+ * @note Console errors are intentionally non-fatal for diagnostic messages.
  *
  * @since 0.1.0
  */
-static void usb_audio_log(const char* s)
+RA8_INTERNAL static void internal_usb_audio_log(const char* s)
 {
   if (s == nullptr) {
     return;
@@ -223,6 +238,9 @@ static void usb_audio_log(const char* s)
 /**
  * @brief Convert a uint32_t to ASCII decimal in caller-supplied buffer.
  *
+ * @details Builds digits in reverse order in a fixed local array and copies as
+ * many as fit, always terminating a nonzero-capacity destination.
+ *
  * @param[in]  value Value to format.
  * @param[out] buf   Destination buffer (>= 11 bytes incl. NUL).
  * @param[in]  cap   Capacity of buf in bytes.
@@ -230,10 +248,14 @@ static void usb_audio_log(const char* s)
  * @pre buf != nullptr.
  * @pre cap >= 11.
  * @post buf holds a NUL-terminated decimal representation of value.
+ * @post No bytes at or beyond ``buf[cap]`` are accessed.
+ *
+ * @note Invalid zero-capacity input returns without writing; normal callers
+ * satisfy the documented eleven-byte capacity contract.
  *
  * @since 0.1.0
  */
-static void usb_audio_u32_to_ascii(uint32_t value, char* buf, uint32_t cap)
+RA8_INTERNAL static void internal_usb_audio_u32_to_ascii(uint32_t value, char* buf, uint32_t cap)
 {
   enum : uint32_t {
     k_dec_radix  = 10U, /**< Dec radix.      */
@@ -267,26 +289,33 @@ static void usb_audio_u32_to_ascii(uint32_t value, char* buf, uint32_t cap)
 /**
  * @brief Bring up clocks, time, GPIO. Panic-halts on any failure.
  *
+ * @details Initializes the CGC, reads CPUCLK0, starts the timebase, and claims
+ * LED1 in the dependency order required by the board support package.
+ *
  * @param[out] cpuclk0_hz Receives CPUCLK0 rate.
  *
  * @pre cpuclk0_hz non-null.
+ * @pre Reset initialization has completed with interrupts still controlled.
  * @post CGC + SysTick + LED1 GPIO are usable.
+ * @post ``*cpuclk0_hz`` contains the rate used to configure the timebase.
+ *
+ * @note Any driver error is fail-stop and leaves the CPU parked in WFI.
  *
  * @since 0.1.0
  */
-static void usb_audio_clocks_or_halt(uint32_t* cpuclk0_hz)
+RA8_INTERNAL static void internal_usb_audio_clocks_or_halt(uint32_t* cpuclk0_hz)
 {
   if (ra8_cgc_init() != k_ra8_ok) {
-    usb_audio_panic_halt();
+    internal_usb_audio_panic_halt();
   }
   if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, cpuclk0_hz) != k_ra8_ok) {
-    usb_audio_panic_halt();
+    internal_usb_audio_panic_halt();
   }
   if (ra8_time_init(*cpuclk0_hz) != k_ra8_ok) {
-    usb_audio_panic_halt();
+    internal_usb_audio_panic_halt();
   }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
-    usb_audio_panic_halt();
+    internal_usb_audio_panic_halt();
   }
 }
 
@@ -301,17 +330,22 @@ static void usb_audio_clocks_or_halt(uint32_t* cpuclk0_hz)
  * raise the D+ pull-up so the host begins enumeration.
  *
  * @pre Clocks + SCI8 already initialized.
+ * @pre USB device pins are available to the board support package.
  * @post USB-FS device-mode UAC1 endpoint is live.
+ * @post Format and volume shadows contain the demo's fixed audio settings.
+ *
+ * @note D+ attachment is deliberately the final operation so the host cannot
+ * enumerate a partially configured audio class.
  *
  * @since 0.1.0
  */
-static void usb_audio_usb_or_halt(void)
+RA8_INTERNAL static void internal_usb_audio_usb_or_halt(void)
 {
   if (ra8_board_usbhs_device_init() != k_ra8_ok) {
-    usb_audio_panic_halt();
+    internal_usb_audio_panic_halt();
   }
   if (ra8_usb_paud_init(k_ra8_usb_speed_fs) != k_ra8_ok) {
-    usb_audio_panic_halt();
+    internal_usb_audio_panic_halt();
   }
 
   const ra8_usb_paud_format_t fmt = {
@@ -320,13 +354,13 @@ static void usb_audio_usb_or_halt(void)
     .bytes_per_sample = (uint8_t)k_usb_audio_bytes_per_samp,
   };
   if (ra8_usb_paud_set_format(fmt) != k_ra8_ok) {
-    usb_audio_panic_halt();
+    internal_usb_audio_panic_halt();
   }
   if (ra8_usb_paud_set_volume(k_usb_audio_volume_0_db) != k_ra8_ok) {
-    usb_audio_panic_halt();
+    internal_usb_audio_panic_halt();
   }
   if (ra8_nsc_usb_attach(k_ra8_usb_speed_fs, true) != k_ra8_ok) {
-    usb_audio_panic_halt();
+    internal_usb_audio_panic_halt();
   }
 }
 
@@ -339,21 +373,31 @@ static void usb_audio_usb_or_halt(void)
  * class. Split into clocks, console, and USB stages so each helper
  * stays inside the NASA-rule-4 line budget.
  *
+ * @pre Reset_Handler has initialized data and BSS.
+ * @pre The application is still in single-threaded boot context.
+ * @post Clocks, LED1, console, and USB audio are initialized on success.
+ * @post Any setup error parks the CPU before the streaming loop starts.
+ *
+ * @note The local clock-rate value is passed only to the timebase setup path.
+ *
  * @since 0.1.0
  */
-static void usb_audio_setup_or_halt(void)
+RA8_INTERNAL static void internal_usb_audio_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  usb_audio_clocks_or_halt(&cpuclk0_hz);
+  internal_usb_audio_clocks_or_halt(&cpuclk0_hz);
   if (ra8_board_uart_console_init((uint32_t)k_usb_audio_baud) != k_ra8_ok) {
-    usb_audio_panic_halt();
+    internal_usb_audio_panic_halt();
   }
-  usb_audio_usb_or_halt();
+  internal_usb_audio_usb_or_halt();
 }
 
 /**
  * @brief Push one iso frame (1 ms = 48 stereo samples) on PIPE1.
+ *
+ * @details Submits the immutable interleaved stereo LUT as one bounded UAC1
+ * isochronous frame and returns the class driver's exact status.
  *
  * @return Error code from ``ra8_usb_paud_send_frame``.
  *
@@ -362,35 +406,46 @@ static void usb_audio_setup_or_halt(void)
  * @retval k_ra8_err_invalid_arg     LUT byte count out of range.
  *
  * @pre ``ra8_usb_paud_init`` succeeded.
+ * @pre The host-selected audio format matches the fixed LUT geometry.
  * @post 192 bytes of LUT have been queued onto PIPE1.
+ * @post On error the LUT and caller-owned USB state are not modified here.
+ *
+ * @note Retry policy belongs to the outer streaming loop.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra8_err_t usb_audio_send_one_frame(void)
+[[nodiscard]] RA8_INTERNAL static ra8_err_t internal_usb_audio_send_one_frame(void)
 {
-  return ra8_usb_paud_send_frame(k_usb_audio_sine_lut, (uint16_t)k_usb_audio_lut_bytes);
+  return ra8_usb_paud_send_frame(s_usb_audio_sine_lut, (uint16_t)k_usb_audio_lut_bytes);
 }
 
 /**
  * @brief Emit one log line announcing the running frame count.
  *
+ * @details Formats the counter in a bounded stack buffer, emits three string
+ * fragments, and toggles the activity LED once.
+ *
  * @param[in] frames Frame counter snapshot.
  *
  * @pre SCI8 is initialized.
+ * @pre LED1 was initialized by the clock/setup stage.
  * @post One ASCII line written to SCI8 and LED1 toggled once.
+ * @post The caller's frame counter is not modified.
+ *
+ * @note Console and LED errors are diagnostic-only and intentionally ignored.
  *
  * @since 0.1.0
  */
-static void usb_audio_log_frames(uint32_t frames)
+RA8_INTERNAL static void internal_usb_audio_log_frames(uint32_t frames)
 {
   enum : uint32_t {
     k_log_buf_bytes = 16U, /**< Decimal buffer for the frame counter. */
   };
   char buf[k_log_buf_bytes] = {};
-  usb_audio_u32_to_ascii(frames, buf, k_log_buf_bytes);
-  usb_audio_log("audio: ");
-  usb_audio_log(buf);
-  usb_audio_log(" frames sent\r\n");
+  internal_usb_audio_u32_to_ascii(frames, buf, k_log_buf_bytes);
+  internal_usb_audio_log("audio: ");
+  internal_usb_audio_log(buf);
+  internal_usb_audio_log(" frames sent\r\n");
   (void)ra8_board_led_toggle(k_ra8_board_led1);
 }
 
@@ -411,23 +466,23 @@ static void usb_audio_log_frames(uint32_t frames)
  */
 int32_t main(void)
 {
-  usb_audio_setup_or_halt();
+  internal_usb_audio_setup_or_halt();
   ra8_isr_globals_enable();
-  usb_audio_log("ra8d2: USB Audio device ready (UAC1 48 kHz / 16-bit / stereo)\r\n");
+  internal_usb_audio_log("ra8d2: USB Audio device ready (UAC1 48 kHz / 16-bit / stereo)\r\n");
 
   uint32_t frames = 0U;
   while (1) {
-    if (usb_audio_send_one_frame() != k_ra8_ok) {
+    if (internal_usb_audio_send_one_frame() != k_ra8_ok) {
       break;
     }
     frames++;
     if ((frames % k_usb_audio_log_period) == 0U) {
-      usb_audio_log_frames(frames);
+      internal_usb_audio_log_frames(frames);
     }
     ra8_delay_ms(k_usb_audio_idle_step_ms);
   }
 
-  usb_audio_panic_halt();
+  internal_usb_audio_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop
