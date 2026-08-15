@@ -55,7 +55,7 @@
  * @note Pure validation; touches no state and is safe from any context.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_check_backend_lifecycle(const ra8_wifi_backend_t* b)
+RA8_INTERNAL static ra8_err_t internal_check_backend_lifecycle(const ra8_wifi_backend_t* b)
 {
   RA8_CHECK_NULL_PTR(b, RA8_WIFI_TAG, "backend");
   RA8_CHECK_NULL_PTR(b->open, RA8_WIFI_TAG, "backend.open");
@@ -87,7 +87,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_check_backend_lifecycle(const ra8_wifi_ba
  * @note Pure validation; touches no state and is safe from any context.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_check_backend_session(const ra8_wifi_backend_t* b)
+RA8_INTERNAL static ra8_err_t internal_check_backend_session(const ra8_wifi_backend_t* b)
 {
   RA8_CHECK_NULL_PTR(b, RA8_WIFI_TAG, "backend");
   RA8_CHECK_NULL_PTR(b->join, RA8_WIFI_TAG, "backend.join");
@@ -118,7 +118,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_check_backend_session(const ra8_wifi_back
  * @note Pure validation; touches no state and is safe from any context.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_check_backend_query(const ra8_wifi_backend_t* b)
+RA8_INTERNAL static ra8_err_t internal_check_backend_query(const ra8_wifi_backend_t* b)
 {
   RA8_CHECK_NULL_PTR(b, RA8_WIFI_TAG, "backend");
   RA8_CHECK_NULL_PTR(b->service, RA8_WIFI_TAG, "backend.service");
@@ -150,17 +150,17 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_check_backend_query(const ra8_wifi_backen
  * @note Pure validation; touches no state and is safe from any context.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_check_backend(const ra8_wifi_backend_t* b)
+RA8_INTERNAL static ra8_err_t internal_check_backend(const ra8_wifi_backend_t* b)
 {
-  const ra8_err_t lifecycle = ra8_wifi_check_backend_lifecycle(b);
+  const ra8_err_t lifecycle = internal_check_backend_lifecycle(b);
   if (lifecycle != k_ra8_ok) {
     return lifecycle;
   }
-  const ra8_err_t session = ra8_wifi_check_backend_session(b);
+  const ra8_err_t session = internal_check_backend_session(b);
   if (session != k_ra8_ok) {
     return session;
   }
-  return ra8_wifi_check_backend_query(b);
+  return internal_check_backend_query(b);
 }
 
 ra8_err_t ra8_wifi_init(ra8_wifi_t* wifi, const ra8_wifi_cfg_t* cfg)
@@ -169,7 +169,7 @@ ra8_err_t ra8_wifi_init(ra8_wifi_t* wifi, const ra8_wifi_cfg_t* cfg)
   RA8_CHECK_NULL_PTR(cfg, RA8_WIFI_TAG, "cfg");
   RA8_CHECK_NULL_PTR(cfg->ip_bind, RA8_WIFI_TAG, "cfg.ip_bind");
 
-  const ra8_err_t table = ra8_wifi_check_backend(cfg->backend);
+  const ra8_err_t table = internal_check_backend(cfg->backend);
   if (table != k_ra8_ok) {
     return table;
   }
@@ -229,7 +229,7 @@ ra8_err_t ra8_wifi_deinit(ra8_wifi_t* wifi)
  * @note Not thread-safe; one handle belongs to one caller.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_wifi_ensure_radio_up(ra8_wifi_t* wifi)
+RA8_INTERNAL static ra8_err_t internal_ensure_radio_up(ra8_wifi_t* wifi)
 {
   RA8_CHECK_NULL_PTR(wifi, RA8_WIFI_TAG, "wifi");
   if (wifi->radio_on) {
@@ -279,7 +279,7 @@ RA8_INTERNAL static ra8_err_t ra8_wifi_ensure_radio_up(ra8_wifi_t* wifi)
  */
 RA8_INTERNAL
 RA8_BOUNDED_LOOP(k_ra8_wifi_join_polls)
-static ra8_err_t ra8_wifi_await_association(ra8_wifi_t* wifi)
+static ra8_err_t internal_await_association(ra8_wifi_t* wifi)
 {
   RA8_CHECK_NULL_PTR(wifi, RA8_WIFI_TAG, "wifi");
   ra8_err_t last_fault = k_ra8_ok;
@@ -316,7 +316,7 @@ ra8_err_t ra8_wifi_connect(ra8_wifi_t* wifi, const char* ssid, const char* psk)
     return k_ra8_err_not_initialized;
   }
 
-  const ra8_err_t powered = ra8_wifi_ensure_radio_up(wifi);
+  const ra8_err_t powered = internal_ensure_radio_up(wifi);
   if (powered != k_ra8_ok) {
     return powered;
   }
@@ -332,7 +332,7 @@ ra8_err_t ra8_wifi_connect(ra8_wifi_t* wifi, const char* ssid, const char* psk)
   if (asked != k_ra8_ok) {
     return asked;
   }
-  return ra8_wifi_await_association(wifi);
+  return internal_await_association(wifi);
 }
 
 ra8_err_t ra8_wifi_disconnect(ra8_wifi_t* wifi)
