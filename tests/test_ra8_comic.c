@@ -29,9 +29,11 @@
 
 #include "comic_fixture.h"
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_comic.h"
 #include "ra8_comic_internal.h"
 #include "ra8_err.h"
+#include "ra8_log.h"
 #include "unity_minimal.h"
 
 /** @brief Size of a ZIP end-of-central-directory record with no comment. */
@@ -175,6 +177,7 @@ static void tc_build(void)
   TEST_ASSERT((heap != nullptr) && (hsz <= (size_t)k_tc_arc_cap));
   memcpy(s_arc, heap, hsz);
   s_arc_size = hsz;
+  mz_free(heap);
   mz_zip_writer_end(&zip);
 }
 
@@ -276,6 +279,46 @@ static void test_comic_cbz_bounded_ram(void)
   TEST_ASSERT((uint64_t)k_tc_filler < (uint64_t)s_arc_size);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_close(&c));
   TEST_END("comic cbz: bounded-RAM open (whole archive never read)");
+}
+
+/** @brief Forward declaration for the standard fixture-open helper. */
+static ra8_err_t tc_open_std(ra8_comic_t* c, ra8_comic_page_t* pages, char* names, uint64_t size);
+
+/**
+ * @test test_two_live_cbz_isolate_miniz_arenas
+ * @brief Two CBZ readers stay live independently across close/reopen.
+ */
+static void test_two_live_cbz_isolate_miniz_arenas(void)
+{
+  TEST_BEGIN("comic cbz: two live arenas isolate + reopen");
+  tc_build();
+  ra8_comic_t      first                       = {};
+  ra8_comic_t      second                      = {};
+  ra8_comic_page_t first_pages[k_tc_page_cap]  = {};
+  ra8_comic_page_t second_pages[k_tc_page_cap] = {};
+  char             first_names[k_tc_name_cap]  = {};
+  char             second_names[k_tc_name_cap] = {};
+  TEST_ASSERT_EQ(k_ra8_ok, tc_open_std(&first, first_pages, first_names, s_arc_size));
+  TEST_ASSERT_EQ(k_ra8_ok, tc_open_std(&second, second_pages, second_names, s_arc_size));
+  TEST_ASSERT(first.miniz_arena.base == &first.miniz_workspace.bytes[0]);
+  TEST_ASSERT(second.miniz_arena.base == &second.miniz_workspace.bytes[0]);
+  TEST_ASSERT(first.miniz_arena.base != second.miniz_arena.base);
+
+  uint8_t page[k_cf_png_max];
+  size_t  got = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_page_read(&first, 0U, page, sizeof(page), &got));
+  TEST_ASSERT(got > 0U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_close(&first));
+  TEST_ASSERT(first.miniz_arena.base == nullptr);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_page_read(&second, 1U, page, sizeof(page), &got));
+  TEST_ASSERT(got > 0U);
+
+  TEST_ASSERT_EQ(k_ra8_ok, tc_open_std(&first, first_pages, first_names, s_arc_size));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_close(&first));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_page_read(&second, 2U, page, sizeof(page), &got));
+  TEST_ASSERT(got > 0U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_close(&second));
+  TEST_END("comic cbz: two live arenas isolate + reopen");
 }
 
 /**
@@ -526,14 +569,24 @@ static void test_comic_page_add_caps(void)
   TEST_END("comic: page index / name arena overflow guards");
 }
 
+/** @brief Consume expected guard-path logs without touching host ITM MMIO. */
+RA8_INTERNAL
+static void internal_log_sink(void* ctx, uint8_t byte)
+{
+  (void)ctx;
+  (void)byte;
+}
+
 /**
  * @brief Test entry point -- runs the CBZ comic suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
 int32_t main(void)
 {
+  ra8_log_set_byte_sink(internal_log_sink, nullptr);
   test_comic_cbz_sorted_extract_decode();
   test_comic_cbz_bounded_ram();
+  test_two_live_cbz_isolate_miniz_arenas();
   test_comic_open_arg_guards();
   test_comic_page_guards();
   test_comic_page_name_filter();

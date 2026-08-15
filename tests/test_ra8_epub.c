@@ -259,6 +259,7 @@ static void build_synth_epub(void)
   memcpy(s_epub_buf, heap_buf, heap_size);
   s_epub_size = heap_size;
 
+  mz_free(heap_buf);
   mz_zip_writer_end(&zip);
 }
 /* --------------------------------------------------------------------- */
@@ -576,12 +577,50 @@ static void test_null_arg_guards(void)
 static void test_open_invalid_zip(void)
 {
   TEST_BEGIN("ra8_epub open with garbage payload -> validation_failed");
-  static const uint8_t       k_garbage[] = {0x00U, 0x01U, 0x02U, 0x03U, 0x04U, 0x05U, 0x06U, 0x07U};
-  ra8_epub_book_t            book        = {};
-  const ra8_epub_mem_media_t media       = {.data = k_garbage, .size = sizeof(k_garbage)};
+  static const uint8_t k_garbage[] = {0x00U, 0x01U, 0x02U, 0x03U, 0x04U, 0x05U, 0x06U, 0x07U};
+  ra8_epub_book_t      book;
+  (void)memset(&book, 0xA5, sizeof(book));
+  const ra8_epub_mem_media_t media = {.data = k_garbage, .size = sizeof(k_garbage)};
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_epub_open(&media, nullptr, &book));
   TEST_ASSERT_EQ(0, book.in_use);
+  const uint8_t* const raw = (const uint8_t*)&book;
+  for (size_t i = 0U; i < sizeof(book); ++i) {
+    TEST_ASSERT_EQ(0U, raw[i]);
+  }
   TEST_END("ra8_epub open with garbage payload -> validation_failed");
+}
+
+/**
+ * @test test_two_live_books_isolate_miniz_arenas
+ * @brief Simultaneous books keep independent arenas; close/reopen is reusable.
+ */
+static void test_two_live_books_isolate_miniz_arenas(void)
+{
+  TEST_BEGIN("ra8_epub: two live books isolate arenas + reopen");
+  ra8_epub_book_t            first  = {};
+  ra8_epub_book_t            second = {};
+  const ra8_epub_mem_media_t media  = {.data = s_epub_buf, .size = s_epub_size};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&media, "first.epub", &first));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&media, "second.epub", &second));
+  TEST_ASSERT(first.miniz_arena.base == &first.miniz_workspace.bytes[0]);
+  TEST_ASSERT(second.miniz_arena.base == &second.miniz_workspace.bytes[0]);
+  TEST_ASSERT(first.miniz_arena.base != second.miniz_arena.base);
+
+  uint8_t first_body[k_test_chapter_buf_bytes];
+  size_t  first_len = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epub_load_chapter(&first, 0U, first_body, sizeof(first_body), &first_len));
+  TEST_ASSERT(first_len > 0U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&first));
+  TEST_ASSERT(first.miniz_arena.base == nullptr);
+
+  ra8_epub_metadata_t metadata = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_metadata(&second, &metadata));
+  TEST_ASSERT_EQ(0, strcmp("Test Book", metadata.title));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&media, "first-reused.epub", &first));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&first));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&second));
+  TEST_END("ra8_epub: two live books isolate arenas + reopen");
 }
 
 /** @brief Sizing for the external-stylesheet consumer test (#140). */
@@ -690,5 +729,6 @@ int main(void)
   test_render_glyph_paths();
   test_null_arg_guards();
   test_open_invalid_zip();
+  test_two_live_books_isolate_miniz_arenas();
   return 0;
 }

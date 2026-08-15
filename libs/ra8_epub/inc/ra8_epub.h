@@ -36,16 +36,14 @@
  *
  *   - Chapter list:   `k_ra8_epub_max_chapters` * `k_ra8_epub_max_path_len`
  *   - Metadata:       3 * `k_ra8_epub_meta_len`
- *   - Backing zip:    one `mz_zip_archive` embedded in the book record
- *                     (no heap; size validated at compile time).
+ *   - Backing zip:    one `mz_zip_archive` embedded in the book record.
+ *   - ZIP allocator:  one caller-owned, per-book bounded miniz workspace.
  *   - Font slot:      one `(uint8_t* font_data, size_t font_len)` pair.
  *
  * NASA Rule 3 (zero malloc/free in firmware) is honored: the book
- * record holds the entire `mz_zip_archive` inline as a byte buffer
- * sized for the type, the OPF scratch is a single `static` slot, and
- * the chapter table is a fixed-size 2D array. The only residual
- * allocation under this driver is internal to `tinyxml2`'s parser
- * (vendored), which is documented as a deviation.
+ * record holds the entire `mz_zip_archive` and its allocator workspace inline,
+ * the OPF scratch is a single `static` slot, and the chapter table is a
+ * fixed-size 2D array. The same bounded allocator is used on host and target.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -64,6 +62,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_epub_miniz_alloc.h"
 #include "ra8_err.h"
 
 /* ===========================================================================
@@ -289,6 +288,10 @@ typedef struct {
   alignas(max_align_t) uint8_t
     zip_archive_storage[k_ra8_epub_zip_archive_bytes]; /**< Zip archive storage.              */
   uint8_t zip_archive_active;                          /**< 1 = mz_zip_reader_init succeeded. */
+  /** @brief Per-book allocator descriptor bound through miniz's opaque pointer. */
+  ra8_epub_miniz_arena_t miniz_arena;
+  /** @brief Per-book bounded allocator workspace; never shared with another book. */
+  ra8_epub_miniz_workspace_t miniz_workspace;
 
   /* --- Streamed backing (caller-seekable, no resident blob) (#151) ----- */
   /* For a book opened via `ra8_epub_open_streamed()`, miniz's `m_pIO_opaque`

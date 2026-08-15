@@ -15,10 +15,9 @@
  * ::ra8_comic_cbz_extract inflates one page's encoded image (STORE or DEFLATE)
  * on demand.
  *
- * On firmware, miniz's central-directory and decompressor allocations route
- * through the zero-heap `ra8_epub_miniz_alloc` static pool (NASA Rule 3), exactly
- * as `ra8_epub` does; the host unit-test build (`RA8_OFF_TARGET`) leaves miniz
- * on its default allocator.
+ * Miniz's central-directory and decompressor allocations always route through
+ * the comic object's caller-owned bounded arena. Host and target follow the
+ * same no-heap path, and simultaneously-open comics share no allocator state.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -29,15 +28,12 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_comic.h"
 #include "ra8_comic_internal.h"
 #include "ra8_decomp_limits.h"
-
-#ifndef RA8_OFF_TARGET
-#include "ra8_attributes.h"
 #include "ra8_epub_miniz_alloc.h"
-#endif
 
 /** @brief Log tag for CBZ-backend diagnostics. */
 static const char* const s_tag_cbz = "ra8_comic_cbz";
@@ -117,29 +113,34 @@ static size_t internal_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, 
 }
 
 /**
- * @brief Route miniz allocations through the static pool on firmware.
- * @details Firmware (`_sbrk` traps, NASA Rule 3) needs miniz's central-directory
- *          and inflate allocations to come from the `ra8_epub_miniz_alloc` pool;
- *          the host build (`RA8_OFF_TARGET`) leaves the default allocator.
+ * @brief Route miniz allocations through this comic's private bounded arena.
+ * @details Both host and target use the same caller-owned workspace. This keeps
+ *          allocator behaviour test-equivalent and permits independent live
+ *          CBZ and EPUB objects.
  * @param[in,out] zip Inline archive to configure (must be zeroed first).
  * @pre @p zip addresses the comic's zeroed inline storage.
  * @pre Called before `mz_zip_reader_init`.
- * @post On firmware the archive uses the static miniz pool.
+ * @return Arena initialisation status.
+ * @retval k_ra8_ok Allocator callbacks and opaque context were installed.
+ * @post On success the archive uses @p c's private miniz workspace.
  * @post No I/O is performed.
  * @note Not thread-safe; single-threaded init context.
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static void internal_set_alloc(mz_zip_archive* zip)
+static ra8_err_t internal_set_alloc(ra8_comic_t* c, mz_zip_archive* zip)
 {
-#ifndef RA8_OFF_TARGET
+  const ra8_err_t err = ra8_epub_miniz_arena_init(&c->miniz_arena,
+                                                  &c->miniz_workspace.bytes[0],
+                                                  sizeof(c->miniz_workspace.bytes));
+  if (err != k_ra8_ok) {
+    return err; /* GCOVR_EXCL_LINE -- embedded workspace is exact and aligned */
+  }
   zip->m_pAlloc        = ra8_epub_miniz_alloc;
   zip->m_pFree         = ra8_epub_miniz_free;
   zip->m_pRealloc      = ra8_epub_miniz_realloc;
-  zip->m_pAlloc_opaque = nullptr;
-#else
-  (void)zip;
-#endif
+  zip->m_pAlloc_opaque = &c->miniz_arena;
+  return k_ra8_ok;
 }
 
 /**
@@ -203,10 +204,14 @@ ra8_err_t ra8_comic_cbz_open(ra8_comic_t* c)
   RA8_CHECK_NULL_PTR(c, s_tag_cbz, "cbz open: null c");
   mz_zip_archive* zip = internal_zip(c);
   (void)memset(zip, 0, sizeof(*zip));
-  internal_set_alloc(zip);
+  const ra8_err_t aerr = internal_set_alloc(c, zip);
+  if (aerr != k_ra8_ok) {
+    return aerr; /* GCOVR_EXCL_LINE -- embedded workspace is exact and aligned */
+  }
   zip->m_pRead      = internal_stream_read;
   zip->m_pIO_opaque = &c->stream;
   if (mz_zip_reader_init(zip, (mz_uint64)c->size, 0U) == MZ_FALSE) {
+    ra8_epub_miniz_arena_deinit(&c->miniz_arena);
     return k_ra8_err_validation_failed;
   }
   c->zip_active     = 1U;
@@ -260,5 +265,6 @@ ra8_err_t ra8_comic_cbz_close(ra8_comic_t* c)
     (void)mz_zip_reader_end(internal_zip(c));
     c->zip_active = 0U;
   }
+  ra8_epub_miniz_arena_deinit(&c->miniz_arena);
   return k_ra8_ok;
 }

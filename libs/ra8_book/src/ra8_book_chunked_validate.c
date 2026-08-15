@@ -2,6 +2,12 @@
  * @file ra8_book_chunked_validate.c
  * @brief Strict streaming-validation adapter for an open RBKC chunk reader.
  *
+ * @details
+ * Presents an opened chunk-compressed RBKC source as exact flat reads for the
+ * strict RABOOK1 validator. It rechecks reader geometry, rejects overlapping
+ * caller workspaces, inflates one chunk at a time, and retains no storage
+ * beyond the caller-owned reader, chunk, and validation scratch buffers.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since Version 0.1.0
@@ -19,6 +25,11 @@ typedef struct {
   uint32_t            loaded_len; /**< Exact cached inflated byte span. */
   bool                loaded;     /**< Whether the cache contains data. */
 } chunk_validate_t;
+
+/** @brief Fixed span count used by strict alias validation. */
+typedef enum : uint8_t {
+  k_chunk_validate_span_count = 5U, /**< Reader, chunk, scratch, staging, and table. */
+} chunk_validate_constant_t;
 
 /**
  * @brief Decide whether two non-empty caller-memory spans overlap.
@@ -126,9 +137,13 @@ static bool internal_output_is_aliased(const ra8_book_chunked_t* rd,
                                        const ra8_book_header_t*  out_header)
 {
   const uint64_t table_len = (uint64_t)rd->table_cap_entries * sizeof(rd->table[0]);
-  const void*    bases[5]  = {rd, chunk, scratch, rd->staging, rd->table};
-  const uint64_t lens[5]   = {sizeof(*rd), chunk_cap, scratch_cap, rd->staging_cap, table_len};
-  for (uint8_t i = 0U; i < 5U; ++i) {
+  const void*    bases[k_chunk_validate_span_count] = {rd, chunk, scratch, rd->staging, rd->table};
+  const uint64_t lens[k_chunk_validate_span_count]  = {sizeof(*rd),
+                                                       chunk_cap,
+                                                       scratch_cap,
+                                                       rd->staging_cap,
+                                                       table_len};
+  for (uint8_t i = 0U; i < k_chunk_validate_span_count; ++i) {
     if ((bases[i] != nullptr) && (lens[i] != 0U)) {
       bool invalid = false;
       if (internal_spans_overlap(out_header, sizeof(*out_header), bases[i], lens[i], &invalid) ||
@@ -165,10 +180,14 @@ static ra8_err_t internal_validate_workspaces(const ra8_book_chunked_t* rd,
                                               uint32_t                  scratch_cap)
 {
   const uint64_t table_len = ((uint64_t)rd->chunk_count + 1U) * sizeof(rd->table[0]);
-  const void*    bases[5]  = {rd, chunk, scratch, rd->staging, rd->table};
-  const uint64_t lens[5]   = {sizeof(*rd), chunk_len, scratch_cap, rd->staging_cap, table_len};
-  for (uint8_t i = 0U; i < 5U; ++i) {
-    for (uint8_t j = (uint8_t)(i + 1U); j < 5U; ++j) {
+  const void*    bases[k_chunk_validate_span_count] = {rd, chunk, scratch, rd->staging, rd->table};
+  const uint64_t lens[k_chunk_validate_span_count]  = {sizeof(*rd),
+                                                       chunk_len,
+                                                       scratch_cap,
+                                                       rd->staging_cap,
+                                                       table_len};
+  for (uint8_t i = 0U; i < k_chunk_validate_span_count; ++i) {
+    for (uint8_t j = (uint8_t)(i + 1U); j < k_chunk_validate_span_count; ++j) {
       bool invalid = false;
       if (internal_spans_overlap(bases[i], lens[i], bases[j], lens[j], &invalid) || invalid) {
         return k_ra8_err_invalid_arg;
