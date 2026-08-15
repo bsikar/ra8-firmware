@@ -31,7 +31,10 @@ file(GLOB _ra8_fs_fat_tu_sources CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/ra8_
 # explicitly -- the same append tests/cmake/tests_storage.cmake makes.
 list(APPEND _ra8_fs_fat_tu_sources ${_repo}/libs/ra8_fs/src/ra8_fs_utf.c)
 
-add_executable(mkfontimg ${CMAKE_CURRENT_SOURCE_DIR}/mkfontimg.c ${_ra8_fs_fat_tu_sources})
+add_executable(
+  mkfontimg ${CMAKE_CURRENT_SOURCE_DIR}/mkfontimg.c ${CMAKE_CURRENT_SOURCE_DIR}/mkfontimg_host.c
+            ${_ra8_fs_fat_tu_sources}
+)
 
 target_include_directories(mkfontimg PRIVATE ${_repo}/libs/ra8_fs/inc ${_repo}/libs/ra8_core/inc)
 
@@ -39,3 +42,11 @@ target_include_directories(mkfontimg PRIVATE ${_repo}/libs/ra8_fs/inc ${_repo}/l
 # Rule 10) here exactly as they do in the ARM and host-test builds; only
 # vendored SOUP is compiled quietly.
 target_compile_options(mkfontimg PRIVATE -Wall -Wextra -Werror)
+
+include(CTest)
+if(BUILD_TESTING)
+  add_test(NAME mkfontimg_integration COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration.sh
+                                              $<TARGET_FILE:mkfontimg> ${CMAKE_COMMAND}
+  )
+  set_tests_properties(mkfontimg_integration PROPERTIES TIMEOUT 45)
+endif()
