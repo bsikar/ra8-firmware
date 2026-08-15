@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
@@ -126,7 +127,9 @@ typedef struct {
  */
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the mem read filesystem operation. @details Implements the bounded mem read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -138,7 +141,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the mem write filesystem operation. @details Implements the bounded mem write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -150,7 +155,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the mem capacity filesystem operation. @details Implements the bounded mem capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -160,9 +167,9 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 
 /** @brief Normal backend pointing at s_disk. */
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
@@ -193,7 +200,9 @@ typedef struct {
  */
 static inject_disk_t s_inject = {};
 
-static ra8_err_t inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the inj read filesystem operation. @details Implements the bounded inj read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->reads_left == 0U) {
@@ -211,7 +220,9 @@ static ra8_err_t inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the inj write filesystem operation. @details Implements the bounded inj write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->writes_fail != 0U) {
@@ -226,7 +237,9 @@ static ra8_err_t inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the inj capacity filesystem operation. @details Implements the bounded inj capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   *block_count     = d->block_count;
@@ -239,7 +252,8 @@ static ra8_err_t inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
  * ===========================================================================
  */
 
-static void put16(uint8_t* p, uint32_t off, uint16_t v)
+/** @brief Perform the put16 filesystem operation. @details Implements the bounded put16 fixture step using caller-owned state. @param[in,out] p Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]      = (uint8_t)(v & k_byte_mask);
   p[off + 1U] = (uint8_t)((v >> 8U) & k_byte_mask);
@@ -261,9 +275,9 @@ typedef enum : uint32_t {
  * @pre name83 is non-NULL and points to at least 11 valid bytes.
  * @post Return value binds the LFN chain to its 8.3 entry.
  * @note Pure function; thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded sfn checksum fixture step using caller-owned state. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static uint8_t sfn_checksum(const uint8_t* name83)
+RA8_INTERNAL static uint8_t internal_sfn_checksum(const uint8_t* name83)
 {
   uint8_t sum = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_name83_len; i++) {
@@ -274,7 +288,7 @@ static uint8_t sfn_checksum(const uint8_t* name83)
 }
 
 /** @brief Packed 8.3 alias for "mybook.epub": base MYBOOK~1, ext EPU. */
-static const uint8_t k_alias83[11] = {'M', 'Y', 'B', 'O', 'O', 'K', '~', '1', 'E', 'P', 'U'};
+static const uint8_t s_alias83[11] = {'M', 'Y', 'B', 'O', 'O', 'K', '~', '1', 'E', 'P', 'U'};
 
 /**
  * @enum lfn_cov_entry_t
@@ -312,7 +326,7 @@ typedef enum : uint32_t {
  *          14,16,18,20,22,24; LDIR_Name3 at 28,30. Thirteen chars total.
  * @since 0.1.0
  */
-static const uint8_t k_lfn_char_off[13] =
+static const uint8_t s_lfn_char_off[13] =
   {1U, 3U, 5U, 7U, 9U, 14U, 16U, 18U, 20U, 22U, 24U, 28U, 30U};
 
 /* ===========================================================================
@@ -327,9 +341,9 @@ static const uint8_t k_lfn_char_off[13] =
  * @pre s_disk.bytes is nullptr or will be freed.
  * @post s_disk holds a calloc-zeroed 4 MiB image with a valid BPB.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void build_fat16_vol(void)
+RA8_INTERNAL static void internal_build_fat16_vol(void)
 {
   free(s_disk.bytes);
   s_disk.byte_count  = (uint32_t)k_lcov_blocks * (uint32_t)k_lcov_blk_sz;
@@ -337,13 +351,13 @@ static void build_fat16_vol(void)
   s_disk.block_count = (uint32_t)k_lcov_blocks;
   TEST_ASSERT(s_disk.bytes != nullptr);
   uint8_t* bpb = s_disk.bytes;
-  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_lcov_blk_sz);
+  internal_put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_lcov_blk_sz);
   bpb[k_bpb_off_sec_per_clus] = 1U;
-  put16(bpb, k_bpb_off_rsvd_sec_cnt, (uint16_t)k_lcov_fat1_lba);
+  internal_put16(bpb, k_bpb_off_rsvd_sec_cnt, (uint16_t)k_lcov_fat1_lba);
   bpb[16] = (uint8_t)k_lcov_num_fats;
-  put16(bpb, k_bpb_off_root_ent_cnt, 16U);
-  put16(bpb, k_bpb_off_tot_sec_16, (uint16_t)k_lcov_blocks);
-  put16(bpb, k_bpb_off_fat_sz_16, (uint16_t)k_lcov_fat_sz);
+  internal_put16(bpb, k_bpb_off_root_ent_cnt, 16U);
+  internal_put16(bpb, k_bpb_off_tot_sec_16, (uint16_t)k_lcov_blocks);
+  internal_put16(bpb, k_bpb_off_fat_sz_16, (uint16_t)k_lcov_fat_sz);
   bpb[k_bpb_off_signature_lo] = k_bpb_sig_lo;
   bpb[k_bpb_off_signature_hi] = k_bpb_sig_hi;
 }
@@ -355,24 +369,24 @@ static void build_fat16_vol(void)
  * @pre slot is non-NULL and points to 32 writable bytes.
  * @post slot contains a valid LFN directory entry for "mybook.epub".
  * @note Pure helper; not thread-safe with concurrent slot access.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded stamp lfn entry fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void stamp_lfn_entry(uint8_t* slot, uint8_t csum)
+RA8_INTERNAL static void internal_stamp_lfn_entry(uint8_t* slot, uint8_t csum)
 {
   slot[0]                  = (uint8_t)k_lfn_ord_last;
   slot[k_dir_off_attr]     = (uint8_t)k_lfn_attr_magic;
   slot[k_lfn_off_type]     = 0x00U;
   slot[k_lfn_off_checksum] = csum;
-  put16(slot, k_dir_off_fst_clus_lo, 0U);
+  internal_put16(slot, k_dir_off_fst_clus_lo, 0U);
 
   static const char k_lname[] = "mybook.epub"; /* 11 chars */
   for (uint32_t i = 0U; i < k_lfn_chars_per_ent; i++) {
     if (i < (uint32_t)(sizeof(k_lname) - 1U)) {
-      put16(slot, (uint32_t)k_lfn_char_off[i], (uint16_t)(uint8_t)k_lname[i]);
+      internal_put16(slot, (uint32_t)s_lfn_char_off[i], (uint16_t)(uint8_t)k_lname[i]);
     } else if (i == (uint32_t)(sizeof(k_lname) - 1U)) {
-      put16(slot, (uint32_t)k_lfn_char_off[i], (uint16_t)k_utf16_term);
+      internal_put16(slot, (uint32_t)s_lfn_char_off[i], (uint16_t)k_utf16_term);
     } else {
-      put16(slot, (uint32_t)k_lfn_char_off[i], (uint16_t)k_utf16_pad);
+      internal_put16(slot, (uint32_t)s_lfn_char_off[i], (uint16_t)k_utf16_pad);
     }
   }
 }
@@ -384,18 +398,18 @@ static void stamp_lfn_entry(uint8_t* slot, uint8_t csum)
  * @pre None.
  * @post s_disk contains a valid FAT16 image; LFN entry is findable.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void build_vol_lfn_good(void)
+RA8_INTERNAL static void internal_build_vol_lfn_good(void)
 {
-  build_fat16_vol();
+  internal_build_fat16_vol();
   uint8_t* root = &s_disk.bytes[(size_t)(uint32_t)k_lcov_root_lba * (uint32_t)k_lcov_blk_sz];
-  stamp_lfn_entry(&root[0], sfn_checksum(k_alias83));
+  internal_stamp_lfn_entry(&root[0], internal_sfn_checksum(s_alias83));
   uint8_t* sfn = &root[32U];
-  memcpy(sfn, k_alias83, (size_t)k_sfn_name_bytes);
+  memcpy(sfn, s_alias83, (size_t)k_sfn_name_bytes);
   sfn[k_dir_off_attr] = (uint8_t)k_attr_archive;
-  put16(sfn, k_dir_off_fst_clus_lo, 0U);
-  put16(sfn, k_dir_off_fst_clus_hi, 0U);
+  internal_put16(sfn, k_dir_off_fst_clus_lo, 0U);
+  internal_put16(sfn, k_dir_off_fst_clus_hi, 0U);
 }
 
 /**
@@ -405,19 +419,19 @@ static void build_vol_lfn_good(void)
  * @pre None.
  * @post s_disk contains a FAT16 image; checksum mismatch prevents LFN match.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void build_vol_lfn_bad_csum(void)
+RA8_INTERNAL static void internal_build_vol_lfn_bad_csum(void)
 {
-  build_fat16_vol();
+  internal_build_fat16_vol();
   uint8_t* root     = &s_disk.bytes[(size_t)(uint32_t)k_lcov_root_lba * (uint32_t)k_lcov_blk_sz];
-  uint8_t  bad_csum = (uint8_t)(sfn_checksum(k_alias83) ^ (uint8_t)k_csum_scramble);
-  stamp_lfn_entry(&root[0], bad_csum);
+  uint8_t  bad_csum = (uint8_t)(internal_sfn_checksum(s_alias83) ^ (uint8_t)k_csum_scramble);
+  internal_stamp_lfn_entry(&root[0], bad_csum);
   uint8_t* sfn = &root[32U];
-  memcpy(sfn, k_alias83, (size_t)k_sfn_name_bytes);
+  memcpy(sfn, s_alias83, (size_t)k_sfn_name_bytes);
   sfn[k_dir_off_attr] = (uint8_t)k_attr_archive;
-  put16(sfn, k_dir_off_fst_clus_lo, 0U);
-  put16(sfn, k_dir_off_fst_clus_hi, 0U);
+  internal_put16(sfn, k_dir_off_fst_clus_lo, 0U);
+  internal_put16(sfn, k_dir_off_fst_clus_hi, 0U);
 }
 
 /**
@@ -428,11 +442,11 @@ static void build_vol_lfn_bad_csum(void)
  * @pre None.
  * @post s_disk contains a FAT16 image; root sector has 16 deleted entries.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void build_vol_all_deleted(void)
+RA8_INTERNAL static void internal_build_vol_all_deleted(void)
 {
-  build_fat16_vol();
+  internal_build_fat16_vol();
   uint8_t* root = &s_disk.bytes[(size_t)(uint32_t)k_lcov_root_lba * (uint32_t)k_lcov_blk_sz];
   for (uint32_t i = 0U; i < (uint32_t)k_del_entries; i++) {
     root[(size_t)i * (uint32_t)k_del_stride] = (uint8_t)k_del_marker;
@@ -444,9 +458,9 @@ static void build_vol_all_deleted(void)
  * @pre None.
  * @post s_disk.bytes is nullptr.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded free vol fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void free_vol(void)
+RA8_INTERNAL static void internal_free_vol(void)
 {
   free(s_disk.bytes);
   s_disk.bytes = nullptr;
@@ -462,18 +476,19 @@ static void free_vol(void)
  * @pre h is non-NULL and mounted; s_disk.bytes is non-NULL.
  * @post h->backend uses inj_read / inj_write callbacks.
  * @note Caller must restore h->backend = saved after use.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void swap_to_inject(ra8_fs_mount_t* h, uint32_t reads_left, uint8_t writes_fail)
+RA8_INTERNAL static void
+internal_swap_to_inject(ra8_fs_mount_t* h, uint32_t reads_left, uint8_t writes_fail)
 {
   s_inject.bytes          = s_disk.bytes;
   s_inject.block_count    = s_disk.block_count;
   s_inject.byte_count     = s_disk.byte_count;
   s_inject.reads_left     = reads_left;
   s_inject.writes_fail    = writes_fail;
-  h->backend.read_block   = inj_read;
-  h->backend.write_block  = inj_write;
-  h->backend.get_capacity = inj_capacity;
+  h->backend.read_block   = internal_inj_read;
+  h->backend.write_block  = internal_inj_write;
+  h->backend.get_capacity = internal_inj_capacity;
   h->backend.ctx          = &s_inject;
 }
 
@@ -485,9 +500,10 @@ static void swap_to_inject(ra8_fs_mount_t* h, uint32_t reads_left, uint8_t write
  * @pre h is non-NULL and mounted; dir_path is a valid directory.
  * @post count new directory entries exist under dir_path.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded create files in fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void create_files_in(ra8_fs_mount_t* h, const char* dir_path, uint32_t count)
+RA8_INTERNAL static void
+internal_create_files_in(ra8_fs_mount_t* h, const char* dir_path, uint32_t count)
 {
   for (uint32_t i = 0U; i < count; i++) {
     char name[32] = {};
@@ -520,12 +536,12 @@ static void create_files_in(ra8_fs_mount_t* h, const char* dir_path, uint32_t co
  * Decision at line 146: `s->checksum != priv_sfn_checksum(name83)` (single
  * condition). This test provides the "true" vector: corrupt checksum mismatches
  * the computed one, executing the return path at line 147. The sibling test
- * test_ra8_fs_lfn.c provides the "false" vector (correct checksum -> line 149).
+ * test_ra8_fs_lfn.c provides the "false" vector (correct checksum -> line 149). @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_lfn_cov_checksum_mismatch(void)
+RA8_INTERNAL static void internal_test_lfn_cov_checksum_mismatch(void)
 {
   TEST_BEGIN("ra8_fs LFN cov: checksum mismatch -> line 147");
-  build_vol_lfn_bad_csum();
+  internal_build_vol_lfn_bad_csum();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -536,7 +552,7 @@ static void test_lfn_cov_checksum_mismatch(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "mybook.epub", k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("ra8_fs LFN cov: checksum mismatch -> line 147");
 }
 
@@ -553,12 +569,12 @@ static void test_lfn_cov_checksum_mismatch(void)
  * - This test: needle[0]='/' -> true -> line 276 (needle++) executed.
  * - Normal path via ra8_fs_open: priv_resolve_parent strips the path separator
  *   before passing the leaf to priv_dir_find_long; needle[0]!='/' -> false.
- * Together, both vectors of the single-condition decision are covered.
+ * Together, both vectors of the single-condition decision are covered. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_lfn_cov_leading_slash(void)
+RA8_INTERNAL static void internal_test_lfn_cov_leading_slash(void)
 {
   TEST_BEGIN("ra8_fs LFN cov: leading-slash strip -> lines 275-276");
-  build_vol_lfn_good();
+  internal_build_vol_lfn_good();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -571,7 +587,7 @@ static void test_lfn_cov_leading_slash(void)
   TEST_ASSERT_EQ(k_ra8_ok, priv_dir_find_long(h, &root_loc, "/mybook.epub", &lba, &off, ent));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("ra8_fs LFN cov: leading-slash strip -> lines 275-276");
 }
 
@@ -588,12 +604,12 @@ static void test_lfn_cov_leading_slash(void)
  *
  * @par MC/DC:
  * Not applicable -- each individual condition on this path is a simple
- * single-branch check already covered individually by this and sibling tests.
+ * single-branch check already covered individually by this and sibling tests. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_lfn_cov_scan_continue_eod(void)
+RA8_INTERNAL static void internal_test_lfn_cov_scan_continue_eod(void)
 {
   TEST_BEGIN("ra8_fs LFN cov: scan_continue + eod -> lines 262 + 301");
-  build_vol_all_deleted();
+  internal_build_vol_all_deleted();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -604,7 +620,7 @@ static void test_lfn_cov_scan_continue_eod(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "mybook.epub", k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("ra8_fs LFN cov: scan_continue + eod -> lines 262 + 301");
 }
 
@@ -619,23 +635,23 @@ static void test_lfn_cov_scan_continue_eod(void)
  *          priv_dir_find_long's first priv_read_sector call fails -> line 286.
  *
  * @par MC/DC:
- * Not applicable -- line 286 is a single-condition early-return on I/O error.
+ * Not applicable -- line 286 is a single-condition early-return on I/O error. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_lfn_cov_read_fail_long(void)
+RA8_INTERNAL static void internal_test_lfn_cov_read_fail_long(void)
 {
   TEST_BEGIN("ra8_fs LFN cov: priv_read_sector fail in find_long -> line 286");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 0U, 0U); /* reads_left=0: first read fails */
+  internal_swap_to_inject(h, 0U, 0U); /* reads_left=0: first read fails */
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_open(h, "mybook.epub", k_ra8_fs_mode_read, &f));
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("ra8_fs LFN cov: priv_read_sector fail in find_long -> line 286");
 }
 
@@ -654,17 +670,17 @@ static void test_lfn_cov_read_fail_long(void)
  *          Lines 296-298 are reached.
  *
  * @par MC/DC:
- * Not applicable -- lines 296-298 are a single-condition I/O error return.
+ * Not applicable -- lines 296-298 are a single-condition I/O error return. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_lfn_cov_walk_fail_long(void)
+RA8_INTERNAL static void internal_test_lfn_cov_walk_fail_long(void)
 {
   TEST_BEGIN("ra8_fs LFN cov: walk_next fail in find_long -> lines 262+296-298");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   /* 14 files + dot + dotdot = 16 entries; fills the first (only) cluster. */
-  create_files_in(h, "/SUB", k_lcov_files_per_sub);
+  internal_create_files_in(h, "/SUB", k_lcov_files_per_sub);
   /* Remount so the FAT sector cache is cold (#607): creating those files
    * walked the FAT, and a cached sector is served without touching the
    * backend, so read 3 below would succeed and the failure path would never
@@ -675,13 +691,13 @@ static void test_lfn_cov_walk_fail_long(void)
 
   ra8_fs_backend_t saved = h->backend;
   /* Read 1 = root sector (find SUB), Read 2 = subdir sector, Read 3 = FAT. */
-  swap_to_inject(h, 2U, 0U);
+  internal_swap_to_inject(h, 2U, 0U);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_open(h, "/SUB/mybook.epub", k_ra8_fs_mode_read, &f));
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("ra8_fs LFN cov: walk_next fail in find_long -> lines 262+296-298");
 }
 
@@ -695,24 +711,24 @@ static void test_lfn_cov_walk_fail_long(void)
  *          the first-read guard returns.
  *
  * @par MC/DC:
- * Not applicable -- the first-read guard is a single-condition early-return.
+ * Not applicable -- the first-read guard is a single-condition early-return. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_lfn_cov_read_fail_free(void)
+RA8_INTERNAL static void internal_test_lfn_cov_read_fail_free(void)
 {
   TEST_BEGIN("ra8_fs LFN cov: priv_read_sector fail in find_free_run -> first read");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   dir_loc_t        root_loc = {.is_root = 1U, .cluster = 0U};
   dir_slot_t       slot     = {};
   ra8_fs_backend_t saved    = h->backend;
-  swap_to_inject(h, 0U, 0U); /* reads_left=0 */
+  internal_swap_to_inject(h, 0U, 0U); /* reads_left=0 */
   TEST_ASSERT_EQ(k_ra8_err_hw_error, priv_dir_find_free_run(h, &root_loc, 1U, &slot));
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("ra8_fs LFN cov: priv_read_sector fail in find_free_run -> first read");
 }
 
@@ -729,17 +745,17 @@ static void test_lfn_cov_read_fail_free(void)
  *          The walk-error return is taken.
  *
  * @par MC/DC:
- * Not applicable -- the walk-error return is a single-condition I/O error return.
+ * Not applicable -- the walk-error return is a single-condition I/O error return. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_lfn_cov_walk_fail_free(void)
+RA8_INTERNAL static void internal_test_lfn_cov_walk_fail_free(void)
 {
   TEST_BEGIN("ra8_fs LFN cov: walk_next fail in find_free_run -> walk error");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   /* dot + dotdot + 14 files = 16 entries; fills cluster 2 entirely. */
-  create_files_in(h, "/SUB", k_lcov_files_per_sub);
+  internal_create_files_in(h, "/SUB", k_lcov_files_per_sub);
   /* Remount so the FAT sector cache is cold (#607): a cached sector never
    * reaches the backend, so read 2 below would succeed and the walk would not
    * fail. */
@@ -752,12 +768,12 @@ static void test_lfn_cov_walk_fail_free(void)
   dir_slot_t       slot       = {};
   ra8_fs_backend_t saved      = h->backend;
   /* Read 1 = subdir sector (16 non-free), Read 2 = FAT (fails). */
-  swap_to_inject(h, 1U, 0U);
+  internal_swap_to_inject(h, 1U, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, priv_dir_find_free_run(h, &subdir_loc, 1U, &slot));
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("ra8_fs LFN cov: walk_next fail in find_free_run -> walk error");
 }
 
@@ -773,23 +789,23 @@ static void test_lfn_cov_walk_fail_free(void)
  *          fixed_remaining=0 -> eod=1. The while-loop exits and no_mem is returned.
  *
  * @par MC/DC:
- * Not applicable -- the no_mem return is a simple sentinel when the loop exits.
+ * Not applicable -- the no_mem return is a simple sentinel when the loop exits. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_lfn_cov_no_mem_free(void)
+RA8_INTERNAL static void internal_test_lfn_cov_no_mem_free(void)
 {
   TEST_BEGIN("ra8_fs LFN cov: root dir full -> no_mem (directory exhausted)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   /* Fill all 16 root entries (F00.TXT through F15.TXT). */
-  create_files_in(h, "/", 16U);
+  internal_create_files_in(h, "/", 16U);
 
   dir_loc_t  root_loc = {.is_root = 1U, .cluster = 0U};
   dir_slot_t slot     = {};
   TEST_ASSERT_EQ(k_ra8_err_no_mem, priv_dir_find_free_run(h, &root_loc, 1U, &slot));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("ra8_fs LFN cov: root dir full -> no_mem (directory exhausted)");
 }
 
@@ -808,22 +824,22 @@ static void test_lfn_cov_no_mem_free(void)
  *                        (cur - k_cluster_first_data) < m->count_of_clusters`
  * This test exercises the "enter loop body" vector (both conditions true).
  * The protocol_error test exercises the "exit via cur<2" sub-vector for the
- * outer `while`, and the guard-triggers path for the inner `if`.
+ * outer `while`, and the guard-triggers path for the inner `if`. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_lfn_cov_fat_get_fail(void)
+RA8_INTERNAL static void internal_test_lfn_cov_fat_get_fail(void)
 {
   TEST_BEGIN("ra8_fs LFN cov: priv_fat_get fail in free_chain -> line 346");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 0U, 0U); /* reads_left=0: FAT read fails immediately */
+  internal_swap_to_inject(h, 0U, 0U); /* reads_left=0: FAT read fails immediately */
   TEST_ASSERT_EQ(k_ra8_err_hw_error, priv_free_chain(h, 2U));
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("ra8_fs LFN cov: priv_fat_get fail in free_chain -> line 346");
 }
 
@@ -838,23 +854,23 @@ static void test_lfn_cov_fat_get_fail(void)
  *          priv_fat_set(h,2,0) tries to write -> fails -> line 350.
  *
  * @par MC/DC:
- * Not applicable -- line 350 is a single-condition early-return on write error.
+ * Not applicable -- line 350 is a single-condition early-return on write error. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_lfn_cov_fat_set_fail(void)
+RA8_INTERNAL static void internal_test_lfn_cov_fat_set_fail(void)
 {
   TEST_BEGIN("ra8_fs LFN cov: priv_fat_set fail in free_chain -> line 350");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   ra8_fs_backend_t saved = h->backend;
   /* Unlimited reads, all writes fail. */
-  swap_to_inject(h, (uint32_t)k_lcov_reads_inf, 1U);
+  internal_swap_to_inject(h, (uint32_t)k_lcov_reads_inf, 1U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, priv_free_chain(h, 2U));
   h->backend = saved;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("ra8_fs LFN cov: priv_fat_set fail in free_chain -> line 350");
 }
 
@@ -875,12 +891,12 @@ static void test_lfn_cov_fat_set_fail(void)
  * Decision at line 358: `guard > m->count_of_clusters` (single condition).
  * - This test: guard=5 > count_of_clusters=4 -> true -> line 359 executed.
  * - All other tests: guard never exceeds count_of_clusters -> false path.
- * Both vectors of this single-condition decision are covered across the suite.
+ * Both vectors of this single-condition decision are covered across the suite. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_lfn_cov_protocol_error(void)
+RA8_INTERNAL static void internal_test_lfn_cov_protocol_error(void)
 {
   TEST_BEGIN("ra8_fs LFN cov: cyclic FAT guard -> line 359 (protocol_error)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -903,7 +919,7 @@ static void test_lfn_cov_protocol_error(void)
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, priv_free_chain(h, (uint32_t)k_lcov_cy_a));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("ra8_fs LFN cov: cyclic FAT guard -> line 359 (protocol_error)");
 }
 
@@ -914,16 +930,16 @@ static void test_lfn_cov_protocol_error(void)
 
 int32_t main(void)
 {
-  test_lfn_cov_checksum_mismatch();
-  test_lfn_cov_leading_slash();
-  test_lfn_cov_scan_continue_eod();
-  test_lfn_cov_read_fail_long();
-  test_lfn_cov_walk_fail_long();
-  test_lfn_cov_read_fail_free();
-  test_lfn_cov_walk_fail_free();
-  test_lfn_cov_no_mem_free();
-  test_lfn_cov_fat_get_fail();
-  test_lfn_cov_fat_set_fail();
-  test_lfn_cov_protocol_error();
+  internal_test_lfn_cov_checksum_mismatch();
+  internal_test_lfn_cov_leading_slash();
+  internal_test_lfn_cov_scan_continue_eod();
+  internal_test_lfn_cov_read_fail_long();
+  internal_test_lfn_cov_walk_fail_long();
+  internal_test_lfn_cov_read_fail_free();
+  internal_test_lfn_cov_walk_fail_free();
+  internal_test_lfn_cov_no_mem_free();
+  internal_test_lfn_cov_fat_get_fail();
+  internal_test_lfn_cov_fat_set_fail();
+  internal_test_lfn_cov_protocol_error();
   return 0;
 }

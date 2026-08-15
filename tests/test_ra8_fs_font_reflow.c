@@ -26,6 +26,8 @@
 #include "ra8_fs.h"
 #include "ra8_gfx.h"
 #include "ra8_reflow.h"
+#include "support/ra8_test_file.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 /**
@@ -64,7 +66,24 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/**
+ * @brief Mem read.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in] lba Argument for the bounded test operation.
+ * @param[in] count Argument for the bounded test operation.
+ * @param[in,out] buf Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -76,7 +95,24 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/**
+ * @brief Mem write.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in] lba Argument for the bounded test operation.
+ * @param[in] count Argument for the bounded test operation.
+ * @param[in] buf Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -88,7 +124,23 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/**
+ * @brief Mem capacity.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] ctx Argument for the bounded test operation.
+ * @param[in,out] block_count Argument for the bounded test operation.
+ * @param[in,out] block_size Argument for the bounded test operation.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -97,20 +149,41 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
-static void put16(uint8_t* p, uint32_t off, uint16_t v)
+/**
+ * @brief Put16.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @param[in,out] p Argument for the bounded test operation.
+ * @param[in] off Argument for the bounded test operation.
+ * @param[in] v Argument for the bounded test operation.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
 }
 
-/** @brief Format the in-memory block device as an empty FAT16 volume. */
-static void build_fat16_volume(void)
+/** @brief Format the in-memory block device as an empty FAT16 volume.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_build_fat16_volume(void)
 {
   free(s_disk.bytes);
   s_disk.byte_count  = (uint32_t)k_disk_blocks_fat16 * (uint32_t)k_disk_block_size;
@@ -120,13 +193,13 @@ static void build_fat16_volume(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size); /* bytes/sector     */
-  bpb[k_bpb_off_sec_per_clus] = 1U;                                 /* sectors/cluster  */
-  put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);                           /* reserved sectors */
-  bpb[16] = 2U;                                                     /* number of FATs   */
-  put16(bpb, k_bpb_off_root_ent_cnt, 16U);                          /* root entries     */
-  put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks_fat16);   /* total sectors    */
-  put16(bpb, (uint32_t)k_bpb_off_secperfat, 32U);                   /* sectors/FAT      */
+  internal_put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size); /* bytes/sector     */
+  bpb[k_bpb_off_sec_per_clus] = 1U;                                          /* sectors/cluster  */
+  internal_put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);                           /* reserved sectors */
+  bpb[16] = 2U;                                                              /* number of FATs   */
+  internal_put16(bpb, k_bpb_off_root_ent_cnt, 16U);                          /* root entries     */
+  internal_put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks_fat16);   /* total sectors    */
+  internal_put16(bpb, (uint32_t)k_bpb_off_secperfat, 32U);                   /* sectors/FAT      */
   bpb[k_bpb_sig_off_a] = (uint8_t)k_bpb_sig_a;
   bpb[k_bpb_sig_off_b] = (uint8_t)k_bpb_sig_b;
 }
@@ -146,9 +219,20 @@ enum : uint32_t {
 static uint8_t*  s_src_font;  /**< Font as read from disk.        */
 static uint8_t*  s_card_font; /**< Font as read back from the FS. */
 static uint32_t  s_font_len;
-static uint32_t* s_fb; /**< ARGB8888 framebuffer. */
+static uint32_t* s_fb; /**< ARGB8888 framebuffer.
+ * @brief Load src font.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @return Function-specific result consumed by the calling test.
+ * @retval 0 Zero or false result; nonzero values describe the alternate result.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
 
-static bool load_src_font(void)
+RA8_INTERNAL static bool internal_load_src_font(void)
 {
   char path[k_path_cap];
   (void)snprintf(path, sizeof(path), "%s", __FILE__);
@@ -164,16 +248,12 @@ static bool load_src_font(void)
   }
   const size_t base = strlen(path);
   (void)snprintf(&path[base], sizeof(path) - base, "/libs/ra8_fonts/Literata-Regular.ttf");
-  FILE* fp = fopen(path, "rb");
-  if (fp == nullptr) {
+  const ra8_test_file_result_t result =
+    internal_test_file_read(path, s_src_font, k_font_cap, s_card_font, k_font_cap);
+  if ((result.status != k_ra8_test_file_ok) || (result.transferred < 16U)) {
     return false;
   }
-  size_t n = fread(s_src_font, 1U, k_font_cap, fp);
-  (void)fclose(fp);
-  if (n < 16U) {
-    return false;
-  }
-  s_font_len = (uint32_t)n;
+  s_font_len = (uint32_t)result.transferred;
   return true;
 }
 
@@ -183,11 +263,15 @@ static bool load_src_font(void)
  * @post s_card_font holds the font read back through the real FAT path.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
- */
-static void fat_reflow_write_read_font(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+*/
+RA8_INTERNAL static void internal_fat_reflow_write_read_font(void)
 {
   /* 1. Make a fresh FAT16 "card" and mount it. */
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* mnt = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mnt));
 
@@ -218,8 +302,12 @@ static void fat_reflow_write_read_font(void)
  * @post At least one non-background pixel was inked into s_fb.
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
- */
-static void fat_reflow_render_and_count(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post Failures are returned or reported through the test assertion surface.
+*/
+RA8_INTERNAL static void internal_fat_reflow_render_and_count(void)
 {
   /* 4. Render a paragraph with the card-loaded font (heap-free glyphs). */
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -251,16 +339,22 @@ static void fat_reflow_render_and_count(void)
       ++ink;
     }
   }
-  (void)fprintf(stderr,
-                "[info] font %u bytes via FAT; %u inked pixels over %u pages\n",
-                s_font_len,
-                ink,
-                pages);
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  TEST_ASSERT(internal_test_output_fd_init(&output, &state, STDERR_FILENO));
+  (void)internal_test_output_text(&output, "[info] font ");
+  (void)internal_test_output_u64(&output, s_font_len);
+  (void)internal_test_output_text(&output, " bytes via FAT; ");
+  (void)internal_test_output_u64(&output, ink);
+  (void)internal_test_output_text(&output, " inked pixels over ");
+  (void)internal_test_output_u64(&output, pages);
+  (void)internal_test_output_text(&output, " pages\n");
+  TEST_ASSERT_EQ(k_ra8_test_output_ok, output.status);
   TEST_ASSERT(ink > 0U);
 }
 
 /**
- * @test test_font_on_fat_renders_via_reflow
+ * @test internal_test_font_on_fat_renders_via_reflow
  *
  * @par MC/DC:
  * Integration test -- no compound decision of its own. It drives the
@@ -268,8 +362,17 @@ static void fat_reflow_render_and_count(void)
  * write font -> read font -> layout -> render. The single boolean checks
  * here (font present, size match, ink present) are each exercised true on
  * the success path and would fail the assert otherwise.
- */
-static void test_font_on_fat_renders_via_reflow(void)
+
+ * @brief Test font on fat renders via reflow.
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+ * @since 0.1.0
+*/
+RA8_INTERNAL static void internal_test_font_on_fat_renders_via_reflow(void)
 {
   TEST_BEGIN("font on FAT volume -> ra8_fs -> ra8_reflow render");
 
@@ -280,14 +383,16 @@ static void test_font_on_fat_renders_via_reflow(void)
   TEST_ASSERT_NOT_NULL(s_card_font);
   TEST_ASSERT_NOT_NULL(s_fb);
 
-  if (!load_src_font()) {
-    (void)fprintf(stderr, "[SKIP] Literata font not found; skipping\n");
+  if (!internal_load_src_font()) {
+    TEST_ASSERT_EQ(
+      k_ra8_test_output_ok,
+      internal_test_output_fd_text(STDERR_FILENO, "[SKIP] Literata font not found; skipping\n"));
     TEST_END("font on FAT volume -> ra8_fs -> ra8_reflow render");
     return;
   }
 
-  fat_reflow_write_read_font();
-  fat_reflow_render_and_count();
+  internal_fat_reflow_write_read_font();
+  internal_fat_reflow_render_and_count();
 
   free(s_disk.bytes);
   s_disk.bytes = nullptr;
@@ -299,7 +404,8 @@ static void test_font_on_fat_renders_via_reflow(void)
 
 int32_t main(void)
 {
-  test_font_on_fat_renders_via_reflow();
-  (void)fprintf(stderr, "[OK ] test_ra8_fs_font_reflow.c\n");
+  internal_test_font_on_fat_renders_via_reflow();
+  TEST_ASSERT_EQ(k_ra8_test_output_ok,
+                 internal_test_output_fd_text(STDERR_FILENO, "[OK ] test_ra8_fs_font_reflow.c\n"));
   return 0;
 }

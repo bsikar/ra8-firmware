@@ -25,9 +25,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_exfat_stream_fault_test_util.h"
@@ -84,9 +84,9 @@ typedef enum : uint32_t {
  * @post The offset lies inside the root cluster.
  *
  * @note Pure with respect to the fixture state.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded root at fixture step using caller-owned state.
  */
-static uint32_t root_at(uint32_t idx)
+RA8_INTERNAL static uint32_t internal_root_at(uint32_t idx)
 {
   return (s_flt.dir_lba * (uint32_t)k_flt_block_size) + (idx * (uint32_t)k_flt_entry);
 }
@@ -105,9 +105,9 @@ static uint32_t root_at(uint32_t idx)
  * @post The offset lies inside the FAT.
  *
  * @note Pure with respect to the fixture state.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded fat at fixture step using caller-owned state.
  */
-static uint32_t fat_at(uint32_t clus)
+RA8_INTERNAL static uint32_t internal_fat_at(uint32_t clus)
 {
   return (s_flt.fat_lba * (uint32_t)k_flt_block_size) + (clus * 4U);
 }
@@ -126,9 +126,9 @@ static uint32_t fat_at(uint32_t clus)
  * @post No other byte changes.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded poke32 fixture step using caller-owned state.
  */
-static void poke32(uint32_t off, uint32_t val)
+RA8_INTERNAL static void internal_poke32(uint32_t off, uint32_t val)
 {
   uint8_t* p = &s_flt.bytes[off];
   p[0]       = (uint8_t)(val & (uint32_t)k_xsf_byte_mask);
@@ -151,9 +151,9 @@ static void poke32(uint32_t off, uint32_t val)
  * @post The result depends only on the image bytes.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded peek32 fixture step using caller-owned state.
  */
-static uint32_t peek32(uint32_t off)
+RA8_INTERNAL static uint32_t internal_peek32(uint32_t off)
 {
   const uint8_t* p = &s_flt.bytes[off];
   return (uint32_t)p[0] | ((uint32_t)p[1] << (uint32_t)k_xsf_shift_byte) |
@@ -182,11 +182,11 @@ static uint32_t peek32(uint32_t off)
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static uint32_t make_adjacent_pair(ra8_fs_mount_t* h)
+RA8_INTERNAL static uint32_t internal_make_adjacent_pair(ra8_fs_mount_t* h)
 {
-  flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
-  flt_make_file(h, "B.BIN", (uint32_t)k_flt_small);
-  return peek32(root_at((uint32_t)k_xsf_root_strm) + (uint32_t)k_xsf_off_clus);
+  internal_flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
+  internal_flt_make_file(h, "B.BIN", (uint32_t)k_flt_small);
+  return internal_peek32(internal_root_at((uint32_t)k_xsf_root_strm) + (uint32_t)k_xsf_off_clus);
 }
 
 /**
@@ -207,24 +207,24 @@ static uint32_t make_adjacent_pair(ra8_fs_mount_t* h)
  * (1 condition). This case is the TRUE vector; every successful write is the
  * FALSE one.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_grow_bitmap_lookup_read_fails(void)
+RA8_INTERNAL static void internal_test_grow_bitmap_lookup_read_fails(void)
 {
   TEST_BEGIN("exfat stream cov: bitmap lookup read failure");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
+  internal_flt_mount(&h);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "X.BIN", k_ra8_fs_mode_write, &f));
   const uint8_t one = 'x';
-  flt_arm_read(k_flt_region_dir);
+  internal_flt_arm_read(k_flt_region_dir);
   TEST_ASSERT(ra8_fs_write(f, &one, 1U) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: bitmap lookup read failure");
 }
 
@@ -243,26 +243,26 @@ static void test_grow_bitmap_lookup_read_fails(void)
  * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_pick_cluster`
  * (1 condition). TRUE here; FALSE on every growth that reads its bit.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_grow_bitmap_probe_read_fails(void)
+RA8_INTERNAL static void internal_test_grow_bitmap_probe_read_fails(void)
 {
   TEST_BEGIN("exfat stream cov: contiguity probe read failure");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
-  flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
+  internal_flt_mount(&h);
+  internal_flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  static uint8_t s_buf[k_flt_payload];
-  memset(s_buf, (int)k_xsf_fill_a, sizeof s_buf);
-  flt_arm_read(k_flt_region_bitmap);
-  TEST_ASSERT(ra8_fs_write(f, s_buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
+  static uint8_t buf[k_flt_payload];
+  memset(buf, (int)k_xsf_fill_a, sizeof buf);
+  internal_flt_arm_read(k_flt_region_bitmap);
+  TEST_ASSERT(ra8_fs_write(f, buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: contiguity probe read failure");
 }
 
@@ -281,26 +281,26 @@ static void test_grow_bitmap_probe_read_fails(void)
  * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_grow_one`
  * (1 condition). TRUE here; FALSE on every successful growth.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_grow_bitmap_mark_write_fails(void)
+RA8_INTERNAL static void internal_test_grow_bitmap_mark_write_fails(void)
 {
   TEST_BEGIN("exfat stream cov: bitmap mark write failure");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
-  flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
+  internal_flt_mount(&h);
+  internal_flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  static uint8_t s_buf[k_flt_payload];
-  memset(s_buf, (int)k_xsf_fill_a, sizeof s_buf);
-  flt_arm_write(k_flt_region_bitmap);
-  TEST_ASSERT(ra8_fs_write(f, s_buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
+  static uint8_t buf[k_flt_payload];
+  memset(buf, (int)k_xsf_fill_a, sizeof buf);
+  internal_flt_arm_write(k_flt_region_bitmap);
+  TEST_ASSERT(ra8_fs_write(f, buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: bitmap mark write failure");
 }
 
@@ -320,26 +320,26 @@ static void test_grow_bitmap_mark_write_fails(void)
  * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_link_cluster`
  * (1 condition). TRUE here; FALSE in the fragmentation case that succeeds.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_chain_materialize_fat_write_fails(void)
+RA8_INTERNAL static void internal_test_chain_materialize_fat_write_fails(void)
 {
   TEST_BEGIN("exfat stream cov: FAT write failure during the transition");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
-  (void)make_adjacent_pair(h);
+  internal_flt_mount(&h);
+  (void)internal_make_adjacent_pair(h);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  static uint8_t s_buf[k_flt_payload];
-  memset(s_buf, (int)k_xsf_fill_b, sizeof s_buf);
-  flt_arm_write(k_flt_region_fat);
-  TEST_ASSERT(ra8_fs_write(f, s_buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
+  static uint8_t buf[k_flt_payload];
+  memset(buf, (int)k_xsf_fill_b, sizeof buf);
+  internal_flt_arm_write(k_flt_region_fat);
+  TEST_ASSERT(ra8_fs_write(f, buf, (uint32_t)k_xsf_cross_len) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: FAT write failure during the transition");
 }
 
@@ -359,32 +359,32 @@ static void test_chain_materialize_fat_write_fails(void)
  * each). This case supplies both TRUE vectors; every successful write supplies
  * the FALSE ones.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_data_sector_io_fails(void)
+RA8_INTERNAL static void internal_test_data_sector_io_fails(void)
 {
   TEST_BEGIN("exfat stream cov: data sector read and write failures");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
-  flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
+  internal_flt_mount(&h);
+  internal_flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
 
-  static uint8_t s_buf[k_flt_payload];
-  memset(s_buf, (int)k_xsf_fill_c, sizeof s_buf);
+  static uint8_t buf[k_flt_payload];
+  memset(buf, (int)k_xsf_fill_c, sizeof buf);
   ra8_fs_file_t* f = nullptr;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  flt_arm_read(k_flt_region_data);
-  TEST_ASSERT(ra8_fs_write(f, s_buf, (uint32_t)k_flt_small) != k_ra8_ok);
+  internal_flt_arm_read(k_flt_region_data);
+  TEST_ASSERT(ra8_fs_write(f, buf, (uint32_t)k_flt_small) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  flt_arm_write(k_flt_region_data);
-  TEST_ASSERT(ra8_fs_write(f, s_buf, (uint32_t)k_flt_small) != k_ra8_ok);
+  internal_flt_arm_write(k_flt_region_data);
+  TEST_ASSERT(ra8_fs_write(f, buf, (uint32_t)k_flt_small) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: data sector read and write failures");
 }
 
@@ -406,31 +406,31 @@ static void test_data_sector_io_fails(void)
  * (1 condition each). Both TRUE vectors here; the FALSE ones come from every
  * successful write.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_flush_set_io_fails(void)
+RA8_INTERNAL static void internal_test_flush_set_io_fails(void)
 {
   TEST_BEGIN("exfat stream cov: entry-set flush read and write failures");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
-  flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
+  internal_flt_mount(&h);
+  internal_flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
 
   const uint8_t  one = 'q';
   ra8_fs_file_t* f   = nullptr;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  flt_arm_read(k_flt_region_dir);
+  internal_flt_arm_read(k_flt_region_dir);
   TEST_ASSERT(ra8_fs_write(f, &one, 1U) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  flt_arm_write(k_flt_region_dir);
+  internal_flt_arm_write(k_flt_region_dir);
   TEST_ASSERT(ra8_fs_write(f, &one, 1U) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: entry-set flush read and write failures");
 }
 
@@ -451,18 +451,18 @@ static void test_flush_set_io_fails(void)
  * (1 condition). TRUE here (a backend error); FALSE when the name is genuinely
  * absent and the create runs.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_open_lookup_read_fails(void)
+RA8_INTERNAL static void internal_test_open_lookup_read_fails(void)
 {
   TEST_BEGIN("exfat stream cov: open lookup read failure");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
-  flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
+  internal_flt_mount(&h);
+  internal_flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
 
   ra8_fs_file_t* f = nullptr;
-  flt_arm_read(k_flt_region_dir);
+  internal_flt_arm_read(k_flt_region_dir);
   TEST_ASSERT(ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_write, &f) != k_ra8_ok);
 
   /* The slot must not have been consumed by the refused open. */
@@ -470,7 +470,7 @@ static void test_open_lookup_read_fails(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: open lookup read failure");
 }
 
@@ -489,18 +489,18 @@ static void test_open_lookup_read_fails(void)
  * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@priv_exfat_open_found`
  * (1 condition). TRUE here; FALSE on every successful truncate or append.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_truncate_free_write_fails(void)
+RA8_INTERNAL static void internal_test_truncate_free_write_fails(void)
 {
   TEST_BEGIN("exfat stream cov: truncate bitmap write failure");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
-  flt_make_file(h, "A.BIN", (uint32_t)k_xsf_cross_len);
+  internal_flt_mount(&h);
+  internal_flt_make_file(h, "A.BIN", (uint32_t)k_xsf_cross_len);
 
   ra8_fs_file_t* f = nullptr;
-  flt_arm_write(k_flt_region_bitmap);
+  internal_flt_arm_write(k_flt_region_bitmap);
   TEST_ASSERT(ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_write, &f) != k_ra8_ok);
 
   /* Four more opens must still succeed: the refused one released its slot. */
@@ -513,7 +513,7 @@ static void test_truncate_free_write_fails(void)
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: truncate bitmap write failure");
 }
 
@@ -532,15 +532,15 @@ static void test_truncate_free_write_fails(void)
  * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@priv_exfat_open_created`
  * (1 condition). TRUE here; FALSE on every create that has a slot.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_create_file_table_full(void)
+RA8_INTERNAL static void internal_test_create_file_table_full(void)
 {
   TEST_BEGIN("exfat stream cov: create with a full file table");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
-  flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
+  internal_flt_mount(&h);
+  internal_flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
 
   ra8_fs_file_t* held[k_xsf_slots] = {};
   for (uint32_t i = 0U; i < (uint32_t)k_xsf_slots; i++) {
@@ -556,7 +556,7 @@ static void test_create_file_table_full(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_stat(h, "NEW.BIN", &st));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: create with a full file table");
 }
 
@@ -580,17 +580,17 @@ static void test_create_file_table_full(void)
  * because the VOLUME is full) is driven by
  * tests/test_ra8_fs_exfat_dir_growth.c@test_volume_full_reports_no_mem.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_create_no_directory_space(void)
+RA8_INTERNAL static void internal_test_create_no_directory_space(void)
 {
   TEST_BEGIN("exfat stream cov: a full root grows to hold a create");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
+  internal_flt_mount(&h);
 
   for (uint32_t i = (uint32_t)k_xsf_root_first; i < (uint32_t)k_xsf_root_end; i++) {
-    s_flt.bytes[root_at(i)] = (uint8_t)k_xsf_type_name;
+    s_flt.bytes[internal_root_at(i)] = (uint8_t)k_xsf_type_name;
   }
 
   ra8_fs_file_t* f = nullptr;
@@ -598,7 +598,7 @@ static void test_create_no_directory_space(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: a full root grows to hold a create");
 }
 
@@ -617,34 +617,34 @@ static void test_create_no_directory_space(void)
  * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@priv_exfat_survey_alloc`
  * (1 condition). TRUE here; FALSE on every well-formed chain.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_survey_rejects_broken_chain(void)
+RA8_INTERNAL static void internal_test_survey_rejects_broken_chain(void)
 {
   TEST_BEGIN("exfat stream cov: survey refuses a chain below cluster 2");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
-  const uint32_t first = make_adjacent_pair(h);
+  internal_flt_mount(&h);
+  const uint32_t first = internal_make_adjacent_pair(h);
 
   /* Force A.BIN to fragment, so it becomes FAT-chained and the survey walks. */
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  static uint8_t s_buf[k_flt_payload];
-  memset(s_buf, (int)k_xsf_fill_d, sizeof s_buf);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_buf, (uint32_t)k_xsf_cross_len));
+  static uint8_t buf[k_flt_payload];
+  memset(buf, (int)k_xsf_fill_d, sizeof buf);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, buf, (uint32_t)k_xsf_cross_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   /* Poke the FAT under an UNMOUNTED volume: the driver reads the FAT through a
    * one-sector write-through cache, so a poke made behind a live mount would
    * simply not be seen. Remounting drops the cache with the mount. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  poke32(fat_at(first), (uint32_t)k_xsf_bad_cluster);
-  flt_mount(&h);
+  internal_poke32(internal_fat_at(first), (uint32_t)k_xsf_bad_cluster);
+  internal_flt_mount(&h);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: survey refuses a chain below cluster 2");
 }
 
@@ -666,19 +666,19 @@ static void test_survey_rejects_broken_chain(void)
  * length. The first is varied by an ordinary empty file, and both false by
  * every append to a real one.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_survey_zero_length_with_cluster(void)
+RA8_INTERNAL static void internal_test_survey_zero_length_with_cluster(void)
 {
   TEST_BEGIN("exfat stream cov: zero length with a cluster still recorded");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
-  flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
+  internal_flt_mount(&h);
+  internal_flt_make_file(h, "A.BIN", (uint32_t)k_flt_small);
 
-  const uint32_t strm = root_at((uint32_t)k_xsf_root_strm);
-  poke32(strm + (uint32_t)k_xsf_off_dlen, 0U);
-  TEST_ASSERT(peek32(strm + (uint32_t)k_xsf_off_clus) >= 2U);
+  const uint32_t strm = internal_root_at((uint32_t)k_xsf_root_strm);
+  internal_poke32(strm + (uint32_t)k_xsf_off_dlen, 0U);
+  TEST_ASSERT(internal_peek32(strm + (uint32_t)k_xsf_off_clus) >= 2U);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
@@ -690,10 +690,10 @@ static void test_survey_zero_length_with_cluster(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   /* A fresh cluster was taken, and the recorded one is now that cluster. */
-  TEST_ASSERT_EQ(1U, peek32(strm + (uint32_t)k_xsf_off_dlen));
+  TEST_ASSERT_EQ(1U, internal_peek32(strm + (uint32_t)k_xsf_off_dlen));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: zero length with a cluster still recorded");
 }
 
@@ -720,7 +720,7 @@ static void test_survey_zero_length_with_cluster(void)
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static void drop_fat_cache(ra8_fs_mount_t* other, uint32_t deep)
+RA8_INTERNAL static void internal_drop_fat_cache(ra8_fs_mount_t* other, uint32_t deep)
 {
   ra8_fs_file_t* ef  = nullptr;
   uint8_t        one = 0U;
@@ -750,21 +750,21 @@ static void drop_fat_cache(ra8_fs_mount_t* other, uint32_t deep)
  * length. ::test_survey_zero_length_with_cluster varies the second, and every
  * append to a real file drives both false -- N+1 = 3 vectors for N = 2.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_survey_length_without_cluster(void)
+RA8_INTERNAL static void internal_test_survey_length_without_cluster(void)
 {
   TEST_BEGIN("exfat stream cov: a length with no cluster is surveyed empty");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
+  internal_flt_mount(&h);
 
   const uint8_t nothing = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "E.BIN", &nothing, 0U));
 
-  const uint32_t strm = root_at((uint32_t)k_xsf_root_strm);
-  TEST_ASSERT_EQ(0U, peek32(strm + (uint32_t)k_xsf_off_clus));
-  poke32(strm + (uint32_t)k_xsf_off_dlen, (uint32_t)k_flt_small);
+  const uint32_t strm = internal_root_at((uint32_t)k_xsf_root_strm);
+  TEST_ASSERT_EQ(0U, internal_peek32(strm + (uint32_t)k_xsf_off_clus));
+  internal_poke32(strm + (uint32_t)k_xsf_off_dlen, (uint32_t)k_flt_small);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "E.BIN", k_ra8_fs_mode_append, &f));
@@ -777,11 +777,11 @@ static void test_survey_length_without_cluster(void)
 
   /* The write allocated from scratch and the recorded length now covers the
    * zero-filled gap the append had to write plus the byte itself. */
-  TEST_ASSERT_EQ(k_flt_small + 1U, peek32(strm + (uint32_t)k_xsf_off_dlen));
-  TEST_ASSERT(peek32(strm + (uint32_t)k_xsf_off_clus) >= 2U);
+  TEST_ASSERT_EQ(k_flt_small + 1U, internal_peek32(strm + (uint32_t)k_xsf_off_dlen));
+  TEST_ASSERT(internal_peek32(strm + (uint32_t)k_xsf_off_clus) >= 2U);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: a length with no cluster is surveyed empty");
 }
 
@@ -808,21 +808,21 @@ static void test_survey_length_without_cluster(void)
  * `if (e != k_ra8_ok)` after the FAT read, and `if (priv_is_eoc(m, next) != 0)`.
  * Both TRUE here; both FALSE on every walk that reaches its index.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_cluster_at_chain_ends_early(void)
+RA8_INTERNAL static void internal_test_cluster_at_chain_ends_early(void)
 {
   TEST_BEGIN("exfat stream cov: the chain ends before the file does");
-  flt_build_volume();
+  internal_flt_build_volume();
   ra8_fs_mount_t* h = nullptr;
-  flt_mount(&h);
-  const uint32_t first = make_adjacent_pair(h);
+  internal_flt_mount(&h);
+  const uint32_t first = internal_make_adjacent_pair(h);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  static uint8_t s_buf[k_flt_payload];
-  memset(s_buf, (int)k_xsf_fill_e, sizeof s_buf);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_buf, (uint32_t)k_xsf_cross_len));
+  static uint8_t buf[k_flt_payload];
+  memset(buf, (int)k_xsf_fill_e, sizeof buf);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, buf, (uint32_t)k_xsf_cross_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   /* Both arms overwrite a byte in the SECOND cluster, so the walk really has a
@@ -833,27 +833,27 @@ static void test_cluster_at_chain_ends_early(void)
   const uint8_t   one   = 'e';
   const uint32_t  deep  = (uint32_t)k_xsf_cross_len;
   ra8_fs_mount_t* evict = nullptr;
-  flt_mount(&evict);
+  internal_flt_mount(&evict);
 
   /* Arm 1: the FAT sector cannot be read at all. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  drop_fat_cache(evict, deep);
+  internal_drop_fat_cache(evict, deep);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, deep));
-  flt_arm_read(k_flt_region_fat);
+  internal_flt_arm_read(k_flt_region_fat);
   TEST_ASSERT(ra8_fs_write(f, &one, 1U) != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   /* Arm 2: the chain terminates before the offset the entry set claims. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_append, &f));
-  drop_fat_cache(evict, deep);
-  poke32(fat_at(first), (uint32_t)k_xsf_fat_eoc);
+  internal_drop_fat_cache(evict, deep);
+  internal_poke32(internal_fat_at(first), (uint32_t)k_xsf_fat_eoc);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, deep));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_write(f, &one, 1U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(evict));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  flt_free_volume();
+  internal_flt_free_volume();
   TEST_END("exfat stream cov: the chain ends before the file does");
 }
 
@@ -872,20 +872,19 @@ static void test_cluster_at_chain_ends_early(void)
  */
 int32_t main(void)
 {
-  test_grow_bitmap_lookup_read_fails();
-  test_grow_bitmap_probe_read_fails();
-  test_grow_bitmap_mark_write_fails();
-  test_chain_materialize_fat_write_fails();
-  test_data_sector_io_fails();
-  test_flush_set_io_fails();
-  test_open_lookup_read_fails();
-  test_truncate_free_write_fails();
-  test_create_file_table_full();
-  test_create_no_directory_space();
-  test_survey_rejects_broken_chain();
-  test_survey_zero_length_with_cluster();
-  test_survey_length_without_cluster();
-  test_cluster_at_chain_ends_early();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_exfat_stream_cov.c\n");
+  internal_test_grow_bitmap_lookup_read_fails();
+  internal_test_grow_bitmap_probe_read_fails();
+  internal_test_grow_bitmap_mark_write_fails();
+  internal_test_chain_materialize_fat_write_fails();
+  internal_test_data_sector_io_fails();
+  internal_test_flush_set_io_fails();
+  internal_test_open_lookup_read_fails();
+  internal_test_truncate_free_write_fails();
+  internal_test_create_file_table_full();
+  internal_test_create_no_directory_space();
+  internal_test_survey_rejects_broken_chain();
+  internal_test_survey_zero_length_with_cluster();
+  internal_test_survey_length_without_cluster();
+  internal_test_cluster_at_chain_ends_early();
   return 0;
 }

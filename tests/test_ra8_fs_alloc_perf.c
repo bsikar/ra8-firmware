@@ -30,10 +30,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_dir_test_util.h"
@@ -137,9 +137,10 @@ static uint32_t s_writes = 0U;
  * @post On success @p buf holds the requested blocks.
  *
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded cnt read fixture step using caller-owned state.
  */
-static ra8_err_t cnt_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_cnt_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   s_reads++;
@@ -168,9 +169,10 @@ static ra8_err_t cnt_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
  * @post On success the disk holds the new blocks.
  *
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded cnt write fixture step using caller-owned state.
  */
-static ra8_err_t cnt_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+RA8_INTERNAL static ra8_err_t
+internal_cnt_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   s_writes++;
@@ -197,9 +199,10 @@ static ra8_err_t cnt_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
  * @post No counters change (capacity is not I/O).
  *
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded cnt capacity fixture step using caller-owned state.
  */
-static ra8_err_t cnt_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+RA8_INTERNAL static ra8_err_t
+internal_cnt_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = s_disk.block_count;
@@ -209,9 +212,9 @@ static ra8_err_t cnt_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 
 /** @brief The counting backend every case in this file mounts through. */
 static const ra8_fs_backend_t s_cnt_backend = {
-  .read_block   = cnt_read,
-  .write_block  = cnt_write,
-  .get_capacity = cnt_capacity,
+  .read_block   = internal_cnt_read,
+  .write_block  = internal_cnt_write,
+  .get_capacity = internal_cnt_capacity,
   .ctx          = nullptr,
 };
 
@@ -226,9 +229,9 @@ static const ra8_fs_backend_t s_cnt_backend = {
  * @post No other state modified.
  *
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded reset counters fixture step using caller-owned state.
  */
-static void reset_counters(void)
+RA8_INTERNAL static void internal_reset_counters(void)
 {
   s_reads  = 0U;
   s_writes = 0U;
@@ -250,9 +253,9 @@ static void reset_counters(void)
  * @post The image is ready to mount through ::s_cnt_backend.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded build fat32 vol fixture step using caller-owned state.
  */
-static void build_fat32_vol(void)
+RA8_INTERNAL static void internal_build_fat32_vol(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -284,9 +287,9 @@ static void build_fat32_vol(void)
  * @post No backend call is counted (this bypasses the driver).
  *
  * @note Reads the fixture's memory directly.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded read fsinfo fixture step using caller-owned state.
  */
-static uint32_t read_fsinfo(uint32_t off)
+RA8_INTERNAL static uint32_t internal_read_fsinfo(uint32_t off)
 {
   const uint32_t at = ((uint32_t)k_ap_fsi_lba * (uint32_t)k_geo_blk_sz) + off;
   return (uint32_t)s_disk.bytes[at] | ((uint32_t)s_disk.bytes[at + 1U] << k_ap_shift_byte) |
@@ -309,9 +312,9 @@ static uint32_t read_fsinfo(uint32_t off)
  *
  * @note Writes the fixture's memory directly, which is how these cases forge
  *       the FSInfo variants a mount has to survive.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded poke fsinfo fixture step using caller-owned state.
  */
-static void poke_fsinfo(uint32_t off, uint32_t v)
+RA8_INTERNAL static void internal_poke_fsinfo(uint32_t off, uint32_t v)
 {
   const uint32_t at     = ((uint32_t)k_ap_fsi_lba * (uint32_t)k_geo_blk_sz) + off;
   s_disk.bytes[at]      = (uint8_t)(v & (uint32_t)k_ap_byte_mask);
@@ -342,7 +345,7 @@ static void poke_fsinfo(uint32_t off, uint32_t v)
  * @note Walks the fixture's memory directly, bypassing the driver.
  * @since 0.1.0
  */
-static uint32_t true_free_count(const ra8_fs_mount_t* h)
+RA8_INTERNAL static uint32_t internal_true_free_count(const ra8_fs_mount_t* h)
 {
   const uint32_t base = (h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_geo_blk_sz;
   uint32_t       free_clusters = 0U;
@@ -375,9 +378,10 @@ static uint32_t true_free_count(const ra8_fs_mount_t* h)
  * @post The handle used is closed.
  *
  * @note Allocates and frees the payload on the heap.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded write clusters fixture step using caller-owned state.
  */
-static void write_clusters(ra8_fs_mount_t* h, const char* path, uint32_t clusters)
+RA8_INTERNAL static void
+internal_write_clusters(ra8_fs_mount_t* h, const char* path, uint32_t clusters)
 {
   const uint32_t len  = clusters * (uint32_t)k_ap_clus_bytes;
   uint8_t*       data = (uint8_t*)calloc(1, len);
@@ -427,28 +431,35 @@ static void write_clusters(ra8_fs_mount_t* h, const char* path, uint32_t cluster
  * (no compound decisions in this test -- it counts backend reads for two
  * writes and compares the totals)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_sequential_alloc_is_amortised_constant(void)
+RA8_INTERNAL static void internal_test_sequential_alloc_is_amortised_constant(void)
 {
   TEST_BEGIN("fs alloc: sequential allocation is amortised constant");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &h));
 
-  reset_counters();
-  write_clusters(h, "SMALL.BIN", (uint32_t)k_ap_small_clus);
+  internal_reset_counters();
+  internal_write_clusters(h, "SMALL.BIN", (uint32_t)k_ap_small_clus);
   const uint32_t small_reads = s_reads;
 
-  reset_counters();
-  write_clusters(h, "LARGE.BIN", (uint32_t)k_ap_large_clus);
+  internal_reset_counters();
+  internal_write_clusters(h, "LARGE.BIN", (uint32_t)k_ap_large_clus);
   const uint32_t large_reads = s_reads;
 
-  printf("      reads: %u clusters -> %u, %u clusters -> %u\n",
-         (unsigned)k_ap_small_clus,
-         (unsigned)small_reads,
-         (unsigned)k_ap_large_clus,
-         (unsigned)large_reads);
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  (void)internal_test_output_fd_init(&output, &state, STDOUT_FILENO);
+  (void)internal_test_output_text(&output, "      reads: ");
+  (void)internal_test_output_u64(&output, (uint64_t)k_ap_small_clus);
+  (void)internal_test_output_text(&output, " clusters -> ");
+  (void)internal_test_output_u64(&output, small_reads);
+  (void)internal_test_output_text(&output, ", ");
+  (void)internal_test_output_u64(&output, (uint64_t)k_ap_large_clus);
+  (void)internal_test_output_text(&output, " clusters -> ");
+  (void)internal_test_output_u64(&output, large_reads);
+  (void)internal_test_output_text(&output, "\n");
 
   /* The absolute bound: the old allocator needed well over 4000 reads for the
    * 64-cluster write alone (roughly sum(1..64) for the scans plus sum(0..63)
@@ -466,7 +477,7 @@ static void test_sequential_alloc_is_amortised_constant(void)
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("fs alloc: sequential allocation is amortised constant");
 }
 
@@ -483,35 +494,36 @@ static void test_sequential_alloc_is_amortised_constant(void)
  * (no compound decisions in this test -- it compares the written FSInfo free
  * count against the count obtained by walking the FAT)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_fsinfo_tracks_the_truth(void)
+RA8_INTERNAL static void internal_test_fsinfo_tracks_the_truth(void)
 {
   TEST_BEGIN("fs alloc: FSInfo free count matches the FAT");
-  build_fat32_vol();
+  internal_build_fat32_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &h));
-  const uint32_t before = true_free_count(h);
+  const uint32_t before = internal_true_free_count(h);
   TEST_ASSERT(before > (uint32_t)k_ap_large_clus);
 
-  write_clusters(h, "DATA.BIN", (uint32_t)k_ap_large_clus);
+  internal_write_clusters(h, "DATA.BIN", (uint32_t)k_ap_large_clus);
   /* Closing the file is what commits the count. */
-  TEST_ASSERT_EQ(true_free_count(h), read_fsinfo((uint32_t)k_ap_fsi_off_free));
-  TEST_ASSERT_EQ(before - (uint32_t)k_ap_large_clus, read_fsinfo((uint32_t)k_ap_fsi_off_free));
-  TEST_ASSERT(read_fsinfo((uint32_t)k_ap_fsi_off_next) > (uint32_t)k_ap_first_cluster);
+  TEST_ASSERT_EQ(internal_true_free_count(h), internal_read_fsinfo((uint32_t)k_ap_fsi_off_free));
+  TEST_ASSERT_EQ(before - (uint32_t)k_ap_large_clus,
+                 internal_read_fsinfo((uint32_t)k_ap_fsi_off_free));
+  TEST_ASSERT(internal_read_fsinfo((uint32_t)k_ap_fsi_off_next) > (uint32_t)k_ap_first_cluster);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "DATA.BIN"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   /* Unmount is the other commit point. */
-  TEST_ASSERT_EQ(before, read_fsinfo((uint32_t)k_ap_fsi_off_free));
+  TEST_ASSERT_EQ(before, internal_read_fsinfo((uint32_t)k_ap_fsi_off_free));
 
   /* And the freed space is reachable again: remount, refill, same count. */
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &h));
-  write_clusters(h, "AGAIN.BIN", (uint32_t)k_ap_large_clus);
-  TEST_ASSERT_EQ(true_free_count(h), read_fsinfo((uint32_t)k_ap_fsi_off_free));
+  internal_write_clusters(h, "AGAIN.BIN", (uint32_t)k_ap_large_clus);
+  TEST_ASSERT_EQ(internal_true_free_count(h), internal_read_fsinfo((uint32_t)k_ap_fsi_off_free));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("fs alloc: FSInfo free count matches the FAT");
 }
 
@@ -532,9 +544,9 @@ static void test_fsinfo_tracks_the_truth(void)
  * - V3: trailing corrupted -> third returns false.
  * - V4: all three intact   -> true, covered by test_fsinfo_tracks_the_truth.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_fsinfo_invalid_is_not_written(void)
+RA8_INTERNAL static void internal_test_fsinfo_invalid_is_not_written(void)
 {
   TEST_BEGIN("fs alloc: unvalidated FSInfo is never written back");
   const uint32_t offs[] = {
@@ -543,18 +555,18 @@ static void test_fsinfo_invalid_is_not_written(void)
     (uint32_t)k_ap_fsi_off_trail,
   };
   for (uint32_t i = 0U; i < (sizeof(offs) / sizeof(offs[0])); i++) {
-    build_fat32_vol();
-    poke_fsinfo(offs[i], (uint32_t)k_ap_corrupt_sig);
-    const uint32_t free_before = read_fsinfo((uint32_t)k_ap_fsi_off_free);
+    internal_build_fat32_vol();
+    internal_poke_fsinfo(offs[i], (uint32_t)k_ap_corrupt_sig);
+    const uint32_t free_before = internal_read_fsinfo((uint32_t)k_ap_fsi_off_free);
 
     ra8_fs_mount_t* h = nullptr;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &h));
-    write_clusters(h, "DATA.BIN", (uint32_t)k_ap_small_clus);
+    internal_write_clusters(h, "DATA.BIN", (uint32_t)k_ap_small_clus);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
 
-    TEST_ASSERT_EQ(k_ap_corrupt_sig, read_fsinfo(offs[i]));
-    TEST_ASSERT_EQ(free_before, read_fsinfo((uint32_t)k_ap_fsi_off_free));
-    free_vol();
+    TEST_ASSERT_EQ(k_ap_corrupt_sig, internal_read_fsinfo(offs[i]));
+    TEST_ASSERT_EQ(free_before, internal_read_fsinfo((uint32_t)k_ap_fsi_off_free));
+    internal_free_vol();
   }
   TEST_END("fs alloc: unvalidated FSInfo is never written back");
 }
@@ -572,22 +584,22 @@ static void test_fsinfo_invalid_is_not_written(void)
  * (no compound decisions in this test -- it seeds an untrusted free count and
  * asserts the writeback repeats the format's "unknown" value)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_fsinfo_unknown_stays_unknown(void)
+RA8_INTERNAL static void internal_test_fsinfo_unknown_stays_unknown(void)
 {
   TEST_BEGIN("fs alloc: an untrusted free count is written as unknown");
-  build_fat32_vol();
-  poke_fsinfo((uint32_t)k_ap_fsi_off_free, (uint32_t)k_ap_fsi_unknown);
+  internal_build_fat32_vol();
+  internal_poke_fsinfo((uint32_t)k_ap_fsi_off_free, (uint32_t)k_ap_fsi_unknown);
 
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &h));
-  write_clusters(h, "DATA.BIN", (uint32_t)k_ap_small_clus);
-  TEST_ASSERT_EQ(k_ap_fsi_unknown, read_fsinfo((uint32_t)k_ap_fsi_off_free));
+  internal_write_clusters(h, "DATA.BIN", (uint32_t)k_ap_small_clus);
+  TEST_ASSERT_EQ(k_ap_fsi_unknown, internal_read_fsinfo((uint32_t)k_ap_fsi_off_free));
   /* The hint is still maintained, because it is always safe to write. */
-  TEST_ASSERT(read_fsinfo((uint32_t)k_ap_fsi_off_next) > (uint32_t)k_ap_first_cluster);
+  TEST_ASSERT(internal_read_fsinfo((uint32_t)k_ap_fsi_off_next) > (uint32_t)k_ap_first_cluster);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("fs alloc: an untrusted free count is written as unknown");
 }
 
@@ -610,18 +622,18 @@ static void test_fsinfo_unknown_stays_unknown(void)
  * The `priv_alloc_start` clamp is driven separately, by
  * test_full_volume_wraps_once_then_reports_full.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_stale_hint_is_range_checked(void)
+RA8_INTERNAL static void internal_test_stale_hint_is_range_checked(void)
 {
   TEST_BEGIN("fs alloc: an out-of-range FSInfo hint is ignored");
-  build_fat32_vol();
-  poke_fsinfo((uint32_t)k_ap_fsi_off_next, (uint32_t)k_ap_fsi_unknown);
+  internal_build_fat32_vol();
+  internal_poke_fsinfo((uint32_t)k_ap_fsi_off_next, (uint32_t)k_ap_fsi_unknown);
 
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &h));
-  write_clusters(h, "DATA.BIN", (uint32_t)k_ap_small_clus);
-  TEST_ASSERT_EQ(true_free_count(h), read_fsinfo((uint32_t)k_ap_fsi_off_free));
+  internal_write_clusters(h, "DATA.BIN", (uint32_t)k_ap_small_clus);
+  TEST_ASSERT_EQ(internal_true_free_count(h), internal_read_fsinfo((uint32_t)k_ap_fsi_off_free));
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "DATA.BIN", k_ra8_fs_mode_read, &f));
@@ -632,7 +644,7 @@ static void test_stale_hint_is_range_checked(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("fs alloc: an out-of-range FSInfo hint is ignored");
 }
 
@@ -649,17 +661,17 @@ static void test_stale_hint_is_range_checked(void)
  * (no compound decisions in this test -- it deletes a file and asserts the
  * next one lands on the released clusters)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_freed_space_is_reused_first(void)
+RA8_INTERNAL static void internal_test_freed_space_is_reused_first(void)
 {
   TEST_BEGIN("fs alloc: freed clusters are reused before later ones");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &h));
 
-  write_clusters(h, "FIRST.BIN", (uint32_t)k_ap_small_clus);
-  write_clusters(h, "SECOND.BIN", (uint32_t)k_ap_small_clus);
+  internal_write_clusters(h, "FIRST.BIN", (uint32_t)k_ap_small_clus);
+  internal_write_clusters(h, "SECOND.BIN", (uint32_t)k_ap_small_clus);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "FIRST.BIN", k_ra8_fs_mode_read, &f));
@@ -667,13 +679,13 @@ static void test_freed_space_is_reused_first(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "FIRST.BIN"));
-  write_clusters(h, "THIRD.BIN", (uint32_t)k_ap_small_clus);
+  internal_write_clusters(h, "THIRD.BIN", (uint32_t)k_ap_small_clus);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "THIRD.BIN", k_ra8_fs_mode_read, &f));
   TEST_ASSERT_EQ(first_head, f->first_cluster);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("fs alloc: freed clusters are reused before later ones");
 }
 
@@ -696,22 +708,22 @@ static void test_freed_space_is_reused_first(void)
  *   restarts at cluster 2 and covers the whole volume before reporting full.
  * - V2: an ordinary in-range hint -> false -> covered by every other case.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_full_volume_wraps_once_then_reports_full(void)
+RA8_INTERNAL static void internal_test_full_volume_wraps_once_then_reports_full(void)
 {
   TEST_BEGIN("fs alloc: a full volume wraps once, then reports full");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &h));
 
-  static uint8_t s_chunk[k_ap_chunk] = {};
-  ra8_fs_file_t* f                   = nullptr;
+  static uint8_t chunk[k_ap_chunk] = {};
+  ra8_fs_file_t* f                 = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "FILL.BIN", k_ra8_fs_mode_write, &f));
   ra8_err_t e      = k_ra8_ok;
   uint32_t  rounds = 0U;
   while ((e == k_ra8_ok) && (rounds < (uint32_t)k_ap_fill_cap)) {
-    e = ra8_fs_write(f, s_chunk, (uint32_t)k_ap_chunk);
+    e = ra8_fs_write(f, chunk, (uint32_t)k_ap_chunk);
     rounds++;
   }
   TEST_ASSERT_EQ(k_ra8_err_no_mem, e);
@@ -720,15 +732,15 @@ static void test_full_volume_wraps_once_then_reports_full(void)
   /* The hint now sits past the last cluster. One more allocation attempt must
    * restart at cluster 2, walk the whole volume, and report it full -- not
    * index off the end of the FAT. */
-  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_write(f, s_chunk, (uint32_t)k_ap_clus_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_write(f, chunk, (uint32_t)k_ap_clus_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   /* Freeing everything makes the volume usable again through the same hint. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "FILL.BIN"));
-  write_clusters(h, "AFTER.BIN", (uint32_t)k_ap_small_clus);
+  internal_write_clusters(h, "AFTER.BIN", (uint32_t)k_ap_small_clus);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("fs alloc: a full volume wraps once, then reports full");
 }
 
@@ -746,13 +758,13 @@ static void test_full_volume_wraps_once_then_reports_full(void)
  * @post ::s_reads holds the same value that was returned.
  *
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded read one cluster cost fixture step using caller-owned state.
  */
-static uint32_t read_one_cluster_cost(ra8_fs_file_t* f)
+RA8_INTERNAL static uint32_t internal_read_one_cluster_cost(ra8_fs_file_t* f)
 {
   uint8_t  buf[k_ap_clus_bytes] = {};
   uint32_t got                  = 0U;
-  reset_counters();
+  internal_reset_counters();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, buf, sizeof(buf), &got));
   TEST_ASSERT_EQ(k_ap_clus_bytes, got);
   return s_reads;
@@ -789,35 +801,35 @@ static uint32_t read_one_cluster_cost(ra8_fs_file_t* f)
  * test_sequential_alloc_is_amortised_constant reads its mirror from the
  * backend, which is why that test's read count is linear rather than zero).
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_mcdc_fat_sector_cache(void)
+RA8_INTERNAL static void internal_test_mcdc_fat_sector_cache(void)
 {
   TEST_BEGIN("fs alloc: the FAT sector cache hits only on the same mount+sector");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* a = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &a));
-  write_clusters(a, "SPAN.BIN", (uint32_t)k_ap_span_clus);
+  internal_write_clusters(a, "SPAN.BIN", (uint32_t)k_ap_span_clus);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(a));
   a = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &a));
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(a, "SPAN.BIN", k_ra8_fs_mode_read, &f));
-  (void)read_one_cluster_cost(f); /* index 0 needs no FAT walk at all */
+  (void)internal_read_one_cluster_cost(f); /* index 0 needs no FAT walk at all */
 
   /* The miss that populates the cache: index 1 needs FAT sector 0. */
-  const uint32_t miss = read_one_cluster_cost(f);
+  const uint32_t miss = internal_read_one_cluster_cost(f);
   /* V1: index 2 needs the same FAT sector -- served from memory. */
-  const uint32_t hit = read_one_cluster_cost(f);
+  const uint32_t hit = internal_read_one_cluster_cost(f);
   TEST_ASSERT_EQ(miss - 1U, hit);
 
   /* V3: walking past cluster 255 leaves FAT sector 0 for sector 1. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, (uint64_t)k_ap_far_index * (uint32_t)k_ap_clus_bytes));
-  TEST_ASSERT(read_one_cluster_cost(f) > hit);
+  TEST_ASSERT(internal_read_one_cluster_cost(f) > hit);
   /* ... and coming back is a miss again, because sector 1 is what is cached. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, (uint32_t)k_ap_clus_bytes));
-  TEST_ASSERT(read_one_cluster_cost(f) > hit);
+  TEST_ASSERT(internal_read_one_cluster_cost(f) > hit);
 
   /* V2: a second mount of the same disk shares no cache entry with the first.
    * FAT sector 0 is the cached one again after the seek above. */
@@ -825,14 +837,14 @@ static void test_mcdc_fat_sector_cache(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_cnt_backend, &b));
   ra8_fs_file_t* g = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(b, "SPAN.BIN", k_ra8_fs_mode_read, &g));
-  (void)read_one_cluster_cost(g);
-  TEST_ASSERT_EQ(miss, read_one_cluster_cost(g));
+  (void)internal_read_one_cluster_cost(g);
+  TEST_ASSERT_EQ(miss, internal_read_one_cluster_cost(g));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(g));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(b));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(a));
-  free_vol();
+  internal_free_vol();
   TEST_END("fs alloc: the FAT sector cache hits only on the same mount+sector");
 }
 
@@ -852,14 +864,14 @@ static void test_mcdc_fat_sector_cache(void)
  */
 int main(void)
 {
-  test_sequential_alloc_is_amortised_constant();
-  test_fsinfo_tracks_the_truth();
-  test_fsinfo_invalid_is_not_written();
-  test_fsinfo_unknown_stays_unknown();
-  test_stale_hint_is_range_checked();
-  test_freed_space_is_reused_first();
-  test_full_volume_wraps_once_then_reports_full();
-  test_mcdc_fat_sector_cache();
-  printf("[OK  ] test_ra8_fs_alloc_perf.c\n");
+  internal_test_sequential_alloc_is_amortised_constant();
+  internal_test_fsinfo_tracks_the_truth();
+  internal_test_fsinfo_invalid_is_not_written();
+  internal_test_fsinfo_unknown_stays_unknown();
+  internal_test_stale_hint_is_range_checked();
+  internal_test_freed_space_is_reused_first();
+  internal_test_full_volume_wraps_once_then_reports_full();
+  internal_test_mcdc_fat_sector_cache();
+  (void)internal_test_output_fd_text(STDOUT_FILENO, "[OK  ] test_ra8_fs_alloc_perf.c\n");
   return 0;
 }

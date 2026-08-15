@@ -14,7 +14,7 @@
  *     (`GeneralSecondaryFlags`, `FirstCluster`, `ValidDataLength`,
  *     `DataLength`) read straight out of the image rather than from the API,
  *     so a handle that lies about itself cannot make an assertion pass;
- *   - `stream_dump_image()`, which writes the filesystem PARTITION to a file when
+ *   - `internal_stream_dump_image()`, which writes the filesystem PARTITION to a file when
  *     `RA8_EXFAT_DUMP_DIR` names a directory. That is how the `fsck.exfat -n`
  *     evidence for every scenario in this suite is produced, and it makes that
  *     evidence REPRODUCIBLE rather than a claim:
@@ -42,6 +42,7 @@
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_exfat_mutate_test_util.h"
+#include "support/ra8_test_file.h"
 #include "unity_minimal.h"
 
 /**
@@ -60,10 +61,10 @@
  * @par Example:
  * @code
  * uint8_t buf[k_xs_chunk];
- * stream_fill_at(buf, k_xs_chunk, 0U, k_xs_seed_a);
+ * internal_stream_fill_at(buf, k_xs_chunk, 0U, k_xs_seed_a);
  * @endcode
  *
- * @see stream_write_pattern()
+ * @see internal_stream_write_pattern()
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -110,7 +111,7 @@ typedef enum : uint32_t {
  * @note Pure function.
  * @since 0.1.0
  */
-static inline uint8_t stream_byte_at(uint32_t pos, uint8_t seed)
+RA8_INTERNAL static inline uint8_t internal_stream_byte_at(uint32_t pos, uint8_t seed)
 {
   return (uint8_t)((pos * (uint32_t)k_xs_seed_stride) + (uint32_t)seed);
 }
@@ -132,11 +133,14 @@ static inline uint8_t stream_byte_at(uint32_t pos, uint8_t seed)
  *
  * @note Trivially thread-safe (writes only through @p buf).
  * @since 0.1.0
- */
-static inline void stream_fill_at(uint8_t* buf, uint32_t len, uint32_t pos, uint8_t seed)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static inline void
+internal_stream_fill_at(uint8_t* buf, uint32_t len, uint32_t pos, uint8_t seed)
 {
   for (uint32_t i = 0U; i < len; i++) {
-    buf[i] = stream_byte_at(pos + i, seed);
+    buf[i] = internal_stream_byte_at(pos + i, seed);
   }
 }
 
@@ -164,18 +168,21 @@ static inline void stream_fill_at(uint8_t* buf, uint32_t len, uint32_t pos, uint
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static inline void
-stream_write_pattern(ra8_fs_file_t* f, uint32_t total, uint32_t chunk, uint32_t base, uint8_t seed)
+RA8_INTERNAL static inline void internal_stream_write_pattern(ra8_fs_file_t* f,
+                                                              uint32_t       total,
+                                                              uint32_t       chunk,
+                                                              uint32_t       base,
+                                                              uint8_t        seed)
 {
-  static uint8_t s_buf[k_xs_big_chunk];
+  static uint8_t buf[k_xs_big_chunk];
   uint32_t       done = 0U;
   while (done < total) {
     uint32_t n = total - done;
     if (n > chunk) {
       n = chunk;
     }
-    stream_fill_at(s_buf, n, base + done, seed);
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_buf, n));
+    internal_stream_fill_at(buf, n, base + done, seed);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, buf, n));
     done += n;
   }
 }
@@ -183,7 +190,7 @@ stream_write_pattern(ra8_fs_file_t* f, uint32_t total, uint32_t chunk, uint32_t 
 /**
  * @brief Assert @p len bytes at file offset @p pos match the @p seed stream.
  *
- * @details Split out of ::stream_expect_contents so neither function carries
+ * @details Split out of ::internal_stream_expect_contents so neither function carries
  *          five levels of nesting: the caller owns the chunked read, this owns
  *          the compare.
  *
@@ -202,10 +209,11 @@ stream_write_pattern(ra8_fs_file_t* f, uint32_t total, uint32_t chunk, uint32_t 
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static inline void stream_expect_span(const uint8_t* got, uint32_t len, uint32_t pos, uint8_t seed)
+RA8_INTERNAL static inline void
+internal_stream_expect_span(const uint8_t* got, uint32_t len, uint32_t pos, uint8_t seed)
 {
   for (uint32_t i = 0U; i < len; i++) {
-    if (got[i] != stream_byte_at(pos + i, seed)) {
+    if (got[i] != internal_stream_byte_at(pos + i, seed)) {
       TEST_FAIL_FMT("content mismatch at offset %u", (unsigned)(pos + i));
       return;
     }
@@ -235,15 +243,15 @@ static inline void stream_expect_span(const uint8_t* got, uint32_t len, uint32_t
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static inline void
-stream_expect_contents(ra8_fs_mount_t* h, const char* name, uint32_t total, uint8_t seed)
+RA8_INTERNAL static inline void
+internal_stream_expect_contents(ra8_fs_mount_t* h, const char* name, uint32_t total, uint8_t seed)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_read, &f));
   uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(total, size);
-  static uint8_t s_buf[k_xs_big_chunk];
+  static uint8_t buf[k_xs_big_chunk];
   uint32_t       pos = 0U;
   while (pos < total) {
     uint32_t want = total - pos;
@@ -251,9 +259,9 @@ stream_expect_contents(ra8_fs_mount_t* h, const char* name, uint32_t total, uint
       want = (uint32_t)k_xs_big_chunk;
     }
     uint32_t got = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_buf, want, &got));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, buf, want, &got));
     TEST_ASSERT_EQ(want, got);
-    stream_expect_span(s_buf, got, pos, seed);
+    internal_stream_expect_span(buf, got, pos, seed);
     pos += got;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -274,10 +282,12 @@ stream_expect_contents(ra8_fs_mount_t* h, const char* name, uint32_t total, uint
  *
  * @note Pure with respect to the disk image.
  * @since 0.1.0
- */
-static inline uint32_t stream_strm0_off(const ra8_fs_mount_t* h)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static inline uint32_t internal_stream_strm0_off(const ra8_fs_mount_t* h)
 {
-  return root_byte(h, (uint32_t)k_mut_root_strm0_idx);
+  return internal_root_byte(h, (uint32_t)k_mut_root_strm0_idx);
 }
 
 /**
@@ -304,10 +314,10 @@ static inline uint32_t stream_strm0_off(const ra8_fs_mount_t* h)
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static inline uint16_t
-stream_set_checksum(const ra8_fs_mount_t* h, uint32_t file_idx, uint32_t count)
+RA8_INTERNAL static inline uint16_t
+internal_stream_set_checksum(const ra8_fs_mount_t* h, uint32_t file_idx, uint32_t count)
 {
-  const uint32_t base  = root_byte(h, file_idx);
+  const uint32_t base  = internal_root_byte(h, file_idx);
   const uint32_t bytes = count * (uint32_t)k_mut_entry_bytes;
   uint16_t       cs    = 0U;
   for (uint32_t i = 0U; i < bytes; i++) {
@@ -344,7 +354,7 @@ stream_set_checksum(const ra8_fs_mount_t* h, uint32_t file_idx, uint32_t count)
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static inline void stream_dump_image(const char* tag, const ra8_fs_mount_t* h)
+RA8_INTERNAL static inline void internal_stream_dump_image(const char* tag, const ra8_fs_mount_t* h)
 {
   const char* dir = getenv("RA8_EXFAT_DUMP_DIR");
   if ((dir == nullptr) || (s_disk.bytes == nullptr)) {
@@ -352,16 +362,11 @@ static inline void stream_dump_image(const char* tag, const ra8_fs_mount_t* h)
   }
   char path[k_xs_dump_path_cap] = {};
   (void)snprintf(path, sizeof path, "%s/%s.img", dir, tag);
-  FILE* fp = fopen(path, "wb");
-  if (fp == nullptr) {
-    TEST_FAIL_FMT("cannot open dump file %s", path);
-    return;
-  }
-  const size_t base  = (size_t)h->partition_base_lba * (size_t)k_mut_block_size;
-  const size_t total = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
-  const size_t wrote = fwrite(&s_disk.bytes[base], 1U, total - base, fp);
-  (void)fclose(fp);
-  if (wrote != (total - base)) {
+  const size_t                 base  = (size_t)h->partition_base_lba * (size_t)k_mut_block_size;
+  const size_t                 total = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
+  const ra8_test_file_result_t result =
+    internal_test_file_replace(path, &s_disk.bytes[base], total - base);
+  if (result.status != k_ra8_test_file_ok) {
     TEST_FAIL_FMT("short dump write to %s", path);
   }
 }

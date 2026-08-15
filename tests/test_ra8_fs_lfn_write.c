@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_lfn_write_test_util.h"
@@ -70,27 +71,27 @@ typedef enum : uint32_t {
  * @pre A hand-built FAT16 volume is mounted and empty.
  * @post The file resolves by its long name and the root holds no orphans.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_long_name_round_trip(void)
+RA8_INTERNAL static void internal_test_long_name_round_trip(void)
 {
   TEST_BEGIN("lfn write: a 26-character name round-trips");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  write_and_verify(h, "/My Long Document Name.txt");
-  TEST_ASSERT_EQ(1U, listdir_is_exactly(h, "/", "My Long Document Name.txt"));
+  internal_write_and_verify(h, "/My Long Document Name.txt");
+  TEST_ASSERT_EQ(1U, internal_listdir_is_exactly(h, "/", "My Long Document Name.txt"));
 
   scan_result_t r = {};
-  scan_root_of(h, &r);
+  internal_scan_root_of(h, &r);
   TEST_ASSERT_EQ(1U, r.live);
   TEST_ASSERT_EQ(2U, r.lfn_slots);
   TEST_ASSERT_EQ(2U, r.chained);
   TEST_ASSERT_EQ(0U, r.orphans);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn write: a 26-character name round-trips");
 }
 
@@ -115,12 +116,12 @@ static void test_long_name_round_trip(void)
  * @pre A hand-built FAT16 volume is mounted and empty.
  * @post All three names resolve and list as themselves.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_group_boundary_lengths(void)
+RA8_INTERNAL static void internal_test_group_boundary_lengths(void)
 {
   TEST_BEGIN("lfn write: 13 / 14 / 26-character group boundaries");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -132,19 +133,19 @@ static void test_group_boundary_lengths(void)
   TEST_ASSERT_EQ(14U, strlen(&n14[1]));
   TEST_ASSERT_EQ(26U, strlen(&n26[1]));
 
-  write_and_verify(h, n13);
-  write_and_verify(h, n14);
-  write_and_verify(h, n26);
+  internal_write_and_verify(h, n13);
+  internal_write_and_verify(h, n14);
+  internal_write_and_verify(h, n26);
 
   name_list_t l = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", collect_cb, &l));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_collect_cb, &l));
   TEST_ASSERT_EQ(3U, l.count);
   TEST_ASSERT_EQ(0, strcmp(l.name[0], "Thirteen1.chr"));
   TEST_ASSERT_EQ(0, strcmp(l.name[1], "Fourteen12.chr"));
   TEST_ASSERT_EQ(0, strcmp(l.name[2], "TwentySixCharsHere.picture"));
 
   scan_result_t r = {};
-  scan_root_of(h, &r);
+  internal_scan_root_of(h, &r);
   TEST_ASSERT_EQ(3U, r.live);
   TEST_ASSERT_EQ(0U, r.orphans);
   /* 13 -> 1 group, 14 -> 2, 26 -> 2. */
@@ -152,7 +153,7 @@ static void test_group_boundary_lengths(void)
   TEST_ASSERT_EQ(5U, r.chained);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn write: 13 / 14 / 26-character group boundaries");
 }
 
@@ -175,24 +176,24 @@ static void test_group_boundary_lengths(void)
  * @pre A hand-built FAT16 volume is mounted and empty.
  * @post The three files resolve by their long names and hold distinct aliases.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_alias_collisions(void)
+RA8_INTERNAL static void internal_test_alias_collisions(void)
 {
   TEST_BEGIN("lfn write: colliding basis names get ~1 ~2 ~3");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  write_and_verify(h, "/Long Document One.txt");
-  write_and_verify(h, "/Long Document Two.txt");
-  write_and_verify(h, "/Long Document Three.txt");
+  internal_write_and_verify(h, "/Long Document One.txt");
+  internal_write_and_verify(h, "/Long Document Two.txt");
+  internal_write_and_verify(h, "/Long Document Three.txt");
 
   /* Slots: [lfn][lfn][8.3] x 3 -- each of these names is 21..23 chars. */
   const char* want[3] = {"LONGDO~1TXT", "LONGDO~2TXT", "LONGDO~3TXT"};
   uint32_t    found   = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_lw_per_sec; i++) {
-    const uint8_t* ent = root_slot(h, i);
+    const uint8_t* ent = internal_root_slot(h, i);
     if (ent[k_lw_off_name] == (uint8_t)k_lw_free_perm) {
       break;
     }
@@ -206,13 +207,13 @@ static void test_alias_collisions(void)
   TEST_ASSERT_EQ(3U, found);
 
   name_list_t l = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", collect_cb, &l));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_collect_cb, &l));
   TEST_ASSERT_EQ(3U, l.count);
   TEST_ASSERT_EQ(0, strcmp(l.name[2], "Long Document Three.txt"));
-  TEST_ASSERT_EQ(0U, count_orphan_slots(h));
+  TEST_ASSERT_EQ(0U, internal_count_orphan_slots(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn write: colliding basis names get ~1 ~2 ~3");
 }
 
@@ -238,43 +239,43 @@ static void test_alias_collisions(void)
  * @pre A hand-built FAT16 volume is mounted and empty.
  * @post Both names list as written; only the mixed-case one has a chain.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_case_flags_replace_a_chain(void)
+RA8_INTERNAL static void internal_test_case_flags_replace_a_chain(void)
 {
   TEST_BEGIN("lfn write: NTRes case flags instead of a chain");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  write_and_verify(h, "/data.log");
-  TEST_ASSERT_EQ(1U, listdir_is_exactly(h, "/", "data.log"));
+  internal_write_and_verify(h, "/data.log");
+  TEST_ASSERT_EQ(1U, internal_listdir_is_exactly(h, "/", "data.log"));
 
-  const uint8_t* ent = root_slot(h, 0U);
+  const uint8_t* ent = internal_root_slot(h, 0U);
   TEST_ASSERT_EQ(0, memcmp(ent, "DATA    LOG", (size_t)k_lw_name_len));
   TEST_ASSERT_EQ(k_lw_ntres_base | k_lw_ntres_ext, ent[k_lw_off_ntres]);
 
   scan_result_t r = {};
-  scan_root_of(h, &r);
+  internal_scan_root_of(h, &r);
   TEST_ASSERT_EQ(1U, r.live);
   TEST_ASSERT_EQ(0U, r.lfn_slots);
 
   /* Mixed case inside the base needs the chain the flags cannot give. */
-  write_and_verify(h, "/Mix.Log");
-  scan_root_of(h, &r);
+  internal_write_and_verify(h, "/Mix.Log");
+  internal_scan_root_of(h, &r);
   TEST_ASSERT_EQ(2U, r.live);
   TEST_ASSERT_EQ(1U, r.lfn_slots);
   TEST_ASSERT_EQ(1U, r.chained);
   TEST_ASSERT_EQ(0U, r.orphans);
 
   name_list_t l = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", collect_cb, &l));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_collect_cb, &l));
   TEST_ASSERT_EQ(2U, l.count);
   TEST_ASSERT_EQ(0, strcmp(l.name[0], "data.log"));
   TEST_ASSERT_EQ(0, strcmp(l.name[1], "Mix.Log"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn write: NTRes case flags instead of a chain");
 }
 
@@ -326,32 +327,32 @@ static void test_case_flags_replace_a_chain(void)
  * @pre A hand-built FAT16 volume is mounted and empty.
  * @post All four names list exactly as they were written.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_case_flags_each_half(void)
+RA8_INTERNAL static void internal_test_case_flags_each_half(void)
 {
   TEST_BEGIN("lfn write: base and extension case flags are independent");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* Three DISTINCT 8.3 names: `README.txt` would pack to the same eleven bytes
    * as `readme.TXT` and open the same file, proving nothing. */
-  write_and_verify(h, "/readme.TXT");
-  write_and_verify(h, "/NOTICE.txt");
-  write_and_verify(h, "/0123.log");
+  internal_write_and_verify(h, "/readme.TXT");
+  internal_write_and_verify(h, "/NOTICE.txt");
+  internal_write_and_verify(h, "/0123.log");
   /* A lower-flagged half holding a digit and a `{`: the flag lower-cases the
    * letters and must leave both alone. The `{` matters on its own -- it is
    * ABOVE 'Z' in ASCII, so it is the vector that separates "is a letter" from
    * "is at least as big as 'A'" in every case test on the path. */
-  write_and_verify(h, "/a1b2{x.log");
+  internal_write_and_verify(h, "/a1b2{x.log");
 
-  TEST_ASSERT_EQ(k_lw_ntres_base, root_slot(h, 0U)[k_lw_off_ntres]);
-  TEST_ASSERT_EQ(k_lw_ntres_ext, root_slot(h, 1U)[k_lw_off_ntres]);
-  TEST_ASSERT_EQ(k_lw_ntres_ext, root_slot(h, 2U)[k_lw_off_ntres]);
+  TEST_ASSERT_EQ(k_lw_ntres_base, internal_root_slot(h, 0U)[k_lw_off_ntres]);
+  TEST_ASSERT_EQ(k_lw_ntres_ext, internal_root_slot(h, 1U)[k_lw_off_ntres]);
+  TEST_ASSERT_EQ(k_lw_ntres_ext, internal_root_slot(h, 2U)[k_lw_off_ntres]);
 
   name_list_t l = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", collect_cb, &l));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_collect_cb, &l));
   TEST_ASSERT_EQ(4U, l.count);
   TEST_ASSERT_EQ(0, strcmp(l.name[0], "readme.TXT"));
   TEST_ASSERT_EQ(0, strcmp(l.name[1], "NOTICE.txt"));
@@ -359,11 +360,11 @@ static void test_case_flags_each_half(void)
   TEST_ASSERT_EQ(0, strcmp(l.name[3], "a1b2{x.log"));
 
   scan_result_t r = {};
-  scan_root_of(h, &r);
+  internal_scan_root_of(h, &r);
   TEST_ASSERT_EQ(0U, r.lfn_slots); /* none of the four needed a chain */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn write: base and extension case flags are independent");
 }
 
@@ -391,29 +392,29 @@ static void test_case_flags_each_half(void)
  * @pre A hand-built FAT16 volume (SPC=1) is mounted.
  * @post The long name resolves and reads back through the new cluster.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_chain_grows_the_directory(void)
+RA8_INTERNAL static void internal_test_chain_grows_the_directory(void)
 {
   TEST_BEGIN("lfn write: a run that does not fit grows the directory");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   /* "." + ".." + 13 files = 15 of the cluster's 16 slots. */
-  create_empty_files(h, "/SUB", (uint32_t)k_lww_sub_fill);
+  internal_create_empty_files(h, "/SUB", (uint32_t)k_lww_sub_fill);
 
   /* Needs two long-name slots plus its 8.3 entry: one free slot is not enough. */
-  write_and_verify(h, "/SUB/Spilling Over The Edge.txt");
+  internal_write_and_verify(h, "/SUB/Spilling Over The Edge.txt");
 
   name_list_t l = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/SUB", collect_cb, &l));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/SUB", internal_collect_cb, &l));
   TEST_ASSERT_EQ(k_lww_sub_fill + 1U, l.count);
   TEST_ASSERT_EQ(0, strcmp(l.name[(uint32_t)k_lww_sub_fill], "Spilling Over The Edge.txt"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn write: a run that does not fit grows the directory");
 }
 
@@ -440,29 +441,29 @@ static void test_chain_grows_the_directory(void)
  * @pre A hand-built FAT16 volume is mounted.
  * @post The create was refused and the root holds no orphan or partial chain.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_fixed_root_cannot_grow(void)
+RA8_INTERNAL static void internal_test_fixed_root_cannot_grow(void)
 {
   TEST_BEGIN("lfn write: the fixed root cannot grow -> no_mem");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  create_empty_files(h, "/", (uint32_t)k_lww_root_fill);
+  internal_create_empty_files(h, "/", (uint32_t)k_lww_root_fill);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
                  ra8_fs_open(h, "/Needs Three Slots Here.txt", k_ra8_fs_mode_write, &f));
 
   scan_result_t r = {};
-  scan_root_of(h, &r);
+  internal_scan_root_of(h, &r);
   TEST_ASSERT_EQ(k_lww_root_fill, r.live);
   TEST_ASSERT_EQ(0U, r.lfn_slots);
   TEST_ASSERT_EQ(0U, r.orphans);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn write: the fixed root cannot grow -> no_mem");
 }
 
@@ -486,12 +487,12 @@ static void test_fixed_root_cannot_grow(void)
  * @pre A hand-built FAT16 volume is mounted and empty.
  * @post No entry was written for any of the refused names.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_unstorable_names_are_refused(void)
+RA8_INTERNAL static void internal_test_unstorable_names_are_refused(void)
 {
   TEST_BEGIN("lfn write: unstorable names are refused");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -517,11 +518,11 @@ static void test_unstorable_names_are_refused(void)
   TEST_ASSERT_EQ(k_lw_max_name, strlen(&toolong[lead]));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, toolong, k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  TEST_ASSERT_EQ(1U, listdir_is_exactly(h, "/D", &toolong[lead]));
-  TEST_ASSERT_EQ(0U, count_orphan_slots(h));
+  TEST_ASSERT_EQ(1U, internal_listdir_is_exactly(h, "/D", &toolong[lead]));
+  TEST_ASSERT_EQ(0U, internal_count_orphan_slots(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("lfn write: unstorable names are refused");
 }
 
@@ -541,14 +542,13 @@ static void test_unstorable_names_are_refused(void)
  */
 int32_t main(void)
 {
-  test_long_name_round_trip();
-  test_group_boundary_lengths();
-  test_alias_collisions();
-  test_case_flags_replace_a_chain();
-  test_case_flags_each_half();
-  test_chain_grows_the_directory();
-  test_fixed_root_cannot_grow();
-  test_unstorable_names_are_refused();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_lfn_write.c\n");
+  internal_test_long_name_round_trip();
+  internal_test_group_boundary_lengths();
+  internal_test_alias_collisions();
+  internal_test_case_flags_replace_a_chain();
+  internal_test_case_flags_each_half();
+  internal_test_chain_grows_the_directory();
+  internal_test_fixed_root_cannot_grow();
+  internal_test_unstorable_names_are_refused();
   return 0;
 }

@@ -63,7 +63,7 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_fat_boot_label_off(const ra8_fs_mount_t* m)
+static uint32_t internal_fat_boot_label_off(const ra8_fs_mount_t* m)
 {
   return (m->type == k_ra8_fs_type_fat32) ? (uint32_t)k_fmt_off_f32_label
                                           : (uint32_t)k_fmt_off_f16_label;
@@ -93,7 +93,7 @@ static uint32_t priv_fat_boot_label_off(const ra8_fs_mount_t* m)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_label_from_raw(const uint8_t* raw11, char* out, uint32_t out_len)
+static void internal_label_from_raw(const uint8_t* raw11, char* out, uint32_t out_len)
 {
   static const uint8_t k_no_name[k_fmt_label_len] =
     {'N', 'O', ' ', 'N', 'A', 'M', 'E', ' ', ' ', ' ', ' '};
@@ -149,10 +149,10 @@ static void priv_label_from_raw(const uint8_t* raw11, char* out, uint32_t out_le
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_find_vol_id(const ra8_fs_mount_t* m,
-                                      uint64_t*             out_lba,
-                                      uint32_t*             out_off,
-                                      uint8_t*              out_entry)
+static ra8_err_t internal_fat_find_vol_id(const ra8_fs_mount_t* m,
+                                          uint64_t*             out_lba,
+                                          uint32_t*             out_off,
+                                          uint8_t*              out_entry)
 {
   const dir_loc_t loc = {.is_root = 1U, .cluster = 0U};
   dir_walk_t      w   = {};
@@ -219,7 +219,7 @@ static ra8_err_t priv_fat_find_vol_id(const ra8_fs_mount_t* m,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_fat_find_free_root(const ra8_fs_mount_t* m, uint64_t* out_lba, uint32_t* out_off)
+internal_fat_find_free_root(const ra8_fs_mount_t* m, uint64_t* out_lba, uint32_t* out_off)
 {
   const dir_loc_t loc = {.is_root = 1U, .cluster = 0U};
   dir_walk_t      w   = {};
@@ -274,14 +274,14 @@ priv_fat_find_free_root(const ra8_fs_mount_t* m, uint64_t* out_lba, uint32_t* ou
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_boot_set_label(const ra8_fs_mount_t* m, const char* label)
+static ra8_err_t internal_fat_boot_set_label(const ra8_fs_mount_t* m, const char* label)
 {
   uint8_t* const  boot = priv_sec_walk();
   const ra8_err_t err  = priv_read_sector(m, 0U, boot);
   if (err != k_ra8_ok) {
     return err;
   }
-  priv_fmt_label_field(&boot[priv_fat_boot_label_off(m)], label);
+  priv_fmt_label_field(&boot[internal_fat_boot_label_off(m)], label);
   return priv_write_sector(m, 0U, boot);
 }
 
@@ -309,7 +309,7 @@ static ra8_err_t priv_fat_boot_set_label(const ra8_fs_mount_t* m, const char* la
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_del_entry(const ra8_fs_mount_t* m, uint64_t lba, uint32_t off)
+static ra8_err_t internal_fat_del_entry(const ra8_fs_mount_t* m, uint64_t lba, uint32_t off)
 {
   uint8_t* const  sec = priv_sec_walk();
   const ra8_err_t err = priv_read_sector(m, lba, sec);
@@ -348,11 +348,11 @@ static ra8_err_t priv_fat_del_entry(const ra8_fs_mount_t* m, uint64_t lba, uint3
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_put_vol_id(const ra8_fs_mount_t* m,
-                                     uint64_t              lba,
-                                     uint32_t              off,
-                                     const char*           label,
-                                     bool                  fresh)
+static ra8_err_t internal_fat_put_vol_id(const ra8_fs_mount_t* m,
+                                         uint64_t              lba,
+                                         uint32_t              off,
+                                         const char*           label,
+                                         bool                  fresh)
 {
   uint8_t* const  sec = priv_sec_walk();
   const ra8_err_t err = priv_read_sector(m, lba, sec);
@@ -400,13 +400,13 @@ static ra8_err_t priv_fat_put_vol_id(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_get_label_fat(const ra8_fs_mount_t* m, char* out, uint32_t out_len)
+static ra8_err_t internal_get_label_fat(const ra8_fs_mount_t* m, char* out, uint32_t out_len)
 {
   uint8_t         raw[k_fmt_label_len]            = {};
   uint64_t        lba                             = 0U;
   uint32_t        off                             = 0U;
   uint8_t         entry[k_ra8_fs_dir_entry_bytes] = {};
-  const ra8_err_t ferr                            = priv_fat_find_vol_id(m, &lba, &off, entry);
+  const ra8_err_t ferr                            = internal_fat_find_vol_id(m, &lba, &off, entry);
   if (ferr == k_ra8_ok) {
     priv_byte_copy(raw, &entry[k_dir_off_name], (uint32_t)k_fmt_label_len);
   } else if (ferr == k_ra8_err_not_found) {
@@ -415,11 +415,11 @@ static ra8_err_t priv_get_label_fat(const ra8_fs_mount_t* m, char* out, uint32_t
     if (berr != k_ra8_ok) {
       return berr;
     }
-    priv_byte_copy(raw, &boot[priv_fat_boot_label_off(m)], (uint32_t)k_fmt_label_len);
+    priv_byte_copy(raw, &boot[internal_fat_boot_label_off(m)], (uint32_t)k_fmt_label_len);
   } else {
     return ferr;
   }
-  priv_label_from_raw(raw, out, out_len);
+  internal_label_from_raw(raw, out, out_len);
   return k_ra8_ok;
 }
 
@@ -450,31 +450,31 @@ static ra8_err_t priv_get_label_fat(const ra8_fs_mount_t* m, char* out, uint32_t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_set_label_fat(const ra8_fs_mount_t* m, const char* label)
+static ra8_err_t internal_set_label_fat(const ra8_fs_mount_t* m, const char* label)
 {
   const bool      clearing = (label == nullptr) || (label[0] == '\0');
-  const ra8_err_t berr     = priv_fat_boot_set_label(m, label);
+  const ra8_err_t berr     = internal_fat_boot_set_label(m, label);
   if (berr != k_ra8_ok) {
     return berr;
   }
   uint64_t        lba                             = 0U;
   uint32_t        off                             = 0U;
   uint8_t         entry[k_ra8_fs_dir_entry_bytes] = {};
-  const ra8_err_t ferr                            = priv_fat_find_vol_id(m, &lba, &off, entry);
+  const ra8_err_t ferr                            = internal_fat_find_vol_id(m, &lba, &off, entry);
   if ((ferr != k_ra8_ok) && (ferr != k_ra8_err_not_found)) {
     return ferr;
   }
   if (clearing) {
-    return (ferr == k_ra8_ok) ? priv_fat_del_entry(m, lba, off) : k_ra8_ok;
+    return (ferr == k_ra8_ok) ? internal_fat_del_entry(m, lba, off) : k_ra8_ok;
   }
   if (ferr == k_ra8_ok) {
-    return priv_fat_put_vol_id(m, lba, off, label, false);
+    return internal_fat_put_vol_id(m, lba, off, label, false);
   }
-  const ra8_err_t serr = priv_fat_find_free_root(m, &lba, &off);
+  const ra8_err_t serr = internal_fat_find_free_root(m, &lba, &off);
   if (serr != k_ra8_ok) {
     return serr;
   }
-  return priv_fat_put_vol_id(m, lba, off, label, true);
+  return internal_fat_put_vol_id(m, lba, off, label, true);
 }
 
 /**
@@ -508,7 +508,7 @@ static ra8_err_t priv_set_label_fat(const ra8_fs_mount_t* m, const char* label)
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_get_label_locked(ra8_fs_mount_t* handle, char* out, uint32_t out_len)
+static ra8_err_t internal_get_label_locked(ra8_fs_mount_t* handle, char* out, uint32_t out_len)
 {
   if (handle == nullptr || out == nullptr) {
     return k_ra8_err_null_ptr;
@@ -523,7 +523,7 @@ static ra8_err_t priv_get_label_locked(ra8_fs_mount_t* handle, char* out, uint32
   if (handle->type == k_ra8_fs_type_exfat) {
     return priv_exfat_get_label(handle, out, out_len);
   }
-  return priv_get_label_fat(handle, out, out_len);
+  return internal_get_label_fat(handle, out, out_len);
 }
 
 /**
@@ -558,7 +558,7 @@ static ra8_err_t priv_get_label_locked(ra8_fs_mount_t* handle, char* out, uint32
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_set_label_locked(ra8_fs_mount_t* handle, const char* label)
+static ra8_err_t internal_set_label_locked(ra8_fs_mount_t* handle, const char* label)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -572,7 +572,7 @@ static ra8_err_t priv_set_label_locked(ra8_fs_mount_t* handle, const char* label
   if (handle->type == k_ra8_fs_type_exfat) {
     return priv_exfat_set_label(handle, label);
   }
-  return priv_set_label_fat(handle, label);
+  return internal_set_label_fat(handle, label);
 }
 
 /* =============================================================================
@@ -584,7 +584,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_get_label(ra8_fs_mount_t* handle, char* out, uint32_t out_len)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_get_label_locked(handle, out, out_len);
+  const ra8_err_t err = internal_get_label_locked(handle, out, out_len);
   priv_lock_release();
   return err;
 }
@@ -593,7 +593,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_set_label(ra8_fs_mount_t* handle, const char* label)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_set_label_locked(handle, label);
+  const ra8_err_t err = internal_set_label_locked(handle, label);
   priv_lock_release();
   return err;
 }

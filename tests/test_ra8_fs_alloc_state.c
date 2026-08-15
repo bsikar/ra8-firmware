@@ -26,8 +26,8 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
@@ -64,9 +64,9 @@ typedef enum : uint32_t {
  * is a single condition, driven false everywhere else in the suite and true
  * here)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_unbound_mount_degrades_gracefully(void)
+RA8_INTERNAL static void internal_test_unbound_mount_degrades_gracefully(void)
 {
   TEST_BEGIN("fs alloc: an unbound mount gets the pre-#607 behaviour");
   ra8_fs_mount_t orphan    = {};
@@ -107,7 +107,6 @@ static void test_unbound_mount_degrades_gracefully(void)
  */
 int main(void)
 {
-  test_unbound_mount_degrades_gracefully();
-  printf("[OK  ] test_ra8_fs_alloc_state.c\n");
+  internal_test_unbound_mount_degrades_gracefully();
   return 0;
 }

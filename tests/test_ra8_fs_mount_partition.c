@@ -27,9 +27,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_mount_test_util.h"
@@ -74,7 +74,7 @@ typedef enum : uint16_t {
  * @details Mirrors ra8_fs's k_gpt_guid_basic_data
  *          (EBD0A0A2-B9E5-4433-87C0-68B6B72699C7).
  */
-static const uint8_t k_mp_basic_guid[16] = {
+static const uint8_t s_mp_basic_guid[16] = {
   0xA2U,
   0xA0U,
   0xD0U,
@@ -103,25 +103,31 @@ typedef struct {
   uint32_t sectors; /**< Partition length in sectors.      */
 } sub_dev_t;
 
-static ra8_err_t sub_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the sub read filesystem operation. @details Implements the bounded sub read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_sub_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   const sub_dev_t* d = (const sub_dev_t*)ctx;
   if (lba + count > d->sectors) {
     return k_ra8_err_out_of_range;
   }
-  return mc_read((void*)&s_disk, lba + d->base, count, buf);
+  return internal_mc_read((void*)&s_disk, lba + d->base, count, buf);
 }
 
-static ra8_err_t sub_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the sub write filesystem operation. @details Implements the bounded sub write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_sub_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   const sub_dev_t* d = (const sub_dev_t*)ctx;
   if (lba + count > d->sectors) {
     return k_ra8_err_out_of_range;
   }
-  return mc_write((void*)&s_disk, lba + d->base, count, buf);
+  return internal_mc_write((void*)&s_disk, lba + d->base, count, buf);
 }
 
-static ra8_err_t sub_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the sub capacity filesystem operation. @details Implements the bounded sub capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_sub_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const sub_dev_t* d = (const sub_dev_t*)ctx;
   *block_count       = d->sectors;
@@ -139,7 +145,8 @@ typedef struct {
   int      saw_p1; /**< "P1.TXT" / "G1.TXT" was listed. */
 } names_t;
 
-static void names_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
+/** @brief Perform the names cb filesystem operation. @details Implements the bounded names cb fixture step using caller-owned state. @param[in] name Validated fixture path or name value. @param[in] attr Value required by this filesystem vector. @param[in] size Caller-supplied bounded extent or quantity. @param[in,out] ctx Caller-owned fixture or filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_names_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)attr;
   (void)size;
@@ -158,14 +165,14 @@ static void names_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
  *
  * @details Uses a ::sub_dev_t offset window so the real formatter writes a bare
  *          FAT16 superfloppy at the partition's first LBA -- exactly what an
- *          indexed whole-card mount later follows the table back to.
+ *          indexed whole-card mount later follows the table back to. @param[in] base Value required by this filesystem vector. @param[in] fname Validated fixture path or name value. @param[in] text Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void seed_partition(uint32_t base, const char* fname, const char* text)
+RA8_INTERNAL static void internal_seed_partition(uint32_t base, const char* fname, const char* text)
 {
   sub_dev_t              d    = {.base = base, .sectors = (uint32_t)k_mp_part_sectors};
-  const ra8_fs_backend_t be   = {.read_block   = sub_read,
-                                 .write_block  = sub_write,
-                                 .get_capacity = sub_capacity,
+  const ra8_fs_backend_t be   = {.read_block   = internal_sub_read,
+                                 .write_block  = internal_sub_write,
+                                 .get_capacity = internal_sub_capacity,
                                  .ctx          = &d};
   ra8_fs_format_opts_t   opts = {};
   opts.type                   = k_ra8_fs_type_fat16;
@@ -180,8 +187,9 @@ static void seed_partition(uint32_t base, const char* fname, const char* text)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
 }
 
-/** @brief Read @p name back off @p h and byte-compare it against @p expected. */
-static void assert_file_bytes(ra8_fs_mount_t* h, const char* name, const char* expected)
+/** @brief Read @p name back off @p h and byte-compare it against @p expected. @details Implements the bounded assert file bytes fixture step using caller-owned state. @param[in,out] h Value required by this filesystem vector. @param[in] name Validated fixture path or name value. @param[in] expected Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void
+internal_assert_file_bytes(ra8_fs_mount_t* h, const char* name, const char* expected)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_read, &f));
@@ -194,28 +202,33 @@ static void assert_file_bytes(ra8_fs_mount_t* h, const char* name, const char* e
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 }
 
-/** @brief Write MBR primary entry @p idx (type byte @p type, first LBA @p lba). */
-static void write_mbr_entry(uint8_t* mbr, uint8_t idx, uint8_t type, uint32_t lba)
+/** @brief Write MBR primary entry @p idx (type byte @p type, first LBA @p lba). @details Implements the bounded write mbr entry fixture step using caller-owned state. @param[in,out] mbr Value required by this filesystem vector. @param[in] idx Value required by this filesystem vector. @param[in] type Value required by this filesystem vector. @param[in] lba Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void
+internal_write_mbr_entry(uint8_t* mbr, uint8_t idx, uint8_t type, uint32_t lba)
 {
   const uint32_t slot                       = (uint32_t)idx * (uint32_t)k_mp_mbr_stride;
   mbr[(uint32_t)k_mbr_off_part_type + slot] = type;
-  put32(mbr, (uint32_t)k_mbr_off_part_lba + slot, lba);
+  internal_put32(mbr, (uint32_t)k_mbr_off_part_lba + slot, lba);
 }
 
-/** @brief Write a GPT entry @p idx with a Microsoft Basic Data GUID at @p lba. */
-static void write_gpt_basic_entry(uint8_t* sector, uint8_t idx, uint32_t lba)
+/** @brief Write a GPT entry @p idx with a Microsoft Basic Data GUID at @p lba. @details Implements the bounded write gpt basic entry fixture step using caller-owned state. @param[in,out] sector Value required by this filesystem vector. @param[in] idx Value required by this filesystem vector. @param[in] lba Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_write_gpt_basic_entry(uint8_t* sector, uint8_t idx, uint32_t lba)
 {
   const uint32_t slot = (uint32_t)idx * (uint32_t)k_mp_gpt_stride;
-  memcpy(&sector[slot], k_mp_basic_guid, sizeof(k_mp_basic_guid));
-  put32(sector, slot + (uint32_t)k_mp_gpt_ent_lba, lba);
+  memcpy(&sector[slot], s_mp_basic_guid, sizeof(s_mp_basic_guid));
+  internal_put32(sector, slot + (uint32_t)k_mp_gpt_ent_lba, lba);
 }
 
 /** @brief Lay the fixed protective MBR + GPT header used by the GPT tests. */
-static uint8_t* gpt_prologue(uint32_t count)
+RA8_INTERNAL static uint8_t* internal_gpt_prologue(uint32_t count)
 {
-  write_protective_mbr(s_disk.bytes, (uint32_t)k_mp_gpt_hdr_lba);
+  internal_write_protective_mbr(s_disk.bytes, (uint32_t)k_mp_gpt_hdr_lba);
   uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
-  write_gpt_header(lba1, (uint32_t)k_mp_gpt_hdr_lba, 0U, count, (uint32_t)k_mp_gpt_entry_bytes);
+  internal_write_gpt_header(lba1,
+                            (uint32_t)k_mp_gpt_hdr_lba,
+                            0U,
+                            count,
+                            (uint32_t)k_mp_gpt_entry_bytes);
   return &s_disk.bytes[(size_t)2U * (uint32_t)k_mc_blk];
 }
 
@@ -242,36 +255,36 @@ static uint8_t* gpt_prologue(uint32_t count)
  * @pre s_disk is nullptr.
  * @post s_disk freed; no mount left active.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mbr_mount_partition_one(void)
+RA8_INTERNAL static void internal_test_mbr_mount_partition_one(void)
 {
   TEST_BEGIN("ra8_fs_mount_partition: MBR selects partition 1 then 0");
-  alloc_disk((uint32_t)k_mp_card_sectors);
-  seed_partition((uint32_t)k_mp_base0, "P0.TXT", "partition-zero");
-  seed_partition((uint32_t)k_mp_base1, "P1.TXT", "partition-one");
+  internal_alloc_disk((uint32_t)k_mp_card_sectors);
+  internal_seed_partition((uint32_t)k_mp_base0, "P0.TXT", "partition-zero");
+  internal_seed_partition((uint32_t)k_mp_base1, "P1.TXT", "partition-one");
   uint8_t* mbr        = s_disk.bytes;
   mbr[k_bpb_off_sig0] = (uint8_t)k_bpb_sig0_val;
   mbr[k_bpb_off_sig1] = (uint8_t)k_bpb_sig1_val;
-  write_mbr_entry(mbr, 0U, (uint8_t)k_mp_mbr_type_fat16, (uint32_t)k_mp_base0);
-  write_mbr_entry(mbr, 1U, (uint8_t)k_mp_mbr_type_fat16, (uint32_t)k_mp_base1);
+  internal_write_mbr_entry(mbr, 0U, (uint8_t)k_mp_mbr_type_fat16, (uint32_t)k_mp_base0);
+  internal_write_mbr_entry(mbr, 1U, (uint8_t)k_mp_mbr_type_fat16, (uint32_t)k_mp_base1);
 
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount_partition(&s_backend, 1U, &h));
   TEST_ASSERT_EQ(k_mp_base1, h->partition_base_lba);
   names_t n1 = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", names_cb, &n1));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_names_cb, &n1));
   TEST_ASSERT_EQ(1, n1.count);
   TEST_ASSERT_EQ(1, n1.saw_p1);
   TEST_ASSERT_EQ(0, n1.saw_p0);
-  assert_file_bytes(h, "P1.TXT", "partition-one");
+  internal_assert_file_bytes(h, "P1.TXT", "partition-one");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount_partition(&s_backend, 0U, &h));
   TEST_ASSERT_EQ(k_mp_base0, h->partition_base_lba);
-  assert_file_bytes(h, "P0.TXT", "partition-zero");
+  internal_assert_file_bytes(h, "P0.TXT", "partition-zero");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_mount_partition: MBR selects partition 1 then 0");
 }
 
@@ -293,24 +306,24 @@ static void test_mbr_mount_partition_one(void)
  * @pre s_disk is nullptr.
  * @post s_disk freed.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mbr_index_errors(void)
+RA8_INTERNAL static void internal_test_mbr_index_errors(void)
 {
   TEST_BEGIN("ra8_fs_mount_partition: MBR index errors");
-  alloc_disk((uint32_t)k_mp_small_card);
+  internal_alloc_disk((uint32_t)k_mp_small_card);
   uint8_t* mbr        = s_disk.bytes;
   mbr[k_bpb_off_sig0] = (uint8_t)k_bpb_sig0_val;
   mbr[k_bpb_off_sig1] = (uint8_t)k_bpb_sig1_val;
   /* Entry 0 present (but no volume behind it); entry 1 unused; entry 2 zero-LBA. */
-  write_mbr_entry(mbr, 0U, (uint8_t)k_mp_mbr_type_fat16, 3U);
-  write_mbr_entry(mbr, 2U, (uint8_t)k_mp_mbr_type_fat16, 0U);
+  internal_write_mbr_entry(mbr, 0U, (uint8_t)k_mp_mbr_type_fat16, 3U);
+  internal_write_mbr_entry(mbr, 2U, (uint8_t)k_mp_mbr_type_fat16, 0U);
 
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount_partition(&s_backend, 4U, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_mount_partition(&s_backend, 1U, &h));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_fs_mount_partition(&s_backend, 2U, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_mount_partition: MBR index errors");
 }
 
@@ -330,7 +343,7 @@ static void test_mbr_index_errors(void)
  *          "G1.TXT".
  *
  * @par MC/DC:
- * Decision: `if (s_scratch[k_mbr_off_part0_type] == k_gpt_part_type_protective)`
+ * Decision: `if (priv_scratch[k_mbr_off_part0_type] == k_gpt_part_type_protective)`
  * in priv_locate_indexed.
  * - V-true : type 0xEE -> GPT path (covered here).
  * - V-false: FAT16 type -> MBR path (test_mbr_mount_partition_one).
@@ -338,34 +351,34 @@ static void test_mbr_index_errors(void)
  * @pre s_disk is nullptr.
  * @post s_disk freed; no mount left active.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_gpt_select_second_basic_data(void)
+RA8_INTERNAL static void internal_test_gpt_select_second_basic_data(void)
 {
   TEST_BEGIN("ra8_fs_mount_partition: GPT selects the second Basic Data volume");
-  alloc_disk((uint32_t)k_mp_card_sectors);
-  seed_partition((uint32_t)k_mp_base0, "G0.TXT", "gpt-zero");
-  seed_partition((uint32_t)k_mp_base1, "G1.TXT", "gpt-one");
-  uint8_t* entries = gpt_prologue((uint32_t)k_mp_gpt_hdr_count);
-  write_gpt_basic_entry(entries, 0U, (uint32_t)k_mp_base0);
-  write_gpt_basic_entry(entries, 1U, (uint32_t)k_mp_base1);
+  internal_alloc_disk((uint32_t)k_mp_card_sectors);
+  internal_seed_partition((uint32_t)k_mp_base0, "G0.TXT", "gpt-zero");
+  internal_seed_partition((uint32_t)k_mp_base1, "G1.TXT", "gpt-one");
+  uint8_t* entries = internal_gpt_prologue((uint32_t)k_mp_gpt_hdr_count);
+  internal_write_gpt_basic_entry(entries, 0U, (uint32_t)k_mp_base0);
+  internal_write_gpt_basic_entry(entries, 1U, (uint32_t)k_mp_base1);
 
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount_partition(&s_backend, 1U, &h));
   TEST_ASSERT_EQ(k_mp_base1, h->partition_base_lba);
   names_t n1 = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", names_cb, &n1));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_names_cb, &n1));
   TEST_ASSERT_EQ(1, n1.count);
   TEST_ASSERT_EQ(1, n1.saw_p1);
   TEST_ASSERT_EQ(0, n1.saw_p0);
-  assert_file_bytes(h, "G1.TXT", "gpt-one");
+  internal_assert_file_bytes(h, "G1.TXT", "gpt-one");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount_partition(&s_backend, 0U, &h));
   TEST_ASSERT_EQ(k_mp_base0, h->partition_base_lba);
-  assert_file_bytes(h, "G0.TXT", "gpt-zero");
+  internal_assert_file_bytes(h, "G0.TXT", "gpt-zero");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_mount_partition: GPT selects the second Basic Data volume");
 }
 
@@ -389,21 +402,21 @@ static void test_gpt_select_second_basic_data(void)
  * @pre s_disk is nullptr.
  * @post s_disk freed.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_gpt_index_errors(void)
+RA8_INTERNAL static void internal_test_gpt_index_errors(void)
 {
   TEST_BEGIN("ra8_fs_mount_partition: GPT index errors");
-  alloc_disk((uint32_t)k_mp_small_card);
-  uint8_t* entries = gpt_prologue((uint32_t)k_mp_gpt_hdr_count);
+  internal_alloc_disk((uint32_t)k_mp_small_card);
+  uint8_t* entries = internal_gpt_prologue((uint32_t)k_mp_gpt_hdr_count);
   /* Entry 0 is valid; entry 1 stays null (an empty slot). */
-  write_gpt_basic_entry(entries, 0U, 3U);
+  internal_write_gpt_basic_entry(entries, 0U, 3U);
   /* Entry 2: a non-null GUID but a 64-bit first LBA this backend cannot reach. */
   const size_t e2 = (size_t)2U * (size_t)k_mp_gpt_stride;
-  memcpy(&entries[e2], k_mp_basic_guid, sizeof(k_mp_basic_guid));
+  memcpy(&entries[e2], s_mp_basic_guid, sizeof(s_mp_basic_guid));
   entries[e2 + (size_t)k_mp_gpt_ent_lba_hi] = 1U;
   /* Entry 3: allocated but a zero first LBA. */
-  write_gpt_basic_entry(entries, 3U, 0U);
+  internal_write_gpt_basic_entry(entries, 3U, 0U);
 
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount_partition(&s_backend, 4U, &h));
@@ -412,7 +425,7 @@ static void test_gpt_index_errors(void)
    * fake medium answers out_of_range -- not refused at the parser. */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount_partition(&s_backend, 2U, &h));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_fs_mount_partition(&s_backend, 3U, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_mount_partition: GPT index errors");
 }
 
@@ -434,29 +447,29 @@ static void test_gpt_index_errors(void)
  * @pre s_disk is nullptr.
  * @post s_disk freed.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_gpt_header_and_read_faults(void)
+RA8_INTERNAL static void internal_test_gpt_header_and_read_faults(void)
 {
   TEST_BEGIN("ra8_fs_mount_partition: GPT header + entry-read faults");
   ra8_fs_mount_t* h = nullptr;
 
   /* No "EFI PART" at LBA 1 -> priv_gpt_read_geom returns validation_failed. */
-  alloc_disk((uint32_t)k_mp_small_card);
-  write_protective_mbr(s_disk.bytes, (uint32_t)k_mp_gpt_hdr_lba);
+  internal_alloc_disk((uint32_t)k_mp_small_card);
+  internal_write_protective_mbr(s_disk.bytes, (uint32_t)k_mp_gpt_hdr_lba);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_fs_mount_partition(&s_backend, 0U, &h));
-  free_disk();
+  internal_free_disk();
 
   /* Header claims 8 entries; index 4 lands in LBA 3, past a 3-sector disk. */
-  alloc_disk(3U);
-  write_protective_mbr(s_disk.bytes, (uint32_t)k_mp_gpt_hdr_lba);
-  write_gpt_header(&s_disk.bytes[(uint32_t)k_mc_blk],
-                   (uint32_t)k_mp_gpt_hdr_lba,
-                   0U,
-                   8U,
-                   (uint32_t)k_mp_gpt_entry_bytes);
+  internal_alloc_disk(3U);
+  internal_write_protective_mbr(s_disk.bytes, (uint32_t)k_mp_gpt_hdr_lba);
+  internal_write_gpt_header(&s_disk.bytes[(uint32_t)k_mc_blk],
+                            (uint32_t)k_mp_gpt_hdr_lba,
+                            0U,
+                            8U,
+                            (uint32_t)k_mp_gpt_entry_bytes);
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount_partition(&s_backend, 4U, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_mount_partition: GPT header + entry-read faults");
 }
 
@@ -476,24 +489,24 @@ static void test_gpt_header_and_read_faults(void)
  *
  * @par MC/DC:
  * The two single-condition guards in priv_locate_indexed:
- * - `s_scratch[510] != 0x55` : V-true = zeroed sector (case 1).
- * - `s_scratch[511] != 0xAA` : V-true = 0x55 present, 0xAA wrong (case 2).
+ * - `priv_scratch[510] != 0x55` : V-true = zeroed sector (case 1).
+ * - `priv_scratch[511] != 0xAA` : V-true = 0x55 present, 0xAA wrong (case 2).
  *
  * @pre s_disk is nullptr.
  * @post s_disk freed.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_no_partition_table(void)
+RA8_INTERNAL static void internal_test_no_partition_table(void)
 {
   TEST_BEGIN("ra8_fs_mount_partition: no partition table returns not_found");
   ra8_fs_mount_t* h = nullptr;
 
-  alloc_disk((uint32_t)k_mp_small_card); /* all-zero: no 0x55 at byte 510 */
+  internal_alloc_disk((uint32_t)k_mp_small_card); /* all-zero: no 0x55 at byte 510 */
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_mount_partition(&s_backend, 0U, &h));
   s_disk.bytes[k_bpb_off_sig0] = (uint8_t)k_bpb_sig0_val; /* 0x55 present, 0xAA still 0 */
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_mount_partition(&s_backend, 0U, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_mount_partition: no partition table returns not_found");
 }
 
@@ -515,18 +528,18 @@ static void test_no_partition_table(void)
  * @pre s_disk is nullptr.
  * @post s_disk freed.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_superfloppy_default_still_mounts(void)
+RA8_INTERNAL static void internal_test_superfloppy_default_still_mounts(void)
 {
   TEST_BEGIN("ra8_fs_mount_partition: superfloppy still mounts via the default");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(0U, h->partition_base_lba);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_mount_partition(&s_backend, 0U, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_mount_partition: superfloppy still mounts via the default");
 }
 
@@ -537,13 +550,12 @@ static void test_superfloppy_default_still_mounts(void)
 
 int main(void)
 {
-  test_mbr_mount_partition_one();
-  test_mbr_index_errors();
-  test_gpt_select_second_basic_data();
-  test_gpt_index_errors();
-  test_gpt_header_and_read_faults();
-  test_no_partition_table();
-  test_superfloppy_default_still_mounts();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_mount_partition.c\n");
+  internal_test_mbr_mount_partition_one();
+  internal_test_mbr_index_errors();
+  internal_test_gpt_select_second_basic_data();
+  internal_test_gpt_index_errors();
+  internal_test_gpt_header_and_read_faults();
+  internal_test_no_partition_table();
+  internal_test_superfloppy_default_still_mounts();
   return 0;
 }

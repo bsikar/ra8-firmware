@@ -27,9 +27,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_meta.h"
@@ -60,9 +60,9 @@ typedef enum : uint32_t {
  * @post No state changes.
  * @post Depends only on @p h.
  * @note Pure with respect to the mount.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded xt cbytes fixture step using caller-owned state.
  */
-static uint32_t xt_cbytes(const ra8_fs_mount_t* h)
+RA8_INTERNAL static uint32_t internal_xt_cbytes(const ra8_fs_mount_t* h)
 {
   return h->sectors_per_cluster * (uint32_t)k_mut_block_size;
 }
@@ -77,11 +77,11 @@ static uint32_t xt_cbytes(const ra8_fs_mount_t* h)
  * @post No state changes.
  * @post Reads only the image.
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded xt dlen fixture step using caller-owned state.
  */
-static uint32_t xt_dlen(const ra8_fs_mount_t* h)
+RA8_INTERNAL static uint32_t internal_xt_dlen(const ra8_fs_mount_t* h)
 {
-  return disk_get_u32le(stream_strm0_off(h) + (uint32_t)k_xs_off_strm_dlen);
+  return internal_disk_get_u32le(internal_stream_strm0_off(h) + (uint32_t)k_xs_off_strm_dlen);
 }
 
 /**
@@ -94,11 +94,11 @@ static uint32_t xt_dlen(const ra8_fs_mount_t* h)
  * @post No state changes.
  * @post Reads only the image.
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded xt valid fixture step using caller-owned state.
  */
-static uint32_t xt_valid(const ra8_fs_mount_t* h)
+RA8_INTERNAL static uint32_t internal_xt_valid(const ra8_fs_mount_t* h)
 {
-  return disk_get_u32le(stream_strm0_off(h) + (uint32_t)k_xs_off_strm_valid);
+  return internal_disk_get_u32le(internal_stream_strm0_off(h) + (uint32_t)k_xs_off_strm_valid);
 }
 
 /**
@@ -112,11 +112,11 @@ static uint32_t xt_valid(const ra8_fs_mount_t* h)
  * @post No state changes.
  * @post Reads only the image.
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded xt is contig fixture step using caller-owned state.
  */
-static uint8_t xt_is_contig(const ra8_fs_mount_t* h)
+RA8_INTERNAL static uint8_t internal_xt_is_contig(const ra8_fs_mount_t* h)
 {
-  const uint8_t flags = s_disk.bytes[stream_strm0_off(h) + (uint32_t)k_xs_off_strm_flags];
+  const uint8_t flags = s_disk.bytes[internal_stream_strm0_off(h) + (uint32_t)k_xs_off_strm_flags];
   return ((flags & (uint8_t)k_mut_no_fat_bit) != 0U) ? 1U : 0U;
 }
 
@@ -133,13 +133,16 @@ static uint8_t xt_is_contig(const ra8_fs_mount_t* h)
  * @post No state changes.
  * @post The scan stops at the first mismatch.
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded expect span x fixture step using caller-owned state.
  */
-static void
-expect_span_x(const uint8_t* buf, uint32_t got, uint32_t pos, uint32_t pat_end, uint8_t seed)
+RA8_INTERNAL static void internal_expect_span_x(const uint8_t* buf,
+                                                uint32_t       got,
+                                                uint32_t       pos,
+                                                uint32_t       pat_end,
+                                                uint8_t        seed)
 {
   for (uint32_t i = 0U; i < got; i++) {
-    const uint8_t exp = ((pos + i) < pat_end) ? stream_byte_at(pos + i, seed) : 0U;
+    const uint8_t exp = ((pos + i) < pat_end) ? internal_stream_byte_at(pos + i, seed) : 0U;
     if (buf[i] != exp) {
       TEST_FAIL_FMT("byte %u wrong", (unsigned)(pos + i));
       return;
@@ -160,20 +163,20 @@ expect_span_x(const uint8_t* buf, uint32_t got, uint32_t pos, uint32_t pat_end, 
  * @post The file is closed again.
  * @post No on-disk state changes.
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded expect pat then zero fixture step using caller-owned state.
  */
-static void expect_pat_then_zero(ra8_fs_mount_t* h,
-                                 const char*     name,
-                                 uint32_t        total,
-                                 uint32_t        pat_end,
-                                 uint8_t         seed)
+RA8_INTERNAL static void internal_expect_pat_then_zero(ra8_fs_mount_t* h,
+                                                       const char*     name,
+                                                       uint32_t        total,
+                                                       uint32_t        pat_end,
+                                                       uint8_t         seed)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_read, &f));
   uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(total, size);
-  static uint8_t s_buf[k_xs_big_chunk];
+  static uint8_t buf[k_xs_big_chunk];
   uint32_t       pos = 0U;
   while (pos < total) {
     uint32_t want = total - pos;
@@ -181,9 +184,9 @@ static void expect_pat_then_zero(ra8_fs_mount_t* h,
       want = (uint32_t)k_xs_big_chunk;
     }
     uint32_t got = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_buf, want, &got));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, buf, want, &got));
     TEST_ASSERT_EQ(want, got);
-    expect_span_x(s_buf, got, pos, pat_end, seed);
+    internal_expect_span_x(buf, got, pos, pat_end, seed);
     pos += got;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -201,13 +204,14 @@ static void expect_pat_then_zero(ra8_fs_mount_t* h,
  * @post @p name holds @p len generated bytes, contiguous.
  * @post No handle is left open.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded make file fixture step using caller-owned state.
  */
-static void make_file(ra8_fs_mount_t* h, const char* name, uint32_t len, uint8_t seed)
+RA8_INTERNAL static void
+internal_make_file(ra8_fs_mount_t* h, const char* name, uint32_t len, uint8_t seed)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_write, &f));
-  stream_write_pattern(f, len, (uint32_t)k_xs_chunk, 0U, seed);
+  internal_stream_write_pattern(f, len, (uint32_t)k_xs_chunk, 0U, seed);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 }
 
@@ -222,9 +226,9 @@ static void make_file(ra8_fs_mount_t* h, const char* name, uint32_t len, uint8_t
  * @post @p name is @p size bytes.
  * @post No handle is left open.
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded truncate named fixture step using caller-owned state.
  */
-static void truncate_named(ra8_fs_mount_t* h, const char* name, uint32_t size)
+RA8_INTERNAL static void internal_truncate_named(ra8_fs_mount_t* h, const char* name, uint32_t size)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_append, &f));
@@ -246,30 +250,30 @@ static void truncate_named(ra8_fs_mount_t* h, const char* name, uint32_t size)
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
  * test_fat_truncate_rejects.)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_shrink_contiguous(void)
+RA8_INTERNAL static void internal_test_exfat_shrink_contiguous(void)
 {
   TEST_BEGIN("exfat truncate: contiguous shrink frees the tail");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb   = xt_cbytes(h);
-  const uint32_t base = alloc_bitmap_used(h);
-  make_file(h, "SH.BIN", 3U * cb, (uint8_t)k_xt_seed);
-  TEST_ASSERT_EQ(base + 3U, alloc_bitmap_used(h));
+  const uint32_t cb   = internal_xt_cbytes(h);
+  const uint32_t base = internal_alloc_bitmap_used(h);
+  internal_make_file(h, "SH.BIN", 3U * cb, (uint8_t)k_xt_seed);
+  TEST_ASSERT_EQ(base + 3U, internal_alloc_bitmap_used(h));
 
   const uint32_t new_len = cb / 2U;
-  truncate_named(h, "SH.BIN", new_len);
-  TEST_ASSERT_EQ(base + 1U, alloc_bitmap_used(h)); /* 3 -> 1 cluster */
-  TEST_ASSERT_EQ(new_len, xt_dlen(h));
-  TEST_ASSERT_EQ(new_len, xt_valid(h));
-  TEST_ASSERT_EQ(1U, xt_is_contig(h));
-  expect_pat_then_zero(h, "SH.BIN", new_len, new_len, (uint8_t)k_xt_seed);
+  internal_truncate_named(h, "SH.BIN", new_len);
+  TEST_ASSERT_EQ(base + 1U, internal_alloc_bitmap_used(h)); /* 3 -> 1 cluster */
+  TEST_ASSERT_EQ(new_len, internal_xt_dlen(h));
+  TEST_ASSERT_EQ(new_len, internal_xt_valid(h));
+  TEST_ASSERT_EQ(1U, internal_xt_is_contig(h));
+  internal_expect_pat_then_zero(h, "SH.BIN", new_len, new_len, (uint8_t)k_xt_seed);
 
-  stream_dump_image("exfat_shrink_contiguous", h);
+  internal_stream_dump_image("exfat_shrink_contiguous", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat truncate: contiguous shrink frees the tail");
 }
 
@@ -286,28 +290,28 @@ static void test_exfat_shrink_contiguous(void)
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
  * test_fat_truncate_rejects.)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_shrink_to_zero(void)
+RA8_INTERNAL static void internal_test_exfat_shrink_to_zero(void)
 {
   TEST_BEGIN("exfat truncate: shrink to zero frees the allocation");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb   = xt_cbytes(h);
-  const uint32_t base = alloc_bitmap_used(h);
-  make_file(h, "Z.BIN", 2U * cb, (uint8_t)k_xt_seed);
-  TEST_ASSERT_EQ(base + 2U, alloc_bitmap_used(h));
+  const uint32_t cb   = internal_xt_cbytes(h);
+  const uint32_t base = internal_alloc_bitmap_used(h);
+  internal_make_file(h, "Z.BIN", 2U * cb, (uint8_t)k_xt_seed);
+  TEST_ASSERT_EQ(base + 2U, internal_alloc_bitmap_used(h));
 
-  truncate_named(h, "Z.BIN", 0U);
-  TEST_ASSERT_EQ(base, alloc_bitmap_used(h));
-  TEST_ASSERT_EQ(0U, xt_dlen(h));
-  TEST_ASSERT_EQ(0U, xt_valid(h));
-  expect_pat_then_zero(h, "Z.BIN", 0U, 0U, (uint8_t)k_xt_seed);
+  internal_truncate_named(h, "Z.BIN", 0U);
+  TEST_ASSERT_EQ(base, internal_alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(0U, internal_xt_dlen(h));
+  TEST_ASSERT_EQ(0U, internal_xt_valid(h));
+  internal_expect_pat_then_zero(h, "Z.BIN", 0U, 0U, (uint8_t)k_xt_seed);
 
-  stream_dump_image("exfat_shrink_to_zero", h);
+  internal_stream_dump_image("exfat_shrink_to_zero", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat truncate: shrink to zero frees the allocation");
 }
 
@@ -326,31 +330,31 @@ static void test_exfat_shrink_to_zero(void)
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
  * test_fat_truncate_rejects.)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_grow_sparse(void)
+RA8_INTERNAL static void internal_test_exfat_grow_sparse(void)
 {
   TEST_BEGIN("exfat truncate: grow raises DataLength, leaves ValidDataLength");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb      = xt_cbytes(h);
+  const uint32_t cb      = internal_xt_cbytes(h);
   const uint32_t old_len = cb + (cb / 2U);   /* 2 clusters */
   const uint32_t new_len = (3U * cb) + 100U; /* 4 clusters */
-  const uint32_t base    = alloc_bitmap_used(h);
-  make_file(h, "GR.BIN", old_len, (uint8_t)k_xt_seed);
-  TEST_ASSERT_EQ(base + 2U, alloc_bitmap_used(h));
+  const uint32_t base    = internal_alloc_bitmap_used(h);
+  internal_make_file(h, "GR.BIN", old_len, (uint8_t)k_xt_seed);
+  TEST_ASSERT_EQ(base + 2U, internal_alloc_bitmap_used(h));
 
-  truncate_named(h, "GR.BIN", new_len);
-  TEST_ASSERT_EQ(base + 4U, alloc_bitmap_used(h)); /* 2 -> 4 clusters */
-  TEST_ASSERT_EQ(new_len, xt_dlen(h));
-  TEST_ASSERT_EQ(old_len, xt_valid(h)); /* the gap stays unwritten */
-  TEST_ASSERT_EQ(1U, xt_is_contig(h));
-  expect_pat_then_zero(h, "GR.BIN", new_len, old_len, (uint8_t)k_xt_seed);
+  internal_truncate_named(h, "GR.BIN", new_len);
+  TEST_ASSERT_EQ(base + 4U, internal_alloc_bitmap_used(h)); /* 2 -> 4 clusters */
+  TEST_ASSERT_EQ(new_len, internal_xt_dlen(h));
+  TEST_ASSERT_EQ(old_len, internal_xt_valid(h)); /* the gap stays unwritten */
+  TEST_ASSERT_EQ(1U, internal_xt_is_contig(h));
+  internal_expect_pat_then_zero(h, "GR.BIN", new_len, old_len, (uint8_t)k_xt_seed);
 
-  stream_dump_image("exfat_grow_sparse", h);
+  internal_stream_dump_image("exfat_grow_sparse", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat truncate: grow raises DataLength, leaves ValidDataLength");
 }
 
@@ -374,49 +378,49 @@ static void test_exfat_grow_sparse(void)
  * already-a-chain vector by the streaming suite. This case reaches the decision
  * through a truncate rather than a write.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_grow_chain_transition(void)
+RA8_INTERNAL static void internal_test_exfat_grow_chain_transition(void)
 {
   TEST_BEGIN("exfat truncate: a blocked grow converts the run to a FAT chain");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb = xt_cbytes(h);
+  const uint32_t cb = internal_xt_cbytes(h);
 
   ra8_fs_file_t* fa = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "A.BIN", k_ra8_fs_mode_write, &fa));
-  stream_write_pattern(fa, cb, (uint32_t)k_xs_chunk, 0U, (uint8_t)k_xt_seed);
-  TEST_ASSERT_EQ(1U, xt_is_contig(h));
+  internal_stream_write_pattern(fa, cb, (uint32_t)k_xs_chunk, 0U, (uint8_t)k_xt_seed);
+  TEST_ASSERT_EQ(1U, internal_xt_is_contig(h));
 
   /* Park a blocker on A's tail + 1: the write above left the next-free hint one
    * past A's only cluster, so this file takes exactly that cluster. */
-  static uint8_t s_blk[k_xt_blk_len];
-  memset(s_blk, (int)k_xt_blk_fill, sizeof s_blk);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BLK.BIN", s_blk, (uint32_t)k_xt_blk_len));
+  static uint8_t blk[k_xt_blk_len];
+  memset(blk, (int)k_xt_blk_fill, sizeof blk);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BLK.BIN", blk, (uint32_t)k_xt_blk_len));
 
   /* Grow A: it cannot stay contiguous, so it becomes a real FAT chain. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(fa, (uint64_t)2U * cb));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fa));
 
-  TEST_ASSERT_EQ(0U, xt_is_contig(h)); /* NoFatChain cleared */
-  TEST_ASSERT_EQ(2U * cb, xt_dlen(h));
-  TEST_ASSERT_EQ(cb, xt_valid(h)); /* the written prefix */
-  expect_pat_then_zero(h, "A.BIN", 2U * cb, cb, (uint8_t)k_xt_seed);
+  TEST_ASSERT_EQ(0U, internal_xt_is_contig(h)); /* NoFatChain cleared */
+  TEST_ASSERT_EQ(2U * cb, internal_xt_dlen(h));
+  TEST_ASSERT_EQ(cb, internal_xt_valid(h)); /* the written prefix */
+  internal_expect_pat_then_zero(h, "A.BIN", 2U * cb, cb, (uint8_t)k_xt_seed);
 
   /* The conversion touched only A. */
   ra8_fs_file_t* fb = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BLK.BIN", k_ra8_fs_mode_read, &fb));
-  static uint8_t s_got[k_xt_blk_len];
+  static uint8_t got[k_xt_blk_len];
   uint32_t       n = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(fb, s_got, (uint32_t)k_xt_blk_len, &n));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(fb, got, (uint32_t)k_xt_blk_len, &n));
   TEST_ASSERT_EQ(k_xt_blk_len, n);
-  TEST_ASSERT_EQ(0, memcmp(s_got, s_blk, sizeof s_blk));
+  TEST_ASSERT_EQ(0, memcmp(got, blk, sizeof blk));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fb));
 
-  stream_dump_image("exfat_grow_chain_transition", h);
+  internal_stream_dump_image("exfat_grow_chain_transition", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat truncate: a blocked grow converts the run to a FAT chain");
 }
 
@@ -437,43 +441,43 @@ static void test_exfat_grow_chain_transition(void)
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
  * test_fat_truncate_rejects.)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_shrink_chained(void)
+RA8_INTERNAL static void internal_test_exfat_shrink_chained(void)
 {
   TEST_BEGIN("exfat truncate: a chained file shrinks via the FAT-walk arm");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb   = xt_cbytes(h);
-  const uint32_t base = alloc_bitmap_used(h);
+  const uint32_t cb   = internal_xt_cbytes(h);
+  const uint32_t base = internal_alloc_bitmap_used(h);
 
   ra8_fs_file_t* fa = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "C.BIN", k_ra8_fs_mode_write, &fa));
-  stream_write_pattern(fa, cb, (uint32_t)k_xs_chunk, 0U, (uint8_t)k_xt_seed);
+  internal_stream_write_pattern(fa, cb, (uint32_t)k_xs_chunk, 0U, (uint8_t)k_xt_seed);
 
   /* Park a blocker on the tail's successor, then grow to three clusters: the
    * first growth converts to a chain, the second extends it. */
-  static uint8_t s_blk[k_xt_blk_len];
-  memset(s_blk, (int)k_xt_blk_fill, sizeof s_blk);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BLK.BIN", s_blk, (uint32_t)k_xt_blk_len));
+  static uint8_t blk[k_xt_blk_len];
+  memset(blk, (int)k_xt_blk_fill, sizeof blk);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "BLK.BIN", blk, (uint32_t)k_xt_blk_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(fa, (uint64_t)3U * cb));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fa));
-  TEST_ASSERT_EQ(0U, xt_is_contig(h)); /* now a FAT chain */
-  const uint32_t used_before = alloc_bitmap_used(h);
+  TEST_ASSERT_EQ(0U, internal_xt_is_contig(h)); /* now a FAT chain */
+  const uint32_t used_before = internal_alloc_bitmap_used(h);
 
   /* Shrink the chain from three clusters to two: the FAT-walk shrink arm. */
-  truncate_named(h, "C.BIN", 2U * cb);
-  TEST_ASSERT_EQ(used_before - 1U, alloc_bitmap_used(h));
-  TEST_ASSERT_EQ(0U, xt_is_contig(h)); /* still a chain */
-  TEST_ASSERT_EQ(2U * cb, xt_dlen(h));
-  TEST_ASSERT_EQ(cb, xt_valid(h));
-  expect_pat_then_zero(h, "C.BIN", 2U * cb, cb, (uint8_t)k_xt_seed);
+  internal_truncate_named(h, "C.BIN", 2U * cb);
+  TEST_ASSERT_EQ(used_before - 1U, internal_alloc_bitmap_used(h));
+  TEST_ASSERT_EQ(0U, internal_xt_is_contig(h)); /* still a chain */
+  TEST_ASSERT_EQ(2U * cb, internal_xt_dlen(h));
+  TEST_ASSERT_EQ(cb, internal_xt_valid(h));
+  internal_expect_pat_then_zero(h, "C.BIN", 2U * cb, cb, (uint8_t)k_xt_seed);
   (void)base;
 
-  stream_dump_image("exfat_shrink_chained", h);
+  internal_stream_dump_image("exfat_shrink_chained", h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat truncate: a chained file shrinks via the FAT-walk arm");
 }
 
@@ -490,25 +494,25 @@ static void test_exfat_shrink_chained(void)
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
  * test_fat_truncate_rejects.)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_truncate_rejects_readonly(void)
+RA8_INTERNAL static void internal_test_exfat_truncate_rejects_readonly(void)
 {
   TEST_BEGIN("exfat truncate: a read-only handle is refused");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb = xt_cbytes(h);
-  make_file(h, "RO.BIN", cb, (uint8_t)k_xt_seed);
+  const uint32_t cb = internal_xt_cbytes(h);
+  internal_make_file(h, "RO.BIN", cb, (uint8_t)k_xt_seed);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "RO.BIN", k_ra8_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_truncate(f, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  TEST_ASSERT_EQ(cb, xt_dlen(h));
+  TEST_ASSERT_EQ(cb, internal_xt_dlen(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat truncate: a read-only handle is refused");
 }
 
@@ -524,12 +528,11 @@ static void test_exfat_truncate_rejects_readonly(void)
  */
 int32_t main(void)
 {
-  test_exfat_shrink_contiguous();
-  test_exfat_shrink_to_zero();
-  test_exfat_grow_sparse();
-  test_exfat_grow_chain_transition();
-  test_exfat_shrink_chained();
-  test_exfat_truncate_rejects_readonly();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_exfat_truncate.c\n");
+  internal_test_exfat_shrink_contiguous();
+  internal_test_exfat_shrink_to_zero();
+  internal_test_exfat_grow_sparse();
+  internal_test_exfat_grow_chain_transition();
+  internal_test_exfat_shrink_chained();
+  internal_test_exfat_truncate_rejects_readonly();
   return 0;
 }

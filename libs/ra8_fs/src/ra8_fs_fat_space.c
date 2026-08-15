@@ -81,7 +81,7 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_popcount8(uint8_t b)
+static uint32_t internal_popcount8(uint8_t b)
 {
   uint32_t n = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_space_bits_per_byte; i++) {
@@ -116,7 +116,7 @@ static uint32_t priv_popcount8(uint8_t b)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_space_fat_free(const ra8_fs_mount_t* m, uint32_t* out_free)
+static ra8_err_t internal_space_fat_free(const ra8_fs_mount_t* m, uint32_t* out_free)
 {
   uint32_t       free = 0U;
   const uint32_t last = (uint32_t)k_cluster_first_data + m->count_of_clusters;
@@ -163,7 +163,7 @@ static ra8_err_t priv_space_fat_free(const ra8_fs_mount_t* m, uint32_t* out_free
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_space_exfat_free(const ra8_fs_mount_t* m, uint32_t* out_free)
+static ra8_err_t internal_space_exfat_free(const ra8_fs_mount_t* m, uint32_t* out_free)
 {
   uint32_t        bmp_clus = 0U;
   uint32_t        bmp_len  = 0U;
@@ -198,7 +198,7 @@ static ra8_err_t priv_space_exfat_free(const ra8_fs_mount_t* m, uint32_t* out_fr
     if (bi == full_bytes) {
       b = (uint8_t)(b & (uint8_t)((1U << rem_bits) - 1U));
     }
-    used += priv_popcount8(b);
+    used += internal_popcount8(b);
   }
   /* The bitmap holds exactly `total` cluster bits and the tail is masked, so
    * `used <= total` always -- no clamp needed. */
@@ -238,17 +238,17 @@ static ra8_err_t priv_space_exfat_free(const ra8_fs_mount_t* m, uint32_t* out_fr
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_space_free_clusters(const ra8_fs_mount_t* m, uint32_t* out_free)
+static ra8_err_t internal_space_free_clusters(const ra8_fs_mount_t* m, uint32_t* out_free)
 {
   if (m->type == k_ra8_fs_type_exfat) {
-    return priv_space_exfat_free(m, out_free);
+    return internal_space_exfat_free(m, out_free);
   }
   const uint32_t cached = priv_free_count_peek(m);
   if (cached != (uint32_t)k_fs_free_unknown) {
     *out_free = cached;
     return k_ra8_ok;
   }
-  const ra8_err_t err = priv_space_fat_free(m, out_free);
+  const ra8_err_t err = internal_space_fat_free(m, out_free);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -287,7 +287,7 @@ static ra8_err_t priv_space_free_clusters(const ra8_fs_mount_t* m, uint32_t* out
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_space_locked(ra8_fs_mount_t* handle, ra8_fs_space_t* out)
+static ra8_err_t internal_space_locked(ra8_fs_mount_t* handle, ra8_fs_space_t* out)
 {
   if (handle == nullptr || out == nullptr) {
     return k_ra8_err_null_ptr;
@@ -296,7 +296,7 @@ static ra8_err_t priv_space_locked(ra8_fs_mount_t* handle, ra8_fs_space_t* out)
     return k_ra8_err_invalid_state;
   }
   uint32_t        free_clusters = 0U;
-  const ra8_err_t err           = priv_space_free_clusters(handle, &free_clusters);
+  const ra8_err_t err           = internal_space_free_clusters(handle, &free_clusters);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -327,7 +327,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_free_space(ra8_fs_mount_t* handle, ra8_fs_space_t* out)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_space_locked(handle, out);
+  const ra8_err_t err = internal_space_locked(handle, out);
   priv_lock_release();
   return err;
 }

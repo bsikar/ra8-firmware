@@ -643,6 +643,48 @@ ra8_fs_write_file(ra8_fs_mount_t* handle, const char* path, const uint8_t* data,
 ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb, void* ctx);
 
 /**
+ * @brief Open a caller-owned directory cursor without holding the filesystem lock.
+ * @details Path resolution is locked only for this call. Each later `next`
+ *          reacquires and releases the lock, so client metadata and stream
+ *          operations are valid between entries. Two cursor objects advance
+ *          independently. The enumerated directory and its ancestors must not
+ *          be mutated until close; mutation elsewhere is permitted.
+ * @param[in,out] handle Mounted filesystem.
+ * @param[in] path Directory path.
+ * @param[out] directory Idle caller-owned cursor.
+ * @return Path, mount, or lifecycle status.
+ * @retval k_ra8_ok Cursor opened.
+ * @retval k_ra8_err_busy @p directory is already open.
+ * @pre Required pointers are non-NULL and @p handle is mounted.
+ * @post Success leaves no filesystem lock held.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_fs_dir_open(ra8_fs_mount_t* handle, const char* path, ra8_fs_dir_t* directory);
+
+/**
+ * @brief Copy the next visible directory entry.
+ * @param[in,out] directory Open caller-owned cursor.
+ * @param[out] out Stable entry value owned by the caller.
+ * @param[out] out_entry True when @p out is populated; false at clean EOF.
+ * @return Media, corruption, or lifecycle status.
+ * @pre Required pointers are non-NULL and no forbidden directory mutation occurred.
+ * @post No filesystem lock remains held; @p out survives later cursor calls.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_fs_dir_next(ra8_fs_dir_t* directory, ra8_fs_dirent_t* out, bool* out_entry);
+
+/**
+ * @brief Consume one open directory cursor.
+ * @param[in,out] directory Open caller-owned cursor.
+ * @return Lifecycle status.
+ * @post Success clears all cursor state; no backend resource remains owned.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_fs_dir_close(ra8_fs_dir_t* directory);
+
+/**
  * @brief Delete a file: mark its dir entry deleted and free its clusters.
  *
  * @details FAT12/16/32: 0xE5-marks the entry -- together with the VFAT

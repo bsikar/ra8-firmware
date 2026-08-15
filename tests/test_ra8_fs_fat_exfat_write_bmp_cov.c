@@ -17,9 +17,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
@@ -49,23 +49,23 @@
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns k_ra8_err_not_found.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_find_bitmap_eod(void)
+RA8_INTERNAL static void internal_test_find_bitmap_eod(void)
 {
   TEST_BEGIN("exfat write cov: EOD hides bitmap -> not_found (lines 82,485,561)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
   /* Overwrite the bitmap entry's type byte with EOD. */
-  s_disk.bytes[root_entry_off(h, 0U)] = (uint8_t)k_wc_entry_eod;
+  s_disk.bytes[internal_root_entry_off(h, 0U)] = (uint8_t)k_wc_entry_eod;
 
   const uint8_t dummy = (uint8_t)'X';
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_write_file(h, "X.TXT", &dummy, 1U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: EOD hides bitmap -> not_found (lines 82,485,561)");
 }
 
@@ -89,12 +89,12 @@ static void test_find_bitmap_eod(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns non-ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_find_bitmap_read_fail(void)
+RA8_INTERNAL static void internal_test_find_bitmap_read_fail(void)
 {
   TEST_BEGIN("exfat write cov: R1 read fail -> error at line 79");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -106,7 +106,7 @@ static void test_find_bitmap_read_fail(void)
 
   s_rd_remaining = (int32_t)k_wc_rd_never;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: R1 read fail -> error at line 79");
 }
 
@@ -130,12 +130,12 @@ static void test_find_bitmap_read_fail(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns non-ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_bitmap_scan_read_fail(void)
+RA8_INTERNAL static void internal_test_bitmap_scan_read_fail(void)
 {
   TEST_BEGIN("exfat write cov: R2 read fail -> error at line 124");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -147,7 +147,7 @@ static void test_bitmap_scan_read_fail(void)
 
   s_rd_remaining = (int32_t)k_wc_rd_never;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: R2 read fail -> error at line 124");
 }
 
@@ -171,12 +171,12 @@ static void test_bitmap_scan_read_fail(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns k_ra8_err_no_mem.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_bitmap_scan_full_volume(void)
+RA8_INTERNAL static void internal_test_bitmap_scan_full_volume(void)
 {
   TEST_BEGIN("exfat write cov: all clusters used -> no_mem at line 143");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -194,7 +194,7 @@ static void test_bitmap_scan_full_volume(void)
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_write_file(h, "X.TXT", &dummy, 1U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: all clusters used -> no_mem at line 143");
 }
 
@@ -219,12 +219,12 @@ static void test_bitmap_scan_full_volume(void)
  * @pre Volume is formatted and accessible.
  * @post priv_exfat_bmp_switch returns non-ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_bmp_switch_write_fails(void)
+RA8_INTERNAL static void internal_test_bmp_switch_write_fails(void)
 {
   TEST_BEGIN("exfat write cov: bmp_switch old-sector write fails (lines 153-155)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -238,7 +238,7 @@ static void test_bmp_switch_write_fails(void)
 
   s_wr_remaining = (int32_t)k_wc_wr_never;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: bmp_switch old-sector write fails (lines 153-155)");
 }
 
@@ -263,12 +263,12 @@ static void test_bmp_switch_write_fails(void)
  * @pre Volume is formatted and accessible.
  * @post priv_exfat_bmp_switch returns k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_bmp_switch_sector_change(void)
+RA8_INTERNAL static void internal_test_bmp_switch_sector_change(void)
 {
   TEST_BEGIN("exfat write cov: bmp_switch flush+load -> k_ra8_ok (lines 153,154,157)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -278,7 +278,7 @@ static void test_bmp_switch_sector_change(void)
   TEST_ASSERT_EQ(k_ra8_ok, priv_exfat_bmp_switch(h, h->first_fat_lba + 1U, &loaded, sec));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: bmp_switch flush+load -> k_ra8_ok (lines 153,154,157)");
 }
 
@@ -303,12 +303,12 @@ static void test_bmp_switch_sector_change(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns non-ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_bmp_switch_read_fail(void)
+RA8_INTERNAL static void internal_test_bmp_switch_read_fail(void)
 {
   TEST_BEGIN("exfat write cov: R3 read fail in bmp_switch (lines 160,197,561)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -320,7 +320,7 @@ static void test_bmp_switch_read_fail(void)
 
   s_rd_remaining = (int32_t)k_wc_rd_never;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: R3 read fail in bmp_switch (lines 160,197,561)");
 }
 
@@ -344,13 +344,12 @@ static void test_bmp_switch_read_fail(void)
  */
 int32_t main(void)
 {
-  test_find_bitmap_eod();
-  test_find_bitmap_read_fail();
-  test_bitmap_scan_read_fail();
-  test_bitmap_scan_full_volume();
-  test_bmp_switch_write_fails();
-  test_bmp_switch_sector_change();
-  test_bmp_switch_read_fail();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_exfat_write_bmp_cov.c\n");
+  internal_test_find_bitmap_eod();
+  internal_test_find_bitmap_read_fail();
+  internal_test_bitmap_scan_read_fail();
+  internal_test_bitmap_scan_full_volume();
+  internal_test_bmp_switch_write_fails();
+  internal_test_bmp_switch_sector_change();
+  internal_test_bmp_switch_read_fail();
   return 0;
 }

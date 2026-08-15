@@ -22,9 +22,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
@@ -86,9 +86,9 @@ typedef enum : uint32_t {
  * @post The verdict depends only on @p leaf.
  *
  * @note Pure wrapper; trivially thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded kind of fixture step using caller-owned state.
  */
-static ra8_fs_name_kind_t kind_of(const char* leaf)
+RA8_INTERNAL static ra8_fs_name_kind_t internal_kind_of(const char* leaf)
 {
   uint16_t units[k_lfn_write_max] = {};
   uint32_t nunits                 = 0U;
@@ -112,9 +112,9 @@ static ra8_fs_name_kind_t kind_of(const char* leaf)
  * @post The result is one of the four documented values.
  *
  * @note Pure wrapper; trivially thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded ntres of fixture step using caller-owned state.
  */
-static uint8_t ntres_of(const char* leaf)
+RA8_INTERNAL static uint8_t internal_ntres_of(const char* leaf)
 {
   uint16_t units[k_lfn_write_max] = {};
   uint32_t nunits                 = 0U;
@@ -148,23 +148,23 @@ static uint8_t ntres_of(const char* leaf)
  * @post Every vector's verdict matched, and 247 units is still accepted --
  *       whether they arrive as 247 bytes or as 494.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the classify length bounds vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_classify_length_bounds(void)
+RA8_INTERNAL static void internal_test_classify_length_bounds(void)
 {
   TEST_BEGIN("lfn classify MC/DC: length bounds (n==0 || n>max)");
   char buf[k_lfn_utf8_cap + 8U] = {};
 
-  TEST_ASSERT_EQ(k_name_kind_short, kind_of("OK.TXT")); /* V1 */
-  TEST_ASSERT_EQ(k_name_kind_invalid, kind_of(""));     /* V2 */
+  TEST_ASSERT_EQ(k_name_kind_short, internal_kind_of("OK.TXT")); /* V1 */
+  TEST_ASSERT_EQ(k_name_kind_invalid, internal_kind_of(""));     /* V2 */
 
   for (uint32_t i = 0U; i < ((uint32_t)k_lfn_write_max + 1U); i++) {
     buf[i] = 'x';
   }
-  TEST_ASSERT_EQ(k_name_kind_invalid, kind_of(buf)); /* V3 */
+  TEST_ASSERT_EQ(k_name_kind_invalid, internal_kind_of(buf)); /* V3 */
 
   buf[(uint32_t)k_lfn_write_max] = '\0';
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of(buf)); /* the boundary itself */
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of(buf)); /* the boundary itself */
 
   /* The same boundary in units rather than bytes: 247 copies of U+00E9, built
    * from escapes because this tree's sources are 7-bit ASCII. */
@@ -174,11 +174,11 @@ static void test_classify_length_bounds(void)
     buf[w++] = (char)(unsigned char)k_lwm_u8_cont_e9;
   }
   buf[w] = '\0';
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of(buf)); /* 494 bytes, 247 units */
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of(buf)); /* 494 bytes, 247 units */
   buf[w++] = (char)(unsigned char)k_lwm_u8_lead2;
   buf[w++] = (char)(unsigned char)k_lwm_u8_cont_e9;
   buf[w]   = '\0';
-  TEST_ASSERT_EQ(k_name_kind_invalid, kind_of(buf)); /* 248 units: one over */
+  TEST_ASSERT_EQ(k_name_kind_invalid, internal_kind_of(buf)); /* 248 units: one over */
 
   TEST_END("lfn classify MC/DC: length bounds (n==0 || n>max)");
 }
@@ -204,37 +204,37 @@ static void test_classify_length_bounds(void)
  * @pre None; the function under test touches no volume.
  * @post Every illegal character was refused and neither control was.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the classify illegal characters vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_classify_illegal_characters(void)
+RA8_INTERNAL static void internal_test_classify_illegal_characters(void)
 {
   TEST_BEGIN("lfn classify MC/DC: illegal characters");
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of("Ordinary Name.txt")); /* control */
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of("Ordinary Name.txt")); /* control */
   /* "caf" + U+00E9 + ".txt", from escapes: sources here are 7-bit ASCII. */
-  static const char s_accented[] = {'c',
-                                    'a',
-                                    'f',
-                                    (char)(unsigned char)0xC3U,
-                                    (char)(unsigned char)0xA9U,
-                                    '.',
-                                    't',
-                                    'x',
-                                    't',
-                                    '\0'};
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of(s_accented)); /* above DEL: legal */
+  static const char accented[] = {'c',
+                                  'a',
+                                  'f',
+                                  (char)(unsigned char)0xC3U,
+                                  (char)(unsigned char)0xA9U,
+                                  '.',
+                                  't',
+                                  'x',
+                                  't',
+                                  '\0'};
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of(accented)); /* above DEL: legal */
 
-  static const char* s_bad[] = {"who?.txt",
-                                "star*.txt",
-                                "pipe|.txt",
-                                "colon:.txt",
-                                "lt<.txt",
-                                "gt>.txt",
-                                "quote\".txt",
-                                "back\\slash.txt",
-                                "tab\there.txt",
-                                "del\x7f.txt"};
-  for (uint32_t i = 0U; i < (uint32_t)(sizeof(s_bad) / sizeof(s_bad[0])); i++) {
-    TEST_ASSERT_EQ(k_name_kind_invalid, kind_of(s_bad[i]));
+  static const char* bad[] = {"who?.txt",
+                              "star*.txt",
+                              "pipe|.txt",
+                              "colon:.txt",
+                              "lt<.txt",
+                              "gt>.txt",
+                              "quote\".txt",
+                              "back\\slash.txt",
+                              "tab\there.txt",
+                              "del\x7f.txt"};
+  for (uint32_t i = 0U; i < (uint32_t)(sizeof(bad) / sizeof(bad[0])); i++) {
+    TEST_ASSERT_EQ(k_name_kind_invalid, internal_kind_of(bad[i]));
   }
   TEST_END("lfn classify MC/DC: illegal characters");
 }
@@ -263,21 +263,21 @@ static void test_classify_illegal_characters(void)
  * @pre None; the function under test touches no volume.
  * @post Every shape landed in the arm its rule requires.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the classify shape rules vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_classify_shape_rules(void)
+RA8_INTERNAL static void internal_test_classify_shape_rules(void)
 {
   TEST_BEGIN("lfn classify MC/DC: 8.3 shape rules");
-  TEST_ASSERT_EQ(k_name_kind_short, kind_of("BASE.TXT"));    /* V1 / V4 */
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of(".profile"));     /* V2      */
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of("NINECHARS.TX")); /* V3      */
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of("REPORT."));      /* V5      */
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of("A.FOUR"));       /* V6      */
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of("a.b.c"));
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of("my file.txt"));
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of("a+b.txt"));
-  TEST_ASSERT_EQ(k_name_kind_short, kind_of("NOEXT"));
-  TEST_ASSERT_EQ(k_name_kind_short, kind_of("EIGHTCHR.EXT"));
+  TEST_ASSERT_EQ(k_name_kind_short, internal_kind_of("BASE.TXT"));    /* V1 / V4 */
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of(".profile"));     /* V2      */
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of("NINECHARS.TX")); /* V3      */
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of("REPORT."));      /* V5      */
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of("A.FOUR"));       /* V6      */
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of("a.b.c"));
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of("my file.txt"));
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of("a+b.txt"));
+  TEST_ASSERT_EQ(k_name_kind_short, internal_kind_of("NOEXT"));
+  TEST_ASSERT_EQ(k_name_kind_short, internal_kind_of("EIGHTCHR.EXT"));
   TEST_END("lfn classify MC/DC: 8.3 shape rules");
 }
 
@@ -310,22 +310,22 @@ static void test_classify_shape_rules(void)
  * @post Each of the four `DIR_NTRes` values was produced by the name that
  *       requires it, and both mixed-case halves forced a chain.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the classify case flags vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_classify_case_flags(void)
+RA8_INTERNAL static void internal_test_classify_case_flags(void)
 {
   TEST_BEGIN("lfn classify MC/DC: NTRes case flags");
-  TEST_ASSERT_EQ(k_name_kind_short, kind_of("data.log")); /* V1 / V3 */
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of("Data.log"));  /* V2      */
-  TEST_ASSERT_EQ(k_name_kind_long, kind_of("data.Log"));  /* V4      */
+  TEST_ASSERT_EQ(k_name_kind_short, internal_kind_of("data.log")); /* V1 / V3 */
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of("Data.log"));  /* V2      */
+  TEST_ASSERT_EQ(k_name_kind_long, internal_kind_of("data.Log"));  /* V4      */
 
-  TEST_ASSERT_EQ(k_lwm_ntres_both, ntres_of("data.log"));
-  TEST_ASSERT_EQ(k_lwm_ntres_base, ntres_of("data.LOG")); /* V5      */
-  TEST_ASSERT_EQ(0U, ntres_of("DATA.LOG"));               /* V6 / V8 */
-  TEST_ASSERT_EQ(k_lwm_ntres_ext, ntres_of("DATA.log"));  /* V7      */
-  TEST_ASSERT_EQ(k_lwm_ntres_ext, ntres_of("0123.log"));
-  TEST_ASSERT_EQ(0U, ntres_of("0123.LOG"));
-  TEST_ASSERT_EQ(k_lwm_ntres_base, ntres_of("lower"));
+  TEST_ASSERT_EQ(k_lwm_ntres_both, internal_ntres_of("data.log"));
+  TEST_ASSERT_EQ(k_lwm_ntres_base, internal_ntres_of("data.LOG")); /* V5      */
+  TEST_ASSERT_EQ(0U, internal_ntres_of("DATA.LOG"));               /* V6 / V8 */
+  TEST_ASSERT_EQ(k_lwm_ntres_ext, internal_ntres_of("DATA.log"));  /* V7      */
+  TEST_ASSERT_EQ(k_lwm_ntres_ext, internal_ntres_of("0123.log"));
+  TEST_ASSERT_EQ(0U, internal_ntres_of("0123.LOG"));
+  TEST_ASSERT_EQ(k_lwm_ntres_base, internal_ntres_of("lower"));
   TEST_END("lfn classify MC/DC: NTRes case flags");
 }
 
@@ -350,9 +350,9 @@ static void test_classify_case_flags(void)
  * @pre None; the function under test touches no volume.
  * @post Each NULL was refused with `k_name_kind_invalid`.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the classify null guards vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_classify_null_guards(void)
+RA8_INTERNAL static void internal_test_classify_null_guards(void)
 {
   TEST_BEGIN("lfn classify MC/DC: NULL argument triple");
   uint8_t  name83[k_max_8_3_name] = {};
@@ -389,9 +389,9 @@ static void test_classify_null_guards(void)
  * @post No state outside the local buffer is modified.
  *
  * @note Not thread-safe (uses the harness's failure counter).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded expect alias fixture step using caller-owned state.
  */
-static void expect_alias(const char* leaf, uint32_t tail, const char* want)
+RA8_INTERNAL static void internal_expect_alias(const char* leaf, uint32_t tail, const char* want)
 {
   uint8_t  got[k_max_8_3_name]    = {};
   uint16_t units[k_lfn_write_max] = {};
@@ -430,18 +430,18 @@ static void expect_alias(const char* leaf, uint32_t tail, const char* want)
  * @pre None; the function under test touches no volume.
  * @post Every expected alias matched byte for byte.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the alias basis shapes vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_alias_basis_shapes(void)
+RA8_INTERNAL static void internal_test_alias_basis_shapes(void)
 {
   TEST_BEGIN("lfn alias MC/DC: basis-name generation");
-  expect_alias("My Report.txt", 1U, "MYREPO~1TXT"); /* V1,V2,V5,V7 */
-  expect_alias("a.b.c", 1U, "AB~1    C  ");         /* V3          */
-  expect_alias("...", 1U, "_~1        ");           /* V4          */
-  expect_alias("ab cd.txt", 1U, "ABCD~1  TXT");     /* V6          */
-  expect_alias("Design (final).ext", 1U, "DESIGN~1EXT");
-  expect_alias(".profile", 1U, "PROFIL~1   ");
-  expect_alias("has+plus.and,comma", 1U, "HAS_PL~1AND");
+  internal_expect_alias("My Report.txt", 1U, "MYREPO~1TXT"); /* V1,V2,V5,V7 */
+  internal_expect_alias("a.b.c", 1U, "AB~1    C  ");         /* V3          */
+  internal_expect_alias("...", 1U, "_~1        ");           /* V4          */
+  internal_expect_alias("ab cd.txt", 1U, "ABCD~1  TXT");     /* V6          */
+  internal_expect_alias("Design (final).ext", 1U, "DESIGN~1EXT");
+  internal_expect_alias(".profile", 1U, "PROFIL~1   ");
+  internal_expect_alias("has+plus.and,comma", 1U, "HAS_PL~1AND");
   TEST_END("lfn alias MC/DC: basis-name generation");
 }
 
@@ -462,20 +462,22 @@ static void test_alias_basis_shapes(void)
  * @pre None; the function under test touches no volume.
  * @post Each tail width left exactly `8 - digits - 1` basis characters.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the alias basis tail widths vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_alias_basis_tail_widths(void)
+RA8_INTERNAL static void internal_test_alias_basis_tail_widths(void)
 {
   TEST_BEGIN("lfn alias MC/DC: numeric tail widths 1..6");
-  expect_alias("Long Document Name.txt", 1U, "LONGDO~1TXT"); /* V1 */
-  expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_1d, "LONGDO~9TXT");
-  expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_2d_lo, "LONGD~10TXT"); /* V2 */
-  expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_2d_hi, "LONGD~99TXT");
-  expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_3d, "LONG~100TXT");
-  expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_4d, "LON~1000TXT");
-  expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_5d, "LO~10000TXT");
-  expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_6d, "L~100000TXT");
-  expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_max, "L~999999TXT"); /* V3 */
+  internal_expect_alias("Long Document Name.txt", 1U, "LONGDO~1TXT"); /* V1 */
+  internal_expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_1d, "LONGDO~9TXT");
+  internal_expect_alias("Long Document Name.txt",
+                        (uint32_t)k_lwm_tail_2d_lo,
+                        "LONGD~10TXT"); /* V2 */
+  internal_expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_2d_hi, "LONGD~99TXT");
+  internal_expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_3d, "LONG~100TXT");
+  internal_expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_4d, "LON~1000TXT");
+  internal_expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_5d, "LO~10000TXT");
+  internal_expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_6d, "L~100000TXT");
+  internal_expect_alias("Long Document Name.txt", (uint32_t)k_lwm_tail_max, "L~999999TXT"); /* V3 */
   TEST_END("lfn alias MC/DC: numeric tail widths 1..6");
 }
 
@@ -505,16 +507,16 @@ static void test_alias_basis_tail_widths(void)
  * @pre None; the function under test touches no volume.
  * @post Every fixed field held the value the specification requires.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the fill slot shape vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_fill_slot_shape(void)
+RA8_INTERNAL static void internal_test_fill_slot_shape(void)
 {
   TEST_BEGIN("lfn slot MC/DC: fixed fields, terminator and padding");
   uint8_t ent[k_ra8_fs_dir_entry_bytes] = {};
 
-  static const uint16_t s_hello[] = {'H', 'E', 'L', 'L', 'O'};
+  static const uint16_t hello[] = {'H', 'E', 'L', 'L', 'O'};
   priv_lfn_fill_slot(ent,
-                     s_hello,
+                     hello,
                      (uint32_t)k_lwm_short_len,
                      1U,
                      1U,
@@ -529,23 +531,23 @@ static void test_fill_slot_shape(void)
   TEST_ASSERT_EQ(k_lwm_pad, priv_rd16(&ent[k_lwm_name2_1])); /* V3              */
 
   /* V4: exactly one group, so every character is a real one. */
-  static const uint16_t s_thirteen[] =
+  static const uint16_t thirteen[] =
     {'T', 'H', 'I', 'R', 'T', 'E', 'E', 'N', 'C', 'H', 'A', 'R', 'S'};
-  priv_lfn_fill_slot(ent, s_thirteen, (uint32_t)k_lwm_per_group, 1U, 1U, 0U);
+  priv_lfn_fill_slot(ent, thirteen, (uint32_t)k_lwm_per_group, 1U, 1U, 0U);
   TEST_ASSERT_EQ('S', priv_rd16(&ent[k_lwm_name3_1]));
 
   /* V6: not the last logical group. */
-  static const uint16_t s_twentysix[] = {'T', 'W', 'E', 'N', 'T', 'Y', 'S', 'I', 'X',
-                                         'C', 'H', 'A', 'R', 'A', 'C', 'T', 'E', 'R',
-                                         'S', 'E', 'X', 'A', 'C', 'T', 'L', 'Y'};
-  priv_lfn_fill_slot(ent, s_twentysix, (uint32_t)k_lwm_two_groups, 1U, 0U, (uint8_t)k_lwm_csum_b);
+  static const uint16_t twentysix[] = {'T', 'W', 'E', 'N', 'T', 'Y', 'S', 'I', 'X',
+                                       'C', 'H', 'A', 'R', 'A', 'C', 'T', 'E', 'R',
+                                       'S', 'E', 'X', 'A', 'C', 'T', 'L', 'Y'};
+  priv_lfn_fill_slot(ent, twentysix, (uint32_t)k_lwm_two_groups, 1U, 0U, (uint8_t)k_lwm_csum_b);
   TEST_ASSERT_EQ(1U, ent[k_lfn_off_seq]);
   TEST_ASSERT_EQ('T', priv_rd16(&ent[k_lwm_name1_0]));
 
   /* A unit above ASCII lands whole. Written as an escape, because a literal
    * would put a non-ASCII byte in a source file this tree keeps 7-bit. */
-  static const uint16_t s_accented[] = {0x00E9U, 'x'};
-  priv_lfn_fill_slot(ent, s_accented, 2U, 1U, 1U, 0U);
+  static const uint16_t accented[] = {0x00E9U, 'x'};
+  priv_lfn_fill_slot(ent, accented, 2U, 1U, 1U, 0U);
   TEST_ASSERT_EQ(0x00E9U, priv_rd16(&ent[k_lwm_name1_0]));
   TEST_END("lfn slot MC/DC: fixed fields, terminator and padding");
 }
@@ -574,14 +576,14 @@ static void test_fill_slot_shape(void)
  * @pre None; the functions under test touch no volume.
  * @post Both names round-tripped, and a mismatched checksum was refused.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_fill_slot_round_trips_through_the_reader(void)
+RA8_INTERNAL static void internal_test_fill_slot_round_trips_through_the_reader(void)
 {
   TEST_BEGIN("lfn slot MC/DC: writer output survives the reader");
   /* Non-ASCII cases are built from escapes: "caf" + U+00E9 + ".txt", and
    * U+4F60 U+597D + ".txt". This tree's sources are 7-bit ASCII. */
-  static const char s_accented[]          = {'c',
+  static const char accented[]            = {'c',
                                              'a',
                                              'f',
                                              (char)(unsigned char)0xC3U,
@@ -591,7 +593,7 @@ static void test_fill_slot_round_trips_through_the_reader(void)
                                              'x',
                                              't',
                                              '\0'};
-  static const char s_cjk[]               = {(char)(unsigned char)0xE4U,
+  static const char cjk[]                 = {(char)(unsigned char)0xE4U,
                                              (char)(unsigned char)0xBDU,
                                              (char)(unsigned char)0xA0U,
                                              (char)(unsigned char)0xE5U,
@@ -602,17 +604,17 @@ static void test_fill_slot_round_trips_through_the_reader(void)
                                              'x',
                                              't',
                                              '\0'};
-  const char*       s_names[]             = {"A Perfectly Ordinary Name.txt",
+  const char*       names[]               = {"A Perfectly Ordinary Name.txt",
                                              "TwentySixCharsHere.picture",
                                              "x",
-                                             s_accented,
-                                             s_cjk};
+                                             accented,
+                                             cjk};
   const uint8_t     alias[k_max_8_3_name] = {'A', 'L', 'I', 'A', 'S', '~', '1', ' ', 'T', 'X', 'T'};
   const uint8_t     other[k_max_8_3_name] = {'O', 'T', 'H', 'E', 'R', '~', '1', ' ', 'T', 'X', 'T'};
   const uint8_t     csum                  = priv_sfn_checksum(alias);
 
-  for (uint32_t n = 0U; n < (uint32_t)(sizeof(s_names) / sizeof(s_names[0])); n++) {
-    const char* name                   = s_names[n];
+  for (uint32_t n = 0U; n < (uint32_t)(sizeof(names) / sizeof(names[0])); n++) {
+    const char* name                   = names[n];
     uint16_t    units[k_lfn_write_max] = {};
     uint32_t    nlen                   = 0U;
     TEST_ASSERT_EQ(k_ra8_ok, priv_utf8_to_utf16(name, units, (uint32_t)k_lfn_write_max, &nlen));
@@ -653,15 +655,14 @@ static void test_fill_slot_round_trips_through_the_reader(void)
  */
 int32_t main(void)
 {
-  test_classify_length_bounds();
-  test_classify_illegal_characters();
-  test_classify_shape_rules();
-  test_classify_case_flags();
-  test_classify_null_guards();
-  test_alias_basis_shapes();
-  test_alias_basis_tail_widths();
-  test_fill_slot_shape();
-  test_fill_slot_round_trips_through_the_reader();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_lfn_write_mcdc.c\n");
+  internal_test_classify_length_bounds();
+  internal_test_classify_illegal_characters();
+  internal_test_classify_shape_rules();
+  internal_test_classify_case_flags();
+  internal_test_classify_null_guards();
+  internal_test_alias_basis_shapes();
+  internal_test_alias_basis_tail_widths();
+  internal_test_fill_slot_shape();
+  internal_test_fill_slot_round_trips_through_the_reader();
   return 0;
 }

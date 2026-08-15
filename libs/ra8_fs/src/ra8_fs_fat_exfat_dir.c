@@ -78,11 +78,11 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_enter(const ra8_fs_mount_t* m,
-                                  const exfat_dir_t*    cur,
-                                  const char*           comp,
-                                  uint32_t              len,
-                                  exfat_dir_t*          out)
+static ra8_err_t internal_exfat_enter(const ra8_fs_mount_t* m,
+                                      const exfat_dir_t*    cur,
+                                      const char*           comp,
+                                      uint32_t              len,
+                                      exfat_dir_t*          out)
 {
   /* Two bounds, in two domains, and both are needed. The BYTE bound sizes the
    * buffer, because @p comp is UTF-8 here and a 64-unit name is up to three
@@ -169,7 +169,7 @@ ra8_err_t priv_exfat_resolve_parent(const ra8_fs_mount_t* m,
       return k_ra8_ok;
     }
     exfat_dir_t     next = {};
-    const ra8_err_t e    = priv_exfat_enter(m, &cur, p, nlen, &next);
+    const ra8_err_t e    = internal_exfat_enter(m, &cur, p, nlen, &next);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -204,7 +204,7 @@ ra8_err_t priv_exfat_resolve_dir(const ra8_fs_mount_t* m, const char* path, exfa
     *out = parent; /* trailing slash: the parent IS the directory */
     return k_ra8_ok;
   }
-  return priv_exfat_enter(m, &parent, leaf, len, out);
+  return internal_exfat_enter(m, &parent, leaf, len, out);
 }
 
 /* `priv_exfat_lookup()`: see header for the documented contract. */
@@ -303,11 +303,11 @@ ra8_err_t priv_exfat_seal_cluster(const ra8_fs_mount_t* m, uint32_t clus)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_exfat_build_dir_set(const ra8_fs_mount_t* m,
-                                         uint8_t*              set,
-                                         const uint16_t*       name,
-                                         uint32_t              nlen,
-                                         uint32_t              first)
+static uint32_t internal_exfat_build_dir_set(const ra8_fs_mount_t* m,
+                                             uint8_t*              set,
+                                             const uint16_t*       name,
+                                             uint32_t              nlen,
+                                             uint32_t              first)
 {
   const uint32_t name_entries =
     (nlen + (uint32_t)k_exfat_name_per_entry - 1U) / (uint32_t)k_exfat_name_per_entry;
@@ -374,7 +374,7 @@ static uint32_t priv_exfat_build_dir_set(const ra8_fs_mount_t* m,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_exfat_dir_alloc(const ra8_fs_mount_t* m, uint32_t* out_clus, uint64_t* out_bmp)
+internal_exfat_dir_alloc(const ra8_fs_mount_t* m, uint32_t* out_clus, uint64_t* out_bmp)
 {
   uint32_t  bclus = 0U;
   uint32_t  blen  = 0U;
@@ -428,10 +428,10 @@ priv_exfat_dir_alloc(const ra8_fs_mount_t* m, uint32_t* out_clus, uint64_t* out_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_mkdir_check(const ra8_fs_mount_t* m,
-                                        const exfat_dir_t*    parent,
-                                        const char*           leaf,
-                                        uint32_t              nlen)
+static ra8_err_t internal_exfat_mkdir_check(const ra8_fs_mount_t* m,
+                                            const exfat_dir_t*    parent,
+                                            const char*           leaf,
+                                            uint32_t              nlen)
 {
   if (nlen == 0U) {
     return k_ra8_err_invalid_arg; /* "/" or a trailing slash: the root itself */
@@ -482,7 +482,7 @@ ra8_err_t priv_exfat_mkdir(const ra8_fs_mount_t* m, const char* path)
   if (ne != k_ra8_ok) {
     return ne;
   }
-  e = priv_exfat_mkdir_check(m, &parent, leaf, nlen);
+  e = internal_exfat_mkdir_check(m, &parent, leaf, nlen);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -498,12 +498,12 @@ ra8_err_t priv_exfat_mkdir(const ra8_fs_mount_t* m, const char* path)
   }
   uint32_t newclus = 0U;
   uint64_t bmp_lba = 0U;
-  e                = priv_exfat_dir_alloc(m, &newclus, &bmp_lba);
+  e                = internal_exfat_dir_alloc(m, &newclus, &bmp_lba);
   if (e != k_ra8_ok) {
     return e;
   }
   uint8_t        set[k_exfat_max_set_bytes] = {};
-  const uint32_t bytes = priv_exfat_build_dir_set(m, set, units, nlen, newclus);
+  const uint32_t bytes = internal_exfat_build_dir_set(m, set, units, nlen, newclus);
   e                    = priv_exfat_write_dir_set(m, dclus, didx, set, bytes);
   if (e != k_ra8_ok) {
     (void)priv_exfat_bitmap_clear(m, bmp_lba, newclus, 1U); /* never leak the cluster */
@@ -552,7 +552,7 @@ ra8_err_t priv_exfat_mkdir(const ra8_fs_mount_t* m, const char* path)
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_exfat_dir_is_empty(const ra8_fs_mount_t* m, const exfat_dir_t* dir, uint8_t* out_empty)
+internal_exfat_dir_is_empty(const ra8_fs_mount_t* m, const exfat_dir_t* dir, uint8_t* out_empty)
 {
   exfat_cursor_t cur = {};
   priv_exfat_cursor_init(dir, &cur);
@@ -612,12 +612,12 @@ priv_exfat_dir_is_empty(const ra8_fs_mount_t* m, const exfat_dir_t* dir, uint8_t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_rmdir_locate(const ra8_fs_mount_t* m,
-                                         const char*           path,
-                                         exfat_setpos_t*       pos,
-                                         uint32_t*             out_count,
-                                         uint8_t*              strm,
-                                         exfat_dir_t*          out_dir)
+static ra8_err_t internal_exfat_rmdir_locate(const ra8_fs_mount_t* m,
+                                             const char*           path,
+                                             exfat_setpos_t*       pos,
+                                             uint32_t*             out_count,
+                                             uint8_t*              strm,
+                                             exfat_dir_t*          out_dir)
 {
   exfat_dir_t parent = {};
   const char* leaf   = nullptr;
@@ -657,12 +657,12 @@ ra8_err_t priv_exfat_rmdir(const ra8_fs_mount_t* m, const char* path)
   uint32_t       count                        = 0U;
   uint8_t        strm[k_exfat_entry_bytes]    = {};
   exfat_dir_t    victim                       = {};
-  ra8_err_t      e = priv_exfat_rmdir_locate(m, path, pos, &count, strm, &victim);
+  ra8_err_t      e = internal_exfat_rmdir_locate(m, path, pos, &count, strm, &victim);
   if (e != k_ra8_ok) {
     return e;
   }
   uint8_t empty = 0U;
-  e             = priv_exfat_dir_is_empty(m, &victim, &empty);
+  e             = internal_exfat_dir_is_empty(m, &victim, &empty);
   if (e != k_ra8_ok) {
     return e;
   }

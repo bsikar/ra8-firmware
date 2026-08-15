@@ -24,7 +24,7 @@
 #include "ra8_fs_fat_internal.h"
 
 /** @brief GPT header signature ("EFI PART", UEFI spec 2.10 table 5.5). */
-static const uint8_t k_gpt_signature[k_gpt_sig_len] = {
+static const uint8_t s_gpt_signature[k_gpt_sig_len] = {
   0x45U,
   0x46U,
   0x49U,
@@ -37,7 +37,7 @@ static const uint8_t k_gpt_signature[k_gpt_sig_len] = {
 
 /** @brief Microsoft Basic Data type GUID, on-disk byte order
  *         (EBD0A0A2-B9E5-4433-87C0-68B6B72699C7). */
-static const uint8_t k_gpt_guid_basic_data[k_gpt_guid_len] = {
+static const uint8_t s_gpt_guid_basic_data[k_gpt_guid_len] = {
   0xA2U,
   0xA0U,
   0xD0U,
@@ -75,7 +75,7 @@ static const uint8_t k_gpt_guid_basic_data[k_gpt_guid_len] = {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint64_t priv_gpt_entry_first_lba(const uint8_t* entry)
+static uint64_t internal_gpt_entry_first_lba(const uint8_t* entry)
 {
   uint32_t nonzero = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_gpt_guid_len; i++) {
@@ -107,10 +107,10 @@ static uint64_t priv_gpt_entry_first_lba(const uint8_t* entry)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_gpt_entry_is_basic_data(const uint8_t* entry)
+static uint32_t internal_gpt_entry_is_basic_data(const uint8_t* entry)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_gpt_guid_len; i++) {
-    if (entry[i] != k_gpt_guid_basic_data[i]) {
+    if (entry[i] != s_gpt_guid_basic_data[i]) {
       return 0U;
     }
   }
@@ -136,9 +136,9 @@ static uint32_t priv_gpt_entry_is_basic_data(const uint8_t* entry)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_gpt_note_entry(const uint8_t* entry, uint64_t* basic_lba, uint64_t* any_lba)
+static void internal_gpt_note_entry(const uint8_t* entry, uint64_t* basic_lba, uint64_t* any_lba)
 {
-  const uint64_t first = priv_gpt_entry_first_lba(entry);
+  const uint64_t first = internal_gpt_entry_first_lba(entry);
   if (first == 0U) {
     return;
   }
@@ -146,7 +146,7 @@ static void priv_gpt_note_entry(const uint8_t* entry, uint64_t* basic_lba, uint6
     *any_lba = first;
   }
   if (*basic_lba == 0U) {
-    if (priv_gpt_entry_is_basic_data(entry) != 0U) {
+    if (internal_gpt_entry_is_basic_data(entry) != 0U) {
       *basic_lba = first;
     }
   }
@@ -170,13 +170,13 @@ static void priv_gpt_note_entry(const uint8_t* entry, uint64_t* basic_lba, uint6
  * @pre ``m->partition_base_lba`` is still 0 (reads are absolute).
  * @pre @p out_base is non-NULL.
  * @post On k_ra8_ok @p out_base holds a non-zero LBA.
- * @post ::s_scratch holds the last entry sector read.
+ * @post ::priv_scratch holds the last entry sector read.
  * @note Not thread-safe -- uses module-level scratch.
  * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_gpt_scan_entries(ra8_fs_mount_t* m, uint64_t entry_lba, uint32_t count, uint64_t* out_base)
+internal_gpt_scan_entries(ra8_fs_mount_t* m, uint64_t entry_lba, uint32_t count, uint64_t* out_base)
 {
   const uint32_t eps       = priv_bps(m) / (uint32_t)k_gpt_entry_bytes;
   uint64_t       basic_lba = 0U;
@@ -185,12 +185,12 @@ priv_gpt_scan_entries(ra8_fs_mount_t* m, uint64_t entry_lba, uint32_t count, uin
     const uint32_t sector = i / eps;
     const uint32_t offset = (i % eps) * (uint32_t)k_gpt_entry_bytes;
     if (offset == 0U) {
-      const ra8_err_t err = priv_read_sector(m, entry_lba + sector, s_scratch);
+      const ra8_err_t err = priv_read_sector(m, entry_lba + sector, priv_scratch);
       if (err != k_ra8_ok) {
         return err;
       }
     }
-    priv_gpt_note_entry(&s_scratch[offset], &basic_lba, &any_lba);
+    internal_gpt_note_entry(&priv_scratch[offset], &basic_lba, &any_lba);
   }
   if (basic_lba != 0U) {
     *out_base = basic_lba;
@@ -222,26 +222,27 @@ priv_gpt_scan_entries(ra8_fs_mount_t* m, uint64_t entry_lba, uint32_t count, uin
  * @retval k_ra8_err_*                 Backend read failure.
  * @pre ``m->partition_base_lba`` is still 0 (reads are absolute).
  * @pre @p out_entry_lba and @p out_count are non-NULL.
- * @post On k_ra8_ok both outputs are set; ::s_scratch holds the GPT header.
+ * @post On k_ra8_ok both outputs are set; ::priv_scratch holds the GPT header.
  * @post On failure the outputs are unchanged.
  * @note Not thread-safe -- uses module-level scratch.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_gpt_read_geom(ra8_fs_mount_t* m, uint64_t* out_entry_lba, uint32_t* out_count)
+static ra8_err_t
+internal_gpt_read_geom(ra8_fs_mount_t* m, uint64_t* out_entry_lba, uint32_t* out_count)
 {
-  const ra8_err_t err = priv_read_sector(m, (uint64_t)k_gpt_header_lba, s_scratch);
+  const ra8_err_t err = priv_read_sector(m, (uint64_t)k_gpt_header_lba, priv_scratch);
   if (err != k_ra8_ok) {
     return err;
   }
   for (uint32_t i = 0U; i < (uint32_t)k_gpt_sig_len; i++) {
-    if (s_scratch[i] != k_gpt_signature[i]) {
+    if (priv_scratch[i] != s_gpt_signature[i]) {
       return k_ra8_err_validation_failed;
     }
   }
-  const uint64_t entry_lba  = priv_rd64(&s_scratch[k_gpt_off_entry_lba]);
-  const uint32_t entry_size = priv_rd32(&s_scratch[k_gpt_off_entry_size]);
-  uint32_t       count      = priv_rd32(&s_scratch[k_gpt_off_entry_count]);
+  const uint64_t entry_lba  = priv_rd64(&priv_scratch[k_gpt_off_entry_lba]);
+  const uint32_t entry_size = priv_rd32(&priv_scratch[k_gpt_off_entry_size]);
+  uint32_t       count      = priv_rd32(&priv_scratch[k_gpt_off_entry_count]);
   if (entry_lba == 0U) {
     return k_ra8_err_validation_failed;
   }
@@ -261,11 +262,11 @@ ra8_err_t priv_gpt_locate_volume(ra8_fs_mount_t* m, uint64_t* out_base)
 {
   uint64_t        entry_lba = 0U;
   uint32_t        count     = 0U;
-  const ra8_err_t err       = priv_gpt_read_geom(m, &entry_lba, &count);
+  const ra8_err_t err       = internal_gpt_read_geom(m, &entry_lba, &count);
   if (err != k_ra8_ok) {
     return err;
   }
-  return priv_gpt_scan_entries(m, entry_lba, count, out_base);
+  return internal_gpt_scan_entries(m, entry_lba, count, out_base);
 }
 
 /**
@@ -291,7 +292,7 @@ ra8_err_t priv_gpt_locate_volume(ra8_fs_mount_t* m, uint64_t* out_base)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_gpt_entry_select(const uint8_t* entry, uint64_t* out_base)
+static ra8_err_t internal_gpt_entry_select(const uint8_t* entry, uint64_t* out_base)
 {
   uint32_t nonzero = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_gpt_guid_len; i++) {
@@ -315,7 +316,7 @@ ra8_err_t priv_gpt_locate_partition(ra8_fs_mount_t* m, uint8_t index, uint64_t* 
 {
   uint64_t        entry_lba = 0U;
   uint32_t        count     = 0U;
-  const ra8_err_t err       = priv_gpt_read_geom(m, &entry_lba, &count);
+  const ra8_err_t err       = internal_gpt_read_geom(m, &entry_lba, &count);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -325,9 +326,9 @@ ra8_err_t priv_gpt_locate_partition(ra8_fs_mount_t* m, uint8_t index, uint64_t* 
   const uint32_t  eps    = priv_bps(m) / (uint32_t)k_gpt_entry_bytes;
   const uint32_t  sector = (uint32_t)index / eps;
   const uint32_t  offset = ((uint32_t)index % eps) * (uint32_t)k_gpt_entry_bytes;
-  const ra8_err_t rerr   = priv_read_sector(m, entry_lba + sector, s_scratch);
+  const ra8_err_t rerr   = priv_read_sector(m, entry_lba + sector, priv_scratch);
   if (rerr != k_ra8_ok) {
     return rerr;
   }
-  return priv_gpt_entry_select(&s_scratch[offset], out_base);
+  return internal_gpt_entry_select(&priv_scratch[offset], out_base);
 }

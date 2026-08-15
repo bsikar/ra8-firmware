@@ -73,7 +73,7 @@ void priv_fat_entry_apply_attr(uint8_t* entry, uint8_t set_mask, uint8_t clear_m
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint64_t lba, uint32_t off)
+internal_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint64_t lba, uint32_t off)
 {
   if (f->first_cluster >= k_cluster_first_data) {
     ra8_err_t err = priv_free_chain(handle, f->first_cluster);
@@ -135,12 +135,12 @@ priv_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint64_t lba, u
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_open_existing(ra8_fs_mount_t* handle,
-                                    const uint8_t*  entry,
-                                    uint64_t        lba,
-                                    uint32_t        off,
-                                    ra8_fs_mode_t   mode,
-                                    ra8_fs_file_t** out_file)
+static ra8_err_t internal_open_existing(ra8_fs_mount_t* handle,
+                                        const uint8_t*  entry,
+                                        uint64_t        lba,
+                                        uint32_t        off,
+                                        ra8_fs_mode_t   mode,
+                                        ra8_fs_file_t** out_file)
 {
   /* A directory is not a file (#604). Without this the write path ran
    * priv_truncate_existing() on it -- freeing the chain that held every child
@@ -178,7 +178,7 @@ static ra8_err_t priv_open_existing(ra8_fs_mount_t* handle,
   f->dirty              = 0U;
   f->in_use             = 1;
   if (mode == k_ra8_fs_mode_write) {
-    ra8_err_t err = priv_truncate_existing(handle, f, lba, off);
+    ra8_err_t err = internal_truncate_existing(handle, f, lba, off);
     if (err != k_ra8_ok) {
       f->in_use = 0;
       return err;
@@ -217,11 +217,11 @@ static ra8_err_t priv_open_existing(ra8_fs_mount_t* handle,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_init_new_file(ra8_fs_file_t*  f,
-                               ra8_fs_mount_t* handle,
-                               ra8_fs_mode_t   mode,
-                               uint64_t        free_lba,
-                               uint32_t        free_off)
+static void internal_init_new_file(ra8_fs_file_t*  f,
+                                   ra8_fs_mount_t* handle,
+                                   ra8_fs_mode_t   mode,
+                                   uint64_t        free_lba,
+                                   uint32_t        free_off)
 {
   f->mount              = handle;
   f->first_cluster      = 0;
@@ -273,11 +273,11 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_enter_subdir(const ra8_fs_mount_t* m,
-                                   const dir_loc_t*      cur,
-                                   const char*           comp,
-                                   uint32_t              len,
-                                   dir_loc_t*            out)
+static ra8_err_t internal_enter_subdir(const ra8_fs_mount_t* m,
+                                       const dir_loc_t*      cur,
+                                       const char*           comp,
+                                       uint32_t              len,
+                                       dir_loc_t*            out)
 {
   /* A BYTE bound, because the component is UTF-8 here: the unit-count limit is
    * ::k_lfn_write_max and lands in priv_name_classify(). Bounding the bytes by
@@ -338,7 +338,7 @@ ra8_err_t priv_resolve_parent(const ra8_fs_mount_t* m,
       return k_ra8_ok;
     }
     dir_loc_t       next = {};
-    const ra8_err_t err  = priv_enter_subdir(m, &cur, p, (uint32_t)(end - p), &next);
+    const ra8_err_t err  = internal_enter_subdir(m, &cur, p, (uint32_t)(end - p), &next);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -377,7 +377,7 @@ ra8_err_t priv_resolve_dir(const ra8_fs_mount_t* m, const char* path, dir_loc_t*
     *out = parent; /* trailing slash: the parent is the directory */
     return k_ra8_ok;
   }
-  return priv_enter_subdir(m, &parent, leaf, len, out);
+  return internal_enter_subdir(m, &parent, leaf, len, out);
 }
 
 /**
@@ -414,11 +414,11 @@ ra8_err_t priv_resolve_dir(const ra8_fs_mount_t* m, const char* path, dir_loc_t*
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_create_new(ra8_fs_mount_t*  handle,
-                                 const dir_loc_t* parent,
-                                 const char*      leaf,
-                                 ra8_fs_mode_t    mode,
-                                 ra8_fs_file_t**  out_file)
+static ra8_err_t internal_create_new(ra8_fs_mount_t*  handle,
+                                     const dir_loc_t* parent,
+                                     const char*      leaf,
+                                     ra8_fs_mode_t    mode,
+                                     ra8_fs_file_t**  out_file)
 {
   dir_insert_t plan = {};
   ra8_err_t    err  = priv_dir_reserve(handle, parent, leaf, &plan);
@@ -444,7 +444,7 @@ static ra8_err_t priv_create_new(ra8_fs_mount_t*  handle,
   if (err != k_ra8_ok) {
     return err;
   }
-  priv_init_new_file(f, handle, mode, lba, off);
+  internal_init_new_file(f, handle, mode, lba, off);
   *out_file = f;
   return k_ra8_ok;
 }
@@ -475,7 +475,7 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
   uint8_t         entry[k_ra8_fs_dir_entry_bytes] = {};
   const ra8_err_t err = priv_dir_lookup_any(handle, &parent, leaf, &lba, &off, entry);
   if (err == k_ra8_ok) {
-    return priv_open_existing(handle, entry, lba, off, mode, out_file);
+    return internal_open_existing(handle, entry, lba, off, mode, out_file);
   }
   if (err != k_ra8_err_not_found) {
     return err;
@@ -485,7 +485,7 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
   }
   /* Creation no longer needs an 8.3-representable name: `priv_dir_reserve()`
    * generates the alias and reserves the chain's slots (#600). */
-  return priv_create_new(handle, &parent, leaf, mode, out_file);
+  return internal_create_new(handle, &parent, leaf, mode, out_file);
 }
 
 /**
@@ -515,7 +515,7 @@ ra8_err_t priv_open_locked(ra8_fs_mount_t* handle,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_close_stamp(ra8_fs_file_t* file)
+static ra8_err_t internal_close_stamp(ra8_fs_file_t* file)
 {
   ra8_fs_mount_t* m = file->mount;
   /* exFAT keeps its metadata in a checksummed entry set, not one 32-byte
@@ -549,7 +549,7 @@ ra8_err_t priv_close_locked(ra8_fs_file_t* file)
    * now describes some other card. */
   if ((file->dirty != 0U) && (file->in_use != 0U) && (file->mount != nullptr) &&
       (file->mount->in_use != 0U)) {
-    err = priv_close_stamp(file);
+    err = internal_close_stamp(file);
   }
   file->dirty  = 0;
   file->in_use = 0;

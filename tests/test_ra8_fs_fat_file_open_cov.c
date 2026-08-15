@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_file_test_util.h"
@@ -94,12 +95,12 @@ typedef enum : uint32_t {
  * @post DATA.TXT contains zero bytes after the second open.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_reopen_write_truncates(void)
+RA8_INTERNAL static void internal_test_reopen_write_truncates(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: reopen in write mode calls truncate");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -117,7 +118,7 @@ static void test_reopen_write_truncates(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: reopen in write mode calls truncate");
 }
 
@@ -149,12 +150,12 @@ static void test_reopen_write_truncates(void)
  * @post APND.TXT has 4 bytes; append handle position equals 4.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_open_append_mode(void)
+RA8_INTERNAL static void internal_test_open_append_mode(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: open existing in append mode");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -179,7 +180,7 @@ static void test_open_append_mode(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: open existing in append mode");
 }
 
@@ -205,12 +206,12 @@ static void test_open_append_mode(void)
  * @post All five files were created; the fifth open attempt fails.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_open_existing_no_mem(void)
+RA8_INTERNAL static void internal_test_open_existing_no_mem(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: open existing file with full file table");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -246,7 +247,7 @@ static void test_open_existing_no_mem(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fc));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fd));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: open existing file with full file table");
 }
 
@@ -284,12 +285,12 @@ static void test_open_existing_no_mem(void)
  * @post Open returns k_ra8_err_invalid_arg.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_enter_subdir_name_too_long(void)
+RA8_INTERNAL static void internal_test_enter_subdir_name_too_long(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: subdir component name too long");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -312,7 +313,7 @@ static void test_enter_subdir_name_too_long(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, path, k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: subdir component name too long");
 }
 
@@ -339,12 +340,12 @@ static void test_enter_subdir_name_too_long(void)
  * @post Open returns k_ra8_err_not_found and the volume is unchanged.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_enter_subdir_invalid_83(void)
+RA8_INTERNAL static void internal_test_enter_subdir_invalid_83(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: subdir component fails 8.3 pack");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -353,7 +354,7 @@ static void test_enter_subdir_invalid_83(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "/.HIDDEN/FILE.TXT", k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: subdir component fails 8.3 pack");
 }
 
@@ -381,12 +382,12 @@ static void test_enter_subdir_invalid_83(void)
  * @post Open returns k_ra8_err_protocol_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_enter_subdir_zero_cluster(void)
+RA8_INTERNAL static void internal_test_enter_subdir_zero_cluster(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: subdir entry has cluster 0");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -408,7 +409,7 @@ static void test_enter_subdir_zero_cluster(void)
                  ra8_fs_open(h, "/CORR/FILE.TXT", k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: subdir entry has cluster 0");
 }
 
@@ -432,9 +433,10 @@ static void test_enter_subdir_zero_cluster(void)
  * @post The test has failed outright if the append would overflow @p cap.
  *
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded path append fixture step using caller-owned state. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced.
  */
-static uint32_t path_append(char* path, uint32_t cap, uint32_t base_len, const char* seg)
+RA8_INTERNAL static uint32_t
+internal_path_append(char* path, uint32_t cap, uint32_t base_len, const char* seg)
 {
   const uint32_t seg_len = (uint32_t)strlen(seg);
   if ((base_len + seg_len) >= cap) {
@@ -468,9 +470,10 @@ static uint32_t path_append(char* path, uint32_t cap, uint32_t base_len, const c
  * @post @p path names the deepest of them.
  *
  * @note Not thread-safe; single-threaded host-test helper.
- * @since 0.1.0
+ * @since 0.1.0 @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced.
  */
-static uint32_t mkdir_nested_chain(ra8_fs_mount_t* h, char* path, uint32_t cap)
+RA8_INTERNAL static uint32_t
+internal_mkdir_nested_chain(ra8_fs_mount_t* h, char* path, uint32_t cap)
 {
   uint32_t base_len = 0U;
   for (uint32_t i = 0U; i < 32U; i++) {
@@ -481,7 +484,7 @@ static uint32_t mkdir_nested_chain(ra8_fs_mount_t* h, char* path, uint32_t cap)
     seg[2]      = (char)('0' + (i / (uint32_t)k_dec_base));
     seg[3]      = (char)('0' + (i % (uint32_t)k_dec_base));
     seg[4]      = '\0';
-    base_len    = path_append(path, cap, base_len, seg);
+    base_len    = internal_path_append(path, cap, base_len, seg);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, path));
   }
   return base_len;
@@ -510,27 +513,28 @@ static uint32_t mkdir_nested_chain(ra8_fs_mount_t* h, char* path, uint32_t cap)
  * @post Open returns k_ra8_err_invalid_arg.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_resolve_parent_too_deep(void)
+RA8_INTERNAL static void internal_test_resolve_parent_too_deep(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: path depth exceeds k_path_max_depth");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* Build 32 nested directories.  Each component is "Dnn" (3 chars). */
   char           mkdir_path[k_deep_path_cap] = {};
-  const uint32_t base_len = mkdir_nested_chain(h, mkdir_path, (uint32_t)sizeof(mkdir_path));
+  const uint32_t base_len =
+    internal_mkdir_nested_chain(h, mkdir_path, (uint32_t)sizeof(mkdir_path));
   /* Append leaf "/LEAF.TXT" to form a 33-component path. */
-  (void)path_append(mkdir_path, (uint32_t)sizeof(mkdir_path), base_len, "/LEAF.TXT");
+  (void)internal_path_append(mkdir_path, (uint32_t)sizeof(mkdir_path), base_len, "/LEAF.TXT");
 
   /* 32 intermediate components all exist, so the depth loop runs out. */
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, mkdir_path, k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: path depth exceeds k_path_max_depth");
 }
 
@@ -561,22 +565,22 @@ static void test_resolve_parent_too_deep(void)
  * @post listdir returns k_ra8_err_not_found.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_resolve_dir_error_path(void)
+RA8_INTERNAL static void internal_test_resolve_dir_error_path(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: resolve_dir propagates not-found error");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   uint32_t count = 0U;
   /* "/NOMATCH/SUB" -- NOMATCH does not exist so priv_enter_subdir returns
    * not_found, propagated by priv_resolve_dir (line 348). */
-  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_listdir(h, "/NOMATCH/SUB", count_cb, &count));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_listdir(h, "/NOMATCH/SUB", internal_count_cb, &count));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: resolve_dir propagates not-found error");
 }
 
@@ -603,12 +607,12 @@ static void test_resolve_dir_error_path(void)
  * @post listdir on the trailing-slash path succeeds with an empty directory.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_resolve_dir_trailing_slash(void)
+RA8_INTERNAL static void internal_test_resolve_dir_trailing_slash(void)
 {
   TEST_BEGIN("ra8_fs_fat_file cov: trailing slash resolves to parent dir");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -616,11 +620,11 @@ static void test_resolve_dir_trailing_slash(void)
 
   uint32_t count = 0U;
   /* "/SUB/" -> trailing slash -> resolve to the SUB directory itself. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/SUB/", count_cb, &count));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/SUB/", internal_count_cb, &count));
   TEST_ASSERT_EQ(0U, count);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs_fat_file cov: trailing slash resolves to parent dir");
 }
 /* ===========================================================================
@@ -645,15 +649,14 @@ static void test_resolve_dir_trailing_slash(void)
  */
 int32_t main(void)
 {
-  test_reopen_write_truncates();
-  test_open_append_mode();
-  test_open_existing_no_mem();
-  test_enter_subdir_name_too_long();
-  test_enter_subdir_invalid_83();
-  test_enter_subdir_zero_cluster();
-  test_resolve_parent_too_deep();
-  test_resolve_dir_error_path();
-  test_resolve_dir_trailing_slash();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_file_open_cov.c\n");
+  internal_test_reopen_write_truncates();
+  internal_test_open_append_mode();
+  internal_test_open_existing_no_mem();
+  internal_test_enter_subdir_name_too_long();
+  internal_test_enter_subdir_invalid_83();
+  internal_test_enter_subdir_zero_cluster();
+  internal_test_resolve_parent_too_deep();
+  internal_test_resolve_dir_error_path();
+  internal_test_resolve_dir_trailing_slash();
   return 0;
 }

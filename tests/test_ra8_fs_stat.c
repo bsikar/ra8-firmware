@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "test_ra8_fs_format_fixture.h"
@@ -51,16 +52,16 @@ typedef enum : uint32_t {
   k_stat_open_handles  = 4U,    /**< ::k_ra8_fs_max_files, the whole file table.   */
 } stat_fixture_t;
 
-/** @brief Fill @p buf with a deterministic, non-repeating pattern. */
-static void fill(uint8_t* buf, uint32_t len)
+/** @brief Fill @p buf with a deterministic, non-repeating pattern. @details Implements the bounded fill fixture step using caller-owned state. @param[in,out] buf Caller-owned bounded byte storage. @param[in] len Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_fill(uint8_t* buf, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; ++i) {
     buf[i] = (uint8_t)((i * (uint32_t)k_stat_stride) + (uint32_t)k_stat_seed);
   }
 }
 
-/** @brief Require the legal no-clock fallback and no invented UTC offset. */
-static void expect_epoch(const ra8_fs_timestamp_t* stamp)
+/** @brief Require the legal no-clock fallback and no invented UTC offset. @details Implements the bounded expect epoch fixture step using caller-owned state. @param[in] stamp Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_expect_epoch(const ra8_fs_timestamp_t* stamp)
 {
   TEST_ASSERT(stamp->valid);
   TEST_ASSERT(!stamp->utc_offset_valid);
@@ -86,9 +87,9 @@ static void expect_epoch(const ra8_fs_timestamp_t* stamp)
  * @param[in] name83 Packed 11-byte 8.3 name (no dot, space padded).
  * @param[in] bits   Attribute bits to set.
  *
- * @return bool true when the entry was found and patched.
+ * @return bool true when the entry was found and patched. @retval true The named condition holds. @retval false The condition does not hold. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static bool patch_entry_attr(const char* name83, uint8_t bits)
+RA8_INTERNAL static bool internal_patch_entry_attr(const char* name83, uint8_t bits)
 {
   for (uint32_t lba = 0U; lba < s_disk.block_count; ++lba) {
     uint8_t* sec = &s_disk.bytes[(size_t)lba * (size_t)k_fmt_block_size];
@@ -106,19 +107,19 @@ static bool patch_entry_attr(const char* name83, uint8_t bits)
  * @par MC/DC:
  * (no compound decisions under test -- a file, a directory and a missing name
  * must be three distinguishable answers, which is exactly what the old
- * open-based stat could not produce)
+ * open-based stat could not produce) @brief Exercise the stat fat file dir missing filesystem operation. @details Runs the stat fat file dir missing vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_stat_fat_file_dir_missing(void)
+RA8_INTERNAL static void internal_test_stat_fat_file_dir_missing(void)
 {
   TEST_BEGIN("stat on FAT: file vs directory vs missing");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {.type = k_ra8_fs_type_fat16, .label = "STAT"};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   uint8_t payload[k_stat_payload_bytes] = {};
-  fill(payload, (uint32_t)k_stat_payload_bytes);
+  internal_fill(payload, (uint32_t)k_stat_payload_bytes);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fs_write_file(h, "/DATA.BIN", payload, (uint32_t)k_stat_payload_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
@@ -130,9 +131,9 @@ static void test_stat_fat_file_dir_missing(void)
   TEST_ASSERT_EQ(k_stat_payload_bytes, file.size_bytes);
   TEST_ASSERT_EQ(k_ra8_fs_attr_archive, (file.attr & (uint8_t)k_ra8_fs_attr_archive));
   TEST_ASSERT_EQ(0U, (file.attr & (uint8_t)k_ra8_fs_attr_directory));
-  expect_epoch(&file.created);
-  expect_epoch(&file.modified);
-  expect_epoch(&file.accessed);
+  internal_expect_epoch(&file.created);
+  internal_expect_epoch(&file.modified);
+  internal_expect_epoch(&file.accessed);
 
   /* A directory: the bit that says so, and length 0 -- the case that used to
    * come back indistinguishable from an empty file. */
@@ -148,33 +149,33 @@ static void test_stat_fat_file_dir_missing(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_stat(h, "/NOPE.BIN", &gone));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("stat on FAT: file vs directory vs missing");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions under test -- the reported attribute byte must be the
- * entry's own, which a hardcoded `archive` cannot be)
+ * entry's own, which a hardcoded `archive` cannot be) @brief Exercise the stat reports the real attribute byte filesystem operation. @details Runs the stat reports the real attribute byte vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_stat_reports_the_real_attribute_byte(void)
+RA8_INTERNAL static void internal_test_stat_reports_the_real_attribute_byte(void)
 {
   TEST_BEGIN("stat on FAT: the attribute byte is the entry's, not a constant");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {.type = k_ra8_fs_type_fat16, .label = "ATTR"};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   uint8_t payload[k_stat_payload_bytes] = {};
-  fill(payload, (uint32_t)k_stat_payload_bytes);
+  internal_fill(payload, (uint32_t)k_stat_payload_bytes);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fs_write_file(h, "/RO.BIN", payload, (uint32_t)k_stat_payload_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
 
   const uint8_t extra = (uint8_t)((uint8_t)k_ra8_fs_attr_read_only | (uint8_t)k_ra8_fs_attr_hidden |
                                   (uint8_t)k_ra8_fs_attr_system);
-  TEST_ASSERT(patch_entry_attr("RO      BIN", extra));
+  TEST_ASSERT(internal_patch_entry_attr("RO      BIN", extra));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_stat_t st = {};
@@ -184,19 +185,19 @@ static void test_stat_reports_the_real_attribute_byte(void)
   TEST_ASSERT_EQ(k_stat_payload_bytes, st.size_bytes);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("stat on FAT: the attribute byte is the entry's, not a constant");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions under test -- the root has no directory entry to read,
- * so it is answered from mount geometry, and nested paths resolve like open's)
+ * so it is answered from mount geometry, and nested paths resolve like open's) @brief Exercise the stat root and nested filesystem operation. @details Runs the stat root and nested vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_stat_root_and_nested(void)
+RA8_INTERNAL static void internal_test_stat_root_and_nested(void)
 {
   TEST_BEGIN("stat on FAT: the root, and a path two components deep");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {.type = k_ra8_fs_type_fat16, .label = "ROOT"};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   ra8_fs_mount_t* h = nullptr;
@@ -216,7 +217,7 @@ static void test_stat_root_and_nested(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
   uint8_t payload[k_stat_payload_bytes] = {};
-  fill(payload, (uint32_t)k_stat_payload_bytes);
+  internal_fill(payload, (uint32_t)k_stat_payload_bytes);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fs_write_file(h, "/BOOKS/A.BIN", payload, (uint32_t)k_stat_payload_bytes));
 
@@ -229,26 +230,26 @@ static void test_stat_root_and_nested(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_stat(h, "/GONE/A.BIN", &missing_parent));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("stat on FAT: the root, and a path two components deep");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions under test -- a metadata query must not spend one of
- * the four file slots, which is what the open-based implementation did)
+ * the four file slots, which is what the open-based implementation did) @brief Exercise the stat consumes no file slot filesystem operation. @details Runs the stat consumes no file slot vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_stat_consumes_no_file_slot(void)
+RA8_INTERNAL static void internal_test_stat_consumes_no_file_slot(void)
 {
   TEST_BEGIN("stat with every file handle already open");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {.type = k_ra8_fs_type_fat16, .label = "SLOTS"};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   uint8_t payload[k_stat_payload_bytes] = {};
-  fill(payload, (uint32_t)k_stat_payload_bytes);
+  internal_fill(payload, (uint32_t)k_stat_payload_bytes);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fs_write_file(h, "/DATA.BIN", payload, (uint32_t)k_stat_payload_bytes));
 
@@ -270,19 +271,19 @@ static void test_stat_consumes_no_file_slot(void)
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(held[i]));
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("stat with every file handle already open");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions under test -- the argument guards and the
- * not-in-use mount guard are single-condition each)
+ * not-in-use mount guard are single-condition each) @brief Exercise the stat guards filesystem operation. @details Runs the stat guards vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_stat_guards(void)
+RA8_INTERNAL static void internal_test_stat_guards(void)
 {
   TEST_BEGIN("stat argument and mount-state guards");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {.type = k_ra8_fs_type_fat16, .label = "GUARD"};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   ra8_fs_mount_t* h = nullptr;
@@ -295,19 +296,19 @@ static void test_stat_guards(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_stat(h, "/", &st));
-  free_volume();
+  internal_free_volume();
   TEST_END("stat argument and mount-state guards");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions under test -- the exFAT lookup must answer file,
- * missing and root the same way the FAT one does)
+ * missing and root the same way the FAT one does) @brief Exercise the stat exfat filesystem operation. @details Runs the stat exfat vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_stat_exfat(void)
+RA8_INTERNAL static void internal_test_stat_exfat(void)
 {
   TEST_BEGIN("stat on exFAT: file, missing, root");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_exfat);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_exfat);
   ra8_fs_format_opts_t opts = {.type = k_ra8_fs_type_exfat, .label = "EXSTAT"};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   ra8_fs_mount_t* h = nullptr;
@@ -315,7 +316,7 @@ static void test_stat_exfat(void)
   TEST_ASSERT_EQ(k_ra8_fs_type_exfat, h->type);
 
   uint8_t payload[k_stat_payload_bytes] = {};
-  fill(payload, (uint32_t)k_stat_payload_bytes);
+  internal_fill(payload, (uint32_t)k_stat_payload_bytes);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fs_write_file(h, "STORY.TXT", payload, (uint32_t)k_stat_payload_bytes));
 
@@ -325,9 +326,9 @@ static void test_stat_exfat(void)
   TEST_ASSERT_EQ(k_stat_payload_bytes, file.size_bytes);
   TEST_ASSERT_EQ(k_ra8_fs_attr_archive, (file.attr & (uint8_t)k_ra8_fs_attr_archive));
   TEST_ASSERT(file.first_cluster >= 2U);
-  expect_epoch(&file.created);
-  expect_epoch(&file.modified);
-  expect_epoch(&file.accessed);
+  internal_expect_epoch(&file.created);
+  internal_expect_epoch(&file.modified);
+  internal_expect_epoch(&file.accessed);
 
   /* The leading slash is optional on exFAT, exactly as it is for open (#93). */
   ra8_fs_stat_t no_slash = {};
@@ -347,18 +348,17 @@ static void test_stat_exfat(void)
   TEST_ASSERT(!root.accessed.valid);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("stat on exFAT: file, missing, root");
 }
 
 int32_t main(void)
 {
-  test_stat_fat_file_dir_missing();
-  test_stat_reports_the_real_attribute_byte();
-  test_stat_root_and_nested();
-  test_stat_consumes_no_file_slot();
-  test_stat_guards();
-  test_stat_exfat();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_stat.c\n");
+  internal_test_stat_fat_file_dir_missing();
+  internal_test_stat_reports_the_real_attribute_byte();
+  internal_test_stat_root_and_nested();
+  internal_test_stat_consumes_no_file_slot();
+  internal_test_stat_guards();
+  internal_test_stat_exfat();
   return 0;
 }

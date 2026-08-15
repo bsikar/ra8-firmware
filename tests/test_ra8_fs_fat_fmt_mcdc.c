@@ -9,7 +9,7 @@
  *
  *   - `priv_parse_bpb_into_mount` (ra8_fs_fat_mount.c) -- the boot-signature
  *     guard and the bytes-per-sector / SPC / num-FATs sanity guard, driven by
- *     seeding the shared `s_scratch` boot-sector buffer.
+ *     seeding the shared `priv_scratch` boot-sector buffer.
  *   - `priv_fmt_choose_geometry` (ra8_fs_fat_fmt.c) -- the auto-sweep exhaustion
  *     guard, driven with a device too small to land any cluster band.
  *   - `priv_fmt_clear_region` (ra8_fs_fat_fmt.c) -- the erase-hook fast path,
@@ -22,10 +22,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
@@ -46,7 +46,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra8_fs_fmt_bpb_t
- * @brief The valid boot-sector fields seeded into `s_scratch` before mutation.
+ * @brief The valid boot-sector fields seeded into `priv_scratch` before mutation.
  */
 typedef enum : uint16_t {
   k_bad_bytes_per_sector = 1024U, /**< Any legal-looking but non-512 sector size. */
@@ -55,28 +55,29 @@ typedef enum : uint16_t {
 
 /* --- priv_parse_bpb_into_mount ------------------------------------------- */
 
-static void scratch_put16(uint32_t off, uint16_t v)
+/** @brief Perform the scratch put16 filesystem operation. @details Implements the bounded scratch put16 fixture step using caller-owned state. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_scratch_put16(uint32_t off, uint16_t v)
 {
-  s_scratch[off]     = (uint8_t)(v & (uint16_t)k_fmt_byte_mask);
-  s_scratch[off + 1] = (uint8_t)((v >> 8) & (uint16_t)k_fmt_byte_mask);
+  priv_scratch[off]     = (uint8_t)(v & (uint16_t)k_fmt_byte_mask);
+  priv_scratch[off + 1] = (uint8_t)((v >> 8) & (uint16_t)k_fmt_byte_mask);
 }
 
-/** @brief Seed `s_scratch` with a boot sector that passes both guards. */
-static void seed_valid_bpb(void)
+/** @brief Seed `priv_scratch` with a boot sector that passes both guards. @details Implements the bounded seed valid bpb fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_seed_valid_bpb(void)
 {
-  memset(s_scratch, 0, sizeof s_scratch);
-  s_scratch[(uint32_t)k_bpb_off_signature_lo] = (uint8_t)k_bpb_sig_lo;
-  s_scratch[(uint32_t)k_bpb_off_signature_hi] = (uint8_t)k_bpb_sig_hi;
-  scratch_put16((uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_ra8_fs_sector_min);
-  s_scratch[(uint32_t)k_bpb_off_sec_per_clus] = 1U;
-  s_scratch[(uint32_t)k_bpb_off_num_fats]     = 2U;
+  memset(priv_scratch, 0, sizeof priv_scratch);
+  priv_scratch[(uint32_t)k_bpb_off_signature_lo] = (uint8_t)k_bpb_sig_lo;
+  priv_scratch[(uint32_t)k_bpb_off_signature_hi] = (uint8_t)k_bpb_sig_hi;
+  internal_scratch_put16((uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_ra8_fs_sector_min);
+  priv_scratch[(uint32_t)k_bpb_off_sec_per_clus] = 1U;
+  priv_scratch[(uint32_t)k_bpb_off_num_fats]     = 2U;
 }
 
 /**
  * @test test_mcdc_parse_bpb_guards
  * @par MC/DC:
  * Two decisions in `libs/ra8_fs/src/ra8_fs_fat_mount.c@priv_parse_bpb_into_mount`,
- * driven by seeding the shared `s_scratch` boot sector.
+ * driven by seeding the shared `priv_scratch` boot sector.
  *
  * Signature guard `if (sig_lo != 0x55 || sig_hi != 0xAA)` (2 conditions):
  * - V1: sig_lo=0x55, sig_hi=0xAA -> F,F -> dec F (proceeds).
@@ -89,9 +90,9 @@ static void seed_valid_bpb(void)
  * - V4: bps match, spc=1, fats=2 -> F,F,F -> dec F (returns ok).
  * - V5: bps mismatch       -> C1=T short          -> validation_failed.
  * - V6: spc==0 (bps ok)    -> C1=F,C2=T short      -> validation_failed.
- * - V7: fats==0 (bps,spc ok) -> C1=F,C2=F,C3=T     -> validation_failed.
+ * - V7: fats==0 (bps,spc ok) -> C1=F,C2=F,C3=T     -> validation_failed. @brief Exercise the mcdc parse bpb guards filesystem operation. @details Runs the mcdc parse bpb guards vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_parse_bpb_guards(void)
+RA8_INTERNAL static void internal_test_mcdc_parse_bpb_guards(void)
 {
   TEST_BEGIN("ra8_fs MC/DC: priv_parse_bpb_into_mount signature + field guards");
   ra8_fs_mount_t m = {};
@@ -100,24 +101,24 @@ static void test_mcdc_parse_bpb_guards(void)
   m.bytes_per_sector = (uint32_t)k_ra8_fs_sector_min;
 
   /* Signature guard. */
-  seed_valid_bpb();
+  internal_seed_valid_bpb();
   TEST_ASSERT_EQ(k_ra8_ok, priv_parse_bpb_into_mount(&m)); /* V1 (and V4). */
-  seed_valid_bpb();
-  s_scratch[(uint32_t)k_bpb_off_signature_lo] = 0x00U;
+  internal_seed_valid_bpb();
+  priv_scratch[(uint32_t)k_bpb_off_signature_lo] = 0x00U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, priv_parse_bpb_into_mount(&m)); /* V2 */
-  seed_valid_bpb();
-  s_scratch[(uint32_t)k_bpb_off_signature_hi] = 0x00U;
+  internal_seed_valid_bpb();
+  priv_scratch[(uint32_t)k_bpb_off_signature_hi] = 0x00U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, priv_parse_bpb_into_mount(&m)); /* V3 */
 
   /* Field guard (signature kept valid). */
-  seed_valid_bpb();
-  scratch_put16((uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_bad_bytes_per_sector);
+  internal_seed_valid_bpb();
+  internal_scratch_put16((uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_bad_bytes_per_sector);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, priv_parse_bpb_into_mount(&m)); /* V5 */
-  seed_valid_bpb();
-  s_scratch[(uint32_t)k_bpb_off_sec_per_clus] = 0U;
+  internal_seed_valid_bpb();
+  priv_scratch[(uint32_t)k_bpb_off_sec_per_clus] = 0U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, priv_parse_bpb_into_mount(&m)); /* V6 */
-  seed_valid_bpb();
-  s_scratch[(uint32_t)k_bpb_off_num_fats] = 0U;
+  internal_seed_valid_bpb();
+  priv_scratch[(uint32_t)k_bpb_off_num_fats] = 0U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, priv_parse_bpb_into_mount(&m)); /* V7 */
 
   TEST_END("ra8_fs MC/DC: priv_parse_bpb_into_mount signature + field guards");
@@ -140,9 +141,9 @@ static void test_mcdc_parse_bpb_guards(void)
  * - Manual hint (spc_hint=1): `!auto_mode`=T on the first band miss short-circuits
  *   -> invalid_size. Covers the C1-true arm.
  * Auto vs manual isolates C1; the auto sweep's first vs last iteration isolates
- * C2. N+1 = 3 for N=2.
+ * C2. N+1 = 3 for N=2. @brief Exercise the mcdc choose geometry sweep exhaustion filesystem operation. @details Runs the mcdc choose geometry sweep exhaustion vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_choose_geometry_sweep_exhaustion(void)
+RA8_INTERNAL static void internal_test_mcdc_choose_geometry_sweep_exhaustion(void)
 {
   TEST_BEGIN("ra8_fs MC/DC: priv_fmt_choose_geometry sweep exhaustion");
   ra8_fs_fmt_geom_t g = {};
@@ -167,7 +168,8 @@ typedef struct {
   bool     erase_ok;    /**< What the erase hook returns.         */
 } clr_ctx_t;
 
-static ra8_err_t clr_erase(void* ctx, uint64_t lba, uint64_t count)
+/** @brief Perform the clr erase filesystem operation. @details Implements the bounded clr erase fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t internal_clr_erase(void* ctx, uint64_t lba, uint64_t count)
 {
   (void)lba;
   (void)count;
@@ -176,7 +178,9 @@ static ra8_err_t clr_erase(void* ctx, uint64_t lba, uint64_t count)
   return c->erase_ok ? k_ra8_ok : k_ra8_err_out_of_range;
 }
 
-static ra8_err_t clr_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the clr write filesystem operation. @details Implements the bounded clr write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_clr_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)lba;
   (void)count;
@@ -197,21 +201,21 @@ static ra8_err_t clr_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
  * - V3 (T,F): erase hook present but returns an error -> C2=F -> zero-write
  *   fallback runs.
  * V1 vs V2 isolates the hook presence; V1 vs V3 isolates the hook result.
- * N+1 = 3 for N=2.
+ * N+1 = 3 for N=2. @brief Exercise the mcdc clear region erase hook filesystem operation. @details Runs the mcdc clear region erase hook vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_clear_region_erase_hook(void)
+RA8_INTERNAL static void internal_test_mcdc_clear_region_erase_hook(void)
 {
   TEST_BEGIN("ra8_fs MC/DC: priv_fmt_clear_region erase-hook fast path");
   clr_ctx_t        c = {};
   ra8_fs_backend_t b = {};
-  b.write_block      = clr_write;
+  b.write_block      = internal_clr_write;
   b.ctx              = &c;
 
   /* V1 (T,T): erase succeeds -> fast path, no zero-write. */
   c.erase_calls  = 0U;
   c.write_calls  = 0U;
   c.erase_ok     = true;
-  b.erase_blocks = clr_erase;
+  b.erase_blocks = internal_clr_erase;
   TEST_ASSERT_EQ(k_ra8_ok,
                  priv_fmt_clear_region(&b,
                                        (uint64_t)k_clear_lba,
@@ -236,7 +240,7 @@ static void test_mcdc_clear_region_erase_hook(void)
   c.erase_calls  = 0U;
   c.write_calls  = 0U;
   c.erase_ok     = false;
-  b.erase_blocks = clr_erase;
+  b.erase_blocks = internal_clr_erase;
   TEST_ASSERT_EQ(k_ra8_ok,
                  priv_fmt_clear_region(&b,
                                        (uint64_t)k_clear_lba,
@@ -257,7 +261,9 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the mem read filesystem operation. @details Implements the bounded mem read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -269,7 +275,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the mem write filesystem operation. @details Implements the bounded mem write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -281,7 +289,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the mem capacity filesystem operation. @details Implements the bounded mem capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -290,13 +300,14 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
-static void free_volume(void)
+/** @brief Perform the free volume filesystem operation. @details Implements the bounded free volume fixture step using caller-owned state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -304,9 +315,10 @@ static void free_volume(void)
   }
 }
 
-static void alloc_card(uint32_t blocks)
+/** @brief Perform the alloc card filesystem operation. @details Implements the bounded alloc card fixture step using caller-owned state. @param[in] blocks Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_alloc_card(uint32_t blocks)
 {
-  free_volume();
+  internal_free_volume();
   s_disk.block_count = blocks;
   s_disk.bytes       = (uint8_t*)calloc(1, (size_t)blocks * (uint32_t)k_disk_block_size);
   if (s_disk.bytes == nullptr) {
@@ -330,42 +342,41 @@ static void alloc_card(uint32_t blocks)
  * The i=0/1 vs i=2 pair isolates the terminator test (C2); the i=2 vs i=3 pair
  * isolates the latch (C1). A separate NULL-label format resolves to "NO NAME"
  * and latches at that sentinel's i=7 NUL, re-sweeping every arm. Both formats
- * succeed and mount.
+ * succeed and mount. @brief Exercise the mcdc label field copy pad filesystem operation. @details Runs the mcdc label field copy pad vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_label_field_copy_pad(void)
+RA8_INTERNAL static void internal_test_mcdc_label_field_copy_pad(void)
 {
   TEST_BEGIN("ra8_fs MC/DC: priv_fmt_label_field copy/pad (!past_end && NUL)");
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
 
   /* Short label "AB": drives C1=T/C2=F, C1=T/C2=T, then C1=F. */
-  alloc_card((uint32_t)k_disk_blocks_fat16);
+  internal_alloc_card((uint32_t)k_disk_blocks_fat16);
   opts.label = "AB";
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_fat16, h->type);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
 
   /* NULL label: resolves to the "NO NAME" sentinel and latches at its NUL. */
-  alloc_card((uint32_t)k_disk_blocks_fat16);
+  internal_alloc_card((uint32_t)k_disk_blocks_fat16);
   opts.label = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_fat16, h->type);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs MC/DC: priv_fmt_label_field copy/pad (!past_end && NUL)");
 }
 
 int32_t main(void)
 {
-  test_mcdc_parse_bpb_guards();
-  test_mcdc_choose_geometry_sweep_exhaustion();
-  test_mcdc_clear_region_erase_hook();
-  test_mcdc_label_field_copy_pad();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_fmt_mcdc.c\n");
+  internal_test_mcdc_parse_bpb_guards();
+  internal_test_mcdc_choose_geometry_sweep_exhaustion();
+  internal_test_mcdc_clear_region_erase_hook();
+  internal_test_mcdc_label_field_copy_pad();
   return 0;
 }

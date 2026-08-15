@@ -24,10 +24,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_dir_test_util.h"
@@ -186,9 +186,9 @@ static uint8_t s_now_fails = 0U;
  * @post On failure @p out is untouched.
  *
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded fake now fixture step using caller-owned state.
  */
-static ra8_err_t fake_now(void* ctx, ra8_fs_datetime_t* out)
+RA8_INTERNAL static ra8_err_t internal_fake_now(void* ctx, ra8_fs_datetime_t* out)
 {
   (void)ctx;
   if (s_now_fails != 0U) {
@@ -216,9 +216,10 @@ static ra8_err_t fake_now(void* ctx, ra8_fs_datetime_t* out)
  * @post ::s_now_fails is cleared.
  *
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded set fake clock fixture step using caller-owned state.
  */
-static void set_fake_clock(uint32_t y, uint32_t mo, uint32_t d, uint32_t h, uint32_t mi, uint32_t s)
+RA8_INTERNAL static void
+internal_set_fake_clock(uint32_t y, uint32_t mo, uint32_t d, uint32_t h, uint32_t mi, uint32_t s)
 {
   s_now                    = (ra8_fs_datetime_t){};
   s_now.year               = (uint16_t)y;
@@ -228,7 +229,7 @@ static void set_fake_clock(uint32_t y, uint32_t mo, uint32_t d, uint32_t h, uint
   s_now.minute             = (uint8_t)mi;
   s_now.second             = (uint8_t)s;
   s_now_fails              = 0U;
-  const ra8_fs_clock_t clk = {.now = fake_now, .ctx = nullptr};
+  const ra8_fs_clock_t clk = {.now = internal_fake_now, .ctx = nullptr};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_clock(&clk));
 }
 
@@ -240,16 +241,16 @@ static void set_fake_clock(uint32_t y, uint32_t mo, uint32_t d, uint32_t h, uint
  * @post Later stamps encode as ::k_ts_t1_date / ::k_ts_t1_time.
  * @post ::s_now_fails is cleared.
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded use instant 1 fixture step using caller-owned state.
  */
-static void use_instant_1(void)
+RA8_INTERNAL static void internal_use_instant_1(void)
 {
-  set_fake_clock((uint32_t)k_ts_t1_year,
-                 (uint32_t)k_ts_t1_month,
-                 (uint32_t)k_ts_t1_day,
-                 (uint32_t)k_ts_t1_hour,
-                 (uint32_t)k_ts_t1_min,
-                 (uint32_t)k_ts_t1_sec);
+  internal_set_fake_clock((uint32_t)k_ts_t1_year,
+                          (uint32_t)k_ts_t1_month,
+                          (uint32_t)k_ts_t1_day,
+                          (uint32_t)k_ts_t1_hour,
+                          (uint32_t)k_ts_t1_min,
+                          (uint32_t)k_ts_t1_sec);
 }
 
 /**
@@ -260,16 +261,16 @@ static void use_instant_1(void)
  * @post Later stamps encode as ::k_ts_t2_date / ::k_ts_t2_time.
  * @post ::s_now_fails is cleared.
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded use instant 2 fixture step using caller-owned state.
  */
-static void use_instant_2(void)
+RA8_INTERNAL static void internal_use_instant_2(void)
 {
-  set_fake_clock((uint32_t)k_ts_t2_year,
-                 (uint32_t)k_ts_t2_month,
-                 (uint32_t)k_ts_t2_day,
-                 (uint32_t)k_ts_t2_hour,
-                 (uint32_t)k_ts_t2_min,
-                 (uint32_t)k_ts_t2_sec);
+  internal_set_fake_clock((uint32_t)k_ts_t2_year,
+                          (uint32_t)k_ts_t2_month,
+                          (uint32_t)k_ts_t2_day,
+                          (uint32_t)k_ts_t2_hour,
+                          (uint32_t)k_ts_t2_min,
+                          (uint32_t)k_ts_t2_sec);
 }
 
 /**
@@ -280,16 +281,16 @@ static void use_instant_2(void)
  * @post Later stamps encode as ::k_ts_t3_date / ::k_ts_t3_time.
  * @post ::s_now_fails is cleared.
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded use instant 3 fixture step using caller-owned state.
  */
-static void use_instant_3(void)
+RA8_INTERNAL static void internal_use_instant_3(void)
 {
-  set_fake_clock((uint32_t)k_ts_t3_year,
-                 (uint32_t)k_ts_t3_month,
-                 (uint32_t)k_ts_t3_day,
-                 (uint32_t)k_ts_t3_hour,
-                 (uint32_t)k_ts_t3_min,
-                 (uint32_t)k_ts_t3_sec);
+  internal_set_fake_clock((uint32_t)k_ts_t3_year,
+                          (uint32_t)k_ts_t3_month,
+                          (uint32_t)k_ts_t3_day,
+                          (uint32_t)k_ts_t3_hour,
+                          (uint32_t)k_ts_t3_min,
+                          (uint32_t)k_ts_t3_sec);
 }
 
 /**
@@ -300,9 +301,9 @@ static void use_instant_3(void)
  * @post No binding is installed.
  * @post Later stamps are 1980-01-01 00:00:00.
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded clear fake clock fixture step using caller-owned state.
  */
-static void clear_fake_clock(void)
+RA8_INTERNAL static void internal_clear_fake_clock(void)
 {
   s_now_fails = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_clock(nullptr));
@@ -327,9 +328,9 @@ static void clear_fake_clock(void)
  * @post The result addresses the root region.
  *
  * @note Partition-adjusted, like every other direct RAM-disk probe (#568).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded root dir byte fixture step using caller-owned state.
  */
-static uint32_t root_dir_byte(const ra8_fs_mount_t* h)
+RA8_INTERNAL static uint32_t internal_root_dir_byte(const ra8_fs_mount_t* h)
 {
   return (h->partition_base_lba + h->first_root_lba) * (uint32_t)k_geo_blk_sz;
 }
@@ -349,9 +350,9 @@ static uint32_t root_dir_byte(const ra8_fs_mount_t* h)
  * @post The result addresses the data region.
  *
  * @note Partition-adjusted, like every other direct RAM-disk probe (#568).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded cluster byte fixture step using caller-owned state.
  */
-static uint32_t cluster_byte(const ra8_fs_mount_t* h, uint32_t cluster)
+RA8_INTERNAL static uint32_t internal_cluster_byte(const ra8_fs_mount_t* h, uint32_t cluster)
 {
   const uint32_t lba =
     h->partition_base_lba + h->first_data_lba + ((uint64_t)(cluster - 2U) * h->sectors_per_cluster);
@@ -373,9 +374,9 @@ static uint32_t cluster_byte(const ra8_fs_mount_t* h, uint32_t cluster)
  * @post The RAM disk is unmodified.
  *
  * @note Reads the fixture's memory directly, bypassing the driver.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded read entry word fixture step using caller-owned state.
  */
-static uint16_t read_entry_word(uint32_t entry_byte, uint32_t field_off)
+RA8_INTERNAL static uint16_t internal_read_entry_word(uint32_t entry_byte, uint32_t field_off)
 {
   const uint32_t at = entry_byte + field_off;
   return (uint16_t)((uint16_t)s_disk.bytes[at] |
@@ -397,11 +398,11 @@ static uint16_t read_entry_word(uint32_t entry_byte, uint32_t field_off)
  * @post The result addresses a 32-byte entry.
  *
  * @note Scans the first root sector only, which is all these tests fill.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded find entry fixture step using caller-owned state.
  */
-static uint32_t find_entry(const ra8_fs_mount_t* h, const char* name83)
+RA8_INTERNAL static uint32_t internal_find_entry(const ra8_fs_mount_t* h, const char* name83)
 {
-  const uint32_t base = root_dir_byte(h);
+  const uint32_t base = internal_root_dir_byte(h);
   for (uint32_t i = 0U; i < (uint32_t)k_geo_blk_sz; i += (uint32_t)k_ts_entry_bytes) {
     if (memcmp(&s_disk.bytes[base + i + k_ts_off_name], name83, (size_t)k_ts_name_len) == 0) {
       return base + i;
@@ -431,7 +432,7 @@ static uint32_t find_entry(const ra8_fs_mount_t* h, const char* name83)
  * @note The year is unconstrained: 1980 and 2107 are both legal.
  * @since 0.1.0
  */
-static void assert_legal_date(uint16_t packed)
+RA8_INTERNAL static void internal_assert_legal_date(uint16_t packed)
 {
   const uint32_t month = ((uint32_t)packed >> k_ts_shift_month) & (uint32_t)k_ts_mask_month;
   const uint32_t day   = (uint32_t)packed & (uint32_t)k_ts_mask_day;
@@ -460,9 +461,9 @@ static void assert_legal_date(uint16_t packed)
  * @post The handle used is closed.
  *
  * @note Uses the same seam a caller would.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded make file fixture step using caller-owned state.
  */
-static void make_file(ra8_fs_mount_t* h, const char* path)
+RA8_INTERNAL static void internal_make_file(ra8_fs_mount_t* h, const char* path)
 {
   uint8_t payload[k_ts_payload] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, path, payload, (uint32_t)k_ts_payload));
@@ -486,17 +487,17 @@ static void make_file(ra8_fs_mount_t* h, const char* path)
  * - V2: clock with now = NULL -> first false, second true  -> invalid_arg.
  * - V3: complete binding      -> first false, second false -> installed, ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the clock seam guards vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_clock_seam_guards(void)
+RA8_INTERNAL static void internal_test_clock_seam_guards(void)
 {
   TEST_BEGIN("fs timestamps: set_clock guards");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_clock(nullptr));
   const ra8_fs_clock_t broken = {.now = nullptr, .ctx = nullptr};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_set_clock(&broken));
-  const ra8_fs_clock_t good = {.now = fake_now, .ctx = nullptr};
+  const ra8_fs_clock_t good = {.now = internal_fake_now, .ctx = nullptr};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_clock(&good));
-  clear_fake_clock();
+  internal_clear_fake_clock();
   TEST_END("fs timestamps: set_clock guards");
 }
 
@@ -514,29 +515,29 @@ static void test_clock_seam_guards(void)
  * - V1 (here): no binding -> false -> the epoch is written.
  * - V2: see test_clock_stamps_create, which installs one -> true.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_epoch_default_is_legal(void)
+RA8_INTERNAL static void internal_test_epoch_default_is_legal(void)
 {
   TEST_BEGIN("fs timestamps: no clock -> legal 1980-01-01");
-  clear_fake_clock();
-  build_fat16_vol();
+  internal_clear_fake_clock();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  make_file(h, "EPOCH.BIN");
+  internal_make_file(h, "EPOCH.BIN");
 
-  const uint32_t ent = find_entry(h, "EPOCH   BIN");
-  TEST_ASSERT_EQ(k_ts_epoch_date, read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
-  TEST_ASSERT_EQ(k_ts_epoch_date, read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
-  TEST_ASSERT_EQ(k_ts_epoch_date, read_entry_word(ent, (uint32_t)k_ts_off_acc_date));
-  TEST_ASSERT_EQ(k_ts_epoch_time, read_entry_word(ent, (uint32_t)k_ts_off_crt_time));
-  TEST_ASSERT_EQ(k_ts_epoch_time, read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
+  const uint32_t ent = internal_find_entry(h, "EPOCH   BIN");
+  TEST_ASSERT_EQ(k_ts_epoch_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
+  TEST_ASSERT_EQ(k_ts_epoch_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
+  TEST_ASSERT_EQ(k_ts_epoch_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_acc_date));
+  TEST_ASSERT_EQ(k_ts_epoch_time, internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_time));
+  TEST_ASSERT_EQ(k_ts_epoch_time, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
   TEST_ASSERT_EQ(0U, s_disk.bytes[ent + k_ts_off_crt_tenth]);
-  assert_legal_date(read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
-  assert_legal_date(read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
+  internal_assert_legal_date(internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
+  internal_assert_legal_date(internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("fs timestamps: no clock -> legal 1980-01-01");
 }
 
@@ -555,25 +556,25 @@ static void test_epoch_default_is_legal(void)
  * - V1 (here): now() fails    -> false -> epoch written, create still succeeds.
  * - V2: test_clock_stamps_create -> true -> the reading is written.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_broken_clock_falls_back(void)
+RA8_INTERNAL static void internal_test_broken_clock_falls_back(void)
 {
   TEST_BEGIN("fs timestamps: failing clock -> epoch, write still succeeds");
-  use_instant_1();
+  internal_use_instant_1();
   s_now_fails = 1U;
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  make_file(h, "BROKE.BIN");
+  internal_make_file(h, "BROKE.BIN");
 
-  const uint32_t ent = find_entry(h, "BROKE   BIN");
-  TEST_ASSERT_EQ(k_ts_epoch_date, read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
-  assert_legal_date(read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
+  const uint32_t ent = internal_find_entry(h, "BROKE   BIN");
+  TEST_ASSERT_EQ(k_ts_epoch_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
+  internal_assert_legal_date(internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
-  clear_fake_clock();
+  internal_free_vol();
+  internal_clear_fake_clock();
   TEST_END("fs timestamps: failing clock -> epoch, write still succeeds");
 }
 
@@ -591,28 +592,28 @@ static void test_broken_clock_falls_back(void)
  * and compares the six on-disk timestamp fields against the packed encoding
  * of that one instant)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_clock_stamps_create(void)
+RA8_INTERNAL static void internal_test_clock_stamps_create(void)
 {
   TEST_BEGIN("fs timestamps: installed clock stamps create");
-  use_instant_1();
+  internal_use_instant_1();
   s_now.centisecond = (uint8_t)k_ts_t1_centi;
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  make_file(h, "STAMP.BIN");
+  internal_make_file(h, "STAMP.BIN");
 
-  const uint32_t ent = find_entry(h, "STAMP   BIN");
-  TEST_ASSERT_EQ(k_ts_t1_date, read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
-  TEST_ASSERT_EQ(k_ts_t1_time, read_entry_word(ent, (uint32_t)k_ts_off_crt_time));
-  TEST_ASSERT_EQ(k_ts_t1_date, read_entry_word(ent, (uint32_t)k_ts_off_acc_date));
+  const uint32_t ent = internal_find_entry(h, "STAMP   BIN");
+  TEST_ASSERT_EQ(k_ts_t1_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
+  TEST_ASSERT_EQ(k_ts_t1_time, internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_time));
+  TEST_ASSERT_EQ(k_ts_t1_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_acc_date));
   TEST_ASSERT_EQ(k_ts_t1_tenth, s_disk.bytes[ent + k_ts_off_crt_tenth]);
-  assert_legal_date(read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
+  internal_assert_legal_date(internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
-  clear_fake_clock();
+  internal_free_vol();
+  internal_clear_fake_clock();
   TEST_END("fs timestamps: installed clock stamps create");
 }
 
@@ -631,32 +632,32 @@ static void test_clock_stamps_create(void)
  * - V2: year 3000, month 13, day 99, hour 99 -> second true -> clamps down.
  * - V3: the in-range case, covered by test_clock_stamps_create -> both false.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_out_of_range_is_clamped(void)
+RA8_INTERNAL static void internal_test_out_of_range_is_clamped(void)
 {
   TEST_BEGIN("fs timestamps: out-of-range clock readings clamp");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  set_fake_clock((uint32_t)k_ts_bad_year_lo, 0U, 0U, 0U, 0U, 0U);
-  make_file(h, "LOW.BIN");
-  const uint32_t low = find_entry(h, "LOW     BIN");
-  TEST_ASSERT_EQ(k_ts_epoch_date, read_entry_word(low, (uint32_t)k_ts_off_crt_date));
-  assert_legal_date(read_entry_word(low, (uint32_t)k_ts_off_crt_date));
+  internal_set_fake_clock((uint32_t)k_ts_bad_year_lo, 0U, 0U, 0U, 0U, 0U);
+  internal_make_file(h, "LOW.BIN");
+  const uint32_t low = internal_find_entry(h, "LOW     BIN");
+  TEST_ASSERT_EQ(k_ts_epoch_date, internal_read_entry_word(low, (uint32_t)k_ts_off_crt_date));
+  internal_assert_legal_date(internal_read_entry_word(low, (uint32_t)k_ts_off_crt_date));
 
-  set_fake_clock((uint32_t)k_ts_bad_year_hi,
-                 (uint32_t)k_ts_bad_month_hi,
-                 (uint32_t)k_ts_bad_field_hi,
-                 (uint32_t)k_ts_bad_field_hi,
-                 (uint32_t)k_ts_bad_field_hi,
-                 (uint32_t)k_ts_bad_field_hi);
+  internal_set_fake_clock((uint32_t)k_ts_bad_year_hi,
+                          (uint32_t)k_ts_bad_month_hi,
+                          (uint32_t)k_ts_bad_field_hi,
+                          (uint32_t)k_ts_bad_field_hi,
+                          (uint32_t)k_ts_bad_field_hi,
+                          (uint32_t)k_ts_bad_field_hi);
   s_now.centisecond = (uint8_t)k_ts_bad_centi_hi;
-  make_file(h, "HIGH.BIN");
-  const uint32_t high  = find_entry(h, "HIGH    BIN");
-  const uint16_t date  = read_entry_word(high, (uint32_t)k_ts_off_crt_date);
-  const uint16_t time  = read_entry_word(high, (uint32_t)k_ts_off_crt_time);
+  internal_make_file(h, "HIGH.BIN");
+  const uint32_t high  = internal_find_entry(h, "HIGH    BIN");
+  const uint16_t date  = internal_read_entry_word(high, (uint32_t)k_ts_off_crt_date);
+  const uint16_t time  = internal_read_entry_word(high, (uint32_t)k_ts_off_crt_time);
   const uint32_t year  = ((uint32_t)date >> k_ts_shift_year) & (uint32_t)k_ts_mask_year;
   const uint32_t month = ((uint32_t)date >> k_ts_shift_month) & (uint32_t)k_ts_mask_month;
   const uint32_t day   = (uint32_t)date & (uint32_t)k_ts_mask_day;
@@ -671,11 +672,11 @@ static void test_out_of_range_is_clamped(void)
   TEST_ASSERT_EQ(k_ts_sec2_max, sec2);
   /* 59 is odd, so the tenths field is 100 + the clamped 99 hundredths. */
   TEST_ASSERT_EQ(k_ts_tenth_max, s_disk.bytes[high + k_ts_off_crt_tenth]);
-  assert_legal_date(date);
+  internal_assert_legal_date(date);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
-  clear_fake_clock();
+  internal_free_vol();
+  internal_clear_fake_clock();
   TEST_END("fs timestamps: out-of-range clock readings clamp");
 }
 
@@ -693,34 +694,34 @@ static void test_out_of_range_is_clamped(void)
  * (no compound decisions in this test -- it moves the clock between the create
  * and the write and asserts which fields followed it)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_write_moves_mtime_not_ctime(void)
+RA8_INTERNAL static void internal_test_write_moves_mtime_not_ctime(void)
 {
   TEST_BEGIN("fs timestamps: write moves mtime, not ctime");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  use_instant_1();
+  internal_use_instant_1();
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "MTIME.BIN", k_ra8_fs_mode_write, &f));
 
-  use_instant_2();
+  internal_use_instant_2();
   uint8_t payload[k_ts_payload] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, payload, (uint32_t)k_ts_payload));
 
-  const uint32_t ent = find_entry(h, "MTIME   BIN");
-  TEST_ASSERT_EQ(k_ts_t1_date, read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
-  TEST_ASSERT_EQ(k_ts_t1_time, read_entry_word(ent, (uint32_t)k_ts_off_crt_time));
-  TEST_ASSERT_EQ(k_ts_t2_date, read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
-  TEST_ASSERT_EQ(k_ts_t2_time, read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
-  TEST_ASSERT_EQ(k_ts_t2_date, read_entry_word(ent, (uint32_t)k_ts_off_acc_date));
+  const uint32_t ent = internal_find_entry(h, "MTIME   BIN");
+  TEST_ASSERT_EQ(k_ts_t1_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
+  TEST_ASSERT_EQ(k_ts_t1_time, internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_time));
+  TEST_ASSERT_EQ(k_ts_t2_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
+  TEST_ASSERT_EQ(k_ts_t2_time, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
+  TEST_ASSERT_EQ(k_ts_t2_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_acc_date));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
-  clear_fake_clock();
+  internal_free_vol();
+  internal_clear_fake_clock();
   TEST_END("fs timestamps: write moves mtime, not ctime");
 }
 
@@ -738,16 +739,16 @@ static void test_write_moves_mtime_not_ctime(void)
  * - V3..V5: see test_close_guards_an_unusable_handle, which varies conditions
  *   2, 3 and 4.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the close stamps final mtime vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_close_stamps_final_mtime(void)
+RA8_INTERNAL static void internal_test_close_stamps_final_mtime(void)
 {
   TEST_BEGIN("fs timestamps: close stamps the final mtime");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  use_instant_2();
+  internal_use_instant_2();
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "CLOSE.BIN", k_ra8_fs_mode_write, &f));
   uint8_t payload[k_ts_payload] = {};
@@ -755,23 +756,23 @@ static void test_close_stamps_final_mtime(void)
 
   /* V1: the clock moves between the write and the close, so the close stamp is
    * distinguishable from the write stamp. */
-  use_instant_3();
+  internal_use_instant_3();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  const uint32_t ent = find_entry(h, "CLOSE   BIN");
-  TEST_ASSERT_EQ(k_ts_t3_date, read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
-  TEST_ASSERT_EQ(k_ts_t3_time, read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
+  const uint32_t ent = internal_find_entry(h, "CLOSE   BIN");
+  TEST_ASSERT_EQ(k_ts_t3_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
+  TEST_ASSERT_EQ(k_ts_t3_time, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
 
   /* V2: a read-only handle is never dirty, so closing it changes nothing. */
-  use_instant_1();
+  internal_use_instant_1();
   ra8_fs_file_t* r = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "CLOSE.BIN", k_ra8_fs_mode_read, &r));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(r));
-  TEST_ASSERT_EQ(k_ts_t3_date, read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
-  TEST_ASSERT_EQ(k_ts_t3_time, read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
+  TEST_ASSERT_EQ(k_ts_t3_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
+  TEST_ASSERT_EQ(k_ts_t3_time, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
-  clear_fake_clock();
+  internal_free_vol();
+  internal_clear_fake_clock();
   TEST_END("fs timestamps: close stamps the final mtime");
 }
 
@@ -794,15 +795,15 @@ static void test_close_stamps_final_mtime(void)
  * - V4: handle with mount cleared       -> false (varies condition 3).
  * - V5: handle whose mount was released -> false (varies condition 4).
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_close_guards_an_unusable_handle(void)
+RA8_INTERNAL static void internal_test_close_guards_an_unusable_handle(void)
 {
   TEST_BEGIN("fs timestamps: close refuses to touch a stale handle");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  use_instant_1();
+  internal_use_instant_1();
 
   uint8_t        payload[k_ts_payload] = {};
   ra8_fs_file_t* g                     = nullptr;
@@ -823,8 +824,8 @@ static void test_close_guards_an_unusable_handle(void)
   h->in_use = 1U;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
-  clear_fake_clock();
+  internal_free_vol();
+  internal_clear_fake_clock();
   TEST_END("fs timestamps: close refuses to touch a stale handle");
 }
 
@@ -840,32 +841,32 @@ static void test_close_guards_an_unusable_handle(void)
  * (no compound decisions in this test -- it re-opens for writing and asserts
  * the modification stamp moved while the creation stamp did not)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_truncate_moves_mtime(void)
+RA8_INTERNAL static void internal_test_truncate_moves_mtime(void)
 {
   TEST_BEGIN("fs timestamps: truncate moves mtime");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  use_instant_1();
-  make_file(h, "TRUNC.BIN");
-  const uint32_t ent = find_entry(h, "TRUNC   BIN");
-  TEST_ASSERT_EQ(k_ts_t1_date, read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
+  internal_use_instant_1();
+  internal_make_file(h, "TRUNC.BIN");
+  const uint32_t ent = internal_find_entry(h, "TRUNC   BIN");
+  TEST_ASSERT_EQ(k_ts_t1_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
 
-  use_instant_2();
+  internal_use_instant_2();
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "TRUNC.BIN", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  TEST_ASSERT_EQ(k_ts_t2_date, read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
-  TEST_ASSERT_EQ(k_ts_t2_time, read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
+  TEST_ASSERT_EQ(k_ts_t2_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
+  TEST_ASSERT_EQ(k_ts_t2_time, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
   /* The creation stamp survives a truncation. */
-  TEST_ASSERT_EQ(k_ts_t1_date, read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
+  TEST_ASSERT_EQ(k_ts_t1_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
-  clear_fake_clock();
+  internal_free_vol();
+  internal_clear_fake_clock();
   TEST_END("fs timestamps: truncate moves mtime");
 }
 
@@ -883,30 +884,30 @@ static void test_truncate_moves_mtime(void)
  * (no compound decisions in this test -- it renames and asserts which of the
  * three date fields moved)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rename_moves_atime_only(void)
+RA8_INTERNAL static void internal_test_rename_moves_atime_only(void)
 {
   TEST_BEGIN("fs timestamps: rename moves atime only");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  use_instant_1();
-  make_file(h, "OLD.BIN");
+  internal_use_instant_1();
+  internal_make_file(h, "OLD.BIN");
 
-  use_instant_2();
+  internal_use_instant_2();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rename(h, "OLD.BIN", "NEW.BIN"));
 
-  const uint32_t ent = find_entry(h, "NEW     BIN");
-  TEST_ASSERT_EQ(k_ts_t2_date, read_entry_word(ent, (uint32_t)k_ts_off_acc_date));
-  TEST_ASSERT_EQ(k_ts_t1_date, read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
-  TEST_ASSERT_EQ(k_ts_t1_time, read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
-  TEST_ASSERT_EQ(k_ts_t1_date, read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
+  const uint32_t ent = internal_find_entry(h, "NEW     BIN");
+  TEST_ASSERT_EQ(k_ts_t2_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_acc_date));
+  TEST_ASSERT_EQ(k_ts_t1_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_date));
+  TEST_ASSERT_EQ(k_ts_t1_time, internal_read_entry_word(ent, (uint32_t)k_ts_off_wrt_time));
+  TEST_ASSERT_EQ(k_ts_t1_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
-  clear_fake_clock();
+  internal_free_vol();
+  internal_clear_fake_clock();
   TEST_END("fs timestamps: rename moves atime only");
 }
 
@@ -923,37 +924,37 @@ static void test_rename_moves_atime_only(void)
  * (no compound decisions in this test -- it creates a directory and decodes
  * the dates in its own entry and in its "." / ".." links)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_mkdir_stamps_dot_entries(void)
+RA8_INTERNAL static void internal_test_mkdir_stamps_dot_entries(void)
 {
   TEST_BEGIN("fs timestamps: mkdir stamps the dot entries");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  use_instant_1();
+  internal_use_instant_1();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
 
-  const uint32_t ent = find_entry(h, "LOGS       ");
-  TEST_ASSERT_EQ(k_ts_t1_date, read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
-  assert_legal_date(read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
+  const uint32_t ent = internal_find_entry(h, "LOGS       ");
+  TEST_ASSERT_EQ(k_ts_t1_date, internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
+  internal_assert_legal_date(internal_read_entry_word(ent, (uint32_t)k_ts_off_crt_date));
 
-  const uint32_t hi   = read_entry_word(ent, (uint32_t)k_ts_off_clus_hi);
-  const uint32_t lo   = read_entry_word(ent, (uint32_t)k_ts_off_clus_lo);
+  const uint32_t hi   = internal_read_entry_word(ent, (uint32_t)k_ts_off_clus_hi);
+  const uint32_t lo   = internal_read_entry_word(ent, (uint32_t)k_ts_off_clus_lo);
   const uint32_t clus = (hi << k_ts_shift_word) | lo;
-  const uint32_t dots = cluster_byte(h, clus);
+  const uint32_t dots = internal_cluster_byte(h, clus);
   for (uint32_t i = 0U; i < (uint32_t)k_ts_dot_slots; i++) {
     const uint32_t slot = dots + (i * (uint32_t)k_ts_entry_bytes);
     TEST_ASSERT_EQ('.', s_disk.bytes[slot]);
-    TEST_ASSERT_EQ(k_ts_t1_date, read_entry_word(slot, (uint32_t)k_ts_off_crt_date));
-    TEST_ASSERT_EQ(k_ts_t1_date, read_entry_word(slot, (uint32_t)k_ts_off_wrt_date));
-    assert_legal_date(read_entry_word(slot, (uint32_t)k_ts_off_wrt_date));
+    TEST_ASSERT_EQ(k_ts_t1_date, internal_read_entry_word(slot, (uint32_t)k_ts_off_crt_date));
+    TEST_ASSERT_EQ(k_ts_t1_date, internal_read_entry_word(slot, (uint32_t)k_ts_off_wrt_date));
+    internal_assert_legal_date(internal_read_entry_word(slot, (uint32_t)k_ts_off_wrt_date));
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
-  clear_fake_clock();
+  internal_free_vol();
+  internal_clear_fake_clock();
   TEST_END("fs timestamps: mkdir stamps the dot entries");
 }
 
@@ -973,17 +974,16 @@ static void test_mkdir_stamps_dot_entries(void)
  */
 int main(void)
 {
-  test_clock_seam_guards();
-  test_epoch_default_is_legal();
-  test_broken_clock_falls_back();
-  test_clock_stamps_create();
-  test_out_of_range_is_clamped();
-  test_write_moves_mtime_not_ctime();
-  test_close_stamps_final_mtime();
-  test_close_guards_an_unusable_handle();
-  test_truncate_moves_mtime();
-  test_rename_moves_atime_only();
-  test_mkdir_stamps_dot_entries();
-  printf("[OK  ] test_ra8_fs_timestamps.c\n");
+  internal_test_clock_seam_guards();
+  internal_test_epoch_default_is_legal();
+  internal_test_broken_clock_falls_back();
+  internal_test_clock_stamps_create();
+  internal_test_out_of_range_is_clamped();
+  internal_test_write_moves_mtime_not_ctime();
+  internal_test_close_stamps_final_mtime();
+  internal_test_close_guards_an_unusable_handle();
+  internal_test_truncate_moves_mtime();
+  internal_test_rename_moves_atime_only();
+  internal_test_mkdir_stamps_dot_entries();
   return 0;
 }

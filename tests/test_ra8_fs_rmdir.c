@@ -34,10 +34,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_dir_test_util.h"
@@ -102,9 +102,9 @@ typedef enum : uint32_t {
  * @post No other state is modified.
  *
  * @note Trivially thread-safe (writes only through @p buf).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded fill payload fixture step using caller-owned state.
  */
-static void fill_payload(uint8_t* buf, uint32_t len)
+RA8_INTERNAL static void internal_fill_payload(uint8_t* buf, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; i++) {
     buf[i] = (uint8_t)((i * (uint32_t)k_rd_seed_stride) + (uint32_t)k_rd_seed);
@@ -125,9 +125,9 @@ static void fill_payload(uint8_t* buf, uint32_t len)
  * @post The result addresses the root region.
  *
  * @note Pure function of the mount geometry.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded root dir byte fixture step using caller-owned state.
  */
-static uint32_t root_dir_byte(const ra8_fs_mount_t* h)
+RA8_INTERNAL static uint32_t internal_root_dir_byte(const ra8_fs_mount_t* h)
 {
   /* Partition-adjusted: `priv_read_sector()` adds `partition_base_lba`, so a
    * test poking `s_disk.bytes` directly has to add it too or it lands in the
@@ -151,9 +151,9 @@ static uint32_t root_dir_byte(const ra8_fs_mount_t* h)
  * @post The result addresses the data region.
  *
  * @note Pure function of the mount geometry.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded cluster byte fixture step using caller-owned state.
  */
-static uint32_t cluster_byte(const ra8_fs_mount_t* h, uint32_t cluster)
+RA8_INTERNAL static uint32_t internal_cluster_byte(const ra8_fs_mount_t* h, uint32_t cluster)
 {
   const uint32_t lba =
     h->partition_base_lba + h->first_data_lba +
@@ -182,9 +182,9 @@ static uint32_t cluster_byte(const ra8_fs_mount_t* h, uint32_t cluster)
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static uint32_t root_entry_byte(const ra8_fs_mount_t* h, const char* name11)
+RA8_INTERNAL static uint32_t internal_root_entry_byte(const ra8_fs_mount_t* h, const char* name11)
 {
-  const uint32_t base = root_dir_byte(h);
+  const uint32_t base = internal_root_dir_byte(h);
   for (uint32_t slot = 0U; slot < (uint32_t)k_rd_per_sector; slot++) {
     const uint32_t off = base + (slot * (uint32_t)k_rd_entry_bytes);
     if (memcmp(&s_disk.bytes[off + (uint32_t)k_rd_off_name], name11, (size_t)k_rd_name_len) == 0) {
@@ -209,9 +209,9 @@ static uint32_t root_entry_byte(const ra8_fs_mount_t* h, const char* name11)
  * @post Result depends only on the stored bytes.
  *
  * @note Pure read of the RAM disk.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded entry cluster fixture step using caller-owned state.
  */
-static uint32_t entry_cluster(uint32_t entry_off)
+RA8_INTERNAL static uint32_t internal_entry_cluster(uint32_t entry_off)
 {
   const uint8_t* e = &s_disk.bytes[entry_off];
   const uint32_t hi =
@@ -236,12 +236,15 @@ static uint32_t entry_cluster(uint32_t entry_off)
  * @post No other slot is modified.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded poke dir slot fixture step using caller-owned state.
  */
-static void
-poke_dir_slot(const ra8_fs_mount_t* h, uint32_t cluster, uint32_t slot, uint8_t name0, uint8_t attr)
+RA8_INTERNAL static void internal_poke_dir_slot(const ra8_fs_mount_t* h,
+                                                uint32_t              cluster,
+                                                uint32_t              slot,
+                                                uint8_t               name0,
+                                                uint8_t               attr)
 {
-  const uint32_t off = cluster_byte(h, cluster) + (slot * (uint32_t)k_rd_entry_bytes);
+  const uint32_t off = internal_cluster_byte(h, cluster) + (slot * (uint32_t)k_rd_entry_bytes);
   s_disk.bytes[off + (uint32_t)k_rd_off_name] = name0;
   s_disk.bytes[off + (uint32_t)k_rd_off_attr] = attr;
 }
@@ -261,12 +264,12 @@ poke_dir_slot(const ra8_fs_mount_t* h, uint32_t cluster, uint32_t slot, uint8_t 
  * @post Synthetic "." / ".." entries are not counted.
  *
  * @note Not thread-safe; the fixture is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded listing size fixture step using caller-owned state.
  */
-static uint32_t listing_size(ra8_fs_mount_t* h, const char* path)
+RA8_INTERNAL static uint32_t internal_listing_size(ra8_fs_mount_t* h, const char* path)
 {
   uint32_t count = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, path, count_cb, &count));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, path, internal_count_cb, &count));
   return count;
 }
 
@@ -290,24 +293,24 @@ static uint32_t listing_size(ra8_fs_mount_t* h, const char* path)
  * @pre A hand-built FAT16 volume is mounted.
  * @post "/LOGS" no longer resolves and can be created again.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_basic(void)
+RA8_INTERNAL static void internal_test_rmdir_basic(void)
 {
   TEST_BEGIN("rmdir: an empty directory is removed and its cluster reused");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
-  TEST_ASSERT_EQ(k_rd_entries_one, listing_size(h, "/"));
+  TEST_ASSERT_EQ(k_rd_entries_one, internal_listing_size(h, "/"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rmdir(h, "/LOGS"));
-  TEST_ASSERT_EQ(k_rd_entries_none, listing_size(h, "/"));
+  TEST_ASSERT_EQ(k_rd_entries_none, internal_listing_size(h, "/"));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rmdir(h, "/LOGS"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rmdir: an empty directory is removed and its cluster reused");
 }
 
@@ -326,12 +329,12 @@ static void test_rmdir_basic(void)
  * @pre A hand-built FAT16 volume is mounted.
  * @post Neither directory resolves and the root listing is empty.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_nested(void)
+RA8_INTERNAL static void internal_test_rmdir_nested(void)
 {
   TEST_BEGIN("rmdir: nested directory, then its parent");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
@@ -341,10 +344,10 @@ static void test_rmdir_nested(void)
   TEST_ASSERT_EQ(k_ra8_err_not_empty, ra8_fs_rmdir(h, "/BOOKS"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rmdir(h, "/BOOKS/SCIFI"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rmdir(h, "/BOOKS"));
-  TEST_ASSERT_EQ(k_rd_entries_none, listing_size(h, "/"));
+  TEST_ASSERT_EQ(k_rd_entries_none, internal_listing_size(h, "/"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rmdir: nested directory, then its parent");
 }
 
@@ -367,23 +370,23 @@ static void test_rmdir_nested(void)
  * @pre A hand-built FAT16 volume is mounted with "/LOGS/A.TXT" present.
  * @post The refused removal left the file readable; the retry succeeded.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_not_empty(void)
+RA8_INTERNAL static void internal_test_rmdir_not_empty(void)
 {
   TEST_BEGIN("rmdir: a non-empty directory is refused and left intact");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
   uint8_t data[k_rd_payload] = {};
-  fill_payload(data, (uint32_t)k_rd_payload);
+  internal_fill_payload(data, (uint32_t)k_rd_payload);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/LOGS/A.TXT", data, (uint32_t)k_rd_payload));
 
   TEST_ASSERT_EQ(k_ra8_err_not_empty, ra8_fs_rmdir(h, "/LOGS"));
 
   /* the refusal changed nothing: the file is still there and still readable */
-  TEST_ASSERT_EQ(k_rd_entries_one, listing_size(h, "/LOGS"));
+  TEST_ASSERT_EQ(k_rd_entries_one, internal_listing_size(h, "/LOGS"));
   ra8_fs_file_t* f                 = nullptr;
   uint8_t        got[k_rd_payload] = {};
   uint32_t       got_len           = 0U;
@@ -398,7 +401,7 @@ static void test_rmdir_not_empty(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rmdir(h, "/LOGS"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rmdir: a non-empty directory is refused and left intact");
 }
 
@@ -421,27 +424,27 @@ static void test_rmdir_not_empty(void)
  * @pre A hand-built FAT16 volume is mounted with an empty "/LOGS".
  * @post The directory is removed despite the remnant.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_skips_long_name_remnant(void)
+RA8_INTERNAL static void internal_test_rmdir_skips_long_name_remnant(void)
 {
   TEST_BEGIN("rmdir: a stranded long-name slot is not contents");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
-  const uint32_t cluster = entry_cluster(root_entry_byte(h, "LOGS       "));
-  poke_dir_slot(h,
-                cluster,
-                (uint32_t)k_rd_dot_slots,
-                (uint8_t)k_rd_lfn_seq,
-                (uint8_t)k_rd_attr_lfn);
+  const uint32_t cluster = internal_entry_cluster(internal_root_entry_byte(h, "LOGS       "));
+  internal_poke_dir_slot(h,
+                         cluster,
+                         (uint32_t)k_rd_dot_slots,
+                         (uint8_t)k_rd_lfn_seq,
+                         (uint8_t)k_rd_attr_lfn);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rmdir(h, "/LOGS"));
-  TEST_ASSERT_EQ(k_rd_entries_none, listing_size(h, "/"));
+  TEST_ASSERT_EQ(k_rd_entries_none, internal_listing_size(h, "/"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rmdir: a stranded long-name slot is not contents");
 }
 
@@ -467,25 +470,25 @@ static void test_rmdir_skips_long_name_remnant(void)
  * @pre A hand-built FAT16 volume is mounted with an empty "/LOGS".
  * @post The directory is removed.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_full_sector_of_deleted_slots(void)
+RA8_INTERNAL static void internal_test_rmdir_full_sector_of_deleted_slots(void)
 {
   TEST_BEGIN("rmdir: a sector of deleted slots with no free marker reads as empty");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
-  const uint32_t cluster = entry_cluster(root_entry_byte(h, "LOGS       "));
+  const uint32_t cluster = internal_entry_cluster(internal_root_entry_byte(h, "LOGS       "));
   for (uint32_t slot = (uint32_t)k_rd_dot_slots; slot < (uint32_t)k_rd_per_sector; slot++) {
-    poke_dir_slot(h, cluster, slot, (uint8_t)k_rd_marker_deleted, 0U);
+    internal_poke_dir_slot(h, cluster, slot, (uint8_t)k_rd_marker_deleted, 0U);
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rmdir(h, "/LOGS"));
-  TEST_ASSERT_EQ(k_rd_entries_none, listing_size(h, "/"));
+  TEST_ASSERT_EQ(k_rd_entries_none, internal_listing_size(h, "/"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rmdir: a sector of deleted slots with no free marker reads as empty");
 }
 
@@ -504,26 +507,26 @@ static void test_rmdir_full_sector_of_deleted_slots(void)
  * @pre A hand-built FAT16 volume is mounted with "/F.TXT" present.
  * @post The file still resolves and still lists.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_refuses_a_file(void)
+RA8_INTERNAL static void internal_test_rmdir_refuses_a_file(void)
 {
   TEST_BEGIN("rmdir: a regular file is refused");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   uint8_t data[k_rd_payload] = {};
-  fill_payload(data, (uint32_t)k_rd_payload);
+  internal_fill_payload(data, (uint32_t)k_rd_payload);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/F.TXT", data, (uint32_t)k_rd_payload));
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_rmdir(h, "/F.TXT"));
-  TEST_ASSERT_EQ(k_rd_entries_one, listing_size(h, "/"));
+  TEST_ASSERT_EQ(k_rd_entries_one, internal_listing_size(h, "/"));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/F.TXT", k_ra8_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rmdir: a regular file is refused");
 }
 
@@ -545,12 +548,12 @@ static void test_rmdir_refuses_a_file(void)
  * @pre A hand-built FAT16 volume is mounted.
  * @post Every guarded call returned its documented code and changed nothing.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_argument_guards(void)
+RA8_INTERNAL static void internal_test_rmdir_argument_guards(void)
 {
   TEST_BEGIN("rmdir: argument, root, and lookup guards");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -566,7 +569,7 @@ static void test_rmdir_argument_guards(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_rmdir(h, "/LOGS"));
-  free_vol();
+  internal_free_vol();
   TEST_END("rmdir: argument, root, and lookup guards");
 }
 
@@ -589,17 +592,17 @@ static void test_rmdir_argument_guards(void)
  * @pre A hand-built FAT16 volume is mounted with an empty "/LOGS".
  * @post The call reports k_ra8_err_protocol_error.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_directory_without_a_cluster(void)
+RA8_INTERNAL static void internal_test_rmdir_directory_without_a_cluster(void)
 {
   TEST_BEGIN("rmdir: a directory entry with no cluster is corrupt, not empty");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
-  const uint32_t entry_off                                  = root_entry_byte(h, "LOGS       ");
-  s_disk.bytes[entry_off + (uint32_t)k_rd_off_clus_lo]      = 0U;
+  const uint32_t entry_off                             = internal_root_entry_byte(h, "LOGS       ");
+  s_disk.bytes[entry_off + (uint32_t)k_rd_off_clus_lo] = 0U;
   s_disk.bytes[entry_off + (uint32_t)k_rd_off_clus_lo + 1U] = 0U;
   s_disk.bytes[entry_off + (uint32_t)k_rd_off_clus_hi]      = 0U;
   s_disk.bytes[entry_off + (uint32_t)k_rd_off_clus_hi + 1U] = 0U;
@@ -607,7 +610,7 @@ static void test_rmdir_directory_without_a_cluster(void)
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_fs_rmdir(h, "/LOGS"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rmdir: a directory entry with no cluster is corrupt, not empty");
 }
 
@@ -632,20 +635,20 @@ static void test_rmdir_directory_without_a_cluster(void)
  * @pre Each iteration starts from a freshly built volume.
  * @post Some budget succeeded, proving the sweep covered the whole path.
  *
- * @since 0.1.0
+ * @since 0.1.0 @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_read_failures(void)
+RA8_INTERNAL static void internal_test_rmdir_read_failures(void)
 {
   TEST_BEGIN("rmdir: every read failure on the path is reported");
   bool succeeded = false;
   for (uint32_t budget = 0U; budget < (uint32_t)k_rd_io_budget_cap; budget++) {
-    build_fat16_vol();
+    internal_build_fat16_vol();
     ra8_fs_mount_t* h = nullptr;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
 
     const ra8_fs_backend_t saved = h->backend;
-    swap_to_inject(h, budget, 0U);
+    internal_swap_to_inject(h, budget, 0U);
     const ra8_err_t e = ra8_fs_rmdir(h, "/LOGS");
     h->backend        = saved;
 
@@ -655,7 +658,7 @@ static void test_rmdir_read_failures(void)
       TEST_ASSERT_EQ(k_ra8_err_hw_error, e);
     }
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-    free_vol();
+    internal_free_vol();
     if (succeeded) {
       break;
     }
@@ -683,20 +686,20 @@ static void test_rmdir_read_failures(void)
  * @pre Each iteration starts from a freshly built volume.
  * @post Some budget succeeded, proving the sweep covered the whole path.
  *
- * @since 0.1.0
+ * @since 0.1.0 @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_rmdir_write_failures(void)
+RA8_INTERNAL static void internal_test_rmdir_write_failures(void)
 {
   TEST_BEGIN("rmdir: every write failure on the path is reported");
   bool succeeded = false;
   for (uint32_t budget = 0U; budget < (uint32_t)k_rd_io_budget_cap; budget++) {
-    build_fat16_vol();
+    internal_build_fat16_vol();
     ra8_fs_mount_t* h = nullptr;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
 
     const ra8_fs_backend_t saved = h->backend;
-    swap_to_wcount(h, budget);
+    internal_swap_to_wcount(h, budget);
     const ra8_err_t e = ra8_fs_rmdir(h, "/LOGS");
     h->backend        = saved;
 
@@ -706,7 +709,7 @@ static void test_rmdir_write_failures(void)
       TEST_ASSERT_EQ(k_ra8_err_hw_error, e);
     }
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-    free_vol();
+    internal_free_vol();
     if (succeeded) {
       break;
     }
@@ -736,23 +739,23 @@ static void test_rmdir_write_failures(void)
  * @pre A hand-built FAT16 volume is mounted with "/LOGS/A.TXT" present.
  * @post "/LOGS" still lists its file and the file still reads back.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_unlink_refuses_a_directory(void)
+RA8_INTERNAL static void internal_test_unlink_refuses_a_directory(void)
 {
   TEST_BEGIN("unlink: a directory is refused, its contents are not orphaned");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
   uint8_t data[k_rd_payload] = {};
-  fill_payload(data, (uint32_t)k_rd_payload);
+  internal_fill_payload(data, (uint32_t)k_rd_payload);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/LOGS/A.TXT", data, (uint32_t)k_rd_payload));
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_unlink(h, "/LOGS"));
 
-  TEST_ASSERT_EQ(k_rd_entries_one, listing_size(h, "/"));
-  TEST_ASSERT_EQ(k_rd_entries_one, listing_size(h, "/LOGS"));
+  TEST_ASSERT_EQ(k_rd_entries_one, internal_listing_size(h, "/"));
+  TEST_ASSERT_EQ(k_rd_entries_one, internal_listing_size(h, "/LOGS"));
   ra8_fs_file_t* f                 = nullptr;
   uint8_t        got[k_rd_payload] = {};
   uint32_t       got_len           = 0U;
@@ -763,7 +766,7 @@ static void test_unlink_refuses_a_directory(void)
   TEST_ASSERT_EQ(0, memcmp(data, got, (size_t)k_rd_payload));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("unlink: a directory is refused, its contents are not orphaned");
 }
 
@@ -787,17 +790,17 @@ static void test_unlink_refuses_a_directory(void)
  * @pre A hand-built FAT16 volume is mounted with "/LOGS/A.TXT" present.
  * @post No mode opened the directory and the file inside is unchanged.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_open_refuses_a_directory(void)
+RA8_INTERNAL static void internal_test_open_refuses_a_directory(void)
 {
   TEST_BEGIN("open: a directory is refused in every mode, and not truncated");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
   uint8_t data[k_rd_payload] = {};
-  fill_payload(data, (uint32_t)k_rd_payload);
+  internal_fill_payload(data, (uint32_t)k_rd_payload);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/LOGS/A.TXT", data, (uint32_t)k_rd_payload));
 
   ra8_fs_file_t* f = nullptr;
@@ -806,7 +809,7 @@ static void test_open_refuses_a_directory(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_open(h, "/LOGS", k_ra8_fs_mode_append, &f));
 
   /* the write-mode refusal must not have truncated the directory */
-  TEST_ASSERT_EQ(k_rd_entries_one, listing_size(h, "/LOGS"));
+  TEST_ASSERT_EQ(k_rd_entries_one, internal_listing_size(h, "/LOGS"));
   uint8_t  got[k_rd_payload] = {};
   uint32_t got_len           = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/LOGS/A.TXT", k_ra8_fs_mode_read, &f));
@@ -816,7 +819,7 @@ static void test_open_refuses_a_directory(void)
   TEST_ASSERT_EQ(0, memcmp(data, got, (size_t)k_rd_payload));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("open: a directory is refused in every mode, and not truncated");
 }
 
@@ -836,25 +839,25 @@ static void test_open_refuses_a_directory(void)
  * @pre A hand-built FAT16 volume is mounted with "/LOGS/A.TXT" present.
  * @post The directory still lists its file.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_write_file_refuses_a_directory(void)
+RA8_INTERNAL static void internal_test_write_file_refuses_a_directory(void)
 {
   TEST_BEGIN("write_file: writing over a FAT directory name is refused");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/LOGS"));
   uint8_t data[k_rd_payload] = {};
-  fill_payload(data, (uint32_t)k_rd_payload);
+  internal_fill_payload(data, (uint32_t)k_rd_payload);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/LOGS/A.TXT", data, (uint32_t)k_rd_payload));
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_fs_write_file(h, "/LOGS", data, (uint32_t)k_rd_payload));
-  TEST_ASSERT_EQ(k_rd_entries_one, listing_size(h, "/LOGS"));
+  TEST_ASSERT_EQ(k_rd_entries_one, internal_listing_size(h, "/LOGS"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("write_file: writing over a FAT directory name is refused");
 }
 
@@ -873,19 +876,18 @@ static void test_write_file_refuses_a_directory(void)
  */
 int32_t main(void)
 {
-  test_rmdir_basic();
-  test_rmdir_nested();
-  test_rmdir_not_empty();
-  test_rmdir_skips_long_name_remnant();
-  test_rmdir_full_sector_of_deleted_slots();
-  test_rmdir_refuses_a_file();
-  test_rmdir_argument_guards();
-  test_rmdir_directory_without_a_cluster();
-  test_rmdir_read_failures();
-  test_rmdir_write_failures();
-  test_unlink_refuses_a_directory();
-  test_open_refuses_a_directory();
-  test_write_file_refuses_a_directory();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_rmdir.c\n");
+  internal_test_rmdir_basic();
+  internal_test_rmdir_nested();
+  internal_test_rmdir_not_empty();
+  internal_test_rmdir_skips_long_name_remnant();
+  internal_test_rmdir_full_sector_of_deleted_slots();
+  internal_test_rmdir_refuses_a_file();
+  internal_test_rmdir_argument_guards();
+  internal_test_rmdir_directory_without_a_cluster();
+  internal_test_rmdir_read_failures();
+  internal_test_rmdir_write_failures();
+  internal_test_unlink_refuses_a_directory();
+  internal_test_open_refuses_a_directory();
+  internal_test_write_file_refuses_a_directory();
   return 0;
 }

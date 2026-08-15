@@ -9,7 +9,7 @@
  * `test_ra8_fs_unicode_exfat_cov.c` -- all reach for the same four things: the
  * specification field offsets in ::ux_val_t, the names spelled out by hand as
  * UTF-8 bytes and UTF-16 units, a little-endian reader over the fixture's RAM
- * disk, and ::unicode_dump_image below. They live here rather than in any one
+ * disk, and ::internal_unicode_dump_image below. They live here rather than in any one
  * suite so no file crosses the 1000-line cap and none owns data the others
  * borrow -- the same reason `fs_exfat_upcase_test_util.h` factored out the
  * up-case expansion.
@@ -19,7 +19,7 @@
  * checks against.
  *
  * @par Out-of-band evidence:
- * ::unicode_dump_image writes the volume out as `<tag>.img` when
+ * ::internal_unicode_dump_image writes the volume out as `<tag>.img` when
  * `RA8_EXFAT_DUMP_DIR` names a directory, the same hook and the same variable
  * `fs_exfat_stream_test_util.h` carries for the streaming suites. That is how
  * this suite's evidence stops being a claim about our own byte assertions and
@@ -54,6 +54,7 @@
 #include <stdlib.h>
 
 #include "support/fs_fat_exfat_mutate_test_util.h"
+#include "support/ra8_test_file.h"
 #include "unity_minimal.h"
 
 /**
@@ -194,8 +195,10 @@ typedef enum : uint32_t {
  *
  * @note Not thread-safe.
  * @since 0.1.0
- */
-static inline uint32_t disk_rd16(uint32_t off)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static inline uint32_t internal_disk_rd16(uint32_t off)
 {
   return (uint32_t)s_disk.bytes[off] |
          ((uint32_t)s_disk.bytes[off + 1U] << (uint32_t)k_mut_shift_byte8);
@@ -233,7 +236,7 @@ static inline uint32_t disk_rd16(uint32_t off)
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
  */
-static inline void unicode_dump_image(const char* tag, uint32_t base_lba)
+RA8_INTERNAL static inline void internal_unicode_dump_image(const char* tag, uint32_t base_lba)
 {
   const char* dir = getenv("RA8_EXFAT_DUMP_DIR");
   if ((dir == nullptr) || (s_disk.bytes == nullptr)) {
@@ -241,16 +244,11 @@ static inline void unicode_dump_image(const char* tag, uint32_t base_lba)
   }
   char path[k_ux_path_cap] = {};
   (void)snprintf(path, sizeof(path), "%s/%s.img", dir, tag);
-  FILE* fp = fopen(path, "wb");
-  if (fp == nullptr) {
-    TEST_FAIL_FMT("cannot open dump file %s", path);
-    return;
-  }
-  const size_t base  = (size_t)base_lba * (size_t)k_mut_block_size;
-  const size_t total = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
-  const size_t wrote = fwrite(&s_disk.bytes[base], 1U, total - base, fp);
-  (void)fclose(fp);
-  if (wrote != (total - base)) {
+  const size_t                 base  = (size_t)base_lba * (size_t)k_mut_block_size;
+  const size_t                 total = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
+  const ra8_test_file_result_t result =
+    internal_test_file_replace(path, &s_disk.bytes[base], total - base);
+  if (result.status != k_ra8_test_file_ok) {
     TEST_FAIL_FMT("short dump write to %s", path);
   }
 }

@@ -72,11 +72,11 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_utime_fat(const ra8_fs_mount_t*    m,
-                                const char*              path,
-                                const ra8_fs_datetime_t* create,
-                                const ra8_fs_datetime_t* modify,
-                                const ra8_fs_datetime_t* access)
+static ra8_err_t internal_utime_fat(const ra8_fs_mount_t*    m,
+                                    const char*              path,
+                                    const ra8_fs_datetime_t* create,
+                                    const ra8_fs_datetime_t* modify,
+                                    const ra8_fs_datetime_t* access)
 {
   dir_loc_t       parent = {};
   const char*     leaf   = nullptr;
@@ -142,11 +142,11 @@ static ra8_err_t priv_utime_fat(const ra8_fs_mount_t*    m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_utime_exfat(const ra8_fs_mount_t*    m,
-                                  const char*              path,
-                                  const ra8_fs_datetime_t* create,
-                                  const ra8_fs_datetime_t* modify,
-                                  const ra8_fs_datetime_t* access)
+static ra8_err_t internal_utime_exfat(const ra8_fs_mount_t*    m,
+                                      const char*              path,
+                                      const ra8_fs_datetime_t* create,
+                                      const ra8_fs_datetime_t* modify,
+                                      const ra8_fs_datetime_t* access)
 {
   exfat_dir_t root = {};
   priv_exfat_dir_root(m, &root);
@@ -221,11 +221,11 @@ static ra8_err_t priv_utime_exfat(const ra8_fs_mount_t*    m,
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_utime_locked(ra8_fs_mount_t*          handle,
-                                   const char*              path,
-                                   const ra8_fs_datetime_t* create,
-                                   const ra8_fs_datetime_t* modify,
-                                   const ra8_fs_datetime_t* access)
+static ra8_err_t internal_utime_locked(ra8_fs_mount_t*          handle,
+                                       const char*              path,
+                                       const ra8_fs_datetime_t* create,
+                                       const ra8_fs_datetime_t* modify,
+                                       const ra8_fs_datetime_t* access)
 {
   if (handle == nullptr || path == nullptr) {
     return k_ra8_err_null_ptr;
@@ -241,9 +241,9 @@ static ra8_err_t priv_utime_locked(ra8_fs_mount_t*          handle,
     return k_ra8_err_invalid_arg; /* the volume root has no entry to stamp */
   }
   if (handle->type == k_ra8_fs_type_exfat) {
-    return priv_utime_exfat(handle, path, create, modify, access);
+    return internal_utime_exfat(handle, path, create, modify, access);
   }
-  return priv_utime_fat(handle, path, create, modify, access);
+  return internal_utime_fat(handle, path, create, modify, access);
 }
 
 /* =============================================================================
@@ -259,7 +259,7 @@ ra8_err_t ra8_fs_utime(ra8_fs_mount_t*          handle,
                        const ra8_fs_datetime_t* access)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_utime_locked(handle, path, create, modify, access);
+  const ra8_err_t err = internal_utime_locked(handle, path, create, modify, access);
   priv_lock_release();
   return err;
 }

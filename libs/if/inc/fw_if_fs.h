@@ -66,6 +66,24 @@ fw_fs_stat(const fw_fs_namespace_t* names, const char* path, fw_fs_stat_t* out);
                                       uint32_t*                out_count,
                                       bool*                    out_complete);
 
+/** @brief Open one directory cursor into caller-owned backend workspace. */
+[[nodiscard]] ra8_err_t fw_fs_dir_open(const fw_fs_namespace_t* names,
+                                       const char*              path,
+                                       fw_fs_dir_t*             directory,
+                                       void*                    workspace,
+                                       uint32_t                 workspace_size);
+
+/**
+ * @brief Copy one stable directory entry from an open cursor.
+ * @details No backend lock remains held after return. A clean end reports
+ *          `*out_entry == false` and a zeroed @p out value.
+ */
+[[nodiscard]] ra8_err_t
+fw_fs_dir_next(fw_fs_dir_t* directory, fw_fs_dirent_value_t* out, bool* out_entry);
+
+/** @brief Close and consume an open directory cursor, including on close error. */
+[[nodiscard]] ra8_err_t fw_fs_dir_close(fw_fs_dir_t* directory);
+
 /** @brief Create exactly one directory; parents must already exist. */
 [[nodiscard]] ra8_err_t fw_fs_mkdir(const fw_fs_namespace_t* names, const char* path);
 

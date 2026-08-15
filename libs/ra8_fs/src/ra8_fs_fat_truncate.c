@@ -79,7 +79,7 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint64_t priv_trunc_clusters(uint64_t bytes, uint32_t cbytes)
+static uint64_t internal_trunc_clusters(uint64_t bytes, uint32_t cbytes)
 {
   return (bytes + cbytes - 1U) / cbytes;
 }
@@ -113,7 +113,7 @@ static uint64_t priv_trunc_clusters(uint64_t bytes, uint32_t cbytes)
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_trunc_walk(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* out)
+internal_trunc_walk(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* out)
 {
   uint32_t cur = start;
   for (uint32_t i = 0U; i < idx; i++) {
@@ -163,7 +163,7 @@ priv_trunc_walk(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t*
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_trunc_zero_span(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t lo, uint32_t hi)
+internal_trunc_zero_span(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t lo, uint32_t hi)
 {
   if (lo >= hi) {
     return k_ra8_ok;
@@ -227,10 +227,10 @@ priv_trunc_zero_span(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t lo, uin
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_trunc_shrink(ra8_fs_file_t* file, uint32_t new_size, uint32_t cbytes)
+static ra8_err_t internal_fat_trunc_shrink(ra8_fs_file_t* file, uint32_t new_size, uint32_t cbytes)
 {
   ra8_fs_mount_t* m         = file->mount;
-  const uint32_t  new_nclus = (uint32_t)priv_trunc_clusters(new_size, cbytes);
+  const uint32_t  new_nclus = (uint32_t)internal_trunc_clusters(new_size, cbytes);
   if (new_nclus == 0U) {
     if (file->first_cluster >= (uint32_t)k_cluster_first_data) {
       const ra8_err_t e = priv_free_chain(m, file->first_cluster);
@@ -243,7 +243,7 @@ static ra8_err_t priv_fat_trunc_shrink(ra8_fs_file_t* file, uint32_t new_size, u
     return k_ra8_ok;
   }
   uint32_t        new_tail = 0U;
-  const ra8_err_t we       = priv_trunc_walk(m, file->first_cluster, new_nclus - 1U, &new_tail);
+  const ra8_err_t we       = internal_trunc_walk(m, file->first_cluster, new_nclus - 1U, &new_tail);
   if (we != k_ra8_ok) {
     return we;
   }
@@ -295,11 +295,11 @@ static ra8_err_t priv_fat_trunc_shrink(ra8_fs_file_t* file, uint32_t new_size, u
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_trunc_extend(ra8_fs_file_t* file,
-                                       uint32_t       tail,
-                                       uint32_t       have,
-                                       uint32_t       new_nclus,
-                                       uint32_t       cbytes)
+static ra8_err_t internal_fat_trunc_extend(ra8_fs_file_t* file,
+                                           uint32_t       tail,
+                                           uint32_t       have,
+                                           uint32_t       new_nclus,
+                                           uint32_t       cbytes)
 {
   ra8_fs_mount_t* m   = file->mount;
   uint32_t        cur = tail;
@@ -309,7 +309,7 @@ static ra8_err_t priv_fat_trunc_extend(ra8_fs_file_t* file,
       return e;
     }
     file->first_cluster = cur;
-    e                   = priv_trunc_zero_span(m, cur, 0U, cbytes);
+    e                   = internal_trunc_zero_span(m, cur, 0U, cbytes);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -325,7 +325,7 @@ static ra8_err_t priv_fat_trunc_extend(ra8_fs_file_t* file,
     if (e != k_ra8_ok) {
       return e;
     }
-    e = priv_trunc_zero_span(m, c, 0U, cbytes);
+    e = internal_trunc_zero_span(m, c, 0U, cbytes);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -363,27 +363,27 @@ static ra8_err_t priv_fat_trunc_extend(ra8_fs_file_t* file,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_trunc_grow(ra8_fs_file_t* file, uint32_t new_size, uint32_t cbytes)
+static ra8_err_t internal_fat_trunc_grow(ra8_fs_file_t* file, uint32_t new_size, uint32_t cbytes)
 {
   ra8_fs_mount_t* m         = file->mount;
   const uint32_t  old_size  = (uint32_t)file->size_bytes;
-  const uint32_t  old_nclus = (uint32_t)priv_trunc_clusters(old_size, cbytes);
-  const uint32_t  new_nclus = (uint32_t)priv_trunc_clusters(new_size, cbytes);
+  const uint32_t  old_nclus = (uint32_t)internal_trunc_clusters(old_size, cbytes);
+  const uint32_t  new_nclus = (uint32_t)internal_trunc_clusters(new_size, cbytes);
   uint32_t        tail      = 0U;
   if (old_nclus > 0U) {
-    const ra8_err_t we = priv_trunc_walk(m, file->first_cluster, old_nclus - 1U, &tail);
+    const ra8_err_t we = internal_trunc_walk(m, file->first_cluster, old_nclus - 1U, &tail);
     if (we != k_ra8_ok) {
       return we;
     }
     const uint32_t  base    = (old_nclus - 1U) * cbytes;
     const uint32_t  cap     = old_nclus * cbytes;
     const uint32_t  span_hi = (new_size < cap) ? new_size : cap;
-    const ra8_err_t ze      = priv_trunc_zero_span(m, tail, old_size - base, span_hi - base);
+    const ra8_err_t ze      = internal_trunc_zero_span(m, tail, old_size - base, span_hi - base);
     if (ze != k_ra8_ok) {
       return ze;
     }
   }
-  const ra8_err_t ee = priv_fat_trunc_extend(file, tail, old_nclus, new_nclus, cbytes);
+  const ra8_err_t ee = internal_fat_trunc_extend(file, tail, old_nclus, new_nclus, cbytes);
   if (ee != k_ra8_ok) {
     return ee;
   }
@@ -415,7 +415,7 @@ static ra8_err_t priv_fat_trunc_grow(ra8_fs_file_t* file, uint32_t new_size, uin
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_trunc_commit(ra8_fs_file_t* file)
+static ra8_err_t internal_fat_trunc_commit(ra8_fs_file_t* file)
 {
   ra8_fs_mount_t* m   = file->mount;
   uint8_t* const  sec = priv_sec_walk();
@@ -459,14 +459,14 @@ static ra8_err_t priv_fat_trunc_commit(ra8_fs_file_t* file)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_trunc(ra8_fs_file_t* file, uint32_t new_size)
+static ra8_err_t internal_fat_trunc(ra8_fs_file_t* file, uint32_t new_size)
 {
   const uint32_t cbytes = priv_cluster_bytes(file->mount);
   ra8_err_t      e      = k_ra8_ok;
   if (new_size < file->size_bytes) {
-    e = priv_fat_trunc_shrink(file, new_size, cbytes);
+    e = internal_fat_trunc_shrink(file, new_size, cbytes);
   } else if (new_size > file->size_bytes) {
-    e = priv_fat_trunc_grow(file, new_size, cbytes);
+    e = internal_fat_trunc_grow(file, new_size, cbytes);
   }
   if (e != k_ra8_ok) {
     return e;
@@ -474,7 +474,7 @@ static ra8_err_t priv_fat_trunc(ra8_fs_file_t* file, uint32_t new_size)
   file->cur_cluster        = file->first_cluster;
   file->walk_cache_idx     = 0U;
   file->walk_cache_cluster = file->first_cluster;
-  return priv_fat_trunc_commit(file);
+  return internal_fat_trunc_commit(file);
 }
 
 /* =============================================================================
@@ -512,7 +512,7 @@ static ra8_err_t priv_fat_trunc(ra8_fs_file_t* file, uint32_t new_size)
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_exfat_free_run(const ra8_fs_mount_t* m, uint32_t first, uint64_t nbytes, uint8_t nofat)
+internal_exfat_free_run(const ra8_fs_mount_t* m, uint32_t first, uint64_t nbytes, uint8_t nofat)
 {
   uint8_t strm[k_exfat_entry_bytes] = {};
   priv_wr32(&strm[k_exfat_strm_off_clus], first);
@@ -551,11 +551,11 @@ priv_exfat_free_run(const ra8_fs_mount_t* m, uint32_t first, uint64_t nbytes, ui
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_exfat_shrink_chain_tail(ra8_fs_file_t* file, uint32_t new_nclus, uint32_t cbytes)
+internal_exfat_shrink_chain_tail(ra8_fs_file_t* file, uint32_t new_nclus, uint32_t cbytes)
 {
   ra8_fs_mount_t* m        = file->mount;
   uint32_t        new_tail = 0U;
-  const ra8_err_t we       = priv_trunc_walk(m, file->first_cluster, new_nclus - 1U, &new_tail);
+  const ra8_err_t we       = internal_trunc_walk(m, file->first_cluster, new_nclus - 1U, &new_tail);
   if (we != k_ra8_ok) {
     return we;
   }
@@ -568,7 +568,7 @@ priv_exfat_shrink_chain_tail(ra8_fs_file_t* file, uint32_t new_nclus, uint32_t c
   if (e != k_ra8_ok) {
     return e;
   }
-  e = priv_exfat_free_run(m, succ, cbytes, 0U);
+  e = internal_exfat_free_run(m, succ, cbytes, 0U);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -603,14 +603,15 @@ priv_exfat_shrink_chain_tail(ra8_fs_file_t* file, uint32_t new_nclus, uint32_t c
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_trunc_shrink(ra8_fs_file_t* file, uint64_t new_size, uint32_t cbytes)
+static ra8_err_t
+internal_exfat_trunc_shrink(ra8_fs_file_t* file, uint64_t new_size, uint32_t cbytes)
 {
   ra8_fs_mount_t* m         = file->mount;
-  const uint32_t  new_nclus = (uint32_t)priv_trunc_clusters(new_size, cbytes);
+  const uint32_t  new_nclus = (uint32_t)internal_trunc_clusters(new_size, cbytes);
   if (new_nclus < file->alloc_clusters) {
     if (new_nclus == 0U) {
       const ra8_err_t e =
-        priv_exfat_free_run(m, file->first_cluster, file->size_bytes, file->no_fat_chain);
+        internal_exfat_free_run(m, file->first_cluster, file->size_bytes, file->no_fat_chain);
       if (e != k_ra8_ok) {
         return e;
       }
@@ -620,13 +621,16 @@ static ra8_err_t priv_exfat_trunc_shrink(ra8_fs_file_t* file, uint64_t new_size,
     } else if (file->no_fat_chain != 0U) {
       const uint32_t  first = file->first_cluster + new_nclus;
       const ra8_err_t e =
-        priv_exfat_free_run(m, first, (uint64_t)(file->alloc_clusters - new_nclus) * cbytes, 1U);
+        internal_exfat_free_run(m,
+                                first,
+                                (uint64_t)(file->alloc_clusters - new_nclus) * cbytes,
+                                1U);
       if (e != k_ra8_ok) {
         return e;
       }
       file->tail_cluster = file->first_cluster + new_nclus - 1U;
     } else {
-      const ra8_err_t e = priv_exfat_shrink_chain_tail(file, new_nclus, cbytes);
+      const ra8_err_t e = internal_exfat_shrink_chain_tail(file, new_nclus, cbytes);
       if (e != k_ra8_ok) {
         return e;
       }
@@ -669,11 +673,11 @@ static ra8_err_t priv_exfat_trunc_shrink(ra8_fs_file_t* file, uint64_t new_size,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_trunc(ra8_fs_file_t* file, uint64_t new_size)
+static ra8_err_t internal_exfat_trunc(ra8_fs_file_t* file, uint64_t new_size)
 {
   const uint32_t cbytes = priv_cluster_bytes(file->mount);
   if (new_size < file->size_bytes) {
-    const ra8_err_t e = priv_exfat_trunc_shrink(file, new_size, cbytes);
+    const ra8_err_t e = internal_exfat_trunc_shrink(file, new_size, cbytes);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -681,7 +685,7 @@ static ra8_err_t priv_exfat_trunc(ra8_fs_file_t* file, uint64_t new_size)
     /* Sized before a single cluster moves: a grow past the volume's whole
      * cluster count can never succeed, and discovering that AFTER the bitmap
      * ran dry would leave the volume full for no gain. */
-    const uint64_t want = priv_trunc_clusters(new_size, cbytes);
+    const uint64_t want = internal_trunc_clusters(new_size, cbytes);
     if (want > (uint64_t)file->mount->count_of_clusters) {
       return k_ra8_err_no_mem;
     }
@@ -735,7 +739,7 @@ static ra8_err_t priv_exfat_trunc(ra8_fs_file_t* file, uint64_t new_size)
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_truncate_locked(ra8_fs_file_t* file, uint64_t new_size)
+static ra8_err_t internal_truncate_locked(ra8_fs_file_t* file, uint64_t new_size)
 {
   if (file == nullptr) {
     return k_ra8_err_null_ptr;
@@ -745,13 +749,13 @@ static ra8_err_t priv_truncate_locked(ra8_fs_file_t* file, uint64_t new_size)
   }
   ra8_err_t e = k_ra8_ok;
   if (file->mount->type == k_ra8_fs_type_exfat) {
-    e = priv_exfat_trunc(file, new_size);
+    e = internal_exfat_trunc(file, new_size);
   } else if (new_size > (uint64_t)k_ra8_fs_fat_max_file_bytes) {
     /* The FAT boundary of #676: `DIR_FileSize` cannot record 4 GiB or more,
      * so the request is refused rather than wrapped (see ra8_fs_meta.h). */
     e = k_ra8_err_invalid_size;
   } else {
-    e = priv_fat_trunc(file, (uint32_t)new_size);
+    e = internal_fat_trunc(file, (uint32_t)new_size);
   }
   if (e != k_ra8_ok) {
     return e;
@@ -766,7 +770,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_truncate(ra8_fs_file_t* file, uint64_t new_size)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_truncate_locked(file, new_size);
+  const ra8_err_t err = internal_truncate_locked(file, new_size);
   priv_lock_release();
   return err;
 }
