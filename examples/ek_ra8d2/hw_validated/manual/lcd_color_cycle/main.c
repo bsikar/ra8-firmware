@@ -210,7 +210,7 @@ RA8_INTERNAL static void internal_lcd_bringup_panel(void)
     .width_px         = (uint16_t)k_lcd_panel_w,
     .height_px        = (uint16_t)k_lcd_panel_h,
     .format           = k_ra8_glcdc_fmt_rgb565,
-    .timing           = k_ra8_panel_ek_ra8d2_timing,
+    .timing           = s_ra8_panel_ek_ra8d2_timing,
   };
   if (ra8_glcdc_init(&cfg) != k_ra8_ok) {
     internal_lcd_panic_halt();

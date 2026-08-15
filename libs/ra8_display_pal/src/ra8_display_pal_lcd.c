@@ -146,7 +146,7 @@ static ra8_err_t internal_lcd_validate_cfg(const display_cfg_t* cfg)
     return k_ra8_err_not_supported;
   }
   /* The GLCDC backend needs the panel's RGB timing; the board BSP supplies it
-   * (e.g. &k_ra8_panel_ek_ra8d2_timing). Host / e-ink backends leave it null. */
+   * (e.g. &s_ra8_panel_ek_ra8d2_timing). Host / e-ink backends leave it null. */
   if (cfg->panel_timing == nullptr) {
     return k_ra8_err_invalid_arg;
   }

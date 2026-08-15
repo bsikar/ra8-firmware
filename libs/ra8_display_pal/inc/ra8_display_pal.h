@@ -254,7 +254,7 @@ typedef struct {
    * @brief Panel RGB timing for parallel-RGB backends, opaque here so the
    * generic PAL stays HAL-agnostic. The LCD/GLCDC backend casts it to
    * ``const ra8_glcdc_timing_t*``; the board's BSP supplies it (e.g.
-   * ``&k_ra8_panel_ek_ra8d2_timing``). Leave ``nullptr`` for backends that
+   * ``&s_ra8_panel_ek_ra8d2_timing``). Leave ``nullptr`` for backends that
    * do not drive panel timing (host window, e-ink).
    */
   const void* panel_timing;
