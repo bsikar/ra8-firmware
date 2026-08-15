@@ -112,7 +112,9 @@ _pcc_tree_structure() (
   # examples/<app>/build/ is excluded from the scope (#549) before a clean run.
   python3 scripts/checks/check_example_board_pins.py --selftest
   python3 scripts/checks/check_example_board_pins.py
-  # ra8_core is the foundation lib: it must depend on nothing above itself.
+  # Library architecture: ra8_core stays foundational, module-private headers
+  # do not leak across libraries, and hosted APIs stay behind port adapters.
+  python3 scripts/checks/check_core_layering.py --selftest
   python3 scripts/checks/check_core_layering.py
   # No .gitignore directory pattern may match at arbitrary depth. `build/` did,
   # for the life of the tree: any directory named `build` was silently

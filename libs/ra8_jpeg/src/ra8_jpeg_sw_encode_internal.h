@@ -2,10 +2,10 @@
  * @file ra8_jpeg_sw_encode_internal.h
  * @brief Module-private declarations shared by the two encoder
  *        translation units of the software JPEG codec.
- * @ingroup grp_hal_camera
+ * @ingroup grp_ereader
  *
  * @par Tag
- * [Ring 3 / HAL] {World: NS}
+ * [Ring 4 / Domain] {World: NS}
  *
  * @details
  * The pure-software baseline JPEG encoder is split across two

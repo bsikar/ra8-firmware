@@ -36,7 +36,7 @@
 #include "ra8_flash.h"
 #include "ra8_flash_regs.h"
 #include "ra8_io_blockdev.h"
-#include "ra8_io_blockdev_internal.h"
+#include "ra8_io_blockdev_backend.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_io_blockdev_mram";

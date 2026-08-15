@@ -146,9 +146,11 @@ typedef struct {
  *        export a binding helper through their own header.
  *
  * @details
- * The concrete vtable layout lives in `src/ra8_io_blockdev_internal.h`. Apps
- * never construct one; they call a backend's `_init()` helper, which binds the
- * backend's const vtable into a caller-owned ::ra8_io_blockdev_t.
+ * The concrete vtable layout lives in `ra8_io_blockdev_backend.h`. Application
+ * consumers never construct one; they call a backend's `_init()` helper, which
+ * binds the backend's const vtable into a caller-owned ::ra8_io_blockdev_t.
+ * Separate backend and adapter libraries include the implementer-facing header
+ * rather than reaching into `libs/ra8_io/src/`.
  *
  * @since 0.1.0
  */

@@ -18,7 +18,7 @@
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_io_blockdev.h"
-#include "ra8_io_blockdev_internal.h"
+#include "ra8_io_blockdev_backend.h"
 #include "ra8_io_blockdev_ram.h"
 #include "unity_minimal.h"
 

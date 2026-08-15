@@ -4,7 +4,7 @@
  *        primitives plus the get-dimensions public API.
  *
  * @par Tag
- * [Ring 3 / HAL] {World: NS}
+ * [Ring 4 / Domain] {World: NS}
  *
  * @details
  * Implements the codec primitives shared by both the decoder and the

@@ -4,7 +4,7 @@
  *        public API.
  *
  * @par Tag
- * [Ring 3 / HAL] {World: NS}
+ * [Ring 4 / Domain] {World: NS}
  *
  * @details
  * Implements `ra8_jpeg_sw_encode()` for baseline (8-bit, sequential,

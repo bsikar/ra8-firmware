@@ -17,9 +17,9 @@
 #   src/ra8_jof_png_internal.h shared PNG decode state + prototypes
 #   src/ra8_jof_internal.h     producer-private seams (bump arena, hooks)
 #
-# Dependencies: ra8_core (err/check/log), ra8_hal (the streaming JPEG
-# decoder ra8_jpeg_sw_decode_stripes), ra8_io (ra8_io_compress/decompress),
-# and the vendored miniz (tinfl, PNG IDAT inflate).
+# Dependencies: ra8_core (err/check/log), ra8_jpeg (the streaming software
+# decoder ra8_jpeg_sw_decode_stripes), ra8_io (ra8_io_compress/decompress), and
+# the vendored miniz (tinfl, PNG IDAT inflate).
 #
 # Like the other domain libs in this tree, consumers reach into inc/ + src/
 # directly: the host unit-test build globs it in tests/CMakeLists.txt and

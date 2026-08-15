@@ -8,7 +8,7 @@
  * DHT / SOF0 / SOS header to the fuzz bytes and lets the libFuzzer
  * mutator concentrate on the entropy-coded segment that drives
  * ``dec_block`` (the per-block DCT-coefficient Huffman decoder
- * declared static in ``libs/ra8_hal/src/ra8_jpeg_sw.c``).
+ * declared static in ``libs/ra8_jpeg/src/ra8_jpeg_sw.c``).
  *
  * The fixed header below is the minimum required for a baseline
  * 8x8 grayscale JPEG: one quantisation table, two Huffman tables

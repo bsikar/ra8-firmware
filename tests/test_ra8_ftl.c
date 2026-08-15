@@ -24,7 +24,7 @@
 #include "ra8_err.h"
 #include "ra8_ftl.h"
 #include "ra8_io_blockdev.h"
-#include "ra8_io_blockdev_internal.h"
+#include "ra8_io_blockdev_backend.h"
 #include "unity_minimal.h"
 
 /** @brief Payload fill for the FTL round-trip assertions. */

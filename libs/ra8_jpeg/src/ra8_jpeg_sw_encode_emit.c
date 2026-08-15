@@ -4,7 +4,7 @@
  *        and JFIF header-segment writers.
  *
  * @par Tag
- * [Ring 3 / HAL] {World: NS}
+ * [Ring 4 / Domain] {World: NS}
  *
  * @details
  * Emitter half of the software JPEG encoder: the bounds-checked byte

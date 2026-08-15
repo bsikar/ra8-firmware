@@ -3,7 +3,7 @@
  * @brief Pure-software baseline JPEG decoder: marker parser and scan.
  *
  * @par Tag
- * [Ring 3 / HAL] {World: NS}
+ * [Ring 4 / Domain] {World: NS}
  *
  * @details
  * Implements the marker-segment parser (DQT / DHT / SOF0 / SOS), the

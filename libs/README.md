@@ -144,6 +144,7 @@ higher-level consumer does not need to know the RA8D2-specific details.
 | [`ra8_longstrip/`](ra8_longstrip/) | Continuous vertical-scroll (longstrip/manhwa) reading mode. |
 | [`ra8_zoom/`](ra8_zoom/) | Tap-to-zoom image viewer: viewport state machine + strip composite for full-screen zoom and the panel loupe. |
 | [`ra8_jof/`](ra8_jof/) | JOF band-tile atlas: the display-native normalized image format used by the reader pipeline. |
+| [`ra8_jpeg/`](ra8_jpeg/) | Pure-software baseline JPEG codec shared by host tools, readers, and camera applications. |
 | [`ra8_webp/`](ra8_webp/) | Heap-free scratch-allocator wrapper around the vendored libwebp decoder. |
 | [`ra8_unarch/`](ra8_unarch/) | Bounded, fail-closed archive decoding: XZ/LZMA2, gzip, tar. |
 | [`ra8_sdfont/`](ra8_sdfont/) | Loads a TTF/OTF font off a Pmod SD card, self-provisioning if absent. |

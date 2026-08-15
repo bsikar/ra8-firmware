@@ -49,8 +49,8 @@ set(RA8_FMT_FW_SRC
     ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
 )
 set(RA8_FMT_JPEG_SRC
-    ${FW_ROOT}/libs/ra8_hal/src/ra8_jpeg_sw.c ${FW_ROOT}/libs/ra8_hal/src/ra8_jpeg_sw_decode.c
-    ${FW_ROOT}/libs/ra8_hal/src/ra8_jpeg_sw_stream.c
+    ${FW_ROOT}/libs/ra8_jpeg/src/ra8_jpeg_sw.c ${FW_ROOT}/libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c
+    ${FW_ROOT}/libs/ra8_jpeg/src/ra8_jpeg_sw_stream.c
 )
 
 set(RA8_FMT_THIRD_PARTY_SRC ${FW_ROOT}/libs/third_party/miniz/miniz.c)
@@ -83,8 +83,8 @@ target_include_directories(
           ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${FW_ROOT}/libs/ra8_core/inc
           ${FW_ROOT}/libs/ra8_jof/inc
-          ${FW_ROOT}/libs/ra8_hal/inc
-          ${FW_ROOT}/libs/ra8_hal/src
+          ${FW_ROOT}/libs/ra8_jpeg/inc
+          ${FW_ROOT}/libs/ra8_jpeg/src
           ${FW_ROOT}/libs/ra8_jof/src
           ${FW_ROOT}/libs/ra8_io/inc
           ${FW_ROOT}/libs/ra8_book/inc

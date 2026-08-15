@@ -15,7 +15,7 @@
  *   227 -- bdsink_flush: early return when fill == 0 (nothing pending).
  *
  * Fault injection uses a minimal mock block-device backend assembled from the
- * internal vtable (ra8_io_blockdev_internal.h). The mock write callback returns
+ * internal vtable (ra8_io_blockdev_backend.h). The mock write callback returns
  * k_ra8_err_hw_error once the write-call index reaches the configured threshold,
  * exercising the full error-propagation path through bdsink_commit_sector and
  * bdsink_write without real hardware.
@@ -33,7 +33,7 @@
 
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
-#include "ra8_io_blockdev_internal.h"
+#include "ra8_io_blockdev_backend.h"
 #include "ra8_io_blockdev_ram.h"
 #include "ra8_io_stream.h"
 #include "ra8_io_stream_blockdev.h"
@@ -196,7 +196,7 @@ static const ra8_io_blockdev_iface_t k_mock_fault_iface = {
  * @details
  * Populates `bd->iface` and `bd->ctx` directly instead of going through a
  * backend-specific init helper. This is permissible from test code that
- * includes ra8_io_blockdev_internal.h for MC/DC vector access to error paths.
+ * includes ra8_io_blockdev_backend.h for MC/DC vector access to error paths.
  *
  * @param[out] bd                Zero-initialised block-device handle to populate.
  * @param[out] st                Zero-initialised mock state to populate.

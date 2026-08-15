@@ -50,9 +50,9 @@ set(MDL_JOF_SRC
     ${FW}/ra8_jof/src/ra8_jof_produce_webp.c
     ${FW}/ra8_jof/src/ra8_jof_png.c
     ${FW}/ra8_jof/src/ra8_jof_png_chunk.c
-    ${FW}/ra8_hal/src/ra8_jpeg_sw.c
-    ${FW}/ra8_hal/src/ra8_jpeg_sw_decode.c
-    ${FW}/ra8_hal/src/ra8_jpeg_sw_stream.c
+    ${FW}/ra8_jpeg/src/ra8_jpeg_sw.c
+    ${FW}/ra8_jpeg/src/ra8_jpeg_sw_decode.c
+    ${FW}/ra8_jpeg/src/ra8_jpeg_sw_stream.c
     ${FW}/ra8_io/src/ra8_io_compress.c
     ${FW}/ra8_core/src/ra8_log.c
     ${FW}/ra8_core/src/ra8_error_handler.c
@@ -61,8 +61,8 @@ set(MDL_JOF_SRC
 set(MDL_JOF_INC
     ${FW}/ra8_jof/inc
     ${FW}/ra8_jof/src
-    ${FW}/ra8_hal/inc
-    ${FW}/ra8_hal/src
+    ${FW}/ra8_jpeg/inc
+    ${FW}/ra8_jpeg/src
     ${FW}/ra8_io/inc
 )
 

@@ -138,11 +138,11 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_hal/src/ra8_eth.c | 2 | ra8_eth_channel_to_port | `if ((rx == 0U) \|\| (rx > k_ra8_eth_num_rx_desc)) {` | Annotated deactivation: rx normalized to nonzero above; f... |
 | libs/ra8_hal/src/ra8_flash_irq.c | 2 | ra8_flash_blank_check | `(address >= k_ra8_flash_code_start) &&` | Annotated deactivation: ra8_flash_blank_check window-memb... |
 | libs/ra8_hal/src/ra8_i3c_i2c.c | 2 | internal_i3c_i2c_half_period | `if ((bus_hz == 0U) \|\| (pclka_hz == 0U)) {` | Annotated deactivation: both args validated by internal_i... |
-| libs/ra8_hal/src/ra8_jpeg_sw.c | 4 | ra8_jpeg_sw_idct8x8 | `if (mk >= k_jpeg_marker_sof_lo && mk <= k_jpeg_marker_sof...` | Annotated deactivation: dims_step unsupported-SOFn detect... |
-| libs/ra8_hal/src/ra8_jpeg_sw_decode.c | 2 | ra8_jpeg_sw_priv_parse_dqt | `if (len < 2U \|\| (uint32_t)len > d->src_len - d->cursor) {` | Defensive segment-length bound in a bounded parser: buffe... |
-| libs/ra8_hal/src/ra8_jpeg_sw_decode.c | 2 | ra8_jpeg_sw_priv_parse_sof0 | `if (len < 8U \|\| (uint32_t)len > d->src_len - d->cursor) {` | Defensive segment-length bound in a bounded parser: buffe... |
-| libs/ra8_hal/src/ra8_jpeg_sw_decode.c | 2 | ra8_jpeg_sw_priv_parse_sos | `if (len < 6U \|\| (uint32_t)len > d->src_len - d->cursor) {` | Defensive segment-length bound in a bounded parser: buffe... |
-| libs/ra8_hal/src/ra8_jpeg_sw_decode.c | 2 | ra8_jpeg_sw_priv_parse_sos | `if (r < 0 && t != 0) {` | Annotated deactivation: ra8_jpeg_sw_priv_block ra8_jpeg_s... |
+| libs/ra8_jpeg/src/ra8_jpeg_sw.c | 4 | ra8_jpeg_sw_idct8x8 | `if (mk >= k_jpeg_marker_sof_lo && mk <= k_jpeg_marker_sof...` | Annotated deactivation: dims_step unsupported-SOFn detect... |
+| libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c | 2 | ra8_jpeg_sw_priv_parse_dqt | `if (len < 2U \|\| (uint32_t)len > d->src_len - d->cursor) {` | Defensive segment-length bound in a bounded parser: buffe... |
+| libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c | 2 | ra8_jpeg_sw_priv_parse_sof0 | `if (len < 8U \|\| (uint32_t)len > d->src_len - d->cursor) {` | Defensive segment-length bound in a bounded parser: buffe... |
+| libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c | 2 | ra8_jpeg_sw_priv_parse_sos | `if (len < 6U \|\| (uint32_t)len > d->src_len - d->cursor) {` | Defensive segment-length bound in a bounded parser: buffe... |
+| libs/ra8_jpeg/src/ra8_jpeg_sw_decode.c | 2 | ra8_jpeg_sw_priv_parse_sos | `if (r < 0 && t != 0) {` | Annotated deactivation: ra8_jpeg_sw_priv_block ra8_jpeg_s... |
 | libs/ra8_hal/src/ra8_mipi_dsi_dispatch.c | 2 | ra8_mipi_dsi_dispatch_receive | `if ((s_mipi_dsi_pending_rx_buffer != nullptr) && (s_mipi_...` | Annotated deactivation: ra8_mipi_dsi_dispatch_receive pen... |
 | libs/ra8_hal/src/ra8_mipi_phy_timing.c | 3 | (file scope) | `if ((tbl[i].mode == mode_flag) && (tbl[i].pclka == pclka)...` | Annotated deactivation: TU-local helper internal_mipi_phy... |
 | libs/ra8_hal/src/ra8_rmac_mgmt.c | 2 | ra8_rmac_phy_auto_neg_start | `if (out_link->up && ((bmsr & (uint16_t)k_ra8_rmac_phy_bms...` | Annotated deactivation: ra8_rmac_phy_auto_neg_start link-... |
