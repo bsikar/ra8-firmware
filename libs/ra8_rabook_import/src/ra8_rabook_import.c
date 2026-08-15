@@ -19,6 +19,7 @@
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_log.h"
+#include "ra8_rabook_import_internal.h"
 
 /* -------------------------------------------------------------------------- */
 /* Private constants */
@@ -71,7 +72,7 @@ static const char* const s_tag = "ra8_rabook_import";
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static uint32_t s_crc32_block(uint32_t crc, const uint8_t* data, uint32_t len)
+static uint32_t internal_crc32_block(uint32_t crc, const uint8_t* data, uint32_t len)
 {
   if (data == nullptr) {
     return crc;
@@ -92,10 +93,96 @@ static uint32_t s_crc32_block(uint32_t crc, const uint8_t* data, uint32_t len)
   return crc;
 }
 
+RA8_PRIV ra8_err_t priv_ra8_rabook_import_crc_stream(ra8_rabook_import_read_fn read_fn,
+                                                     void*                     read_ctx,
+                                                     uint64_t                  expected_size,
+                                                     uint8_t*                  buf,
+                                                     uint32_t                  cap,
+                                                     uint32_t                  max_reads,
+                                                     uint32_t*                 out_size,
+                                                     uint32_t*                 out_crc)
+{
+  RA8_CHECK_NULL_PTR((const void*)read_fn, s_tag, "read_fn");
+  RA8_CHECK_NULL_PTR(buf, s_tag, "buf");
+  RA8_CHECK_NULL_PTR(out_size, s_tag, "out_size");
+  RA8_CHECK_NULL_PTR(out_crc, s_tag, "out_crc");
+  if ((cap == 0U) || (expected_size > (uint64_t)UINT32_MAX)) {
+    return k_ra8_err_invalid_size;
+  }
+  const uint64_t required_reads =
+    (expected_size / (uint64_t)cap) + ((expected_size % (uint64_t)cap) != 0U ? 1U : 0U);
+  if (required_reads > (uint64_t)max_reads) {
+    return k_ra8_err_invalid_size;
+  }
+
+  uint32_t crc   = (uint32_t)k_crc32_seed;
+  uint32_t total = 0U;
+  for (uint32_t i = 0U; (i < max_reads) && ((uint64_t)total < expected_size); ++i) {
+    uint64_t remain  = expected_size - (uint64_t)total;
+    uint32_t request = cap;
+    if (remain < (uint64_t)request) {
+      request = (uint32_t)remain;
+    }
+    uint32_t        got = 0U;
+    const ra8_err_t err = read_fn(read_ctx, buf, request, &got);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    if ((got == 0U) || (got > request)) {
+      return k_ra8_err_invalid_size;
+    }
+    crc = internal_crc32_block(crc, buf, got);
+    total += got;
+  }
+  if ((uint64_t)total != expected_size) {
+    return k_ra8_err_invalid_size;
+  }
+  uint32_t        extra = 0U;
+  const ra8_err_t err   = read_fn(read_ctx, buf, 1U, &extra);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (extra != 0U) {
+    return k_ra8_err_invalid_size;
+  }
+  *out_size = total;
+  *out_crc  = crc ^ (uint32_t)k_crc32_seed;
+  return k_ra8_ok;
+}
+
+RA8_TEST_HELPER ra8_err_t ra8_rabook_import_crc_stream_test(ra8_rabook_import_read_fn read_fn,
+                                                            void*                     read_ctx,
+                                                            uint64_t                  expected_size,
+                                                            uint8_t*                  buf,
+                                                            uint32_t                  cap,
+                                                            uint32_t                  max_reads,
+                                                            uint32_t*                 out_size,
+                                                            uint32_t*                 out_crc)
+{
+  return priv_ra8_rabook_import_crc_stream(read_fn,
+                                           read_ctx,
+                                           expected_size,
+                                           buf,
+                                           cap,
+                                           max_reads,
+                                           out_size,
+                                           out_crc);
+}
+
+/** @brief Adapt the generic bounded CRC reader to one open filesystem file. */
+RA8_INTERNAL
+static ra8_err_t
+internal_import_fs_read(void* ctx, uint8_t* buf, uint32_t requested, uint32_t* out_read)
+{
+  return ra8_fs_read((ra8_fs_file_t*)ctx, buf, requested, out_read);
+}
+
 /**
  * @brief Fold an already-open file through CRC-32 in bounded chunks.
- * @details Reads @p cap-sized chunks until EOF so the working set is one chunk,
- *          never the whole `.epub`.
+ * @details Snapshots the file size, rejects sizes that cannot be represented by
+ *          the on-disk import stamp or completed inside the read budget, and
+ *          then requires exact bounded reads plus EOF. The working set is one
+ *          chunk, never the whole `.epub`.
  * @param[in]  file     Open, readable file handle.
  * @param[in]  buf      Streaming scratch buffer (>= @p cap bytes).
  * @param[in]  cap      Chunk size in bytes (> 0).
@@ -104,7 +191,9 @@ static uint32_t s_crc32_block(uint32_t crc, const uint8_t* data, uint32_t len)
  * @return Error code.
  * @retval k_ra8_ok           Stream consumed to EOF.
  * @retval k_ra8_err_null_ptr @p file or @p buf is NULL.
- * @retval k_ra8_err_*        Read error.
+ * @retval k_ra8_err_invalid_size The file exceeds the stamp/read budget, a
+ *                                read is short/oversized, or the file changes.
+ * @retval k_ra8_err_*        Size/read error.
  * @pre @p file is open for reading; @p buf holds @p cap bytes.
  * @pre @p out_size and @p out_crc are non-NULL.
  * @post On success `*out_size`/`*out_crc` describe every byte read.
@@ -113,37 +202,36 @@ static uint32_t s_crc32_block(uint32_t crc, const uint8_t* data, uint32_t len)
  * @since Version 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-s_crc_stream(ra8_fs_file_t* file, uint8_t* buf, uint32_t cap, uint32_t* out_size, uint32_t* out_crc)
+static ra8_err_t internal_crc_stream(ra8_fs_file_t* file,
+                                     uint8_t*       buf,
+                                     uint32_t       cap,
+                                     uint32_t*      out_size,
+                                     uint32_t*      out_crc)
 {
   RA8_CHECK_NULL_PTR(file, s_tag, "file");
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf");
 
-  uint32_t crc   = (uint32_t)k_crc32_seed;
-  uint32_t total = 0U;
-  for (uint32_t i = 0U; i < (uint32_t)k_import_max_chunks; i++) {
-    uint32_t  got = 0U;
-    ra8_err_t err = ra8_fs_read(file, buf, cap, &got);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if (got == 0U) {
-      break;
-    }
-    crc = s_crc32_block(crc, buf, got);
-    total += got;
+  uint64_t  expected_size = 0U;
+  ra8_err_t err           = ra8_fs_size(file, &expected_size);
+  if (err != k_ra8_ok) {
+    return err;
   }
-  *out_size = total;
-  *out_crc  = crc ^ (uint32_t)k_crc32_seed;
-  return k_ra8_ok;
+  return priv_ra8_rabook_import_crc_stream(internal_import_fs_read,
+                                           file,
+                                           expected_size,
+                                           buf,
+                                           cap,
+                                           (uint32_t)k_import_max_chunks,
+                                           out_size,
+                                           out_crc);
 }
 
 /**
  * @brief Stream a source file through CRC-32, reporting its size and key.
  * @details Opens @p epub_path read-only, delegates the fold to
- *          @ref s_crc_stream, and closes on every path. The NULL/open guards on
+ *          @ref internal_crc_stream, and closes on every path. The NULL/open guards on
  *          @p mount, @p epub_path, and @p buf are delegated to `ra8_fs_open` and
- *          @ref s_crc_stream respectively.
+ *          @ref internal_crc_stream respectively.
  * @param[in]  mount     Mounted volume.
  * @param[in]  epub_path Source path (root-level).
  * @param[in]  buf       Streaming scratch buffer (> 0 bytes).
@@ -181,7 +269,7 @@ static ra8_err_t s_compute_source_key(ra8_fs_mount_t* mount,
   if (err != k_ra8_ok) {
     return err;
   }
-  err            = s_crc_stream(file, buf, cap, out_size, out_crc);
+  err            = internal_crc_stream(file, buf, cap, out_size, out_crc);
   ra8_err_t cerr = ra8_fs_close(file);
   if (err != k_ra8_ok) {
     return err;
@@ -576,7 +664,7 @@ static ra8_err_t s_compile_and_cache(const ra8_rabook_import_cfg_t*   cfg,
 /**
  * @brief Validate the public entry's arguments and the mount dependency.
  * @details `cfg->scratch` and `cfg->compile` are not checked here -- they are
- *          guarded at their point of use (@ref s_crc_stream and
+ *          guarded at their point of use (@ref internal_crc_stream and
  *          @ref s_compile_and_cache respectively), so a NULL either still yields
  *          @ref k_ra8_err_null_ptr without inflating this validator.
  * @param[in] cfg            Config (and its `mount`).

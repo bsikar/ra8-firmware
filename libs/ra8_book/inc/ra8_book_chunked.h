@@ -17,10 +17,9 @@
  * @code
  * ra8_book_chunked_t rd = {};
  * err = ra8_book_chunked_open(&rd, sd_file_read, &file, file_len, sh_inflate,
- *                            table_buf, k_table_entries, staging, sizeof staging);
- * err = ra8_vsource_add_paged(&vs, ra8_book_chunked_read, &rd,
- *                            0U, rd.inflated_total, &book_obj);
- * err = ra8_book_src_paged(&src, &vm, book_obj,
+ *                            table_buf, k_table_entries, staging, sizeof
+ * staging); err = ra8_vsource_add_paged(&vs, ra8_book_chunked_read, &rd, 0U,
+ * rd.inflated_total, &book_obj); err = ra8_book_src_paged(&src, &vm, book_obj,
  *                         rd.chunk_bytes, (uint32_t)rd.inflated_total);
  * @endcode
  *
@@ -75,21 +74,24 @@ extern "C" {
  * @invariant `table[0] == 0`, `table` is strictly increasing, and
  *            `table[chunk_count] == file length - payload_off`.
  * @invariant Every chunk's compressed length fits `staging_cap`.
+ * @invariant `table_cap_entries >= chunk_count + 1`; the retained capacity
+ *            permits defensive revalidation before any table indexing.
  *
  * @see ra8_book_chunked_open()
  * @since Version 0.1.0
  */
 typedef struct {
-  ra8_vsource_read_fn file_read;      /**< Byte reader over the container file.       */
-  void*               file_ctx;       /**< Context for @ref file_read.                */
-  ra8_book_inflate_fn inflate;        /**< zlib-stream decompressor.                  */
-  const uint64_t*     table;          /**< `chunk_count + 1` stream offsets (caller). */
-  uint8_t*            staging;        /**< Compressed-chunk staging (caller).         */
-  uint32_t            staging_cap;    /**< Capacity of @ref staging in bytes.         */
-  uint64_t            payload_off;    /**< File offset of the first stream byte.      */
-  uint64_t            inflated_total; /**< Flat-blob length this reader serves.       */
-  uint32_t            chunk_bytes;    /**< Inflated bytes per chunk (last short).     */
-  uint32_t            chunk_count;    /**< Number of chunks.                          */
+  ra8_vsource_read_fn file_read;         /**< Container byte reader.    */
+  void*               file_ctx;          /**< Reader context.           */
+  ra8_book_inflate_fn inflate;           /**< zlib decompressor.        */
+  const uint64_t*     table;             /**< Chunk offsets.            */
+  uint32_t            table_cap_entries; /**< Table entry capacity.     */
+  uint8_t*            staging;           /**< Compressed-byte staging.  */
+  uint32_t            staging_cap;       /**< Staging byte capacity.    */
+  uint64_t            payload_off;       /**< First stream file offset. */
+  uint64_t            inflated_total;    /**< Served flat-blob length.  */
+  uint32_t            chunk_bytes;       /**< Inflated bytes per chunk. */
+  uint32_t            chunk_count;       /**< Chunk count.              */
 } ra8_book_chunked_t;
 
 /**
@@ -108,11 +110,13 @@ typedef struct {
  * @param[in]  file_read         Byte reader over the container file (non-NULL).
  * @param[in]  file_ctx          Context passed to @p file_read.
  * @param[in]  file_len          Container file length in bytes.
- * @param[in]  inflate           zlib decompressor (see @ref ra8_book_inflate_fn).
+ * @param[in]  inflate           zlib decompressor (see @ref
+ * ra8_book_inflate_fn).
  * @param[in]  table_buf         Caller buffer for the chunk table (non-NULL).
  * @param[in]  table_cap_entries Capacity of @p table_buf in uint64 entries;
  *                               must be >= `chunk_count + 1`.
- * @param[in]  staging           Caller buffer for one compressed chunk (non-NULL).
+ * @param[in]  staging           Caller buffer for one compressed chunk
+ * (non-NULL).
  * @param[in]  staging_cap       Capacity of @p staging in bytes; must cover the
  *                               largest compressed chunk in the file.
  *
@@ -136,15 +140,10 @@ typedef struct {
  * @see ra8_book_chunked_read()
  * @since Version 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_book_chunked_open(ra8_book_chunked_t* rd,
-                                              ra8_vsource_read_fn file_read,
-                                              void*               file_ctx,
-                                              uint64_t            file_len,
-                                              ra8_book_inflate_fn inflate,
-                                              uint64_t*           table_buf,
-                                              uint32_t            table_cap_entries,
-                                              uint8_t*            staging,
-                                              uint32_t            staging_cap);
+[[nodiscard]] ra8_err_t ra8_book_chunked_open(
+    ra8_book_chunked_t *rd, ra8_vsource_read_fn file_read, void *file_ctx,
+    uint64_t file_len, ra8_book_inflate_fn inflate, uint64_t *table_buf,
+    uint32_t table_cap_entries, uint8_t *staging, uint32_t staging_cap);
 
 /**
  * @brief Serve one chunk-aligned read of the inflated flat blob.
@@ -166,7 +165,8 @@ typedef struct {
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok                Chunk inflated into @p buf.
  * @retval k_ra8_err_null_ptr      @p ctx or @p buf was NULL.
- * @retval k_ra8_err_invalid_state @p ctx was never bound by ::ra8_book_chunked_open.
+ * @retval k_ra8_err_invalid_state @p ctx was never bound by
+ * ::ra8_book_chunked_open.
  * @retval k_ra8_err_invalid_arg   @p offset is not chunk-aligned, or @p len is
  *                                not the chunk's exact inflated span.
  * @retval k_ra8_err_out_of_range  @p offset is at or past the inflated total.
@@ -182,8 +182,8 @@ typedef struct {
  * @see ra8_vsource_add_paged()
  * @since Version 0.1.0
  */
-[[nodiscard]] ra8_err_t
-ra8_book_chunked_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len);
+[[nodiscard]] ra8_err_t ra8_book_chunked_read(void *ctx, uint64_t offset,
+                                              uint8_t *buf, uint32_t len);
 
 /**
  * @brief Strictly validate the complete flat blob behind an open RBKC reader.
@@ -191,9 +191,9 @@ ra8_book_chunked_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len);
  * @details Adapts the chunk-aligned @ref ra8_book_chunked_read interface to the
  *          random-read strict validator. @p chunk receives one complete
  *          inflated chunk at a time; @p scratch is the independent bounded CRC
- *          transfer and node-ownership workspace. The full-body pass requests every
- *          chunk, proving every compressed stream, its exact inflated length,
- *          and the inner RABOOK1 CRC without retaining the whole book.
+ *          transfer and node-ownership workspace. The full-body pass requests
+ * every chunk, proving every compressed stream, its exact inflated length, and
+ * the inner RABOOK1 CRC without retaining the whole book.
  *
  * @param[in,out] rd Open chunk reader whose table is already validated.
  * @param[out] chunk Caller buffer for one inflated chunk.
@@ -206,23 +206,28 @@ ra8_book_chunked_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len);
  * @return Validation status.
  * @retval k_ra8_ok Every RBKC stream and inner RABOOK1 field is valid.
  * @retval k_ra8_err_null_ptr A required pointer is NULL.
- * @retval k_ra8_err_invalid_state @p rd is not open.
+ * @retval k_ra8_err_invalid_arg Caller workspace spans overlap, including a
+ *                               detectable @p out_header alias.
+ * @retval k_ra8_err_invalid_state @p rd is not open or its geometry/table is
+ * inconsistent.
  * @retval k_ra8_err_invalid_size A workspace or wire extent is inconsistent.
  * @retval k_ra8_err_* A file-reader, inflater, or strict-validator error.
  *
- * @pre @p rd and its table remain alive and immutable; its staging is exclusively mutable.
+ * @pre @p rd and its table remain alive and immutable; its staging is
+ * exclusively mutable.
  * @pre @p chunk and @p scratch do not overlap each other or @p rd storage.
+ * @pre @p out_header does not overlap @p rd, the callback context reachable
+ *      through `rd->file_ctx`, or any reader/caller workspace.
  * @post On success @p out_header describes the complete validated flat blob.
- * @post On failure @p out_header is zeroed and must not be consumed.
+ * @post On failure @p out_header is zeroed and must not be consumed, provided
+ *       the no-alias precondition holds. A detectable output alias is rejected
+ *       without modifying the aliased storage.
  * @note No heap allocation or recursion is used; the reader is not thread-safe.
  * @since Version 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_book_chunked_validate_strict(ra8_book_chunked_t* rd,
-                                                         uint8_t*            chunk,
-                                                         uint32_t            chunk_cap,
-                                                         uint8_t*            scratch,
-                                                         uint32_t            scratch_cap,
-                                                         ra8_book_header_t*  out_header);
+[[nodiscard]] ra8_err_t ra8_book_chunked_validate_strict(
+    ra8_book_chunked_t *rd, uint8_t *chunk, uint32_t chunk_cap,
+    uint8_t *scratch, uint32_t scratch_cap, ra8_book_header_t *out_header);
 
 #ifdef __cplusplus
 }

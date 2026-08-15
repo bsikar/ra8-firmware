@@ -26,8 +26,10 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_book_chunked.h"
 #include "ra8_err.h"
+#include "ra8_log.h"
 #include "unity_minimal.h"
 
 /**
@@ -245,7 +247,7 @@ static ra8_err_t bcx_open(ra8_book_chunked_t* rd,
  *
  * @par Targeted code:
  * `ra8_book_chunked_open`'s success path end-to-end: header read + parse,
- * `s_load_table`'s read, monotonic walk, staging-fit check, and the bound
+ * `internal_load_table`'s read, monotonic walk, staging-fit check, and the bound
  * `table` / `payload_off` publication.
  *
  * @par MC/DC:
@@ -452,7 +454,7 @@ bcx_open_guards_readfail(ra8_book_chunked_t* rd, bcx_file_t* file, const bcx_gua
  *
  * @par Targeted code:
  * The five `RA8_CHECK_NULL_PTR` guards, the short-file return, the bad-magic
- * rejection (via `ra8_book_container_header_fields`), `s_load_table`'s
+ * rejection (via `ra8_book_container_header_fields`), `internal_load_table`'s
  * table-capacity return, its header-plus-table file-bound return, its
  * staging-capacity return, and the file-read error passthrough.
  *
@@ -641,8 +643,16 @@ static void test_ra8_book_chunked_read_guards(void)
  *          produced-length mismatch leg.
  * @return Packed container length in bytes.
  */
+/** @brief Consume expected guard-path logs without touching host ITM MMIO. */
+RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
+{
+  (void)ctx;
+  (void)byte;
+}
+
 int main(void)
 {
+  ra8_log_set_byte_sink(internal_log_sink, nullptr);
   test_ra8_book_chunked_open_happy();
   test_ra8_book_chunked_open_guards();
   test_ra8_book_chunked_read_happy();
