@@ -40,7 +40,7 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_crashlog_crc_poly = 0xEDB88320UL, /**< Reflected CRC-32 polynomial.      */
+  k_ra8_crashlog_crc_poly = 0xEDB88320UL, /**< Reflected CRC-32 polynomial. */
   k_ra8_crashlog_crc_seed = 0xFFFFFFFFUL, /**< Initial value and final XOR mask. */
 } ra8_crashlog_crc_const_t;
 
@@ -121,7 +121,7 @@ static_assert(sizeof(ra8_crashlog_record_t) <= (size_t)k_ra8_crashlog_reserve_by
  * @note Not stateful; trivially thread-safe.
  * @since 0.1.0
  */
-RA8_INTERNAL static uint32_t ra8_crashlog_crc32(const volatile uint8_t* data, uint32_t len)
+RA8_INTERNAL static uint32_t internal_crashlog_crc32(const volatile uint8_t* data, uint32_t len)
 {
   if (data == nullptr) {
     return 0U;
@@ -156,11 +156,11 @@ RA8_INTERNAL static uint32_t ra8_crashlog_crc32(const volatile uint8_t* data, ui
  * @note Not thread-safe w.r.t. a concurrent record write.
  * @since 0.1.0
  */
-RA8_INTERNAL static uint32_t ra8_crashlog_payload_crc(void)
+RA8_INTERNAL static uint32_t internal_crashlog_payload_crc(void)
 {
   const volatile uint8_t* base = (const volatile uint8_t*)&s_ra8_crashlog_record;
   const uint32_t          off  = (uint32_t)offsetof(ra8_crashlog_record_t, boot_loops);
-  return ra8_crashlog_crc32(&base[off], (uint32_t)sizeof(s_ra8_crashlog_record) - off);
+  return internal_crashlog_crc32(&base[off], (uint32_t)sizeof(s_ra8_crashlog_record) - off);
 }
 
 /**
@@ -186,19 +186,21 @@ RA8_INTERNAL static uint32_t ra8_crashlog_payload_crc(void)
  *       compound; the vectors live in tests/test_ra8_crashlog.c.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool ra8_crashlog_is_valid(void)
+RA8_INTERNAL static bool internal_crashlog_is_valid(void)
 {
   return (s_ra8_crashlog_record.magic == (uint32_t)k_ra8_crashlog_magic_valid) &&
-         (ra8_crashlog_payload_crc() == s_ra8_crashlog_record.crc);
+         (internal_crashlog_payload_crc() == s_ra8_crashlog_record.crc);
 }
 
-/** @brief Implementation of `ra8_crashlog_install()` -- register the persist hook. */
+/** @brief Implementation of `ra8_crashlog_install()` -- register the persist
+ * hook. */
 void ra8_crashlog_install(void)
 {
   ra8_exception_set_persist_hook(&ra8_crashlog_record_fault);
 }
 
-/** @brief Implementation of `ra8_crashlog_record_fault()` -- write payload, magic last. */
+/** @brief Implementation of `ra8_crashlog_record_fault()` -- write payload,
+ * magic last. */
 void ra8_crashlog_record_fault(const volatile ra8_exception_last_t* decoded)
 {
   if (decoded == nullptr) {
@@ -207,7 +209,7 @@ void ra8_crashlog_record_fault(const volatile ra8_exception_last_t* decoded)
   /* Carry the prior crash count forward only if the existing record still
    * validates; a cold-boot / corrupted record restarts the count at 1. */
   uint32_t next = 1U;
-  if (ra8_crashlog_is_valid()) {
+  if (internal_crashlog_is_valid()) {
     const uint32_t prior = s_ra8_crashlog_record.boot_loops;
     next = (prior < (uint32_t)k_ra8_crashlog_loops_max) ? (prior + 1U)
                                                         : (uint32_t)k_ra8_crashlog_loops_max;
@@ -215,7 +217,7 @@ void ra8_crashlog_record_fault(const volatile ra8_exception_last_t* decoded)
   s_ra8_crashlog_record.magic      = 0U; /* invalidate for the write window */
   s_ra8_crashlog_record.boot_loops = next;
   s_ra8_crashlog_record.fault      = *decoded;
-  s_ra8_crashlog_record.crc        = ra8_crashlog_payload_crc();
+  s_ra8_crashlog_record.crc        = internal_crashlog_payload_crc();
   s_ra8_crashlog_record.magic      = (uint32_t)k_ra8_crashlog_magic_valid; /* validate LAST */
 }
 
@@ -225,14 +227,15 @@ bool ra8_crashlog_peek(ra8_crashlog_record_t* out)
   if (out == nullptr) {
     return false;
   }
-  if (!ra8_crashlog_is_valid()) {
+  if (!internal_crashlog_is_valid()) {
     return false;
   }
   *out = s_ra8_crashlog_record;
   return true;
 }
 
-/** @brief Implementation of `ra8_crashlog_claim()` -- clear magic + reset the guard. */
+/** @brief Implementation of `ra8_crashlog_claim()` -- clear magic + reset the
+ * guard. */
 void ra8_crashlog_claim(void)
 {
   s_ra8_crashlog_record.magic      = 0U;
@@ -240,7 +243,8 @@ void ra8_crashlog_claim(void)
   s_ra8_crashlog_record.boot_loops = 0U;
 }
 
-/** @brief Implementation of `ra8_crashlog_safe_mode_requested()` -- count vs threshold. */
+/** @brief Implementation of `ra8_crashlog_safe_mode_requested()` -- count vs
+ * threshold. */
 bool ra8_crashlog_safe_mode_requested(void)
 {
   ra8_crashlog_record_t rec;
@@ -251,13 +255,15 @@ bool ra8_crashlog_safe_mode_requested(void)
 }
 
 #ifdef RA8_OFF_TARGET
-/** @brief Implementation of `ra8_crashlog_test_record()` -- raw record pointer. */
+/** @brief Implementation of `ra8_crashlog_test_record()` -- raw record pointer.
+ */
 volatile ra8_crashlog_record_t* ra8_crashlog_test_record(void)
 {
   return &s_ra8_crashlog_record;
 }
 
-/** @brief Implementation of `ra8_crashlog_test_wipe()` -- zero every record byte. */
+/** @brief Implementation of `ra8_crashlog_test_wipe()` -- zero every record
+ * byte. */
 void ra8_crashlog_test_wipe(void)
 {
   volatile uint8_t* p = (volatile uint8_t*)&s_ra8_crashlog_record;

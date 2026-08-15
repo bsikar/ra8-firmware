@@ -70,7 +70,7 @@ extern "C" {
  * =============================================================================
  */
 
-/* internal_ra8_fatal_error is declared in ra8_error_handler.h. Include
+/* ra8_fatal_error is declared in ra8_error_handler.h. Include
  * it here so RA8_ASSERT / RA8_ERROR_CHECK can call it without the caller
  * having to pull in the other header. */
 #include "ra8_error_handler.h"
@@ -112,7 +112,7 @@ extern "C" {
  * are for.
  *
  * Failure path: logs `message` with tag `"ASSERT"` and calls
- * `internal_ra8_fatal_error`, which halts. No allocation, no RTT.
+ * `ra8_fatal_error`, which halts. No allocation, no RTT.
  *
  * @param[in] condition Expression that must be true.
  * @param[in] message   String literal shown if the assertion fires.
@@ -122,7 +122,7 @@ extern "C" {
 #define RA8_ASSERT(condition, message)                                                             \
   do {                                                                                             \
     if (!(condition)) {                                                                            \
-      internal_ra8_fatal_error("ASSERT", (message), (uint32_t)k_ra8_err_validation_failed);        \
+      ra8_fatal_error("ASSERT", (message), (uint32_t)k_ra8_err_validation_failed);                 \
     }                                                                                              \
   } while (0)
 
@@ -147,7 +147,7 @@ extern "C" {
   do {                                                                                             \
     ra8_err_t err_rc_ = (err);                                                                     \
     if (ra8_err_is_error(err_rc_)) {                                                               \
-      internal_ra8_fatal_error("ERROR_CHECK", "Fatal error", (uint32_t)err_rc_);                   \
+      ra8_fatal_error("ERROR_CHECK", "Fatal error", (uint32_t)err_rc_);                            \
     }                                                                                              \
   } while (0)
 
