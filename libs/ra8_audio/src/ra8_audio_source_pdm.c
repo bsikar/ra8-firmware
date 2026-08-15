@@ -42,7 +42,8 @@ typedef enum : uintptr_t {
  * @note HAL read errors are returned unchanged.
  * @since 0.1.0
  */
-static ra8_err_t pdm_fill(uint8_t channel, int32_t* samples, uint32_t count, uint32_t attempts)
+RA8_INTERNAL static ra8_err_t
+internal_pdm_fill(uint8_t channel, int32_t* samples, uint32_t count, uint32_t attempts)
 {
   uint32_t filled = 0U;
   for (uint32_t attempt = 0U; attempt < attempts; attempt += 1U) {
@@ -74,7 +75,7 @@ static ra8_err_t pdm_fill(uint8_t channel, int32_t* samples, uint32_t count, uin
  * @note The facade supplies a nonnull output pointer.
  * @since 0.1.0
  */
-static ra8_err_t pdm_get_info(void* ctx, ra8_audio_source_info_t* out_info)
+RA8_INTERNAL static ra8_err_t internal_pdm_get_info(void* ctx, ra8_audio_source_info_t* out_info)
 {
   const ra8_audio_source_pdm_state_t* state = (const ra8_audio_source_pdm_state_t*)ctx;
   if (state == nullptr) {
@@ -101,7 +102,7 @@ static ra8_err_t pdm_get_info(void* ctx, ra8_audio_source_info_t* out_info)
  * @note Runs in interrupt context and performs only bounded copies.
  * @since 0.1.0
  */
-static void pdm_stream_data(void* ctx, const int32_t* samples, uint32_t count)
+RA8_INTERNAL static void internal_pdm_stream_data(void* ctx, const int32_t* samples, uint32_t count)
 {
   ra8_audio_source_pdm_state_t* state = (ra8_audio_source_pdm_state_t*)ctx;
   if (state == nullptr) {
@@ -154,11 +155,11 @@ static void pdm_stream_data(void* ctx, const int32_t* samples, uint32_t count)
  * @pre The PDM channel was started and read-enabled during initialization.
  * @post On success, `out_frame->data` aliases the caller buffer.
  * @post On failure, no successful frame descriptor is published.
- * @note FIFO and timeout errors are propagated from `pdm_fill`.
+ * @note FIFO and timeout errors are propagated from `internal_pdm_fill`.
  * @since 0.1.0
  */
-static ra8_err_t
-pdm_capture(void* ctx, const ra8_audio_buffer_t* buffer, ra8_audio_frame_t* out_frame)
+RA8_INTERNAL static ra8_err_t
+internal_pdm_capture(void* ctx, const ra8_audio_buffer_t* buffer, ra8_audio_frame_t* out_frame)
 {
   ra8_audio_source_pdm_state_t* state = (ra8_audio_source_pdm_state_t*)ctx;
   if (state == nullptr) {
@@ -174,10 +175,10 @@ pdm_capture(void* ctx, const ra8_audio_buffer_t* buffer, ra8_audio_frame_t* out_
     return k_ra8_err_invalid_arg;
   }
   const uint32_t  timestamp_ms = ra8_time_ms();
-  const ra8_err_t err          = pdm_fill(state->channel,
-                                          (int32_t*)buffer->data,
-                                          state->info.samples_per_frame,
-                                          state->poll_attempts);
+  const ra8_err_t err          = internal_pdm_fill(state->channel,
+                                                   (int32_t*)buffer->data,
+                                                   state->info.samples_per_frame,
+                                                   state->poll_attempts);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -208,7 +209,7 @@ pdm_capture(void* ctx, const ra8_audio_buffer_t* buffer, ra8_audio_frame_t* out_
  * @note HAL errors are returned unchanged.
  * @since 0.1.0
  */
-static ra8_err_t pdm_stop(void* ctx)
+RA8_INTERNAL static ra8_err_t internal_pdm_stop(void* ctx)
 {
   ra8_audio_source_pdm_state_t* state = (ra8_audio_source_pdm_state_t*)ctx;
   if (state == nullptr) {
@@ -247,10 +248,10 @@ static ra8_err_t pdm_stop(void* ctx)
  * @note The callback executes from the PDM interrupt path.
  * @since 0.1.0
  */
-static ra8_err_t pdm_stream_start(void*                      ctx,
-                                  const ra8_audio_buffer_t*  buffer,
-                                  ra8_audio_frame_callback_t callback,
-                                  void*                      callback_ctx)
+RA8_INTERNAL static ra8_err_t internal_pdm_stream_start(void*                      ctx,
+                                                        const ra8_audio_buffer_t*  buffer,
+                                                        ra8_audio_frame_callback_t callback,
+                                                        void*                      callback_ctx)
 {
   ra8_audio_source_pdm_state_t* state = (ra8_audio_source_pdm_state_t*)ctx;
   if (state == nullptr) {
@@ -272,7 +273,7 @@ static ra8_err_t pdm_stream_start(void*                      ctx,
   state->stream_timestamp_ms = 0U;
   state->streaming           = true;
   const ra8_err_t err =
-    ra8_pdm_stream_enable(state->channel, pdm_stream_data, state, state->irq_priority);
+    ra8_pdm_stream_enable(state->channel, internal_pdm_stream_data, state, state->irq_priority);
   if (err != k_ra8_ok) {
     state->streaming       = false;
     state->stream_data     = nullptr;
@@ -282,11 +283,11 @@ static ra8_err_t pdm_stream_start(void*                      ctx,
   return err;
 }
 
-static const ra8_audio_source_iface_t k_pdm_source_iface = {
-  .get_info     = pdm_get_info,
-  .capture      = pdm_capture,
-  .stream_start = pdm_stream_start,
-  .stop         = pdm_stop,
+static const ra8_audio_source_iface_t s_pdm_source_iface = {
+  .get_info     = internal_pdm_get_info,
+  .capture      = internal_pdm_capture,
+  .stream_start = internal_pdm_stream_start,
+  .stop         = internal_pdm_stop,
 };
 
 /**
@@ -306,7 +307,8 @@ static const ra8_audio_source_iface_t k_pdm_source_iface = {
  * @note This helper does not access PDM hardware.
  * @since 0.1.0
  */
-static ra8_err_t pdm_validate_cfg(const ra8_audio_source_pdm_cfg_t* cfg, uint32_t* out_frame_bytes)
+RA8_INTERNAL static ra8_err_t internal_pdm_validate_cfg(const ra8_audio_source_pdm_cfg_t* cfg,
+                                                        uint32_t* out_frame_bytes)
 {
   if (cfg->channel >= (uint8_t)k_ra8_pdm_ch_count) {
     return k_ra8_err_invalid_arg;
@@ -342,14 +344,14 @@ static ra8_err_t pdm_validate_cfg(const ra8_audio_source_pdm_cfg_t* cfg, uint32_
  * @return Repository error code.
  * @retval k_ra8_ok The PDM channel is running and ready for capture.
  * @retval other Propagated HAL or bounded-read error.
- * @pre `cfg` passed `pdm_validate_cfg`.
+ * @pre `cfg` passed `internal_pdm_validate_cfg`.
  * @pre No other owner is using the selected PDM channel.
  * @post On success the selected channel remains started with reads enabled.
  * @post On failure initialized PDM hardware is stopped and deinitialized.
  * @note Discard reads use the caller-provided bounded polling budget.
  * @since 0.1.0
  */
-static ra8_err_t pdm_prepare_hardware(const ra8_audio_source_pdm_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_pdm_prepare_hardware(const ra8_audio_source_pdm_cfg_t* cfg)
 {
   ra8_err_t err = ra8_pdm_init();
   if (err != k_ra8_ok) {
@@ -370,7 +372,7 @@ static ra8_err_t pdm_prepare_hardware(const ra8_audio_source_pdm_cfg_t* cfg)
     if (err != k_ra8_ok) {
       break;
     }
-    err = pdm_fill(cfg->channel, &discard, 1U, cfg->poll_attempts);
+    err = internal_pdm_fill(cfg->channel, &discard, 1U, cfg->poll_attempts);
   }
   if (err != k_ra8_ok) {
     (void)ra8_pdm_stop(cfg->channel);
@@ -395,11 +397,11 @@ ra8_err_t ra8_audio_source_pdm_init(ra8_audio_source_t*               source,
   *source               = (ra8_audio_source_t){};
   *state                = (ra8_audio_source_pdm_state_t){};
   uint32_t  frame_bytes = 0U;
-  ra8_err_t err         = pdm_validate_cfg(cfg, &frame_bytes);
+  ra8_err_t err         = internal_pdm_validate_cfg(cfg, &frame_bytes);
   if (err != k_ra8_ok) {
     return err;
   }
-  err = pdm_prepare_hardware(cfg);
+  err = internal_pdm_prepare_hardware(cfg);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -419,7 +421,7 @@ ra8_err_t ra8_audio_source_pdm_init(ra8_audio_source_t*               source,
     .initialized   = true,
   };
   *source = (ra8_audio_source_t){
-    .iface = &k_pdm_source_iface,
+    .iface = &s_pdm_source_iface,
     .ctx   = state,
   };
   return k_ra8_ok;

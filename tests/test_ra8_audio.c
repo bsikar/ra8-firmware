@@ -10,7 +10,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "ra8_audio.h"
@@ -36,7 +35,7 @@ typedef enum : uint32_t {
  * @note This helper intentionally performs no assertions.
  * @since 0.1.0
  */
-static void audio_callback(void* ctx, const ra8_audio_frame_t* frame)
+RA8_INTERNAL static void internal_audio_callback(void* ctx, const ra8_audio_frame_t* frame)
 {
   (void)ctx;
   (void)frame;
@@ -55,7 +54,7 @@ static void audio_callback(void* ctx, const ra8_audio_frame_t* frame)
  * @note The timestamp is arbitrary but deterministic.
  * @since 0.1.0
  */
-static ra8_audio_frame_t audio_fixture(const int32_t* samples)
+RA8_INTERNAL static ra8_audio_frame_t internal_audio_fixture(const int32_t* samples)
 {
   return (ra8_audio_frame_t){
     .data           = samples,
@@ -82,22 +81,22 @@ static ra8_audio_frame_t audio_fixture(const int32_t* samples)
  * @note This test does not access audio hardware.
  * @since 0.1.0
  */
-static void test_frame_validation(void)
+RA8_INTERNAL static void internal_test_frame_validation(void)
 {
   TEST_BEGIN("audio frame validation");
   int32_t           samples[k_t_audio_samples] = {};
-  ra8_audio_frame_t frame                      = audio_fixture(samples);
+  ra8_audio_frame_t frame                      = internal_audio_fixture(samples);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_audio_frame_validate(&frame));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_audio_frame_validate(nullptr));
   frame.data = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_audio_frame_validate(&frame));
-  frame            = audio_fixture(samples);
+  frame            = internal_audio_fixture(samples);
   frame.valid_bits = 33U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_audio_frame_validate(&frame));
-  frame       = audio_fixture(samples);
+  frame       = internal_audio_fixture(samples);
   frame.bytes = (uint32_t)k_t_audio_bytes - 1U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_audio_frame_validate(&frame));
-  frame        = audio_fixture(samples);
+  frame        = internal_audio_fixture(samples);
   frame.format = (ra8_audio_format_t)99U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_audio_frame_validate(&frame));
   TEST_END("audio frame validation");
@@ -116,12 +115,12 @@ static void test_frame_validation(void)
  * @note This test exercises only caller-owned memory.
  * @since 0.1.0
  */
-static void test_memory_source(void)
+RA8_INTERNAL static void internal_test_memory_source(void)
 {
   TEST_BEGIN("audio memory source");
   int32_t                         source_samples[k_t_audio_samples]  = {1, -2, 3, -4, 5, -6, 7, -8};
   int32_t                         capture_samples[k_t_audio_samples] = {};
-  const ra8_audio_frame_t         frame  = audio_fixture(source_samples);
+  const ra8_audio_frame_t         frame  = internal_audio_fixture(source_samples);
   ra8_audio_source_t              source = {};
   ra8_audio_source_memory_state_t state  = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_audio_source_memory_init(&source, &state, &frame));
@@ -138,7 +137,7 @@ static void test_memory_source(void)
   TEST_ASSERT(captured.data == capture_samples);
   TEST_ASSERT(memcmp(source_samples, capture_samples, sizeof(source_samples)) == 0);
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_audio_source_stream_start(&source, &buffer, audio_callback, nullptr));
+                 ra8_audio_source_stream_start(&source, &buffer, internal_audio_callback, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_audio_source_stop(&source));
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_audio_source_stop(&source));
   TEST_END("audio memory source");
@@ -157,7 +156,7 @@ static void test_memory_source(void)
  * @note The callback is supplied only to reach stream-dispatch guards.
  * @since 0.1.0
  */
-static void test_facade_guards(void)
+RA8_INTERNAL static void internal_test_facade_guards(void)
 {
   TEST_BEGIN("audio facade guards");
   int32_t                  samples[k_t_audio_samples] = {};
@@ -173,7 +172,7 @@ static void test_facade_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_audio_source_get_info(nullptr, &info));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_audio_source_capture(&source, nullptr, &frame));
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
-                 ra8_audio_source_stream_start(&source, &buffer, audio_callback, nullptr));
+                 ra8_audio_source_stream_start(&source, &buffer, internal_audio_callback, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_audio_source_stop(nullptr));
   TEST_END("audio facade guards");
 }
@@ -191,7 +190,7 @@ static void test_facade_guards(void)
  * @note This test deliberately avoids physical audio hardware.
  * @since 0.1.0
  */
-static void test_pdm_config_guards(void)
+RA8_INTERNAL static void internal_test_pdm_config_guards(void)
 {
   TEST_BEGIN("audio PDM config guards");
   ra8_audio_source_t           source = {};
@@ -213,38 +212,42 @@ static void test_pdm_config_guards(void)
 
 /**
  * @brief Run the generic audio and PDM-source MC/DC vectors.
+ * @details Executes each focused fixture group exactly once so the target
+ *          covers the facade, memory backend, and PDM validation decisions.
  * @par MC/DC:
  * Decisions: libs/ra8_audio/src/ra8_audio.c@ra8_audio_frame_validate,
  * libs/ra8_audio/src/ra8_audio.c@ra8_audio_source_capture,
  * libs/ra8_audio/src/ra8_audio.c@ra8_audio_source_get_info,
  * libs/ra8_audio/src/ra8_audio.c@ra8_audio_source_stop,
  * libs/ra8_audio/src/ra8_audio.c@ra8_audio_source_stream_start,
- * libs/ra8_audio/src/ra8_audio_source_memory.c@memory_capture,
- * libs/ra8_audio/src/ra8_audio_source_memory.c@memory_get_info,
+ * libs/ra8_audio/src/ra8_audio_source_memory.c@internal_memory_capture,
+ * libs/ra8_audio/src/ra8_audio_source_memory.c@internal_memory_get_info,
  * libs/ra8_audio/src/ra8_audio_source_memory.c@ra8_audio_source_memory_init,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@pdm_capture,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@pdm_get_info,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@pdm_prepare_hardware,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@pdm_stop,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@pdm_stream_data,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@pdm_stream_start,
- * libs/ra8_audio/src/ra8_audio_source_pdm.c@pdm_validate_cfg,
+ * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_capture,
+ * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_get_info,
+ * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_prepare_hardware,
+ * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_stop,
+ * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_stream_data,
+ * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_stream_start,
+ * libs/ra8_audio/src/ra8_audio_source_pdm.c@internal_pdm_validate_cfg,
  * libs/ra8_audio/src/ra8_audio_source_pdm.c@ra8_audio_source_pdm_init.
  * @pre Unity test accounting is initialized.
+ * @pre All fixture helpers are linked into this executable.
  * @post Every audio vector group has executed once.
+ * @post No fixture state survives the function return.
+ * @note Hardware-reaching PDM vectors stop at configuration guards.
  * @since 0.1.0
  */
-static void test_mcdc_audio_sources(void)
+RA8_INTERNAL static void internal_test_mcdc_audio_sources(void)
 {
-  test_frame_validation();
-  test_memory_source();
-  test_facade_guards();
-  test_pdm_config_guards();
+  internal_test_frame_validation();
+  internal_test_memory_source();
+  internal_test_facade_guards();
+  internal_test_pdm_config_guards();
 }
 
 int main(void)
 {
-  test_mcdc_audio_sources();
-  (void)fprintf(stderr, "[OK ] test_ra8_audio.c\n");
+  internal_test_mcdc_audio_sources();
   return 0;
 }
