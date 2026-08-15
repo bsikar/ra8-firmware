@@ -23,8 +23,9 @@
  * opens inside a small fixed budget -- the caller-owned page-index + name arena
  * plus one page's encoded image, never the whole file.
  *
- * The caller supplies all storage: a page-index array and a name arena sized for
- * the archive's page count. There is no heap (NASA Rule 3).
+ * The caller supplies all storage: a page-index array, a name arena sized for
+ * the archive's page count, and (inside ::ra8_comic_t) one per-object bounded
+ * miniz workspace. There is no heap (NASA Rule 3).
  *
  * @par Substitutability (SOLID L)
  * CBZ and CBR are drop-in interchangeable behind ::ra8_comic_page_read: the reader
@@ -45,10 +46,11 @@
  * ra8_comic_close(&comic);
  * @endcode
  *
- * @note Not thread-safe; the single-threaded reader loop serialises access.
+ * @note One comic object is not thread-safe; independent objects share no
+ *       miniz allocator state and may remain open simultaneously.
  * @note The CBZ backend needs miniz built with its archive APIs -- pull `ra8_epub`
  *       into the app `LIBS` (which compiles miniz with the ZIP reader and supplies
- *       the zero-heap `ra8_epub_miniz_alloc` pool the firmware routes miniz through).
+ *       the caller-owned `ra8_epub_miniz_alloc` arena used on host and target).
  *
  * @see ra8_rar.h                The clean-room RAR walker the CBR backend uses.
  * @see ra8_epub.h               The streaming ZIP open this mirrors for CBZ.
@@ -64,6 +66,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_epub_miniz_alloc.h"
 #include "ra8_err.h"
 #include "ra8_rar.h"
 #include "ra8_rar5.h"
@@ -191,6 +194,10 @@ typedef struct {
   uint8_t            zip_active; /**< 1 = miniz reader is initialised (CBZ).   */
   /** @brief Inline storage for miniz's `mz_zip_archive` (CBZ; no heap). */
   alignas(max_align_t) uint8_t zip_storage[k_ra8_comic_zip_bytes];
+  /** @brief Per-comic allocator descriptor bound through miniz's opaque pointer. */
+  ra8_epub_miniz_arena_t miniz_arena;
+  /** @brief Per-comic bounded allocator workspace (used only for CBZ). */
+  ra8_epub_miniz_workspace_t miniz_workspace;
 } ra8_comic_t;
 
 /**
@@ -365,7 +372,7 @@ ra8_comic_page_read(ra8_comic_t* c, uint32_t page, uint8_t* buf, size_t cap, siz
 /**
  * @brief Release an open comic's backend resources.
  * @details Ends the CBZ miniz reader (freeing its central directory through the
- *          static pool); the CBR backend allocates nothing. Resets @p c to the
+ *          per-object bounded arena); the CBR backend allocates nothing. Resets @p c to the
  *          unopened state. Idempotent after a failed open.
  * @param[in,out] c Comic from ::ra8_comic_open (non-NULL).
  * @return ra8_err_t Error code.
