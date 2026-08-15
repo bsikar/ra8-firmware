@@ -5,6 +5,9 @@
  * @par Tag
  * [Ring 6 / APP] {World: NS}
  *
+ * @details Emulates bounded memory-to-memory DMAC transfers for host tests,
+ * including width decoding, descriptor progression, and injected failures.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -15,6 +18,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_dma.h"
 #include "ra8_dmac_regs.h"
 #include "ra8_err.h"
@@ -31,8 +35,21 @@ typedef enum : uint8_t {
 
 /**
  * @brief Transfer-element size in bytes for a ``ra8_dmac_width_t`` value.
+ * @details Converts the production width enum into the byte stride used to
+ * advance fake source and destination addresses.
+ * @param[in] width Requested DMAC transfer width.
+ * @return Transfer width in bytes.
+ * @retval 1 Byte-width transfers.
+ * @retval 2 Halfword-width transfers.
+ * @retval 4 Word-width or defensively unknown transfers.
+ * @pre @p width is representable by ::ra8_dmac_width_t.
+ * @pre The caller accepts word width as the defensive default.
+ * @post The result is one of 1, 2, or 4.
+ * @post No fake or production DMA state is modified.
+ * @note This helper performs no alignment validation.
+ * @since 0.1.0
  */
-static uint8_t internal_size_bytes(ra8_dmac_width_t width)
+RA8_INTERNAL static uint8_t internal_size_bytes(ra8_dmac_width_t width)
 {
   switch (width) {
     case k_ra8_dmac_width_byte:

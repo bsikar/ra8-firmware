@@ -5,6 +5,9 @@
  * @par Tag
  * [Ring 6 / APP] {World: NS}
  *
+ * @details Models a bounded set of TrustZone address regions so host tests can
+ * classify secure and non-secure accesses without target attribution hardware.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -13,6 +16,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 typedef struct {
@@ -34,7 +38,26 @@ void ra8_fake_world_reset(void)
   }
 }
 
-static ra8_err_t internal_mark(const void* ptr, uint32_t len, ra8_fake_world_attr_t attr)
+/**
+ * @brief Append one attributed address range to the fake world table.
+ * @details Validates the span and bounded table capacity before recording the
+ * exact base, length, and Secure or Non-Secure classification.
+ * @param[in] ptr First byte of the host range.
+ * @param[in] len Nonzero range length in bytes.
+ * @param[in] attr World classification to record.
+ * @return Append status.
+ * @retval k_ra8_ok The range was recorded.
+ * @retval k_ra8_err_invalid_arg @p len is zero.
+ * @retval k_ra8_err_no_mem The bounded range table is full.
+ * @pre @p attr is a valid ::ra8_fake_world_attr_t value.
+ * @pre The caller keeps the described address range meaningful while queried.
+ * @post Success increases the recorded range count by one.
+ * @post Failure leaves the table unchanged.
+ * @note A null @p ptr is accepted as an address value when @p len is nonzero.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_mark(const void* ptr, uint32_t len, ra8_fake_world_attr_t attr)
 {
   if (len == 0U) {
     return k_ra8_err_invalid_arg;

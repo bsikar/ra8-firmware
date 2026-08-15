@@ -50,6 +50,7 @@ struct LX_NOR_FLASH_STRUCT;
  * @pre The host backing array is available (always; static storage).
  * @post On success all four driver callbacks and the geometry are set.
  * @post The backing RAM is left as-is (open uses it; format erases it).
+ * @note The callback owns no storage inside @p nor_flash beyond assigned pointers.
  * @since 0.1.0
  */
 unsigned int lx_nor_fake_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash);
@@ -66,6 +67,7 @@ unsigned int lx_nor_fake_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash);
  * @pre No LevelX operation is mid-flight against the backing.
  * @post Every backing word reads as the erased pattern.
  * @post A subsequent open sees a blank (unformatted) device.
+ * @note This is a test-isolation operation, not a simulated power cycle.
  * @since 0.1.0
  */
 void lx_nor_fake_ram_wipe(void);
@@ -82,6 +84,7 @@ void lx_nor_fake_ram_wipe(void);
  * @pre The caller resets injection when the fault window is done.
  * @post The next @p count writes return an error, then writes succeed again.
  * @post No backing word is changed by a failed write.
+ * @note Replacing a nonzero countdown discards its unconsumed remainder.
  * @since 0.1.0
  */
 void lx_nor_fake_ram_fail_writes(unsigned int count);

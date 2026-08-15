@@ -5,6 +5,9 @@
  * @par Tag
  * [Ring 6 / APP] {World: NS}
  *
+ * @details Supplies deterministic monotonic time and explicit advancement to
+ * host tests while retaining the production time-provider interface.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

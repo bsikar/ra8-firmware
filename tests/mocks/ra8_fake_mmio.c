@@ -5,6 +5,9 @@
  * @par Tag
  * [Ring 3 / HAL] {World: S} (host test-only)
  *
+ * @details Provides bounded programmable register-wait outcomes so negative
+ * HAL paths can be exercised deterministically without dereferencing hardware.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -13,6 +16,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h" /* prototype for the guarded ra8_fake_mmio_wait_eval hook. */
 
@@ -63,7 +67,22 @@ static ra8_fake_mmio_fault_t s_faults[k_ra8_fake_mmio_max_faults];
  */
 static void (*s_poll_hook)(void);
 
-static ra8_fake_mmio_fault_t* internal_find(uintptr_t addr)
+/**
+ * @brief Find the armed fault row for one MMIO register address.
+ * @details Performs a bounded linear scan while reserving address zero as the
+ * table's free-slot and null-register sentinel.
+ * @param[in] addr Integer form of the polled register address.
+ * @return Matching mutable row, or null when the register is not armed.
+ * @retval non-NULL The unique row whose address equals @p addr.
+ * @retval NULL @p addr is zero or no row matches it.
+ * @pre The fault table was initialized statically or by reset.
+ * @pre No concurrent caller mutates the table during the scan.
+ * @post The table contents are unchanged.
+ * @post Any returned pointer refers inside ::s_faults.
+ * @note The fixed table bound satisfies NASA Power-of-10 Rule 2.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_fake_mmio_fault_t* internal_find(uintptr_t addr)
 {
   if (addr == 0U) {
     return nullptr; /* 0 is the free-slot sentinel and the NULL-reg address. */
@@ -76,7 +95,26 @@ static ra8_fake_mmio_fault_t* internal_find(uintptr_t addr)
   return nullptr;
 }
 
-static ra8_err_t internal_arm(const volatile void* reg, ra8_fake_mmio_mode_t mode, uint32_t arg)
+/**
+ * @brief Create or replace the scripted wait behavior for one register.
+ * @details Reuses an existing address row when present, otherwise claims the
+ * first free bounded-table slot and resets its per-wait observation counter.
+ * @param[in] reg Address of the register whose polls will be overridden.
+ * @param[in] mode Override behavior to install.
+ * @param[in] arg Mode-specific poll or wait-loop index.
+ * @return Arming status.
+ * @retval k_ra8_ok The row was created or replaced.
+ * @retval k_ra8_err_null_ptr @p reg is null.
+ * @retval k_ra8_err_no_mem No free row remains.
+ * @pre @p mode is a non-`none` ::ra8_fake_mmio_mode_t value.
+ * @pre No other thread accesses the fake table concurrently.
+ * @post Success leaves one unique row for @p reg with `wait_seen` zero.
+ * @post Failure leaves every row unchanged.
+ * @note Re-arming a register replaces its prior mode and argument.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_arm(const volatile void* reg, ra8_fake_mmio_mode_t mode, uint32_t arg)
 {
   if (reg == nullptr) {
     return k_ra8_err_null_ptr;
@@ -127,7 +165,23 @@ ra8_err_t ra8_fake_mmio_fail_nth_wait(const volatile void* reg, uint32_t n)
   return internal_arm(reg, k_ra8_fake_mmio_mode_fail_nth, n);
 }
 
-static bool internal_armed_eval(ra8_fake_mmio_fault_t* slot, uint32_t iter)
+/**
+ * @brief Evaluate one armed fault row for the current poll iteration.
+ * @details Implements success-after-N, fail-one-wait, and unconditional-timeout
+ * behavior while advancing the wait counter only on iteration zero.
+ * @param[in,out] slot Armed row selected for the register.
+ * @param[in] iter Zero-based iteration within the current bounded wait.
+ * @return Whether the fake reports the wait condition satisfied.
+ * @retval true The selected mode allows this wait to complete now.
+ * @retval false The caller must continue polling until its own bound.
+ * @pre @p slot is non-null and names an armed ::s_faults row.
+ * @pre Each wait loop supplies @p iter beginning at zero.
+ * @post Fail-nth mode counts a new wait exactly once at iteration zero.
+ * @post Other mode state remains unchanged.
+ * @note The caller, not this helper, owns the timeout budget.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_armed_eval(ra8_fake_mmio_fault_t* slot, uint32_t iter)
 {
   if (slot->mode == k_ra8_fake_mmio_mode_satisfy_after) {
     return (iter >= slot->arg);

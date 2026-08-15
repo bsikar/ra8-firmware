@@ -5,6 +5,9 @@
  * @par Tag
  * [Ring 6 / APP] {World: NS}
  *
+ * @details Resolves one ELC event through the production ISR table and invokes
+ * its registered host callback without target interrupt-controller hardware.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

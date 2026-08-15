@@ -23,6 +23,7 @@
 #include "lx_nor_fake_ram.h"
 
 #include "lx_api.h"
+#include "ra8_attributes.h"
 
 /**
  * @enum lx_nor_fake_const_t
@@ -63,8 +64,11 @@ static ULONG s_fake_sector_buf[LX_NOR_SECTOR_SIZE];
  */
 static unsigned int s_fake_fail_writes;
 
+/* NOLINTBEGIN(readability-non-const-parameter) -- LevelX fixes both callback signatures. */
 /**
  * @brief Read @p words ULONGs from the backing pointer into @p destination.
+ * @details Implements the LevelX read callback directly over its pointer
+ * cookie, copying exactly the requested number of vendor-width words.
  * @param[in]  flash_address Source pointer into the backing (LevelX cookie).
  * @param[out] destination   Destination buffer of @p words ULONGs.
  * @param[in]  words         Word count.
@@ -75,11 +79,10 @@ static unsigned int s_fake_fail_writes;
  * @pre @p destination covers @p words ULONGs.
  * @post @p destination holds the copied words on success.
  * @post The backing is unmodified.
+ * @note The non-const source signature is fixed by the LevelX callback ABI.
  * @since 0.1.0
  */
-/* Signature is fixed by the LevelX driver-read callback type (non-const). */
-/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
-static UINT fake_read(ULONG* flash_address, ULONG* destination, ULONG words)
+RA8_INTERNAL static UINT internal_read(ULONG* flash_address, ULONG* destination, ULONG words)
 {
   if (flash_address == LX_NULL) {
     return (UINT)LX_ERROR;
@@ -95,6 +98,8 @@ static UINT fake_read(ULONG* flash_address, ULONG* destination, ULONG words)
 
 /**
  * @brief Write @p words ULONGs from @p source to the backing pointer.
+ * @details Implements the LevelX write callback and consumes one injected
+ * failure before modifying any backing word.
  * @param[in] flash_address Destination pointer into the backing (LevelX cookie).
  * @param[in] source        Source buffer of @p words ULONGs.
  * @param[in] words         Word count.
@@ -105,11 +110,10 @@ static UINT fake_read(ULONG* flash_address, ULONG* destination, ULONG words)
  * @pre @p source covers @p words ULONGs.
  * @post The targeted backing words hold @p source on success.
  * @post No word outside the range is changed.
+ * @note NOR bit-transition rules are LevelX's responsibility in this RAM fake.
  * @since 0.1.0
  */
-/* Signature is fixed by the LevelX driver-write callback type (non-const). */
-/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
-static UINT fake_write(ULONG* flash_address, ULONG* source, ULONG words)
+RA8_INTERNAL static UINT internal_write(ULONG* flash_address, ULONG* source, ULONG words)
 {
   if (flash_address == LX_NULL) {
     return (UINT)LX_ERROR;
@@ -126,9 +130,12 @@ static UINT fake_write(ULONG* flash_address, ULONG* source, ULONG words)
   }
   return (UINT)LX_SUCCESS;
 }
+/* NOLINTEND(readability-non-const-parameter) */
 
 /**
  * @brief Erase one block to the LevelX erased pattern.
+ * @details Converts the validated block index into its backing-array span and
+ * rewrites every word to LevelX's erased sentinel.
  * @param[in] block       Block index.
  * @param[in] erase_count LevelX erase counter (unused).
  * @return `LX_SUCCESS`, or `LX_ERROR` when @p block is out of range.
@@ -138,9 +145,10 @@ static UINT fake_write(ULONG* flash_address, ULONG* source, ULONG words)
  * @pre The backing is static host storage.
  * @post Every word of the block reads as the erased pattern.
  * @post No other block is touched.
+ * @note The vendor-supplied erase counter is intentionally ignored by the fake.
  * @since 0.1.0
  */
-static UINT fake_block_erase(ULONG block, ULONG erase_count)
+RA8_INTERNAL static UINT internal_block_erase(ULONG block, ULONG erase_count)
 {
   LX_PARAMETER_NOT_USED(erase_count);
   if (block >= (ULONG)k_lx_nor_fake_total_blocks) {
@@ -155,6 +163,8 @@ static UINT fake_block_erase(ULONG block, ULONG erase_count)
 
 /**
  * @brief Verify one block is fully erased.
+ * @details Scans the validated block span and fails on the first word that no
+ * longer matches LevelX's erased sentinel.
  * @param[in] block Block index.
  * @return `LX_SUCCESS` when erased, else `LX_ERROR`.
  * @retval 0 Every word matches the erased pattern.
@@ -163,9 +173,10 @@ static UINT fake_block_erase(ULONG block, ULONG erase_count)
  * @pre The backing is static host storage.
  * @post The backing is unmodified.
  * @post A success result means the block may be programmed.
+ * @note The early failure keeps corrupted-block checks bounded by one block.
  * @since 0.1.0
  */
-static UINT fake_block_erased_verify(ULONG block)
+RA8_INTERNAL static UINT internal_block_erased_verify(ULONG block)
 {
   if (block >= (ULONG)k_lx_nor_fake_total_blocks) {
     return (UINT)LX_ERROR;
@@ -187,10 +198,10 @@ unsigned int lx_nor_fake_ram_init(struct LX_NOR_FLASH_STRUCT* nor_flash)
   nor_flash->lx_nor_flash_base_address               = &s_fake_backing[0];
   nor_flash->lx_nor_flash_total_blocks               = (ULONG)k_lx_nor_fake_total_blocks;
   nor_flash->lx_nor_flash_words_per_block            = (ULONG)k_lx_nor_fake_words_per_block;
-  nor_flash->lx_nor_flash_driver_read                = fake_read;
-  nor_flash->lx_nor_flash_driver_write               = fake_write;
-  nor_flash->lx_nor_flash_driver_block_erase         = fake_block_erase;
-  nor_flash->lx_nor_flash_driver_block_erased_verify = fake_block_erased_verify;
+  nor_flash->lx_nor_flash_driver_read                = internal_read;
+  nor_flash->lx_nor_flash_driver_write               = internal_write;
+  nor_flash->lx_nor_flash_driver_block_erase         = internal_block_erase;
+  nor_flash->lx_nor_flash_driver_block_erased_verify = internal_block_erased_verify;
   nor_flash->lx_nor_flash_sector_buffer              = &s_fake_sector_buf[0];
   return (UINT)LX_SUCCESS;
 }

@@ -83,7 +83,9 @@ typedef enum : uint8_t {
  * each register's real RAM value for every register.
  *
  * @pre Called from a host (``RA8_OFF_TARGET`` + ``UNIT_TEST``) test binary.
+ * @pre No fake-MMIO wait is evaluating concurrently.
  * @post No register is armed; the seam is transparent.
+ * @post The optional synchronous poll hook is cleared.
  *
  * @note Not thread-safe. Tests are single-threaded.
  * @since 0.1.0

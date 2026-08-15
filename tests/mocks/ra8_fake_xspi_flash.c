@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmio.h"
 #include "ra8_ospi_regs.h"
@@ -139,6 +140,7 @@ static uint32_t s_fake_xspi_busy_left[k_ra8_xspi_instance_count];
  * @param[in] cdt CDBUF slot-0 CDT descriptor word.
  *
  * @return The transmitted opcode byte.
+ * @retval 0..255 The decoded on-wire opcode value.
  *
  * @pre @p cdt was staged by the driver into CDBUF[0].
  * @pre The CMDSIZE field is 0..2 (masked here regardless).
@@ -148,7 +150,7 @@ static uint32_t s_fake_xspi_busy_left[k_ra8_xspi_instance_count];
  * @note Test-only. Not thread-safe (tests are single-threaded).
  * @since 0.1.0
  */
-static uint8_t internal_fake_xspi_opcode(uint32_t cdt)
+RA8_INTERNAL static uint8_t internal_fake_xspi_opcode(uint32_t cdt)
 {
   const uint32_t cmdsize =
     (cdt >> (uint32_t)k_ra8_xspi_cdt_pos_cmdsize) & (uint32_t)k_ra8_xspi_cdt_mask_cmdsize;
@@ -183,7 +185,7 @@ static uint8_t internal_fake_xspi_opcode(uint32_t cdt)
  * @note Test-only. Not thread-safe (tests are single-threaded).
  * @since 0.1.0
  */
-static void
+RA8_INTERNAL static void
 internal_fake_xspi_read(uint8_t instance, volatile r_xspi_regs_t* reg, uint32_t addr, uint32_t n)
 {
   uint32_t d0 = 0U;
@@ -225,7 +227,7 @@ internal_fake_xspi_read(uint8_t instance, volatile r_xspi_regs_t* reg, uint32_t 
  * @note Test-only. Not thread-safe (tests are single-threaded).
  * @since 0.1.0
  */
-static void
+RA8_INTERNAL static void
 internal_fake_xspi_program(uint8_t instance, volatile r_xspi_regs_t* reg, uint32_t addr, uint32_t n)
 {
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
@@ -267,7 +269,7 @@ internal_fake_xspi_program(uint8_t instance, volatile r_xspi_regs_t* reg, uint32
  * @note Test-only. Not thread-safe (tests are single-threaded).
  * @since 0.1.0
  */
-static void internal_fake_xspi_erase(uint8_t instance, uint32_t addr)
+RA8_INTERNAL static void internal_fake_xspi_erase(uint8_t instance, uint32_t addr)
 {
   const uint32_t base = addr & ~((uint32_t)k_ra8_xspi_sector_len - 1U);
   if (base < (uint32_t)k_ra8_fake_xspi_flash_bytes) {
@@ -301,7 +303,7 @@ static void internal_fake_xspi_erase(uint8_t instance, uint32_t addr)
  * @note Test-only. Not thread-safe (tests are single-threaded).
  * @since 0.1.0
  */
-static void internal_fake_xspi_status(uint8_t instance, volatile r_xspi_regs_t* reg)
+RA8_INTERNAL static void internal_fake_xspi_status(uint8_t instance, volatile r_xspi_regs_t* reg)
 {
   uint32_t status = (uint32_t)k_ra8_fake_xspi_flash_status_idle;
   if (s_fake_xspi_busy_left[instance] > 0U) {
@@ -332,7 +334,7 @@ static void internal_fake_xspi_status(uint8_t instance, volatile r_xspi_regs_t* 
  * @note Test-only. Not thread-safe (tests are single-threaded).
  * @since 0.1.0
  */
-static void internal_fake_xspi_exec(uint8_t instance, volatile r_xspi_regs_t* reg)
+RA8_INTERNAL static void internal_fake_xspi_exec(uint8_t instance, volatile r_xspi_regs_t* reg)
 {
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   const uint32_t cdt = reg->CDBUF[k_ra8_xspi_cdbuf_idx_cdt];
@@ -384,7 +386,7 @@ static void internal_fake_xspi_exec(uint8_t instance, volatile r_xspi_regs_t* re
  * @note Test-only. Not thread-safe (tests are single-threaded).
  * @since 0.1.0
  */
-static void internal_fake_xspi_poll_hook(void)
+RA8_INTERNAL static void internal_fake_xspi_poll_hook(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_xspi_instance_count; i++) {
     volatile r_xspi_regs_t* reg = ra8_xspi(i);
