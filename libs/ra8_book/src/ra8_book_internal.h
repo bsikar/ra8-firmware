@@ -103,6 +103,28 @@ RA8_PRIV ra8_err_t ra8_book_container_header_fields(const uint8_t* hdr,
 RA8_PRIV uint64_t ra8_book_container_table_entry(const uint8_t* table, uint32_t idx);
 
 /**
+ * @brief Extend a finalized CRC-32/ISO-HDLC with another byte span.
+ *
+ * @details Uses the same reflected polynomial and complement convention as
+ *          zlib's @c crc32(): pass 0 for the first span, then feed the returned
+ *          value into each subsequent call. This lets resident and streaming
+ *          validators share one wire-integrity definition without retaining
+ *          the whole RABOOK body.
+ *
+ * @param[in] crc  CRC returned for all preceding spans, or 0 for the first.
+ * @param[in] data Next readable byte span (non-NULL when @p len is non-zero).
+ * @param[in] len  Number of bytes in @p data.
+ *
+ * @return CRC-32/ISO-HDLC over the concatenation of prior and current spans.
+ *
+ * @pre @p data addresses at least @p len readable bytes when @p len is non-zero.
+ * @post No caller memory or global state is modified.
+ * @note Thread-safe: reads only immutable input and a constant lookup table.
+ * @since Version 0.1.0
+ */
+RA8_PRIV uint32_t ra8_book_crc32_extend(uint32_t crc, const uint8_t* data, size_t len);
+
+/**
  * @enum ra8_book_xhtml_bound_t
  * @brief Bounds for the iterative, recursion-free DOM walks (resident + paged).
  * @since Version 0.1.0
