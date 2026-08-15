@@ -634,6 +634,5 @@ int32_t main(void)
   test_aead_round_trip();
   test_aead_tamper_detected();
   test_aead_invalid_args();
-  (void)fprintf(stderr, "[OK  ] test_ra8_psa_crypto_api.c\n");
   return 0;
 }

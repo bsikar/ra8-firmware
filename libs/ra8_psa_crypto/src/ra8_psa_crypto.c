@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -56,7 +57,7 @@
  */
 
 /** @brief Logging tag prefix used by every ``ra8_psa_crypto`` log line. */
-[[maybe_unused]] static const char* const k_ra8_psa_tag = "ra8_psa_crypto";
+[[maybe_unused]] static const char* const s_ra8_psa_tag = "ra8_psa_crypto";
 
 /* =============================================================================
  * Pool state
@@ -79,7 +80,7 @@ static bool s_initialized;
  */
 
 /* Validate that a typed handle points into the static pool -- see implementation for details. */
-static bool internal_handle_valid(ra8_psa_key_t handle)
+RA8_INTERNAL static bool internal_handle_valid(ra8_psa_key_t handle)
 {
   if (handle == nullptr) {
     return false;
@@ -97,7 +98,7 @@ static bool internal_handle_valid(ra8_psa_key_t handle)
  *
  * @return Slot pointer or NULL when the pool is full.
  */
-static struct ra8_psa_key_handle* internal_alloc_slot(void)
+RA8_INTERNAL static struct ra8_psa_key_handle* internal_alloc_slot(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_psa_max_keys; ++i) {
     if (!s_key_pool[i].in_use) {
@@ -121,7 +122,7 @@ ra8_err_t ra8_psa_crypto_init(void)
 #ifndef RA8_OFF_TARGET
   const psa_status_t st = psa_crypto_init();
   if (st != PSA_SUCCESS) {
-    ra8_log_error(k_ra8_psa_tag, "psa_crypto_init failed");
+    ra8_log_error(s_ra8_psa_tag, "psa_crypto_init failed");
     return k_ra8_err_hw_error;
   }
 #endif
@@ -163,7 +164,7 @@ ra8_err_t ra8_psa_crypto_deinit(void)
 #ifndef RA8_OFF_TARGET
 
 /* Translate ``ra8_psa_key_type_t`` to its ``PSA_KEY_TYPE_*`` peer -- see implementation for details. */
-static psa_key_type_t internal_map_key_type(ra8_psa_key_type_t type)
+RA8_INTERNAL static psa_key_type_t internal_map_key_type(ra8_psa_key_type_t type)
 {
   switch (type) {
     case k_ra8_psa_key_type_aes:
@@ -181,7 +182,7 @@ static psa_key_type_t internal_map_key_type(ra8_psa_key_type_t type)
 }
 
 /* Translate ``ra8_psa_alg_t`` to its ``PSA_ALG_*`` peer -- see implementation for details. */
-static psa_algorithm_t internal_map_alg(ra8_psa_alg_t alg)
+RA8_INTERNAL static psa_algorithm_t internal_map_alg(ra8_psa_alg_t alg)
 {
   switch (alg) {
     case k_ra8_psa_alg_aes_gcm:
@@ -197,7 +198,7 @@ static psa_algorithm_t internal_map_alg(ra8_psa_alg_t alg)
 }
 
 /* Translate ``ra8_psa_key_usage_t`` bitmask to ``PSA_KEY_USAGE_*`` flags -- see implementation for details. */
-static psa_key_usage_t internal_map_usage(ra8_psa_key_usage_t usage)
+RA8_INTERNAL static psa_key_usage_t internal_map_usage(ra8_psa_key_usage_t usage)
 {
   psa_key_usage_t out = 0;
   if ((usage & k_ra8_psa_usage_sign) != 0U) {
@@ -219,10 +220,10 @@ static psa_key_usage_t internal_map_usage(ra8_psa_key_usage_t usage)
 }
 
 /* Run the PSA-side import + slot wire-up for ``ra8_psa_key_import`` -- see implementation for details. */
-static ra8_err_t internal_psa_import_into_slot(struct ra8_psa_key_handle* slot,
-                                               const ra8_psa_key_attr_t*  attr,
-                                               const uint8_t*             data,
-                                               size_t                     data_len)
+RA8_INTERNAL static ra8_err_t internal_psa_import_into_slot(struct ra8_psa_key_handle* slot,
+                                                            const ra8_psa_key_attr_t*  attr,
+                                                            const uint8_t*             data,
+                                                            size_t                     data_len)
 {
   psa_key_attributes_t pa = psa_key_attributes_init();
   psa_set_key_type(&pa, internal_map_key_type(attr->type));
@@ -457,17 +458,17 @@ ra8_err_t ra8_psa_verify_hash(ra8_psa_key_t  handle,
 }
 
 /* Shared precondition checks for ``ra8_psa_aead_encrypt`` -- see implementation for details. */
-static ra8_err_t internal_aead_encrypt_check(ra8_psa_key_t  handle,
-                                             ra8_psa_alg_t  alg,
-                                             const uint8_t* nonce,
-                                             size_t         nonce_len,
-                                             const uint8_t* aad,
-                                             size_t         aad_len,
-                                             const uint8_t* plain,
-                                             size_t         plain_len,
-                                             const uint8_t* out,
-                                             size_t         out_cap,
-                                             const size_t*  out_len)
+RA8_INTERNAL static ra8_err_t internal_aead_encrypt_check(ra8_psa_key_t  handle,
+                                                          ra8_psa_alg_t  alg,
+                                                          const uint8_t* nonce,
+                                                          size_t         nonce_len,
+                                                          const uint8_t* aad,
+                                                          size_t         aad_len,
+                                                          const uint8_t* plain,
+                                                          size_t         plain_len,
+                                                          const uint8_t* out,
+                                                          size_t         out_cap,
+                                                          const size_t*  out_len)
 {
   if ((nonce == nullptr) || (out == nullptr) || (out_len == nullptr)) {
     return k_ra8_err_invalid_arg;
@@ -556,18 +557,18 @@ ra8_err_t ra8_psa_aead_encrypt(ra8_psa_key_t  handle,
 }
 
 /* Shared precondition checks for ``ra8_psa_aead_decrypt`` -- see implementation for details. */
-static ra8_err_t internal_aead_decrypt_check(ra8_psa_key_t  handle,
-                                             ra8_psa_alg_t  alg,
-                                             const uint8_t* nonce,
-                                             size_t         nonce_len,
-                                             const uint8_t* aad,
-                                             size_t         aad_len,
-                                             const uint8_t* cipher,
-                                             size_t         cipher_len,
-                                             const uint8_t* out,
-                                             size_t         out_cap,
-                                             const size_t*  out_len,
-                                             size_t*        out_plain_len)
+RA8_INTERNAL static ra8_err_t internal_aead_decrypt_check(ra8_psa_key_t  handle,
+                                                          ra8_psa_alg_t  alg,
+                                                          const uint8_t* nonce,
+                                                          size_t         nonce_len,
+                                                          const uint8_t* aad,
+                                                          size_t         aad_len,
+                                                          const uint8_t* cipher,
+                                                          size_t         cipher_len,
+                                                          const uint8_t* out,
+                                                          size_t         out_cap,
+                                                          const size_t*  out_len,
+                                                          size_t*        out_plain_len)
 {
   if ((nonce == nullptr) || (cipher == nullptr) || (out_len == nullptr)) {
     return k_ra8_err_invalid_arg;
@@ -720,7 +721,7 @@ ra8_err_t ra8_psa_crypto_random(uint8_t* out, size_t out_len)
 #else
   const psa_status_t st = psa_generate_random(out, out_len);
   if (st != PSA_SUCCESS) {
-    ra8_log_error(k_ra8_psa_tag, "psa_generate_random failed");
+    ra8_log_error(s_ra8_psa_tag, "psa_generate_random failed");
     return k_ra8_err_hw_error;
   }
   return k_ra8_ok;
