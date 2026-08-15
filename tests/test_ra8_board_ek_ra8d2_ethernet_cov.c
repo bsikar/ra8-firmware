@@ -220,6 +220,5 @@ int32_t main(void)
 {
   test_eth_phy_hw_reset_gpio_conflict();
   test_eth_route_alt_pins_pfs_conflict();
-  (void)fprintf(stderr, "[OK ] test_ra8_board_ek_ra8d2_ethernet_cov.c\n");
   return 0;
 }

@@ -479,6 +479,5 @@ int32_t main(void)
   test_xspi_pins_init_pfs_conflict();
   test_sdhi_pins_init();
   test_arduino_pin_init_valid_modes();
-  (void)fprintf(stderr, "[OK ] test_ra8_board_ek_ra8d2_cov.c\n");
   return 0;
 }

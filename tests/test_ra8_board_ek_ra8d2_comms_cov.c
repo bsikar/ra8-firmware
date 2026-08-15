@@ -319,6 +319,11 @@ static void test_uart_console_init_pclka_below_minimum(void)
  * @post No clock-generator state changes.
  * @note Single-threaded host test.
  * @since 0.1.0
+ *
+ * @par MC/DC:
+ * `ra8_board_clocks_init` has no compound decision. This test provides the
+ * `out_rates == nullptr -> true` vector; the two nonnull tests below provide
+ * `false`. The N=1 pair proves the null guard controls the return.
  */
 static void test_board_clocks_init_rejects_null(void)
 {
@@ -334,6 +339,11 @@ static void test_board_clocks_init_rejects_null(void)
  * @post The caller-owned output remains unchanged.
  * @note Single-threaded host test.
  * @since 0.1.0
+ *
+ * @par MC/DC:
+ * `ra8_board_clocks_init` has no compound decision. For its CGC result guard,
+ * this test supplies `err != k_ra8_ok -> true`; the successful-rate test
+ * supplies `false`. The N=1 pair proves the error result controls publication.
  */
 static void test_board_clocks_init_propagates_failure(void)
 {
@@ -354,6 +364,11 @@ static void test_board_clocks_init_propagates_failure(void)
  * @post CPUCLK0 and PCLKA match the standard PLL1 clock tree.
  * @note Single-threaded host test.
  * @since 0.1.0
+ *
+ * @par MC/DC:
+ * `ra8_board_clocks_init` has no compound decision. Nonnull output supplies the
+ * false null-guard vector, and `err == k_ra8_ok` supplies the false error-guard
+ * vector; the two preceding tests supply the corresponding true vectors.
  */
 static void test_board_clocks_init_publishes_rates(void)
 {
@@ -605,6 +620,5 @@ int32_t main(void)
   test_uart_console_init_rxd_pin_conflict();
   test_uart_console_read_no_byte_available();
   test_uart_console_read_byte_available();
-  (void)fprintf(stderr, "[OK ] test_ra8_board_ek_ra8d2_comms_cov.c\n");
   return 0;
 }

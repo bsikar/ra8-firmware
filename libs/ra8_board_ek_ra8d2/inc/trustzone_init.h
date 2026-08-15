@@ -2,6 +2,8 @@
  * @file libs/ra8_board_ek_ra8d2/inc/trustzone_init.h
  * @brief Cortex-M85 TrustZone-M SAU bring-up entry point
  * @ingroup grp_board
+ * @details Declares the board composition hook that programs the validated
+ * EK-RA8D2 secure attribution map before non-secure execution begins.
  *
  * @par Tag
  * [Ring 1 / Boot] {World: S}

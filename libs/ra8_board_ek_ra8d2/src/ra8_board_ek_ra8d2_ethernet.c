@@ -205,7 +205,7 @@ RA8_INTERNAL static ra8_err_t internal_eth_route_alt_pins(void)
 
   /* RGMII transmit pins need DSCR = 01b middle drive strength. */
   /* HUM Ch 20.2.6 "PmnPFS" p 845 */
-  static const uint16_t s_eth_tx_pins[] = {
+  static const uint16_t k_eth_tx_pins[] = {
     (uint16_t)k_ra8_board_eth_pin_txd0,
     (uint16_t)k_ra8_board_eth_pin_txd1,
     (uint16_t)k_ra8_board_eth_pin_txd2,
@@ -213,9 +213,9 @@ RA8_INTERNAL static ra8_err_t internal_eth_route_alt_pins(void)
     (uint16_t)k_ra8_board_eth_pin_tx_ctl,
     (uint16_t)k_ra8_board_eth_pin_tx_clk,
   };
-  for (uint32_t i = 0U; i < sizeof(s_eth_tx_pins) / sizeof(s_eth_tx_pins[0]); ++i) {
+  for (uint32_t i = 0U; i < sizeof(k_eth_tx_pins) / sizeof(k_eth_tx_pins[0]); ++i) {
     const ra8_err_t err =
-      ra8_pfs_set_drive_strength((ra8_port_pin_t)s_eth_tx_pins[i], k_ra8_pfs_dscr_middle);
+      ra8_pfs_set_drive_strength((ra8_port_pin_t)k_eth_tx_pins[i], k_ra8_pfs_dscr_middle);
     if (err != k_ra8_ok) {
       /* ra8_pfs_set_drive_strength on valid mapped tx pins always returns k_ra8_ok off-target. */
       return err; /* GCOVR_EXCL_LINE */
@@ -322,12 +322,12 @@ RA8_INTERNAL static ra8_err_t internal_eth_etha_to_config(void)
     /* ra8_etha_init returns k_ra8_ok with a valid port (1) and non-null cfg off-target. */
     return err; /* GCOVR_EXCL_LINE */
   }
-  static const ra8_etha_opc_t s_chain[] = {
+  static const ra8_etha_opc_t k_chain[] = {
     k_ra8_etha_opc_disable,
     k_ra8_etha_opc_config,
   };
-  for (uint8_t step = 0U; step < (uint8_t)(sizeof(s_chain) / sizeof(s_chain[0])); ++step) {
-    err = ra8_etha_set_mode((ra8_etha_port_t)k_ra8_board_eth_etha_port, s_chain[step]);
+  for (uint8_t step = 0U; step < (uint8_t)(sizeof(k_chain) / sizeof(k_chain[0])); ++step) {
+    err = ra8_etha_set_mode((ra8_etha_port_t)k_ra8_board_eth_etha_port, k_chain[step]);
     if (err != k_ra8_ok) {
       /* ra8_etha_set_mode returns k_ra8_ok in RA8_OFF_TARGET with a valid port and mode. */
       return err; /* GCOVR_EXCL_LINE */

@@ -280,7 +280,7 @@ ra8_err_t ra8_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
  */
 
 /**
- * @var s_usbhs_probe
+ * @var g_usbhs_probe
  * @brief Temporary bisect probe for USBHS bring-up HardFault.
  *
  * @details
@@ -295,11 +295,11 @@ ra8_err_t ra8_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
  * @note File-scope, single-writer (worker thread).
  * @since 0.1.0
  */
-volatile uint32_t s_usbhs_probe = 0U;
+volatile uint32_t g_usbhs_probe = 0U;
 
 /**
  * @enum usbhs_probe_step_t
- * @brief Bisect-probe step values for s_usbhs_probe.
+ * @brief Bisect-probe step values for g_usbhs_probe.
  */
 typedef enum : uint32_t {
   k_usbhs_probe_pre_pll_enable    = 1U, /**< before ra8_cgc_usbhs_pll_enable. */
@@ -338,7 +338,7 @@ typedef enum : uint32_t {
  */
 RA8_INTERNAL static ra8_err_t internal_usbhs_clock_and_mstp(void)
 {
-  s_usbhs_probe = (uint32_t)k_usbhs_probe_pre_pll_enable;
+  g_usbhs_probe = (uint32_t)k_usbhs_probe_pre_pll_enable;
   ra8_err_t err = ra8_cgc_usbhs_pll_enable();
   if (err != k_ra8_ok) {
     return err;
@@ -348,7 +348,7 @@ RA8_INTERNAL static ra8_err_t internal_usbhs_clock_and_mstp(void)
    * peripherals. ra8_mstp_init must run exactly once per boot, before
    * any peripheral is brought up; the boot-time path handles that.
    * ra8_mstp_enable below uses the existing ref-counted state. */
-  s_usbhs_probe = (uint32_t)k_usbhs_probe_pre_mstp_enable;
+  g_usbhs_probe = (uint32_t)k_usbhs_probe_pre_mstp_enable;
   return ra8_mstp_enable(k_ra8_mstp_usbhs);
 }
 
@@ -428,9 +428,9 @@ typedef enum : uint8_t {
  * + ra8_i3c_i2c (I3C) wiring talked on the wrong peripheral, which is why
  * every U15 access timed out.
  */
-static const ra8_port_pin_t k_ra8_board_io_expander_pin_scl =
+static const ra8_port_pin_t s_ra8_board_io_expander_pin_scl =
   (ra8_port_pin_t)RA8_PIN(k_ra8_port_5, k_ra8_pin_12); /**< SCL1 (P512). */
-static const ra8_port_pin_t k_ra8_board_io_expander_pin_sda =
+static const ra8_port_pin_t s_ra8_board_io_expander_pin_sda =
   (ra8_port_pin_t)RA8_PIN(k_ra8_port_5, k_ra8_pin_11); /**< SDA1 (P511). */
 
 /**
@@ -445,9 +445,9 @@ static const ra8_port_pin_t k_ra8_board_io_expander_pin_sda =
  * U15 (and every other I2C peripheral) cannot ACK -- the symptom that
  * made every RIIC1 transaction time out.
  */
-static const ra8_port_pin_t k_ra8_board_io_expander_pin_pullup_a =
+static const ra8_port_pin_t s_ra8_board_io_expander_pin_pullup_a =
   (ra8_port_pin_t)RA8_PIN(k_ra8_port_1, k_ra8_pin_9); /**< P109 pull-up enable. */
-static const ra8_port_pin_t k_ra8_board_io_expander_pin_pullup_b =
+static const ra8_port_pin_t s_ra8_board_io_expander_pin_pullup_b =
   (ra8_port_pin_t)RA8_PIN(k_ra8_port_3, k_ra8_pin_11); /**< P311 pull-up enable. */
 
 /** @brief Bit-bang bus-recovery tunables for the system I2C bus. */
@@ -478,7 +478,7 @@ RA8_INTERNAL static ra8_err_t internal_io_expander_write_reg(uint8_t reg, uint8_
  * @details
  * JLink-readable counter that records the last step the U15 bring-up
  * function reached before either succeeding or returning an error.
- * Mirrors the s_usbhs_probe pattern used by internal_usbhs_clock_and_mstp.
+ * Mirrors the g_usbhs_probe pattern used by internal_usbhs_clock_and_mstp.
  *
  * Step values:
  *   1 = pre-PFS (entered function, before SCL/SDA route)
@@ -547,8 +547,8 @@ RA8_INTERNAL static void internal_io_expander_bus_settle(void)
  */
 RA8_INTERNAL static ra8_err_t internal_io_expander_bus_recover(void)
 {
-  const ra8_port_pin_t scl = k_ra8_board_io_expander_pin_scl;
-  const ra8_port_pin_t sda = k_ra8_board_io_expander_pin_sda;
+  const ra8_port_pin_t scl = s_ra8_board_io_expander_pin_scl;
+  const ra8_port_pin_t sda = s_ra8_board_io_expander_pin_sda;
   ra8_err_t            err = ra8_gpio_output_init(scl, k_ra8_level_high);
   if (err != k_ra8_ok) {
     return err;
@@ -602,11 +602,11 @@ RA8_INTERNAL static ra8_err_t internal_io_expander_bus_recover(void)
  */
 RA8_INTERNAL static ra8_err_t internal_io_expander_enable_pullups(void)
 {
-  ra8_err_t err = ra8_gpio_output_init(k_ra8_board_io_expander_pin_pullup_a, k_ra8_level_high);
+  ra8_err_t err = ra8_gpio_output_init(s_ra8_board_io_expander_pin_pullup_a, k_ra8_level_high);
   if (err != k_ra8_ok) {
     return err;
   }
-  return ra8_gpio_output_init(k_ra8_board_io_expander_pin_pullup_b, k_ra8_level_high);
+  return ra8_gpio_output_init(s_ra8_board_io_expander_pin_pullup_b, k_ra8_level_high);
 }
 
 /**
@@ -624,7 +624,7 @@ RA8_INTERNAL static ra8_err_t internal_io_expander_enable_pullups(void)
  */
 RA8_INTERNAL static ra8_err_t internal_io_expander_route_pins(void)
 {
-  ra8_err_t err = ra8_pfs_route_peripheral(k_ra8_board_io_expander_pin_scl,
+  ra8_err_t err = ra8_pfs_route_peripheral(s_ra8_board_io_expander_pin_scl,
                                            k_ra8_psel_iic,
                                            "ra8_board.io_exp.scl1");
   if (err != k_ra8_ok) {
@@ -634,7 +634,7 @@ RA8_INTERNAL static ra8_err_t internal_io_expander_route_pins(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  err = ra8_pfs_route_peripheral(k_ra8_board_io_expander_pin_sda,
+  err = ra8_pfs_route_peripheral(s_ra8_board_io_expander_pin_sda,
                                  k_ra8_psel_iic,
                                  "ra8_board.io_exp.sda1");
   if (err != k_ra8_ok) {
@@ -839,7 +839,7 @@ ra8_err_t ra8_board_io_expander_set_octospi_active(void)
 }
 
 /**
- * @var s_usbhs_role_pin_probe
+ * @var g_usbhs_role_pin_probe
  * @brief Bisect-probe progress counter for the PD07 USB-HS role-select drive.
  *
  * @details
@@ -854,23 +854,23 @@ ra8_err_t ra8_board_io_expander_set_octospi_active(void)
  * Step values:
  *   0 = not yet entered
  *   1 = pre ra8_gpio_output_init(PD07, low)
- *   2 = output-init returned (success or failure recorded in s_usbhs_role_pin_err)
+ *   2 = output-init returned (success or failure recorded in g_usbhs_role_pin_err)
  *   3 = drive confirmed (gpio_init returned k_ra8_ok)
  *
  * @since 0.1.0
  */
-volatile uint32_t s_usbhs_role_pin_probe = 0U;
+volatile uint32_t g_usbhs_role_pin_probe = 0U;
 
 /**
- * @var s_usbhs_role_pin_err
+ * @var g_usbhs_role_pin_err
  * @brief Last ra8_err_t returned by the PD07 GPIO drive (0 = k_ra8_ok).
  * @details JLink-readable so the bench operator can disambiguate a pin
  *          conflict from a port-mux failure.
  * @since 0.1.0
  */
-volatile uint32_t s_usbhs_role_pin_err = 0U;
+volatile uint32_t g_usbhs_role_pin_err = 0U;
 
-/** @brief Probe step values for s_usbhs_role_pin_probe. */
+/** @brief Probe step values for g_usbhs_role_pin_probe. */
 typedef enum : uint32_t {
   k_usbhs_role_probe_pre_init  = 1U, /**< Usbhs role probe pre init.  */
   k_usbhs_role_probe_post_init = 2U, /**< Usbhs role probe post init. */
@@ -891,14 +891,14 @@ typedef enum : uint32_t {
  * @pre IOPORT module clock is on (always-on after reset).
  * @pre Pin validator initialized.
  * @post On success, PD07 is GPIO-output low and owned by GPIO tag.
- * @post On any return, s_usbhs_role_pin_probe is updated and
- *       s_usbhs_role_pin_err records the gpio-init result.
+ * @post On any return, g_usbhs_role_pin_probe is updated and
+ *       g_usbhs_role_pin_err records the gpio-init result.
  * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t internal_usbhs_role_select_device(void)
 {
-  s_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_pre_init;
+  g_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_pre_init;
   /* PD07 (port 13, pin 7). The ra8_port_pin_t enum only pre-defines LED
    * pins, so any other packed value lands outside the enumerator set
    * and trips clang-analyzer EnumCastOutOfRange; suppress in the same
@@ -907,10 +907,10 @@ RA8_INTERNAL static ra8_err_t internal_usbhs_role_select_device(void)
   const ra8_port_pin_t pd07 = (ra8_port_pin_t)RA8_PIN(k_ra8_port_13, k_ra8_pin_7);
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   const ra8_err_t err    = ra8_gpio_output_init(pd07, k_ra8_level_low);
-  s_usbhs_role_pin_err   = (uint32_t)err;
-  s_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_post_init;
+  g_usbhs_role_pin_err   = (uint32_t)err;
+  g_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_post_init;
   if (err == k_ra8_ok) {
-    s_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_success;
+    g_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_success;
   }
   return err;
 }
@@ -945,9 +945,9 @@ ra8_err_t ra8_board_usbhs_device_init(void)
   if (err != k_ra8_ok) {
     return err;
   }
-  s_usbhs_probe    = (uint32_t)k_usbhs_probe_pre_usb_dev_init;
+  g_usbhs_probe    = (uint32_t)k_usbhs_probe_pre_usb_dev_init;
   ra8_err_t rc_dev = ra8_usb_device_init(k_ra8_usb_speed_hs);
-  s_usbhs_probe    = (uint32_t)k_usbhs_probe_post_usb_dev_init;
+  g_usbhs_probe    = (uint32_t)k_usbhs_probe_post_usb_dev_init;
   return rc_dev;
 }
 

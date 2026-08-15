@@ -420,7 +420,7 @@ const uint32_t g_ra8_board_glcdc_rgb565_pin_count =
  * @note Init-time helper; single-threaded.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool ra8_board_glcdc_signal_starts_with(const char* s, const char* prefix)
+RA8_INTERNAL static bool internal_glcdc_signal_starts_with(const char* s, const char* prefix)
 {
   for (uint32_t i = 0U; i < 4U; i++) { /* longest prefix here is "TCON" = 4. */
     if (prefix[i] == '\0') {
@@ -454,7 +454,7 @@ RA8_INTERNAL static bool ra8_board_glcdc_signal_starts_with(const char* s, const
  * @note Init-time helper; single-threaded.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool ra8_board_glcdc_signal_is_color_data(const char* signal)
+RA8_INTERNAL static bool internal_glcdc_signal_is_color_data(const char* signal)
 {
   /* Match R0..R9 / G0..G9 / B0..B9; digit in [1] excludes BLEN. */
   const char c0 = signal[0];
@@ -498,15 +498,15 @@ RA8_INTERNAL static bool ra8_board_glcdc_signal_is_color_data(const char* signal
  * @note Single-threaded init-time helper.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool ra8_board_glcdc_signal_is_output(const char* signal)
+RA8_INTERNAL static bool internal_glcdc_signal_is_output(const char* signal)
 {
-  if (ra8_board_glcdc_signal_starts_with(signal, "TCON")) {
+  if (internal_glcdc_signal_starts_with(signal, "TCON")) {
     return true;
   }
-  if (ra8_board_glcdc_signal_starts_with(signal, "CLK")) {
+  if (internal_glcdc_signal_starts_with(signal, "CLK")) {
     return true;
   }
-  return ra8_board_glcdc_signal_is_color_data(signal);
+  return internal_glcdc_signal_is_color_data(signal);
 }
 
 /**
@@ -520,7 +520,7 @@ RA8_INTERNAL static bool ra8_board_glcdc_signal_is_output(const char* signal)
  * @param[in] pin J1 pin already validated to be a GLCDC output.
  *
  * @pre Caller has confirmed the pin is a GLCDC output via
- *      ``ra8_board_glcdc_signal_is_output``.
+ *      ``internal_glcdc_signal_is_output``.
  * @pre IOPORT module is powered (true at reset).
  * @post PFS = (psel_glcdc << 24) | PMR | PDR for the target pin.
  * @post PWPR is left in its locked state.
@@ -528,7 +528,7 @@ RA8_INTERNAL static bool ra8_board_glcdc_signal_is_output(const char* signal)
  * @note Single-threaded init context only.
  * @since 0.1.0
  */
-RA8_INTERNAL static void ra8_board_glcdc_force_pin_output(ra8_port_pin_t pin)
+RA8_INTERNAL static void internal_glcdc_force_pin_output(ra8_port_pin_t pin)
 {
   enum : uint32_t {
     k_pfs_psel_shift = 24U,      /**< PFS psel shift. */
@@ -570,7 +570,7 @@ ra8_err_t ra8_board_glcdc_init(ra8_board_glcdc_fmt_t fmt)
   }
 
   for (uint32_t i = 0U; i < count; ++i) {
-    if (!ra8_board_glcdc_signal_is_output(table[i].signal)) {
+    if (!internal_glcdc_signal_is_output(table[i].signal)) {
       continue; /* GPIO/I2C/clock-input -- not a GLCDC peripheral pin. */
     }
     const ra8_err_t err =
@@ -581,7 +581,7 @@ ra8_err_t ra8_board_glcdc_init(ra8_board_glcdc_fmt_t fmt)
     /* Override PFS with PSEL + PMR + PDR=1 so the chip drives the
      * pin as an output instead of leaving it as an input under
      * peripheral control. */
-    ra8_board_glcdc_force_pin_output(table[i].pin);
+    internal_glcdc_force_pin_output(table[i].pin);
   }
   return k_ra8_ok;
 }
