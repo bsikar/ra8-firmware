@@ -105,7 +105,7 @@ static const uint32_t s_ra8_book_crc_table[k_ra8_book_crc_table_len] = {
 };
 
 /**
- * @brief Implementation of `ra8_book_crc32()` -- table-driven reflected CRC-32.
+ * @brief Extend a table-driven reflected CRC-32 over one byte span.
  *
  * @details
  * Computes a CRC-32/ISO-HDLC (reflected polynomial 0xEDB88320) over the byte
@@ -116,12 +116,13 @@ static const uint32_t s_ra8_book_crc_table[k_ra8_book_crc_table_len] = {
  * @ref k_ra8_book_crc_init again to produce the standard CRC-32 result. The
  * check value over "123456789" is 0xCBF43926, matching Python `zlib.crc32`.
  *
- * @param[in] data  Pointer to the byte array to checksum; must not be NULL.
- * @param[in] len   Number of bytes to process; 0 produces 0x00000000.
+ * @param[in] crc Previous finalized CRC value; use zero for the first span.
+ * @param[in] data Pointer to the byte array to checksum; must not be NULL.
+ * @param[in] len Number of bytes to process; zero preserves @p crc.
  *
- * @return uint32_t CRC-32 of the input byte array.
- * @retval 0x00000000  Returned when @p len is 0 (empty input).
- * @retval 0xCBF43926  Check value for the ASCII string "123456789".
+ * @return CRC-32 after extending @p crc with @p data.
+ * @retval 0x00000000 Returned for an empty first span.
+ * @retval 0xCBF43926 Check value for the ASCII string "123456789".
  *
  * @pre @p data is not NULL when @p len is greater than 0.
  * @pre @p len does not exceed the size of the allocation pointed to by @p data.

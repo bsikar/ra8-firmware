@@ -1077,7 +1077,6 @@ gzip_file(const char* in_path, const char* out_path, mdl_export_workspace_t* ws)
   return ok ? k_ra8_ok : k_ra8_fail;
 }
 
-/** @brief Write a CBZ (STORE ZIP) via the vendored miniz writer. */
 /**
  * @brief Test whether an snprintf result fully fit its buffer
  * @details Rejects encoding errors and results equal to capacity because the

@@ -100,6 +100,9 @@ FILE_FLOOR = 700
 # Every ownership decision depends on this oracle, so it has its own floor.
 OWNER_FLOOR = 340
 
+# Program name plus the one accepted selftest option.
+SELFTEST_ARG_COUNT = 2
+
 
 def _excluded(path: Path) -> bool:
     """Whether ``path`` is build output, SOUP, or generated font data."""
@@ -159,9 +162,7 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
         for suffix in SOURCE_SUFFIXES:
             candidates.extend(LIBS_ROOT.rglob("*" + suffix))
     return sorted(
-        path
-        for path in candidates
-        if path.is_relative_to(LIBS_ROOT) and not _excluded(path)
+        path for path in candidates if path.is_relative_to(LIBS_ROOT) and not _excluded(path)
     )
 
 
@@ -199,9 +200,7 @@ def _scan_text(
                 ("CROSS_INTERNAL", rel_path, lineno, included, tuple(sorted(other_owners)))
             )
 
-        device_owners = tuple(
-            sorted(owner for owner in other_owners if _is_device_module(owner))
-        )
+        device_owners = tuple(sorted(owner for owner in other_owners if _is_device_module(owner)))
         if is_domain and device_owners:
             findings.append(("DOMAIN_DEVICE", rel_path, lineno, included, device_owners))
 
@@ -265,7 +264,7 @@ def _selftest() -> int:
         "Domain dependency on a device contract fires",
         failures,
     )
-    hosted = _scan_text('#include <dirent.h>\n', "libs/ra8_book/x.c", "ra8_book", owners)
+    hosted = _scan_text("#include <dirent.h>\n", "libs/ra8_book/x.c", "ra8_book", owners)
     expect(
         any(finding[0] == "HOSTED_LIB" for finding in hosted),
         "hosted filesystem header in a library fires",
@@ -317,7 +316,7 @@ def _report(findings: list[tuple[str, str, int, str, tuple[str, ...]]]) -> None:
 
 def main(argv: list[str]) -> int:
     """Scan first-party libraries, or run the detector's bidirectional selftest."""
-    if len(argv) == 2 and argv[1] == "--selftest":
+    if len(argv) == SELFTEST_ARG_COUNT and argv[1] == "--selftest":
         return _selftest()
     if "--selftest" in argv[1:]:
         print("check_core_layering.py: --selftest accepts no paths", file=sys.stderr)
@@ -349,13 +348,12 @@ def main(argv: list[str]) -> int:
     findings = _scan_targets(targets, owners)
     if findings:
         _report(findings)
-        return 1
-
-    print(
-        f"check_core_layering.py: {len(targets)} library file(s) scanned; "
-        "foundation, module privacy, Domain/device, and hosted-API boundaries are clean."
-    )
-    return 0
+    else:
+        print(
+            f"check_core_layering.py: {len(targets)} library file(s) scanned; "
+            "foundation, module privacy, Domain/device, and hosted-API boundaries are clean."
+        )
+    return int(bool(findings))
 
 
 if __name__ == "__main__":

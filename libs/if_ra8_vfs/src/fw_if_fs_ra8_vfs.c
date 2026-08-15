@@ -31,8 +31,26 @@
 
 /** @brief Bounded attempts to find an unused short staging name. */
 typedef enum : uint8_t {
-  k_vfs_stage_attempts = 64U,
+  k_vfs_hex_nibble_bits  = 4U, /**< Bits represented by one hex digit. */
+  k_vfs_stage_hex_digits = 6U, /**< Hex digits in a stage identifier.  */
+  /** @brief Highest valid index in a stage identifier. */
+  k_vfs_hex_last_digit  = k_vfs_stage_hex_digits - 1U,
+  k_vfs_hex_nibble_mask = 0x0FU, /**< Low-nibble mask.      */
+  k_vfs_stage_attempts  = 64U,   /**< Collision-search cap. */
 } vfs_stage_limits_t;
+
+/** @brief Portable-path limits exposed by the FAT/exFAT adapter. */
+typedef enum : uint16_t {
+  k_vfs_stage_leaf_bytes     = 12U,  /**< `TX` + six hex digits + `.TMP`. */
+  k_vfs_exfat_name_max_bytes = 192U, /**< exFAT component byte cap.       */
+  k_vfs_fat_name_max_bytes   = 510U, /**< FAT LFN component byte cap.     */
+} vfs_path_limits_t;
+
+/** @brief Timestamp and transaction arithmetic constants. */
+typedef enum : uint32_t {
+  k_vfs_nanoseconds_per_centisecond = 10000000U,   /**< Nanoseconds in 0.01 s.  */
+  k_vfs_transaction_id_mask         = 0x00FFFFFFU, /**< Six hexadecimal digits. */
+} vfs_numeric_limits_t;
 
 /** @brief Backend state stored in a caller's file workspace. */
 typedef struct {
@@ -66,7 +84,8 @@ static fw_fs_timestamp_t internal_timestamp(const ra8_fs_timestamp_t* native)
 {
   fw_fs_timestamp_t portable = {};
   if (native->valid) {
-    portable.value.nanosecond     = (uint32_t)native->value.centisecond * 10000000UL;
+    portable.value.nanosecond =
+      (uint32_t)native->value.centisecond * k_vfs_nanoseconds_per_centisecond;
     portable.value.year           = native->value.year;
     portable.value.utc_offset_min = native->value.utc_offset_min;
     portable.value.month          = native->value.month;
@@ -387,12 +406,13 @@ static ra8_err_t internal_copy_path(char* out, const char* path)
 }
 
 /** @brief Render a six-digit hexadecimal transaction id. */
-static void internal_hex6(char out[6], uint32_t value)
+static void internal_hex6(char out[k_vfs_stage_hex_digits], uint32_t value)
 {
   static const char digits[] = "0123456789ABCDEF";
-  for (uint8_t i = 0U; i < 6U; ++i) {
-    const uint8_t shift = (uint8_t)((5U - i) * 4U);
-    out[i]              = digits[(value >> shift) & 0x0FU];
+  for (uint8_t i = 0U; i < (uint8_t)k_vfs_stage_hex_digits; ++i) {
+    const uint8_t shift =
+      (uint8_t)(((uint8_t)k_vfs_hex_last_digit - i) * (uint8_t)k_vfs_hex_nibble_bits);
+    out[i] = digits[(value >> shift) & (uint32_t)k_vfs_hex_nibble_mask];
   }
 }
 
@@ -414,7 +434,7 @@ static ra8_err_t internal_stage_path(const char* destination, uint32_t id, char*
   if (length >= (uint16_t)k_fw_fs_path_cap) {
     return k_ra8_err_invalid_size;
   }
-  const uint16_t stage_length = (uint16_t)(last_slash + 1U + 12U);
+  const uint16_t stage_length = (uint16_t)(last_slash + 1U + k_vfs_stage_leaf_bytes);
   if (stage_length >= (uint16_t)k_fw_fs_path_cap) {
     return k_ra8_err_invalid_size;
   }
@@ -424,8 +444,8 @@ static ra8_err_t internal_stage_path(const char* destination, uint32_t id, char*
   uint16_t cursor = (uint16_t)(last_slash + 1U);
   out[cursor++]   = 'T';
   out[cursor++]   = 'X';
-  internal_hex6(&out[cursor], id & 0x00FFFFFFUL);
-  cursor        = (uint16_t)(cursor + 6U);
+  internal_hex6(&out[cursor], id & k_vfs_transaction_id_mask);
+  cursor        = (uint16_t)(cursor + k_vfs_stage_hex_digits);
   out[cursor++] = '.';
   out[cursor++] = 'T';
   out[cursor++] = 'M';
@@ -692,9 +712,10 @@ fw_fs_ra8_vfs_init(fw_fs_t* out, fw_fs_ra8_vfs_state_t* state, const fw_fs_ra8_v
     .file_workspace_bytes        = sizeof(vfs_file_state_t),
     .transaction_workspace_bytes = sizeof(vfs_transaction_state_t),
     .path_max_bytes              = (uint16_t)k_fw_fs_path_cap,
-    .name_max_bytes              = (cfg->mount->type == k_ra8_fs_type_exfat) ? 192U : 510U,
-    .max_open_files              = (uint16_t)k_ra8_fs_max_files,
-    .file_workspace_align        = (uint8_t)_Alignof(vfs_file_state_t),
+    .name_max_bytes       = (cfg->mount->type == k_ra8_fs_type_exfat) ? k_vfs_exfat_name_max_bytes
+                                                                      : k_vfs_fat_name_max_bytes,
+    .max_open_files       = (uint16_t)k_ra8_fs_max_files,
+    .file_workspace_align = (uint8_t)_Alignof(vfs_file_state_t),
     .transaction_workspace_align = (uint8_t)_Alignof(vfs_transaction_state_t),
   };
   caps.flags |= (uint32_t)k_fw_fs_cap_created_time | (uint32_t)k_fw_fs_cap_modified_time |

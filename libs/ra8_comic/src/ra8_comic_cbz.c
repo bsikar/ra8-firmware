@@ -117,6 +117,7 @@ static size_t internal_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, 
  * @details Both host and target use the same caller-owned workspace. This keeps
  *          allocator behaviour test-equivalent and permits independent live
  *          CBZ and EPUB objects.
+ * @param[in,out] c Comic object that owns the private miniz arena.
  * @param[in,out] zip Inline archive to configure (must be zeroed first).
  * @pre @p zip addresses the comic's zeroed inline storage.
  * @pre Called before `mz_zip_reader_init`.
