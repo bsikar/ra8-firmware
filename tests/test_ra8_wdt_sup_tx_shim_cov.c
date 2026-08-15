@@ -36,7 +36,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_wdt_sup_tx_shim_internal.h"
 #include "unity_minimal.h"
@@ -149,6 +148,5 @@ int32_t main(void)
   test_tx_thread_sleep_zero_ticks();
   test_tx_thread_sleep_nonzero_ticks();
   test_tx_time_get_returns_zero();
-  (void)fprintf(stderr, "[OK  ] test_ra8_wdt_sup_tx_shim_cov.c\n");
   return 0;
 }

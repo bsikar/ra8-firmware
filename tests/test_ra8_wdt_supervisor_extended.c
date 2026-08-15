@@ -1,13 +1,13 @@
 /**
  * @file test_ra8_wdt_supervisor_extended.c
  * @brief Extended unit tests for libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c
+ * @details Targets supervisor capacity, duplicate registration, wraparound, disabled-task, and additional deadline branches.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_err.h"
 #include "ra8_wdt_supervisor.h"
@@ -638,6 +638,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK  ] test_ra8_wdt_supervisor_extended.c\n");
   return 0;
 }

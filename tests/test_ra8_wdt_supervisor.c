@@ -1,13 +1,13 @@
 /**
  * @file test_ra8_wdt_supervisor.c
  * @brief Unit tests + MC/DC vectors for libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c
+ * @details Exercises task registration, heartbeat deadlines, watchdog refresh policy, and missed-task detection with deterministic time.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_err.h"
 #include "ra8_wdt_supervisor.h"
@@ -181,6 +181,5 @@ int32_t main(void)
 {
   test_mcdc_supervisor_tick_will_refresh();
   test_mcdc_supervisor_tick_invoke_refresh();
-  (void)fprintf(stderr, "[OK ] test_ra8_wdt_supervisor.c\n");
   return 0;
 }

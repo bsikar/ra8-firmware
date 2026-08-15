@@ -26,6 +26,29 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
+/* Preserve ThreadX source spellings while keeping host-only implementations
+ * honestly file-local under the repository's private naming contract. */
+/** @def tx_mutex_create Host-source alias for the file-local mutex-create stub. */
+#define tx_mutex_create internal_tx_mutex_create
+/** @def tx_mutex_get Host-source alias for the file-local mutex-lock stub. */
+#define tx_mutex_get internal_tx_mutex_get
+/** @def tx_mutex_put Host-source alias for the file-local mutex-unlock stub. */
+#define tx_mutex_put internal_tx_mutex_put
+/** @def tx_mutex_delete Host-source alias for the file-local mutex-delete stub. */
+#define tx_mutex_delete internal_tx_mutex_delete
+/** @def tx_thread_create Host-source alias for the file-local thread-create stub. */
+#define tx_thread_create internal_tx_thread_create
+/** @def tx_thread_terminate Host-source alias for the file-local thread-terminate stub. */
+#define tx_thread_terminate internal_tx_thread_terminate
+/** @def tx_thread_delete Host-source alias for the file-local thread-delete stub. */
+#define tx_thread_delete internal_tx_thread_delete
+/** @def tx_thread_sleep Host-source alias for the file-local thread-sleep stub. */
+#define tx_thread_sleep internal_tx_thread_sleep
+/** @def tx_time_get Host-source alias for the file-local time-query stub. */
+#define tx_time_get internal_tx_time_get
+
 /* The five ThreadX type aliases (ULONG, UINT, CHAR, TX_MUTEX, TX_THREAD)
  * intentionally violate the project's lower_case typedef rule because
  * they MUST mirror the real ThreadX ``tx_api.h`` spelling: this header
@@ -112,7 +135,7 @@ typedef struct {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline UINT tx_mutex_create(TX_MUTEX* m, CHAR* name, UINT inherit)
+RA8_INTERNAL static inline UINT internal_tx_mutex_create(TX_MUTEX* m, CHAR* name, UINT inherit)
 {
   (void)name;
   (void)inherit;
@@ -138,7 +161,7 @@ static inline UINT tx_mutex_create(TX_MUTEX* m, CHAR* name, UINT inherit)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline UINT tx_mutex_get(TX_MUTEX* m, ULONG wait)
+RA8_INTERNAL static inline UINT internal_tx_mutex_get(TX_MUTEX* m, ULONG wait)
 {
   (void)m;
   (void)wait;
@@ -159,7 +182,7 @@ static inline UINT tx_mutex_get(TX_MUTEX* m, ULONG wait)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline UINT tx_mutex_put(TX_MUTEX* m)
+RA8_INTERNAL static inline UINT internal_tx_mutex_put(TX_MUTEX* m)
 {
   (void)m;
   return TX_SUCCESS;
@@ -179,7 +202,7 @@ static inline UINT tx_mutex_put(TX_MUTEX* m)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline UINT tx_mutex_delete(TX_MUTEX* m)
+RA8_INTERNAL static inline UINT internal_tx_mutex_delete(TX_MUTEX* m)
 {
   (void)m;
   return TX_SUCCESS;
@@ -209,16 +232,16 @@ static inline UINT tx_mutex_delete(TX_MUTEX* m)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline UINT tx_thread_create(TX_THREAD* t,
-                                    CHAR*      name,
-                                    void (*entry)(ULONG),
-                                    ULONG arg,
-                                    void* stack,
-                                    ULONG stack_size,
-                                    UINT  prio,
-                                    UINT  preempt_thresh,
-                                    UINT  slice,
-                                    UINT  autostart)
+RA8_INTERNAL static inline UINT internal_tx_thread_create(TX_THREAD* t,
+                                                          CHAR*      name,
+                                                          void (*entry)(ULONG),
+                                                          ULONG arg,
+                                                          void* stack,
+                                                          ULONG stack_size,
+                                                          UINT  prio,
+                                                          UINT  preempt_thresh,
+                                                          UINT  slice,
+                                                          UINT  autostart)
 {
   (void)name;
   (void)entry;
@@ -250,7 +273,7 @@ static inline UINT tx_thread_create(TX_THREAD* t,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline UINT tx_thread_terminate(TX_THREAD* t)
+RA8_INTERNAL static inline UINT internal_tx_thread_terminate(TX_THREAD* t)
 {
   (void)t;
   return TX_SUCCESS;
@@ -270,7 +293,7 @@ static inline UINT tx_thread_terminate(TX_THREAD* t)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline UINT tx_thread_delete(TX_THREAD* t)
+RA8_INTERNAL static inline UINT internal_tx_thread_delete(TX_THREAD* t)
 {
   (void)t;
   return TX_SUCCESS;
@@ -290,7 +313,7 @@ static inline UINT tx_thread_delete(TX_THREAD* t)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline UINT tx_thread_sleep(ULONG ticks)
+RA8_INTERNAL static inline UINT internal_tx_thread_sleep(ULONG ticks)
 {
   (void)ticks;
   return TX_SUCCESS;
@@ -309,7 +332,7 @@ static inline UINT tx_thread_sleep(ULONG ticks)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline ULONG tx_time_get(void)
+RA8_INTERNAL static inline ULONG internal_tx_time_get(void)
 {
   return 0UL;
 }

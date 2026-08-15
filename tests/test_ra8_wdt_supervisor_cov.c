@@ -37,7 +37,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "ra8_err.h"
 #include "ra8_wdt_supervisor.h"
@@ -259,6 +258,5 @@ int32_t main(void)
 {
   test_default_now_hook_called_by_register();
   test_default_refresh_hook_called_by_tick();
-  (void)fprintf(stderr, "[OK  ] test_ra8_wdt_supervisor_cov.c\n");
   return 0;
 }
