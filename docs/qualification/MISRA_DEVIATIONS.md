@@ -314,8 +314,8 @@ audit tool is supplementary.
 - **Approved**: 2026-05-02.
 - **Mandatory annual review**: 2026-11-02 (six-month review tied to
   cppcheck release cadence; see TOOL_QUALIFICATION.md).
-- **Trigger for early review**: cppcheck 2.21 (or any release that
-  ships `--std=c23`) becoming available.
+- **Trigger for early review**: a cppcheck release that parses C23
+  attributes (checked 2026-08-15: 2.21.0 does not; see D-005).
 
 ---
 
@@ -401,19 +401,19 @@ Current population: 220 findings across 74 files (machine-checked
 index above; per-file inventory in the committed baseline). It
 partitions into three parts; only the first is formally accepted:
 
-1. **The 2026-05-02 review** (commit `ee5083f9e`) triaged the original
-   audit's 101 hits; 91 were accepted under the classes above (10 sat
-   in the since-retired BLE host facade) and mirrored into
-   `.cppcheck-suppressions` as per-file:line rows. Two reviewed files
-   have since been deleted outright (the lwIP port and the hand-rolled
-   TCP stack), leaving the 70 rows across 10 paths pinned above.
+1. **The 2026-05-02 review** (commit `ee5083f9e`) accepted the
+   original audit's 101 hits under the classes above, mirroring each
+   as a per-file:line suppression row. Rows have since left only with
+   their code: 10 with the BLE host facade (retired 2026-07-26), 21
+   with the lwIP port and hand-rolled TCP stack (deleted 2026-07-14),
+   leaving the 70 rows across 10 paths pinned above.
 2. **Anchor decay.** A line-anchored suppression filters a finding
-   only at its exact file:line coordinate, and every surviving file
-   has been refactored or restyled since (the `ra8_fs_fat.c` split
-   alone strands 16 anchors past the file's current end). 9 of the 10
-   anchored files carry Rule 12.1 rows in the committed baseline
-   again: the reviewed *instances* are back in the measured population,
-   ratchet-frozen. The block is review evidence, not an active filter.
+   only at its exact file:line coordinate. At this refresh
+   (2026-08-15), 17 of the 70 anchors point past their file's end (16
+   stranded by the `ra8_fs_fat.c` split) and 9 of the 10 files carry
+   12.1 rows in the committed baseline again: the reviewed *instances*
+   are back in the measured population, ratchet-frozen. The block is
+   review evidence, not an active filter.
 3. **Unreviewed debt.** The remainder -- 65 of the 74 files, including
    everything under `libs/ra8_hal/` and the `tools/` population that
    entered audit scope on 2026-08-13 -- has never been triaged against
@@ -462,12 +462,12 @@ accepted classes) and let the ratchet baseline hold the count.
 - **Disposition**: Tooling gap (false positive).
 - **Scope**: the cppcheck audit baseline only (2.20 then; now the
   pinned version in the baseline header).
-- **Files affected**: 1873 findings across 313 files (machine-checked
-  index above). The 2026-05-02 audit recorded 196; the population has
-  since scaled with the tree -- the HAL build-out applies
-  `[[nodiscard]]` to every fallible public prototype, `tools/` entered
-  audit scope on 2026-08-13, the pin moved to 2.13.0 on 2026-07-18 --
-  so the per-file authority is the baseline itself, not a table here.
+- **Files affected**: 1873 findings across 313 files (machine-checked).
+  The 2026-05-02 audit recorded 196; the population scaled with the
+  tree -- the HAL build-out applies `[[nodiscard]]` to every fallible
+  public prototype, `tools/` entered audit scope on 2026-08-13, and
+  the 2.13.0-pinned ratchet baseline became the audit of record on
+  2026-07-15 -- so the baseline is the per-file authority.
 
 Highest-count files for misra-c2012-8.4 (top 5, derived):
 
@@ -517,12 +517,12 @@ confirm both root causes are gone.
 - Every public function in the affected files is declared in the
   matching `*/inc/*.h` header, included before the definitions.
   Re-verified 2026-08-15 instance-precisely against the baseline:
-  `libs/ra8_mpu/src/ra8_mpu.c` defines exactly 6 external functions,
-  all `[[nodiscard]]`-declared, and carries exactly 6 findings;
-  `tools/rabook_imagepack/src/ra8_fmt_util.c` defines 7, and exactly
-  the 5 with `[[nodiscard]]` prototypes are flagged (the differential
-  isolates the attribute); `port/nimble/src/nimble_npl_threadx.c`
-  defines exactly 29 `ble_npl_*` functions matching its 29 findings.
+  `libs/ra8_mpu/src/ra8_mpu.c` defines 7 external functions, exactly
+  the 6 with `[[nodiscard]]` prototypes flagged (plain-pointer
+  `ra8_mpu_boot_map()` is not); `tools/rabook_imagepack/src/ra8_fmt_util.c`
+  likewise at 5-of-7 -- the differentials isolate the attribute --
+  and `port/nimble/src/nimble_npl_threadx.c` defines exactly 29
+  `ble_npl_*` functions matching its 29 findings (class 2).
 - Module-internal functions are marked `static` and are caught
   separately by clang-tidy's `misc-unused-using-decls` and gcc's
   `-Wmissing-declarations`.
@@ -573,10 +573,10 @@ rules; the unqualified open-source audit tool is supplementary.
 - **Category**: Advisory.
 - **Disposition**: Project deviation (deliberate, safety-motivated).
 - **Scope**: exactly one site is covered by this deviation,
-  `libs/ra8_nsc/inc/ra8_nsc_veneer.h` (1 finding). The rule's other
-  6 findings are the three boot `vector_table.c` files' IRQ-stub
-  X-macro cleanup `#undef`s: undispositioned ratchet-held debt, NOT
-  accepted here.
+  `libs/ra8_nsc/inc/ra8_nsc_veneer.h` (1 finding). The rest of the
+  rule's population (index above) is the boot `vector_table.c` files'
+  IRQ-stub X-macro cleanup `#undef`s: undispositioned ratchet-held
+  debt, NOT accepted here.
 
 ### Root cause
 
@@ -685,7 +685,7 @@ object-level).
   in the body -- a well-formed loop.
 - **Files affected**: current population in the index above. The
   individually diagnosed phantom sites are the `ra8_bkup*` family
-  (12 + 2 + 1 findings, still matching the baseline exactly), which
+  (12 + 2 + 1 findings, baseline-exact at this refresh), which
   appeared when the VBATT / tamper bring-up moved its register writes
   inside `RA8_PROTECTED_WRITE` windows (issue #131); the `ra8_cgc*`
   hits this record originally named have since been burned out of the
@@ -915,8 +915,8 @@ the unqualified open-source audit tool is supplementary.
 - **Category**: Advisory.
 - **Disposition**: Project deviation.
 - **Scope**: first-party code implementing a dependency-injection
-  seam; current population in the index above (105 files at this
-  refresh; 83 file rows when approved on 2026-08-03).
+  seam; current population in the index above (83 file rows at its
+  2026-08-03 approval).
 
 ### Root cause
 

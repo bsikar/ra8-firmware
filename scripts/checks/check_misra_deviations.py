@@ -28,7 +28,9 @@ so prose re-wrapping cannot silently detach a number from its pattern):
    <status> | <MAR> | <findings> | <files> |`` -- the deviation-index
    table, exactly one row per deviation, whose last two columns are
    re-derived per rule from the baseline.  Any ``| D-...`` line that
-   does not parse as this 8-column shape is malformed, so the table
+   does not parse as this 8-column shape -- including one with a
+   non-three-digit ID like ``D-11`` -- is malformed, and so is any
+   ``## D-`` heading that does not parse canonically, so the register
    cannot silently change shape out from under the checker.
 3. Residual:     ``Residual (no deviation record): <R> rules, <N> findings,
    <M> rows.`` -- everything in the baseline outside the register.
@@ -37,7 +39,12 @@ so prose re-wrapping cannot silently detach a number from its pattern):
    re-derived; an unlisted family or a ghost bullet fails.
 5. Excerpts:     ``Highest-count files for misra-c2012-R (top <N>, derived):``
    followed by ``| `path` | <count> |`` rows that must equal the true top-N
-   (count descending, path ascending).
+   (count descending, path ascending).  An excerpt-shaped row outside a
+   parsed excerpt table -- the footprint of a wrapped or deleted intro
+   line -- is malformed, so an excerpt cannot silently drop out of scope.
+6. Populations:  any ``<N> findings across <M> files`` phrase inside a
+   ``## D-NNN`` section body is re-derived against that section's rule,
+   so a headline number restated in prose moves with the baseline too.
 
 Structural cross-checks: the ``## D-NNN: Rule R`` section headings and the
 register rows must describe the same (ID, rule) set -- a missing or extra
@@ -61,9 +68,11 @@ Usage::
 ``--selftest`` builds a fixture register + baseline + suppressions in a
 temporary tree and drives ``run_check`` -- the identical entry point
 ``--check`` uses -- through every failure class (stale count, missing row,
-extra row, malformed document, tampered baseline header, vacuous baseline,
-suppression drift, unowned suppression family, heading mismatch, misordered
-excerpt, below-floor scan) plus the must-stay-quiet direction, and finally
+extra row, misshapen row, short deviation ID in a row or heading, malformed
+document, missing document, tampered baseline header, vacuous / two-column /
+below-floor baselines, suppression drift, unowned suppression family, ghost
+bullet, heading mismatch, misordered excerpt, wrapped excerpt intro, stale
+in-section population) plus the must-stay-quiet direction, and finally
 asserts the live tree clears the floors.
 """
 
@@ -108,7 +117,8 @@ parse that suddenly sees fewer than this is a collapsed scan, not progress.
 RULE_PATTERN = r"misra-c2012-\d+\.\d+"
 
 HEADING_RE = re.compile(r"^## (D-\d{3}): Rule (\d+\.\d+) ")
-ANY_REGISTER_ROW_RE = re.compile(r"^\|\s*D-\d{3}\s*\|")
+ANY_HEADING_RE = re.compile(r"^## D-")
+ANY_REGISTER_ROW_RE = re.compile(r"^\|\s*D-\d+")
 REGISTER_ROW_RE = re.compile(
     r"^\|\s*(D-\d{3})\s*\|\s*("
     + RULE_PATTERN
@@ -127,6 +137,7 @@ EXCERPT_INTRO_RE = re.compile(
 EXCERPT_ROW_RE = re.compile(r"^\|\s*`([^`|]+)`\s*\|\s*(\d+)\s*\|$")
 TABLE_DECOR_RE = re.compile(r"^\|[\s:|-]+\|$")
 TOTAL_HEADER_RE = re.compile(r"^# total findings: (\d+)$")
+POPULATION_RE = re.compile(r"\b(\d+)(?: spurious)? findings across (\d+) files\b")
 
 
 @dataclass
@@ -137,6 +148,7 @@ class DocClaims:
     derived: list[tuple[str, str, int, int]] = field(default_factory=list)
     residual: list[tuple[int, int, int]] = field(default_factory=list)
     headings: dict[str, str] = field(default_factory=dict)
+    populations: list[tuple[str, int, int]] = field(default_factory=list)
     ownership: dict[str, tuple[int, int]] = field(default_factory=dict)
     excerpts: list[tuple[str, int, list[tuple[str, int]]]] = field(default_factory=list)
     malformed: list[str] = field(default_factory=list)
@@ -183,11 +195,17 @@ def _classify_line(claims: DocClaims, line: str) -> None:
         if dev_id in claims.headings:
             claims.malformed.append(f"duplicate section heading for {dev_id}")
         claims.headings[dev_id] = rule
+    elif ANY_HEADING_RE.match(line):
+        claims.malformed.append(f"deviation heading does not match '## D-NNN: Rule R': {line!r}")
     elif m := OWNERSHIP_RE.match(line):
         rule = m.group(1)
         if rule in claims.ownership:
             claims.malformed.append(f"duplicate suppression-ownership bullet for {rule}")
         claims.ownership[rule] = (int(m.group(2)), int(m.group(3)))
+    elif EXCERPT_ROW_RE.match(line):
+        claims.malformed.append(
+            f"excerpt-shaped row outside an excerpt table (wrapped or missing intro?): {line!r}"
+        )
 
 
 def parse_doc(path: Path) -> DocClaims:
@@ -202,6 +220,7 @@ def parse_doc(path: Path) -> DocClaims:
     claims = DocClaims()
     lines = path.read_text(encoding="utf-8").splitlines()
     i = 0
+    current_rule: str | None = None
     while i < len(lines):
         line = lines[i]
         if m := EXCERPT_INTRO_RE.match(line):
@@ -210,7 +229,15 @@ def parse_doc(path: Path) -> DocClaims:
                 claims.malformed.append(f"excerpt for {m.group(1)} has an intro but no table rows")
             claims.excerpts.append((m.group(1), int(m.group(2)), rows))
             continue
+        if line.startswith("## "):
+            heading = HEADING_RE.match(line)
+            current_rule = "misra-c2012-" + heading.group(2) if heading else None
         _classify_line(claims, line)
+        if current_rule:
+            claims.populations.extend(
+                (current_rule, int(pm.group(1)), int(pm.group(2)))
+                for pm in POPULATION_RE.finditer(line)
+            )
         i += 1
     if len(claims.provenance) != 1:
         claims.malformed.append(
@@ -320,6 +347,19 @@ def _register_problems(claims: DocClaims, per_rule: dict[str, tuple[int, int]]) 
     return problems
 
 
+def _population_problems(claims: DocClaims, per_rule: dict[str, tuple[int, int]]) -> list[str]:
+    """Check in-section 'N findings across M files' restatements against the baseline."""
+    problems = []
+    for rule, doc_f, doc_n in claims.populations:
+        real_f, real_n = per_rule.get(rule, (0, 0))
+        if (doc_f, doc_n) != (real_f, real_n):
+            problems.append(
+                f"in-section population claim under {rule}: register says {doc_f} findings / "
+                f"{doc_n} files, baseline derives {real_f} / {real_n} (stale count)"
+            )
+    return problems
+
+
 def _residual_problems(claims: DocClaims, per_rule: dict[str, tuple[int, int]]) -> list[str]:
     """Check the residual line covers exactly the rules outside the register."""
     if not claims.residual or not claims.provenance:
@@ -403,7 +443,10 @@ def evaluate(
     Returns:
         ``(drift, malformed)`` problem lists; both empty means clean.
     """
-    claims = parse_doc(doc_path)
+    try:
+        claims = parse_doc(doc_path)
+    except OSError as err:
+        return [], [f"{doc_path.name}: unreadable -- {err}"]
     counts, version, _header_total, base_problems = read_baseline(baseline_path)
     families, supp_problems = parse_suppressions(suppressions_path)
     malformed = claims.malformed + base_problems + supp_problems
@@ -423,6 +466,7 @@ def evaluate(
     drift = (
         _provenance_problems(claims, counts, version)
         + _register_problems(claims, per_rule)
+        + _population_problems(claims, per_rule)
         + _residual_problems(claims, per_rule)
         + _ownership_problems(claims, families)
         + _excerpt_problems(claims, counts)
@@ -530,6 +574,7 @@ def _fixture_files() -> dict[str, str]:
             "| `b.c` | 1 |",
             "",
             *[f"## {d}: Rule {r.removeprefix('misra-c2012-')} -- fixture\n" for d, r in dev],
+            "Population note under the last section: 6 findings across 1 files.",
             "",
         ]
     )
@@ -626,6 +671,42 @@ def _selftest_cases() -> list[tuple[str, str, str, str, int]]:
             "a.c\tmisra-c2012-1.1\tX",
             EXIT_MALFORMED,
         ),
+        (
+            "two-column baseline row is malformed",
+            "baseline",
+            "b.c\tmisra-c2012-1.1\t1",
+            "b.c\tmisra-c2012-1.1",
+            EXIT_MALFORMED,
+        ),
+        (
+            "stale in-section population fires",
+            "doc",
+            "6 findings across 1 files.",
+            "7 findings across 1 files.",
+            EXIT_DRIFT,
+        ),
+        (
+            "wrapped excerpt intro is malformed",
+            "doc",
+            "Highest-count files for misra-c2012-1.1 (top 2, derived):",
+            "Highest-count files for misra-c2012-1.1\n(top 2, derived):",
+            EXIT_MALFORMED,
+        ),
+        (
+            "short deviation-id register row is malformed",
+            "doc",
+            "## Derived population",
+            "| D-11 | misra-c2012-31.1 | Advisory | Fixture | Active | 2027-01-01 | 31 | 1 |\n"
+            "\n## Derived population",
+            EXIT_MALFORMED,
+        ),
+        (
+            "short deviation-id heading is malformed",
+            "doc",
+            "## D-002: Rule 2.1 -- fixture",
+            "## D-11: Rule 2.1 -- fixture",
+            EXIT_MALFORMED,
+        ),
     ]
 
 
@@ -679,6 +760,14 @@ def selftest() -> int:
         problem = _run_fixture_case(tmp, floor_files, "below-floor baseline", EXIT_MALFORMED)
         if problem:
             failures.append(problem)
+        good = _fixture_files()
+        (tmp / "misra-baseline.txt").write_text(good["baseline"], encoding="utf-8")
+        (tmp / "cppcheck-suppressions").write_text(good["suppressions"], encoding="utf-8")
+        got = run_check(
+            tmp / "absent.md", tmp / "misra-baseline.txt", tmp / "cppcheck-suppressions"
+        )
+        if got != EXIT_MALFORMED:
+            failures.append(f"missing register document: expected exit {EXIT_MALFORMED}, got {got}")
     _live_drift, live_malformed = evaluate(DOC_PATH, BASELINE_PATH, SUPPRESSIONS_PATH)
     if live_malformed:
         failures.append(f"live tree trips the floors or fails to parse: {live_malformed[:3]}")
@@ -686,7 +775,7 @@ def selftest() -> int:
         print(f"{tag}: FAIL: {failure}", file=sys.stderr)
     if failures:
         return 1
-    print(f"{tag}: PASS ({len(_selftest_cases()) + 1} both-direction cases + live floors)")
+    print(f"{tag}: PASS ({len(_selftest_cases()) + 2} both-direction cases + live floors)")
     return 0
 
 
