@@ -30,6 +30,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -40,7 +41,7 @@
  */
 
 /** @brief Tag for ra8_log_error / ra8_log_info lines from this TU. */
-static const char* const k_lsm6dso_tag = "lsm6dso";
+static const char* const s_lsm6dso_tag = "lsm6dso";
 
 /** @brief Layout constants used by burst-read helpers. */
 typedef enum : uint32_t {
@@ -133,6 +134,7 @@ typedef enum : uint8_t {
  * @note Pure function; no MMIO or transport access.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t internal_lsm6dso_g_fs_bits(ra8_lsm6dso_g_fs_t fs)
 {
   /* DS12140 Table 47: FS_125 takes priority over FS_G[1:0]. */
@@ -170,6 +172,7 @@ static uint8_t internal_lsm6dso_g_fs_bits(ra8_lsm6dso_g_fs_t fs)
  * @note Not thread-safe per-instance.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_lsm6dso_write_byte(ra8_lsm6dso_t* dev, uint8_t reg, uint8_t val)
 {
   return dev->bus.write_regs(dev->bus.ctx, reg, &val, 1U);
@@ -199,6 +202,7 @@ static ra8_err_t internal_lsm6dso_write_byte(ra8_lsm6dso_t* dev, uint8_t reg, ui
  * @note Not thread-safe per-instance.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_lsm6dso_read_byte(ra8_lsm6dso_t* dev, uint8_t reg, uint8_t* out)
 {
   return dev->bus.read_regs(dev->bus.ctx, reg, out, 1U);
@@ -232,6 +236,7 @@ static ra8_err_t internal_lsm6dso_read_byte(ra8_lsm6dso_t* dev, uint8_t reg, uin
  * @note Not thread-safe per-instance.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_lsm6dso_rmw_odr(ra8_lsm6dso_t* dev, uint8_t reg, uint8_t odr_bits)
 {
   uint8_t         now = 0U;
@@ -250,10 +255,10 @@ static ra8_err_t internal_lsm6dso_rmw_odr(ra8_lsm6dso_t* dev, uint8_t reg, uint8
 
 ra8_err_t ra8_lsm6dso_init(ra8_lsm6dso_t* out_dev, const ra8_lsm6dso_bus_t* bus)
 {
-  RA8_CHECK_NULL_PTR(out_dev, k_lsm6dso_tag, "init: out_dev");
-  RA8_CHECK_NULL_PTR(bus, k_lsm6dso_tag, "init: bus");
-  RA8_CHECK_NULL_PTR(bus->read_regs, k_lsm6dso_tag, "init: bus.read_regs");
-  RA8_CHECK_NULL_PTR(bus->write_regs, k_lsm6dso_tag, "init: bus.write_regs");
+  RA8_CHECK_NULL_PTR(out_dev, s_lsm6dso_tag, "init: out_dev");
+  RA8_CHECK_NULL_PTR(bus, s_lsm6dso_tag, "init: bus");
+  RA8_CHECK_NULL_PTR(bus->read_regs, s_lsm6dso_tag, "init: bus.read_regs");
+  RA8_CHECK_NULL_PTR(bus->write_regs, s_lsm6dso_tag, "init: bus.write_regs");
 
   out_dev->bus           = *bus;
   out_dev->accel_fs_code = k_lsm6dso_xl_fs_2g;    /* DS12140 sec 9.12 reset default. */
@@ -270,9 +275,9 @@ ra8_err_t ra8_lsm6dso_init(ra8_lsm6dso_t* out_dev, const ra8_lsm6dso_bus_t* bus)
 
 ra8_err_t ra8_lsm6dso_who_am_i(ra8_lsm6dso_t* dev, uint8_t* out_id)
 {
-  RA8_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "who_am_i: dev");
-  RA8_CHECK_NULL_PTR(out_id, k_lsm6dso_tag, "who_am_i: out_id");
-  RA8_VALIDATE_INIT(dev->initialized, k_lsm6dso_tag, "who_am_i: not initialized");
+  RA8_CHECK_NULL_PTR(dev, s_lsm6dso_tag, "who_am_i: dev");
+  RA8_CHECK_NULL_PTR(out_id, s_lsm6dso_tag, "who_am_i: out_id");
+  RA8_VALIDATE_INIT(dev->initialized, s_lsm6dso_tag, "who_am_i: not initialized");
 
   /* DS12140 sec 9.11 WHO_AM_I (0Fh). */
   return internal_lsm6dso_read_byte(dev, (uint8_t)k_lsm6dso_reg_who_am_i, out_id);
@@ -285,13 +290,13 @@ ra8_err_t ra8_lsm6dso_who_am_i(ra8_lsm6dso_t* dev, uint8_t* out_id)
 
 ra8_err_t ra8_lsm6dso_set_accel_range(ra8_lsm6dso_t* dev, ra8_lsm6dso_xl_fs_t fs)
 {
-  RA8_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "set_accel_range: dev");
-  RA8_VALIDATE_INIT(dev->initialized, k_lsm6dso_tag, "set_accel_range: not initialized");
+  RA8_CHECK_NULL_PTR(dev, s_lsm6dso_tag, "set_accel_range: dev");
+  RA8_VALIDATE_INIT(dev->initialized, s_lsm6dso_tag, "set_accel_range: not initialized");
   RA8_CHECK_RANGE_TAG((uint8_t)fs,
                       0U,
                       (uint8_t)k_lsm6dso_xl_fs_cap,
                       k_ra8_err_invalid_arg,
-                      k_lsm6dso_tag);
+                      s_lsm6dso_tag);
 
   /* DS12140 sec 9.12 CTRL1_XL: read-modify-write FS_XL[3:2]. */
   uint8_t         current = 0U;
@@ -312,13 +317,13 @@ ra8_err_t ra8_lsm6dso_set_accel_range(ra8_lsm6dso_t* dev, ra8_lsm6dso_xl_fs_t fs
 
 ra8_err_t ra8_lsm6dso_set_gyro_range(ra8_lsm6dso_t* dev, ra8_lsm6dso_g_fs_t fs)
 {
-  RA8_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "set_gyro_range: dev");
-  RA8_VALIDATE_INIT(dev->initialized, k_lsm6dso_tag, "set_gyro_range: not initialized");
+  RA8_CHECK_NULL_PTR(dev, s_lsm6dso_tag, "set_gyro_range: dev");
+  RA8_VALIDATE_INIT(dev->initialized, s_lsm6dso_tag, "set_gyro_range: not initialized");
   RA8_CHECK_RANGE_TAG((uint8_t)fs,
                       0U,
                       (uint8_t)k_lsm6dso_g_fs_cap,
                       k_ra8_err_invalid_arg,
-                      k_lsm6dso_tag);
+                      s_lsm6dso_tag);
 
   /* DS12140 sec 9.13 CTRL2_G: read-modify-write FS_G[3:2] + FS_125[1]. */
   uint8_t         current = 0U;
@@ -338,13 +343,13 @@ ra8_err_t ra8_lsm6dso_set_gyro_range(ra8_lsm6dso_t* dev, ra8_lsm6dso_g_fs_t fs)
 
 ra8_err_t ra8_lsm6dso_set_odr(ra8_lsm6dso_t* dev, ra8_lsm6dso_odr_t odr)
 {
-  RA8_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "set_odr: dev");
-  RA8_VALIDATE_INIT(dev->initialized, k_lsm6dso_tag, "set_odr: not initialized");
+  RA8_CHECK_NULL_PTR(dev, s_lsm6dso_tag, "set_odr: dev");
+  RA8_VALIDATE_INIT(dev->initialized, s_lsm6dso_tag, "set_odr: not initialized");
   RA8_CHECK_RANGE_TAG((uint8_t)odr,
                       0U,
                       (uint8_t)k_lsm6dso_odr_cap,
                       k_ra8_err_invalid_arg,
-                      k_lsm6dso_tag);
+                      s_lsm6dso_tag);
 
   /* DS12140 sec 9.12 / 9.13: ODR field is bits [7:4] of CTRL1_XL and CTRL2_G. */
   const uint8_t odr_bits =
@@ -394,6 +399,7 @@ ra8_err_t ra8_lsm6dso_set_odr(ra8_lsm6dso_t* dev, ra8_lsm6dso_odr_t odr)
  * @note Not thread-safe per-instance.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_lsm6dso_read_xyz(ra8_lsm6dso_t* dev, uint8_t reg, ra8_lsm6dso_xyz_t* out)
 {
   uint8_t         bytes[6] = {};
@@ -415,27 +421,27 @@ static ra8_err_t internal_lsm6dso_read_xyz(ra8_lsm6dso_t* dev, uint8_t reg, ra8_
 
 ra8_err_t ra8_lsm6dso_read_accel(ra8_lsm6dso_t* dev, ra8_lsm6dso_xyz_t* out)
 {
-  RA8_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "read_accel: dev");
-  RA8_CHECK_NULL_PTR(out, k_lsm6dso_tag, "read_accel: out");
-  RA8_VALIDATE_INIT(dev->initialized, k_lsm6dso_tag, "read_accel: not initialized");
+  RA8_CHECK_NULL_PTR(dev, s_lsm6dso_tag, "read_accel: dev");
+  RA8_CHECK_NULL_PTR(out, s_lsm6dso_tag, "read_accel: out");
+  RA8_VALIDATE_INIT(dev->initialized, s_lsm6dso_tag, "read_accel: not initialized");
   /* DS12140 sec 9.35 OUTX_L_A (28h) -- auto-increment burst over 6 bytes. */
   return internal_lsm6dso_read_xyz(dev, (uint8_t)k_lsm6dso_reg_outx_l_a, out);
 }
 
 ra8_err_t ra8_lsm6dso_read_gyro(ra8_lsm6dso_t* dev, ra8_lsm6dso_xyz_t* out)
 {
-  RA8_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "read_gyro: dev");
-  RA8_CHECK_NULL_PTR(out, k_lsm6dso_tag, "read_gyro: out");
-  RA8_VALIDATE_INIT(dev->initialized, k_lsm6dso_tag, "read_gyro: not initialized");
+  RA8_CHECK_NULL_PTR(dev, s_lsm6dso_tag, "read_gyro: dev");
+  RA8_CHECK_NULL_PTR(out, s_lsm6dso_tag, "read_gyro: out");
+  RA8_VALIDATE_INIT(dev->initialized, s_lsm6dso_tag, "read_gyro: not initialized");
   /* DS12140 sec 9.29 OUTX_L_G (22h) -- auto-increment burst over 6 bytes. */
   return internal_lsm6dso_read_xyz(dev, (uint8_t)k_lsm6dso_reg_outx_l_g, out);
 }
 
 ra8_err_t ra8_lsm6dso_read_temp(ra8_lsm6dso_t* dev, int32_t* out_centi_c)
 {
-  RA8_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "read_temp: dev");
-  RA8_CHECK_NULL_PTR(out_centi_c, k_lsm6dso_tag, "read_temp: out_centi_c");
-  RA8_VALIDATE_INIT(dev->initialized, k_lsm6dso_tag, "read_temp: not initialized");
+  RA8_CHECK_NULL_PTR(dev, s_lsm6dso_tag, "read_temp: dev");
+  RA8_CHECK_NULL_PTR(out_centi_c, s_lsm6dso_tag, "read_temp: out_centi_c");
+  RA8_VALIDATE_INIT(dev->initialized, s_lsm6dso_tag, "read_temp: not initialized");
 
   /* DS12140 sec 9.27 OUT_TEMP_L (20h) + sec 9.28 OUT_TEMP_H (21h). */
   uint8_t         bytes[2] = {};
@@ -481,6 +487,7 @@ ra8_err_t ra8_lsm6dso_read_temp(ra8_lsm6dso_t* dev, int32_t* out_centi_c)
  * @note Not thread-safe per-instance.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_lsm6dso_read_fifo_depth(ra8_lsm6dso_t* dev, uint32_t* out_n)
 {
   uint8_t         status[2] = {};
@@ -521,6 +528,7 @@ static ra8_err_t internal_lsm6dso_read_fifo_depth(ra8_lsm6dso_t* dev, uint32_t* 
  * @note Not thread-safe per-instance.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_lsm6dso_burst_fifo(ra8_lsm6dso_t* dev, uint8_t* out_buf, uint32_t n_words)
 {
   const uint32_t total_bytes = n_words * (uint32_t)k_lsm6dso_fifo_bytes_word;
@@ -562,17 +570,18 @@ static ra8_err_t internal_lsm6dso_burst_fifo(ra8_lsm6dso_t* dev, uint8_t* out_bu
  * @note Not thread-safe per-instance.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_lsm6dso_fifo_check_args(ra8_lsm6dso_t*  dev,
                                                   const uint8_t*  out_buf,
                                                   uint32_t        max_words,
                                                   const uint32_t* out_words)
 {
-  RA8_CHECK_NULL_PTR(dev, k_lsm6dso_tag, "read_fifo: dev");
-  RA8_CHECK_NULL_PTR(out_buf, k_lsm6dso_tag, "read_fifo: out_buf");
-  RA8_CHECK_NULL_PTR(out_words, k_lsm6dso_tag, "read_fifo: out_words");
-  RA8_VALIDATE_INIT(dev->initialized, k_lsm6dso_tag, "read_fifo: not initialized");
+  RA8_CHECK_NULL_PTR(dev, s_lsm6dso_tag, "read_fifo: dev");
+  RA8_CHECK_NULL_PTR(out_buf, s_lsm6dso_tag, "read_fifo: out_buf");
+  RA8_CHECK_NULL_PTR(out_words, s_lsm6dso_tag, "read_fifo: out_words");
+  RA8_VALIDATE_INIT(dev->initialized, s_lsm6dso_tag, "read_fifo: not initialized");
   if (max_words == 0U) {
-    ra8_log_error(k_lsm6dso_tag, "read_fifo: max_words is zero");
+    ra8_log_error(s_lsm6dso_tag, "read_fifo: max_words is zero");
     return k_ra8_err_invalid_arg;
   }
   return k_ra8_ok;
