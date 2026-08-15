@@ -24,9 +24,8 @@
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
-#include <stdlib.h>
-
 #include "cache_bench.h"
+#include "ra8_attributes.h"
 
 /* ------------------------------------------------------------------ SLRU -- */
 
@@ -89,7 +88,8 @@ typedef struct {
  * @note Not thread-safe: mutates the shared segment lists.
  * @since 0.1.0
  */
-static void slru_unlink(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
+RA8_INTERNAL
+static void internal_slru_unlink(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
 {
   if (l->prev[f] != -1) {
     l->next[l->prev[f]] = l->next[f];
@@ -123,7 +123,8 @@ static void slru_unlink(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
  * @note Not thread-safe: mutates the shared segment lists.
  * @since 0.1.0
  */
-static void slru_push_head(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
+RA8_INTERNAL
+static void internal_slru_push_head(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
 {
   l->prev[f] = -1;
   l->next[f] = *head;
@@ -137,52 +138,43 @@ static void slru_push_head(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
 }
 
 /**
- * @brief Allocate SLRU state: two LRU segments over shared frame arrays.
+ * @brief Bind SLRU state: two LRU segments over shared frame arrays.
  *
  * @details Allocates the ::slru_t control block and the shared `prev`/`next`
  *          index arrays, empties both segments, and sizes the protected
- *          segment at ::k_slru_protected_pct percent of capacity. On a partial
- *          allocation it frees what it took, since a failed init is never
- *          deinited by the harness.
+ *          segment at ::k_slru_protected_pct percent of capacity. The control
+ *          block and both arrays occupy one exact caller slab.
  *
  * @param[in,out] c Cache whose `policy_data` receives the segments; capacity
  *                  sizes the index arrays and the protected cap.
  *
- * @return int 0 on success, 1 on allocation failure.
+ * @return int 0 on success, 1 when caller storage is too small.
  * @retval 0 `c->policy_data` holds empty probationary + protected segments.
- * @retval 1 Out of memory; any partial allocation was freed.
+ * @retval 1 Caller workspace does not meet the exact requirement.
  *
  * @pre @p c is non-NULL with `capacity > 0`.
  * @pre Called on the single benchmark thread.
  * @post On success both segment heads/tails are -1 and `pt_cap` is set.
  * @post On failure `c->policy_data` is untouched (nothing is leaked).
  *
- * @note Not thread-safe: allocates and stores policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static int slru_init(cb_cache_t* c)
+RA8_INTERNAL
+static int internal_slru_init(cb_cache_t* c)
 {
-  slru_t* l = (slru_t*)calloc(1U, sizeof(slru_t));
-  /* cppcheck-suppress memleak ; false positive: cppcheck 2.13 does not model
-   * the C23 nullptr keyword, so it cannot see l is NULL on this path. */
-  if (l == nullptr) {
+  const size_t required = sizeof(slru_t) + ((size_t)c->capacity * 2U * sizeof(int32_t));
+  if ((c->policy_workspace == nullptr) || (c->policy_workspace_bytes < required)) {
     return 1;
   }
-  l->prev    = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
-  l->next    = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
-  l->pb_head = -1;
-  l->pb_tail = -1;
-  l->pt_head = -1;
-  l->pt_tail = -1;
-  l->pt_cap  = (c->capacity * (uint32_t)k_slru_protected_pct) / (uint32_t)k_slru_pct_full_scale;
-  if ((l->prev == nullptr) || (l->next == nullptr)) {
-    /* The replay harness never deinits a policy whose init failed, so a
-     * partial allocation must be released here, not left on policy_data. */
-    free(l->prev);
-    free(l->next);
-    free(l);
-    return 1;
-  }
+  slru_t* l      = (slru_t*)c->policy_workspace;
+  l->prev        = (int32_t*)&l[1];
+  l->next        = &l->prev[c->capacity];
+  l->pb_head     = -1;
+  l->pb_tail     = -1;
+  l->pt_head     = -1;
+  l->pt_tail     = -1;
+  l->pt_cap      = (c->capacity * (uint32_t)k_slru_protected_pct) / (uint32_t)k_slru_pct_full_scale;
   c->policy_data = l;
   return 0;
 }
@@ -193,24 +185,20 @@ static int slru_init(cb_cache_t* c)
  * @details Frees the `prev`/`next` arrays and the ::slru_t when present; a NULL
  *          `policy_data` (a failed init) is tolerated.
  *
- * @param[in,out] c Cache whose SLRU `policy_data` is freed.
+ * @param[in,out] c Cache whose SLRU binding is ended.
  *
  * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::slru_init state or NULL.
- * @post All segment buffers are released.
+ * @pre `c->policy_data` is a ::internal_slru_init state or NULL.
+ * @post The binding is cleared; caller storage is untouched.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
- * @note Not thread-safe: frees policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static void slru_deinit(cb_cache_t* c)
+RA8_INTERNAL
+static void internal_slru_deinit(cb_cache_t* c)
 {
-  slru_t* l = (slru_t*)c->policy_data;
-  if (l != nullptr) {
-    free(l->prev);
-    free(l->next);
-    free(l);
-  }
+  c->policy_data = nullptr;
 }
 
 /**
@@ -223,7 +211,7 @@ static void slru_deinit(cb_cache_t* c)
  * @param[in,out] c     Cache holding the SLRU segments in `policy_data`.
  * @param[in]     frame Frame that was just (re)populated.
  *
- * @pre `c->policy_data` is a valid ::slru_init state.
+ * @pre `c->policy_data` is a valid ::internal_slru_init state.
  * @pre @p frame is detached and @p frame < capacity.
  * @post @p frame is the probationary-segment head, tagged probationary.
  * @post The protected segment is unchanged.
@@ -231,11 +219,12 @@ static void slru_deinit(cb_cache_t* c)
  * @note Not thread-safe: mutates the shared segment lists.
  * @since 0.1.0
  */
-static void slru_insert(cb_cache_t* c, uint32_t frame)
+RA8_INTERNAL
+static void internal_slru_insert(cb_cache_t* c, uint32_t frame)
 {
   slru_t* l                = (slru_t*)c->policy_data;
   c->frames[frame].meta[0] = (uint8_t)k_slru_probation;
-  slru_push_head(l, (int32_t)frame, &l->pb_head, &l->pb_tail);
+  internal_slru_push_head(l, (int32_t)frame, &l->pb_head, &l->pb_tail);
 }
 
 /**
@@ -250,7 +239,7 @@ static void slru_insert(cb_cache_t* c, uint32_t frame)
  * @param[in,out] c     Cache holding the SLRU segments in `policy_data`.
  * @param[in]     frame Frame that was just hit.
  *
- * @pre `c->policy_data` is a valid ::slru_init state.
+ * @pre `c->policy_data` is a valid ::internal_slru_init state.
  * @pre @p frame is currently resident and linked in a segment.
  * @post @p frame is at the protected MRU head, tagged protected.
  * @post `pt_count <= pt_cap` (a demotion restored the bound if needed).
@@ -258,26 +247,27 @@ static void slru_insert(cb_cache_t* c, uint32_t frame)
  * @note Not thread-safe: mutates the shared segment lists.
  * @since 0.1.0
  */
-static void slru_access(cb_cache_t* c, uint32_t frame)
+RA8_INTERNAL
+static void internal_slru_access(cb_cache_t* c, uint32_t frame)
 {
   slru_t*       l = (slru_t*)c->policy_data;
   const int32_t f = (int32_t)frame;
   if (c->frames[frame].meta[0] == (uint8_t)k_slru_protected) {
-    slru_unlink(l, f, &l->pt_head, &l->pt_tail);
-    slru_push_head(l, f, &l->pt_head, &l->pt_tail);
+    internal_slru_unlink(l, f, &l->pt_head, &l->pt_tail);
+    internal_slru_push_head(l, f, &l->pt_head, &l->pt_tail);
     return;
   }
   /* Promote probationary -> protected; demote protected LRU if over cap. */
-  slru_unlink(l, f, &l->pb_head, &l->pb_tail);
+  internal_slru_unlink(l, f, &l->pb_head, &l->pb_tail);
   if ((l->pt_cap > 0U) && (l->pt_count == l->pt_cap)) {
     const int32_t d = l->pt_tail;
-    slru_unlink(l, d, &l->pt_head, &l->pt_tail);
+    internal_slru_unlink(l, d, &l->pt_head, &l->pt_tail);
     c->frames[d].meta[0] = (uint8_t)k_slru_probation;
-    slru_push_head(l, d, &l->pb_head, &l->pb_tail);
+    internal_slru_push_head(l, d, &l->pb_head, &l->pb_tail);
     l->pt_count--;
   }
   c->frames[frame].meta[0] = (uint8_t)k_slru_protected;
-  slru_push_head(l, f, &l->pt_head, &l->pt_tail);
+  internal_slru_push_head(l, f, &l->pt_head, &l->pt_tail);
   l->pt_count++;
 }
 
@@ -295,7 +285,7 @@ static void slru_access(cb_cache_t* c, uint32_t frame)
  * @return uint32_t The victim frame index (< capacity).
  * @retval <capacity The probationary LRU, or the protected LRU if none.
  *
- * @pre `c->policy_data` is a valid ::slru_init state with a resident frame.
+ * @pre `c->policy_data` is a valid ::internal_slru_init state with a resident frame.
  * @pre @p scanned is non-NULL.
  * @post `*scanned == 1` and the victim is unlinked from its segment.
  * @post `pt_count` drops by one only when a protected frame was evicted.
@@ -303,29 +293,32 @@ static void slru_access(cb_cache_t* c, uint32_t frame)
  * @note Not thread-safe: mutates the shared segment lists.
  * @since 0.1.0
  */
-static uint32_t slru_victim(cb_cache_t* c, uint32_t* scanned)
+RA8_INTERNAL
+static uint32_t internal_slru_victim(cb_cache_t* c, uint32_t* scanned)
 {
   slru_t* l = (slru_t*)c->policy_data;
   *scanned  = 1U;
   if (l->pb_tail != -1) {
     const int32_t f = l->pb_tail;
-    slru_unlink(l, f, &l->pb_head, &l->pb_tail);
+    internal_slru_unlink(l, f, &l->pb_head, &l->pb_tail);
     return (uint32_t)f;
   }
   const int32_t f = l->pt_tail;
-  slru_unlink(l, f, &l->pt_head, &l->pt_tail);
+  internal_slru_unlink(l, f, &l->pt_head, &l->pt_tail);
   l->pt_count--;
   return (uint32_t)f;
 }
 
 const cache_policy_t g_cb_policy_slru = {
-  .name        = "SLRU",
-  .meta_bytes  = (size_t)k_slru_meta_bytes,
-  .init        = slru_init,
-  .deinit      = slru_deinit,
-  .on_access   = slru_access,
-  .on_insert   = slru_insert,
-  .pick_victim = slru_victim,
+  .name              = "SLRU",
+  .meta_bytes        = (size_t)k_slru_meta_bytes,
+  .state_base_bytes  = sizeof(slru_t),
+  .state_frame_bytes = 2U * sizeof(int32_t),
+  .init              = internal_slru_init,
+  .deinit            = internal_slru_deinit,
+  .on_access         = internal_slru_access,
+  .on_insert         = internal_slru_insert,
+  .pick_victim       = internal_slru_victim,
 };
 
 /* ----------------------------------------------------------------- SRRIP -- */
@@ -338,7 +331,7 @@ typedef enum : uint8_t {
 } rrip_rrpv_t;
 
 /**
- * @brief Allocate SRRIP state: a sweep hand over the frame ring.
+ * @brief Bind SRRIP state: a sweep hand over the frame ring.
  *
  * @details Allocates one zeroed `uint32_t` aging hand in `c->policy_data`; each
  *          frame's 2-bit re-reference prediction value (RRPV) lives in
@@ -347,43 +340,44 @@ typedef enum : uint8_t {
  *
  * @param[in,out] c Cache whose `policy_data` receives the hand pointer.
  *
- * @return int 0 on success, 1 on allocation failure.
+ * @return int 0 on success, 1 when caller storage is absent.
  * @retval 0 `c->policy_data` holds a zeroed hand.
- * @retval 1 Out of memory; `c->policy_data` is NULL.
+ * @retval 1 Caller storage is absent; `c->policy_data` is NULL.
  *
  * @pre @p c is non-NULL and its `policy_data` is unset.
  * @pre Called on the single benchmark thread.
  * @post On success `c->policy_data` points at a zero-initialized hand.
  * @post No frame contents are altered.
  *
- * @note Not thread-safe: allocates and stores policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static int srrip_init(cb_cache_t* c)
+RA8_INTERNAL
+static int internal_srrip_init(cb_cache_t* c)
 {
-  uint32_t* hand = (uint32_t*)calloc(1U, sizeof(uint32_t));
+  uint32_t* hand = (uint32_t*)c->policy_workspace;
   c->policy_data = hand;
   return (hand == nullptr) ? 1 : 0;
 }
 /**
  * @brief Release SRRIP state (the sweep hand).
  *
- * @details Frees the `uint32_t` hand ::srrip_init allocated; `free(NULL)` is
- *          safe after a failed init.
+ * @details Ends the SRRIP binding without releasing caller-owned storage.
  *
- * @param[in,out] c Cache whose `policy_data` hand is freed.
+ * @param[in,out] c Cache whose SRRIP binding is ended.
  *
  * @pre @p c is non-NULL.
- * @pre `c->policy_data` is a ::srrip_init hand or NULL.
- * @post The hand memory is released.
+ * @pre `c->policy_data` is a ::internal_srrip_init hand or NULL.
+ * @post The hand pointer is cleared; caller storage is untouched.
  * @post `c->policy_data` is left dangling; the caller discards the cache.
  *
- * @note Not thread-safe: frees policy state.
+ * @note Safe for distinct caller-owned cache bindings.
  * @since 0.1.0
  */
-static void srrip_deinit(cb_cache_t* c)
+RA8_INTERNAL
+static void internal_srrip_deinit(cb_cache_t* c)
 {
-  free(c->policy_data);
+  c->policy_data = nullptr;
 }
 /**
  * @brief SRRIP insert hook: predict a distant re-reference for @p frame.
@@ -403,7 +397,8 @@ static void srrip_deinit(cb_cache_t* c)
  * @note Not thread-safe: writes shared frame metadata.
  * @since 0.1.0
  */
-static void srrip_insert(cb_cache_t* c, uint32_t frame)
+RA8_INTERNAL
+static void internal_srrip_insert(cb_cache_t* c, uint32_t frame)
 {
   c->frames[frame].meta[0] = (uint8_t)k_rrip_long;
 }
@@ -425,7 +420,8 @@ static void srrip_insert(cb_cache_t* c, uint32_t frame)
  * @note Not thread-safe: writes shared frame metadata.
  * @since 0.1.0
  */
-static void srrip_access(cb_cache_t* c, uint32_t frame)
+RA8_INTERNAL
+static void internal_srrip_access(cb_cache_t* c, uint32_t frame)
 {
   c->frames[frame].meta[0] = (uint8_t)k_rrip_near;
 }
@@ -443,7 +439,7 @@ static void srrip_access(cb_cache_t* c, uint32_t frame)
  * @return uint32_t The victim frame index (< capacity).
  * @retval <capacity The first frame reached at RRPV ::k_rrip_max.
  *
- * @pre `c->policy_data` is a valid ::srrip_init hand and `capacity > 0`.
+ * @pre `c->policy_data` is a valid ::internal_srrip_init hand and `capacity > 0`.
  * @pre @p scanned is non-NULL.
  * @post `*scanned` equals the frames inspected and the hand advanced past them.
  * @post Frames passed over below max had their RRPV incremented.
@@ -451,7 +447,8 @@ static void srrip_access(cb_cache_t* c, uint32_t frame)
  * @note Not thread-safe: advances the hand and ages RRPVs.
  * @since 0.1.0
  */
-static uint32_t srrip_victim(cb_cache_t* c, uint32_t* scanned)
+RA8_INTERNAL
+static uint32_t internal_srrip_victim(cb_cache_t* c, uint32_t* scanned)
 {
   uint32_t* hand = (uint32_t*)c->policy_data;
   uint32_t  seen = 0U;
@@ -471,11 +468,13 @@ static uint32_t srrip_victim(cb_cache_t* c, uint32_t* scanned)
 }
 
 const cache_policy_t g_cb_policy_srrip = {
-  .name        = "SRRIP",
-  .meta_bytes  = 1U,
-  .init        = srrip_init,
-  .deinit      = srrip_deinit,
-  .on_access   = srrip_access,
-  .on_insert   = srrip_insert,
-  .pick_victim = srrip_victim,
+  .name              = "SRRIP",
+  .meta_bytes        = 1U,
+  .state_base_bytes  = sizeof(uint32_t),
+  .state_frame_bytes = 0U,
+  .init              = internal_srrip_init,
+  .deinit            = internal_srrip_deinit,
+  .on_access         = internal_srrip_access,
+  .on_insert         = internal_srrip_insert,
+  .pick_victim       = internal_srrip_victim,
 };

@@ -42,6 +42,26 @@
  */
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
+
+#include "cache_bench_io.h"
+
+/** @brief Caller-owned bindings for the block sweep. */
+typedef struct {
+  uint8_t*      cache_backing;      /**< Exactly the measured resident-cache budget. */
+  size_t        cache_capacity;     /**< Supplied cache bytes.                       */
+  size_t        cache_required;     /**< Exact semantic cache requirement.           */
+  uint8_t*      workspace;          /**< Small metadata/codec-input workspace.       */
+  size_t        workspace_capacity; /**< Supplied workspace bytes.                   */
+  size_t        workspace_required; /**< Exact latest requirement.                   */
+  size_t        workspace_floor;    /**< Persistent payload-index prefix.            */
+  size_t        workspace_used;     /**< Current phase workspace usage.              */
+  cb_scratch_t* scratch;            /**< Host-composed streamed RBKC transaction.    */
+  cb_sink_t*    output;             /**< Report destination.                         */
+  cb_sink_t*    error;              /**< Diagnostic destination.                     */
+} cb_sweep_config_t;
+
 /**
  * @brief Run the #208 block/frame-size sweep and print the report.
  *
@@ -55,19 +75,21 @@
  * 64 KiB `.rabook` default (#204). Every returned byte is verified against
  * the source blob, so a lying backend fails the run instead of skewing it.
  *
+ * @param[in,out] config Caller-owned cache, workspace, scratch, and sinks.
+ *
  * @return int Process-style status.
  * @retval 0 Sweep completed; every row verified byte-identical.
- * @retval 1 Allocation, backend setup, or data-verification failure.
+ * @retval 1 Capacity, backend setup, I/O, or data-verification failure.
  *
- * @pre The process has heap headroom for the blob + largest container
- *      (roughly 3x the 8 MiB payload).
- * @pre Stdout is line-buffered or better (rows are printed as produced).
+ * @pre @p config supplies exactly 1 MiB of aligned cache backing, bounded
+ *      metadata workspace, a scratch transaction, and output/error sinks.
+ * @pre The scratch callbacks complete exact positional transfers.
  * @post On 0, one row per (backend, leg, size) was printed plus the summary.
- * @post No heap is leaked on either path (backends tear down on failure).
+ * @post No storage ownership changes; scratch and workspace remain caller-owned.
  *
  * @note Not thread-safe (single-threaded host tool; static backend state).
  *
  * @see cbs_backend_t  The seam a future SD-over-SPI hardware leg implements.
  * @since 0.1.0
  */
-int cb_sweep_block(void);
+int cb_sweep_block(cb_sweep_config_t* config);

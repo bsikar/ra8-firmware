@@ -34,6 +34,7 @@
 
 #include "ra8_attributes.h"
 #include "ra8_vsource.h"
+#include "sweep_block.h"
 
 /**
  * @enum cbs_dim_t
@@ -85,7 +86,12 @@ typedef struct cbs_backend cbs_backend_t;
 struct cbs_backend {
   const char* name; /**< Backend name for the report rows. */
   /** @brief Build the backing for @p blob at @p block_bytes; 0 on success. */
-  int (*setup)(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint32_t block_bytes);
+  int (*setup)(cbs_backend_t*      be,
+               ra8_vsource_read_fn payload_read,
+               void*               payload_ctx,
+               uint32_t            blob_bytes,
+               uint32_t            block_bytes,
+               cb_sweep_config_t*  config);
   /** @brief Release everything `setup` acquired (idempotent). */
   void (*teardown)(cbs_backend_t* be);
   ra8_vsource_read_fn read;          /**< Byte reader over the backing (set by `setup`).    */
@@ -141,6 +147,77 @@ typedef struct {
   uint64_t            bytes;     /**< Bytes served through the shim. */
 } cbs_meter_t;
 
+/** @brief Serializable pseudo-text generator cursor. */
+typedef struct {
+  uint64_t rng;            /**< PRNG state.                            */
+  uint32_t word_index;     /**< Selected word or sentinel.             */
+  uint32_t word_offset;    /**< Byte position in the selected word.    */
+  uint32_t sentence_words; /**< Words emitted in the current sentence. */
+  uint8_t  phase;          /**< Word/separator phase.                  */
+} cbs_payload_state_t;
+
+/** @brief Resettable exact pseudo-text byte source with bounded checkpoints. */
+typedef struct {
+  const void*         checkpoints;      /**< Caller-owned generator-state index.     */
+  uint32_t            checkpoint_count; /**< Entries in the index.                   */
+  uint64_t            cursor_offset;    /**< End offset cached for sequential reads. */
+  cbs_payload_state_t cursor_state;     /**< State at @ref cursor_offset.            */
+} cbs_payload_t;
+
+/**
+ * @brief Return exact workspace bytes required by the pseudo-text source index.
+ * @details Sizes one serialized generator checkpoint per bounded regeneration span.
+ * @return Exact checkpoint-index byte count.
+ * @retval other Non-zero fixed payload-index requirement.
+ * @pre Fixed payload and checkpoint geometries are internally consistent.
+ * @pre `sizeof(cbs_payload_state_t)` fits in `size_t` multiplication.
+ * @post The result covers all checkpoints including offset zero.
+ * @post No storage or global state is modified.
+ * @note Thread-safe: this is fixed-geometry arithmetic.
+ * @since 0.1.0
+ */
+RA8_PRIV size_t priv_payload_workspace_required(void);
+
+/**
+ * @brief Build the payload source index into caller-owned storage.
+ * @details Serializes deterministic generator state at each bounded seek span
+ *          and initializes the sequential cursor at offset zero.
+ * @param[out] payload Payload binding to initialize.
+ * @param[in,out] workspace Aligned caller-owned checkpoint storage.
+ * @param[in] capacity Supplied workspace byte count.
+ * @return Zero on success, otherwise one.
+ * @retval 0 @p payload is ready for exact reads.
+ * @retval 1 A binding, alignment, or capacity check failed.
+ * @pre @p payload and @p workspace are non-NULL.
+ * @pre @p workspace is aligned for ::cbs_payload_state_t.
+ * @post On success, every checkpoint is initialized deterministically.
+ * @post Workspace ownership remains with the caller.
+ * @note Initialization is bounded by fixed payload geometry.
+ * @since 0.1.0
+ */
+RA8_PRIV int priv_payload_init(cbs_payload_t* payload, void* workspace, size_t capacity);
+
+/**
+ * @brief Read exact historical pseudo-text bytes at any bounded offset.
+ * @details Restores the nearest checkpoint when needed, regenerates at most one
+ *          checkpoint span, and caches the resulting sequential cursor.
+ * @param[in,out] ctx Bound ::cbs_payload_t.
+ * @param[in] offset Logical payload offset.
+ * @param[out] buffer Destination buffer.
+ * @param[in] length Exact byte count.
+ * @return Repository error code.
+ * @retval k_ra8_ok The complete range was generated.
+ * @retval k_ra8_err_null_ptr A required binding is NULL.
+ * @retval k_ra8_err_out_of_range The requested range exceeds the fixed payload.
+ * @pre @p buffer is writable for @p length bytes.
+ * @pre @p ctx was initialized by ::priv_payload_init.
+ * @post On success, @p buffer contains the deterministic historical bytes.
+ * @post The cached cursor names the end of the completed read.
+ * @note Distinct payload bindings may be read independently.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_payload_read(void* ctx, uint64_t offset, uint8_t* buffer, uint32_t length);
+
 /**
  * @brief Monotonic wall-clock in nanoseconds.
  *
@@ -159,31 +236,7 @@ typedef struct {
  * @note Thread-safe (stateless syscall wrapper).
  * @since 0.1.0
  */
-RA8_PRIV uint64_t cbs_priv_now_ns(void);
-
-/**
- * @brief Fill @p blob with deterministic book-like pseudo-text.
- *
- * @details Draws words from a fixed pool with a fixed-seed xorshift64 PRNG,
- *          inserting sentence punctuation on a fixed cadence, so the RBKC
- *          backend's zlib streams see a compression ratio representative of
- *          real reflowed chapter text (roughly 2.5-3x). Runs are
- *          byte-identical across hosts and across the two backends.
- *
- * @param[out] blob Buffer to fill (NULL is tolerated as a no-op).
- * @param[in]  len  Bytes to write into @p blob (0 is a no-op).
- *
- * @return void.
- *
- * @pre @p blob covers @p len writable bytes when non-NULL.
- * @pre Called on the single benchmark thread.
- * @post On a non-NULL @p blob, all @p len bytes are printable ASCII text.
- * @post The output is byte-identical for a given @p len across runs and hosts.
- *
- * @note Not thread-safe with itself on the same buffer (caller-owned buffer).
- * @since 0.1.0
- */
-RA8_PRIV void cbs_priv_fill_text(uint8_t* blob, uint32_t len);
+RA8_PRIV uint64_t priv_now_ns(void);
 
 /**
  * @brief `ra8_vsource_read_fn` forwarding through a ::cbs_meter_t.
@@ -209,7 +262,7 @@ RA8_PRIV void cbs_priv_fill_text(uint8_t* blob, uint32_t len);
  * @note Not thread-safe (unsynchronized counters; single-threaded tool).
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t cbs_priv_meter_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len);
+RA8_PRIV ra8_err_t priv_meter_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len);
 
 /**
  * @brief Expose the registered sweep backends (the seam the HW leg extends).
@@ -228,7 +281,7 @@ RA8_PRIV ra8_err_t cbs_priv_meter_read(void* ctx, uint64_t offset, uint8_t* buf,
  * @note Not thread-safe (the registry is written in place by `setup`).
  * @since 0.1.0
  */
-RA8_PRIV cbs_backend_t* cbs_priv_backends(uint32_t* out_count);
+RA8_PRIV cbs_backend_t* priv_backends(uint32_t* out_count);
 
 /**
  * @brief Print one machine-parseable result row (`sweep-block key=value ...`).
@@ -238,18 +291,21 @@ RA8_PRIV cbs_backend_t* cbs_priv_backends(uint32_t* out_count);
  *          never divide by zero. Rows with zero reads print nothing.
  *
  * @param[in] r Finished row to print (NULL is tolerated as a no-op).
+ * @param[in,out] sink Report destination.
  *
- * @return void.
+ * @return 0 on success, or 1 when the sink rejects the row.
+ * @retval 0 The row was empty or published completely.
+ * @retval 1 The sink rejected a report fragment.
  *
- * @pre Stdout is writable.
+ * @pre @p sink is bound and writable.
  * @pre @p r, when non-NULL, is a finished row (its counters are final).
  * @post One `sweep-block ...` line was printed for a non-empty row.
  * @post No row data is modified (pure reader).
  *
- * @note Not thread-safe (stdout).
+ * @note Not thread-safe: writes @p sink.
  * @since 0.1.0
  */
-RA8_PRIV void cbs_priv_print_row(const cbs_row_t* r);
+RA8_PRIV int priv_print_row(cb_sink_t* sink, const cbs_row_t* r);
 
 /**
  * @brief Print one backend's sequential-scan summary table (leg a).
@@ -265,22 +321,26 @@ RA8_PRIV void cbs_priv_print_row(const cbs_row_t* r);
  * @param[in] be      Backend name to summarise.
  * @param[in] blocks  The swept sizes, ascending.
  * @param[in] nblocks Number of swept sizes.
+ * @param[in,out] sink Report destination.
  *
- * @return void.
+ * @return 0 on success, or 1 when the sink rejects output.
+ * @retval 0 The complete sequential table was published.
+ * @retval 1 The sink rejected a table fragment.
  *
  * @pre Rows for @p be exist for both legs at each size (partial rows skip).
- * @pre Stdout is writable.
+ * @pre @p sink is bound and writable.
  * @post One markdown table for @p be was printed.
  * @post No row data is modified.
  *
- * @note Not thread-safe (stdout).
+ * @note Not thread-safe: writes @p sink.
  * @since 0.1.0
  */
-RA8_PRIV void cbs_priv_print_seq_table(const cbs_row_t* rows,
-                                       uint32_t         nrows,
-                                       const char*      be,
-                                       const uint32_t*  blocks,
-                                       uint32_t         nblocks);
+RA8_PRIV int priv_print_seq_table(cb_sink_t*       sink,
+                                  const cbs_row_t* rows,
+                                  uint32_t         nrows,
+                                  const char*      be,
+                                  const uint32_t*  blocks,
+                                  uint32_t         nblocks);
 
 /**
  * @brief Print one backend's same-block re-read summary table (leg b).
@@ -294,22 +354,26 @@ RA8_PRIV void cbs_priv_print_seq_table(const cbs_row_t* rows,
  * @param[in] be      Backend name to summarise.
  * @param[in] blocks  The swept sizes, ascending.
  * @param[in] nblocks Number of swept sizes.
+ * @param[in,out] sink Report destination.
  *
- * @return void.
+ * @return 0 on success, or 1 when the sink rejects output.
+ * @retval 0 The complete hot-read table was published.
+ * @retval 1 The sink rejected a table fragment.
  *
  * @pre Hot rows for @p be exist at each size (missing rows are skipped).
- * @pre Stdout is writable.
+ * @pre @p sink is bound and writable.
  * @post One markdown table for @p be was printed.
  * @post No row data is modified.
  *
- * @note Not thread-safe (stdout).
+ * @note Not thread-safe: writes @p sink.
  * @since 0.1.0
  */
-RA8_PRIV void cbs_priv_print_hot_table(const cbs_row_t* rows,
-                                       uint32_t         nrows,
-                                       const char*      be,
-                                       const uint32_t*  blocks,
-                                       uint32_t         nblocks);
+RA8_PRIV int priv_print_hot_table(cb_sink_t*       sink,
+                                  const cbs_row_t* rows,
+                                  uint32_t         nrows,
+                                  const char*      be,
+                                  const uint32_t*  blocks,
+                                  uint32_t         nblocks);
 
 /**
  * @brief Name the measured crossover and print the chunk-size recommendation.
@@ -325,18 +389,22 @@ RA8_PRIV void cbs_priv_print_hot_table(const cbs_row_t* rows,
  * @param[in] nrows   Number of rows.
  * @param[in] blocks  The swept sizes, ascending.
  * @param[in] nblocks Number of swept sizes.
+ * @param[in,out] sink Report destination.
  *
- * @return void.
+ * @return 0 on success, or 1 when the sink rejects output.
+ * @retval 0 The crossover summary was published.
+ * @retval 1 The sink rejected a summary fragment.
  *
  * @pre rbkc-z9 seq rows exist (the function prints nothing useful otherwise).
  * @pre @p blocks is sorted ascending.
- * @post The crossover paragraph was printed to stdout.
+ * @post The crossover paragraph was written to @p sink.
  * @post No row data is modified.
  *
- * @note Not thread-safe (stdout).
+ * @note Not thread-safe: writes @p sink.
  * @since 0.1.0
  */
-RA8_PRIV void cbs_priv_print_crossover(const cbs_row_t* rows,
-                                       uint32_t         nrows,
-                                       const uint32_t*  blocks,
-                                       uint32_t         nblocks);
+RA8_PRIV int priv_print_crossover(cb_sink_t*       sink,
+                                  const cbs_row_t* rows,
+                                  uint32_t         nrows,
+                                  const uint32_t*  blocks,
+                                  uint32_t         nblocks);

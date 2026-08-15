@@ -1,17 +1,12 @@
 /**
  * @file sweep_block_backends.c
- * @brief The two in-tree #208 sweep backends (`mem`, `rbkc-z9`) + shared
- *        helpers (meter shim, wall clock, deterministic text filler).
+ * @brief Streamed pseudo-memory and RBKC-z9 block-sweep backends.
  *
- * @details
- * `mem` serves the payload blob straight from resident memory (the harness
- * floor); `rbkc-z9` packs a genuine "RBKC" chunked `.rabook` container in
- * memory with zlib level-9 streams (the same wrapping `tools/epub_compile`
- * emits) and serves it through ::ra8_book_chunked_read, so every cache miss
- * pays a real staged read plus a real tinfl inflate of exactly one chunk.
- * Both implement the ::cbs_backend_t seam declared in sweep_block_internal.h
- * and are published through ::cbs_priv_backends() in report order.
- *
+ * @details RBKC construction writes directly to an injected scratch
+ * transaction. Compression state temporarily overlays the 1 MiB cache backing
+ * before the measured cache exists; the region is zeroed before it is rebound
+ * as frame storage. Chunk offsets and compressed input are read on demand, so
+ * no container, table, or max-chunk staging array is resident.
  *
  * [Ring 7 / Tooling] {World: NS}
  *
@@ -19,8 +14,6 @@
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -29,488 +22,110 @@
 #include "ra8_err.h"
 #include "sweep_block_internal.h"
 
-/**
- * @enum cbs_seed_t
- * @brief Fixed 64-bit PRNG seed for the deterministic text filler.
- * @details Any odd non-zero value works; this is the splitmix64 golden-ratio
- *          gamma, chosen for good starting bit distribution. Runs are
- *          byte-identical across hosts, so backends see identical payloads.
- * @since 0.1.0
- */
-typedef enum : uint64_t {
-  k_cbs_seed_fill = 0x9E3779B97F4A7C15ULL, /**< MAGIC-OK: golden-ratio xorshift64 seed */
-} cbs_seed_t;
+typedef enum : uint32_t {
+  k_cbs_codec_input_bytes = 4096U, /**< Streamed codec transfer grain.   */
+  k_cbs_codec_window_bits = 15U,   /**< Zlib window size as log2(bytes). */
+} cbs_codec_limit_t;
 
-/**
- * @enum cbs_rng_shift_t
- * @brief xorshift64 shift triple for the text filler's PRNG.
- * @details (13, 7, 17) is a full-period parameter set from Marsaglia (2003);
- *          changing any value breaks the period guarantee.
- * @since 0.1.0
- */
-typedef enum : uint8_t {
-  k_cbs_shift_a = 13U, /**< MAGIC-OK: xorshift64 left-shift a (Marsaglia 2003 set)  */
-  k_cbs_shift_b = 7U,  /**< MAGIC-OK: xorshift64 right-shift b (Marsaglia 2003 set) */
-  k_cbs_shift_c = 17U, /**< MAGIC-OK: xorshift64 left-shift c (Marsaglia 2003 set)  */
-} cbs_rng_shift_t;
+static_assert(sizeof(tdefl_compressor) <= (size_t)k_cbs_cache_bytes,
+              "tdefl overlay must fit the semantic cache backing");
+static_assert(alignof(max_align_t) >= alignof(tdefl_compressor),
+              "composition cache alignment must satisfy tdefl");
 
-/**
- * @var s_cbs_words
- * @brief Word pool for the deterministic pseudo-text payload.
- * @details Book-prose-like filler so the RBKC backend's zlib streams see a
- *          compression ratio representative of real reflowed chapter text
- *          (roughly 2.5-3x) rather than an artificial ramp that would
- *          understate inflate cost. Read-only after load.
- * @note Only ::cbs_priv_fill_text reads this.
- * @since 0.1.0
- */
-static const char* const s_cbs_words[] = {
-  "the",     "quick",   "reader", "turns",   "another", "page",    "while",   "morning",
-  "light",   "settles", "across", "quiet",   "margins", "and",     "chapter", "headings",
-  "gather",  "small",   "notes",  "between", "lines",   "of",      "steady",  "prose",
-  "carried", "through", "paper",  "towns",   "by",      "patient", "hands",   "again",
-};
+typedef struct {
+  cb_scratch_t* scratch; /**< Destination transaction.    */
+  uint64_t      offset;  /**< Next destination byte.      */
+  bool          failed;  /**< Sticky publication failure. */
+} cbs_pack_sink_t;
 
-/** @brief Implementation of `cbs_priv_now_ns()` -- CLOCK_MONOTONIC fold. */
-uint64_t cbs_priv_now_ns(void)
+typedef struct {
+  cb_scratch_t*       scratch;        /**< Container source transaction.  */
+  tinfl_decompressor* inflater;       /**< Caller-owned inflate state.    */
+  uint8_t*            input;          /**< Compressed-input staging.      */
+  uint32_t            input_capacity; /**< Input staging extent.          */
+  uint32_t            chunk_bytes;    /**< Logical bytes per chunk.       */
+  uint32_t            chunk_count;    /**< Container chunk count.         */
+  uint64_t            total_bytes;    /**< Logical payload extent.        */
+  uint64_t            payload_offset; /**< First compressed payload byte. */
+  uint64_t            source_bytes;   /**< Complete container extent.     */
+} cbs_rbkc_t;
+
+RA8_PRIV
+uint64_t priv_now_ns(void)
 {
   struct timespec ts = {};
   (void)clock_gettime(CLOCK_MONOTONIC, &ts);
   return ((uint64_t)ts.tv_sec * (uint64_t)k_cbs_ns_per_s) + (uint64_t)ts.tv_nsec;
 }
 
-/**
- * @brief Fixed-seed xorshift64; deterministic across runs and platforms.
- *
- * @details Applies the Marsaglia (13, 7, 17) xorshift64 triple to @p s in place
- *          and returns the new state word, driving the deterministic text
- *          filler's word selection.
- *
- * @param[in,out] s PRNG state; advanced one step in place.
- *
- * @return uint64_t The updated 64-bit state (the next pseudo-random word).
- * @retval other The post-step state; never 0 given a non-zero seed.
- *
- * @pre @p s is non-NULL and was seeded non-zero.
- * @pre Called on the single benchmark thread.
- * @post `*s` holds the advanced state.
- * @post The sequence is reproducible for a given initial seed.
- *
- * @note Not thread-safe: mutates the caller's state word.
- * @since 0.1.0
- */
-static uint64_t cbs_rng(uint64_t* s)
+RA8_PRIV
+ra8_err_t priv_meter_read(void* ctx, uint64_t offset, uint8_t* buffer, uint32_t length)
 {
-  uint64_t x = *s;
-  x ^= x << (uint8_t)k_cbs_shift_a;
-  x ^= x >> (uint8_t)k_cbs_shift_b;
-  x ^= x << (uint8_t)k_cbs_shift_c;
-  *s = x;
-  return x;
-}
-
-/** @brief Implementation of `cbs_priv_fill_text()` -- word-pool xorshift walk. */
-void cbs_priv_fill_text(uint8_t* blob, uint32_t len)
-{
-  if ((blob == nullptr) || (len == 0U)) {
-    return;
-  }
-  const uint32_t nwords = (uint32_t)(sizeof(s_cbs_words) / sizeof(s_cbs_words[0]));
-  uint64_t       s      = (uint64_t)k_cbs_seed_fill;
-  uint32_t       at     = 0U;
-  uint32_t       word   = 0U;
-  while (at < len) {
-    const char* w = s_cbs_words[(uint32_t)(cbs_rng(&s) % (uint64_t)nwords)];
-    for (const char* p = w; (*p != '\0') && (at < len); ++p) {
-      blob[at] = (uint8_t)*p;
-      at++;
-    }
-    word++;
-    if (word == (uint32_t)k_cbs_words_per_dot) {
-      word = 0U;
-      if (at < len) {
-        blob[at] = (uint8_t)'.';
-        at++;
-      }
-      if (at < len) {
-        blob[at] = (uint8_t)'\n';
-        at++;
-      }
-    } else if (at < len) {
-      blob[at] = (uint8_t)' ';
-      at++;
-    }
-  }
-}
-
-/* ------------------------------------------------------------- metering -- */
-
-/** @brief Implementation of `cbs_priv_meter_read()` -- count, then forward. */
-ra8_err_t cbs_priv_meter_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
-{
-  cbs_meter_t* m = (cbs_meter_t*)ctx;
-  if ((m == nullptr) || (m->inner == nullptr)) {
+  cbs_meter_t* meter = (cbs_meter_t*)ctx;
+  if ((meter == nullptr) || (meter->inner == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  m->calls++;
-  m->bytes += (uint64_t)len;
-  return m->inner(m->inner_ctx, offset, buf, len);
-}
-
-/* -------------------------------------------------------- `mem` backend -- */
-
-/**
- * @struct cbs_memspan_t
- * @brief A bounded in-memory byte span served through the read seam.
- * @details Backs both the `mem` backend (over the payload blob) and the RBKC
- *          backend's container "file".
- * @invariant `data` covers `len` readable bytes while registered.
- * @since 0.1.0
- */
-typedef struct {
-  const uint8_t* data; /**< Span base.            */
-  uint64_t       len;  /**< Span length in bytes. */
-} cbs_memspan_t;
-
-/* cppcheck-suppress constParameterCallback
- * Reason: bound as an ra8_vsource_read_fn, whose signature is
- * `ra8_err_t (*)(void*, uint64_t, uint8_t*, uint32_t)`; constifying ctx
- * would break the function-pointer binding. */
-/**
- * @brief `ra8_vsource_read_fn` over a ::cbs_memspan_t (bounds-checked memcpy).
- *
- * @details Copies @p len bytes from `span->data[offset]` into @p buf after
- *          confirming the request lies within the span, so it serves both the
- *          `mem` backend's blob and the RBKC container file through one reader.
- *
- * @param[in]  ctx    The ::cbs_memspan_t to read from (as `void*`).
- * @param[in]  offset Byte offset into the span.
- * @param[out] buf    Destination buffer for @p len bytes.
- * @param[in]  len    Bytes to copy.
- *
- * @return ra8_err_t Read status.
- * @retval k_ra8_ok               @p len bytes were copied into @p buf.
- * @retval k_ra8_err_null_ptr     @p ctx or @p buf is NULL.
- * @retval k_ra8_err_out_of_range `offset + len` exceeds the span length.
- *
- * @pre @p ctx points at a ::cbs_memspan_t whose `data` covers `len` bytes.
- * @pre @p buf covers @p len writable bytes.
- * @post On success, @p buf holds `span->data[offset .. offset+len)`.
- * @post The span and its backing bytes are unmodified.
- *
- * @note Not thread-safe: reads the shared span binding.
- * @since 0.1.0
- */
-static ra8_err_t cbs_memspan_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
-{
-  const cbs_memspan_t* sp = (const cbs_memspan_t*)ctx;
-  if ((sp == nullptr) || (buf == nullptr)) {
-    return k_ra8_err_null_ptr;
-  }
-  if ((offset + (uint64_t)len) > sp->len) {
-    return k_ra8_err_out_of_range;
-  }
-  memcpy(buf, &sp->data[offset], (size_t)len);
-  return k_ra8_ok;
+  meter->calls++;
+  meter->bytes += length;
+  return meter->inner(meter->inner_ctx, offset, buffer, length);
 }
 
 /**
- * @var s_cbs_mem_span
- * @brief The `mem` backend's blob binding for the current setup.
- * @details Rebound on every `setup`; single-threaded tool, so one static
- *          instance suffices.
- * @warning Only ::cbs_mem_setup / ::cbs_mem_teardown may write this.
+ * @brief Bind the deterministic payload directly as an uncompressed backend.
+ * @details Publishes the injected read callback and logical blob size without
+ *          allocating, copying, or using the scratch transaction.
+ * @param[in,out] be Backend record to bind.
+ * @param[in] payload_read Deterministic payload reader.
+ * @param[in] payload_ctx Payload reader context.
+ * @param[in] blob_bytes Logical source length.
+ * @param[in] block_bytes Swept block size, unused by direct memory.
+ * @param[in,out] config Sweep composition, unused by direct memory.
+ * @return Zero on a valid bind, otherwise one.
+ * @retval 0 @p be publishes the injected source.
+ * @retval 1 A required binding is absent or the blob is empty.
+ * @pre @p be is writable.
+ * @pre @p payload_read and @p payload_ctx remain valid through teardown.
+ * @post On success, `be->backing_bytes == blob_bytes`.
+ * @post No ownership changes and no bytes are copied.
+ * @note The block and config parameters preserve the common backend seam.
  * @since 0.1.0
  */
-static cbs_memspan_t s_cbs_mem_span = {};
-
-/**
- * @brief `mem` backend setup: serve the blob itself (the harness floor).
- *
- * @details Binds the module-static ::s_cbs_mem_span to @p blob and publishes
- *          ::cbs_memspan_read as the backend reader, so `mem` delivers the
- *          payload straight from resident memory with no per-miss decode -- the
- *          throughput floor the chunked backend is measured against. The block
- *          size is ignored (one resident blob serves every size).
- *
- * @param[in,out] be          Backend to bind (`read`/`read_ctx`/counters set).
- * @param[in]     blob        Source payload to serve.
- * @param[in]     blob_bytes  Payload length in bytes (> 0).
- * @param[in]     block_bytes Swept block size (unused; one blob serves all).
- *
- * @return int 0 on success, 1 on a NULL/zero argument.
- * @retval 0 @p be serves @p blob; `backing_bytes == blob_bytes`.
- * @retval 1 @p be or @p blob was NULL, or @p blob_bytes was 0.
- *
- * @pre @p be is a registered backend entry; @p blob is non-NULL.
- * @pre No prior `mem` setup is live (teardown ran, or first use).
- * @post On 0, `be->read` is ::cbs_memspan_read and `src_bytes` is NULL.
- * @post On 1, no binding is published.
- *
- * @note Not thread-safe: (re)binds the module-static ::s_cbs_mem_span.
- * @since 0.1.0
- */
-static int
-cbs_mem_setup(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint32_t block_bytes)
+RA8_INTERNAL
+static int internal_mem_setup(cbs_backend_t*      be,
+                              ra8_vsource_read_fn payload_read,
+                              void*               payload_ctx,
+                              uint32_t            blob_bytes,
+                              uint32_t            block_bytes,
+                              cb_sweep_config_t*  config)
 {
-  (void)block_bytes; /* one resident blob serves every block size */
-  if ((be == nullptr) || (blob == nullptr) || (blob_bytes == 0U)) {
+  (void)block_bytes;
+  (void)config;
+  if ((be == nullptr) || (payload_read == nullptr) || (payload_ctx == nullptr) ||
+      (blob_bytes == 0U)) {
     return 1;
   }
-  s_cbs_mem_span    = (cbs_memspan_t){.data = blob, .len = (uint64_t)blob_bytes};
-  be->read          = cbs_memspan_read;
-  be->read_ctx      = &s_cbs_mem_span;
-  be->backing_bytes = (uint64_t)blob_bytes;
-  be->src_bytes     = nullptr; /* raw medium bytes == delivered bytes */
+  be->read          = payload_read;
+  be->read_ctx      = payload_ctx;
+  be->backing_bytes = blob_bytes;
+  be->src_bytes     = nullptr;
   return 0;
 }
 
 /**
- * @brief `mem` backend teardown: drop the blob binding.
- *
- * @details Clears the module-static ::s_cbs_mem_span and nulls the backend's
- *          `read`/`read_ctx` so a stale blob pointer cannot be dereferenced
- *          after a sweep. Idempotent and NULL-tolerant.
- *
- * @param[in,out] be Backend to unbind (NULL tolerated as a partial no-op).
- *
- * @pre The backend, if bound, was set up by ::cbs_mem_setup.
- * @pre Called on the single benchmark thread.
- * @post ::s_cbs_mem_span is zeroed.
- * @post `be->read` and `be->read_ctx` are NULL when @p be is non-NULL.
- *
- * @note Not thread-safe: clears the module-static binding.
+ * @brief Clear the borrowed runtime bindings of one backend.
+ * @details Makes teardown idempotent by nulling the read, context, and source
+ *          counter pointers while leaving static identity fields unchanged.
+ * @param[in,out] be Backend to unbind; NULL is accepted.
+ * @pre @p be is NULL or points to an initialized backend record.
+ * @pre No read is in flight through @p be.
+ * @post A non-NULL backend has no active read or counter binding.
+ * @post Static name, setup, teardown, and backing-byte fields are unchanged.
+ * @note Caller-owned payload and scratch storage are not released here.
  * @since 0.1.0
  */
-static void cbs_mem_teardown(cbs_backend_t* be)
+RA8_INTERNAL
+static void internal_backend_teardown(cbs_backend_t* be)
 {
-  s_cbs_mem_span = (cbs_memspan_t){};
-  if (be != nullptr) {
-    be->read     = nullptr;
-    be->read_ctx = nullptr;
-  }
-}
-
-/* ---------------------------------------------------- `rbkc-z9` backend -- */
-
-/**
- * @struct cbs_rbkc_t
- * @brief One packed in-memory RBKC container + its bound chunk reader.
- * @details `span` presents the container bytes as the "file"; `file_meter`
- *          wraps that file so raw compressed traffic is counted separately
- *          from the inflated bytes the cache receives.
- * @invariant Buffers are either all live (after a successful setup) or all
- *            freed (after teardown).
- * @since 0.1.0
- */
-typedef struct {
-  uint8_t*           container;  /**< Packed container bytes (heap).       */
-  uint64_t           file_len;   /**< Container length in bytes.           */
-  cbs_memspan_t      span;       /**< The container presented as a file.   */
-  cbs_meter_t        file_meter; /**< Counts raw container-byte traffic.   */
-  uint64_t*          table;      /**< Chunk-table buffer for the reader.   */
-  uint8_t*           staging;    /**< Compressed-chunk staging buffer.     */
-  ra8_book_chunked_t rd;         /**< The bound demand-paged chunk reader. */
-} cbs_rbkc_t;
-
-/**
- * @var s_cbs_rbkc
- * @brief The RBKC backend's state for the current setup.
- * @details Rebuilt per (blob, block size) pair; single-threaded tool, so one
- *          static instance suffices.
- * @warning Only ::cbs_rbkc_setup / ::cbs_rbkc_teardown may (re)bind this.
- * @since 0.1.0
- */
-static cbs_rbkc_t s_cbs_rbkc = {};
-
-/**
- * @var s_cbs_tinfl
- * @brief Static tinfl state (~11 KiB) kept off the stack, as the shelf does.
- * @details Reused across inflate calls; re-initialised per stream.
- * @warning Only ::cbs_inflate may touch this.
- * @since 0.1.0
- */
-static tinfl_decompressor s_cbs_tinfl;
-
-/**
- * @brief zlib inflater matching `ra8_book_inflate_fn` (mirrors the shelf's).
- *
- * @details Re-initialises the module-static ::s_cbs_tinfl and inflates one zlib
- *          stream from @p src into @p dst in a single non-wrapping pass (the
- *          same tinfl configuration the e-reader shelf uses), so each RBKC cache
- *          miss pays a real one-chunk decompress.
- *
- * @param[in]  src     Compressed zlib stream.
- * @param[in]  src_len Compressed length in bytes.
- * @param[out] dst     Output buffer for the inflated bytes.
- * @param[in]  dst_cap Capacity of @p dst in bytes.
- * @param[out] out_len Receives the inflated byte count on success.
- *
- * @return ra8_err_t Inflate status.
- * @retval k_ra8_ok               The stream inflated; `*out_len` is set.
- * @retval k_ra8_err_null_ptr     @p src, @p dst, or @p out_len is NULL.
- * @retval k_ra8_err_invalid_size The stream did not decode to a complete blob.
- *
- * @pre @p dst_cap is at least the chunk's uncompressed size.
- * @pre @p src holds a complete zlib stream of @p src_len bytes.
- * @post On success, `dst[0..*out_len)` holds the inflated chunk.
- * @post ::s_cbs_tinfl has been reset for this call (no cross-call carryover).
- *
- * @note Not thread-safe: reuses the static tinfl decompressor.
- * @since 0.1.0
- */
-static ra8_err_t
-cbs_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len)
-{
-  if ((src == nullptr) || (dst == nullptr) || (out_len == nullptr)) {
-    return k_ra8_err_null_ptr;
-  }
-  tinfl_init(&s_cbs_tinfl);
-  size_t             in_n  = src_len;
-  size_t             out_n = dst_cap;
-  const tinfl_status st    = tinfl_decompress(
-    &s_cbs_tinfl,
-    (const mz_uint8*)src,
-    &in_n,
-    (mz_uint8*)dst,
-    (mz_uint8*)dst,
-    &out_n,
-    (mz_uint32)(TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF));
-  if (st != TINFL_STATUS_DONE) {
-    return k_ra8_err_invalid_size;
-  }
-  *out_len = out_n;
-  return k_ra8_ok;
-}
-
-/**
- * @brief Write the fixed RBKC header (magic + geometry) into @p out.
- *
- * @details Lays down the "RBKC" magic followed by the block size, total
- *          uncompressed length, chunk count, and a reserved word, matching the
- *          container header ::ra8_book_chunked_open validates.
- *
- * @param[out] out         Container buffer; the header is written at offset 0.
- * @param[in]  block_bytes Chunk size recorded in the header.
- * @param[in]  total       Total uncompressed payload length.
- * @param[in]  count       Number of chunks in the container.
- *
- * @pre @p out has at least `k_ra8_book_container_header_len` writable bytes.
- * @pre Called before the chunk table and payload are written.
- * @post The header region of @p out holds the magic and geometry fields.
- * @post No bytes past the header region are touched.
- *
- * @note Not thread-safe: writes the caller's buffer.
- * @since 0.1.0
- */
-static void cbs_rbkc_header(uint8_t* out, uint32_t block_bytes, uint64_t total, uint32_t count)
-{
-  size_t pos = 0U;
-  memcpy(&out[pos], "RBKC", sizeof("RBKC") - 1U);
-  pos += sizeof("RBKC") - 1U;
-  memcpy(&out[pos], &block_bytes, sizeof(block_bytes));
-  pos += sizeof(block_bytes);
-  memcpy(&out[pos], &total, sizeof(total));
-  pos += sizeof(total);
-  memcpy(&out[pos], &count, sizeof(count));
-  pos += sizeof(count);
-  const uint32_t reserved = 0U;
-  memcpy(&out[pos], &reserved, sizeof(reserved));
-}
-
-/**
- * @brief Pack an RBKC container over @p blob with real zlib level-9 streams.
- *
- * @details Compresses each `block_bytes` slice with `mz_compress2` at
- *          `MZ_BEST_COMPRESSION` (the level `tools/epub_compile` uses),
- *          writing each stream straight into its final position and each
- *          payload-relative end offset straight into the chunk table, so the
- *          container is assembled in a single pass with no staging copy.
- *
- * @param[in]  blob        Source payload.
- * @param[in]  blob_bytes  Payload length in bytes (> 0).
- * @param[in]  block_bytes Chunk size in bytes (> 0).
- * @param[out] out         Container buffer (capacity @p out_cap).
- * @param[in]  out_cap     Capacity of @p out in bytes.
- * @param[out] out_len     Receives the packed container length.
- *
- * @return int 0 on success, 1 on a compression failure.
- * @retval 0 A valid RBKC container was written; `*out_len` is set.
- * @retval 1 A NULL/zero argument or an `mz_compress2` call failed.
- *
- * @pre @p out_cap covers header + table + `count * mz_compressBound(block)`.
- * @pre @p out and @p out_len are non-NULL.
- * @post On 0, `out[0..*out_len)` is a valid RBKC container over @p blob.
- * @post On 1, @p out contents are unspecified.
- *
- * @note Not thread-safe (uses no shared state, but the caller's buffers).
- * @since 0.1.0
- */
-static int cbs_rbkc_pack(const uint8_t* blob,
-                         uint32_t       blob_bytes,
-                         uint32_t       block_bytes,
-                         uint8_t*       out,
-                         uint64_t       out_cap,
-                         uint64_t*      out_len)
-{
-  if ((blob == nullptr) || (out == nullptr) || (out_len == nullptr) || (block_bytes == 0U)) {
-    return 1;
-  }
-  const uint32_t count     = (blob_bytes + block_bytes - 1U) / block_bytes;
-  const uint64_t table_off = (uint64_t)k_ra8_book_container_header_len;
-  const uint64_t payload_off =
-    table_off + (((uint64_t)count + 1U) * k_ra8_book_container_entry_len);
-  cbs_rbkc_header(out, block_bytes, (uint64_t)blob_bytes, count);
-  uint64_t cur = 0U;
-  memcpy(&out[table_off], &cur, sizeof(cur));
-  for (uint32_t i = 0U; i < count; ++i) {
-    const uint32_t at   = i * block_bytes;
-    uint32_t       span = blob_bytes - at;
-    if (span > block_bytes) {
-      span = block_bytes;
-    }
-    mz_ulong  dst_len = (mz_ulong)(out_cap - (payload_off + cur));
-    const int rc      = mz_compress2(&out[payload_off + cur],
-                                     &dst_len,
-                                     &blob[at],
-                                     (mz_ulong)span,
-                                     MZ_BEST_COMPRESSION);
-    if (rc != MZ_OK) {
-      return 1;
-    }
-    cur += (uint64_t)dst_len;
-    memcpy(&out[table_off + (((uint64_t)i + 1U) * k_ra8_book_container_entry_len)],
-           &cur,
-           sizeof(cur));
-  }
-  *out_len = payload_off + cur;
-  return 0;
-}
-
-/**
- * @brief RBKC backend teardown: free the container + reader buffers.
- *
- * @details Frees the packed container, chunk table, and staging buffer held in
- *          the module-static ::s_cbs_rbkc, zeroes it, and nulls the backend's
- *          reader and `src_bytes` pointer. Idempotent and NULL-tolerant, so it
- *          also serves as the failure-path cleanup for ::cbs_rbkc_setup.
- *
- * @param[in,out] be Backend to unbind (NULL tolerated as a partial no-op).
- *
- * @pre The state, if live, was built by ::cbs_rbkc_setup.
- * @pre Called on the single benchmark thread.
- * @post ::s_cbs_rbkc is zeroed and its three buffers are freed.
- * @post `be->read`, `read_ctx`, and `src_bytes` are NULL when @p be is non-NULL.
- *
- * @note Not thread-safe: clears the module-static ::s_cbs_rbkc.
- * @since 0.1.0
- */
-static void cbs_rbkc_teardown(cbs_backend_t* be)
-{
-  free(s_cbs_rbkc.container);
-  free(s_cbs_rbkc.table);
-  free(s_cbs_rbkc.staging);
-  s_cbs_rbkc = (cbs_rbkc_t){};
   if (be != nullptr) {
     be->read      = nullptr;
     be->read_ctx  = nullptr;
@@ -519,96 +134,459 @@ static void cbs_rbkc_teardown(cbs_backend_t* be)
 }
 
 /**
- * @brief RBKC backend setup: pack a container at @p block_bytes and bind the
- *        demand-paged chunk reader over it.
- *
- * @details Buffer budgets come from `mz_compressBound(block_bytes)` (the
- *          canonical worst-case stream size), so the staging capacity always
- *          covers the largest compressed chunk and the open-path validation
- *          in ::ra8_book_chunked_open cannot reject the container. The
- *          container "file" is read through a nested ::cbs_meter_t so raw
- *          compressed traffic is reported separately.
- *
- * @param[in,out] be          Backend to bind.
- * @param[in]     blob        Source payload.
- * @param[in]     blob_bytes  Payload length in bytes (> 0).
- * @param[in]     block_bytes Chunk size in bytes (> 0).
- *
- * @return int 0 on success, 1 on allocation / pack / open failure.
- * @retval 0 The chunk reader serves the inflated blob via `be->read`.
- * @retval 1 A NULL/zero argument, or an allocation / pack / open step failed.
- *
- * @pre @p be and @p blob are non-NULL.
- * @pre No prior setup is live (teardown ran, or first use).
- * @post On 0, `be->read` serves the inflated flat blob via chunk reads.
- * @post On 1, all partial state is freed (safe to retry or exit).
- *
- * @note Not thread-safe (binds the static ::s_cbs_rbkc).
+ * @brief Encode the fixed RBKC container header into caller storage.
+ * @details Writes magic, block geometry, total length, chunk count, and the
+ *          reserved zero field in the reader's native container layout.
+ * @param[out] output Header buffer of ::k_ra8_book_container_header_len bytes.
+ * @param[in] block_bytes Chunk size encoded in the header.
+ * @param[in] total Logical uncompressed byte length.
+ * @param[in] count Number of chunks.
+ * @pre @p output is non-NULL and large enough for the fixed header.
+ * @pre @p block_bytes and @p count describe @p total consistently.
+ * @post Every header field is initialized.
+ * @post No storage outside the fixed header span is touched.
+ * @note Encoding matches the in-tree ::ra8_book_chunked reader contract.
  * @since 0.1.0
  */
-static int
-cbs_rbkc_setup(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint32_t block_bytes)
+RA8_INTERNAL
+static void
+internal_rbkc_header(uint8_t* output, uint32_t block_bytes, uint64_t total, uint32_t count)
 {
-  if ((be == nullptr) || (blob == nullptr) || (blob_bytes == 0U) || (block_bytes == 0U)) {
+  size_t position = 0U;
+  memcpy(&output[position], "RBKC", sizeof("RBKC") - 1U);
+  position += sizeof("RBKC") - 1U;
+  memcpy(&output[position], &block_bytes, sizeof(block_bytes));
+  position += sizeof(block_bytes);
+  memcpy(&output[position], &total, sizeof(total));
+  position += sizeof(total);
+  memcpy(&output[position], &count, sizeof(count));
+  position += sizeof(count);
+  const uint32_t reserved = 0U;
+  memcpy(&output[position], &reserved, sizeof(reserved));
+}
+
+/**
+ * @brief Append one compressor fragment to the injected scratch transaction.
+ * @details Implements miniz's output callback and advances the absolute
+ *          scratch offset only after a complete injected write.
+ * @param[in] data Compressor output bytes.
+ * @param[in] length Fragment length from miniz.
+ * @param[in,out] user Bound ::cbs_pack_sink_t.
+ * @return Miniz callback status.
+ * @retval MZ_TRUE The fragment was appended.
+ * @retval MZ_FALSE An argument, prior failure, or scratch write failed.
+ * @pre @p user identifies a live scratch transaction.
+ * @pre @p data is readable for non-negative @p length bytes.
+ * @post On success, the sink offset advances by @p length.
+ * @post On scratch failure, `sink->failed` remains latched.
+ * @note The callback never retries a failed injected transaction write.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static mz_bool internal_pack_write(const void* data, int length, void* user)
+{
+  cbs_pack_sink_t* sink = (cbs_pack_sink_t*)user;
+  if ((sink == nullptr) || (data == nullptr) || (length < 0) || sink->failed) {
+    return MZ_FALSE;
+  }
+  const cb_io_status_t status =
+    sink->scratch->write(sink->scratch->ctx, sink->offset, (void*)data, (size_t)length);
+  if (status != k_cb_io_ok) {
+    sink->failed = true;
+    return MZ_FALSE;
+  }
+  sink->offset += (uint64_t)length;
+  return MZ_TRUE;
+}
+
+/**
+ * @brief Compress one logical payload chunk into the scratch stream.
+ * @details Reinitializes tdefl for an independent zlib stream, pulls the chunk
+ *          in bounded input grains, and finishes through ::internal_pack_write.
+ * @param[in,out] compressor Caller-provided tdefl state.
+ * @param[in,out] sink Scratch append binding.
+ * @param[in] payload_read Payload read callback.
+ * @param[in] payload_ctx Payload callback context.
+ * @param[in,out] input Bounded codec input buffer.
+ * @param[in] input_capacity Capacity of @p input.
+ * @param[in] offset Payload start offset.
+ * @param[in] length Uncompressed chunk length.
+ * @return Zero after a complete zlib stream, otherwise one.
+ * @retval 0 The chunk was fully compressed and appended.
+ * @retval 1 Initialization, payload read, compression, or sink append failed.
+ * @pre All pointer bindings are non-NULL and @p input_capacity is non-zero.
+ * @pre The requested payload range is valid.
+ * @post On success, @p sink points immediately after the chunk stream.
+ * @post The compressor state may be reused only after reinitialization.
+ * @note Each chunk intentionally starts a fresh zlib history.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static int internal_rbkc_pack_chunk(tdefl_compressor*   compressor,
+                                    cbs_pack_sink_t*    sink,
+                                    ra8_vsource_read_fn payload_read,
+                                    void*               payload_ctx,
+                                    uint8_t*            input,
+                                    uint32_t            input_capacity,
+                                    uint32_t            offset,
+                                    uint32_t            length)
+{
+  const mz_uint flags = tdefl_create_comp_flags_from_zip_params(MZ_BEST_COMPRESSION,
+                                                                (int)k_cbs_codec_window_bits,
+                                                                MZ_DEFAULT_STRATEGY);
+  if (tdefl_init(compressor, internal_pack_write, sink, (int)flags) != TDEFL_STATUS_OKAY) {
     return 1;
   }
-  cbs_rbkc_t* rb       = &s_cbs_rbkc;
-  *rb                  = (cbs_rbkc_t){};
-  const uint32_t count = (blob_bytes + block_bytes - 1U) / block_bytes;
-  const uint64_t bound = (uint64_t)mz_compressBound((mz_ulong)block_bytes);
-  const uint64_t cap   = (uint64_t)k_ra8_book_container_header_len +
-                         (((uint64_t)count + 1U) * k_ra8_book_container_entry_len) +
-                         ((uint64_t)count * bound);
-  rb->container        = (uint8_t*)malloc((size_t)cap);
-  rb->table            = (uint64_t*)malloc(((size_t)count + 1U) * sizeof(uint64_t));
-  rb->staging          = (uint8_t*)malloc((size_t)bound);
-  if ((rb->container == nullptr) || (rb->table == nullptr) || (rb->staging == nullptr)) {
-    cbs_rbkc_teardown(be);
+  uint32_t complete = 0U;
+  while (complete < length) {
+    uint32_t span = length - complete;
+    if (span > input_capacity) {
+      span = input_capacity;
+    }
+    if (payload_read(payload_ctx, (uint64_t)offset + complete, input, span) != k_ra8_ok ||
+        tdefl_compress_buffer(compressor, input, span, TDEFL_NO_FLUSH) < TDEFL_STATUS_OKAY) {
+      return 1;
+    }
+    complete += span;
+  }
+  const tdefl_status status = tdefl_compress_buffer(compressor, nullptr, 0U, TDEFL_FINISH);
+  return ((status == TDEFL_STATUS_DONE) && !sink->failed) ? 0 : 1;
+}
+
+/**
+ * @brief Stream an RBKC container into the injected scratch transaction.
+ * @details Writes the fixed header and offset table incrementally, overlays
+ *          tdefl state on the future cache backing, then erases that backing.
+ * @param[in] payload_read Deterministic payload reader.
+ * @param[in] payload_ctx Payload reader context.
+ * @param[in] blob_bytes Logical source length.
+ * @param[in] block_bytes RBKC chunk size.
+ * @param[in,out] config Scratch, cache overlay, and diagnostics.
+ * @param[in,out] input Bounded codec input buffer.
+ * @param[in] input_capacity Capacity of @p input.
+ * @param[out] output_length Receives the container byte length.
+ * @return Zero after complete construction, otherwise one.
+ * @retval 0 Header, table, and all compressed chunks were written.
+ * @retval 1 Alignment, capacity, read, compression, or scratch I/O failed.
+ * @pre All bindings are non-NULL and sizes are non-zero.
+ * @pre Cache backing satisfies tdefl size and alignment requirements.
+ * @post On success, scratch size and @p output_length match the container end.
+ * @post On success, the full cache backing is zeroed before cache binding.
+ * @note The container and offset table are never materialized in RAM.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static int internal_rbkc_pack(ra8_vsource_read_fn payload_read,
+                              void*               payload_ctx,
+                              uint32_t            blob_bytes,
+                              uint32_t            block_bytes,
+                              cb_sweep_config_t*  config,
+                              uint8_t*            input,
+                              uint32_t            input_capacity,
+                              uint64_t*           output_length)
+{
+  if ((sizeof(tdefl_compressor) > config->cache_capacity) ||
+      (((uintptr_t)config->cache_backing % alignof(tdefl_compressor)) != 0U)) {
+    config->workspace_required = sizeof(tdefl_compressor);
     return 1;
   }
-  if (cbs_rbkc_pack(blob, blob_bytes, block_bytes, rb->container, cap, &rb->file_len) != 0) {
-    cbs_rbkc_teardown(be);
+  const uint32_t count          = (blob_bytes + block_bytes - 1U) / block_bytes;
+  const uint64_t table_bytes    = ((uint64_t)count + 1U) * k_ra8_book_container_entry_len;
+  const uint64_t payload_offset = (uint64_t)k_ra8_book_container_header_len + table_bytes;
+  uint8_t        header[k_ra8_book_container_header_len] = {};
+  internal_rbkc_header(header, block_bytes, blob_bytes, count);
+  if (config->scratch->write(config->scratch->ctx, 0U, header, sizeof(header)) != k_cb_io_ok) {
     return 1;
   }
-  rb->span            = (cbs_memspan_t){.data = rb->container, .len = rb->file_len};
-  rb->file_meter      = (cbs_meter_t){.inner = cbs_memspan_read, .inner_ctx = &rb->span};
-  const ra8_err_t err = ra8_book_chunked_open(&rb->rd,
-                                              cbs_priv_meter_read,
-                                              &rb->file_meter,
-                                              rb->file_len,
-                                              cbs_inflate,
-                                              rb->table,
-                                              count + 1U,
-                                              rb->staging,
-                                              (uint32_t)bound);
-  if (err != k_ra8_ok) {
-    (void)fprintf(stderr, "sweep-block: rbkc open failed (err=%d)\n", (int)err);
-    cbs_rbkc_teardown(be);
+  uint64_t relative = 0U;
+  if (config->scratch->write(config->scratch->ctx,
+                             k_ra8_book_container_header_len,
+                             &relative,
+                             sizeof(relative)) != k_cb_io_ok) {
     return 1;
   }
-  be->read          = ra8_book_chunked_read;
-  be->read_ctx      = &rb->rd;
-  be->backing_bytes = rb->file_len;
-  be->src_bytes     = &rb->file_meter.bytes;
+  tdefl_compressor* compressor = (tdefl_compressor*)config->cache_backing;
+  cbs_pack_sink_t   sink       = {.scratch = config->scratch, .offset = payload_offset};
+  for (uint32_t chunk = 0U; chunk < count; ++chunk) {
+    const uint32_t offset = chunk * block_bytes;
+    uint32_t       length = blob_bytes - offset;
+    if (length > block_bytes) {
+      length = block_bytes;
+    }
+    if (internal_rbkc_pack_chunk(compressor,
+                                 &sink,
+                                 payload_read,
+                                 payload_ctx,
+                                 input,
+                                 input_capacity,
+                                 offset,
+                                 length) != 0) {
+      return 1;
+    }
+    relative                    = sink.offset - payload_offset;
+    const uint64_t table_offset = (uint64_t)k_ra8_book_container_header_len +
+                                  (((uint64_t)chunk + 1U) * k_ra8_book_container_entry_len);
+    if (config->scratch->write(config->scratch->ctx, table_offset, &relative, sizeof(relative)) !=
+        k_cb_io_ok) {
+      return 1;
+    }
+  }
+  *output_length        = sink.offset;
+  config->scratch->size = sink.offset;
+  memset(config->cache_backing, 0, config->cache_capacity);
   return 0;
 }
 
-/* -------------------------------------------------------------- registry -- */
-
 /**
- * @var s_cbs_backends
- * @brief The registered sweep backends (the seam the HW leg extends).
- * @details Order fixes report order; `mem` first as the floor reference.
- * @warning Setup binds `read`/`read_ctx` in place; single-threaded use only.
+ * @brief Read and validate one compressed chunk's relative offset pair.
+ * @details Fetches adjacent table entries through the injected scratch seam
+ *          and checks monotonicity plus the physical container bound.
+ * @param[in,out] rb Bound RBKC reader state.
+ * @param[in] chunk Chunk-table index.
+ * @param[out] begin Receives the relative compressed start.
+ * @param[out] end Receives the relative compressed end.
+ * @return Repository error code.
+ * @retval k_ra8_ok The offset pair is ordered and in range.
+ * @retval k_ra8_err_invalid_size A read or geometry validation failed.
+ * @pre @p rb, @p begin, and @p end are non-NULL.
+ * @pre @p chunk is less than `rb->chunk_count`.
+ * @post On success, `*begin <= *end` within the scratch payload.
+ * @post Reader state and scratch bytes are not modified.
+ * @note Offsets are relative to `rb->payload_offset`.
  * @since 0.1.0
  */
+RA8_INTERNAL
+static ra8_err_t
+internal_rbkc_offsets(cbs_rbkc_t* rb, uint32_t chunk, uint64_t* begin, uint64_t* end)
+{
+  const uint64_t table_offset =
+    (uint64_t)k_ra8_book_container_header_len + ((uint64_t)chunk * k_ra8_book_container_entry_len);
+  if ((rb->scratch->read(rb->scratch->ctx, table_offset, begin, sizeof(*begin)) != k_cb_io_ok) ||
+      (rb->scratch->read(rb->scratch->ctx,
+                         table_offset + k_ra8_book_container_entry_len,
+                         end,
+                         sizeof(*end)) != k_cb_io_ok) ||
+      (*end < *begin) || ((rb->payload_offset + *end) > rb->scratch->size)) {
+    return k_ra8_err_invalid_size;
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Inflate one exact RBKC chunk from scratch into caller storage.
+ * @details Pulls bounded compressed grains, drives tinfl in non-wrapping mode,
+ *          and rejects stalled, truncated, extra-input, or wrong-size streams.
+ * @param[in,out] rb Bound RBKC reader and traffic counter.
+ * @param[in] begin Relative compressed start.
+ * @param[in] end Relative compressed end.
+ * @param[out] output Destination buffer.
+ * @param[in] output_length Exact expected uncompressed length.
+ * @return Repository error code.
+ * @retval k_ra8_ok Exactly one stream produced the requested bytes.
+ * @retval k_ra8_err_invalid_size Scratch I/O or stream geometry failed.
+ * @pre @p rb and @p output are non-NULL and `begin < end`.
+ * @pre @p output is writable for @p output_length bytes.
+ * @post On success, all compressed bytes and output bytes are consumed exactly.
+ * @post `rb->source_bytes` includes every compressed grain read.
+ * @note The inflater and input workspace are caller-owned and reused per chunk.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_rbkc_inflate(cbs_rbkc_t* rb,
+                                       uint64_t    begin,
+                                       uint64_t    end,
+                                       uint8_t*    output,
+                                       uint32_t    output_length)
+{
+  tinfl_init(rb->inflater);
+  uint64_t     source   = begin;
+  uint32_t     produced = 0U;
+  tinfl_status status   = TINFL_STATUS_NEEDS_MORE_INPUT;
+  while (status != TINFL_STATUS_DONE) {
+    uint32_t input_length = (uint32_t)(end - source);
+    if (input_length > rb->input_capacity) {
+      input_length = rb->input_capacity;
+    }
+    if ((input_length == 0U) || (rb->scratch->read(rb->scratch->ctx,
+                                                   rb->payload_offset + source,
+                                                   rb->input,
+                                                   input_length) != k_cb_io_ok)) {
+      return k_ra8_err_invalid_size;
+    }
+    rb->source_bytes += input_length;
+    size_t          consumed  = input_length;
+    size_t          available = output_length - produced;
+    const mz_uint32 flags =
+      (mz_uint32)(TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF |
+                  (((source + input_length) < end) ? TINFL_FLAG_HAS_MORE_INPUT : 0U));
+    status = tinfl_decompress(rb->inflater,
+                              rb->input,
+                              &consumed,
+                              output,
+                              &output[produced],
+                              &available,
+                              flags);
+    source += consumed;
+    produced += (uint32_t)available;
+    if ((status < TINFL_STATUS_DONE) || (consumed == 0U)) {
+      return k_ra8_err_invalid_size;
+    }
+  }
+  return ((source == end) && (produced == output_length)) ? k_ra8_ok : k_ra8_err_invalid_size;
+}
+
+/**
+ * @brief Serve one aligned logical chunk through the RBKC backend seam.
+ * @details Validates the vsource request geometry, fetches its table offsets,
+ *          and inflates exactly the requested logical chunk.
+ * @param[in] ctx Bound ::cbs_rbkc_t.
+ * @param[in] offset Chunk-aligned logical byte offset.
+ * @param[out] buffer Destination buffer.
+ * @param[in] length Exact logical chunk length.
+ * @return Repository error code.
+ * @retval k_ra8_ok The chunk was decoded exactly.
+ * @retval k_ra8_err_null_ptr A required binding is NULL.
+ * @retval k_ra8_err_out_of_range The offset is outside or misaligned.
+ * @retval k_ra8_err_invalid_size The length, table, or stream is invalid.
+ * @pre @p buffer is writable for @p length bytes.
+ * @pre @p ctx remains bound until backend teardown.
+ * @post On success, @p buffer holds the requested payload bytes.
+ * @post Scratch bytes and logical geometry are not modified.
+ * @note This is the exact ::ra8_vsource_read_fn bound into the measured cache.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_rbkc_read(void* ctx, uint64_t offset, uint8_t* buffer, uint32_t length)
+{
+  cbs_rbkc_t* rb = (cbs_rbkc_t*)ctx;
+  if ((rb == nullptr) || (buffer == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  if ((offset >= rb->total_bytes) || ((offset % rb->chunk_bytes) != 0U)) {
+    return k_ra8_err_out_of_range;
+  }
+  const uint32_t chunk    = (uint32_t)(offset / rb->chunk_bytes);
+  uint32_t       expected = (uint32_t)(rb->total_bytes - offset);
+  if (expected > rb->chunk_bytes) {
+    expected = rb->chunk_bytes;
+  }
+  if ((chunk >= rb->chunk_count) || (length != expected)) {
+    return k_ra8_err_invalid_size;
+  }
+  uint64_t        begin  = 0U;
+  uint64_t        end    = 0U;
+  const ra8_err_t status = internal_rbkc_offsets(rb, chunk, &begin, &end);
+  return (status == k_ra8_ok) ? internal_rbkc_inflate(rb, begin, end, buffer, length) : status;
+}
+
+/**
+ * @brief Take one aligned setup region from the shared small workspace.
+ * @details Advances `workspace_used` on success and always updates the exact
+ *          required-capacity diagnostic for the attempted partition.
+ * @param[in,out] config Sweep workspace state.
+ * @param[in] bytes Requested byte count before alignment.
+ * @return Borrowed region pointer, or NULL on insufficient capacity.
+ * @retval NULL The aligned request does not fit.
+ * @retval other Pointer to the reserved region.
+ * @pre @p config and `config->workspace` are non-NULL.
+ * @pre The aligned addition fits in `size_t` by fixed sweep geometry.
+ * @post On success, `workspace_used` advances by the aligned span.
+ * @post On failure, `workspace_required` exposes the attempted end offset.
+ * @note Returned storage remains caller-owned.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void* internal_setup_take(cb_sweep_config_t* config, size_t bytes)
+{
+  const size_t alignment = alignof(max_align_t);
+  const size_t span      = (bytes + alignment - 1U) & ~(alignment - 1U);
+  if ((config->workspace_used > config->workspace_capacity) ||
+      (span > (config->workspace_capacity - config->workspace_used))) {
+    config->workspace_required = config->workspace_used + span;
+    return nullptr;
+  }
+  void* result = &config->workspace[config->workspace_used];
+  config->workspace_used += span;
+  config->workspace_required = config->workspace_used;
+  return result;
+}
+
+/**
+ * @brief Construct and bind the streamed RBKC-z9 benchmark backend.
+ * @details Temporarily reserves codec input, builds the scratch container,
+ *          rolls back to the setup floor, then binds inflater reader state.
+ * @param[in,out] be Backend record to bind.
+ * @param[in] payload_read Deterministic payload reader.
+ * @param[in] payload_ctx Payload reader context.
+ * @param[in] blob_bytes Logical source length.
+ * @param[in] block_bytes Swept chunk size.
+ * @param[in,out] config Scratch and workspace composition.
+ * @return Zero after a complete bind, otherwise one.
+ * @retval 0 @p be publishes the RBKC read seam and traffic counter.
+ * @retval 1 A binding, construction, or workspace check failed.
+ * @pre Required pointers are non-NULL and @p block_bytes is non-zero.
+ * @pre Scratch and cache backing meet the packer's contracts.
+ * @post On success, @p be remains valid until teardown or workspace reuse.
+ * @post Setup-only tdefl state no longer occupies the cache backing.
+ * @note Codec workspace is phase-overlaid but never dynamically allocated.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static int internal_rbkc_setup(cbs_backend_t*      be,
+                               ra8_vsource_read_fn payload_read,
+                               void*               payload_ctx,
+                               uint32_t            blob_bytes,
+                               uint32_t            block_bytes,
+                               cb_sweep_config_t*  config)
+{
+  if ((be == nullptr) || (payload_read == nullptr) || (config == nullptr) ||
+      (config->scratch == nullptr) || (block_bytes == 0U)) {
+    return 1;
+  }
+  uint8_t* input       = (uint8_t*)internal_setup_take(config, k_cbs_codec_input_bytes);
+  uint64_t file_length = 0U;
+  if ((input == nullptr) || (internal_rbkc_pack(payload_read,
+                                                payload_ctx,
+                                                blob_bytes,
+                                                block_bytes,
+                                                config,
+                                                input,
+                                                (uint32_t)k_cbs_codec_input_bytes,
+                                                &file_length) != 0)) {
+    return 1;
+  }
+  config->workspace_used = config->workspace_floor;
+  cbs_rbkc_t*         rb = (cbs_rbkc_t*)internal_setup_take(config, sizeof(cbs_rbkc_t));
+  tinfl_decompressor* inflater =
+    (tinfl_decompressor*)internal_setup_take(config, sizeof(tinfl_decompressor));
+  input = (uint8_t*)internal_setup_take(config, k_cbs_codec_input_bytes);
+  if ((rb == nullptr) || (inflater == nullptr) || (input == nullptr)) {
+    return 1;
+  }
+  const uint32_t count = (blob_bytes + block_bytes - 1U) / block_bytes;
+  *rb = (cbs_rbkc_t){.scratch        = config->scratch,
+                     .inflater       = inflater,
+                     .input          = input,
+                     .input_capacity = k_cbs_codec_input_bytes,
+                     .chunk_bytes    = block_bytes,
+                     .chunk_count    = count,
+                     .total_bytes    = blob_bytes,
+                     .payload_offset = (uint64_t)k_ra8_book_container_header_len +
+                                       (((uint64_t)count + 1U) * k_ra8_book_container_entry_len)};
+  be->read          = internal_rbkc_read;
+  be->read_ctx      = rb;
+  be->backing_bytes = file_length;
+  be->src_bytes     = &rb->source_bytes;
+  return 0;
+}
+
 static cbs_backend_t s_cbs_backends[] = {
-  {.name = "mem", .setup = cbs_mem_setup, .teardown = cbs_mem_teardown},
-  {.name = "rbkc-z9", .setup = cbs_rbkc_setup, .teardown = cbs_rbkc_teardown},
+  {.name = "mem", .setup = internal_mem_setup, .teardown = internal_backend_teardown},
+  {.name = "rbkc-z9", .setup = internal_rbkc_setup, .teardown = internal_backend_teardown},
 };
 
-/** @brief Implementation of `cbs_priv_backends()` -- static registry handout. */
-cbs_backend_t* cbs_priv_backends(uint32_t* out_count)
+RA8_PRIV
+cbs_backend_t* priv_backends(uint32_t* out_count)
 {
   if (out_count != nullptr) {
     *out_count = (uint32_t)(sizeof(s_cbs_backends) / sizeof(s_cbs_backends[0]));
