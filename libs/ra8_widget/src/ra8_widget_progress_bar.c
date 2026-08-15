@@ -66,7 +66,7 @@ static void internal_pb_render(ra8_widget_t* w)
   }
   const ra8_ui_rect_t* r = &w->rect;
   pb->paint->fill_rect(pb->paint->user, r->x, r->y, r->w, r->h, pb->track);
-  const int32_t fw = ra8_widget_priv_fill_frac(pb->value, pb->total, r->w);
+  const int32_t fw = priv_widget_fill_frac(pb->value, pb->total, r->w);
   if (fw > (int32_t)k_ra8_widget_pb_empty) {
     pb->paint->fill_rect(pb->paint->user, r->x, r->y, fw, r->h, pb->fill);
   }

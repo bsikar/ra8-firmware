@@ -60,7 +60,7 @@ RA8_INTERNAL
 static void internal_kbd_key(const ra8_widget_keyboard_t* kbd, const ra8_widget_key_info_t* info)
 {
   const ra8_widget_paint_t* p = kbd->paint;
-  ra8_widget_priv_fill_box(p, &info->rect, kbd->key_face, kbd->key_border, kbd->border_w);
+  priv_widget_fill_box(p, &info->rect, kbd->key_face, kbd->key_border, kbd->border_w);
   if (p->draw_text == nullptr) {
     return;
   }
@@ -76,7 +76,7 @@ static void internal_kbd_key(const ra8_widget_keyboard_t* kbd, const ra8_widget_
   }
   int32_t tx = 0;
   int32_t ty = 0;
-  ra8_widget_priv_text_pos(p, &info->rect, text, (int16_t)0, k_ra8_widget_align_center, &tx, &ty);
+  priv_widget_text_pos(p, &info->rect, text, (int16_t)0, k_ra8_widget_align_center, &tx, &ty);
   p->draw_text(p->user, tx, ty, text, kbd->key_fg, kbd->key_face);
 }
 
@@ -105,7 +105,7 @@ static void internal_kbd_render(ra8_widget_t* w)
   if (kbd->paint == nullptr) {
     return;
   }
-  ra8_widget_priv_fill_box(kbd->paint, &w->rect, kbd->bg, kbd->bg, (int16_t)0);
+  priv_widget_fill_box(kbd->paint, &w->rect, kbd->bg, kbd->bg, (int16_t)0);
   if ((kbd->ops == nullptr) || (kbd->ops->count == nullptr) || (kbd->ops->key_info == nullptr)) {
     return;
   }

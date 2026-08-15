@@ -7,7 +7,7 @@
  * fill, a left-aligned + a right-aligned label, and a bottom hairline rule, all
  * painted through the injected ::ra8_widget_paint_t backend so the file carries
  * no `ra8_gfx` dependency. Text placement reuses the shared `RA8_PRIV`
- * ::ra8_widget_priv_text_pos helper (left / right alignment, vertical centring
+ * ::priv_widget_text_pos helper (left / right alignment, vertical centring
  * when the backend can measure). Display-only: the vtable leaves `on_input` NULL.
  *
  *
@@ -37,7 +37,7 @@ typedef enum : int16_t {
 
 /**
  * @brief Draw one aligned label on the status band through the paint backend.
- * @details Places @p text at @p align within @p rect via ::ra8_widget_priv_text_pos
+ * @details Places @p text at @p align within @p rect via ::priv_widget_text_pos
  *          and draws it. A NULL @p text or a NULL `draw_text` backend is a no-op,
  *          so the left / right labels share one branch-coverable helper.
  * @param[in] paint Draw backend (non-NULL).
@@ -72,7 +72,7 @@ static void internal_sb_label(const ra8_widget_paint_t* paint,
   }
   int32_t tx = 0;
   int32_t ty = 0;
-  ra8_widget_priv_text_pos(paint, rect, text, pad, align, &tx, &ty);
+  priv_widget_text_pos(paint, rect, text, pad, align, &tx, &ty);
   paint->draw_text(paint->user, tx, ty, text, fg, bg);
 }
 
@@ -102,7 +102,7 @@ static void internal_sb_render(ra8_widget_t* w)
     return;
   }
   const ra8_ui_rect_t* r = &w->rect;
-  ra8_widget_priv_fill_box(sb->paint, r, sb->bg, sb->bg, (int16_t)k_ra8_widget_sb_no_rule);
+  priv_widget_fill_box(sb->paint, r, sb->bg, sb->bg, (int16_t)k_ra8_widget_sb_no_rule);
   internal_sb_label(sb->paint, r, sb->left, sb->pad, k_ra8_widget_align_left, sb->fg, sb->bg);
   internal_sb_label(sb->paint,
                     r,

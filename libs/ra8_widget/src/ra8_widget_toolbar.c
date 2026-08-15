@@ -90,21 +90,21 @@ static void internal_tb_render(ra8_widget_t* w)
   const ra8_widget_paint_t* p     = bar->paint;
   const ra8_ui_rect_t*      band  = &w->rect;
   const ra8_ui_rect_t       field = internal_tb_field_rect(bar, band);
-  ra8_widget_priv_fill_box(p, band, bar->bg, bar->bg, (int16_t)0);
-  ra8_widget_priv_fill_box(p, &field, bar->field, bar->border, bar->border_w);
+  priv_widget_fill_box(p, band, bar->bg, bar->bg, (int16_t)0);
+  priv_widget_fill_box(p, &field, bar->field, bar->border, bar->border_w);
   if (p->draw_text == nullptr) {
     return;
   }
   if (bar->hint != nullptr) {
     int32_t hx = 0;
     int32_t hy = 0;
-    ra8_widget_priv_text_pos(p, &field, bar->hint, bar->pad, k_ra8_widget_align_left, &hx, &hy);
+    priv_widget_text_pos(p, &field, bar->hint, bar->pad, k_ra8_widget_align_left, &hx, &hy);
     p->draw_text(p->user, hx, hy, bar->hint, bar->hint_fg, bar->field);
   }
   if (bar->count != nullptr) {
     int32_t cx = 0;
     int32_t cy = 0;
-    ra8_widget_priv_text_pos(p, band, bar->count, bar->pad, k_ra8_widget_align_right, &cx, &cy);
+    priv_widget_text_pos(p, band, bar->count, bar->pad, k_ra8_widget_align_right, &cx, &cy);
     p->draw_text(p->user, cx, cy, bar->count, bar->count_fg, bar->bg);
   }
 }
