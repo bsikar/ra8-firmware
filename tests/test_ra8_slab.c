@@ -15,7 +15,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
+#include "ra8_log.h"
 #include "ra8_slab.h"
 #include "unity_minimal.h"
 
@@ -37,11 +39,24 @@ typedef enum : uint32_t {
 static uint8_t s_pool[(size_t)k_t_cells * (size_t)k_t_cell_bytes];
 
 /**
+ * @brief Verify slab initialization, unique allocation, exhaustion, and
+ * statistics.
+ * @details Drains every fixed cell, checks range and alignment, proves pairwise
+ * uniqueness, and observes the empty free count.
+ * @pre The file-scope pool is writable and sized to an integral cell count.
+ * @pre The configured cell size satisfies the allocator's alignment contract.
+ * @post Exactly the configured number of distinct cells are returned.
+ * @post One further allocation reports no memory and free count is zero.
+ * @note Pairwise comparison makes freelist aliasing visible independently of
+ * payload writes.
+ * @since 0.1.0
+ *
  * @par MC/DC:
- * (no compound decisions under test -- init builds N cells all free; alloc hands
- * out N distinct in-range cells then reports no_mem; stats track the drain)
+ * (no compound decisions under test -- init builds N cells all free; alloc
+ * hands out N distinct in-range cells then reports no_mem; stats track the
+ * drain)
  */
-static void test_init_alloc_exhaust(void)
+RA8_INTERNAL static void internal_test_init_alloc_exhaust(void)
 {
   TEST_BEGIN("slab init / alloc / exhaust");
   ra8_slab_t slab = {};
@@ -76,11 +91,23 @@ static void test_init_alloc_exhaust(void)
 }
 
 /**
+ * @brief Verify freed slab cells are reusable and full capacity is recoverable.
+ * @details Writes distinct cells, checks LIFO reuse, drains the slab, then
+ * frees every live allocation.
+ * @pre The slab pool can be initialized with the fixture geometry.
+ * @pre Every pointer returned by allocation is retained until its matching
+ * free.
+ * @post The first replacement allocation reuses the most recently freed cell.
+ * @post Final free count returns to the configured total.
+ * @note Distinct fill bytes additionally prove the first two cells do not
+ * alias.
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions under test -- a freed cell is handed back out, and a
  * full drain then full free restores the original free count)
  */
-static void test_free_reuse(void)
+RA8_INTERNAL static void internal_test_free_reuse(void)
 {
   TEST_BEGIN("slab free / reuse / refill");
   ra8_slab_t slab = {};
@@ -122,11 +149,24 @@ static void test_free_reuse(void)
 }
 
 /**
+ * @brief Verify slab initialization, operation, and pointer-boundary guards.
+ * @details Covers null arguments, malformed geometry, and below, beyond, or
+ * mid-cell free pointers.
+ * @pre The file-scope pool and a separate outside buffer are addressable.
+ * @pre The valid fixture geometry can initialize the slab before operation
+ * guards run.
+ * @post Each invalid configuration reports null, invalid-size, or
+ * invalid-argument as appropriate.
+ * @post No rejected free changes the allocator's ownership state.
+ * @note The below-base check is conditional because stack and static address
+ * ordering is platform-dependent.
+ * @since 0.1.0
+ *
  * @par MC/DC:
  * (no compound decisions under test -- each guard is an independent
  * single-condition check)
  */
-static void test_validation(void)
+RA8_INTERNAL static void internal_test_validation(void)
 {
   TEST_BEGIN("slab validation");
   ra8_slab_t slab = {};
@@ -160,11 +200,30 @@ static void test_validation(void)
   TEST_END("slab validation");
 }
 
+/**
+ * @brief Consume one host-test log byte without touching target ITM MMIO.
+ * @details Implements the injected logger sink as an intentional no-op for expected-error vectors.
+ * @param[in] context Unused sink context.
+ * @param[in] byte Unused diagnostic byte emitted by the production path.
+ * @pre The test process owns the logger sink for the suite lifetime.
+ * @pre No vector depends on observing diagnostic text.
+ * @post No memory, descriptor, or hardware state is modified.
+ * @post Control returns to the production logger immediately.
+ * @note Installing this sink keeps sanitizer runs away from the target-only ITM address window.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_host_log_sink(void* context, uint8_t byte)
+{
+  (void)context;
+  (void)byte;
+}
+
 int32_t main(void)
 {
-  test_init_alloc_exhaust();
-  test_free_reuse();
-  test_validation();
-  (void)fprintf(stderr, "[OK  ] test_ra8_slab.c\n");
+  ra8_log_set_byte_sink(internal_host_log_sink, nullptr);
+  internal_test_init_alloc_exhaust();
+  internal_test_free_reuse();
+  internal_test_validation();
+  ra8_log_set_byte_sink(nullptr, nullptr);
   return 0;
 }

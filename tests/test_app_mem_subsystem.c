@@ -469,6 +469,5 @@ int32_t main(void)
   test_vmem_stream_windows();
   test_verdict_mcdc();
   test_window_ok_mcdc();
-  (void)fprintf(stderr, "[OK  ] test_app_mem_subsystem.c\n");
   return 0;
 }
