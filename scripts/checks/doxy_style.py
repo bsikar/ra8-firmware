@@ -60,6 +60,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from doxy_lex import blank_noncode
+from doxy_scope import GENERATED_PROTOCOL_FILES
 from lint_targets import first_party_paths
 
 #: The real checkout root; every reported path is relative to it.
@@ -254,6 +255,8 @@ def scan() -> tuple[list[Row], list[str], int]:
     rows: list[Row] = []
     params = 0
     for rel in first_party_paths(SOURCE_SUFFIXES):
+        if rel in GENERATED_PROTOCOL_FILES:
+            continue
         path = REPO_ROOT / rel
         if not path.is_file():
             continue
