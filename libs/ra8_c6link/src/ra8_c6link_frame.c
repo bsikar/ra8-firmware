@@ -64,7 +64,7 @@
  * hdr.if_type = (uint8_t)(if_type & (uint8_t)k_ra8_c6link_hdr_nibble);
  * @endcode
  *
- * @see ra8_c6link_priv_frame_seal
+ * @see priv_c6link_frame_seal
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -99,7 +99,7 @@ static_assert((uint16_t)k_ra8_c6link_max_payload ==
  * @note The loop is bounded by ::k_ra8_c6link_frame_bytes (NASA Rule 2).
  * @since 0.1.0
  */
-RA8_INTERNAL static void ra8_c6link_frame_clear(uint8_t* frame, uint16_t from)
+RA8_INTERNAL static void internal_c6link_frame_clear(uint8_t* frame, uint16_t from)
 {
   for (uint16_t i = from; i < (uint16_t)k_ra8_c6link_frame_bytes; i++) {
     frame[i] = 0U;
@@ -124,7 +124,7 @@ RA8_INTERNAL static void ra8_c6link_frame_clear(uint8_t* frame, uint16_t from)
  *       accumulator in the vendored `compute_checksum()`.
  * @since 0.1.0
  */
-RA8_INTERNAL static uint16_t ra8_c6link_frame_sum(uint8_t* frame, uint16_t span)
+RA8_INTERNAL static uint16_t internal_c6link_frame_sum(uint8_t* frame, uint16_t span)
 {
   uint16_t sum = compute_checksum(frame, span);
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_c6link_hdr_csum_sz; i++) {
@@ -133,7 +133,7 @@ RA8_INTERNAL static uint16_t ra8_c6link_frame_sum(uint8_t* frame, uint16_t span)
   return sum;
 }
 
-RA8_PRIV void ra8_c6link_priv_frame_filler(uint8_t* tx)
+RA8_PRIV void priv_c6link_frame_filler(uint8_t* tx)
 {
   if (tx == nullptr) {
     return;
@@ -141,11 +141,11 @@ RA8_PRIV void ra8_c6link_priv_frame_filler(uint8_t* tx)
   struct esp_payload_header hdr = {};
   hdr.if_type                   = (uint8_t)((uint8_t)ESP_MAX_IF & (uint8_t)k_ra8_c6link_hdr_nibble);
 
-  ra8_c6link_frame_clear(tx, 0U);
+  internal_c6link_frame_clear(tx, 0U);
   (void)memcpy(tx, &hdr, sizeof hdr);
 }
 
-RA8_PRIV void ra8_c6link_priv_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_num, uint16_t len)
+RA8_PRIV void priv_c6link_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_num, uint16_t len)
 {
   if ((tx == nullptr) || (len > (uint16_t)k_ra8_c6link_max_payload)) {
     return;
@@ -159,7 +159,7 @@ RA8_PRIV void ra8_c6link_priv_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t i
   hdr.offset                    = (uint16_t)k_ra8_c6link_header_bytes;
   hdr.seq_num                   = (uint16_t)k_ra8_c6link_hdr_seq;
 
-  ra8_c6link_frame_clear(tx, span);
+  internal_c6link_frame_clear(tx, span);
   (void)memcpy(tx, &hdr, sizeof hdr);
   hdr.checksum = compute_checksum(tx, span);
   (void)memcpy(tx, &hdr, sizeof hdr);
@@ -183,7 +183,7 @@ RA8_PRIV void ra8_c6link_priv_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t i
  * @since 0.1.0
  */
 RA8_INTERNAL static uint8_t
-ra8_c6link_caps_tlv(uint8_t* out, uint8_t at, uint8_t tag, uint8_t value)
+internal_c6link_caps_tlv(uint8_t* out, uint8_t at, uint8_t tag, uint8_t value)
 {
   out[at]      = tag;
   out[at + 1U] = (uint8_t)k_ra8_c6link_caps_value_len;
@@ -191,7 +191,7 @@ ra8_c6link_caps_tlv(uint8_t* out, uint8_t at, uint8_t tag, uint8_t value)
   return (uint8_t)(at + (uint8_t)k_ra8_c6link_caps_stride);
 }
 
-RA8_PRIV uint8_t ra8_c6link_priv_caps(uint8_t* out, uint8_t cap)
+RA8_PRIV uint8_t priv_c6link_caps(uint8_t* out, uint8_t cap)
 {
   if ((out == nullptr) || (cap < (uint8_t)k_ra8_c6link_caps_bytes)) {
     return 0U;
@@ -203,28 +203,29 @@ RA8_PRIV uint8_t ra8_c6link_priv_caps(uint8_t* out, uint8_t cap)
   out[k_ra8_c6link_caps_len]  = tlv_bytes;
 
   uint8_t at = (uint8_t)k_ra8_c6link_caps_hdr;
-  at = ra8_c6link_caps_tlv(out, at, (uint8_t)HOST_CAPABILITIES, (uint8_t)k_ra8_c6link_caps_host);
-  at = ra8_c6link_caps_tlv(out,
-                           at,
-                           (uint8_t)RCVD_ESP_FIRMWARE_CHIP_ID,
-                           (uint8_t)k_ra8_c6link_caps_chip);
-  at = ra8_c6link_caps_tlv(out,
-                           at,
-                           (uint8_t)SLV_CONFIG_TEST_RAW_TP,
-                           (uint8_t)k_ra8_c6link_caps_raw_tp);
-  at = ra8_c6link_caps_tlv(out,
-                           at,
-                           (uint8_t)SLV_CONFIG_THROTTLE_HIGH_THRESHOLD,
-                           (uint8_t)k_ra8_c6link_caps_throttle_high);
-  at = ra8_c6link_caps_tlv(out,
-                           at,
-                           (uint8_t)SLV_CONFIG_THROTTLE_LOW_THRESHOLD,
-                           (uint8_t)k_ra8_c6link_caps_throttle_low);
+  at =
+    internal_c6link_caps_tlv(out, at, (uint8_t)HOST_CAPABILITIES, (uint8_t)k_ra8_c6link_caps_host);
+  at = internal_c6link_caps_tlv(out,
+                                at,
+                                (uint8_t)RCVD_ESP_FIRMWARE_CHIP_ID,
+                                (uint8_t)k_ra8_c6link_caps_chip);
+  at = internal_c6link_caps_tlv(out,
+                                at,
+                                (uint8_t)SLV_CONFIG_TEST_RAW_TP,
+                                (uint8_t)k_ra8_c6link_caps_raw_tp);
+  at = internal_c6link_caps_tlv(out,
+                                at,
+                                (uint8_t)SLV_CONFIG_THROTTLE_HIGH_THRESHOLD,
+                                (uint8_t)k_ra8_c6link_caps_throttle_high);
+  at = internal_c6link_caps_tlv(out,
+                                at,
+                                (uint8_t)SLV_CONFIG_THROTTLE_LOW_THRESHOLD,
+                                (uint8_t)k_ra8_c6link_caps_throttle_low);
   return at;
 }
 
-RA8_PRIV ra8_c6link_frame_class_t ra8_c6link_priv_frame_classify(uint8_t*              rx,
-                                                                 ra8_c6link_rx_view_t* view)
+RA8_PRIV ra8_c6link_frame_class_t priv_c6link_frame_classify(uint8_t*              rx,
+                                                             ra8_c6link_rx_view_t* view)
 {
   if ((rx == nullptr) || (view == nullptr)) {
     return k_ra8_c6link_frame_malformed;
@@ -239,7 +240,7 @@ RA8_PRIV ra8_c6link_frame_class_t ra8_c6link_priv_frame_classify(uint8_t*       
       (hdr.len > (uint16_t)k_ra8_c6link_max_payload)) {
     return k_ra8_c6link_frame_malformed;
   }
-  if (ra8_c6link_frame_sum(rx, (uint16_t)(hdr.offset + hdr.len)) != hdr.checksum) {
+  if (internal_c6link_frame_sum(rx, (uint16_t)(hdr.offset + hdr.len)) != hdr.checksum) {
     return k_ra8_c6link_frame_bad_checksum;
   }
 

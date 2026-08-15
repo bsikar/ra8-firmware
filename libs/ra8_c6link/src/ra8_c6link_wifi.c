@@ -123,7 +123,7 @@ typedef enum : int32_t {
   /**< HE trigger-based queues. */
 } ra8_c6link_wifi_init_t;
 
-RA8_PRIV ra8_err_t ra8_c6link_priv_take_resp(void* ctx, const void* msg_v)
+RA8_PRIV ra8_err_t priv_c6link_take_resp(void* ctx, const void* msg_v)
 {
   ra8_c6link_take_ctx_t* take = (ra8_c6link_take_ctx_t*)ctx;
   const Rpc*             msg  = (const Rpc*)msg_v;
@@ -158,7 +158,7 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_take_resp(void* ctx, const void* msg_v)
       resp = -1;
       break;
   }
-  return ra8_c6link_priv_resp(take->link, take->rpc_id, resp);
+  return priv_c6link_resp(take->link, take->rpc_id, resp);
 }
 
 /**
@@ -185,7 +185,7 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_take_resp(void* ctx, const void* msg_v)
  * rpc__req__wifi_start__init(&body.start);
  * @endcode
  *
- * @see ra8_c6link_priv_bare_req
+ * @see priv_c6link_bare_req
  * @since 0.1.0
  */
 typedef struct ra8_c6link_bare_body {
@@ -217,10 +217,10 @@ typedef struct ra8_c6link_bare_body {
  *       facade that silently depended on that would break quietly.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool ra8_c6link_wifi_bare_body(Rpc*                    req,
-                                                   ra8_c6link_bare_body_t* body,
-                                                   uint32_t                req_id,
-                                                   uint32_t*               resp_id)
+RA8_INTERNAL static bool internal_c6link_wifi_bare_body(Rpc*                    req,
+                                                        ra8_c6link_bare_body_t* body,
+                                                        uint32_t                req_id,
+                                                        uint32_t*               resp_id)
 {
   *resp_id = 0U;
   switch ((int32_t)req_id) {
@@ -260,7 +260,7 @@ RA8_INTERNAL static bool ra8_c6link_wifi_bare_body(Rpc*                    req,
   return true;
 }
 
-RA8_PRIV ra8_err_t ra8_c6link_priv_bare_req(ra8_c6link_t* link, uint32_t req_id)
+RA8_PRIV ra8_err_t priv_c6link_bare_req(ra8_c6link_t* link, uint32_t req_id)
 {
   if (link == nullptr) {
     return k_ra8_err_null_ptr;
@@ -273,12 +273,12 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_bare_req(ra8_c6link_t* link, uint32_t req_id)
 
   ra8_c6link_bare_body_t body;
   uint32_t               resp_id = 0U;
-  if (!ra8_c6link_wifi_bare_body(&req, &body, req_id, &resp_id)) {
+  if (!internal_c6link_wifi_bare_body(&req, &body, req_id, &resp_id)) {
     return k_ra8_err_not_supported;
   }
 
   ra8_c6link_take_ctx_t take = {.link = link, .out = nullptr, .rpc_id = req_id};
-  return ra8_c6link_priv_rpc_call(link, &req, resp_id, ra8_c6link_priv_take_resp, &take);
+  return priv_c6link_rpc_call(link, &req, resp_id, priv_c6link_take_resp, &take);
 }
 
 /**
@@ -301,7 +301,7 @@ RA8_PRIV ra8_err_t ra8_c6link_priv_bare_req(ra8_c6link_t* link, uint32_t req_id)
  * @note Every value transmitted is documented in ::ra8_c6link_wifi_init_t.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_c6link_wifi_do_init(ra8_c6link_t* link)
+RA8_INTERNAL static ra8_err_t internal_c6link_wifi_do_init(ra8_c6link_t* link)
 {
   WifiInitConfig cfg;
   wifi_init_config__init(&cfg);
@@ -338,11 +338,11 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_wifi_do_init(ra8_c6link_t* link)
   ra8_c6link_take_ctx_t take = {.link   = link,
                                 .out    = nullptr,
                                 .rpc_id = (uint32_t)RPC_ID__Req_WifiInit};
-  return ra8_c6link_priv_rpc_call(link,
-                                  &req,
-                                  (uint32_t)RPC_ID__Resp_WifiInit,
-                                  ra8_c6link_priv_take_resp,
-                                  &take);
+  return priv_c6link_rpc_call(link,
+                              &req,
+                              (uint32_t)RPC_ID__Resp_WifiInit,
+                              priv_c6link_take_resp,
+                              &take);
 }
 
 /**
@@ -355,14 +355,14 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_wifi_do_init(ra8_c6link_t* link)
  * @retval k_ra8_err_timeout It did not answer within the budget.
  * @retval k_ra8_err_protocol_error It refused the mode.
  * @retval k_ra8_err_spi_error The transport refused a transfer.
- * @pre ::ra8_c6link_wifi_do_init has succeeded.
+ * @pre ::internal_c6link_wifi_do_init has succeeded.
  * @pre @p link is open.
  * @post On success the radio's role is fixed until it is set again.
  * @post On failure the fault slot names this request.
  * @note The mode number is the co-processor's `wifi_mode_t`, not a local id.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_c6link_wifi_do_mode(ra8_c6link_t* link)
+RA8_INTERNAL static ra8_err_t internal_c6link_wifi_do_mode(ra8_c6link_t* link)
 {
   RpcReqSetMode body;
   rpc__req__set_mode__init(&body);
@@ -378,11 +378,11 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_wifi_do_mode(ra8_c6link_t* link)
   ra8_c6link_take_ctx_t take = {.link   = link,
                                 .out    = nullptr,
                                 .rpc_id = (uint32_t)RPC_ID__Req_SetWifiMode};
-  return ra8_c6link_priv_rpc_call(link,
-                                  &req,
-                                  (uint32_t)RPC_ID__Resp_SetWifiMode,
-                                  ra8_c6link_priv_take_resp,
-                                  &take);
+  return priv_c6link_rpc_call(link,
+                              &req,
+                              (uint32_t)RPC_ID__Resp_SetWifiMode,
+                              priv_c6link_take_resp,
+                              &take);
 }
 
 ra8_err_t ra8_c6link_wifi_start(ra8_c6link_t* link)
@@ -394,15 +394,15 @@ ra8_err_t ra8_c6link_wifi_start(ra8_c6link_t* link)
     return k_ra8_err_not_initialized;
   }
 
-  const ra8_err_t inited = ra8_c6link_wifi_do_init(link);
+  const ra8_err_t inited = internal_c6link_wifi_do_init(link);
   if (inited != k_ra8_ok) {
     return inited;
   }
-  const ra8_err_t moded = ra8_c6link_wifi_do_mode(link);
+  const ra8_err_t moded = internal_c6link_wifi_do_mode(link);
   if (moded != k_ra8_ok) {
     return moded;
   }
-  return ra8_c6link_priv_bare_req(link, (uint32_t)RPC_ID__Req_WifiStart);
+  return priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiStart);
 }
 
 ra8_err_t ra8_c6link_wifi_stop(ra8_c6link_t* link)
@@ -414,8 +414,8 @@ ra8_err_t ra8_c6link_wifi_stop(ra8_c6link_t* link)
     return k_ra8_err_not_initialized;
   }
 
-  const ra8_err_t stopped = ra8_c6link_priv_bare_req(link, (uint32_t)RPC_ID__Req_WifiStop);
-  const ra8_err_t deinit  = ra8_c6link_priv_bare_req(link, (uint32_t)RPC_ID__Req_WifiDeinit);
+  const ra8_err_t stopped = priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiStop);
+  const ra8_err_t deinit  = priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiDeinit);
   return (stopped != k_ra8_ok) ? stopped : deinit;
 }
 
@@ -427,5 +427,5 @@ ra8_err_t ra8_c6link_wifi_leave(ra8_c6link_t* link)
   if (!ra8_c6link_is_open(link)) {
     return k_ra8_err_not_initialized;
   }
-  return ra8_c6link_priv_bare_req(link, (uint32_t)RPC_ID__Req_WifiDisconnect);
+  return priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiDisconnect);
 }

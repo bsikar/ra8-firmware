@@ -17,6 +17,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
+
 /** @brief State that must be unwound together after storage begins. */
 typedef struct {
   ra8_c6link_t*                    link;    /**< Active media RPC link.                       */
@@ -44,11 +46,12 @@ typedef struct {
  * @note Thread-safe when the caller does not mutate @p config concurrently.
  * @since 0.1.0
  */
-static ra8_err_t mdl_transfer_validate(ra8_c6link_t*                    link,
-                                       const char*                      url,
-                                       const char*                      destination,
-                                       const ra8_mdl_transfer_config_t* config,
-                                       ra8_mdl_transfer_result_t*       result)
+RA8_INTERNAL static ra8_err_t
+internal_mdl_transfer_validate(ra8_c6link_t*                    link,
+                               const char*                      url,
+                               const char*                      destination,
+                               const ra8_mdl_transfer_config_t* config,
+                               ra8_mdl_transfer_result_t*       result)
 {
   if ((link == nullptr) || (url == nullptr) || (destination == nullptr) || (config == nullptr) ||
       (result == nullptr)) {
@@ -84,7 +87,8 @@ static ra8_err_t mdl_transfer_validate(ra8_c6link_t*                    link,
  * @note Not thread-safe; it mutates the session and storage context.
  * @since 0.1.0
  */
-static ra8_err_t mdl_transfer_abort(mdl_transfer_state_t* state, ra8_err_t cause)
+RA8_INTERNAL static ra8_err_t internal_mdl_transfer_abort(mdl_transfer_state_t* state,
+                                                          ra8_err_t             cause)
 {
   ra8_err_t cancel_result = k_ra8_ok;
   ra8_err_t abort_result  = k_ra8_ok;
@@ -119,9 +123,9 @@ static ra8_err_t mdl_transfer_abort(mdl_transfer_state_t* state, ra8_err_t cause
  * @note Not thread-safe; it mutates injected contexts.
  * @since 0.1.0
  */
-static ra8_err_t mdl_transfer_store(const ra8_mdl_transfer_config_t* config,
-                                    const ra8_mdl_chunk_t*           chunk,
-                                    uint64_t*                        bytes_stored)
+RA8_INTERNAL static ra8_err_t internal_mdl_transfer_store(const ra8_mdl_transfer_config_t* config,
+                                                          const ra8_mdl_chunk_t*           chunk,
+                                                          uint64_t* bytes_stored)
 {
   if (*bytes_stored > (UINT64_MAX - chunk->data_len)) {
     return k_ra8_err_invalid_size;
@@ -164,11 +168,11 @@ static ra8_err_t mdl_transfer_store(const ra8_mdl_transfer_config_t* config,
  * @note Not thread-safe; it finalises and commits injected contexts.
  * @since 0.1.0
  */
-static ra8_err_t mdl_transfer_commit(mdl_transfer_state_t*      state,
-                                     const ra8_mdl_chunk_t*     chunk,
-                                     uint64_t                   bytes_stored,
-                                     uint32_t                   chunks_received,
-                                     ra8_mdl_transfer_result_t* result)
+RA8_INTERNAL static ra8_err_t internal_mdl_transfer_commit(mdl_transfer_state_t*  state,
+                                                           const ra8_mdl_chunk_t* chunk,
+                                                           uint64_t               bytes_stored,
+                                                           uint32_t               chunks_received,
+                                                           ra8_mdl_transfer_result_t* result)
 {
   if ((!chunk->has_sha256) || (chunk->total_bytes != bytes_stored)) {
     return k_ra8_err_invalid_size;
@@ -205,7 +209,8 @@ ra8_err_t ra8_c6link_mdl_transfer(ra8_c6link_t*                    link,
                                   const ra8_mdl_transfer_config_t* config,
                                   ra8_mdl_transfer_result_t*       result)
 {
-  const ra8_err_t validation = mdl_transfer_validate(link, url, destination, config, result);
+  const ra8_err_t validation =
+    internal_mdl_transfer_validate(link, url, destination, config, result);
   if (validation != k_ra8_ok) {
     return validation;
   }
@@ -229,10 +234,10 @@ ra8_err_t ra8_c6link_mdl_transfer(ra8_c6link_t*                    link,
     ra8_mdl_chunk_t chunk = {};
     err                   = ra8_c6link_mdl_next(link, &state.session, config->chunk_bytes, &chunk);
     if ((err == k_ra8_ok) && (chunk.state == k_ra8_mdl_state_downloading)) {
-      err = mdl_transfer_store(config, &chunk, &bytes_stored);
+      err = internal_mdl_transfer_store(config, &chunk, &bytes_stored);
     } else if ((err == k_ra8_ok) && (chunk.state == k_ra8_mdl_state_complete)) {
-      err = mdl_transfer_commit(&state, &chunk, bytes_stored, pull + 1U, result);
-      return (err == k_ra8_ok) ? k_ra8_ok : mdl_transfer_abort(&state, err);
+      err = internal_mdl_transfer_commit(&state, &chunk, bytes_stored, pull + 1U, result);
+      return (err == k_ra8_ok) ? k_ra8_ok : internal_mdl_transfer_abort(&state, err);
     } else if ((err == k_ra8_ok) && (chunk.state == k_ra8_mdl_state_cancelled)) {
       err = k_ra8_err_cancelled;
     }
@@ -240,5 +245,5 @@ ra8_err_t ra8_c6link_mdl_transfer(ra8_c6link_t*                    link,
   if ((err == k_ra8_ok) && state.session.active) {
     err = k_ra8_err_timeout;
   }
-  return mdl_transfer_abort(&state, err);
+  return internal_mdl_transfer_abort(&state, err);
 }

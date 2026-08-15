@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_c6link.h"
 #include "ra8_c6link_internal.h"
 #include "ra8_c6link_mdl_msg.h"
@@ -29,15 +30,37 @@ static ra8_c6_model_t s_c6;
 /** @brief Deterministic media bytes served through the modelled custom RPC. */
 static const uint8_t s_mdl_bytes[] = {'a', 'b', 'c', 'd', 'e', 'f'};
 
+/** @brief Unknown protobuf field 15 carrying the canonical varint value one. */
+static const uint8_t s_mdl_unknown_field[] = {0x78U, 0x01U};
+
 /** @brief State behind the modelled C6 media backend. */
 typedef struct {
-  size_t at; /**< Offset of the next modelled body byte. */
+  const uint8_t* data;                           /**< Borrowed source bytes.   */
+  size_t         len;                            /**< Complete source length.  */
+  size_t         at;                             /**< Offset of the next byte. */
+  uint8_t        digest[k_ra8_mdl_sha256_bytes]; /**< Caller-supplied SHA-256. */
 } c6m_mdl_backend_t;
 
 static c6m_mdl_backend_t s_mdl_backend;
 static ra8_mdl_service_t s_mdl_service;
 
-static ra8_err_t c6m_mdl_begin(void* ctx, const char* url)
+/**
+ * @brief Start one modelled media download at the requested URL.
+ * @details Accepts only the deterministic fixture URL and rewinds the bound
+ * backend cursor.
+ * @param[in,out] ctx Model media-backend context supplied by the service.
+ * @param[in] url NUL-terminated media URL requested by the host.
+ * @return Bounded media-backend status.
+ * @retval k_ra8_ok The fixture URL was accepted and rewound.
+ * @retval k_ra8_err_invalid_arg The URL is not the deterministic fixture URL.
+ * @pre @p ctx points to initialized backend state. @pre @p url is non-null and
+ * NUL-terminated.
+ * @post Success sets the next-byte offset to zero. @post Failure leaves backend
+ * state unchanged.
+ * @note The fake intentionally models a single stable origin.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_c6m_mdl_begin(void* ctx, const char* url)
 {
   c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
   if (strcmp(url, "https://example.test/book") != 0) {
@@ -47,31 +70,67 @@ static ra8_err_t c6m_mdl_begin(void* ctx, const char* url)
   return k_ra8_ok;
 }
 
-static ra8_err_t c6m_mdl_read(void*     ctx,
-                              uint8_t*  out,
-                              uint16_t  cap,
-                              uint16_t* got,
-                              uint64_t* total_bytes,
-                              bool*     complete,
-                              uint8_t   sha256[k_ra8_mdl_sha256_bytes])
+/**
+ * @brief Read the next bounded media slice from the modelled backend.
+ * @details Copies at most @p cap bytes, advances the cursor, and publishes the
+ * digest at completion.
+ * @param[in,out] ctx Model media-backend context supplied by the service.
+ * @param[out] out Destination buffer or response envelope populated on success.
+ * @param[in] cap Writable byte capacity of @p out.
+ * @param[out] got Receives the number of media bytes copied.
+ * @param[out] total_bytes Receives the complete fixture-media length.
+ * @param[out] complete Receives whether the stream has reached its terminal
+ * read.
+ * @param[out] sha256 Receives the terminal fixture digest when @p complete is
+ * true.
+ * @return Bounded media-backend status.
+ * @retval k_ra8_ok The deterministic backend operation completed.
+ * @pre All output pointers are non-null and @p ctx is initialized. @pre @p out
+ * spans @p cap bytes.
+ * @post The cursor advances by @p got. @post The digest is written only on the
+ * terminal read.
+ * @note A final data-bearing chunk is followed by one zero-byte terminal read.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_c6m_mdl_read(void*     ctx,
+                                                    uint8_t*  out,
+                                                    uint16_t  cap,
+                                                    uint16_t* got,
+                                                    uint64_t* total_bytes,
+                                                    bool*     complete,
+                                                    uint8_t   sha256[k_ra8_mdl_sha256_bytes])
 {
   c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
-  const size_t       left    = sizeof(s_mdl_bytes) - backend->at;
+  const size_t       left    = backend->len - backend->at;
   const size_t       take    = (left < cap) ? left : cap;
   if (take != 0U) {
-    (void)memcpy(out, &s_mdl_bytes[backend->at], take);
+    (void)memcpy(out, &backend->data[backend->at], take);
     backend->at += take;
   }
   *got         = (uint16_t)take;
-  *total_bytes = sizeof(s_mdl_bytes);
+  *total_bytes = backend->len;
   *complete    = (take == 0U);
   if (*complete) {
-    (void)memset(sha256, k_c6m_mdl_digest_fill, k_ra8_mdl_sha256_bytes);
+    (void)memcpy(sha256, backend->digest, k_ra8_mdl_sha256_bytes);
   }
   return k_ra8_ok;
 }
 
-static ra8_err_t c6m_mdl_cancel(void* ctx)
+/**
+ * @brief Record cancellation of the current modelled media job.
+ * @details Counts cancellation only when the service supplies its bound backend
+ * context.
+ * @param[in,out] ctx Model media-backend context supplied by the service.
+ * @return Bounded media-backend status.
+ * @retval k_ra8_ok The deterministic backend operation completed.
+ * @pre The singleton model remains alive. @pre Any non-null @p ctx is the
+ * initialized backend.
+ * @post Non-null context increments `mdl_cancels`. @post Null context leaves
+ * counters unchanged.
+ * @note Cancellation does not erase the source binding or digest.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_c6m_mdl_cancel(void* ctx)
 {
   c6m_mdl_backend_t* backend = (c6m_mdl_backend_t*)ctx;
   ra8_c6_model()->mdl_cancels += (backend != nullptr) ? 1U : 0U;
@@ -85,14 +144,31 @@ ra8_c6_model_t* ra8_c6_model(void)
 
 void ra8_c6_model_reset(void)
 {
-  s_c6                                    = (ra8_c6_model_t){};
-  s_c6.handshake                          = true;
-  s_mdl_backend                           = (c6m_mdl_backend_t){};
-  const ra8_mdl_service_backend_t backend = {.begin  = c6m_mdl_begin,
-                                             .read   = c6m_mdl_read,
-                                             .cancel = c6m_mdl_cancel,
+  s_c6           = (ra8_c6_model_t){};
+  s_c6.handshake = true;
+  s_mdl_backend  = (c6m_mdl_backend_t){.data = s_mdl_bytes, .len = sizeof(s_mdl_bytes)};
+  (void)memset(s_mdl_backend.digest, k_c6m_mdl_digest_fill, sizeof(s_mdl_backend.digest));
+  const ra8_mdl_service_backend_t backend = {.begin  = internal_c6m_mdl_begin,
+                                             .read   = internal_c6m_mdl_read,
+                                             .cancel = internal_c6m_mdl_cancel,
                                              .ctx    = &s_mdl_backend};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mdl_service_init(&s_mdl_service, &backend));
+}
+
+ra8_err_t ra8_c6_model_mdl_source(const uint8_t* data,
+                                  uint32_t       len,
+                                  const uint8_t  sha256[k_ra8_mdl_sha256_bytes])
+{
+  if ((data == nullptr) || (sha256 == nullptr)) {
+    return k_ra8_err_null_ptr;
+  }
+  if (len == 0U) {
+    return k_ra8_err_invalid_size;
+  }
+  c6m_mdl_backend_t next = {.data = data, .len = len};
+  (void)memcpy(next.digest, sha256, sizeof(next.digest));
+  s_mdl_backend = next;
+  return k_ra8_ok;
 }
 
 uint8_t* ra8_c6_model_slot(void)
@@ -118,8 +194,10 @@ uint8_t* ra8_c6_model_slot(void)
  *       layout is asserted against literals in `test_ra8_c6link_wire.c`, so
  *       the two cannot agree on a wrong answer.
  * @since 0.1.0
+ * @details Serializes the generated message, wraps it in the private TLV/frame
+ * envelope, and queues one bounded slot.
  */
-static void c6m_emit(Rpc* msg)
+RA8_INTERNAL static void internal_c6m_emit(Rpc* msg)
 {
   uint8_t* slot = ra8_c6_model_slot();
   if (slot == nullptr) {
@@ -128,16 +206,14 @@ static void c6m_emit(Rpc* msg)
   uint8_t*     payload = &slot[k_ra8_c6link_header_bytes];
   const size_t packed  = rpc__get_packed_size(msg);
   uint16_t     body_at = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_c6link_priv_tlv_open(payload,
-                                          (uint16_t)k_ra8_c6link_max_payload,
-                                          (uint16_t)packed,
-                                          &body_at));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    priv_c6link_tlv_open(payload, (uint16_t)k_ra8_c6link_max_payload, (uint16_t)packed, &body_at));
   TEST_ASSERT_EQ(packed, rpc__pack(msg, &payload[body_at]));
-  ra8_c6link_priv_frame_seal(slot,
-                             (uint8_t)ESP_SERIAL_IF,
-                             0U,
-                             (uint16_t)((uint32_t)body_at + (uint32_t)packed));
+  priv_c6link_frame_seal(slot,
+                         (uint8_t)ESP_SERIAL_IF,
+                         0U,
+                         (uint16_t)((uint32_t)body_at + (uint32_t)packed));
 }
 
 /**
@@ -153,7 +229,7 @@ static void c6m_emit(Rpc* msg)
  * @note The loop is bounded by ::k_ra8_c6link_mac_bytes (NASA Rule 2).
  * @since 0.1.0
  */
-static void c6m_fill_bssid(uint8_t* bssid)
+RA8_INTERNAL static void internal_c6m_fill_bssid(uint8_t* bssid)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_c6link_mac_bytes; i++) {
     bssid[i] = (uint8_t)((uint8_t)k_c6m_bssid_first + i);
@@ -171,14 +247,14 @@ void ra8_c6_model_emit_boot(void)
   msg.msg_id         = RPC_ID__Event_ESPInit;
   msg.payload_case   = RPC__PAYLOAD_EVENT_ESP_INIT;
   msg.event_esp_init = &body;
-  c6m_emit(&msg);
+  internal_c6m_emit(&msg);
 }
 
 void ra8_c6_model_emit_connected(void)
 {
   uint8_t ssid[4]                       = {'b', 'e', 'n', 'c'};
   uint8_t bssid[k_ra8_c6link_mac_bytes] = {};
-  c6m_fill_bssid(bssid);
+  internal_c6m_fill_bssid(bssid);
 
   WifiEventStaConnected inner;
   wifi_event_sta_connected__init(&inner);
@@ -198,7 +274,7 @@ void ra8_c6_model_emit_connected(void)
   msg.msg_id              = RPC_ID__Event_StaConnected;
   msg.payload_case        = RPC__PAYLOAD_EVENT_STA_CONNECTED;
   msg.event_sta_connected = &body;
-  c6m_emit(&msg);
+  internal_c6m_emit(&msg);
 }
 
 void ra8_c6_model_emit_wifi_event(void)
@@ -213,14 +289,14 @@ void ra8_c6_model_emit_wifi_event(void)
   msg.msg_id                   = RPC_ID__Event_WifiEventNoArgs;
   msg.payload_case             = RPC__PAYLOAD_EVENT_WIFI_EVENT_NO_ARGS;
   msg.event_wifi_event_no_args = &body;
-  c6m_emit(&msg);
+  internal_c6m_emit(&msg);
 }
 
 void ra8_c6_model_emit_disconnected(void)
 {
   uint8_t ssid[4]                       = {'b', 'e', 'n', 'c'};
   uint8_t bssid[k_ra8_c6link_mac_bytes] = {};
-  c6m_fill_bssid(bssid);
+  internal_c6m_fill_bssid(bssid);
 
   WifiEventStaDisconnected inner;
   wifi_event_sta_disconnected__init(&inner);
@@ -241,7 +317,7 @@ void ra8_c6_model_emit_disconnected(void)
   msg.msg_id                 = RPC_ID__Event_StaDisconnected;
   msg.payload_case           = RPC__PAYLOAD_EVENT_STA_DISCONNECTED;
   msg.event_sta_disconnected = &body;
-  c6m_emit(&msg);
+  internal_c6m_emit(&msg);
 }
 
 void ra8_c6_model_emit_eth(void)
@@ -253,7 +329,7 @@ void ra8_c6_model_emit_eth(void)
   for (uint16_t i = 0U; i < (uint16_t)k_c6m_eth_len; i++) {
     slot[(uint16_t)k_ra8_c6link_header_bytes + i] = (uint8_t)((uint16_t)k_c6m_eth_first + i);
   }
-  ra8_c6link_priv_frame_seal(slot, (uint8_t)ESP_STA_IF, 0U, (uint16_t)k_c6m_eth_len);
+  priv_c6link_frame_seal(slot, (uint8_t)ESP_STA_IF, 0U, (uint16_t)k_c6m_eth_len);
 }
 
 void ra8_c6_model_emit_hollow_events(void)
@@ -267,7 +343,7 @@ void ra8_c6_model_emit_hollow_events(void)
   first.msg_id              = RPC_ID__Event_StaConnected;
   first.payload_case        = RPC__PAYLOAD_EVENT_STA_CONNECTED;
   first.event_sta_connected = &connected;
-  c6m_emit(&first);
+  internal_c6m_emit(&first);
 
   RpcEventStaDisconnected disconnected;
   rpc__event__sta_disconnected__init(&disconnected);
@@ -278,7 +354,7 @@ void ra8_c6_model_emit_hollow_events(void)
   second.msg_id                 = RPC_ID__Event_StaDisconnected;
   second.payload_case           = RPC__PAYLOAD_EVENT_STA_DISCONNECTED;
   second.event_sta_disconnected = &disconnected;
-  c6m_emit(&second);
+  internal_c6m_emit(&second);
 }
 
 void ra8_c6_model_emit_unmodelled_event(void)
@@ -287,7 +363,7 @@ void ra8_c6_model_emit_unmodelled_event(void)
   rpc__init(&msg);
   msg.msg_type = RPC_TYPE__Event;
   msg.msg_id   = RPC_ID__Event_Heartbeat;
-  c6m_emit(&msg);
+  internal_c6m_emit(&msg);
 }
 
 void ra8_c6_model_emit_inbound_request(void)
@@ -302,7 +378,7 @@ void ra8_c6_model_emit_inbound_request(void)
   msg.uid                           = 1U;
   msg.payload_case                  = RPC__PAYLOAD_REQ_GET_COPROCESSOR_FWVERSION;
   msg.req_get_coprocessor_fwversion = &body;
-  c6m_emit(&msg);
+  internal_c6m_emit(&msg);
 }
 
 void ra8_c6_model_emit_stray(void)
@@ -317,7 +393,7 @@ void ra8_c6_model_emit_stray(void)
   msg.uid                            = 1U;
   msg.payload_case                   = RPC__PAYLOAD_RESP_GET_COPROCESSOR_FWVERSION;
   msg.resp_get_coprocessor_fwversion = &body;
-  c6m_emit(&msg);
+  internal_c6m_emit(&msg);
 }
 
 /**
@@ -337,8 +413,11 @@ void ra8_c6_model_emit_stray(void)
  *       serves them all -- which is exactly why the facade shares one
  *       extractor for them.
  * @since 0.1.0
+ * @details Initializes the shared result body and maps each supported request
+ * id to its generated response variant.
  */
-static bool c6m_bare(Rpc* out, uint32_t req_id, RpcRespWifiStart* body, int32_t resp)
+RA8_INTERNAL static bool
+internal_c6m_bare(Rpc* out, uint32_t req_id, RpcRespWifiStart* body, int32_t resp)
 {
   rpc__resp__wifi_start__init(body);
   body->resp = resp;
@@ -395,8 +474,10 @@ static bool c6m_bare(Rpc* out, uint32_t req_id, RpcRespWifiStart* body, int32_t 
  *       that omitted them would rely on a co-processor null check nobody has
  *       exercised.
  * @since 0.1.0
+ * @details Copies bounded station credentials and verifies the nested threshold
+ * and PMF messages the real peer requires.
  */
-static void c6m_take_config(const RpcReqWifiSetConfig* body)
+RA8_INTERNAL static void internal_c6m_take_config(const RpcReqWifiSetConfig* body)
 {
   s_c6.ssid_len = 0U;
   s_c6.pass_len = 0U;
@@ -404,8 +485,8 @@ static void c6m_take_config(const RpcReqWifiSetConfig* body)
     return;
   }
   const WifiStaConfig* sta = body->cfg->sta;
-  s_c6.ssid_len = ra8_c6link_priv_copy_str(s_c6.ssid, (uint8_t)sizeof s_c6.ssid, &sta->ssid);
-  s_c6.pass_len = ra8_c6link_priv_copy_str(s_c6.pass, (uint8_t)sizeof s_c6.pass, &sta->password);
+  s_c6.ssid_len            = priv_c6link_copy_str(s_c6.ssid, (uint8_t)sizeof s_c6.ssid, &sta->ssid);
+  s_c6.pass_len = priv_c6link_copy_str(s_c6.pass, (uint8_t)sizeof s_c6.pass, &sta->password);
   TEST_ASSERT_NOT_NULL(sta->threshold);
   TEST_ASSERT_NOT_NULL(sta->pmf_cfg);
 }
@@ -427,7 +508,7 @@ static void c6m_take_config(const RpcReqWifiSetConfig* body)
  * static c6m_rich_t s_rich;
  * @endcode
  *
- * @see c6m_rich_answer
+ * @see internal_c6m_rich_answer
  * @since 0.1.0
  */
 typedef struct c6m_rich {
@@ -435,7 +516,7 @@ typedef struct c6m_rich {
   RpcRespGetMacAddress           mac;     /**< `Resp_GetMACAddress` body.           */
   RpcRespWifiStaGetApInfo        ap;      /**< `Resp_WifiStaGetApInfo` body.        */
   WifiApRecord                   rec;     /**< The AP record inside that answer.    */
-  uint8_t octets[k_ra8_c6link_mac_bytes]; /**< The modelled station address.        */
+  uint8_t octets[k_ra8_c6link_mac_bytes]; /**< The modelled station address. */
   uint8_t ssid[4];                        /**< The modelled AP's SSID.              */
   char    target[8];                      /**< The modelled `CONFIG_IDF_TARGET`.    */
 } c6m_rich_t;
@@ -455,11 +536,11 @@ static c6m_rich_t s_rich;
  * @pre ::s_rich already holds the generated address and SSID octets.
  * @post @p out points at ::s_rich for both the answer and its nested record.
  * @post No other model state is modified.
- * @note Split out of ::c6m_rich_answer so that function stays inside the
- *       complexity thresholds clang-tidy holds the whole tree to.
+ * @note Split out of ::internal_c6m_rich_answer so that function stays inside
+ * the complexity thresholds clang-tidy holds the whole tree to.
  * @since 0.1.0
  */
-static void c6m_ap_answer(Rpc* out, int32_t resp)
+RA8_INTERNAL static void internal_c6m_ap_answer(Rpc* out, int32_t resp)
 {
   wifi_ap_record__init(&s_rich.rec);
   s_rich.rec.ssid.data  = s_rich.ssid;
@@ -489,11 +570,13 @@ static void c6m_ap_answer(Rpc* out, int32_t resp)
  *      binary guarantees.
  * @post On true ::s_rich holds every object @p out points at.
  * @post On false @p out is unmodified.
- * @note Split out of ::c6m_answer so that function stays inside the sixty-line
- *       cap the whole tree is held to, tests included.
+ * @note Split out of ::internal_c6m_answer so that function stays inside the
+ * sixty-line cap the whole tree is held to, tests included.
  * @since 0.1.0
+ * @details Builds firmware, MAC, or AP-info payloads in model-owned storage
+ * that outlives synchronous packing.
  */
-static bool c6m_rich_answer(Rpc* out, uint32_t req_id, int32_t resp)
+RA8_INTERNAL static bool internal_c6m_rich_answer(Rpc* out, uint32_t req_id, int32_t resp)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_c6link_mac_bytes; i++) {
     s_rich.octets[i] = (uint8_t)((uint8_t)k_c6m_mac_first - i);
@@ -528,28 +611,23 @@ static bool c6m_rich_answer(Rpc* out, uint32_t req_id, int32_t resp)
   if (req_id != (uint32_t)RPC_ID__Req_WifiStaGetApInfo) {
     return false;
   }
-  c6m_ap_answer(out, resp);
+  internal_c6m_ap_answer(out, resp);
   return true;
 }
 
-/** @brief Apply one requested malformed/terminal Chunk shape, then consume it. */
-// A single switch intentionally keeps all mutually exclusive wire corruptions visible.
-// NOLINTNEXTLINE(readability-function-size)
-static void c6m_mdl_apply_fault(uint8_t* response, size_t response_cap, size_t* response_len)
+/** @brief Mutate one decoded Chunk according to the selected fault.
+ * @details Rewrites one decoded chunk into the selected malformed or terminal shape while retaining decoder-owned buffers.
+ * @param[in,out] chunk Decoded generated chunk to mutate in place.
+ * @param[in] fault Malformed or terminal chunk shape to inject.
+ * @pre @p chunk is non-null and caller-owned. @pre @p fault is not `k_c6m_mdl_fault_none`.
+ * @post Exactly the selected fields are malformed. @post Decoder allocation ownership is unchanged.
+ * @note Corrupt-data injection asserts that the decoded payload is nonempty.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_mdl_mutate_chunk(Ra8__Mdl__Chunk* chunk, ra8_c6_model_mdl_fault_t fault)
 {
-  const ra8_c6_model_mdl_fault_t fault = s_c6.mdl_fault;
-  if (fault == k_c6m_mdl_fault_none) {
-    return;
-  }
-  s_c6.mdl_fault         = k_c6m_mdl_fault_none;
-  Ra8__Mdl__Chunk* chunk = ra8__mdl__chunk__unpack(nullptr, *response_len, response);
-  if (chunk == nullptr) {
-    TEST_ASSERT_NOT_NULL(chunk);
-    return;
-  }
-  static uint8_t            s_bad_data = k_c6m_mdl_digest_fill;
-  const ProtobufCBinaryData owned_data = chunk->data;
-  const ProtobufCBinaryData owned_sha  = chunk->sha256;
+  static uint8_t bad_data = k_c6m_mdl_digest_fill;
   switch (fault) {
     case k_c6m_mdl_fault_complete_no_sha:
       chunk->sha256 = (ProtobufCBinaryData){};
@@ -578,7 +656,7 @@ static void c6m_mdl_apply_fault(uint8_t* response, size_t response_cap, size_t* 
     case k_c6m_mdl_fault_cancelled_with_data:
       chunk->state  = RA8__MDL__STATE__STATE_CANCELLED;
       chunk->status = 0;
-      chunk->data   = (ProtobufCBinaryData){.len = 1U, .data = &s_bad_data};
+      chunk->data   = (ProtobufCBinaryData){.len = 1U, .data = &bad_data};
       chunk->sha256 = (ProtobufCBinaryData){};
       break;
     case k_c6m_mdl_fault_downloading_error:
@@ -589,9 +667,51 @@ static void c6m_mdl_apply_fault(uint8_t* response, size_t response_cap, size_t* 
     case k_c6m_mdl_fault_out_of_order:
       chunk->sequence += 1U;
       break;
+    case k_c6m_mdl_fault_corrupt_data:
+      TEST_ASSERT(chunk->data.len != 0U);
+      TEST_ASSERT_NOT_NULL(chunk->data.data);
+      chunk->data.data[0] ^= 1U;
+      break;
     default:
       TEST_ASSERT(false);
   }
+}
+
+/** @brief Apply one requested malformed media-response shape, then consume it.
+ * @details Appends an unknown field directly or decodes and mutates a Chunk,
+ * then repacks within the supplied capacity and restores decoder ownership.
+ * @param[in,out] response Packed media response to mutate.
+ * @param[in] response_cap Writable capacity of @p response.
+ * @param[in,out] response_len Packed length on entry and after fault repacking.
+ * @pre All pointers are non-null. @pre `*response_len` is no greater than @p response_cap.
+ * @post A pending fault is consumed at most once. @post Repacked output remains within capacity.
+ * @note Decode failure and capacity overflow are surfaced as test assertions.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_mdl_apply_fault(uint8_t* response, size_t response_cap, size_t* response_len)
+{
+  const ra8_c6_model_mdl_fault_t fault = s_c6.mdl_fault;
+  if (fault == k_c6m_mdl_fault_none) {
+    return;
+  }
+  s_c6.mdl_fault = k_c6m_mdl_fault_none;
+  if (fault == k_c6m_mdl_fault_unknown_field) {
+    TEST_ASSERT(response_cap >= *response_len);
+    TEST_ASSERT((response_cap - *response_len) >= sizeof(s_mdl_unknown_field));
+    memcpy(&response[*response_len], s_mdl_unknown_field, sizeof(s_mdl_unknown_field));
+    *response_len += sizeof(s_mdl_unknown_field);
+    return;
+  }
+
+  Ra8__Mdl__Chunk* chunk = ra8__mdl__chunk__unpack(nullptr, *response_len, response);
+  if (chunk == nullptr) {
+    TEST_ASSERT_NOT_NULL(chunk);
+    return;
+  }
+  const ProtobufCBinaryData owned_data = chunk->data;
+  const ProtobufCBinaryData owned_sha  = chunk->sha256;
+  internal_mdl_mutate_chunk(chunk, fault);
   *response_len = ra8__mdl__chunk__get_packed_size(chunk);
   TEST_ASSERT(*response_len <= response_cap);
   TEST_ASSERT_EQ((int64_t)*response_len, (int64_t)ra8__mdl__chunk__pack(chunk, response));
@@ -600,40 +720,53 @@ static void c6m_mdl_apply_fault(uint8_t* response, size_t response_cap, size_t* 
   ra8__mdl__chunk__free_unpacked(chunk, nullptr);
 }
 
-/** @brief Run an inner media message through the portable C6 service. */
-static bool c6m_custom_answer(Rpc* out, const Rpc* req, int32_t scripted_resp)
+/** @brief Run an inner media message through the portable C6 service.
+ * @details Dispatches one inner media request through the portable bounded service and returns its packed generated response.
+ * @param[out] out Destination buffer or response envelope populated on success.
+ * @param[in] req Decoded outer request whose custom payload is dispatched.
+ * @param[in] scripted_resp Forced outer result code, or zero to dispatch normally.
+ * @return Whether this request was recognized and answered.
+ * @retval true A custom RPC response was prepared.
+ * @retval false The request is not a custom RPC request.
+ * @pre @p out and @p req are initialized. @pre The model media service has been reset.
+ * @post True leaves response storage valid through packing. @post False leaves @p out unchanged.
+ * @note Static response storage is safe because model exchanges are serialized.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool internal_c6m_custom_answer(Rpc* out, const Rpc* req, int32_t scripted_resp)
 {
   if ((uint32_t)req->msg_id != (uint32_t)RPC_ID__Req_CustomRpc) {
     return false;
   }
-  static uint8_t          s_response[k_c6m_custom_response_bytes];
-  static RpcRespCustomRpc s_body;
-  rpc__resp__custom_rpc__init(&s_body);
+  static uint8_t          response_bytes[k_c6m_custom_response_bytes];
+  static RpcRespCustomRpc response_body;
+  rpc__resp__custom_rpc__init(&response_body);
   out->msg_id          = RPC_ID__Resp_CustomRpc;
   out->payload_case    = RPC__PAYLOAD_RESP_CUSTOM_RPC;
-  out->resp_custom_rpc = &s_body;
+  out->resp_custom_rpc = &response_body;
   if (req->req_custom_rpc == nullptr) {
-    s_body.resp = (int32_t)k_ra8_err_protocol_error;
+    response_body.resp = (int32_t)k_ra8_err_protocol_error;
     return true;
   }
-  s_body.custom_msg_id = req->req_custom_rpc->custom_msg_id;
+  response_body.custom_msg_id = req->req_custom_rpc->custom_msg_id;
   if (scripted_resp != 0) {
-    s_body.resp = scripted_resp;
+    response_body.resp = scripted_resp;
     return true;
   }
-  size_t response_len = 0U;
-  s_body.resp         = (int32_t)ra8_mdl_service_dispatch(&s_mdl_service,
-                                                          s_body.custom_msg_id,
-                                                          req->req_custom_rpc->data.data,
-                                                          req->req_custom_rpc->data.len,
-                                                          s_response,
-                                                          sizeof(s_response),
-                                                          &response_len);
-  if ((s_body.resp == (int32_t)k_ra8_ok) &&
-      (s_body.custom_msg_id == (uint32_t)k_ra8_mdl_rpc_next)) {
-    c6m_mdl_apply_fault(s_response, sizeof(s_response), &response_len);
+  size_t response_len       = 0U;
+  response_body.resp        = (int32_t)ra8_mdl_service_dispatch(&s_mdl_service,
+                                                                response_body.custom_msg_id,
+                                                                req->req_custom_rpc->data.data,
+                                                                req->req_custom_rpc->data.len,
+                                                                response_bytes,
+                                                                sizeof(response_bytes),
+                                                                &response_len);
+  const bool inject_unknown = s_c6.mdl_fault == k_c6m_mdl_fault_unknown_field;
+  if ((response_body.resp == (int32_t)k_ra8_ok) &&
+      ((response_body.custom_msg_id == (uint32_t)k_ra8_mdl_rpc_next) || inject_unknown)) {
+    internal_mdl_apply_fault(response_bytes, sizeof(response_bytes), &response_len);
   }
-  s_body.data = (ProtobufCBinaryData){.len = response_len, .data = s_response};
+  response_body.data = (ProtobufCBinaryData){.len = response_len, .data = response_bytes};
   return true;
 }
 
@@ -645,11 +778,11 @@ static bool c6m_custom_answer(Rpc* out, const Rpc* req, int32_t scripted_resp)
  * @pre The queue has room, or the answer is dropped.
  * @post The request id was recorded in arrival order.
  * @post Exactly one answer is queued unless the model was told to stay mute.
- * @note The scripted UID and message-id corruptions are applied here, so a
- *       test can prove the host correlates rather than merely receives.
+ * @note The scripted UID and message-id corruptions prove the host correlates rather than merely receives.
  * @since 0.1.0
+ * @details Records correlation state, applies scripted faults, selects the response builder, and queues at most one reply.
  */
-static void c6m_answer(const Rpc* req)
+RA8_INTERNAL static void internal_c6m_answer(const Rpc* req)
 {
   const uint32_t req_id = (uint32_t)req->msg_id;
   if (s_c6.seen_n < (uint8_t)k_c6m_seen) {
@@ -671,19 +804,20 @@ static void c6m_answer(const Rpc* req)
   out.uid      = s_c6.wrong_uid ? (req->uid + 1U) : req->uid;
 
   if (req_id == (uint32_t)RPC_ID__Req_WifiSetConfig) {
-    c6m_take_config(req->req_wifi_set_config);
+    internal_c6m_take_config(req->req_wifi_set_config);
   }
 
   RpcRespWifiStart bare;
-  if (!c6m_custom_answer(&out, req, resp) && !c6m_rich_answer(&out, req_id, resp) &&
-      !c6m_bare(&out, req_id, &bare, resp)) {
+  if (!internal_c6m_custom_answer(&out, req, resp) &&
+      !internal_c6m_rich_answer(&out, req_id, resp) &&
+      !internal_c6m_bare(&out, req_id, &bare, resp)) {
     return;
   }
 
   if (s_c6.wrong_id) {
     out.msg_id = RPC_ID__Resp_WifiStop;
   }
-  c6m_emit(&out);
+  internal_c6m_emit(&out);
 }
 
 /**
@@ -695,13 +829,13 @@ static void c6m_answer(const Rpc* req)
  * @pre The frame carries a payload, so its checksum is defined.
  * @post The transmitted checksum was proven to cover header plus payload.
  * @post No model state is modified.
- * @note The checksum is recomputed over a copy with the field zeroed, which is
- *       what upstream's `process_spi_rx_buf()` does -- deliberately not the
- *       subtract-the-field shortcut the host uses, so the two cannot agree on
- *       a wrong answer.
+ * @note The checksum is recomputed over a field-zeroed copy, as upstream's
+ * `process_spi_rx_buf()` does, rather than using the host's subtraction shortcut.
  * @since 0.1.0
+ * @details Checks the envelope bytes and declared payload size before generated RPC decode.
  */
-static void c6m_verify_framing(const uint8_t* tx, const struct esp_payload_header* hdr)
+RA8_INTERNAL static void internal_c6m_verify_framing(const uint8_t*                   tx,
+                                                     const struct esp_payload_header* hdr)
 {
   uint8_t copy[k_ra8_c6link_frame_bytes];
   (void)memcpy(copy, tx, sizeof copy);
@@ -718,21 +852,20 @@ static void c6m_verify_framing(const uint8_t* tx, const struct esp_payload_heade
  * @return Nothing.
  * @pre The transaction is ::k_ra8_c6link_frame_bytes long.
  * @pre The model has been reset at least once.
- * @post A control-plane request was decoded and answered, or a data frame was
- *       recorded, or the frame was idle filler and nothing happened.
+ * @post A control request was answered, data was recorded, or idle filler caused no change.
  * @post The host's framing was verified for every non-idle frame.
- * @note A request that fails to decode here is a request this host encoded
- *       wrongly, which is the whole point of decoding rather than replaying.
+ * @note Decode failure proves the host encoded a request incorrectly.
  * @since 0.1.0
+ * @details Classifies private-interface announcements separately and records capabilities.
  */
-static void c6m_observe(const uint8_t* tx)
+RA8_INTERNAL static void internal_c6m_observe(const uint8_t* tx)
 {
   struct esp_payload_header hdr = {};
   (void)memcpy(&hdr, tx, sizeof hdr);
   if (hdr.len == 0U) {
     return;
   }
-  c6m_verify_framing(tx, &hdr);
+  internal_c6m_verify_framing(tx, &hdr);
 
   if (hdr.if_type == (uint8_t)ESP_STA_IF) {
     s_c6.eth_tx_len     = hdr.len;
@@ -759,12 +892,12 @@ static void c6m_observe(const uint8_t* tx)
   }
 
   uint16_t       proto_len = 0U;
-  const uint8_t* proto     = ra8_c6link_priv_tlv_body(&tx[hdr.offset], hdr.len, &proto_len);
+  const uint8_t* proto     = priv_c6link_tlv_body(&tx[hdr.offset], hdr.len, &proto_len);
   TEST_ASSERT_NOT_NULL(proto);
   Rpc* req = rpc__unpack(nullptr, (size_t)proto_len, proto);
   TEST_ASSERT_NOT_NULL(req);
   TEST_ASSERT_EQ(RPC_TYPE__Req, req->msg_type);
-  c6m_answer(req);
+  internal_c6m_answer(req);
   rpc__free_unpacked(req, nullptr);
 }
 
@@ -786,8 +919,11 @@ static void c6m_observe(const uint8_t* tx)
  *       host's -- an answer can never ride the same transaction as its
  *       question.
  * @since 0.1.0
+ * @details Models one full-duplex frame exchange by observing host output and
+ * copying the next queued response into receive storage.
  */
-static ra8_err_t c6m_transfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint16_t len)
+RA8_INTERNAL static ra8_err_t
+internal_c6m_transfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint16_t len)
 {
   (void)ctx;
   TEST_ASSERT_EQ(k_ra8_c6link_frame_bytes, len);
@@ -800,9 +936,9 @@ static ra8_err_t c6m_transfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint16_
     (void)memcpy(rx, s_c6.queue[s_c6.head], (size_t)len);
     s_c6.head++;
   } else {
-    ra8_c6link_priv_frame_filler(rx);
+    priv_c6link_frame_filler(rx);
   }
-  c6m_observe(tx);
+  internal_c6m_observe(tx);
   return k_ra8_ok;
 }
 
@@ -818,8 +954,10 @@ static ra8_err_t c6m_transfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint16_
  * @post The value reflects the scripted flag exactly.
  * @note Not thread-safe.
  * @since 0.1.0
+ * @details Returns the modelled data-ready state so tests can drive both
+ * successful and unavailable-link branches.
  */
-static bool c6m_handshake(void* ctx)
+RA8_INTERNAL static bool internal_c6m_handshake(void* ctx)
 {
   (void)ctx;
   return s_c6.handshake;
@@ -839,7 +977,7 @@ static bool c6m_handshake(void* ctx)
  * @note A real backend sleeps here; a host test must not.
  * @since 0.1.0
  */
-static void c6m_delay(void* ctx, uint16_t ms)
+RA8_INTERNAL static void internal_c6m_delay(void* ctx, uint16_t ms)
 {
   (void)ctx;
   s_c6.delays        = s_c6.delays + 1U;
@@ -851,8 +989,8 @@ void ra8_c6_model_bind(ra8_c6link_transport_t* out)
   if (out == nullptr) {
     return;
   }
-  out->transfer         = c6m_transfer;
-  out->handshake_active = c6m_handshake;
-  out->delay_ms         = c6m_delay;
+  out->transfer         = internal_c6m_transfer;
+  out->handshake_active = internal_c6m_handshake;
+  out->delay_ms         = internal_c6m_delay;
   out->ctx              = &s_c6;
 }

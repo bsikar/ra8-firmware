@@ -7,6 +7,8 @@
  *
  * @details Defines only raw HTTPS-body transfer semantics. Site scraping,
  * conversion, and export formats are intentionally outside this wire contract.
+ * Both endpoints reject unknown protobuf fields, so extensions require an
+ * explicit protocol-version change rather than silent semantic widening.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

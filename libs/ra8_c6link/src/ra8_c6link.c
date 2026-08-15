@@ -34,7 +34,7 @@
 #include "ra8_attributes.h"
 #include "ra8_c6link_internal.h"
 
-RA8_PRIV uint8_t ra8_c6link_priv_copy_str(char* dst, uint8_t cap, const ProtobufCBinaryData* src)
+RA8_PRIV uint8_t priv_c6link_copy_str(char* dst, uint8_t cap, const ProtobufCBinaryData* src)
 {
   if ((dst == nullptr) || (cap == 0U)) {
     return 0U;
@@ -53,7 +53,7 @@ RA8_PRIV uint8_t ra8_c6link_priv_copy_str(char* dst, uint8_t cap, const Protobuf
   return (uint8_t)take;
 }
 
-RA8_PRIV bool ra8_c6link_priv_copy_mac(ra8_c6link_mac_t* dst, const ProtobufCBinaryData* src)
+RA8_PRIV bool priv_c6link_copy_mac(ra8_c6link_mac_t* dst, const ProtobufCBinaryData* src)
 {
   if (dst == nullptr) {
     return false;
@@ -68,7 +68,7 @@ RA8_PRIV bool ra8_c6link_priv_copy_mac(ra8_c6link_mac_t* dst, const ProtobufCBin
   return true;
 }
 
-RA8_PRIV void ra8_c6link_priv_emit(ra8_c6link_t* link, const ra8_c6link_event_t* ev)
+RA8_PRIV void priv_c6link_emit(ra8_c6link_t* link, const ra8_c6link_event_t* ev)
 {
   if ((link == nullptr) || (ev == nullptr)) {
     return;
@@ -84,7 +84,7 @@ RA8_PRIV void ra8_c6link_priv_emit(ra8_c6link_t* link, const ra8_c6link_event_t*
   }
 }
 
-RA8_PRIV bool ra8_c6link_priv_dispatch(ra8_c6link_t* link, const ra8_c6link_rx_view_t* view)
+RA8_PRIV bool priv_c6link_dispatch(ra8_c6link_t* link, const ra8_c6link_rx_view_t* view)
 {
   if ((link == nullptr) || (view == nullptr)) {
     return false;
@@ -92,7 +92,7 @@ RA8_PRIV bool ra8_c6link_priv_dispatch(ra8_c6link_t* link, const ra8_c6link_rx_v
   const uint8_t* payload = &link->rx[view->offset];
 
   if (view->if_type == (uint8_t)ESP_SERIAL_IF) {
-    return ra8_c6link_priv_rpc_consume(link, payload, view->len);
+    return priv_c6link_rpc_consume(link, payload, view->len);
   }
   if ((view->if_type == (uint8_t)ESP_STA_IF) || (view->if_type == (uint8_t)ESP_AP_IF)) {
     if (link->stats != nullptr) {
@@ -131,7 +131,7 @@ RA8_PRIV bool ra8_c6link_priv_dispatch(ra8_c6link_t* link, const ra8_c6link_rx_v
  *       Rule 4 length budget.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_c6link_check_cfg(const ra8_c6link_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_c6link_check_cfg(const ra8_c6link_cfg_t* cfg)
 {
   if ((cfg->transport.transfer == nullptr) || (cfg->transport.handshake_active == nullptr) ||
       (cfg->transport.delay_ms == nullptr) || (cfg->arena == nullptr)) {
@@ -151,7 +151,7 @@ ra8_err_t ra8_c6link_open(ra8_c6link_t* link, const ra8_c6link_cfg_t* cfg)
   if (link->open) {
     return k_ra8_err_invalid_state;
   }
-  const ra8_err_t bad = ra8_c6link_check_cfg(cfg);
+  const ra8_err_t bad = internal_c6link_check_cfg(cfg);
   if (bad != k_ra8_ok) {
     return bad;
   }
@@ -222,7 +222,7 @@ ra8_err_t ra8_c6link_poll(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6l
   }
 
   ra8_c6link_stats_t local = {};
-  const ra8_err_t    err   = ra8_c6link_priv_pump(link, max_transactions, &local);
+  const ra8_err_t    err   = priv_c6link_pump(link, max_transactions, &local);
   if (stats != nullptr) {
     *stats = local;
   }
@@ -250,7 +250,7 @@ ra8_c6link_await_ready(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link
      ignores a restatement of capabilities that have not changed -- so sending
      it unconditionally is both necessary and harmless. */
   const uint8_t caps =
-    ra8_c6link_priv_caps(&link->tx[k_ra8_c6link_header_bytes], (uint8_t)k_ra8_c6link_caps_bytes);
+    priv_c6link_caps(&link->tx[k_ra8_c6link_header_bytes], (uint8_t)k_ra8_c6link_caps_bytes);
   if (caps == 0U) {
     return k_ra8_err_invalid_size;
   }
@@ -258,7 +258,7 @@ ra8_c6link_await_ready(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link
   link->tx_if  = (uint8_t)ESP_PRIV_IF;
 
   ra8_c6link_stats_t local     = {};
-  const ra8_err_t    announced = ra8_c6link_priv_pump(link, max_transactions, &local);
+  const ra8_err_t    announced = priv_c6link_pump(link, max_transactions, &local);
   link->tx_len                 = 0U;
   if (announced != k_ra8_ok) {
     return announced;
@@ -288,7 +288,7 @@ ra8_c6link_await_ready(ra8_c6link_t* link, uint16_t max_transactions, ra8_c6link
  * @note Runs inside the pump, on the polling thread.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t ra8_c6link_take_fw(void* ctx, const void* msg_v)
+RA8_INTERNAL static ra8_err_t internal_c6link_take_fw(void* ctx, const void* msg_v)
 {
   ra8_c6link_take_ctx_t*         take = (ra8_c6link_take_ctx_t*)ctx;
   const Rpc*                     msg  = (const Rpc*)msg_v;
@@ -303,10 +303,8 @@ RA8_INTERNAL static ra8_err_t ra8_c6link_take_fw(void* ctx, const void* msg_v)
   out->patch   = body->patch1;
   out->chip_id = body->chip_id;
   out->target_len =
-    ra8_c6link_priv_copy_str(out->target, (uint8_t)sizeof out->target, &body->idf_target);
-  return ra8_c6link_priv_resp(take->link,
-                              (uint32_t)RPC_ID__Req_GetCoprocessorFwVersion,
-                              body->resp);
+    priv_c6link_copy_str(out->target, (uint8_t)sizeof out->target, &body->idf_target);
+  return priv_c6link_resp(take->link, (uint32_t)RPC_ID__Req_GetCoprocessorFwVersion, body->resp);
 }
 
 ra8_err_t ra8_c6link_fw_version(ra8_c6link_t* link, ra8_c6link_fw_version_t* out)
@@ -330,11 +328,11 @@ ra8_err_t ra8_c6link_fw_version(ra8_c6link_t* link, ra8_c6link_fw_version_t* out
   req.req_get_coprocessor_fwversion = &body;
 
   ra8_c6link_take_ctx_t take = {.link = link, .out = out};
-  return ra8_c6link_priv_rpc_call(link,
-                                  &req,
-                                  (uint32_t)RPC_ID__Resp_GetCoprocessorFwVersion,
-                                  ra8_c6link_take_fw,
-                                  &take);
+  return priv_c6link_rpc_call(link,
+                              &req,
+                              (uint32_t)RPC_ID__Resp_GetCoprocessorFwVersion,
+                              internal_c6link_take_fw,
+                              &take);
 }
 
 ra8_err_t ra8_c6link_eth_send(ra8_c6link_t* link, const uint8_t* frame, uint16_t len)
@@ -359,7 +357,7 @@ ra8_err_t ra8_c6link_eth_send(ra8_c6link_t* link, const uint8_t* frame, uint16_t
   link->tx_if  = (uint8_t)ESP_STA_IF;
 
   ra8_c6link_stats_t local  = {};
-  const ra8_err_t    pumped = ra8_c6link_priv_pump(link, (uint16_t)k_ra8_c6link_hs_giveup, &local);
+  const ra8_err_t    pumped = priv_c6link_pump(link, (uint16_t)k_ra8_c6link_hs_giveup, &local);
   if (pumped != k_ra8_ok) {
     link->tx_len = 0U;
     return pumped;

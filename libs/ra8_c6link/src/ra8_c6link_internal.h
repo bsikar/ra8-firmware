@@ -59,10 +59,10 @@ extern "C" {
  *
  * @par Example:
  * @code
- * if (ra8_c6link_priv_frame_classify(rx, &view) == k_ra8_c6link_frame_data) { ... }
+ * if (priv_c6link_frame_classify(rx, &view) == k_ra8_c6link_frame_data) { ... }
  * @endcode
  *
- * @see ra8_c6link_priv_frame_classify
+ * @see priv_c6link_frame_classify
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -125,7 +125,7 @@ typedef struct ra8_c6link_rx_view {
  * @retval NULL The arena is exhausted, or @p ctx was null.
  *
  * @pre The link is open, so its arena pointer and size are valid.
- * @pre The caller releases through ::ra8_c6link_priv_arena_free.
+ * @pre The caller releases through ::priv_c6link_arena_free.
  * @post The bump offset advanced by the aligned size, or nothing changed.
  * @post `arena_last` names this block when the call succeeded.
  *
@@ -133,13 +133,13 @@ typedef struct ra8_c6link_rx_view {
  *
  * @par Example:
  * @code
- * ProtobufCAllocator a = { .alloc = ra8_c6link_priv_arena_alloc, ... };
+ * ProtobufCAllocator a = { .alloc = priv_c6link_arena_alloc, ... };
  * @endcode
  *
- * @see ra8_c6link_priv_arena_reset
+ * @see priv_c6link_arena_reset
  * @since 0.1.0
  */
-RA8_PRIV void* ra8_c6link_priv_arena_alloc(void* ctx, size_t size);
+RA8_PRIV void* priv_c6link_arena_alloc(void* ctx, size_t size);
 
 /**
  * @brief Return a block to the link's decode arena.
@@ -149,7 +149,7 @@ RA8_PRIV void* ra8_c6link_priv_arena_alloc(void* ctx, size_t size);
  * it can free the newest block: when @p pointer is the most recent allocation
  * the bump offset rolls back to it, which is what turns the codec's own
  * unwind-on-error path into genuinely reclaimed space rather than waste. Any
- * other pointer is retained until ::ra8_c6link_priv_arena_reset runs, which the
+ * other pointer is retained until ::priv_c6link_arena_reset runs, which the
  * RPC layer does after every decode.
  *
  * @param[in] ctx The ::ra8_c6link_t whose arena owns the block; null is
@@ -158,7 +158,7 @@ RA8_PRIV void* ra8_c6link_priv_arena_alloc(void* ctx, size_t size);
  *
  * @return Nothing.
  *
- * @pre @p pointer came from ::ra8_c6link_priv_arena_alloc on the same link.
+ * @pre @p pointer came from ::priv_c6link_arena_alloc on the same link.
  * @pre No other reference to the block survives the call.
  * @post The bump offset is unchanged or rolled back to @p pointer.
  * @post No memory outside the arena is touched.
@@ -167,13 +167,13 @@ RA8_PRIV void* ra8_c6link_priv_arena_alloc(void* ctx, size_t size);
  *
  * @par Example:
  * @code
- * ra8_c6link_priv_arena_free(link, block);
+ * priv_c6link_arena_free(link, block);
  * @endcode
  *
- * @see ra8_c6link_priv_arena_alloc
+ * @see priv_c6link_arena_alloc
  * @since 0.1.0
  */
-RA8_PRIV void ra8_c6link_priv_arena_free(void* ctx, void* pointer);
+RA8_PRIV void priv_c6link_arena_free(void* ctx, void* pointer);
 
 /**
  * @brief Empty the link's decode arena.
@@ -196,13 +196,13 @@ RA8_PRIV void ra8_c6link_priv_arena_free(void* ctx, void* pointer);
  *
  * @par Example:
  * @code
- * ra8_c6link_priv_arena_reset(link);
+ * priv_c6link_arena_reset(link);
  * @endcode
  *
- * @see ra8_c6link_priv_arena_alloc
+ * @see priv_c6link_arena_alloc
  * @since 0.1.0
  */
-RA8_PRIV void ra8_c6link_priv_arena_reset(ra8_c6link_t* link);
+RA8_PRIV void priv_c6link_arena_reset(ra8_c6link_t* link);
 
 /**
  * @brief Bind an allocator descriptor to a link's arena.
@@ -228,13 +228,13 @@ RA8_PRIV void ra8_c6link_priv_arena_reset(ra8_c6link_t* link);
  * @par Example:
  * @code
  * ProtobufCAllocator a;
- * ra8_c6link_priv_arena_bind(&a, link);
+ * priv_c6link_arena_bind(&a, link);
  * @endcode
  *
- * @see ra8_c6link_priv_arena_alloc
+ * @see priv_c6link_arena_alloc
  * @since 0.1.0
  */
-RA8_PRIV void ra8_c6link_priv_arena_bind(ProtobufCAllocator* out, ra8_c6link_t* link);
+RA8_PRIV void priv_c6link_arena_bind(ProtobufCAllocator* out, ra8_c6link_t* link);
 
 /* ==========================================================================
  * ra8_c6link_frame.c -- the twelve-byte payload header
@@ -264,13 +264,13 @@ RA8_PRIV void ra8_c6link_priv_arena_bind(ProtobufCAllocator* out, ra8_c6link_t* 
  *
  * @par Example:
  * @code
- * ra8_c6link_priv_frame_filler(link->tx);
+ * priv_c6link_frame_filler(link->tx);
  * @endcode
  *
- * @see ra8_c6link_priv_frame_seal
+ * @see priv_c6link_frame_seal
  * @since 0.1.0
  */
-RA8_PRIV void ra8_c6link_priv_frame_filler(uint8_t* tx);
+RA8_PRIV void priv_c6link_frame_filler(uint8_t* tx);
 
 /**
  * @brief Wrap an already-staged payload in a payload header.
@@ -299,14 +299,13 @@ RA8_PRIV void ra8_c6link_priv_frame_filler(uint8_t* tx);
  *
  * @par Example:
  * @code
- * ra8_c6link_priv_frame_seal(link->tx, (uint8_t)ESP_SERIAL_IF, 0U, n);
+ * priv_c6link_frame_seal(link->tx, (uint8_t)ESP_SERIAL_IF, 0U, n);
  * @endcode
  *
- * @see ra8_c6link_priv_frame_classify
+ * @see priv_c6link_frame_classify
  * @since 0.1.0
  */
-RA8_PRIV void
-ra8_c6link_priv_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_num, uint16_t len);
+RA8_PRIV void priv_c6link_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_num, uint16_t len);
 
 /**
  * @brief Decide what a received transaction is, and where its payload lies.
@@ -337,10 +336,10 @@ ra8_c6link_priv_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_num, uint16_
  * @par Example:
  * @code
  * ra8_c6link_rx_view_t view = {};
- * const ra8_c6link_frame_class_t cls = ra8_c6link_priv_frame_classify(rx, &view);
+ * const ra8_c6link_frame_class_t cls = priv_c6link_frame_classify(rx, &view);
  * @endcode
  *
- * @see ra8_c6link_priv_frame_seal
+ * @see priv_c6link_frame_seal
  * @since 0.1.0
  *
  * @par MC/DC:
@@ -348,7 +347,7 @@ ra8_c6link_priv_frame_seal(uint8_t* tx, uint8_t if_type, uint8_t if_num, uint16_
  * vectors against it; see `tests/test_ra8_c6link.c`.
  */
 [[nodiscard]] RA8_PRIV ra8_c6link_frame_class_t
-ra8_c6link_priv_frame_classify(uint8_t* rx, ra8_c6link_rx_view_t* view);
+priv_c6link_frame_classify(uint8_t* rx, ra8_c6link_rx_view_t* view);
 
 /**
  * @enum ra8_c6link_caps_t
@@ -378,7 +377,7 @@ ra8_c6link_priv_frame_classify(uint8_t* rx, ra8_c6link_rx_view_t* view);
  * out[k_ra8_c6link_caps_type] = (uint8_t)ESP_PRIV_EVENT_INIT;
  * @endcode
  *
- * @see ra8_c6link_priv_caps
+ * @see priv_c6link_caps
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -425,14 +424,14 @@ typedef enum : uint8_t {
  *
  * @par Example:
  * @code
- * const uint8_t n = ra8_c6link_priv_caps(&link->tx[k_ra8_c6link_header_bytes],
+ * const uint8_t n = priv_c6link_caps(&link->tx[k_ra8_c6link_header_bytes],
  *                                        (uint8_t)k_ra8_c6link_caps_bytes);
  * @endcode
  *
  * @see ra8_c6link_await_ready
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV uint8_t ra8_c6link_priv_caps(uint8_t* out, uint8_t cap);
+[[nodiscard]] RA8_PRIV uint8_t priv_c6link_caps(uint8_t* out, uint8_t cap);
 
 /* ==========================================================================
  * ra8_c6link_tlv.c -- the serial endpoint's two-tag envelope
@@ -459,7 +458,7 @@ typedef enum : uint8_t {
  * out[k_ra8_c6link_tlv_type] = (uint8_t)k_ra8_c6link_tlv_t_epname;
  * @endcode
  *
- * @see ra8_c6link_priv_tlv_open
+ * @see priv_c6link_tlv_open
  * @since 0.1.0
  */
 typedef enum : uint16_t {
@@ -502,16 +501,16 @@ typedef enum : uint16_t {
  * @par Example:
  * @code
  * uint16_t at = 0U;
- * (void)ra8_c6link_priv_tlv_open(buf, cap, packed, &at);
+ * (void)priv_c6link_tlv_open(buf, cap, packed, &at);
  * @endcode
  *
- * @see ra8_c6link_priv_tlv_body
+ * @see priv_c6link_tlv_body
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV ra8_err_t ra8_c6link_priv_tlv_open(uint8_t*  out,
-                                                          uint16_t  cap,
-                                                          uint16_t  proto_len,
-                                                          uint16_t* body_at);
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_tlv_open(uint8_t*  out,
+                                                      uint16_t  cap,
+                                                      uint16_t  proto_len,
+                                                      uint16_t* body_at);
 
 /**
  * @brief Strip the envelope off a received serial payload.
@@ -539,10 +538,10 @@ typedef enum : uint16_t {
  * @par Example:
  * @code
  * uint16_t n = 0U;
- * const uint8_t* proto = ra8_c6link_priv_tlv_body(payload, len, &n);
+ * const uint8_t* proto = priv_c6link_tlv_body(payload, len, &n);
  * @endcode
  *
- * @see ra8_c6link_priv_tlv_open
+ * @see priv_c6link_tlv_open
  * @since 0.1.0
  *
  * @par MC/DC:
@@ -550,7 +549,7 @@ typedef enum : uint16_t {
  * against it; see `tests/test_ra8_c6link.c`.
  */
 [[nodiscard]] RA8_PRIV const uint8_t*
-ra8_c6link_priv_tlv_body(const uint8_t* payload, uint16_t len, uint16_t* proto_len);
+priv_c6link_tlv_body(const uint8_t* payload, uint16_t len, uint16_t* proto_len);
 
 /* ==========================================================================
  * ra8_c6link_rpc.c -- request, response, correlation
@@ -576,7 +575,7 @@ ra8_c6link_priv_tlv_body(const uint8_t* payload, uint16_t len, uint16_t* proto_l
  * ra8_c6link_take_ctx_t take = { .link = link, .out = &version };
  * @endcode
  *
- * @see ra8_c6link_priv_rpc_call
+ * @see priv_c6link_rpc_call
  * @since 0.1.0
  */
 typedef struct ra8_c6link_take_ctx {
@@ -613,10 +612,10 @@ typedef struct ra8_c6link_take_ctx {
  * ra8_c6link_take_ctx_t take = { .link = link, .rpc_id = RPC_ID__Req_WifiStart };
  * @endcode
  *
- * @see ra8_c6link_priv_resp
+ * @see priv_c6link_resp
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV ra8_err_t ra8_c6link_priv_take_resp(void* ctx, const void* msg_v);
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_take_resp(void* ctx, const void* msg_v);
 
 /**
  * @brief Issue a request whose body carries no fields and whose answer carries
@@ -649,13 +648,13 @@ typedef struct ra8_c6link_take_ctx {
  *
  * @par Example:
  * @code
- * return ra8_c6link_priv_bare_req(link, (uint32_t)RPC_ID__Req_WifiStart);
+ * return priv_c6link_bare_req(link, (uint32_t)RPC_ID__Req_WifiStart);
  * @endcode
  *
- * @see ra8_c6link_priv_rpc_call
+ * @see priv_c6link_rpc_call
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV ra8_err_t ra8_c6link_priv_bare_req(ra8_c6link_t* link, uint32_t req_id);
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_bare_req(ra8_c6link_t* link, uint32_t req_id);
 
 /**
  * @brief Issue one request and pump until its answer arrives.
@@ -696,17 +695,17 @@ typedef struct ra8_c6link_take_ctx {
  *
  * @par Example:
  * @code
- * (void)ra8_c6link_priv_rpc_call(link, &req, RPC_ID__Resp_WifiStart, take, &out);
+ * (void)priv_c6link_rpc_call(link, &req, RPC_ID__Resp_WifiStart, take, &out);
  * @endcode
  *
- * @see ra8_c6link_priv_rpc_consume
+ * @see priv_c6link_rpc_consume
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV ra8_err_t ra8_c6link_priv_rpc_call(ra8_c6link_t*        link,
-                                                          Rpc*                 req,
-                                                          uint32_t             resp_id,
-                                                          ra8_c6link_take_fn_t take,
-                                                          void*                take_ctx);
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_rpc_call(ra8_c6link_t*        link,
+                                                      Rpc*                 req,
+                                                      uint32_t             resp_id,
+                                                      ra8_c6link_take_fn_t take,
+                                                      void*                take_ctx);
 
 /**
  * @brief Decode one control-plane payload and act on it.
@@ -733,14 +732,14 @@ typedef struct ra8_c6link_take_ctx {
  *
  * @par Example:
  * @code
- * if (ra8_c6link_priv_rpc_consume(link, &link->rx[view.offset], view.len)) { break; }
+ * if (priv_c6link_rpc_consume(link, &link->rx[view.offset], view.len)) { break; }
  * @endcode
  *
- * @see ra8_c6link_priv_rpc_call
+ * @see priv_c6link_rpc_call
  * @since 0.1.0
  */
 [[nodiscard]] RA8_PRIV bool
-ra8_c6link_priv_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t len);
+priv_c6link_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t len);
 
 /**
  * @brief Map a co-processor result code onto an ra8 error, recording it.
@@ -769,15 +768,15 @@ ra8_c6link_priv_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t
  *
  * @par Example:
  * @code
- * return ra8_c6link_priv_resp(link, RPC_ID__Req_WifiStart, body->resp);
+ * return priv_c6link_resp(link, RPC_ID__Req_WifiStart, body->resp);
  * @endcode
  *
  * @see ra8_c6link_last_fault
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV ra8_err_t ra8_c6link_priv_resp(ra8_c6link_t* link,
-                                                      uint32_t      rpc_id,
-                                                      int32_t       resp);
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_resp(ra8_c6link_t* link,
+                                                  uint32_t      rpc_id,
+                                                  int32_t       resp);
 
 /* ==========================================================================
  * ra8_c6link_pump.c -- the transaction loop
@@ -810,15 +809,15 @@ ra8_c6link_priv_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t
  *
  * @par Example:
  * @code
- * (void)ra8_c6link_priv_pump(link, (uint16_t)k_ra8_c6link_rpc_transfers, &stats);
+ * (void)priv_c6link_pump(link, (uint16_t)k_ra8_c6link_rpc_transfers, &stats);
  * @endcode
  *
- * @see ra8_c6link_priv_dispatch
+ * @see priv_c6link_dispatch
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV ra8_err_t ra8_c6link_priv_pump(ra8_c6link_t*       link,
-                                                      uint16_t            max_transactions,
-                                                      ra8_c6link_stats_t* stats);
+[[nodiscard]] RA8_PRIV ra8_err_t priv_c6link_pump(ra8_c6link_t*       link,
+                                                  uint16_t            max_transactions,
+                                                  ra8_c6link_stats_t* stats);
 
 /**
  * @brief Route one well-formed received frame to whatever understands it.
@@ -846,14 +845,14 @@ ra8_c6link_priv_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t
  *
  * @par Example:
  * @code
- * if (ra8_c6link_priv_dispatch(link, &view)) { break; }
+ * if (priv_c6link_dispatch(link, &view)) { break; }
  * @endcode
  *
- * @see ra8_c6link_priv_pump
+ * @see priv_c6link_pump
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV bool ra8_c6link_priv_dispatch(ra8_c6link_t*               link,
-                                                     const ra8_c6link_rx_view_t* view);
+[[nodiscard]] RA8_PRIV bool priv_c6link_dispatch(ra8_c6link_t*               link,
+                                                 const ra8_c6link_rx_view_t* view);
 
 /**
  * @brief Deliver one decoded announcement to the registered callback.
@@ -877,13 +876,13 @@ ra8_c6link_priv_rpc_consume(ra8_c6link_t* link, const uint8_t* payload, uint16_t
  *
  * @par Example:
  * @code
- * ra8_c6link_priv_emit(link, &ev);
+ * priv_c6link_emit(link, &ev);
  * @endcode
  *
  * @see ra8_c6link_event_cb_t
  * @since 0.1.0
  */
-RA8_PRIV void ra8_c6link_priv_emit(ra8_c6link_t* link, const ra8_c6link_event_t* ev);
+RA8_PRIV void priv_c6link_emit(ra8_c6link_t* link, const ra8_c6link_event_t* ev);
 
 /**
  * @brief Copy a length-counted binary field into a NUL-terminated string.
@@ -908,13 +907,13 @@ RA8_PRIV void ra8_c6link_priv_emit(ra8_c6link_t* link, const ra8_c6link_event_t*
  *
  * @par Example:
  * @code
- * ev.ssid_len = ra8_c6link_priv_copy_str(ev.ssid, sizeof ev.ssid, &body->ssid);
+ * ev.ssid_len = priv_c6link_copy_str(ev.ssid, sizeof ev.ssid, &body->ssid);
  * @endcode
  *
- * @see ra8_c6link_priv_copy_mac
+ * @see priv_c6link_copy_mac
  * @since 0.1.0
  */
-RA8_PRIV uint8_t ra8_c6link_priv_copy_str(char* dst, uint8_t cap, const ProtobufCBinaryData* src);
+RA8_PRIV uint8_t priv_c6link_copy_str(char* dst, uint8_t cap, const ProtobufCBinaryData* src);
 
 /**
  * @brief Copy a binary field into a MAC address, all-or-nothing.
@@ -934,14 +933,14 @@ RA8_PRIV uint8_t ra8_c6link_priv_copy_str(char* dst, uint8_t cap, const Protobuf
  *
  * @par Example:
  * @code
- * (void)ra8_c6link_priv_copy_mac(&ev.bssid, &body->bssid);
+ * (void)priv_c6link_copy_mac(&ev.bssid, &body->bssid);
  * @endcode
  *
- * @see ra8_c6link_priv_copy_str
+ * @see priv_c6link_copy_str
  * @since 0.1.0
  */
-[[nodiscard]] RA8_PRIV bool ra8_c6link_priv_copy_mac(ra8_c6link_mac_t*          dst,
-                                                     const ProtobufCBinaryData* src);
+[[nodiscard]] RA8_PRIV bool priv_c6link_copy_mac(ra8_c6link_mac_t*          dst,
+                                                 const ProtobufCBinaryData* src);
 
 #ifdef __cplusplus
 }
