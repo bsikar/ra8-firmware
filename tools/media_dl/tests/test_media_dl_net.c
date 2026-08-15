@@ -786,8 +786,7 @@ static void test_curl_get_file_failure_keeps_existing(void)
 }
 
 /**
- * @brief Run every mdl_net + politeness unit test in sequence.
- * @return 0 when all tests passed, non-zero on the first failure.
+ * @brief Exercise conditional request headers and 304 response handling.
  * @since 0.1.0
  */
 static void test_net_conditional_and_response_headers(void)

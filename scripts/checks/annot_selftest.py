@@ -363,6 +363,7 @@ _SELFTEST_LINKAGE_CLEAN = (
     "lock_nested_body",
 )
 
+
 #: What _selftest_parse() returns: the symbol table, the call list and the
 #: set of USRs a vector table names.
 def _selftest_parse(root: pathlib.Path) -> WalkState:
@@ -385,9 +386,7 @@ def _selftest_parse(root: pathlib.Path) -> WalkState:
     index = cindex.Index.create()
     for path in tu_paths:
         language_args = (
-            ["-std=c++23", "-x", "c++"]
-            if path.suffix == ".cpp"
-            else ["-std=c23", "-x", "c"]
+            ["-std=c++23", "-x", "c++"] if path.suffix == ".cpp" else ["-std=c23", "-x", "c"]
         )
         tu = index.parse(
             str(path),

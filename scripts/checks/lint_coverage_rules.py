@@ -107,6 +107,34 @@ CLASSES: dict[str, ClassSpec] = {
     "tool-config": _spec("tool-config", CONF, "dotfile config for a named tool"),
     "vcs-metadata": _spec("vcs-metadata", CONF, "gitignore/gitattributes and kin"),
     "fixture": _spec("fixture", DATA, "test corpora and golden inputs"),
+    "validated-input": _spec(
+        "validated-input",
+        CONF,
+        "exact machine-readable inputs parsed by their pinned build or generator",
+    ),
+    "generated-source": _spec(
+        "generated-source",
+        DATA,
+        "exact reproducible source outputs whose generator owns the canonical bytes",
+    ),
+}
+
+# ---------------------------------------------------------------------------
+# Exact path -> class, checked BEFORE basename and extension tables.
+#
+# These four files deliberately do not create a blanket exemption for every
+# future .patch, .proto, or *pb-c.c file. The patch is syntax-checked by
+# `git apply --check` in the pinned ESP32-C6 build, the schema is parsed by the
+# pinned protobuf-c generator, and the two codec files are that generator's
+# reproducible outputs. A second file of any of these types remains
+# unclassified/C-family and makes lint-coverage fail until it receives an
+# equally specific validation story.
+# ---------------------------------------------------------------------------
+PATH_CLASS: dict[str, str] = {
+    "coprocessor/esp32c6/patches/0001-custom-rpc-sync-response-hook.patch": "validated-input",
+    "libs/ra8_c6link/proto/ra8_media_download.proto": "validated-input",
+    "libs/ra8_c6link/inc/ra8_media_download.pb-c.h": "generated-source",
+    "libs/ra8_c6link/src/ra8_media_download.pb-c.c": "generated-source",
 }
 
 # ---------------------------------------------------------------------------
@@ -335,12 +363,16 @@ def exemption_reason(rel: str) -> str | None:
 def validate_tables() -> list[str]:
     """Assert the tables are internally consistent. Returns a list of problems.
 
-    A class named by EXT_CLASS/NAME_CLASS but absent from CLASSES would make
+    A class named by PATH_CLASS/EXT_CLASS/NAME_CLASS but absent from CLASSES would make
     the gate crash on a file it was supposed to classify, and an exemption with
     an empty reason is the rot this list exists to prevent.
     """
     problems: list[str] = []
-    for table_name, table in (("EXT_CLASS", EXT_CLASS), ("NAME_CLASS", NAME_CLASS)):
+    for table_name, table in (
+        ("PATH_CLASS", PATH_CLASS),
+        ("EXT_CLASS", EXT_CLASS),
+        ("NAME_CLASS", NAME_CLASS),
+    ):
         for key, cls in table.items():
             if cls not in CLASSES:
                 problems.append(f"{table_name}[{key!r}] names unknown class {cls!r}")

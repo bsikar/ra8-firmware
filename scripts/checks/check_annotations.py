@@ -174,14 +174,10 @@ def _collect_violations(
             "linkage rule need the whole tree and are skipped. Run without "
             "arguments for the gate.\n"
         )
-        violations.extend(
-            enforce_rules(sweep, whole_tree=False, naming_contract=False)
-        )
+        violations.extend(enforce_rules(sweep, whole_tree=False, naming_contract=False))
     else:
         violations.extend(check_parse_integrity(sweep.stats, sweep.tu_count))
-        violations.extend(
-            enforce_rules(sweep, naming_contract=naming_contract)
-        )
+        violations.extend(enforce_rules(sweep, naming_contract=naming_contract))
     # The loop-bound marker scan is textual and per-file, so it stands on its
     # own regardless of the parse. It runs in both modes; only the whole-tree
     # gate insists the scan actually saw files (an empty glob there is a broken
@@ -190,9 +186,7 @@ def _collect_violations(
     return violations
 
 
-def _report(
-    violations: list[Violation], summary: str, *, quiet: bool, json_output: bool
-) -> int:
+def _report(violations: list[Violation], summary: str, *, quiet: bool, json_output: bool) -> int:
     """Print the findings and return the process exit code."""
     if json_output:
         print(
@@ -200,9 +194,7 @@ def _report(
                 {
                     "summary": summary,
                     "fatal_count": sum(not violation.warn_only for violation in violations),
-                    "informational_count": sum(
-                        violation.warn_only for violation in violations
-                    ),
+                    "informational_count": sum(violation.warn_only for violation in violations),
                     "findings": [
                         {
                             "severity": "informational" if violation.warn_only else "fatal",

@@ -125,8 +125,7 @@ def _private_declaration_shape(sym: AnnotatedSymbol, linkage: set[str]) -> list[
         out.append(
             _naming_at(
                 sym,
-                f"RA8_PRIV function '{sym.name}' has no declaration in a module "
-                "*_internal.h",
+                f"RA8_PRIV function '{sym.name}' has no declaration in a module *_internal.h",
             )
         )
     public_decl = published_header(sym)
@@ -134,8 +133,7 @@ def _private_declaration_shape(sym: AnnotatedSymbol, linkage: set[str]) -> list[
         out.append(
             _naming_at(
                 sym,
-                f"RA8_PRIV function '{sym.name}' is also published by "
-                f"{relative(public_decl)}",
+                f"RA8_PRIV function '{sym.name}' is also published by {relative(public_decl)}",
             )
         )
     return out

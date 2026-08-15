@@ -24,6 +24,12 @@
 #include "fw_if_fs_types.h"
 #include "ra8_err.h"
 
+/** @brief ASCII byte boundaries used by portable path validation. */
+typedef enum : uint8_t {
+  k_fw_fs_ascii_space  = 0x20U, /**< First non-control ASCII byte. */
+  k_fw_fs_ascii_delete = 0x7FU, /**< DEL control byte.             */
+} fw_fs_ascii_byte_t;
+
 /** @brief Return true when `value` is a non-zero power of two. */
 static bool internal_power_of_two(uint32_t value)
 {
@@ -161,10 +167,10 @@ ra8_err_t fw_fs_path_validate(const fw_fs_caps_t* caps, const char* path)
     if (value == (unsigned char)'\\') {
       return k_ra8_err_access_denied;
     }
-    if (value < 0x20U) {
+    if (value < (unsigned char)k_fw_fs_ascii_space) {
       return k_ra8_err_invalid_arg;
     }
-    if (value == 0x7FU) {
+    if (value == (unsigned char)k_fw_fs_ascii_delete) {
       return k_ra8_err_invalid_arg;
     }
     ++component_len;

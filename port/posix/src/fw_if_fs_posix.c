@@ -16,7 +16,9 @@
  * SPDX-License-Identifier: MIT
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include "fw_if_fs_posix.h"
 
@@ -42,15 +44,15 @@
 #include "ra8_err.h"
 
 #ifndef O_CLOEXEC
-#define O_CLOEXEC 0
+#define O_CLOEXEC (0)
 #endif
 
 #ifndef O_NOFOLLOW
-#define O_NOFOLLOW 0
+#define O_NOFOLLOW (0)
 #endif
 
 #ifndef AT_SYMLINK_NOFOLLOW
-#define AT_SYMLINK_NOFOLLOW 0
+#define AT_SYMLINK_NOFOLLOW (0)
 #endif
 
 #ifndef RENAME_NOREPLACE
@@ -77,7 +79,7 @@ static ra8_err_t internal_intermediate_check(int parent_fd, const char* componen
 {
   struct stat meta = {};
   if (fstatat(parent_fd, component, &meta, AT_SYMLINK_NOFOLLOW) != 0) {
-    return fw_fs_posix_errno(errno);
+    return priv_fs_posix_errno(errno);
   }
   if (S_ISLNK(meta.st_mode)) {
     return k_ra8_err_access_denied;
@@ -99,7 +101,7 @@ static ra8_err_t internal_parent_open(fw_fs_posix_state_t* state,
 {
   int current = dup(state->root_fd);
   if (current < 0) {
-    return fw_fs_posix_errno(errno);
+    return priv_fs_posix_errno(errno);
   }
   const char* cursor = &path[1];
   for (uint16_t component = 0U; component < (uint16_t)k_fw_fs_path_cap; ++component) {
@@ -107,14 +109,14 @@ static ra8_err_t internal_parent_open(fw_fs_posix_state_t* state,
     while (cursor[length] != '\0' && cursor[length] != '/') {
       ++length;
       if (length >= (uint16_t)k_posix_component_cap) {
-        (void)fw_fs_posix_close_fd(&current);
+        (void)priv_fs_posix_close_fd(&current);
         return k_ra8_err_invalid_size;
       }
     }
     char            name[k_posix_component_cap];
     const ra8_err_t copied = internal_component_copy(cursor, length, name);
     if (copied != k_ra8_ok) {
-      (void)fw_fs_posix_close_fd(&current);
+      (void)priv_fs_posix_close_fd(&current);
       return copied;
     }
     if (cursor[length] == '\0') {
@@ -124,25 +126,25 @@ static ra8_err_t internal_parent_open(fw_fs_posix_state_t* state,
     }
     const ra8_err_t checked = internal_intermediate_check(current, name);
     if (checked != k_ra8_ok) {
-      (void)fw_fs_posix_close_fd(&current);
+      (void)priv_fs_posix_close_fd(&current);
       return checked;
     }
     const int next = openat(current, name, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
     if (next < 0) {
-      const ra8_err_t failed = fw_fs_posix_errno(errno);
-      (void)fw_fs_posix_close_fd(&current);
+      const ra8_err_t failed = priv_fs_posix_errno(errno);
+      (void)priv_fs_posix_close_fd(&current);
       return failed;
     }
-    const ra8_err_t closed = fw_fs_posix_close_fd(&current);
+    const ra8_err_t closed = priv_fs_posix_close_fd(&current);
     if (closed != k_ra8_ok) {
       int next_owned = next;
-      (void)fw_fs_posix_close_fd(&next_owned);
+      (void)priv_fs_posix_close_fd(&next_owned);
       return closed;
     }
     current = next;
     cursor  = &cursor[(uint16_t)(length + 1U)];
   }
-  (void)fw_fs_posix_close_fd(&current);
+  (void)priv_fs_posix_close_fd(&current);
   return k_ra8_err_invalid_size;
 }
 
@@ -169,7 +171,7 @@ static ra8_err_t internal_native_stat(fw_fs_posix_state_t* state,
 {
   if (path[1] == '\0') {
     if (fstat(state->root_fd, out) != 0) {
-      return fw_fs_posix_errno(errno);
+      return priv_fs_posix_errno(errno);
     }
     *out_exists = true;
     return k_ra8_ok;
@@ -186,13 +188,13 @@ static ra8_err_t internal_native_stat(fw_fs_posix_state_t* state,
   }
   const int       stat_result = fstatat(parent_fd, leaf, out, AT_SYMLINK_NOFOLLOW);
   const int       saved_errno = errno;
-  const ra8_err_t closed      = fw_fs_posix_close_fd(&parent_fd);
+  const ra8_err_t closed      = priv_fs_posix_close_fd(&parent_fd);
   if (stat_result != 0) {
     if (saved_errno == ENOENT) {
       *out_exists = false;
       return k_ra8_ok;
     }
-    return fw_fs_posix_errno(saved_errno);
+    return priv_fs_posix_errno(saved_errno);
   }
   if (closed != k_ra8_ok) {
     return closed;
@@ -217,12 +219,14 @@ static ra8_err_t internal_stat(void* ctx, const char* path, fw_fs_stat_t* out)
   if (exists) {
 #if defined(__APPLE__)
     out->created =
-      fw_fs_posix_timestamp(native.st_birthtimespec.tv_sec, native.st_birthtimespec.tv_nsec);
-    out->modified = fw_fs_posix_timestamp(native.st_mtimespec.tv_sec, native.st_mtimespec.tv_nsec);
-    out->accessed = fw_fs_posix_timestamp(native.st_atimespec.tv_sec, native.st_atimespec.tv_nsec);
+      priv_fs_posix_timestamp(native.st_birthtimespec.tv_sec, native.st_birthtimespec.tv_nsec);
+    out->modified =
+      priv_fs_posix_timestamp(native.st_mtimespec.tv_sec, native.st_mtimespec.tv_nsec);
+    out->accessed =
+      priv_fs_posix_timestamp(native.st_atimespec.tv_sec, native.st_atimespec.tv_nsec);
 #else
-    out->modified = fw_fs_posix_timestamp(native.st_mtim.tv_sec, native.st_mtim.tv_nsec);
-    out->accessed = fw_fs_posix_timestamp(native.st_atim.tv_sec, native.st_atim.tv_nsec);
+    out->modified = priv_fs_posix_timestamp(native.st_mtim.tv_sec, native.st_mtim.tv_nsec);
+    out->accessed = priv_fs_posix_timestamp(native.st_atim.tv_sec, native.st_atim.tv_nsec);
 #endif
   }
   if (out->type == k_fw_fs_node_directory) {
@@ -236,7 +240,7 @@ static ra8_err_t internal_directory_open(fw_fs_posix_state_t* state, const char*
 {
   if (path[1] == '\0') {
     *out_fd = dup(state->root_fd);
-    return (*out_fd < 0) ? fw_fs_posix_errno(errno) : k_ra8_ok;
+    return (*out_fd < 0) ? priv_fs_posix_errno(errno) : k_ra8_ok;
   }
   int             parent_fd = -1;
   char            leaf[k_posix_component_cap];
@@ -246,18 +250,18 @@ static ra8_err_t internal_directory_open(fw_fs_posix_state_t* state, const char*
   }
   const ra8_err_t checked = internal_intermediate_check(parent_fd, leaf);
   if (checked != k_ra8_ok) {
-    (void)fw_fs_posix_close_fd(&parent_fd);
+    (void)priv_fs_posix_close_fd(&parent_fd);
     return checked;
   }
   const int       opened = openat(parent_fd, leaf, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
   const int       saved_errno = errno;
-  const ra8_err_t closed      = fw_fs_posix_close_fd(&parent_fd);
+  const ra8_err_t closed      = priv_fs_posix_close_fd(&parent_fd);
   if (opened < 0) {
-    return fw_fs_posix_errno(saved_errno);
+    return priv_fs_posix_errno(saved_errno);
   }
   if (closed != k_ra8_ok) {
     int owned = opened;
-    (void)fw_fs_posix_close_fd(&owned);
+    (void)priv_fs_posix_close_fd(&owned);
     return closed;
   }
   *out_fd = opened;
@@ -281,8 +285,8 @@ static ra8_err_t internal_listdir(void*           ctx,
   }
   DIR* directory = fdopendir(directory_fd);
   if (directory == nullptr) {
-    const ra8_err_t failed = fw_fs_posix_errno(errno);
-    (void)fw_fs_posix_close_fd(&directory_fd);
+    const ra8_err_t failed = priv_fs_posix_errno(errno);
+    (void)priv_fs_posix_close_fd(&directory_fd);
     return failed;
   }
   ra8_err_t result = k_ra8_ok;
@@ -293,7 +297,7 @@ static ra8_err_t internal_listdir(void*           ctx,
     errno                 = 0;
     struct dirent* native = readdir(directory);
     if (native == nullptr) {
-      result        = fw_fs_posix_errno(errno);
+      result        = priv_fs_posix_errno(errno);
       *out_complete = (result == k_ra8_ok);
       break;
     }
@@ -305,7 +309,7 @@ static ra8_err_t internal_listdir(void*           ctx,
     }
     struct stat meta = {};
     if (fstatat(dirfd(directory), native->d_name, &meta, AT_SYMLINK_NOFOLLOW) != 0) {
-      result = fw_fs_posix_errno(errno);
+      result = priv_fs_posix_errno(errno);
       break;
     }
     const size_t name_len = strnlen(native->d_name, (size_t)k_posix_component_cap);
@@ -327,7 +331,7 @@ static ra8_err_t internal_listdir(void*           ctx,
     }
   }
   if (closedir(directory) != 0 && result == k_ra8_ok) {
-    result = fw_fs_posix_errno(errno);
+    result = priv_fs_posix_errno(errno);
   }
   return result;
 }
@@ -342,11 +346,11 @@ static ra8_err_t internal_mkdir(void* ctx, const char* path)
   if (parent != k_ra8_ok) {
     return parent;
   }
-  const int       result      = mkdirat(parent_fd, leaf, 0700);
+  const int       result      = mkdirat(parent_fd, leaf, (mode_t)k_posix_directory_mode);
   const int       saved_errno = errno;
-  const ra8_err_t closed      = fw_fs_posix_close_fd(&parent_fd);
+  const ra8_err_t closed      = priv_fs_posix_close_fd(&parent_fd);
   if (result != 0) {
-    return fw_fs_posix_errno(saved_errno);
+    return priv_fs_posix_errno(saved_errno);
   }
   return closed;
 }
@@ -378,9 +382,9 @@ static ra8_err_t internal_unlink(void* ctx, const char* path)
   }
   const int       result      = unlinkat(parent_fd, leaf, 0);
   const int       saved_errno = errno;
-  const ra8_err_t closed      = fw_fs_posix_close_fd(&parent_fd);
+  const ra8_err_t closed      = priv_fs_posix_close_fd(&parent_fd);
   if (result != 0) {
-    return fw_fs_posix_errno(saved_errno);
+    return priv_fs_posix_errno(saved_errno);
   }
   return closed;
 }
@@ -412,9 +416,9 @@ static ra8_err_t internal_rmdir(void* ctx, const char* path)
   }
   const int       result      = unlinkat(parent_fd, leaf, AT_REMOVEDIR);
   const int       saved_errno = errno;
-  const ra8_err_t closed      = fw_fs_posix_close_fd(&parent_fd);
+  const ra8_err_t closed      = priv_fs_posix_close_fd(&parent_fd);
   if (result != 0) {
-    return fw_fs_posix_errno(saved_errno);
+    return priv_fs_posix_errno(saved_errno);
   }
   return closed;
 }
@@ -430,7 +434,7 @@ internal_rename_noreplace(int old_fd, const char* old_leaf, int new_fd, const ch
   if (errno == ENOSYS) {
     return k_ra8_err_not_supported;
   }
-  return fw_fs_posix_errno(errno);
+  return priv_fs_posix_errno(errno);
 #elif defined(__APPLE__)
   if (renameatx_np(old_fd, old_leaf, new_fd, new_leaf, RENAME_EXCL) == 0) {
     return k_ra8_ok;
@@ -438,7 +442,7 @@ internal_rename_noreplace(int old_fd, const char* old_leaf, int new_fd, const ch
   if (errno == ENOSYS) {
     return k_ra8_err_not_supported;
   }
-  return fw_fs_posix_errno(errno);
+  return priv_fs_posix_errno(errno);
 #else
   (void)old_fd;
   (void)old_leaf;
@@ -499,24 +503,24 @@ internal_rename(void* ctx, const char* old_path, const char* new_path, bool repl
   struct stat old_parent = {};
   struct stat new_parent = {};
   if (result == k_ra8_ok && (fstat(old_fd, &old_parent) != 0 || fstat(new_fd, &new_parent) != 0)) {
-    result = fw_fs_posix_errno(errno);
+    result = priv_fs_posix_errno(errno);
   }
   if (result == k_ra8_ok && old_parent.st_dev != new_parent.st_dev) {
     result = k_ra8_err_invalid_arg;
   }
   if (result == k_ra8_ok && replace && renameat(old_fd, old_leaf, new_fd, new_leaf) != 0) {
-    result = fw_fs_posix_errno(errno);
+    result = priv_fs_posix_errno(errno);
   } else if (result == k_ra8_ok && !replace) {
     result = internal_rename_noreplace(old_fd, old_leaf, new_fd, new_leaf);
   }
   if (old_fd >= 0) {
-    const ra8_err_t closed = fw_fs_posix_close_fd(&old_fd);
+    const ra8_err_t closed = priv_fs_posix_close_fd(&old_fd);
     if (result == k_ra8_ok) {
       result = closed;
     }
   }
   if (new_fd >= 0) {
-    const ra8_err_t closed = fw_fs_posix_close_fd(&new_fd);
+    const ra8_err_t closed = priv_fs_posix_close_fd(&new_fd);
     if (result == k_ra8_ok) {
       result = closed;
     }
@@ -530,7 +534,7 @@ static ra8_err_t internal_space(void* ctx, fw_fs_space_t* out)
   fw_fs_posix_state_t* state = (fw_fs_posix_state_t*)ctx;
   struct statvfs       space = {};
   if (fstatvfs(state->root_fd, &space) != 0) {
-    return fw_fs_posix_errno(errno);
+    return priv_fs_posix_errno(errno);
   }
   out->total_bytes = (uint64_t)space.f_blocks * (uint64_t)space.f_frsize;
   out->free_bytes  = (uint64_t)space.f_bavail * (uint64_t)space.f_frsize;
@@ -582,21 +586,21 @@ static ra8_err_t internal_open(void*             ctx,
   if (parent != k_ra8_ok) {
     return parent;
   }
-  const int       opened      = openat(parent_fd, leaf, flags, 0600);
+  const int       opened      = openat(parent_fd, leaf, flags, (mode_t)k_posix_file_mode);
   const int       saved_errno = errno;
-  const ra8_err_t closed      = fw_fs_posix_close_fd(&parent_fd);
+  const ra8_err_t closed      = priv_fs_posix_close_fd(&parent_fd);
   if (opened < 0) {
-    return fw_fs_posix_errno(saved_errno);
+    return priv_fs_posix_errno(saved_errno);
   }
   if (closed != k_ra8_ok) {
     int owned = opened;
-    (void)fw_fs_posix_close_fd(&owned);
+    (void)priv_fs_posix_close_fd(&owned);
     return closed;
   }
   struct stat meta = {};
   if (fstat(opened, &meta) != 0 || !S_ISREG(meta.st_mode)) {
     int owned = opened;
-    (void)fw_fs_posix_close_fd(&owned);
+    (void)priv_fs_posix_close_fd(&owned);
     return k_ra8_err_invalid_arg;
   }
   ((posix_file_state_t*)file_state)->fd = opened;
@@ -614,7 +618,7 @@ internal_read(void* ctx, void* file_state, uint8_t* dst, uint32_t cap, uint32_t*
     got = read(fd, dst, (size_t)cap);
   } while (got < 0 && errno == EINTR);
   if (got < 0) {
-    return fw_fs_posix_errno(errno);
+    return priv_fs_posix_errno(errno);
   }
   *out_read = (uint32_t)got;
   return k_ra8_ok;
@@ -633,7 +637,7 @@ internal_write(void* ctx, void* file_state, const uint8_t* src, uint32_t len, ui
       continue;
     }
     if (wrote < 0) {
-      return fw_fs_posix_errno(errno);
+      return priv_fs_posix_errno(errno);
     }
     if (wrote == 0) {
       return k_ra8_fail;
@@ -652,7 +656,7 @@ static ra8_err_t internal_seek(void* ctx, void* file_state, uint64_t offset)
   }
   const int fd = ((posix_file_state_t*)file_state)->fd;
   if (lseek(fd, (off_t)offset, SEEK_SET) < 0) {
-    return fw_fs_posix_errno(errno);
+    return priv_fs_posix_errno(errno);
   }
   return k_ra8_ok;
 }
@@ -664,7 +668,7 @@ static ra8_err_t internal_tell(void* ctx, void* file_state, uint64_t* out_offset
   const int   fd     = ((posix_file_state_t*)file_state)->fd;
   const off_t offset = lseek(fd, 0, SEEK_CUR);
   if (offset < 0) {
-    return fw_fs_posix_errno(errno);
+    return priv_fs_posix_errno(errno);
   }
   *out_offset = (uint64_t)offset;
   return k_ra8_ok;
@@ -677,7 +681,7 @@ static ra8_err_t internal_size(void* ctx, void* file_state, uint64_t* out_size)
   const int   fd   = ((posix_file_state_t*)file_state)->fd;
   struct stat meta = {};
   if (fstat(fd, &meta) != 0) {
-    return fw_fs_posix_errno(errno);
+    return priv_fs_posix_errno(errno);
   }
   *out_size = (uint64_t)meta.st_size;
   return k_ra8_ok;
@@ -689,7 +693,7 @@ static ra8_err_t internal_sync(void* ctx, void* file_state)
   (void)ctx;
   const int fd = ((posix_file_state_t*)file_state)->fd;
   if (fsync(fd) != 0) {
-    return fw_fs_posix_errno(errno);
+    return priv_fs_posix_errno(errno);
   }
   return k_ra8_ok;
 }
@@ -698,7 +702,7 @@ static ra8_err_t internal_sync(void* ctx, void* file_state)
 static ra8_err_t internal_close(void* ctx, void* file_state)
 {
   (void)ctx;
-  return fw_fs_posix_close_fd(&((posix_file_state_t*)file_state)->fd);
+  return priv_fs_posix_close_fd(&((posix_file_state_t*)file_state)->fd);
 }
 
 /** @brief Create an exclusive sibling stage after bounded collision retries. */
@@ -707,7 +711,7 @@ static ra8_err_t internal_stage_open(fw_fs_posix_state_t* state, posix_transacti
   for (uint16_t attempt = 0U; attempt < (uint16_t)k_posix_stage_attempts; ++attempt) {
     ++state->transaction_id;
     const ra8_err_t named =
-      fw_fs_posix_stage_path(txn->destination, state->transaction_id, txn->stage);
+      priv_fs_posix_stage_path(txn->destination, state->transaction_id, txn->stage);
     if (named != k_ra8_ok) {
       return named;
     }
@@ -760,7 +764,7 @@ static ra8_err_t internal_txn_begin(void*                      ctx,
   (void)memset(txn, 0, sizeof(*txn));
   txn->file_state.fd     = -1;
   txn->policy            = policy;
-  const ra8_err_t copied = fw_fs_posix_copy_path(txn->destination, destination);
+  const ra8_err_t copied = priv_fs_posix_copy_path(txn->destination, destination);
   if (copied != k_ra8_ok) {
     return copied;
   }
@@ -850,9 +854,9 @@ static ra8_err_t internal_parent_sync(fw_fs_posix_state_t* state, const char* pa
   (void)leaf;
   ra8_err_t result = k_ra8_ok;
   if (fsync(parent_fd) != 0) {
-    result = fw_fs_posix_errno(errno);
+    result = priv_fs_posix_errno(errno);
   }
-  const ra8_err_t closed = fw_fs_posix_close_fd(&parent_fd);
+  const ra8_err_t closed = priv_fs_posix_close_fd(&parent_fd);
   return (result == k_ra8_ok) ? closed : result;
 }
 
@@ -941,7 +945,7 @@ ra8_err_t fw_fs_posix_init(fw_fs_t* out, fw_fs_posix_state_t* state, const fw_fs
   }
   const int root = open(cfg->root_path, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
   if (root < 0) {
-    return fw_fs_posix_errno(errno);
+    return priv_fs_posix_errno(errno);
   }
   state->root_fd          = root;
   state->transaction_id   = 0U;
@@ -961,7 +965,7 @@ ra8_err_t fw_fs_posix_init(fw_fs_t* out, fw_fs_posix_state_t* state, const fw_fs
     .transaction_workspace_bytes = sizeof(posix_transaction_state_t),
     .path_max_bytes              = (uint16_t)k_fw_fs_path_cap,
     .name_max_bytes              = (uint16_t)(k_posix_component_cap - 1U),
-    .max_open_files              = 64U,
+    .max_open_files              = (uint16_t)k_posix_max_open_files,
     .file_workspace_align        = (uint8_t)_Alignof(posix_file_state_t),
     .transaction_workspace_align = (uint8_t)_Alignof(posix_transaction_state_t),
   };
@@ -991,5 +995,5 @@ ra8_err_t fw_fs_posix_deinit(fw_fs_posix_state_t* state)
     return k_ra8_err_not_initialized;
   }
   state->initialized = false;
-  return fw_fs_posix_close_fd(&state->root_fd);
+  return priv_fs_posix_close_fd(&state->root_fd);
 }

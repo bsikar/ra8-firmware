@@ -66,6 +66,7 @@ from lint_coverage_rules import (
     KNOWN_GAPS,
     LINT,
     NAME_CLASS,
+    PATH_CLASS,
     SHEBANG_CLASS,
     GapCtx,
     exemption_reason,
@@ -187,11 +188,15 @@ def read_shebang(rel: str) -> str:
 def classify(rel: str) -> str | None:
     """Return the class name for `rel`, or None when nothing claims it.
 
-    Order is exact name, then extension, then shebang. Name beats extension so
-    ``CMakeLists.txt`` is cmake rather than text; shebang comes last so it only
-    rescues files the tables genuinely miss -- which is how an extensionless
-    ``scripts/git/pre-commit`` is recognised as shell.
+    Order is exact path, exact name, extension, then shebang. Exact path keeps
+    one reproducible generated file from exempting every future file with the
+    same extension. Name beats extension so ``CMakeLists.txt`` is cmake rather
+    than text; shebang comes last so it only rescues files the tables genuinely
+    miss -- which is how an extensionless ``scripts/git/pre-commit`` is
+    recognised as shell.
     """
+    if rel in PATH_CLASS:
+        return PATH_CLASS[rel]
     name = rel.rsplit("/", 1)[-1]
     if name in NAME_CLASS:
         return NAME_CLASS[name]
@@ -401,7 +406,7 @@ def print_failures(report: Report) -> None:
         if extra > 0:
             print(f"  ... and {extra} more", file=sys.stderr)
         print(
-            "  Add the type to EXT_CLASS/NAME_CLASS in lint_coverage_rules.py and,\n"
+            "  Add the type to PATH_CLASS/EXT_CLASS/NAME_CLASS in lint_coverage_rules.py and,\n"
             "  if it is code, wire a linter and a formatter for it.",
             file=sys.stderr,
         )
@@ -519,6 +524,41 @@ def _assert_fires(files: list[str], claimed: dict[str, set[str]], failures: list
     )
 
 
+def _assert_exact_classifications(failures: list[str]) -> None:
+    """Prove reviewed generated inputs do not exempt future files by suffix."""
+    expect(
+        classify("coprocessor/esp32c6/patches/0001-custom-rpc-sync-response-hook.patch")
+        == "validated-input",
+        "the pinned ESP32-C6 patch is an exact validated input",
+        failures,
+    )
+    expect(
+        classify("libs/ra8_c6link/proto/ra8_media_download.proto") == "validated-input",
+        "the pinned protobuf schema is an exact validated input",
+        failures,
+    )
+    expect(
+        classify("libs/ra8_c6link/src/ra8_media_download.pb-c.c") == "generated-source",
+        "the pinned protobuf-C output is exact generated source",
+        failures,
+    )
+    expect(
+        classify("coprocessor/esp32c6/patches/another.patch") is None,
+        "a future upstream patch remains unclassified",
+        failures,
+    )
+    expect(
+        classify("libs/new/proto/another.proto") is None,
+        "a future protobuf schema remains unclassified",
+        failures,
+    )
+    expect(
+        classify("libs/new/src/another.pb-c.c") == "c-family",
+        "a future generated-looking C file remains first-party C",
+        failures,
+    )
+
+
 def _assert_ratchet(files: list[str], claimed: dict[str, set[str]], failures: list[str]) -> None:
     """Assert the recorded-gap ratchet holds, and that closed gaps really closed.
 
@@ -575,6 +615,7 @@ def selftest() -> int:
     expect(not problems, f"classification tables self-consistent ({problems})", failures)
 
     files, claimed = _fixture()
+    _assert_exact_classifications(failures)
     _assert_quiet(files, claimed, failures)
     _assert_fires(files, claimed, failures)
     _assert_ratchet(files, claimed, failures)

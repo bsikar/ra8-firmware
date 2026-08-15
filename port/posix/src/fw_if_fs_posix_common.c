@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#define _POSIX_C_SOURCE 200809L
+#define _POSIX_C_SOURCE (200809L)
 
 #include <errno.h>
 #include <limits.h>
@@ -27,7 +27,7 @@
 #include "fw_if_fs_posix_internal.h"
 #include "ra8_err.h"
 
-ra8_err_t fw_fs_posix_errno(int value)
+RA8_PRIV ra8_err_t priv_fs_posix_errno(int value)
 {
   if (value == 0) {
     return k_ra8_ok;
@@ -67,7 +67,7 @@ ra8_err_t fw_fs_posix_errno(int value)
   return k_ra8_fail;
 }
 
-ra8_err_t fw_fs_posix_close_fd(int* fd)
+RA8_PRIV ra8_err_t priv_fs_posix_close_fd(int* fd)
 {
   const int value = *fd;
   *fd             = -1;
@@ -75,19 +75,20 @@ ra8_err_t fw_fs_posix_close_fd(int* fd)
     return k_ra8_err_invalid_state;
   }
   if (close(value) != 0) {
-    return fw_fs_posix_errno(errno);
+    return priv_fs_posix_errno(errno);
   }
   return k_ra8_ok;
 }
 
-fw_fs_timestamp_t fw_fs_posix_timestamp(time_t seconds, long nanoseconds)
+RA8_PRIV fw_fs_timestamp_t priv_fs_posix_timestamp(time_t seconds, long nanoseconds)
 {
   fw_fs_timestamp_t portable = {};
   struct tm         utc      = {};
-  if (nanoseconds < 0L || nanoseconds > 999999999L || gmtime_r(&seconds, &utc) == nullptr) {
+  if (nanoseconds < 0L || nanoseconds > (long)k_posix_nanosecond_max ||
+      gmtime_r(&seconds, &utc) == nullptr) {
     return portable;
   }
-  const int64_t year = (int64_t)utc.tm_year + 1900;
+  const int64_t year = (int64_t)utc.tm_year + (int64_t)k_posix_epoch_year_offset;
   if (year < 0 || year > (int64_t)UINT16_MAX) {
     return portable;
   }
@@ -104,7 +105,7 @@ fw_fs_timestamp_t fw_fs_posix_timestamp(time_t seconds, long nanoseconds)
   return portable;
 }
 
-ra8_err_t fw_fs_posix_copy_path(char* out, const char* path)
+RA8_PRIV ra8_err_t priv_fs_posix_copy_path(char* out, const char* path)
 {
   for (uint16_t i = 0U; i < (uint16_t)k_fw_fs_path_cap; ++i) {
     out[i] = path[i];
@@ -116,16 +117,17 @@ ra8_err_t fw_fs_posix_copy_path(char* out, const char* path)
 }
 
 /** @brief Render the bounded six-digit transaction suffix. */
-static void internal_hex6(char out[6], uint32_t value)
+static void internal_hex6(char out[k_posix_stage_hex_digits], uint32_t value)
 {
   static const char digits[] = "0123456789abcdef";
-  for (uint8_t i = 0U; i < 6U; ++i) {
-    const uint8_t shift = (uint8_t)((5U - i) * 4U);
-    out[i]              = digits[(value >> shift) & 0x0FU];
+  for (uint8_t i = 0U; i < (uint8_t)k_posix_stage_hex_digits; ++i) {
+    const uint8_t shift =
+      (uint8_t)(((uint8_t)k_posix_hex_last_digit - i) * (uint8_t)k_posix_hex_nibble_bits);
+    out[i] = digits[(value >> shift) & (uint32_t)k_posix_hex_nibble_mask];
   }
 }
 
-ra8_err_t fw_fs_posix_stage_path(const char* destination, uint32_t id, char* out)
+RA8_PRIV ra8_err_t priv_fs_posix_stage_path(const char* destination, uint32_t id, char* out)
 {
   uint16_t last_slash = 0U;
   uint16_t length     = 0U;
@@ -138,7 +140,7 @@ ra8_err_t fw_fs_posix_stage_path(const char* destination, uint32_t id, char* out
   if (length >= (uint16_t)k_fw_fs_path_cap) {
     return k_ra8_err_invalid_size;
   }
-  if ((uint16_t)(last_slash + 13U) >= (uint16_t)k_fw_fs_path_cap) {
+  if ((uint16_t)(last_slash + k_posix_stage_leaf_span) >= (uint16_t)k_fw_fs_path_cap) {
     return k_ra8_err_invalid_size;
   }
   for (uint16_t i = 0U; i <= last_slash; ++i) {
@@ -147,8 +149,8 @@ ra8_err_t fw_fs_posix_stage_path(const char* destination, uint32_t id, char* out
   uint16_t cursor = (uint16_t)(last_slash + 1U);
   out[cursor++]   = 'T';
   out[cursor++]   = 'X';
-  internal_hex6(&out[cursor], id & 0x00FFFFFFUL);
-  cursor        = (uint16_t)(cursor + 6U);
+  internal_hex6(&out[cursor], id & k_posix_transaction_id_mask);
+  cursor        = (uint16_t)(cursor + k_posix_stage_hex_digits);
   out[cursor++] = '.';
   out[cursor++] = 'T';
   out[cursor++] = 'M';

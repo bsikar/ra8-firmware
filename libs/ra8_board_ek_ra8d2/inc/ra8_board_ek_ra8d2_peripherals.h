@@ -535,8 +535,6 @@ ra8_board_camera_sccb_write_reg(void* ctx, uint8_t address, uint16_t reg, uint8_
  * @details Ignores @p ctx and delegates the bounded delay to `ra8_delay_ms`.
  * @param[in] ctx Unused transport context; may be `nullptr`.
  * @param[in] milliseconds Delay duration.
- * @return Nothing.
- * @retval none This function cannot report an error.
  * @pre The SysTick timebase is initialized.
  * @pre @p milliseconds is acceptable to the platform delay service.
  * @post At least the requested delay interval has elapsed.
