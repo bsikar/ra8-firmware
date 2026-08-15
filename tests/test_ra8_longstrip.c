@@ -925,6 +925,5 @@ int32_t main(void)
   t_bounded_memory();
   t_set_viewport_validates();
   t_paginated_last_page_is_not_clamped();
-  (void)fprintf(stderr, "[PASS] test_ra8_longstrip: all cases passed\n");
   return 0;
 }
