@@ -64,6 +64,7 @@
  */
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8_err.h"
@@ -386,6 +387,43 @@ void ra8_decomp_budget_leave(ra8_decomp_budget_t* b);
  */
 [[nodiscard]] ra8_err_t
 ra8_decomp_check_declared(const ra8_decomp_limits_t* limits, uint64_t comp_size, uint64_t out_size);
+
+/**
+ * @typedef ra8_decomp_read_fn
+ * @brief Positioned reader used by bounded container preflights.
+ * @details Reads from an immutable seekable container without requiring a resident blob.
+ * @param[in] ctx Opaque backing context.
+ * @param[in] offset Absolute byte offset in the container.
+ * @param[out] buf Destination for @p len bytes.
+ * @param[in] len Requested byte count.
+ * @return Bytes actually read; a short result leaves validation to the format decoder.
+ * @note The callback must not retain @p buf.
+ * @since Version 0.1.0
+ */
+typedef size_t (*ra8_decomp_read_fn)(void* ctx, uint64_t offset, void* buf, size_t len);
+
+/**
+ * @brief Reject an over-cap ZIP from its EOCD before directory allocation.
+ * @details Scans only the bounded classic-ZIP comment window in fixed chunks.
+ *          A valid EOCD whose total-entry field exceeds the shared policy is
+ *          rejected before a bounded format allocator can obscure the cause
+ *          with a generic allocation or validation failure.
+ * @param[in] read Seekable container callback.
+ * @param[in] ctx Opaque callback context.
+ * @param[in] archive_size Exact ZIP byte length.
+ * @return Preflight status.
+ * @retval k_ra8_ok No valid over-cap EOCD was found; the ZIP decoder remains authoritative.
+ * @retval k_ra8_err_null_ptr @p read was NULL.
+ * @retval k_ra8_err_decomp_entries The EOCD declares more than 4096 entries.
+ * @pre @p archive_size is the same size later supplied to the ZIP decoder.
+ * @pre A successful callback returns exactly the requested byte count.
+ * @post No archive byte or callback context is modified by this function.
+ * @post Read failures do not replace the ZIP decoder's final validation result.
+ * @note ZIP64's saturated 16-bit entry count is necessarily above this policy.
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_decomp_zip_entry_preflight(ra8_decomp_read_fn read, void* ctx, uint64_t archive_size);
 
 #ifdef __cplusplus
 }

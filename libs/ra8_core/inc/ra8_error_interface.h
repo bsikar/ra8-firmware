@@ -7,7 +7,7 @@
  * Drivers that want to report non-fatal errors (retry loops,
  * degraded sensors, CRC mismatches) should push them into an
  * injectable sink rather than hard-coding
- * `internal_ra8_fatal_error()`. Production code points the sink at
+ * `ra8_fatal_error()`. Production code points the sink at
  * the log backend; tests point it at a ring buffer they can assert
  * over.
  *

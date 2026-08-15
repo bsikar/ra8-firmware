@@ -54,6 +54,6 @@
 void* _sbrk(int32_t incr)
 {
   (void)incr;
-  internal_ra8_fatal_error("SBRK", "_sbrk called -- firmware is heap-free", 0U);
+  ra8_fatal_error("SBRK", "_sbrk called -- firmware is heap-free", 0U);
 }
 // NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)

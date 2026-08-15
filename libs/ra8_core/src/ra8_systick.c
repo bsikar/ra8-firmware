@@ -52,7 +52,8 @@ typedef enum : uintptr_t {
 /**
  * @enum ra8_systick_bit_t
  * @brief Control bits for SYST_CSR, DEMCR, and DWT_CTRL.
- * @details Arm v8-M ARM register descriptions for SYST_CSR, DEMCR, and DWT_CTRL.
+ * @details Arm v8-M ARM register descriptions for SYST_CSR, DEMCR, and
+ * DWT_CTRL.
  */
 typedef enum : uint32_t {
   k_ra8_systick_csr_enable    = 0x00000001UL, /**< SYST_CSR.ENABLE (bit 0).    */
@@ -82,7 +83,8 @@ typedef enum : uint32_t {
  * @note Arm v8-M ARM B11 "System Control Block". Trivially thread-safe.
  * @since 0.1.0
  */
-RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* ra8_systick_reg(ra8_systick_reg_addr_t addr)
+RA8_HW_REGISTER_ACCESS RA8_INTERNAL static inline volatile uint32_t*
+internal_systick_reg(ra8_systick_reg_addr_t addr)
 {
   return (volatile uint32_t*)addr;
 }
@@ -126,9 +128,9 @@ ra8_err_t ra8_systick_configure(uint32_t reload, ra8_systick_clock_source_t src,
 
   /* Arm v8-M ARM: SYST_CSR -- clear ENABLE first so the reload/current writes
    * land on a stopped counter, then re-enable with the requested config. */
-  *ra8_systick_reg(k_ra8_systick_csr) = 0U;
-  *ra8_systick_reg(k_ra8_systick_rvr) = reload;
-  *ra8_systick_reg(k_ra8_systick_cvr) = 0U;
+  *internal_systick_reg(k_ra8_systick_csr) = 0U;
+  *internal_systick_reg(k_ra8_systick_rvr) = reload;
+  *internal_systick_reg(k_ra8_systick_cvr) = 0U;
 
   uint32_t csr_val = (uint32_t)k_ra8_systick_csr_enable;
   if (tick_irq) {
@@ -137,7 +139,7 @@ ra8_err_t ra8_systick_configure(uint32_t reload, ra8_systick_clock_source_t src,
   if (src == k_ra8_systick_clk_cpu) {
     csr_val |= (uint32_t)k_ra8_systick_csr_clksource;
   }
-  *ra8_systick_reg(k_ra8_systick_csr) = csr_val;
+  *internal_systick_reg(k_ra8_systick_csr) = csr_val;
   return k_ra8_ok;
 }
 
@@ -151,8 +153,8 @@ ra8_err_t ra8_systick_set_reload(uint32_t reload)
   /* Arm v8-M ARM: re-arm the reload, then any write to SYST_CVR clears it so
    * the next count starts from the new reload. The SYST_CSR control bits are
    * deliberately left as-is. */
-  *ra8_systick_reg(k_ra8_systick_rvr) = reload;
-  *ra8_systick_reg(k_ra8_systick_cvr) = 0U;
+  *internal_systick_reg(k_ra8_systick_rvr) = reload;
+  *internal_systick_reg(k_ra8_systick_cvr) = 0U;
   return k_ra8_ok;
 }
 
@@ -160,25 +162,27 @@ uint32_t ra8_systick_current_value(void)
 {
   /* Arm v8-M ARM: SYST_CVR -- reading it is side-effect free (only a write
    * clears the counter). */
-  return *ra8_systick_reg(k_ra8_systick_cvr);
+  return *internal_systick_reg(k_ra8_systick_cvr);
 }
 
 void ra8_dwt_cyccnt_enable(void)
 {
   /* Arm v8-M ARM: DEMCR.TRCENA unlocks the DWT unit; DWT_CTRL.CYCCNTENA then
    * starts DWT_CYCCNT. Read-modify-write preserves any other trace bits. */
-  *ra8_systick_reg(k_ra8_dwt_demcr) |= (uint32_t)k_ra8_dwt_demcr_trcena;
-  *ra8_systick_reg(k_ra8_dwt_ctrl) |= (uint32_t)k_ra8_dwt_ctrl_cyccntena;
+  *internal_systick_reg(k_ra8_dwt_demcr) |= (uint32_t)k_ra8_dwt_demcr_trcena;
+  *internal_systick_reg(k_ra8_dwt_ctrl) |= (uint32_t)k_ra8_dwt_ctrl_cyccntena;
 }
 
 void ra8_dwt_cyccnt_reset(void)
 {
-  /* Arm v8-M ARM: DWT_CYCCNT is writable; zero it to start a measured window. */
-  *ra8_systick_reg(k_ra8_dwt_cyccnt) = 0U;
+  /* Arm v8-M ARM: DWT_CYCCNT is writable; zero it to start a measured window.
+   */
+  *internal_systick_reg(k_ra8_dwt_cyccnt) = 0U;
 }
 
 uint32_t ra8_dwt_cyccnt_read(void)
 {
-  /* Arm v8-M ARM: DWT_CYCCNT free-running cycle counter, read side-effect free. */
-  return *ra8_systick_reg(k_ra8_dwt_cyccnt);
+  /* Arm v8-M ARM: DWT_CYCCNT free-running cycle counter, read side-effect free.
+   */
+  return *internal_systick_reg(k_ra8_dwt_cyccnt);
 }

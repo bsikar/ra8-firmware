@@ -184,7 +184,7 @@ void ra8_log_set_byte_sink(ra8_log_byte_sink_fn_t fn, void* ctx);
  *
  * @since 0.1.0
  */
-void internal_ra8_log_error(const char* tag, const char* message);
+void ra8_log_emit_error(const char* tag, const char* message);
 
 /**
  * @brief Emit a WARN-level log line with only a tag and a message.
@@ -203,7 +203,7 @@ void internal_ra8_log_error(const char* tag, const char* message);
  *
  * @since 0.1.0
  */
-void internal_ra8_log_warn(const char* tag, const char* message);
+void ra8_log_emit_warn(const char* tag, const char* message);
 
 /**
  * @brief Emit an INFO-level log line with only a tag and a message.
@@ -222,7 +222,7 @@ void internal_ra8_log_warn(const char* tag, const char* message);
  *
  * @since 0.1.0
  */
-void internal_ra8_log_info(const char* tag, const char* message);
+void ra8_log_emit_info(const char* tag, const char* message);
 
 /**
  * @brief Emit a DEBUG-level log line with only a tag and a message.
@@ -241,12 +241,12 @@ void internal_ra8_log_info(const char* tag, const char* message);
  *
  * @since 0.1.0
  */
-void internal_ra8_log_debug(const char* tag, const char* message);
+void ra8_log_emit_debug(const char* tag, const char* message);
 
 /**
  * @brief Emit an ERROR log line with a `uint32_t` companion value.
  *
- * @details Adds `=<decimal>` to the line emitted by `internal_ra8_log_error`.
+ * @details Adds `=<decimal>` to the line emitted by ::ra8_log_emit_error.
  *
  * @param[in] tag     Short component tag; must not be NULL.
  * @param[in] message Free-form ASCII message; must not be NULL.
@@ -261,12 +261,12 @@ void internal_ra8_log_debug(const char* tag, const char* message);
  *
  * @since 0.1.0
  */
-void internal_ra8_log_error_val(const char* tag, const char* message, uint32_t value);
+void ra8_log_emit_error_val(const char* tag, const char* message, uint32_t value);
 
 /**
  * @brief Emit a WARN log line with a `uint32_t` companion value.
  *
- * @details Adds `=<decimal>` to the line emitted by `internal_ra8_log_warn`.
+ * @details Adds `=<decimal>` to the line emitted by ::ra8_log_emit_warn.
  *
  * @param[in] tag     Short component tag; must not be NULL.
  * @param[in] message Free-form ASCII message; must not be NULL.
@@ -281,12 +281,12 @@ void internal_ra8_log_error_val(const char* tag, const char* message, uint32_t v
  *
  * @since 0.1.0
  */
-void internal_ra8_log_warn_val(const char* tag, const char* message, uint32_t value);
+void ra8_log_emit_warn_val(const char* tag, const char* message, uint32_t value);
 
 /**
  * @brief Emit an INFO log line with a `uint32_t` companion value.
  *
- * @details Adds `=<decimal>` to the line emitted by `internal_ra8_log_info`.
+ * @details Adds `=<decimal>` to the line emitted by ::ra8_log_emit_info.
  *
  * @param[in] tag     Short component tag; must not be NULL.
  * @param[in] message Free-form ASCII message; must not be NULL.
@@ -301,13 +301,13 @@ void internal_ra8_log_warn_val(const char* tag, const char* message, uint32_t va
  *
  * @since 0.1.0
  */
-void internal_ra8_log_info_val(const char* tag, const char* message, uint32_t value);
+void ra8_log_emit_info_val(const char* tag, const char* message, uint32_t value);
 
 /**
  * @brief Emit a DEBUG log line with an `int32_t` companion value.
  *
  * @details Adds `=<signed-decimal>` to the line emitted by
- *          `internal_ra8_log_debug`. Signed companion is intentional --
+ *          ::ra8_log_emit_debug. Signed companion is intentional --
  *          debug traces frequently emit deltas.
  *
  * @param[in] tag     Short component tag; must not be NULL.
@@ -323,7 +323,7 @@ void internal_ra8_log_info_val(const char* tag, const char* message, uint32_t va
  *
  * @since 0.1.0
  */
-void internal_ra8_log_debug_val(const char* tag, const char* message, int32_t value);
+void ra8_log_emit_debug_val(const char* tag, const char* message, int32_t value);
 
 /* =============================================================================
  * Public macros (level-gated)
@@ -332,9 +332,9 @@ void internal_ra8_log_debug_val(const char* tag, const char* message, int32_t va
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_ERROR
 /** @brief RA8 log error. */
-#define ra8_log_error(tag, message) internal_ra8_log_error((tag), (message))
+#define ra8_log_error(tag, message) ra8_log_emit_error((tag), (message))
 /** @brief RA8 log error val. */
-#define ra8_log_error_val(tag, message, value) internal_ra8_log_error_val((tag), (message), (value))
+#define ra8_log_error_val(tag, message, value) ra8_log_emit_error_val((tag), (message), (value))
 #else
 /** @brief RA8 log error. */
 #define ra8_log_error(tag, message)            ((void)0)
@@ -344,9 +344,9 @@ void internal_ra8_log_debug_val(const char* tag, const char* message, int32_t va
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_WARN
 /** @brief RA8 log warn. */
-#define ra8_log_warn(tag, message) internal_ra8_log_warn((tag), (message))
+#define ra8_log_warn(tag, message) ra8_log_emit_warn((tag), (message))
 /** @brief RA8 log warn val. */
-#define ra8_log_warn_val(tag, message, value) internal_ra8_log_warn_val((tag), (message), (value))
+#define ra8_log_warn_val(tag, message, value) ra8_log_emit_warn_val((tag), (message), (value))
 #else
 /** @brief RA8 log warn. */
 #define ra8_log_warn(tag, message)            ((void)0)
@@ -356,9 +356,9 @@ void internal_ra8_log_debug_val(const char* tag, const char* message, int32_t va
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_INFO
 /** @brief RA8 log info. */
-#define ra8_log_info(tag, message) internal_ra8_log_info((tag), (message))
+#define ra8_log_info(tag, message) ra8_log_emit_info((tag), (message))
 /** @brief RA8 log info val. */
-#define ra8_log_info_val(tag, message, value) internal_ra8_log_info_val((tag), (message), (value))
+#define ra8_log_info_val(tag, message, value) ra8_log_emit_info_val((tag), (message), (value))
 #else
 /** @brief RA8 log info. */
 #define ra8_log_info(tag, message)            ((void)0)
@@ -368,9 +368,9 @@ void internal_ra8_log_debug_val(const char* tag, const char* message, int32_t va
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_DEBUG
 /** @brief RA8 log debug. */
-#define ra8_log_debug(tag, message) internal_ra8_log_debug((tag), (message))
+#define ra8_log_debug(tag, message) ra8_log_emit_debug((tag), (message))
 /** @brief RA8 log debug val. */
-#define ra8_log_debug_val(tag, message, value) internal_ra8_log_debug_val((tag), (message), (value))
+#define ra8_log_debug_val(tag, message, value) ra8_log_emit_debug_val((tag), (message), (value))
 #else
 /** @brief RA8 log debug. */
 #define ra8_log_debug(tag, message)            ((void)0)

@@ -17,7 +17,7 @@
  *    is silently dropped -- fine for a fire-and-forget logger.
  *
  * A UART-backed log sink for boards without a J-Link can be plugged
- * in later by overriding the `internal_ra8_log_*` functions with
+ * in later by overriding the `ra8_log_emit_*` functions with
  * non-weak definitions elsewhere in the project.
  *
  * @note Format: `"[TAG] level: message"` followed by a newline. The
@@ -87,11 +87,12 @@ typedef enum : uintptr_t {
  *
  * @since 0.1.0
  */
-RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_itm_stim0(void)
+RA8_HW_REGISTER_ACCESS RA8_INTERNAL static inline volatile uint32_t* internal_itm_stim0(void)
 {
   return (volatile uint32_t*)k_ra8_itm_stim_base;
 }
 
+#ifndef RA8_OFF_TARGET
 /**
  * @brief Get the ITM Trace Control Register.
  *
@@ -109,7 +110,7 @@ RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_itm_stim0(void)
  *
  * @since 0.1.0
  */
-RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_itm_tcr(void)
+RA8_HW_REGISTER_ACCESS RA8_INTERNAL static inline volatile uint32_t* internal_itm_tcr(void)
 {
   return (volatile uint32_t*)k_ra8_itm_tcr_addr;
 }
@@ -131,26 +132,26 @@ RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_itm_tcr(void)
  *
  * @since 0.1.0
  */
-RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_itm_tenr(void)
+RA8_HW_REGISTER_ACCESS RA8_INTERNAL static inline volatile uint32_t* internal_itm_tenr(void)
 {
   return (volatile uint32_t*)k_ra8_itm_tenr_addr;
 }
+#endif
 
 /**
  * @brief Check whether ITM port 0 is enabled and ready to accept bytes.
  *
  * @details
- * Reads TCR, TENR, and the STIM0 FIFO register directly. On the
- * target these are the real Cortex-M85 ITM registers. On the
- * `RA8_OFF_TARGET` host test build the same virtual addresses are
- * backed by anonymous RAM via `ra8_fake_mmap.c`.
+ * Reads TCR, TENR, and the STIM0 FIFO register directly on target. Hosted
+ * builds use only an explicitly injected byte sink and otherwise report the
+ * backend unavailable, so a test never dereferences target-only addresses.
  *
  * @return `true` if enabled and not full, `false` otherwise.
  * @retval true   ITMENA, port-0 enable, and FIFO-ready bits all set.
  * @retval false  Any of the above is clear.
  *
  * @pre None -- pure read of architectural registers.
- * @pre On the fake, `ra8_fake_mmap.c` has mapped the SCS region.
+ * @pre On target, the architectural ITM registers are addressable.
  * @post No state is modified.
  * @post Result reflects the registers at the moment of the call.
  *
@@ -164,7 +165,9 @@ RA8_INTERNAL static inline bool internal_itm_ready(void)
   if (s_byte_sink != nullptr) {
     return true;
   }
-#ifndef RA8_OFF_TARGET
+#ifdef RA8_OFF_TARGET
+  return false;
+#else
   /* Hardening: if DEMCR.TRCENA is clear the ITM block is powered down
    * and any read of its registers (TCR, TENR, STIM) will bus-fault.
    * Pre-check TRCENA via the shared ra8_scb primitive (DEMCR is always
@@ -181,14 +184,15 @@ RA8_INTERNAL static inline bool internal_itm_ready(void)
    * IPSR != 0 means we are inside an exception handler. Even if
    * TRCENA happens to be on, dropping log lines is preferable to a
    * second fault that masks the original PC. */
-  /* cppcheck-suppress unreadVariable -- the inline asm mrs writes IPSR into the variable; cppcheck cannot see through the asm. */
-  /* cppcheck-suppress knownConditionTrueFalse -- cppcheck assumes the asm-written IPSR value stays 0. */
+  /* cppcheck-suppress unreadVariable -- the inline asm mrs writes IPSR into the
+   * variable; cppcheck cannot see through the asm. */
+  /* cppcheck-suppress knownConditionTrueFalse -- cppcheck assumes the
+   * asm-written IPSR value stays 0. */
   volatile uint32_t ipsr = 0U;
   __asm__ volatile("mrs %0, ipsr" : "=r"(ipsr));
   if (ipsr != 0U) {
     return false;
   }
-#endif
   const uint32_t tcr  = *internal_itm_tcr();
   const uint32_t tenr = *internal_itm_tenr();
   /* TCR bit 0 = ITMENA. TENR bit 0 = stimulus port 0 enabled. */
@@ -199,6 +203,7 @@ RA8_INTERNAL static inline bool internal_itm_ready(void)
     return false;
   }
   return *internal_itm_stim0() != 0U;
+#endif
 }
 
 /**
@@ -297,7 +302,9 @@ RA8_INTERNAL static inline void internal_itm_put_u32(uint32_t value)
     internal_itm_putc('0');
     return;
   }
-  /* mcdc-deactivated: digit-buffer bound; uint32_t max is 10 digits (k_ra8_u32_max_digits == 10), so the loop always terminates by `value == 0` first; the bound is a defensive watchdog. */
+  /* mcdc-deactivated: digit-buffer bound; uint32_t max is 10 digits
+   * (k_ra8_u32_max_digits == 10), so the loop always terminates by `value == 0`
+   * first; the bound is a defensive watchdog. */
   while (value != 0U && i < k_ra8_u32_max_digits) {
     buf[i++] = (char)('0' + (char)(value % (uint32_t)k_ra8_decimal_base));
     value /= (uint32_t)k_ra8_decimal_base;
@@ -481,22 +488,22 @@ internal_emit_line_i(const char* level, const char* tag, const char* msg, int32_
 
 /* ---- plain string log -------------------------------------------------- */
 
-[[gnu::weak]] void internal_ra8_log_error(const char* tag, const char* message)
+[[gnu::weak]] void ra8_log_emit_error(const char* tag, const char* message)
 {
   internal_emit_line("ERROR", tag, message);
 }
 
-[[gnu::weak]] void internal_ra8_log_warn(const char* tag, const char* message)
+[[gnu::weak]] void ra8_log_emit_warn(const char* tag, const char* message)
 {
   internal_emit_line("WARN", tag, message);
 }
 
-[[gnu::weak]] void internal_ra8_log_info(const char* tag, const char* message)
+[[gnu::weak]] void ra8_log_emit_info(const char* tag, const char* message)
 {
   internal_emit_line("INFO", tag, message);
 }
 
-[[gnu::weak]] void internal_ra8_log_debug(const char* tag, const char* message)
+[[gnu::weak]] void ra8_log_emit_debug(const char* tag, const char* message)
 {
   internal_emit_line("DEBUG", tag, message);
 }
@@ -517,7 +524,7 @@ internal_emit_line_i(const char* level, const char* tag, const char* msg, int32_
  * @note Thread-safety inherited from the active backend (ITM by default).
  * @since 0.1.0
  */
-[[gnu::weak]] void internal_ra8_log_error_val(const char* tag, const char* message, uint32_t value)
+[[gnu::weak]] void ra8_log_emit_error_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("ERROR", tag, message, value);
 }
@@ -536,7 +543,7 @@ internal_emit_line_i(const char* level, const char* tag, const char* msg, int32_
  * @note Thread-safety inherited from the active backend.
  * @since 0.1.0
  */
-[[gnu::weak]] void internal_ra8_log_warn_val(const char* tag, const char* message, uint32_t value)
+[[gnu::weak]] void ra8_log_emit_warn_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("WARN", tag, message, value);
 }
@@ -555,7 +562,7 @@ internal_emit_line_i(const char* level, const char* tag, const char* msg, int32_
  * @note Thread-safety inherited from the active backend.
  * @since 0.1.0
  */
-[[gnu::weak]] void internal_ra8_log_info_val(const char* tag, const char* message, uint32_t value)
+[[gnu::weak]] void ra8_log_emit_info_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("INFO", tag, message, value);
 }
@@ -574,7 +581,7 @@ internal_emit_line_i(const char* level, const char* tag, const char* msg, int32_
  * @note Thread-safety inherited from the active backend.
  * @since 0.1.0
  */
-[[gnu::weak]] void internal_ra8_log_debug_val(const char* tag, const char* message, int32_t value)
+[[gnu::weak]] void ra8_log_emit_debug_val(const char* tag, const char* message, int32_t value)
 {
   internal_emit_line_i("DEBUG", tag, message, value);
 }
@@ -683,7 +690,7 @@ static const ra8_err_name_entry_t s_ra8_err_names[] = {
 };
 
 /**
- * @var k_ra8_err_names_count
+ * @var s_ra8_err_names_count
  * @brief Number of entries in s_ra8_err_names.
  *
  * @details Computed at compile time from `sizeof` so the table and
@@ -691,7 +698,7 @@ static const ra8_err_name_entry_t s_ra8_err_names[] = {
  *
  * @since 0.1.0
  */
-static const uint32_t k_ra8_err_names_count =
+static const uint32_t s_ra8_err_names_count =
   (uint32_t)(sizeof(s_ra8_err_names) / sizeof(s_ra8_err_names[0]));
 
 /**
@@ -718,7 +725,7 @@ static const uint32_t k_ra8_err_names_count =
  */
 const char* ra8_err_to_str(ra8_err_t err)
 {
-  for (uint32_t i = 0; i < k_ra8_err_names_count; i++) {
+  for (uint32_t i = 0; i < s_ra8_err_names_count; i++) {
     if (s_ra8_err_names[i].code == err) {
       return s_ra8_err_names[i].name;
     }
