@@ -311,7 +311,7 @@ RA8_INTERNAL static void internal_test_mixed_name_round_trip(void)
  * Decision: the surrogate-range test
  * `if ((cp >= k_utf_sur_hi_first) && (cp <= k_utf_sur_last))` and the two
  * over-long tests around it, in
- * `libs/ra8_fs/src/ra8_fs_utf.c@priv_utf8_wellformed` (3 conditions).
+ * `libs/ra8_fs/src/ra8_fs_utf.c@internal_utf8_wellformed` (3 conditions).
  * - V6: 0xC0 0x80        -> over-long two-byte form of U+0000.
  * - V7: 0xE0 0x80 0x80   -> over-long three-byte form of U+0000.
  * - V8: 0xED 0xA0 0x80   -> U+D800, a surrogate spelled in UTF-8 (CESU-8).
@@ -398,7 +398,7 @@ RA8_INTERNAL static void internal_test_decode_rejects_malformed(void)
  *
  * @par MC/DC:
  * Decision: the three-arm refusal ladder in
- * `libs/ra8_fs/src/ra8_fs_utf.c@priv_utf16_take` (3 conditions).
+ * `libs/ra8_fs/src/ra8_fs_utf.c@internal_utf16_take` (3 conditions).
  * - V1: a LOW surrogate first          -> the "no high one before it" arm.
  * - V2: a HIGH surrogate at the end    -> the "nothing after it" arm.
  * - V3: a high surrogate then 'A'      -> the "followed by something else" arm.

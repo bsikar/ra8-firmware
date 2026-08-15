@@ -84,7 +84,7 @@ typedef enum : uint32_t {
  *
  * @par MC/DC:
  * Decision: `(no_fat_chain != 0) && (next == tail_cluster + 1)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_link_cluster`
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_link_cluster`
  * (2 conditions). This case supplies the TRUE vector: a fresh volume hands out
  * successive clusters, so every growth after the first keeps the run
  * contiguous and writes not one FAT entry. The two false vectors live in

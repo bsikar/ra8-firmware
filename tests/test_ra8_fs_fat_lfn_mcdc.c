@@ -279,7 +279,7 @@ RA8_INTERNAL static void internal_test_mcdc_lfn_name_for_guard(void)
  * @par MC/DC:
  * Decision: `if (ent[name] == k_dir_marker_free_perm || ent[name] ==
  * k_dir_marker_free_used)` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn_write.c@priv_slot_is_free` (2 conditions),
+ * `libs/ra8_fs/src/ra8_fs_fat_lfn_write.c@internal_slot_is_free` (2 conditions),
  * driven through `priv_dir_find_free_run()` against a planted root directory.
  * - Root A: entry0 = live ('A'), entry1 = free-used (0xE5). Scanning entry0 sees
  *   0x41 != 0x00 (C1=F) and 0x41 != 0xE5 (C2=F) -> dec F, skip; entry1 sees C1=F,
@@ -322,7 +322,7 @@ RA8_INTERNAL static void internal_test_mcdc_dir_find_free_marker(void)
  * @test test_mcdc_dir_find_long_sector_match
  * @par MC/DC:
  * Decision: `if ((lname != nullptr) && (priv_name_ieq(needle, lname) != 0U))` in
- * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@priv_dir_find_long_sector` (2 conditions),
+ * `libs/ra8_fs/src/ra8_fs_fat_lfn.c@internal_dir_find_long_sector` (2 conditions),
  * reached through `ra8_fs_open`'s non-8.3 long-name fallback. The planted root
  * holds one LFN chain for "AB.EPUB", its 8.3 entry, and one unrelated plain 8.3
  * entry ("CD" with no LFN chain).

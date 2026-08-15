@@ -240,7 +240,7 @@ RA8_INTERNAL static void internal_test_grow_bitmap_lookup_read_fails(void)
  *
  * @par MC/DC:
  * Decision: `if (pe != k_ra8_ok)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_pick_cluster`
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_pick_cluster`
  * (1 condition). TRUE here; FALSE on every growth that reads its bit.
  *
  * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
@@ -317,7 +317,7 @@ RA8_INTERNAL static void internal_test_grow_bitmap_mark_write_fails(void)
  *
  * @par MC/DC:
  * Decision: `if (e != k_ra8_ok)` after ::priv_exfat_materialize_chain in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@priv_exfat_link_cluster`
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_stream.c@internal_exfat_link_cluster`
  * (1 condition). TRUE here; FALSE in the fragmentation case that succeeds.
  *
  * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
@@ -614,7 +614,7 @@ RA8_INTERNAL static void internal_test_create_no_directory_space(void)
  *
  * @par MC/DC:
  * Decision: `if (next < k_cluster_first_data)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@priv_exfat_survey_alloc`
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@internal_exfat_survey_alloc`
  * (1 condition). TRUE here; FALSE on every well-formed chain.
  *
  * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
@@ -661,7 +661,7 @@ RA8_INTERNAL static void internal_test_survey_rejects_broken_chain(void)
  *
  * @par MC/DC:
  * Decision: `(first_cluster < k_cluster_first_data) || (size_bytes == 0)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@priv_exfat_survey_alloc`
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@internal_exfat_survey_alloc`
  * (2 conditions). This case varies the SECOND: a real cluster with a zero
  * length. The first is varied by an ordinary empty file, and both false by
  * every append to a real one.
@@ -745,7 +745,7 @@ RA8_INTERNAL static void internal_drop_fat_cache(ra8_fs_mount_t* other, uint32_t
  *
  * @par MC/DC:
  * Decision: `(first_cluster < k_cluster_first_data) || (size_bytes == 0)` in
- * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@priv_exfat_survey_alloc`
+ * `libs/ra8_fs/src/ra8_fs_fat_exfat_openw.c@internal_exfat_survey_alloc`
  * (2 conditions). This case varies the FIRST: no cluster, but a non-zero
  * length. ::test_survey_zero_length_with_cluster varies the second, and every
  * append to a real file drives both false -- N+1 = 3 vectors for N = 2.
