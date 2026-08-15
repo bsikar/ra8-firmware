@@ -15,7 +15,7 @@
  * Split out of `ra8_mipi_dsi.c` along the seam the module already had.
  * The command path touches none of the driver's module state -- not
  * `s_initialized`, not the clock-mode or ULPS-lane flags -- so it needs
- * nothing from the lifecycle TU beyond `ra8_mipi_dsi_internal_wait_eq()`,
+ * nothing from the lifecycle TU beyond `priv_ra8_mipi_dsi_internal_wait_eq()`,
  * which `ra8_mipi_dsi_internal.h` already publishes. The lifecycle,
  * software-reset, module-stop, HS-clock and ULPS paths stay in
  * `ra8_mipi_dsi.c`; the video-mode, status and IRQ-dispatch surfaces stay

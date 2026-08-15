@@ -136,7 +136,7 @@ typedef enum : uint8_t {
  * =============================================================================
  */
 
-ra8_usb_pmsc_state_data_t s_usb_pmsc_state = {};
+ra8_usb_pmsc_state_data_t g_usb_pmsc_state = {};
 
 /* =============================================================================
  * Internal helpers
@@ -185,9 +185,9 @@ static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
 RA8_INTERNAL
 static ra8_err_t internal_configure_pipes(void)
 {
-  const uint16_t bulk_mp = internal_bulk_max_packet(s_usb_pmsc_state.speed);
+  const uint16_t bulk_mp = internal_bulk_max_packet(g_usb_pmsc_state.speed);
 
-  ra8_err_t err = ra8_usb_configure_endpoint(s_usb_pmsc_state.speed,
+  ra8_err_t err = ra8_usb_configure_endpoint(g_usb_pmsc_state.speed,
                                              k_ra8_pmsc_pipe_bulk_in,
                                              k_ra8_pmsc_ep_bulk_in,
                                              k_ra8_usb_ep_dir_in,
@@ -195,7 +195,7 @@ static ra8_err_t internal_configure_pipes(void)
                                              bulk_mp);
   RA8_RETURN_ON_ERROR(err, s_tag, "pmsc: bulk-in cfg"); /* GCOVR_EXCL_BR_LINE */
 
-  err = ra8_usb_configure_endpoint(s_usb_pmsc_state.speed,
+  err = ra8_usb_configure_endpoint(g_usb_pmsc_state.speed,
                                    k_ra8_pmsc_pipe_bulk_out,
                                    k_ra8_pmsc_ep_bulk_out,
                                    k_ra8_usb_ep_dir_out,
@@ -249,7 +249,7 @@ static uint32_t internal_unpack_u32_le(const uint8_t* src)
          ((uint32_t)src[3] << k_ra8_pmsc_shift_byte3);
 }
 
-void internal_zero_bytes(uint8_t* dst, uint32_t len)
+void priv_zero_bytes(uint8_t* dst, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; ++i) {
     dst[i] = 0U;
@@ -286,10 +286,10 @@ static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint32_t len)
 ra8_err_t ra8_usb_pmsc_feed_cbw(const uint8_t* cbw)
 {
   RA8_CHECK_NULL_PTR(cbw, s_tag, "feed_cbw: cbw");
-  if (!s_usb_pmsc_state.initialized) {
+  if (!g_usb_pmsc_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  if (!s_usb_pmsc_state.storage_attached) {
+  if (!g_usb_pmsc_state.storage_attached) {
     return k_ra8_err_invalid_state;
   }
 
@@ -301,22 +301,22 @@ ra8_err_t ra8_usb_pmsc_feed_cbw(const uint8_t* cbw)
      * await reset recovery. The starter surfaces this as a CSW
      * with status `phase_error` so the caller's state machine can
      * proceed deterministically. */
-    s_usb_pmsc_state.bot_state = k_ra8_pmsc_state_csw_tx;
-    s_usb_pmsc_state.cbw_tag   = internal_unpack_u32_le(&cbw[k_ra8_pmsc_cbw_off_tag]);
+    g_usb_pmsc_state.bot_state = k_ra8_pmsc_state_csw_tx;
+    g_usb_pmsc_state.cbw_tag   = internal_unpack_u32_le(&cbw[k_ra8_pmsc_cbw_off_tag]);
     return k_ra8_err_invalid_arg;
   }
 
-  s_usb_pmsc_state.cbw_tag         = internal_unpack_u32_le(&cbw[k_ra8_pmsc_cbw_off_tag]);
-  s_usb_pmsc_state.cbw_data_length = internal_unpack_u32_le(&cbw[k_ra8_pmsc_cbw_off_data_length]);
-  s_usb_pmsc_state.cbw_dir_in = (cbw[k_ra8_pmsc_cbw_off_flags] & k_ra8_pmsc_cbw_flag_data_in) != 0U;
-  s_usb_pmsc_state.cbw_lun    = (uint8_t)(cbw[k_ra8_pmsc_cbw_off_lun] & k_ra8_pmsc_lun_field_mask);
-  s_usb_pmsc_state.cbw_cdb_len =
+  g_usb_pmsc_state.cbw_tag         = internal_unpack_u32_le(&cbw[k_ra8_pmsc_cbw_off_tag]);
+  g_usb_pmsc_state.cbw_data_length = internal_unpack_u32_le(&cbw[k_ra8_pmsc_cbw_off_data_length]);
+  g_usb_pmsc_state.cbw_dir_in = (cbw[k_ra8_pmsc_cbw_off_flags] & k_ra8_pmsc_cbw_flag_data_in) != 0U;
+  g_usb_pmsc_state.cbw_lun    = (uint8_t)(cbw[k_ra8_pmsc_cbw_off_lun] & k_ra8_pmsc_lun_field_mask);
+  g_usb_pmsc_state.cbw_cdb_len =
     (uint8_t)(cbw[k_ra8_pmsc_cbw_off_cdb_length] & k_ra8_pmsc_cdb_field_mask);
-  internal_copy_bytes(s_usb_pmsc_state.cbw_cdb,
+  internal_copy_bytes(g_usb_pmsc_state.cbw_cdb,
                       &cbw[k_ra8_pmsc_cbw_off_cdb],
                       (uint32_t)k_ra8_pmsc_cdb_max_len);
-  s_usb_pmsc_state.bot_state     = k_ra8_pmsc_state_cdb_decode;
-  s_usb_pmsc_state.last_data_len = 0U;
+  g_usb_pmsc_state.bot_state     = k_ra8_pmsc_state_cdb_decode;
+  g_usb_pmsc_state.last_data_len = 0U;
   return k_ra8_ok;
 }
 
@@ -347,23 +347,23 @@ static ra8_err_t internal_dispatch_scsi(uint8_t*                   data_buf,
                                         uint32_t*                  data_len,
                                         ra8_usb_pmsc_csw_status_t* csw_status)
 {
-  const uint8_t opcode = s_usb_pmsc_state.cbw_cdb[k_ra8_pmsc_cdb_off_opcode];
+  const uint8_t opcode = g_usb_pmsc_state.cbw_cdb[k_ra8_pmsc_cdb_off_opcode];
   switch (opcode) {
     case k_ra8_pmsc_scsi_test_unit_ready:
       /* Passing -- no data phase. */
       return k_ra8_ok;
     case k_ra8_pmsc_scsi_inquiry:
-      return internal_handle_inquiry(data_buf, data_buf_capacity, data_len);
+      return priv_handle_inquiry(data_buf, data_buf_capacity, data_len);
     case k_ra8_pmsc_scsi_read_capacity_10:
-      return internal_handle_read_capacity(data_buf, data_buf_capacity, data_len);
+      return priv_handle_read_capacity(data_buf, data_buf_capacity, data_len);
     case k_ra8_pmsc_scsi_request_sense:
-      return internal_handle_request_sense(data_buf, data_buf_capacity, data_len);
+      return priv_handle_request_sense(data_buf, data_buf_capacity, data_len);
     case k_ra8_pmsc_scsi_mode_sense_6:
-      return internal_handle_mode_sense(data_buf, data_buf_capacity, data_len);
+      return priv_handle_mode_sense(data_buf, data_buf_capacity, data_len);
     case k_ra8_pmsc_scsi_read_10:
-      return internal_handle_read10(data_buf, data_buf_capacity, data_len);
+      return priv_handle_read10(data_buf, data_buf_capacity, data_len);
     case k_ra8_pmsc_scsi_write_10:
-      return internal_handle_write10(data_buf, data_len);
+      return priv_handle_write10(data_buf, data_len);
     default:
       /* Unsupported opcode -> CSW status FAILED, no data. */
       *csw_status = k_ra8_pmsc_csw_status_failed;
@@ -389,13 +389,13 @@ static ra8_err_t internal_dispatch_scsi(uint8_t*                   data_buf,
 RA8_INTERNAL
 static ra8_err_t internal_dispatch_preconditions(uint32_t data_buf_capacity)
 {
-  if (!s_usb_pmsc_state.initialized) {
+  if (!g_usb_pmsc_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  if (!s_usb_pmsc_state.storage_attached) {
+  if (!g_usb_pmsc_state.storage_attached) {
     return k_ra8_err_invalid_state;
   }
-  if (s_usb_pmsc_state.bot_state != k_ra8_pmsc_state_cdb_decode) {
+  if (g_usb_pmsc_state.bot_state != k_ra8_pmsc_state_cdb_decode) {
     return k_ra8_err_invalid_state;
   }
   if (data_buf_capacity == 0U) {
@@ -419,12 +419,12 @@ static ra8_err_t internal_dispatch_preconditions(uint32_t data_buf_capacity)
 RA8_INTERNAL
 static void internal_dispatch_advance_state(uint32_t data_len)
 {
-  s_usb_pmsc_state.last_data_len = data_len;
+  g_usb_pmsc_state.last_data_len = data_len;
   if (data_len > 0U) {
-    s_usb_pmsc_state.bot_state =
-      s_usb_pmsc_state.cbw_dir_in ? k_ra8_pmsc_state_data_tx : k_ra8_pmsc_state_data_rx;
+    g_usb_pmsc_state.bot_state =
+      g_usb_pmsc_state.cbw_dir_in ? k_ra8_pmsc_state_data_tx : k_ra8_pmsc_state_data_rx;
   } else {
-    s_usb_pmsc_state.bot_state = k_ra8_pmsc_state_csw_tx;
+    g_usb_pmsc_state.bot_state = k_ra8_pmsc_state_csw_tx;
   }
 }
 
@@ -456,25 +456,25 @@ ra8_err_t
 ra8_usb_pmsc_build_csw(ra8_usb_pmsc_csw_status_t csw_status, uint32_t residue, uint8_t* out_csw)
 {
   RA8_CHECK_NULL_PTR(out_csw, s_tag, "build_csw: out_csw");
-  if (!s_usb_pmsc_state.initialized) {
+  if (!g_usb_pmsc_state.initialized) {
     return k_ra8_err_invalid_state;
   }
 
-  internal_zero_bytes(out_csw, (uint32_t)k_ra8_pmsc_csw_len);
+  priv_zero_bytes(out_csw, (uint32_t)k_ra8_pmsc_csw_len);
   internal_pack_u32_le(k_ra8_pmsc_csw_signature, &out_csw[k_ra8_pmsc_csw_off_signature]);
-  internal_pack_u32_le(s_usb_pmsc_state.cbw_tag, &out_csw[k_ra8_pmsc_csw_off_tag]);
+  internal_pack_u32_le(g_usb_pmsc_state.cbw_tag, &out_csw[k_ra8_pmsc_csw_off_tag]);
   internal_pack_u32_le(residue, &out_csw[k_ra8_pmsc_csw_off_residue]);
   out_csw[k_ra8_pmsc_csw_off_status] = (uint8_t)csw_status;
-  s_usb_pmsc_state.bot_state         = k_ra8_pmsc_state_idle;
+  g_usb_pmsc_state.bot_state         = k_ra8_pmsc_state_idle;
   return k_ra8_ok;
 }
 
 ra8_err_t ra8_usb_pmsc_step(void)
 {
-  if (!s_usb_pmsc_state.initialized) {
+  if (!g_usb_pmsc_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  if (!s_usb_pmsc_state.storage_attached) {
+  if (!g_usb_pmsc_state.storage_attached) {
     return k_ra8_err_invalid_state;
   }
 
@@ -486,10 +486,10 @@ ra8_err_t ra8_usb_pmsc_step(void)
    * the bulk-OUT FIFO and invokes `ra8_usb_pmsc_feed_cbw` /
    * `ra8_usb_pmsc_dispatch_command` directly, so `step` leaves
    * those phases untouched. */
-  switch (s_usb_pmsc_state.bot_state) {
+  switch (g_usb_pmsc_state.bot_state) {
     case k_ra8_pmsc_state_idle:
       /* Awaiting CBW. */
-      s_usb_pmsc_state.bot_state = k_ra8_pmsc_state_cbw_rx;
+      g_usb_pmsc_state.bot_state = k_ra8_pmsc_state_cbw_rx;
       break;
     case k_ra8_pmsc_state_cbw_rx:
     case k_ra8_pmsc_state_cdb_decode:
@@ -498,12 +498,12 @@ ra8_err_t ra8_usb_pmsc_step(void)
     case k_ra8_pmsc_state_data_tx:
     case k_ra8_pmsc_state_data_rx:
       /* Caller pushes / pulls the data phase; transition to CSW. */
-      s_usb_pmsc_state.bot_state = k_ra8_pmsc_state_csw_tx;
+      g_usb_pmsc_state.bot_state = k_ra8_pmsc_state_csw_tx;
       break;
     case k_ra8_pmsc_state_csw_tx:
     default:
       /* CSW sent (or unknown state); rewind to IDLE. */
-      s_usb_pmsc_state.bot_state = k_ra8_pmsc_state_idle;
+      g_usb_pmsc_state.bot_state = k_ra8_pmsc_state_idle;
       break;
   }
   return k_ra8_ok;
@@ -516,7 +516,7 @@ ra8_err_t ra8_usb_pmsc_step(void)
 
 ra8_err_t ra8_usb_pmsc_attach_storage(const ra8_usb_pmsc_storage_t* storage)
 {
-  if (!s_usb_pmsc_state.initialized) {
+  if (!g_usb_pmsc_state.initialized) {
     return k_ra8_err_invalid_state;
   }
   RA8_CHECK_NULL_PTR(storage, s_tag, "attach_storage: storage");
@@ -525,9 +525,9 @@ ra8_err_t ra8_usb_pmsc_attach_storage(const ra8_usb_pmsc_storage_t* storage)
   RA8_CHECK_NULL_PTR(storage->get_capacity, s_tag, "attach_storage: get_capacity");
   RA8_CHECK_NULL_PTR(storage->get_inquiry, s_tag, "attach_storage: get_inquiry");
 
-  s_usb_pmsc_state.storage          = *storage;
-  s_usb_pmsc_state.storage_attached = true;
-  s_usb_pmsc_state.bot_state        = k_ra8_pmsc_state_idle;
+  g_usb_pmsc_state.storage          = *storage;
+  g_usb_pmsc_state.storage_attached = true;
+  g_usb_pmsc_state.bot_state        = k_ra8_pmsc_state_idle;
   ra8_log_info(s_tag, "storage attached");
   return k_ra8_ok;
 }
@@ -548,23 +548,23 @@ ra8_err_t ra8_usb_pmsc_init(ra8_usb_speed_t speed)
     return k_ra8_err_hw_init_failed;
   }
 
-  s_usb_pmsc_state.speed            = speed;
-  s_usb_pmsc_state.bot_state        = k_ra8_pmsc_state_idle;
-  s_usb_pmsc_state.storage_attached = false;
-  s_usb_pmsc_state.storage          = (ra8_usb_pmsc_storage_t){};
-  s_usb_pmsc_state.cbw_tag          = k_ra8_pmsc_initial_tag;
-  s_usb_pmsc_state.cbw_data_length  = 0U;
-  s_usb_pmsc_state.cbw_dir_in       = false;
-  s_usb_pmsc_state.cbw_lun          = 0U;
-  s_usb_pmsc_state.cbw_cdb_len      = 0U;
-  s_usb_pmsc_state.last_data_len    = 0U;
-  internal_zero_bytes(s_usb_pmsc_state.cbw_cdb, (uint32_t)k_ra8_pmsc_cdb_max_len);
-  s_usb_pmsc_state.initialized = true;
+  g_usb_pmsc_state.speed            = speed;
+  g_usb_pmsc_state.bot_state        = k_ra8_pmsc_state_idle;
+  g_usb_pmsc_state.storage_attached = false;
+  g_usb_pmsc_state.storage          = (ra8_usb_pmsc_storage_t){};
+  g_usb_pmsc_state.cbw_tag          = k_ra8_pmsc_initial_tag;
+  g_usb_pmsc_state.cbw_data_length  = 0U;
+  g_usb_pmsc_state.cbw_dir_in       = false;
+  g_usb_pmsc_state.cbw_lun          = 0U;
+  g_usb_pmsc_state.cbw_cdb_len      = 0U;
+  g_usb_pmsc_state.last_data_len    = 0U;
+  priv_zero_bytes(g_usb_pmsc_state.cbw_cdb, (uint32_t)k_ra8_pmsc_cdb_max_len);
+  g_usb_pmsc_state.initialized = true;
 
   const ra8_err_t pipes_err = internal_configure_pipes();
   if (pipes_err != k_ra8_ok) {
     (void)ra8_usb_device_deinit(speed);
-    s_usb_pmsc_state.initialized = false;
+    g_usb_pmsc_state.initialized = false;
     return pipes_err;
   }
 
@@ -574,14 +574,14 @@ ra8_err_t ra8_usb_pmsc_init(ra8_usb_speed_t speed)
 
 ra8_err_t ra8_usb_pmsc_close(void)
 {
-  if (!s_usb_pmsc_state.initialized) {
+  if (!g_usb_pmsc_state.initialized) {
     return k_ra8_err_invalid_state;
   }
   /* Drop D+ pull-up so the host sees a clean detach. */
-  (void)ra8_usb_device_attach(s_usb_pmsc_state.speed, false);
-  const ra8_err_t err               = ra8_usb_device_deinit(s_usb_pmsc_state.speed);
-  s_usb_pmsc_state.initialized      = false;
-  s_usb_pmsc_state.storage_attached = false;
-  s_usb_pmsc_state.bot_state        = k_ra8_pmsc_state_idle;
+  (void)ra8_usb_device_attach(g_usb_pmsc_state.speed, false);
+  const ra8_err_t err               = ra8_usb_device_deinit(g_usb_pmsc_state.speed);
+  g_usb_pmsc_state.initialized      = false;
+  g_usb_pmsc_state.storage_attached = false;
+  g_usb_pmsc_state.bot_state        = k_ra8_pmsc_state_idle;
   return err;
 }

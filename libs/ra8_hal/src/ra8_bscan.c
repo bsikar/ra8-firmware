@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_bscan_regs.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -90,7 +91,7 @@ static ra8_bscan_state_t s_bscan_state = {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static bool internal_is_known_instruction(ra8_bscan_instr_t instr)
+RA8_INTERNAL static bool internal_is_known_instruction(ra8_bscan_instr_t instr)
 {
   /* HUM Ch 50.2.1 "JTIR : Instruction Register", p 3258 */
   switch (instr) {

@@ -19,6 +19,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_err.h"
@@ -50,7 +51,7 @@ typedef enum : uint8_t {
  *
  * @details
  * ``k_tdc_sts_all_set`` pre-seeds CFDCnSTS to all-ones before a call so
- * that the bounded CH_RESET wait inside ``ra8_canfd_internal_set_channel_mode``
+ * that the bounded CH_RESET wait inside ``priv_ra8_canfd_internal_set_channel_mode``
  * finds CRSTSTS (bit 0) set on the first poll iteration and returns
  * immediately, rather than spinning for ``k_ra8_canfd_spin`` iterations.
  */
@@ -67,9 +68,8 @@ typedef enum : uint32_t {
  *
  * @pre The host MMIO substrate (ra8_fake_mmap) is linked into the test binary.
  * @pre The fake CANFD base addresses map into ra8_fake_mmap's window.
- * @post All CANFD registers in the fake window read as zero.
- */
-static void prep_tdc(void)
+ * @post All CANFD registers in the fake window read as zero. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep_tdc(void)
 {
   ra8_fake_mmap_reset();
 }
@@ -78,12 +78,11 @@ static void prep_tdc(void)
  * @par MC/DC:
  * (no compound decisions in this test -- each guard in ``ra8_canfd_set_tdc``
  * is a single-condition ``if``; no ``&&`` or ``||`` in the production code
- * under test)
- */
-static void test_tdc_enable_manual_offset(void)
+ * under test) @brief Verify tdc enable manual offset behavior. @details Executes the tdc enable manual offset scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tdc_enable_manual_offset(void)
 {
   TEST_BEGIN("tdc enable: manual mode, offset=42 -> TDE|TDCOC|TDCO in FDCFG");
-  prep_tdc();
+  internal_prep_tdc();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_tdc_ch0);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -112,12 +111,11 @@ static void test_tdc_enable_manual_offset(void)
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the ``cfg->enable`` true
- * / ``cfg->manual`` false path; each guard is a single-condition ``if``)
- */
-static void test_tdc_enable_measured_mode(void)
+ * / ``cfg->manual`` false path; each guard is a single-condition ``if``) @brief Verify tdc enable measured mode behavior. @details Executes the tdc enable measured mode scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tdc_enable_measured_mode(void)
 {
   TEST_BEGIN("tdc enable: measured mode (TDCOC=0), offset=10");
-  prep_tdc();
+  internal_prep_tdc();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_tdc_ch0);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -145,12 +143,11 @@ static void test_tdc_enable_measured_mode(void)
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the maximum-value boundary
- * of the 7-bit TDCO field; a single range guard rejects values above 127)
- */
-static void test_tdc_max_offset_accepted(void)
+ * of the 7-bit TDCO field; a single range guard rejects values above 127) @brief Verify tdc max offset accepted behavior. @details Executes the tdc max offset accepted scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tdc_max_offset_accepted(void)
 {
   TEST_BEGIN("tdc max offset 127 (7-bit cap) accepted");
-  prep_tdc();
+  internal_prep_tdc();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_tdc_ch0);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -173,12 +170,11 @@ static void test_tdc_max_offset_accepted(void)
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the ``cfg->enable`` false
- * path, which skips TDE/TDCO/TDCOC writes and only clears those bits)
- */
-static void test_tdc_disable_clears_tde(void)
+ * path, which skips TDE/TDCO/TDCOC writes and only clears those bits) @brief Verify tdc disable clears tde behavior. @details Executes the tdc disable clears tde scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tdc_disable_clears_tde(void)
 {
   TEST_BEGIN("tdc disable: TDE cleared in FDCFG");
-  prep_tdc();
+  internal_prep_tdc();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_tdc_ch0);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -203,12 +199,11 @@ static void test_tdc_disable_clears_tde(void)
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- validates the null-cfg precondition
- * guard; a single ``RA8_CHECK_NULL_PTR`` covers the null path)
- */
-static void test_tdc_null_cfg_returns_error(void)
+ * guard; a single ``RA8_CHECK_NULL_PTR`` covers the null path) @brief Verify tdc null cfg returns error behavior. @details Executes the tdc null cfg returns error scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tdc_null_cfg_returns_error(void)
 {
   TEST_BEGIN("tdc null cfg -> k_ra8_err_null_ptr");
-  prep_tdc();
+  internal_prep_tdc();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_canfd_set_tdc((uint8_t)k_tdc_ch0, nullptr));
 
@@ -218,12 +213,11 @@ static void test_tdc_null_cfg_returns_error(void)
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- validates the channel-range guard
- * via the ``ra8_canfd()`` accessor returning nullptr for out-of-range channels)
- */
-static void test_tdc_bad_channel_returns_error(void)
+ * via the ``ra8_canfd()`` accessor returning nullptr for out-of-range channels) @brief Verify tdc bad channel returns error behavior. @details Executes the tdc bad channel returns error scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tdc_bad_channel_returns_error(void)
 {
   TEST_BEGIN("tdc bad channel -> k_ra8_err_null_ptr");
-  prep_tdc();
+  internal_prep_tdc();
 
   const ra8_canfd_tdc_cfg_t cfg = {
     .enable = true,
@@ -238,12 +232,11 @@ static void test_tdc_bad_channel_returns_error(void)
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- validates the offset-range guard
- * that rejects values above the 7-bit cap of 127)
- */
-static void test_tdc_offset_overflow_returns_error(void)
+ * that rejects values above the 7-bit cap of 127) @brief Verify tdc offset overflow returns error behavior. @details Executes the tdc offset overflow returns error scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tdc_offset_overflow_returns_error(void)
 {
   TEST_BEGIN("tdc offset=128 (overflow) -> k_ra8_err_invalid_arg");
-  prep_tdc();
+  internal_prep_tdc();
 
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_tdc_ch0);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -265,12 +258,11 @@ static void test_tdc_offset_overflow_returns_error(void)
  * @par MC/DC:
  * (no compound decisions in this test -- verifies channel-1 independence;
  * exercises the same code path as channel 0 to confirm the accessor works
- * for the second instance)
- */
-static void test_tdc_channel1_enable(void)
+ * for the second instance) @brief Verify tdc channel1 enable behavior. @details Executes the tdc channel1 enable scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tdc_channel1_enable(void)
 {
   TEST_BEGIN("tdc channel 1 enable: FDCFG.TDE set");
-  prep_tdc();
+  internal_prep_tdc();
 
   volatile r_canfd_t* reg1 = ra8_canfd((uint8_t)k_tdc_ch1);
   TEST_ASSERT_NOT_NULL((void*)reg1);
@@ -289,14 +281,13 @@ static void test_tdc_channel1_enable(void)
 
 int32_t main(void)
 {
-  test_tdc_enable_manual_offset();
-  test_tdc_enable_measured_mode();
-  test_tdc_max_offset_accepted();
-  test_tdc_disable_clears_tde();
-  test_tdc_null_cfg_returns_error();
-  test_tdc_bad_channel_returns_error();
-  test_tdc_offset_overflow_returns_error();
-  test_tdc_channel1_enable();
-  (void)fprintf(stderr, "[OK ] test_ra8_canfd_tdc.c\n");
+  internal_test_tdc_enable_manual_offset();
+  internal_test_tdc_enable_measured_mode();
+  internal_test_tdc_max_offset_accepted();
+  internal_test_tdc_disable_clears_tde();
+  internal_test_tdc_null_cfg_returns_error();
+  internal_test_tdc_bad_channel_returns_error();
+  internal_test_tdc_offset_overflow_returns_error();
+  internal_test_tdc_channel1_enable();
   return 0;
 }

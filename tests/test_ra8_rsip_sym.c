@@ -24,6 +24,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
@@ -37,11 +38,13 @@
  * @brief Digest and ciphertext buffer lengths the symmetric arms use.
  */
 typedef enum : uint8_t {
-  k_t_sha512_len   = 64U, /**< SHA-512 digest, bytes; also the full-length
+  k_t_sha512_len   = 64U,   /**< SHA-512 digest, bytes; also the full-length
                                output buffer of the extendable-output arm.     */
-  k_t_shake_short  = 20U, /**< A truncated SHAKE output, proving the caller
+  k_t_shake_short  = 20U,   /**< A truncated SHAKE output, proving the caller
                                chooses the length.                             */
-  k_t_ct_too_small = 5U,  /**< Ciphertext buffer below one AES block, which the
+  k_t_aead_iv_len  = 12U,   /**< Fixed GCM / CCM nonce length.                 */
+  k_t_iv_fill      = 0xA5U, /**< Nonzero nonce byte for lane-write assertions. */
+  k_t_ct_too_small = 5U,    /**< Ciphertext buffer below one AES block, which the
                                driver must reject rather than overrun.          */
 } t_sym_len_t;
 
@@ -63,9 +66,8 @@ typedef enum : uint32_t {
 
 /**
  * @brief Reset the world before each test.
- * @since 0.1.0
- */
-static void prep(void)
+ * @since 0.1.0 @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
@@ -74,11 +76,10 @@ static void prep(void)
 
 /**
  * @brief Initialise the engine for a sub-test that needs ENABLE asserted.
- * @since 0.1.0
- */
-static void prep_running(void)
+ * @since 0.1.0 @details Implements the prep running fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_prep_running(void)
 {
-  prep();
+  internal_prep();
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
 }
@@ -89,12 +90,11 @@ static void prep_running(void)
  * @details Fixed encrypt direction and 16-byte scratch buffers; only the
  * mode, IV and length the MC/DC vectors vary are parameters, so each
  * vector reads as one source line under the NASA Rule 4 cap.
- * @since 0.1.0
- */
-static ra8_err_t cipher_vec(const ra8_rsip_key_handle_t* key,
-                            ra8_rsip_aes_mode_t          mode,
-                            const uint8_t*               iv,
-                            uint32_t                     len)
+ * @since 0.1.0 @param[in] key Fixture argument governed by the exercised interface contract. @param[in] mode Fixture argument governed by the exercised interface contract. @param[in] iv Fixture argument governed by the exercised interface contract. @param[in] len Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static ra8_err_t internal_cipher_vec(const ra8_rsip_key_handle_t* key,
+                                                  ra8_rsip_aes_mode_t          mode,
+                                                  const uint8_t*               iv,
+                                                  uint32_t                     len)
 {
   const uint8_t pt[16] = {};
   uint8_t       ct[16] = {};
@@ -112,12 +112,11 @@ static ra8_err_t cipher_vec(const ra8_rsip_key_handle_t* key,
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_install_aes128_plain(void)
+  * code under test that this case touches) @details Executes the install aes128 plain scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_install_aes128_plain(void)
 {
   TEST_BEGIN("rsip aes128 install plain");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         key[16] = {0x00U,
                                    0x11U,
@@ -153,12 +152,11 @@ static void test_install_aes128_plain(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_install_aes_192_256(void)
+  * code under test that this case touches) @details Executes the install aes 192 256 scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_install_aes_192_256(void)
 {
   TEST_BEGIN("rsip aes192/256 install plain");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         k192[24] = {};
   const uint8_t         k256[32] = {};
@@ -179,12 +177,11 @@ static void test_install_aes_192_256(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_install_chacha20_hmac(void)
+  * code under test that this case touches) @details Executes the install chacha20 hmac scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_install_chacha20_hmac(void)
 {
   TEST_BEGIN("rsip chacha20 + hmac install plain");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         key[32] = {};
   ra8_rsip_key_handle_t out     = {};
@@ -211,12 +208,11 @@ static void test_install_chacha20_hmac(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_install_oem(void)
+  * code under test that this case touches) @details Executes the install oem scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_install_oem(void)
 {
   TEST_BEGIN("rsip oem install");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         iv[16]   = {};
   const uint8_t         blob[32] = {};
@@ -248,12 +244,11 @@ static void test_install_oem(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_aes_cipher_ecb(void)
+  * code under test that this case touches) @details Executes the aes cipher ecb scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_aes_cipher_ecb(void)
 {
   TEST_BEGIN("rsip aes128 ecb cipher");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         key[16] = {};
   ra8_rsip_key_handle_t handle  = {};
@@ -307,12 +302,11 @@ static void test_aes_cipher_ecb(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_aes_cipher_ctr(void)
+  * code under test that this case touches) @details Executes the aes cipher ctr scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_aes_cipher_ctr(void)
 {
   TEST_BEGIN("rsip aes128 ctr cipher");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         key[16] = {};
   ra8_rsip_key_handle_t handle  = {};
@@ -339,22 +333,22 @@ static void test_aes_cipher_ctr(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_aes_gcm(void)
+  * code under test that this case touches) @details Executes the aes gcm scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_aes_gcm(void)
 {
   TEST_BEGIN("rsip aes gcm");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         key[16] = {};
   ra8_rsip_key_handle_t handle  = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_aes128_install_plain(key, &handle));
 
-  const uint8_t iv[12]  = {};
-  const uint8_t aad[8]  = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
-  const uint8_t pt[16]  = {};
-  uint8_t       ct[16]  = {};
-  uint8_t       tag[16] = {};
+  const uint8_t iv[k_t_aead_iv_len]       = {};
+  const uint8_t aad[8]                    = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
+  const uint8_t pt[16]                    = {};
+  uint8_t       ct[16]                    = {};
+  uint8_t       tag[16]                   = {};
+  *ra8_rsip_reg32(k_ra8_rsip_off_sym_iv3) = k_t_data_out3;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rsip_aes_gcm(&handle,
                                   k_ra8_rsip_dir_encrypt,
@@ -365,6 +359,7 @@ static void test_aes_gcm(void)
                                   ct,
                                   sizeof(pt),
                                   tag));
+  TEST_ASSERT_EQ(0U, *ra8_rsip_reg32(k_ra8_rsip_off_sym_iv3));
 
   /* Null arg checks. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -397,12 +392,11 @@ static void test_aes_gcm(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_aes_ccm(void)
+  * code under test that this case touches) @details Executes the aes ccm scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_aes_ccm(void)
 {
   TEST_BEGIN("rsip aes ccm");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         key[16] = {};
   ra8_rsip_key_handle_t handle  = {};
@@ -431,12 +425,11 @@ static void test_aes_ccm(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_chacha20_stream(void)
+  * code under test that this case touches) @details Executes the chacha20 stream scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_chacha20_stream(void)
 {
   TEST_BEGIN("rsip chacha20 stream");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         key[32] = {};
   ra8_rsip_key_handle_t handle  = {};
@@ -463,12 +456,11 @@ static void test_chacha20_stream(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_chacha20_poly1305(void)
+  * code under test that this case touches) @details Executes the chacha20 poly1305 scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_chacha20_poly1305(void)
 {
   TEST_BEGIN("rsip chacha20-poly1305 + poly1305");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         key[32] = {};
   ra8_rsip_key_handle_t handle  = {};
@@ -510,12 +502,11 @@ static void test_chacha20_poly1305(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_hash_family(void)
+  * code under test that this case touches) @details Executes the hash family scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_hash_family(void)
 {
   TEST_BEGIN("rsip hash family");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t msg[3]                   = {'a', 'b', 'c'};
   uint8_t       d_512[k_t_sha512_len]    = {};
@@ -546,14 +537,13 @@ static void test_hash_family(void)
   *
   * @par MC/DC:
   * (no compound decisions in this test -- arms the ra8_fake_mmio wait
-  * seam on the HASH_STATUS register so ``internal_hash_wait_done``
+  * seam on the HASH_STATUS register so ``priv_hash_wait_done``
   * runs its bounded poll to the budget and ``ra8_rsip_hash`` takes its
-  * single-condition wait-error branch)
- */
-static void test_hash_done_timeout(void)
+  * single-condition wait-error branch) @details Executes the hash done timeout scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_hash_done_timeout(void)
 {
   TEST_BEGIN("rsip hash done timeout");
-  prep_running();
+  internal_prep_running();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait(ra8_rsip_reg32(k_ra8_rsip_off_hash_status)));
   const uint8_t msg[3] = {'a', 'b', 'c'};
@@ -572,12 +562,11 @@ static void test_hash_done_timeout(void)
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-static void test_hmac(void)
+  * code under test that this case touches) @details Executes the hmac scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_hmac(void)
 {
   TEST_BEGIN("rsip hmac");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         key[32] = {};
   ra8_rsip_key_handle_t handle  = {};
@@ -606,7 +595,7 @@ static void test_hmac(void)
  * ------------------------------------------------------------------------ */
 
 /**
- * @test test_aes_cipher_mcdc_aead_modes
+ * @test internal_test_aes_cipher_mcdc_aead_modes
  *
  * @par MC/DC:
  * Decision: `if ((mode == k_ra8_rsip_aes_mode_gcm) ||
@@ -623,13 +612,12 @@ static void test_hmac(void)
  * decision that we deliberately do not exercise to MC/DC here -- per
  * DO-178C 6.4.4.3 the path-equivalence-class argument requires a
  * separate per-mode test which is owned by the existing
- * test_aes_cipher_ecb / test_aes_cipher_ctr cases. This test focuses
- * on the AEAD-mode rejection only.
- */
-static void test_aes_cipher_mcdc_aead_modes(void)
+ * internal_test_aes_cipher_ecb / internal_test_aes_cipher_ctr cases. This test focuses
+ * on the AEAD-mode rejection only. @brief Verify aes cipher mcdc aead modes behavior. @details Executes the aes cipher mcdc aead modes scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_aes_cipher_mcdc_aead_modes(void)
 {
   TEST_BEGIN("rsip aes_cipher MC/DC: mode==GCM || mode==CCM");
-  prep_running();
+  internal_prep_running();
 
   /* Build a minimal wrapped key handle. The function returns
    * invalid_arg before the key is dereferenced for vectors 1 and 3;
@@ -650,7 +638,7 @@ static void test_aes_cipher_mcdc_aead_modes(void)
     ra8_rsip_aes_cipher(&key, k_ra8_rsip_aes_mode_gcm, k_ra8_rsip_dir_encrypt, iv, in, out, 16U));
 
   /* Vector 2: mode=ECB. C1=F, C2=F. Decision F -> proceeds (return is
-   * incidental; existing test_aes_cipher_ecb confirms the happy path). */
+   * incidental; existing internal_test_aes_cipher_ecb confirms the happy path). */
   const ra8_err_t v2 =
     ra8_rsip_aes_cipher(&key, k_ra8_rsip_aes_mode_ecb, k_ra8_rsip_dir_encrypt, iv, in, out, 16U);
   /* Any return value is acceptable here -- the dummy key handle is
@@ -669,19 +657,18 @@ static void test_aes_cipher_mcdc_aead_modes(void)
 }
 
 /**
- * @test test_mcdc_poly1305_msg_len
+ * @test internal_test_mcdc_poly1305_msg_len
  *
  * @par MC/DC:
  * Decision: ``if ((msg == nullptr) && (msg_len != 0U))`` (2 conditions,
  * libs/ra8_hal/src/ra8_rsip.c ra8_rsip_poly1305). N+1 = 3.
  * - V1: msg=valid, msg_len=8 -> C1=F short-circuits -> dec F (proceeds)
  * - V2: msg=NULL,  msg_len=0 -> C1=T, C2=F          -> dec F (proceeds zero-len)
- * - V3: msg=NULL,  msg_len=8 -> C1=T, C2=T          -> dec T -> null_ptr
- */
-static void test_mcdc_poly1305_msg_len(void)
+ * - V3: msg=NULL,  msg_len=8 -> C1=T, C2=T          -> dec T -> null_ptr @brief Verify mcdc poly1305 msg len behavior. @details Executes the mcdc poly1305 msg len scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_poly1305_msg_len(void)
 {
   TEST_BEGIN("rsip poly1305 MC/DC: msg==null && msg_len!=0");
-  prep_running();
+  internal_prep_running();
   uint8_t       otk[32] = {};
   const uint8_t msg[8]  = {0U};
   uint8_t       tag[16] = {};
@@ -695,7 +682,7 @@ static void test_mcdc_poly1305_msg_len(void)
 }
 
 /**
- * @test test_mcdc_hash_validate_shake_digest
+ * @test internal_test_mcdc_hash_validate_shake_digest
  *
  * @par MC/DC:
  * Decision (libs/ra8_hal/src/ra8_rsip.c internal_hash_validate, reached
@@ -706,12 +693,11 @@ static void test_mcdc_poly1305_msg_len(void)
  * - V2: alg=SHAKE128                     -> C1=F short -> dec F -> ok
  * - V3: alg=SHAKE256                     -> C1=T, C2=F -> dec F -> ok
  * - V4: alg=SHA256, digest_len<n         -> C1=T, C2=T, C3=T -> dec T -> err
- * V1+V4 prove C3 independence; V1+V2 prove C1; V1+V3 prove C2.
- */
-static void test_mcdc_hash_validate_shake_digest(void)
+ * V1+V4 prove C3 independence; V1+V2 prove C1; V1+V3 prove C2. @brief Verify mcdc hash validate shake digest behavior. @details Executes the mcdc hash validate shake digest scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_hash_validate_shake_digest(void)
 {
   TEST_BEGIN("rsip hash_validate MC/DC: shake bypass + short digest");
-  prep_running();
+  internal_prep_running();
   const uint8_t msg[8]                 = {0U};
   uint8_t       d_full[k_t_sha512_len] = {};
   /* V1: SHA-256 with digest_len = 32 (== n). */
@@ -727,7 +713,7 @@ static void test_mcdc_hash_validate_shake_digest(void)
 }
 
 /**
- * @test test_mcdc_hash_msg_null_len_pair
+ * @test internal_test_mcdc_hash_msg_null_len_pair
  *
  * @par MC/DC:
  * Decision: ``if ((msg == nullptr) && (msg_len != 0U))``
@@ -740,12 +726,11 @@ static void test_mcdc_hash_validate_shake_digest(void)
  * V1+V3 isolate C1; V2+V3 isolate C2.
  *
  * Same vectors apply to `internal_hash_pull_digest`, which shares the
- * predicate; both are reached through ra8_rsip_hash().
- */
-static void test_mcdc_hash_msg_null_len_pair(void)
+ * predicate; both are reached through ra8_rsip_hash(). @brief Verify mcdc hash msg null len pair behavior. @details Executes the mcdc hash msg null len pair scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_hash_msg_null_len_pair(void)
 {
   TEST_BEGIN("rsip hash_validate MC/DC: msg==NULL && msg_len!=0");
-  prep_running();
+  internal_prep_running();
   uint8_t       digest[32] = {};
   const uint8_t msg[8]     = {0U};
   /* V1: valid msg+len. */
@@ -759,7 +744,7 @@ static void test_mcdc_hash_msg_null_len_pair(void)
 }
 
 /**
- * @test test_mcdc_aead_aad_null_len_pair
+ * @test internal_test_mcdc_aead_aad_null_len_pair
  *
  * @par MC/DC:
  * Decision: ``if ((aad != nullptr) && (aad_len > 0U))``
@@ -770,12 +755,11 @@ static void test_mcdc_hash_msg_null_len_pair(void)
  * - V3: aad=valid, aad_len=8 -> C1=T, C2=T -> dec T (push AAD).
  * V1+V3 isolate C1; V2+V3 isolate C2.
  *
- * Reached via ra8_rsip_aes_gcm_encrypt with three AAD configurations.
- */
-static void test_mcdc_aead_aad_null_len_pair(void)
+ * Reached via ra8_rsip_aes_gcm_encrypt with three AAD configurations. @brief Verify mcdc aead aad null len pair behavior. @details Executes the mcdc aead aad null len pair scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_aead_aad_null_len_pair(void)
 {
   TEST_BEGIN("rsip aead_pull_tag MC/DC: aad!=NULL && aad_len>0");
-  prep_running();
+  internal_prep_running();
   /* Install an AES-128 plain key. */
   const uint8_t         kbytes[16] = {};
   ra8_rsip_key_handle_t handle     = {};
@@ -812,7 +796,7 @@ static void test_mcdc_aead_aad_null_len_pair(void)
 }
 
 /**
- * @test test_mcdc_aes_cipher_block_align_quad
+ * @test internal_test_mcdc_aes_cipher_block_align_quad
  *
  * @par MC/DC:
  * Decision: ``if (((mode == ECB) || (mode == CBC) || (mode == CMAC)) &&
@@ -830,58 +814,59 @@ static void test_mcdc_aead_aad_null_len_pair(void)
  * @par Note:
  * The CTR mode-2 case at V4 also discharges the structural obligation
  * for the outer 3-way OR's all-false branch (first row of the
- * `ra8_rsip_aes_cipher` block-align guard).
- */
-static void test_mcdc_aes_cipher_block_align_quad(void)
+ * `ra8_rsip_aes_cipher` block-align guard). @brief Verify mcdc aes cipher block align quad behavior. @details Executes the mcdc aes cipher block align quad scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_aes_cipher_block_align_quad(void)
 {
   TEST_BEGIN("rsip aes_cipher MC/DC: (ECB||CBC||CMAC) && len%16!=0");
-  prep_running();
+  internal_prep_running();
 
   const uint8_t         kbytes[16] = {};
   ra8_rsip_key_handle_t handle     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_aes128_install_plain(kbytes, &handle));
 
   /* V1: ECB + 5 bytes -> reject (block-align). */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, cipher_vec(&handle, k_ra8_rsip_aes_mode_ecb, nullptr, 5U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 internal_cipher_vec(&handle, k_ra8_rsip_aes_mode_ecb, nullptr, 5U));
 
   /* V2: CBC + 5 bytes -> reject. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, cipher_vec(&handle, k_ra8_rsip_aes_mode_cbc, nullptr, 5U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 internal_cipher_vec(&handle, k_ra8_rsip_aes_mode_cbc, nullptr, 5U));
 
   /* V3: CMAC + 5 bytes -> reject. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, cipher_vec(&handle, k_ra8_rsip_aes_mode_cmac, nullptr, 5U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 internal_cipher_vec(&handle, k_ra8_rsip_aes_mode_cmac, nullptr, 5U));
 
   /* V4: CTR + 5 bytes -> outer-OR is all-false; alignment check skipped;
    * function proceeds to dispatch and returns OK in the fake. */
   const uint8_t iv[16] = {};
-  TEST_ASSERT_EQ(k_ra8_ok, cipher_vec(&handle, k_ra8_rsip_aes_mode_ctr, iv, 5U));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_cipher_vec(&handle, k_ra8_rsip_aes_mode_ctr, iv, 5U));
 
   /* V5: ECB + 16 bytes -> outer-OR true, alignment OK -> accept. */
-  TEST_ASSERT_EQ(k_ra8_ok, cipher_vec(&handle, k_ra8_rsip_aes_mode_ecb, nullptr, 16U));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_cipher_vec(&handle, k_ra8_rsip_aes_mode_ecb, nullptr, 16U));
 
   TEST_END("rsip aes_cipher MC/DC: (ECB||CBC||CMAC) && len%16!=0");
 }
 
 int32_t main(void)
 {
-  test_install_aes128_plain();
-  test_install_aes_192_256();
-  test_install_chacha20_hmac();
-  test_install_oem();
-  test_aes_cipher_ecb();
-  test_aes_cipher_ctr();
-  test_aes_gcm();
-  test_aes_ccm();
-  test_chacha20_stream();
-  test_chacha20_poly1305();
-  test_hash_family();
-  test_hash_done_timeout();
-  test_hmac();
-  test_aes_cipher_mcdc_aead_modes();
-  test_mcdc_poly1305_msg_len();
-  test_mcdc_hash_validate_shake_digest();
-  test_mcdc_hash_msg_null_len_pair();
-  test_mcdc_aead_aad_null_len_pair();
-  test_mcdc_aes_cipher_block_align_quad();
-  (void)fprintf(stderr, "[OK ] test_ra8_rsip_sym.c\n");
+  internal_test_install_aes128_plain();
+  internal_test_install_aes_192_256();
+  internal_test_install_chacha20_hmac();
+  internal_test_install_oem();
+  internal_test_aes_cipher_ecb();
+  internal_test_aes_cipher_ctr();
+  internal_test_aes_gcm();
+  internal_test_aes_ccm();
+  internal_test_chacha20_stream();
+  internal_test_chacha20_poly1305();
+  internal_test_hash_family();
+  internal_test_hash_done_timeout();
+  internal_test_hmac();
+  internal_test_aes_cipher_mcdc_aead_modes();
+  internal_test_mcdc_poly1305_msg_len();
+  internal_test_mcdc_hash_validate_shake_digest();
+  internal_test_mcdc_hash_msg_null_len_pair();
+  internal_test_mcdc_aead_aad_null_len_pair();
+  internal_test_mcdc_aes_cipher_block_align_quad();
   return 0;
 }

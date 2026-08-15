@@ -40,34 +40,34 @@ static const char* s_tag = "USB";
  */
 
 /**
- * @var s_syscfg_after_phy_bringup
+ * @var g_syscfg_after_phy_bringup
  * @brief SYSCFG snapshot captured at the end of ra8_usb_device_init.
  *
  * @details
  * Bisect probe for the "USBE clears between phy bring-up and echo loop"
- * regression. Captured AFTER internal_usbhs_phy_bringup AND
- * internal_usb_init_common have both run. Expected value: 0x0081
+ * regression. Captured AFTER priv_usbhs_phy_bringup AND
+ * priv_usb_init_common have both run. Expected value: 0x0081
  * (USBE | HSE). HUM Ch 37.2.1 SYSCFG p 2060.
  *
  * @note Read-only from outside; written only by ::ra8_usb_device_init.
  * @since 0.1.0
  */
-volatile uint16_t s_syscfg_after_phy_bringup = 0U;
+volatile uint16_t g_syscfg_after_phy_bringup = 0U;
 
 /**
- * @var s_lpsts_after_phy_bringup
+ * @var g_lpsts_after_phy_bringup
  * @brief LPSTS snapshot at the end of ra8_usb_device_init.
  *
- * @details Companion to ::s_syscfg_after_phy_bringup. Expected value:
+ * @details Companion to ::g_syscfg_after_phy_bringup. Expected value:
  * SUSPENDM=1 (bit 14), so 0x4000. HUM Ch 37.2.43 LPSTS p 2111.
  *
  * @note Read-only from outside; written only by ::ra8_usb_device_init.
  * @since 0.1.0
  */
-volatile uint16_t s_lpsts_after_phy_bringup = 0U;
+volatile uint16_t g_lpsts_after_phy_bringup = 0U;
 
 /**
- * @var s_syscfg_after_attach
+ * @var g_syscfg_after_attach
  * @brief SYSCFG snapshot captured at the end of ra8_usb_device_attach(true).
  *
  * @details Bisect probe; expected value with attach=true: 0x0091
@@ -76,10 +76,10 @@ volatile uint16_t s_lpsts_after_phy_bringup = 0U;
  * @note Read-only from outside; written only by ::ra8_usb_device_attach.
  * @since 0.1.0
  */
-volatile uint16_t s_syscfg_after_attach = 0U;
+volatile uint16_t g_syscfg_after_attach = 0U;
 
 /**
- * @var s_lpsts_after_attach
+ * @var g_lpsts_after_attach
  * @brief LPSTS snapshot at the end of ra8_usb_device_attach(true).
  *
  * @details Bisect probe; expected SUSPENDM=1 (0x4000). HUM Ch 37.2.43
@@ -88,10 +88,10 @@ volatile uint16_t s_syscfg_after_attach = 0U;
  * @note Read-only from outside; written only by ::ra8_usb_device_attach.
  * @since 0.1.0
  */
-volatile uint16_t s_lpsts_after_attach = 0U;
+volatile uint16_t g_lpsts_after_attach = 0U;
 
 /**
- * @var s_syssts0_after_attach
+ * @var g_syssts0_after_attach
  * @brief SYSSTS0 snapshot captured at the end of ra8_usb_device_attach(true).
  *
  * @details Bisect probe; this is the LOAD-BEARING readback for the HS
@@ -112,10 +112,10 @@ volatile uint16_t s_lpsts_after_attach = 0U;
  * @note Read-only from outside; written only by ::ra8_usb_device_attach.
  * @since 0.1.0
  */
-volatile uint16_t s_syssts0_after_attach = 0U;
+volatile uint16_t g_syssts0_after_attach = 0U;
 
 /**
- * @var s_syscfg_before_dprpu
+ * @var g_syscfg_before_dprpu
  * @brief SYSCFG snapshot captured immediately BEFORE the DPRPU write.
  *
  * @details Bisect probe; expected: 0x0181 (USBE | CNEN | HSE) on the
@@ -127,7 +127,7 @@ volatile uint16_t s_syssts0_after_attach = 0U;
  * @note Read-only from outside; written only by ::ra8_usb_device_attach.
  * @since 0.1.0
  */
-volatile uint16_t s_syscfg_before_dprpu = 0U;
+volatile uint16_t g_syscfg_before_dprpu = 0U;
 
 /* =============================================================================
  * Device-mode state decode
@@ -185,31 +185,31 @@ static ra8_usb_dev_state_t internal_decode_dvsq(uint16_t intsts0)
  */
 ra8_err_t ra8_usb_device_init(ra8_usb_speed_t speed)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
-  const ra8_err_t mst_err = ra8_mstp_enable(internal_mstp(speed));
+  const ra8_err_t mst_err = ra8_mstp_enable(priv_mstp(speed));
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "usb_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   if (speed == k_ra8_usb_speed_hs) {
-    const ra8_err_t phy_err = internal_usbhs_phy_bringup(reg);
+    const ra8_err_t phy_err = priv_usbhs_phy_bringup(reg);
     RA8_RETURN_ON_ERROR(phy_err, s_tag, "usb_init: HS PHY bring-up"); /* GCOVR_EXCL_BR_LINE */
   } else {
-    const ra8_err_t fs_err = internal_usbfs_module_bringup(reg);
+    const ra8_err_t fs_err = priv_usbfs_module_bringup(reg);
     RA8_RETURN_ON_ERROR(fs_err, s_tag, "usb_init: FS module bring-up"); /* GCOVR_EXCL_BR_LINE */
   }
 
-  internal_usb_init_common(reg);
+  priv_usb_init_common(reg);
 
   /* Bisect probes: capture SYSCFG/LPSTS state at the END of device-init,
    * BEFORE control returns to ra8_board_usbhs_device_init / the DCD
    * bridge. HUM Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111. */
   if (speed == k_ra8_usb_speed_hs) {
-    s_syscfg_after_phy_bringup = reg->SYSCFG;
-    s_lpsts_after_phy_bringup  = *ra8_usbhs_lpsts();
+    g_syscfg_after_phy_bringup = reg->SYSCFG;
+    g_lpsts_after_phy_bringup  = *ra8_usbhs_lpsts();
   }
 
   ra8_log_info_val(s_tag, "usb device init speed", (uint32_t)speed);
@@ -231,7 +231,7 @@ ra8_err_t ra8_usb_device_init(ra8_usb_speed_t speed)
  */
 ra8_err_t ra8_usb_device_deinit(ra8_usb_speed_t speed)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -245,7 +245,7 @@ ra8_err_t ra8_usb_device_deinit(ra8_usb_speed_t speed)
 
   /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1967 */
   reg->SYSCFG = 0U;
-  return ra8_mstp_disable(internal_mstp(speed));
+  return ra8_mstp_disable(priv_mstp(speed));
 }
 
 /**
@@ -264,7 +264,7 @@ ra8_err_t ra8_usb_device_deinit(ra8_usb_speed_t speed)
  */
 ra8_err_t ra8_usb_device_attach(ra8_usb_speed_t speed, bool attached)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -292,17 +292,17 @@ ra8_err_t ra8_usb_device_attach(ra8_usb_speed_t speed, bool attached)
      * The FS instance has no CNEN gate (HUM Ch 36.2.1 SYSCFG p 1966),
      * so CNEN is HS-only here. */
     if (speed == k_ra8_usb_speed_hs) {
-      internal_rmw16(&reg->SYSCFG, cnen, 0U);
-      s_syscfg_before_dprpu = reg->SYSCFG;
+      priv_rmw16(&reg->SYSCFG, cnen, 0U);
+      g_syscfg_before_dprpu = reg->SYSCFG;
     }
-    internal_rmw16(&reg->SYSCFG, dprpu, 0U);
+    priv_rmw16(&reg->SYSCFG, dprpu, 0U);
   } else {
-    internal_rmw16(&reg->SYSCFG, 0U, dprpu);
+    priv_rmw16(&reg->SYSCFG, 0U, dprpu);
     if (speed == k_ra8_usb_speed_hs) {
       /* HUM Ch 37.2.1 p 2062: clear CNEN when VBUS is removed /
        * detach is requested, to avoid through-current on floating
        * D+/D- when the cable is unplugged. */
-      internal_rmw16(&reg->SYSCFG, 0U, cnen);
+      priv_rmw16(&reg->SYSCFG, 0U, cnen);
     }
   }
 
@@ -310,9 +310,9 @@ ra8_err_t ra8_usb_device_attach(ra8_usb_speed_t speed, bool attached)
    * Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.3 SYSSTS0 p 2063, HUM
    * Ch 37.2.43 LPSTS p 2111. */
   if (speed == k_ra8_usb_speed_hs) {
-    s_syscfg_after_attach  = reg->SYSCFG;
-    s_lpsts_after_attach   = *ra8_usbhs_lpsts();
-    s_syssts0_after_attach = reg->SYSSTS0;
+    g_syscfg_after_attach  = reg->SYSCFG;
+    g_lpsts_after_attach   = *ra8_usbhs_lpsts();
+    g_syssts0_after_attach = reg->SYSSTS0;
   }
   return k_ra8_ok;
 }
@@ -339,7 +339,7 @@ ra8_err_t ra8_usb_device_attach(ra8_usb_speed_t speed, bool attached)
 ra8_err_t ra8_usb_get_status(ra8_usb_speed_t speed, uint16_t* out_mask)
 {
   RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -364,7 +364,7 @@ ra8_err_t ra8_usb_get_status(ra8_usb_speed_t speed, uint16_t* out_mask)
  */
 ra8_err_t ra8_usb_clear_status(ra8_usb_speed_t speed, uint16_t mask)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -390,7 +390,7 @@ ra8_err_t ra8_usb_clear_status(ra8_usb_speed_t speed, uint16_t mask)
 ra8_err_t ra8_usb_get_device_state(ra8_usb_speed_t speed, ra8_usb_dev_state_t* out_state)
 {
   RA8_CHECK_NULL_PTR(out_state, s_tag, "out_state must not be nullptr");
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -415,7 +415,7 @@ ra8_err_t ra8_usb_get_device_state(ra8_usb_speed_t speed, ra8_usb_dev_state_t* o
  */
 ra8_err_t ra8_usb_set_address(ra8_usb_speed_t speed, uint8_t address)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -452,7 +452,7 @@ static void internal_dcp_reset_defaults(volatile r_usb_regs_t* reg)
 {
   reg->DCPCFG  = 0U;
   reg->DCPMAXP = k_ra8_usb_dcp_max_packet;
-  internal_select_cfifo(reg, 0U, true);
+  priv_select_cfifo(reg, 0U, true);
   reg->CFIFOCTR = (uint16_t)k_ra8_fifoctr_bclr;
 }
 
@@ -475,7 +475,7 @@ static void internal_dcp_reset_defaults(volatile r_usb_regs_t* reg)
  */
 ra8_err_t ra8_usb_device_busreset_rearm(ra8_usb_speed_t speed)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -507,7 +507,7 @@ ra8_err_t ra8_usb_device_busreset_rearm(ra8_usb_speed_t speed)
    * Some RA silicon revisions clear individual INTENB0 bits across a
    * bus reset (notably CTRT). Re-apply the post-init mask defensively
    * so the next SETUP raises CTRT as expected. Mirrors the mask in
-   * internal_usb_init_common. */
+   * priv_usb_init_common. */
   /* SOFR and RSME are intentionally NOT enabled here:
    *   - SOFR fires every 125us on HS (= 8 kHz);
    *   - RSME stays asserted on USBHS via the PHY's USBR signal
@@ -594,12 +594,12 @@ internal_pipe_finalize(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_ep_
 {
   const uint8_t  ctr_idx  = (uint8_t)(pipe_num - 1U);
   const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
-  internal_rmw16(&reg->PIPECTR[ctr_idx], k_ra8_pipectr_sqclr, 0U);
-  internal_rmw16(&reg->PIPECTR[ctr_idx], k_ra8_pipectr_aclrm, 0U);
-  internal_rmw16(&reg->PIPECTR[ctr_idx], 0U, k_ra8_pipectr_aclrm);
+  priv_rmw16(&reg->PIPECTR[ctr_idx], k_ra8_pipectr_sqclr, 0U);
+  priv_rmw16(&reg->PIPECTR[ctr_idx], k_ra8_pipectr_aclrm, 0U);
+  priv_rmw16(&reg->PIPECTR[ctr_idx], 0U, k_ra8_pipectr_aclrm);
   reg->BRDYSTS = (uint16_t)(~pipe_bit);
   reg->BEMPSTS = (uint16_t)(~pipe_bit);
-  internal_pipe_pid(reg, pipe_num, (dir == k_ra8_usb_ep_dir_out) ? k_ra8_pid_buf : k_ra8_pid_nak);
+  priv_pipe_pid(reg, pipe_num, (dir == k_ra8_usb_ep_dir_out) ? k_ra8_pid_buf : k_ra8_pid_nak);
 }
 
 /**
@@ -663,7 +663,7 @@ ra8_err_t ra8_usb_configure_endpoint(ra8_usb_speed_t   speed,
                                      ra8_usb_ep_type_t type,
                                      uint16_t          max_packet)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -672,18 +672,18 @@ ra8_err_t ra8_usb_configure_endpoint(ra8_usb_speed_t   speed,
     return arg_err;
   }
 
-  internal_pipe_quiesce(reg, pipe_num);
+  priv_pipe_quiesce(reg, pipe_num);
 
   /* HUM Ch 36.2.23 "PIPESEL : Pipe Window Select Register", p 2002 */
   reg->PIPESEL = pipe_num;
   /* HUM Ch 36.2.24 "PIPECFG : Pipe Configuration Register", p 2003 */
-  reg->PIPECFG = internal_pipecfg_word(ep_addr, dir, type, false);
+  reg->PIPECFG = priv_pipecfg_word(ep_addr, dir, type, false);
   /* HUM Ch 37.2.35 "PIPEBUF : Pipe Buffer Register", p 2100. PIPEBUF is a
    * USBHS-only register; the USBFS instance (Ch 36) has no equivalent.
    * Bulk pipes get a single MPS-sized bank (DBLB clear). Interrupt/iso
    * pipes keep the reset default. */
   if (type == k_ra8_usb_ep_type_bulk) {
-    reg->PIPEBUF = internal_pipebuf_word(pipe_num, max_packet);
+    reg->PIPEBUF = priv_pipebuf_word(pipe_num, max_packet);
   }
   /* HUM Ch 36.2.26 "PIPEMAXP : Pipe Maximum Packet Size Register", p 2005 */
   reg->PIPEMAXP = max_packet;
@@ -713,7 +713,7 @@ ra8_err_t ra8_usb_configure_endpoint(ra8_usb_speed_t   speed,
  */
 ra8_err_t ra8_usb_stall_endpoint(ra8_usb_speed_t speed, uint8_t pipe_num)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -722,10 +722,10 @@ ra8_err_t ra8_usb_stall_endpoint(ra8_usb_speed_t speed, uint8_t pipe_num)
   }
   if (pipe_num == 0U) {
     /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1999 */
-    internal_dcp_pid(reg, k_ra8_pid_stall);
+    priv_dcp_pid(reg, k_ra8_pid_stall);
   } else {
     /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register", p 2005 */
-    internal_pipe_pid(reg, pipe_num, k_ra8_pid_stall);
+    priv_pipe_pid(reg, pipe_num, k_ra8_pid_stall);
   }
   return k_ra8_ok;
 }

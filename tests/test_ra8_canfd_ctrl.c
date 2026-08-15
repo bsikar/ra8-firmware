@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_err.h"
@@ -64,7 +65,8 @@ static uint32_t s_canfd_cb_count;
 static uint32_t s_canfd_cb_last_mask;
 static uint8_t  s_canfd_cb_last_channel;
 
-static void stub_canfd_cb(void* ctx, uint8_t ch, uint32_t mask)
+/** @brief Provide the file-local stub canfd cb test helper. @details Implements the stub canfd cb fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] ch Fixture argument governed by the exercised interface contract. @param[in] mask Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_stub_canfd_cb(void* ctx, uint8_t ch, uint32_t mask)
 {
   (void)ctx;
   ++s_canfd_cb_count;
@@ -72,7 +74,8 @@ static void stub_canfd_cb(void* ctx, uint8_t ch, uint32_t mask)
   s_canfd_cb_last_channel = ch;
 }
 
-static void prep_w53(void)
+/** @brief Provide the file-local prep w53 test helper. @details Implements the prep w53 fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep_w53(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
@@ -85,12 +88,11 @@ static void prep_w53(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_get_status(void)
+ * code under test that this case touches) @brief Verify get status behavior. @details Executes the get status scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_get_status(void)
 {
   TEST_BEGIN("canfd get_status");
-  prep_w53();
+  internal_prep_w53();
   ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0)->CFDC[0].STS = k_canfd_ctrl_stamp_cfdc;
   uint32_t mask                                               = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_get_status((uint8_t)k_ra8_canfd_test_channel_0, &mask));
@@ -106,12 +108,11 @@ static void test_get_status(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_clear_status(void)
+ * code under test that this case touches) @brief Verify clear status behavior. @details Executes the clear status scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_clear_status(void)
 {
   TEST_BEGIN("canfd clear_status");
-  prep_w53();
+  internal_prep_w53();
   ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0)->CFDC[0].ERFL = k_canfd_ctrl_stamp_cfdc2;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_canfd_clear_status((uint8_t)k_ra8_canfd_test_channel_0, 0x0000FF00U));
@@ -125,14 +126,14 @@ static void test_clear_status(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_attach_and_dispatch(void)
+ * code under test that this case touches) @brief Verify attach and dispatch behavior. @details Executes the attach and dispatch scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_and_dispatch(void)
 {
   TEST_BEGIN("canfd attach + dispatch");
-  prep_w53();
+  internal_prep_w53();
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_attach_handler(stub_canfd_cb, (void*)(uintptr_t)0xABU));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_canfd_attach_handler(internal_stub_canfd_cb, (void*)(uintptr_t)0xABU));
   ra8_canfd((uint8_t)k_ra8_canfd_test_channel_1)->CFDC[0].ERFL = k_canfd_ctrl_stamp_cfdc3;
   ra8_canfd_dispatch((uint8_t)k_ra8_canfd_test_channel_1);
   TEST_ASSERT_EQ(1, s_canfd_cb_count);
@@ -148,12 +149,11 @@ static void test_attach_and_dispatch(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_power_transition(void)
+ * code under test that this case touches) @brief Verify power transition behavior. @details Executes the power transition scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_power_transition(void)
 {
   TEST_BEGIN("canfd power transition");
-  prep_w53();
+  internal_prep_w53();
   /* ra8_canfd_init drives the real clock handshake + mode-transition polls
    * on host now (T1-01); arm the seam so each acknowledges on the first
    * poll. */
@@ -179,10 +179,11 @@ static void test_power_transition(void)
   * code under test that this case touches)
  * --------------------------------------------------------------------------- */
 
-static void test_filter_set_writes_id_mask_dlc(void)
+/** @brief Verify filter set writes id mask dlc behavior. @details Executes the filter set writes id mask dlc scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_filter_set_writes_id_mask_dlc(void)
 {
   TEST_BEGIN("canfd filter_set programs CFDGAFL slot");
-  prep_w53();
+  internal_prep_w53();
 
   /* filter_set drives GL_RESET -> write AFL -> GL_OPERATION; both the
    * reset-mode ack (GRSTSTS SET) and the operation-mode ack
@@ -209,12 +210,11 @@ static void test_filter_set_writes_id_mask_dlc(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_filter_set_validation(void)
+ * code under test that this case touches) @brief Verify filter set validation behavior. @details Executes the filter set validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_filter_set_validation(void)
 {
   TEST_BEGIN("canfd filter_set rejects out-of-range args");
-  prep_w53();
+  internal_prep_w53();
 
   /* Filter id past the 256-entry total. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_canfd_filter_set(0xFFFFU, 0x123U, 0x7FFU, 0U));
@@ -229,12 +229,11 @@ static void test_filter_set_validation(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_brs_updates_dcfg(void)
+ * code under test that this case touches) @brief Verify set brs updates dcfg behavior. @details Executes the set brs updates dcfg scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_brs_updates_dcfg(void)
 {
   TEST_BEGIN("canfd set_brs reprograms CFDC2[0].DCFG");
-  prep_w53();
+  internal_prep_w53();
   /* ra8_canfd_init drives the real clock handshake + mode-transition polls
    * on host now (T1-01); arm the seam so each acknowledges on the first
    * poll. */
@@ -258,12 +257,11 @@ static void test_set_brs_updates_dcfg(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_iso_mode_toggles_niso(void)
+ * code under test that this case touches) @brief Verify set iso mode toggles niso behavior. @details Executes the set iso mode toggles niso scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_iso_mode_toggles_niso(void)
 {
   TEST_BEGIN("canfd set_iso_mode toggles CFDGFDCFG.NISO");
-  prep_w53();
+  internal_prep_w53();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_set_iso_mode(true));
   volatile r_canfd_t* reg = ra8_canfd(0U);
@@ -275,7 +273,7 @@ static void test_set_iso_mode_toggles_niso(void)
 }
 
 /**
- * @test test_mcdc_set_bitrate_data_rate_guard
+ * @test internal_test_mcdc_set_bitrate_data_rate_guard
  *
  * @par MC/DC:
  * Decision: `if ((data_bitrate_bps != 0U) &&
@@ -291,9 +289,8 @@ static void test_set_iso_mode_toggles_niso(void)
  * MC/DC pair for C1: V1(F,_)->F vs V3(T,T)->T (decision flips, C2
  * masked in V1 by short-circuit). MC/DC pair for C2: V2(T,F)->F vs
  * V3(T,T)->T (decision flips, C1 held T). N+1 = 3 vectors for N=2
- * conditions: minimal MC/DC.
- */
-static void test_mcdc_set_bitrate_data_rate_guard(void)
+ * conditions: minimal MC/DC. @brief Verify mcdc set bitrate data rate guard behavior. @details Executes the mcdc set bitrate data rate guard scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_set_bitrate_data_rate_guard(void)
 {
   TEST_BEGIN("canfd set_bitrate MC/DC: data_bitrate!=0 && data>nominal");
   ra8_fake_mmap_reset();
@@ -332,7 +329,7 @@ static void test_mcdc_set_bitrate_data_rate_guard(void)
 }
 
 /**
- * @test test_mcdc_validate_frame_brs_without_fd
+ * @test internal_test_mcdc_validate_frame_brs_without_fd
  *
  * @par MC/DC:
  * Decision: `if ((frame->is_brs != 0U) && (frame->is_fd == 0U))`
@@ -345,9 +342,8 @@ static void test_mcdc_set_bitrate_data_rate_guard(void)
  *   (BRS demanded without enabling FD; varies C1 vs V1).
  * MC/DC pair for C1: V1(F,_)->F vs V3(T,T)->T. MC/DC pair for C2:
  * V2(T,F)->F vs V3(T,T)->T. N+1 = 3 vectors for N=2 conditions:
- * minimal MC/DC.
- */
-static void test_mcdc_validate_frame_brs_without_fd(void)
+ * minimal MC/DC. @brief Verify mcdc validate frame brs without fd behavior. @details Executes the mcdc validate frame brs without fd scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_validate_frame_brs_without_fd(void)
 {
   TEST_BEGIN("canfd validate_frame MC/DC: is_brs && !is_fd");
   ra8_fake_mmap_reset();
@@ -392,7 +388,7 @@ static void test_mcdc_validate_frame_brs_without_fd(void)
  * --------------------------------------------------------------------------- */
 
 /**
- * @test test_canfd_clock_srdy_set_timeout
+ * @test internal_test_canfd_clock_srdy_set_timeout
  *
  * @par MC/DC:
  * (single-condition ``if (err != k_ra8_ok)`` guard -- no compound decision
@@ -406,9 +402,8 @@ static void test_mcdc_validate_frame_brs_without_fd(void)
  * wait on CANFDCKCR (the ``internal_wait_canfdcksrdy(1U)`` SRDY-set poll)
  * makes the block handshake time out. This case MUST run before any
  * successful ra8_canfd_init because the clock block latches a one-shot
- * static "already inited" guard on success; a timeout leaves it unlatched.
- */
-static void test_canfd_clock_srdy_set_timeout(void)
+ * static "already inited" guard on success; a timeout leaves it unlatched. @brief Verify canfd clock srdy set timeout behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_canfd_clock_srdy_set_timeout(void)
 {
   TEST_BEGIN("canfd init CANFDCKSRDY=1 handshake timeout");
   ra8_fake_mmap_reset();
@@ -424,7 +419,7 @@ static void test_canfd_clock_srdy_set_timeout(void)
 }
 
 /**
- * @test test_canfd_clock_srdy_clear_timeout
+ * @test internal_test_canfd_clock_srdy_clear_timeout
  *
  * @par MC/DC:
  * (single-condition ``if (err != k_ra8_ok)`` guard -- no compound decision
@@ -439,9 +434,8 @@ static void test_canfd_clock_srdy_set_timeout(void)
  * times out only the second (SRDY=0) wait-loop -- fail_wait alone would
  * stop at the first. Like the SRDY=1 case this MUST run before any
  * successful init (the one-shot clock-inited guard stays unlatched on a
- * timeout).
- */
-static void test_canfd_clock_srdy_clear_timeout(void)
+ * timeout). @brief Verify canfd clock srdy clear timeout behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_canfd_clock_srdy_clear_timeout(void)
 {
   TEST_BEGIN("canfd init CANFDCKSRDY=0 handshake timeout");
   ra8_fake_mmap_reset();
@@ -455,7 +449,7 @@ static void test_canfd_clock_srdy_clear_timeout(void)
 }
 
 /**
- * @test test_init_global_operation_timeout
+ * @test internal_test_init_global_operation_timeout
  *
  * @par MC/DC:
  * (single-condition ``if (gop_err != k_ra8_ok)`` / ``if (open_err !=
@@ -470,9 +464,8 @@ static void test_canfd_clock_srdy_clear_timeout(void)
  * only the operation ack. The channel-mode acks poll CFDC[0].STS (a
  * different register) so they succeed un-armed. CANFDCKCR is armed to
  * satisfy so the clock block succeeds regardless of the one-shot guard
- * state.
- */
-static void test_init_global_operation_timeout(void)
+ * state. @brief Verify init global operation timeout behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_global_operation_timeout(void)
 {
   TEST_BEGIN("canfd init GL_OPERATION timeout");
   ra8_fake_mmap_reset();
@@ -490,7 +483,7 @@ static void test_init_global_operation_timeout(void)
 }
 
 /**
- * @test test_set_test_mode_happy_and_validation
+ * @test internal_test_set_test_mode_happy_and_validation
  *
  * @par MC/DC:
  * (no compound decisions in the exercised code -- the halt/operation
@@ -500,13 +493,12 @@ static void test_init_global_operation_timeout(void)
  * @details First host coverage of ``ra8_canfd_set_test_mode``. The happy
  * call drives CH_HALT then CH_OPERATION: the CH_HALT ack runs the
  * ``internal_wait_status_bit(reg, CHLTSTS)`` leg in
- * ``ra8_canfd_internal_set_channel_mode`` (the ``mode == k_ra8_chmdc_halt``
+ * ``priv_ra8_canfd_internal_set_channel_mode`` (the ``mode == k_ra8_chmdc_halt``
  * branch), and the return path drives the CH_OPERATION clear-wait. Both
  * poll CFDC[0].STS; satisfy_after(0) acks both on the first poll. The
  * invalid-mode call exercises the "``mode > k_ra8_ctms_self_test_1`` ->
- * invalid_arg" guard, and the bad-channel call the null-ptr guard.
- */
-static void test_set_test_mode_happy_and_validation(void)
+ * invalid_arg" guard, and the bad-channel call the null-ptr guard. @brief Verify set test mode happy and validation behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_test_mode_happy_and_validation(void)
 {
   TEST_BEGIN("canfd set_test_mode happy + validation");
   ra8_fake_mmap_reset();
@@ -534,7 +526,7 @@ static void test_set_test_mode_happy_and_validation(void)
 }
 
 /**
- * @test test_set_test_mode_halt_timeout
+ * @test internal_test_set_test_mode_halt_timeout
  *
  * @par MC/DC:
  * (single-condition ``if (halt_err != k_ra8_ok)`` guard -- no compound
@@ -545,9 +537,8 @@ static void test_set_test_mode_happy_and_validation(void)
  * recovers the channel to CH_OPERATION and returns the timeout. Both the
  * failing CH_HALT ack and the recovery CH_OPERATION ack poll CFDC[0].STS,
  * so fail_nth_wait(&reg->CFDC[0].STS, 0) times out only the first
- * wait-loop (CH_HALT) and lets the recovery wait-loop succeed.
- */
-static void test_set_test_mode_halt_timeout(void)
+ * wait-loop (CH_HALT) and lets the recovery wait-loop succeed. @brief Verify set test mode halt timeout behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_test_mode_halt_timeout(void)
 {
   TEST_BEGIN("canfd set_test_mode CH_HALT timeout");
   ra8_fake_mmap_reset();
@@ -566,7 +557,7 @@ static void test_set_test_mode_halt_timeout(void)
 }
 
 /**
- * @test test_filter_set_timeout_and_page1_legs
+ * @test internal_test_filter_set_timeout_and_page1_legs
  *
  * @par MC/DC:
  * (single-condition guards -- the ``filter_id >= k_ra8_canfd_afl_per_page``
@@ -582,9 +573,8 @@ static void test_set_test_mode_halt_timeout(void)
  * - GL_RESET ack times out (fail_nth_wait 0) -> "reset_err != k_ra8_ok ->
  *   return reset_err".
  * - GL_OPERATION ack times out (fail_nth_wait 1) while the GL_RESET ack
- *   succeeds -> "op_err != k_ra8_ok -> return op_err".
- */
-static void test_filter_set_timeout_and_page1_legs(void)
+ *   succeeds -> "op_err != k_ra8_ok -> return op_err". @brief Verify filter set timeout and page1 legs behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_filter_set_timeout_and_page1_legs(void)
 {
   TEST_BEGIN("canfd filter_set page-1 bump-skip + GL-mode timeouts");
 
@@ -620,22 +610,21 @@ int32_t main(void)
    * "already inited" guard on the first successful handshake, after which
    * the handshake (and its timeout legs) is skipped. A timeout leaves the
    * guard unlatched, so these two cases still exercise the real poll. */
-  test_canfd_clock_srdy_set_timeout();
-  test_canfd_clock_srdy_clear_timeout();
-  test_get_status();
-  test_clear_status();
-  test_attach_and_dispatch();
-  test_power_transition();
-  test_filter_set_writes_id_mask_dlc();
-  test_filter_set_validation();
-  test_set_brs_updates_dcfg();
-  test_set_iso_mode_toggles_niso();
-  test_mcdc_set_bitrate_data_rate_guard();
-  test_mcdc_validate_frame_brs_without_fd();
-  test_init_global_operation_timeout();
-  test_set_test_mode_happy_and_validation();
-  test_set_test_mode_halt_timeout();
-  test_filter_set_timeout_and_page1_legs();
-  (void)fprintf(stderr, "[OK ] test_ra8_canfd_ctrl.c\n");
+  internal_test_canfd_clock_srdy_set_timeout();
+  internal_test_canfd_clock_srdy_clear_timeout();
+  internal_test_get_status();
+  internal_test_clear_status();
+  internal_test_attach_and_dispatch();
+  internal_test_power_transition();
+  internal_test_filter_set_writes_id_mask_dlc();
+  internal_test_filter_set_validation();
+  internal_test_set_brs_updates_dcfg();
+  internal_test_set_iso_mode_toggles_niso();
+  internal_test_mcdc_set_bitrate_data_rate_guard();
+  internal_test_mcdc_validate_frame_brs_without_fd();
+  internal_test_init_global_operation_timeout();
+  internal_test_set_test_mode_happy_and_validation();
+  internal_test_set_test_mode_halt_timeout();
+  internal_test_filter_set_timeout_and_page1_legs();
   return 0;
 }

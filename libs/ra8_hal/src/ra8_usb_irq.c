@@ -124,7 +124,7 @@ ra8_err_t ra8_usb_attach_handler(ra8_usb_speed_t speed, ra8_usb_event_fn_t fn, v
 RA8_ISR_SAFE
 void ra8_usb_dispatch(ra8_usb_speed_t speed)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- speeds always valid */
     return;             /* GCOVR_EXCL_LINE                           */
   }
@@ -185,7 +185,7 @@ void ra8_usb_dispatch(ra8_usb_speed_t speed)
  */
 uint16_t ra8_usb_intsts0_snapshot(ra8_usb_speed_t speed)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return 0U;
   }
@@ -210,7 +210,7 @@ ra8_err_t ra8_usb_enter_stop(ra8_usb_speed_t speed)
   if ((speed != k_ra8_usb_speed_fs) && (speed != k_ra8_usb_speed_hs)) {
     return k_ra8_err_invalid_arg;
   }
-  return ra8_mstp_disable(internal_mstp(speed));
+  return ra8_mstp_disable(priv_mstp(speed));
 }
 
 /**
@@ -231,7 +231,7 @@ ra8_err_t ra8_usb_exit_stop(ra8_usb_speed_t speed)
   if ((speed != k_ra8_usb_speed_fs) && (speed != k_ra8_usb_speed_hs)) {
     return k_ra8_err_invalid_arg;
   }
-  return ra8_mstp_enable(internal_mstp(speed));
+  return ra8_mstp_enable(priv_mstp(speed));
 }
 /* =============================================================================
  * Host-mode bring-up (peer of the device-mode lifecycle above)
@@ -293,7 +293,7 @@ static uint16_t internal_host_syscfg_word(ra8_usb_speed_t speed)
  *
  * @details Shared tail of host bring-up for both controller instances:
  * 16-bit FIFO port widths (the per-access width is re-selected by
- * ::internal_select_cfifo), DCP defaults with a 64-byte max packet,
+ * ::priv_select_cfifo), DCP defaults with a 64-byte max packet,
  * USBADDR=0 (newly attached devices answer at the default address), and
  * the host interrupt-enable mask (per-pipe ENB registers stay clear;
  * the transfer engines arm exactly what they wait on).
@@ -361,15 +361,15 @@ static void internal_host_init_defaults(volatile r_usb_regs_t* reg)
 RA8_INTERNAL
 static ra8_err_t internal_host_hs_bringup(volatile r_usb_regs_t* reg)
 {
-  const ra8_err_t phy_err = internal_usbhs_phy_bringup(reg);
+  const ra8_err_t phy_err = priv_usbhs_phy_bringup(reg);
   RA8_RETURN_ON_ERROR(phy_err, s_tag, "host_init: HS PHY bring-up"); /* GCOVR_EXCL_BR_LINE */
-  internal_rmw16(&reg->SYSCFG, 0U, (uint16_t)(1U << k_ra8_syscfg_bit_usbe));
-  internal_rmw16(&reg->SYSCFG,
-                 (uint16_t)((uint16_t)(1U << k_ra8_syscfg_bit_dcfm) |
-                            (uint16_t)((uint16_t)(1U << k_ra8_syscfg_bit_drpd) |
-                                       (uint16_t)(1U << k_ra8_syscfg_bit_cnen))),
-                 0U);
-  internal_rmw16(&reg->SYSCFG, (uint16_t)(1U << k_ra8_syscfg_bit_usbe), 0U);
+  priv_rmw16(&reg->SYSCFG, 0U, (uint16_t)(1U << k_ra8_syscfg_bit_usbe));
+  priv_rmw16(&reg->SYSCFG,
+             (uint16_t)((uint16_t)(1U << k_ra8_syscfg_bit_dcfm) |
+                        (uint16_t)((uint16_t)(1U << k_ra8_syscfg_bit_drpd) |
+                                   (uint16_t)(1U << k_ra8_syscfg_bit_cnen))),
+             0U);
+  priv_rmw16(&reg->SYSCFG, (uint16_t)(1U << k_ra8_syscfg_bit_usbe), 0U);
   return k_ra8_ok;
 }
 
@@ -388,13 +388,13 @@ static ra8_err_t internal_host_hs_bringup(volatile r_usb_regs_t* reg)
  */
 ra8_err_t ra8_usb_host_init(ra8_usb_speed_t speed)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
-  const ra8_err_t mst_err = ra8_mstp_enable(internal_mstp(speed));
+  const ra8_err_t mst_err = ra8_mstp_enable(priv_mstp(speed));
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "host_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   if (speed == k_ra8_usb_speed_hs) {
@@ -411,7 +411,7 @@ ra8_err_t ra8_usb_host_init(ra8_usb_speed_t speed)
     /* HUM Ch 37.2.5 DVSTCTR0.VBUSEN: the USBHS jack's external VBUS
      * switch is driven by this bit (FSP hw_usb_hmodule_init); without
      * it an attached device never powers and LNST stays SE0. */
-    internal_rmw16(&reg->DVSTCTR0, (uint16_t)(1U << k_ra8_dvstctr_bit_vbusen), 0U);
+    priv_rmw16(&reg->DVSTCTR0, (uint16_t)(1U << k_ra8_dvstctr_bit_vbusen), 0U);
   }
 
   internal_host_init_defaults(reg);
@@ -435,7 +435,7 @@ ra8_err_t ra8_usb_host_init(ra8_usb_speed_t speed)
  */
 ra8_err_t ra8_usb_host_deinit(ra8_usb_speed_t speed)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -447,7 +447,7 @@ ra8_err_t ra8_usb_host_deinit(ra8_usb_speed_t speed)
   reg->NRDYENB  = 0U;
   reg->BEMPENB  = 0U;
   reg->SYSCFG   = 0U;
-  return ra8_mstp_disable(internal_mstp(speed));
+  return ra8_mstp_disable(priv_mstp(speed));
 }
 
 /**
@@ -466,7 +466,7 @@ ra8_err_t ra8_usb_host_deinit(ra8_usb_speed_t speed)
  */
 ra8_err_t ra8_usb_host_bus_reset(ra8_usb_speed_t speed, bool assert_reset)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -475,9 +475,9 @@ ra8_err_t ra8_usb_host_bus_reset(ra8_usb_speed_t speed, bool assert_reset)
   const uint16_t uact_bit = (uint16_t)(1U << k_ra8_dvstctr_bit_uact);
   if (assert_reset) {
     /* USBRST=1 forces UACT low; FSP atomically sets RST + clears UACT. */
-    internal_rmw16(&reg->DVSTCTR0, rst_bit, uact_bit);
+    priv_rmw16(&reg->DVSTCTR0, rst_bit, uact_bit);
   } else {
-    internal_rmw16(&reg->DVSTCTR0, 0U, rst_bit);
+    priv_rmw16(&reg->DVSTCTR0, 0U, rst_bit);
   }
   return k_ra8_ok;
 }
@@ -498,16 +498,16 @@ ra8_err_t ra8_usb_host_bus_reset(ra8_usb_speed_t speed, bool assert_reset)
  */
 ra8_err_t ra8_usb_host_set_uact(ra8_usb_speed_t speed, bool enable)
 {
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
   /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971 */
   const uint16_t uact_bit = (uint16_t)(1U << k_ra8_dvstctr_bit_uact);
   if (enable) {
-    internal_rmw16(&reg->DVSTCTR0, uact_bit, 0U);
+    priv_rmw16(&reg->DVSTCTR0, uact_bit, 0U);
   } else {
-    internal_rmw16(&reg->DVSTCTR0, 0U, uact_bit);
+    priv_rmw16(&reg->DVSTCTR0, 0U, uact_bit);
   }
   return k_ra8_ok;
 }
@@ -529,7 +529,7 @@ ra8_err_t ra8_usb_host_set_uact(ra8_usb_speed_t speed, bool enable)
 ra8_err_t ra8_usb_host_setup_request(ra8_usb_speed_t speed, const ra8_usb_setup_t* setup)
 {
   RA8_CHECK_NULL_PTR(setup, s_tag, "host_setup_request: setup");
-  volatile r_usb_regs_t* reg = internal_pick(speed);
+  volatile r_usb_regs_t* reg = priv_pick(speed);
   if (reg == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -549,6 +549,6 @@ ra8_err_t ra8_usb_host_setup_request(ra8_usb_speed_t speed, const ra8_usb_setup_
   reg->USBLENG       = setup->w_length;
 
   /* SUREQ tells the SIE to issue the SETUP token on the next frame. */
-  internal_rmw16(&reg->DCPCTR, sureq_bit, 0U);
+  priv_rmw16(&reg->DCPCTR, sureq_bit, 0U);
   return k_ra8_ok;
 }

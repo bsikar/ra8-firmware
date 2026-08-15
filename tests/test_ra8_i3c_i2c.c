@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_fake_mmio.h"
@@ -71,7 +72,7 @@ static const uint8_t s_payload[2] = {
 
 static uint8_t s_long_buffer[k_ra8_i3c_i2c_test_long_len];
 
-static const ra8_i3c_i2c_cfg_t k_iic_b_cfg = {
+static const ra8_i3c_i2c_cfg_t s_iic_b_cfg = {
   .bus_hz   = (uint32_t)k_ra8_i3c_i2c_speed_fast,
   .pclka_hz = 60000000U,
 };
@@ -80,9 +81,8 @@ static const ra8_i3c_i2c_cfg_t k_iic_b_cfg = {
  * @brief Pre-arm NTST so the driver's address + data wait loops fall
  *        through immediately, and BCST.BFREF so the bus-busy gate
  *        passes. The driver's clear_bst step does not touch NTST,
- *        so a one-shot pre-prime survives the transfer.
- */
-static void prime_ntst(uint8_t channel)
+ *        so a one-shot pre-prime survives the transfer. @details Implements the prime ntst fixture operation used only by this focused test executable. @param[in] channel Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prime_ntst(uint8_t channel)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   reg->NTST = (uint32_t)k_ra8_i3c_i2c_msk_ntst_tdbef0 | (uint32_t)k_ra8_i3c_i2c_msk_ntst_rdbff0;
@@ -90,9 +90,8 @@ static void prime_ntst(uint8_t channel)
 }
 
 /**
- * @brief Reset the fake and ensure MSTP / channel state is fresh.
- */
-static void prep(void)
+ * @brief Reset the fake and ensure MSTP / channel state is fresh. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
@@ -109,79 +108,75 @@ static void prep(void)
   * code under test that this case touches)
  */
 
-static void test_init_configured(void)
+/** @brief Verify init configured behavior. @details Executes the init configured scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_configured(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_init: BCTL.BUSE set, STDBR programmed");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_init: BCTL.BUSE set, STDBR programmed");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   volatile const r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
   TEST_ASSERT((reg->BCTL & (uint32_t)k_ra8_i3c_i2c_msk_bctl_buse) != 0U);
   TEST_ASSERT(reg->STDBR != 0U);
-  TEST_END("internal_i3c_i2c_init: BCTL.BUSE set, STDBR programmed");
+  TEST_END("ra8_i3c_i2c_init: BCTL.BUSE set, STDBR programmed");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_bad_inputs(void)
+ * code under test that this case touches) @brief Verify init bad inputs behavior. @details Executes the init bad inputs scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_bad_inputs(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_init: bad inputs rejected");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, internal_i3c_i2c_init(0U, nullptr));
-  ra8_i3c_i2c_cfg_t bad = k_iic_b_cfg;
+  TEST_BEGIN("ra8_i3c_i2c_init: bad inputs rejected");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_i3c_i2c_init(0U, nullptr));
+  ra8_i3c_i2c_cfg_t bad = s_iic_b_cfg;
   bad.bus_hz            = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_i3c_i2c_init(0U, &bad));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_i2c_init(0U, &bad));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 internal_i3c_i2c_init((uint8_t)k_ra8_i3c_i2c_test_ch_oor, &k_iic_b_cfg));
+                 ra8_i3c_i2c_init((uint8_t)k_ra8_i3c_i2c_test_ch_oor, &s_iic_b_cfg));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 internal_i3c_i2c_init((uint8_t)k_ra8_i3c_i2c_test_ch_huge, &k_iic_b_cfg));
-  TEST_END("internal_i3c_i2c_init: bad inputs rejected");
+                 ra8_i3c_i2c_init((uint8_t)k_ra8_i3c_i2c_test_ch_huge, &s_iic_b_cfg));
+  TEST_END("ra8_i3c_i2c_init: bad inputs rejected");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_deinit_releases(void)
+ * code under test that this case touches) @brief Verify deinit releases behavior. @details Executes the deinit releases scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_deinit_releases(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_deinit: BCTL cleared, MSTP gated");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_deinit(0U));
+  TEST_BEGIN("ra8_i3c_i2c_deinit: BCTL cleared, MSTP gated");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_deinit(0U));
   bool stopped = false;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_is_stopped(k_ra8_mstp_i3c, &stopped));
   TEST_ASSERT(stopped);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 internal_i3c_i2c_deinit((uint8_t)k_ra8_i3c_i2c_test_ch_oor));
-  TEST_END("internal_i3c_i2c_deinit: BCTL cleared, MSTP gated");
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_i2c_deinit((uint8_t)k_ra8_i3c_i2c_test_ch_oor));
+  TEST_END("ra8_i3c_i2c_deinit: BCTL cleared, MSTP gated");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_clock_updates(void)
+ * code under test that this case touches) @brief Verify set clock updates behavior. @details Executes the set clock updates scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_clock_updates(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_set_clock: STDBR changes");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_set_clock: STDBR changes");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   const uint32_t before = i3c_i2c_regs(0U)->STDBR;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 internal_i3c_i2c_set_clock(0U, (uint32_t)k_ra8_i3c_i2c_speed_standard, 60000000U));
+                 ra8_i3c_i2c_set_clock(0U, (uint32_t)k_ra8_i3c_i2c_speed_standard, 60000000U));
   TEST_ASSERT(i3c_i2c_regs(0U)->STDBR != before);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_i3c_i2c_set_clock(0U, 0U, 60000000U));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_i3c_i2c_set_clock(0U, 100000U, 0U));
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_arg,
-    internal_i3c_i2c_set_clock((uint8_t)k_ra8_i3c_i2c_test_ch_oor, 100000U, 60000000U));
-  TEST_END("internal_i3c_i2c_set_clock: STDBR changes");
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_i2c_set_clock(0U, 0U, 60000000U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_i2c_set_clock(0U, 100000U, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_i3c_i2c_set_clock((uint8_t)k_ra8_i3c_i2c_test_ch_oor, 100000U, 60000000U));
+  TEST_END("ra8_i3c_i2c_set_clock: STDBR changes");
 }
 
 /* =============================================================================
@@ -194,118 +189,109 @@ static void test_set_clock_updates(void)
   * code under test that this case touches)
  */
 
-static void test_write_happy(void)
+/** @brief Verify write happy behavior. @details Executes the write happy scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_happy(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_write: 2-byte payload, START + STOP pulsed");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  prime_ntst(0U);
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    internal_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 2U, false));
+  TEST_BEGIN("ra8_i3c_i2c_write: 2-byte payload, START + STOP pulsed");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
+  internal_prime_ntst(0U);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 2U, false));
   /* Final byte should land in NTDTBP0; CNDCTL last write should be the
    * STOP request (mirrors what the bus would observe after the
    * transaction). */
   volatile const r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_test_byte_b, (reg->NTDTBP0 & 0xFFU));
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_msk_cndctl_spcnd, reg->CNDCTL);
-  TEST_END("internal_i3c_i2c_write: 2-byte payload, START + STOP pulsed");
+  TEST_END("ra8_i3c_i2c_write: 2-byte payload, START + STOP pulsed");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_zero_length(void)
+ * code under test that this case touches) @brief Verify write zero length behavior. @details Executes the write zero length scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_zero_length(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_write: zero-length is a probe");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  prime_ntst(0U);
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    internal_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 0U, false));
-  TEST_END("internal_i3c_i2c_write: zero-length is a probe");
+  TEST_BEGIN("ra8_i3c_i2c_write: zero-length is a probe");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
+  internal_prime_ntst(0U);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 0U, false));
+  TEST_END("ra8_i3c_i2c_write: zero-length is a probe");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_null_data(void)
+ * code under test that this case touches) @brief Verify write null data behavior. @details Executes the write null data scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_null_data(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_write: null data rejected");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  TEST_ASSERT_EQ(
-    k_ra8_err_null_ptr,
-    internal_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr, 1U, false));
-  TEST_END("internal_i3c_i2c_write: null data rejected");
-}
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_bad_channel(void)
-{
-  TEST_BEGIN("internal_i3c_i2c_write: channel out of range");
-  prep();
+  TEST_BEGIN("ra8_i3c_i2c_write: null data rejected");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 internal_i3c_i2c_write((uint8_t)k_ra8_i3c_i2c_test_ch_oor,
-                                        (uint8_t)k_ra8_i3c_i2c_test_target,
-                                        s_payload,
-                                        1U,
-                                        false));
-  TEST_END("internal_i3c_i2c_write: channel out of range");
+                 ra8_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr, 1U, false));
+  TEST_END("ra8_i3c_i2c_write: null data rejected");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_timeout_on_start(void)
+ * code under test that this case touches) @brief Verify write bad channel behavior. @details Executes the write bad channel scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_bad_channel(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_write: TDBEF0 never sets => timeout");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_write: channel out of range");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_i3c_i2c_write((uint8_t)k_ra8_i3c_i2c_test_ch_oor,
+                                   (uint8_t)k_ra8_i3c_i2c_test_target,
+                                   s_payload,
+                                   1U,
+                                   false));
+  TEST_END("ra8_i3c_i2c_write: channel out of range");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches) @brief Verify write timeout on start behavior. @details Executes the write timeout on start scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_timeout_on_start(void)
+{
+  TEST_BEGIN("ra8_i3c_i2c_write: TDBEF0 never sets => timeout");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   /* Mark the bus free so the busy gate passes, but leave NTST cleared
    * so the address-byte send loop times out. */
   i3c_i2c_regs(0U)->BCST = (uint32_t)k_ra8_i3c_i2c_msk_bcst_bfref;
-  TEST_ASSERT_EQ(
-    k_ra8_err_hw_timeout,
-    internal_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 1U, false));
-  TEST_END("internal_i3c_i2c_write: TDBEF0 never sets => timeout");
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 1U, false));
+  TEST_END("ra8_i3c_i2c_write: TDBEF0 never sets => timeout");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_busy_rejection(void)
+ * code under test that this case touches) @brief Verify write busy rejection behavior. @details Executes the write busy rejection scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_busy_rejection(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_write: BCST.BFREF=0 => k_ra8_err_busy");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_write: BCST.BFREF=0 => k_ra8_err_busy");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   /* BFREF clear == bus busy. NTST primed so the call would otherwise
    * proceed -- the busy gate must fire first. */
   i3c_i2c_regs(0U)->NTST =
     (uint32_t)k_ra8_i3c_i2c_msk_ntst_tdbef0 | (uint32_t)k_ra8_i3c_i2c_msk_ntst_rdbff0;
   i3c_i2c_regs(0U)->BCST = 0U;
-  TEST_ASSERT_EQ(
-    k_ra8_err_busy,
-    internal_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 1U, false));
-  TEST_END("internal_i3c_i2c_write: BCST.BFREF=0 => k_ra8_err_busy");
+  TEST_ASSERT_EQ(k_ra8_err_busy,
+                 ra8_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 1U, false));
+  TEST_END("ra8_i3c_i2c_write: BCST.BFREF=0 => k_ra8_err_busy");
 }
 
 /* =============================================================================
@@ -324,9 +310,8 @@ static void test_write_busy_rejection(void)
 static uint8_t s_nack_ch;
 
 /**
- * @brief Poll-hook body: latch BST.NACKDF on the target channel.
- */
-static void i3c_nack_hook(void)
+ * @brief Poll-hook body: latch BST.NACKDF on the target channel. @details Implements the i3c nack hook fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_i3c_nack_hook(void)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(s_nack_ch);
   if (reg != nullptr) {
@@ -337,18 +322,16 @@ static void i3c_nack_hook(void)
 /**
  * @brief Install the NACK poll-hook for @p channel.
  *
- * @param[in] channel Channel index to inject into.
- */
-static void i3c_nack_hook_arm(uint8_t channel)
+ * @param[in] channel Channel index to inject into. @details Implements the i3c nack hook arm fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_i3c_nack_hook_arm(uint8_t channel)
 {
   s_nack_ch = channel;
-  ra8_fake_mmio_set_poll_hook(i3c_nack_hook);
+  ra8_fake_mmio_set_poll_hook(internal_i3c_nack_hook);
 }
 
 /**
- * @brief Remove the NACK poll-hook.
- */
-static void i3c_nack_hook_disarm(void)
+ * @brief Remove the NACK poll-hook. @details Implements the i3c nack hook disarm fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_i3c_nack_hook_disarm(void)
 {
   ra8_fake_mmio_set_poll_hook(nullptr);
 }
@@ -357,49 +340,46 @@ static void i3c_nack_hook_disarm(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_nack_returns_nack_and_stops(void)
+ * code under test that this case touches) @brief Verify write nack returns nack and stops behavior. @details Executes the write nack returns nack and stops scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_nack_returns_nack_and_stops(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_write: NACKDF latched mid-transfer => k_ra8_err_nack + STOP");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  prime_ntst(0U);
+  TEST_BEGIN("ra8_i3c_i2c_write: NACKDF latched mid-transfer => k_ra8_err_nack + STOP");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
+  internal_prime_ntst(0U);
   /* The servicer latches NACKDF mid-transfer: the driver's start-of-
    * transaction clear_bst would otherwise wipe a pre-armed value, so the
    * servicer re-asserts it continuously and drain_tx observes it on one of
    * its per-byte polls -- deterministically, with no wall-clock timer. */
-  i3c_nack_hook_arm(0U);
-  const ra8_err_t err = internal_i3c_i2c_write(0U,
-                                               (uint8_t)k_ra8_i3c_i2c_test_target,
-                                               s_long_buffer,
-                                               (uint32_t)k_ra8_i3c_i2c_test_long_len,
-                                               false);
-  i3c_nack_hook_disarm();
+  internal_i3c_nack_hook_arm(0U);
+  const ra8_err_t err = ra8_i3c_i2c_write(0U,
+                                          (uint8_t)k_ra8_i3c_i2c_test_target,
+                                          s_long_buffer,
+                                          (uint32_t)k_ra8_i3c_i2c_test_long_len,
+                                          false);
+  internal_i3c_nack_hook_disarm();
   TEST_ASSERT_EQ(k_ra8_err_nack, err);
   /* CNDCTL last write should be STOP. */
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_msk_cndctl_spcnd, i3c_i2c_regs(0U)->CNDCTL);
-  TEST_END("internal_i3c_i2c_write: NACKDF latched mid-transfer => k_ra8_err_nack + STOP");
+  TEST_END("ra8_i3c_i2c_write: NACKDF latched mid-transfer => k_ra8_err_nack + STOP");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_restart_holds_bus(void)
+ * code under test that this case touches) @brief Verify write restart holds bus behavior. @details Executes the write restart holds bus scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_restart_holds_bus(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_write: restart=true holds bus, no STOP issued");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  prime_ntst(0U);
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    internal_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 1U, true));
+  TEST_BEGIN("ra8_i3c_i2c_write: restart=true holds bus, no STOP issued");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
+  internal_prime_ntst(0U);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_i3c_i2c_write(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 1U, true));
   /* CNDCTL last write should be START (no subsequent STOP). */
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_msk_cndctl_stcnd, i3c_i2c_regs(0U)->CNDCTL);
-  TEST_END("internal_i3c_i2c_write: restart=true holds bus, no STOP issued");
+  TEST_END("ra8_i3c_i2c_write: restart=true holds bus, no STOP issued");
 }
 
 /* =============================================================================
@@ -412,15 +392,16 @@ static void test_write_restart_holds_bus(void)
   * code under test that this case touches)
  */
 
-static void test_read_happy(void)
+/** @brief Verify read happy behavior. @details Executes the read happy scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_happy(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_read: 2-byte read returns ok, ACKBT set on last byte");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  prime_ntst(0U);
+  TEST_BEGIN("ra8_i3c_i2c_read: 2-byte read returns ok, ACKBT set on last byte");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
+  internal_prime_ntst(0U);
   uint8_t buf[2] = {0U, 0U};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 internal_i3c_i2c_read(0U, (uint8_t)k_ra8_i3c_i2c_test_target, buf, 2U, false));
+                 ra8_i3c_i2c_read(0U, (uint8_t)k_ra8_i3c_i2c_test_target, buf, 2U, false));
   /* Real-bus byte exchange cannot be modelled by the host substrate
    * (NTDTBP0 is one register, not a FIFO that holds the address byte
    * separately from rx data). What we DO observe:
@@ -431,98 +412,93 @@ static void test_read_happy(void)
    *   2. CNDCTL last write is STOP. */
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_msk_ackctl_acktwp, (i3c_i2c_regs(0U)->ACKCTL));
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_msk_cndctl_spcnd, i3c_i2c_regs(0U)->CNDCTL);
-  TEST_END("internal_i3c_i2c_read: 2-byte read returns ok, ACKBT set on last byte");
+  TEST_END("ra8_i3c_i2c_read: 2-byte read returns ok, ACKBT set on last byte");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_read_zero_length_rejected(void)
+ * code under test that this case touches) @brief Verify read zero length rejected behavior. @details Executes the read zero length rejected scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_zero_length_rejected(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_read: len==0 rejected");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_read: len==0 rejected");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   uint8_t buf = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 internal_i3c_i2c_read(0U, (uint8_t)k_ra8_i3c_i2c_test_target, &buf, 0U, false));
-  TEST_END("internal_i3c_i2c_read: len==0 rejected");
+                 ra8_i3c_i2c_read(0U, (uint8_t)k_ra8_i3c_i2c_test_target, &buf, 0U, false));
+  TEST_END("ra8_i3c_i2c_read: len==0 rejected");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_read_null_out(void)
+ * code under test that this case touches) @brief Verify read null out behavior. @details Executes the read null out scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_null_out(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_read: null buf rejected");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_read: null buf rejected");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 internal_i3c_i2c_read(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr, 1U, false));
-  TEST_END("internal_i3c_i2c_read: null buf rejected");
+                 ra8_i3c_i2c_read(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr, 1U, false));
+  TEST_END("ra8_i3c_i2c_read: null buf rejected");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_read_bad_channel(void)
+ * code under test that this case touches) @brief Verify read bad channel behavior. @details Executes the read bad channel scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_bad_channel(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_read: channel out of range");
-  prep();
+  TEST_BEGIN("ra8_i3c_i2c_read: channel out of range");
+  internal_prep();
   uint8_t buf = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 internal_i3c_i2c_read((uint8_t)k_ra8_i3c_i2c_test_ch_oor,
-                                       (uint8_t)k_ra8_i3c_i2c_test_target,
-                                       &buf,
-                                       1U,
-                                       false));
-  TEST_END("internal_i3c_i2c_read: channel out of range");
+                 ra8_i3c_i2c_read((uint8_t)k_ra8_i3c_i2c_test_ch_oor,
+                                  (uint8_t)k_ra8_i3c_i2c_test_target,
+                                  &buf,
+                                  1U,
+                                  false));
+  TEST_END("ra8_i3c_i2c_read: channel out of range");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_read_timeout_on_start(void)
+ * code under test that this case touches) @brief Verify read timeout on start behavior. @details Executes the read timeout on start scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_timeout_on_start(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_read: TDBEF0 never sets => timeout");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_read: TDBEF0 never sets => timeout");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   i3c_i2c_regs(0U)->BCST = (uint32_t)k_ra8_i3c_i2c_msk_bcst_bfref;
   uint8_t buf            = 0U;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
-                 internal_i3c_i2c_read(0U, (uint8_t)k_ra8_i3c_i2c_test_target, &buf, 1U, false));
-  TEST_END("internal_i3c_i2c_read: TDBEF0 never sets => timeout");
+                 ra8_i3c_i2c_read(0U, (uint8_t)k_ra8_i3c_i2c_test_target, &buf, 1U, false));
+  TEST_END("ra8_i3c_i2c_read: TDBEF0 never sets => timeout");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_read_busy_rejection(void)
+ * code under test that this case touches) @brief Verify read busy rejection behavior. @details Executes the read busy rejection scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_busy_rejection(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_read: BCST.BFREF=0 => k_ra8_err_busy");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_read: BCST.BFREF=0 => k_ra8_err_busy");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   i3c_i2c_regs(0U)->NTST =
     (uint32_t)k_ra8_i3c_i2c_msk_ntst_tdbef0 | (uint32_t)k_ra8_i3c_i2c_msk_ntst_rdbff0;
   i3c_i2c_regs(0U)->BCST = 0U;
   uint8_t buf            = 0U;
   TEST_ASSERT_EQ(k_ra8_err_busy,
-                 internal_i3c_i2c_read(0U, (uint8_t)k_ra8_i3c_i2c_test_target, &buf, 1U, false));
-  TEST_END("internal_i3c_i2c_read: BCST.BFREF=0 => k_ra8_err_busy");
+                 ra8_i3c_i2c_read(0U, (uint8_t)k_ra8_i3c_i2c_test_target, &buf, 1U, false));
+  TEST_END("ra8_i3c_i2c_read: BCST.BFREF=0 => k_ra8_err_busy");
 }
 
 /* =============================================================================
@@ -535,78 +511,76 @@ static void test_read_busy_rejection(void)
   * code under test that this case touches)
  */
 
-static void test_transfer_happy(void)
+/** @brief Verify transfer happy behavior. @details Executes the transfer happy scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_transfer_happy(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_transfer: write-then-RESTART-then-read");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  prime_ntst(0U);
+  TEST_BEGIN("ra8_i3c_i2c_transfer: write-then-RESTART-then-read");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
+  internal_prime_ntst(0U);
   uint8_t       rx     = 0U;
   const uint8_t tx[1U] = {(uint8_t)k_ra8_i3c_i2c_test_byte_c};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    internal_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, tx, 1U, &rx, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, tx, 1U, &rx, 1U));
   /* CNDCTL last write should be STOP -- the read phase always closes
    * the bus regardless of the prior write phase having held it. */
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_msk_cndctl_spcnd, i3c_i2c_regs(0U)->CNDCTL);
-  TEST_END("internal_i3c_i2c_transfer: write-then-RESTART-then-read");
+  TEST_END("ra8_i3c_i2c_transfer: write-then-RESTART-then-read");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_transfer_null_args_rejected(void)
+ * code under test that this case touches) @brief Verify transfer null args rejected behavior. @details Executes the transfer null args rejected scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_transfer_null_args_rejected(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_transfer: null buffers / zero lens rejected");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_transfer: null buffers / zero lens rejected");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   uint8_t rx = 0U;
 
   /* Both lens zero -> invalid_arg. */
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_arg,
-    internal_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr, 0U, nullptr, 0U));
+    ra8_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr, 0U, nullptr, 0U));
   /* tx_len > 0 with NULL tx -> null_ptr. */
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    internal_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr, 1U, &rx, 1U));
+    ra8_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr, 1U, &rx, 1U));
   /* rx_len > 0 with NULL rx -> null_ptr. */
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    internal_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 1U, nullptr, 1U));
+    ra8_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 1U, nullptr, 1U));
   /* Out-of-range channel -> null_ptr (matches the rest of the API). */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 internal_i3c_i2c_transfer((uint8_t)k_ra8_i3c_i2c_test_ch_oor,
-                                           (uint8_t)k_ra8_i3c_i2c_test_target,
-                                           s_payload,
-                                           1U,
-                                           &rx,
-                                           1U));
-  TEST_END("internal_i3c_i2c_transfer: null buffers / zero lens rejected");
+                 ra8_i3c_i2c_transfer((uint8_t)k_ra8_i3c_i2c_test_ch_oor,
+                                      (uint8_t)k_ra8_i3c_i2c_test_target,
+                                      s_payload,
+                                      1U,
+                                      &rx,
+                                      1U));
+  TEST_END("ra8_i3c_i2c_transfer: null buffers / zero lens rejected");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_transfer_busy_rejection(void)
+ * code under test that this case touches) @brief Verify transfer busy rejection behavior. @details Executes the transfer busy rejection scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_transfer_busy_rejection(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_transfer: bus-busy => k_ra8_err_busy");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_transfer: bus-busy => k_ra8_err_busy");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   i3c_i2c_regs(0U)->NTST =
     (uint32_t)k_ra8_i3c_i2c_msk_ntst_tdbef0 | (uint32_t)k_ra8_i3c_i2c_msk_ntst_rdbff0;
   i3c_i2c_regs(0U)->BCST = 0U;
   uint8_t rx             = 0U;
   TEST_ASSERT_EQ(
     k_ra8_err_busy,
-    internal_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 1U, &rx, 1U));
-  TEST_END("internal_i3c_i2c_transfer: bus-busy => k_ra8_err_busy");
+    ra8_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, s_payload, 1U, &rx, 1U));
+  TEST_END("ra8_i3c_i2c_transfer: bus-busy => k_ra8_err_busy");
 }
 
 /* =============================================================================
@@ -619,11 +593,12 @@ static void test_transfer_busy_rejection(void)
   * code under test that this case touches)
  */
 
-static void test_abort_resets_channel(void)
+/** @brief Verify abort resets channel behavior. @details Executes the abort resets channel scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_abort_resets_channel(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_abort: BIE/NTIE masked, STOP issued, BST cleared");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_abort: BIE/NTIE masked, STOP issued, BST cleared");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   /* Pretend a transfer is in progress: BIE/NTIE non-zero, BST has
    * latched flags. */
   i3c_i2c_regs(0U)->BIE  = (uint32_t)k_ra8_i3c_i2c_msk_bie_nackdie;
@@ -631,7 +606,7 @@ static void test_abort_resets_channel(void)
   i3c_i2c_regs(0U)->BST =
     (uint32_t)k_ra8_i3c_i2c_msk_bst_nackdf | (uint32_t)k_ra8_i3c_i2c_msk_bst_alf;
 
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_abort(0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_abort(0U));
   TEST_ASSERT_EQ(0, i3c_i2c_regs(0U)->BIE);
   TEST_ASSERT_EQ(0, i3c_i2c_regs(0U)->NTIE);
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_msk_cndctl_spcnd, i3c_i2c_regs(0U)->CNDCTL);
@@ -639,8 +614,8 @@ static void test_abort_resets_channel(void)
   TEST_ASSERT((i3c_i2c_regs(0U)->BST & (uint32_t)k_ra8_i3c_i2c_msk_bst_nackdf) == 0U);
   TEST_ASSERT((i3c_i2c_regs(0U)->BST & (uint32_t)k_ra8_i3c_i2c_msk_bst_alf) == 0U);
 
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, internal_i3c_i2c_abort((uint8_t)k_ra8_i3c_i2c_test_ch_oor));
-  TEST_END("internal_i3c_i2c_abort: BIE/NTIE masked, STOP issued, BST cleared");
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_i2c_abort((uint8_t)k_ra8_i3c_i2c_test_ch_oor));
+  TEST_END("ra8_i3c_i2c_abort: BIE/NTIE masked, STOP issued, BST cleared");
 }
 
 /* =============================================================================
@@ -652,50 +627,48 @@ static void test_abort_resets_channel(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_write_long_break(void)
+ * code under test that this case touches) @brief Verify write long break behavior. @details Executes the write long break scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_write_long_break(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_write: long buffer breaks on cleared NTST");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  prime_ntst(0U);
+  TEST_BEGIN("ra8_i3c_i2c_write: long buffer breaks on cleared NTST");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
+  internal_prime_ntst(0U);
   /* Fail drain_tx's first NTST wait (the 2nd wait-loop on NTST, after the one in
    * send_address) so the payload push times out mid-transfer -- deterministic,
    * with no concurrent servicer. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(&i3c_i2c_regs(0U)->NTST, 1U));
-  const ra8_err_t err = internal_i3c_i2c_write(0U,
-                                               (uint8_t)k_ra8_i3c_i2c_test_target,
-                                               s_long_buffer,
-                                               (uint32_t)k_ra8_i3c_i2c_test_long_len,
-                                               false);
+  const ra8_err_t err = ra8_i3c_i2c_write(0U,
+                                          (uint8_t)k_ra8_i3c_i2c_test_target,
+                                          s_long_buffer,
+                                          (uint32_t)k_ra8_i3c_i2c_test_long_len,
+                                          false);
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, err);
-  TEST_END("internal_i3c_i2c_write: long buffer breaks on cleared NTST");
+  TEST_END("ra8_i3c_i2c_write: long buffer breaks on cleared NTST");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_read_long_break(void)
+ * code under test that this case touches) @brief Verify read long break behavior. @details Executes the read long break scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_read_long_break(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_read: long buffer breaks on cleared NTST");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  prime_ntst(0U);
+  TEST_BEGIN("ra8_i3c_i2c_read: long buffer breaks on cleared NTST");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
+  internal_prime_ntst(0U);
   /* Fail drain_rx's first NTST wait (the 3rd wait-loop on NTST: after
    * send_address and the rx-phase priming read) so the receive times out
    * mid-transfer -- deterministic, with no concurrent servicer. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_nth_wait(&i3c_i2c_regs(0U)->NTST, 2U));
-  const ra8_err_t err = internal_i3c_i2c_read(0U,
-                                              (uint8_t)k_ra8_i3c_i2c_test_target,
-                                              s_long_buffer,
-                                              (uint32_t)k_ra8_i3c_i2c_test_long_len,
-                                              false);
+  const ra8_err_t err = ra8_i3c_i2c_read(0U,
+                                         (uint8_t)k_ra8_i3c_i2c_test_target,
+                                         s_long_buffer,
+                                         (uint32_t)k_ra8_i3c_i2c_test_long_len,
+                                         false);
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, err);
-  TEST_END("internal_i3c_i2c_read: long buffer breaks on cleared NTST");
+  TEST_END("ra8_i3c_i2c_read: long buffer breaks on cleared NTST");
 }
 
 /* =============================================================================
@@ -708,41 +681,41 @@ static void test_read_long_break(void)
   * code under test that this case touches)
  */
 
-static void test_scan_no_response(void)
+/** @brief Verify scan no response behavior. @details Executes the scan no response scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_scan_no_response(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_scan: no BST flag => hw_timeout, acked false");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  prime_ntst(0U);
+  TEST_BEGIN("ra8_i3c_i2c_scan: no BST flag => hw_timeout, acked false");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
+  internal_prime_ntst(0U);
   /* No bus activity in the fake; the scan times out waiting for
    * either TENDF or NACKDF, which is the correct behaviour for an
    * empty bus. */
   bool acked = true;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
-                 internal_i3c_i2c_scan(0U, (uint8_t)k_ra8_i3c_i2c_test_target, &acked));
+                 ra8_i3c_i2c_scan(0U, (uint8_t)k_ra8_i3c_i2c_test_target, &acked));
   TEST_ASSERT(!acked);
-  TEST_END("internal_i3c_i2c_scan: no BST flag => hw_timeout, acked false");
+  TEST_END("ra8_i3c_i2c_scan: no BST flag => hw_timeout, acked false");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_scan_bad_args(void)
+ * code under test that this case touches) @brief Verify scan bad args behavior. @details Executes the scan bad args scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_scan_bad_args(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_scan: arg validation");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_scan: arg validation");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 internal_i3c_i2c_scan(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr));
+                 ra8_i3c_i2c_scan(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr));
   bool acked = false;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 internal_i3c_i2c_scan((uint8_t)k_ra8_i3c_i2c_test_ch_oor,
-                                       (uint8_t)k_ra8_i3c_i2c_test_target,
-                                       &acked));
-  TEST_END("internal_i3c_i2c_scan: arg validation");
+                 ra8_i3c_i2c_scan((uint8_t)k_ra8_i3c_i2c_test_ch_oor,
+                                  (uint8_t)k_ra8_i3c_i2c_test_target,
+                                  &acked));
+  TEST_END("ra8_i3c_i2c_scan: arg validation");
 }
 
 /* =============================================================================
@@ -755,36 +728,38 @@ static void test_scan_bad_args(void)
   * code under test that this case touches)
  */
 
-static void test_errors_mask_and_clear(void)
+/** @brief Verify errors mask and clear behavior. @details Executes the errors mask and clear scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_errors_mask_and_clear(void)
 {
   TEST_BEGIN("internal_i3c_i2c_get/clear_errors: AL + NACK + TODF");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
   reg->BST = (uint32_t)k_ra8_i3c_i2c_msk_bst_alf | (uint32_t)k_ra8_i3c_i2c_msk_bst_nackdf |
              (uint32_t)k_ra8_i3c_i2c_msk_bst_todf;
 
   uint8_t mask = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_get_errors(0U, &mask));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_get_errors(0U, &mask));
   TEST_ASSERT_EQ(((uint8_t)k_ra8_i3c_i2c_err_arb_lost | (uint8_t)k_ra8_i3c_i2c_err_nack |
                   (uint8_t)k_ra8_i3c_i2c_err_timeout),
                  mask);
 
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_clear_errors(0U));
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_get_errors(0U, &mask));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_clear_errors(0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_get_errors(0U, &mask));
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_err_none, mask);
 
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, internal_i3c_i2c_get_errors(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_i3c_i2c_get_errors(0U, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 internal_i3c_i2c_get_errors((uint8_t)k_ra8_i3c_i2c_test_ch_oor, &mask));
+                 ra8_i3c_i2c_get_errors((uint8_t)k_ra8_i3c_i2c_test_ch_oor, &mask));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 internal_i3c_i2c_clear_errors((uint8_t)k_ra8_i3c_i2c_test_ch_oor));
+                 ra8_i3c_i2c_clear_errors((uint8_t)k_ra8_i3c_i2c_test_ch_oor));
   TEST_END("internal_i3c_i2c_get/clear_errors: AL + NACK + TODF");
 }
 
 static int32_t s_iic_b_cb_count = 0;
 static int32_t s_iic_b_cb_err   = 0;
-static void    stub_iic_b_cb(void* ctx, uint8_t err_mask)
+/** @brief Provide the file-local stub iic b cb test helper. @details Implements the stub iic b cb fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] err_mask Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_stub_iic_b_cb(void* ctx, uint8_t err_mask)
 {
   (void)ctx;
   ++s_iic_b_cb_count;
@@ -795,64 +770,63 @@ static void    stub_iic_b_cb(void* ctx, uint8_t err_mask)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_attach_handler_toggles_iers(void)
+ * code under test that this case touches) @brief Verify attach handler toggles iers behavior. @details Executes the attach handler toggles iers scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_handler_toggles_iers(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_attach_handler: BIE+NTIE toggled");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  TEST_BEGIN("ra8_i3c_i2c_attach_handler: BIE+NTIE toggled");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
 
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_attach_handler(0U, stub_iic_b_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_attach_handler(0U, internal_stub_iic_b_cb, nullptr));
   TEST_ASSERT(i3c_i2c_regs(0U)->BIE != 0U);
   TEST_ASSERT(i3c_i2c_regs(0U)->NTIE != 0U);
 
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_attach_handler(0U, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_attach_handler(0U, nullptr, nullptr));
   TEST_ASSERT_EQ(0, i3c_i2c_regs(0U)->BIE);
   TEST_ASSERT_EQ(0, i3c_i2c_regs(0U)->NTIE);
 
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_arg,
-    internal_i3c_i2c_attach_handler((uint8_t)k_ra8_i3c_i2c_test_ch_oor, stub_iic_b_cb, nullptr));
-  TEST_END("internal_i3c_i2c_attach_handler: BIE+NTIE toggled");
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_i3c_i2c_attach_handler((uint8_t)k_ra8_i3c_i2c_test_ch_oor,
+                                            internal_stub_iic_b_cb,
+                                            nullptr));
+  TEST_END("ra8_i3c_i2c_attach_handler: BIE+NTIE toggled");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_dispatch_eri_fires_callback(void)
+ * code under test that this case touches) @brief Verify dispatch eri fires callback behavior. @details Executes the dispatch eri fires callback scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_dispatch_eri_fires_callback(void)
 {
-  TEST_BEGIN("internal_i3c_i2c_dispatch_eri: latched NACKDF -> callback fires");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_attach_handler(0U, stub_iic_b_cb, nullptr));
+  TEST_BEGIN("ra8_i3c_i2c_dispatch_eri: latched NACKDF -> callback fires");
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_attach_handler(0U, internal_stub_iic_b_cb, nullptr));
 
   s_iic_b_cb_count      = 0;
   s_iic_b_cb_err        = 0;
   i3c_i2c_regs(0U)->BST = (uint32_t)k_ra8_i3c_i2c_msk_bst_nackdf;
-  internal_i3c_i2c_dispatch_eri(0U);
+  ra8_i3c_i2c_dispatch_eri(0U);
   TEST_ASSERT_EQ(1, s_iic_b_cb_count);
   TEST_ASSERT_EQ(k_ra8_i3c_i2c_err_nack, s_iic_b_cb_err);
 
   /* Zero mask must not fire the callback. */
   s_iic_b_cb_count      = 0;
   i3c_i2c_regs(0U)->BST = 0U;
-  internal_i3c_i2c_dispatch_eri(0U);
+  ra8_i3c_i2c_dispatch_eri(0U);
   TEST_ASSERT_EQ(0, s_iic_b_cb_count);
 
   /* Out-of-range channel is a no-op. */
-  internal_i3c_i2c_dispatch_eri((uint8_t)k_ra8_i3c_i2c_test_ch_oor);
-  TEST_END("internal_i3c_i2c_dispatch_eri: latched NACKDF -> callback fires");
+  ra8_i3c_i2c_dispatch_eri((uint8_t)k_ra8_i3c_i2c_test_ch_oor);
+  TEST_END("ra8_i3c_i2c_dispatch_eri: latched NACKDF -> callback fires");
 }
 
 /**
- * @test test_mcdc_iic_b
+ * @test internal_test_mcdc_iic_b
  *
  * @par MC/DC:
- * Three 2-condition decisions in ``internal_i3c_i2c_transfer``,
+ * Three 2-condition decisions in ``ra8_i3c_i2c_transfer``,
  * libs/ra8_hal/src/ra8_i3c_i2c.c:
  *
  * Decision A (line 948): ``if ((tx_len == 0U) && (rx_len == 0U))``
@@ -867,13 +841,12 @@ static void test_dispatch_eri_fires_callback(void)
  * - V3: tx_len!=0, tx=NULL     -> C1=T,C2=T             -> dec T (null_ptr)
  *
  * Decision C (line 954): ``if ((rx_len != 0U) && (rx == nullptr))``
- * mirrors B with rx_len/rx; same N+1 = 3 vectors.
- */
-static void test_mcdc_iic_b(void)
+ * mirrors B with rx_len/rx; same N+1 = 3 vectors. @brief Verify mcdc iic b behavior. @details Executes the mcdc iic b scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_iic_b(void)
 {
   TEST_BEGIN("iic_b MC/DC: transfer arg-validation 2-cond decisions");
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
+  internal_prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_i2c_init(0U, &s_iic_b_cfg));
 
   uint8_t tx_buf[1] = {k_ra8_i3c_i2c_test_byte_a};
   uint8_t rx_buf[1] = {0U};
@@ -881,20 +854,20 @@ static void test_mcdc_iic_b(void)
   /* Decision A V1: both lens zero -> invalid_arg. */
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_arg,
-    internal_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, tx_buf, 0U, rx_buf, 0U));
+    ra8_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, tx_buf, 0U, rx_buf, 0U));
 
   /* Decision B V3: tx_len!=0 with NULL tx -> null_ptr. */
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    internal_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr, 1U, rx_buf, 0U));
+    ra8_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, nullptr, 1U, rx_buf, 0U));
 
   /* Decision C V3: rx_len!=0 with NULL rx -> null_ptr. tx_len=0 to
    * keep decision A=F (because rx_len!=0) and decision B=F (tx_len=0). */
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    internal_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, tx_buf, 0U, nullptr, 1U));
+    ra8_i3c_i2c_transfer(0U, (uint8_t)k_ra8_i3c_i2c_test_target, tx_buf, 0U, nullptr, 1U));
 
-  /* Decision B V2 + C V2 happy path covered by test_transfer_happy and
+  /* Decision B V2 + C V2 happy path covered by internal_test_transfer_happy and
    * Decision A V2 / V3 covered implicitly through happy + decision B
    * V1 short-circuit. The asserts above are the masking pairs that
    * give MC/DC for the rejection branches. */
@@ -902,7 +875,7 @@ static void test_mcdc_iic_b(void)
 }
 
 /**
- * @test test_mcdc_iic_b_internal_len_buf_invalid
+ * @test internal_test_mcdc_iic_b_internal_len_buf_invalid
  *
  * @par MC/DC:
  * Decision at libs/ra8_hal/src/ra8_i3c_i2c.c (call site) -> helper at
@@ -911,20 +884,19 @@ static void test_mcdc_iic_b(void)
  * - V1: len=0, buf=NULL -> false
  * - V2: len>0, buf=NULL -> true (varies left)
  * - V3: len>0, buf!=NULL -> false (varies right)
- * N+1 = 3.
- */
-static void test_mcdc_iic_b_internal_len_buf_invalid(void)
+ * N+1 = 3. @brief Verify mcdc iic b internal len buf invalid behavior. @details Executes the mcdc iic b internal len buf invalid scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_iic_b_internal_len_buf_invalid(void)
 {
   TEST_BEGIN("iic_b MC/DC: len_buf_invalid AND");
   uint8_t scratch = 0U;
-  TEST_ASSERT(!internal_i3c_i2c_len_buf_invalid(0U, nullptr));
-  TEST_ASSERT(internal_i3c_i2c_len_buf_invalid(4U, nullptr));
-  TEST_ASSERT(!internal_i3c_i2c_len_buf_invalid(4U, &scratch));
+  TEST_ASSERT(!priv_i3c_i2c_len_buf_invalid(0U, nullptr));
+  TEST_ASSERT(priv_i3c_i2c_len_buf_invalid(4U, nullptr));
+  TEST_ASSERT(!priv_i3c_i2c_len_buf_invalid(4U, &scratch));
   TEST_END("iic_b MC/DC: len_buf_invalid AND");
 }
 
 /**
- * @test test_mcdc_iic_b_internal_should_dispatch
+ * @test internal_test_mcdc_iic_b_internal_should_dispatch
  *
  * @par MC/DC:
  * Decision at libs/ra8_hal/src/ra8_i3c_i2c.c (call site) -> helper at
@@ -933,15 +905,14 @@ static void test_mcdc_iic_b_internal_len_buf_invalid(void)
  * - V1: mask=0, cb!=NULL -> false (varies left from V2)
  * - V2: mask!=0, cb!=NULL -> true
  * - V3: mask!=0, cb=NULL -> false (varies right from V2)
- * N+1 = 3.
- */
-static void test_mcdc_iic_b_internal_should_dispatch(void)
+ * N+1 = 3. @brief Verify mcdc iic b internal should dispatch behavior. @details Executes the mcdc iic b internal should dispatch scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_iic_b_internal_should_dispatch(void)
 {
   TEST_BEGIN("iic_b MC/DC: should_dispatch AND");
   uint8_t cb_dummy = 0U;
-  TEST_ASSERT(!internal_i3c_i2c_should_dispatch(0U, &cb_dummy));
-  TEST_ASSERT(internal_i3c_i2c_should_dispatch(0x10U, &cb_dummy));
-  TEST_ASSERT(!internal_i3c_i2c_should_dispatch(0x10U, nullptr));
+  TEST_ASSERT(!priv_i3c_i2c_should_dispatch(0U, &cb_dummy));
+  TEST_ASSERT(priv_i3c_i2c_should_dispatch(0x10U, &cb_dummy));
+  TEST_ASSERT(!priv_i3c_i2c_should_dispatch(0x10U, nullptr));
   TEST_END("iic_b MC/DC: should_dispatch AND");
 }
 
@@ -956,38 +927,38 @@ static void test_mcdc_iic_b_internal_should_dispatch(void)
  * @note Order is significant: cases run top to bottom, exactly as before.
  */
 static void (*const s_test_roster[])(void) = {
-  test_init_configured,
-  test_init_bad_inputs,
-  test_deinit_releases,
-  test_set_clock_updates,
-  test_write_happy,
-  test_write_zero_length,
-  test_write_null_data,
-  test_write_bad_channel,
-  test_write_timeout_on_start,
-  test_write_busy_rejection,
-  test_write_nack_returns_nack_and_stops,
-  test_write_restart_holds_bus,
-  test_read_happy,
-  test_read_zero_length_rejected,
-  test_read_null_out,
-  test_read_bad_channel,
-  test_read_timeout_on_start,
-  test_read_busy_rejection,
-  test_transfer_happy,
-  test_transfer_null_args_rejected,
-  test_transfer_busy_rejection,
-  test_abort_resets_channel,
-  test_write_long_break,
-  test_read_long_break,
-  test_scan_no_response,
-  test_scan_bad_args,
-  test_errors_mask_and_clear,
-  test_attach_handler_toggles_iers,
-  test_dispatch_eri_fires_callback,
-  test_mcdc_iic_b,
-  test_mcdc_iic_b_internal_len_buf_invalid,
-  test_mcdc_iic_b_internal_should_dispatch,
+  internal_test_init_configured,
+  internal_test_init_bad_inputs,
+  internal_test_deinit_releases,
+  internal_test_set_clock_updates,
+  internal_test_write_happy,
+  internal_test_write_zero_length,
+  internal_test_write_null_data,
+  internal_test_write_bad_channel,
+  internal_test_write_timeout_on_start,
+  internal_test_write_busy_rejection,
+  internal_test_write_nack_returns_nack_and_stops,
+  internal_test_write_restart_holds_bus,
+  internal_test_read_happy,
+  internal_test_read_zero_length_rejected,
+  internal_test_read_null_out,
+  internal_test_read_bad_channel,
+  internal_test_read_timeout_on_start,
+  internal_test_read_busy_rejection,
+  internal_test_transfer_happy,
+  internal_test_transfer_null_args_rejected,
+  internal_test_transfer_busy_rejection,
+  internal_test_abort_resets_channel,
+  internal_test_write_long_break,
+  internal_test_read_long_break,
+  internal_test_scan_no_response,
+  internal_test_scan_bad_args,
+  internal_test_errors_mask_and_clear,
+  internal_test_attach_handler_toggles_iers,
+  internal_test_dispatch_eri_fires_callback,
+  internal_test_mcdc_iic_b,
+  internal_test_mcdc_iic_b_internal_len_buf_invalid,
+  internal_test_mcdc_iic_b_internal_should_dispatch,
 };
 
 int32_t main(void)
@@ -995,6 +966,5 @@ int32_t main(void)
   for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
     s_test_roster[i]();
   }
-  (void)fprintf(stderr, "[OK ] test_ra8_i3c_i2c.c\n");
   return 0;
 }

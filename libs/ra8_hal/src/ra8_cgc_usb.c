@@ -15,7 +15,7 @@
  * Every protected-register write is wrapped in `RA8_PROTECTED_WRITE` so the
  * PRCR re-lock always happens, even on early-return paths. The bounded OSCSF
  * poll helpers and the shared PLL-multiplier scale factor live in
- * `ra8_cgc_internal.h`; `ra8_cgc_ensure_hoco_running_for_usb_ck` is defined
+ * `ra8_cgc_internal.h`; `priv_ra8_cgc_ensure_hoco_running_for_usb_ck` is defined
  * here and reused by `ra8_cgc_eswclk.c`.
  *
  * @par Tag ring/world:
@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_cgc_internal.h"
 #include "ra8_cgc_regs.h"
@@ -160,7 +161,7 @@ typedef enum : uint16_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_wait_usbcksrdy(uint8_t expected)
+RA8_INTERNAL static ra8_err_t internal_wait_usbcksrdy(uint8_t expected)
 {
   volatile uint8_t* const usbckcr = ra8_sys_usbckcr();
   const uint8_t           mask    = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
@@ -188,7 +189,7 @@ static ra8_err_t internal_wait_usbcksrdy(uint8_t expected)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_pll2_program_protected(uint32_t pll2ccr, uint16_t pll2ccr2)
+RA8_INTERNAL static ra8_err_t internal_pll2_program_protected(uint32_t pll2ccr, uint16_t pll2ccr2)
 {
   ra8_err_t err = k_ra8_ok;
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
@@ -196,7 +197,7 @@ static ra8_err_t internal_pll2_program_protected(uint32_t pll2ccr, uint16_t pll2
     /* HUM Ch 9.2.11 "PLL2CR : PLL2 Control Register" p 336 -- stop
      * PLL2 before writing PLL2CCR / PLL2CCR2. */
     *ra8_sys_pll2cr() = (uint8_t)k_ra8_pll2cr_stop;
-    err               = ra8_cgc_wait_oscsf_clear(k_ra8_oscsf_bit_pll2sf);
+    err               = priv_ra8_cgc_wait_oscsf_clear(k_ra8_oscsf_bit_pll2sf);
     if (err != k_ra8_ok) {
       ra8_log_error(s_tag, "pll2: stop wait timeout");
       break;
@@ -206,7 +207,7 @@ static ra8_err_t internal_pll2_program_protected(uint32_t pll2ccr, uint16_t pll2
     /* HUM Ch 9.2.12 "PLL2CCR2 : PLL2 Clock Control Register 2" p 335 */
     *ra8_sys_pll2ccr2() = pll2ccr2;
     *ra8_sys_pll2cr()   = (uint8_t)k_ra8_pll2cr_run;
-    err                 = ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_pll2sf);
+    err                 = priv_ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_pll2sf);
     if (err != k_ra8_ok) {
       ra8_log_error(s_tag, "pll2: lock wait timeout");
       break;
@@ -310,7 +311,7 @@ ra8_err_t ra8_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra8_plodiv_
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
-static ra8_err_t internal_usbckcr_switch_to_pll2p_div5(void)
+RA8_INTERNAL static ra8_err_t internal_usbckcr_switch_to_pll2p_div5(void)
 {
   ra8_err_t err = k_ra8_ok;
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
@@ -404,7 +405,7 @@ ra8_err_t ra8_cgc_usbfs_clock_enable(
     }
   }
   /* OSCSF.HOCOSF poll outside PRCR window (read-only register). */
-  hoco_err = ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_hocosf);
+  hoco_err = priv_ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_hocosf);
   if (hoco_err != k_ra8_ok) {
     ra8_log_error(s_tag, "usbfs: HOCO stabilization timeout");
     return hoco_err;
@@ -483,7 +484,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_wait_usb60cksrdy(uint8_t expected)
+RA8_INTERNAL static ra8_err_t internal_wait_usb60cksrdy(uint8_t expected)
 {
   volatile uint8_t* const usb60ckcr = ra8_sys_usb60ckcr();
   const uint8_t           mask      = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
@@ -514,7 +515,7 @@ static ra8_err_t internal_wait_usb60cksrdy(uint8_t expected)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
-static ra8_err_t internal_usb60ckcr_switch_to_pll2p_div4(void)
+RA8_INTERNAL static ra8_err_t internal_usb60ckcr_switch_to_pll2p_div4(void)
 {
   ra8_err_t err = k_ra8_ok;
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
@@ -561,7 +562,7 @@ static ra8_err_t internal_usb60ckcr_switch_to_pll2p_div4(void)
   return err;
 }
 
-ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck(void)
+ra8_err_t priv_ra8_cgc_ensure_hoco_running_for_usb_ck(void)
 {
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
   {
@@ -574,7 +575,7 @@ ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck(void)
    * succeeds on its first poll unless a test arms a fault -- no HOCOSF
    * RAM seeding is needed for callers (USB60CKCR / ESWCKCR SREQ->SRDY
    * handshakes) to make progress. */
-  return ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_hocosf);
+  return priv_ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_hocosf);
 }
 
 /**
@@ -629,7 +630,7 @@ ra8_err_t ra8_cgc_usbhs_pll_enable(
   /* Step 1: HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag
    * Register", p 344. The USBHS PHY's 12 MHz reference is derived
    * from the main XTAL; without MOSCSF=1 the PHY cannot lock. */
-  const ra8_err_t osc_err = ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_moscsf);
+  const ra8_err_t osc_err = priv_ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_moscsf);
   if (osc_err != k_ra8_ok) {
     ra8_log_error_val(s_tag, "usbhs: main xtal not stable", (uint32_t)osc_err);
     return osc_err;
@@ -660,7 +661,7 @@ ra8_err_t ra8_cgc_usbhs_pll_enable(
 
   /* Step 4: Ensure HOCO is running so the SREQ->SRDY synchronizer can
    * drain (USB60CKCR's reset-default source is HOCO). */
-  const ra8_err_t hoco_err = ra8_cgc_ensure_hoco_running_for_usb_ck();
+  const ra8_err_t hoco_err = priv_ra8_cgc_ensure_hoco_running_for_usb_ck();
   if (hoco_err != k_ra8_ok) {
     ra8_log_error(s_tag, "usbhs: HOCO stabilization timeout");
     return hoco_err;

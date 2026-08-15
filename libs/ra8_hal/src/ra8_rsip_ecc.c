@@ -25,7 +25,7 @@
  * ``internal_asym_pull`` and the handle-tail zero helper
  * ``internal_zero_handle_tail`` are defined in ``ra8_rsip_asym.c`` and shared
  * via ``ra8_rsip_asym_internal.h``; the remaining cross-TU primitives
- * (``internal_load_handle``, ``internal_complete``) are declared in
+ * (``priv_load_handle``, ``priv_complete``) are declared in
  * ``ra8_rsip_internal.h``. The RSIP engine exposes no documented asymmetric
  * register interface (HUM Ch 52 is a feature overview, p 3302-3307), so the fake
  * command path here is a modelled fiction, not a real hardware sequence.
@@ -156,13 +156,13 @@ ra8_err_t ra8_rsip_ecdsa_sign(const ra8_rsip_key_handle_t* key,
   if (curve_bytes == 0U) {
     return k_ra8_err_invalid_arg;
   }
-  internal_load_handle(key);
+  priv_load_handle(key);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_curve) = (uint32_t)curve;
   internal_asym_push(k_ra8_rsip_off_asym_msg_in, digest, digest_len);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl) = k_ra8_rsip_asym_op_ecdsa_sign;
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op)   = k_ra8_rsip_asym_op_ecdsa_sign;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_asym_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_asym_done);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -189,14 +189,14 @@ ra8_err_t ra8_rsip_ecdsa_verify(const ra8_rsip_key_handle_t* key,
   if (curve_bytes == 0U) {
     return k_ra8_err_invalid_arg;
   }
-  internal_load_handle(key);
+  priv_load_handle(key);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_curve) = (uint32_t)curve;
   internal_asym_push(k_ra8_rsip_off_asym_msg_in, digest, digest_len);
   internal_asym_push(k_ra8_rsip_off_asym_sig_in, signature, curve_bytes * 2U);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl) = k_ra8_rsip_asym_op_ecdsa_verify;
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op)   = k_ra8_rsip_asym_op_ecdsa_verify;
 
-  return internal_complete(k_ra8_rsip_mask_isr_asym_done);
+  return priv_complete(k_ra8_rsip_mask_isr_asym_done);
 }
 
 /**
@@ -221,7 +221,7 @@ ra8_err_t ra8_rsip_eddsa_sign(const ra8_rsip_key_handle_t* key,
   if (key->alg != (uint32_t)k_ra8_rsip_oem_cmd_ecc_ed25519_priv) {
     return k_ra8_err_invalid_arg;
   }
-  internal_load_handle(key);
+  priv_load_handle(key);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_curve) = (uint32_t)k_ra8_rsip_curve_ed25519;
   /* PureEdDSA signs the message itself, not a pre-computed digest (RFC 8032). */
   if (msg_len > 0U) {
@@ -230,7 +230,7 @@ ra8_err_t ra8_rsip_eddsa_sign(const ra8_rsip_key_handle_t* key,
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl) = k_ra8_rsip_asym_op_eddsa_sign;
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op)   = k_ra8_rsip_asym_op_eddsa_sign;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_asym_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_asym_done);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -254,7 +254,7 @@ ra8_err_t ra8_rsip_eddsa_verify(const ra8_rsip_key_handle_t* key,
   if (key->alg != (uint32_t)k_ra8_rsip_oem_cmd_ecc_ed25519_priv) {
     return k_ra8_err_invalid_arg;
   }
-  internal_load_handle(key);
+  priv_load_handle(key);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_curve) = (uint32_t)k_ra8_rsip_curve_ed25519;
   if (msg_len > 0U) {
     internal_asym_push(k_ra8_rsip_off_asym_msg_in, msg, msg_len);
@@ -263,7 +263,7 @@ ra8_err_t ra8_rsip_eddsa_verify(const ra8_rsip_key_handle_t* key,
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl) = k_ra8_rsip_asym_op_eddsa_verify;
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op)   = k_ra8_rsip_asym_op_eddsa_verify;
 
-  return internal_complete(k_ra8_rsip_mask_isr_asym_done);
+  return priv_complete(k_ra8_rsip_mask_isr_asym_done);
 }
 
 /**
@@ -278,7 +278,7 @@ ra8_err_t ra8_rsip_eddsa_verify(const ra8_rsip_key_handle_t* key,
  * @param[out] out Destination handle.
  *
  * @pre ``out`` is non-NULL.
- * @pre ``internal_complete`` has just returned ``k_ra8_ok``.
+ * @pre ``priv_complete`` has just returned ``k_ra8_ok``.
  *
  * @post ``out->alg`` and ``out->body_words`` reflect HMAC-SHA-256.
  * @post ``out->body[]`` has been fully populated and tail-zeroed.
@@ -312,14 +312,14 @@ ra8_err_t ra8_rsip_ecdh_compute(const ra8_rsip_key_handle_t* key,
   if (curve_bytes == 0U) {
     return k_ra8_err_invalid_arg;
   }
-  internal_load_handle(key);
+  priv_load_handle(key);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_curve) = (uint32_t)curve;
   internal_asym_push(k_ra8_rsip_off_asym_pub_x, peer_x, curve_bytes);
   internal_asym_push(k_ra8_rsip_off_asym_pub_y, peer_y, curve_bytes);
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl) = k_ra8_rsip_asym_op_ecdh_compute;
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op)   = k_ra8_rsip_asym_op_ecdh_compute;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_asym_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_asym_done);
   if (err != k_ra8_ok) {
     return err;
   }

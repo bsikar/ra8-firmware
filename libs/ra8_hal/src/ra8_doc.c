@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_doc_regs.h"
 #include "ra8_err.h"
@@ -50,7 +51,7 @@ static const char* s_tag = "DOC";
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static inline void internal_ra8_doc_set_mode_16(ra8_docr_oms_t mode)
+RA8_INTERNAL static inline void internal_ra8_doc_set_mode_16(ra8_docr_oms_t mode)
 {
   volatile r_doc_regs_t* reg = ra8_doc();
   /* Write OMS field, clear DOBW + DCSEL. */
@@ -83,7 +84,7 @@ static inline void internal_ra8_doc_set_mode_16(ra8_docr_oms_t mode)
  * @note Not thread-safe; caller must serialize.
  * @since 0.1.0
  */
-static inline uint16_t internal_ra8_doc_run_16(uint16_t seed, uint16_t operand)
+RA8_INTERNAL static inline uint16_t internal_ra8_doc_run_16(uint16_t seed, uint16_t operand)
 {
   volatile r_doc_regs_t* reg    = ra8_doc();
   volatile uint16_t*     dodsr0 = (volatile uint16_t*)&reg->DODSR0;

@@ -1,6 +1,8 @@
 /**
  * @file ra8_sdramc.h
  * @brief External SDRAM controller driver (framework)
+ *
+ * @details Declares the fixed-sequence external SDRAM controller initialization and readiness interface.
  * @ingroup grp_hal_memory
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

@@ -116,7 +116,7 @@ typedef struct {
 } ra8_usb_pmsc_state_data_t;
 
 /**
- * @var s_usb_pmsc_state
+ * @var g_usb_pmsc_state
  * @brief Singleton shadow state shared by both device-MSC TUs.
  *
  * @details Defined in `ra8_usb_pmsc.c`; the SCSI handler TU reads the
@@ -126,7 +126,7 @@ typedef struct {
  * @warning Direct modification outside the driver TUs is forbidden.
  * @since 0.1.0
  */
-extern ra8_usb_pmsc_state_data_t s_usb_pmsc_state;
+extern ra8_usb_pmsc_state_data_t g_usb_pmsc_state;
 
 /**
  * @brief Zero `len` bytes at `dst` byte-by-byte.
@@ -145,7 +145,7 @@ extern ra8_usb_pmsc_state_data_t s_usb_pmsc_state;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV void internal_zero_bytes(uint8_t* dst, uint32_t len);
+RA8_PRIV void priv_zero_bytes(uint8_t* dst, uint32_t len);
 
 /**
  * @brief Build the 36-byte SCSI INQUIRY response.
@@ -168,7 +168,7 @@ RA8_PRIV void internal_zero_bytes(uint8_t* dst, uint32_t len);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t internal_handle_inquiry(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
+RA8_PRIV ra8_err_t priv_handle_inquiry(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
 
 /**
  * @brief Build the 8-byte READ_CAPACITY(10) response.
@@ -190,9 +190,9 @@ RA8_PRIV ra8_err_t internal_handle_inquiry(uint8_t* data_buf, uint32_t capacity,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t internal_handle_read_capacity(uint8_t*  data_buf,
-                                                 uint32_t  capacity,
-                                                 uint32_t* out_len);
+RA8_PRIV ra8_err_t priv_handle_read_capacity(uint8_t*  data_buf,
+                                             uint32_t  capacity,
+                                             uint32_t* out_len);
 
 /**
  * @brief Build the 18-byte REQUEST SENSE response.
@@ -215,9 +215,9 @@ RA8_PRIV ra8_err_t internal_handle_read_capacity(uint8_t*  data_buf,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t internal_handle_request_sense(uint8_t*  data_buf,
-                                                 uint32_t  capacity,
-                                                 uint32_t* out_len);
+RA8_PRIV ra8_err_t priv_handle_request_sense(uint8_t*  data_buf,
+                                             uint32_t  capacity,
+                                             uint32_t* out_len);
 
 /**
  * @brief Build the minimal 4-byte MODE SENSE(6) header response.
@@ -240,9 +240,7 @@ RA8_PRIV ra8_err_t internal_handle_request_sense(uint8_t*  data_buf,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t internal_handle_mode_sense(uint8_t*  data_buf,
-                                              uint32_t  capacity,
-                                              uint32_t* out_len);
+RA8_PRIV ra8_err_t priv_handle_mode_sense(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
 
 /**
  * @brief Run a SCSI READ(10).
@@ -263,7 +261,7 @@ RA8_PRIV ra8_err_t internal_handle_mode_sense(uint8_t*  data_buf,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t internal_handle_read10(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
+RA8_PRIV ra8_err_t priv_handle_read10(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
 
 /**
  * @brief Run a SCSI WRITE(10) -- the data buffer holds the
@@ -283,7 +281,7 @@ RA8_PRIV ra8_err_t internal_handle_read10(uint8_t* data_buf, uint32_t capacity, 
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t internal_handle_write10(const uint8_t* data_buf, uint32_t* out_len);
+RA8_PRIV ra8_err_t priv_handle_write10(const uint8_t* data_buf, uint32_t* out_len);
 
 #ifdef __cplusplus
 }

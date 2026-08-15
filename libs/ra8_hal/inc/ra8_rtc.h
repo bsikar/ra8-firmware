@@ -1,6 +1,8 @@
 /**
  * @file ra8_rtc.h
  * @brief Real-Time Clock driver (BCD calendar mode)
+ *
+ * @details Declares validated BCD calendar configuration and read/write operations for the RA8 real-time clock.
  * @ingroup grp_hal_timers
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

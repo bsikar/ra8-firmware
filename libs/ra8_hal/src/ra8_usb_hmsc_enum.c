@@ -16,7 +16,7 @@
  * attach callback. Every chapter-9 SETUP goes through
  * `ra8_usb_host_setup_request`.
  *
- * The singleton shadow state (`s_usb_hmsc_state`) lives in `ra8_usb_hmsc.c`
+ * The singleton shadow state (`g_usb_hmsc_state`) lives in `ra8_usb_hmsc.c`
  * and is shared with this TU through `ra8_hal_internal.h`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -116,7 +116,7 @@ static ra8_err_t internal_enum_read_dev_desc(uint8_t* desc)
     .w_length        = k_ra8_hmsc_dev_desc_len,
   };
   uint16_t        rx  = 0U;
-  const ra8_err_t err = ra8_usb_host_control_xfer(s_usb_hmsc_state.speed,
+  const ra8_err_t err = ra8_usb_host_control_xfer(g_usb_hmsc_state.speed,
                                                   &setup,
                                                   desc,
                                                   (uint16_t)k_ra8_hmsc_dev_desc_len,
@@ -156,7 +156,7 @@ static ra8_err_t internal_enum_hunt(uint8_t* desc, uint8_t* out_addr)
   ra8_delay_ms(k_ra8_hmsc_vbus_settle_ms);
   const uint32_t t0 = ra8_time_ms();
   for (uint32_t spin = 0U; spin < (uint32_t)k_ra8_hmsc_attach_spin_limit; spin++) {
-    if (ra8_usb_host_line_state(s_usb_hmsc_state.speed) != 0U) {
+    if (ra8_usb_host_line_state(g_usb_hmsc_state.speed) != 0U) {
       break;
     }
     if ((ra8_time_ms() - t0) > (uint32_t)k_ra8_hmsc_attach_to_ms) {
@@ -167,14 +167,14 @@ static ra8_err_t internal_enum_hunt(uint8_t* desc, uint8_t* out_addr)
   ra8_err_t err = k_ra8_err_hw_timeout;
   for (uint8_t attempt = 0U; attempt < (uint8_t)k_ra8_hmsc_enum_tries; attempt++) {
     if (attempt >= (uint8_t)k_ra8_hmsc_no_reset_tries) {
-      (void)ra8_usb_host_bus_reset(s_usb_hmsc_state.speed, true);
+      (void)ra8_usb_host_bus_reset(g_usb_hmsc_state.speed, true);
       ra8_delay_ms(k_ra8_hmsc_reset_hold_ms);
-      (void)ra8_usb_host_bus_reset(s_usb_hmsc_state.speed, false);
+      (void)ra8_usb_host_bus_reset(g_usb_hmsc_state.speed, false);
     }
-    (void)ra8_usb_host_set_uact(s_usb_hmsc_state.speed, true);
+    (void)ra8_usb_host_set_uact(g_usb_hmsc_state.speed, true);
     ra8_delay_ms(k_ra8_hmsc_recovery_ms);
     const uint8_t addr = (uint8_t)(attempt & (uint8_t)k_ra8_hmsc_addr_alt_mask);
-    (void)ra8_usb_host_set_target(s_usb_hmsc_state.speed, addr);
+    (void)ra8_usb_host_set_target(g_usb_hmsc_state.speed, addr);
     err = internal_enum_read_dev_desc(desc);
     if (err == k_ra8_ok) {
       *out_addr = addr;
@@ -215,10 +215,10 @@ static ra8_err_t internal_enum_assign_addr(uint8_t* dev_addr)
     .w_index         = 0U,
     .w_length        = 0U,
   };
-  ra8_err_t err = ra8_usb_host_control_xfer(s_usb_hmsc_state.speed, &setup, nullptr, 0U, nullptr);
+  ra8_err_t err = ra8_usb_host_control_xfer(g_usb_hmsc_state.speed, &setup, nullptr, 0U, nullptr);
   RA8_RETURN_ON_ERROR(err, s_tag, "enum: set address"); /* GCOVR_EXCL_BR_LINE */
   ra8_delay_ms(k_ra8_hmsc_addr_settle_ms);
-  err = ra8_usb_host_set_target(s_usb_hmsc_state.speed, (uint8_t)k_ra8_hmsc_assigned_address);
+  err = ra8_usb_host_set_target(g_usb_hmsc_state.speed, (uint8_t)k_ra8_hmsc_assigned_address);
   RA8_RETURN_ON_ERROR(err, s_tag, "enum: set target"); /* GCOVR_EXCL_BR_LINE */
   *dev_addr = (uint8_t)k_ra8_hmsc_assigned_address;
   return k_ra8_ok;
@@ -232,7 +232,7 @@ static ra8_err_t internal_enum_assign_addr(uint8_t* dev_addr)
  *
  * @param[in] d Pointer to an endpoint descriptor.
  * @pre @p d points at a descriptor with bDescriptorType ENDPOINT.
- * @pre The unfilled `s_usb_hmsc_state.device` endpoint slots are zero.
+ * @pre The unfilled `g_usb_hmsc_state.device` endpoint slots are zero.
  * @post A matching bulk endpoint is recorded once.
  * @post Non-bulk endpoints leave the snapshot untouched.
  * @note Pure helper for the config-descriptor walk.
@@ -250,14 +250,14 @@ static void internal_enum_note_endpoint(const uint8_t* d)
     (uint16_t)((uint16_t)d[k_ra8_hmsc_off_ep_mps] |
                (uint16_t)((uint16_t)d[k_ra8_hmsc_off_ep_mps + 1U] << k_ra8_hmsc_byte_bits));
   if ((ea & (uint8_t)k_ra8_hmsc_ep_dir_in_bit) != 0U) {
-    if (s_usb_hmsc_state.device.bulk_in_ep == 0U) {
-      s_usb_hmsc_state.device.bulk_in_ep         = (uint8_t)(ea & (uint8_t)k_ra8_hmsc_ep_num_mask);
-      s_usb_hmsc_state.device.bulk_in_max_packet = mps;
+    if (g_usb_hmsc_state.device.bulk_in_ep == 0U) {
+      g_usb_hmsc_state.device.bulk_in_ep         = (uint8_t)(ea & (uint8_t)k_ra8_hmsc_ep_num_mask);
+      g_usb_hmsc_state.device.bulk_in_max_packet = mps;
     }
   } else {
-    if (s_usb_hmsc_state.device.bulk_out_ep == 0U) {
-      s_usb_hmsc_state.device.bulk_out_ep         = (uint8_t)(ea & (uint8_t)k_ra8_hmsc_ep_num_mask);
-      s_usb_hmsc_state.device.bulk_out_max_packet = mps;
+    if (g_usb_hmsc_state.device.bulk_out_ep == 0U) {
+      g_usb_hmsc_state.device.bulk_out_ep         = (uint8_t)(ea & (uint8_t)k_ra8_hmsc_ep_num_mask);
+      g_usb_hmsc_state.device.bulk_out_max_packet = mps;
     }
   }
 }
@@ -327,7 +327,7 @@ static ra8_err_t internal_enum_walk_cfg(const uint8_t* cfg, uint16_t len)
     if (dtype == (uint8_t)k_ra8_hmsc_desc_interface) {
       in_msc = internal_enum_iface_is_msc(&cfg[off]);
       if (in_msc) {
-        s_usb_hmsc_state.device.interface_number = cfg[off + (uint16_t)k_ra8_hmsc_off_iface_num];
+        g_usb_hmsc_state.device.interface_number = cfg[off + (uint16_t)k_ra8_hmsc_off_iface_num];
       }
     }
     if (dtype == (uint8_t)k_ra8_hmsc_desc_endpoint) {
@@ -337,10 +337,10 @@ static ra8_err_t internal_enum_walk_cfg(const uint8_t* cfg, uint16_t len)
     }
     off = (uint16_t)(off + dlen);
   }
-  if (s_usb_hmsc_state.device.bulk_in_ep == 0U) {
+  if (g_usb_hmsc_state.device.bulk_in_ep == 0U) {
     return k_ra8_err_hw_error;
   }
-  if (s_usb_hmsc_state.device.bulk_out_ep == 0U) {
+  if (g_usb_hmsc_state.device.bulk_out_ep == 0U) {
     return k_ra8_err_hw_error;
   }
   return k_ra8_ok;
@@ -375,7 +375,7 @@ static ra8_err_t internal_enum_read_config(uint8_t* out_cfg_value)
     .w_index         = 0U,
     .w_length        = k_ra8_hmsc_cfg_desc_len,
   };
-  ra8_err_t err = ra8_usb_host_control_xfer(s_usb_hmsc_state.speed,
+  ra8_err_t err = ra8_usb_host_control_xfer(g_usb_hmsc_state.speed,
                                             &setup,
                                             cfg,
                                             (uint16_t)k_ra8_hmsc_cfg_desc_len,
@@ -389,7 +389,7 @@ static ra8_err_t internal_enum_read_config(uint8_t* out_cfg_value)
   }
   *out_cfg_value = cfg[k_ra8_hmsc_off_cfg_value];
   setup.w_length = total;
-  err            = ra8_usb_host_control_xfer(s_usb_hmsc_state.speed, &setup, cfg, total, &rx);
+  err            = ra8_usb_host_control_xfer(g_usb_hmsc_state.speed, &setup, cfg, total, &rx);
   RA8_RETURN_ON_ERROR(err, s_tag, "enum: cfg full"); /* GCOVR_EXCL_BR_LINE */
   return internal_enum_walk_cfg(cfg, rx);
 }
@@ -409,7 +409,7 @@ static ra8_err_t internal_enum_read_config(uint8_t* out_cfg_value)
  * @pre ::internal_enum_read_config filled the snapshot.
  * @pre The DCP targets @p dev_addr.
  * @post The bulk pipes are configured (DATA0, parked NAK).
- * @post `s_usb_hmsc_state.device.max_lun` is filled (0 on GET_MAX_LUN failure).
+ * @post `g_usb_hmsc_state.device.max_lun` is filled (0 on GET_MAX_LUN failure).
  * @note Blocking (polled control transfers).
  * @since 0.1.0
  */
@@ -423,41 +423,41 @@ static ra8_err_t internal_enum_configure(uint8_t dev_addr, uint8_t cfg_value)
     .w_index         = 0U,
     .w_length        = 0U,
   };
-  ra8_err_t err = ra8_usb_host_control_xfer(s_usb_hmsc_state.speed, &set_cfg, nullptr, 0U, nullptr);
+  ra8_err_t err = ra8_usb_host_control_xfer(g_usb_hmsc_state.speed, &set_cfg, nullptr, 0U, nullptr);
   RA8_RETURN_ON_ERROR(err, s_tag, "enum: set config"); /* GCOVR_EXCL_BR_LINE */
   const ra8_usb_setup_t get_lun = {
     .bm_request_type = k_ra8_hmsc_bm_class_iface_in,
     .b_request       = k_ra8_hmsc_req_get_max_lun,
     .w_value         = 0U,
-    .w_index         = s_usb_hmsc_state.device.interface_number,
+    .w_index         = g_usb_hmsc_state.device.interface_number,
     .w_length        = k_ra8_hmsc_get_max_lun_len,
   };
   uint8_t         lun             = 0U;
   uint16_t        lun_rx          = 0U;
-  const ra8_err_t lun_err         = ra8_usb_host_control_xfer(s_usb_hmsc_state.speed,
+  const ra8_err_t lun_err         = ra8_usb_host_control_xfer(g_usb_hmsc_state.speed,
                                                               &get_lun,
                                                               &lun,
                                                               (uint16_t)k_ra8_hmsc_get_max_lun_len,
                                                               &lun_rx);
-  s_usb_hmsc_state.device.max_lun = 0U;
+  g_usb_hmsc_state.device.max_lun = 0U;
   if (lun_err == k_ra8_ok) {
     if (lun_rx == (uint16_t)k_ra8_hmsc_get_max_lun_len) {
-      s_usb_hmsc_state.device.max_lun = lun;
+      g_usb_hmsc_state.device.max_lun = lun;
     }
   }
-  err = ra8_usb_host_pipe_setup(s_usb_hmsc_state.speed,
+  err = ra8_usb_host_pipe_setup(g_usb_hmsc_state.speed,
                                 k_ra8_hmsc_pipe_bulk_in,
                                 dev_addr,
-                                s_usb_hmsc_state.device.bulk_in_ep,
+                                g_usb_hmsc_state.device.bulk_in_ep,
                                 true,
-                                s_usb_hmsc_state.device.bulk_in_max_packet);
+                                g_usb_hmsc_state.device.bulk_in_max_packet);
   RA8_RETURN_ON_ERROR(err, s_tag, "enum: pipe in"); /* GCOVR_EXCL_BR_LINE */
-  return ra8_usb_host_pipe_setup(s_usb_hmsc_state.speed,
+  return ra8_usb_host_pipe_setup(g_usb_hmsc_state.speed,
                                  k_ra8_hmsc_pipe_bulk_out,
                                  dev_addr,
-                                 s_usb_hmsc_state.device.bulk_out_ep,
+                                 g_usb_hmsc_state.device.bulk_out_ep,
                                  false,
-                                 s_usb_hmsc_state.device.bulk_out_max_packet);
+                                 g_usb_hmsc_state.device.bulk_out_max_packet);
 }
 
 /**
@@ -468,7 +468,7 @@ static ra8_err_t internal_enum_configure(uint8_t dev_addr, uint8_t cfg_value)
  * @param[in] desc Device descriptor bytes (18 valid bytes).
  * @pre @p desc is non-NULL and holds a device descriptor.
  * @pre The snapshot was reset for this enumeration pass.
- * @post `s_usb_hmsc_state.device.vendor_id` / `.product_id` are filled.
+ * @post `g_usb_hmsc_state.device.vendor_id` / `.product_id` are filled.
  * @post @p desc is unmodified.
  * @note Pure helper for ::ra8_usb_hmsc_enumerate.
  * @since 0.1.0
@@ -476,10 +476,10 @@ static ra8_err_t internal_enum_configure(uint8_t dev_addr, uint8_t cfg_value)
 RA8_INTERNAL
 static void internal_enum_fill_ids(const uint8_t* desc)
 {
-  s_usb_hmsc_state.device.vendor_id =
+  g_usb_hmsc_state.device.vendor_id =
     (uint16_t)((uint16_t)desc[k_ra8_hmsc_off_dev_vid] |
                (uint16_t)((uint16_t)desc[k_ra8_hmsc_off_dev_vid + 1U] << k_ra8_hmsc_byte_bits));
-  s_usb_hmsc_state.device.product_id =
+  g_usb_hmsc_state.device.product_id =
     (uint16_t)((uint16_t)desc[k_ra8_hmsc_off_dev_pid] |
                (uint16_t)((uint16_t)desc[k_ra8_hmsc_off_dev_pid + 1U] << k_ra8_hmsc_byte_bits));
 }
@@ -494,7 +494,7 @@ static void internal_enum_fill_ids(const uint8_t* desc)
  * @param[out] out_device Caller's snapshot copy (may be NULL).
  * @pre The bulk pipes are configured and SCSI calls may follow.
  * @pre The snapshot carries VID/PID, endpoints, and max-LUN.
- * @post `s_usb_hmsc_state.attached` is true; the callback (if any) has fired.
+ * @post `g_usb_hmsc_state.attached` is true; the callback (if any) has fired.
  * @post `*out_device` holds the snapshot when @p out_device is non-NULL.
  * @note Helper for ::ra8_usb_hmsc_enumerate.
  * @since 0.1.0
@@ -502,13 +502,13 @@ static void internal_enum_fill_ids(const uint8_t* desc)
 RA8_INTERNAL
 static void internal_enum_publish(uint8_t dev_addr, ra8_usb_hmsc_device_t* out_device)
 {
-  s_usb_hmsc_state.device.device_address = dev_addr;
-  s_usb_hmsc_state.attached              = true;
-  if (s_usb_hmsc_state.attach_cb != nullptr) {
-    s_usb_hmsc_state.attach_cb(s_usb_hmsc_state.attach_ctx, &s_usb_hmsc_state.device);
+  g_usb_hmsc_state.device.device_address = dev_addr;
+  g_usb_hmsc_state.attached              = true;
+  if (g_usb_hmsc_state.attach_cb != nullptr) {
+    g_usb_hmsc_state.attach_cb(g_usb_hmsc_state.attach_ctx, &g_usb_hmsc_state.device);
   }
   if (out_device != nullptr) {
-    *out_device = s_usb_hmsc_state.device;
+    *out_device = g_usb_hmsc_state.device;
   }
 }
 
@@ -558,18 +558,18 @@ static ra8_err_t internal_enum_ladder(uint8_t* out_addr)
  * @retval k_ra8_ok Device enumerated; SCSI calls may follow.
  * @pre ::ra8_usb_hmsc_init succeeded and VBUS reaches the device.
  * @pre ::ra8_time_init has run.
- * @post On success `s_usb_hmsc_state.attached` is true and the snapshot is filled.
+ * @post On success `g_usb_hmsc_state.attached` is true and the snapshot is filled.
  * @post The registered attach callback (if any) has fired.
  * @note Blocking; bounded by the ladder timeouts.
  * @since 0.1.0
  */
 ra8_err_t ra8_usb_hmsc_enumerate(ra8_usb_hmsc_device_t* out_device)
 {
-  if (!s_usb_hmsc_state.initialized) {
+  if (!g_usb_hmsc_state.initialized) {
     return k_ra8_err_invalid_state;
   }
-  s_usb_hmsc_state.attached = false;
-  s_usb_hmsc_state.device   = (ra8_usb_hmsc_device_t){};
+  g_usb_hmsc_state.attached = false;
+  g_usb_hmsc_state.device   = (ra8_usb_hmsc_device_t){};
 
   uint8_t         dev_addr = 0U;
   const ra8_err_t err      = internal_enum_ladder(&dev_addr);

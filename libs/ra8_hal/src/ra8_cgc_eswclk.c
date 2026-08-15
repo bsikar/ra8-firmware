@@ -12,7 +12,7 @@
  * Drives the canonical FSP `bsp_peripheral_clock_set` SREQ/SRDY handshake on
  * ESWCKCR then ESWPCKCR. HOCO must be running before the handshake (the
  * SREQ -> SRDY synchronizer crosses into the CURRENT source domain, which is
- * HOCO at reset); this file reuses `ra8_cgc_ensure_hoco_running_for_usb_ck`
+ * HOCO at reset); this file reuses `priv_ra8_cgc_ensure_hoco_running_for_usb_ck`
  * defined in `ra8_cgc_usb.c`. Every protected-register write is wrapped in
  * `RA8_PROTECTED_WRITE` so the PRCR re-lock always happens.
  *
@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_cgc_internal.h"
 #include "ra8_cgc_regs.h"
@@ -109,7 +110,7 @@ static uint32_t s_eswclk_hz = 0U;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_wait_cksrdy(volatile uint8_t* ckcr_reg, uint8_t expected)
+RA8_INTERNAL static ra8_err_t internal_wait_cksrdy(volatile uint8_t* ckcr_reg, uint8_t expected)
 {
   const uint8_t mask = (uint8_t)(1U << k_ra8_eswckcr_bit_srdy);
   /* Bounded wait through ra8_hw_err.h: on host tests the ra8_fake_mmio
@@ -152,9 +153,9 @@ static ra8_err_t internal_wait_cksrdy(volatile uint8_t* ckcr_reg, uint8_t expect
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_switch_eswcr_to_pll1p(volatile uint8_t* ckcr_reg,
-                                                volatile uint8_t* divcr_reg,
-                                                uint8_t           div_code)
+RA8_INTERNAL static ra8_err_t internal_switch_eswcr_to_pll1p(volatile uint8_t* ckcr_reg,
+                                                             volatile uint8_t* divcr_reg,
+                                                             uint8_t           div_code)
 {
   const uint8_t sreq_mask = (uint8_t)(1U << k_ra8_eswckcr_bit_sreq);
   const uint8_t srdy_mask = (uint8_t)(1U << k_ra8_eswckcr_bit_srdy);
@@ -200,7 +201,7 @@ static ra8_err_t internal_switch_eswcr_to_pll1p(volatile uint8_t* ckcr_reg,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_wait_pdctreswm_clear(uint8_t bit)
+RA8_INTERNAL static ra8_err_t internal_wait_pdctreswm_clear(uint8_t bit)
 {
   volatile uint8_t* const pd   = ra8_sys_pdctreswm();
   const uint8_t           mask = (uint8_t)(1U << bit);
@@ -228,7 +229,7 @@ static ra8_err_t internal_wait_pdctreswm_clear(uint8_t bit)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eswclk_power_on_domain(void)
+RA8_INTERNAL static ra8_err_t internal_eswclk_power_on_domain(void)
 {
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_lpm)
   {
@@ -268,14 +269,14 @@ static ra8_err_t internal_eswclk_power_on_domain(void)
  * @return k_ra8_ok if both handshakes complete.
  * @retval k_ra8_err_hw_timeout CKSRDY transition stuck on either reg.
  *
- * @pre HOCO is running (caller invoked ``ra8_cgc_ensure_hoco_running_for_usb_ck``).
+ * @pre HOCO is running (caller invoked ``priv_ra8_cgc_ensure_hoco_running_for_usb_ck``).
  * @pre Single-threaded init context.
  * @post On k_ra8_ok ESWCLK = 250 MHz, ESWPHYCLK = 500 MHz.
  * @post PRCR is re-locked.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eswclk_program_cks(void)
+RA8_INTERNAL static ra8_err_t internal_eswclk_program_cks(void)
 {
   ra8_err_t err = k_ra8_ok;
   RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)
@@ -305,7 +306,7 @@ ra8_err_t ra8_cgc_eswclk_init(void)
   /* Step 1: ESWCKCR / ESWPCKCR / USBCKCR / USB60CKCR all share the same
    * CKSEL reset-default (HOCO) and the same SREQ -> SRDY handshake
    * plumbing -- HOCO MUST be running before the SREQ is raised. */
-  const ra8_err_t hoco_err = ra8_cgc_ensure_hoco_running_for_usb_ck();
+  const ra8_err_t hoco_err = priv_ra8_cgc_ensure_hoco_running_for_usb_ck();
   if (hoco_err != k_ra8_ok) {
     ra8_log_error(s_tag, "eswclk: HOCO stabilization timeout");
     return hoco_err;

@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -92,7 +93,7 @@ static const ra8_mstp_t s_mstp_table[k_ra8_sci_spi_channel_count] = {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void
+RA8_INTERNAL static void
 internal_resolve_rate(uint32_t baud_hz, uint32_t pclk_hz, uint32_t* out_cks, uint32_t* out_brr)
 {
   for (uint32_t cks = 0U; cks <= (uint32_t)k_ra8_sci_spi_cks_max; cks++) {
@@ -133,7 +134,8 @@ internal_resolve_rate(uint32_t baud_hz, uint32_t pclk_hz, uint32_t* out_cks, uin
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_apply_rate(volatile r_sci_regs_t* reg, uint32_t baud_hz, uint32_t pclk_hz)
+RA8_INTERNAL static void
+internal_apply_rate(volatile r_sci_regs_t* reg, uint32_t baud_hz, uint32_t pclk_hz)
 {
   uint32_t cks = 0U;
   uint32_t brr = 0U;
@@ -163,7 +165,7 @@ static void internal_apply_rate(volatile r_sci_regs_t* reg, uint32_t baud_hz, ui
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static uint32_t internal_ccr3(const ra8_sci_spi_cfg_t* cfg)
+RA8_INTERNAL static uint32_t internal_ccr3(const ra8_sci_spi_cfg_t* cfg)
 {
   uint32_t ccr3 = ((uint32_t)k_ra8_sci_ccr3_mod_simple_spi << (uint32_t)k_ra8_sci_ccr3_shift_mod);
   ccr3 |= ((uint32_t)k_ra8_sci_ccr3_chr_8bit << (uint32_t)k_ra8_sci_ccr3_shift_chr);

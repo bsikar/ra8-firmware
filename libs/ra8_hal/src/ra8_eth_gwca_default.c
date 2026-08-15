@@ -102,7 +102,7 @@ static ra8_err_t internal_drain_rx_slot(ra8_gwca_basic_descriptor_t* desc,
                                         uint32_t                     slot_bytes,
                                         uint32_t*                    out_len)
 {
-  const uint8_t* const buf      = ra8_eth_gwca_decode_ptr(desc);
+  const uint8_t* const buf      = priv_ra8_eth_gwca_decode_ptr(desc);
   const uint32_t       frame_ds = internal_decode_ds(desc);
   if (buf == nullptr || frame_ds > out_capacity) {
     return k_ra8_err_invalid_arg;
@@ -485,7 +485,7 @@ static void internal_rearm_queue_if_disabled(ra8_gwca_basic_descriptor_t* chain,
   /* Restore the LINK terminator (PTR -> chain[0], dt = LINK), reload
    * the queue so the GWCA resumes from the chain base, and snap the
    * software cursor to 0 so it tracks the GWCA's reset scan position. */
-  ra8_eth_gwca_set_linkfix_entry(term, &chain[0]);
+  priv_ra8_eth_gwca_set_linkfix_entry(term, &chain[0]);
   term->dt = (uint8_t)k_ra8_gwdcc_dt_link;
   *cursor  = 0U;
   (void)ra8_eth_gwca_reload_queue(queue_index);

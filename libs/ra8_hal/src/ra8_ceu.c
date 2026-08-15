@@ -316,9 +316,9 @@ ra8_err_t ra8_ceu_init(const ra8_ceu_config_t* cfg)
   const ra8_err_t idle_err = internal_wait_idle();
   RA8_RETURN_ON_ERROR(idle_err, s_tag, "ceu_init: wait idle");
 
-  ra8_ceu_program_format(cfg);
-  ra8_ceu_program_geometry(cfg);
-  ra8_ceu_program_destination(cfg);
+  priv_ra8_ceu_program_format(cfg);
+  priv_ra8_ceu_program_geometry(cfg);
+  priv_ra8_ceu_program_destination(cfg);
 
   s_ceu_int_enable     = (uint32_t)cfg->interrupts;
   s_ceu_image_area     = cfg->image_area_size;
@@ -591,7 +591,7 @@ ra8_err_t ra8_ceu_capture_disarm(void)
 RA8_INTERNAL
 static void internal_plane_b_mirror_from_a(void)
 {
-  static const ra8_ceu_off_t s_plane_offsets[] = {
+  static const ra8_ceu_off_t local_plane_offsets[] = {
     k_ra8_ceu_off_camor,
     k_ra8_ceu_off_capwr,
     k_ra8_ceu_off_cflcr,
@@ -609,9 +609,9 @@ static void internal_plane_b_mirror_from_a(void)
     k_ra8_ceu_off_cdbyr2,
     k_ra8_ceu_off_cdbcr2,
   };
-  for (uint32_t i = 0U; i < (sizeof(s_plane_offsets) / sizeof(s_plane_offsets[0])); i++) {
-    const uint32_t a = *ra8_ceu_reg32_plane(s_plane_offsets[i], k_ra8_ceu_plane_a_off);
-    *ra8_ceu_reg32_plane(s_plane_offsets[i], k_ra8_ceu_plane_b_off) = a;
+  for (uint32_t i = 0U; i < (sizeof(local_plane_offsets) / sizeof(local_plane_offsets[0])); i++) {
+    const uint32_t a = *ra8_ceu_reg32_plane(local_plane_offsets[i], k_ra8_ceu_plane_a_off);
+    *ra8_ceu_reg32_plane(local_plane_offsets[i], k_ra8_ceu_plane_b_off) = a;
   }
 }
 

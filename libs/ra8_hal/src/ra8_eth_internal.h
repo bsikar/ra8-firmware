@@ -101,7 +101,7 @@ typedef struct {
 extern ra8_eth_state_t s_eth_state;
 
 /**
- * @var s_eth_mac_speed_resynced
+ * @var g_eth_mac_speed_resynced
  * @brief Latch -- true once ::ra8_eth_link_status has re-programmed
  *        MPIC.LSC / MPIC.PIPP to match the PHY's negotiated link.
  *
@@ -115,7 +115,7 @@ extern ra8_eth_state_t s_eth_state;
  * @warning File-scope state, not thread-safe.
  * @since 0.1.0
  */
-extern bool s_eth_mac_speed_resynced;
+extern bool g_eth_mac_speed_resynced;
 
 /**
  * @brief Map a logical channel index to an RMAC port identifier.
@@ -138,7 +138,7 @@ extern bool s_eth_mac_speed_resynced;
  * @note Thread safety: pure function, safe from any context.
  * @since 0.1.0
  */
-RA8_PRIV ra8_rmac_port_t ra8_eth_channel_to_port(uint8_t channel);
+RA8_PRIV ra8_rmac_port_t priv_ra8_eth_channel_to_port(uint8_t channel);
 
 #ifdef __cplusplus
 }

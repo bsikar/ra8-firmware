@@ -164,7 +164,7 @@ static ra8_spi_state_t s_spi_state[k_ra8_spi_b_channel_count];
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint8_t internal_spbr(uint32_t baud_hz, uint32_t pclka_hz)
+RA8_INTERNAL static uint8_t internal_spbr(uint32_t baud_hz, uint32_t pclka_hz)
 {
   if ((baud_hz == 0U) || (pclka_hz == 0U)) {
     return 0U;
@@ -203,7 +203,7 @@ static uint8_t internal_spbr(uint32_t baud_hz, uint32_t pclka_hz)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint32_t internal_spcmd(const ra8_spi_cfg_t* cfg)
+RA8_INTERNAL static uint32_t internal_spcmd(const ra8_spi_cfg_t* cfg)
 {
   uint32_t v = 0U;
   /* CPHA / CPOL match SPI mode 0..3. */
@@ -239,7 +239,7 @@ static uint32_t internal_spcmd(const ra8_spi_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint32_t internal_spcr_controller(void)
+RA8_INTERNAL static uint32_t internal_spcr_controller(void)
 {
   uint32_t v = 0U;
   v |= k_ra8_spcr_mask_mstr;   /* Controller mode. */
@@ -276,7 +276,7 @@ static uint32_t internal_spcr_controller(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mask)
+RA8_INTERNAL static ra8_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mask)
 {
   /* Bounded busy-poll of SPSR. On the host test build the ra8_hw_err MMIO fault
    * seam (ra8_fake_mmio_*) drives this real loop to succeed-after-N or to time out,
@@ -310,7 +310,8 @@ static ra8_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_ma
  * @note Not thread-safe; caller must serialize access to the channel.
  * @since 0.1.0
  */
-static void internal_spi_program_regs(volatile r_spi_regs_t* reg, const ra8_spi_cfg_t* cfg)
+RA8_INTERNAL static void internal_spi_program_regs(volatile r_spi_regs_t* reg,
+                                                   const ra8_spi_cfg_t*   cfg)
 {
   /* HUM Ch 43.2.13 "SPSRC : SPI Status Clear Register" p 2905 */
   reg->SPSRC = k_ra8_spsrc_mask_all;
@@ -479,7 +480,7 @@ ra8_err_t ra8_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_unit_bytes(ra8_spi_bit_width_t bit_width, uint8_t* out_bytes)
+RA8_INTERNAL static ra8_err_t internal_unit_bytes(ra8_spi_bit_width_t bit_width, uint8_t* out_bytes)
 {
   switch (bit_width) {
     case k_ra8_spi_width_8:
@@ -516,7 +517,8 @@ static ra8_err_t internal_unit_bytes(ra8_spi_bit_width_t bit_width, uint8_t* out
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_apply_bit_width(volatile r_spi_regs_t* reg, ra8_spi_bit_width_t bit_width)
+RA8_INTERNAL static void internal_apply_bit_width(volatile r_spi_regs_t* reg,
+                                                  ra8_spi_bit_width_t    bit_width)
 {
   /* HUM Ch 43.2.7 "SPCMDm : SPI Command Register" p 2893 */
   uint32_t spcmd0 = reg->SPCMD[0] & ~k_ra8_spcmd_mask_spb;
@@ -546,10 +548,10 @@ static void internal_apply_bit_width(volatile r_spi_regs_t* reg, ra8_spi_bit_wid
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_push_unit(volatile r_spi_regs_t* reg,
-                               const void*            tx,
-                               uint32_t               idx,
-                               ra8_spi_bit_width_t    bit_width)
+RA8_INTERNAL static void internal_push_unit(volatile r_spi_regs_t* reg,
+                                            const void*            tx,
+                                            uint32_t               idx,
+                                            ra8_spi_bit_width_t    bit_width)
 {
   uint32_t value = 0U;
   if (tx == nullptr) {
@@ -591,7 +593,7 @@ static void internal_push_unit(volatile r_spi_regs_t* reg,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void
+RA8_INTERNAL static void
 internal_pop_unit(volatile r_spi_regs_t* reg, void* rx, uint32_t idx, ra8_spi_bit_width_t bit_width)
 {
   /* HUM Ch 43.2.2 "SPDR : SPI Data Register" p 2881 */
@@ -641,11 +643,11 @@ internal_pop_unit(volatile r_spi_regs_t* reg, void* rx, uint32_t idx, ra8_spi_bi
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_xfer_common(uint8_t             channel,
-                                      const void*         tx,
-                                      void*               rx,
-                                      uint32_t            len,
-                                      ra8_spi_bit_width_t bit_width)
+RA8_INTERNAL static ra8_err_t internal_xfer_common(uint8_t             channel,
+                                                   const void*         tx,
+                                                   void*               rx,
+                                                   uint32_t            len,
+                                                   ra8_spi_bit_width_t bit_width)
 {
   if (channel >= k_ra8_spi_b_channel_count) {
     return k_ra8_err_invalid_arg;

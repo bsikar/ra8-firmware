@@ -24,7 +24,7 @@
  * Every leg is driven deterministically by pre-seeding the fake's
  * register RAM (BRDYSTS / CFIFOCTR for the OUT-pipe drain) or the
  * module-stop ref-count; no timing injection (SIGALRM) is used.
- * ``internal_wait_frdy`` converges on its first poll via the unarmed
+ * ``priv_wait_frdy`` converges on its first poll via the unarmed
  * ra8_fake_mmio seam, so the FIFO drain converges without a real
  * controller.
  *
@@ -41,6 +41,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
@@ -97,9 +98,8 @@ static ra8_err_t s_setup_cb_return_code = k_ra8_ok;
  * @param[in] setup Unused SETUP envelope (contents are irrelevant here).
  *
  * @return ::s_setup_cb_return_code.
- * @retval k_ra8_ok Default accept path.
- */
-static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
+ * @retval k_ra8_ok Default accept path. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
 {
   (void)ctx;
   (void)setup;
@@ -113,9 +113,8 @@ static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
  *
  * @details ``ra8_mstp_init`` clears every module-stop ref-count to zero,
  * which is essential for the ref-count-saturation case: each test starts
- * from a clean count. ``ra8_usb_pvnd_close`` drops any prior init.
- */
-static void prep(void)
+ * from a clean count. ``ra8_usb_pvnd_close`` drops any prior init. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
@@ -132,12 +131,11 @@ static void prep(void)
  *
  * @details Covers the descriptor-handoff body (lines 209-215): the
  * NULL-pointer reject, the zero-length reject, and the successful
- * pointer + length store.
- */
-static void test_set_descriptors_paths(void)
+ * pointer + length store. @brief Verify set descriptors paths behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_descriptors_paths(void)
 {
   TEST_BEGIN("ra8_usb_pvnd_set_descriptors: NULL / zero-len / store");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
 
   /* NULL blob -> RA8_CHECK_NULL_PTR reject (line 209). */
@@ -161,12 +159,11 @@ static void test_set_descriptors_paths(void)
  * @details With BRDYSTS clear (the reset default), ``ra8_usb_queue_out``
  * takes its no-data fast path and returns ``k_ra8_err_no_data``. The
  * class layer then zeroes ``*got_len`` (lines 252-253) and returns the
- * error (lines 247-250, 255).
- */
-static void test_recv_empty_pipe(void)
+ * error (lines 247-250, 255). @brief Verify recv empty pipe behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_recv_empty_pipe(void)
 {
   TEST_BEGIN("ra8_usb_pvnd_recv reports no_data and zeroes got_len on empty pipe");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
 
   uint8_t  buf[k_test_recv_capacity] = {};
@@ -187,12 +184,11 @@ static void test_recv_empty_pipe(void)
  * no-data fast path is bypassed, and stages CFIFOCTR with FRDY asserted
  * and DTLN == ::k_test_recv_avail so the drain observes a non-zero
  * bank. ``ra8_usb_queue_out`` then returns ``k_ra8_ok`` and the class
- * layer copies the drained byte count into ``*got_len`` (line 251).
- */
-static void test_recv_drains_bank(void)
+ * layer copies the drained byte count into ``*got_len`` (line 251). @brief Verify recv drains bank behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_recv_drains_bank(void)
 {
   TEST_BEGIN("ra8_usb_pvnd_recv drains a staged bank and reports the byte count");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
 
   volatile r_usb_regs_t* reg = ra8_usb_fs();
@@ -222,14 +218,13 @@ static void test_recv_drains_bank(void)
  * (line 293). Off-target that stall request itself succeeds, so
  * ``ra8_usb_pvnd_handle_setup`` returns ``k_ra8_ok`` even though the
  * application rejected the request; the callback-was-invoked count
- * confirms the error branch was taken.
- */
-static void test_handle_setup_cb_error_stalls(void)
+ * confirms the error branch was taken. @brief Verify handle setup cb error stalls behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_handle_setup_cb_error_stalls(void)
 {
   TEST_BEGIN("ra8_usb_pvnd_handle_setup stalls EP0 when the vendor callback fails");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_attach_setup_handler(internal_test_setup_cb, nullptr));
 
   s_setup_cb_return_code = k_ra8_err_timeout; /* Force the error branch. */
   ra8_usb_setup_t setup  = {
@@ -260,13 +255,12 @@ static void test_handle_setup_cb_error_stalls(void)
  * ``UINT8_MAX``. Saturating it here (255 enables, no matching disables)
  * makes the device-init call fail, so ``ra8_usb_pvnd_init`` logs the
  * failure and returns ``k_ra8_err_hw_init_failed`` without ever setting
- * ``s_state.initialized``. ``ra8_mstp_init`` in ``prep`` restores a clean
- * ref-count for every other case.
- */
-static void test_init_device_init_failure(void)
+ * ``s_state.initialized``. ``ra8_mstp_init`` in ``internal_prep`` restores a clean
+ * ref-count for every other case. @brief Verify init device init failure behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_device_init_failure(void)
 {
   TEST_BEGIN("ra8_usb_pvnd_init maps a device-init failure to hw_init_failed");
-  prep();
+  internal_prep();
 
   /* Pin the USBFS module-stop ref-count at its ceiling so the enable
    * inside ra8_usb_device_init trips the saturation guard. */
@@ -281,11 +275,10 @@ static void test_init_device_init_failure(void)
 
 int32_t main(void)
 {
-  test_set_descriptors_paths();
-  test_recv_empty_pipe();
-  test_recv_drains_bank();
-  test_handle_setup_cb_error_stalls();
-  test_init_device_init_failure();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_pvnd_cov.c\n");
+  internal_test_set_descriptors_paths();
+  internal_test_recv_empty_pipe();
+  internal_test_recv_drains_bank();
+  internal_test_handle_setup_cb_error_stalls();
+  internal_test_init_device_init_failure();
   return 0;
 }

@@ -56,13 +56,13 @@ extern "C" {
  * decision to model timing), so the mask's tolerance of Non-secure-owned bits
  * is verified on silicon (the TrustZone e-reader boots through ra8_mstp_init
  * with USBFS0 + USBHS delegated Non-secure), while the host tests cover the
- * mask value (ra8_mstp_ns_mask_internal) and the init integration.
+ * mask value (priv_ra8_mstp_ns_mask_internal) and the init integration.
  *
  * @note Not thread-safe; init-time single-threaded context only.
  * @since 0.1.0
  */
 RA8_PRIV [[nodiscard]] ra8_err_t
-ra8_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32_t care_mask);
+priv_ra8_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32_t care_mask);
 
 /**
  * @brief Non-secure-owned bit mask for one MSTPCR register (read from PSAR).
@@ -88,7 +88,7 @@ ra8_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32_t care_ma
  * @note Not thread-safe; init-time single-threaded context only.
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] uint32_t ra8_mstp_ns_mask_internal(uint8_t reg);
+RA8_PRIV [[nodiscard]] uint32_t priv_ra8_mstp_ns_mask_internal(uint8_t reg);
 
 #ifdef __cplusplus
 }

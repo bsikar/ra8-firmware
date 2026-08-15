@@ -14,6 +14,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_lvd.h"
@@ -38,7 +39,8 @@ static uint32_t          s_chan_cb_count;
 static ra8_lvd_channel_t s_cb_last_ch;
 static void*             s_cb_last_ctx;
 
-static void prep(void)
+/** @brief Provide the file-local prep test helper. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   s_cb_count      = 0U;
@@ -52,7 +54,8 @@ static void prep(void)
   (void)ra8_lvd_attach_channel_handler(k_ra8_lvd_ch2, nullptr, nullptr);
 }
 
-static ra8_lvd_cfg_t make_cfg(void)
+/** @brief Prepare the fixture's make cfg state. @details Implements the make cfg fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_lvd_cfg_t internal_make_cfg(void)
 {
   const ra8_lvd_cfg_t cfg = {
     .threshold    = k_ra8_lvd_pvdlvl_2_85v,
@@ -69,14 +72,16 @@ static ra8_lvd_cfg_t make_cfg(void)
   return cfg;
 }
 
-static void stub_cb(void* ctx, ra8_lvd_channel_t ch)
+/** @brief Provide the file-local stub cb test helper. @details Implements the stub cb fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] ch Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_stub_cb(void* ctx, ra8_lvd_channel_t ch)
 {
   ++s_cb_count;
   s_cb_last_ch  = ch;
   s_cb_last_ctx = ctx;
 }
 
-static void stub_chan_cb(void* ctx, ra8_lvd_channel_t ch)
+/** @brief Provide the file-local stub chan cb test helper. @details Implements the stub chan cb fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] ch Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_stub_chan_cb(void* ctx, ra8_lvd_channel_t ch)
 {
   ++s_chan_cb_count;
   s_cb_last_ch  = ch;
@@ -93,12 +98,13 @@ static void stub_chan_cb(void* ctx, ra8_lvd_channel_t ch)
   * code under test that this case touches)
  */
 
-static void test_set_filter_full_range(void)
+/** @brief Verify set filter full range behavior. @details Executes the set filter full range scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_filter_full_range(void)
 {
   TEST_BEGIN("lvd set_filter exercises every FSAMP value");
-  prep();
+  internal_prep();
 
-  ra8_lvd_cfg_t cfg = make_cfg();
+  ra8_lvd_cfg_t cfg = internal_make_cfg();
   cfg.filter_en     = false;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch1, &cfg));
 
@@ -135,14 +141,13 @@ static void test_set_filter_full_range(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_hysteresis_lvd_then_hvd(void)
+ * code under test that this case touches) @brief Verify set hysteresis lvd then hvd behavior. @details Executes the set hysteresis lvd then hvd scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_hysteresis_lvd_then_hvd(void)
 {
   TEST_BEGIN("lvd set_hysteresis_mode LVD then HVD");
-  prep();
+  internal_prep();
 
-  ra8_lvd_cfg_t cfg = make_cfg();
+  ra8_lvd_cfg_t cfg = internal_make_cfg();
   cfg.response      = k_ra8_lvd_response_reset; /* sets RI=1 so HVD is allowed. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch1, &cfg));
 
@@ -165,14 +170,13 @@ static void test_set_hysteresis_lvd_then_hvd(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_hysteresis_hvd_requires_ri(void)
+ * code under test that this case touches) @brief Verify set hysteresis hvd requires ri behavior. @details Executes the set hysteresis hvd requires ri scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_hysteresis_hvd_requires_ri(void)
 {
   TEST_BEGIN("lvd set_hysteresis_mode HVD blocked when RI=0 (m chan)");
-  prep();
+  internal_prep();
 
-  ra8_lvd_cfg_t cfg = make_cfg();
+  ra8_lvd_cfg_t cfg = internal_make_cfg();
   cfg.response      = k_ra8_lvd_response_interrupt; /* RI stays 0 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch1, &cfg));
 
@@ -181,7 +185,7 @@ static void test_set_hysteresis_hvd_requires_ri(void)
 
   /* n channels are not subject to the RI check. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_unlock_n_channels());
-  ra8_lvd_cfg_t ncfg = make_cfg();
+  ra8_lvd_cfg_t ncfg = internal_make_cfg();
   ncfg.response      = k_ra8_lvd_response_reset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch4, &ncfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_set_hysteresis_mode(k_ra8_lvd_ch4, k_ra8_lvd_hysteresis_hvd));
@@ -192,14 +196,13 @@ static void test_set_hysteresis_hvd_requires_ri(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_negate_mode(void)
+ * code under test that this case touches) @brief Verify set negate mode behavior. @details Executes the set negate mode scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_negate_mode(void)
 {
   TEST_BEGIN("lvd set_negate_mode happy + RHSEL conflict");
-  prep();
+  internal_prep();
 
-  ra8_lvd_cfg_t cfg = make_cfg();
+  ra8_lvd_cfg_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch1, &cfg));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_set_negate_mode(k_ra8_lvd_ch1, k_ra8_lvd_negate_after_assert));
@@ -217,7 +220,7 @@ static void test_set_negate_mode(void)
                  ra8_lvd_set_negate_mode(k_ra8_lvd_ch4, k_ra8_lvd_negate_after_voltage));
 
   /* Force RI=1 so HVD becomes legal. Then HVD + RN=1 conflicts. */
-  ra8_lvd_cfg_t cfg2 = make_cfg();
+  ra8_lvd_cfg_t cfg2 = internal_make_cfg();
   cfg2.response      = k_ra8_lvd_response_reset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch2, &cfg2));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_set_hysteresis_mode(k_ra8_lvd_ch2, k_ra8_lvd_hysteresis_hvd));
@@ -236,10 +239,11 @@ static void test_set_negate_mode(void)
   * code under test that this case touches)
  */
 
-static void test_status_read_and_clear(void)
+/** @brief Verify status read and clear behavior. @details Executes the status read and clear scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_status_read_and_clear(void)
 {
   TEST_BEGIN("lvd status read + clear");
-  prep();
+  internal_prep();
 
   /* Pre-load PVDmSR to MON=1, DET=1 like the hardware would after a
    * detected crossing. */
@@ -279,10 +283,11 @@ static void test_status_read_and_clear(void)
   * code under test that this case touches)
  */
 
-static void test_set_security(void)
+/** @brief Verify set security behavior. @details Executes the set security scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_security(void)
 {
   TEST_BEGIN("lvd set_security PVDSAR write");
-  prep();
+  internal_prep();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_set_security((uint32_t)k_ra8_lvd_pvdsar_mask_nonsec0));
   TEST_ASSERT_EQ(k_ra8_lvd_pvdsar_mask_nonsec0, *ra8_lvd_reg32(k_ra8_lvd_pvdsar_off));
@@ -302,12 +307,11 @@ static void test_set_security(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_unlock_relock_n_channels(void)
+ * code under test that this case touches) @brief Verify unlock relock n channels behavior. @details Executes the unlock relock n channels scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_unlock_relock_n_channels(void)
 {
   TEST_BEGIN("lvd unlock/relock n-channels (PVDLR)");
-  prep();
+  internal_prep();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_unlock_n_channels());
   TEST_ASSERT_EQ(0U, *ra8_lvd_reg8(k_ra8_lvd_pvdlr_off));
@@ -327,12 +331,13 @@ static void test_unlock_relock_n_channels(void)
   * code under test that this case touches)
  */
 
-static void test_elc_event_enable_disable(void)
+/** @brief Verify elc event enable disable behavior. @details Executes the elc event enable disable scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_elc_event_enable_disable(void)
 {
   TEST_BEGIN("lvd enable/disable ELC event");
-  prep();
+  internal_prep();
 
-  ra8_lvd_cfg_t cfg = make_cfg();
+  ra8_lvd_cfg_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch1, &cfg));
 
   /* Force CMPE off, then re-enable via the ELC helper. */
@@ -355,14 +360,13 @@ static void test_elc_event_enable_disable(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_configure_for_standby_m(void)
+ * code under test that this case touches) @brief Verify configure for standby m behavior. @details Executes the configure for standby m scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_configure_for_standby_m(void)
 {
   TEST_BEGIN("lvd configure_for_standby (m channel sets DFDIS, clears RI/RN)");
-  prep();
+  internal_prep();
 
-  ra8_lvd_cfg_t cfg = make_cfg();
+  ra8_lvd_cfg_t cfg = internal_make_cfg();
   cfg.response      = k_ra8_lvd_response_reset;
   cfg.negate        = k_ra8_lvd_negate_after_assert;
   /* RHSEL must stay LVD so RN=1 is allowed; default already does. */
@@ -380,15 +384,14 @@ static void test_configure_for_standby_m(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_configure_for_standby_n(void)
+ * code under test that this case touches) @brief Verify configure for standby n behavior. @details Executes the configure for standby n scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_configure_for_standby_n(void)
 {
   TEST_BEGIN("lvd configure_for_standby (n channel only sets DFDIS)");
-  prep();
+  internal_prep();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_unlock_n_channels());
-  ra8_lvd_cfg_t cfg = make_cfg();
+  ra8_lvd_cfg_t cfg = internal_make_cfg();
   cfg.response      = k_ra8_lvd_response_reset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch4, &cfg));
 
@@ -404,14 +407,13 @@ static void test_configure_for_standby_n(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_cancel_deep_standby_path(void)
+ * code under test that this case touches) @brief Verify cancel deep standby path behavior. @details Executes the cancel deep standby path scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_cancel_deep_standby_path(void)
 {
   TEST_BEGIN("lvd cancel_deep_standby_path clears RI on PVD1 + PVD2");
-  prep();
+  internal_prep();
 
-  ra8_lvd_cfg_t cfg = make_cfg();
+  ra8_lvd_cfg_t cfg = internal_make_cfg();
   cfg.response      = k_ra8_lvd_response_reset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch1, &cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch2, &cfg));
@@ -436,10 +438,11 @@ static void test_cancel_deep_standby_path(void)
   * code under test that this case touches)
  */
 
-static void test_filter_delay_us(void)
+/** @brief Verify filter delay us behavior. @details Executes the filter delay us scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_filter_delay_us(void)
 {
   TEST_BEGIN("lvd filter_delay_us spans every divider");
-  prep();
+  internal_prep();
 
   /* For LOCO=32768, div=0 -> s=2 -> cycles=2*2+3=7 -> 7*1e6/32768 + 1
    *  = 213 + 1 = 214 us. */
@@ -472,13 +475,15 @@ static void test_filter_delay_us(void)
   * code under test that this case touches)
  */
 
-static void test_attach_and_dispatch_shared(void)
+/** @brief Verify attach and dispatch shared behavior. @details Executes the attach and dispatch shared scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_and_dispatch_shared(void)
 {
   TEST_BEGIN("lvd attach + dispatch (shared callback)");
-  prep();
+  internal_prep();
 
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_lvd_attach_handler(stub_cb, (void*)(uintptr_t)k_ra8_lvd_test_ctx_val));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_lvd_attach_handler(internal_stub_cb, (void*)(uintptr_t)k_ra8_lvd_test_ctx_val));
 
   /* Pre-set DET so dispatch will fire the callback. */
   *ra8_lvd_reg8(k_ra8_lvd_pvd2_sr_off) = (uint8_t)k_ra8_lvd_sr_mask_det;
@@ -513,18 +518,18 @@ static void test_attach_and_dispatch_shared(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_attach_per_channel_handler(void)
+ * code under test that this case touches) @brief Verify attach per channel handler behavior. @details Executes the attach per channel handler scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_attach_per_channel_handler(void)
 {
   TEST_BEGIN("lvd attach_channel_handler overrides shared cb");
-  prep();
+  internal_prep();
 
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_lvd_attach_handler(stub_cb, (void*)(uintptr_t)k_ra8_lvd_test_ctx_val));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_lvd_attach_handler(internal_stub_cb, (void*)(uintptr_t)k_ra8_lvd_test_ctx_val));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_lvd_attach_channel_handler(k_ra8_lvd_ch1,
-                                                stub_chan_cb,
+                                                internal_stub_chan_cb,
                                                 (void*)(uintptr_t)k_ra8_lvd_test_ctx_chan));
 
   /* Per-channel handler fires on PVD1; shared handler fires on PVD2. */
@@ -542,10 +547,10 @@ static void test_attach_per_channel_handler(void)
   /* Bad channel + n-chan rejection. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_lvd_attach_channel_handler((ra8_lvd_channel_t)k_ra8_lvd_test_bogus_ch,
-                                                stub_chan_cb,
+                                                internal_stub_chan_cb,
                                                 nullptr));
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_lvd_attach_channel_handler(k_ra8_lvd_ch4, stub_chan_cb, nullptr));
+                 ra8_lvd_attach_channel_handler(k_ra8_lvd_ch4, internal_stub_chan_cb, nullptr));
   TEST_END("lvd attach_channel_handler overrides shared cb");
 }
 
@@ -559,12 +564,13 @@ static void test_attach_per_channel_handler(void)
   * code under test that this case touches)
  */
 
-static void test_every_threshold_value(void)
+/** @brief Verify every threshold value behavior. @details Executes the every threshold value scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_every_threshold_value(void)
 {
   TEST_BEGIN("lvd every PVDLVL value accepted");
-  prep();
+  internal_prep();
 
-  ra8_lvd_cfg_t cfg = make_cfg();
+  ra8_lvd_cfg_t cfg = internal_make_cfg();
   for (uint8_t v = (uint8_t)k_ra8_lvd_pvdlvl_min; v <= (uint8_t)k_ra8_lvd_pvdlvl_max; ++v) {
     cfg.threshold = (ra8_lvd_pvdlvl_t)v;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch1, &cfg));
@@ -576,7 +582,7 @@ static void test_every_threshold_value(void)
 }
 
 /**
- * @test test_mcdc_lvd
+ * @test internal_test_mcdc_lvd
  *
  * @par MC/DC:
  * Decision: ``ra8_lvd_set_hysteresis_mode`` line 794,
@@ -591,15 +597,14 @@ static void test_every_threshold_value(void)
  *       -> C1=T,C2=F -> dec F -> ok
  * - V3: n channel (has_irq=F) + hyst=HVD
  *       -> C1=F (short-circuits) -> dec F -> ok (no RI gate)
- * Pairs: (V1,V2) flip C2 with C1 fixed; (V1,V3) flip C1 with C2 fixed.
- */
-static void test_mcdc_lvd(void)
+ * Pairs: (V1,V2) flip C2 with C1 fixed; (V1,V3) flip C1 with C2 fixed. @brief Verify mcdc lvd behavior. @details Executes the mcdc lvd scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_lvd(void)
 {
   TEST_BEGIN("lvd MC/DC: set_hysteresis_mode RI gate (2-cond)");
-  prep();
+  internal_prep();
 
   /* V1: m chan, RI=0 (response=interrupt sets RIE not RI), HVD -> dec T. */
-  ra8_lvd_cfg_t cfg_v1 = make_cfg();
+  ra8_lvd_cfg_t cfg_v1 = internal_make_cfg();
   cfg_v1.response      = k_ra8_lvd_response_interrupt;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch1, &cfg_v1));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
@@ -610,7 +615,7 @@ static void test_mcdc_lvd(void)
 
   /* V3: n chan (has_irq=F), HVD -> C1=F (short-circuits) -> dec F -> ok. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_unlock_n_channels());
-  ra8_lvd_cfg_t cfg_v3 = make_cfg();
+  ra8_lvd_cfg_t cfg_v3 = internal_make_cfg();
   cfg_v3.response      = k_ra8_lvd_response_reset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_channel_init(k_ra8_lvd_ch4, &cfg_v3));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lvd_set_hysteresis_mode(k_ra8_lvd_ch4, k_ra8_lvd_hysteresis_hvd));
@@ -618,7 +623,7 @@ static void test_mcdc_lvd(void)
 }
 
 /**
- * @test test_mcdc_lvd_internal_reject_hvd_after
+ * @test internal_test_mcdc_lvd_internal_reject_hvd_after
  *
  * @par MC/DC:
  * Decision at libs/ra8_hal/src/ra8_lvd.c (call site) -> helper at
@@ -627,28 +632,27 @@ static void test_mcdc_lvd(void)
  * - V1: hyst=lvd, negate=after  -> false
  * - V2: hyst=hvd, negate=after  -> true  (varies hyst)
  * - V3: hyst=hvd, negate=normal -> false (varies negate)
- * N+1 = 3.
- */
-static void test_mcdc_lvd_internal_reject_hvd_after(void)
+ * N+1 = 3. @brief Verify mcdc lvd internal reject hvd after behavior. @details Executes the mcdc lvd internal reject hvd after scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_lvd_internal_reject_hvd_after(void)
 {
   TEST_BEGIN("lvd MC/DC: reject_hvd_after AND");
-  TEST_ASSERT(!ra8_lvd_internal_reject_hvd_after((uint32_t)k_ra8_lvd_hysteresis_hvd,
-                                                 (uint32_t)k_ra8_lvd_negate_after_assert,
-                                                 (uint32_t)k_ra8_lvd_hysteresis_lvd,
-                                                 (uint32_t)k_ra8_lvd_negate_after_assert));
-  TEST_ASSERT(ra8_lvd_internal_reject_hvd_after((uint32_t)k_ra8_lvd_hysteresis_hvd,
-                                                (uint32_t)k_ra8_lvd_negate_after_assert,
-                                                (uint32_t)k_ra8_lvd_hysteresis_hvd,
-                                                (uint32_t)k_ra8_lvd_negate_after_assert));
-  TEST_ASSERT(!ra8_lvd_internal_reject_hvd_after((uint32_t)k_ra8_lvd_hysteresis_hvd,
-                                                 (uint32_t)k_ra8_lvd_negate_after_assert,
-                                                 (uint32_t)k_ra8_lvd_hysteresis_hvd,
-                                                 (uint32_t)k_ra8_lvd_negate_after_voltage));
+  TEST_ASSERT(!priv_ra8_lvd_internal_reject_hvd_after((uint32_t)k_ra8_lvd_hysteresis_hvd,
+                                                      (uint32_t)k_ra8_lvd_negate_after_assert,
+                                                      (uint32_t)k_ra8_lvd_hysteresis_lvd,
+                                                      (uint32_t)k_ra8_lvd_negate_after_assert));
+  TEST_ASSERT(priv_ra8_lvd_internal_reject_hvd_after((uint32_t)k_ra8_lvd_hysteresis_hvd,
+                                                     (uint32_t)k_ra8_lvd_negate_after_assert,
+                                                     (uint32_t)k_ra8_lvd_hysteresis_hvd,
+                                                     (uint32_t)k_ra8_lvd_negate_after_assert));
+  TEST_ASSERT(!priv_ra8_lvd_internal_reject_hvd_after((uint32_t)k_ra8_lvd_hysteresis_hvd,
+                                                      (uint32_t)k_ra8_lvd_negate_after_assert,
+                                                      (uint32_t)k_ra8_lvd_hysteresis_hvd,
+                                                      (uint32_t)k_ra8_lvd_negate_after_voltage));
   TEST_END("lvd MC/DC: reject_hvd_after AND");
 }
 
 /**
- * @test test_mcdc_lvd_internal_set_ri_bit
+ * @test internal_test_mcdc_lvd_internal_set_ri_bit
  *
  * @par MC/DC:
  * Decision at libs/ra8_hal/src/ra8_lvd.c (call site) -> helper at
@@ -657,43 +661,41 @@ static void test_mcdc_lvd_internal_reject_hvd_after(void)
  * - V1: resp=interrupt     -> false
  * - V2: resp=reset         -> true (varies left)
  * - V3: resp=reset_on_rise -> true (varies right)
- * N+1 = 3.
- */
-static void test_mcdc_lvd_internal_set_ri_bit(void)
+ * N+1 = 3. @brief Verify mcdc lvd internal set ri bit behavior. @details Executes the mcdc lvd internal set ri bit scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_lvd_internal_set_ri_bit(void)
 {
   TEST_BEGIN("lvd MC/DC: set_ri_bit OR");
-  TEST_ASSERT(!ra8_lvd_internal_set_ri_bit((uint32_t)k_ra8_lvd_response_reset,
-                                           (uint32_t)k_ra8_lvd_response_reset_on_rise,
-                                           (uint32_t)k_ra8_lvd_response_interrupt));
-  TEST_ASSERT(ra8_lvd_internal_set_ri_bit((uint32_t)k_ra8_lvd_response_reset,
-                                          (uint32_t)k_ra8_lvd_response_reset_on_rise,
-                                          (uint32_t)k_ra8_lvd_response_reset));
-  TEST_ASSERT(ra8_lvd_internal_set_ri_bit((uint32_t)k_ra8_lvd_response_reset,
-                                          (uint32_t)k_ra8_lvd_response_reset_on_rise,
-                                          (uint32_t)k_ra8_lvd_response_reset_on_rise));
+  TEST_ASSERT(!priv_ra8_lvd_internal_set_ri_bit((uint32_t)k_ra8_lvd_response_reset,
+                                                (uint32_t)k_ra8_lvd_response_reset_on_rise,
+                                                (uint32_t)k_ra8_lvd_response_interrupt));
+  TEST_ASSERT(priv_ra8_lvd_internal_set_ri_bit((uint32_t)k_ra8_lvd_response_reset,
+                                               (uint32_t)k_ra8_lvd_response_reset_on_rise,
+                                               (uint32_t)k_ra8_lvd_response_reset));
+  TEST_ASSERT(priv_ra8_lvd_internal_set_ri_bit((uint32_t)k_ra8_lvd_response_reset,
+                                               (uint32_t)k_ra8_lvd_response_reset_on_rise,
+                                               (uint32_t)k_ra8_lvd_response_reset_on_rise));
   TEST_END("lvd MC/DC: set_ri_bit OR");
 }
 
 int32_t main(void)
 {
-  test_set_filter_full_range();
-  test_set_hysteresis_lvd_then_hvd();
-  test_set_hysteresis_hvd_requires_ri();
-  test_set_negate_mode();
-  test_status_read_and_clear();
-  test_set_security();
-  test_unlock_relock_n_channels();
-  test_elc_event_enable_disable();
-  test_configure_for_standby_m();
-  test_configure_for_standby_n();
-  test_cancel_deep_standby_path();
-  test_filter_delay_us();
-  test_attach_and_dispatch_shared();
-  test_attach_per_channel_handler();
-  test_every_threshold_value();
-  test_mcdc_lvd();
-  test_mcdc_lvd_internal_reject_hvd_after();
-  test_mcdc_lvd_internal_set_ri_bit();
-  (void)fprintf(stderr, "[OK  ] test_ra8_lvd_ctrl.c\n");
+  internal_test_set_filter_full_range();
+  internal_test_set_hysteresis_lvd_then_hvd();
+  internal_test_set_hysteresis_hvd_requires_ri();
+  internal_test_set_negate_mode();
+  internal_test_status_read_and_clear();
+  internal_test_set_security();
+  internal_test_unlock_relock_n_channels();
+  internal_test_elc_event_enable_disable();
+  internal_test_configure_for_standby_m();
+  internal_test_configure_for_standby_n();
+  internal_test_cancel_deep_standby_path();
+  internal_test_filter_delay_us();
+  internal_test_attach_and_dispatch_shared();
+  internal_test_attach_per_channel_handler();
+  internal_test_every_threshold_value();
+  internal_test_mcdc_lvd();
+  internal_test_mcdc_lvd_internal_reject_hvd_after();
+  internal_test_mcdc_lvd_internal_set_ri_bit();
   return 0;
 }

@@ -176,9 +176,9 @@ static void internal_ra8_mipi_dsi_decode_rx(uint32_t raw, ra8_mipi_dsi_rx_result
   /* HUM Ch 65.2 "VMSET0R : Video Mode Setting 0", p 3891 */
   reg->VMSET0R = vmset;
   /* HUM Ch 65.2 "VMSR : Video Mode Status Register", p 3893 */
-  return ra8_mipi_dsi_internal_wait_eq(&reg->VMSR,
-                                       k_ra8_mipi_dsi_vmsr_virdy,
-                                       k_ra8_mipi_dsi_vmsr_virdy);
+  return priv_ra8_mipi_dsi_internal_wait_eq(&reg->VMSR,
+                                            k_ra8_mipi_dsi_vmsr_virdy,
+                                            k_ra8_mipi_dsi_vmsr_virdy);
 }
 
 [[nodiscard]] ra8_err_t ra8_mipi_dsi_video_stop(void)
@@ -187,8 +187,9 @@ static void internal_ra8_mipi_dsi_decode_rx(uint32_t raw, ra8_mipi_dsi_rx_result
   /* HUM Ch 65.2 "VMSET0R : Video Mode Setting 0", p 3891 */
   reg->VMSET0R = k_ra8_mipi_dsi_vmset0_vstop;
   /* HUM Ch 65.2 "VMSR : Video Mode Status Register", p 3893 */
-  const ra8_err_t err =
-    ra8_mipi_dsi_internal_wait_eq(&reg->VMSR, k_ra8_mipi_dsi_vmsr_stop, k_ra8_mipi_dsi_vmsr_stop);
+  const ra8_err_t err = priv_ra8_mipi_dsi_internal_wait_eq(&reg->VMSR,
+                                                           k_ra8_mipi_dsi_vmsr_stop,
+                                                           k_ra8_mipi_dsi_vmsr_stop);
   if (err == k_ra8_ok) {
     /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3894 */
     reg->VMSCR = k_ra8_mipi_dsi_vmsr_clear_all;

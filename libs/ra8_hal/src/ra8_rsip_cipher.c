@@ -65,14 +65,14 @@ static const char* s_tag = "RSIP";
  * ===========================================================================
  */
 
-uint32_t internal_pack_le(const uint8_t* p)
+uint32_t priv_pack_le(const uint8_t* p)
 {
   return ((uint32_t)p[0]) | (((uint32_t)p[1]) << k_ra8_rsip_byte_bits) |
          (((uint32_t)p[2]) << k_ra8_rsip_byte_shift_2) |
          (((uint32_t)p[3]) << k_ra8_rsip_byte_shift_3);
 }
 
-void internal_unpack_le(uint32_t word, uint8_t* p)
+void priv_unpack_le(uint32_t word, uint8_t* p)
 {
   p[0] = (uint8_t)(word & k_ra8_rsip_byte_mask);
   p[1] = (uint8_t)((word >> k_ra8_rsip_byte_bits) & k_ra8_rsip_byte_mask);
@@ -80,7 +80,7 @@ void internal_unpack_le(uint32_t word, uint8_t* p)
   p[3] = (uint8_t)((word >> k_ra8_rsip_byte_shift_3) & k_ra8_rsip_byte_mask);
 }
 
-uint32_t internal_handle_words_for(ra8_rsip_oem_cmd_t cmd)
+uint32_t priv_handle_words_for(ra8_rsip_oem_cmd_t cmd)
 {
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
   /* Handle-body sizes mirror FSP r_rsip_key_injection.c. */
@@ -128,13 +128,13 @@ uint32_t internal_handle_words_for(ra8_rsip_oem_cmd_t cmd)
   }
 }
 
-ra8_err_t internal_complete(uint32_t done_mask)
+ra8_err_t priv_complete(uint32_t done_mask)
 {
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Pre-assert the DONE bit so the host fake spin terminates. */
   *ra8_rsip_reg32(k_ra8_rsip_off_isr) |= done_mask;
 
-  const ra8_err_t wait_err = internal_wait_bit(k_ra8_rsip_off_isr, done_mask);
+  const ra8_err_t wait_err = priv_wait_bit(k_ra8_rsip_off_isr, done_mask);
   if (wait_err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
     return wait_err;
   }
@@ -149,13 +149,13 @@ ra8_err_t internal_complete(uint32_t done_mask)
   return k_ra8_ok;
 }
 
-/** @brief Implementation of `internal_push_bytes_to_port()` -- LE word stream + zero-padded tail. */
-void internal_push_bytes_to_port(ra8_rsip_off_t off, const uint8_t* in, uint32_t len)
+/** @brief Implementation of `priv_push_bytes_to_port()` -- LE word stream + zero-padded tail. */
+void priv_push_bytes_to_port(ra8_rsip_off_t off, const uint8_t* in, uint32_t len)
 {
   volatile uint32_t* port = ra8_rsip_reg32(off);
   uint32_t           i    = 0U;
   while ((i + (uint32_t)k_ra8_rsip_trng_word_bytes) <= len) {
-    *port = internal_pack_le(&in[i]);
+    *port = priv_pack_le(&in[i]);
     i += (uint32_t)k_ra8_rsip_trng_word_bytes;
   }
   if (i < len) {
@@ -167,37 +167,45 @@ void internal_push_bytes_to_port(ra8_rsip_off_t off, const uint8_t* in, uint32_t
   }
 }
 
-/** @brief Implementation of `internal_push_iv_lanes()` -- 4-lane LE IV window writer. */
-void internal_push_iv_lanes(ra8_rsip_off_t base, const uint8_t* iv)
+/** @brief Implementation of `priv_push_iv_lanes()` -- bounded 4-lane LE IV window writer. */
+void priv_push_iv_lanes(ra8_rsip_off_t base, const uint8_t* iv, uint32_t iv_len)
 {
   for (uint32_t w = 0U; w < k_ra8_rsip_iv_words; ++w) {
+    const uint32_t lane_base = w * (uint32_t)k_ra8_rsip_trng_word_bytes;
+    uint32_t       lane      = 0U;
+    for (uint32_t b = 0U; b < (uint32_t)k_ra8_rsip_trng_word_bytes; ++b) {
+      const uint32_t index = lane_base + b;
+      if (index < iv_len) {
+        lane |= (uint32_t)iv[index] << (b * k_ra8_rsip_byte_bits);
+      }
+    }
     /* Computed lane offset is a HUM-defined register, not an enumerator. */
     const ra8_rsip_off_t off =
       (ra8_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed register offset is a HUM-defined location, not an enumerator.
         (uint32_t)base + (uint16_t)(w << k_ra8_rsip_word_shift));
-    *ra8_rsip_reg32(off) = internal_pack_le(&iv[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
+    *ra8_rsip_reg32(off) = lane;
   }
 }
 
-/** @brief Implementation of `internal_push_handle_body()` -- KEY_STAGE body word stream. */
-void internal_push_handle_body(const ra8_rsip_key_handle_t* handle)
+/** @brief Implementation of `priv_push_handle_body()` -- KEY_STAGE body word stream. */
+void priv_push_handle_body(const ra8_rsip_key_handle_t* handle)
 {
   for (uint32_t w = 0U; w < handle->body_words; ++w) {
     *ra8_rsip_reg32(k_ra8_rsip_off_key_stage) = handle->body[w];
   }
 }
 
-void internal_load_handle(const ra8_rsip_key_handle_t* handle)
+void priv_load_handle(const ra8_rsip_key_handle_t* handle)
 {
   if (handle == nullptr) {
     return;
   }
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
   *ra8_rsip_reg32(k_ra8_rsip_off_sym_keyh) = handle->alg;
-  internal_push_handle_body(handle);
+  priv_push_handle_body(handle);
 }
 
-uint8_t internal_aes_alg_byte(uint32_t alg)
+uint8_t priv_aes_alg_byte(uint32_t alg)
 {
   switch (alg) {
     case k_ra8_rsip_oem_cmd_aes128:
@@ -238,7 +246,7 @@ static void internal_push_data(const uint8_t* in, uint32_t len)
   uint32_t i    = 0U;
   uint8_t  lane = 0U;
   while ((i + (uint32_t)k_ra8_rsip_trng_word_bytes) <= len) {
-    const uint32_t       word = internal_pack_le(&in[i]);
+    const uint32_t       word = priv_pack_le(&in[i]);
     const ra8_rsip_off_t off =
       (ra8_rsip_off_t)(k_ra8_rsip_off_data_in0 +
                        (uint16_t)((uint32_t)lane << k_ra8_rsip_word_shift));
@@ -269,7 +277,7 @@ static void internal_pull_data(uint8_t* out, uint32_t len)
       (ra8_rsip_off_t)(k_ra8_rsip_off_data_out0 +
                        (uint16_t)((uint32_t)lane << k_ra8_rsip_word_shift));
     const uint32_t word = *ra8_rsip_reg32(off);
-    internal_unpack_le(word, &out[i]);
+    priv_unpack_le(word, &out[i]);
     i += (uint32_t)k_ra8_rsip_trng_word_bytes;
     lane = (uint8_t)((lane + 1U) & (k_ra8_rsip_aes_block_w - 1U));
   }
@@ -284,14 +292,14 @@ static void internal_pull_data(uint8_t* out, uint32_t len)
   }
 }
 
-/* Push a 16-byte IV / nonce into the SYM_IV0 lanes -- see surrounding code and HUM citations. */
+/* Push a bounded IV / nonce into the SYM_IV0 lanes -- see surrounding code and HUM citations. */
 RA8_INTERNAL
-static void internal_push_iv(const uint8_t* iv)
+static void internal_push_iv(const uint8_t* iv, uint32_t iv_len)
 {
   if (iv == nullptr) {
     return;
   }
-  internal_push_iv_lanes(k_ra8_rsip_off_sym_iv0, iv);
+  priv_push_iv_lanes(k_ra8_rsip_off_sym_iv0, iv, iv_len);
 }
 
 /* Issue an OEM key-install opcode and read the wrapped body back -- see surrounding code and HUM citations. */
@@ -302,7 +310,7 @@ static ra8_err_t internal_oem_install(ra8_rsip_oem_cmd_t     cmd,
                                       uint32_t               src_len,
                                       ra8_rsip_key_handle_t* out)
 {
-  const uint32_t words = internal_handle_words_for(cmd);
+  const uint32_t words = priv_handle_words_for(cmd);
   if (words == 0U) {
     return k_ra8_err_invalid_arg;
   }
@@ -314,7 +322,7 @@ static ra8_err_t internal_oem_install(ra8_rsip_oem_cmd_t     cmd,
   if (iv != nullptr) {
     for (uint32_t w = 0U; w < k_ra8_rsip_iv_words; ++w) {
       *ra8_rsip_reg32(k_ra8_rsip_off_oem_iv) =
-        internal_pack_le(&iv[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
+        priv_pack_le(&iv[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
     }
   }
   if (src != nullptr) {
@@ -324,7 +332,7 @@ static ra8_err_t internal_oem_install(ra8_rsip_oem_cmd_t     cmd,
   /* Fire the install command via MBOX. */
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op) = (uint32_t)cmd;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_done);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -449,8 +457,8 @@ static ra8_err_t internal_sym_run(const ra8_rsip_key_handle_t* key,
                                   uint8_t*                     out,
                                   uint32_t                     len)
 {
-  internal_load_handle(key);
-  internal_push_iv(iv);
+  priv_load_handle(key);
+  internal_push_iv(iv, (uint32_t)k_ra8_rsip_iv_words * (uint32_t)k_ra8_rsip_trng_word_bytes);
 
   /* SYM_CTRL = (dir << 16) | (mode << 8) | alg_byte. */
   const uint32_t cmd = ((uint32_t)dir << k_ra8_rsip_byte_shift_2) |
@@ -460,7 +468,7 @@ static ra8_err_t internal_sym_run(const ra8_rsip_key_handle_t* key,
   internal_push_data(in, len);
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op) = cmd;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_done);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -487,7 +495,7 @@ ra8_err_t ra8_rsip_aes_cipher(const ra8_rsip_key_handle_t* key,
       ((len & ((uint32_t)k_ra8_rsip_aes_block_bytes - 1U)) != 0U)) {
     return k_ra8_err_invalid_arg;
   }
-  const uint8_t alg_byte = internal_aes_alg_byte(key->alg);
+  const uint8_t alg_byte = priv_aes_alg_byte(key->alg);
   if (alg_byte == 0U) {
     return k_ra8_err_invalid_arg;
   }
@@ -500,7 +508,7 @@ static void internal_aead_push_tag(const uint8_t* tag)
 {
   for (uint32_t w = 0U; w < k_ra8_rsip_aes_block_w; ++w) {
     *ra8_rsip_reg32(k_ra8_rsip_off_sym_tag) =
-      internal_pack_le(&tag[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
+      priv_pack_le(&tag[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
   }
 }
 
@@ -510,7 +518,7 @@ static void internal_aead_pull_tag(uint8_t* tag)
 {
   for (uint32_t w = 0U; w < k_ra8_rsip_aes_block_w; ++w) {
     const uint32_t word = *ra8_rsip_reg32(k_ra8_rsip_off_sym_tag);
-    internal_unpack_le(word, &tag[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
+    priv_unpack_le(word, &tag[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
   }
 }
 
@@ -528,15 +536,15 @@ static ra8_err_t internal_aead_run(const ra8_rsip_key_handle_t* key,
                                    uint32_t                     in_len,
                                    uint8_t*                     tag)
 {
-  internal_load_handle(key);
-  internal_push_iv(iv);
+  priv_load_handle(key);
+  internal_push_iv(iv, (uint32_t)k_ra8_rsip_aead_iv_bytes);
   /* AAD + body length descriptors. */
   *ra8_rsip_reg32(k_ra8_rsip_off_sym_aad_len) = aad_len;
   *ra8_rsip_reg32(k_ra8_rsip_off_sym_pt_len)  = in_len;
 
   if ((aad != nullptr) && (aad_len > 0U)) {
     /* Push AAD bytes one word at a time through the AAD lane. */
-    internal_push_bytes_to_port(k_ra8_rsip_off_sym_aad_in, aad, aad_len);
+    priv_push_bytes_to_port(k_ra8_rsip_off_sym_aad_in, aad, aad_len);
   }
 
   /* On decrypt, push the supplied tag in for verification. */
@@ -550,7 +558,7 @@ static ra8_err_t internal_aead_run(const ra8_rsip_key_handle_t* key,
   internal_push_data(in, in_len);
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op) = cmd;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_done);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -577,7 +585,7 @@ ra8_err_t ra8_rsip_aes_gcm(const ra8_rsip_key_handle_t* key,
   RA8_CHECK_NULL_PTR(in, s_tag, "in must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   RA8_CHECK_NULL_PTR(tag, s_tag, "tag must not be nullptr");
-  const uint8_t alg_byte = internal_aes_alg_byte(key->alg);
+  const uint8_t alg_byte = priv_aes_alg_byte(key->alg);
   if (alg_byte == 0U) {
     return k_ra8_err_invalid_arg;
   }
@@ -609,7 +617,7 @@ ra8_err_t ra8_rsip_aes_ccm(const ra8_rsip_key_handle_t* key,
   RA8_CHECK_NULL_PTR(in, s_tag, "in must not be nullptr");
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   RA8_CHECK_NULL_PTR(tag, s_tag, "tag must not be nullptr");
-  const uint8_t alg_byte = internal_aes_alg_byte(key->alg);
+  const uint8_t alg_byte = priv_aes_alg_byte(key->alg);
   if (alg_byte == 0U) {
     return k_ra8_err_invalid_arg;
   }
@@ -637,11 +645,11 @@ static void internal_chacha20_push_iv(uint32_t counter, const uint8_t* nonce)
 {
   /* ChaCha20 IV layout: counter || 12-byte nonce. */
   *ra8_rsip_reg32(k_ra8_rsip_off_sym_iv0) = counter;
-  *ra8_rsip_reg32(k_ra8_rsip_off_sym_iv1) = internal_pack_le(&nonce[0]);
+  *ra8_rsip_reg32(k_ra8_rsip_off_sym_iv1) = priv_pack_le(&nonce[0]);
   *ra8_rsip_reg32(k_ra8_rsip_off_sym_iv2) =
-    internal_pack_le(&nonce[(uint32_t)k_ra8_rsip_trng_word_bytes]);
+    priv_pack_le(&nonce[(uint32_t)k_ra8_rsip_trng_word_bytes]);
   *ra8_rsip_reg32(k_ra8_rsip_off_sym_iv3) =
-    internal_pack_le(&nonce[(size_t)2U * (size_t)k_ra8_rsip_trng_word_bytes]);
+    priv_pack_le(&nonce[(size_t)2U * (size_t)k_ra8_rsip_trng_word_bytes]);
 }
 
 ra8_err_t ra8_rsip_chacha20(const ra8_rsip_key_handle_t* key,
@@ -659,7 +667,7 @@ ra8_err_t ra8_rsip_chacha20(const ra8_rsip_key_handle_t* key,
   if (key->alg != k_ra8_rsip_oem_cmd_chacha20) {
     return k_ra8_err_invalid_arg;
   }
-  internal_load_handle(key);
+  priv_load_handle(key);
   internal_chacha20_push_iv(counter, nonce);
 
   const uint32_t cmd = ((uint32_t)dir << k_ra8_rsip_byte_shift_2) |
@@ -669,7 +677,7 @@ ra8_err_t ra8_rsip_chacha20(const ra8_rsip_key_handle_t* key,
   internal_push_data(in, len);
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op) = cmd;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_done);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -721,7 +729,7 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
   for (uint32_t w = 0U; w < (uint32_t)k_ra8_rsip_handle_words_chacha20; ++w) {
     if (w < ((uint32_t)k_ra8_rsip_chacha_key_bytes / (uint32_t)k_ra8_rsip_trng_word_bytes)) {
       *ra8_rsip_reg32(k_ra8_rsip_off_key_stage) =
-        internal_pack_le(&one_time_key[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
+        priv_pack_le(&one_time_key[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
     } else {
       *ra8_rsip_reg32(k_ra8_rsip_off_key_stage) = 0U;
     }
@@ -732,13 +740,13 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
   }
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op) = k_ra8_rsip_chacha_op_poly1305_mac;
 
-  const ra8_err_t err = internal_complete(k_ra8_rsip_mask_isr_done);
+  const ra8_err_t err = priv_complete(k_ra8_rsip_mask_isr_done);
   if (err != k_ra8_ok) {
     return err;
   }
   for (uint32_t w = 0U; w < k_ra8_rsip_aes_block_w; ++w) {
     const uint32_t word = *ra8_rsip_reg32(k_ra8_rsip_off_sym_tag);
-    internal_unpack_le(word, &tag[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
+    priv_unpack_le(word, &tag[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
   }
   return k_ra8_ok;
 }

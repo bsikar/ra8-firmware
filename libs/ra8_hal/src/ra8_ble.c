@@ -57,7 +57,7 @@
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline void internal_byte_copy(uint8_t* dst, const uint8_t* src, uint16_t n)
+RA8_INTERNAL static inline void internal_byte_copy(uint8_t* dst, const uint8_t* src, uint16_t n)
 {
   for (uint16_t i = 0U; i < n; ++i) {
     dst[i] = src[i];
@@ -165,7 +165,7 @@ RA8_TEST_HELPER const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_tx_byte(uint8_t b)
+RA8_INTERNAL static void internal_tx_byte(uint8_t b)
 {
   if (s_state.tx_capture_len < k_ra8_ble_tx_capture_bytes) {
     s_state.tx_capture[s_state.tx_capture_len] = b;
@@ -188,7 +188,7 @@ static void internal_tx_byte(uint8_t b)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint8_t internal_rx_byte(uint8_t* out)
+RA8_INTERNAL static uint8_t internal_rx_byte(uint8_t* out)
 {
   if (s_state.rx_inject_pos >= s_state.rx_inject_len) {
     return 0U;
@@ -307,7 +307,7 @@ ra8_err_t ra8_ble_attach_acl_handler(ra8_ble_acl_fn_t fn, void* ctx)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_dispatch_event(void)
+RA8_INTERNAL static ra8_err_t internal_dispatch_event(void)
 {
   uint8_t code = 0U;
   uint8_t plen = 0U;
@@ -315,14 +315,14 @@ static ra8_err_t internal_dispatch_event(void)
   if ((internal_rx_byte(&code) == 0U) || (internal_rx_byte(&plen) == 0U)) {
     return k_ra8_err_invalid_arg;
   }
-  static uint8_t s_evt_scratch[k_ra8_ble_max_evt_params];
+  static uint8_t local_evt_scratch[k_ra8_ble_max_evt_params];
   for (uint8_t i = 0U; i < plen; ++i) {
-    if (internal_rx_byte(&s_evt_scratch[i]) == 0U) {
+    if (internal_rx_byte(&local_evt_scratch[i]) == 0U) {
       return k_ra8_err_invalid_arg;
     }
   }
   if (s_state.evt_fn != nullptr) {
-    s_state.evt_fn(s_state.evt_ctx, code, s_evt_scratch, plen);
+    s_state.evt_fn(s_state.evt_ctx, code, local_evt_scratch, plen);
   }
   return k_ra8_ok;
 }
@@ -340,7 +340,7 @@ static ra8_err_t internal_dispatch_event(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_dispatch_acl(void)
+RA8_INTERNAL static ra8_err_t internal_dispatch_acl(void)
 {
   uint8_t hdl_lo = 0U;
   uint8_t hdl_hi = 0U;
@@ -356,14 +356,14 @@ static ra8_err_t internal_dispatch_acl(void)
   if (len > k_ra8_ble_max_acl_payload) {
     return k_ra8_err_invalid_arg;
   }
-  static uint8_t s_acl_scratch[k_ra8_ble_max_acl_payload];
+  static uint8_t local_acl_scratch[k_ra8_ble_max_acl_payload];
   for (uint16_t i = 0U; i < len; ++i) {
-    if (internal_rx_byte(&s_acl_scratch[i]) == 0U) {
+    if (internal_rx_byte(&local_acl_scratch[i]) == 0U) {
       return k_ra8_err_invalid_arg;
     }
   }
   if (s_state.acl_fn != nullptr) {
-    s_state.acl_fn(s_state.acl_ctx, handle, s_acl_scratch, len);
+    s_state.acl_fn(s_state.acl_ctx, handle, local_acl_scratch, len);
   }
   return k_ra8_ok;
 }

@@ -2,12 +2,15 @@
  * @file test_ra8_usb_pprn.c
  * @brief Unit tests for the native USB device-side Printer class layer
  *
+ * @details Exercises printer class descriptors, status requests, reset handling, endpoint I/O, and invalid requests with bounded fixtures.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
@@ -65,7 +68,8 @@ static int32_t   s_setup_cb_calls       = 0;
 static uint8_t   s_setup_cb_last_breq   = 0U;
 static ra8_err_t s_setup_cb_return_code = k_ra8_ok;
 
-static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
+/** @brief Verify setup cb behavior. @details Executes the setup cb scenario with bounded fixture state and asserts the contract-specific result. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] setup Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
 {
   (void)ctx;
   s_setup_cb_calls++;
@@ -73,7 +77,8 @@ static ra8_err_t test_setup_cb(void* ctx, const ra8_usb_setup_t* setup)
   return s_setup_cb_return_code;
 }
 
-static void prep(void)
+/** @brief Provide the file-local prep test helper. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
@@ -87,12 +92,11 @@ static void prep(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_default_status(void)
+ * code under test that this case touches) @brief Verify init default status behavior. @details Executes the init default status scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_default_status(void)
 {
   TEST_BEGIN("ra8_usb_pprn_init seeds default port-status (online | not-error)");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_init(k_ra8_usb_speed_fs));
 
   uint8_t status = 0U;
@@ -108,12 +112,11 @@ static void test_init_default_status(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_init_bad_speed(void)
+ * code under test that this case touches) @brief Verify init bad speed behavior. @details Executes the init bad speed scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_init_bad_speed(void)
 {
   TEST_BEGIN("ra8_usb_pprn_init rejects bogus speed");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pprn_init((ra8_usb_speed_t)9U));
   TEST_END("ra8_usb_pprn_init rejects bogus speed");
 }
@@ -122,9 +125,8 @@ static void test_init_bad_speed(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_class_request_codes(void)
+ * code under test that this case touches) @brief Verify class request codes behavior. @details Executes the class request codes scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_class_request_codes(void)
 {
   TEST_BEGIN("Printer class request codes match USB Printer 1.1 spec");
   TEST_ASSERT_EQ(0x00, k_ra8_pprn_req_get_device_id);
@@ -137,12 +139,11 @@ static void test_class_request_codes(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_pre_init_calls(void)
+ * code under test that this case touches) @brief Verify pre init calls behavior. @details Executes the pre init calls scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pre_init_calls(void)
 {
   TEST_BEGIN("PPRN API rejects calls before init");
-  prep();
+  internal_prep();
 
   uint8_t         buf[8] = {};
   uint16_t        got    = 0U;
@@ -160,7 +161,7 @@ static void test_pre_init_calls(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pprn_set_port_status(0U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pprn_get_port_status(&status));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
-                 ra8_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));
+                 ra8_usb_pprn_attach_setup_handler(internal_test_setup_cb, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_usb_pprn_handle_setup(&setup));
   TEST_END("PPRN API rejects calls before init");
 }
@@ -169,12 +170,11 @@ static void test_pre_init_calls(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_set_descriptors(void)
+ * code under test that this case touches) @brief Verify set descriptors behavior. @details Executes the set descriptors scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_descriptors(void)
 {
   TEST_BEGIN("ra8_usb_pprn_set_descriptors validates pairing");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_init(k_ra8_usb_speed_fs));
 
   /* desc NULL -> null_ptr. */
@@ -209,12 +209,11 @@ static void test_set_descriptors(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_send_recv_validation(void)
+ * code under test that this case touches) @brief Verify send recv validation behavior. @details Executes the send recv validation scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_send_recv_validation(void)
 {
   TEST_BEGIN("ra8_usb_pprn_send / recv validate args");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_init(k_ra8_usb_speed_fs));
 
   uint8_t  buf[16] = {};
@@ -238,12 +237,11 @@ static void test_send_recv_validation(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_port_status_round_trip(void)
+ * code under test that this case touches) @brief Verify port status round trip behavior. @details Executes the port status round trip scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_port_status_round_trip(void)
 {
   TEST_BEGIN("ra8_usb_pprn_set_port_status round-trips through get_port_status");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_init(k_ra8_usb_speed_fs));
 
   /* Simulate paper-empty event. */
@@ -263,14 +261,13 @@ static void test_port_status_round_trip(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_handle_setup_dispatch(void)
+ * code under test that this case touches) @brief Verify handle setup dispatch behavior. @details Executes the handle setup dispatch scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_handle_setup_dispatch(void)
 {
   TEST_BEGIN("ra8_usb_pprn_handle_setup dispatches GET_DEVICE_ID / SOFT_RESET to callback");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_init(k_ra8_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_attach_setup_handler(internal_test_setup_cb, nullptr));
 
   /* GET_DEVICE_ID. */
   ra8_usb_setup_t setup = {
@@ -303,12 +300,11 @@ static void test_handle_setup_dispatch(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_handle_setup_rejects(void)
+ * code under test that this case touches) @brief Verify handle setup rejects behavior. @details Executes the handle setup rejects scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_handle_setup_rejects(void)
 {
   TEST_BEGIN("ra8_usb_pprn_handle_setup rejects non-class / unknown / NULL");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_init(k_ra8_usb_speed_fs));
 
   /* Standard envelope -> not_supported. */
@@ -331,7 +327,7 @@ static void test_handle_setup_rejects(void)
 }
 
 /**
- * @test test_mcdc_pprn
+ * @test internal_test_mcdc_pprn
  *
  * @par MC/DC:
  * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
@@ -347,33 +343,32 @@ static void test_handle_setup_rejects(void)
  *   `(bm != iface_in) && (bm != iface_out)` -- N+1=3.
  * Decision E (lines 145-146, 3-condition OR chain): per DO-178C
  *   6.4.4.3 representative-subset for a side-effect-free OR -- 3
- *   lone-true vectors + 1 all-false vector.
- */
-static void test_mcdc_pprn(void)
+ *   lone-true vectors + 1 all-false vector. @brief Verify mcdc pprn behavior. @details Executes the mcdc pprn scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_pprn(void)
 {
   TEST_BEGIN("pprn MC/DC: init / send envelope / handle_setup decisions");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_init(k_ra8_usb_speed_fs));
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_init(k_ra8_usb_speed_hs));
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pprn_init((ra8_usb_speed_t)9U));
 
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_init(k_ra8_usb_speed_fs));
 
   uint8_t buf[16] = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pprn_send(nullptr, 0U));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pprn_send(nullptr, 4U));
   /* B-V2 + C-V2: forwards into ra8_usb_queue_in. The FRDY wait
-   * converges via the unarmed ra8_fake_mmio seam (see internal_wait_frdy),
+   * converges via the unarmed ra8_fake_mmio seam (see priv_wait_frdy),
    * so a well-formed call returns k_ra8_ok. The MC/DC obligation is met
    * because every pre-check inside ra8_usb_pprn_send was exercised
    * end-to-end. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_send(buf, 4U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pprn_send(buf, 1024U));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_attach_setup_handler(internal_test_setup_cb, nullptr));
   ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_t_bmreq_class_in,
     .b_request       = (uint8_t)k_ra8_pprn_req_get_device_id,
@@ -405,16 +400,15 @@ static void test_mcdc_pprn(void)
 
 int32_t main(void)
 {
-  test_init_default_status();
-  test_init_bad_speed();
-  test_class_request_codes();
-  test_pre_init_calls();
-  test_set_descriptors();
-  test_send_recv_validation();
-  test_port_status_round_trip();
-  test_handle_setup_dispatch();
-  test_handle_setup_rejects();
-  test_mcdc_pprn();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_pprn.c\n");
+  internal_test_init_default_status();
+  internal_test_init_bad_speed();
+  internal_test_class_request_codes();
+  internal_test_pre_init_calls();
+  internal_test_set_descriptors();
+  internal_test_send_recv_validation();
+  internal_test_port_status_round_trip();
+  internal_test_handle_setup_dispatch();
+  internal_test_handle_setup_rejects();
+  internal_test_mcdc_pprn();
   return 0;
 }

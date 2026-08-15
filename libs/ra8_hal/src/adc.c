@@ -109,7 +109,8 @@ static ra8_adc_state_t s_adc_state;
  * @note Re-entrant; touches no globals or MMIO.
  * @since 0.1.0
  */
-static bool internal_adprc_for_resolution(ra8_adc_resolution_t resolution, uint32_t* out_adprc)
+RA8_INTERNAL static bool internal_adprc_for_resolution(ra8_adc_resolution_t resolution,
+                                                       uint32_t*            out_adprc)
 {
   switch (resolution) {
     case k_ra8_adc_res_16bit:
@@ -147,7 +148,7 @@ static bool internal_adprc_for_resolution(ra8_adc_resolution_t resolution, uint3
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_write_adprc(uint8_t vch, uint32_t adprc)
+RA8_INTERNAL static void internal_write_adprc(uint8_t vch, uint32_t adprc)
 {
   volatile uint32_t* reg = ra8_adc_b_addopcrc(vch);
   if (reg == nullptr) {
@@ -178,7 +179,7 @@ static void internal_write_adprc(uint8_t vch, uint32_t adprc)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_apply_resolution_code(uint32_t adprc)
+RA8_INTERNAL static void internal_apply_resolution_code(uint32_t adprc)
 {
   for (uint8_t ch = 0U; ch < k_ra8_adc_b_result_regs; ++ch) {
     internal_write_adprc(ch, adprc);
@@ -204,7 +205,7 @@ static void internal_apply_resolution_code(uint32_t adprc)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_wait_clksr(uint32_t desired)
+RA8_INTERNAL static void internal_wait_clksr(uint32_t desired)
 {
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
   for (uint32_t i = 0U; i < k_ra8_adc_clk_wait_limit; ++i) {            /* GCOVR_EXCL_BR_LINE */
@@ -227,7 +228,7 @@ static void internal_wait_clksr(uint32_t desired)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_clock_bring_up(uint32_t clkcr_value)
+RA8_INTERNAL static void internal_clock_bring_up(uint32_t clkcr_value)
 {
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
   *ra8_adc_b_adclkenr() = 0U;
@@ -253,7 +254,7 @@ static void internal_clock_bring_up(uint32_t clkcr_value)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_zero_channel_table(void)
+RA8_INTERNAL static void internal_zero_channel_table(void)
 {
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
   for (uint8_t ch = 0U; ch < k_ra8_adc_b_max_channels; ++ch) {
@@ -279,7 +280,7 @@ static void internal_zero_channel_table(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_program_channel(uint8_t virtual_ch, uint8_t physical_ch)
+RA8_INTERNAL static void internal_program_channel(uint8_t virtual_ch, uint8_t physical_ch)
 {
   volatile uint32_t* reg = ra8_adc_b_adchcr(virtual_ch);
   if (reg == nullptr) {
@@ -312,7 +313,7 @@ static void internal_program_channel(uint8_t virtual_ch, uint8_t physical_ch)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint32_t internal_build_admdr(bool scan_mode)
+RA8_INTERNAL static uint32_t internal_build_admdr(bool scan_mode)
 {
   const uint32_t admd0_code =
     scan_mode ? (uint32_t)k_ra8_admdr_mode_continuous : (uint32_t)k_ra8_admdr_mode_one_cycle;
@@ -541,7 +542,8 @@ void ra8_adc_dispatch_cnv_end(uint8_t channel)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_validate_group_cfg(uint8_t group, const ra8_adc_scan_group_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_group_cfg(uint8_t                         group,
+                                                          const ra8_adc_scan_group_cfg_t* cfg)
 {
   if (group >= k_ra8_adc_b_scan_groups) {
     return k_ra8_err_out_of_range;
@@ -574,7 +576,7 @@ static ra8_err_t internal_validate_group_cfg(uint8_t group, const ra8_adc_scan_g
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_oversample_encode(ra8_adc_oversample_t mode, uint32_t* out_avemd, uint32_t* out_adc)
 {
   switch (mode) {
@@ -616,7 +618,8 @@ internal_oversample_encode(ra8_adc_oversample_t mode, uint32_t* out_avemd, uint3
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_program_group_channels(uint8_t group, const ra8_adc_scan_group_cfg_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_program_group_channels(uint8_t                         group,
+                                                              const ra8_adc_scan_group_cfg_t* cfg)
 {
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
   for (uint8_t i = 0U; i < cfg->num_channels; ++i) {
@@ -647,7 +650,8 @@ static ra8_err_t internal_program_group_channels(uint8_t group, const ra8_adc_sc
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_cache_group_channels(uint8_t group, const ra8_adc_scan_group_cfg_t* cfg)
+RA8_INTERNAL static void internal_cache_group_channels(uint8_t                         group,
+                                                       const ra8_adc_scan_group_cfg_t* cfg)
 {
   s_adc_state.groups[group].num_channels = cfg->num_channels;
   for (uint8_t i = 0U; i < cfg->num_channels; ++i) {
@@ -668,7 +672,7 @@ static void internal_cache_group_channels(uint8_t group, const ra8_adc_scan_grou
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_apply_group_enable(uint8_t group, ra8_adc_trigger_src_t trigger)
+RA8_INTERNAL static void internal_apply_group_enable(uint8_t group, ra8_adc_trigger_src_t trigger)
 {
   const uint32_t group_bit = (uint32_t)(1UL << (uint32_t)group);
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */

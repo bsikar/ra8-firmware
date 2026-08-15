@@ -19,7 +19,7 @@
  *  - ``ra8_canfd_set_bitrate`` (nominal + optional data phase) and
  *    ``ra8_canfd_set_brs`` (data-phase-only) drive the channel through
  *    CH_RESET to land the edits, using the promoted
- *    ::ra8_canfd_internal_set_channel_mode helper whose definition stays in
+ *    ::priv_ra8_canfd_internal_set_channel_mode helper whose definition stays in
  *    ``ra8_canfd.c`` beside the rest of the mode machinery.
  *
  * Every register access carries a HUM Ch 41 "CAN with Flexible
@@ -220,7 +220,7 @@ ra8_err_t ra8_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t 
    * acknowledger -- halt never converges. CH_RESET is the
    * immediate abort path, which is what FSP r_canfd does too.
    * HUM Ch 41 "CFDCnNCFG.NTSEG2" p 2706 */
-  const ra8_err_t halt_err = ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_reset);
+  const ra8_err_t halt_err = priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_reset);
   if (halt_err != k_ra8_ok) {
     return halt_err;
   }
@@ -236,14 +236,14 @@ ra8_err_t ra8_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t 
     if (d_err != k_ra8_ok) {
       /* Best-effort: return the channel to CH_OPERATION so the
        * caller does not observe a half-applied edit. */
-      (void)ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
+      (void)priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
       return d_err;
     }
     /* HUM Ch 41 "CFDCnDCFG" p 2785 */
     reg->CFDC2[0].DCFG = internal_pack_dcfg(&data);
   }
 
-  const ra8_err_t op_err = ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
+  const ra8_err_t op_err = priv_ra8_canfd_internal_set_channel_mode(reg, k_ra8_chmdc_operation);
   if (op_err != k_ra8_ok) {
     return op_err;
   }

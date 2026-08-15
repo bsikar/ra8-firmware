@@ -32,6 +32,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
@@ -65,8 +66,8 @@ typedef enum : uint32_t {
   k_eswclk_wait_second = 1U, /**< Second wait-loop on the register. */
 } eswclk_wait_idx_t;
 
-/** @brief Reset the fake register mirror and the MMIO fault seam together. */
-static void eswclk_test_reset(void)
+/** @brief Reset the fake register mirror and the MMIO fault seam together. @details Implements the eswclk test reset fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_eswclk_test_reset(void)
 {
   ra8_fake_mmap_reset();
   ra8_fake_mmio_reset();
@@ -94,12 +95,11 @@ static void eswclk_test_reset(void)
  * - V2: out_hz=valid   -> false -> k_ra8_ok (covered by other binaries).
  * Single-condition: no MC/DC vector table required.
  *
- * @since 0.1.0
- */
-static void test_eswclk_hz_null(void)
+ * @since 0.1.0 @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_eswclk_hz_null(void)
 {
   TEST_BEGIN("eswclk hz null pointer rejected");
-  eswclk_test_reset();
+  internal_eswclk_test_reset();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cgc_eswclk_hz(nullptr));
 
@@ -127,12 +127,11 @@ static void test_eswclk_hz_null(void)
  * (no compound decisions -- single-condition null guard already proven
  * false by this test; the body path is the only executable statement)
  *
- * @since 0.1.0
- */
-static void test_eswclk_hz_before_init(void)
+ * @since 0.1.0 @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_eswclk_hz_before_init(void)
 {
   TEST_BEGIN("eswclk hz before init returns 0");
-  eswclk_test_reset();
+  internal_eswclk_test_reset();
 
   uint32_t hz = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_eswclk_hz(&hz));
@@ -157,19 +156,18 @@ static void test_eswclk_hz_before_init(void)
  * first poll. The successful init sets s_eswclk_hz = 250000000;
  * ra8_cgc_eswclk_hz reflects this.
  *
- * @pre eswclk_test_reset and ra8_mstp_init have been called.
+ * @pre internal_eswclk_test_reset and ra8_mstp_init have been called.
  * @post ra8_cgc_eswclk_hz returns 250000000 Hz.
  *
  * @par MC/DC:
  * (no compound decisions exercised by this test that are not already
  * covered by test_mcdc_eswclk_pdctreswm in test_ra8_cgc.c)
  *
- * @since 0.1.0
- */
-static void test_eswclk_init_and_hz_ok(void)
+ * @since 0.1.0 @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_eswclk_init_and_hz_ok(void)
 {
   TEST_BEGIN("eswclk init happy path and hz query");
-  eswclk_test_reset();
+  internal_eswclk_test_reset();
   /* Reset all MSTP refcounts to zero before using them. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
@@ -222,7 +220,7 @@ typedef enum : uint8_t {
  * register writes to observable state instead of the returned error
  * code alone.
  *
- * @pre eswclk_test_reset and ra8_mstp_init have been called.
+ * @pre internal_eswclk_test_reset and ra8_mstp_init have been called.
  * @pre ra8_cgc_eswclk_init returns k_ra8_ok with no fault armed.
  * @post ESWCKCR / ESWPCKCR CKSEL fields read k_ra8_eswcksel_pll1p.
  * @post SREQ bits of both control registers read 0.
@@ -231,12 +229,11 @@ typedef enum : uint8_t {
  * (no compound decisions -- straight-line assertions over the steady
  * register state produced by the success path)
  *
- * @since 0.1.0
- */
-static void test_eswclk_init_programs_clock_registers(void)
+ * @since 0.1.0 @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_eswclk_init_programs_clock_registers(void)
 {
   TEST_BEGIN("eswclk init programs ESWCKCR/ESWPCKCR to PLL1P");
-  eswclk_test_reset();
+  internal_eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_eswclk_init());
@@ -288,15 +285,14 @@ static void test_eswclk_init_programs_clock_registers(void)
  * Decision at ra8_cgc_eswclk_init: ``if (ethphy_mst_err != k_ra8_ok)``
  * (one condition, no compound logic).
  * - V1: ethphy_mst_err=k_ra8_err_invalid_state -> true  -> error return (this test).
- * - V2: ethphy_mst_err=k_ra8_ok               -> false -> proceed (test_eswclk_init_and_hz_ok).
+ * - V2: ethphy_mst_err=k_ra8_ok               -> false -> proceed (internal_test_eswclk_init_and_hz_ok).
  * Single-condition: no MC/DC vector table required.
  *
- * @since 0.1.0
- */
-static void test_eswclk_init_mstp_saturated(void)
+ * @since 0.1.0 @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_eswclk_init_mstp_saturated(void)
 {
   TEST_BEGIN("eswclk init fails when ethphyclk mstp refcount saturated");
-  eswclk_test_reset();
+  internal_eswclk_test_reset();
   /* Reset all MSTP refcounts to 0 (may be non-zero from prior test). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
@@ -313,7 +309,7 @@ static void test_eswclk_init_mstp_saturated(void)
   TEST_ASSERT_EQ(255U, ref);
 
   /* ra8_cgc_eswclk_init steps with no MMIO fault armed:
-   *   1. ra8_cgc_ensure_hoco_running_for_usb_ck -- seam-satisfied wait -> ok.
+   *   1. priv_ra8_cgc_ensure_hoco_running_for_usb_ck -- seam-satisfied wait -> ok.
    *   2. internal_eswclk_power_on_domain       -- seam-satisfied waits -> ok.
    *   3. ra8_mstp_enable(k_ra8_mstp_ethphyclk)   -- refcount==255 -> invalid_state.
    * The log + return ethphy_mst_err leg is reached. */
@@ -335,10 +331,10 @@ static void test_eswclk_init_mstp_saturated(void)
  *
  * @details
  * Arms the MMIO fault seam on OSCSF so the HOCOSF wait inside
- * ra8_cgc_ensure_hoco_running_for_usb_ck burns its budget; init aborts
+ * priv_ra8_cgc_ensure_hoco_running_for_usb_ck burns its budget; init aborts
  * on its step-1 error branch (log + return hoco_err).
  *
- * @pre eswclk_test_reset and ra8_mstp_init have been called.
+ * @pre internal_eswclk_test_reset and ra8_mstp_init have been called.
  * @pre The seam is armed to fail every OSCSF wait.
  * @post ra8_cgc_eswclk_init returns k_ra8_err_hw_timeout.
  * @post No ESW clock register is switched to PLL1P.
@@ -346,12 +342,11 @@ static void test_eswclk_init_mstp_saturated(void)
  * @par MC/DC:
  * (no compound decisions -- single-condition ``hoco_err != k_ra8_ok``)
  *
- * @since 0.1.0
- */
-static void test_eswclk_init_hoco_timeout(void)
+ * @since 0.1.0 @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_eswclk_init_hoco_timeout(void)
 {
   TEST_BEGIN("eswclk init HOCO stabilisation timeout");
-  eswclk_test_reset();
+  internal_eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fake_mmio_fail_wait((const volatile void*)ra8_sys_oscsf()));
@@ -369,7 +364,7 @@ static void test_eswclk_init_hoco_timeout(void)
  * branches -- previously dead under the deleted off-target short-circuit --
  * execute and propagate k_ra8_err_hw_timeout out of init.
  *
- * @pre eswclk_test_reset and ra8_mstp_init have been called.
+ * @pre internal_eswclk_test_reset and ra8_mstp_init have been called.
  * @pre The seam is armed on PDCTRESWM with the leg under test.
  * @post ra8_cgc_eswclk_init returns k_ra8_err_hw_timeout for both legs.
  * @post The MSTP / clock-switch steps after the failing wait never run.
@@ -378,14 +373,13 @@ static void test_eswclk_init_hoco_timeout(void)
  * (no compound decisions -- two single-condition ``err != k_ra8_ok``
  * checks, one per PDCTRESWM wait)
  *
- * @since 0.1.0
- */
-static void test_eswclk_init_pdctreswm_stuck_legs(void)
+ * @since 0.1.0 @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_eswclk_init_pdctreswm_stuck_legs(void)
 {
   TEST_BEGIN("eswclk init PDCSF/PDPGSF stuck legs");
 
   /* Leg 1: PDCSF never clears (first PDCTRESWM wait-loop). */
-  eswclk_test_reset();
+  internal_eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_pdctreswm(),
@@ -393,7 +387,7 @@ static void test_eswclk_init_pdctreswm_stuck_legs(void)
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_eswclk_init());
 
   /* Leg 2: PDCSF clears but PDPGSF never does (second wait-loop). */
-  eswclk_test_reset();
+  internal_eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_pdctreswm(),
@@ -414,7 +408,7 @@ static void test_eswclk_init_pdctreswm_stuck_legs(void)
  * "ESWCKCR handshake timeout" and "ESWPCKCR handshake timeout" error
  * branches in internal_eswclk_program_cks.
  *
- * @pre eswclk_test_reset and ra8_mstp_init have been called.
+ * @pre internal_eswclk_test_reset and ra8_mstp_init have been called.
  * @pre The seam is armed on the control register of the leg under test.
  * @post ra8_cgc_eswclk_init returns k_ra8_err_hw_timeout for all legs.
  * @post s_eswclk_hz is not re-published on the failing attempts.
@@ -423,14 +417,13 @@ static void test_eswclk_init_pdctreswm_stuck_legs(void)
  * (no compound decisions -- single-condition ``err != k_ra8_ok`` checks
  * after each handshake call)
  *
- * @since 0.1.0
- */
-static void test_eswclk_init_cksrdy_timeout_legs(void)
+ * @since 0.1.0 @note File-local helper; no ownership escapes this focused test executable. */
+RA8_INTERNAL static void internal_test_eswclk_init_cksrdy_timeout_legs(void)
 {
   TEST_BEGIN("eswclk init ESWCKCR/ESWPCKCR handshake timeout legs");
 
   /* Leg a: ESWCKCR SRDY=1 never acknowledges (first wait-loop). */
-  eswclk_test_reset();
+  internal_eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_eswckcr(),
@@ -438,7 +431,7 @@ static void test_eswclk_init_cksrdy_timeout_legs(void)
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_eswclk_init());
 
   /* Leg b: ESWCKCR SRDY=0 never acknowledges (second wait-loop). */
-  eswclk_test_reset();
+  internal_eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_eswckcr(),
@@ -446,7 +439,7 @@ static void test_eswclk_init_cksrdy_timeout_legs(void)
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cgc_eswclk_init());
 
   /* Leg c: ESWCKCR completes, ESWPCKCR SRDY=1 times out. */
-  eswclk_test_reset();
+  internal_eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fake_mmio_fail_nth_wait((const volatile void*)ra8_sys_eswpckcr(),
@@ -458,14 +451,13 @@ static void test_eswclk_init_cksrdy_timeout_legs(void)
 
 int32_t main(void)
 {
-  test_eswclk_hz_null();
-  test_eswclk_hz_before_init();
-  test_eswclk_init_and_hz_ok();
-  test_eswclk_init_programs_clock_registers();
-  test_eswclk_init_mstp_saturated();
-  test_eswclk_init_hoco_timeout();
-  test_eswclk_init_pdctreswm_stuck_legs();
-  test_eswclk_init_cksrdy_timeout_legs();
-  (void)fprintf(stderr, "[OK  ] test_ra8_cgc_eswclk_cov.c\n");
+  internal_test_eswclk_hz_null();
+  internal_test_eswclk_hz_before_init();
+  internal_test_eswclk_init_and_hz_ok();
+  internal_test_eswclk_init_programs_clock_registers();
+  internal_test_eswclk_init_mstp_saturated();
+  internal_test_eswclk_init_hoco_timeout();
+  internal_test_eswclk_init_pdctreswm_stuck_legs();
+  internal_test_eswclk_init_cksrdy_timeout_legs();
   return 0;
 }

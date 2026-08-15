@@ -2,6 +2,8 @@
  * @file test_ra8_rmac_phy.c
  * @brief Unit tests for ra8_rmac_phy.c
  *
+ * @details Exercises PHY management, negotiation, reset, timeout, and link-mode decoding with a deterministic MDIO fixture.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -9,6 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_rmac_phy.h"
@@ -53,7 +56,8 @@ typedef struct {
 
 static test_rmac_io_t s_io = {};
 
-static ra8_err_t bus_read(void* ctx, uint8_t phy, uint8_t reg, uint16_t* out)
+/** @brief Provide the file-local bus read test helper. @details Implements the bus read fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] phy Fixture argument governed by the exercised interface contract. @param[in] reg Fixture argument governed by the exercised interface contract. @param[out] out Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_bus_read(void* ctx, uint8_t phy, uint8_t reg, uint16_t* out)
 {
   (void)phy;
   test_rmac_io_t* st = (test_rmac_io_t*)ctx;
@@ -72,7 +76,8 @@ static ra8_err_t bus_read(void* ctx, uint8_t phy, uint8_t reg, uint16_t* out)
   return k_ra8_ok;
 }
 
-static ra8_err_t bus_write(void* ctx, uint8_t phy, uint8_t reg, uint16_t data)
+/** @brief Provide the file-local bus write test helper. @details Implements the bus write fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] phy Fixture argument governed by the exercised interface contract. @param[in] reg Fixture argument governed by the exercised interface contract. @param[in] data Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_bus_write(void* ctx, uint8_t phy, uint8_t reg, uint16_t data)
 {
   (void)phy;
   test_rmac_io_t* st = (test_rmac_io_t*)ctx;
@@ -84,7 +89,8 @@ static ra8_err_t bus_write(void* ctx, uint8_t phy, uint8_t reg, uint16_t data)
   return k_ra8_ok;
 }
 
-static void prep(void)
+/** @brief Provide the file-local prep test helper. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_rmac_phy_close();
@@ -92,11 +98,12 @@ static void prep(void)
   s_io.reset_reads_remaining = 1U;
 }
 
-static ra8_rmac_phy_cfg_t make_cfg(void)
+/** @brief Prepare the fixture's make cfg state. @details Implements the make cfg fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_rmac_phy_cfg_t internal_make_cfg(void)
 {
   ra8_rmac_phy_cfg_t cfg = {};
-  cfg.io.read            = bus_read;
-  cfg.io.write           = bus_write;
+  cfg.io.read            = internal_bus_read;
+  cfg.io.write           = internal_bus_write;
   cfg.io.ctx             = &s_io;
   cfg.lsi_type           = k_ra8_rmac_phy_lsi_ksz8091rnb;
   cfg.phy_address        = (uint8_t)k_test_phy_addr;
@@ -110,17 +117,16 @@ static ra8_rmac_phy_cfg_t make_cfg(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_open_null(void)
+ * code under test that this case touches) @brief Verify open null behavior. @details Executes the open null scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_open_null(void)
 {
   TEST_BEGIN("open rejects NULL cfg / callbacks");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rmac_phy_open(nullptr));
-  ra8_rmac_phy_cfg_t cfg = make_cfg();
+  ra8_rmac_phy_cfg_t cfg = internal_make_cfg();
   cfg.io.read            = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rmac_phy_open(&cfg));
-  cfg.io.read  = bus_read;
+  cfg.io.read  = internal_bus_read;
   cfg.io.write = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rmac_phy_open(&cfg));
   TEST_END("open rejects NULL cfg / callbacks");
@@ -130,16 +136,15 @@ static void test_open_null(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_open_bad_args(void)
+ * code under test that this case touches) @brief Verify open bad args behavior. @details Executes the open bad args scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_open_bad_args(void)
 {
   TEST_BEGIN("open rejects bad PHY addr / lsi");
-  prep();
-  ra8_rmac_phy_cfg_t cfg = make_cfg();
+  internal_prep();
+  ra8_rmac_phy_cfg_t cfg = internal_make_cfg();
   cfg.phy_address        = (uint8_t)(k_test_addr_high + 1U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_rmac_phy_open(&cfg));
-  cfg          = make_cfg();
+  cfg          = internal_make_cfg();
   cfg.lsi_type = (ra8_rmac_phy_lsi_t)k_ra8_rmac_phy_lsi_count;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_rmac_phy_open(&cfg));
   TEST_END("open rejects bad PHY addr / lsi");
@@ -149,13 +154,12 @@ static void test_open_bad_args(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_lifecycle(void)
+ * code under test that this case touches) @brief Verify lifecycle behavior. @details Executes the lifecycle scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_lifecycle(void)
 {
   TEST_BEGIN("open / re-open / close + advertisement written");
-  prep();
-  const ra8_rmac_phy_cfg_t cfg = make_cfg();
+  internal_prep();
+  const ra8_rmac_phy_cfg_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_open(&cfg));
   TEST_ASSERT_EQ(0x01E1, s_io.regs[4]);
   TEST_ASSERT_EQ(0x0300, s_io.regs[9]);
@@ -169,14 +173,13 @@ static void test_lifecycle(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_reset_timeout(void)
+ * code under test that this case touches) @brief Verify reset timeout behavior. @details Executes the reset timeout scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_reset_timeout(void)
 {
   TEST_BEGIN("open returns hw_timeout if BMCR.RESET never clears");
-  prep();
+  internal_prep();
   s_io.reset_reads_remaining = k_t_reset_never_ends; /* never auto-clear */
-  ra8_rmac_phy_cfg_t cfg     = make_cfg();
+  ra8_rmac_phy_cfg_t cfg     = internal_make_cfg();
   cfg.reset_poll_max         = 2U;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_rmac_phy_open(&cfg));
   TEST_END("open returns hw_timeout if BMCR.RESET never clears");
@@ -186,13 +189,12 @@ static void test_reset_timeout(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_mdio(void)
+ * code under test that this case touches) @brief Verify mdio behavior. @details Executes the mdio scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mdio(void)
 {
   TEST_BEGIN("mdio read/write validation");
-  prep();
-  const ra8_rmac_phy_cfg_t cfg = make_cfg();
+  internal_prep();
+  const ra8_rmac_phy_cfg_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_open(&cfg));
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_rmac_phy_mdio_write((uint8_t)k_test_reg_count, 0U));
@@ -210,13 +212,12 @@ static void test_mdio(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_link_1000(void)
+ * code under test that this case touches) @brief Verify link 1000 behavior. @details Executes the link 1000 scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_link_1000(void)
 {
   TEST_BEGIN("link_status resolves 1000Base-T full-duplex from MSR");
-  prep();
-  const ra8_rmac_phy_cfg_t cfg = make_cfg();
+  internal_prep();
+  const ra8_rmac_phy_cfg_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_open(&cfg));
 
   s_io.regs[1]                   = (uint16_t)(0x0004U | 0x0020U); /* link + AN done */
@@ -234,13 +235,12 @@ static void test_link_1000(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_link_100half_fallback(void)
+ * code under test that this case touches) @brief Verify link 100half fallback behavior. @details Executes the link 100half fallback scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_link_100half_fallback(void)
 {
   TEST_BEGIN("link_status falls back to LPA when no gbit advertised");
-  prep();
-  ra8_rmac_phy_cfg_t cfg = make_cfg();
+  internal_prep();
+  ra8_rmac_phy_cfg_t cfg = internal_make_cfg();
   cfg.gbit_advertise     = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_open(&cfg));
 
@@ -257,13 +257,12 @@ static void test_link_100half_fallback(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_lsi_and_autoneg(void)
+ * code under test that this case touches) @brief Verify lsi and autoneg behavior. @details Executes the lsi and autoneg scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_lsi_and_autoneg(void)
 {
   TEST_BEGIN("lsi_get + auto_negotiate_start");
-  prep();
-  const ra8_rmac_phy_cfg_t cfg = make_cfg();
+  internal_prep();
+  const ra8_rmac_phy_cfg_t cfg = internal_make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_open(&cfg));
 
   ra8_rmac_phy_lsi_t lsi = k_ra8_rmac_phy_lsi_default;
@@ -280,12 +279,11 @@ static void test_lsi_and_autoneg(void)
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_not_initialized(void)
+ * code under test that this case touches) @brief Verify not initialized behavior. @details Executes the not initialized scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_not_initialized(void)
 {
   TEST_BEGIN("ops fail with not_initialized when closed");
-  prep();
+  internal_prep();
   uint16_t v = 0U;
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_rmac_phy_mdio_read(0U, &v));
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_rmac_phy_mdio_write(0U, 0U));
@@ -298,7 +296,7 @@ static void test_not_initialized(void)
 }
 
 /**
- * @test test_mcdc_link_status_link_and_an
+ * @test internal_test_mcdc_link_status_link_and_an
  *
  * @par MC/DC:
  * Decision: `if ((out->link_up != 0U) && (out->auto_neg_done != 0U))`
@@ -313,13 +311,12 @@ static void test_not_initialized(void)
  * MC/DC pair for C1: V1(F,_)->F vs V3(T,T)->T (decision flips, C2
  * masked in V1 by short-circuit). MC/DC pair for C2: V2(T,F)->F vs
  * V3(T,T)->T (decision flips, C1 held T). N+1 = 3 vectors for N=2
- * conditions: minimal MC/DC.
- */
-static void test_mcdc_link_status_link_and_an(void)
+ * conditions: minimal MC/DC. @brief Verify mcdc link status link and an behavior. @details Executes the mcdc link status link and an scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_link_status_link_and_an(void)
 {
   TEST_BEGIN("rmac_phy link_status MC/DC: link_up && auto_neg_done");
-  prep();
-  ra8_rmac_phy_cfg_t cfg = make_cfg();
+  internal_prep();
+  ra8_rmac_phy_cfg_t cfg = internal_make_cfg();
   cfg.gbit_advertise     = 0U; /* skip 1000T branch -> fall to LPA. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_open(&cfg));
 
@@ -348,7 +345,7 @@ static void test_mcdc_link_status_link_and_an(void)
 }
 
 /**
- * @test test_mcdc_rmac_phy_internal_speed_ok
+ * @test internal_test_mcdc_rmac_phy_internal_speed_ok
  *
  * @par MC/DC:
  * Decision at libs/ra8_hal/src/ra8_rmac_phy.c (call sites) -> helper at
@@ -357,30 +354,28 @@ static void test_mcdc_link_status_link_and_an(void)
  * - V1: err=ok, mask&val=0    -> false
  * - V2: err=ok, mask&val!=0   -> true (varies right)
  * - V3: err=fail, mask&val!=0 -> false (varies left)
- * N+1 = 3.
- */
-static void test_mcdc_rmac_phy_internal_speed_ok(void)
+ * N+1 = 3. @brief Verify mcdc rmac phy internal speed ok behavior. @details Executes the mcdc rmac phy internal speed ok scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_rmac_phy_internal_speed_ok(void)
 {
   TEST_BEGIN("rmac_phy MC/DC: speed_ok AND");
-  TEST_ASSERT(!ra8_rmac_phy_internal_speed_ok(k_ra8_ok, 0x0000U, 0x0800U));
-  TEST_ASSERT(ra8_rmac_phy_internal_speed_ok(k_ra8_ok, 0x0800U, 0x0800U));
-  TEST_ASSERT(!ra8_rmac_phy_internal_speed_ok(k_ra8_err_invalid_arg, 0x0800U, 0x0800U));
+  TEST_ASSERT(!priv_ra8_rmac_phy_internal_speed_ok(k_ra8_ok, 0x0000U, 0x0800U));
+  TEST_ASSERT(priv_ra8_rmac_phy_internal_speed_ok(k_ra8_ok, 0x0800U, 0x0800U));
+  TEST_ASSERT(!priv_ra8_rmac_phy_internal_speed_ok(k_ra8_err_invalid_arg, 0x0800U, 0x0800U));
   TEST_END("rmac_phy MC/DC: speed_ok AND");
 }
 
 int32_t main(void)
 {
-  test_open_null();
-  test_open_bad_args();
-  test_lifecycle();
-  test_reset_timeout();
-  test_mdio();
-  test_link_1000();
-  test_link_100half_fallback();
-  test_lsi_and_autoneg();
-  test_not_initialized();
-  test_mcdc_link_status_link_and_an();
-  test_mcdc_rmac_phy_internal_speed_ok();
-  (void)fprintf(stderr, "[OK ] test_ra8_rmac_phy.c\n");
+  internal_test_open_null();
+  internal_test_open_bad_args();
+  internal_test_lifecycle();
+  internal_test_reset_timeout();
+  internal_test_mdio();
+  internal_test_link_1000();
+  internal_test_link_100half_fallback();
+  internal_test_lsi_and_autoneg();
+  internal_test_not_initialized();
+  internal_test_mcdc_link_status_link_and_an();
+  internal_test_mcdc_rmac_phy_internal_speed_ok();
   return 0;
 }

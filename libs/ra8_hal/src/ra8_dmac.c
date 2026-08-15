@@ -61,9 +61,9 @@
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_dmac_internal_mode_disables_dts(uint32_t mode_normal_val,
-                                         uint32_t mode_repeat_block_val,
-                                         uint32_t mode)
+bool priv_ra8_dmac_internal_mode_disables_dts(uint32_t mode_normal_val,
+                                              uint32_t mode_repeat_block_val,
+                                              uint32_t mode)
 {
   return (mode == mode_normal_val) || (mode == mode_repeat_block_val);
 }
@@ -84,7 +84,9 @@ bool ra8_dmac_internal_mode_disables_dts(uint32_t mode_normal_val,
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool ra8_dmac_internal_dmint_extra_irq(bool irq_each, uint32_t mode_repeat_block_val, uint32_t mode)
+bool priv_ra8_dmac_internal_dmint_extra_irq(bool     irq_each,
+                                            uint32_t mode_repeat_block_val,
+                                            uint32_t mode)
 {
   return irq_each && (mode != mode_repeat_block_val);
 }
@@ -119,7 +121,7 @@ static const char* s_tag = "DMAC";
  * @note Pure function; thread-safe.
  * @since 0.1.0
  */
-static inline uint16_t internal_sz_code(ra8_dmac_width_t width)
+RA8_INTERNAL static inline uint16_t internal_sz_code(ra8_dmac_width_t width)
 {
   switch (width) {
     case k_ra8_dmac_width_byte:
@@ -157,7 +159,7 @@ static inline uint16_t internal_sz_code(ra8_dmac_width_t width)
  * @note Pure function; thread-safe.
  * @since 0.1.0
  */
-static inline uint16_t internal_md_code(ra8_dmac_mode_t mode)
+RA8_INTERNAL static inline uint16_t internal_md_code(ra8_dmac_mode_t mode)
 {
   switch (mode) {
     case k_ra8_dmac_mode_normal:
@@ -192,11 +194,12 @@ static inline uint16_t internal_md_code(ra8_dmac_mode_t mode)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline uint16_t internal_dts_code(ra8_dmac_mode_t mode, ra8_dmac_repeat_area_t area)
+RA8_INTERNAL static inline uint16_t internal_dts_code(ra8_dmac_mode_t        mode,
+                                                      ra8_dmac_repeat_area_t area)
 {
-  if (ra8_dmac_internal_mode_disables_dts((uint32_t)k_ra8_dmac_mode_normal,
-                                          (uint32_t)k_ra8_dmac_mode_repeat_block,
-                                          (uint32_t)mode)) {
+  if (priv_ra8_dmac_internal_mode_disables_dts((uint32_t)k_ra8_dmac_mode_normal,
+                                               (uint32_t)k_ra8_dmac_mode_repeat_block,
+                                               (uint32_t)mode)) {
     return k_ra8_dmtmd_dts_none;
   }
   switch (area) {
@@ -229,7 +232,7 @@ static inline uint16_t internal_dts_code(ra8_dmac_mode_t mode, ra8_dmac_repeat_a
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline uint16_t internal_dmamd_value(bool src_inc, bool dst_inc)
+RA8_INTERNAL static inline uint16_t internal_dmamd_value(bool src_inc, bool dst_inc)
 {
   uint16_t v = 0U;
   if (src_inc) {
@@ -258,7 +261,7 @@ static inline uint16_t internal_dmamd_value(bool src_inc, bool dst_inc)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline uint16_t internal_dmtmd_value(const ra8_dmac_config_t* cfg)
+RA8_INTERNAL static inline uint16_t internal_dmtmd_value(const ra8_dmac_config_t* cfg)
 {
   uint16_t v = 0U;
   v |= (uint16_t)(internal_sz_code(cfg->width) << k_ra8_dmtmd_sz_pos);
@@ -285,15 +288,15 @@ static inline uint16_t internal_dmtmd_value(const ra8_dmac_config_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline uint8_t internal_dmint_value(const ra8_dmac_config_t* cfg)
+RA8_INTERNAL static inline uint8_t internal_dmint_value(const ra8_dmac_config_t* cfg)
 {
   uint8_t v = 0U;
   if (cfg->enable_dtie) {
     v |= k_ra8_dmint_dtie_mask;
   }
-  if (ra8_dmac_internal_dmint_extra_irq(cfg->irq_each,
-                                        (uint32_t)k_ra8_dmac_mode_repeat_block,
-                                        (uint32_t)cfg->mode)) {
+  if (priv_ra8_dmac_internal_dmint_extra_irq(cfg->irq_each,
+                                             (uint32_t)k_ra8_dmac_mode_repeat_block,
+                                             (uint32_t)cfg->mode)) {
     v |= (uint8_t)(k_ra8_dmint_rptie_mask | k_ra8_dmint_esie_mask);
   }
   return v;
@@ -317,7 +320,7 @@ static inline uint8_t internal_dmint_value(const ra8_dmac_config_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline uint32_t internal_dmcra_value(const ra8_dmac_config_t* cfg)
+RA8_INTERNAL static inline uint32_t internal_dmcra_value(const ra8_dmac_config_t* cfg)
 {
   uint32_t v = (uint32_t)cfg->count;
   if (cfg->mode != k_ra8_dmac_mode_normal) {
@@ -328,7 +331,7 @@ static inline uint32_t internal_dmcra_value(const ra8_dmac_config_t* cfg)
 }
 
 /* Validate a `cfg` descriptor before touching hardware -- see implementation for details. */
-static inline ra8_err_t internal_validate_cfg(const ra8_dmac_config_t* cfg)
+RA8_INTERNAL static inline ra8_err_t internal_validate_cfg(const ra8_dmac_config_t* cfg)
 {
   if (cfg->width > k_ra8_dmac_width_word) {
     return k_ra8_err_invalid_arg;
@@ -357,8 +360,8 @@ static inline ra8_err_t internal_validate_cfg(const ra8_dmac_config_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline void internal_program_channel(volatile r_dmac_channel_regs_t* reg,
-                                            const ra8_dmac_config_t*        cfg)
+RA8_INTERNAL static inline void internal_program_channel(volatile r_dmac_channel_regs_t* reg,
+                                                         const ra8_dmac_config_t*        cfg)
 {
   /* HUM 17.2.14 DMCNT, p 743 -- clear DTE before reprogramming. */
   reg->DMCNT = 0U;
@@ -463,7 +466,7 @@ typedef struct {
 static ra8_dmac_cb_slot_t s_dmac_cb_slots[k_ra8_dmac_channel_count];
 
 /* Force ``cfg->mode`` then delegate to the validated start path -- see implementation for details. */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_start_with_mode(uint8_t channel, const ra8_dmac_config_t* cfg, ra8_dmac_mode_t forced_mode)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");

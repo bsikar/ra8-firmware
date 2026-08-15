@@ -15,7 +15,7 @@
  *
  * All hardware effects are produced by pre-seeding the memory-mapped
  * register RAM exposed by `RA8_OFF_TARGET` + `ra8_fake_mmap` (BRDYSTS /
- * CFIFOCTR / CFIFO). `internal_wait_frdy` converges on its first poll
+ * CFIFOCTR / CFIFO). `priv_wait_frdy` converges on its first poll
  * via the unarmed ra8_fake_mmio seam, so no timing/SIGALRM injection is
  * used.
  *
@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fake_mmap.h"
 #include "ra8_mstp.h"
@@ -72,9 +73,8 @@ static ra8_err_t s_cb_return = k_ra8_ok;
  *
  * @param[in] ctx   Unused caller context.
  * @param[in] setup Unused SETUP envelope.
- * @return The value staged in `s_cb_return`.
- */
-static ra8_err_t test_paud_cov_cb(void* ctx, const ra8_usb_setup_t* setup)
+ * @return The value staged in `s_cb_return`. @details Executes the paud cov cb scenario with bounded fixture state and asserts the contract-specific result. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_test_paud_cov_cb(void* ctx, const ra8_usb_setup_t* setup)
 {
   (void)ctx;
   (void)setup;
@@ -82,8 +82,8 @@ static ra8_err_t test_paud_cov_cb(void* ctx, const ra8_usb_setup_t* setup)
   return s_cb_return;
 }
 
-/** @brief Reset the fake, module-stop table, and class singleton. */
-static void prep(void)
+/** @brief Reset the fake, module-stop table, and class singleton. @details Implements the prep fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_prep(void)
 {
   ra8_fake_mmap_reset();
   (void)ra8_mstp_init();
@@ -93,7 +93,7 @@ static void prep(void)
 }
 
 /**
- * @test test_set_descriptors_post_init
+ * @test internal_test_set_descriptors_post_init
  *
  * @par MC/DC:
  * (single-condition decisions only -- `RA8_CHECK_NULL_PTR(desc)` and
@@ -103,12 +103,11 @@ static void prep(void)
  * @details Drives `ra8_usb_paud_set_descriptors` after a successful init:
  *  - NULL desc  -> `k_ra8_err_null_ptr`   (null guard, false leg of the ptr check)
  *  - len == 0   -> `k_ra8_err_invalid_arg` (zero-length guard true leg)
- *  - valid pair -> `k_ra8_ok`              (pointer + length stored)
- */
-static void test_set_descriptors_post_init(void)
+ *  - valid pair -> `k_ra8_ok`              (pointer + length stored) @brief Verify set descriptors post init behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_set_descriptors_post_init(void)
 {
   TEST_BEGIN("ra8_usb_paud_set_descriptors stores a valid blob after init");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_init(k_ra8_usb_speed_fs));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -122,7 +121,7 @@ static void test_set_descriptors_post_init(void)
 }
 
 /**
- * @test test_recv_frame_post_init
+ * @test internal_test_recv_frame_post_init
  *
  * @par MC/DC:
  * (single-condition decisions only -- `if (max_len == 0U)` and
@@ -134,12 +133,11 @@ static void test_set_descriptors_post_init(void)
  *  - BRDYSTS clear (empty pipe)  -> `k_ra8_err_no_data`, `*got_len == 0`
  *    (queue_out no-data fast path -> `err != k_ra8_ok` else leg, line 333)
  *  - BRDYSTS + CFIFOCTR seeded   -> `k_ra8_ok`, one byte drained
- *    (queue_out success -> `err == k_ra8_ok` then leg, line 331)
- */
-static void test_recv_frame_post_init(void)
+ *    (queue_out success -> `err == k_ra8_ok` then leg, line 331) @brief Verify recv frame post init behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_recv_frame_post_init(void)
 {
   TEST_BEGIN("ra8_usb_paud_recv_frame drains a seeded iso-OUT FIFO");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_init(k_ra8_usb_speed_fs));
 
   uint8_t  buf[k_test_paud_recv_cap] = {};
@@ -171,7 +169,7 @@ static void test_recv_frame_post_init(void)
 }
 
 /**
- * @test test_handle_setup_callback_stall
+ * @test internal_test_handle_setup_callback_stall
  *
  * @par MC/DC:
  * (single-condition decision `if (cb_err != k_ra8_ok)`; the sibling suite
@@ -182,14 +180,13 @@ static void test_recv_frame_post_init(void)
  * makes `ra8_usb_paud_handle_setup` STALL EP0 via
  * `ra8_usb_control_response(speed, false)`. Off-target that helper
  * returns `k_ra8_ok` (it only drives the DCPCTR PID=STALL register), so
- * the dispatcher itself reports `k_ra8_ok` while the callback fired once.
- */
-static void test_handle_setup_callback_stall(void)
+ * the dispatcher itself reports `k_ra8_ok` while the callback fired once. @brief Verify handle setup callback stall behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_handle_setup_callback_stall(void)
 {
   TEST_BEGIN("ra8_usb_paud_handle_setup stalls EP0 when the callback rejects");
-  prep();
+  internal_prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_init(k_ra8_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_attach_setup_handler(test_paud_cov_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_attach_setup_handler(internal_test_paud_cov_cb, nullptr));
 
   s_cb_return           = k_ra8_err_not_supported;
   ra8_usb_setup_t setup = {
@@ -207,9 +204,8 @@ static void test_handle_setup_callback_stall(void)
 
 int32_t main(void)
 {
-  test_set_descriptors_post_init();
-  test_recv_frame_post_init();
-  test_handle_setup_callback_stall();
-  (void)fprintf(stderr, "[OK ] test_ra8_usb_paud_cov.c\n");
+  internal_test_set_descriptors_post_init();
+  internal_test_recv_frame_post_init();
+  internal_test_handle_setup_callback_stall();
   return 0;
 }

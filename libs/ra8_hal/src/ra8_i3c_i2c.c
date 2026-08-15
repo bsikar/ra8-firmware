@@ -49,6 +49,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -72,7 +73,7 @@
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool internal_i3c_i2c_len_buf_invalid(uint32_t len, const void* buf)
+bool priv_i3c_i2c_len_buf_invalid(uint32_t len, const void* buf)
 {
   return (len != 0U) && (buf == nullptr);
 }
@@ -92,7 +93,7 @@ bool internal_i3c_i2c_len_buf_invalid(uint32_t len, const void* buf)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-bool internal_i3c_i2c_should_dispatch(uint8_t mask, const void* cb)
+bool priv_i3c_i2c_should_dispatch(uint8_t mask, const void* cb)
 {
   return (mask != 0U) && (cb != nullptr);
 }
@@ -156,9 +157,9 @@ ra8_i3c_i2c_state_t s_iic_b_state[k_ra8_i3c_i2c_channel_count];
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static uint8_t internal_i3c_i2c_half_period(uint32_t bus_hz, uint32_t pclka_hz)
+RA8_INTERNAL static uint8_t internal_i3c_i2c_half_period(uint32_t bus_hz, uint32_t pclka_hz)
 {
-  /* mcdc-deactivated: both args validated by internal_i3c_i2c_init upstream; defensive duplicate. */
+  /* mcdc-deactivated: both args validated by ra8_i3c_i2c_init upstream; defensive duplicate. */
   if ((bus_hz == 0U) || (pclka_hz == 0U)) {
     return 0U;
   }
@@ -197,7 +198,8 @@ static uint8_t internal_i3c_i2c_half_period(uint32_t bus_hz, uint32_t pclka_hz)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra8_err_t internal_i3c_i2c_wait_ntst(volatile r_i3c_i2c_regs_t* reg, uint32_t mask)
+RA8_INTERNAL static ra8_err_t internal_i3c_i2c_wait_ntst(volatile r_i3c_i2c_regs_t* reg,
+                                                         uint32_t                   mask)
 {
   for (uint32_t i = 0U; i < k_ra8_i3c_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
@@ -235,7 +237,7 @@ static ra8_err_t internal_i3c_i2c_wait_ntst(volatile r_i3c_i2c_regs_t* reg, uint
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra8_err_t internal_i3c_i2c_reset(volatile r_i3c_i2c_regs_t* reg)
+RA8_INTERNAL static ra8_err_t internal_i3c_i2c_reset(volatile r_i3c_i2c_regs_t* reg)
 {
   /* HUM Ch 40.2.4 "RSTCTL : Reset Control Register" p 2451 */
   reg->RSTCTL = k_ra8_i3c_i2c_msk_rstctl_ri3crst;
@@ -262,7 +264,7 @@ static ra8_err_t internal_i3c_i2c_reset(volatile r_i3c_i2c_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-void internal_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg)
+void priv_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg)
 {
   /* HUM Ch 40.2.32 "CNDCTL : Condition Control Register" p 2479 */
   reg->CNDCTL = k_ra8_i3c_i2c_msk_cndctl_stcnd;
@@ -285,7 +287,7 @@ void internal_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_i3c_i2c_restart(volatile r_i3c_i2c_regs_t* reg)
+RA8_INTERNAL static void internal_i3c_i2c_restart(volatile r_i3c_i2c_regs_t* reg)
 {
   /* HUM Ch 40.2.32 "CNDCTL : Condition Control Register" p 2479 */
   reg->CNDCTL = k_ra8_i3c_i2c_msk_cndctl_srcnd;
@@ -310,7 +312,7 @@ static void internal_i3c_i2c_restart(volatile r_i3c_i2c_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg)
+void priv_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg)
 {
   /* Clear the prior STOP-detect flag so the NEXT transaction sees a
    * fresh edge. W0C semantics. */
@@ -332,7 +334,7 @@ void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg)
+void priv_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg)
 {
   enum : uint32_t {
     k_ra8_i3c_i2c_bst_clear_mask = k_ra8_i3c_i2c_msk_bst_stcnddf | k_ra8_i3c_i2c_msk_bst_spcnddf |
@@ -365,7 +367,7 @@ void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-ra8_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t address_byte)
+ra8_err_t priv_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t address_byte)
 {
   /* Wait for first TDBEF0 (set after START condition is on the bus).
    * HUM Ch 40.2.50 "NTST : Normal Transfer Status Register" p 2498 */
@@ -396,7 +398,7 @@ ra8_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t 
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra8_err_t internal_i3c_i2c_status_from_bst(uint32_t bst)
+RA8_INTERNAL static ra8_err_t internal_i3c_i2c_status_from_bst(uint32_t bst)
 {
   if ((bst & k_ra8_i3c_i2c_msk_bst_nackdf) != 0U) {
     return k_ra8_err_nack;
@@ -430,7 +432,7 @@ static ra8_err_t internal_i3c_i2c_status_from_bst(uint32_t bst)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static bool internal_i3c_i2c_bus_free(volatile const r_i3c_i2c_regs_t* reg)
+RA8_INTERNAL static bool internal_i3c_i2c_bus_free(volatile const r_i3c_i2c_regs_t* reg)
 {
   return (reg->BCST & k_ra8_i3c_i2c_msk_bcst_bfref) != 0U;
 }
@@ -457,8 +459,8 @@ static bool internal_i3c_i2c_bus_free(volatile const r_i3c_i2c_regs_t* reg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_i3c_i2c_apply_init_regs(volatile r_i3c_i2c_regs_t* reg,
-                                             const ra8_i3c_i2c_cfg_t*   cfg)
+RA8_INTERNAL static void internal_i3c_i2c_apply_init_regs(volatile r_i3c_i2c_regs_t* reg,
+                                                          const ra8_i3c_i2c_cfg_t*   cfg)
 {
   /* HUM Ch 40.2.14 "REFCKCTL : Reference Clock Control Register" p 2463 */
   reg->REFCKCTL = 0U;
@@ -492,7 +494,7 @@ static void internal_i3c_i2c_apply_init_regs(volatile r_i3c_i2c_regs_t* reg,
  *        and switch the I3C IP into I2C single-buffer mode (PRTMD=1).
  *
  * @details
- * Extracted from internal_i3c_i2c_init to stay under the NASA Rule 4 +
+ * Extracted from ra8_i3c_i2c_init to stay under the NASA Rule 4 +
  * clang-tidy readability-function-size thresholds. Step ordering is
  * fixed by HUM Ch 11.2.7 p 444 + Ch 40.2.92 p 2543 + Ch 40.2.1 p
  * 2449: MSTP -> CECTL.CLKE -> BCTL clear -> RSTCTL reset -> PRTS.
@@ -515,7 +517,7 @@ static void internal_i3c_i2c_apply_init_regs(volatile r_i3c_i2c_regs_t* reg,
  * @note Not thread-safe; serialise iic_b bring-up at a higher layer.
  * @since 0.1.0
  */
-static ra8_err_t internal_i3c_i2c_block_bringup(volatile r_i3c_i2c_regs_t* reg)
+RA8_INTERNAL static ra8_err_t internal_i3c_i2c_block_bringup(volatile r_i3c_i2c_regs_t* reg)
 {
   /* The I3C/IIC_B shared block needs both MSTPB4 (I3C) AND MSTPB9 */
   /* (IIC0) ungated; ungating only MSTPB4 leaves the channel-0 IIC */
@@ -548,7 +550,7 @@ static ra8_err_t internal_i3c_i2c_block_bringup(volatile r_i3c_i2c_regs_t* reg)
   return k_ra8_ok;
 }
 
-ra8_err_t internal_i3c_i2c_init(uint8_t channel, const ra8_i3c_i2c_cfg_t* cfg)
+ra8_err_t ra8_i3c_i2c_init(uint8_t channel, const ra8_i3c_i2c_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "iic_b_init: cfg");
   if (cfg->bus_hz == 0U) {
@@ -573,7 +575,7 @@ ra8_err_t internal_i3c_i2c_init(uint8_t channel, const ra8_i3c_i2c_cfg_t* cfg)
   return k_ra8_ok;
 }
 
-ra8_err_t internal_i3c_i2c_deinit(uint8_t channel)
+ra8_err_t ra8_i3c_i2c_deinit(uint8_t channel)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
@@ -591,7 +593,7 @@ ra8_err_t internal_i3c_i2c_deinit(uint8_t channel)
   return ra8_mstp_disable(k_ra8_mstp_i3c);
 }
 
-ra8_err_t internal_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
+ra8_err_t ra8_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   if (reg == nullptr) {
@@ -628,12 +630,12 @@ ra8_err_t internal_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t 
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_i3c_i2c_open_phase(volatile r_i3c_i2c_regs_t* reg, bool bus_held)
+RA8_INTERNAL static void internal_i3c_i2c_open_phase(volatile r_i3c_i2c_regs_t* reg, bool bus_held)
 {
   if (bus_held) {
     internal_i3c_i2c_restart(reg);
   } else {
-    internal_i3c_i2c_start(reg);
+    priv_i3c_i2c_start(reg);
   }
 }
 
@@ -658,7 +660,7 @@ static void internal_i3c_i2c_open_phase(volatile r_i3c_i2c_regs_t* reg, bool bus
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_i3c_i2c_drain_tx(volatile r_i3c_i2c_regs_t* reg, const uint8_t* data, uint32_t len)
 {
   ra8_err_t err = k_ra8_ok;
@@ -695,18 +697,18 @@ internal_i3c_i2c_drain_tx(volatile r_i3c_i2c_regs_t* reg, const uint8_t* data, u
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static void internal_i3c_i2c_finalize(volatile r_i3c_i2c_regs_t* reg,
-                                      uint8_t                    channel,
-                                      ra8_err_t                  err,
-                                      bool                       restart)
+RA8_INTERNAL static void internal_i3c_i2c_finalize(volatile r_i3c_i2c_regs_t* reg,
+                                                   uint8_t                    channel,
+                                                   ra8_err_t                  err,
+                                                   bool                       restart)
 {
   if ((err != k_ra8_ok) || !restart) {
-    internal_i3c_i2c_stop(reg);
+    priv_i3c_i2c_stop(reg);
     s_iic_b_state[channel].bus_held = false;
   } else {
     s_iic_b_state[channel].bus_held = true;
   }
-  internal_i3c_i2c_clear_bst(reg);
+  priv_i3c_i2c_clear_bst(reg);
 }
 
 /**
@@ -728,7 +730,8 @@ static void internal_i3c_i2c_finalize(volatile r_i3c_i2c_regs_t* reg,
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra8_err_t internal_i3c_i2c_busy_gate(volatile const r_i3c_i2c_regs_t* reg, bool bus_held)
+RA8_INTERNAL static ra8_err_t internal_i3c_i2c_busy_gate(volatile const r_i3c_i2c_regs_t* reg,
+                                                         bool                             bus_held)
 {
   if (bus_held) {
     return k_ra8_ok;
@@ -736,11 +739,11 @@ static ra8_err_t internal_i3c_i2c_busy_gate(volatile const r_i3c_i2c_regs_t* reg
   return internal_i3c_i2c_bus_free(reg) ? k_ra8_ok : k_ra8_err_busy;
 }
 
-ra8_err_t internal_i3c_i2c_write(uint8_t        channel,
-                                 uint8_t        target_7b,
-                                 const uint8_t* data,
-                                 uint32_t       len,
-                                 bool           restart)
+ra8_err_t ra8_i3c_i2c_write(uint8_t        channel,
+                            uint8_t        target_7b,
+                            const uint8_t* data,
+                            uint32_t       len,
+                            bool           restart)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "iic_b_write: channel");
@@ -752,14 +755,14 @@ ra8_err_t internal_i3c_i2c_write(uint8_t        channel,
     return busy_gate;
   }
 
-  internal_i3c_i2c_clear_bst(reg);
+  priv_i3c_i2c_clear_bst(reg);
   internal_i3c_i2c_open_phase(reg, bus_held);
 
   const uint8_t address_byte =
     (uint8_t)(((uint32_t)target_7b << k_ra8_i3c_i2c_addr_shift) | k_ra8_i3c_i2c_addr_rw_write);
-  ra8_err_t err = internal_i3c_i2c_send_address(reg, address_byte);
+  ra8_err_t err = priv_i3c_i2c_send_address(reg, address_byte);
   if (err != k_ra8_ok) {
-    internal_i3c_i2c_stop(reg);
+    priv_i3c_i2c_stop(reg);
     s_iic_b_state[channel].bus_held = false;
     return err;
   }
@@ -782,7 +785,7 @@ ra8_err_t internal_i3c_i2c_write(uint8_t        channel,
  * @brief Drain ``len`` bytes from NTDTBP0 into ``out``.
  *
  * @details
- * Helper for ``internal_i3c_i2c_read``. Mirrors FSP's controller RXI data path:
+ * Helper for ``ra8_i3c_i2c_read``. Mirrors FSP's controller RXI data path:
  * each iteration waits for RDBFF0 then reads NTDTBP0. On the final
  * byte the controller is primed to NACK (via ACKCTL.ACKT paired with
  * ACKTWP) so the peripheral releases SDA when STOP issues.
@@ -800,7 +803,7 @@ ra8_err_t internal_i3c_i2c_write(uint8_t        channel,
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_i3c_i2c_drain_rx(volatile r_i3c_i2c_regs_t* reg, uint8_t* out, uint32_t len)
 {
   ra8_err_t err = k_ra8_ok;
@@ -846,7 +849,7 @@ internal_i3c_i2c_drain_rx(volatile r_i3c_i2c_regs_t* reg, uint8_t* out, uint32_t
  * @param[in] buf See header declaration for direction and constraints.
  * @param[in] len See header declaration for direction and constraints.
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_i3c_i2c_rx_phase(volatile r_i3c_i2c_regs_t* reg, uint8_t* buf, uint32_t len)
 {
   ra8_err_t err = internal_i3c_i2c_wait_ntst(reg, k_ra8_i3c_i2c_msk_ntst_rdbff0);
@@ -859,7 +862,7 @@ internal_i3c_i2c_rx_phase(volatile r_i3c_i2c_regs_t* reg, uint8_t* buf, uint32_t
 }
 
 ra8_err_t
-internal_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bool restart)
+ra8_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bool restart)
 {
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "iic_b_read: channel");
@@ -874,14 +877,14 @@ internal_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t
     return busy_gate;
   }
 
-  internal_i3c_i2c_clear_bst(reg);
+  priv_i3c_i2c_clear_bst(reg);
   internal_i3c_i2c_open_phase(reg, bus_held);
 
   const uint8_t address_byte =
     (uint8_t)(((uint32_t)target_7b << k_ra8_i3c_i2c_addr_shift) | k_ra8_i3c_i2c_addr_rw_read);
-  ra8_err_t err = internal_i3c_i2c_send_address(reg, address_byte);
+  ra8_err_t err = priv_i3c_i2c_send_address(reg, address_byte);
   if (err != k_ra8_ok) {
-    internal_i3c_i2c_stop(reg);
+    priv_i3c_i2c_stop(reg);
     s_iic_b_state[channel].bus_held = false;
     return err;
   }
@@ -900,12 +903,12 @@ internal_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t
  * =============================================================================
  */
 
-ra8_err_t internal_i3c_i2c_transfer(uint8_t        channel,
-                                    uint8_t        target_7b,
-                                    const uint8_t* tx,
-                                    uint32_t       tx_len,
-                                    uint8_t*       rx,
-                                    uint32_t       rx_len)
+ra8_err_t ra8_i3c_i2c_transfer(uint8_t        channel,
+                               uint8_t        target_7b,
+                               const uint8_t* tx,
+                               uint32_t       tx_len,
+                               uint8_t*       rx,
+                               uint32_t       rx_len)
 {
   if (i3c_i2c_regs(channel) == nullptr) {
     return k_ra8_err_null_ptr;
@@ -916,7 +919,7 @@ ra8_err_t internal_i3c_i2c_transfer(uint8_t        channel,
   if ((tx_len != 0U) && (tx == nullptr)) {
     return k_ra8_err_null_ptr;
   }
-  if (internal_i3c_i2c_len_buf_invalid(rx_len, rx)) {
+  if (priv_i3c_i2c_len_buf_invalid(rx_len, rx)) {
     return k_ra8_err_null_ptr;
   }
 
@@ -926,7 +929,7 @@ ra8_err_t internal_i3c_i2c_transfer(uint8_t        channel,
    * tx phase means "no register-pointer update needed". */
   if (tx_len != 0U) {
     const ra8_err_t w_err =
-      internal_i3c_i2c_write(channel, target_7b, tx, tx_len, /*restart=*/(rx_len != 0U));
+      ra8_i3c_i2c_write(channel, target_7b, tx, tx_len, /*restart=*/(rx_len != 0U));
     if (w_err != k_ra8_ok) {
       return w_err;
     }
@@ -934,8 +937,7 @@ ra8_err_t internal_i3c_i2c_transfer(uint8_t        channel,
 
   /* Phase 2: read (close the bus normally). */
   if (rx_len != 0U) {
-    const ra8_err_t r_err =
-      internal_i3c_i2c_read(channel, target_7b, rx, rx_len, /*restart=*/false);
+    const ra8_err_t r_err = ra8_i3c_i2c_read(channel, target_7b, rx, rx_len, /*restart=*/false);
     if (r_err != k_ra8_ok) {
       return r_err;
     }

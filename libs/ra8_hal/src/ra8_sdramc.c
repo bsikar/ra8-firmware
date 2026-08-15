@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_gpio_constants.h"
@@ -201,7 +202,7 @@ static const ra8_port_pin_t s_sdram_bus_pins[] = {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_sdramc_route_pins(void)
+RA8_INTERNAL static ra8_err_t internal_sdramc_route_pins(void)
 {
   const uint32_t count = (uint32_t)(sizeof(s_sdram_bus_pins) / sizeof(s_sdram_bus_pins[0]));
   for (uint32_t i = 0U; i < count; ++i) {
@@ -241,7 +242,7 @@ static ra8_err_t internal_sdramc_route_pins(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_sdramc_wait(uint8_t mask)
+RA8_INTERNAL static ra8_err_t internal_sdramc_wait(uint8_t mask)
 {
   volatile r_sdramc_regs_t* const reg = ra8_sdramc();
   for (uint32_t spin = 0U; spin < (uint32_t)k_ra8_sdramc_spin_max; ++spin) {

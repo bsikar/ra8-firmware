@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_gpio_constants.h"
@@ -64,7 +65,8 @@ static const char* s_tag = "GPIO";
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_claim(ra8_port_pin_t pin, ra8_port_t* out_port, ra8_pin_t* out_pin)
+RA8_INTERNAL static ra8_err_t
+internal_claim(ra8_port_pin_t pin, ra8_port_t* out_port, ra8_pin_t* out_pin)
 {
   const ra8_port_t p = RA8_PIN_PORT(pin);
   const ra8_pin_t  b = RA8_PIN_PIN(pin);
@@ -331,7 +333,7 @@ ra8_err_t ra8_pfs_set_drive_strength(ra8_port_pin_t pin, ra8_pfs_dscr_t dscr)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_elc_event_t internal_event_for_irq(uint8_t irq_num)
+RA8_INTERNAL static ra8_elc_event_t internal_event_for_irq(uint8_t irq_num)
 {
   return (ra8_elc_event_t)((uint16_t)k_ra8_gpio_irq_event_base + (uint16_t)irq_num);
 }
@@ -429,7 +431,8 @@ ra8_err_t ra8_gpio_detach_irq(ra8_port_pin_t pin, uint8_t irq_num)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_pin_if_output_init(void* ctx, ra8_port_pin_t pin, ra8_level_t level)
+RA8_INTERNAL static ra8_err_t
+internal_pin_if_output_init(void* ctx, ra8_port_pin_t pin, ra8_level_t level)
 {
   (void)ctx;
   return ra8_gpio_output_init(pin, level);
@@ -450,7 +453,8 @@ static ra8_err_t internal_pin_if_output_init(void* ctx, ra8_port_pin_t pin, ra8_
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_pin_if_write(void* ctx, ra8_port_pin_t pin, ra8_level_t level)
+RA8_INTERNAL static ra8_err_t
+internal_pin_if_write(void* ctx, ra8_port_pin_t pin, ra8_level_t level)
 {
   (void)ctx;
   return ra8_gpio_write(pin, level);
@@ -471,7 +475,7 @@ static ra8_err_t internal_pin_if_write(void* ctx, ra8_port_pin_t pin, ra8_level_
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_pin_if_read(void* ctx, ra8_port_pin_t pin, ra8_level_t* out)
+RA8_INTERNAL static ra8_err_t internal_pin_if_read(void* ctx, ra8_port_pin_t pin, ra8_level_t* out)
 {
   (void)ctx;
   return ra8_gpio_read(pin, out);
@@ -491,7 +495,7 @@ static ra8_err_t internal_pin_if_read(void* ctx, ra8_port_pin_t pin, ra8_level_t
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_pin_if_toggle(void* ctx, ra8_port_pin_t pin)
+RA8_INTERNAL static ra8_err_t internal_pin_if_toggle(void* ctx, ra8_port_pin_t pin)
 {
   (void)ctx;
   return ra8_gpio_toggle(pin);

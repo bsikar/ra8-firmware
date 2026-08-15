@@ -1,6 +1,8 @@
 /**
  * @file ra8_i3c_i2c_internal.h
  * @brief Test-access surface for ra8_i3c_i2c internal helpers (MC/DC).
+ *
+ * @details Declares caller-invisible IIC_B state and cross-translation-unit transaction helpers used by the public compatibility API.
  * @ingroup grp_hal_comms
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -39,8 +41,8 @@ extern "C" {
 typedef struct {
   ra8_i3c_i2c_complete_fn_t cb;          /**< Callback or NULL. */
   void*                     ctx;         /**< Callback context. */
-  bool                      initialized; /**< Tracks ``internal_i3c_i2c_init`` /
-                                         ``internal_i3c_i2c_deinit``.           */
+  bool                      initialized; /**< Tracks ``ra8_i3c_i2c_init`` /
+                                         ``ra8_i3c_i2c_deinit``.           */
   bool                      bus_held;    /**< True when the previous
                                          transaction returned with
                                          ``restart=true`` and the next
@@ -68,13 +70,13 @@ extern ra8_i3c_i2c_state_t s_iic_b_state[k_ra8_i3c_i2c_channel_count];
  *
  * @details
  * Shared START helper writing @c CNDCTL.STCND. Promoted to TU-external
- * linkage so the control-plane TU (@c internal_i3c_i2c_scan) and the
+ * linkage so the control-plane TU (@c ra8_i3c_i2c_scan) and the
  * data-path TU can both issue it.
  *
  * @param[in] reg Channel register block (non-NULL).
  *
  * @pre @p reg points to a valid IIC_B register block.
- * @pre The channel has been brought up by @c internal_i3c_i2c_init.
+ * @pre The channel has been brought up by @c ra8_i3c_i2c_init.
  * @post @c CNDCTL.STCND is set, requesting a START on the bus.
  * @post No other register is modified.
  *
@@ -82,7 +84,7 @@ extern ra8_i3c_i2c_state_t s_iic_b_state[k_ra8_i3c_i2c_channel_count];
  * @since 0.1.0
  */
 RA8_PRIV
-void internal_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg);
+void priv_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg);
 
 /**
  * @brief Issue a STOP condition and clear the prior STOP-detect flag.
@@ -95,7 +97,7 @@ void internal_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg);
  * @param[in] reg Channel register block (non-NULL).
  *
  * @pre @p reg points to a valid IIC_B register block.
- * @pre The channel has been brought up by @c internal_i3c_i2c_init.
+ * @pre The channel has been brought up by @c ra8_i3c_i2c_init.
  * @post @c CNDCTL.SPCND is set, requesting a STOP on the bus.
  * @post The prior @c BST.SPCNDDF flag is cleared.
  *
@@ -103,7 +105,7 @@ void internal_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg);
  * @since 0.1.0
  */
 RA8_PRIV
-void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg);
+void priv_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg);
 
 /**
  * @brief Clear all latched bus-status flags ahead of a new transaction.
@@ -116,7 +118,7 @@ void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg);
  * @param[in] reg Channel register block (non-NULL).
  *
  * @pre @p reg points to a valid IIC_B register block.
- * @pre The channel has been brought up by @c internal_i3c_i2c_init.
+ * @pre The channel has been brought up by @c ra8_i3c_i2c_init.
  * @post The transaction-related @c BST flags are cleared (W0C).
  * @post No other register is modified.
  *
@@ -124,14 +126,14 @@ void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg);
  * @since 0.1.0
  */
 RA8_PRIV
-void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg);
+void priv_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg);
 
 /**
  * @brief Send a single address byte and wait for TDBEF0 readiness.
  *
  * @details
  * Shared address-phase helper. Promoted to TU-external linkage so the
- * control-plane TU (@c internal_i3c_i2c_scan) and the data-path TU can both
+ * control-plane TU (@c ra8_i3c_i2c_scan) and the data-path TU can both
  * push the pre-shifted address byte and forward timeout / NACK detection.
  *
  * @param[in] reg          Channel registers (non-NULL).
@@ -150,7 +152,7 @@ void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg);
  * @since 0.1.0
  */
 RA8_PRIV
-ra8_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t address_byte);
+ra8_err_t priv_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t address_byte);
 
 /**
  * @brief Pure predicate: non-zero length AND a NULL buffer pointer.
@@ -158,7 +160,7 @@ ra8_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t 
  * @details
  * Reusable for both the @c (tx_len != 0 && tx == NULL) and
  * @c (rx_len != 0 && rx == NULL) checks at libs/ra8_hal/src/ra8_i3c_i2c.c
- * lines 973 and 976 inside @c internal_i3c_i2c_read.
+ * lines 973 and 976 inside @c ra8_i3c_i2c_read.
  *
  * @param[in] len Length in bytes (zero means "not used").
  * @param[in] buf Buffer pointer (NULL means "not provided").
@@ -183,14 +185,14 @@ ra8_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t 
  * @since 0.1.0
  */
 RA8_PRIV
-bool internal_i3c_i2c_len_buf_invalid(uint32_t len, const void* buf);
+bool priv_i3c_i2c_len_buf_invalid(uint32_t len, const void* buf);
 
 /**
  * @brief Pure predicate: non-zero error mask AND a non-NULL callback.
  *
  * @details
  * Promoted from the inline AND at libs/ra8_hal/src/ra8_i3c_i2c.c
- * inside @c internal_i3c_i2c_dispatch_eri.
+ * inside @c ra8_i3c_i2c_dispatch_eri.
  *
  * @param[in] mask Bitmask of pending error sources.
  * @param[in] cb   Callback pointer (NULL when none registered).
@@ -219,7 +221,7 @@ bool internal_i3c_i2c_len_buf_invalid(uint32_t len, const void* buf);
  * @since 0.1.0
  */
 RA8_PRIV
-bool internal_i3c_i2c_should_dispatch(uint8_t mask, const void* cb);
+bool priv_i3c_i2c_should_dispatch(uint8_t mask, const void* cb);
 
 #ifdef __cplusplus
 }

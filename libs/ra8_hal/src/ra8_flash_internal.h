@@ -43,12 +43,12 @@ extern "C" {
  * Cleared at init. Used by the IRQ dispatcher to find the registered
  * callback and to detect callers that try to use APIs before init. The
  * single definition lives in ``ra8_flash.c``; the configuration and IRQ
- * TUs reference it via the @ref s_flash_rt extern below.
+ * TUs reference it via the @ref g_flash_rt extern below.
  *
  * @invariant ``win_low < win_high`` whenever a soft window is installed,
  *            else both are 0 (window disabled).
  *
- * @see s_flash_rt
+ * @see g_flash_rt
  * @since 0.1.0
  */
 typedef struct {
@@ -61,7 +61,7 @@ typedef struct {
 } ra8_flash_runtime_t;
 
 /**
- * @var s_flash_rt
+ * @var g_flash_rt
  * @brief Single shared ra8_flash runtime-state instance.
  *
  * @details Defined exactly once in ``ra8_flash.c``; the configuration and
@@ -72,10 +72,10 @@ typedef struct {
  * @warning Do not redefine; this is the sole owner of the state.
  * @since 0.1.0
  */
-extern ra8_flash_runtime_t s_flash_rt;
+extern ra8_flash_runtime_t g_flash_rt;
 
 /**
- * @var s_flash_tag
+ * @var g_flash_tag
  * @brief Shared log tag string for the ra8_flash module.
  *
  * @details Defined once in ``ra8_flash.c``. Referenced by every ra8_flash
@@ -84,7 +84,7 @@ extern ra8_flash_runtime_t s_flash_rt;
  * @note Read-only after init.
  * @since 0.1.0
  */
-extern const char* s_flash_tag;
+extern const char* g_flash_tag;
 
 /**
  * @enum ra8_flash_const_t
@@ -138,13 +138,13 @@ typedef enum : uint32_t {
  *
  * @pre Module clock ungated.
  * @pre Called from single-threaded init / ISR context (no concurrent access).
- * @post MRCPFB.MPFBEN matches @p enable; ``s_flash_rt.prefetch_on`` updated.
+ * @post MRCPFB.MPFBEN matches @p enable; ``g_flash_rt.prefetch_on`` updated.
  * @post No MRAM register other than MRCPFB is written.
  *
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_flash_internal_set_prefetch(bool enable);
+RA8_PRIV void priv_ra8_flash_internal_set_prefetch(bool enable);
 
 /**
  * @brief Send a single byte through the MACI command-issuing area.
@@ -162,7 +162,7 @@ RA8_PRIV void ra8_flash_internal_set_prefetch(bool enable);
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_flash_internal_maci_cmd8(uint8_t byte);
+RA8_PRIV void priv_ra8_flash_internal_maci_cmd8(uint8_t byte);
 
 /**
  * @brief Send a halfword through the MACI command-issuing area.
@@ -180,7 +180,7 @@ RA8_PRIV void ra8_flash_internal_maci_cmd8(uint8_t byte);
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_flash_internal_maci_cmd16(uint16_t half);
+RA8_PRIV void priv_ra8_flash_internal_maci_cmd16(uint16_t half);
 
 /**
  * @brief Spin until MSTATR.MRDY rises or limit elapses.
@@ -201,7 +201,7 @@ RA8_PRIV void ra8_flash_internal_maci_cmd16(uint16_t half);
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_flash_internal_wait_mrdy(uint32_t limit);
+RA8_PRIV ra8_err_t priv_ra8_flash_internal_wait_mrdy(uint32_t limit);
 
 /**
  * @brief Test whether [addr, addr+len) lies inside the soft window.
@@ -209,8 +209,8 @@ RA8_PRIV ra8_err_t ra8_flash_internal_wait_mrdy(uint32_t limit);
  * @details Promoted from TU-private static linkage so the FSP-parity /
  *          IRQ TU (``ra8_flash_irq.c``) can run the same range-validation
  *          check used by the direct-programming path. Reads
- *          ``s_flash_rt`` and forwards to
- *          @ref ra8_flash_internal_window_allows_pure. Defined in
+ *          ``g_flash_rt`` and forwards to
+ *          @ref priv_ra8_flash_internal_window_allows_pure. Defined in
  *          ``ra8_flash.c``.
  *
  * @param[in] addr Start address of the candidate operation.
@@ -221,14 +221,14 @@ RA8_PRIV ra8_err_t ra8_flash_internal_wait_mrdy(uint32_t limit);
  * @retval false Region overlaps outside the installed window.
  *
  * @pre None.
- * @pre ``s_flash_rt.win_low``/``win_high`` hold the installed soft window (both 0 == disabled).
+ * @pre ``g_flash_rt.win_low``/``win_high`` hold the installed soft window (both 0 == disabled).
  * @post No side effects.
- * @post ``s_flash_rt`` is only read, never modified.
+ * @post ``g_flash_rt`` is only read, never modified.
  *
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_flash_internal_window_allows(uintptr_t addr, uint32_t len);
+RA8_PRIV bool priv_ra8_flash_internal_window_allows(uintptr_t addr, uint32_t len);
 
 /**
  * @brief Pure (state-free) reimplementation of @c internal_window_allows.
@@ -266,10 +266,10 @@ RA8_PRIV bool ra8_flash_internal_window_allows(uintptr_t addr, uint32_t len);
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_flash_internal_window_allows_pure(uintptr_t addr,
-                                                    uint32_t  len,
-                                                    uintptr_t win_low,
-                                                    uintptr_t win_high);
+RA8_PRIV bool priv_ra8_flash_internal_window_allows_pure(uintptr_t addr,
+                                                         uint32_t  len,
+                                                         uintptr_t win_low,
+                                                         uintptr_t win_high);
 
 /**
  * @brief Direct-call test access to @c internal_wait_buffer_ready.
@@ -299,7 +299,7 @@ RA8_PRIV bool ra8_flash_internal_window_allows_pure(uintptr_t addr,
  *
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_flash_internal_wait_buffer_ready_call(uint32_t limit);
+RA8_PRIV ra8_err_t priv_ra8_flash_internal_wait_buffer_ready_call(uint32_t limit);
 
 /**
  * @brief Direct-call test access to @c internal_wait_commit_done.
@@ -329,7 +329,7 @@ RA8_PRIV ra8_err_t ra8_flash_internal_wait_buffer_ready_call(uint32_t limit);
  *
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_flash_internal_wait_commit_done_call(uint32_t limit);
+RA8_PRIV ra8_err_t priv_ra8_flash_internal_wait_commit_done_call(uint32_t limit);
 
 #if defined(RA8_OFF_TARGET) && defined(UNIT_TEST)
 /**
@@ -357,7 +357,7 @@ typedef enum : uint32_t {
  * ``ra8_fake_mmap`` backing keeps only the last byte written. To let a host test
  * assert the *sequence* of opcodes the driver emits -- notably the 0xE8 Program
  * opener (HUM Ch 59.7.4.5 p 3591) versus the 0x40 Configuration Set opener
- * (HUM Ch 59.7.4.8 p 3594) -- ``ra8_flash_internal_maci_cmd8`` appends each byte
+ * (HUM Ch 59.7.4.8 p 3594) -- ``priv_ra8_flash_internal_maci_cmd8`` appends each byte
  * here. Defined in ``ra8_flash.c``; present only in the host unit-test binary.
  *
  * @note Test-access only. Not thread-safe.
@@ -370,7 +370,7 @@ extern uint8_t g_ra8_flash_maci_cmd8_log[k_ra8_flash_maci_log_cap];
  * @var g_ra8_flash_maci_cmd8_len
  * @brief Number of valid entries in ::g_ra8_flash_maci_cmd8_log.
  *
- * @details Advances on each ::ra8_flash_internal_maci_cmd8 call and saturates at
+ * @details Advances on each ::priv_ra8_flash_internal_maci_cmd8 call and saturates at
  *          ::k_ra8_flash_maci_log_cap. Defined in ``ra8_flash.c``.
  *
  * @note Test-access only.
@@ -384,7 +384,7 @@ extern uint32_t g_ra8_flash_maci_cmd8_len;
  * @brief Test-only ordered capture of halfwords streamed to the MACI port.
  *
  * @details Companion to ::g_ra8_flash_maci_cmd8_log for the payload halfwords
- *          written by ::ra8_flash_internal_maci_cmd16. Defined in ``ra8_flash.c``.
+ *          written by ::priv_ra8_flash_internal_maci_cmd16. Defined in ``ra8_flash.c``.
  *
  * @note Test-access only. Not thread-safe.
  * @warning Reset with ::ra8_flash_internal_maci_log_reset before each case.
@@ -396,7 +396,7 @@ extern uint16_t g_ra8_flash_maci_cmd16_log[k_ra8_flash_maci_log_cap];
  * @var g_ra8_flash_maci_cmd16_len
  * @brief Number of valid entries in ::g_ra8_flash_maci_cmd16_log.
  *
- * @details Advances on each ::ra8_flash_internal_maci_cmd16 call and saturates at
+ * @details Advances on each ::priv_ra8_flash_internal_maci_cmd16 call and saturates at
  *          ::k_ra8_flash_maci_log_cap. Defined in ``ra8_flash.c``.
  *
  * @note Test-access only.

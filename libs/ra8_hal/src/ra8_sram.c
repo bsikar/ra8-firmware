@@ -36,6 +36,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -125,7 +126,7 @@ static const uint32_t s_sram_ecc_off_table[k_ra8_sram_bank_count] = {
 /** @brief Driver init flag (set at end of ``ra8_sram_init``). */
 static bool s_initialized = false;
 
-/* The ECC error callback table (``s_sram_on_error*``) lives in
+/* The ECC error callback table (``g_sram_on_error*``) lives in
  * ``ra8_sram_security.c`` and is reached from ``ra8_sram_deinit`` below
  * through the ``extern`` declarations in ``ra8_sram_internal.h``. */
 
@@ -150,7 +151,8 @@ static bool s_initialized = false;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_err_t internal_validate_bank_cfg(const ra8_sram_bank_cfg_t* cfg, uint8_t bank)
+RA8_INTERNAL static ra8_err_t internal_validate_bank_cfg(const ra8_sram_bank_cfg_t* cfg,
+                                                         uint8_t                    bank)
 {
   if ((uint8_t)cfg->ecc_mode > k_ra8_sram_eccmod_max) {
     return k_ra8_err_invalid_arg;
@@ -183,7 +185,7 @@ static ra8_err_t internal_validate_bank_cfg(const ra8_sram_bank_cfg_t* cfg, uint
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint8_t internal_encode_cr(const ra8_sram_bank_cfg_t* cfg)
+RA8_INTERNAL static uint8_t internal_encode_cr(const ra8_sram_bank_cfg_t* cfg)
 {
   uint8_t eccmod_field = k_ra8_sram_eccmod_disabled;
   if (cfg->ecc_mode == k_ra8_sram_ecc_no_check) {
@@ -222,7 +224,7 @@ static uint8_t internal_encode_cr(const ra8_sram_bank_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_write_cr_locked(uint8_t bank, uint8_t value)
+RA8_INTERNAL static void internal_write_cr_locked(uint8_t bank, uint8_t value)
 {
   volatile r_sram_regs_t* regs = ra8_sram_regs();
 
@@ -255,7 +257,7 @@ static void internal_write_cr_locked(uint8_t bank, uint8_t value)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_write_eccrgn_locked(uint8_t bank, uint8_t value)
+RA8_INTERNAL static void internal_write_eccrgn_locked(uint8_t bank, uint8_t value)
 {
   volatile r_sram_regs_t* regs = ra8_sram_regs();
 
@@ -282,7 +284,7 @@ static void internal_write_eccrgn_locked(uint8_t bank, uint8_t value)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_write_wtsc_locked(uint8_t value)
+RA8_INTERNAL static void internal_write_wtsc_locked(uint8_t value)
 {
   volatile r_sram_regs_t* regs = ra8_sram_regs();
 
@@ -316,7 +318,8 @@ static void internal_write_wtsc_locked(uint8_t value)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_decode_esr(uint16_t raw, uint8_t* one_bit_mask, uint8_t* two_bit_mask)
+RA8_INTERNAL static void
+internal_decode_esr(uint16_t raw, uint8_t* one_bit_mask, uint8_t* two_bit_mask)
 {
   uint8_t one = 0U;
   uint8_t two = 0U;
@@ -349,7 +352,7 @@ static void internal_decode_esr(uint16_t raw, uint8_t* one_bit_mask, uint8_t* tw
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uintptr_t internal_ear_to_abs_addr(uint32_t ear)
+RA8_INTERNAL static uintptr_t internal_ear_to_abs_addr(uint32_t ear)
 {
   if (ear == 0U) {
     return (uintptr_t)0U;
@@ -375,7 +378,7 @@ static uintptr_t internal_ear_to_abs_addr(uint32_t ear)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_apply_security(const ra8_sram_security_cfg_t* sec)
+RA8_INTERNAL static void internal_apply_security(const ra8_sram_security_cfg_t* sec)
 {
   uint32_t sar = 0U;
   for (uint8_t bank = 0U; bank < k_ra8_sram_bank_count; ++bank) {
@@ -425,7 +428,7 @@ static void internal_apply_security(const ra8_sram_security_cfg_t* sec)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_zero_fill_bank(uint8_t bank)
+RA8_INTERNAL static void internal_zero_fill_bank(uint8_t bank)
 {
   const uint32_t           bytes = ra8_sram_bank_size_bytes(bank);
   volatile uint64_t* const dst   = ra8_sram_bank_data_ptr(bank);
@@ -456,7 +459,7 @@ static void internal_zero_fill_bank(uint8_t bank)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_zero_init_with_no_check(uint8_t bank)
+RA8_INTERNAL static void internal_zero_init_with_no_check(uint8_t bank)
 {
   /* Step 1: enable ECC encode without checking. */
   internal_write_cr_locked(bank, k_ra8_sram_eccmod_no_check);
@@ -497,7 +500,7 @@ static void internal_zero_init_with_no_check(uint8_t bank)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-static ra8_err_t internal_validate_and_ungate(const ra8_sram_config_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_validate_and_ungate(const ra8_sram_config_t* cfg)
 {
   for (uint8_t bank = 0U; bank < k_ra8_sram_bank_count; ++bank) {
     const ra8_err_t verr = internal_validate_bank_cfg(&cfg->banks[bank], bank);
@@ -529,7 +532,7 @@ static ra8_err_t internal_validate_and_ungate(const ra8_sram_config_t* cfg)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-static void internal_apply_per_bank(const ra8_sram_config_t* cfg)
+RA8_INTERNAL static void internal_apply_per_bank(const ra8_sram_config_t* cfg)
 {
   for (uint8_t bank = 0U; bank < k_ra8_sram_bank_count; ++bank) {
     if (cfg->banks[bank].zero_init) {
@@ -589,11 +592,11 @@ static void internal_apply_per_bank(const ra8_sram_config_t* cfg)
     (void)ra8_mstp_disable(s_sram_mstp_table[bank]);
   }
 
-  s_sram_on_error     = nullptr;
-  s_sram_on_error_ctx = nullptr;
+  g_sram_on_error     = nullptr;
+  g_sram_on_error_ctx = nullptr;
   for (uint8_t bank = 0U; bank < k_ra8_sram_bank_count; ++bank) {
-    s_sram_on_error_bank[bank]     = nullptr;
-    s_sram_on_error_bank_ctx[bank] = nullptr;
+    g_sram_on_error_bank[bank]     = nullptr;
+    g_sram_on_error_bank_ctx[bank] = nullptr;
   }
   s_initialized = false;
   return k_ra8_ok;
@@ -764,7 +767,8 @@ static void internal_apply_per_bank(const ra8_sram_config_t* cfg)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-static void internal_self_test_inject(uint8_t bank, volatile uint64_t* data, bool inject_two_bit)
+RA8_INTERNAL static void
+internal_self_test_inject(uint8_t bank, volatile uint64_t* data, bool inject_two_bit)
 {
   internal_write_cr_locked(bank, k_ra8_sram_cr_self_test_phase_bypass);
 

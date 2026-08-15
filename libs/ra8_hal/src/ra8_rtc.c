@@ -30,6 +30,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -82,7 +83,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint8_t internal_bcd_to_bin(uint8_t bcd)
+RA8_INTERNAL static uint8_t internal_bcd_to_bin(uint8_t bcd)
 {
   const uint8_t high = (uint8_t)((bcd >> k_ra8_bcd_digit_shift) & k_ra8_bcd_digit_mask);
   const uint8_t low  = (uint8_t)(bcd & k_ra8_bcd_digit_mask);
@@ -102,7 +103,7 @@ static uint8_t internal_bcd_to_bin(uint8_t bcd)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint8_t internal_bin_to_bcd(uint8_t bin)
+RA8_INTERNAL static uint8_t internal_bin_to_bcd(uint8_t bin)
 {
   const uint8_t high = (uint8_t)(bin / k_ra8_bcd_digit_base);
   const uint8_t low  = (uint8_t)(bin % k_ra8_bcd_digit_base);
@@ -128,7 +129,8 @@ static uint8_t internal_bin_to_bcd(uint8_t bin)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_wait_bit(volatile const uint8_t* reg, uint8_t mask, uint8_t expect)
+RA8_INTERNAL static void
+internal_wait_bit(volatile const uint8_t* reg, uint8_t mask, uint8_t expect)
 {
   for (uint16_t i = 0U; i < k_ra8_rtc_wait_iters; ++i) { /* GCOVR_EXCL_BR_LINE */
     if (((*reg) & mask) == expect) {                     /* GCOVR_EXCL_BR_LINE */
@@ -204,7 +206,7 @@ typedef enum : uint16_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_start_count_source(ra8_rtc_clk_src_t src)
+RA8_INTERNAL static ra8_err_t internal_start_count_source(ra8_rtc_clk_src_t src)
 {
   if (src == k_ra8_rtc_clk_loco) {
     RA8_PROTECTED_WRITE(k_ra8_prcr_unlock_cgc)

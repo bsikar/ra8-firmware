@@ -22,7 +22,7 @@
  * transitions HUM Ch 33.4.1.2 requires.
  *
  * The singleton NIC runtime state (::s_eth_state) and the one-shot
- * resync latch (::s_eth_mac_speed_resynced) are defined in ra8_eth.c
+ * resync latch (::g_eth_mac_speed_resynced) are defined in ra8_eth.c
  * and shared via ra8_eth_internal.h.
  *
  * Every register access carries a HUM Ch 33 citation.
@@ -336,9 +336,9 @@ internal_program_mpic(ra8_rmac_port_t port, ra8_rmac_lsc_t speed, ra8_rmac_duple
  * @retval k_ra8_err_hw_timeout  An ETHA mode transition or MDIO timed out.
  *
  * @pre ::ra8_eth_open has succeeded (::s_eth_state.opened == 1).
- * @pre ::s_eth_mac_speed_resynced is false on first call after open.
+ * @pre ::g_eth_mac_speed_resynced is false on first call after open.
  * @post On success MPIC matches the PHY's negotiated speed/duplex.
- * @post On success ::s_eth_mac_speed_resynced is true.
+ * @post On success ::g_eth_mac_speed_resynced is true.
  *
  * @note Not thread-safe; firmware drives this from a single thread.
  * @since 0.1.0
@@ -358,7 +358,7 @@ static ra8_err_t internal_resync_mac_speed(ra8_rmac_port_t port, uint16_t bmcr)
   if (mpic_err != k_ra8_ok) {
     return mpic_err;
   }
-  s_eth_mac_speed_resynced = true;
+  g_eth_mac_speed_resynced = true;
   ra8_log_info(s_tag, "link_status: MPIC resynced to PHY speed/duplex");
   return k_ra8_ok;
 }
@@ -431,7 +431,7 @@ ra8_err_t ra8_eth_link_status(ra8_eth_link_t* out_status)
     return k_ra8_err_not_initialized;
   }
 
-  const ra8_rmac_port_t port = ra8_eth_channel_to_port(s_eth_state.cfg.channel);
+  const ra8_rmac_port_t port = priv_ra8_eth_channel_to_port(s_eth_state.cfg.channel);
   uint16_t              bmcr = 0U;
   const ra8_err_t       err  = internal_phy_read_link(port, out_status, &bmcr);
   RA8_RETURN_ON_ERROR(err, s_tag, "link_status: phy read");
@@ -444,7 +444,7 @@ ra8_err_t ra8_eth_link_status(ra8_eth_link_t* out_status)
   if (out_status->link_up == 0U) {
     return k_ra8_ok;
   }
-  if (s_eth_mac_speed_resynced) {
+  if (g_eth_mac_speed_resynced) {
     return k_ra8_ok;
   }
   return internal_resync_mac_speed(port, bmcr);

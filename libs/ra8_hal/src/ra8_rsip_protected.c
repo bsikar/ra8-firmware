@@ -159,7 +159,7 @@ static bool s_p_aes_active;
  * @note Not thread-safe unless documented otherwise.
  */
 RA8_INTERNAL
-static void p_scrub(uint8_t* buf, uint32_t n)
+RA8_INTERNAL static void internal_p_scrub(uint8_t* buf, uint32_t n)
 {
   for (uint32_t i = 0U; i < n; ++i) {
     buf[i] = 0U;
@@ -186,8 +186,9 @@ static void p_scrub(uint8_t* buf, uint32_t n)
  * @note Not thread-safe unless documented otherwise.
  */
 RA8_INTERNAL
-static ra8_err_t
-p_aes_install(const uint8_t* raw_key, ra8_rsip_aes_key_bits_t key_bits, ra8_rsip_key_handle_t* out)
+RA8_INTERNAL static ra8_err_t internal_p_aes_install(const uint8_t*          raw_key,
+                                                     ra8_rsip_aes_key_bits_t key_bits,
+                                                     ra8_rsip_key_handle_t*  out)
 {
   switch (key_bits) {
     case k_ra8_rsip_aes_key_bits_128:
@@ -225,8 +226,8 @@ ra8_err_t ra8_rsip_protected_aes_init(const uint8_t*          wrapped_key,
   }
 
   ra8_rsip_key_handle_t handle = {};
-  rc                           = p_aes_install(raw_key, key_bits, &handle);
-  p_scrub(raw_key, n_bytes);
+  rc                           = internal_p_aes_install(raw_key, key_bits, &handle);
+  internal_p_scrub(raw_key, n_bytes);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -239,7 +240,7 @@ ra8_err_t ra8_rsip_protected_aes_init(const uint8_t*          wrapped_key,
       s_p_aes_iv[i] = iv[i];
     }
   } else {
-    p_scrub(s_p_aes_iv, (uint32_t)k_ra8_rsip_p_iv_bytes);
+    internal_p_scrub(s_p_aes_iv, (uint32_t)k_ra8_rsip_p_iv_bytes);
   }
   s_p_aes_active = true;
   return k_ra8_ok;
@@ -285,8 +286,8 @@ ra8_err_t ra8_rsip_protected_aes_finish(void)
     return k_ra8_err_invalid_state;
   }
   uint8_t* h = (uint8_t*)&s_p_aes_handle;
-  p_scrub(h, (uint32_t)sizeof(s_p_aes_handle));
-  p_scrub(s_p_aes_iv, (uint32_t)k_ra8_rsip_p_iv_bytes);
+  internal_p_scrub(h, (uint32_t)sizeof(s_p_aes_handle));
+  internal_p_scrub(s_p_aes_iv, (uint32_t)k_ra8_rsip_p_iv_bytes);
   s_p_aes_iv_set = false;
   s_p_aes_active = false;
   return k_ra8_ok;
@@ -451,7 +452,7 @@ static ra8_err_t internal_rsa_install_priv(const uint8_t*         wrapped_priv,
   const ra8_rsip_oem_cmd_t install_cmd                       = internal_rsa_install_cmd(size);
   const ra8_err_t          rc =
     ra8_rsip_oem_install(install_cmd, install_iv, modulus, mod_bytes, out_handle);
-  p_scrub(modulus, mod_bytes);
+  internal_p_scrub(modulus, mod_bytes);
   return rc;
 }
 
@@ -583,6 +584,6 @@ ra8_err_t ra8_rsip_protected_ecdsa_sign(const uint8_t*   wrapped_priv,
   }
 
   rc = ra8_rsip_ecdsa_sign(&handle, curve, hash, hash_len, sig_out);
-  p_scrub((uint8_t*)handle.body, priv_bytes);
+  internal_p_scrub((uint8_t*)handle.body, priv_bytes);
   return rc;
 }
