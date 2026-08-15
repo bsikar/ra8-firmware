@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "ra8_attributes.h"
-#include "ra8_fmt_host_fd.h"
+#include "ra8_fmt_host_fd_internal.h"
 #include "ra8_fmt_stream.h"
 
 #ifndef RA8_FMT_TEST_PNG

@@ -15,9 +15,9 @@
 #include <unistd.h>
 
 #include "ra8_attributes.h"
-#include "ra8_fmt_host_fd.h"
-#include "ra8_fmt_host_spool.h"
-#include "ra8_fmt_portable_main.h"
+#include "ra8_fmt_host_fd_internal.h"
+#include "ra8_fmt_host_spool_internal.h"
+#include "ra8_fmt_portable_main_internal.h"
 #include "ra8_fmt_stream.h"
 
 /** @brief CLI and workspace-layout constants. */

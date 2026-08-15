@@ -1,5 +1,5 @@
 /**
- * @file ra8_sdmmc_spi_core_contracts.h
+ * @file ra8_sdmmc_spi_core_contracts_internal.h
  * @brief Contracts for file-local SD protocol helpers.
  * @details Declares only helpers defined by ra8_sdmmc_spi.c so their complete
  *          contracts stay authoritative without inflating the implementation.

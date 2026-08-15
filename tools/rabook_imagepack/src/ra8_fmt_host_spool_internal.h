@@ -1,5 +1,5 @@
 /**
- * @file ra8_fmt_host_spool.h
+ * @file ra8_fmt_host_spool_internal.h
  * @brief Anonymous raw-fd scratch artifacts for portable format verification.
  * @details Defines composition-edge ownership for immediately unlinked scratch
  * descriptors while portable engines depend only on injected spool callbacks.
