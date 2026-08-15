@@ -29,7 +29,7 @@
  *
  * 1. A naked trampoline picks the stack pointer the NMI interrupted
  * (MSP if EXC_RETURN[2] = 0, PSP otherwise) and tail-calls
- * `ra8_board_nmi_report()`.
+ * `internal_ra8_board_nmi_report()`.
  * 2. That reads the ICU NMISR cause register and forwards frame +
  * cause into `ra8_exception_report_nmi()`, which snapshots both --
  * plus the SCB diagnostics -- into the fixed-SRAM
@@ -79,9 +79,9 @@
  * @since 0.1.0
  */
 RA8_INTERNAL [[noreturn, gnu::used]] static void
-ra8_board_nmi_report(const ra8_exception_frame_t* frame);
+internal_ra8_board_nmi_report(const ra8_exception_frame_t* frame);
 RA8_INTERNAL [[noreturn, gnu::used]] static void
-ra8_board_nmi_report(const ra8_exception_frame_t* frame)
+internal_ra8_board_nmi_report(const ra8_exception_frame_t* frame)
 {
   /* HUM Ch 14.2.13 "NMISR : Non-Maskable Interrupt Status Register" p 536-540 */
   const uint32_t nmisr = *ra8_icu_nmisr();
@@ -97,14 +97,14 @@ ra8_board_nmi_report(const ra8_exception_frame_t* frame)
  * HardFault/MemManage/BusFault/UsageFault/SecureFault trampolines:
  * `tst lr, #4` selects the interrupted stack (MSP when EXC_RETURN[2]
  * = 0, else PSP) into `r0` and control tail-branches into
- * `ra8_board_nmi_report()`, which appends the ICU cause. Naked asm is
+ * `internal_ra8_board_nmi_report()`, which appends the ICU cause. Naked asm is
  * required: only assembly can read EXC_RETURN and the banked stack
  * pointers before the compiler touches any register.
  *
  * @pre The Cortex-M85 has taken the NMI exception.
  * @pre The C runtime stack selected by EXC_RETURN[2] holds the frame.
  *
- * @post Control transfers to `ra8_board_nmi_report()` and never returns.
+ * @post Control transfers to `internal_ra8_board_nmi_report()` and never returns.
  * @post The interrupted context's frame pointer is in `r0`.
  *
  * @since 0.1.0
@@ -116,5 +116,5 @@ void                          NMI_Handler(void);
                    "ite eq              \n"
                    "mrseq r0, msp       \n"
                    "mrsne r0, psp       \n"
-                   "b     ra8_board_nmi_report\n");
+                   "b     internal_ra8_board_nmi_report\n");
 }
