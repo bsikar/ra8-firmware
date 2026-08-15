@@ -15,6 +15,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_fs_meta.h"
 #include "test_ra8_fs_format_fixture.h"
 
@@ -35,22 +36,22 @@ typedef enum : uint32_t {
 } meta_cov_off_t;
 
 /** @brief Format @p type through the plain backend, mount through the fault one. */
-static ra8_fs_mount_t* fmt_fault_mount(uint32_t blocks, ra8_fs_type_t type)
+RA8_INTERNAL static ra8_fs_mount_t* internal_fmt_fault_mount(uint32_t blocks, ra8_fs_type_t type)
 {
-  alloc_garbage_card(blocks);
+  internal_alloc_garbage_card(blocks);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = type;
   opts.label                = "COV";
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
-  fault_reset();
+  internal_fault_reset();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_fault_backend, &h));
-  fault_reset(); /* clear the read count the mount ran up */
+  internal_fault_reset(); /* clear the read count the mount ran up */
   return h;
 }
 
-/** @brief exFAT root cluster's first byte in the image. */
-static uint32_t exfat_root_byte(const ra8_fs_mount_t* h)
+/** @brief exFAT root cluster's first byte in the image. @details Implements the bounded exfat root byte fixture step using caller-owned state. @param[in] h Value required by this filesystem vector. @return Status, selected object, or bounded value produced by the named operation. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static uint32_t internal_exfat_root_byte(const ra8_fs_mount_t* h)
 {
   return (h->partition_base_lba + h->first_data_lba +
           ((uint64_t)(h->root_cluster - (uint32_t)k_mc_first_clus) * h->sectors_per_cluster)) *
@@ -62,29 +63,29 @@ static uint32_t exfat_root_byte(const ra8_fs_mount_t* h)
  * @par MC/DC:
  * (no compound decision unique to this case -- it drives the backend read-error
  * returns of the FAT scan and the exFAT bitmap walk so a lost propagation is
- * caught)
+ * caught) @brief Exercise the cov space io errors filesystem operation. @details Runs the cov space io errors vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_cov_space_io_errors(void)
+RA8_INTERNAL static void internal_test_cov_space_io_errors(void)
 {
   TEST_BEGIN("ra8_fs free_space cov: FAT scan + exFAT bitmap read errors");
   ra8_fs_space_t sp = {};
 
-  ra8_fs_mount_t* fat = fmt_fault_mount((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16);
+  ra8_fs_mount_t* fat = internal_fmt_fault_mount((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16);
   s_fault_read_at     = 1U; /* first FAT read fails */
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_free_space(fat, &sp));
-  fault_reset();
+  internal_fault_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(fat));
-  free_volume();
+  internal_free_volume();
 
-  ra8_fs_mount_t* exf = fmt_fault_mount((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat);
+  ra8_fs_mount_t* exf = internal_fmt_fault_mount((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat);
   s_fault_read_at     = 1U; /* bitmap-locate read fails */
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_free_space(exf, &sp));
-  fault_reset();
+  internal_fault_reset();
   s_fault_read_at = 2U; /* bitmap-locate OK, then the popcount read fails */
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_free_space(exf, &sp));
-  fault_reset();
+  internal_fault_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(exf));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs free_space cov: FAT scan + exFAT bitmap read errors");
 }
 
@@ -92,34 +93,34 @@ static void test_cov_space_io_errors(void)
  * @test test_cov_label_io_errors
  * @par MC/DC:
  * (no compound decision unique to this case -- the read/write error returns of
- * get_label and set_label on FAT)
+ * get_label and set_label on FAT) @brief Exercise the cov label io errors filesystem operation. @details Runs the cov label io errors vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_cov_label_io_errors(void)
+RA8_INTERNAL static void internal_test_cov_label_io_errors(void)
 {
   TEST_BEGIN("ra8_fs label cov: FAT get/set read + write errors");
   char out[k_ra8_fs_label_cap] = {};
 
   /* get_label: the volume-label scan's first read fails. */
-  ra8_fs_mount_t* h = fmt_fault_mount((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16);
+  ra8_fs_mount_t* h = internal_fmt_fault_mount((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16);
   s_fault_read_at   = 1U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_get_label(h, out, (uint32_t)sizeof(out)));
-  fault_reset();
+  internal_fault_reset();
   /* get_label: scan finds no entry (1 read, hits EOD), then the boot read fails. */
   s_fault_read_at = 2U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_get_label(h, out, (uint32_t)sizeof(out)));
-  fault_reset();
+  internal_fault_reset();
 
   /* set_label: the boot-sector write fails. */
   s_fault_write_all = true;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_label(h, "X"));
-  fault_reset();
+  internal_fault_reset();
   /* set_label: boot write OK, but the volume-label scan read fails. */
   s_fault_read_at = 2U; /* read 1 = boot; read 2 = scan */
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_label(h, "X"));
-  fault_reset();
+  internal_fault_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs label cov: FAT get/set read + write errors");
 }
 
@@ -127,12 +128,12 @@ static void test_cov_label_io_errors(void)
  * @test test_cov_label_lfn_skip
  * @par MC/DC:
  * (no compound decision unique to this case -- a long-name (0x0F) entry in the
- * root is skipped by the volume-label scan rather than mistaken for one)
+ * root is skipped by the volume-label scan rather than mistaken for one) @brief Exercise the cov label lfn skip filesystem operation. @details Runs the cov label lfn skip vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_cov_label_lfn_skip(void)
+RA8_INTERNAL static void internal_test_cov_label_lfn_skip(void)
 {
   TEST_BEGIN("ra8_fs label cov: volume-label scan skips a long-name entry");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   opts.label                = "HASLFN";
@@ -153,7 +154,7 @@ static void test_cov_label_lfn_skip(void)
   TEST_ASSERT_EQ(0, strcmp(out, "HASLFN"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs label cov: volume-label scan skips a long-name entry");
 }
 
@@ -162,15 +163,15 @@ static void test_cov_label_lfn_skip(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- an absent exFAT label reads as
  * empty, an over-long CharacterCount is truncated, and the locate/write I/O
- * errors propagate)
+ * errors propagate) @brief Exercise the cov exfat label edges filesystem operation. @details Runs the cov exfat label edges vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_cov_exfat_label_edges(void)
+RA8_INTERNAL static void internal_test_cov_exfat_label_edges(void)
 {
   TEST_BEGIN("ra8_fs label cov: exFAT absent/over-long label + I/O errors");
   char out[k_ra8_fs_label_cap] = {};
 
-  ra8_fs_mount_t* h    = fmt_fault_mount((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat);
-  const uint32_t  root = exfat_root_byte(h);
+  ra8_fs_mount_t* h = internal_fmt_fault_mount((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat);
+  const uint32_t  root = internal_exfat_root_byte(h);
 
   /* Absent label entry: zeroing it makes the scan hit EOD -> empty string. */
   memset(&s_disk.bytes[root + (uint32_t)k_mc_xf_lbl_off], 0, (size_t)k_mc_entry_size);
@@ -187,13 +188,13 @@ static void test_cov_exfat_label_edges(void)
   /* locate read error, and label write error. */
   s_fault_read_at = 1U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_get_label(h, out, (uint32_t)sizeof(out)));
-  fault_reset();
+  internal_fault_reset();
   s_fault_write_all = true;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_label(h, "Y"));
-  fault_reset();
+  internal_fault_reset();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs label cov: exFAT absent/over-long label + I/O errors");
 }
 
@@ -201,40 +202,40 @@ static void test_cov_exfat_label_edges(void)
  * @test test_cov_utime_io_errors
  * @par MC/DC:
  * (no compound decision unique to this case -- utime's resolve, read and write
- * error returns on FAT, and the find-set / write error returns on exFAT)
+ * error returns on FAT, and the find-set / write error returns on exFAT) @brief Exercise the cov utime io errors filesystem operation. @details Runs the cov utime io errors vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_cov_utime_io_errors(void)
+RA8_INTERNAL static void internal_test_cov_utime_io_errors(void)
 {
   TEST_BEGIN("ra8_fs utime cov: FAT + exFAT resolve/read/write errors");
   static const uint8_t    body[4] = {'x', 'y', 'z', 'w'};
   const ra8_fs_datetime_t when    = {.year = 2020U, .month = 1U, .day = 1U};
 
   /* FAT: a nested path whose parent is missing -> not_found (resolve error). */
-  ra8_fs_mount_t* fat = fmt_fault_mount((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16);
+  ra8_fs_mount_t* fat = internal_fmt_fault_mount((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(fat, "U.BIN", body, (uint32_t)sizeof(body)));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_utime(fat, "/NODIR/x", &when, nullptr, nullptr));
   /* read error while reading the entry's sector. */
   s_fault_read_at = 1U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_utime(fat, "U.BIN", &when, nullptr, nullptr));
-  fault_reset();
+  internal_fault_reset();
   /* write-back error. */
   s_fault_write_all = true;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_utime(fat, "U.BIN", &when, nullptr, nullptr));
-  fault_reset();
+  internal_fault_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(fat));
-  free_volume();
+  internal_free_volume();
 
   /* exFAT: find-set read error, and write error. */
-  ra8_fs_mount_t* exf = fmt_fault_mount((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat);
+  ra8_fs_mount_t* exf = internal_fmt_fault_mount((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(exf, "V.BIN", body, (uint32_t)sizeof(body)));
   s_fault_read_at = 1U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_utime(exf, "V.BIN", &when, nullptr, nullptr));
-  fault_reset();
+  internal_fault_reset();
   s_fault_write_all = true;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_utime(exf, "V.BIN", &when, nullptr, nullptr));
-  fault_reset();
+  internal_fault_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(exf));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs utime cov: FAT + exFAT resolve/read/write errors");
 }
 
@@ -243,12 +244,12 @@ static void test_cov_utime_io_errors(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- 16 files fill the root's first
  * sector so the volume-label scan and the free-slot scan must walk into the
- * second sector, reaching the multi-sector branches)
+ * second sector, reaching the multi-sector branches) @brief Exercise the cov label full sector filesystem operation. @details Runs the cov label full sector vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_cov_label_full_sector(void)
+RA8_INTERNAL static void internal_test_cov_label_full_sector(void)
 {
   TEST_BEGIN("ra8_fs label cov: scans walk into the second root sector");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   opts.label                = "FULLSEC";
@@ -273,7 +274,7 @@ static void test_cov_label_full_sector(void)
   TEST_ASSERT_EQ(0, strcmp(out, "WALKED"));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs label cov: scans walk into the second root sector");
 }
 
@@ -282,30 +283,30 @@ static void test_cov_label_full_sector(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- the read/write error returns
  * buried in set_label's boot write, free-slot scan, entry create and entry
- * delete steps, reached by failing the Nth backend read)
+ * delete steps, reached by failing the Nth backend read) @brief Exercise the cov label set deep io filesystem operation. @details Runs the cov label set deep io vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_cov_label_set_deep_io(void)
+RA8_INTERNAL static void internal_test_cov_label_set_deep_io(void)
 {
   TEST_BEGIN("ra8_fs label cov: set_label deep read errors (create + clear)");
 
   /* No existing entry: boot read fails first. */
-  ra8_fs_mount_t* h = fmt_fault_mount((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16);
+  ra8_fs_mount_t* h = internal_fmt_fault_mount((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16);
   s_fault_read_at   = 1U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_label(h, "X")); /* boot_set_label read */
-  fault_reset();
+  internal_fault_reset();
   /* boot read+write OK, vol-id scan OK (EOD), free-slot scan read fails. */
   s_fault_read_at = 3U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_label(h, "X")); /* find_free_root read */
-  fault_reset();
+  internal_fault_reset();
   /* ...and one read further, the fresh-entry write's read fails. */
   s_fault_read_at = 4U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_label(h, "X")); /* put_vol_id read */
-  fault_reset();
+  internal_fault_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
 
   /* Now with an EXISTING vol-id entry, exercise the rewrite and clear reads. */
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   opts.label                = "HAVE";
@@ -314,19 +315,19 @@ static void test_cov_label_set_deep_io(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &p));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_label(p, "HAVE")); /* create the root entry */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(p));
-  fault_reset();
+  internal_fault_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_fault_backend, &p));
-  fault_reset();
+  internal_fault_reset();
   /* rewrite: boot(1) OK, vol-id scan(2) finds it, put_vol_id read(3) fails. */
   s_fault_read_at = 3U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_label(p, "NEW"));
-  fault_reset();
+  internal_fault_reset();
   /* clear: boot(1) OK, vol-id scan(2) finds it, del_entry read(3) fails. */
   s_fault_read_at = 3U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_label(p, nullptr));
-  fault_reset();
+  internal_fault_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(p));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs label cov: set_label deep read errors (create + clear)");
 }
 
@@ -335,54 +336,53 @@ static void test_cov_label_set_deep_io(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- set_attr's resolve, read and
  * write error returns on FAT, and the find-set / write error returns on exFAT;
- * the mask-validation compound decision is driven in `test_ra8_fs_attr.c`)
+ * the mask-validation compound decision is driven in `test_ra8_fs_attr.c`) @brief Exercise the cov setattr io errors filesystem operation. @details Runs the cov setattr io errors vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_cov_setattr_io_errors(void)
+RA8_INTERNAL static void internal_test_cov_setattr_io_errors(void)
 {
   TEST_BEGIN("ra8_fs set_attr cov: FAT + exFAT resolve/read/write errors");
   static const uint8_t body[4] = {'x', 'y', 'z', 'w'};
   const uint8_t        arc     = (uint8_t)k_ra8_fs_attr_archive;
 
   /* FAT: a nested path whose parent is missing -> not_found (resolve error). */
-  ra8_fs_mount_t* fat = fmt_fault_mount((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16);
+  ra8_fs_mount_t* fat = internal_fmt_fault_mount((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(fat, "U.BIN", body, (uint32_t)sizeof(body)));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_set_attr(fat, "/NODIR/x", arc, 0U));
   /* read error while reading the entry's sector. */
   s_fault_read_at = 1U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_attr(fat, "U.BIN", arc, 0U));
-  fault_reset();
+  internal_fault_reset();
   /* write-back error. */
   s_fault_write_all = true;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_attr(fat, "U.BIN", arc, 0U));
-  fault_reset();
+  internal_fault_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(fat));
-  free_volume();
+  internal_free_volume();
 
   /* exFAT: a missing name (not_found), then find-set read error and write error. */
-  ra8_fs_mount_t* exf = fmt_fault_mount((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat);
+  ra8_fs_mount_t* exf = internal_fmt_fault_mount((uint32_t)k_fmt_blocks_exfat, k_ra8_fs_type_exfat);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(exf, "V.BIN", body, (uint32_t)sizeof(body)));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_set_attr(exf, "NOPE.BIN", arc, 0U));
   s_fault_read_at = 1U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_attr(exf, "V.BIN", arc, 0U));
-  fault_reset();
+  internal_fault_reset();
   s_fault_write_all = true;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_set_attr(exf, "V.BIN", arc, 0U));
-  fault_reset();
+  internal_fault_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(exf));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs set_attr cov: FAT + exFAT resolve/read/write errors");
 }
 
 int32_t main(void)
 {
-  test_cov_space_io_errors();
-  test_cov_label_io_errors();
-  test_cov_label_lfn_skip();
-  test_cov_label_full_sector();
-  test_cov_label_set_deep_io();
-  test_cov_exfat_label_edges();
-  test_cov_utime_io_errors();
-  test_cov_setattr_io_errors();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_meta_cov.c\n");
+  internal_test_cov_space_io_errors();
+  internal_test_cov_label_io_errors();
+  internal_test_cov_label_lfn_skip();
+  internal_test_cov_label_full_sector();
+  internal_test_cov_label_set_deep_io();
+  internal_test_cov_exfat_label_edges();
+  internal_test_cov_utime_io_errors();
+  internal_test_cov_setattr_io_errors();
   return 0;
 }

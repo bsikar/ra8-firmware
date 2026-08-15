@@ -7,7 +7,7 @@
  * volume, the raw entry patchers and the allocation-bitmap census) and adds the
  * two things directory work needs.
  *
- * **A structural scanner** -- ::exfat_check. It walks the whole directory TREE
+ * **A structural scanner** -- ::internal_exfat_check. It walks the whole directory TREE
  * from the root, and for every live entry set it verifies the SetChecksum and
  * the Stream entry's NameHash, marks the clusters the set claims, and descends
  * into it when the Directory attribute is set. Afterwards it compares the map
@@ -32,7 +32,7 @@
  * set while leaving its bitmap bits alone still reports `clean`. That leak is
  * exactly the #603 failure mode, and catching it is this scanner's job.
  *
- * **An image dumper** -- ::exfat_dump. With `RA8_FS_EXFAT_DUMP` set to a
+ * **An image dumper** -- ::internal_exfat_dump. With `RA8_FS_EXFAT_DUMP` set to a
  * directory, every scenario writes the volume out as `<tag>.img`, sliced from
  * `partition_base_lba` so the file is a bare exFAT volume rather than a
  * partitioned disk, which is what `fsck.exfat` expects::
@@ -60,6 +60,7 @@
 #include "ra8_fs.h"
 #include "support/fs_exfat_upcase_test_util.h"
 #include "support/fs_fat_exfat_mutate_test_util.h"
+#include "support/ra8_test_file.h"
 #include "unity_minimal.h"
 
 /**
@@ -70,7 +71,7 @@
  *          named values, per the repository's no-magic-numbers rule.
  *
  * @invariant k_chk_pending_cap bounds how many directories may be pending.
- * @see exfat_check()
+ * @see internal_exfat_check()
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -91,8 +92,6 @@ typedef enum : uint32_t {
   k_chk_nofat_bit      = 0x02U,       /**< NoFatChain bit.   */
   k_chk_csum_hi_bit    = 0x8000U,     /**< Rotate-add wrap.  */
   k_chk_pending_cap    = 512U,        /**< Pending dirs cap. */
-  k_chk_list_cap       = 32U,         /**< Listing cap.      */
-  k_chk_name_cap       = 80U,         /**< Name buffer.      */
   k_chk_msg_cap        = 160U,        /**< Message buffer.   */
   k_chk_entries_cap    = 65536U,      /**< Entry-scan bound. */
   k_chk_eoc_min        = 0xFFFFFFF8U, /**< End-of-chain.     */
@@ -107,7 +106,7 @@ typedef enum : uint32_t {
  *          cross-link and is reported as one.
  *
  * @invariant `ok` is 0 only when `msg` holds a non-empty diagnostic.
- * @see exfat_check()
+ * @see internal_exfat_check()
  * @since 0.1.0
  */
 typedef struct {
@@ -138,7 +137,7 @@ typedef struct {
  * @note Pure function.
  * @since 0.1.0
  */
-static inline uint32_t clus_byte(const ra8_fs_mount_t* h, uint32_t clus)
+RA8_INTERNAL static inline uint32_t internal_clus_byte(const ra8_fs_mount_t* h, uint32_t clus)
 {
   const uint32_t lba = h->partition_base_lba + h->first_data_lba +
                        ((uint64_t)(clus - (uint32_t)k_mut_cluster_first) * h->sectors_per_cluster);
@@ -162,10 +161,13 @@ static inline uint32_t clus_byte(const ra8_fs_mount_t* h, uint32_t clus)
  *
  * @note Pure function.
  * @since 0.1.0
- */
-static inline uint32_t dir_entry_byte(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static inline uint32_t
+internal_dir_entry_byte(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx)
 {
-  return clus_byte(h, clus) + (idx * (uint32_t)k_mut_entry_bytes);
+  return internal_clus_byte(h, clus) + (idx * (uint32_t)k_mut_entry_bytes);
 }
 
 /**
@@ -183,8 +185,10 @@ static inline uint32_t dir_entry_byte(const ra8_fs_mount_t* h, uint32_t clus, ui
  *
  * @note Pure function.
  * @since 0.1.0
- */
-static inline uint32_t entries_per_cluster(const ra8_fs_mount_t* h)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static inline uint32_t internal_entries_per_cluster(const ra8_fs_mount_t* h)
 {
   return (h->sectors_per_cluster * (uint32_t)k_mut_block_size) / (uint32_t)k_mut_entry_bytes;
 }
@@ -210,7 +214,7 @@ static inline uint32_t entries_per_cluster(const ra8_fs_mount_t* h)
  * @note Pure function.
  * @since 0.1.0
  */
-static inline uint16_t chk_csum_step(uint16_t cs, uint8_t b)
+RA8_INTERNAL static inline uint16_t internal_chk_csum_step(uint16_t cs, uint8_t b)
 {
   const uint16_t hi = ((cs & 1U) != 0U) ? (uint16_t)k_chk_csum_hi_bit : (uint16_t)0U;
   return (uint16_t)(hi + (uint16_t)(cs >> 1U) + (uint16_t)b);
@@ -228,8 +232,11 @@ static inline uint16_t chk_csum_step(uint16_t cs, uint8_t b)
  * @post `c->msg` holds the FIRST fault, later ones are dropped.
  *
  * @since 0.1.0
- */
-static inline void chk_fail(exfat_chk_t* c, const char* msg)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline void internal_chk_fail(exfat_chk_t* c, const char* msg)
 {
   if (c->ok == 0U) {
     return;
@@ -253,20 +260,22 @@ static inline void chk_fail(exfat_chk_t* c, const char* msg)
  * @post A count above 1, or an out-of-range cluster, records a fault.
  *
  * @since 0.1.0
- */
-static inline void chk_claim(exfat_chk_t* c, uint32_t clus)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline void internal_chk_claim(exfat_chk_t* c, uint32_t clus)
 {
   if (clus < (uint32_t)k_mut_cluster_first) {
-    chk_fail(c, "entry set claims a cluster below the heap");
+    internal_chk_fail(c, "entry set claims a cluster below the heap");
     return;
   }
   const uint32_t idx = clus - (uint32_t)k_mut_cluster_first;
   if (idx >= c->clusters) {
-    chk_fail(c, "entry set claims a cluster past the end of the volume");
+    internal_chk_fail(c, "entry set claims a cluster past the end of the volume");
     return;
   }
   if (c->seen[idx] != 0U) {
-    chk_fail(c, "two entry sets claim the same cluster (cross-link)");
+    internal_chk_fail(c, "two entry sets claim the same cluster (cross-link)");
     return;
   }
   c->seen[idx] = 1U;
@@ -292,12 +301,14 @@ static inline void chk_claim(exfat_chk_t* c, uint32_t clus)
  * @post The walk is bounded by the volume's cluster count.
  *
  * @since 0.1.0
- */
-static inline void chk_claim_run(exfat_chk_t*          c,
-                                 const ra8_fs_mount_t* h,
-                                 uint32_t              first,
-                                 uint32_t              bytes,
-                                 uint8_t               nofat)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline void internal_chk_claim_run(exfat_chk_t*          c,
+                                                       const ra8_fs_mount_t* h,
+                                                       uint32_t              first,
+                                                       uint32_t              bytes,
+                                                       uint8_t               nofat)
 {
   if (bytes == 0U) {
     return;
@@ -306,17 +317,17 @@ static inline void chk_claim_run(exfat_chk_t*          c,
   const uint32_t count  = (bytes + cbytes - 1U) / cbytes;
   if (nofat != 0U) {
     for (uint32_t k = 0U; k < count; k++) {
-      chk_claim(c, first + k);
+      internal_chk_claim(c, first + k);
     }
     return;
   }
   uint32_t clus = first;
   for (uint32_t k = 0U; k < count; k++) {
-    chk_claim(c, clus);
-    const uint32_t next = disk_get_u32le(fat_byte(h, clus));
+    internal_chk_claim(c, clus);
+    const uint32_t next = internal_disk_get_u32le(internal_fat_byte(h, clus));
     if (next >= (uint32_t)k_chk_eoc_min) {
       if ((k + 1U) != count) {
-        chk_fail(c, "FAT chain ends before the recorded DataLength");
+        internal_chk_fail(c, "FAT chain ends before the recorded DataLength");
       }
       return;
     }
@@ -346,13 +357,15 @@ static inline void chk_claim_run(exfat_chk_t*          c,
  * @post The fold visits every byte of the set exactly once.
  *
  * @since 0.1.0
- */
-static inline uint16_t
-chk_set_checksum(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, uint32_t total)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline uint16_t
+internal_chk_set_checksum(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, uint32_t total)
 {
   uint16_t cs = 0U;
   for (uint32_t e = 0U; e < total; e++) {
-    const uint32_t off = dir_entry_byte(h, clus, idx + e);
+    const uint32_t off = internal_dir_entry_byte(h, clus, idx + e);
     for (uint32_t b = 0U; b < (uint32_t)k_mut_entry_bytes; b++) {
       const uint8_t skip_lo = (uint8_t)(((e == 0U) && (b == (uint32_t)k_chk_off_csum)) ? 1U : 0U);
       const uint8_t skip_hi =
@@ -360,7 +373,7 @@ chk_set_checksum(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, uint32_t 
       if ((skip_lo | skip_hi) != 0U) {
         continue;
       }
-      cs = chk_csum_step(cs, s_disk.bytes[off + b]);
+      cs = internal_chk_csum_step(cs, s_disk.bytes[off + b]);
     }
   }
   return cs;
@@ -391,20 +404,22 @@ chk_set_checksum(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, uint32_t 
  * @retval 0..0xFFFF The value the Stream entry should carry.
  *
  * @pre @p h is non-NULL; the set lies inside @p clus.
- * @pre ::upc_load has run for this volume (::exfat_scan does it).
+ * @pre ::upc_load has run for this volume (::internal_exfat_scan does it).
  * @post No state is modified.
  * @post The fold visits @p nlen units.
  *
  * @since 0.1.0
- */
-static inline uint16_t
-chk_name_hash(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, uint32_t nlen)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline uint16_t
+internal_chk_name_hash(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, uint32_t nlen)
 {
   uint16_t hash = 0U;
   for (uint32_t k = 0U; k < nlen; k++) {
     const uint32_t which = k / (uint32_t)k_chk_name_per_entry;
     const uint32_t slot  = k % (uint32_t)k_chk_name_per_entry;
-    const uint32_t noff  = dir_entry_byte(h, clus, idx + 2U + which);
+    const uint32_t noff  = internal_dir_entry_byte(h, clus, idx + 2U + which);
     const uint32_t bpos  = noff + (uint32_t)k_chk_off_name_chars + (slot * 2U);
     /* Folded through the table the VOLUME carries, expanded from its own bytes
      * above -- not through the driver's fold, which is the thing this scan
@@ -415,10 +430,10 @@ chk_name_hash(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, uint32_t nle
     const uint32_t raw  = (uint32_t)s_disk.bytes[bpos] |
                           ((uint32_t)s_disk.bytes[bpos + 1U] << (uint32_t)k_mut_shift_byte8);
     const uint32_t unit = s_upc_table[raw];
-    hash                = chk_csum_step(hash, (uint8_t)(unit & (uint32_t)k_mut_mask_byte));
-    hash =
-      chk_csum_step(hash,
-                    (uint8_t)((unit >> (uint32_t)k_mut_shift_byte8) & (uint32_t)k_mut_mask_byte));
+    hash                = internal_chk_csum_step(hash, (uint8_t)(unit & (uint32_t)k_mut_mask_byte));
+    hash                = internal_chk_csum_step(
+      hash,
+      (uint8_t)((unit >> (uint32_t)k_mut_shift_byte8) & (uint32_t)k_mut_mask_byte));
   }
   return hash;
 }
@@ -437,8 +452,11 @@ chk_name_hash(const ra8_fs_mount_t* h, uint32_t clus, uint32_t idx, uint32_t nle
  * @post The result depends only on the two bytes at @p off.
  *
  * @since 0.1.0
- */
-static inline uint32_t disk_get_u16le(uint32_t off)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline uint32_t internal_disk_get_u16le(uint32_t off)
 {
   return (uint32_t)s_disk.bytes[off] |
          ((uint32_t)s_disk.bytes[off + 1U] << (uint32_t)k_mut_shift_byte8);
@@ -469,34 +487,40 @@ static inline uint32_t disk_get_u16le(uint32_t off)
  * @post The set's clusters are claimed.
  *
  * @since 0.1.0
- */
-static inline uint32_t chk_visit_set(exfat_chk_t*          c,
-                                     const ra8_fs_mount_t* h,
-                                     uint32_t              clus,
-                                     uint32_t              idx,
-                                     uint32_t*             out_dir,
-                                     uint32_t*             out_size,
-                                     uint8_t*              out_flag)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline uint32_t internal_chk_visit_set(exfat_chk_t*          c,
+                                                           const ra8_fs_mount_t* h,
+                                                           uint32_t              clus,
+                                                           uint32_t              idx,
+                                                           uint32_t*             out_dir,
+                                                           uint32_t*             out_size,
+                                                           uint8_t*              out_flag)
 {
   *out_dir                = 0U;
   *out_size               = 0U;
   *out_flag               = 0U;
-  const uint32_t file_off = dir_entry_byte(h, clus, idx);
+  const uint32_t file_off = internal_dir_entry_byte(h, clus, idx);
   const uint32_t total    = 1U + (uint32_t)s_disk.bytes[file_off + (uint32_t)k_chk_off_secnt];
-  if ((uint32_t)chk_set_checksum(h, clus, idx, total) !=
-      disk_get_u16le(file_off + (uint32_t)k_chk_off_csum)) {
-    chk_fail(c, "entry set SetChecksum does not cover its own bytes");
+  if ((uint32_t)internal_chk_set_checksum(h, clus, idx, total) !=
+      internal_disk_get_u16le(file_off + (uint32_t)k_chk_off_csum)) {
+    internal_chk_fail(c, "entry set SetChecksum does not cover its own bytes");
   }
-  const uint32_t strm_off = dir_entry_byte(h, clus, idx + 1U);
+  const uint32_t strm_off = internal_dir_entry_byte(h, clus, idx + 1U);
   const uint32_t nlen     = (uint32_t)s_disk.bytes[strm_off + (uint32_t)k_chk_off_strm_nlen];
-  const uint32_t first    = disk_get_u32le(strm_off + (uint32_t)k_mut_strm_off_clus);
-  const uint32_t dlen     = disk_get_u32le(strm_off + (uint32_t)k_mut_strm_off_dlen);
+  const uint32_t first    = internal_disk_get_u32le(strm_off + (uint32_t)k_mut_strm_off_clus);
+  const uint32_t dlen     = internal_disk_get_u32le(strm_off + (uint32_t)k_mut_strm_off_dlen);
   const uint8_t  flags    = s_disk.bytes[strm_off + (uint32_t)k_chk_off_strm_flags];
-  if ((uint32_t)chk_name_hash(h, clus, idx, nlen) !=
-      disk_get_u16le(strm_off + (uint32_t)k_chk_off_strm_hash)) {
-    chk_fail(c, "entry set NameHash disagrees with the name it stores");
+  if ((uint32_t)internal_chk_name_hash(h, clus, idx, nlen) !=
+      internal_disk_get_u16le(strm_off + (uint32_t)k_chk_off_strm_hash)) {
+    internal_chk_fail(c, "entry set NameHash disagrees with the name it stores");
   }
-  chk_claim_run(c, h, first, dlen, (uint8_t)(((flags & (uint8_t)k_chk_nofat_bit) != 0U) ? 1U : 0U));
+  internal_chk_claim_run(c,
+                         h,
+                         first,
+                         dlen,
+                         (uint8_t)(((flags & (uint8_t)k_chk_nofat_bit) != 0U) ? 1U : 0U));
   if ((s_disk.bytes[file_off + (uint32_t)k_chk_off_attr] & (uint8_t)k_chk_attr_directory) != 0U) {
     *out_dir  = first;
     *out_size = dlen;
@@ -508,7 +532,7 @@ static inline uint32_t chk_visit_set(exfat_chk_t*          c,
 /**
  * @brief Scan one directory cluster, claiming sets and stacking subdirectories.
  *
- * @details Inner half of ::chk_walk_dir. Visits every live File entry set in
+ * @details Inner half of ::internal_chk_walk_dir. Visits every live File entry set in
  *          the cluster and pushes each subdirectory onto @p stack; stops at the
  *          end-of-directory marker.
  *
@@ -528,28 +552,30 @@ static inline uint32_t chk_visit_set(exfat_chk_t*          c,
  * @post Overflowing @p stack records a fault instead of writing past it.
  *
  * @since 0.1.0
- */
-static inline uint8_t chk_walk_cluster(exfat_chk_t*          c,
-                                       const ra8_fs_mount_t* h,
-                                       uint32_t              clus,
-                                       uint32_t              stack[][3],
-                                       uint32_t*             depth)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline uint8_t internal_chk_walk_cluster(exfat_chk_t*          c,
+                                                             const ra8_fs_mount_t* h,
+                                                             uint32_t              clus,
+                                                             uint32_t              stack[][3],
+                                                             uint32_t*             depth)
 {
-  const uint32_t per = entries_per_cluster(h);
+  const uint32_t per = internal_entries_per_cluster(h);
   uint32_t       idx = 0U;
   while (idx < per) {
-    const uint32_t off  = dir_entry_byte(h, clus, idx);
+    const uint32_t off  = internal_dir_entry_byte(h, clus, idx);
     const uint8_t  type = s_disk.bytes[off];
     if (type == (uint8_t)k_chk_type_eod) {
       return 1U;
     }
     if (type != (uint8_t)k_mut_type_file) {
       if ((type == (uint8_t)k_chk_type_bitmap) || (type == (uint8_t)k_chk_type_upcase)) {
-        chk_claim_run(c,
-                      h,
-                      disk_get_u32le(off + (uint32_t)k_mut_strm_off_clus),
-                      disk_get_u32le(off + (uint32_t)k_mut_strm_off_dlen),
-                      0U);
+        internal_chk_claim_run(c,
+                               h,
+                               internal_disk_get_u32le(off + (uint32_t)k_mut_strm_off_clus),
+                               internal_disk_get_u32le(off + (uint32_t)k_mut_strm_off_dlen),
+                               0U);
       }
       idx++;
       continue;
@@ -557,12 +583,12 @@ static inline uint8_t chk_walk_cluster(exfat_chk_t*          c,
     uint32_t sub   = 0U;
     uint32_t ssize = 0U;
     uint8_t  sflag = 0U;
-    idx += chk_visit_set(c, h, clus, idx, &sub, &ssize, &sflag);
+    idx += internal_chk_visit_set(c, h, clus, idx, &sub, &ssize, &sflag);
     if (sub == 0U) {
       continue;
     }
     if (*depth >= (uint32_t)k_chk_pending_cap) {
-      chk_fail(c, "more directories pending than the scanner can hold");
+      internal_chk_fail(c, "more directories pending than the scanner can hold");
       return 1U;
     }
     stack[*depth][0] = sub;
@@ -596,9 +622,13 @@ static inline uint8_t chk_walk_cluster(exfat_chk_t*          c,
  * @post On 0 the caller stops walking.
  *
  * @since 0.1.0
- */
-static inline uint8_t
-chk_next_cluster(const ra8_fs_mount_t* h, uint32_t clus, uint32_t run_end, uint32_t* out_next)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline uint8_t internal_chk_next_cluster(const ra8_fs_mount_t* h,
+                                                             uint32_t              clus,
+                                                             uint32_t              run_end,
+                                                             uint32_t*             out_next)
 {
   if (run_end != 0U) {
     const uint32_t adjacent = clus + 1U;
@@ -608,7 +638,7 @@ chk_next_cluster(const ra8_fs_mount_t* h, uint32_t clus, uint32_t run_end, uint3
     *out_next = adjacent;
     return 1U;
   }
-  const uint32_t next = disk_get_u32le(fat_byte(h, clus));
+  const uint32_t next = internal_disk_get_u32le(internal_fat_byte(h, clus));
   if (next >= (uint32_t)k_chk_eoc_min) {
     return 0U;
   }
@@ -640,24 +670,26 @@ chk_next_cluster(const ra8_fs_mount_t* h, uint32_t clus, uint32_t run_end, uint3
  * @post The walk is bounded by ::k_chk_entries_cap clusters.
  *
  * @since 0.1.0
- */
-static inline void chk_walk_dir(exfat_chk_t*          c,
-                                const ra8_fs_mount_t* h,
-                                uint32_t              first,
-                                uint32_t              bytes,
-                                uint8_t               nofat,
-                                uint32_t              stack[][3],
-                                uint32_t*             depth)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline void internal_chk_walk_dir(exfat_chk_t*          c,
+                                                      const ra8_fs_mount_t* h,
+                                                      uint32_t              first,
+                                                      uint32_t              bytes,
+                                                      uint8_t               nofat,
+                                                      uint32_t              stack[][3],
+                                                      uint32_t*             depth)
 {
   const uint32_t cbytes  = h->sectors_per_cluster * (uint32_t)k_mut_block_size;
   const uint32_t run_end = (nofat != 0U) ? (first + ((bytes + cbytes - 1U) / cbytes)) : 0U;
   uint32_t       clus    = first;
   for (uint32_t guard = 0U; guard < (uint32_t)k_chk_entries_cap; guard++) {
-    if (chk_walk_cluster(c, h, clus, stack, depth) != 0U) {
+    if (internal_chk_walk_cluster(c, h, clus, stack, depth) != 0U) {
       return;
     }
     uint32_t next = 0U;
-    if (chk_next_cluster(h, clus, run_end, &next) == 0U) {
+    if (internal_chk_next_cluster(h, clus, run_end, &next) == 0U) {
       return;
     }
     clus = next;
@@ -681,14 +713,16 @@ static inline void chk_walk_dir(exfat_chk_t*          c,
  * @post The walk is bounded by the volume's cluster count.
  *
  * @since 0.1.0
- */
-static inline void chk_claim_root(exfat_chk_t* c, const ra8_fs_mount_t* h)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline void internal_chk_claim_root(exfat_chk_t* c, const ra8_fs_mount_t* h)
 {
   uint32_t clus = h->root_cluster;
   for (uint32_t k = 0U; k < c->clusters; k++) {
-    chk_claim(c, clus);
+    internal_chk_claim(c, clus);
     uint32_t next = 0U;
-    if (chk_next_cluster(h, clus, 0U, &next) == 0U) {
+    if (internal_chk_next_cluster(h, clus, 0U, &next) == 0U) {
       return;
     }
     clus = next;
@@ -712,20 +746,22 @@ static inline void chk_claim_root(exfat_chk_t* c, const ra8_fs_mount_t* h)
  * @post No on-disk state is modified.
  *
  * @since 0.1.0
- */
-static inline void chk_compare_bitmap(exfat_chk_t* c, const ra8_fs_mount_t* h)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline void internal_chk_compare_bitmap(exfat_chk_t* c, const ra8_fs_mount_t* h)
 {
-  const uint32_t bmp_entry = root_byte(h, (uint32_t)k_mut_root_bitmap_idx);
-  const uint32_t bmp_clus  = disk_get_u32le(bmp_entry + (uint32_t)k_mut_strm_off_clus);
-  const uint32_t bmp_base  = clus_byte(h, bmp_clus);
+  const uint32_t bmp_entry = internal_root_byte(h, (uint32_t)k_mut_root_bitmap_idx);
+  const uint32_t bmp_clus  = internal_disk_get_u32le(bmp_entry + (uint32_t)k_mut_strm_off_clus);
+  const uint32_t bmp_base  = internal_clus_byte(h, bmp_clus);
   for (uint32_t i = 0U; i < c->clusters; i++) {
     const uint8_t byte = s_disk.bytes[bmp_base + (i / (uint32_t)k_mut_bits_per_byte)];
     const uint8_t used = (uint8_t)((byte >> (i % (uint32_t)k_mut_bits_per_byte)) & 1U);
     if ((used != 0U) && (c->seen[i] == 0U)) {
-      chk_fail(c, "a cluster is marked used but no entry set references it (orphan)");
+      internal_chk_fail(c, "a cluster is marked used but no entry set references it (orphan)");
     }
     if ((used == 0U) && (c->seen[i] != 0U)) {
-      chk_fail(c, "an entry set references a cluster the bitmap calls free (dangling)");
+      internal_chk_fail(c, "an entry set references a cluster the bitmap calls free (dangling)");
     }
   }
 }
@@ -753,10 +789,13 @@ static inline void chk_compare_bitmap(exfat_chk_t* c, const ra8_fs_mount_t* h)
  * @post @p msg is NUL-terminated.
  *
  * @since 0.1.0
- */
-static inline uint8_t exfat_scan(const ra8_fs_mount_t* h, char* msg, uint32_t cap)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline uint8_t
+internal_exfat_scan(const ra8_fs_mount_t* h, char* msg, uint32_t cap)
 {
-  upc_load(h); /* the volume's own fold, before anything is hashed */
+  internal_upc_load(h); /* the volume's own fold, before anything is hashed */
   exfat_chk_t c = {};
   c.clusters    = h->count_of_clusters;
   c.ok          = 1U;
@@ -765,18 +804,18 @@ static inline uint8_t exfat_scan(const ra8_fs_mount_t* h, char* msg, uint32_t ca
     (void)snprintf(msg, (size_t)cap, "%s", "calloc failed for the scanner cluster map");
     return 0U;
   }
-  chk_claim_root(&c, h);
+  internal_chk_claim_root(&c, h);
   uint32_t stack[k_chk_pending_cap][3] = {};
   uint32_t depth                       = 0U;
-  chk_walk_dir(&c, h, h->root_cluster, 0U, 0U, stack, &depth);
+  internal_chk_walk_dir(&c, h, h->root_cluster, 0U, 0U, stack, &depth);
   while (depth > 0U) {
     depth--;
     const uint32_t first = stack[depth][0];
     const uint32_t size  = stack[depth][1];
     const uint8_t  nofat = (uint8_t)stack[depth][2];
-    chk_walk_dir(&c, h, first, size, nofat, stack, &depth);
+    internal_chk_walk_dir(&c, h, first, size, nofat, stack, &depth);
   }
-  chk_compare_bitmap(&c, h);
+  internal_chk_compare_bitmap(&c, h);
   const uint8_t ok = c.ok;
   (void)snprintf(msg, (size_t)cap, "%s", c.msg);
   free(c.seen);
@@ -786,9 +825,9 @@ static inline uint8_t exfat_scan(const ra8_fs_mount_t* h, char* msg, uint32_t ca
 /**
  * @brief Assert the mounted volume is structurally sound.
  *
- * @details The assertion wrapper around ::exfat_scan that every scenario ends
+ * @details The assertion wrapper around ::internal_exfat_scan that every scenario ends
  *          with. Kept separate so the scanner's own negative control can call
- *          ::exfat_scan and require a FAILURE.
+ *          ::internal_exfat_scan and require a FAILURE.
  *
  * @param[in] h   Mounted exFAT volume.
  * @param[in] tag Scenario name, used in the failure message.
@@ -799,12 +838,14 @@ static inline uint8_t exfat_scan(const ra8_fs_mount_t* h, char* msg, uint32_t ca
  * @post The calling test has failed if the volume is structurally unsound.
  *
  * @since 0.1.0
- */
-static inline void exfat_check(const ra8_fs_mount_t* h, const char* tag)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline void internal_exfat_check(const ra8_fs_mount_t* h, const char* tag)
 {
   char msg[k_chk_msg_cap] = {};
-  if (exfat_scan(h, msg, (uint32_t)k_chk_msg_cap) == 0U) {
-    TEST_FAIL_FMT("exfat_check(%s): %s", tag, msg);
+  if (internal_exfat_scan(h, msg, (uint32_t)k_chk_msg_cap) == 0U) {
+    TEST_FAIL_FMT("internal_exfat_check(%s): %s", tag, msg);
   }
 }
 
@@ -825,8 +866,10 @@ static inline void exfat_check(const ra8_fs_mount_t* h, const char* tag)
  * @post With it enabled the named file holds the volume's bytes.
  *
  * @since 0.1.0
- */
-static inline void exfat_dump(const ra8_fs_mount_t* h, const char* tag)
+
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline void internal_exfat_dump(const ra8_fs_mount_t* h, const char* tag)
 {
   const char* dir = getenv("RA8_FS_EXFAT_DUMP");
   if (dir == nullptr) {
@@ -834,15 +877,13 @@ static inline void exfat_dump(const ra8_fs_mount_t* h, const char* tag)
   }
   char path[k_chk_msg_cap];
   (void)snprintf(path, sizeof(path), "%s/%s.img", dir, tag);
-  FILE* f = fopen(path, "wb");
-  if (f == nullptr) {
+  const size_t                 base  = (size_t)h->partition_base_lba * (size_t)k_mut_block_size;
+  const size_t                 total = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
+  const ra8_test_file_result_t result =
+    internal_test_file_replace(path, &s_disk.bytes[base], total - base);
+  if (result.status != k_ra8_test_file_ok) {
     TEST_FAIL_FMT("could not open dump file %s", path);
-    return;
   }
-  const size_t base  = (size_t)h->partition_base_lba * (size_t)k_mut_block_size;
-  const size_t total = (size_t)s_disk.block_count * (size_t)k_mut_block_size;
-  (void)fwrite(&s_disk.bytes[base], 1U, total - base, f);
-  (void)fclose(f);
 }
 
 /**
@@ -857,133 +898,14 @@ static inline void exfat_dump(const ra8_fs_mount_t* h, const char* tag)
  * @post The calling test has failed if the volume is structurally unsound.
  *
  * @since 0.1.0
- */
-static inline void exfat_verify(const ra8_fs_mount_t* h, const char* tag)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static inline void internal_exfat_verify(const ra8_fs_mount_t* h, const char* tag)
 {
-  exfat_check(h, tag);
-  exfat_dump(h, tag);
+  internal_exfat_check(h, tag);
+  internal_exfat_dump(h, tag);
 }
 
-/**
- * @struct name_ctx_t
- * @brief Listdir context that records the names and attributes it is handed.
- *
- * @since 0.1.0
- */
-typedef struct {
-  uint32_t count;                                 /**< Entries reported.         */
-  char     names[k_chk_list_cap][k_chk_name_cap]; /**< Names, in order.          */
-  uint8_t  attrs[k_chk_list_cap];                 /**< Matching attribute bytes. */
-  uint32_t sizes[k_chk_list_cap];                 /**< Matching sizes.           */
-} name_ctx_t;
-
-/**
- * @brief Listdir callback that records name, attribute and size.
- *
- * @param[in] name Entry name.
- * @param[in] attr Entry attribute byte.
- * @param[in] size Entry size.
- * @param[in] ctx  Pointer to a ::name_ctx_t.
- *
- * @pre @p name and @p ctx are non-NULL.
- * @pre The context has room (asserted by the cap).
- * @post The entry is appended to the context.
- * @post Entries past the cap are counted but not stored.
- *
- * @since 0.1.0
- */
-static inline void name_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
-{
-  name_ctx_t* n = (name_ctx_t*)ctx;
-  if (n->count < (uint32_t)k_chk_list_cap) {
-    (void)snprintf(n->names[n->count], (size_t)k_chk_name_cap, "%s", name);
-    n->attrs[n->count] = attr;
-    n->sizes[n->count] = size;
-  }
-  n->count++;
-}
-
-/**
- * @brief List @p path and return how many entries it reported.
- *
- * @param[in]  h   Mounted exFAT volume.
- * @param[in]  path Directory path.
- * @param[out] out Receives the recorded names/attributes.
- *
- * @return The entry count.
- * @retval 0..UINT32_MAX Entries reported.
- *
- * @pre @p h, @p path and @p out are non-NULL.
- * @pre The listing succeeds (asserted).
- * @post No on-disk state is modified.
- * @post @p out holds the reported entries.
- *
- * @since 0.1.0
- */
-static inline uint32_t list_names(ra8_fs_mount_t* h, const char* path, name_ctx_t* out)
-{
-  *out = (name_ctx_t){};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, path, name_cb, out));
-  return out->count;
-}
-
-/**
- * @brief 1 when @p dir's listing holds @p name with the directory bit set.
- *
- * @param[in] ctx Recorded listing.
- * @param[in] name Name to look for.
- *
- * @return 1 when present as a directory, else 0.
- * @retval 1 Found, with ::k_chk_attr_directory set.
- * @retval 0 Absent, or present as a file.
- *
- * @pre @p ctx and @p name are non-NULL.
- * @pre @p ctx came from ::list_names.
- * @post No state is modified.
- * @post The search visits at most `ctx->count` entries.
- *
- * @since 0.1.0
- */
-static inline uint8_t has_dir(const name_ctx_t* ctx, const char* name)
-{
-  for (uint32_t i = 0U; i < ctx->count; i++) {
-    if (strcmp(ctx->names[i], name) != 0) {
-      continue;
-    }
-    return ((ctx->attrs[i] & (uint8_t)k_chk_attr_directory) != 0U) ? 1U : 0U;
-  }
-  return 0U;
-}
-
-/**
- * @brief 1 when the listing holds @p name with the directory bit CLEAR.
- *
- * @details The mirror of ::has_dir, and it exists for the same reason the
- *          directory bit is checked there rather than the name alone: a root
- *          holding both kinds is where a scan that matched the right name
- *          against the wrong entry kind would otherwise pass unnoticed.
- *
- * @param[in] ctx  Recorded listing.
- * @param[in] name Name to look for.
- *
- * @return 1 when present as a plain file, else 0.
- * @retval 1 Found, with ::k_chk_attr_directory clear.
- * @retval 0 Absent, or present as a directory.
- *
- * @pre @p ctx and @p name are non-NULL.
- * @pre @p ctx came from ::list_names.
- * @post No state is modified.
- * @post The search visits at most `ctx->count` entries.
- *
- * @since 0.1.0
- */
-static inline uint8_t has_file(const name_ctx_t* ctx, const char* name)
-{
-  for (uint32_t i = 0U; i < ctx->count; i++) {
-    if (strcmp(ctx->names[i], name) != 0) {
-      continue;
-    }
-    return ((ctx->attrs[i] & (uint8_t)k_chk_attr_directory) == 0U) ? 1U : 0U;
-  }
-  return 0U;
-}
+#include "fs_exfat_dir_listing_test_util.h"

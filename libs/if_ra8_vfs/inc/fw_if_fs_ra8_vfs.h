@@ -58,7 +58,10 @@ typedef struct {
   char            path_a[k_fw_fs_ra8_vfs_full_path_cap]; /**< First path scratch.  */
   char            path_b[k_fw_fs_ra8_vfs_full_path_cap]; /**< Rename path scratch. */
   ra8_fs_mount_t* mount;                                 /**< Live mount.          */
+  uint32_t        directory_workspace_bytes;             /**< Native cursor workspace bytes. */
   uint32_t        transaction_id;                        /**< Stage-name counter.  */
+  uint16_t        max_open_directories;                  /**< Native concurrent cursor limit. */
+  uint8_t         directory_workspace_align;             /**< Native cursor alignment. */
   bool            removable_media;                       /**< Capability input.    */
 } fw_fs_ra8_vfs_state_t;
 

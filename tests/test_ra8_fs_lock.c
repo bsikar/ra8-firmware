@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "unity_minimal.h"
@@ -81,8 +82,9 @@ typedef struct {
 /** @brief The one synthetic disk every test in this file mounts. */
 static mem_disk_t s_disk = {};
 
-/** @brief Backend read: copy `count` blocks out of the RAM disk. */
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Backend read: copy `count` blocks out of the RAM disk. @details Implements the bounded mem read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -94,8 +96,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-/** @brief Backend write: copy `count` blocks into the RAM disk. */
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Backend write: copy `count` blocks into the RAM disk. @details Implements the bounded mem write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -107,8 +110,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-/** @brief Backend capacity: the RAM disk's size in 512-byte blocks. */
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Backend capacity: the RAM disk's size in 512-byte blocks. @details Implements the bounded mem capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -118,21 +122,21 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 
 /** @brief The backend handed to every mount in this file. */
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
-/** @brief Store a little-endian 16-bit BPB field. */
-static void put16(uint8_t* p, uint32_t off, uint16_t v)
+/** @brief Store a little-endian 16-bit BPB field. @details Implements the bounded put16 fixture step using caller-owned state. @param[in,out] p Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]     = (uint8_t)(v & (uint32_t)k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8) & (uint32_t)k_byte_mask);
 }
 
-/** @brief Allocate the RAM disk and hand-build a mountable FAT16 BPB in it. */
-static void build_volume(void)
+/** @brief Allocate the RAM disk and hand-build a mountable FAT16 BPB in it. @details Implements the bounded build volume fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_build_volume(void)
 {
   free(s_disk.bytes);
   s_disk.byte_count  = (uint32_t)k_disk_blocks * (uint32_t)k_disk_block_size;
@@ -142,19 +146,19 @@ static void build_volume(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size);
+  internal_put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size);
   bpb[k_bpb_off_sec_per_clus] = 1U;
-  put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
   bpb[k_bpb_off_num_fats] = (uint8_t)k_num_fats;
-  put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, (uint16_t)k_root_entries);
-  put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks);
-  put16(bpb, (uint32_t)k_bpb_off_fat_sz16, (uint16_t)k_fat_sectors);
+  internal_put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, (uint16_t)k_root_entries);
+  internal_put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks);
+  internal_put16(bpb, (uint32_t)k_bpb_off_fat_sz16, (uint16_t)k_fat_sectors);
   bpb[k_bpb_off_sig_lo] = (uint8_t)k_bpb_sig_lo;
   bpb[k_bpb_off_sig_hi] = (uint8_t)k_bpb_sig_hi;
 }
 
-/** @brief Release the RAM disk. */
-static void free_volume(void)
+/** @brief Release the RAM disk. @details Implements the bounded free volume fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_free_volume(void)
 {
   free(s_disk.bytes);
   s_disk.bytes = nullptr;
@@ -175,8 +179,8 @@ typedef struct {
 /** @brief The single fake lock instance; also its own cookie. */
 static fake_lock_t s_fake = {};
 
-/** @brief Fake `acquire`: count it and track nesting. */
-static void fake_acquire(void* ctx)
+/** @brief Fake `acquire`: count it and track nesting. @details Implements the bounded fake acquire fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_fake_acquire(void* ctx)
 {
   fake_lock_t* fl = (fake_lock_t*)ctx;
   if (fl != &s_fake) {
@@ -190,8 +194,8 @@ static void fake_acquire(void* ctx)
   }
 }
 
-/** @brief Fake `release`: count it and unwind the nesting. */
-static void fake_release(void* ctx)
+/** @brief Fake `release`: count it and unwind the nesting. @details Implements the bounded fake release fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_fake_release(void* ctx)
 {
   fake_lock_t* fl = (fake_lock_t*)ctx;
   if (fl != &s_fake) {
@@ -204,13 +208,13 @@ static void fake_release(void* ctx)
 
 /** @brief The binding installed by every test that needs one. */
 static const ra8_fs_lock_t s_lock_binding = {
-  .acquire = fake_acquire,
-  .release = fake_release,
+  .acquire = internal_fake_acquire,
+  .release = internal_fake_release,
   .ctx     = &s_fake,
 };
 
-/** @brief Zero the recorder so the next call is measured on its own. */
-static void reset_counts(void)
+/** @brief Zero the recorder so the next call is measured on its own. @details Implements the bounded reset counts fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_reset_counts(void)
 {
   s_fake.acquired  = 0U;
   s_fake.released  = 0U;
@@ -222,9 +226,9 @@ static void reset_counts(void)
  * @brief Assert that exactly @p want brackets ran and none of them leaked.
  *
  * @param[in] want  Expected acquire (and release) count.
- * @param[in] label Call being judged, for the failure message.
+ * @param[in] label Call being judged, for the failure message. @details Implements the bounded expect brackets fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void expect_brackets(uint32_t want, const char* label)
+RA8_INTERNAL static void internal_expect_brackets(uint32_t want, const char* label)
 {
   if (s_fake.acquired != want) {
     TEST_FAIL_FMT("%s: acquired %u, wanted %u", label, s_fake.acquired, want);
@@ -246,19 +250,19 @@ static void expect_brackets(uint32_t want, const char* label)
   if (s_fake.wrong_ctx != 0U) {
     TEST_FAIL_FMT("%s: a callback saw a cookie other than the installed one", label);
   }
-  reset_counts();
+  internal_reset_counts();
 }
 
-/** @brief Fill @p buf with a deterministic pattern. */
-static void fill(uint8_t* buf, uint32_t len)
+/** @brief Fill @p buf with a deterministic pattern. @details Implements the bounded fill fixture step using caller-owned state. @param[in,out] buf Caller-owned bounded byte storage. @param[in] len Value required by this filesystem vector. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_fill(uint8_t* buf, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; ++i) {
     buf[i] = (uint8_t)((i * (uint32_t)k_payload_stride) + (uint32_t)k_payload_seed);
   }
 }
 
-/** @brief listdir callback that counts entries. */
-static void count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
+/** @brief listdir callback that counts entries. @details Implements the bounded count cb fixture step using caller-owned state. @param[in] name Validated fixture path or name value. @param[in] attr Value required by this filesystem vector. @param[in] size Caller-supplied bounded extent or quantity. @param[in,out] ctx Caller-owned fixture or filesystem state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)name;
   (void)attr;
@@ -284,14 +288,18 @@ static void count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
  * same for `release`. N+1 = 3 vectors for N=2: minimal MC/DC.
  *
  * A NULL @p lock is a separate single-condition guard on the line above, and
- * is asserted here too: it is the documented way to remove a binding.
+ * is asserted here too: it is the documented way to remove a binding. @brief Exercise the mcdc set lock validates filesystem operation. @details Runs the mcdc set lock validates vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_set_lock_validates(void)
+RA8_INTERNAL static void internal_test_mcdc_set_lock_validates(void)
 {
   TEST_BEGIN("ra8_fs_set_lock MC/DC: a half-filled binding is refused");
 
-  const ra8_fs_lock_t no_acquire = {.acquire = nullptr, .release = fake_release, .ctx = &s_fake};
-  const ra8_fs_lock_t no_release = {.acquire = fake_acquire, .release = nullptr, .ctx = &s_fake};
+  const ra8_fs_lock_t no_acquire = {.acquire = nullptr,
+                                    .release = internal_fake_release,
+                                    .ctx     = &s_fake};
+  const ra8_fs_lock_t no_release = {.acquire = internal_fake_acquire,
+                                    .release = nullptr,
+                                    .ctx     = &s_fake};
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_set_lock(&no_acquire)); /* V2 */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_set_lock(&no_release)); /* V3 */
@@ -299,10 +307,10 @@ static void test_mcdc_set_lock_validates(void)
 
   /* A rejected binding must not have been installed: the successful V1 install
    * is the first one, so a call now brackets exactly once. */
-  reset_counts();
+  internal_reset_counts();
   ra8_fs_stat_t st = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_stat(nullptr, "/", &st));
-  expect_brackets((uint32_t)k_expected_brackets, "stat(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "stat(null)");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(nullptr)); /* removal */
   TEST_END("ra8_fs_set_lock MC/DC: a half-filled binding is refused");
@@ -311,19 +319,19 @@ static void test_mcdc_set_lock_validates(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- with no binding installed the callbacks
- * must not run at all, which is the bare-metal default the seam must not cost)
+ * must not run at all, which is the bare-metal default the seam must not cost) @brief Exercise the no lock is the default filesystem operation. @details Runs the no lock is the default vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_no_lock_is_the_default(void)
+RA8_INTERNAL static void internal_test_no_lock_is_the_default(void)
 {
   TEST_BEGIN("no binding installed -> no callback");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(nullptr));
-  reset_counts();
+  internal_reset_counts();
 
-  build_volume();
+  internal_build_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
 
   TEST_ASSERT_EQ(0U, s_fake.acquired);
   TEST_ASSERT_EQ(0U, s_fake.released);
@@ -333,101 +341,101 @@ static void test_no_lock_is_the_default(void)
 /**
  * @par MC/DC:
  * (no compound decisions under test -- the volume- and directory-level entry
- * points each take the lock exactly once on their success path and give it back)
+ * points each take the lock exactly once on their success path and give it back) @brief Exercise the volume entry points bracket filesystem operation. @details Runs the volume entry points bracket vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_volume_entry_points_bracket(void)
+RA8_INTERNAL static void internal_test_volume_entry_points_bracket(void)
 {
   TEST_BEGIN("volume + directory calls are bracketed exactly once");
-  build_volume();
+  internal_build_volume();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(&s_lock_binding));
-  reset_counts();
+  internal_reset_counts();
 
   ra8_fs_format_opts_t opts = {.type = k_ra8_fs_type_fat16, .label = "LOCKED"};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
-  expect_brackets((uint32_t)k_expected_brackets, "format");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "format");
 
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  expect_brackets((uint32_t)k_expected_brackets, "mount");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "mount");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/DIR"));
-  expect_brackets((uint32_t)k_expected_brackets, "mkdir");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "mkdir");
 
   uint8_t payload[k_payload_bytes] = {};
-  fill(payload, (uint32_t)k_payload_bytes);
+  internal_fill(payload, (uint32_t)k_payload_bytes);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/A.BIN", payload, (uint32_t)k_payload_bytes));
-  reset_counts();
+  internal_reset_counts();
 
   ra8_fs_stat_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_stat(h, "/A.BIN", &st));
-  expect_brackets((uint32_t)k_expected_brackets, "stat");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "stat");
 
   uint32_t entries = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &entries));
-  expect_brackets((uint32_t)k_expected_brackets, "listdir");
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &entries));
+  internal_expect_brackets((uint32_t)k_expected_brackets, "listdir");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rename(h, "/A.BIN", "/B.BIN"));
-  expect_brackets((uint32_t)k_expected_brackets, "rename");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "rename");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "/B.BIN"));
-  expect_brackets((uint32_t)k_expected_brackets, "unlink");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "unlink");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  expect_brackets((uint32_t)k_expected_brackets, "unmount");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "unmount");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(nullptr));
-  free_volume();
+  internal_free_volume();
   TEST_END("volume + directory calls are bracketed exactly once");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions under test -- the same claim for the per-file entry
- * points, which is where a leaked lock would be least visible)
+ * points, which is where a leaked lock would be least visible) @brief Exercise the file entry points bracket filesystem operation. @details Runs the file entry points bracket vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_file_entry_points_bracket(void)
+RA8_INTERNAL static void internal_test_file_entry_points_bracket(void)
 {
   TEST_BEGIN("file calls are bracketed exactly once");
-  build_volume();
+  internal_build_volume();
   ra8_fs_format_opts_t opts = {.type = k_ra8_fs_type_fat16, .label = "LOCKED"};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(&s_lock_binding));
-  reset_counts();
+  internal_reset_counts();
 
   uint8_t payload[k_payload_bytes] = {};
-  fill(payload, (uint32_t)k_payload_bytes);
+  internal_fill(payload, (uint32_t)k_payload_bytes);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/A.BIN", k_ra8_fs_mode_write, &f));
-  expect_brackets((uint32_t)k_expected_brackets, "open");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "open");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, payload, (uint32_t)k_payload_bytes));
-  expect_brackets((uint32_t)k_expected_brackets, "write");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "write");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, 0U));
-  expect_brackets((uint32_t)k_expected_brackets, "seek");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "seek");
 
   uint64_t at = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_tell(f, &at));
-  expect_brackets((uint32_t)k_expected_brackets, "tell");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "tell");
 
   uint64_t sz = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &sz));
-  expect_brackets((uint32_t)k_expected_brackets, "size");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "size");
 
   uint8_t  back[k_payload_bytes] = {};
   uint32_t got                   = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, back, (uint32_t)k_payload_bytes, &got));
-  expect_brackets((uint32_t)k_expected_brackets, "read");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "read");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
-  expect_brackets((uint32_t)k_expected_brackets, "close");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "close");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("file calls are bracketed exactly once");
 }
 
@@ -435,26 +443,26 @@ static void test_file_entry_points_bracket(void)
  * @par MC/DC:
  * (no compound decisions under test -- ra8_fs_write_file drives open/write/close
  * internally and must still take the lock exactly once, or a non-recursive
- * mutex deadlocks and the three steps stop being one atomic creation)
+ * mutex deadlocks and the three steps stop being one atomic creation) @brief Exercise the write file takes the lock once filesystem operation. @details Runs the write file takes the lock once vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_write_file_takes_the_lock_once(void)
+RA8_INTERNAL static void internal_test_write_file_takes_the_lock_once(void)
 {
   TEST_BEGIN("write_file is one bracket, not four");
-  build_volume();
+  internal_build_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(&s_lock_binding));
-  reset_counts();
+  internal_reset_counts();
 
   uint8_t payload[k_payload_bytes] = {};
-  fill(payload, (uint32_t)k_payload_bytes);
+  internal_fill(payload, (uint32_t)k_payload_bytes);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/WHOLE.BIN", payload, (uint32_t)k_payload_bytes));
-  expect_brackets((uint32_t)k_expected_brackets, "write_file");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "write_file");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("write_file is one bracket, not four");
 }
 
@@ -462,92 +470,92 @@ static void test_write_file_takes_the_lock_once(void)
  * @par MC/DC:
  * (no compound decisions under test -- the error return of every volume-level
  * entry point must still release; a lock leaked on the NULL-argument path is
- * the one that hangs an app on its first bad call)
+ * the one that hangs an app on its first bad call) @brief Exercise the volume error paths release filesystem operation. @details Runs the volume error paths release vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_volume_error_paths_release(void)
+RA8_INTERNAL static void internal_test_volume_error_paths_release(void)
 {
   TEST_BEGIN("volume-call error returns release the lock");
-  build_volume();
+  internal_build_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(&s_lock_binding));
-  reset_counts();
+  internal_reset_counts();
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_format(nullptr, nullptr));
-  expect_brackets((uint32_t)k_expected_brackets, "format(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "format(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_mount(nullptr, nullptr));
-  expect_brackets((uint32_t)k_expected_brackets, "mount(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "mount(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_unmount(nullptr));
-  expect_brackets((uint32_t)k_expected_brackets, "unmount(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "unmount(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_write_file(nullptr, nullptr, nullptr, 0U));
-  expect_brackets((uint32_t)k_expected_brackets, "write_file(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "write_file(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_listdir(nullptr, nullptr, nullptr, nullptr));
-  expect_brackets((uint32_t)k_expected_brackets, "listdir(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "listdir(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_mkdir(nullptr, nullptr));
-  expect_brackets((uint32_t)k_expected_brackets, "mkdir(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "mkdir(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_unlink(nullptr, nullptr));
-  expect_brackets((uint32_t)k_expected_brackets, "unlink(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "unlink(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_rename(nullptr, nullptr, nullptr));
-  expect_brackets((uint32_t)k_expected_brackets, "rename(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "rename(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_stat(h, nullptr, nullptr));
-  expect_brackets((uint32_t)k_expected_brackets, "stat(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "stat(null)");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("volume-call error returns release the lock");
 }
 
 /**
  * @par MC/DC:
  * (no compound decisions under test -- the same claim for the per-file entry
- * points, including a not-found open, which is an error the caller expects)
+ * points, including a not-found open, which is an error the caller expects) @brief Exercise the file error paths release filesystem operation. @details Runs the file error paths release vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_file_error_paths_release(void)
+RA8_INTERNAL static void internal_test_file_error_paths_release(void)
 {
   TEST_BEGIN("file-call error returns release the lock");
-  build_volume();
+  internal_build_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(&s_lock_binding));
-  reset_counts();
+  internal_reset_counts();
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "/MISSING.BIN", k_ra8_fs_mode_read, &f));
-  expect_brackets((uint32_t)k_expected_brackets, "open(missing)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "open(missing)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_close(nullptr));
-  expect_brackets((uint32_t)k_expected_brackets, "close(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "close(null)");
 
   uint32_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_read(nullptr, nullptr, 0U, &got));
-  expect_brackets((uint32_t)k_expected_brackets, "read(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "read(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_write(nullptr, nullptr, 0U));
-  expect_brackets((uint32_t)k_expected_brackets, "write(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "write(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_seek(nullptr, 0U));
-  expect_brackets((uint32_t)k_expected_brackets, "seek(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "seek(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_tell(nullptr, nullptr));
-  expect_brackets((uint32_t)k_expected_brackets, "tell(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "tell(null)");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_size(nullptr, nullptr));
-  expect_brackets((uint32_t)k_expected_brackets, "size(null)");
+  internal_expect_brackets((uint32_t)k_expected_brackets, "size(null)");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("file-call error returns release the lock");
 }
 
@@ -555,39 +563,38 @@ static void test_file_error_paths_release(void)
  * @par MC/DC:
  * (no compound decisions under test -- removing the binding stops the callbacks
  * for good, so a consumer can hand the filesystem back to a single-threaded
- * context without the seam still reaching for a mutex that may be gone)
+ * context without the seam still reaching for a mutex that may be gone) @brief Exercise the removing the binding stops the calls filesystem operation. @details Runs the removing the binding stops the calls vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_removing_the_binding_stops_the_calls(void)
+RA8_INTERNAL static void internal_test_removing_the_binding_stops_the_calls(void)
 {
   TEST_BEGIN("set_lock(nullptr) removes the binding");
-  build_volume();
+  internal_build_volume();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(&s_lock_binding));
-  reset_counts();
+  internal_reset_counts();
 
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_expected_brackets, s_fake.acquired);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_lock(nullptr));
-  reset_counts();
+  internal_reset_counts();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   TEST_ASSERT_EQ(0U, s_fake.acquired);
   TEST_ASSERT_EQ(0U, s_fake.released);
 
-  free_volume();
+  internal_free_volume();
   TEST_END("set_lock(nullptr) removes the binding");
 }
 
 int32_t main(void)
 {
-  test_mcdc_set_lock_validates();
-  test_no_lock_is_the_default();
-  test_volume_entry_points_bracket();
-  test_file_entry_points_bracket();
-  test_write_file_takes_the_lock_once();
-  test_volume_error_paths_release();
-  test_file_error_paths_release();
-  test_removing_the_binding_stops_the_calls();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_lock.c\n");
+  internal_test_mcdc_set_lock_validates();
+  internal_test_no_lock_is_the_default();
+  internal_test_volume_entry_points_bracket();
+  internal_test_file_entry_points_bracket();
+  internal_test_write_file_takes_the_lock_once();
+  internal_test_volume_error_paths_release();
+  internal_test_file_error_paths_release();
+  internal_test_removing_the_binding_stops_the_calls();
   return 0;
 }

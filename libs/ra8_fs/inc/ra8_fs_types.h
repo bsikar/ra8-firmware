@@ -60,6 +60,8 @@ typedef enum : uint16_t {
   k_ra8_fs_sector_min      = 512,  /**< Smallest supported sector size.      */
   k_ra8_fs_sector_max      = 4096, /**< Largest supported sector size (4Kn). */
   k_ra8_fs_dir_entry_bytes = 32,   /**< MS FAT spec sec 6 "Directory Entry". */
+  k_ra8_fs_dir_name_cap    = 742,  /**< Longest listed UTF-8 name plus NUL.  */
+  k_ra8_fs_dir_state_bytes = 640,  /**< Opaque caller-owned cursor state.    */
 } ra8_fs_byte_sizes_t;
 
 /**
@@ -258,6 +260,19 @@ typedef struct {
   uint8_t          in_use;              /**< 0 = slot free, 1 = mounted.                */
   uint8_t          exfat_upcase_ok;     /**< exFAT: volume's up-case table is ours.     */
 } ra8_fs_mount_t;
+
+/** @brief Stable directory-entry value copied by ::ra8_fs_dir_next. */
+typedef struct {
+  char     name[k_ra8_fs_dir_name_cap]; /**< NUL-terminated visible leaf. */
+  uint64_t size_bytes;                  /**< File bytes; zero for dirs.   */
+  uint8_t  attr;                        /**< On-disk FAT attributes.      */
+} ra8_fs_dirent_t;
+
+/** @brief Caller-owned opaque directory cursor. */
+typedef struct {
+  alignas(uint64_t) uint8_t state[k_ra8_fs_dir_state_bytes]; /**< Private cursor state. */
+  bool is_open; /**< Lifecycle guard owned by the facade. */
+} ra8_fs_dir_t;
 
 /**
  * @struct ra8_fs_file_t

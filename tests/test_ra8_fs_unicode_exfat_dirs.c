@@ -14,7 +14,7 @@
  * it bounded a UTF-8 component's BYTE length by the format's UNIT cap, so a
  * short Cyrillic folder name looked over-long while descending.
  *
- * These cases pin the join. Every one of them ends with `exfat_verify()`, the
+ * These cases pin the join. Every one of them ends with `internal_exfat_verify()`, the
  * structural scan #605 brought with it, and that is the point of putting them
  * here rather than in the file-side suite: the scan recomputes each entry set's
  * SetChecksum AND its NameHash from the volume's own bytes, so a directory
@@ -25,12 +25,12 @@
  * Every non-ASCII name is a `static const char[]` of byte escapes.
  *
  * @par Out-of-band `fsck.exfat` evidence:
- * `exfat_dump()` (from the shared fixture) writes each volume out under
+ * `internal_exfat_dump()` (from the shared fixture) writes each volume out under
  * `RA8_FS_EXFAT_DUMP`, exactly as #605's own suites do, so these images join
  * that evidence set rather than inventing a second convention.
  *
  * @par Evidence a real operating system can read:
- * Each scenario also calls `unicode_dump_image()` under `RA8_EXFAT_DUMP_DIR`,
+ * Each scenario also calls `internal_unicode_dump_image()` under `RA8_EXFAT_DUMP_DIR`,
  * the hook the exFAT unicode suites share, and
  * ::test_unicode_showcase_volume() exists for that hook alone: it builds ONE
  * volume carrying non-ASCII names from four scripts, as both files and
@@ -49,6 +49,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_exfat_dir_test_util.h"
@@ -138,7 +139,7 @@ static const char s_file_acc[] =
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_fs_mount_t* mount_fixture(void)
+RA8_INTERNAL static ra8_fs_mount_t* internal_mount_fixture(void)
 {
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
@@ -166,13 +167,13 @@ static ra8_fs_mount_t* mount_fixture(void)
  * @pre A formatted exFAT volume; nothing open.
  * @post Each folder was listed under its own spelling and then removed.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_mkdir_non_ascii_round_trip(void)
+RA8_INTERNAL static void internal_test_mkdir_non_ascii_round_trip(void)
 {
   TEST_BEGIN("exfat unicode dirs: a non-ASCII folder round-trips");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   const char* names[] = {s_dir_acc, s_dir_cjk, s_dir_cyr};
   for (uint32_t i = 0U; i < (uint32_t)(sizeof(names) / sizeof(names[0])); i++) {
@@ -182,13 +183,13 @@ static void test_mkdir_non_ascii_round_trip(void)
   }
   /* Reported under the spelling they were created with, and as DIRECTORIES. */
   name_ctx_t listing = {};
-  TEST_ASSERT_EQ(3U, list_names(h, "/", &listing));
+  TEST_ASSERT_EQ(3U, internal_list_names(h, "/", &listing));
   for (uint32_t i = 0U; i < (uint32_t)(sizeof(names) / sizeof(names[0])); i++) {
-    TEST_ASSERT_EQ(1U, has_dir(&listing, names[i]));
+    TEST_ASSERT_EQ(1U, internal_has_dir(&listing, names[i]));
   }
   /* The scan recomputes every SetChecksum and NameHash off the volume. */
-  exfat_verify(h, "unicode_dirs_created");
-  unicode_dump_image("unicode_dirs_created", h->partition_base_lba);
+  internal_exfat_verify(h, "unicode_dirs_created");
+  internal_unicode_dump_image("unicode_dirs_created", h->partition_base_lba);
 
   for (uint32_t i = 0U; i < (uint32_t)(sizeof(names) / sizeof(names[0])); i++) {
     char path[k_udir_path_cap] = {};
@@ -196,11 +197,11 @@ static void test_mkdir_non_ascii_round_trip(void)
     TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rmdir(h, path));
   }
   name_ctx_t empty = {};
-  TEST_ASSERT_EQ(0U, list_names(h, "/", &empty));
-  exfat_verify(h, "unicode_dirs_removed");
+  TEST_ASSERT_EQ(0U, internal_list_names(h, "/", &empty));
+  internal_exfat_verify(h, "unicode_dirs_removed");
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat unicode dirs: a non-ASCII folder round-trips");
 }
 
@@ -225,13 +226,13 @@ static void test_mkdir_non_ascii_round_trip(void)
  * @pre A formatted exFAT volume; nothing open.
  * @post The nested file was written, listed and read back through the path.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_nested_non_ascii_path(void)
+RA8_INTERNAL static void internal_test_nested_non_ascii_path(void)
 {
   TEST_BEGIN("exfat unicode dirs: a nested non-ASCII path resolves");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   char outer[k_udir_path_cap] = {};
   char inner[k_udir_path_cap] = {};
@@ -250,7 +251,7 @@ static void test_nested_non_ascii_path(void)
 
   /* Listed inside the innermost folder, under its own spelling. */
   name_ctx_t listing = {};
-  TEST_ASSERT_EQ(1U, list_names(h, inner, &listing));
+  TEST_ASSERT_EQ(1U, internal_list_names(h, inner, &listing));
   TEST_ASSERT_EQ(0, strcmp(listing.names[0], s_file_acc));
 
   /* And read back through the whole non-ASCII path. */
@@ -263,11 +264,11 @@ static void test_nested_non_ascii_path(void)
   TEST_ASSERT_EQ(0, memcmp(payload, back, (size_t)k_udir_payload));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  exfat_verify(h, "unicode_dirs_nested");
-  unicode_dump_image("unicode_dirs_nested", h->partition_base_lba);
+  internal_exfat_verify(h, "unicode_dirs_nested");
+  internal_unicode_dump_image("unicode_dirs_nested", h->partition_base_lba);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat unicode dirs: a nested non-ASCII path resolves");
 }
 
@@ -292,13 +293,13 @@ static void test_nested_non_ascii_path(void)
  * @pre A formatted exFAT volume; nothing open.
  * @post Both folders exist; an exact-fold duplicate is still refused.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_non_ascii_folder_and_file_do_not_collide(void)
+RA8_INTERNAL static void internal_test_non_ascii_folder_and_file_do_not_collide(void)
 {
   TEST_BEGIN("exfat unicode dirs: an accent distinguishes two folders");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
   char accented[k_udir_path_cap] = {};
   (void)snprintf(accented, sizeof(accented), "/%s", s_dir_acc);
@@ -306,9 +307,9 @@ static void test_non_ascii_folder_and_file_do_not_collide(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/Caf")); /* V1: same but for U+00E9 */
 
   name_ctx_t listing = {};
-  TEST_ASSERT_EQ(2U, list_names(h, "/", &listing));
-  TEST_ASSERT_EQ(1U, has_dir(&listing, s_dir_acc));
-  TEST_ASSERT_EQ(1U, has_dir(&listing, "Caf"));
+  TEST_ASSERT_EQ(2U, internal_list_names(h, "/", &listing));
+  TEST_ASSERT_EQ(1U, internal_has_dir(&listing, s_dir_acc));
+  TEST_ASSERT_EQ(1U, internal_has_dir(&listing, "Caf"));
 
   /* V2: the fold still catches a real duplicate, in the other case. */
   char upper[k_udir_path_cap] = {};
@@ -319,10 +320,10 @@ static void test_non_ascii_folder_and_file_do_not_collide(void)
                  (char)(unsigned char)k_udir_u8_cap_e);
   TEST_ASSERT_EQ(k_ra8_err_exists, ra8_fs_mkdir(h, upper));
 
-  exfat_verify(h, "unicode_dirs_no_collision");
-  unicode_dump_image("unicode_dirs_no_collision", h->partition_base_lba);
+  internal_exfat_verify(h, "unicode_dirs_no_collision");
+  internal_unicode_dump_image("unicode_dirs_no_collision", h->partition_base_lba);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat unicode dirs: an accent distinguishes two folders");
 }
 
@@ -363,7 +364,7 @@ static const char* const s_showcase_files[] = {s_acc_u8, s_cjk_u8, s_emoji_u8};
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void showcase_populate(ra8_fs_mount_t* h)
+RA8_INTERNAL static void internal_showcase_populate(ra8_fs_mount_t* h)
 {
   for (uint32_t i = 0U; i < (uint32_t)(sizeof(s_showcase_dirs) / sizeof(s_showcase_dirs[0])); i++) {
     char path[k_udir_path_cap] = {};
@@ -409,23 +410,23 @@ static void showcase_populate(ra8_fs_mount_t* h)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void showcase_assert_listings(ra8_fs_mount_t* h)
+RA8_INTERNAL static void internal_showcase_assert_listings(ra8_fs_mount_t* h)
 {
   name_ctx_t listing = {};
-  TEST_ASSERT_EQ(5U, list_names(h, "/", &listing));
+  TEST_ASSERT_EQ(5U, internal_list_names(h, "/", &listing));
   for (uint32_t i = 0U; i < (uint32_t)(sizeof(s_showcase_dirs) / sizeof(s_showcase_dirs[0])); i++) {
-    TEST_ASSERT_EQ(1U, has_dir(&listing, s_showcase_dirs[i]));
+    TEST_ASSERT_EQ(1U, internal_has_dir(&listing, s_showcase_dirs[i]));
   }
   for (uint32_t i = 0U; i < (uint32_t)(sizeof(s_showcase_files) / sizeof(s_showcase_files[0]));
        i++) {
-    TEST_ASSERT_EQ(1U, has_file(&listing, s_showcase_files[i]));
-    TEST_ASSERT_EQ(0U, has_dir(&listing, s_showcase_files[i]));
+    TEST_ASSERT_EQ(1U, internal_has_file(&listing, s_showcase_files[i]));
+    TEST_ASSERT_EQ(0U, internal_has_dir(&listing, s_showcase_files[i]));
   }
 
   char folder[k_udir_path_cap] = {};
   (void)snprintf(folder, sizeof(folder), "/%s", s_dir_cyr);
   name_ctx_t inside = {};
-  TEST_ASSERT_EQ(1U, list_names(h, folder, &inside));
+  TEST_ASSERT_EQ(1U, internal_list_names(h, folder, &inside));
   TEST_ASSERT_EQ(0, strcmp(inside.names[0], s_file_acc));
 }
 
@@ -445,7 +446,7 @@ static void showcase_assert_listings(ra8_fs_mount_t* h)
  *          The assertions are not decoration either. This is the only case in
  *          the suite where files and directories with non-ASCII names share one
  *          root, so it is the only one that would catch a scan that matched the
- *          right NAME against the wrong ENTRY KIND, and `exfat_verify()`
+ *          right NAME against the wrong ENTRY KIND, and `internal_exfat_verify()`
  *          recomputes every SetChecksum and NameHash on a root of six sets
  *          rather than of one.
  *
@@ -458,22 +459,22 @@ static void showcase_assert_listings(ra8_fs_mount_t* h)
  *       spelling it was created with.
  * @post The nested file lists under its own spelling inside its folder.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_unicode_showcase_volume(void)
+RA8_INTERNAL static void internal_test_unicode_showcase_volume(void)
 {
   TEST_BEGIN("exfat unicode dirs: one volume, four scripts, files and folders");
-  build_exfat_volume();
-  ra8_fs_mount_t* h = mount_fixture();
+  internal_build_exfat_volume();
+  ra8_fs_mount_t* h = internal_mount_fixture();
 
-  showcase_populate(h);
-  showcase_assert_listings(h);
+  internal_showcase_populate(h);
+  internal_showcase_assert_listings(h);
 
-  exfat_verify(h, "unicode_showcase");
-  unicode_dump_image("unicode_showcase", h->partition_base_lba);
+  internal_exfat_verify(h, "unicode_showcase");
+  internal_unicode_dump_image("unicode_showcase", h->partition_base_lba);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat unicode dirs: one volume, four scripts, files and folders");
 }
 
@@ -493,10 +494,9 @@ static void test_unicode_showcase_volume(void)
  */
 int32_t main(void)
 {
-  test_mkdir_non_ascii_round_trip();
-  test_nested_non_ascii_path();
-  test_non_ascii_folder_and_file_do_not_collide();
-  test_unicode_showcase_volume();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_unicode_exfat_dirs.c\n");
+  internal_test_mkdir_non_ascii_round_trip();
+  internal_test_nested_non_ascii_path();
+  internal_test_non_ascii_folder_and_file_do_not_collide();
+  internal_test_unicode_showcase_volume();
   return 0;
 }

@@ -85,8 +85,10 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_exfat_pick_cluster(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t prefer, uint32_t* out)
+static ra8_err_t internal_exfat_pick_cluster(const ra8_fs_mount_t* m,
+                                             uint64_t              bmp_lba,
+                                             uint32_t              prefer,
+                                             uint32_t*             out)
 {
   const uint32_t past_end = (uint32_t)k_cluster_first_data + m->count_of_clusters;
   if ((prefer >= (uint32_t)k_cluster_first_data) && (prefer < past_end)) {
@@ -136,11 +138,11 @@ priv_exfat_pick_cluster(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t pref
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_materialize_run(const ra8_fs_mount_t* m,
-                                            uint32_t              first,
-                                            uint32_t              alloc,
-                                            uint32_t              tail,
-                                            uint32_t              next)
+static ra8_err_t internal_exfat_materialize_run(const ra8_fs_mount_t* m,
+                                                uint32_t              first,
+                                                uint32_t              alloc,
+                                                uint32_t              tail,
+                                                uint32_t              next)
 {
   for (uint32_t i = 0U; (i + 1U) < alloc; i++) {
     const uint32_t  here = first + i;
@@ -183,7 +185,7 @@ static ra8_err_t priv_exfat_materialize_run(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_link_cluster(ra8_fs_file_t* file, uint32_t next)
+static ra8_err_t internal_exfat_link_cluster(ra8_fs_file_t* file, uint32_t next)
 {
   if (file->alloc_clusters == 0U) {
     return k_ra8_ok;
@@ -192,11 +194,11 @@ static ra8_err_t priv_exfat_link_cluster(ra8_fs_file_t* file, uint32_t next)
     return k_ra8_ok;
   }
   if (file->no_fat_chain != 0U) {
-    const ra8_err_t e = priv_exfat_materialize_run(file->mount,
-                                                   file->first_cluster,
-                                                   file->alloc_clusters,
-                                                   file->tail_cluster,
-                                                   next);
+    const ra8_err_t e = internal_exfat_materialize_run(file->mount,
+                                                       file->first_cluster,
+                                                       file->alloc_clusters,
+                                                       file->tail_cluster,
+                                                       next);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -237,7 +239,7 @@ static ra8_err_t priv_exfat_link_cluster(ra8_fs_file_t* file, uint32_t next)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_grow_one(ra8_fs_file_t* file)
+static ra8_err_t internal_exfat_grow_one(ra8_fs_file_t* file)
 {
   ra8_fs_mount_t* m       = file->mount;
   uint64_t        bmp_lba = 0U;
@@ -247,7 +249,7 @@ static ra8_err_t priv_exfat_grow_one(ra8_fs_file_t* file)
   }
   const uint32_t prefer = (file->alloc_clusters > 0U) ? (file->tail_cluster + 1U) : 0U;
   uint32_t       next   = 0U;
-  e                     = priv_exfat_pick_cluster(m, bmp_lba, prefer, &next);
+  e                     = internal_exfat_pick_cluster(m, bmp_lba, prefer, &next);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -256,7 +258,7 @@ static ra8_err_t priv_exfat_grow_one(ra8_fs_file_t* file)
     return e;
   }
   priv_alloc_hint_set(m, next + 1U);
-  e = priv_exfat_link_cluster(file, next);
+  e = internal_exfat_link_cluster(file, next);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -275,7 +277,7 @@ static ra8_err_t priv_exfat_grow_one(ra8_fs_file_t* file)
 ra8_err_t priv_exfat_ensure_clusters(ra8_fs_file_t* file, uint32_t need)
 {
   while (file->alloc_clusters < need) {
-    const ra8_err_t e = priv_exfat_grow_one(file);
+    const ra8_err_t e = internal_exfat_grow_one(file);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -330,11 +332,11 @@ ra8_err_t priv_exfat_ensure_clusters(ra8_fs_file_t* file, uint32_t need)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_dir_survey(const ra8_fs_mount_t* m,
-                                       const exfat_dir_t*    dir,
-                                       uint32_t*             out_alloc,
-                                       uint32_t*             out_tail,
-                                       uint8_t*              out_nofat)
+static ra8_err_t internal_exfat_dir_survey(const ra8_fs_mount_t* m,
+                                           const exfat_dir_t*    dir,
+                                           uint32_t*             out_alloc,
+                                           uint32_t*             out_tail,
+                                           uint8_t*              out_nofat)
 {
   if (dir->contig_end != 0U) {
     *out_nofat = 1U;
@@ -401,18 +403,18 @@ static ra8_err_t priv_exfat_dir_survey(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_dir_link(const ra8_fs_mount_t* m,
-                                     uint32_t              first,
-                                     uint32_t              alloc,
-                                     uint32_t              tail,
-                                     uint8_t*              nofat,
-                                     uint32_t              next)
+static ra8_err_t internal_exfat_dir_link(const ra8_fs_mount_t* m,
+                                         uint32_t              first,
+                                         uint32_t              alloc,
+                                         uint32_t              tail,
+                                         uint8_t*              nofat,
+                                         uint32_t              next)
 {
   if ((*nofat != 0U) && (next == (tail + 1U))) {
     return k_ra8_ok; /* the run stays contiguous; NoFatChain is still true */
   }
   if (*nofat != 0U) {
-    const ra8_err_t e = priv_exfat_materialize_run(m, first, alloc, tail, next);
+    const ra8_err_t e = internal_exfat_materialize_run(m, first, alloc, tail, next);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -457,10 +459,10 @@ static ra8_err_t priv_exfat_dir_link(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_dir_relen(const ra8_fs_mount_t* m,
-                                      const exfat_dir_t*    dir,
-                                      uint64_t              new_bytes,
-                                      uint8_t               nofat)
+static ra8_err_t internal_exfat_dir_relen(const ra8_fs_mount_t* m,
+                                          const exfat_dir_t*    dir,
+                                          uint64_t              new_bytes,
+                                          uint8_t               nofat)
 {
   uint8_t        set[k_exfat_max_set_bytes] = {};
   exfat_cursor_t cur                        = {.cluster          = dir->self_cluster,
@@ -528,11 +530,11 @@ static ra8_err_t priv_exfat_dir_relen(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_dir_append(const ra8_fs_mount_t* m,
-                                       const exfat_dir_t*    dir,
-                                       uint32_t              alloc,
-                                       uint32_t              tail,
-                                       uint8_t*              nofat)
+static ra8_err_t internal_exfat_dir_append(const ra8_fs_mount_t* m,
+                                           const exfat_dir_t*    dir,
+                                           uint32_t              alloc,
+                                           uint32_t              tail,
+                                           uint8_t*              nofat)
 {
   uint64_t  bmp_lba = 0U;
   ra8_err_t e       = priv_exfat_bitmap_lba(m, &bmp_lba);
@@ -540,7 +542,7 @@ static ra8_err_t priv_exfat_dir_append(const ra8_fs_mount_t* m,
     return e;
   }
   uint32_t next = 0U;
-  e             = priv_exfat_pick_cluster(m, bmp_lba, tail + 1U, &next);
+  e             = internal_exfat_pick_cluster(m, bmp_lba, tail + 1U, &next);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -553,7 +555,7 @@ static ra8_err_t priv_exfat_dir_append(const ra8_fs_mount_t* m,
     return e;
   }
   priv_alloc_hint_set(m, next + 1U);
-  e = priv_exfat_dir_link(m, dir->cluster, alloc, tail, nofat, next);
+  e = internal_exfat_dir_link(m, dir->cluster, alloc, tail, nofat, next);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -566,11 +568,11 @@ ra8_err_t priv_exfat_grow_dir(const ra8_fs_mount_t* m, exfat_dir_t* dir)
   uint32_t  alloc = 0U;
   uint32_t  tail  = 0U;
   uint8_t   nofat = 0U;
-  ra8_err_t e     = priv_exfat_dir_survey(m, dir, &alloc, &tail, &nofat);
+  ra8_err_t e     = internal_exfat_dir_survey(m, dir, &alloc, &tail, &nofat);
   if (e != k_ra8_ok) {
     return e;
   }
-  e = priv_exfat_dir_append(m, dir, alloc, tail, &nofat);
+  e = internal_exfat_dir_append(m, dir, alloc, tail, &nofat);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -581,7 +583,7 @@ ra8_err_t priv_exfat_grow_dir(const ra8_fs_mount_t* m, exfat_dir_t* dir)
    * the location of its own set and must update it, or the next mount reads the
    * old length and cannot see the cluster this call added (#677). */
   if (dir->self_cluster >= (uint32_t)k_cluster_first_data) {
-    e = priv_exfat_dir_relen(m, dir, (uint64_t)new_alloc * cbytes, nofat);
+    e = internal_exfat_dir_relen(m, dir, (uint64_t)new_alloc * cbytes, nofat);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -620,7 +622,7 @@ ra8_err_t priv_exfat_grow_dir(const ra8_fs_mount_t* m, exfat_dir_t* dir)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_cluster_at(ra8_fs_file_t* file, uint32_t idx, uint32_t* out)
+static ra8_err_t internal_exfat_cluster_at(ra8_fs_file_t* file, uint32_t idx, uint32_t* out)
 {
   if (file->no_fat_chain != 0U) {
     *out = file->first_cluster + idx;
@@ -686,11 +688,11 @@ static ra8_err_t priv_exfat_cluster_at(ra8_fs_file_t* file, uint32_t idx, uint32
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_slice_at(ra8_fs_file_t* file,
-                                     uint64_t       pos,
-                                     uint64_t*      out_lba,
-                                     uint32_t*      out_off,
-                                     uint32_t*      out_room)
+static ra8_err_t internal_exfat_slice_at(ra8_fs_file_t* file,
+                                         uint64_t       pos,
+                                         uint64_t*      out_lba,
+                                         uint32_t*      out_off,
+                                         uint32_t*      out_room)
 {
   const ra8_fs_mount_t* m      = file->mount;
   const uint32_t        cbytes = priv_cluster_bytes(m);
@@ -700,7 +702,7 @@ static ra8_err_t priv_exfat_slice_at(ra8_fs_file_t* file,
     return e;
   }
   uint32_t cur = 0U;
-  e            = priv_exfat_cluster_at(file, idx, &cur);
+  e            = internal_exfat_cluster_at(file, idx, &cur);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -740,13 +742,13 @@ static ra8_err_t priv_exfat_slice_at(ra8_fs_file_t* file,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_close_gap(ra8_fs_file_t* file)
+static ra8_err_t internal_exfat_close_gap(ra8_fs_file_t* file)
 {
   while (file->valid_bytes < file->offset) {
     uint64_t  lba  = 0U;
     uint32_t  off  = 0U;
     uint32_t  room = 0U;
-    ra8_err_t e    = priv_exfat_slice_at(file, file->valid_bytes, &lba, &off, &room);
+    ra8_err_t e    = internal_exfat_slice_at(file, file->valid_bytes, &lba, &off, &room);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -767,7 +769,7 @@ static ra8_err_t priv_exfat_close_gap(ra8_fs_file_t* file)
 /* `priv_exfat_write_stream()`: see header for the documented contract. */
 ra8_err_t priv_exfat_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
 {
-  ra8_err_t e = priv_exfat_close_gap(file);
+  ra8_err_t e = internal_exfat_close_gap(file);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -776,7 +778,7 @@ ra8_err_t priv_exfat_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint3
     uint64_t lba  = 0U;
     uint32_t off  = 0U;
     uint32_t room = 0U;
-    e             = priv_exfat_slice_at(file, file->offset, &lba, &off, &room);
+    e             = internal_exfat_slice_at(file, file->offset, &lba, &off, &room);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -835,7 +837,7 @@ ra8_err_t priv_exfat_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint3
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_exfat_patch_stream(const ra8_fs_file_t* file, uint8_t* strm)
+static void internal_exfat_patch_stream(const ra8_fs_file_t* file, uint8_t* strm)
 {
   uint8_t  flags = (uint8_t)k_exfat_secflag_poss;
   uint32_t first = 0U;
@@ -878,10 +880,10 @@ static void priv_exfat_patch_stream(const ra8_fs_file_t* file, uint8_t* strm)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_gather_set(const ra8_fs_file_t* file,
-                                       uint8_t*             set,
-                                       exfat_setpos_t*      at_file,
-                                       exfat_setpos_t*      at_stream)
+static ra8_err_t internal_exfat_gather_set(const ra8_fs_file_t* file,
+                                           uint8_t*             set,
+                                           exfat_setpos_t*      at_file,
+                                           exfat_setpos_t*      at_stream)
 {
   exfat_cursor_t cur = {.cluster          = file->entry_set_cluster,
                         .entry_in_cluster = file->entry_set_index,
@@ -910,7 +912,7 @@ ra8_err_t priv_exfat_flush_set(ra8_fs_file_t* file)
   uint8_t               set[k_exfat_max_set_bytes] = {};
   exfat_setpos_t        at_file                    = {};
   exfat_setpos_t        at_stream                  = {};
-  ra8_err_t             e = priv_exfat_gather_set(file, set, &at_file, &at_stream);
+  ra8_err_t             e = internal_exfat_gather_set(file, set, &at_file, &at_stream);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -923,7 +925,7 @@ ra8_err_t priv_exfat_flush_set(ra8_fs_file_t* file)
    * on a handle that reached a write) are preserved. */
   set[k_exfat_off_file_attr] =
     (uint8_t)(set[k_exfat_off_file_attr] | (uint8_t)k_exfat_attr_archive);
-  priv_exfat_patch_stream(file, &set[k_exfat_entry_bytes]);
+  internal_exfat_patch_stream(file, &set[k_exfat_entry_bytes]);
   priv_wr16(&set[k_exfat_off_file_csum],
             priv_exfat_set_checksum(set, file->entry_set_count * (uint32_t)k_exfat_entry_bytes));
   e =

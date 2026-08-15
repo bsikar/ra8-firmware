@@ -33,10 +33,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_mount_test_util.h"
@@ -89,12 +89,12 @@ typedef enum : uint32_t {
  * @post Both successfully-mounted handles are unmounted; s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mount_table_full(void)
+RA8_INTERNAL static void internal_test_mount_table_full(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: mount table full returns no_mem");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h1 = nullptr;
   ra8_fs_mount_t* h2 = nullptr;
   ra8_fs_mount_t* h3 = nullptr;
@@ -103,7 +103,7 @@ static void test_mount_table_full(void)
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_fs_mount(&s_backend, &h3));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h1));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h2));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: mount table full returns no_mem");
 }
 
@@ -132,12 +132,12 @@ static void test_mount_table_full(void)
  * @post All four open handles are closed; mount unmounted; s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_file_table_full(void)
+RA8_INTERNAL static void internal_test_file_table_full(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: file table full returns no_mem");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
@@ -173,7 +173,7 @@ static void test_file_table_full(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fc));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(fd));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: file table full returns no_mem");
 }
 
@@ -202,28 +202,28 @@ static void test_file_table_full(void)
  * @post s_disk freed; no mount left active.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_geometry_validation_fail(void)
+RA8_INTERNAL static void internal_test_geometry_validation_fail(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: total_sectors < first_data_lba returns validation_failed");
   /* Allocate 20 sectors to avoid OOB reads; only LBA 0 is meaningful here. */
-  alloc_disk((uint32_t)k_geo_probe_sectors);
+  internal_alloc_disk((uint32_t)k_geo_probe_sectors);
   uint8_t* bpb = s_disk.bytes;
   /* BPB: bytes_per_sec=512, spc=1, rsvd=1, num_fats=2, root_ents=16,
    * fat_sz=32, tot_sec=10.  first_data_lba = 1+64+1 = 66 > 10. */
-  put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_mc_blk);
+  internal_put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_mc_blk);
   bpb[k_bpb_off_sec_per_clus] = 1U;
-  put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
   bpb[k_bpb_off_num_fats] = 2U;
-  put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, 16U);
-  put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_geo_bad_total);
-  put16(bpb, (uint32_t)k_bpb_off_fat_sz16, 32U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, 16U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_geo_bad_total);
+  internal_put16(bpb, (uint32_t)k_bpb_off_fat_sz16, 32U);
   bpb[k_bpb_off_sig0] = (uint8_t)k_bpb_sig0_val;
   bpb[k_bpb_off_sig1] = (uint8_t)k_bpb_sig1_val;
   ra8_fs_mount_t* h   = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_fs_mount(&s_backend, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: total_sectors < first_data_lba returns validation_failed");
 }
 
@@ -250,17 +250,17 @@ static void test_geometry_validation_fail(void)
  * @post s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_unmount_not_in_use(void)
+RA8_INTERNAL static void internal_test_unmount_not_in_use(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: unmount not-in-use slot returns invalid_state");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_unmount(h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: unmount not-in-use slot returns invalid_state");
 }
 
@@ -287,15 +287,15 @@ static void test_unmount_not_in_use(void)
  * @post No mount or disk state changed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_format_get_capacity_fails(void)
+RA8_INTERNAL static void internal_test_format_get_capacity_fails(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: format propagates get_capacity error");
   const ra8_fs_backend_t fail_backend = {
     .read_block   = nullptr,
-    .write_block  = dummy_write,
-    .get_capacity = fail_capacity,
+    .write_block  = internal_dummy_write,
+    .get_capacity = internal_fail_capacity,
     .ctx          = nullptr,
   };
   ra8_fs_format_opts_t opts = {};
@@ -327,15 +327,15 @@ static void test_format_get_capacity_fails(void)
  * @post No mount or disk state changed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_format_zero_block_count(void)
+RA8_INTERNAL static void internal_test_format_zero_block_count(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: format rejects zero block count");
   const ra8_fs_backend_t zero_backend = {
     .read_block   = nullptr,
-    .write_block  = dummy_write,
-    .get_capacity = zero_count_capacity,
+    .write_block  = internal_dummy_write,
+    .get_capacity = internal_zero_count_capacity,
     .ctx          = nullptr,
   };
   ra8_fs_format_opts_t opts = {};
@@ -368,15 +368,15 @@ static void test_format_zero_block_count(void)
  * @post No mount or disk state changed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_first_read_fails(void)
+RA8_INTERNAL static void internal_test_first_read_fails(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: first read fail from priv_read_boot_sector");
   const ra8_fs_backend_t fail_rd_backend = {
-    .read_block   = always_fail_read,
-    .write_block  = dummy_write,
-    .get_capacity = dummy_capacity_ok,
+    .read_block   = internal_always_fail_read,
+    .write_block  = internal_dummy_write,
+    .get_capacity = internal_dummy_capacity_ok,
     .ctx          = nullptr,
   };
   ra8_fs_mount_t* h = nullptr;
@@ -410,23 +410,23 @@ static void test_first_read_fails(void)
  * @post s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_mbr_second_read_fails(void)
+RA8_INTERNAL static void internal_test_mbr_second_read_fails(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: MBR second read fail at line 530");
   /* 3 sectors only; partition LBA 50 is beyond the disk boundary. */
-  alloc_disk(3U);
+  internal_alloc_disk(3U);
   uint8_t* lba0 = s_disk.bytes;
   /* Non-GPT MBR: type 0x01, partition LBA 50. bytes_per_sec left at 0 so
    * the first BPB parse fails and the MBR path is taken. */
   lba0[k_bpb_off_sig0]      = (uint8_t)k_bpb_sig0_val;
   lba0[k_bpb_off_sig1]      = (uint8_t)k_bpb_sig1_val;
   lba0[k_mbr_off_part_type] = 0x01U;
-  put32(lba0, (uint32_t)k_mbr_off_part_lba, (uint32_t)k_mbr_far_part_lba);
+  internal_put32(lba0, (uint32_t)k_mbr_off_part_lba, (uint32_t)k_mbr_far_part_lba);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount(&s_backend, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: MBR second read fail at line 530");
 }
 
@@ -455,16 +455,16 @@ static void test_mbr_second_read_fails(void)
  * @post s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_gpt_header_read_fails(void)
+RA8_INTERNAL static void internal_test_gpt_header_read_fails(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT header read fails at line 419");
-  alloc_disk(1U);
-  write_protective_mbr(s_disk.bytes, 1U);
+  internal_alloc_disk(1U);
+  internal_write_protective_mbr(s_disk.bytes, 1U);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount(&s_backend, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: GPT header read fails at line 419");
 }
 
@@ -479,12 +479,12 @@ static void test_gpt_header_read_fails(void)
  *
  * @details
  * LBA 0 is a protective MBR; LBA 1 is all zeros (calloc default).  The
- * signature loop in priv_gpt_locate_volume finds s_scratch[0] == 0 != 0x45
+ * signature loop in priv_gpt_locate_volume finds priv_scratch[0] == 0 != 0x45
  * ('E') and returns k_ra8_err_validation_failed at line 423.
  * priv_read_boot_sector propagates it at line 524.
  *
  * @par MC/DC:
- * Decision: `if (s_scratch[i] != k_gpt_signature[i])` (1 cond per iteration).
+ * Decision: `if (priv_scratch[i] != k_gpt_signature[i])` (1 cond per iteration).
  * V1: all signature bytes match -> false on every iteration (normal path).
  * V2: first byte differs -> true -> k_ra8_err_validation_failed (covered here).
  *
@@ -492,17 +492,17 @@ static void test_gpt_header_read_fails(void)
  * @post s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_gpt_bad_signature(void)
+RA8_INTERNAL static void internal_test_gpt_bad_signature(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT bad signature returns validation_failed");
-  alloc_disk(2U);
-  write_protective_mbr(s_disk.bytes, 1U);
+  internal_alloc_disk(2U);
+  internal_write_protective_mbr(s_disk.bytes, 1U);
   /* LBA 1 is left all-zero by calloc; "EFI PART" is absent. */
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_fs_mount(&s_backend, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: GPT bad signature returns validation_failed");
 }
 
@@ -532,20 +532,20 @@ static void test_gpt_bad_signature(void)
  * @post s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_gpt_entry_lba_hi_nonzero(void)
+RA8_INTERNAL static void internal_test_gpt_entry_lba_hi_nonzero(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry_lba past 2 TiB reaches the backend");
-  alloc_disk(3U);
-  write_protective_mbr(s_disk.bytes, 1U);
+  internal_alloc_disk(3U);
+  internal_write_protective_mbr(s_disk.bytes, 1U);
   uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
-  write_gpt_header(lba1, 2U, 1U, 4U, (uint32_t)k_gpt_entry_size); /* entry_lba_hi = 1 */
+  internal_write_gpt_header(lba1, 2U, 1U, 4U, (uint32_t)k_gpt_entry_size); /* entry_lba_hi = 1 */
   ra8_fs_mount_t* h = nullptr;
   /* The 64-bit LBA (2^32 + 2) is handed to the backend, whose fake medium is
    * three sectors long -- its own bounds check answers. */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount(&s_backend, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: GPT entry_lba past 2 TiB reaches the backend");
 }
 
@@ -572,18 +572,18 @@ static void test_gpt_entry_lba_hi_nonzero(void)
  * @post s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_gpt_entry_lba_zero(void)
+RA8_INTERNAL static void internal_test_gpt_entry_lba_zero(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry_lba zero returns validation_failed");
-  alloc_disk(3U);
-  write_protective_mbr(s_disk.bytes, 1U);
+  internal_alloc_disk(3U);
+  internal_write_protective_mbr(s_disk.bytes, 1U);
   uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
-  write_gpt_header(lba1, 0U, 0U, 4U, (uint32_t)k_gpt_entry_size); /* entry_lba = 0 */
+  internal_write_gpt_header(lba1, 0U, 0U, 4U, (uint32_t)k_gpt_entry_size); /* entry_lba = 0 */
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_fs_mount(&s_backend, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: GPT entry_lba zero returns validation_failed");
 }
 
@@ -610,18 +610,22 @@ static void test_gpt_entry_lba_zero(void)
  * @post s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_gpt_entry_size_bad(void)
+RA8_INTERNAL static void internal_test_gpt_entry_size_bad(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry_size != 128 returns not_supported");
-  alloc_disk(3U);
-  write_protective_mbr(s_disk.bytes, 1U);
+  internal_alloc_disk(3U);
+  internal_write_protective_mbr(s_disk.bytes, 1U);
   uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
-  write_gpt_header(lba1, 2U, 0U, 4U, (uint32_t)k_gpt_entry_size_bad); /* entry_size != 128 */
+  internal_write_gpt_header(lba1,
+                            2U,
+                            0U,
+                            4U,
+                            (uint32_t)k_gpt_entry_size_bad); /* entry_size != 128 */
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_mount(&s_backend, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: GPT entry_size != 128 returns not_supported");
 }
 
@@ -653,23 +657,23 @@ static void test_gpt_entry_size_bad(void)
  * @post s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_gpt_count_clamped_scan_fails(void)
+RA8_INTERNAL static void internal_test_gpt_count_clamped_scan_fails(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT count clamped, scan read fails at line 378");
-  alloc_disk(3U);
-  write_protective_mbr(s_disk.bytes, 1U);
+  internal_alloc_disk(3U);
+  internal_write_protective_mbr(s_disk.bytes, 1U);
   uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
-  write_gpt_header(lba1,
-                   2U,
-                   0U,
-                   (uint32_t)k_gpt_count_overmax,
-                   (uint32_t)k_gpt_entry_size); /* count > 128 -> clamped */
+  internal_write_gpt_header(lba1,
+                            2U,
+                            0U,
+                            (uint32_t)k_gpt_count_overmax,
+                            (uint32_t)k_gpt_entry_size); /* count > 128 -> clamped */
   /* LBA 2 stays all-zero (null GUIDs, no candidates). LBA 3 does not exist. */
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount(&s_backend, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: GPT count clamped, scan read fails at line 378");
 }
 
@@ -698,15 +702,15 @@ static void test_gpt_count_clamped_scan_fails(void)
  * @post s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_gpt_entry_hi_first_lba(void)
+RA8_INTERNAL static void internal_test_gpt_entry_hi_first_lba(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry first_lba past 2 TiB reaches the backend");
-  alloc_disk(4U);
-  write_protective_mbr(s_disk.bytes, 1U);
+  internal_alloc_disk(4U);
+  internal_write_protective_mbr(s_disk.bytes, 1U);
   uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
-  write_gpt_header(lba1, 2U, 0U, 4U, (uint32_t)k_gpt_entry_size);
+  internal_write_gpt_header(lba1, 2U, 0U, 4U, (uint32_t)k_gpt_entry_size);
   /* Entry 0 in LBA 2: non-zero GUID (bytes 0-15 = 1) + hi first_lba = 1. */
   uint8_t* lba2   = &s_disk.bytes[(size_t)2U * (uint32_t)k_mc_blk];
   uint8_t* entry0 = lba2;
@@ -721,7 +725,7 @@ static void test_gpt_entry_hi_first_lba(void)
   /* The 64-bit LBA is handed to the backend, whose four-sector fake medium
    * answers with its own bounds error rather than the parser refusing. */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount(&s_backend, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: GPT entry first_lba past 2 TiB reaches the backend");
 }
 
@@ -754,27 +758,29 @@ static void test_gpt_entry_hi_first_lba(void)
  * @post s_disk freed.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_gpt_non_basic_data_fallback(void)
+RA8_INTERNAL static void internal_test_gpt_non_basic_data_fallback(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: non-Basic-Data GUID uses any_lba fallback");
   /* 10 sectors: MBR(0)+GPT_hdr(1)+entries(2)+spare(3)+partition_start(4-9). */
-  alloc_disk((uint32_t)k_geo_gpt_disk);
-  write_protective_mbr(s_disk.bytes, 1U);
+  internal_alloc_disk((uint32_t)k_geo_gpt_disk);
+  internal_write_protective_mbr(s_disk.bytes, 1U);
   uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
-  write_gpt_header(lba1, 2U, 0U, 4U, (uint32_t)k_gpt_entry_size);
+  internal_write_gpt_header(lba1, 2U, 0U, 4U, (uint32_t)k_gpt_entry_size);
   /* Entry 0: GUID[0]=0x02 (not 0xA2 = Basic Data[0]) -> line 305 triggered.
    * first_lba low=4 (within 10 sectors), high=0. */
   uint8_t* lba2   = &s_disk.bytes[(size_t)2U * (uint32_t)k_mc_blk];
   uint8_t* entry0 = lba2;
-  entry0[0]       = 0x02U;                           /* GUID byte 0: non-zero, non-basic-data */
-  put32(entry0, (uint32_t)k_gpt_ent_off_lba_lo, 4U); /* first_lba low = 4                     */
+  entry0[0]       = 0x02U; /* GUID byte 0: non-zero, non-basic-data */
+  internal_put32(entry0,
+                 (uint32_t)k_gpt_ent_off_lba_lo,
+                 4U); /* first_lba low = 4                     */
   /* Entries 1-3 remain all-zero. LBA 4-9 all-zero (no valid BPB). */
   ra8_fs_mount_t* h = nullptr;
   /* The FAT parse at LBA 4 finds no 0x55/0xAA -> k_ra8_err_validation_failed. */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_fs_mount(&s_backend, &h));
-  free_disk();
+  internal_free_disk();
   TEST_END("ra8_fs_fat_mount cov: non-Basic-Data GUID uses any_lba fallback");
 }
 
@@ -785,22 +791,21 @@ static void test_gpt_non_basic_data_fallback(void)
 
 int main(void)
 {
-  test_mount_table_full();
-  test_file_table_full();
-  test_geometry_validation_fail();
-  test_unmount_not_in_use();
-  test_format_get_capacity_fails();
-  test_format_zero_block_count();
-  test_first_read_fails();
-  test_mbr_second_read_fails();
-  test_gpt_header_read_fails();
-  test_gpt_bad_signature();
-  test_gpt_entry_lba_hi_nonzero();
-  test_gpt_entry_lba_zero();
-  test_gpt_entry_size_bad();
-  test_gpt_count_clamped_scan_fails();
-  test_gpt_entry_hi_first_lba();
-  test_gpt_non_basic_data_fallback();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_mount_cov.c\n");
+  internal_test_mount_table_full();
+  internal_test_file_table_full();
+  internal_test_geometry_validation_fail();
+  internal_test_unmount_not_in_use();
+  internal_test_format_get_capacity_fails();
+  internal_test_format_zero_block_count();
+  internal_test_first_read_fails();
+  internal_test_mbr_second_read_fails();
+  internal_test_gpt_header_read_fails();
+  internal_test_gpt_bad_signature();
+  internal_test_gpt_entry_lba_hi_nonzero();
+  internal_test_gpt_entry_lba_zero();
+  internal_test_gpt_entry_size_bad();
+  internal_test_gpt_count_clamped_scan_fails();
+  internal_test_gpt_entry_hi_first_lba();
+  internal_test_gpt_non_basic_data_fallback();
   return 0;
 }

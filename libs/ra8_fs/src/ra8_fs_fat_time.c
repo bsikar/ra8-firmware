@@ -150,7 +150,7 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_clamp_u32(uint32_t v, uint32_t lo, uint32_t hi)
+static uint32_t internal_clamp_u32(uint32_t v, uint32_t lo, uint32_t hi)
 {
   if (v < lo) {
     return lo;
@@ -186,18 +186,20 @@ static uint32_t priv_clamp_u32(uint32_t v, uint32_t lo, uint32_t hi)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_clamp_datetime(ra8_fs_datetime_t* t)
+static void internal_clamp_datetime(ra8_fs_datetime_t* t)
 {
-  t->year =
-    (uint16_t)priv_clamp_u32(t->year, (uint32_t)k_fs_time_epoch_year, (uint32_t)k_fs_time_year_max);
-  t->month =
-    (uint8_t)priv_clamp_u32(t->month, (uint32_t)k_fs_time_month_min, (uint32_t)k_fs_time_month_max);
+  t->year  = (uint16_t)internal_clamp_u32(t->year,
+                                          (uint32_t)k_fs_time_epoch_year,
+                                          (uint32_t)k_fs_time_year_max);
+  t->month = (uint8_t)internal_clamp_u32(t->month,
+                                         (uint32_t)k_fs_time_month_min,
+                                         (uint32_t)k_fs_time_month_max);
   t->day =
-    (uint8_t)priv_clamp_u32(t->day, (uint32_t)k_fs_time_day_min, (uint32_t)k_fs_time_day_max);
-  t->hour        = (uint8_t)priv_clamp_u32(t->hour, 0U, (uint32_t)k_fs_time_hour_max);
-  t->minute      = (uint8_t)priv_clamp_u32(t->minute, 0U, (uint32_t)k_fs_time_minute_max);
-  t->second      = (uint8_t)priv_clamp_u32(t->second, 0U, (uint32_t)k_fs_time_second_max);
-  t->centisecond = (uint8_t)priv_clamp_u32(t->centisecond, 0U, (uint32_t)k_fs_time_centi_max);
+    (uint8_t)internal_clamp_u32(t->day, (uint32_t)k_fs_time_day_min, (uint32_t)k_fs_time_day_max);
+  t->hour        = (uint8_t)internal_clamp_u32(t->hour, 0U, (uint32_t)k_fs_time_hour_max);
+  t->minute      = (uint8_t)internal_clamp_u32(t->minute, 0U, (uint32_t)k_fs_time_minute_max);
+  t->second      = (uint8_t)internal_clamp_u32(t->second, 0U, (uint32_t)k_fs_time_second_max);
+  t->centisecond = (uint8_t)internal_clamp_u32(t->centisecond, 0U, (uint32_t)k_fs_time_centi_max);
 }
 
 /**
@@ -232,7 +234,7 @@ static void priv_clamp_datetime(ra8_fs_datetime_t* t)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_now_or_epoch(ra8_fs_datetime_t* out)
+static bool internal_now_or_epoch(ra8_fs_datetime_t* out)
 {
   *out       = (ra8_fs_datetime_t){};
   out->year  = (uint16_t)k_fs_time_epoch_year;
@@ -246,7 +248,7 @@ static bool priv_now_or_epoch(ra8_fs_datetime_t* out)
       real = true;
     }
   }
-  priv_clamp_datetime(out);
+  internal_clamp_datetime(out);
   return real;
 }
 
@@ -279,7 +281,7 @@ static bool priv_now_or_epoch(ra8_fs_datetime_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_tenths_of(const ra8_fs_datetime_t* t)
+static uint8_t internal_tenths_of(const ra8_fs_datetime_t* t)
 {
   const uint32_t odd = (uint32_t)t->second % (uint32_t)k_fs_time_second_div;
   return (uint8_t)((odd * (uint32_t)k_fs_centi_per_second) + (uint32_t)t->centisecond);
@@ -311,7 +313,7 @@ static uint8_t priv_tenths_of(const ra8_fs_datetime_t* t)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_utc_byte(int16_t minutes)
+static uint8_t internal_utc_byte(int16_t minutes)
 {
   if (minutes < (int16_t)k_fs_utc_span_min) {
     return (uint8_t)k_fs_utc_unknown;
@@ -351,7 +353,7 @@ static uint8_t priv_utc_byte(int16_t minutes)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_fat_pack(const ra8_fs_datetime_t* t, fat_stamp_t* out)
+static void internal_fat_pack(const ra8_fs_datetime_t* t, fat_stamp_t* out)
 {
   const uint32_t years = (uint32_t)t->year - (uint32_t)k_fs_time_epoch_year;
   out->date =
@@ -360,7 +362,7 @@ static void priv_fat_pack(const ra8_fs_datetime_t* t, fat_stamp_t* out)
   out->time  = (uint16_t)(((uint32_t)t->hour << (uint32_t)k_fs_time_shift_hour) |
                           ((uint32_t)t->minute << (uint32_t)k_fs_time_shift_minute) |
                           ((uint32_t)t->second / (uint32_t)k_fs_time_second_div));
-  out->tenth = priv_tenths_of(t);
+  out->tenth = internal_tenths_of(t);
 }
 
 /**
@@ -384,11 +386,11 @@ static void priv_fat_pack(const ra8_fs_datetime_t* t, fat_stamp_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_fat_stamp_now(fat_stamp_t* out)
+static void internal_fat_stamp_now(fat_stamp_t* out)
 {
   ra8_fs_datetime_t t = {};
-  (void)priv_now_or_epoch(&t); /* FAT has no offset field: real or epoch, same packing */
-  priv_fat_pack(&t, out);
+  (void)internal_now_or_epoch(&t); /* FAT has no offset field: real or epoch, same packing */
+  internal_fat_pack(&t, out);
 }
 
 /**
@@ -418,7 +420,7 @@ static void priv_fat_stamp_now(fat_stamp_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_exfat_pack(const ra8_fs_datetime_t* t, bool real, exfat_stamp_t* out)
+static void internal_exfat_pack(const ra8_fs_datetime_t* t, bool real, exfat_stamp_t* out)
 {
   const uint32_t years = (uint32_t)t->year - (uint32_t)k_fs_time_epoch_year;
   const uint32_t date  = (years << (uint32_t)k_fs_xf_shift_year) |
@@ -427,12 +429,12 @@ static void priv_exfat_pack(const ra8_fs_datetime_t* t, bool real, exfat_stamp_t
                          ((uint32_t)t->minute << (uint32_t)k_fs_time_shift_minute) |
                          ((uint32_t)t->second / (uint32_t)k_fs_time_second_div);
   out->stamp           = (date << (uint32_t)k_fs_xf_shift_date) | time;
-  out->inc10           = priv_tenths_of(t);
+  out->inc10           = internal_tenths_of(t);
   /* An offset is a claim about a real instant. The epoch placeholder is not
    * one, so saying "this is UTC" about it would be a fabrication -- exFAT's
    * OffsetValid-clear encoding exists for exactly that case. A caller-supplied
    * `utime` reading IS a real instant, so its offset is honoured. */
-  out->utc = real ? priv_utc_byte(t->utc_offset_min) : (uint8_t)k_fs_utc_unknown;
+  out->utc = real ? internal_utc_byte(t->utc_offset_min) : (uint8_t)k_fs_utc_unknown;
 }
 
 /**
@@ -456,11 +458,11 @@ static void priv_exfat_pack(const ra8_fs_datetime_t* t, bool real, exfat_stamp_t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_exfat_stamp_now(exfat_stamp_t* out)
+static void internal_exfat_stamp_now(exfat_stamp_t* out)
 {
   ra8_fs_datetime_t t    = {};
-  const bool        real = priv_now_or_epoch(&t);
-  priv_exfat_pack(&t, real, out);
+  const bool        real = internal_now_or_epoch(&t);
+  internal_exfat_pack(&t, real, out);
 }
 
 /* =============================================================================
@@ -472,7 +474,7 @@ static void priv_exfat_stamp_now(exfat_stamp_t* out)
 void priv_fat_entry_stamp_create(uint8_t* entry)
 {
   fat_stamp_t s = {};
-  priv_fat_stamp_now(&s);
+  internal_fat_stamp_now(&s);
   entry[k_dir_off_crt_time_tenth] = s.tenth;
   priv_wr16(&entry[k_dir_off_crt_time], s.time);
   priv_wr16(&entry[k_dir_off_crt_date], s.date);
@@ -485,7 +487,7 @@ void priv_fat_entry_stamp_create(uint8_t* entry)
 void priv_fat_entry_stamp_write(uint8_t* entry)
 {
   fat_stamp_t s = {};
-  priv_fat_stamp_now(&s);
+  internal_fat_stamp_now(&s);
   priv_wr16(&entry[k_dir_off_wrt_time], s.time);
   priv_wr16(&entry[k_dir_off_wrt_date], s.date);
   priv_wr16(&entry[k_dir_off_lst_acc_date], s.date);
@@ -495,7 +497,7 @@ void priv_fat_entry_stamp_write(uint8_t* entry)
 void priv_fat_entry_stamp_access(uint8_t* entry)
 {
   fat_stamp_t s = {};
-  priv_fat_stamp_now(&s);
+  internal_fat_stamp_now(&s);
   priv_wr16(&entry[k_dir_off_lst_acc_date], s.date);
 }
 
@@ -503,7 +505,7 @@ void priv_fat_entry_stamp_access(uint8_t* entry)
 void priv_exfat_file_stamp_create(uint8_t* file_entry)
 {
   exfat_stamp_t s = {};
-  priv_exfat_stamp_now(&s);
+  internal_exfat_stamp_now(&s);
   priv_wr32(&file_entry[k_exfat_off_file_ctime], s.stamp);
   priv_wr32(&file_entry[k_exfat_off_file_mtime], s.stamp);
   priv_wr32(&file_entry[k_exfat_off_file_atime], s.stamp);
@@ -518,7 +520,7 @@ void priv_exfat_file_stamp_create(uint8_t* file_entry)
 void priv_exfat_file_stamp_write(uint8_t* file_entry)
 {
   exfat_stamp_t s = {};
-  priv_exfat_stamp_now(&s);
+  internal_exfat_stamp_now(&s);
   priv_wr32(&file_entry[k_exfat_off_file_mtime], s.stamp);
   priv_wr32(&file_entry[k_exfat_off_file_atime], s.stamp);
   file_entry[k_exfat_off_file_m10ms] = s.inc10;
@@ -530,7 +532,7 @@ void priv_exfat_file_stamp_write(uint8_t* file_entry)
 void priv_exfat_file_stamp_access(uint8_t* file_entry)
 {
   exfat_stamp_t s = {};
-  priv_exfat_stamp_now(&s);
+  internal_exfat_stamp_now(&s);
   priv_wr32(&file_entry[k_exfat_off_file_atime], s.stamp);
   file_entry[k_exfat_off_file_autc] = s.utc;
 }
@@ -543,26 +545,26 @@ void priv_fat_entry_set_times(uint8_t*                 entry,
 {
   if (create != nullptr) {
     ra8_fs_datetime_t t = *create;
-    priv_clamp_datetime(&t);
+    internal_clamp_datetime(&t);
     fat_stamp_t s = {};
-    priv_fat_pack(&t, &s);
+    internal_fat_pack(&t, &s);
     entry[k_dir_off_crt_time_tenth] = s.tenth;
     priv_wr16(&entry[k_dir_off_crt_time], s.time);
     priv_wr16(&entry[k_dir_off_crt_date], s.date);
   }
   if (modify != nullptr) {
     ra8_fs_datetime_t t = *modify;
-    priv_clamp_datetime(&t);
+    internal_clamp_datetime(&t);
     fat_stamp_t s = {};
-    priv_fat_pack(&t, &s);
+    internal_fat_pack(&t, &s);
     priv_wr16(&entry[k_dir_off_wrt_time], s.time);
     priv_wr16(&entry[k_dir_off_wrt_date], s.date);
   }
   if (access != nullptr) {
     ra8_fs_datetime_t t = *access;
-    priv_clamp_datetime(&t);
+    internal_clamp_datetime(&t);
     fat_stamp_t s = {};
-    priv_fat_pack(&t, &s);
+    internal_fat_pack(&t, &s);
     priv_wr16(&entry[k_dir_off_lst_acc_date], s.date);
   }
 }
@@ -575,38 +577,37 @@ void priv_exfat_file_set_times(uint8_t*                 file_entry,
 {
   if (create != nullptr) {
     ra8_fs_datetime_t t = *create;
-    priv_clamp_datetime(&t);
+    internal_clamp_datetime(&t);
     exfat_stamp_t s = {};
-    priv_exfat_pack(&t, true, &s);
+    internal_exfat_pack(&t, true, &s);
     priv_wr32(&file_entry[k_exfat_off_file_ctime], s.stamp);
     file_entry[k_exfat_off_file_c10ms] = s.inc10;
     file_entry[k_exfat_off_file_cutc]  = s.utc;
   }
   if (modify != nullptr) {
     ra8_fs_datetime_t t = *modify;
-    priv_clamp_datetime(&t);
+    internal_clamp_datetime(&t);
     exfat_stamp_t s = {};
-    priv_exfat_pack(&t, true, &s);
+    internal_exfat_pack(&t, true, &s);
     priv_wr32(&file_entry[k_exfat_off_file_mtime], s.stamp);
     file_entry[k_exfat_off_file_m10ms] = s.inc10;
     file_entry[k_exfat_off_file_mutc]  = s.utc;
   }
   if (access != nullptr) {
     ra8_fs_datetime_t t = *access;
-    priv_clamp_datetime(&t);
+    internal_clamp_datetime(&t);
     exfat_stamp_t s = {};
-    priv_exfat_pack(&t, true, &s);
+    internal_exfat_pack(&t, true, &s);
     priv_wr32(&file_entry[k_exfat_off_file_atime], s.stamp);
     file_entry[k_exfat_off_file_autc] = s.utc;
   }
 }
 
 /* =============================================================================
- * Public API: the dependency-injection slot
+ * Public API: clock binding
  * =============================================================================
  */
 
-RA8_DI_SLOT("fs_clock")
 ra8_err_t ra8_fs_set_clock(const ra8_fs_clock_t* clock)
 {
   if (clock == nullptr) {

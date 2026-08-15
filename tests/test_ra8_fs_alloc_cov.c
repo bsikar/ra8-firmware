@@ -27,10 +27,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_dir_test_util.h"
@@ -65,9 +65,9 @@ typedef enum : uint32_t {
 
 /** @brief A standalone backend over ::s_inject, for injecting during mount. */
 static const ra8_fs_backend_t s_inject_backend = {
-  .read_block   = inj_read,
-  .write_block  = inj_write,
-  .get_capacity = inj_capacity,
+  .read_block   = internal_inj_read,
+  .write_block  = internal_inj_write,
+  .get_capacity = internal_inj_capacity,
   .ctx          = &s_inject,
 };
 
@@ -84,9 +84,9 @@ static const ra8_fs_backend_t s_inject_backend = {
  * @post Writes are permitted.
  *
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded arm inject fixture step using caller-owned state.
  */
-static void arm_inject(uint32_t reads_left)
+RA8_INTERNAL static void internal_arm_inject(uint32_t reads_left)
 {
   s_inject.bytes       = s_disk.bytes;
   s_inject.block_count = s_disk.block_count;
@@ -106,9 +106,9 @@ static void arm_inject(uint32_t reads_left)
  * @post The image is ready to mount through ::s_backend.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded build fat32 vol fixture step using caller-owned state.
  */
-static void build_fat32_vol(void)
+RA8_INTERNAL static void internal_build_fat32_vol(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -138,9 +138,9 @@ static void build_fat32_vol(void)
  * @post No backend call is made.
  *
  * @note Reads the fixture's memory directly, bypassing the driver.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded read fsinfo free fixture step using caller-owned state.
  */
-static uint32_t read_fsinfo_free(void)
+RA8_INTERNAL static uint32_t internal_read_fsinfo_free(void)
 {
   const uint32_t at =
     ((uint32_t)k_ac_fsi_lba * (uint32_t)k_geo_blk_sz) + (uint32_t)k_ac_fsi_off_free;
@@ -162,9 +162,9 @@ static uint32_t read_fsinfo_free(void)
  * @post The volume's tracked free count has dropped.
  *
  * @note Uses the public seam only.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded seed file fixture step using caller-owned state.
  */
-static void seed_file(ra8_fs_mount_t* h)
+RA8_INTERNAL static void internal_seed_file(ra8_fs_mount_t* h)
 {
   uint8_t payload[k_ac_payload] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "DATA.BIN", payload, (uint32_t)k_ac_payload));
@@ -186,24 +186,24 @@ static void seed_file(ra8_fs_mount_t* h)
  * priv_fsinfo_locate is a single condition, driven true here and false by
  * every other FAT32 case in the suite)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_fsinfo_pointer_out_of_range(void)
+RA8_INTERNAL static void internal_test_fsinfo_pointer_out_of_range(void)
 {
   TEST_BEGIN("fs alloc: an out-of-range BPB_FSInfo is treated as absent");
-  build_fat32_vol();
-  const uint32_t before          = read_fsinfo_free();
+  internal_build_fat32_vol();
+  const uint32_t before          = internal_read_fsinfo_free();
   s_disk.bytes[k_ac_bpb_off_fsi] = (uint8_t)((uint32_t)k_ac_fsi_bad_lba & (uint32_t)k_ac_byte_mask);
   s_disk.bytes[k_ac_bpb_off_fsi + 1U] =
     (uint8_t)(((uint32_t)k_ac_fsi_bad_lba >> k_ac_shift_byte) & (uint32_t)k_ac_byte_mask);
 
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  seed_file(h);
+  internal_seed_file(h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   /* The real FSInfo sector was never consulted, so it was never rewritten. */
-  TEST_ASSERT_EQ(before, read_fsinfo_free());
-  free_vol();
+  TEST_ASSERT_EQ(before, internal_read_fsinfo_free());
+  internal_free_vol();
   TEST_END("fs alloc: an out-of-range BPB_FSInfo is treated as absent");
 }
 
@@ -220,20 +220,20 @@ static void test_fsinfo_pointer_out_of_range(void)
  * (no compound decisions in this test -- both legs are single-condition
  * `if (err != k_ra8_ok)` propagations, driven by a read countdown)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_fsinfo_seed_read_failures(void)
+RA8_INTERNAL static void internal_test_fsinfo_seed_read_failures(void)
 {
   TEST_BEGIN("fs alloc: FSInfo seed reports its read failures");
-  build_fat32_vol();
+  internal_build_fat32_vol();
 
   /* The seed re-reads the boot sector to find BPB_FSInfo. Fail that read. */
-  arm_inject((uint32_t)k_ac_reads_locate);
+  internal_arm_inject((uint32_t)k_ac_reads_locate);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_mount(&s_inject_backend, &h));
 
   /* Then let the locate through and fail the FSInfo sector read itself. */
-  arm_inject((uint32_t)k_ac_reads_sector);
+  internal_arm_inject((uint32_t)k_ac_reads_sector);
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_mount(&s_inject_backend, &h));
 
@@ -241,7 +241,7 @@ static void test_fsinfo_seed_read_failures(void)
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("fs alloc: FSInfo seed reports its read failures");
 }
 
@@ -259,40 +259,40 @@ static void test_fsinfo_seed_read_failures(void)
  * (no compound decisions in this test -- the read and write legs of
  * priv_fsinfo_flush are single-condition error propagations)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_fsinfo_flush_io_failures(void)
+RA8_INTERNAL static void internal_test_fsinfo_flush_io_failures(void)
 {
   TEST_BEGIN("fs alloc: FSInfo writeback reports its I/O failures");
-  build_fat32_vol();
+  internal_build_fat32_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  seed_file(h);
+  internal_seed_file(h);
   /* Closing the file already flushed, so give the volume something to say:
    * unlinking returns clusters and marks the count dirty again. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "DATA.BIN"));
 
   /* Read leg: no reads left at all, so the FSInfo read-modify-write fails. */
   const ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 0U, 0U);
+  internal_swap_to_inject(h, 0U, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_unmount(h));
   h->backend = saved;
 
   /* Write leg: reads succeed, every write fails. */
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  seed_file(h);
+  internal_seed_file(h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "DATA.BIN"));
-  swap_to_inject(h, (uint32_t)k_geo_reads_inf, 1U);
+  internal_swap_to_inject(h, (uint32_t)k_geo_reads_inf, 1U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_unmount(h));
   h->backend = saved;
 
   /* Both slots were released despite the failures, so mounting still works. */
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  TEST_ASSERT(read_fsinfo_free() != (uint32_t)k_ac_free_unknown);
+  TEST_ASSERT(internal_read_fsinfo_free() != (uint32_t)k_ac_free_unknown);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("fs alloc: FSInfo writeback reports its I/O failures");
 }
 
@@ -312,9 +312,8 @@ static void test_fsinfo_flush_io_failures(void)
  */
 int main(void)
 {
-  test_fsinfo_pointer_out_of_range();
-  test_fsinfo_seed_read_failures();
-  test_fsinfo_flush_io_failures();
-  printf("[OK  ] test_ra8_fs_alloc_cov.c\n");
+  internal_test_fsinfo_pointer_out_of_range();
+  internal_test_fsinfo_seed_read_failures();
+  internal_test_fsinfo_flush_io_failures();
   return 0;
 }

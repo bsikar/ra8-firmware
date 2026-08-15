@@ -68,11 +68,11 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_exfat_seed_handle(ra8_fs_file_t*        file,
-                                   ra8_fs_mount_t*       m,
-                                   const exfat_setpos_t* head,
-                                   uint32_t              count,
-                                   ra8_fs_mode_t         mode)
+static void internal_exfat_seed_handle(ra8_fs_file_t*        file,
+                                       ra8_fs_mount_t*       m,
+                                       const exfat_setpos_t* head,
+                                       uint32_t              count,
+                                       ra8_fs_mode_t         mode)
 {
   file->mount              = m;
   file->first_cluster      = 0U;
@@ -131,7 +131,7 @@ static void priv_exfat_seed_handle(ra8_fs_file_t*        file,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_survey_alloc(ra8_fs_file_t* file)
+static ra8_err_t internal_exfat_survey_alloc(ra8_fs_file_t* file)
 {
   const ra8_fs_mount_t* m      = file->mount;
   const uint32_t        cbytes = priv_cluster_bytes(m);
@@ -193,7 +193,7 @@ static ra8_err_t priv_exfat_survey_alloc(ra8_fs_file_t* file)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_truncate(ra8_fs_file_t* file, const uint8_t* strm)
+static ra8_err_t internal_exfat_truncate(ra8_fs_file_t* file, const uint8_t* strm)
 {
   const ra8_err_t e = priv_exfat_free_clusters(file->mount, strm);
   if (e != k_ra8_ok) {
@@ -250,7 +250,7 @@ static ra8_err_t priv_exfat_truncate(ra8_fs_file_t* file, const uint8_t* strm)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_writable_set(uint32_t count)
+static ra8_err_t internal_exfat_writable_set(uint32_t count)
 {
   if (count < (uint32_t)k_exfat_set_min_entries) {
     return k_ra8_err_protocol_error;
@@ -297,13 +297,13 @@ static ra8_err_t priv_exfat_writable_set(uint32_t count)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
-                                       ra8_fs_mode_t         mode,
-                                       const exfat_setpos_t* head,
-                                       uint32_t              count,
-                                       const uint8_t*        file_e,
-                                       const uint8_t*        strm,
-                                       ra8_fs_file_t**       out_file)
+static ra8_err_t internal_exfat_open_found(ra8_fs_mount_t*       handle,
+                                           ra8_fs_mode_t         mode,
+                                           const exfat_setpos_t* head,
+                                           uint32_t              count,
+                                           const uint8_t*        file_e,
+                                           const uint8_t*        strm,
+                                           ra8_fs_file_t**       out_file)
 {
   if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_directory) != 0U) {
     return k_ra8_err_invalid_arg;
@@ -314,7 +314,7 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
   if ((file_e[k_exfat_off_file_attr] & (uint8_t)k_exfat_attr_read_only) != 0U) {
     return k_ra8_err_access_denied;
   }
-  ra8_err_t e = priv_exfat_writable_set(count);
+  ra8_err_t e = internal_exfat_writable_set(count);
   if (e != k_ra8_ok) {
     return e;
   }
@@ -322,7 +322,7 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
   if (f == nullptr) {
     return k_ra8_err_no_mem;
   }
-  priv_exfat_seed_handle(f, handle, head, count, mode);
+  internal_exfat_seed_handle(f, handle, head, count, mode);
   f->first_cluster = priv_rd32(&strm[k_exfat_strm_off_clus]);
   f->size_bytes    = priv_rd64(&strm[k_exfat_strm_off_dlen]);
   f->valid_bytes   = priv_rd64(&strm[k_exfat_off_strm_valid]);
@@ -337,9 +337,9 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
     f->valid_bytes = f->size_bytes;
   }
   if (mode == k_ra8_fs_mode_write) {
-    e = priv_exfat_truncate(f, strm);
+    e = internal_exfat_truncate(f, strm);
   } else {
-    e                     = priv_exfat_survey_alloc(f);
+    e                     = internal_exfat_survey_alloc(f);
     f->cur_cluster        = f->first_cluster;
     f->walk_cache_cluster = f->first_cluster;
     f->offset             = f->size_bytes;
@@ -384,12 +384,12 @@ static ra8_err_t priv_exfat_open_found(ra8_fs_mount_t*       handle,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_open_created(ra8_fs_mount_t*    handle,
-                                         const exfat_dir_t* dir,
-                                         const uint16_t*    name,
-                                         uint32_t           nlen,
-                                         ra8_fs_mode_t      mode,
-                                         ra8_fs_file_t**    out_file)
+static ra8_err_t internal_exfat_open_created(ra8_fs_mount_t*    handle,
+                                             const exfat_dir_t* dir,
+                                             const uint16_t*    name,
+                                             uint32_t           nlen,
+                                             ra8_fs_mode_t      mode,
+                                             ra8_fs_file_t**    out_file)
 {
   ra8_fs_file_t* f = priv_alloc_file_slot();
   if (f == nullptr) {
@@ -403,7 +403,7 @@ static ra8_err_t priv_exfat_open_created(ra8_fs_mount_t*    handle,
     f->mount  = nullptr;
     return e;
   }
-  priv_exfat_seed_handle(f, handle, &head, count, mode);
+  internal_exfat_seed_handle(f, handle, &head, count, mode);
   *out_file = f;
   return k_ra8_ok;
 }
@@ -453,10 +453,10 @@ ra8_err_t priv_exfat_open_write(ra8_fs_mount_t* handle,
                                           file_e,
                                           strm);
   if (e == k_ra8_ok) {
-    return priv_exfat_open_found(handle, mode, &pos[0], count, file_e, strm, out_file);
+    return internal_exfat_open_found(handle, mode, &pos[0], count, file_e, strm, out_file);
   }
   if (e != k_ra8_err_not_found) {
     return e;
   }
-  return priv_exfat_open_created(handle, &parent, name, nlen, mode, out_file);
+  return internal_exfat_open_created(handle, &parent, name, nlen, mode, out_file);
 }

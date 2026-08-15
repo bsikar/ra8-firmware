@@ -64,10 +64,10 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_locate_label(const ra8_fs_mount_t* m,
-                                         exfat_setpos_t*       out_pos,
-                                         uint8_t*              out_entry,
-                                         bool*                 out_present)
+static ra8_err_t internal_exfat_locate_label(const ra8_fs_mount_t* m,
+                                             exfat_setpos_t*       out_pos,
+                                             uint8_t*              out_entry,
+                                             bool*                 out_present)
 {
   const uint8_t label_type =
     (uint8_t)((uint32_t)k_exfat_entry_label & (uint32_t)~(uint32_t)k_exfat_inuse_bit);
@@ -120,7 +120,7 @@ static ra8_err_t priv_exfat_locate_label(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_exfat_label_decode(const uint8_t* entry, char* out, uint32_t out_len)
+static void internal_exfat_label_decode(const uint8_t* entry, char* out, uint32_t out_len)
 {
   uint32_t n = (uint32_t)entry[k_exfat_de_lbl_cnt];
   if (n > (uint32_t)k_exfat_fmt_label_max) {
@@ -143,7 +143,7 @@ ra8_err_t priv_exfat_get_label(const ra8_fs_mount_t* m, char* out, uint32_t out_
   exfat_setpos_t  pos                        = {};
   uint8_t         entry[k_exfat_entry_bytes] = {};
   bool            present                    = false;
-  const ra8_err_t err                        = priv_exfat_locate_label(m, &pos, entry, &present);
+  const ra8_err_t err = internal_exfat_locate_label(m, &pos, entry, &present);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -151,7 +151,7 @@ ra8_err_t priv_exfat_get_label(const ra8_fs_mount_t* m, char* out, uint32_t out_
     out[0] = '\0'; /* no entry, or a cleared (0x03) one: unlabelled */
     return k_ra8_ok;
   }
-  priv_exfat_label_decode(entry, out, out_len);
+  internal_exfat_label_decode(entry, out, out_len);
   return k_ra8_ok;
 }
 
@@ -161,7 +161,7 @@ ra8_err_t priv_exfat_set_label(const ra8_fs_mount_t* m, const char* label)
   exfat_setpos_t  pos                        = {};
   uint8_t         found[k_exfat_entry_bytes] = {};
   bool            present                    = false;
-  const ra8_err_t err                        = priv_exfat_locate_label(m, &pos, found, &present);
+  const ra8_err_t err = internal_exfat_locate_label(m, &pos, found, &present);
   if (err != k_ra8_ok) {
     return err;
   }

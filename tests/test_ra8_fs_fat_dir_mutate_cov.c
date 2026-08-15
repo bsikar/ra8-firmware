@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_dir_test_util.h"
@@ -55,19 +56,19 @@ typedef enum : uint8_t {
  * @post Result is k_ra8_err_invalid_state.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the unlink not mounted vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_unlink_not_mounted(void)
+RA8_INTERNAL static void internal_test_unlink_not_mounted(void)
 {
   TEST_BEGIN("unlink: unmounted -> invalid_state (line 395)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   h->in_use = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_unlink(h, "/F.TXT"));
   h->in_use = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("unlink: unmounted -> invalid_state (line 395)");
 }
 
@@ -87,17 +88,17 @@ static void test_unlink_not_mounted(void)
  * @post Result is k_ra8_err_not_found.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_unlink_bad_parent(void)
+RA8_INTERNAL static void internal_test_unlink_bad_parent(void)
 {
   TEST_BEGIN("unlink: missing parent dir -> err (line 404)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_unlink(h, "/NODIR/F.TXT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("unlink: missing parent dir -> err (line 404)");
 }
 
@@ -122,17 +123,17 @@ static void test_unlink_bad_parent(void)
  * @post Result is k_ra8_err_not_found and the volume is unchanged.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_unlink_bad_83(void)
+RA8_INTERNAL static void internal_test_unlink_bad_83(void)
 {
   TEST_BEGIN("unlink: a long name that is absent -> not_found");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_unlink(h, "/bad name!"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("unlink: a long name that is absent -> not_found");
 }
 
@@ -154,12 +155,12 @@ static void test_unlink_bad_83(void)
  * @post Result is k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_unlink_free_chain_fail(void)
+RA8_INTERNAL static void internal_test_unlink_free_chain_fail(void)
 {
   TEST_BEGIN("unlink: free_chain FAT read fails -> err (line 421)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   uint8_t payload[k_payload_len] = {};
@@ -168,11 +169,11 @@ static void test_unlink_free_chain_fail(void)
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/DATA.TXT", payload, sizeof(payload)));
   ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 1U, 0U);
+  internal_swap_to_inject(h, 1U, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_unlink(h, "/DATA.TXT"));
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("unlink: free_chain FAT read fails -> err (line 421)");
 }
 
@@ -195,23 +196,23 @@ static void test_unlink_free_chain_fail(void)
  * @post Result is k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_unlink_dir_read_fail(void)
+RA8_INTERNAL static void internal_test_unlink_dir_read_fail(void)
 {
   TEST_BEGIN("unlink: empty file, dir sector re-read fails -> err (line 427)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/EMPTY.TXT", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 1U, 0U);
+  internal_swap_to_inject(h, 1U, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_unlink(h, "/EMPTY.TXT"));
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("unlink: empty file, dir sector re-read fails -> err (line 427)");
 }
 
@@ -238,19 +239,19 @@ static void test_unlink_dir_read_fail(void)
  * @post All three guard checks return k_ra8_err_null_ptr.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_rename_null_guards(void)
+RA8_INTERNAL static void internal_test_rename_null_guards(void)
 {
   TEST_BEGIN("rename: null handle/old/new -> null_ptr (lines 582,585,588)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_rename(nullptr, "/A.TXT", "/B.TXT"));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_rename(h, nullptr, "/B.TXT"));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_rename(h, "/A.TXT", nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rename: null handle/old/new -> null_ptr (lines 582,585,588)");
 }
 
@@ -267,19 +268,19 @@ static void test_rename_null_guards(void)
  * @post Result is k_ra8_err_invalid_state.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the rename not mounted vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_rename_not_mounted(void)
+RA8_INTERNAL static void internal_test_rename_not_mounted(void)
 {
   TEST_BEGIN("rename: unmounted -> invalid_state (line 591)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   h->in_use = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_rename(h, "/A.TXT", "/B.TXT"));
   h->in_use = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rename: unmounted -> invalid_state (line 591)");
 }
 
@@ -305,17 +306,17 @@ static void test_rename_not_mounted(void)
  * @post Result is k_ra8_err_not_found.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_rename_new_parent_fail(void)
+RA8_INTERNAL static void internal_test_rename_new_parent_fail(void)
 {
   TEST_BEGIN("rename: new_path missing parent -> err (line 474)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rename(h, "/F.TXT", "/NODIR/G.TXT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rename: new_path missing parent -> err (line 474)");
 }
 
@@ -336,18 +337,18 @@ static void test_rename_new_parent_fail(void)
  * @post Result is k_ra8_err_not_supported.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_rename_root_vs_subdir(void)
+RA8_INTERNAL static void internal_test_rename_root_vs_subdir(void)
 {
   TEST_BEGIN("rename: root vs subdir -> not_supported (line 480)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_rename(h, "/F.TXT", "/SUB/F.TXT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rename: root vs subdir -> not_supported (line 480)");
 }
 
@@ -368,19 +369,19 @@ static void test_rename_root_vs_subdir(void)
  * @post Result is k_ra8_err_not_supported.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_rename_cross_subdir(void)
+RA8_INTERNAL static void internal_test_rename_cross_subdir(void)
 {
   TEST_BEGIN("rename: different subdirs -> not_supported (line 487)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/A"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/B"));
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_rename(h, "/A/F.TXT", "/B/F.TXT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rename: different subdirs -> not_supported (line 487)");
 }
 
@@ -403,17 +404,17 @@ static void test_rename_cross_subdir(void)
  * @post Result is k_ra8_err_not_found and the volume is unchanged.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_rename_old_bad_83(void)
+RA8_INTERNAL static void internal_test_rename_old_bad_83(void)
 {
   TEST_BEGIN("rename: absent long old leaf -> not_found");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rename(h, "/bad name!", "/NEW.TXT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rename: absent long old leaf -> not_found");
 }
 
@@ -436,12 +437,12 @@ static void test_rename_old_bad_83(void)
  * @post Result is k_ra8_err_invalid_arg and /OLD.TXT still resolves.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_rename_new_bad_83(void)
+RA8_INTERNAL static void internal_test_rename_new_bad_83(void)
 {
   TEST_BEGIN("rename: unstorable new leaf -> invalid_arg");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -451,7 +452,7 @@ static void test_rename_new_bad_83(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/OLD.TXT", k_ra8_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rename: unstorable new leaf -> invalid_arg");
 }
 
@@ -476,12 +477,12 @@ static void test_rename_new_bad_83(void)
  * @post Result is k_ra8_err_exists.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_rename_exists(void)
+RA8_INTERNAL static void internal_test_rename_exists(void)
 {
   TEST_BEGIN("rename: new name already exists -> exists (line 545)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
@@ -491,7 +492,7 @@ static void test_rename_exists(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_err_exists, ra8_fs_rename(h, "/A.TXT", "/B.TXT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rename: new name already exists -> exists (line 545)");
 }
 
@@ -512,17 +513,17 @@ static void test_rename_exists(void)
  * @post Result is k_ra8_err_not_found.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_rename_old_not_found(void)
+RA8_INTERNAL static void internal_test_rename_old_not_found(void)
 {
   TEST_BEGIN("rename: old name not found -> not_found (line 552)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_rename(h, "/NOEXIST.TXT", "/NEW.TXT"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rename: old name not found -> not_found (line 552)");
 }
 
@@ -544,23 +545,23 @@ static void test_rename_old_not_found(void)
  * @post Result is k_ra8_err_hw_error.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static void test_rename_read_fail(void)
+RA8_INTERNAL static void internal_test_rename_read_fail(void)
 {
   TEST_BEGIN("rename: sector re-read fails after finding old name -> err (line 557)");
-  build_fat16_vol();
+  internal_build_fat16_vol();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/F.TXT", k_ra8_fs_mode_write, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   ra8_fs_backend_t saved = h->backend;
-  swap_to_inject(h, 2U, 0U);
+  internal_swap_to_inject(h, 2U, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_rename(h, "/F.TXT", "/G.TXT"));
   h->backend = saved;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("rename: sector re-read fails after finding old name -> err (line 557)");
 }
 /* ===========================================================================
@@ -586,22 +587,22 @@ static void test_rename_read_fail(void)
  */
 int main(void)
 {
-  test_unlink_not_mounted();
-  test_unlink_bad_parent();
-  test_unlink_bad_83();
-  test_unlink_free_chain_fail();
-  test_unlink_dir_read_fail();
+  internal_test_unlink_not_mounted();
+  internal_test_unlink_bad_parent();
+  internal_test_unlink_bad_83();
+  internal_test_unlink_free_chain_fail();
+  internal_test_unlink_dir_read_fail();
 
-  test_rename_null_guards();
-  test_rename_not_mounted();
-  test_rename_new_parent_fail();
-  test_rename_root_vs_subdir();
-  test_rename_cross_subdir();
-  test_rename_old_bad_83();
-  test_rename_new_bad_83();
-  test_rename_exists();
-  test_rename_old_not_found();
-  test_rename_read_fail();
+  internal_test_rename_null_guards();
+  internal_test_rename_not_mounted();
+  internal_test_rename_new_parent_fail();
+  internal_test_rename_root_vs_subdir();
+  internal_test_rename_cross_subdir();
+  internal_test_rename_old_bad_83();
+  internal_test_rename_new_bad_83();
+  internal_test_rename_exists();
+  internal_test_rename_old_not_found();
+  internal_test_rename_read_fail();
 
   return 0;
 }

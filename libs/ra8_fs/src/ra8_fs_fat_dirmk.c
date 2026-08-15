@@ -51,7 +51,7 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_pack_dot_entry(uint8_t* ent, uint32_t dots, uint32_t cluster)
+static void internal_pack_dot_entry(uint8_t* ent, uint32_t dots, uint32_t cluster)
 {
   for (uint32_t i = 0; i < (uint32_t)k_ra8_fs_dir_entry_bytes; i++) {
     ent[i] = 0;
@@ -96,12 +96,12 @@ static void priv_pack_dot_entry(uint8_t* ent, uint32_t dots, uint32_t cluster)
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_dir_cluster_init(const ra8_fs_mount_t* m, uint32_t new_cluster, uint32_t parent_cluster)
+internal_dir_cluster_init(const ra8_fs_mount_t* m, uint32_t new_cluster, uint32_t parent_cluster)
 {
   uint8_t* const buf = priv_sec_walk();
   priv_byte_fill(buf, 0U, priv_bps(m));
-  priv_pack_dot_entry(&buf[0], 1U, new_cluster);
-  priv_pack_dot_entry(&buf[k_ra8_fs_dir_entry_bytes], 2U, parent_cluster);
+  internal_pack_dot_entry(&buf[0], 1U, new_cluster);
+  internal_pack_dot_entry(&buf[k_ra8_fs_dir_entry_bytes], 2U, parent_cluster);
   const uint64_t base = priv_cluster_to_lba(m, new_cluster);
   ra8_err_t      err  = priv_write_sector(m, base, buf);
   if (err != k_ra8_ok) {
@@ -117,7 +117,7 @@ priv_dir_cluster_init(const ra8_fs_mount_t* m, uint32_t new_cluster, uint32_t pa
 }
 
 /**
- * @brief Implementation of `priv_fat_mkdir()` -- create one FAT directory.
+ * @brief Implementation of `internal_fat_mkdir()` -- create one FAT directory.
  *
  * @details Resolves the parent, rejects an existing name, finds a free parent
  *          slot, allocates and initialises a directory cluster ("." / ".."),
@@ -145,7 +145,7 @@ priv_dir_cluster_init(const ra8_fs_mount_t* m, uint32_t new_cluster, uint32_t pa
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
+static ra8_err_t internal_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
 {
   dir_loc_t       parent = {};
   const char*     leaf   = nullptr;
@@ -173,7 +173,7 @@ static ra8_err_t priv_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
     return err;
   }
   const uint32_t parent_cluster = (parent.is_root != 0U) ? 0U : parent.cluster;
-  err                           = priv_dir_cluster_init(handle, new_cluster, parent_cluster);
+  err                           = internal_dir_cluster_init(handle, new_cluster, parent_cluster);
   if (err != k_ra8_ok) {
     (void)priv_free_chain(handle, new_cluster);
     return err;
@@ -206,7 +206,7 @@ static ra8_err_t priv_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
  * @retval k_ra8_ok                Directory created.
  * @retval k_ra8_err_null_ptr      `handle` or `path` was NULL.
  * @retval k_ra8_err_invalid_state Mount not in use.
- * @retval k_ra8_err_*             See `priv_fat_mkdir` / `priv_exfat_mkdir`.
+ * @retval k_ra8_err_*             See `internal_fat_mkdir` / `priv_exfat_mkdir`.
  *
  * @pre The library lock is held (or none is installed).
  * @pre `handle` and `path` are non-NULL.
@@ -220,7 +220,7 @@ static ra8_err_t priv_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_mkdir_locked(ra8_fs_mount_t* handle, const char* path)
+static ra8_err_t internal_mkdir_locked(ra8_fs_mount_t* handle, const char* path)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -234,7 +234,7 @@ static ra8_err_t priv_mkdir_locked(ra8_fs_mount_t* handle, const char* path)
   if (handle->type == k_ra8_fs_type_exfat) {
     return priv_exfat_mkdir(handle, path);
   }
-  return priv_fat_mkdir(handle, path);
+  return internal_fat_mkdir(handle, path);
 }
 
 /**
@@ -285,7 +285,7 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static dir_scan_t priv_rmdir_scan_sector(const ra8_fs_mount_t* m, const uint8_t* buf)
+static dir_scan_t internal_rmdir_scan_sector(const ra8_fs_mount_t* m, const uint8_t* buf)
 {
   for (uint32_t e = 0; e < priv_dir_eps(m); e++) {
     const uint8_t* ent = &buf[(size_t)e * (size_t)k_ra8_fs_dir_entry_bytes];
@@ -334,7 +334,8 @@ static dir_scan_t priv_rmdir_scan_sector(const ra8_fs_mount_t* m, const uint8_t*
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_dir_is_empty(const ra8_fs_mount_t* m, uint32_t cluster, uint8_t* out_empty)
+static ra8_err_t
+internal_dir_is_empty(const ra8_fs_mount_t* m, uint32_t cluster, uint8_t* out_empty)
 {
   const dir_loc_t loc = {.is_root = 0U, .cluster = cluster};
   dir_walk_t      w   = {};
@@ -346,7 +347,7 @@ static ra8_err_t priv_dir_is_empty(const ra8_fs_mount_t* m, uint32_t cluster, ui
     if (err != k_ra8_ok) {
       return err;
     }
-    const dir_scan_t verdict = priv_rmdir_scan_sector(m, buf);
+    const dir_scan_t verdict = internal_rmdir_scan_sector(m, buf);
     if (verdict == k_dir_scan_used) {
       *out_empty = 0U;
       return k_ra8_ok;
@@ -370,7 +371,7 @@ static ra8_err_t priv_dir_is_empty(const ra8_fs_mount_t* m, uint32_t cluster, ui
  * @details Resolves the parent, refuses the volume root, packs the leaf to 8.3,
  *          looks it up, and requires the matched entry to carry
  *          `k_ra8_fs_attr_directory` with a real first cluster. Split out of
- *          `priv_fat_rmdir` so both stay inside the function-size gate.
+ *          `internal_fat_rmdir` so both stay inside the function-size gate.
  *
  * @param[in]  handle      Mounted FAT12/16/32 volume.
  * @param[in]  path        Directory path to remove.
@@ -395,10 +396,10 @@ static ra8_err_t priv_dir_is_empty(const ra8_fs_mount_t* m, uint32_t cluster, ui
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_rmdir_locate(const ra8_fs_mount_t* handle,
-                                   const char*           path,
-                                   dir_target_t*         out,
-                                   uint32_t*             out_cluster)
+static ra8_err_t internal_rmdir_locate(const ra8_fs_mount_t* handle,
+                                       const char*           path,
+                                       dir_target_t*         out,
+                                       uint32_t*             out_cluster)
 {
   const char*     leaf = nullptr;
   const ra8_err_t rerr = priv_resolve_parent(handle, path, &out->parent, &leaf);
@@ -424,7 +425,7 @@ static ra8_err_t priv_rmdir_locate(const ra8_fs_mount_t* handle,
 }
 
 /**
- * @brief Implementation of `priv_fat_rmdir()` -- remove one empty FAT directory.
+ * @brief Implementation of `internal_fat_rmdir()` -- remove one empty FAT directory.
  *
  * @details Locates the directory, proves it holds nothing but its own "." and
  *          ".." links, frees its cluster chain, then 0xE5-marks its entry in
@@ -455,16 +456,16 @@ static ra8_err_t priv_rmdir_locate(const ra8_fs_mount_t* handle,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat_rmdir(const ra8_fs_mount_t* handle, const char* path)
+static ra8_err_t internal_fat_rmdir(const ra8_fs_mount_t* handle, const char* path)
 {
   dir_target_t t       = {};
   uint32_t     cluster = 0;
-  ra8_err_t    err     = priv_rmdir_locate(handle, path, &t, &cluster);
+  ra8_err_t    err     = internal_rmdir_locate(handle, path, &t, &cluster);
   if (err != k_ra8_ok) {
     return err;
   }
   uint8_t empty = 0;
-  err           = priv_dir_is_empty(handle, cluster, &empty);
+  err           = internal_dir_is_empty(handle, cluster, &empty);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -495,7 +496,7 @@ static ra8_err_t priv_fat_rmdir(const ra8_fs_mount_t* handle, const char* path)
  * @retval k_ra8_ok                Directory removed.
  * @retval k_ra8_err_null_ptr      `handle` or `path` was NULL.
  * @retval k_ra8_err_invalid_state Mount not in use.
- * @retval k_ra8_err_*             See `priv_fat_rmdir` / `priv_exfat_rmdir`.
+ * @retval k_ra8_err_*             See `internal_fat_rmdir` / `priv_exfat_rmdir`.
  *
  * @pre The library lock is held (or none is installed).
  * @pre `handle` and `path` are non-NULL.
@@ -509,7 +510,7 @@ static ra8_err_t priv_fat_rmdir(const ra8_fs_mount_t* handle, const char* path)
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_rmdir_locked(ra8_fs_mount_t* handle, const char* path)
+static ra8_err_t internal_rmdir_locked(ra8_fs_mount_t* handle, const char* path)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -523,7 +524,7 @@ static ra8_err_t priv_rmdir_locked(ra8_fs_mount_t* handle, const char* path)
   if (handle->type == k_ra8_fs_type_exfat) {
     return priv_exfat_rmdir(handle, path);
   }
-  return priv_fat_rmdir(handle, path);
+  return internal_fat_rmdir(handle, path);
 }
 
 /* =============================================================================
@@ -535,7 +536,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_mkdir(ra8_fs_mount_t* handle, const char* path)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_mkdir_locked(handle, path);
+  const ra8_err_t err = internal_mkdir_locked(handle, path);
   priv_lock_release();
   return err;
 }
@@ -544,7 +545,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_rmdir(ra8_fs_mount_t* handle, const char* path)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_rmdir_locked(handle, path);
+  const ra8_err_t err = internal_rmdir_locked(handle, path);
   priv_lock_release();
   return err;
 }

@@ -169,7 +169,7 @@ ra8_err_t priv_write_sector(const ra8_fs_mount_t* m, uint64_t lba, const uint8_t
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint64_t priv_fat_entry_byte_offset(const ra8_fs_mount_t* m, uint32_t cluster)
+static uint64_t internal_fat_entry_byte_offset(const ra8_fs_mount_t* m, uint32_t cluster)
 {
   if (m->type == k_ra8_fs_type_fat12) {
     return (uint64_t)cluster + ((uint64_t)cluster / 2U);
@@ -186,7 +186,7 @@ static uint64_t priv_fat_entry_byte_offset(const ra8_fs_mount_t* m, uint32_t clu
 /* `priv_fat_get()`: see header for the documented contract. */
 ra8_err_t priv_fat_get(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t* out_value)
 {
-  const uint64_t fat_offset = priv_fat_entry_byte_offset(m, cluster);
+  const uint64_t fat_offset = internal_fat_entry_byte_offset(m, cluster);
   const uint64_t sec_num    = m->first_fat_lba + (fat_offset / priv_bps(m));
   const uint32_t sec_off    = (uint32_t)(fat_offset % priv_bps(m));
 
@@ -261,11 +261,11 @@ ra8_err_t priv_fat_get(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t* out_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat12_store(const ra8_fs_mount_t* m,
-                                  const uint8_t*        buf,
-                                  const uint8_t*        buf2,
-                                  uint64_t              sec_num,
-                                  uint8_t               straddle)
+static ra8_err_t internal_fat12_store(const ra8_fs_mount_t* m,
+                                      const uint8_t*        buf,
+                                      const uint8_t*        buf2,
+                                      uint64_t              sec_num,
+                                      uint8_t               straddle)
 {
   ra8_err_t err = priv_write_sector(m, sec_num, buf);
   if (err != k_ra8_ok) {
@@ -308,11 +308,11 @@ static ra8_err_t priv_fat12_store(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fat12_set_one(const ra8_fs_mount_t* m,
-                                    uint64_t              sec_num,
-                                    uint32_t              sec_off,
-                                    uint32_t              cluster,
-                                    uint32_t              value)
+static ra8_err_t internal_fat12_set_one(const ra8_fs_mount_t* m,
+                                        uint64_t              sec_num,
+                                        uint32_t              sec_off,
+                                        uint32_t              cluster,
+                                        uint32_t              value)
 {
   uint8_t* const buf      = priv_sec_fat();
   uint8_t* const buf2     = priv_sec_fat2();
@@ -346,7 +346,7 @@ static ra8_err_t priv_fat12_set_one(const ra8_fs_mount_t* m,
   } else {
     buf2[0] = (uint8_t)((raw >> k_shift_byte) & k_byte_mask);
   }
-  return priv_fat12_store(m, buf, buf2, sec_num, straddle);
+  return internal_fat12_store(m, buf, buf2, sec_num, straddle);
 }
 
 /**
@@ -375,7 +375,7 @@ static ra8_err_t priv_fat12_set_one(const ra8_fs_mount_t* m,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_fat16_set_one(const ra8_fs_mount_t* m, uint64_t sec_num, uint32_t sec_off, uint32_t value)
+internal_fat16_set_one(const ra8_fs_mount_t* m, uint64_t sec_num, uint32_t sec_off, uint32_t value)
 {
   uint8_t* const buf = priv_sec_fat();
   ra8_err_t      err = priv_fat_sector_read(m, sec_num, buf);
@@ -417,7 +417,7 @@ priv_fat16_set_one(const ra8_fs_mount_t* m, uint64_t sec_num, uint32_t sec_off, 
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_fat32_set_one(const ra8_fs_mount_t* m, uint64_t sec_num, uint32_t sec_off, uint32_t value)
+internal_fat32_set_one(const ra8_fs_mount_t* m, uint64_t sec_num, uint32_t sec_off, uint32_t value)
 {
   uint8_t* const buf = priv_sec_fat();
   ra8_err_t      err = priv_fat_sector_read(m, sec_num, buf);
@@ -463,8 +463,10 @@ priv_fat32_set_one(const ra8_fs_mount_t* m, uint64_t sec_num, uint32_t sec_off, 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t
-priv_exfat_fat_set_one(const ra8_fs_mount_t* m, uint64_t sec_num, uint32_t sec_off, uint32_t value)
+static ra8_err_t internal_exfat_fat_set_one(const ra8_fs_mount_t* m,
+                                            uint64_t              sec_num,
+                                            uint32_t              sec_off,
+                                            uint32_t              value)
 {
   uint8_t* const buf = priv_sec_fat();
   ra8_err_t      err = priv_fat_sector_read(m, sec_num, buf);
@@ -483,20 +485,20 @@ priv_exfat_fat_set_one(const ra8_fs_mount_t* m, uint64_t sec_num, uint32_t sec_o
 /* `priv_fat_set()`: see header for the documented contract. */
 ra8_err_t priv_fat_set(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t value)
 {
-  const uint64_t fat_offset = priv_fat_entry_byte_offset(m, cluster);
+  const uint64_t fat_offset = internal_fat_entry_byte_offset(m, cluster);
   for (uint32_t i = 0; i < m->num_fats; i++) {
     const uint64_t fat_base = m->first_fat_lba + ((uint64_t)i * m->fat_size_sectors);
     const uint64_t sec_num  = fat_base + (fat_offset / priv_bps(m));
     const uint32_t sec_off  = (uint32_t)(fat_offset % priv_bps(m));
     ra8_err_t      err      = k_ra8_ok;
     if (m->type == k_ra8_fs_type_fat12) {
-      err = priv_fat12_set_one(m, sec_num, sec_off, cluster, value);
+      err = internal_fat12_set_one(m, sec_num, sec_off, cluster, value);
     } else if (m->type == k_ra8_fs_type_fat16) {
-      err = priv_fat16_set_one(m, sec_num, sec_off, value);
+      err = internal_fat16_set_one(m, sec_num, sec_off, value);
     } else if (m->type == k_ra8_fs_type_exfat) {
-      err = priv_exfat_fat_set_one(m, sec_num, sec_off, value);
+      err = internal_exfat_fat_set_one(m, sec_num, sec_off, value);
     } else {
-      err = priv_fat32_set_one(m, sec_num, sec_off, value);
+      err = internal_fat32_set_one(m, sec_num, sec_off, value);
     }
     if (err != k_ra8_ok) {
       return err;
@@ -577,7 +579,7 @@ uint64_t priv_cluster_to_lba(const ra8_fs_mount_t* m, uint32_t cluster)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_alloc_start(const ra8_fs_mount_t* m, uint32_t hint)
+static uint32_t internal_alloc_start(const ra8_fs_mount_t* m, uint32_t hint)
 {
   if ((hint - (uint32_t)k_cluster_first_data) >= m->count_of_clusters) {
     return (uint32_t)k_cluster_first_data;
@@ -594,7 +596,7 @@ ra8_err_t priv_alloc_cluster(const ra8_fs_mount_t* m, uint32_t* out_cluster)
    * block reads per cluster rather than one read per cluster EXAMINED -- which
    * is what made writing a K-cluster file O(K * N) real device round trips. */
   const uint32_t past_end = (uint32_t)k_cluster_first_data + m->count_of_clusters;
-  uint32_t       c        = priv_alloc_start(m, priv_alloc_hint_get(m));
+  uint32_t       c        = internal_alloc_start(m, priv_alloc_hint_get(m));
   for (uint32_t seen = 0U; seen < m->count_of_clusters; seen++) {
     uint32_t  v   = 0;
     ra8_err_t err = priv_fat_get(m, c, &v);

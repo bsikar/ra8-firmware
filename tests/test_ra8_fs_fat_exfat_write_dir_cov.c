@@ -19,9 +19,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
@@ -48,12 +48,12 @@
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns k_ra8_err_invalid_arg.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_create_empty_path(void)
+RA8_INTERNAL static void internal_test_create_empty_path(void)
 {
   TEST_BEGIN("exfat write cov: empty path -> invalid_arg (line 548)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -61,7 +61,7 @@ static void test_create_empty_path(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_write_file(h, "/", &dummy, 1U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: empty path -> invalid_arg (line 548)");
 }
 
@@ -82,12 +82,12 @@ static void test_create_empty_path(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns k_ra8_err_invalid_arg.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_create_path_too_long(void)
+RA8_INTERNAL static void internal_test_create_path_too_long(void)
 {
   TEST_BEGIN("exfat write cov: 65-char name -> invalid_arg (line 551)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -98,7 +98,7 @@ static void test_create_path_too_long(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_write_file(h, k_long_name, &dummy, 1U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: 65-char name -> invalid_arg (line 551)");
 }
 
@@ -123,12 +123,12 @@ static void test_create_path_too_long(void)
  * @pre Volume is formatted and accessible.
  * @post `X.TXT` exists with a size of 0.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_create_zero_len(void)
+RA8_INTERNAL static void internal_test_create_zero_len(void)
 {
   TEST_BEGIN("exfat write cov: len=0 creates an empty file");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -140,7 +140,7 @@ static void test_create_zero_len(void)
   TEST_ASSERT_EQ(0U, st.size_bytes);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: len=0 creates an empty file");
 }
 
@@ -164,12 +164,12 @@ static void test_create_zero_len(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns non-ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_write_data_fail(void)
+RA8_INTERNAL static void internal_test_write_data_fail(void)
 {
   TEST_BEGIN("exfat write cov: W1 write fail in write_data (lines 240,494,561)");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -181,7 +181,7 @@ static void test_write_data_fail(void)
 
   s_wr_remaining = (int32_t)k_wc_wr_never;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: W1 write fail in write_data (lines 240,494,561)");
 }
 
@@ -206,12 +206,12 @@ static void test_write_data_fail(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns non-ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_read_entry_fail(void)
+RA8_INTERNAL static void internal_test_read_entry_fail(void)
 {
   TEST_BEGIN("exfat write cov: R4 read fail -> lines 273,341,531");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -223,7 +223,7 @@ static void test_read_entry_fail(void)
 
   s_rd_remaining = (int32_t)k_wc_rd_never;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: R4 read fail -> lines 273,341,531");
 }
 
@@ -251,22 +251,22 @@ static void test_read_entry_fail(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns k_ra8_ok, having grown the root.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_dir_space_full_root_eoc(void)
+RA8_INTERNAL static void internal_test_dir_space_full_root_eoc(void)
 {
   TEST_BEGIN("exfat write cov: a full root grows on the FAT-EOC arm");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
-  patch_root_full(h, (uint32_t)k_wc_patch_start);
+  internal_patch_root_full(h, (uint32_t)k_wc_patch_start);
 
   const uint8_t dummy = (uint8_t)'X';
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "X.TXT", &dummy, 1U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: a full root grows on the FAT-EOC arm");
 }
 
@@ -296,16 +296,16 @@ static void test_dir_space_full_root_eoc(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns non-ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_dir_space_fat_get_fail(void)
+RA8_INTERNAL static void internal_test_dir_space_fat_get_fail(void)
 {
   TEST_BEGIN("exfat write cov: R132 fat_get fail -> line 359");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
-  patch_root_full(h, (uint32_t)k_wc_patch_start);
+  internal_patch_root_full(h, (uint32_t)k_wc_patch_start);
   s_rd_remaining = (int32_t)k_wc_rd_fat_get;
 
   const uint8_t   dummy = (uint8_t)'X';
@@ -314,7 +314,7 @@ static void test_dir_space_fat_get_fail(void)
 
   s_rd_remaining = (int32_t)k_wc_rd_never;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: R132 fat_get fail -> line 359");
 }
 
@@ -344,16 +344,16 @@ static void test_dir_space_fat_get_fail(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns k_ra8_ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_dir_space_chain(void)
+RA8_INTERNAL static void internal_test_dir_space_chain(void)
 {
   TEST_BEGIN("exfat write cov: FAT chain to cluster cluster_g -> lines 364,365");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
-  patch_root_full(h, (uint32_t)k_wc_patch_start);
+  internal_patch_root_full(h, (uint32_t)k_wc_patch_start);
 
   const uint32_t cluster_g = h->root_cluster + (uint32_t)k_wc_chain_offset;
   /* first_data_lba is partition-relative; s_disk.bytes is indexed absolutely. */
@@ -368,14 +368,14 @@ static void test_dir_space_chain(void)
   }
 
   /* Build FAT chain: root_cluster -> cluster_g -> EOC. */
-  disk_set_u32le(fat_entry_off(h, h->root_cluster), cluster_g);
-  disk_set_u32le(fat_entry_off(h, cluster_g), (uint32_t)k_wc_fat_eoc);
+  internal_disk_set_u32le(internal_fat_entry_off(h, h->root_cluster), cluster_g);
+  internal_disk_set_u32le(internal_fat_entry_off(h, cluster_g), (uint32_t)k_wc_fat_eoc);
 
   const uint8_t dummy = (uint8_t)'X';
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "X.TXT", &dummy, 1U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: FAT chain to cluster cluster_g -> lines 364,365");
 }
 
@@ -400,12 +400,12 @@ static void test_dir_space_chain(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns non-ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_write_dir_set_read_fail(void)
+RA8_INTERNAL static void internal_test_write_dir_set_read_fail(void)
 {
   TEST_BEGIN("exfat write cov: R10 write_dir_set read fail -> line 441");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -417,7 +417,7 @@ static void test_write_dir_set_read_fail(void)
 
   s_rd_remaining = (int32_t)k_wc_rd_never;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: R10 write_dir_set read fail -> line 441");
 }
 
@@ -440,12 +440,12 @@ static void test_write_dir_set_read_fail(void)
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns non-ok.
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_write_dir_set_write_fail(void)
+RA8_INTERNAL static void internal_test_write_dir_set_write_fail(void)
 {
   TEST_BEGIN("exfat write cov: W3 write_dir_set write fail -> line 448");
-  build_exfat_volume();
+  internal_build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
@@ -457,7 +457,7 @@ static void test_write_dir_set_write_fail(void)
 
   s_wr_remaining = (int32_t)k_wc_wr_never;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("exfat write cov: W3 write_dir_set write fail -> line 448");
 }
 
@@ -482,16 +482,15 @@ static void test_write_dir_set_write_fail(void)
  */
 int32_t main(void)
 {
-  test_create_empty_path();
-  test_create_path_too_long();
-  test_create_zero_len();
-  test_write_data_fail();
-  test_read_entry_fail();
-  test_dir_space_full_root_eoc();
-  test_dir_space_fat_get_fail();
-  test_dir_space_chain();
-  test_write_dir_set_read_fail();
-  test_write_dir_set_write_fail();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_exfat_write_dir_cov.c\n");
+  internal_test_create_empty_path();
+  internal_test_create_path_too_long();
+  internal_test_create_zero_len();
+  internal_test_write_data_fail();
+  internal_test_read_entry_fail();
+  internal_test_dir_space_full_root_eoc();
+  internal_test_dir_space_fat_get_fail();
+  internal_test_dir_space_chain();
+  internal_test_write_dir_set_read_fail();
+  internal_test_write_dir_set_write_fail();
   return 0;
 }

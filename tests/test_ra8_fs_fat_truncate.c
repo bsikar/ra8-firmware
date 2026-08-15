@@ -32,6 +32,8 @@
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_fs_meta.h"
+#include "support/ra8_test_file.h"
+#include "support/ra8_test_output.h"
 #include "unity_minimal.h"
 
 /**
@@ -43,7 +45,7 @@
  *          sectors would leave residue a coarser test would miss.
  *
  * @invariant `k_ftr_prefix < k_ftr_bytes_per_sector`.
- * @see build_fat_volume()
+ * @see internal_build_fat_volume()
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -84,8 +86,11 @@ static ftr_disk_t s_disk = {};
  * @post No state changes.
  * @note Trivially thread-safe for the single-threaded fixture.
  * @since 0.1.0
- */
-static ra8_err_t ftr_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static ra8_err_t
+internal_ftr_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   const ftr_disk_t* d = (const ftr_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -111,8 +116,11 @@ static ra8_err_t ftr_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
  * @post No other state changes.
  * @note Trivially thread-safe for the single-threaded fixture.
  * @since 0.1.0
- */
-static ra8_err_t ftr_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static ra8_err_t
+internal_ftr_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   ftr_disk_t* d = (ftr_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -137,8 +145,11 @@ static ra8_err_t ftr_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
  * @post No state changes.
  * @note Trivially thread-safe.
  * @since 0.1.0
- */
-static ra8_err_t ftr_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static ra8_err_t
+internal_ftr_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const ftr_disk_t* d = (const ftr_disk_t*)ctx;
   *block_count        = d->block_count;
@@ -147,9 +158,9 @@ static ra8_err_t ftr_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = ftr_read,
-  .write_block  = ftr_write,
-  .get_capacity = ftr_capacity,
+  .read_block   = internal_ftr_read,
+  .write_block  = internal_ftr_write,
+  .get_capacity = internal_ftr_capacity,
   .ctx          = &s_disk,
 };
 
@@ -164,8 +175,10 @@ static const ra8_fs_backend_t s_backend = {
  * @post Depends only on @p pos.
  * @note Pure function.
  * @since 0.1.0
- */
-static uint8_t ftr_byte_at(uint32_t pos)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static uint8_t internal_ftr_byte_at(uint32_t pos)
 {
   return (uint8_t)((pos * (uint32_t)k_ftr_stride) + (uint32_t)k_ftr_seed);
 }
@@ -179,8 +192,10 @@ static uint8_t ftr_byte_at(uint32_t pos)
  * @post The backing store is released.
  * @note Not thread-safe.
  * @since 0.1.0
- */
-static void free_volume(void)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static void internal_free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -199,10 +214,12 @@ static void free_volume(void)
  * @post Every unwritten data byte reads as ::k_ftr_poison.
  * @note Not thread-safe.
  * @since 0.1.0
- */
-static void build_fat_volume(uint32_t blocks, ra8_fs_type_t type)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static void internal_build_fat_volume(uint32_t blocks, ra8_fs_type_t type)
 {
-  free_volume();
+  internal_free_volume();
   s_disk.bytes       = (uint8_t*)malloc((size_t)blocks * (size_t)k_ftr_block_size);
   s_disk.block_count = blocks;
   if (s_disk.bytes == nullptr) {
@@ -225,8 +242,10 @@ static void build_fat_volume(uint32_t blocks, ra8_fs_type_t type)
  * @post With it unset, nothing is written.
  * @note Not thread-safe.
  * @since 0.1.0
- */
-static void dump_image(const char* tag)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static void internal_dump_image(const char* tag)
 {
   const char* dir = getenv("RA8_FAT_DUMP_DIR");
   if ((dir == nullptr) || (s_disk.bytes == nullptr)) {
@@ -234,15 +253,9 @@ static void dump_image(const char* tag)
   }
   char path[k_ftr_dump_cap] = {};
   (void)snprintf(path, sizeof path, "%s/%s.img", dir, tag);
-  FILE* fp = fopen(path, "wb");
-  if (fp == nullptr) {
-    TEST_FAIL_FMT("cannot open dump %s", path);
-    return;
-  }
-  const size_t total = (size_t)s_disk.block_count * (size_t)k_ftr_block_size;
-  const size_t wrote = fwrite(s_disk.bytes, 1U, total, fp);
-  (void)fclose(fp);
-  if (wrote != total) {
+  const size_t                 total  = (size_t)s_disk.block_count * (size_t)k_ftr_block_size;
+  const ra8_test_file_result_t result = internal_test_file_replace(path, s_disk.bytes, total);
+  if (result.status != k_ra8_test_file_ok) {
     TEST_FAIL_FMT("short dump %s", path);
   }
 }
@@ -258,8 +271,10 @@ static void dump_image(const char* tag)
  * @post Depends only on @p h.
  * @note Pure with respect to the mount.
  * @since 0.1.0
- */
-static uint32_t cbytes_of(const ra8_fs_mount_t* h)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static uint32_t internal_cbytes_of(const ra8_fs_mount_t* h)
 {
   return h->sectors_per_cluster * (uint32_t)k_ftr_bytes_per_sector;
 }
@@ -275,8 +290,10 @@ static uint32_t cbytes_of(const ra8_fs_mount_t* h)
  * @post The result reflects the current allocation.
  * @note Not thread-safe; the fixture is single-threaded.
  * @since 0.1.0
- */
-static uint32_t free_clusters(ra8_fs_mount_t* h)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static uint32_t internal_free_clusters(ra8_fs_mount_t* h)
 {
   ra8_fs_space_t sp = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_free_space(h, &sp));
@@ -295,12 +312,14 @@ static uint32_t free_clusters(ra8_fs_mount_t* h)
  * @post No handle is left open.
  * @note Not thread-safe.
  * @since 0.1.0
- */
-static void write_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static void internal_write_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_write, &f));
-  static uint8_t s_buf[k_ftr_block_size];
+  static uint8_t buf[k_ftr_block_size];
   uint32_t       done = 0U;
   while (done < len) {
     uint32_t n = len - done;
@@ -308,9 +327,9 @@ static void write_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
       n = (uint32_t)k_ftr_block_size;
     }
     for (uint32_t i = 0U; i < n; i++) {
-      s_buf[i] = ftr_byte_at(done + i);
+      buf[i] = internal_ftr_byte_at(done + i);
     }
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_buf, n));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, buf, n));
     done += n;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -329,11 +348,14 @@ static void write_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
  * @post The scan stops at the first mismatch.
  * @note Not thread-safe.
  * @since 0.1.0
- */
-static void expect_span(const uint8_t* buf, uint32_t got, uint32_t pos, uint32_t pat_end)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static void
+internal_expect_span(const uint8_t* buf, uint32_t got, uint32_t pos, uint32_t pat_end)
 {
   for (uint32_t i = 0U; i < got; i++) {
-    const uint8_t exp = ((pos + i) < pat_end) ? ftr_byte_at(pos + i) : 0U;
+    const uint8_t exp = ((pos + i) < pat_end) ? internal_ftr_byte_at(pos + i) : 0U;
     if (buf[i] != exp) {
       TEST_FAIL_FMT("byte %u wrong", (unsigned)(pos + i));
       return;
@@ -354,16 +376,20 @@ static void expect_span(const uint8_t* buf, uint32_t got, uint32_t pos, uint32_t
  * @post No on-disk state changes.
  * @note Not thread-safe.
  * @since 0.1.0
- */
-static void
-expect_pattern_then_zero(ra8_fs_mount_t* h, const char* name, uint32_t total, uint32_t pat_end)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static void internal_expect_pattern_then_zero(ra8_fs_mount_t* h,
+                                                           const char*     name,
+                                                           uint32_t        total,
+                                                           uint32_t        pat_end)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_read, &f));
   uint64_t size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &size));
   TEST_ASSERT_EQ(total, size);
-  static uint8_t s_buf[k_ftr_block_size];
+  static uint8_t buf[k_ftr_block_size];
   uint32_t       pos = 0U;
   while (pos < total) {
     uint32_t want = total - pos;
@@ -371,9 +397,9 @@ expect_pattern_then_zero(ra8_fs_mount_t* h, const char* name, uint32_t total, ui
       want = (uint32_t)k_ftr_block_size;
     }
     uint32_t got = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_buf, want, &got));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, buf, want, &got));
     TEST_ASSERT_EQ(want, got);
-    expect_span(s_buf, got, pos, pat_end);
+    internal_expect_span(buf, got, pos, pat_end);
     pos += got;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -391,8 +417,10 @@ expect_pattern_then_zero(ra8_fs_mount_t* h, const char* name, uint32_t total, ui
  * @post No handle is left open.
  * @note Not thread-safe.
  * @since 0.1.0
- */
-static void truncate_named(ra8_fs_mount_t* h, const char* name, uint32_t size)
+
+ * @details Performs one bounded, deterministic operation for this host test.
+*/
+RA8_INTERNAL static void internal_truncate_named(ra8_fs_mount_t* h, const char* name, uint32_t size)
 {
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_append, &f));
@@ -401,7 +429,7 @@ static void truncate_named(ra8_fs_mount_t* h, const char* name, uint32_t size)
 }
 
 /**
- * @test test_fat_shrink_keeps_prefix
+ * @test internal_test_fat_shrink_keeps_prefix
  * @brief Shrinking a multi-cluster file keeps the surviving prefix and frees the tail.
  *
  * @details A three-cluster file is trimmed to one and a half. The kept bytes
@@ -412,38 +440,44 @@ static void truncate_named(ra8_fs_mount_t* h, const char* name, uint32_t size)
  * @par MC/DC:
  * (no compound decision unique to this case -- the paths it drives are
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
- * test_fat_truncate_rejects.)
+ * internal_test_fat_truncate_rejects.)
  *
  * @since 0.1.0
- */
-static void test_fat_shrink_keeps_prefix(void)
+
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_fat_shrink_keeps_prefix(void)
 {
   TEST_BEGIN("fat truncate: shrink keeps the prefix, frees the tail");
-  build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
+  internal_build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb      = cbytes_of(h);
-  const uint32_t base    = free_clusters(h);
+  const uint32_t cb      = internal_cbytes_of(h);
+  const uint32_t base    = internal_free_clusters(h);
   const uint32_t old_len = (3U * cb);
   const uint32_t new_len = cb + (cb / 2U);
-  write_file(h, "SHRINK.BIN", old_len);
-  TEST_ASSERT_EQ(base - 3U, free_clusters(h));
+  internal_write_file(h, "SHRINK.BIN", old_len);
+  TEST_ASSERT_EQ(base - 3U, internal_free_clusters(h));
 
-  truncate_named(h, "SHRINK.BIN", new_len);
-  TEST_ASSERT_EQ(base - 2U, free_clusters(h)); /* 3 -> 2 clusters */
-  expect_pattern_then_zero(h, "SHRINK.BIN", new_len, new_len);
-  dump_image("fat_shrink_keeps_prefix");
+  internal_truncate_named(h, "SHRINK.BIN", new_len);
+  TEST_ASSERT_EQ(base - 2U, internal_free_clusters(h)); /* 3 -> 2 clusters */
+  internal_expect_pattern_then_zero(h, "SHRINK.BIN", new_len, new_len);
+  internal_dump_image("fat_shrink_keeps_prefix");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  expect_pattern_then_zero(h, "SHRINK.BIN", new_len, new_len);
+  internal_expect_pattern_then_zero(h, "SHRINK.BIN", new_len, new_len);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("fat truncate: shrink keeps the prefix, frees the tail");
 }
 
 /**
- * @test test_fat_shrink_to_zero
+ * @test internal_test_fat_shrink_to_zero
  * @brief Truncating to zero frees every cluster and clears the first-cluster link.
  *
  * @details The whole chain returns to the volume, the size reads back 0, a read
@@ -453,36 +487,42 @@ static void test_fat_shrink_keeps_prefix(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- the paths it drives are
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
- * test_fat_truncate_rejects.)
+ * internal_test_fat_truncate_rejects.)
  *
  * @since 0.1.0
- */
-static void test_fat_shrink_to_zero(void)
+
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_fat_shrink_to_zero(void)
 {
   TEST_BEGIN("fat truncate: shrink to zero frees the whole chain");
-  build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
+  internal_build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb   = cbytes_of(h);
-  const uint32_t base = free_clusters(h);
-  write_file(h, "ZERO.BIN", 2U * cb);
-  TEST_ASSERT_EQ(base - 2U, free_clusters(h));
+  const uint32_t cb   = internal_cbytes_of(h);
+  const uint32_t base = internal_free_clusters(h);
+  internal_write_file(h, "ZERO.BIN", 2U * cb);
+  TEST_ASSERT_EQ(base - 2U, internal_free_clusters(h));
 
-  truncate_named(h, "ZERO.BIN", 0U);
-  TEST_ASSERT_EQ(base, free_clusters(h));
-  expect_pattern_then_zero(h, "ZERO.BIN", 0U, 0U);
-  dump_image("fat_shrink_to_zero");
+  internal_truncate_named(h, "ZERO.BIN", 0U);
+  TEST_ASSERT_EQ(base, internal_free_clusters(h));
+  internal_expect_pattern_then_zero(h, "ZERO.BIN", 0U, 0U);
+  internal_dump_image("fat_shrink_to_zero");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  expect_pattern_then_zero(h, "ZERO.BIN", 0U, 0U);
+  internal_expect_pattern_then_zero(h, "ZERO.BIN", 0U, 0U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("fat truncate: shrink to zero frees the whole chain");
 }
 
 /**
- * @test test_fat_grow_zero_fills
+ * @test internal_test_fat_grow_zero_fills
  * @brief Growing zero-fills the gap on disk, from a mid-sector old end.
  *
  * @details A sub-sector file is grown to two and a half clusters. The prefix
@@ -494,37 +534,43 @@ static void test_fat_shrink_to_zero(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- the paths it drives are
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
- * test_fat_truncate_rejects.)
+ * internal_test_fat_truncate_rejects.)
  *
  * @since 0.1.0
- */
-static void test_fat_grow_zero_fills(void)
+
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_fat_grow_zero_fills(void)
 {
   TEST_BEGIN("fat truncate: grow zero-fills the gap on disk");
-  build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
+  internal_build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb      = cbytes_of(h);
-  const uint32_t base    = free_clusters(h);
+  const uint32_t cb      = internal_cbytes_of(h);
+  const uint32_t base    = internal_free_clusters(h);
   const uint32_t new_len = (2U * cb) + (cb / 2U);
-  write_file(h, "GROW.BIN", (uint32_t)k_ftr_prefix);
-  TEST_ASSERT_EQ(base - 1U, free_clusters(h));
+  internal_write_file(h, "GROW.BIN", (uint32_t)k_ftr_prefix);
+  TEST_ASSERT_EQ(base - 1U, internal_free_clusters(h));
 
-  truncate_named(h, "GROW.BIN", new_len);
-  TEST_ASSERT_EQ(base - 3U, free_clusters(h)); /* 1 -> 3 clusters */
-  expect_pattern_then_zero(h, "GROW.BIN", new_len, (uint32_t)k_ftr_prefix);
-  dump_image("fat_grow_zero_fills");
+  internal_truncate_named(h, "GROW.BIN", new_len);
+  TEST_ASSERT_EQ(base - 3U, internal_free_clusters(h)); /* 1 -> 3 clusters */
+  internal_expect_pattern_then_zero(h, "GROW.BIN", new_len, (uint32_t)k_ftr_prefix);
+  internal_dump_image("fat_grow_zero_fills");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  expect_pattern_then_zero(h, "GROW.BIN", new_len, (uint32_t)k_ftr_prefix);
+  internal_expect_pattern_then_zero(h, "GROW.BIN", new_len, (uint32_t)k_ftr_prefix);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("fat truncate: grow zero-fills the gap on disk");
 }
 
 /**
- * @test test_fat_grow_within_sector
+ * @test internal_test_fat_grow_within_sector
  * @brief A grow that starts and ends inside one sector zero-fills just the gap.
  *
  * @details Both the old and the new end land in the file's first sector, so the
@@ -535,27 +581,36 @@ static void test_fat_grow_zero_fills(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- the paths it drives are
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
- * test_fat_truncate_rejects.)
+ * internal_test_fat_truncate_rejects.)
  *
  * @since 0.1.0
- */
-static void test_fat_grow_within_sector(void)
+
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_fat_grow_within_sector(void)
 {
   TEST_BEGIN("fat truncate: a grow inside one sector zero-fills only the gap");
-  build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
+  internal_build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  write_file(h, "TINY.BIN", (uint32_t)k_ftr_tiny_old);
-  truncate_named(h, "TINY.BIN", (uint32_t)k_ftr_tiny_new); /* still inside sector 0 */
-  expect_pattern_then_zero(h, "TINY.BIN", (uint32_t)k_ftr_tiny_new, (uint32_t)k_ftr_tiny_old);
-  dump_image("fat_grow_within_sector");
+  internal_write_file(h, "TINY.BIN", (uint32_t)k_ftr_tiny_old);
+  internal_truncate_named(h, "TINY.BIN", (uint32_t)k_ftr_tiny_new); /* still inside sector 0 */
+  internal_expect_pattern_then_zero(h,
+                                    "TINY.BIN",
+                                    (uint32_t)k_ftr_tiny_new,
+                                    (uint32_t)k_ftr_tiny_old);
+  internal_dump_image("fat_grow_within_sector");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("fat truncate: a grow inside one sector zero-fills only the gap");
 }
 
 /**
- * @test test_fat_grow_from_empty
+ * @test internal_test_fat_grow_from_empty
  * @brief Growing a brand-new empty file allocates a zero-filled extent.
  *
  * @details Open-for-write leaves a zero-length file; truncating it up must
@@ -565,17 +620,23 @@ static void test_fat_grow_within_sector(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- the paths it drives are
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
- * test_fat_truncate_rejects.)
+ * internal_test_fat_truncate_rejects.)
  *
  * @since 0.1.0
- */
-static void test_fat_grow_from_empty(void)
+
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_fat_grow_from_empty(void)
 {
   TEST_BEGIN("fat truncate: grow from an empty file zero-fills");
-  build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
+  internal_build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb      = cbytes_of(h);
+  const uint32_t cb      = internal_cbytes_of(h);
   const uint32_t new_len = cb + 1U;
 
   ra8_fs_file_t* f = nullptr;
@@ -583,15 +644,15 @@ static void test_fat_grow_from_empty(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_truncate(f, new_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
-  expect_pattern_then_zero(h, "EMPTY.BIN", new_len, 0U);
-  dump_image("fat_grow_from_empty");
+  internal_expect_pattern_then_zero(h, "EMPTY.BIN", new_len, 0U);
+  internal_dump_image("fat_grow_from_empty");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("fat truncate: grow from an empty file zero-fills");
 }
 
 /**
- * @test test_fat_boundary_grow_shrink
+ * @test internal_test_fat_boundary_grow_shrink
  * @brief Grow past a FAT-sector boundary, then shrink back across it.
  *
  * @details One FAT32 FAT sector maps 128 cluster entries, so a file grown past
@@ -602,38 +663,44 @@ static void test_fat_grow_from_empty(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- the paths it drives are
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
- * test_fat_truncate_rejects.)
+ * internal_test_fat_truncate_rejects.)
  *
  * @since 0.1.0
- */
-static void test_fat_boundary_grow_shrink(void)
+
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_fat_boundary_grow_shrink(void)
 {
   TEST_BEGIN("fat truncate: grow and shrink across a FAT-sector boundary");
-  build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
+  internal_build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb            = cbytes_of(h);
+  const uint32_t cb            = internal_cbytes_of(h);
   const uint32_t per_fat_sec   = (uint32_t)k_ftr_bytes_per_sector / (uint32_t)k_ftr_fat_entry_bytes;
   const uint32_t span_clusters = per_fat_sec + 4U; /* just past one FAT sector */
-  const uint32_t base          = free_clusters(h);
+  const uint32_t base          = internal_free_clusters(h);
   const uint32_t big           = span_clusters * cb;
 
-  write_file(h, "BND.BIN", (uint32_t)k_ftr_prefix);
-  truncate_named(h, "BND.BIN", big);
-  TEST_ASSERT_EQ(base - span_clusters, free_clusters(h));
-  expect_pattern_then_zero(h, "BND.BIN", big, (uint32_t)k_ftr_prefix);
-  dump_image("fat_boundary_grow");
+  internal_write_file(h, "BND.BIN", (uint32_t)k_ftr_prefix);
+  internal_truncate_named(h, "BND.BIN", big);
+  TEST_ASSERT_EQ(base - span_clusters, internal_free_clusters(h));
+  internal_expect_pattern_then_zero(h, "BND.BIN", big, (uint32_t)k_ftr_prefix);
+  internal_dump_image("fat_boundary_grow");
 
-  truncate_named(h, "BND.BIN", cb);
-  TEST_ASSERT_EQ(base - 1U, free_clusters(h));
-  expect_pattern_then_zero(h, "BND.BIN", cb, (uint32_t)k_ftr_prefix);
+  internal_truncate_named(h, "BND.BIN", cb);
+  TEST_ASSERT_EQ(base - 1U, internal_free_clusters(h));
+  internal_expect_pattern_then_zero(h, "BND.BIN", cb, (uint32_t)k_ftr_prefix);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("fat truncate: grow and shrink across a FAT-sector boundary");
 }
 
 /**
- * @test test_fat_truncate_offset_follows
+ * @test internal_test_fat_truncate_offset_follows
  * @brief The offset is left in place on a grow and pulled down by a shrink.
  *
  * @details `ftruncate()` does not move the cursor, except that a shrink below it
@@ -643,18 +710,24 @@ static void test_fat_boundary_grow_shrink(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- the paths it drives are
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
- * test_fat_truncate_rejects.)
+ * internal_test_fat_truncate_rejects.)
  *
  * @since 0.1.0
- */
-static void test_fat_truncate_offset_follows(void)
+
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_fat_truncate_offset_follows(void)
 {
   TEST_BEGIN("fat truncate: offset stays on grow, clamps on shrink");
-  build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
+  internal_build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb = cbytes_of(h);
-  write_file(h, "OFF.BIN", 3U * cb);
+  const uint32_t cb = internal_cbytes_of(h);
+  internal_write_file(h, "OFF.BIN", 3U * cb);
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "OFF.BIN", k_ra8_fs_mode_append, &f));
@@ -669,12 +742,12 @@ static void test_fat_truncate_offset_follows(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("fat truncate: offset stays on grow, clamps on shrink");
 }
 
 /**
- * @test test_fat_truncate_rejects
+ * @test internal_test_fat_truncate_rejects
  * @brief Truncate refuses a NULL, a closed, and a read-only handle.
  *
  * @details The guard drives all three vectors of its compound decision, and a
@@ -692,15 +765,21 @@ static void test_fat_truncate_offset_follows(void)
  * the separate first guard.
  *
  * @since 0.1.0
- */
-static void test_fat_truncate_rejects(void)
+
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_fat_truncate_rejects(void)
 {
   TEST_BEGIN("fat truncate: refuses null, closed, and read-only handles");
-  build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
+  internal_build_fat_volume((uint32_t)k_ftr_blocks_fat32, k_ra8_fs_type_fat32);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  const uint32_t cb = cbytes_of(h);
-  write_file(h, "RO.BIN", cb);
+  const uint32_t cb = internal_cbytes_of(h);
+  internal_write_file(h, "RO.BIN", cb);
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_truncate(nullptr, 0U));
 
@@ -719,12 +798,12 @@ static void test_fat_truncate_rejects(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("fat truncate: refuses null, closed, and read-only handles");
 }
 
 /**
- * @test test_fat16_shrink_grow_roundtrip
+ * @test internal_test_fat16_shrink_grow_roundtrip
  * @brief The verb works on a FAT16 volume, not just FAT32.
  *
  * @details FAT16 uses a different FAT entry width and end-of-chain marker, so a
@@ -734,26 +813,32 @@ static void test_fat_truncate_rejects(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- the paths it drives are
  * covered elsewhere; the truncate mode/handle guard's MC/DC is owned by
- * test_fat_truncate_rejects.)
+ * internal_test_fat_truncate_rejects.)
  *
  * @since 0.1.0
- */
-static void test_fat16_shrink_grow_roundtrip(void)
+
+ * @pre Pointer arguments, when present, address their documented test storage.
+ * @pre Scalar arguments satisfy the bounds asserted by this test helper.
+ * @post The helper completes only the bounded test operation described above.
+ * @post Failures are returned or reported through the test assertion surface.
+ * @note Test-only helper with no production ABI.
+*/
+RA8_INTERNAL static void internal_test_fat16_shrink_grow_roundtrip(void)
 {
   TEST_BEGIN("fat truncate: shrink and grow on a FAT16 volume");
-  build_fat_volume((uint32_t)k_ftr_blocks_fat16, k_ra8_fs_type_fat16);
+  internal_build_fat_volume((uint32_t)k_ftr_blocks_fat16, k_ra8_fs_type_fat16);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_fat16, h->type);
-  const uint32_t cb = cbytes_of(h);
-  write_file(h, "F16.BIN", 3U * cb);
-  truncate_named(h, "F16.BIN", cb);
-  expect_pattern_then_zero(h, "F16.BIN", cb, cb);
-  truncate_named(h, "F16.BIN", (2U * cb) + (uint32_t)k_ftr_tail_odd);
-  expect_pattern_then_zero(h, "F16.BIN", (2U * cb) + (uint32_t)k_ftr_tail_odd, cb);
-  dump_image("fat16_shrink_grow");
+  const uint32_t cb = internal_cbytes_of(h);
+  internal_write_file(h, "F16.BIN", 3U * cb);
+  internal_truncate_named(h, "F16.BIN", cb);
+  internal_expect_pattern_then_zero(h, "F16.BIN", cb, cb);
+  internal_truncate_named(h, "F16.BIN", (2U * cb) + (uint32_t)k_ftr_tail_odd);
+  internal_expect_pattern_then_zero(h, "F16.BIN", (2U * cb) + (uint32_t)k_ftr_tail_odd, cb);
+  internal_dump_image("fat16_shrink_grow");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("fat truncate: shrink and grow on a FAT16 volume");
 }
 
@@ -764,20 +849,22 @@ static void test_fat16_shrink_grow_roundtrip(void)
  * @pre The host provides a working heap.
  * @pre No volume is mounted on entry.
  * @post Every test built and released its own volume.
- * @post A success banner is written to stderr.
+ * @post A success banner is written to the diagnostic descriptor.
  * @since 0.1.0
  */
 int32_t main(void)
 {
-  test_fat_shrink_keeps_prefix();
-  test_fat_shrink_to_zero();
-  test_fat_grow_zero_fills();
-  test_fat_grow_within_sector();
-  test_fat_grow_from_empty();
-  test_fat_boundary_grow_shrink();
-  test_fat_truncate_offset_follows();
-  test_fat_truncate_rejects();
-  test_fat16_shrink_grow_roundtrip();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_truncate.c\n");
+  internal_test_fat_shrink_keeps_prefix();
+  internal_test_fat_shrink_to_zero();
+  internal_test_fat_grow_zero_fills();
+  internal_test_fat_grow_within_sector();
+  internal_test_fat_grow_from_empty();
+  internal_test_fat_boundary_grow_shrink();
+  internal_test_fat_truncate_offset_follows();
+  internal_test_fat_truncate_rejects();
+  internal_test_fat16_shrink_grow_roundtrip();
+  TEST_ASSERT_EQ(
+    k_ra8_test_output_ok,
+    internal_test_output_fd_text(STDERR_FILENO, "[OK  ] test_ra8_fs_fat_truncate.c\n"));
   return 0;
 }

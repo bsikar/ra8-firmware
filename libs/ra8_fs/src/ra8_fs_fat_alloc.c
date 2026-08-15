@@ -152,7 +152,7 @@ static const ra8_fs_mount_t* s_fat_cache_owner = nullptr;
  * @since 0.1.0
  */
 RA8_INTERNAL
-static fat_alloc_state_t* priv_state_for(const ra8_fs_mount_t* m)
+static fat_alloc_state_t* internal_state_for(const ra8_fs_mount_t* m)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_fs_alloc_slots; i++) {
     if (s_alloc[i].owner == m) {
@@ -165,9 +165,9 @@ static fat_alloc_state_t* priv_state_for(const ra8_fs_mount_t* m)
 /* `priv_alloc_state_bind()`: see header for the documented contract. */
 void priv_alloc_state_bind(const ra8_fs_mount_t* m)
 {
-  fat_alloc_state_t* st = priv_state_for(m);
+  fat_alloc_state_t* st = internal_state_for(m);
   if (st == nullptr) {
-    st = priv_state_for(nullptr);
+    st = internal_state_for(nullptr);
   }
   if (st == nullptr) {
     return;
@@ -188,7 +188,7 @@ ra8_err_t priv_exfat_bitmap_lba(const ra8_fs_mount_t* m, uint64_t* out_lba)
    * accessor in this file is total by construction, because there is one slot
    * per mount slot. Spelling the pair as one compound decision would add a
    * condition nothing can vary, which is a permanent MC/DC hole. */
-  fat_alloc_state_t* st = priv_state_for(m);
+  fat_alloc_state_t* st = internal_state_for(m);
   if (st != nullptr) {
     if (st->bitmap_lba != (uint64_t)k_fs_bitmap_unknown) {
       *out_lba = st->bitmap_lba;
@@ -212,7 +212,7 @@ ra8_err_t priv_exfat_bitmap_lba(const ra8_fs_mount_t* m, uint64_t* out_lba)
 /* `priv_alloc_state_release()`: see header for the documented contract. */
 void priv_alloc_state_release(const ra8_fs_mount_t* m)
 {
-  fat_alloc_state_t* st = priv_state_for(m);
+  fat_alloc_state_t* st = internal_state_for(m);
   if (st != nullptr) {
     *st = (fat_alloc_state_t){};
   }
@@ -262,7 +262,7 @@ void priv_alloc_state_release(const ra8_fs_mount_t* m)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_lba_is_cacheable(const ra8_fs_mount_t* m, uint64_t lba)
+static bool internal_lba_is_cacheable(const ra8_fs_mount_t* m, uint64_t lba)
 {
   return (lba - m->first_fat_lba) < m->fat_size_sectors;
 }
@@ -270,7 +270,7 @@ static bool priv_lba_is_cacheable(const ra8_fs_mount_t* m, uint64_t lba)
 /* `priv_fat_sector_read()`: see header for the documented contract. */
 ra8_err_t priv_fat_sector_read(const ra8_fs_mount_t* m, uint64_t lba, uint8_t* buf)
 {
-  if (!priv_lba_is_cacheable(m, lba)) {
+  if (!internal_lba_is_cacheable(m, lba)) {
     return priv_read_sector(m, lba, buf);
   }
   if ((s_fat_cache_owner == m) && (s_fat_cache_lba == lba)) {
@@ -290,7 +290,7 @@ ra8_err_t priv_fat_sector_read(const ra8_fs_mount_t* m, uint64_t lba, uint8_t* b
 /* `priv_fat_sector_wrote()`: see header for the documented contract. */
 void priv_fat_sector_wrote(const ra8_fs_mount_t* m, const uint8_t* buf, uint64_t lba)
 {
-  if (!priv_lba_is_cacheable(m, lba)) {
+  if (!internal_lba_is_cacheable(m, lba)) {
     return;
   }
   priv_byte_copy(s_fat_cache, buf, priv_bps(m));
@@ -306,7 +306,7 @@ void priv_fat_sector_wrote(const ra8_fs_mount_t* m, const uint8_t* buf, uint64_t
 /* `priv_alloc_hint_get()`: see header for the documented contract. */
 uint32_t priv_alloc_hint_get(const ra8_fs_mount_t* m)
 {
-  const fat_alloc_state_t* st = priv_state_for(m);
+  const fat_alloc_state_t* st = internal_state_for(m);
   if (st == nullptr) {
     return (uint32_t)k_cluster_first_data;
   }
@@ -316,7 +316,7 @@ uint32_t priv_alloc_hint_get(const ra8_fs_mount_t* m)
 /* `priv_alloc_hint_set()`: see header for the documented contract. */
 void priv_alloc_hint_set(const ra8_fs_mount_t* m, uint32_t cluster)
 {
-  fat_alloc_state_t* st = priv_state_for(m);
+  fat_alloc_state_t* st = internal_state_for(m);
   if (st == nullptr) {
     return;
   }
@@ -326,7 +326,7 @@ void priv_alloc_hint_set(const ra8_fs_mount_t* m, uint32_t cluster)
 /* `priv_alloc_hint_lower()`: see header for the documented contract. */
 void priv_alloc_hint_lower(const ra8_fs_mount_t* m, uint32_t cluster)
 {
-  fat_alloc_state_t* st = priv_state_for(m);
+  fat_alloc_state_t* st = internal_state_for(m);
   if (st == nullptr) {
     return;
   }
@@ -338,7 +338,7 @@ void priv_alloc_hint_lower(const ra8_fs_mount_t* m, uint32_t cluster)
 /* `priv_free_count_took()`: see header for the documented contract. */
 void priv_free_count_took(const ra8_fs_mount_t* m, uint32_t n)
 {
-  fat_alloc_state_t* st = priv_state_for(m);
+  fat_alloc_state_t* st = internal_state_for(m);
   if (st == nullptr) {
     return;
   }
@@ -352,7 +352,7 @@ void priv_free_count_took(const ra8_fs_mount_t* m, uint32_t n)
 /* `priv_free_count_gave()`: see header for the documented contract. */
 void priv_free_count_gave(const ra8_fs_mount_t* m, uint32_t n)
 {
-  fat_alloc_state_t* st = priv_state_for(m);
+  fat_alloc_state_t* st = internal_state_for(m);
   if (st == nullptr) {
     return;
   }
@@ -367,7 +367,7 @@ void priv_free_count_gave(const ra8_fs_mount_t* m, uint32_t n)
 /* `priv_free_count_peek()`: see header for the documented contract. */
 uint32_t priv_free_count_peek(const ra8_fs_mount_t* m)
 {
-  const fat_alloc_state_t* st = priv_state_for(m);
+  const fat_alloc_state_t* st = internal_state_for(m);
   if (st == nullptr) {
     return (uint32_t)k_fs_free_unknown;
   }
@@ -377,7 +377,7 @@ uint32_t priv_free_count_peek(const ra8_fs_mount_t* m)
 /* `priv_free_count_cache()`: see header for the documented contract. */
 void priv_free_count_cache(const ra8_fs_mount_t* m, uint32_t n)
 {
-  fat_alloc_state_t* st = priv_state_for(m);
+  fat_alloc_state_t* st = internal_state_for(m);
   if (st == nullptr) {
     return;
   }
@@ -415,7 +415,7 @@ void priv_free_count_cache(const ra8_fs_mount_t* m, uint32_t n)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fsinfo_locate(const ra8_fs_mount_t* m, uint32_t* out_lba)
+static ra8_err_t internal_fsinfo_locate(const ra8_fs_mount_t* m, uint32_t* out_lba)
 {
   uint8_t* const  boot = priv_sec_walk();
   const ra8_err_t err  = priv_read_sector(m, 0U, boot);
@@ -457,7 +457,7 @@ static ra8_err_t priv_fsinfo_locate(const ra8_fs_mount_t* m, uint32_t* out_lba)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_fsinfo_signatures_ok(const uint8_t* sec)
+static bool internal_fsinfo_signatures_ok(const uint8_t* sec)
 {
   if (priv_rd32(&sec[k_fmt_fsi_off_lead]) != (uint32_t)k_fmt_fsi_lead_sig) {
     return false;
@@ -471,7 +471,7 @@ static bool priv_fsinfo_signatures_ok(const uint8_t* sec)
 /* `priv_fsinfo_seed()`: see header for the documented contract. */
 ra8_err_t priv_fsinfo_seed(const ra8_fs_mount_t* m)
 {
-  fat_alloc_state_t* st = priv_state_for(m);
+  fat_alloc_state_t* st = internal_state_for(m);
   if (st == nullptr) {
     return k_ra8_ok;
   }
@@ -479,7 +479,7 @@ ra8_err_t priv_fsinfo_seed(const ra8_fs_mount_t* m)
     return k_ra8_ok;
   }
   uint32_t  lba = (uint32_t)k_fs_fsinfo_absent;
-  ra8_err_t err = priv_fsinfo_locate(m, &lba);
+  ra8_err_t err = internal_fsinfo_locate(m, &lba);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -491,7 +491,7 @@ ra8_err_t priv_fsinfo_seed(const ra8_fs_mount_t* m)
   if (err != k_ra8_ok) {
     return err;
   }
-  if (!priv_fsinfo_signatures_ok(sec)) {
+  if (!internal_fsinfo_signatures_ok(sec)) {
     return k_ra8_ok;
   }
   st->fsinfo_lba      = lba;
@@ -511,7 +511,7 @@ ra8_err_t priv_fsinfo_seed(const ra8_fs_mount_t* m)
 /* `priv_fsinfo_flush()`: see header for the documented contract. */
 ra8_err_t priv_fsinfo_flush(const ra8_fs_mount_t* m)
 {
-  fat_alloc_state_t* st = priv_state_for(m);
+  fat_alloc_state_t* st = internal_state_for(m);
   if (st == nullptr) {
     return k_ra8_ok;
   }

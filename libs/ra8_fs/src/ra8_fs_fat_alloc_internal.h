@@ -164,7 +164,7 @@ void priv_alloc_state_release(const ra8_fs_mount_t* m);
  * @post On success @p buf equals the on-disk sector at @p lba.
  * @post A cacheable sector that missed is now the cached one.
  *
- * @note Not thread-safe; the cache is module-static like `s_scratch`.
+ * @note Not thread-safe; the cache is module-static like `priv_scratch`.
  *
  * @since 0.1.0
  */
@@ -191,7 +191,7 @@ ra8_err_t priv_fat_sector_read(const ra8_fs_mount_t* m, uint64_t lba, uint8_t* b
  * @post If @p lba is cacheable, the cache holds @p buf for @p m.
  * @post No backend I/O is issued.
  *
- * @note Not thread-safe; the cache is module-static like `s_scratch`.
+ * @note Not thread-safe; the cache is module-static like `priv_scratch`.
  *
  * @since 0.1.0
  */

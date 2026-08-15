@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "unity_minimal.h"
@@ -109,7 +110,9 @@ typedef struct {
  */
 static mem_disk_t s_disk = {};
 
-static inline ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the mem read filesystem operation. @details Implements the bounded mem read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static inline ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   const mem_disk_t* d = (const mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -121,7 +124,9 @@ static inline ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_
   return k_ra8_ok;
 }
 
-static inline ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the mem write filesystem operation. @details Implements the bounded mem write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static inline ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -133,7 +138,9 @@ static inline ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const
   return k_ra8_ok;
 }
 
-static inline ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the mem capacity filesystem operation. @details Implements the bounded mem capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static inline ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const mem_disk_t* d = (const mem_disk_t*)ctx;
   *block_count        = d->block_count;
@@ -143,9 +150,9 @@ static inline ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t*
 
 /** @brief Normal backend pointing at s_disk. */
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
@@ -177,7 +184,9 @@ typedef struct {
  */
 static inject_disk_t s_inject = {};
 
-static inline ra8_err_t inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the inj read filesystem operation. @details Implements the bounded inj read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static inline ra8_err_t
+internal_inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->reads_left == 0U) {
@@ -195,7 +204,9 @@ static inline ra8_err_t inj_read(void* ctx, uint64_t lba, uint32_t count, uint8_
   return k_ra8_ok;
 }
 
-static inline ra8_err_t inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the inj write filesystem operation. @details Implements the bounded inj write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static inline ra8_err_t
+internal_inj_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   inject_disk_t* d = (inject_disk_t*)ctx;
   if (d->writes_fail != 0U) {
@@ -210,7 +221,9 @@ static inline ra8_err_t inj_write(void* ctx, uint64_t lba, uint32_t count, const
   return k_ra8_ok;
 }
 
-static inline ra8_err_t inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the inj capacity filesystem operation. @details Implements the bounded inj capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static inline ra8_err_t
+internal_inj_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const inject_disk_t* d = (const inject_disk_t*)ctx;
   *block_count           = d->block_count;
@@ -246,7 +259,9 @@ typedef struct {
  */
 static wcount_disk_t s_wcount = {};
 
-static inline ra8_err_t wco_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the wco read filesystem operation. @details Implements the bounded wco read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static inline ra8_err_t
+internal_wco_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   const wcount_disk_t* d = (const wcount_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -258,7 +273,9 @@ static inline ra8_err_t wco_read(void* ctx, uint64_t lba, uint32_t count, uint8_
   return k_ra8_ok;
 }
 
-static inline ra8_err_t wco_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the wco write filesystem operation. @details Implements the bounded wco write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static inline ra8_err_t
+internal_wco_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   wcount_disk_t* d = (wcount_disk_t*)ctx;
   if (d->writes_left == 0U) {
@@ -274,7 +291,9 @@ static inline ra8_err_t wco_write(void* ctx, uint64_t lba, uint32_t count, const
   return k_ra8_ok;
 }
 
-static inline ra8_err_t wco_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the wco capacity filesystem operation. @details Implements the bounded wco capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static inline ra8_err_t
+internal_wco_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   const wcount_disk_t* d = (const wcount_disk_t*)ctx;
   *block_count           = d->block_count;
@@ -298,9 +317,9 @@ static inline ra8_err_t wco_capacity(void* ctx, uint64_t* block_count, uint32_t*
  * @post p[off] and p[off + 1] hold v little-endian.
  *
  * @note Trivially thread-safe (writes only through p).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded put16 fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static inline void put16(uint8_t* p, uint32_t off, uint16_t v)
+RA8_INTERNAL static inline void internal_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8U) & k_byte_mask);
@@ -316,9 +335,9 @@ static inline void put16(uint8_t* p, uint32_t off, uint16_t v)
  * @post s_disk holds a calloc-zeroed 4 MiB image with a valid BPB.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static inline void build_fat16_vol(void)
+RA8_INTERNAL static inline void internal_build_fat16_vol(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -331,13 +350,13 @@ static inline void build_fat16_vol(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = s_disk.bytes;
-  put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_geo_blk_sz);
+  internal_put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_geo_blk_sz);
   bpb[k_bpb_off_sec_per_clus] = 1U;
-  put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
   bpb[k_bpb_off_num_fats] = 2U;
-  put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, 16U);
-  put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_geo_fat16_spc1);
-  put16(bpb, (uint32_t)k_bpb_off_fat_sz16, 32U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, 16U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_geo_fat16_spc1);
+  internal_put16(bpb, (uint32_t)k_bpb_off_fat_sz16, 32U);
   bpb[k_bpb_off_sig0] = (uint8_t)k_bpb_sig0_val;
   bpb[k_bpb_off_sig1] = (uint8_t)k_bpb_sig1_val;
 }
@@ -353,9 +372,9 @@ static inline void build_fat16_vol(void)
  * @post s_disk holds a calloc-zeroed 8 MiB image with a valid SPC=2 BPB.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static inline void build_fat16_spc2_vol(void)
+RA8_INTERNAL static inline void internal_build_fat16_spc2_vol(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -368,13 +387,13 @@ static inline void build_fat16_spc2_vol(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = s_disk.bytes;
-  put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_geo_blk_sz);
+  internal_put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_geo_blk_sz);
   bpb[k_bpb_off_sec_per_clus] = 2U;
-  put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
   bpb[k_bpb_off_num_fats] = 2U;
-  put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, 16U);
-  put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_geo_fat16_spc2);
-  put16(bpb, (uint32_t)k_bpb_off_fat_sz16, 32U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, 16U);
+  internal_put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_geo_fat16_spc2);
+  internal_put16(bpb, (uint32_t)k_bpb_off_fat_sz16, 32U);
   bpb[k_bpb_off_sig0] = (uint8_t)k_bpb_sig0_val;
   bpb[k_bpb_off_sig1] = (uint8_t)k_bpb_sig1_val;
 }
@@ -386,9 +405,9 @@ static inline void build_fat16_spc2_vol(void)
  * @post s_disk holds a formatted exFAT image ready to mount.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded build exfat vol fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static inline void build_exfat_vol(void)
+RA8_INTERNAL static inline void internal_build_exfat_vol(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -412,9 +431,9 @@ static inline void build_exfat_vol(void)
  * @post s_disk.bytes is nullptr.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded free vol fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static inline void free_vol(void)
+RA8_INTERNAL static inline void internal_free_vol(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -439,9 +458,10 @@ static inline void free_vol(void)
  * @post Counter at ctx is incremented by one.
  *
  * @note Trivially thread-safe (no shared state modified by this function).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded count cb fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static inline void count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
+RA8_INTERNAL static inline void
+internal_count_cb(const char* name, uint8_t attr, uint64_t size, void* ctx)
 {
   (void)name;
   (void)attr;
@@ -465,18 +485,19 @@ static inline void count_cb(const char* name, uint8_t attr, uint64_t size, void*
  * @post h->backend uses inj_read / inj_write callbacks.
  *
  * @note Caller must restore h->backend = saved after use.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static inline void swap_to_inject(ra8_fs_mount_t* h, uint32_t reads_left, uint8_t writes_fail)
+RA8_INTERNAL static inline void
+internal_swap_to_inject(ra8_fs_mount_t* h, uint32_t reads_left, uint8_t writes_fail)
 {
   s_inject.bytes          = s_disk.bytes;
   s_inject.block_count    = s_disk.block_count;
   s_inject.byte_count     = s_disk.byte_count;
   s_inject.reads_left     = reads_left;
   s_inject.writes_fail    = writes_fail;
-  h->backend.read_block   = inj_read;
-  h->backend.write_block  = inj_write;
-  h->backend.get_capacity = inj_capacity;
+  h->backend.read_block   = internal_inj_read;
+  h->backend.write_block  = internal_inj_write;
+  h->backend.get_capacity = internal_inj_capacity;
   h->backend.ctx          = &s_inject;
 }
 
@@ -493,17 +514,17 @@ static inline void swap_to_inject(ra8_fs_mount_t* h, uint32_t reads_left, uint8_
  * @post h->backend uses wco_read / wco_write callbacks.
  *
  * @note Caller must restore h->backend = saved after use.
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @post No access exceeds a caller-advertised capacity.
  */
-static inline void swap_to_wcount(ra8_fs_mount_t* h, uint32_t writes_left)
+RA8_INTERNAL static inline void internal_swap_to_wcount(ra8_fs_mount_t* h, uint32_t writes_left)
 {
   s_wcount.bytes          = s_disk.bytes;
   s_wcount.block_count    = s_disk.block_count;
   s_wcount.byte_count     = s_disk.byte_count;
   s_wcount.writes_left    = writes_left;
-  h->backend.read_block   = wco_read;
-  h->backend.write_block  = wco_write;
-  h->backend.get_capacity = wco_capacity;
+  h->backend.read_block   = internal_wco_read;
+  h->backend.write_block  = internal_wco_write;
+  h->backend.get_capacity = internal_wco_capacity;
   h->backend.ctx          = &s_wcount;
 }
 
@@ -523,9 +544,10 @@ static inline void swap_to_wcount(ra8_fs_mount_t* h, uint32_t writes_left)
  * @post count new dir entries exist under dir_path.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @post No access exceeds a caller-advertised capacity.
  */
-static inline void create_empty_files(ra8_fs_mount_t* h, const char* dir_path, uint32_t count)
+RA8_INTERNAL static inline void
+internal_create_empty_files(ra8_fs_mount_t* h, const char* dir_path, uint32_t count)
 {
   for (uint32_t i = 0; i < count; i++) {
     char name[32] = {};

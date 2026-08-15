@@ -24,6 +24,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "test_ra8_fs_format_fixture.h"
 
 /**
@@ -31,12 +32,12 @@
  * @par MC/DC:
  * (no compound decision in the code this case uniquely touches -- it exercises
  * the FAT12 format + mount + file-cycle happy path end to end; the compound
- * decisions in the format path are covered by the dedicated MC/DC cases below)
+ * decisions in the format path are covered by the dedicated MC/DC cases below) @brief Exercise the format fat12 round trip filesystem operation. @details Runs the format fat12 round trip vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_format_fat12_round_trip(void)
+RA8_INTERNAL static void internal_test_format_fat12_round_trip(void)
 {
   TEST_BEGIN("ra8_fs format: FAT12 format + mount + file cycle");
-  format_mount_cycle((uint32_t)k_fmt_blocks_fat12, k_ra8_fs_type_fat12, "FAT12VOL");
+  internal_format_mount_cycle((uint32_t)k_fmt_blocks_fat12, k_ra8_fs_type_fat12, "FAT12VOL");
   TEST_END("ra8_fs format: FAT12 format + mount + file cycle");
 }
 
@@ -44,12 +45,12 @@ static void test_format_fat12_round_trip(void)
  * @test test_format_fat16_round_trip
  * @par MC/DC:
  * (no compound decision unique to this case -- FAT16 format + mount + file
- * cycle happy path; format-path compound decisions covered separately below)
+ * cycle happy path; format-path compound decisions covered separately below) @brief Exercise the format fat16 round trip filesystem operation. @details Runs the format fat16 round trip vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_format_fat16_round_trip(void)
+RA8_INTERNAL static void internal_test_format_fat16_round_trip(void)
 {
   TEST_BEGIN("ra8_fs format: FAT16 format + mount + file cycle");
-  format_mount_cycle((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "FAT16VOL");
+  internal_format_mount_cycle((uint32_t)k_fmt_blocks_fat16, k_ra8_fs_type_fat16, "FAT16VOL");
   TEST_END("ra8_fs format: FAT16 format + mount + file cycle");
 }
 
@@ -57,12 +58,12 @@ static void test_format_fat16_round_trip(void)
  * @test test_format_fat32_round_trip
  * @par MC/DC:
  * (no compound decision unique to this case -- FAT32 format + mount + file
- * cycle happy path; format-path compound decisions covered separately below)
+ * cycle happy path; format-path compound decisions covered separately below) @brief Exercise the format fat32 round trip filesystem operation. @details Runs the format fat32 round trip vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_format_fat32_round_trip(void)
+RA8_INTERNAL static void internal_test_format_fat32_round_trip(void)
 {
   TEST_BEGIN("ra8_fs format: FAT32 format + mount + file cycle");
-  format_mount_cycle((uint32_t)k_fmt_blocks_fat32, k_ra8_fs_type_fat32, "FAT32VOL");
+  internal_format_mount_cycle((uint32_t)k_fmt_blocks_fat32, k_ra8_fs_type_fat32, "FAT32VOL");
   TEST_END("ra8_fs format: FAT32 format + mount + file cycle");
 }
 
@@ -71,12 +72,12 @@ static void test_format_fat32_round_trip(void)
  * @par MC/DC:
  * (no compound decision unique to this case -- asserts the FAT16 root holds a
  * VOLUME_ID directory entry the formatter never writes, i.e. proves the root
- * is empty after format; happy-path data assertion only)
+ * is empty after format; happy-path data assertion only) @brief Exercise the format label persisted as volume id filesystem operation. @details Runs the format label persisted as volume id vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_format_label_persisted_as_volume_id(void)
+RA8_INTERNAL static void internal_test_format_label_persisted_as_volume_id(void)
 {
   TEST_BEGIN("ra8_fs format: fresh FAT16 root is empty (no stray entries)");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   opts.label                = "SCRATCH";
@@ -84,10 +85,10 @@ static void test_format_label_persisted_as_volume_id(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   list_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", count_cb, &ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_listdir(h, "/", internal_count_cb, &ctx));
   TEST_ASSERT_EQ(0, ctx.count);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format: fresh FAT16 root is empty (no stray entries)");
 }
 
@@ -100,18 +101,18 @@ static void test_format_label_persisted_as_volume_id(void)
  * - V2 backend=NULL,  opts=valid -> C1=T -> T (varies backend only).
  * - V3 backend=valid, opts=NULL  -> C1=F, C2=T -> T (varies opts only).
  * V1+V2 prove backend independently flips the outcome; V1+V3 prove opts does.
- * N+1 = 3 vectors for N=2 conditions.
+ * N+1 = 3 vectors for N=2 conditions. @brief Exercise the mcdc format args pair filesystem operation. @details Runs the mcdc format args pair vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_args_pair(void)
+RA8_INTERNAL static void internal_test_mcdc_format_args_pair(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: (backend||opts) NULL pair");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_format(nullptr, &opts));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_fs_format(&s_backend, nullptr));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: (backend||opts) NULL pair");
 }
 
@@ -123,12 +124,12 @@ static void test_mcdc_format_args_pair(void)
  * - V1 both non-NULL -> F (format proceeds).
  * - V2 write_block=NULL -> C1=T -> T (varies write_block only).
  * - V3 get_capacity=NULL -> C1=F, C2=T -> T (varies get_capacity only).
- * N+1 = 3 vectors for N=2 conditions.
+ * N+1 = 3 vectors for N=2 conditions. @brief Exercise the mcdc format backend fn pair filesystem operation. @details Runs the mcdc format backend fn pair vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_backend_fn_pair(void)
+RA8_INTERNAL static void internal_test_mcdc_format_backend_fn_pair(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: (write_block||get_capacity) NULL pair");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
@@ -138,7 +139,7 @@ static void test_mcdc_format_backend_fn_pair(void)
   ra8_fs_backend_t no_cap = s_backend;
   no_cap.get_capacity     = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&no_cap, &opts));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: (write_block||get_capacity) NULL pair");
 }
 
@@ -154,25 +155,25 @@ static void test_mcdc_format_backend_fn_pair(void)
  * - V3 FAT32 -> A=T, B=T, C=F -> F (accepted).
  * - V4 exFAT -> A=T, B=T, C=T -> T (rejected, not-supported).
  * V4 vs V2 flips A; V4 vs V1 flips B; V4 vs V3 flips C -- each condition
- * independently drives the reject outcome. N+1 = 4 vectors for N=3.
+ * independently drives the reject outcome. N+1 = 4 vectors for N=3. @brief Exercise the mcdc format type triple filesystem operation. @details Runs the mcdc format type triple vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_type_triple(void)
+RA8_INTERNAL static void internal_test_mcdc_format_type_triple(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: type (!=12 && !=16 && !=32) triple");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   opts.type = k_ra8_fs_type_fat12;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat12);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat12);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   opts.type = k_ra8_fs_type_fat32;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   opts.type = k_ra8_fs_type_exfat;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_format(&s_backend, &opts));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: type (!=12 && !=16 && !=32) triple");
 }
 
@@ -189,25 +190,27 @@ static void test_mcdc_format_type_triple(void)
  * - V2 spc=128 -> over the 64 cap -> rejected (range condition T).
  * - V3 spc=3   -> in range, NOT a power of two -> rejected (pow2 condition T).
  * V1 vs V2 flips the range condition; V1 vs V3 flips the power-of-two
- * condition. N+1 = 3 vectors for the two effective conditions.
+ * condition. N+1 = 3 vectors for the two effective conditions. @brief Exercise the mcdc format spc valid pair filesystem operation. @details Runs the mcdc format spc valid pair vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_spc_valid_pair(void)
+RA8_INTERNAL static void internal_test_mcdc_format_spc_valid_pair(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: spc (==0 || (<=64 && pow2)) guard");
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   opts.sectors_per_cluster = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   opts.sectors_per_cluster = k_fs_spc_max;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&s_backend, &opts));
   opts.sectors_per_cluster = 3U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&s_backend, &opts));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: spc (==0 || (<=64 && pow2)) guard");
 }
 
-static ra8_err_t bad_cap(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the bad cap filesystem operation. @details Implements the bounded bad cap fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_bad_cap(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = (uint32_t)k_fmt_blocks_fat16;
@@ -229,19 +232,19 @@ static ra8_err_t bad_cap(void* ctx, uint64_t* block_count, uint32_t* block_size)
  * under DO-178C 6.4.4.3.
  * - V1 valid 512 B card -> C1=F, C2=F -> F (format proceeds).
  * - V2 backend reports 8192 B sectors -> C1=T -> T (rejected).
- * N+1 (for the one observable condition) = 2 vectors.
+ * N+1 (for the one observable condition) = 2 vectors. @brief Exercise the mcdc format block guard pair filesystem operation. @details Runs the mcdc format block guard pair vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_block_guard_pair(void)
+RA8_INTERNAL static void internal_test_mcdc_format_block_guard_pair(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: (!bps_valid || block_count==0) guard");
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   ra8_fs_backend_t wrong_bs = s_backend;
-  wrong_bs.get_capacity     = bad_cap;
+  wrong_bs.get_capacity     = internal_bad_cap;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&wrong_bs, &opts));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: (!bps_valid || block_count==0) guard");
 }
 
@@ -259,26 +262,26 @@ static void test_mcdc_format_block_guard_pair(void)
  *      rejected: proves the upper/lower split is per-type.
  * V1 vs V2 flips the FAT16 lower-bound condition; the FAT32 leg (V3) exercises
  * the symmetric lower-bound check for the other type. N+1 coverage of the
- * band-membership decisions.
+ * band-membership decisions. @brief Exercise the mcdc format count in band capacity filesystem operation. @details Runs the mcdc format count in band capacity vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_count_in_band_capacity(void)
+RA8_INTERNAL static void internal_test_mcdc_format_count_in_band_capacity(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: count-in-band / capacity guard");
   ra8_fs_format_opts_t opts = {};
 
   opts.type = k_ra8_fs_type_fat16;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
 
   opts.type = k_ra8_fs_type_fat16;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_tiny);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_tiny);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_fs_format(&s_backend, &opts));
 
   opts.type = k_ra8_fs_type_fat32;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_tiny);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_tiny);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_fs_format(&s_backend, &opts));
 
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: count-in-band / capacity guard");
 }
 
@@ -297,9 +300,9 @@ static void test_mcdc_format_count_in_band_capacity(void)
  * - V3 pinned spc that yields an out-of-band count -> `!auto_mode`=T -> the
  *      guard fires and the format is rejected (FAT12 on the 4 MiB card with a
  *      pinned spc that overshoots the FAT12 ceiling).
- * V2 vs V3 flips C1 (auto vs pinned reject); the auto sweep (V1) drives C2.
+ * V2 vs V3 flips C1 (auto vs pinned reject); the auto sweep (V1) drives C2. @brief Exercise the mcdc format pinned spc geometry filesystem operation. @details Runs the mcdc format pinned spc geometry vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_pinned_spc_geometry(void)
+RA8_INTERNAL static void internal_test_mcdc_format_pinned_spc_geometry(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: choose-geometry sweep early-out");
   ra8_fs_format_opts_t opts = {};
@@ -307,13 +310,13 @@ static void test_mcdc_format_pinned_spc_geometry(void)
   /* V1: auto sweep on a 36 MiB card lands FAT32 (the sweep may step spc). */
   opts.type                = k_ra8_fs_type_fat32;
   opts.sectors_per_cluster = 0U;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
 
   /* V2: pinned spc=1 on a 4 MiB card lands in the FAT16 band (8095 clusters). */
   opts.type                = k_ra8_fs_type_fat16;
   opts.sectors_per_cluster = 1U;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
 
   /* V3: FAT12 requested on a 4 MiB card with spc pinned to 1 -> cluster count
@@ -321,10 +324,10 @@ static void test_mcdc_format_pinned_spc_geometry(void)
    * choose-geometry guard rejects with invalid-size. */
   opts.type                = k_ra8_fs_type_fat12;
   opts.sectors_per_cluster = 1U;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_fs_format(&s_backend, &opts));
 
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: choose-geometry sweep early-out");
 }
 
@@ -359,9 +362,9 @@ typedef enum : uint32_t {
  * V1 (NULL) resolves to the "NO NAME" sentinel, latching at its i=7 NUL; V2
  * ("AB") latches at its i=2 NUL. V2 vs the pad positions flip B with A held
  * true (B independence); the pad positions vs the character positions flip A
- * (A independence). N+1 = 3 legs for N=2 conditions.
+ * (A independence). N+1 = 3 legs for N=2 conditions. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_label_field_pair(void)
+RA8_INTERNAL static void internal_test_mcdc_format_label_field_pair(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: label_field (!past_end && NUL)");
 
@@ -370,7 +373,7 @@ static void test_mcdc_format_label_field_pair(void)
     {'N', 'O', ' ', 'N', 'A', 'M', 'E', ' ', ' ', ' ', ' '};
 
   /* V1: NULL label -> BS_VolLab holds "NO NAME    " (#634), never blank. */
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   opts.label                = nullptr;
@@ -381,7 +384,7 @@ static void test_mcdc_format_label_field_pair(void)
 
   /* V2 + V3: short "AB" label -> 'A','B' copied (A=T,B=F at chars), then the
    * NUL latches past_end (A=T,B=T) and the tail is space-padded (A=F). */
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   opts.label = "AB";
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   TEST_ASSERT_EQ('A', s_disk.bytes[(uint32_t)k_fmt_f16_label_off + 0U]);
@@ -389,7 +392,7 @@ static void test_mcdc_format_label_field_pair(void)
   for (uint32_t i = 2U; i < (uint32_t)k_fmt_label_width; i++) {
     TEST_ASSERT_EQ(k_fmt_ascii_space, s_disk.bytes[(uint32_t)k_fmt_f16_label_off + i]);
   }
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: label_field (!past_end && NUL)");
 }
 
@@ -438,9 +441,9 @@ typedef enum : uint32_t {
  * (accepted) leg of `(count >= k_cluster_count_fat16_max) &&
  * (count <= k_fmt_fat32_clus_cap)` in priv_fmt_count_in_band; that compound's
  * independence (the C1-false and C2-false vectors) is owned by
- * test_mcdc_fat32_count_over_cap)
+ * test_mcdc_fat32_count_over_cap) @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_fat32_cluster_size_table(void)
+RA8_INTERNAL static void internal_test_fat32_cluster_size_table(void)
 {
   TEST_BEGIN("ra8_fs format: FAT32 cluster-size table (DskSzToSecPerClus)");
   static const uint32_t k_blocks[] = {
@@ -492,9 +495,9 @@ static void test_fat32_cluster_size_table(void)
  * - V2: fat16_max <= count <= cap         -> both true -> valid FAT32 band.
  *       Exercised by the FAT32 round-trip / cluster-size-table formats.
  * - V3: count >= fat16_max, count > cap   -> C1 true, C2 false (covered here).
- * Pair (V2,V3) proves the upper-bound operand independently moves the outcome.
+ * Pair (V2,V3) proves the upper-bound operand independently moves the outcome. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_fat32_count_over_cap(void)
+RA8_INTERNAL static void internal_test_mcdc_fat32_count_over_cap(void)
 {
   TEST_BEGIN("ra8_fs format: FAT32 count over cap rejected");
   s_sink_blocks = (uint32_t)k_test_blk_512g;
@@ -526,9 +529,9 @@ static void test_mcdc_fat32_count_over_cap(void)
  * not_supported and error vectors are both C2-false and additionally show the
  * fallback yields a valid volume regardless of *why* erase declined.
  * `priv_fmt_clear_region` runs exactly once per format (FAT + root cleared as
- * one contiguous span), so `s_erase_calls == 1` pins that erase was consulted.
+ * one contiguous span), so `s_erase_calls == 1` pins that erase was consulted. @details Runs the erase clear region modes vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_erase_clear_region_modes(void)
+RA8_INTERNAL static void internal_test_erase_clear_region_modes(void)
 {
   TEST_BEGIN("ra8_fs format: erase-or-zero clear_region");
   ra8_fs_format_opts_t opts = {};
@@ -537,39 +540,39 @@ static void test_erase_clear_region_modes(void)
 
   /* Vector: NULL erase hook -> zero-run only, never consults erase. */
   s_erase_calls = 0U;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   TEST_ASSERT_EQ(0U, s_erase_calls);
-  verify_mount_file_cycle(&s_backend, k_ra8_fs_type_fat32);
-  free_volume();
+  internal_verify_mount_file_cycle(&s_backend, k_ra8_fs_type_fat32);
+  internal_free_volume();
 
   /* Vector: erase zeroes the range -> fast path taken, volume valid. */
   s_erase_mode  = k_erase_mode_zero;
   s_erase_calls = 0U;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend_erase, &opts));
   TEST_ASSERT_EQ(1U, s_erase_calls);
-  verify_mount_file_cycle(&s_backend_erase, k_ra8_fs_type_fat32);
-  free_volume();
+  internal_verify_mount_file_cycle(&s_backend_erase, k_ra8_fs_type_fat32);
+  internal_free_volume();
 
   /* Vector: erase says not_supported -> fall back to zero-run, volume valid. */
   s_erase_mode  = k_erase_mode_unsupported;
   s_erase_calls = 0U;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend_erase, &opts));
   TEST_ASSERT_EQ(1U, s_erase_calls);
-  verify_mount_file_cycle(&s_backend_erase, k_ra8_fs_type_fat32);
-  free_volume();
+  internal_verify_mount_file_cycle(&s_backend_erase, k_ra8_fs_type_fat32);
+  internal_free_volume();
 
   /* Vector: erase returns a real error -> still falls back (erase is a pure
    * optimization), format succeeds and the volume is valid. */
   s_erase_mode  = k_erase_mode_error;
   s_erase_calls = 0U;
-  alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
+  internal_alloc_garbage_card((uint32_t)k_fmt_blocks_fat32);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend_erase, &opts));
   TEST_ASSERT_EQ(1U, s_erase_calls);
-  verify_mount_file_cycle(&s_backend_erase, k_ra8_fs_type_fat32);
-  free_volume();
+  internal_verify_mount_file_cycle(&s_backend_erase, k_ra8_fs_type_fat32);
+  internal_free_volume();
 
   s_erase_mode = k_erase_mode_zero; /* restore default for any later test */
   TEST_END("ra8_fs format: erase-or-zero clear_region");
@@ -577,21 +580,20 @@ static void test_erase_clear_region_modes(void)
 
 int32_t main(void)
 {
-  test_format_fat12_round_trip();
-  test_format_fat16_round_trip();
-  test_format_fat32_round_trip();
-  test_format_label_persisted_as_volume_id();
-  test_mcdc_format_args_pair();
-  test_mcdc_format_backend_fn_pair();
-  test_mcdc_format_type_triple();
-  test_mcdc_format_spc_valid_pair();
-  test_mcdc_format_block_guard_pair();
-  test_mcdc_format_count_in_band_capacity();
-  test_mcdc_format_pinned_spc_geometry();
-  test_mcdc_format_label_field_pair();
-  test_fat32_cluster_size_table();
-  test_mcdc_fat32_count_over_cap();
-  test_erase_clear_region_modes();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_format.c\n");
+  internal_test_format_fat12_round_trip();
+  internal_test_format_fat16_round_trip();
+  internal_test_format_fat32_round_trip();
+  internal_test_format_label_persisted_as_volume_id();
+  internal_test_mcdc_format_args_pair();
+  internal_test_mcdc_format_backend_fn_pair();
+  internal_test_mcdc_format_type_triple();
+  internal_test_mcdc_format_spc_valid_pair();
+  internal_test_mcdc_format_block_guard_pair();
+  internal_test_mcdc_format_count_in_band_capacity();
+  internal_test_mcdc_format_pinned_spc_geometry();
+  internal_test_mcdc_format_label_field_pair();
+  internal_test_fat32_cluster_size_table();
+  internal_test_mcdc_fat32_count_over_cap();
+  internal_test_erase_clear_region_modes();
   return 0;
 }

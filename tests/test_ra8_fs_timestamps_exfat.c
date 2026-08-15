@@ -30,10 +30,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "support/fs_fat_dir_test_util.h"
@@ -159,9 +159,9 @@ static ra8_fs_datetime_t s_now = {};
  * @post No other state modified.
  *
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded fake now fixture step using caller-owned state.
  */
-static ra8_err_t fake_now(void* ctx, ra8_fs_datetime_t* out)
+RA8_INTERNAL static ra8_err_t internal_fake_now(void* ctx, ra8_fs_datetime_t* out)
 {
   (void)ctx;
   *out = s_now;
@@ -187,10 +187,15 @@ static ra8_err_t fake_now(void* ctx, ra8_fs_datetime_t* out)
  * @post Later stamps come from @p y .. @p s.
  *
  * @note Not thread-safe; the suite is single-threaded.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded set clock fixture step using caller-owned state.
  */
-static void
-set_clock(int32_t y, int32_t mo, int32_t d, int32_t h, int32_t mi, int32_t s, int32_t offmin)
+RA8_INTERNAL static void internal_set_clock(int32_t y,
+                                            int32_t mo,
+                                            int32_t d,
+                                            int32_t h,
+                                            int32_t mi,
+                                            int32_t s,
+                                            int32_t offmin)
 {
   s_now                    = (ra8_fs_datetime_t){};
   s_now.year               = (uint16_t)y;
@@ -200,7 +205,7 @@ set_clock(int32_t y, int32_t mo, int32_t d, int32_t h, int32_t mi, int32_t s, in
   s_now.minute             = (uint8_t)mi;
   s_now.second             = (uint8_t)s;
   s_now.utc_offset_min     = (int16_t)offmin;
-  const ra8_fs_clock_t clk = {.now = fake_now, .ctx = nullptr};
+  const ra8_fs_clock_t clk = {.now = internal_fake_now, .ctx = nullptr};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_clock(&clk));
 }
 
@@ -223,9 +228,9 @@ set_clock(int32_t y, int32_t mo, int32_t d, int32_t h, int32_t mi, int32_t s, in
  * @post The result addresses the cluster heap.
  *
  * @note Partition-adjusted: an exFAT volume lives inside an MBR partition (#568).
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded root cluster byte fixture step using caller-owned state.
  */
-static uint32_t root_cluster_byte(const ra8_fs_mount_t* h)
+RA8_INTERNAL static uint32_t internal_root_cluster_byte(const ra8_fs_mount_t* h)
 {
   const uint32_t lba = h->partition_base_lba + h->first_data_lba +
                        ((uint64_t)(h->root_cluster - 2U) * h->sectors_per_cluster);
@@ -252,9 +257,9 @@ static uint32_t root_cluster_byte(const ra8_fs_mount_t* h)
  * @note Scans one cluster, which is all these tests fill.
  * @since 0.1.0
  */
-static uint32_t find_file_entry(const ra8_fs_mount_t* h)
+RA8_INTERNAL static uint32_t internal_find_file_entry(const ra8_fs_mount_t* h)
 {
-  const uint32_t base  = root_cluster_byte(h);
+  const uint32_t base  = internal_root_cluster_byte(h);
   const uint32_t bytes = h->sectors_per_cluster * (uint32_t)k_geo_blk_sz;
   for (uint32_t i = 0U; i < bytes; i += (uint32_t)k_xts_entry) {
     if (s_disk.bytes[base + i] == (uint8_t)k_xts_type_file) {
@@ -280,9 +285,9 @@ static uint32_t find_file_entry(const ra8_fs_mount_t* h)
  * @post The RAM disk is unmodified.
  *
  * @note Reads the fixture's memory directly, bypassing the driver.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded read stamp fixture step using caller-owned state.
  */
-static uint32_t read_stamp(uint32_t entry_byte, uint32_t field_off)
+RA8_INTERNAL static uint32_t internal_read_stamp(uint32_t entry_byte, uint32_t field_off)
 {
   const uint32_t at = entry_byte + field_off;
   return (uint32_t)s_disk.bytes[at] | ((uint32_t)s_disk.bytes[at + 1U] << k_xts_shift_byte) |
@@ -303,9 +308,9 @@ static uint32_t read_stamp(uint32_t entry_byte, uint32_t field_off)
  * @post No state modified.
  *
  * @note Month and day are 1-based, so zero is not a date at all.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded assert legal stamp fixture step using caller-owned state.
  */
-static void assert_legal_stamp(uint32_t stamp)
+RA8_INTERNAL static void internal_assert_legal_stamp(uint32_t stamp)
 {
   const uint32_t date  = stamp >> k_xts_shift_date;
   const uint32_t month = (date >> k_xts_shift_month) & (uint32_t)k_xts_mask_month;
@@ -341,7 +346,7 @@ static void assert_legal_stamp(uint32_t stamp)
  * @note Pure function of the disk bytes.
  * @since 0.1.0
  */
-static uint16_t recompute_set_checksum(uint32_t entry_byte)
+RA8_INTERNAL static uint16_t internal_recompute_set_checksum(uint32_t entry_byte)
 {
   const uint32_t entries = 1U + (uint32_t)s_disk.bytes[entry_byte + k_xts_off_secnt];
   const uint32_t bytes   = entries * (uint32_t)k_xts_entry;
@@ -373,11 +378,11 @@ static uint16_t recompute_set_checksum(uint32_t entry_byte)
  * @post `*out_h` is usable and must be unmounted by the caller.
  *
  * @note Not thread-safe.
- * @since 0.1.0
+ * @since 0.1.0 @details Implements the bounded make exfat file fixture step using caller-owned state.
  */
-static void make_exfat_file(ra8_fs_mount_t** out_h, const char* name)
+RA8_INTERNAL static void internal_make_exfat_file(ra8_fs_mount_t** out_h, const char* name)
 {
-  build_exfat_vol();
+  internal_build_exfat_vol();
   *out_h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, out_h));
   uint8_t payload[k_xts_payload] = {};
@@ -402,26 +407,26 @@ static void make_exfat_file(ra8_fs_mount_t** out_h, const char* name)
  * (no compound decisions in this test -- it creates a file with no clock
  * installed and compares the entry-set bytes against the epoch encoding)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_epoch_default(void)
+RA8_INTERNAL static void internal_test_exfat_epoch_default(void)
 {
   TEST_BEGIN("exfat timestamps: no clock -> legal epoch, offset not valid");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_clock(nullptr));
   ra8_fs_mount_t* h = nullptr;
-  make_exfat_file(&h, "EPOCH.BIN");
+  internal_make_exfat_file(&h, "EPOCH.BIN");
 
-  const uint32_t e = find_file_entry(h);
-  TEST_ASSERT_EQ(k_xts_epoch, read_stamp(e, (uint32_t)k_xts_off_ctime));
-  TEST_ASSERT_EQ(k_xts_epoch, read_stamp(e, (uint32_t)k_xts_off_mtime));
-  TEST_ASSERT_EQ(k_xts_epoch, read_stamp(e, (uint32_t)k_xts_off_atime));
+  const uint32_t e = internal_find_file_entry(h);
+  TEST_ASSERT_EQ(k_xts_epoch, internal_read_stamp(e, (uint32_t)k_xts_off_ctime));
+  TEST_ASSERT_EQ(k_xts_epoch, internal_read_stamp(e, (uint32_t)k_xts_off_mtime));
+  TEST_ASSERT_EQ(k_xts_epoch, internal_read_stamp(e, (uint32_t)k_xts_off_atime));
   TEST_ASSERT_EQ(k_xts_utc_unknown, s_disk.bytes[e + k_xts_off_cutc]);
   TEST_ASSERT_EQ(k_xts_utc_unknown, s_disk.bytes[e + k_xts_off_mutc]);
   TEST_ASSERT_EQ(k_xts_utc_unknown, s_disk.bytes[e + k_xts_off_autc]);
-  assert_legal_stamp(read_stamp(e, (uint32_t)k_xts_off_ctime));
+  internal_assert_legal_stamp(internal_read_stamp(e, (uint32_t)k_xts_off_ctime));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_END("exfat timestamps: no clock -> legal epoch, offset not valid");
 }
 
@@ -439,37 +444,37 @@ static void test_exfat_epoch_default(void)
  * (no compound decisions in this test -- it installs a clock, creates a file,
  * and compares every stamped byte plus the recomputed SetChecksum)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_create_stamps(void)
+RA8_INTERNAL static void internal_test_exfat_create_stamps(void)
 {
   TEST_BEGIN("exfat timestamps: clock stamps create + 10ms + UtcOffset");
-  set_clock((int32_t)k_xts_t1_year,
-            (int32_t)k_xts_t1_month,
-            (int32_t)k_xts_t1_day,
-            (int32_t)k_xts_t1_hour,
-            (int32_t)k_xts_t1_min,
-            (int32_t)k_xts_t1_sec,
-            (int32_t)k_xts_utc_est);
+  internal_set_clock((int32_t)k_xts_t1_year,
+                     (int32_t)k_xts_t1_month,
+                     (int32_t)k_xts_t1_day,
+                     (int32_t)k_xts_t1_hour,
+                     (int32_t)k_xts_t1_min,
+                     (int32_t)k_xts_t1_sec,
+                     (int32_t)k_xts_utc_est);
   s_now.centisecond = (uint8_t)k_xts_t1_centi;
   ra8_fs_mount_t* h = nullptr;
-  make_exfat_file(&h, "STAMP.BIN");
+  internal_make_exfat_file(&h, "STAMP.BIN");
 
-  const uint32_t e = find_file_entry(h);
-  TEST_ASSERT_EQ(k_xts_t1_stamp, read_stamp(e, (uint32_t)k_xts_off_ctime));
-  TEST_ASSERT_EQ(k_xts_t1_stamp, read_stamp(e, (uint32_t)k_xts_off_mtime));
-  TEST_ASSERT_EQ(k_xts_t1_stamp, read_stamp(e, (uint32_t)k_xts_off_atime));
+  const uint32_t e = internal_find_file_entry(h);
+  TEST_ASSERT_EQ(k_xts_t1_stamp, internal_read_stamp(e, (uint32_t)k_xts_off_ctime));
+  TEST_ASSERT_EQ(k_xts_t1_stamp, internal_read_stamp(e, (uint32_t)k_xts_off_mtime));
+  TEST_ASSERT_EQ(k_xts_t1_stamp, internal_read_stamp(e, (uint32_t)k_xts_off_atime));
   TEST_ASSERT_EQ(k_xts_t1_10ms, s_disk.bytes[e + k_xts_off_c10ms]);
   TEST_ASSERT_EQ(k_xts_t1_10ms, s_disk.bytes[e + k_xts_off_m10ms]);
   TEST_ASSERT_EQ(k_xts_utc_est_by, s_disk.bytes[e + k_xts_off_cutc]);
   TEST_ASSERT_EQ(k_xts_utc_est_by, s_disk.bytes[e + k_xts_off_mutc]);
   TEST_ASSERT_EQ(k_xts_utc_est_by, s_disk.bytes[e + k_xts_off_autc]);
-  assert_legal_stamp(read_stamp(e, (uint32_t)k_xts_off_ctime));
+  internal_assert_legal_stamp(internal_read_stamp(e, (uint32_t)k_xts_off_ctime));
 
   const uint16_t on_disk =
     (uint16_t)((uint16_t)s_disk.bytes[e + k_xts_off_csum] |
                ((uint16_t)s_disk.bytes[e + k_xts_off_csum + 1U] << k_xts_shift_byte));
-  TEST_ASSERT_EQ(on_disk, recompute_set_checksum(e));
+  TEST_ASSERT_EQ(on_disk, internal_recompute_set_checksum(e));
 
   /* The volume still reads back through the ordinary API. */
   ra8_fs_file_t* f = nullptr;
@@ -477,7 +482,7 @@ static void test_exfat_create_stamps(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_clock(nullptr));
   TEST_END("exfat timestamps: clock stamps create + 10ms + UtcOffset");
 }
@@ -497,55 +502,55 @@ static void test_exfat_create_stamps(void)
  * The below-range vector is the mirror of V1 and is exercised by the same
  * branch with a negative magnitude.
  *
- * @since 0.1.0
+ * @since 0.1.0 @details Runs the exfat utc offset encoding vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_utc_offset_encoding(void)
+RA8_INTERNAL static void internal_test_exfat_utc_offset_encoding(void)
 {
   TEST_BEGIN("exfat timestamps: inexpressible UTC offset -> not valid");
-  set_clock((int32_t)k_xts_t1_year,
-            (int32_t)k_xts_t1_month,
-            (int32_t)k_xts_t1_day,
-            (int32_t)k_xts_t1_hour,
-            (int32_t)k_xts_t1_min,
-            (int32_t)k_xts_t1_sec,
-            (int32_t)k_xts_utc_far);
+  internal_set_clock((int32_t)k_xts_t1_year,
+                     (int32_t)k_xts_t1_month,
+                     (int32_t)k_xts_t1_day,
+                     (int32_t)k_xts_t1_hour,
+                     (int32_t)k_xts_t1_min,
+                     (int32_t)k_xts_t1_sec,
+                     (int32_t)k_xts_utc_far);
   ra8_fs_mount_t* h = nullptr;
-  make_exfat_file(&h, "FAR.BIN");
-  uint32_t e = find_file_entry(h);
+  internal_make_exfat_file(&h, "FAR.BIN");
+  uint32_t e = internal_find_file_entry(h);
   TEST_ASSERT_EQ(k_xts_utc_unknown, s_disk.bytes[e + k_xts_off_cutc]);
-  assert_legal_stamp(read_stamp(e, (uint32_t)k_xts_off_ctime));
+  internal_assert_legal_stamp(internal_read_stamp(e, (uint32_t)k_xts_off_ctime));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
 
-  set_clock((int32_t)k_xts_t1_year,
-            (int32_t)k_xts_t1_month,
-            (int32_t)k_xts_t1_day,
-            (int32_t)k_xts_t1_hour,
-            (int32_t)k_xts_t1_min,
-            (int32_t)k_xts_t1_sec,
-            (int32_t)k_xts_utc_odd);
+  internal_set_clock((int32_t)k_xts_t1_year,
+                     (int32_t)k_xts_t1_month,
+                     (int32_t)k_xts_t1_day,
+                     (int32_t)k_xts_t1_hour,
+                     (int32_t)k_xts_t1_min,
+                     (int32_t)k_xts_t1_sec,
+                     (int32_t)k_xts_utc_odd);
   h = nullptr;
-  make_exfat_file(&h, "ODD.BIN");
-  e = find_file_entry(h);
+  internal_make_exfat_file(&h, "ODD.BIN");
+  e = internal_find_file_entry(h);
   TEST_ASSERT_EQ(k_xts_utc_unknown, s_disk.bytes[e + k_xts_off_cutc]);
   TEST_ASSERT_EQ(k_xts_utc_unknown, s_disk.bytes[e + k_xts_off_mutc]);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
 
   /* The negative half of the range check: below UTC-12:00. */
-  set_clock((int32_t)k_xts_t1_year,
-            (int32_t)k_xts_t1_month,
-            (int32_t)k_xts_t1_day,
-            (int32_t)k_xts_t1_hour,
-            (int32_t)k_xts_t1_min,
-            (int32_t)k_xts_t1_sec,
-            -(int32_t)k_xts_utc_far);
+  internal_set_clock((int32_t)k_xts_t1_year,
+                     (int32_t)k_xts_t1_month,
+                     (int32_t)k_xts_t1_day,
+                     (int32_t)k_xts_t1_hour,
+                     (int32_t)k_xts_t1_min,
+                     (int32_t)k_xts_t1_sec,
+                     -(int32_t)k_xts_utc_far);
   h = nullptr;
-  make_exfat_file(&h, "NEG.BIN");
-  e = find_file_entry(h);
+  internal_make_exfat_file(&h, "NEG.BIN");
+  e = internal_find_file_entry(h);
   TEST_ASSERT_EQ(k_xts_utc_unknown, s_disk.bytes[e + k_xts_off_cutc]);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_clock(nullptr));
   TEST_END("exfat timestamps: inexpressible UTC offset -> not valid");
@@ -567,41 +572,41 @@ static void test_exfat_utc_offset_encoding(void)
  * (no compound decisions in this test -- it renames and asserts which of the
  * three entry-set stamps moved, then recomputes the SetChecksum)
  *
- * @since 0.1.0
+ * @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state.
  */
-static void test_exfat_rename_moves_atime_only(void)
+RA8_INTERNAL static void internal_test_exfat_rename_moves_atime_only(void)
 {
   TEST_BEGIN("exfat timestamps: rename moves atime only");
-  set_clock((int32_t)k_xts_t1_year,
-            (int32_t)k_xts_t1_month,
-            (int32_t)k_xts_t1_day,
-            (int32_t)k_xts_t1_hour,
-            (int32_t)k_xts_t1_min,
-            (int32_t)k_xts_t1_sec,
-            (int32_t)k_xts_utc_est);
+  internal_set_clock((int32_t)k_xts_t1_year,
+                     (int32_t)k_xts_t1_month,
+                     (int32_t)k_xts_t1_day,
+                     (int32_t)k_xts_t1_hour,
+                     (int32_t)k_xts_t1_min,
+                     (int32_t)k_xts_t1_sec,
+                     (int32_t)k_xts_utc_est);
   s_now.centisecond = (uint8_t)k_xts_t1_centi;
   ra8_fs_mount_t* h = nullptr;
-  make_exfat_file(&h, "OLD.BIN");
+  internal_make_exfat_file(&h, "OLD.BIN");
 
-  set_clock((int32_t)k_xts_t2_year,
-            (int32_t)k_xts_t2_month,
-            (int32_t)k_xts_t2_day,
-            (int32_t)k_xts_t2_hour,
-            (int32_t)k_xts_t2_min,
-            (int32_t)k_xts_t2_sec,
-            (int32_t)k_xts_utc_est);
+  internal_set_clock((int32_t)k_xts_t2_year,
+                     (int32_t)k_xts_t2_month,
+                     (int32_t)k_xts_t2_day,
+                     (int32_t)k_xts_t2_hour,
+                     (int32_t)k_xts_t2_min,
+                     (int32_t)k_xts_t2_sec,
+                     (int32_t)k_xts_utc_est);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_rename(h, "OLD.BIN", "NEW.BIN"));
 
-  const uint32_t e = find_file_entry(h);
-  TEST_ASSERT_EQ(k_xts_t1_stamp, read_stamp(e, (uint32_t)k_xts_off_ctime));
-  TEST_ASSERT_EQ(k_xts_t1_stamp, read_stamp(e, (uint32_t)k_xts_off_mtime));
-  TEST_ASSERT_EQ(k_xts_t2_stamp, read_stamp(e, (uint32_t)k_xts_off_atime));
+  const uint32_t e = internal_find_file_entry(h);
+  TEST_ASSERT_EQ(k_xts_t1_stamp, internal_read_stamp(e, (uint32_t)k_xts_off_ctime));
+  TEST_ASSERT_EQ(k_xts_t1_stamp, internal_read_stamp(e, (uint32_t)k_xts_off_mtime));
+  TEST_ASSERT_EQ(k_xts_t2_stamp, internal_read_stamp(e, (uint32_t)k_xts_off_atime));
   TEST_ASSERT_EQ(k_xts_t1_10ms, s_disk.bytes[e + k_xts_off_c10ms]);
 
   const uint16_t on_disk =
     (uint16_t)((uint16_t)s_disk.bytes[e + k_xts_off_csum] |
                ((uint16_t)s_disk.bytes[e + k_xts_off_csum + 1U] << k_xts_shift_byte));
-  TEST_ASSERT_EQ(on_disk, recompute_set_checksum(e));
+  TEST_ASSERT_EQ(on_disk, internal_recompute_set_checksum(e));
 
   /* The renamed file still resolves through the ordinary API. */
   ra8_fs_file_t* f = nullptr;
@@ -609,7 +614,7 @@ static void test_exfat_rename_moves_atime_only(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_vol();
+  internal_free_vol();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_set_clock(nullptr));
   TEST_END("exfat timestamps: rename moves atime only");
 }
@@ -630,10 +635,9 @@ static void test_exfat_rename_moves_atime_only(void)
  */
 int main(void)
 {
-  test_exfat_epoch_default();
-  test_exfat_create_stamps();
-  test_exfat_utc_offset_encoding();
-  test_exfat_rename_moves_atime_only();
-  printf("[OK  ] test_ra8_fs_timestamps_exfat.c\n");
+  internal_test_exfat_epoch_default();
+  internal_test_exfat_create_stamps();
+  internal_test_exfat_utc_offset_encoding();
+  internal_test_exfat_rename_moves_atime_only();
   return 0;
 }

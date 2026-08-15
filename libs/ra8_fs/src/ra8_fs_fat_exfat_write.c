@@ -39,7 +39,7 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint16_t priv_exfat_csum_add(uint16_t cs, uint8_t b)
+static uint16_t internal_exfat_csum_add(uint16_t cs, uint8_t b)
 {
   uint16_t hi = ((cs & 1U) != 0U) ? (uint16_t)k_exfat_csum_hi_bit : (uint16_t)0U;
   return (uint16_t)(hi + (uint16_t)(cs >> 1) + (uint16_t)b);
@@ -55,8 +55,8 @@ uint16_t priv_exfat_name_hash(const uint16_t* name, uint32_t nlen)
      * did -- stored a hash no compliant reader recomputes for any name outside
      * ASCII, so a host could list the file and then not find it (#606). */
     const uint16_t u = priv_exfat_upcase_unit(name[i]);
-    h                = priv_exfat_csum_add(h, (uint8_t)((uint32_t)u & (uint32_t)k_utf_byte_mask));
-    h                = priv_exfat_csum_add(h, (uint8_t)((uint32_t)u >> (uint32_t)k_utf_byte_shift));
+    h = internal_exfat_csum_add(h, (uint8_t)((uint32_t)u & (uint32_t)k_utf_byte_mask));
+    h = internal_exfat_csum_add(h, (uint8_t)((uint32_t)u >> (uint32_t)k_utf_byte_shift));
   }
   return h;
 }
@@ -72,7 +72,7 @@ uint16_t priv_exfat_set_checksum(const uint8_t* set, uint32_t bytes)
     if (i == ((uint32_t)k_exfat_off_file_csum + 1U)) {
       continue;
     }
-    cs = priv_exfat_csum_add(cs, set[i]);
+    cs = internal_exfat_csum_add(cs, set[i]);
   }
   return cs;
 }
@@ -128,11 +128,11 @@ ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, ui
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_bitmap_window(const ra8_fs_mount_t* m,
-                                          uint64_t              bmp_lba,
-                                          uint32_t              from,
-                                          uint32_t              need,
-                                          uint32_t*             out_clus)
+static ra8_err_t internal_exfat_bitmap_window(const ra8_fs_mount_t* m,
+                                              uint64_t              bmp_lba,
+                                              uint32_t              from,
+                                              uint32_t              need,
+                                              uint32_t*             out_clus)
 {
   uint32_t       run    = 0U;
   uint32_t       start  = 0U;
@@ -177,14 +177,14 @@ priv_exfat_bitmap_scan(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t need,
   if (from >= m->count_of_clusters) {
     from = 0U;
   }
-  const ra8_err_t e = priv_exfat_bitmap_window(m, bmp_lba, from, need, out_clus);
+  const ra8_err_t e = internal_exfat_bitmap_window(m, bmp_lba, from, need, out_clus);
   if (e != k_ra8_err_no_mem) {
     return e;
   }
   if (from == 0U) {
     return e;
   }
-  return priv_exfat_bitmap_window(m, bmp_lba, 0U, need, out_clus);
+  return internal_exfat_bitmap_window(m, bmp_lba, 0U, need, out_clus);
 }
 
 /* `priv_exfat_bmp_switch()`: see header for the documented contract. */
@@ -267,7 +267,7 @@ priv_exfat_bitmap_test(const ra8_fs_mount_t* m, uint64_t bmp_lba, uint32_t clus,
  */
 RA8_INTERNAL
 static ra8_err_t
-priv_exfat_read_entry(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t idx, uint8_t* out)
+internal_exfat_read_entry(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t idx, uint8_t* out)
 {
   const uint32_t byte_off = idx * (uint32_t)k_exfat_entry_bytes;
   const uint64_t lba      = priv_cluster_to_lba(m, cluster) + (byte_off / priv_bps(m));
@@ -297,7 +297,7 @@ priv_exfat_read_entry(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t idx, u
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint8_t priv_exfat_slot_free(uint8_t type_byte)
+static uint8_t internal_exfat_slot_free(uint8_t type_byte)
 {
   if (type_byte == (uint8_t)k_exfat_entry_eod) {
     return 1U;
@@ -330,20 +330,20 @@ static uint8_t priv_exfat_slot_free(uint8_t type_byte)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_space_in_cluster(const ra8_fs_mount_t* m,
-                                             uint32_t              cluster,
-                                             uint32_t              need,
-                                             uint32_t*             out_idx)
+static ra8_err_t internal_exfat_space_in_cluster(const ra8_fs_mount_t* m,
+                                                 uint32_t              cluster,
+                                                 uint32_t              need,
+                                                 uint32_t*             out_idx)
 {
   const uint32_t per_cluster = priv_cluster_bytes(m) / (uint32_t)k_exfat_entry_bytes;
   uint32_t       run         = 0U;
   for (uint32_t i = 0U; i < per_cluster; i++) {
     uint8_t         e[k_exfat_entry_bytes] = {};
-    const ra8_err_t r                      = priv_exfat_read_entry(m, cluster, i, e);
+    const ra8_err_t r                      = internal_exfat_read_entry(m, cluster, i, e);
     if (r != k_ra8_ok) {
       return r;
     }
-    if (priv_exfat_slot_free(e[0]) == 0U) {
+    if (internal_exfat_slot_free(e[0]) == 0U) {
       run = 0U;
       continue;
     }
@@ -387,15 +387,15 @@ static ra8_err_t priv_exfat_space_in_cluster(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_exfat_scan_dir_space(const ra8_fs_mount_t* m,
-                                           const exfat_dir_t*    dir,
-                                           uint32_t              need,
-                                           uint32_t*             out_clus,
-                                           uint32_t*             out_idx)
+static ra8_err_t internal_exfat_scan_dir_space(const ra8_fs_mount_t* m,
+                                               const exfat_dir_t*    dir,
+                                               uint32_t              need,
+                                               uint32_t*             out_clus,
+                                               uint32_t*             out_idx)
 {
   uint32_t cluster = dir->cluster;
   for (uint32_t guard = 0U; guard < (uint32_t)k_exfat_scan_limit; guard++) {
-    const ra8_err_t r = priv_exfat_space_in_cluster(m, cluster, need, out_idx);
+    const ra8_err_t r = internal_exfat_space_in_cluster(m, cluster, need, out_idx);
     if (r == k_ra8_ok) {
       *out_clus = cluster;
       return k_ra8_ok;
@@ -428,7 +428,7 @@ ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
    * the cluster the grow just appended. */
   exfat_dir_t work = *dir;
   for (uint32_t grow = 0U; grow <= (uint32_t)k_exfat_dir_grow_max; grow++) {
-    const ra8_err_t e = priv_exfat_scan_dir_space(m, &work, need, out_clus, out_idx);
+    const ra8_err_t e = internal_exfat_scan_dir_space(m, &work, need, out_clus, out_idx);
     if (e != k_ra8_err_no_mem) {
       return e; /* found a run, or a hard read error */
     }
@@ -473,7 +473,7 @@ ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t priv_exfat_build_set(uint8_t* set, const uint16_t* name, uint32_t nlen)
+static uint32_t internal_exfat_build_set(uint8_t* set, const uint16_t* name, uint32_t nlen)
 {
   const uint32_t name_entries =
     (nlen + (uint32_t)k_exfat_name_per_entry - 1U) / (uint32_t)k_exfat_name_per_entry;
@@ -558,7 +558,7 @@ ra8_err_t priv_exfat_link(ra8_fs_mount_t*    m,
     return e;
   }
   uint8_t        set[k_exfat_max_set_bytes] = {};
-  const uint32_t bytes                      = priv_exfat_build_set(set, name, nlen);
+  const uint32_t bytes                      = internal_exfat_build_set(set, name, nlen);
   e                                         = priv_exfat_write_dir_set(m, dclus, didx, set, bytes);
   if (e != k_ra8_ok) {
     return e;

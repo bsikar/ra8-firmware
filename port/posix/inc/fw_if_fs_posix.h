@@ -10,8 +10,11 @@
  * The adapter opens one caller-selected directory and resolves every portable
  * path relative to that descriptor. Intermediate components and final file
  * opens use no-follow semantics, so neither `..` nor a symlink can escape the
- * bound root. The adapter itself calls no allocator; file descriptors and any
- * opaque `DIR` storage remain owned by the hosted C/POSIX runtime.
+ * bound root. The adapter itself calls no allocator. File streams use raw
+ * descriptors and Linux/macOS directory enumeration uses a bounded local
+ * kernel-record buffer rather than an opaque C-runtime directory stream. On
+ * any other hosted kernel, enumeration fails with `k_ra8_err_not_supported`;
+ * it never falls back to an allocator-backed `DIR` implementation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

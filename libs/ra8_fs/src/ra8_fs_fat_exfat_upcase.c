@@ -484,15 +484,15 @@ ra8_err_t priv_exfat_write_upcase(const ra8_fs_backend_t* backend,
   uint32_t       off      = 0U;
   for (uint32_t s = 0U; s < upc_secs; s++) {
     for (uint32_t i = 0U; i < bps; i++) {
-      s_scratch[i] = 0U;
+      priv_scratch[i] = 0U;
     }
     uint32_t n = (uint32_t)k_exfat_fmt_upc_std_bytes - off;
     if (n > bps) {
       n = bps;
     }
-    priv_byte_copy(s_scratch, &s_exfat_upcase[off], n);
-    cs                  = priv_exfat_csum32(cs, s_scratch, n);
-    const ra8_err_t err = backend->write_block(backend->ctx, abs_lba + s, 1U, s_scratch);
+    priv_byte_copy(priv_scratch, &s_exfat_upcase[off], n);
+    cs                  = priv_exfat_csum32(cs, priv_scratch, n);
+    const ra8_err_t err = backend->write_block(backend->ctx, abs_lba + s, 1U, priv_scratch);
     if (err != k_ra8_ok) {
       return err;
     }

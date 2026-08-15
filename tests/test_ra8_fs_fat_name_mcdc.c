@@ -24,9 +24,9 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
 #include "unity_minimal.h"
@@ -59,9 +59,9 @@ typedef enum : uint8_t {
  * - V2: c='0' (0x30) -> C1=F short-circuit -> dec F -> returned unchanged.
  * - V3: c='{' (0x7B) -> C1=T, C2=F (> 'z')       -> dec F -> returned unchanged.
  * V1+V2 prove the lower bound independently gates the fold; V1+V3 prove the
- * same for the upper bound. Minimal MC/DC for N=2.
+ * same for the upper bound. Minimal MC/DC for N=2. @brief Exercise the mcdc to upper ascii range filesystem operation. @details Runs the mcdc to upper ascii range vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_to_upper_ascii_range(void)
+RA8_INTERNAL static void internal_test_mcdc_to_upper_ascii_range(void)
 {
   TEST_BEGIN("ra8_fs name MC/DC: priv_to_upper ASCII range (c>='a' && c<='z')");
   TEST_ASSERT_EQ((char)k_char_upper_m, priv_to_upper((char)k_char_in_range));
@@ -85,9 +85,9 @@ static void test_mcdc_to_upper_ascii_range(void)
  * - V3 (C2=F): "FILE.TXT" reaches the '.' after the base, so the loop exits on
  *   `*path == '.'` (C2=F) with C1 still true.
  * V1+V2 isolate the NUL bound; V1+V3 isolate the dot bound. Both names pack
- * their 8-char base identically, proving only the terminator differs. N+1 = 3.
+ * their 8-char base identically, proving only the terminator differs. N+1 = 3. @brief Exercise the mcdc pack base scan loop filesystem operation. @details Runs the mcdc pack base scan loop vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_pack_base_scan_loop(void)
+RA8_INTERNAL static void internal_test_mcdc_pack_base_scan_loop(void)
 {
   TEST_BEGIN("ra8_fs name MC/DC: priv_pack_base scan (*p!=0 && *p!='.')");
   uint8_t out_dotless[k_name_packed_len] = {};
@@ -115,9 +115,9 @@ static void test_mcdc_pack_base_scan_loop(void)
  * - V1: path=ok,   out11=ok    -> C1=F, C2=F -> dec F (packs, returns 1).
  * - V2: path=NULL, out11=ok    -> C1=T short -> dec T -> returns 0.
  * - V3: path=ok,   out11=NULL  -> C1=F, C2=T -> dec T -> returns 0.
- * V1+V2 isolate path; V1+V3 isolate out11. Minimal MC/DC for N=2.
+ * V1+V2 isolate path; V1+V3 isolate out11. Minimal MC/DC for N=2. @brief Exercise the mcdc path to 83 null guard filesystem operation. @details Runs the mcdc path to 83 null guard vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_path_to_83_null_guard(void)
+RA8_INTERNAL static void internal_test_mcdc_path_to_83_null_guard(void)
 {
   TEST_BEGIN("ra8_fs name MC/DC: priv_path_to_83 null guard");
   uint8_t out11[k_name_packed_len] = {};
@@ -148,9 +148,9 @@ static void test_mcdc_path_to_83_null_guard(void)
  * deactivated compound):
  * - V-true:  in11[0]=0x05 (escaped kanji) -> j>0, out12[0]==0x05, in11[0]==0x05
  *            -> restored to 0xE5.
- * - V-false: in11[0]='F' (ordinary name)  -> out12[0]=='F' != 0x05 -> no restore.
+ * - V-false: in11[0]='F' (ordinary name)  -> out12[0]=='F' != 0x05 -> no restore. @brief Exercise the mcdc 83 to str kanji escape filesystem operation. @details Runs the mcdc 83 to str kanji escape vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_83_to_str_kanji_escape(void)
+RA8_INTERNAL static void internal_test_mcdc_83_to_str_kanji_escape(void)
 {
   TEST_BEGIN("ra8_fs name MC/DC: priv_83_to_str kanji escape (deactivated)");
   char out12[k_name_str_cap] = {};
@@ -172,10 +172,9 @@ static void test_mcdc_83_to_str_kanji_escape(void)
 
 int32_t main(void)
 {
-  test_mcdc_to_upper_ascii_range();
-  test_mcdc_pack_base_scan_loop();
-  test_mcdc_path_to_83_null_guard();
-  test_mcdc_83_to_str_kanji_escape();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_name_mcdc.c\n");
+  internal_test_mcdc_to_upper_ascii_range();
+  internal_test_mcdc_pack_base_scan_loop();
+  internal_test_mcdc_path_to_83_null_guard();
+  internal_test_mcdc_83_to_str_kanji_escape();
   return 0;
 }

@@ -35,10 +35,10 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "unity_minimal.h"
@@ -152,7 +152,9 @@ typedef struct {
 
 static mem_disk_t s_disk = {};
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Perform the mem read filesystem operation. @details Implements the bounded mem read fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in,out] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -164,7 +166,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Perform the mem write filesystem operation. @details Implements the bounded mem write fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in] lba Value required by this filesystem vector. @param[in] count Caller-supplied bounded extent or quantity. @param[in] buf Caller-owned bounded byte storage. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
@@ -176,7 +180,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Perform the mem capacity filesystem operation. @details Implements the bounded mem capacity fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
@@ -185,19 +191,21 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
-static void put16(uint8_t* p, uint32_t off, uint16_t v)
+/** @brief Perform the put16 filesystem operation. @details Implements the bounded put16 fixture step using caller-owned state. @param[in,out] p Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
 }
 
-static void put32(uint8_t* p, uint32_t off, uint32_t v)
+/** @brief Perform the put32 filesystem operation. @details Implements the bounded put32 fixture step using caller-owned state. @param[in,out] p Value required by this filesystem vector. @param[in] off Value required by this filesystem vector. @param[in] v Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_put32(uint8_t* p, uint32_t off, uint32_t v)
 {
   p[off]     = (uint8_t)(v & k_byte_mask);
   p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
@@ -205,7 +213,8 @@ static void put32(uint8_t* p, uint32_t off, uint32_t v)
   p[off + 3] = (uint8_t)((v >> k_shift_byte3) & k_byte_mask);
 }
 
-static void free_volume(void)
+/** @brief Perform the free volume filesystem operation. @details Implements the bounded free volume fixture step using caller-owned state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_free_volume(void)
 {
   if (s_disk.bytes != nullptr) {
     free(s_disk.bytes);
@@ -213,9 +222,10 @@ static void free_volume(void)
   }
 }
 
-static void alloc_card(uint32_t blocks)
+/** @brief Perform the alloc card filesystem operation. @details Implements the bounded alloc card fixture step using caller-owned state. @param[in] blocks Value required by this filesystem vector. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. */
+RA8_INTERNAL static void internal_alloc_card(uint32_t blocks)
 {
-  free_volume();
+  internal_free_volume();
   s_disk.byte_count  = blocks * (uint32_t)k_disk_block_size;
   s_disk.bytes       = (uint8_t*)calloc(1, s_disk.byte_count);
   s_disk.block_count = blocks;
@@ -224,18 +234,18 @@ static void alloc_card(uint32_t blocks)
   }
 }
 
-/** @brief Build the exact FAT16 BPB used by the sibling MC/DC test. */
-static void build_fat16_volume(void)
+/** @brief Build the exact FAT16 BPB used by the sibling MC/DC test. @details Implements the bounded build fat16 volume fixture step using caller-owned state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void internal_build_fat16_volume(void)
 {
-  alloc_card((uint32_t)k_disk_blocks_fat16);
+  internal_alloc_card((uint32_t)k_disk_blocks_fat16);
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size);
+  internal_put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size);
   bpb[(uint32_t)k_bpb_off_sec_per_clus] = 1U;
-  put16(bpb, (uint32_t)k_bpb_off_rsvd, (uint16_t)k_fat16_rsvd);
+  internal_put16(bpb, (uint32_t)k_bpb_off_rsvd, (uint16_t)k_fat16_rsvd);
   bpb[(uint32_t)k_bpb_off_num_fats] = (uint8_t)k_fat16_num_fats;
-  put16(bpb, (uint32_t)k_bpb_off_root_ents, (uint16_t)k_fat16_root_ents);
-  put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks_fat16);
-  put16(bpb, (uint32_t)k_bpb_off_fatsz16, (uint16_t)k_fat16_fatsz);
+  internal_put16(bpb, (uint32_t)k_bpb_off_root_ents, (uint16_t)k_fat16_root_ents);
+  internal_put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks_fat16);
+  internal_put16(bpb, (uint32_t)k_bpb_off_fatsz16, (uint16_t)k_fat16_fatsz);
   bpb[(uint32_t)k_bpb_off_sig_lo] = k_bpb_sig_lo;
   bpb[(uint32_t)k_bpb_off_sig_hi] = k_bpb_sig_hi;
 }
@@ -249,9 +259,9 @@ static void build_fat16_volume(void)
  *          ties the chain to its 8.3 entry.
  *
  * @param[in] name11 Packed 11-byte 8.3 name (8 base + 3 ext, space padded).
- * @return The single-byte checksum.
+ * @return The single-byte checksum. @retval 0 The computed result is empty or zero. @retval nonzero A bounded result was produced. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static uint8_t sfn_checksum(const uint8_t* name11)
+RA8_INTERNAL static uint8_t internal_sfn_checksum(const uint8_t* name11)
 {
   uint8_t sum = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_name_field_len; i++) {
@@ -261,14 +271,15 @@ static uint8_t sfn_checksum(const uint8_t* name11)
   return sum;
 }
 
-/** @brief Write a packed 8.3 directory entry at @p ent (size in bytes, attr archive). */
-static void plant_short_entry(uint8_t* ent, const char name11[k_sfn_name_len], uint32_t size)
+/** @brief Write a packed 8.3 directory entry at @p ent (size in bytes, attr archive). @details Implements the bounded plant short entry fixture step using caller-owned state. @param[in,out] ent Value required by this filesystem vector. @param[in] name11 Validated fixture path or name value. @param[in] size Caller-supplied bounded extent or quantity. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0 */
+RA8_INTERNAL static void
+internal_plant_short_entry(uint8_t* ent, const char name11[k_sfn_name_len], uint32_t size)
 {
   memset(ent, 0, (size_t)k_dir_entry_bytes);
   memcpy(ent, name11, (size_t)k_name_field_len);
   ent[(uint32_t)k_dir_off_attr] = (uint8_t)k_attr_archive;
-  put16(ent, (uint32_t)k_dir_off_first_lo, 0U); /* zero-length file: no chain */
-  put32(ent, (uint32_t)k_dir_off_size, size);
+  internal_put16(ent, (uint32_t)k_dir_off_first_lo, 0U); /* zero-length file: no chain */
+  internal_put32(ent, (uint32_t)k_dir_off_size, size);
 }
 
 /**
@@ -286,14 +297,14 @@ static void plant_short_entry(uint8_t* ent, const char name11[k_sfn_name_len], u
  * @param[in]  is_last  Non-zero sets the 0x40 last-group flag.
  * @param[in]  csum     8.3 checksum to tie the chain to its entry.
  * @param[in]  text     ASCII chars for this group (<= 13).
- * @param[in]  pad_with Sentinel placed after the text (`term16` or `pad16`).
+ * @param[in]  pad_with Sentinel placed after the text (`term16` or `pad16`). @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void plant_lfn_entry(uint8_t*    ent,
-                            uint8_t     order,
-                            uint8_t     is_last,
-                            uint8_t     csum,
-                            const char* text,
-                            uint16_t    pad_with)
+RA8_INTERNAL static void internal_plant_lfn_entry(uint8_t*    ent,
+                                                  uint8_t     order,
+                                                  uint8_t     is_last,
+                                                  uint8_t     csum,
+                                                  const char* text,
+                                                  uint16_t    pad_with)
 {
   memset(ent, 0, (size_t)k_dir_entry_bytes);
   ent[(uint32_t)k_lfn_off_seq]  = (uint8_t)(order | (is_last != 0U ? (uint8_t)k_lfn_seq_last : 0U));
@@ -304,12 +315,12 @@ static void plant_lfn_entry(uint8_t*    ent,
   for (uint32_t i = 0U; i < k_lfn_chars_per_entry; i++) {
     const uint32_t off = (uint32_t)s_lfn_char_off[i];
     if (i < len) {
-      put16(ent, off, (uint16_t)(uint8_t)text[i]);
+      internal_put16(ent, off, (uint16_t)(uint8_t)text[i]);
     } else if (placed_pad == 0U) {
-      put16(ent, off, pad_with); /* first slot past the name: terminator/pad */
+      internal_put16(ent, off, pad_with); /* first slot past the name: terminator/pad */
       placed_pad = 1U;
     } else {
-      put16(ent, off, (uint16_t)k_lfn_pad16);
+      internal_put16(ent, off, (uint16_t)k_lfn_pad16);
     }
   }
 }
@@ -335,22 +346,22 @@ static void plant_lfn_entry(uint8_t*    ent,
  *   -> C1=F -> 0 (needle independence).
  * - lname longer (needle "AB.EPU", a strict prefix): loop stops on C1=F, so at
  *   the return *a == '\0' (C1=T) but *b != '\0' (C2=F) -> 0 (lname independence).
- * N+1 = 3 vectors for each 2-condition decision.
+ * N+1 = 3 vectors for each 2-condition decision. @brief Exercise the mcdc lfn name compare lengths filesystem operation. @details Runs the mcdc lfn name compare lengths vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_lfn_name_compare_lengths(void)
+RA8_INTERNAL static void internal_test_mcdc_lfn_name_compare_lengths(void)
 {
   TEST_BEGIN("ra8_fs MC/DC: LFN name compare length arms");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* Plant one LFN chain whose long name is "AB.EPUB" (7 chars, single group)
    * tied to an arbitrary 8.3 entry "AB123456EPU". */
   const char    short11[11] = {'A', 'B', '1', '2', '3', '4', '5', '6', 'E', 'P', 'U'};
-  const uint8_t csum        = sfn_checksum((const uint8_t*)short11);
+  const uint8_t csum        = internal_sfn_checksum((const uint8_t*)short11);
   uint8_t* root = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
-  plant_lfn_entry(&root[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
-  plant_short_entry(&root[(uint32_t)k_dir_entry_bytes], short11, 0U);
+  internal_plant_lfn_entry(&root[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
+  internal_plant_short_entry(&root[(uint32_t)k_dir_entry_bytes], short11, 0U);
 
   ra8_fs_file_t* f = nullptr;
   /* Exact match: both decisions reach their both-true / C1-false arms; opens. */
@@ -363,7 +374,7 @@ static void test_mcdc_lfn_name_compare_lengths(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "AB.EPU", k_ra8_fs_mode_read, &f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs MC/DC: LFN name compare length arms");
 }
 
@@ -380,39 +391,39 @@ static void test_mcdc_lfn_name_compare_lengths(void)
  *   ends the group via the pad arm (second image, `k_lfn_pad16`).
  * The two images differ only in the post-name sentinel, so each independently
  * drives the decision true. Both reassemble to "AB.EPUB" and open. N+1 = 3
- * vectors for N=2 conditions (control + one per condition).
+ * vectors for N=2 conditions (control + one per condition). @brief Exercise the mcdc lfn terminator vs pad filesystem operation. @details Runs the mcdc lfn terminator vs pad vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_lfn_terminator_vs_pad(void)
+RA8_INTERNAL static void internal_test_mcdc_lfn_terminator_vs_pad(void)
 {
   TEST_BEGIN("ra8_fs MC/DC: LFN terminator (val==0 || val==pad)");
   const char    short11[11] = {'A', 'B', '1', '2', '3', '4', '5', '6', 'E', 'P', 'U'};
-  const uint8_t csum        = sfn_checksum((const uint8_t*)short11);
+  const uint8_t csum        = internal_sfn_checksum((const uint8_t*)short11);
 
   /* Image 1: NUL terminator after the name -> drives the (val == 0) arm. */
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   uint8_t* root1 = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
-  plant_lfn_entry(&root1[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
-  plant_short_entry(&root1[(uint32_t)k_dir_entry_bytes], short11, 0U);
+  internal_plant_lfn_entry(&root1[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
+  internal_plant_short_entry(&root1[(uint32_t)k_dir_entry_bytes], short11, 0U);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "AB.EPUB", k_ra8_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
 
   /* Image 2: 0xFFFF pad after the name -> drives the (val == pad) arm. */
-  build_fat16_volume();
+  internal_build_fat16_volume();
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   uint8_t* root2 = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
-  plant_lfn_entry(&root2[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_pad16);
-  plant_short_entry(&root2[(uint32_t)k_dir_entry_bytes], short11, 0U);
+  internal_plant_lfn_entry(&root2[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_pad16);
+  internal_plant_short_entry(&root2[(uint32_t)k_dir_entry_bytes], short11, 0U);
   f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "AB.EPUB", k_ra8_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs MC/DC: LFN terminator (val==0 || val==pad)");
 }
 
@@ -431,51 +442,51 @@ static void test_mcdc_lfn_terminator_vs_pad(void)
  * - C2=T: order 20 (> 19) -> early return; same observable miss.
  * The control image and each corrupt image differ only in the order byte, so
  * each condition independently flips whether the entry is folded (and thus
- * whether the open resolves). N+1 = 3 vectors for N=2 conditions.
+ * whether the open resolves). N+1 = 3 vectors for N=2 conditions. @brief Exercise the mcdc lfn order range guard filesystem operation. @details Runs the mcdc lfn order range guard vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_lfn_order_range_guard(void)
+RA8_INTERNAL static void internal_test_mcdc_lfn_order_range_guard(void)
 {
   TEST_BEGIN("ra8_fs MC/DC: LFN order range (order<1 || order>19)");
   const char     short11[11] = {'A', 'B', '1', '2', '3', '4', '5', '6', 'E', 'P', 'U'};
-  const uint8_t  csum        = sfn_checksum((const uint8_t*)short11);
+  const uint8_t  csum        = internal_sfn_checksum((const uint8_t*)short11);
   const uint32_t e1          = (uint32_t)k_dir_entry_bytes;
 
   /* Control: in-range order 1 -> folds, long name resolves. */
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   uint8_t* rootc = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
-  plant_lfn_entry(&rootc[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
-  plant_short_entry(&rootc[e1], short11, 0U);
+  internal_plant_lfn_entry(&rootc[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
+  internal_plant_short_entry(&rootc[e1], short11, 0U);
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "AB.EPUB", k_ra8_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
 
   /* C1=T: order 0 -> entry ignored -> long name does not reassemble. */
-  build_fat16_volume();
+  internal_build_fat16_volume();
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   uint8_t* root0 = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
-  plant_lfn_entry(&root0[0U], 0U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
-  plant_short_entry(&root0[e1], short11, 0U);
+  internal_plant_lfn_entry(&root0[0U], 0U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
+  internal_plant_short_entry(&root0[e1], short11, 0U);
   f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "AB.EPUB", k_ra8_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
 
   /* C2=T: order 20 (> 19) -> entry ignored -> long name does not reassemble. */
-  build_fat16_volume();
+  internal_build_fat16_volume();
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   uint8_t* root20 = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
-  plant_lfn_entry(&root20[0U], k_lfn_seq_max, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
-  plant_short_entry(&root20[e1], short11, 0U);
+  internal_plant_lfn_entry(&root20[0U], k_lfn_seq_max, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
+  internal_plant_short_entry(&root20[e1], short11, 0U);
   f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "AB.EPUB", k_ra8_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs MC/DC: LFN order range (order<1 || order>19)");
 }
 
@@ -504,24 +515,24 @@ typedef enum : uint32_t {
  * cluster (>= 2), and `priv_read_one_chunk` only runs while
  * `file->offset < file->size_bytes` (a zero-cluster file is empty and never
  * reaches it) -- deactivated under DO-178C 6.4.4.3. N+1 for the two reachable
- * arms of C2 (with C1 held true) = 2 vectors.
+ * arms of C2 (with C1 held true) = 2 vectors. @brief Exercise the mcdc read walk cache resume filesystem operation. @details Runs the mcdc read walk cache resume vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_read_walk_cache_resume(void)
+RA8_INTERNAL static void internal_test_mcdc_read_walk_cache_resume(void)
 {
   TEST_BEGIN("ra8_fs MC/DC: read walk-cache resume (cache set, backward seek)");
-  build_fat16_volume();
+  internal_build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  static uint8_t s_wr[k_read_payload];
-  static uint8_t s_rd[k_read_payload];
+  static uint8_t wr[k_read_payload];
+  static uint8_t rd[k_read_payload];
   for (uint32_t i = 0U; i < (uint32_t)k_read_payload; i++) {
-    s_wr[i] = (uint8_t)((i * k_fs_pattern_stride) + 3U);
-    s_rd[i] = 0U;
+    wr[i] = (uint8_t)((i * k_fs_pattern_stride) + 3U);
+    rd[i] = 0U;
   }
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BACK.BIN", k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_wr, (uint32_t)k_read_payload));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, wr, (uint32_t)k_read_payload));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BACK.BIN", k_ra8_fs_mode_read, &f));
@@ -529,27 +540,27 @@ static void test_mcdc_read_walk_cache_resume(void)
   uint32_t total = 0U;
   while (total < (uint32_t)k_read_payload) {
     uint32_t got = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, &s_rd[total], (uint32_t)k_read_chunk, &got));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, &rd[total], (uint32_t)k_read_chunk, &got));
     if (got == 0U) {
       break;
     }
     total += got;
   }
   TEST_ASSERT_EQ(k_read_payload, total);
-  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, (size_t)k_read_payload));
+  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_read_payload));
 
   /* Backward seek to the chain head: cache set (C1=T) but target behind the
    * cached index (C2=F) -> walk from head. Re-read the first chunk. */
-  memset(s_rd, 0, (size_t)k_read_chunk);
+  memset(rd, 0, (size_t)k_read_chunk);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, 0U));
   uint32_t got2 = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_rd, (uint32_t)k_read_chunk, &got2));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, rd, (uint32_t)k_read_chunk, &got2));
   TEST_ASSERT_EQ(k_read_chunk, got2);
-  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, (size_t)k_read_chunk));
+  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_read_chunk));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs MC/DC: read walk-cache resume (cache set, backward seek)");
 }
 
@@ -570,12 +581,12 @@ static void test_mcdc_read_walk_cache_resume(void)
  *   condition stays TRUE throughout, demonstrating the upper bound independently
  *   gates the decision.
  * Combined with the sibling lower-bound vector this gives N+1 = 3 distinct
- * condition vectors for the FAT16 band's N=2 conditions.
+ * condition vectors for the FAT16 band's N=2 conditions. @brief Exercise the mcdc format fat16 band upper filesystem operation. @details Runs the mcdc format fat16 band upper vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_fat16_band_upper(void)
+RA8_INTERNAL static void internal_test_mcdc_format_fat16_band_upper(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: FAT16 band upper bound (count<65525)");
-  alloc_card((uint32_t)k_disk_blocks_big16);
+  internal_alloc_card((uint32_t)k_disk_blocks_big16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   opts.label                = "BIGFAT16";
@@ -585,7 +596,7 @@ static void test_mcdc_format_fat16_band_upper(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_fat16, h->type);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: FAT16 band upper bound (count<65525)");
 }
 
@@ -606,12 +617,12 @@ static void test_mcdc_format_fat16_band_upper(void)
  *   a count above 0x0FFFFFF0 (~268M clusters); the FAT32 auto-sweep seeds SPC
  *   from the Microsoft size table so the count never overshoots the cap on any
  *   buildable card -- that arm is flagged structurally unreachable / deactivated
- *   under DO-178C 6.4.4.3.
+ *   under DO-178C 6.4.4.3. @brief Exercise the mcdc format fat32 band lower filesystem operation. @details Runs the mcdc format fat32 band lower vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_fat32_band_lower(void)
+RA8_INTERNAL static void internal_test_mcdc_format_fat32_band_lower(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: FAT32 band lower bound (count>=65525)");
-  alloc_card((uint32_t)k_disk_blocks_fat32);
+  internal_alloc_card((uint32_t)k_disk_blocks_fat32);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat32;
   opts.label                = "F32BAND";
@@ -620,7 +631,7 @@ static void test_mcdc_format_fat32_band_lower(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_fat32, h->type);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: FAT32 band lower bound (count>=65525)");
 }
 
@@ -639,23 +650,24 @@ static void test_mcdc_format_fat32_band_lower(void)
  * V1 vs V2 flips A; V1 vs V3 flips B; V1 vs V4 flips C; V1 vs V5 flips D -- each
  * condition independently drives the reject. The four accept legs are exercised
  * by the sibling format round-trips; this case adds the all-true reject vector
- * (V1) that no sibling test reaches. N+1 = 5 vectors for N=4 conditions.
+ * (V1) that no sibling test reaches. N+1 = 5 vectors for N=4 conditions. @brief Exercise the mcdc format type unsupported filesystem operation. @details Runs the mcdc format type unsupported vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_type_unsupported(void)
+RA8_INTERNAL static void internal_test_mcdc_format_type_unsupported(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: unsupported type (all four !=) reject");
-  alloc_card((uint32_t)k_disk_blocks_fat16);
+  internal_alloc_card((uint32_t)k_disk_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_unknown; /* none of 12/16/32/exFAT */
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_format(&s_backend, &opts));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: unsupported type (all four !=) reject");
 }
 
 /**
- * @brief Capacity stub reporting a non-512 block size to drive the format guard.
+ * @brief Capacity stub reporting a non-512 block size to drive the format guard. @details Implements the bounded cap bad block size fixture step using caller-owned state. @param[in,out] ctx Caller-owned fixture or filesystem state. @param[in,out] block_count Caller-supplied bounded extent or quantity. @param[in,out] block_size Caller-supplied bounded extent or quantity. @return Status, selected object, or bounded value produced by the named operation. @retval k_ra8_ok The requested operation completed. @retval k_ra8_err_* Validation or backend work failed. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static ra8_err_t cap_bad_block_size(void* ctx, uint64_t* block_count, uint32_t* block_size)
+RA8_INTERNAL static ra8_err_t
+internal_cap_bad_block_size(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = (uint32_t)k_disk_blocks_fat16;
@@ -676,21 +688,21 @@ static ra8_err_t cap_bad_block_size(void* ctx, uint64_t* block_count, uint32_t* 
  * - C2 (block_count == 0) is unreachable through a real card: a zero-sector card
  *   cannot be allocated and every backend here reports a non-zero count, so it
  *   is deactivated under DO-178C 6.4.4.3.
- * N+1 for the one reachable condition (C1) = 2 vectors.
+ * N+1 for the one reachable condition (C1) = 2 vectors. @brief Exercise the mcdc format block size guard filesystem operation. @details Runs the mcdc format block size guard vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_format_block_size_guard(void)
+RA8_INTERNAL static void internal_test_mcdc_format_block_size_guard(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: block-size guard (bps past 4096)");
-  alloc_card((uint32_t)k_disk_blocks_fat16);
+  internal_alloc_card((uint32_t)k_disk_blocks_fat16);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_fat16;
   /* Control: valid 512-byte card -> both conditions false, format proceeds. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   /* C1=T: non-512 block size -> reject. */
   ra8_fs_backend_t bad = s_backend;
-  bad.get_capacity     = cap_bad_block_size;
+  bad.get_capacity     = internal_cap_bad_block_size;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&bad, &opts));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: block-size guard (bps past 4096)");
 }
 
@@ -717,14 +729,14 @@ typedef enum : uint32_t {
  *   TRUE -- the length-cap arm, proving C1 independently ends the loop.
  * Both formats succeed and mount as exFAT. N+1 = 3 vectors for N=2 conditions
  * (the NULL-label leg, where the loop is never entered, is covered by the
- * sibling `test_format_exfat_mount_empty`/label round-trips).
+ * sibling `test_format_exfat_mount_empty`/label round-trips). @brief Exercise the mcdc exfat label pack terminator and cap filesystem operation. @details Runs the mcdc exfat label pack terminator and cap vector through production filesystem seams and checks observable state. @pre Pointer arguments address their documented readable or writable extents. @pre Required fixture and backend state is initialized before the call. @post No access exceeds a caller-advertised capacity. @post The return value or assertions describe the observed filesystem state. @note Test-only helpers retain no hidden ownership beyond documented fixture state. @since 0.1.0
  */
-static void test_mcdc_exfat_label_pack_terminator_and_cap(void)
+RA8_INTERNAL static void internal_test_mcdc_exfat_label_pack_terminator_and_cap(void)
 {
   TEST_BEGIN("ra8_fs format MC/DC: exFAT label pack (n<max && label[n])");
 
   /* C2 arm: a short label terminates on NUL before the 11-char cap. */
-  alloc_card((uint32_t)k_exfat_blocks);
+  internal_alloc_card((uint32_t)k_exfat_blocks);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_exfat;
   opts.label                = "RAEXFAT"; /* 7 chars < 11 cap */
@@ -733,31 +745,30 @@ static void test_mcdc_exfat_label_pack_terminator_and_cap(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_exfat, h->type);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
 
   /* C1 arm: a label exactly at the 11-char cap stops on the length bound. */
-  alloc_card((uint32_t)k_exfat_blocks);
+  internal_alloc_card((uint32_t)k_exfat_blocks);
   opts.label = "ABCDEFGHIJK"; /* exactly 11 chars == k_exfat_lbl_max */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_fs_type_exfat, h->type);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
-  free_volume();
+  internal_free_volume();
   TEST_END("ra8_fs format MC/DC: exFAT label pack (n<max && label[n])");
 }
 
 int32_t main(void)
 {
-  test_mcdc_lfn_name_compare_lengths();
-  test_mcdc_lfn_terminator_vs_pad();
-  test_mcdc_lfn_order_range_guard();
-  test_mcdc_read_walk_cache_resume();
-  test_mcdc_format_fat16_band_upper();
-  test_mcdc_format_fat32_band_lower();
-  test_mcdc_format_type_unsupported();
-  test_mcdc_format_block_size_guard();
-  test_mcdc_exfat_label_pack_terminator_and_cap();
-  (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat_mcdc.c\n");
+  internal_test_mcdc_lfn_name_compare_lengths();
+  internal_test_mcdc_lfn_terminator_vs_pad();
+  internal_test_mcdc_lfn_order_range_guard();
+  internal_test_mcdc_read_walk_cache_resume();
+  internal_test_mcdc_format_fat16_band_upper();
+  internal_test_mcdc_format_fat32_band_lower();
+  internal_test_mcdc_format_type_unsupported();
+  internal_test_mcdc_format_block_size_guard();
+  internal_test_mcdc_exfat_label_pack_terminator_and_cap();
   return 0;
 }

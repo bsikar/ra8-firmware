@@ -48,7 +48,7 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_path_is_root(const char* path)
+static bool internal_path_is_root(const char* path)
 {
   const char* p = path;
   while (*p == '/') {
@@ -78,11 +78,11 @@ static bool priv_path_is_root(const char* path)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_stat_decode_fat(uint16_t            date,
-                                 uint16_t            time,
-                                 uint8_t             tenth,
-                                 bool                have_tenth,
-                                 ra8_fs_timestamp_t* out)
+static void internal_stat_decode_fat(uint16_t            date,
+                                     uint16_t            time,
+                                     uint8_t             tenth,
+                                     bool                have_tenth,
+                                     ra8_fs_timestamp_t* out)
 {
   ra8_fs_datetime_t v = {};
   v.year              = (uint16_t)((uint32_t)k_fs_time_epoch_year + (date >> 9U));
@@ -155,15 +155,15 @@ static void priv_stat_decode_fat(uint16_t            date,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_stat_decode_exfat(uint32_t            packed,
-                                   uint8_t             tenth,
-                                   bool                have_tenth,
-                                   uint8_t             utc,
-                                   ra8_fs_timestamp_t* out)
+static void internal_stat_decode_exfat(uint32_t            packed,
+                                       uint8_t             tenth,
+                                       bool                have_tenth,
+                                       uint8_t             utc,
+                                       ra8_fs_timestamp_t* out)
 {
   const uint16_t date = (uint16_t)(packed >> 16U);
   const uint16_t time = (uint16_t)(packed & 0xFFFFU);
-  priv_stat_decode_fat(date, time, tenth, have_tenth, out);
+  internal_stat_decode_fat(date, time, tenth, have_tenth, out);
   if (!out->valid) {
     return;
   }
@@ -203,19 +203,23 @@ static void priv_stat_decode_exfat(uint32_t            packed,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_stat_fat_times(const uint8_t* entry, ra8_fs_stat_t* out)
+static void internal_stat_fat_times(const uint8_t* entry, ra8_fs_stat_t* out)
 {
-  priv_stat_decode_fat(priv_rd16(&entry[k_dir_off_crt_date]),
-                       priv_rd16(&entry[k_dir_off_crt_time]),
-                       entry[k_dir_off_crt_time_tenth],
-                       true,
-                       &out->created);
-  priv_stat_decode_fat(priv_rd16(&entry[k_dir_off_wrt_date]),
-                       priv_rd16(&entry[k_dir_off_wrt_time]),
-                       0U,
-                       false,
-                       &out->modified);
-  priv_stat_decode_fat(priv_rd16(&entry[k_dir_off_lst_acc_date]), 0U, 0U, false, &out->accessed);
+  internal_stat_decode_fat(priv_rd16(&entry[k_dir_off_crt_date]),
+                           priv_rd16(&entry[k_dir_off_crt_time]),
+                           entry[k_dir_off_crt_time_tenth],
+                           true,
+                           &out->created);
+  internal_stat_decode_fat(priv_rd16(&entry[k_dir_off_wrt_date]),
+                           priv_rd16(&entry[k_dir_off_wrt_time]),
+                           0U,
+                           false,
+                           &out->modified);
+  internal_stat_decode_fat(priv_rd16(&entry[k_dir_off_lst_acc_date]),
+                           0U,
+                           0U,
+                           false,
+                           &out->accessed);
 }
 
 /**
@@ -236,23 +240,23 @@ static void priv_stat_fat_times(const uint8_t* entry, ra8_fs_stat_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_stat_exfat_times(const uint8_t* entry, ra8_fs_stat_t* out)
+static void internal_stat_exfat_times(const uint8_t* entry, ra8_fs_stat_t* out)
 {
-  priv_stat_decode_exfat(priv_rd32(&entry[k_exfat_off_file_ctime]),
-                         entry[k_exfat_off_file_c10ms],
-                         true,
-                         entry[k_exfat_off_file_cutc],
-                         &out->created);
-  priv_stat_decode_exfat(priv_rd32(&entry[k_exfat_off_file_mtime]),
-                         entry[k_exfat_off_file_m10ms],
-                         true,
-                         entry[k_exfat_off_file_mutc],
-                         &out->modified);
-  priv_stat_decode_exfat(priv_rd32(&entry[k_exfat_off_file_atime]),
-                         0U,
-                         false,
-                         entry[k_exfat_off_file_autc],
-                         &out->accessed);
+  internal_stat_decode_exfat(priv_rd32(&entry[k_exfat_off_file_ctime]),
+                             entry[k_exfat_off_file_c10ms],
+                             true,
+                             entry[k_exfat_off_file_cutc],
+                             &out->created);
+  internal_stat_decode_exfat(priv_rd32(&entry[k_exfat_off_file_mtime]),
+                             entry[k_exfat_off_file_m10ms],
+                             true,
+                             entry[k_exfat_off_file_mutc],
+                             &out->modified);
+  internal_stat_decode_exfat(priv_rd32(&entry[k_exfat_off_file_atime]),
+                             0U,
+                             false,
+                             entry[k_exfat_off_file_autc],
+                             &out->accessed);
 }
 
 /**
@@ -278,7 +282,7 @@ static void priv_stat_exfat_times(const uint8_t* entry, ra8_fs_stat_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_stat_root(const ra8_fs_mount_t* m, ra8_fs_stat_t* out)
+static void internal_stat_root(const ra8_fs_mount_t* m, ra8_fs_stat_t* out)
 {
   out->size_bytes    = 0U;
   out->first_cluster = m->root_cluster;
@@ -312,14 +316,14 @@ static void priv_stat_root(const ra8_fs_mount_t* m, ra8_fs_stat_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_entry_to_stat(const uint8_t* entry, ra8_fs_stat_t* out)
+static void internal_entry_to_stat(const uint8_t* entry, ra8_fs_stat_t* out)
 {
   const uint8_t attr = entry[k_dir_off_attr];
   out->attr          = attr;
   out->is_directory  = (attr & (uint8_t)k_ra8_fs_attr_directory) != 0U;
   out->first_cluster = priv_entry_first_cluster(entry);
   out->size_bytes    = priv_rd32(&entry[k_dir_off_file_size]);
-  priv_stat_fat_times(entry, out);
+  internal_stat_fat_times(entry, out);
   if (out->is_directory) {
     out->size_bytes = 0U;
   }
@@ -353,7 +357,7 @@ static void priv_entry_to_stat(const uint8_t* entry, ra8_fs_stat_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_stat_exfat(const ra8_fs_mount_t* m, const char* path, ra8_fs_stat_t* out)
+static ra8_err_t internal_stat_exfat(const ra8_fs_mount_t* m, const char* path, ra8_fs_stat_t* out)
 {
   exfat_dir_t     parent = {};
   const char*     leaf   = nullptr;
@@ -380,7 +384,7 @@ static ra8_err_t priv_stat_exfat(const ra8_fs_mount_t* m, const char* path, ra8_
   out->is_directory  = (out->attr & (uint8_t)k_ra8_fs_attr_directory) != 0U;
   out->first_cluster = priv_rd32(&strm[k_exfat_strm_off_clus]);
   out->size_bytes    = priv_rd64(&strm[k_exfat_strm_off_dlen]);
-  priv_stat_exfat_times(file_e, out);
+  internal_stat_exfat_times(file_e, out);
   if (out->is_directory) {
     out->size_bytes = 0U;
   }
@@ -416,7 +420,8 @@ static ra8_err_t priv_stat_exfat(const ra8_fs_mount_t* m, const char* path, ra8_
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_stat_fat(const ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out)
+static ra8_err_t
+internal_stat_fat(const ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out)
 {
   dir_loc_t       parent = {};
   const char*     leaf   = nullptr;
@@ -441,7 +446,7 @@ static ra8_err_t priv_stat_fat(const ra8_fs_mount_t* handle, const char* path, r
   if (err != k_ra8_ok) {
     return err;
   }
-  priv_entry_to_stat(entry, out);
+  internal_entry_to_stat(entry, out);
   return k_ra8_ok;
 }
 
@@ -476,7 +481,7 @@ static ra8_err_t priv_stat_fat(const ra8_fs_mount_t* handle, const char* path, r
  */
 RA8_INTERNAL
 RA8_EXPECTS_LOCK("ra8_fs_lock")
-static ra8_err_t priv_stat_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out)
+static ra8_err_t internal_stat_locked(ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out)
 {
   if (handle == nullptr) {
     return k_ra8_err_null_ptr;
@@ -491,14 +496,14 @@ static ra8_err_t priv_stat_locked(ra8_fs_mount_t* handle, const char* path, ra8_
     return k_ra8_err_invalid_state;
   }
   *out = (ra8_fs_stat_t){};
-  if (priv_path_is_root(path)) {
-    priv_stat_root(handle, out);
+  if (internal_path_is_root(path)) {
+    internal_stat_root(handle, out);
     return k_ra8_ok;
   }
   if (handle->type == k_ra8_fs_type_exfat) {
-    return priv_stat_exfat(handle, path, out);
+    return internal_stat_exfat(handle, path, out);
   }
-  return priv_stat_fat(handle, path, out);
+  return internal_stat_fat(handle, path, out);
 }
 
 /* =============================================================================
@@ -510,7 +515,7 @@ RA8_OWNS_RESOURCE("ra8_fs_lock")
 ra8_err_t ra8_fs_stat(ra8_fs_mount_t* handle, const char* path, ra8_fs_stat_t* out)
 {
   priv_lock_acquire();
-  const ra8_err_t err = priv_stat_locked(handle, path, out);
+  const ra8_err_t err = internal_stat_locked(handle, path, out);
   priv_lock_release();
   return err;
 }

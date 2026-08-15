@@ -22,6 +22,7 @@
 
 #include "fw_if_fs_backend.h"
 #include "fw_if_fs_types.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /** @brief ASCII byte boundaries used by portable path validation. */
@@ -30,8 +31,22 @@ typedef enum : uint8_t {
   k_fw_fs_ascii_delete = 0x7FU, /**< DEL control byte.             */
 } fw_fs_ascii_byte_t;
 
-/** @brief Return true when `value` is a non-zero power of two. */
-static bool internal_power_of_two(uint32_t value)
+/**
+ * @brief Test whether an unsigned value is a non-zero power of two.
+ * @details Uses the one-bit identity `value & (value - 1)` after handling zero,
+ *          avoiding loops and making the alignment-contract check bounded.
+ * @param[in] value Candidate unsigned value.
+ * @return Whether exactly one bit is set.
+ * @retval true @p value is a non-zero power of two.
+ * @retval false @p value is zero or contains more than one set bit.
+ * @pre @p value is an ordinary 32-bit value; no external state is required.
+ * @pre Unsigned subtraction and bitwise operations use standard C semantics.
+ * @post No memory or external state is modified.
+ * @post The result depends only on @p value.
+ * @note Pure and thread-safe.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool internal_power_of_two(uint32_t value)
 {
   if (value == 0U) {
     return false;
@@ -39,8 +54,29 @@ static bool internal_power_of_two(uint32_t value)
   return (value & (value - 1U)) == 0U;
 }
 
-/** @brief Validate a workspace against a backend's byte/alignment contract. */
-static ra8_err_t internal_workspace(void* workspace, uint32_t bytes, uint32_t need, uint8_t align)
+/**
+ * @brief Validate a workspace against a backend byte/alignment contract.
+ * @details Rejects absent or undersized storage, invalid alignment metadata,
+ *          and bases that do not satisfy the advertised power-of-two boundary.
+ * @param[in,out] workspace Caller-owned workspace to validate.
+ * @param[in] bytes Accessible bytes beginning at @p workspace.
+ * @param[in] need Minimum backend workspace size in bytes.
+ * @param[in] align Required power-of-two byte alignment.
+ * @return Workspace validation status.
+ * @retval k_ra8_ok The storage meets both size and alignment requirements.
+ * @retval k_ra8_err_null_ptr @p workspace is NULL.
+ * @retval k_ra8_err_no_mem @p bytes is smaller than @p need.
+ * @retval k_ra8_err_invalid_state @p align is not a non-zero power of two.
+ * @retval k_ra8_err_invalid_arg The workspace base is misaligned.
+ * @pre @p bytes truthfully describes the accessible caller-owned span.
+ * @pre @p need and @p align came from the immutable bound capability record.
+ * @post The workspace contents are unchanged.
+ * @post Success proves the backend may place its state in the supplied span.
+ * @note Pure and thread-safe for immutable capability metadata.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_workspace(void* workspace, uint32_t bytes, uint32_t need, uint8_t align)
 {
   if (workspace == nullptr) {
     return k_ra8_err_null_ptr;
@@ -57,8 +93,23 @@ static ra8_err_t internal_workspace(void* workspace, uint32_t bytes, uint32_t ne
   return k_ra8_ok;
 }
 
-/** @brief Validate a namespace facade before dispatch. */
-static ra8_err_t internal_names(const fw_fs_namespace_t* names)
+/**
+ * @brief Validate a namespace facade before dispatch.
+ * @details Requires both a facade object and the immutable namespace vtable
+ *          installed by ::fw_fs_bind before any backend operation is called.
+ * @param[in] names Namespace facade to inspect.
+ * @return Facade validation status.
+ * @retval k_ra8_ok The facade can dispatch namespace operations.
+ * @retval k_ra8_err_null_ptr @p names is NULL.
+ * @retval k_ra8_err_not_initialized The facade has no bound interface.
+ * @pre The caller does not concurrently mutate @p names.
+ * @pre Any non-NULL interface pointer remains valid for the call duration.
+ * @post No facade or backend state is modified.
+ * @post Success establishes a non-NULL dispatch interface.
+ * @note Thread-safe when binding lifetime is externally synchronized.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_names(const fw_fs_namespace_t* names)
 {
   if (names == nullptr) {
     return k_ra8_err_null_ptr;
@@ -69,8 +120,24 @@ static ra8_err_t internal_names(const fw_fs_namespace_t* names)
   return k_ra8_ok;
 }
 
-/** @brief Validate an open file facade before dispatch. */
-static ra8_err_t internal_file(const fw_fs_file_t* file)
+/**
+ * @brief Validate an open file facade before dispatch.
+ * @details Checks the explicit lifecycle bit before accepting the stored stream
+ *          interface, so closed and partially initialized handles fail closed.
+ * @param[in] file File facade to inspect.
+ * @return File-handle validation status.
+ * @retval k_ra8_ok The handle is open and has a dispatch interface.
+ * @retval k_ra8_err_null_ptr @p file is NULL.
+ * @retval k_ra8_err_invalid_state The handle is not open.
+ * @retval k_ra8_err_not_initialized The open handle lacks an interface.
+ * @pre The caller does not concurrently open or close @p file.
+ * @pre Any non-NULL interface pointer remains valid for the call duration.
+ * @post No file or backend state is modified.
+ * @post Success establishes that stream dispatch is safe to attempt.
+ * @note Thread-safe only with external handle-lifecycle synchronization.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_file(const fw_fs_file_t* file)
 {
   if (file == nullptr) {
     return k_ra8_err_null_ptr;
@@ -84,8 +151,24 @@ static ra8_err_t internal_file(const fw_fs_file_t* file)
   return k_ra8_ok;
 }
 
-/** @brief Validate an active transaction facade before dispatch. */
-static ra8_err_t internal_transaction(const fw_fs_transaction_t* transaction)
+/**
+ * @brief Validate an active transaction facade before dispatch.
+ * @details Enforces the transaction lifecycle before accepting the bound
+ *          transaction vtable, preventing writes through consumed handles.
+ * @param[in] transaction Transaction facade to inspect.
+ * @return Transaction validation status.
+ * @retval k_ra8_ok The transaction is active and dispatchable.
+ * @retval k_ra8_err_null_ptr @p transaction is NULL.
+ * @retval k_ra8_err_invalid_state The transaction is inactive.
+ * @retval k_ra8_err_not_initialized The active facade lacks an interface.
+ * @pre The caller does not concurrently commit or abort @p transaction.
+ * @pre Any non-NULL interface pointer remains valid for the call duration.
+ * @post No transaction or backend state is modified.
+ * @post Success establishes that transaction dispatch is safe to attempt.
+ * @note Thread-safe only with external transaction-lifecycle synchronization.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_transaction(const fw_fs_transaction_t* transaction)
 {
   if (transaction == nullptr) {
     return k_ra8_err_null_ptr;
@@ -99,9 +182,25 @@ static ra8_err_t internal_transaction(const fw_fs_transaction_t* transaction)
   return k_ra8_ok;
 }
 
-/** @brief Validate one completed path component (`.` and `..` are forbidden).
+/**
+ * @brief Validate one completed portable path component.
+ * @details Rejects empty components and the traversal tokens `.` and `..`;
+ *          other byte and length rules are enforced by ::fw_fs_path_validate.
+ * @param[in] path Canonical path buffer containing the component.
+ * @param[in] start Byte offset of the component's first character.
+ * @param[in] length Component length in bytes.
+ * @return Component validation status.
+ * @retval k_ra8_ok The component is non-empty and is not a traversal token.
+ * @retval k_ra8_err_invalid_arg @p length is zero.
+ * @retval k_ra8_err_access_denied The component is `.` or `..`.
+ * @pre @p path addresses at least `start + length` readable bytes.
+ * @pre @p start and @p length were derived without integer wrap.
+ * @post The path buffer is unchanged.
+ * @post Success permits the outer validator to continue with the next byte.
+ * @note Pure and thread-safe.
+ * @since Version 0.1.0
  */
-static ra8_err_t internal_component(const char* path, uint16_t start, uint16_t length)
+RA8_INTERNAL static ra8_err_t internal_component(const char* path, uint16_t start, uint16_t length)
 {
   if (length == 0U) {
     return k_ra8_err_invalid_arg;
@@ -181,12 +280,32 @@ ra8_err_t fw_fs_path_validate(const fw_fs_caps_t* caps, const char* path)
   return k_ra8_err_invalid_size;
 }
 
-/** @brief Validate all mandatory backend operations before binding them. */
-static ra8_err_t internal_interfaces(const fw_fs_namespace_iface_t*   names,
-                                     const fw_fs_stream_iface_t*      streams,
-                                     const fw_fs_transaction_iface_t* transactions)
+/**
+ * @brief Validate all mandatory backend operations before binding them.
+ * @details Requires the complete namespace and stream contracts, then either
+ *          no transaction interface or a complete begin/write/seek/validate/
+ *          commit/abort transaction contract.
+ * @param[in] names Candidate namespace-operation table.
+ * @param[in] streams Candidate stream-operation table.
+ * @param[in] transactions Optional candidate transaction-operation table.
+ * @return Interface-table validation status.
+ * @retval k_ra8_ok Every required function pointer is present.
+ * @retval k_ra8_err_invalid_arg A mandatory operation pointer is NULL.
+ * @pre @p names and @p streams are non-NULL readable objects.
+ * @pre @p transactions is NULL or addresses a readable interface object.
+ * @post No interface table or backend state is modified.
+ * @post Success proves later guarded dispatch cannot call a missing operation.
+ * @note Pure and thread-safe for immutable interface tables.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_interfaces(const fw_fs_namespace_iface_t*   names,
+                                                  const fw_fs_stream_iface_t*      streams,
+                                                  const fw_fs_transaction_iface_t* transactions)
 {
   if (names->stat == nullptr || names->listdir == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (names->dir_open == nullptr || names->dir_next == nullptr || names->dir_close == nullptr) {
     return k_ra8_err_invalid_arg;
   }
   if (names->mkdir == nullptr || names->unlink == nullptr) {
@@ -255,6 +374,10 @@ ra8_err_t fw_fs_bind(fw_fs_t*                         out,
     return k_ra8_err_invalid_arg;
   }
   if (!internal_power_of_two(caps->file_workspace_align)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((caps->directory_workspace_bytes == 0U) || (caps->max_open_directories == 0U) ||
+      !internal_power_of_two(caps->directory_workspace_align)) {
     return k_ra8_err_invalid_arg;
   }
   if (!internal_power_of_two(caps->transaction_workspace_align)) {
@@ -355,9 +478,9 @@ ra8_err_t fw_fs_listdir(const fw_fs_namespace_t* names,
 }
 
 /** @brief Common one-path namespace dispatch. */
-static ra8_err_t internal_name_op(const fw_fs_namespace_t* names,
-                                  const char*              path,
-                                  ra8_err_t (*operation)(void*, const char*))
+RA8_INTERNAL static ra8_err_t internal_name_op(const fw_fs_namespace_t* names,
+                                               const char*              path,
+                                               ra8_err_t (*operation)(void*, const char*))
 {
   const ra8_err_t valid = internal_names(names);
   if (valid != k_ra8_ok) {
