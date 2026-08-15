@@ -62,6 +62,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_epub.h"
 #include "ra8_err.h"
@@ -71,11 +72,28 @@
 #include "ra8_rabook_pipeline.h"
 #include "rabook_parity_fixture.h"
 #include "rabook_realbook_fixture.h"
+#include "support/ra8_test_output.h"
 #include "support/rabook_pipeline_fixture.h"
 #include "unity_minimal.h"
 
+/** @brief Report the first byte mismatch through a caller-local raw descriptor. @details Implements the report diff fixture operation used only by this focused test executable. @param[in] label Fixture argument governed by the exercised interface contract. @param[in] offset Fixture argument governed by the exercised interface contract. @param[in] actual Fixture argument governed by the exercised interface contract. @param[in] expected Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void
+internal_report_diff(const char* label, uint32_t offset, uint8_t actual, uint8_t expected)
+{
+  ra8_test_output_t    output = {};
+  ra8_test_output_fd_t state  = {};
+  (void)internal_test_output_fd_init(&output, &state, STDERR_FILENO);
+  (void)internal_test_output_text(&output, label);
+  (void)internal_test_output_u64(&output, offset);
+  (void)internal_test_output_text(&output, ": device=0x");
+  (void)internal_test_output_hex64(&output, actual, 2U, true);
+  (void)internal_test_output_text(&output, " golden=0x");
+  (void)internal_test_output_hex64(&output, expected, 2U, true);
+  (void)internal_test_output_text(&output, "\n");
+}
+
 /**
- * @test test_pipeline_text_only_no_cover
+ * @test internal_test_pipeline_text_only_no_cover
  * @brief A cover-less text book compiles, validates, and round-trips its
  *        metadata; the absent cover leaves the cover index nil.
  *
@@ -83,13 +101,12 @@
  * Drives the false (happy) arm of every `if (err != k_ra8_ok)` stage guard in
  * @ref ra8_rabook_compile_from_epub and the @ref k_ra8_err_not_found arm of
  * s_compile_cover (no cover -> nil index, success). No compound decision is
- * reached on this path.
- */
-static void test_pipeline_text_only_no_cover(void)
+ * reached on this path. @details Executes the pipeline text only no cover scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_text_only_no_cover(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: text-only EPUB -> valid .rabook");
-  build_epub(false);
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub(false);
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_epub, .size = s_epub_len};
@@ -98,7 +115,7 @@ static void test_pipeline_text_only_no_cover(void)
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
@@ -135,12 +152,12 @@ static void test_pipeline_text_only_no_cover(void)
   TEST_ASSERT_EQ(k_ra8_book_node_element, root->kind);
   TEST_ASSERT_EQ(0, strcmp(ra8_book_node_name(s_readback, root), "body"));
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: text-only EPUB -> valid .rabook");
 }
 
 /**
- * @test test_pipeline_undecodable_cover_skipped
+ * @test internal_test_pipeline_undecodable_cover_skipped
  * @brief A present-but-undecodable cover is skipped (not an error), so the book
  *        still compiles to a valid coverless .rabook.
  *
@@ -151,13 +168,12 @@ static void test_pipeline_text_only_no_cover(void)
  * garbage bytes and internal_transcode_image returns nil, taking the
  * `if (idx == nil) continue` skip arm -- the same try/except pass the desktop
  * epub_compile.py uses, so one bad image never fails the whole compile. The cover
- * index stays nil because no image was added to match epub->cover_path.
- */
-static void test_pipeline_undecodable_cover_skipped(void)
+ * index stays nil because no image was added to match epub->cover_path. @details Executes the pipeline undecodable cover skipped scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_undecodable_cover_skipped(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: present-but-undecodable cover -> skipped");
-  build_epub(true);
-  ra8_fs_mount_t* mount = fresh_volume();
+  internal_build_epub(true);
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_epub, .size = s_epub_len};
@@ -168,7 +184,7 @@ static void test_pipeline_undecodable_cover_skipped(void)
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
 
   /* The bad cover is skipped like the desktop tool, so the compile succeeds. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
@@ -185,7 +201,7 @@ static void test_pipeline_undecodable_cover_skipped(void)
   TEST_ASSERT_EQ(k_ra8_book_nil, hdr->cover_image_index);
   TEST_ASSERT_EQ(0U, hdr->image_count);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: present-but-undecodable cover -> skipped");
 }
 
@@ -208,7 +224,7 @@ static void test_pipeline_undecodable_cover_skipped(void)
  * @par MC/DC:
  * Drives the false arm of `if (scr->skip_images)` in internal_compile_images (single
  * condition): skip_images is left unset, so the SVG cover IS emitted. Paired
- * with @ref test_pipeline_parity_noimg_byte_identical (which drives the true
+ * with @ref internal_test_pipeline_parity_noimg_byte_identical (which drives the true
  * arm), the two vectors (skip=false image emitted) + (skip=true image dropped)
  * give the guard its MC/DC pair.
  *
@@ -216,12 +232,11 @@ static void test_pipeline_undecodable_cover_skipped(void)
  * @pre The RAM backend descriptor @p s_backend is initialised.
  * @post The emitted blob equals the golden, byte for byte.
  * @post The RAM volume is unmounted and its backing store freed.
- * @note Not thread-safe (writes file-scope fixture buffers).
- */
-static void test_pipeline_parity_byte_identical(void)
+ * @note Not thread-safe (writes file-scope fixture buffers). @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_parity_byte_identical(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: text-only fixture byte-identical to desktop");
-  ra8_fs_mount_t* mount = fresh_volume();
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_parity_epub, .size = (size_t)k_parity_epub_len};
@@ -230,7 +245,7 @@ static void test_pipeline_parity_byte_identical(void)
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
@@ -247,17 +262,13 @@ static void test_pipeline_parity_byte_identical(void)
   TEST_ASSERT_EQ(k_parity_golden_len, got);
   for (uint32_t i = 0U; i < got; i++) {
     if (s_readback[i] != s_parity_golden[i]) {
-      (void)fprintf(stderr,
-                    "  parity diff at offset %u: device=0x%02X golden=0x%02X\n",
-                    i,
-                    s_readback[i],
-                    s_parity_golden[i]);
+      internal_report_diff("  parity diff at offset ", i, s_readback[i], s_parity_golden[i]);
       break;
     }
   }
   TEST_ASSERT_EQ(0, memcmp(s_readback, s_parity_golden, (size_t)got));
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: text-only fixture byte-identical to desktop");
 }
 
@@ -284,12 +295,11 @@ static void test_pipeline_parity_byte_identical(void)
  * @pre The RAM backend descriptor @p s_backend is initialised.
  * @post The emitted blob equals the --no-images golden, byte for byte.
  * @post The RAM volume is unmounted and its backing store freed.
- * @note Not thread-safe (writes file-scope fixture buffers).
- */
-static void test_pipeline_parity_noimg_byte_identical(void)
+ * @note Not thread-safe (writes file-scope fixture buffers). @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_parity_noimg_byte_identical(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: skip-images fixture byte-identical to --no-images");
-  ra8_fs_mount_t* mount = fresh_volume();
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_parity_epub, .size = (size_t)k_parity_epub_len};
@@ -298,7 +308,7 @@ static void test_pipeline_parity_noimg_byte_identical(void)
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
   scr.skip_images = true; /* text/CSS-only: drop the SVG cover like desktop --no-images */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
@@ -321,17 +331,16 @@ static void test_pipeline_parity_noimg_byte_identical(void)
   TEST_ASSERT_EQ(k_parity_golden_noimg_len, got);
   for (uint32_t i = 0U; i < got; i++) {
     if (s_readback[i] != s_parity_golden_noimg[i]) {
-      (void)fprintf(stderr,
-                    "  noimg parity diff at offset %u: device=0x%02X golden=0x%02X\n",
-                    i,
-                    s_readback[i],
-                    s_parity_golden_noimg[i]);
+      internal_report_diff("  noimg parity diff at offset ",
+                           i,
+                           s_readback[i],
+                           s_parity_golden_noimg[i]);
       break;
     }
   }
   TEST_ASSERT_EQ(0, memcmp(s_readback, s_parity_golden_noimg, (size_t)got));
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: skip-images fixture byte-identical to --no-images");
 }
 
@@ -348,14 +357,14 @@ static void test_pipeline_parity_noimg_byte_identical(void)
  * inter-element whitespace (a space between two name-title abbreviations); the
  * SE markup is also indented, so the body subtree is full of inter-element
  * whitespace text runs. The desktop reference (Python @c HTMLParser) keeps every
- * such run, and -- with the on-device tinyxml2 opting into @c PEDANTIC_WHITESPACE
+ * such run, and -- with the bounded XML reader preserving text-event whitespace
  * (#151) -- so does the device. Byte-identity here is the direct proof that the
  * device preserves inline whitespace on real content, so words like
  * "@c Hon. @c Mr." no longer merge into "@c Hon.Mr.".
  *
  * @par MC/DC:
  * Drives the same single-condition `if (scr->skip_images)` true arm as
- * @ref test_pipeline_parity_noimg_byte_identical, on a larger real-content
+ * @ref internal_test_pipeline_parity_noimg_byte_identical, on a larger real-content
  * input; it adds no new compound decision -- its role is content fidelity, not
  * decision coverage.
  *
@@ -363,12 +372,11 @@ static void test_pipeline_parity_noimg_byte_identical(void)
  * @pre The RAM backend descriptor @p s_backend is initialised.
  * @post The emitted blob equals the --no-images golden, byte for byte.
  * @post The RAM volume is unmounted and its backing store freed.
- * @note Not thread-safe (writes file-scope fixture buffers).
- */
-static void test_pipeline_parity_realbook_byte_identical(void)
+ * @note Not thread-safe (writes file-scope fixture buffers). @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_pipeline_parity_realbook_byte_identical(void)
 {
   TEST_BEGIN("ra8_rabook_pipeline: real Walden chapters byte-identical to --no-images");
-  ra8_fs_mount_t* mount = fresh_volume();
+  ra8_fs_mount_t* mount = internal_fresh_volume();
 
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_realbook_epub, .size = (size_t)k_realbook_epub_len};
@@ -377,7 +385,7 @@ static void test_pipeline_parity_realbook_byte_identical(void)
   ra8_rabook_buffers_t          bufs  = {};
   ra8_rabook_pipeline_scratch_t scr   = {};
   ra8_img_arena_t               arena = {};
-  make_views(&bufs, &scr, &arena);
+  internal_make_views(&bufs, &scr, &arena);
   scr.skip_images = true; /* text/CSS-only: real chapters + CSS, no images */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
@@ -397,17 +405,16 @@ static void test_pipeline_parity_realbook_byte_identical(void)
   TEST_ASSERT_EQ(k_realbook_golden_noimg_len, got);
   for (uint32_t i = 0U; i < got; i++) {
     if (s_readback[i] != s_realbook_golden_noimg[i]) {
-      (void)fprintf(stderr,
-                    "  realbook parity diff at offset %u: device=0x%02X golden=0x%02X\n",
-                    i,
-                    s_readback[i],
-                    s_realbook_golden_noimg[i]);
+      internal_report_diff("  realbook parity diff at offset ",
+                           i,
+                           s_readback[i],
+                           s_realbook_golden_noimg[i]);
       break;
     }
   }
   TEST_ASSERT_EQ(0, memcmp(s_readback, s_realbook_golden_noimg, (size_t)got));
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_pipeline: real Walden chapters byte-identical to --no-images");
 }
 
@@ -418,11 +425,10 @@ static void test_pipeline_parity_realbook_byte_identical(void)
 int32_t main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
-  test_pipeline_text_only_no_cover();
-  test_pipeline_undecodable_cover_skipped();
-  test_pipeline_parity_byte_identical();
-  test_pipeline_parity_noimg_byte_identical();
-  test_pipeline_parity_realbook_byte_identical();
-  (void)fprintf(stderr, "[OK ] test_ra8_rabook_pipeline.c\n");
+  internal_test_pipeline_text_only_no_cover();
+  internal_test_pipeline_undecodable_cover_skipped();
+  internal_test_pipeline_parity_byte_identical();
+  internal_test_pipeline_parity_noimg_byte_identical();
+  internal_test_pipeline_parity_realbook_byte_identical();
   return 0;
 }

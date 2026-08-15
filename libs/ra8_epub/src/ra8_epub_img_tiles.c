@@ -65,7 +65,7 @@ static const char* const s_tag = "ra8_epub_img_tiles";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static int32_t priv_find(const ra8_epub_tile_binder_t* binder, uint32_t image_id)
+static int32_t internal_find(const ra8_epub_tile_binder_t* binder, uint32_t image_id)
 {
   for (uint8_t i = 0U; i < binder->source_count; ++i) {
     if (binder->sources[i].image_id == image_id) {
@@ -94,7 +94,8 @@ static int32_t priv_find(const ra8_epub_tile_binder_t* binder, uint32_t image_id
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_entry_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t len, size_t* got)
+static ra8_err_t
+internal_entry_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t len, size_t* got)
 {
   const ra8_epub_tile_source_t* src = (const ra8_epub_tile_source_t*)ctx;
   return ra8_epub_entry_pread(src->book, src->path, offset, buf, len, got);
@@ -118,7 +119,7 @@ static ra8_err_t priv_entry_pread(void* ctx, uint64_t offset, uint8_t* buf, size
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_measure_entry(ra8_epub_book_t* book, const char* path, uint64_t* out_size)
+static ra8_err_t internal_measure_entry(ra8_epub_book_t* book, const char* path, uint64_t* out_size)
 {
   ra8_epub_entry_reader_t reader = {};
   ra8_err_t               err    = ra8_epub_entry_open(book, path, &reader, out_size);
@@ -157,20 +158,20 @@ static ra8_err_t priv_measure_entry(ra8_epub_book_t* book, const char* path, uin
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_tile_decode(void*                 ctx,
-                                  const ra8_tile_key_t* key,
-                                  uint8_t*              cell,
-                                  uint32_t              cell_bytes,
-                                  uint16_t*             out_w,
-                                  uint16_t*             out_h)
+static ra8_err_t internal_tile_decode(void*                 ctx,
+                                      const ra8_tile_key_t* key,
+                                      uint8_t*              cell,
+                                      uint32_t              cell_bytes,
+                                      uint16_t*             out_w,
+                                      uint16_t*             out_h)
 {
   ra8_epub_tile_binder_t* binder = (ra8_epub_tile_binder_t*)ctx;
-  const int32_t           si     = priv_find(binder, key->image_id);
+  const int32_t           si     = internal_find(binder, key->image_id);
   if (si < 0) {
     return k_ra8_err_not_found; /* GCOVR_EXCL_LINE -- get() rejects unregistered ids before cache */
   }
   ra8_epub_tile_source_t* src   = &binder->sources[si];
-  const ra8_jof_pread_fn  pread = (src->book != nullptr) ? priv_entry_pread : src->pread;
+  const ra8_jof_pread_fn  pread = (src->book != nullptr) ? internal_entry_pread : src->pread;
   void*                   pctx  = (src->book != nullptr) ? (void*)src : src->pread_ctx;
   const ra8_err_t         err   = ra8_jof_read_tile(pread,
                                                     pctx,
@@ -205,7 +206,7 @@ ra8_err_t ra8_epub_tile_binder_init(ra8_epub_tile_binder_t*     binder,
   binder->scratch          = scratch;
   binder->scratch_cap      = (scratch != nullptr) ? scratch_cap : 0U;
   ra8_tile_cache_cfg_t cfg = *storage;
-  cfg.decode               = priv_tile_decode;
+  cfg.decode               = internal_tile_decode;
   cfg.decode_ctx           = binder;
   return ra8_tile_cache_init(&binder->cache, &cfg);
 }
@@ -227,12 +228,12 @@ ra8_err_t ra8_epub_tile_binder_init(ra8_epub_tile_binder_t*     binder,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_check_slot(const ra8_epub_tile_binder_t* binder, uint32_t image_id)
+static ra8_err_t internal_check_slot(const ra8_epub_tile_binder_t* binder, uint32_t image_id)
 {
   if (binder->source_count >= (uint8_t)k_ra8_epub_tile_max_sources) {
     return k_ra8_err_no_mem;
   }
-  if (priv_find(binder, image_id) >= 0) {
+  if (internal_find(binder, image_id) >= 0) {
     return k_ra8_err_invalid_arg;
   }
   return k_ra8_ok;
@@ -259,18 +260,18 @@ static ra8_err_t priv_check_slot(const ra8_epub_tile_binder_t* binder, uint32_t 
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_fill_book_source(ra8_epub_tile_source_t* src,
-                                       ra8_epub_book_t*        book,
-                                       const char*             path,
-                                       size_t                  plen,
-                                       uint32_t                image_id)
+static ra8_err_t internal_fill_book_source(ra8_epub_tile_source_t* src,
+                                           ra8_epub_book_t*        book,
+                                           const char*             path,
+                                           size_t                  plen,
+                                           uint32_t                image_id)
 {
   src->book     = book;
   src->image_id = image_id;
   (void)memcpy(src->path, path, plen + 1U);
-  ra8_err_t err = priv_measure_entry(book, path, &src->total_size);
+  ra8_err_t err = internal_measure_entry(book, path, &src->total_size);
   if (err == k_ra8_ok) {
-    err = ra8_jof_parse(priv_entry_pread, src, src->total_size, &src->info);
+    err = ra8_jof_parse(internal_entry_pread, src, src->total_size, &src->info);
   }
   if (err != k_ra8_ok) {
     (void)memset(src, 0, sizeof(*src));
@@ -290,13 +291,13 @@ ra8_err_t ra8_epub_tile_binder_add(ra8_epub_tile_binder_t* binder,
   if ((plen == 0U) || (plen >= (size_t)k_ra8_epub_max_path_len)) {
     return k_ra8_err_invalid_arg;
   }
-  ra8_err_t err = priv_check_slot(binder, image_id);
+  ra8_err_t err = internal_check_slot(binder, image_id);
   if (err != k_ra8_ok) {
     return err;
   }
   ra8_epub_tile_source_t* src = &binder->sources[binder->source_count];
   (void)memset(src, 0, sizeof(*src));
-  err = priv_fill_book_source(src, book, path, plen, image_id);
+  err = internal_fill_book_source(src, book, path, plen, image_id);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -312,7 +313,7 @@ ra8_err_t ra8_epub_tile_binder_add_ext(ra8_epub_tile_binder_t* binder,
 {
   RA8_CHECK_NULL_PTR(binder, s_tag, "binder must not be nullptr");
   RA8_CHECK_NULL_PTR(pread, s_tag, "pread must not be nullptr");
-  ra8_err_t err = priv_check_slot(binder, image_id);
+  ra8_err_t err = internal_check_slot(binder, image_id);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -337,7 +338,7 @@ ra8_err_t ra8_epub_tile_binder_info(const ra8_epub_tile_binder_t* binder,
 {
   RA8_CHECK_NULL_PTR(binder, s_tag, "binder must not be nullptr");
   RA8_CHECK_NULL_PTR(out_info, s_tag, "out_info must not be nullptr");
-  const int32_t si = priv_find(binder, image_id);
+  const int32_t si = internal_find(binder, image_id);
   if (si < 0) {
     return k_ra8_err_not_found;
   }
@@ -353,7 +354,7 @@ ra8_err_t ra8_epub_tile_binder_get(ra8_epub_tile_binder_t* binder,
 {
   RA8_CHECK_NULL_PTR(binder, s_tag, "binder must not be nullptr");
   RA8_CHECK_NULL_PTR(out_tile, s_tag, "out_tile must not be nullptr");
-  const int32_t si = priv_find(binder, image_id);
+  const int32_t si = internal_find(binder, image_id);
   if (si < 0) {
     return k_ra8_err_not_found;
   }
@@ -384,7 +385,7 @@ ra8_err_t ra8_epub_tile_binder_prefetch_pan(ra8_epub_tile_binder_t* binder,
 {
   RA8_CHECK_NULL_PTR(binder, s_tag, "binder must not be nullptr");
   RA8_CHECK_NULL_PTR(view, s_tag, "view must not be nullptr");
-  const int32_t si = priv_find(binder, image_id);
+  const int32_t si = internal_find(binder, image_id);
   if (si < 0) {
     return k_ra8_err_not_found;
   }
@@ -421,7 +422,7 @@ ra8_err_t ra8_epub_tile_binder_prefetch_pan(ra8_epub_tile_binder_t* binder,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_loader_args_ok(const ra8_epub_img_loader_t* ld, uint32_t href_len)
+static ra8_err_t internal_loader_args_ok(const ra8_epub_img_loader_t* ld, uint32_t href_len)
 {
   if (ld->book == nullptr) {
     return k_ra8_err_invalid_arg;
@@ -460,10 +461,10 @@ static ra8_err_t priv_loader_args_ok(const ra8_epub_img_loader_t* ld, uint32_t h
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_loader_null_ok(const void*     ctx,
-                                     const char*     href,
-                                     const uint8_t** out_bytes,
-                                     const size_t*   out_len)
+static ra8_err_t internal_loader_null_ok(const void*     ctx,
+                                         const char*     href,
+                                         const uint8_t** out_bytes,
+                                         const size_t*   out_len)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(href, s_tag, "href must not be nullptr");
@@ -478,13 +479,13 @@ ra8_err_t ra8_epub_reflow_img_load(void*           ctx,
                                    const uint8_t** out_bytes,
                                    size_t*         out_len)
 {
-  const ra8_err_t nz = priv_loader_null_ok(ctx, href, out_bytes, out_len);
+  const ra8_err_t nz = internal_loader_null_ok(ctx, href, out_bytes, out_len);
   if (nz != k_ra8_ok) {
     return nz;
   }
   *out_len                  = 0U;
   ra8_epub_img_loader_t* ld = (ra8_epub_img_loader_t*)ctx;
-  const ra8_err_t        ok = priv_loader_args_ok(ld, href_len);
+  const ra8_err_t        ok = internal_loader_args_ok(ld, href_len);
   if (ok != k_ra8_ok) {
     return ok;
   }

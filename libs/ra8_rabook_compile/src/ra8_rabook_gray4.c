@@ -1,6 +1,8 @@
 /**
  * @file ra8_rabook_gray4.c
  * @brief Grayscale image transcode -- downscale + quantise + nibble-pack (4-bpp) or copy (8-bpp).
+ * @details Streams decoded grayscale rows through bounded resampling and packs
+ * the selected RABOOK pixel representation into caller-owned output storage.
  * @since Version 0.1.0
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -16,6 +16,7 @@
 add_library(
   ra8_core_hal OBJECT
   ${RA8_CORE_SOURCES}
+  ${RA8_XML_SOURCES}
   ${RA8_HAL_SOURCES}
   ${RA8_JPEG_SOURCES}
   ${RA8_NET_PAL_SOURCES}
@@ -117,6 +118,7 @@ target_compile_options(
 target_include_directories(
   ra8_core_hal
   PUBLIC ${FW_ROOT}/libs/ra8_core/inc
+         ${FW_ROOT}/libs/ra8_xml/inc
          ${FW_ROOT}/libs/ra8_hal/inc
          ${FW_ROOT}/libs/ra8_jpeg/inc
          ${FW_ROOT}/libs/ra8_net_pal/inc
@@ -181,7 +183,6 @@ target_include_directories(
          ${FW_ROOT}/libs/third_party/esp-hosted/common/mempool/include
          ${FW_ROOT}/libs/third_party/esp-hosted/common/transport
          ${FW_ROOT}/libs/third_party/miniz
-         ${FW_ROOT}/libs/third_party/tinyxml2
          ${FW_ROOT}/libs/third_party/stb
          ${FW_ROOT}/libs/third_party/xz_embedded
          # libwebp is included as "src/webp/...", so its ROOT is the include dir.
@@ -236,12 +237,9 @@ target_include_directories(
          ${FW_ROOT}/libs/ra8_tz_secure_boot/src
          ${CMAKE_CURRENT_SOURCE_DIR}/mocks
 )
-# tinyxml2.cpp + ra8_epub_xml_shim.cpp are C++; everything else is C.
-# Override per-source language flags so cmake doesn't pass -std=c23 to the
-# C++ compiler.
+# Override the remaining C++ sources so CMake does not pass -std=c23 to them.
 set_source_files_properties(
-  ${FW_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp ${RA8_EPUB_CPP_SOURCES}
-  ${RA8_RABOOK_COMPILE_CPP_SOURCES} ${RA8_REFLOW_CPP_SOURCES} PROPERTIES LANGUAGE CXX
+  ${RA8_REFLOW_CPP_SOURCES} PROPERTIES LANGUAGE CXX
 )
 # -w silences the vendored decoders' warnings; -fno-strict-aliasing matches the
 # app build (cmake/ra8_add_app.cmake) -- these decoders type-pun through byte
@@ -317,9 +315,7 @@ if(RA8_REFLOW_USE_LITEHTML)
 endif()
 target_compile_features(ra8_core_hal PUBLIC cxx_std_17)
 
-# C++ enabled here only (the top-level project is C/ASM-only since the
-# cross-compile path doesn't ship a C++ runtime). tinyxml2 + ra8_epub_xml_shim
-# in libs/ra8_epub need C++17 for tinyxml2.
+# C++ is enabled here for the optional reflow implementation and C++ tests.
 enable_language(CXX)
 
 # ---------------------------------------------------------------------------

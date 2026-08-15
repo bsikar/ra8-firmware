@@ -331,6 +331,134 @@ RA8_INTERNAL static ra8_err_t internal_decode_stb(const uint8_t*                
   return k_ra8_ok;
 }
 
+/** @brief One decoded source view and the ownership needed to release it. */
+typedef struct internal_decoded_raster_t {
+  const uint8_t* gray;       /**< Decoded grayscale samples.              */
+  uint8_t*       stb_pixels; /**< stb-owned arena span, or null for WebP. */
+  uint16_t       width;      /**< Source width in pixels.                 */
+  uint16_t       height;     /**< Source height in pixels.                */
+  bool           webp;       /**< Whether the WebP caller arena owns it.  */
+} internal_decoded_raster_t;
+
+/**
+ * @brief Decode one supported source into a normalized grayscale view.
+ * @details Detects WebP by signature and selects the bounded WebP or stb arena
+ *          decoder, then normalizes ownership and sample access in @p decoded.
+ * @param[in] source Encoded raster bytes.
+ * @param[in] source_size Accessible source length in bytes.
+ * @param[in,out] workspace Caller-owned decoder arenas.
+ * @param[out] decoded Receives normalized pixels, dimensions, and ownership.
+ * @return Decoder status.
+ * @retval k_ra8_ok The source decoded to a grayscale view.
+ * @retval k_ra8_err_validation_failed The encoded source is malformed.
+ * @retval k_ra8_err_invalid_size Source or decoded dimensions are unsupported.
+ * @retval k_ra8_err_no_mem A selected bounded arena is unavailable or too small.
+ * @pre All pointer arguments are non-NULL and capacities describe accessible spans.
+ * @pre @p decoded does not alias source bytes or decoder arenas.
+ * @post Success initializes every field of @p decoded.
+ * @post Failure does not publish a successful normalized view.
+ * @note Not thread-safe; decoder arena binding is process-global.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_decode_source(const uint8_t*                 source,
+                                        size_t                         source_size,
+                                        ra8_rabook_raster_workspace_t* workspace,
+                                        internal_decoded_raster_t*     decoded)
+{
+  decoded->webp          = internal_is_webp(source, source_size);
+  const ra8_err_t result = decoded->webp ? internal_decode_webp(source,
+                                                                source_size,
+                                                                workspace,
+                                                                &decoded->gray,
+                                                                &decoded->width,
+                                                                &decoded->height)
+                                         : internal_decode_stb(source,
+                                                               source_size,
+                                                               workspace,
+                                                               &decoded->stb_pixels,
+                                                               &decoded->width,
+                                                               &decoded->height);
+  if (!decoded->webp) {
+    decoded->gray = decoded->stb_pixels;
+  }
+  return result;
+}
+
+/**
+ * @brief Scale, encode, and release one successfully validated source.
+ * @details Decodes to gray, derives aspect-preserving bounded dimensions,
+ *          scales when required, packs the requested depth, and releases stb
+ *          arena ownership on every post-decode path.
+ * @param[in] source Encoded raster bytes.
+ * @param[in] source_size Accessible source length in bytes.
+ * @param[in] max_edge Maximum output width or height in pixels.
+ * @param[in] pixel_format Requested gray4 or gray8 output format.
+ * @param[in,out] workspace Caller-owned decode and scale arenas.
+ * @param[out] encoded Destination for packed output bytes.
+ * @param[in] encoded_cap Writable bytes at @p encoded.
+ * @param[out] result Receives dimensions, format, and encoded length on success.
+ * @return Complete raster pipeline status.
+ * @retval k_ra8_ok The raster was decoded, scaled, and encoded.
+ * @retval k_ra8_err_validation_failed Source decoding failed.
+ * @retval k_ra8_err_invalid_size Geometry or destination capacity is invalid.
+ * @retval k_ra8_err_no_mem A caller-owned arena cannot satisfy the operation.
+ * @pre Pointer arguments and workspace arenas passed public validation.
+ * @pre @p encoded addresses @p encoded_cap writable bytes disjoint from source.
+ * @post Success fully initializes @p result and the reported encoded prefix.
+ * @post Failure zeros @p result and releases any temporary stb ownership.
+ * @note Not thread-safe; decoder arena binding is process-global.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t internal_encode_source(const uint8_t*                 source,
+                                        size_t                         source_size,
+                                        uint16_t                       max_edge,
+                                        uint8_t                        pixel_format,
+                                        ra8_rabook_raster_workspace_t* workspace,
+                                        uint8_t*                       encoded,
+                                        size_t                         encoded_cap,
+                                        ra8_rabook_raster_result_t*    result)
+{
+  internal_decoded_raster_t decoded = {};
+  ra8_err_t                 rc = internal_decode_source(source, source_size, workspace, &decoded);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  uint16_t out_width  = 0U;
+  uint16_t out_height = 0U;
+  internal_output_dims(decoded.width, decoded.height, max_edge, &out_width, &out_height);
+  const uint8_t* scaled = nullptr;
+  rc                    = internal_scale(decoded.gray,
+                                         decoded.width,
+                                         decoded.height,
+                                         out_width,
+                                         out_height,
+                                         workspace,
+                                         &scaled);
+  if (rc == k_ra8_ok) {
+    rc = internal_encode(scaled,
+                         out_width,
+                         out_height,
+                         pixel_format,
+                         encoded,
+                         encoded_cap,
+                         &result->encoded_size);
+  }
+  if (!decoded.webp) {
+    stbi_image_free(decoded.stb_pixels); /* alloc-allow: caller-bound ra8_img_arena */
+    ra8_img_arena_unbind();
+  }
+  if (rc != k_ra8_ok) {
+    *result = (ra8_rabook_raster_result_t){0};
+    return rc;
+  }
+  result->width        = out_width;
+  result->height       = out_height;
+  result->pixel_format = pixel_format;
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_rabook_raster_encode(const uint8_t*                 source,
                                    size_t                         source_size,
                                    uint16_t                       max_edge,
@@ -353,60 +481,12 @@ ra8_err_t ra8_rabook_raster_encode(const uint8_t*                 source,
     return k_ra8_err_invalid_arg;
   }
 
-  const bool     webp          = internal_is_webp(source, source_size);
-  uint8_t*       stb_pixels    = nullptr;
-  const uint8_t* source_gray   = nullptr;
-  uint16_t       source_width  = 0U;
-  uint16_t       source_height = 0U;
-  ra8_err_t      rc            = webp ? internal_decode_webp(source,
-                                                             source_size,
-                                                             workspace,
-                                                             &source_gray,
-                                                             &source_width,
-                                                             &source_height)
-                                      : internal_decode_stb(source,
-                                                            source_size,
-                                                            workspace,
-                                                            &stb_pixels,
-                                                            &source_width,
-                                                            &source_height);
-  if (!webp) {
-    source_gray = stb_pixels;
-  }
-  if (rc != k_ra8_ok) {
-    return rc;
-  }
-
-  uint16_t out_width  = 0U;
-  uint16_t out_height = 0U;
-  internal_output_dims(source_width, source_height, max_edge, &out_width, &out_height);
-  const uint8_t* scaled = nullptr;
-  rc                    = internal_scale(source_gray,
-                                         source_width,
-                                         source_height,
-                                         out_width,
-                                         out_height,
-                                         workspace,
-                                         &scaled);
-  if (rc == k_ra8_ok) {
-    rc = internal_encode(scaled,
-                         out_width,
-                         out_height,
-                         pixel_format,
-                         encoded,
-                         encoded_cap,
-                         &result->encoded_size);
-  }
-  if (!webp) {
-    stbi_image_free(stb_pixels); /* alloc-allow: caller-bound ra8_img_arena */
-    ra8_img_arena_unbind();
-  }
-  if (rc != k_ra8_ok) {
-    *result = (ra8_rabook_raster_result_t){0};
-    return rc;
-  }
-  result->width        = out_width;
-  result->height       = out_height;
-  result->pixel_format = pixel_format;
-  return k_ra8_ok;
+  return internal_encode_source(source,
+                                source_size,
+                                max_edge,
+                                pixel_format,
+                                workspace,
+                                encoded,
+                                encoded_cap,
+                                result);
 }

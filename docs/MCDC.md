@@ -232,7 +232,7 @@ The following directories are excluded from MC/DC instrumentation in
 - `libs/third_party/litehtml/` -- HTML renderer, used by `ra8_reflow` v2
 - `libs/third_party/gumbo/`    -- HTML5 parser used by litehtml
 - `libs/third_party/miniz/`    -- zlib-compatible inflate, used by `ra8_epub`
-- `libs/third_party/tinyxml2/` -- XML parser, used by `ra8_epub`
+- `libs/third_party/tinyxml2/` -- retained, retired XML-parser snapshot; not linked
 - `libs/third_party/stb/`      -- TrueType rasteriser, used by `ra8_epub`
 - Mbed TLS (when integrated)   -- vendored crypto, used by `ra8_tls` and `ra8_psa_crypto`
 

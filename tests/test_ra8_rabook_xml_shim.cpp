@@ -17,55 +17,54 @@
  *  - @c <![CDATA[...]]> sections are silently skipped (B's fix: CDATA is dropped,
  *    never emitted as a text node).
  *  - @c <html><body>...</body></html> wrapper: body fallback search works.
- *  - Deep nesting at the tinyxml2 element-depth cap (#625): the deepest
- *    document tinyxml2 accepts compiles with every node emitted -- the DFS
+ *  - Deep nesting at the bounded reader element-depth cap: the deepest
+ *    accepted document compiles with every node emitted -- the DFS
  *    frame stack is never overrun -- and one level deeper is rejected by the
  *    parser rather than silently truncated.
  *
  * @par MC/DC decisions exercised (ra8_rabook_xml_shim.cpp):
  *   - @c doc.Parse(...) != XML_SUCCESS -- single condition.
- *       T: test_malformed_xml (unclosed element). F: every well-formed fixture.
+ *       T: internal_test_malformed_xml (unclosed element). F: every well-formed fixture.
  *   - @c root == nullptr in internal_find_body -- single condition. F: every fixture has
  *       a root element. T is unreachable through the public entry point (a
  *       document with no root makes doc.Parse fail first), so it is a defensive
  *       guard with no independent-influence vector (documented, not testable).
  *   - @c std::strcmp(e->Name(), "body") == 0 in internal_find_body -- single condition.
- *       T: test_html_wrapper_body_fallback (<body> found under <html>).
+ *       T: internal_test_html_wrapper_body_fallback (<body> found under <html>).
  *       F: the same scan steps past <head/> before matching <body>.
  *   - @c elem != nullptr in internal_emit_node -- single condition.
  *       T: any element fixture. F: text/CDATA fixtures fall through to ToText().
  *   - @c text->CData() in internal_emit_node -- single condition.
- *       T: test_cdata_skipped (CDATA dropped). F: any real text node.
+ *       T: internal_test_cdata_skipped (CDATA dropped). F: any real text node.
  *   - @c val != nullptr && val[0] != '\0' in internal_emit_node -- COMPOUND AND, but the
  *       first condition is structurally always true: it is reached only after
- *       @c node->ToText() returned non-null, and tinyxml2's XMLText::Value()
- *       never returns nullptr (it returns the empty string ""). So
+ *       a non-empty text event was produced by the validated pull reader. So
  *       @c val != nullptr cannot be observed false on any reachable input and has
  *       no independent-influence vector (defensive guard, same class as the
  *       mcdc-deactivated NULL guards in ra8_epub_xml_shim.cpp). The second
  *       condition @c val[0] != '\0' is the live one and BOTH its arms are covered:
- *         - true  -> text emitted: test_simple_p_with_text ("Hello").
- *         - false -> text skipped: test_empty_text_skipped (<p></p>, val[0]=='\0').
+ *         - true  -> text emitted: internal_test_simple_p_with_text ("Hello").
+ *         - false -> text skipped: internal_test_empty_text_skipped (<p></p>, val[0]=='\0').
  *   - @c node != nullptr && top < k_xhtml_max_stack in internal_push_frame -- COMPOUND
  *       AND. The first condition is live (a null FirstChild/NextSibling stops a
  *       branch): T covered by any fixture with children, F by leaf/last-sibling
- *       nodes (test_nested_siblings_preorder exercises both). The second is the
+ *       nodes (internal_test_nested_siblings_preorder exercises both). The second is the
  *       NASA Rule 2 safety valve and cannot go false: the frame high-water mark
  *       is the node-depth of the deepest node below @c <body> (depth + 1, not
- *       2 * depth -- a sibling step pops one frame and pushes one), and tinyxml2
- *       aborts at @c TINYXML2_MAX_ELEMENT_DEPTH (500), which caps top at 498
- *       against a capacity of 512. test_deep_at_tinyxml2_cap pins that worst
- *       case and test_deep_beyond_tinyxml2_cap pins the rejection one level
+ *       2 * depth -- a sibling step pops one frame and pushes one), and the
+ *       reader rejects nesting beyond @c k_ra8_xml_max_element_depth.
+ *       internal_test_deep_at_reader_cap pins that worst
+ *       case and internal_test_deep_beyond_reader_cap pins the rejection one level
  *       deeper, so the deactivation rests on a measurement rather than on the
  *       false cap-of-100 claim it carried before #625.
  *   - @c frame.prev_sib_idx == k_ra8_book_nil in internal_walk_body_subtree -- single
  *       condition. T (first child) and F (later sibling) both in
- *       test_nested_siblings_preorder.
+ *       internal_test_nested_siblings_preorder.
  *   - @c elem != nullptr && new_idx != k_ra8_book_nil in internal_walk_body_subtree --
  *       COMPOUND AND. elem!=nullptr varies (element vs text node) and
- *       new_idx!=nil varies (emitted vs skipped); test_nested_siblings_preorder
+ *       new_idx!=nil varies (emitted vs skipped); internal_test_nested_siblings_preorder
  *       supplies element-with-children (both true -> push children) and text
- *       leaves (elem false -> no push), and test_cdata_skipped supplies a skipped
+ *       leaves (elem false -> no push), and internal_test_cdata_skipped supplies a skipped
  *       node (new_idx nil -> no push).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -76,7 +75,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <string>
 
@@ -89,10 +87,8 @@ extern "C" {
 #include "ra8_rabook_xml_shim.h"
 }
 
-/* Third-party, header-only use: the deep-nesting fixtures below are derived from
- * TINYXML2_MAX_ELEMENT_DEPTH so they track the vendored snapshot instead of
- * hard-coding a cap that can silently drift (#625). */
-#include "tinyxml2.h"
+/* The deep-nesting fixtures derive from the production reader contract. */
+#include "ra8_xml.h"
 
 /* -------------------------------------------------------------------------- */
 /* Static test arenas */
@@ -100,15 +96,30 @@ extern "C" {
 
 namespace {
 
+static ra8_rabook_xml_workspace_t s_xml_workspace = {};
+
+/** @brief Provide the file-local parse chapter test helper. @details Implements the parse chapter fixture operation used only by this focused test executable. @param[in] bytes Fixture argument governed by the exercised interface contract. @param[in] length Fixture argument governed by the exercised interface contract. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] href Fixture argument governed by the exercised interface contract. @param[in] title Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_parse_chapter(const uint8_t*    bytes,
+                                                     size_t            length,
+                                                     ra8_rabook_ctx_t* ctx,
+                                                     const char*       href,
+                                                     const char*       title)
+{
+  return ra8_rabook_xml_parse_chapter(bytes, length, ctx, href, title, &s_xml_workspace);
+}
+
+/** @brief Route legacy call sites through the test-owned XML workspace wrapper. */
+#define ra8_rabook_xml_parse_chapter internal_parse_chapter
+
 typedef enum : uint16_t {
-  k_chapter_cap = 8U,
-  k_node_cap    = 512U, /**< Roomy: the sibling-scan test walks 257 children. */
-  k_attr_cap    = 64U,
-  k_style_cap   = 4U,
-  k_image_cap   = 4U,
-  k_string_cap  = 4096U,
-  k_imgpool_cap = 64U,
-  k_out_cap     = 8192U,
+  k_chapter_cap = 8U,    /**< Maximum chapters retained by the fixture context.  */
+  k_node_cap    = 512U,  /**< Roomy: the sibling-scan test walks 257 children.   */
+  k_attr_cap    = 64U,   /**< Maximum attributes retained across emitted nodes.  */
+  k_style_cap   = 4U,    /**< Maximum stylesheet records in the fixture context. */
+  k_image_cap   = 4U,    /**< Maximum image records in the fixture context.      */
+  k_string_cap  = 4096U, /**< Bytes reserved for emitted strings.                */
+  k_imgpool_cap = 64U,   /**< Bytes reserved for fixture image payloads.         */
+  k_out_cap     = 8192U, /**< Bytes reserved for compiled chapter output.        */
 } test_cap_t;
 
 typedef enum : uint8_t {
@@ -127,9 +138,8 @@ uint8_t               s_out[k_out_cap];
 
 /**
  * @brief Node arena for the deep-nesting fixtures (#625).
- * @details The worst-case document at the tinyxml2 depth cap emits
- *          2 * (TINYXML2_MAX_ELEMENT_DEPTH - 2) == 996 nodes, nearly twice the
- *          shared @ref k_node_cap, so those tests get their own table.
+ * @details The worst-case document at the reader depth cap emits nearly twice
+ *          the shared @ref k_node_cap, so those tests get their own table.
  */
 typedef enum : uint16_t {
   k_deep_node_cap = 1024U, /**< Covers the 996-node worst case with headroom. */
@@ -140,19 +150,19 @@ ra8_book_node_t s_deep_nodes[k_deep_node_cap];
 uint32_t s_total = 0U;
 uint32_t s_pass  = 0U;
 
-void check(bool cond, const char* name)
+/** @brief Provide the file-local check test helper. @details Implements the check fixture operation used only by this focused test executable. @param[in] cond Fixture argument governed by the exercised interface contract. @param[in] name Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_check(bool cond, const char* name)
 {
+  (void)name;
   ++s_total;
   if (cond) {
     ++s_pass;
-    std::printf("[PASS] %s\n", name);
-  } else {
-    std::printf("[FAIL] %s\n", name);
   }
 }
 
 /* Prepare a fresh builder context over the static arenas. */
-ra8_rabook_ctx_t make_ctx()
+/** @brief Prepare the fixture's make ctx state. @details Implements the make ctx fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_rabook_ctx_t internal_make_ctx()
 {
   const ra8_rabook_buffers_t bufs = {
     .chapters       = s_chapters,
@@ -178,7 +188,7 @@ ra8_rabook_ctx_t make_ctx()
 }
 
 /* Return the string-pool content at offset @p off. */
-const char* pool_str(const ra8_rabook_ctx_t& ctx, uint32_t off)
+RA8_INTERNAL static const char* internal_pool_str(const ra8_rabook_ctx_t& ctx, uint32_t off)
 {
   if (off == k_ra8_book_nil || off >= ctx.string_size) {
     return "<NIL>";
@@ -186,168 +196,198 @@ const char* pool_str(const ra8_rabook_ctx_t& ctx, uint32_t off)
   return ctx.buf.string_pool + off;
 }
 
+/** @brief Compare all logical builder state that a failed parse must restore. @details Implements the same ctx state fixture operation used only by this focused test executable. @param[in] lhs Fixture argument governed by the exercised interface contract. @param[in] rhs Fixture argument governed by the exercised interface contract. @return Whether the named fixture condition holds. @retval true The named fixture condition holds. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static bool internal_same_ctx_state(const ra8_rabook_ctx_t& lhs,
+                                                 const ra8_rabook_ctx_t& rhs)
+{
+  return (lhs.chapter_count == rhs.chapter_count) && (lhs.node_count == rhs.node_count) &&
+         (lhs.attr_count == rhs.attr_count) && (lhs.stylesheet_count == rhs.stylesheet_count) &&
+         (lhs.image_count == rhs.image_count) && (lhs.string_size == rhs.string_size) &&
+         (lhs.image_pool_size == rhs.image_pool_size) && (lhs.title_off == rhs.title_off) &&
+         (lhs.author_off == rhs.author_off) && (lhs.language_off == rhs.language_off) &&
+         (lhs.identifier_off == rhs.identifier_off) &&
+         (lhs.cover_image_index == rhs.cover_image_index) && (lhs.flags == rhs.flags) &&
+         (lhs.image_pool_mode == rhs.image_pool_mode) && (lhs.failed == rhs.failed);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Fixtures */
 /* -------------------------------------------------------------------------- */
 
-constexpr const char* k_xhtml_empty_body = "<?xml version=\"1.0\"?><body></body>";
+constexpr const char* s_xhtml_empty_body = "<?xml version=\"1.0\"?><body></body>";
 
-constexpr const char* k_xhtml_simple = "<?xml version=\"1.0\"?><body><p>Hello</p></body>";
+constexpr const char* s_xhtml_simple =
+  "<?xml version=\"1.0\"?>"
+  "<!DOCTYPE body PUBLIC '-//W3C//DTD XHTML 1.1//EN' 'xhtml11.dtd'>"
+  "<body><p>Hello</p></body>";
 
 /* Nested: body > div > p > "A", body > p > "B" */
-constexpr const char* k_xhtml_nested = "<?xml version=\"1.0\"?>"
+constexpr const char* s_xhtml_nested = "<?xml version=\"1.0\"?>"
                                        "<body>"
                                        "<div><p>A</p></div>"
                                        "<p>B</p>"
                                        "</body>";
 
 /* HTML wrapper: should fall through to <body> */
-constexpr const char* k_xhtml_html_wrapper = "<?xml version=\"1.0\"?>"
+constexpr const char* s_xhtml_html_wrapper = "<?xml version=\"1.0\"?>"
                                              "<html><head/><body><p>Hi</p></body></html>";
 
 /* Contains two XML comments: both should be silently skipped. */
-constexpr const char* k_xhtml_with_comment = "<?xml version=\"1.0\"?>"
+constexpr const char* s_xhtml_with_comment = "<?xml version=\"1.0\"?>"
                                              "<body>"
                                              "<!-- first ignored -->"
                                              "<!-- second ignored -->"
                                              "<p>Visible</p>"
                                              "</body>";
 
-/* A real CDATA section: tinyxml2 models it as an XMLText with CData()==true, so
- * internal_emit_node must DROP it (not emit a text node) per B's fix. The CDATA sits
+/* A real CDATA section: the production event policy drops it rather than
+ * emitting a text node. The CDATA sits
  * before a real <p> so the visible element still lands as body's second walked
  * child. If CDATA were wrongly emitted, node_count would be 4 instead of 3. */
-constexpr const char* k_xhtml_with_cdata = "<?xml version=\"1.0\"?>"
+constexpr const char* s_xhtml_with_cdata = "<?xml version=\"1.0\"?>"
                                            "<body>"
                                            "<![CDATA[raw & < > not emitted]]>"
                                            "<p>After</p>"
                                            "</body>";
 
-constexpr const char* k_xhtml_malformed = "<body><unclosed>";
+constexpr const char* s_xhtml_malformed = "<body><unclosed>";
 
 /* Empty text (whitespace-only inside an element gets skipped when trimmed) */
-constexpr const char* k_xhtml_empty_text = "<?xml version=\"1.0\"?><body><p></p></body>";
+constexpr const char* s_xhtml_empty_text = "<?xml version=\"1.0\"?><body><p></p></body>";
 
 /* -------------------------------------------------------------------------- */
 /* Individual tests */
 /* -------------------------------------------------------------------------- */
 
-void test_null_xhtml_bytes()
+/** @brief Verify null xhtml bytes behavior. @details Executes the null xhtml bytes scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_null_xhtml_bytes()
 {
-  ra8_rabook_ctx_t ctx = make_ctx();
+  ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
     ra8_rabook_xml_parse_chapter(nullptr, k_test_dummy_len, &ctx, "ch.xhtml", "T");
-  check(err == k_ra8_err_null_ptr, "null xhtml_bytes -> null_ptr");
+  internal_check(err == k_ra8_err_null_ptr, "null xhtml_bytes -> null_ptr");
 }
 
-void test_null_ctx()
+/** @brief Verify null ctx behavior. @details Executes the null ctx scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_null_ctx()
 {
   const uint8_t          dummy = 0U;
-  const ra8_rabook_ctx_t ctx   = make_ctx();
+  const ra8_rabook_ctx_t ctx   = internal_make_ctx();
   const ra8_err_t        err   = ra8_rabook_xml_parse_chapter(&dummy, 1U, nullptr, "ch.xhtml", "T");
   (void)ctx;
-  check(err == k_ra8_err_null_ptr, "null ctx -> null_ptr");
+  internal_check(err == k_ra8_err_null_ptr, "null ctx -> null_ptr");
 }
 
-void test_null_href()
+/** @brief Verify null href behavior. @details Executes the null href scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_null_href()
 {
-  ra8_rabook_ctx_t ctx   = make_ctx();
+  ra8_rabook_ctx_t ctx   = internal_make_ctx();
   const uint8_t    dummy = 0U;
   const ra8_err_t  err   = ra8_rabook_xml_parse_chapter(&dummy, 1U, &ctx, nullptr, "T");
-  check(err == k_ra8_err_null_ptr, "null chapter_href -> null_ptr");
+  internal_check(err == k_ra8_err_null_ptr, "null chapter_href -> null_ptr");
 }
 
-void test_null_title()
+/** @brief Verify null title behavior. @details Executes the null title scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_null_title()
 {
-  ra8_rabook_ctx_t ctx   = make_ctx();
+  ra8_rabook_ctx_t ctx   = internal_make_ctx();
   const uint8_t    dummy = 0U;
   const ra8_err_t  err   = ra8_rabook_xml_parse_chapter(&dummy, 1U, &ctx, "ch.xhtml", nullptr);
-  check(err == k_ra8_err_null_ptr, "null chapter_title -> null_ptr");
+  internal_check(err == k_ra8_err_null_ptr, "null chapter_title -> null_ptr");
 }
 
-void test_malformed_xml()
+/** @brief Verify malformed xml behavior. @details Executes the malformed xml scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_malformed_xml()
 {
-  ra8_rabook_ctx_t ctx = make_ctx();
-  const ra8_err_t  err =
-    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_malformed),
-                                 std::strlen(k_xhtml_malformed),
+  ra8_rabook_ctx_t       ctx    = internal_make_ctx();
+  const ra8_rabook_ctx_t before = ctx;
+  const ra8_err_t        err =
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(s_xhtml_malformed),
+                                 std::strlen(s_xhtml_malformed),
                                  &ctx,
                                  "ch.xhtml",
                                  "T");
-  /* tinyxml2 fails to parse unclosed elements -> error returned */
-  check(err != k_ra8_ok, "malformed XHTML returns error");
+  internal_check(err != k_ra8_ok, "malformed XHTML returns error");
+  internal_check(internal_same_ctx_state(ctx, before), "malformed XHTML preserves builder state");
 }
 
-void test_empty_body()
+/** @brief Verify empty body behavior. @details Executes the empty body scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_empty_body()
 {
-  ra8_rabook_ctx_t ctx = make_ctx();
+  ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
-    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_empty_body),
-                                 std::strlen(k_xhtml_empty_body),
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(s_xhtml_empty_body),
+                                 std::strlen(s_xhtml_empty_body),
                                  &ctx,
                                  "empty.xhtml",
                                  "Empty");
 
-  check(err == k_ra8_ok, "empty body: parse ok");
+  internal_check(err == k_ra8_ok, "empty body: parse ok");
   /* One chapter, one node (the body root), no children. */
-  check(ctx.chapter_count == 1U, "empty body: chapter_count == 1");
-  check(ctx.node_count == 1U, "empty body: node_count == 1");
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[0].name_off), "body") == 0,
-        "empty body: root tag is 'body'");
-  check(ctx.buf.nodes[0].first_child == k_ra8_book_nil, "empty body: root has no children");
+  internal_check(ctx.chapter_count == 1U, "empty body: chapter_count == 1");
+  internal_check(ctx.node_count == 1U, "empty body: node_count == 1");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[0].name_off), "body") == 0,
+                 "empty body: root tag is 'body'");
+  internal_check(ctx.buf.nodes[0].first_child == k_ra8_book_nil,
+                 "empty body: root has no children");
 }
 
-void test_simple_p_with_text()
+/** @brief Verify simple p with text behavior. @details Executes the simple p with text scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_simple_p_with_text()
 {
-  ra8_rabook_ctx_t ctx = make_ctx();
+  ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
-    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_simple),
-                                 std::strlen(k_xhtml_simple),
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(s_xhtml_simple),
+                                 std::strlen(s_xhtml_simple),
                                  &ctx,
                                  "simple.xhtml",
                                  "Simple");
 
-  check(err == k_ra8_ok, "simple: parse ok");
-  check(ctx.chapter_count == 1U, "simple: chapter_count == 1");
+  internal_check(err == k_ra8_ok, "simple: parse ok");
+  internal_check(ctx.chapter_count == 1U, "simple: chapter_count == 1");
   /*
    * Expected DOM (pre-order):
    *   node[0] = body    (chapter root)
    *   node[1] = p       (first_child of body)
    *   node[2] = "Hello" (first_child of p)
    */
-  check(ctx.node_count == 3U, "simple: node_count == 3");
+  internal_check(ctx.node_count == 3U, "simple: node_count == 3");
 
   /* body is an element */
-  check(ctx.buf.nodes[0].kind == (uint8_t)k_ra8_book_node_element, "simple: node[0] is element");
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[0].name_off), "body") == 0,
-        "simple: node[0] tag is 'body'");
-  check(ctx.buf.nodes[0].first_child == 1U, "simple: body.first_child == 1");
+  internal_check(ctx.buf.nodes[0].kind == (uint8_t)k_ra8_book_node_element,
+                 "simple: node[0] is element");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[0].name_off), "body") == 0,
+                 "simple: node[0] tag is 'body'");
+  internal_check(ctx.buf.nodes[0].first_child == 1U, "simple: body.first_child == 1");
 
   /* p is an element */
-  check(ctx.buf.nodes[1].kind == (uint8_t)k_ra8_book_node_element, "simple: node[1] is element");
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[1].name_off), "p") == 0,
-        "simple: node[1] tag is 'p'");
-  check(ctx.buf.nodes[1].first_child == 2U, "simple: p.first_child == 2");
-  check(ctx.buf.nodes[1].next_sibling == k_ra8_book_nil, "simple: p.next_sibling == nil");
+  internal_check(ctx.buf.nodes[1].kind == (uint8_t)k_ra8_book_node_element,
+                 "simple: node[1] is element");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[1].name_off), "p") == 0,
+                 "simple: node[1] tag is 'p'");
+  internal_check(ctx.buf.nodes[1].first_child == 2U, "simple: p.first_child == 2");
+  internal_check(ctx.buf.nodes[1].next_sibling == k_ra8_book_nil, "simple: p.next_sibling == nil");
 
   /* "Hello" is a text node */
-  check(ctx.buf.nodes[2].kind == (uint8_t)k_ra8_book_node_text, "simple: node[2] is text");
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[2].text_off), "Hello") == 0,
-        "simple: node[2] text is 'Hello'");
-  check(ctx.buf.nodes[2].next_sibling == k_ra8_book_nil, "simple: text.next_sibling == nil");
+  internal_check(ctx.buf.nodes[2].kind == (uint8_t)k_ra8_book_node_text, "simple: node[2] is text");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[2].text_off), "Hello") == 0,
+                 "simple: node[2] text is 'Hello'");
+  internal_check(ctx.buf.nodes[2].next_sibling == k_ra8_book_nil,
+                 "simple: text.next_sibling == nil");
 }
 
-void test_nested_siblings_preorder()
+/** @brief Verify nested siblings preorder behavior. @details Executes the nested siblings preorder scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_nested_siblings_preorder()
 {
-  ra8_rabook_ctx_t ctx = make_ctx();
+  ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
-    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_nested),
-                                 std::strlen(k_xhtml_nested),
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(s_xhtml_nested),
+                                 std::strlen(s_xhtml_nested),
                                  &ctx,
                                  "nested.xhtml",
                                  "Nested");
 
-  check(err == k_ra8_ok, "nested: parse ok");
+  internal_check(err == k_ra8_ok, "nested: parse ok");
   /*
    * Expected pre-order:
    *   node[0] = body  (root)
@@ -357,86 +397,88 @@ void test_nested_siblings_preorder()
    *   node[4] = p2    (div.next_sibling)
    *   node[5] = "B"   (p2.first_child)
    */
-  check(ctx.node_count == 6U, "nested: node_count == 6");
+  internal_check(ctx.node_count == 6U, "nested: node_count == 6");
 
   /* body */
-  check(ctx.buf.nodes[0].first_child == 1U, "nested: body.first_child == div (1)");
+  internal_check(ctx.buf.nodes[0].first_child == 1U, "nested: body.first_child == div (1)");
 
   /* div */
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[1].name_off), "div") == 0,
-        "nested: node[1] is div");
-  check(ctx.buf.nodes[1].first_child == 2U, "nested: div.first_child == p (2)");
-  check(ctx.buf.nodes[1].next_sibling == 4U, "nested: div.next_sibling == p2 (4)");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[1].name_off), "div") == 0,
+                 "nested: node[1] is div");
+  internal_check(ctx.buf.nodes[1].first_child == 2U, "nested: div.first_child == p (2)");
+  internal_check(ctx.buf.nodes[1].next_sibling == 4U, "nested: div.next_sibling == p2 (4)");
 
   /* p under div */
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[2].name_off), "p") == 0, "nested: node[2] is p");
-  check(ctx.buf.nodes[2].first_child == 3U, "nested: p.first_child == 'A' (3)");
-  check(ctx.buf.nodes[2].next_sibling == k_ra8_book_nil, "nested: p.next_sibling == nil");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[2].name_off), "p") == 0,
+                 "nested: node[2] is p");
+  internal_check(ctx.buf.nodes[2].first_child == 3U, "nested: p.first_child == 'A' (3)");
+  internal_check(ctx.buf.nodes[2].next_sibling == k_ra8_book_nil, "nested: p.next_sibling == nil");
 
   /* "A" */
-  check(ctx.buf.nodes[3].kind == (uint8_t)k_ra8_book_node_text, "nested: node[3] is text");
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[3].text_off), "A") == 0,
-        "nested: node[3] text is 'A'");
+  internal_check(ctx.buf.nodes[3].kind == (uint8_t)k_ra8_book_node_text, "nested: node[3] is text");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[3].text_off), "A") == 0,
+                 "nested: node[3] text is 'A'");
 
   /* p2 (sibling of div) */
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[4].name_off), "p") == 0, "nested: node[4] is p2");
-  check(ctx.buf.nodes[4].first_child == k_nested_b_idx, "nested: p2.first_child == 'B' (5)");
-  check(ctx.buf.nodes[4].next_sibling == k_ra8_book_nil, "nested: p2.next_sibling == nil");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[4].name_off), "p") == 0,
+                 "nested: node[4] is p2");
+  internal_check(ctx.buf.nodes[4].first_child == k_nested_b_idx,
+                 "nested: p2.first_child == 'B' (5)");
+  internal_check(ctx.buf.nodes[4].next_sibling == k_ra8_book_nil, "nested: p2.next_sibling == nil");
 
   /* "B" */
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[k_nested_b_idx].text_off), "B") == 0,
-        "nested: node[5] text is 'B'");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[k_nested_b_idx].text_off), "B") ==
+                   0,
+                 "nested: node[5] text is 'B'");
 }
 
-void test_html_wrapper_body_fallback()
+/** @brief Verify html wrapper body fallback behavior. @details Executes the html wrapper body fallback scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_html_wrapper_body_fallback()
 {
-  ra8_rabook_ctx_t ctx = make_ctx();
+  ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
-    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_html_wrapper),
-                                 std::strlen(k_xhtml_html_wrapper),
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(s_xhtml_html_wrapper),
+                                 std::strlen(s_xhtml_html_wrapper),
                                  &ctx,
                                  "wrapped.xhtml",
                                  "Wrapped");
 
-  check(err == k_ra8_ok, "html-wrapper: parse ok");
+  internal_check(err == k_ra8_ok, "html-wrapper: parse ok");
   /* The body fallback finds <body> inside <html>; root tag should be 'body'. */
-  check(ctx.node_count >= 1U, "html-wrapper: at least one node");
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[0].name_off), "body") == 0,
-        "html-wrapper: root tag is 'body'");
+  internal_check(ctx.node_count >= 1U, "html-wrapper: at least one node");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[0].name_off), "body") == 0,
+                 "html-wrapper: root tag is 'body'");
 }
 
 /**
- * @test test_comment_skipped
+ * @test internal_test_comment_skipped
  * @brief Two XML comments are dropped; only <p>Visible</p> survives.
  *
  * @par MC/DC:
- * Exercises the @c text != nullptr / @c text->CData() path in internal_emit_node for
- * comment nodes: tinyxml2 models a comment as an XMLComment, so @c ToText()
- * returns null and the node is skipped without ever reaching add_text. Two
- * comments + one element + its text -> exactly 3 emitted nodes.
- */
-void test_comment_skipped()
+ * Exercises comment-event filtering before builder mutation. Two
+ * comments + one element + its text -> exactly 3 emitted nodes. @details Executes the comment skipped scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_comment_skipped()
 {
-  ra8_rabook_ctx_t ctx = make_ctx();
+  ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
-    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_with_comment),
-                                 std::strlen(k_xhtml_with_comment),
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(s_xhtml_with_comment),
+                                 std::strlen(s_xhtml_with_comment),
                                  &ctx,
                                  "comment.xhtml",
                                  "Comment");
 
-  check(err == k_ra8_ok, "comment: parse ok");
+  internal_check(err == k_ra8_ok, "comment: parse ok");
   /*
    * Expected: body (root), p (child), "Visible" (text).
    * Both comments are skipped entirely -> 3 nodes.
    */
-  check(ctx.node_count == 3U, "comment: 3 nodes (two comments skipped)");
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[2].text_off), "Visible") == 0,
-        "comment: text node is 'Visible'");
+  internal_check(ctx.node_count == 3U, "comment: 3 nodes (two comments skipped)");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[2].text_off), "Visible") == 0,
+                 "comment: text node is 'Visible'");
 }
 
 /**
- * @test test_cdata_skipped
+ * @test internal_test_cdata_skipped
  * @brief A <![CDATA[...]]> section is dropped, never emitted as a text node.
  *
  * @par MC/DC:
@@ -445,64 +487,65 @@ void test_comment_skipped()
  * @c <body><![CDATA[...]]><p>After</p></body>; if the CDATA were wrongly emitted
  * the node_count would be 4. Asserting node_count == 3 (body, p, "After") and
  * that no text node carries the CDATA content proves the skip. Complements the
- * FALSE arm (real text -> emitted) covered by test_simple_p_with_text.
- */
-void test_cdata_skipped()
+ * FALSE arm (real text -> emitted) covered by internal_test_simple_p_with_text. @details Executes the cdata skipped scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_cdata_skipped()
 {
-  ra8_rabook_ctx_t ctx = make_ctx();
+  ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
-    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_with_cdata),
-                                 std::strlen(k_xhtml_with_cdata),
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(s_xhtml_with_cdata),
+                                 std::strlen(s_xhtml_with_cdata),
                                  &ctx,
                                  "cdata.xhtml",
                                  "Cdata");
 
-  check(err == k_ra8_ok, "cdata: parse ok");
+  internal_check(err == k_ra8_ok, "cdata: parse ok");
   /*
    * Expected pre-order: body (root), p (body's 2nd walked child; the CDATA is
    * the 1st child but is skipped), "After" (p's text). The CDATA never lands.
    */
-  check(ctx.node_count == 3U, "cdata: 3 nodes (CDATA skipped, not emitted)");
-  check(ctx.buf.nodes[0].first_child == 1U, "cdata: body.first_child is the <p> (CDATA dropped)");
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[1].name_off), "p") == 0, "cdata: node[1] is 'p'");
-  check(ctx.buf.nodes[2].kind == (uint8_t)k_ra8_book_node_text, "cdata: node[2] is text");
-  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[2].text_off), "After") == 0,
-        "cdata: surviving text is 'After'");
+  internal_check(ctx.node_count == 3U, "cdata: 3 nodes (CDATA skipped, not emitted)");
+  internal_check(ctx.buf.nodes[0].first_child == 1U,
+                 "cdata: body.first_child is the <p> (CDATA dropped)");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[1].name_off), "p") == 0,
+                 "cdata: node[1] is 'p'");
+  internal_check(ctx.buf.nodes[2].kind == (uint8_t)k_ra8_book_node_text, "cdata: node[2] is text");
+  internal_check(std::strcmp(internal_pool_str(ctx, ctx.buf.nodes[2].text_off), "After") == 0,
+                 "cdata: surviving text is 'After'");
   /* No emitted text node carries the CDATA payload. */
   bool cdata_leaked = false;
   for (uint32_t i = 0U; i < ctx.node_count; ++i) {
     if (ctx.buf.nodes[i].kind == (uint8_t)k_ra8_book_node_text) {
-      if (std::strstr(pool_str(ctx, ctx.buf.nodes[i].text_off), "not emitted") != nullptr) {
+      if (std::strstr(internal_pool_str(ctx, ctx.buf.nodes[i].text_off), "not emitted") !=
+          nullptr) {
         cdata_leaked = true;
       }
     }
   }
-  check(!cdata_leaked, "cdata: payload never emitted as a text node");
+  internal_check(!cdata_leaked, "cdata: payload never emitted as a text node");
 }
 
 /**
- * @test test_empty_text_skipped
+ * @test internal_test_empty_text_skipped
  * @brief An empty <p></p> adds the element but no text node.
  *
  * @par MC/DC:
  * Covers the FALSE arm of the live @c val[0] != '\0' condition in the compound
  * @c val != nullptr && val[0] != '\0' decision (internal_emit_node): @c <p></p> yields
  * an empty Value() string, so @c val[0] == '\0' and no text node is added.
- * The TRUE arm (non-empty text emitted) is covered by test_simple_p_with_text.
- */
-void test_empty_text_skipped()
+ * The TRUE arm (non-empty text emitted) is covered by internal_test_simple_p_with_text. @details Executes the empty text skipped scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_empty_text_skipped()
 {
-  ra8_rabook_ctx_t ctx = make_ctx();
+  ra8_rabook_ctx_t ctx = internal_make_ctx();
   const ra8_err_t  err =
-    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_empty_text),
-                                 std::strlen(k_xhtml_empty_text),
+    ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(s_xhtml_empty_text),
+                                 std::strlen(s_xhtml_empty_text),
                                  &ctx,
                                  "empty_text.xhtml",
                                  "EmptyText");
 
-  check(err == k_ra8_ok, "empty-text: parse ok");
+  internal_check(err == k_ra8_ok, "empty-text: parse ok");
   /* <p></p> -> body (root) + p (child); empty text node not added. */
-  check(ctx.node_count == 2U, "empty-text: 2 nodes (empty text skipped)");
+  internal_check(ctx.node_count == 2U, "empty-text: 2 nodes (empty text skipped)");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -510,13 +553,14 @@ void test_empty_text_skipped()
 /* -------------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
-  k_sib_over_max  = 257U, /**< Root children > k_xhtml_max_siblings (256).    */
-  k_attr_over_max = 33U,  /**< Attributes on one element > k_xhtml_max_attrs. */
-  k_ovf_node_cap  = 3U,   /**< Tiny node cap: the 4th element fails to add.   */
+  k_sib_at_max    = 256U, /**< Largest supported direct-child set.           */
+  k_sib_over_max  = 257U, /**< Root children beyond the documented bound.    */
+  k_attr_over_max = 33U,  /**< Attributes on one element beyond the bound.   */
+  k_ovf_node_cap  = 3U,   /**< Tiny node cap: the fourth element cannot fit. */
 } edge_dim_t;
 
-/** @brief Build a builder context whose node table is capped at @p node_cap. */
-ra8_rabook_ctx_t make_ctx_capped(uint32_t node_cap)
+/** @brief Build a builder context whose node table is capped at @p node_cap. @details Implements the make ctx capped fixture operation used only by this focused test executable. @param[in] node_cap Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_rabook_ctx_t internal_make_ctx_capped(uint32_t node_cap)
 {
   const ra8_rabook_buffers_t bufs = {
     .chapters       = s_chapters,
@@ -542,23 +586,19 @@ ra8_rabook_ctx_t make_ctx_capped(uint32_t node_cap)
 }
 
 /**
- * @test test_find_body_many_siblings
- * @brief A root with more direct children than the sibling-scan bound exercises
- *        the loop-bound leg of internal_find_body's compound condition.
+ * @test internal_test_find_body_many_siblings
+ * @brief A root with more direct children than the documented bound is rejected.
  *
  * @par MC/DC:
  * Drives the second-condition-false leg of `e != nullptr && tries <
  * k_xhtml_max_siblings` in internal_find_body: a `<root>` with 257 non-`<body>`
- * children makes `tries` reach 256, so the second condition is false while the
- * first is still true (C1 true, C2 false) and the scan gives up (returning the
- * root). The (true, true) scanning control and the (false, true) exhausted-scan
- * leg are supplied by the small fixtures; N+1 vectors complete. tinyxml2 does not
- * cap sibling breadth, so this flat 257-wide document is a reachable input.
- */
-void test_find_body_many_siblings()
+ * children crosses the bounded selection workspace. The parser returns a
+ * validation error instead of changing policy and silently selecting the root. @details Executes the find body many siblings scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_find_body_many_siblings()
 {
-  ra8_rabook_ctx_t ctx = make_ctx();
-  std::string      xml = "<?xml version=\"1.0\"?><root>";
+  ra8_rabook_ctx_t ctx    = internal_make_ctx();
+  const auto       before = ctx;
+  std::string      xml    = "<?xml version=\"1.0\"?><root>";
   for (uint32_t i = 0U; i < (uint32_t)k_sib_over_max; ++i) {
     xml += "<c/>";
   }
@@ -568,14 +608,30 @@ void test_find_body_many_siblings()
                                                      &ctx,
                                                      "wide.xhtml",
                                                      "Wide");
-  /* No <body> among 257 children -> internal_find_body gives up on the scan bound and
-   * returns the root; the walk then serialises it without error. */
-  check(err == k_ra8_ok, "many-siblings: parse ok (scan-bound leg)");
-  check(ctx.chapter_count == 1U, "many-siblings: one chapter");
+  internal_check(err == k_ra8_err_validation_failed, "many-siblings: cap plus one is rejected");
+  internal_check(internal_same_ctx_state(ctx, before), "many-siblings: failure is atomic");
+}
+
+/** @test internal_test_find_body_sibling_cap accepts the documented bound exactly. @brief Verify find body sibling cap behavior. @details Executes the find body sibling cap scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_find_body_sibling_cap()
+{
+  ra8_rabook_ctx_t ctx = internal_make_ctx();
+  std::string      xml = "<?xml version=\"1.0\"?><root>";
+  for (uint32_t i = 0U; i < (uint32_t)k_sib_at_max; ++i) {
+    xml += "<c/>";
+  }
+  xml += "</root>";
+  const ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(xml.c_str()),
+                                                     xml.size(),
+                                                     &ctx,
+                                                     "wide.xhtml",
+                                                     "Wide");
+  internal_check(err == k_ra8_ok, "many-siblings: exact cap accepted");
+  internal_check(ctx.node_count == (uint32_t)k_sib_at_max + 1U, "many-siblings: all nodes emitted");
 }
 
 /**
- * @test test_collect_attrs_overflow
+ * @test internal_test_collect_attrs_overflow
  * @brief An element carrying more attributes than the collect bound exercises the
  *        loop-bound leg of internal_collect_attrs and latches the builder failure.
  *
@@ -586,13 +642,13 @@ void test_find_body_many_siblings()
  * true, C2 false); the helper then latches ctx->failed so finalize surfaces the
  * overflow. The (true, true) collecting control (an element with a few
  * attributes) and the (false, true) no-more-attributes leg are supplied here and
- * by the attribute-bearing fixture. tinyxml2 does not cap attribute count, so a
- * 33-attribute element is a reachable input.
- */
-void test_collect_attrs_overflow()
+ * by the attribute-bearing fixture. The reader's documented attribute cap makes a
+ * 33-attribute element is a reachable input. @details Executes the collect attrs overflow scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_collect_attrs_overflow()
 {
-  ra8_rabook_ctx_t ctx = make_ctx();
-  std::string      xml = "<?xml version=\"1.0\"?><body><p";
+  ra8_rabook_ctx_t ctx    = internal_make_ctx();
+  const auto       before = ctx;
+  std::string      xml    = "<?xml version=\"1.0\"?><body><p";
   for (uint32_t i = 0U; i < (uint32_t)k_attr_over_max; ++i) {
     xml += " a" + std::to_string(i) + "=\"v\"";
   }
@@ -604,11 +660,12 @@ void test_collect_attrs_overflow()
                                                      "Attrs");
   /* The overflow latches the sticky builder failure, so finalize (via
    * add_chapter) reports it out of the parse as no_mem. */
-  check(err == k_ra8_err_no_mem, "collect-attrs: overflow latches builder failure");
+  internal_check(err == k_ra8_err_no_mem, "collect-attrs: overflow latches builder failure");
+  internal_check(internal_same_ctx_state(ctx, before), "collect-attrs: failure is atomic");
 }
 
 /**
- * @test test_walk_builder_overflow
+ * @test internal_test_walk_builder_overflow
  * @brief An element whose add fails (node table full) exercises the emit-failure
  *        leg of the subtree walk's link/descend condition.
  *
@@ -620,11 +677,11 @@ void test_collect_attrs_overflow()
  * condition is false while the node is still an element (C1 true, C2 false) and
  * its children are not descended into. The (true, true) element-emitted control
  * and the (false, true) text-node leg are supplied by the nested-siblings
- * fixture. A book that overruns the builder node budget is a reachable input.
- */
-void test_walk_builder_overflow()
+ * fixture. A book that overruns the builder node budget is a reachable input. @details Executes the walk builder overflow scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_walk_builder_overflow()
 {
-  ra8_rabook_ctx_t      ctx = make_ctx_capped((uint32_t)k_ovf_node_cap);
+  ra8_rabook_ctx_t      ctx    = internal_make_ctx_capped((uint32_t)k_ovf_node_cap);
+  const auto            before = ctx;
   constexpr const char* k_deep =
     "<?xml version=\"1.0\"?><body><div><p><span>x</span></p></div></body>";
   const ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_deep),
@@ -634,15 +691,16 @@ void test_walk_builder_overflow()
                                                      "Deep");
   /* body(0), div(1), p(2) fill the 3-node table; <span> fails to add (nil),
    * so the walk takes the new_idx == nil leg and the compile reports no_mem. */
-  check(err == k_ra8_err_no_mem, "walk-overflow: element add-nil leg (node cap hit)");
+  internal_check(err == k_ra8_err_no_mem, "walk-overflow: element add-nil leg (node cap hit)");
+  internal_check(internal_same_ctx_state(ctx, before), "walk-overflow: failure is atomic");
 }
 
 /* -------------------------------------------------------------------------- */
-/* Deep nesting: the tinyxml2 element-depth cap (#625) */
+/* Deep nesting: the bounded XML reader element-depth cap. */
 /* -------------------------------------------------------------------------- */
 
-/** @brief Build a builder context over the roomy deep-nesting node arena. */
-ra8_rabook_ctx_t make_ctx_deep()
+/** @brief Build a builder context over the roomy deep-nesting node arena. @details Implements the make ctx deep fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_rabook_ctx_t internal_make_ctx_deep()
 {
   const ra8_rabook_buffers_t bufs = {
     .chapters       = s_chapters,
@@ -676,15 +734,14 @@ ra8_rabook_ctx_t make_ctx_deep()
  *          level's next_sibling before descending into its first_child, so each
  *          descent leaves one frame parked and the high-water mark reaches
  *          exactly @p depth.  Without those siblings the same nesting peaks at a
- *          single frame.  The innermost element is self-closing because tinyxml2
- *          only charges depth for elements it descends INTO, so a self-closing
- *          leaf reaches one level deeper than a leaf with content.
+ *          single frame. The innermost element is self-closing so the fixture
+ *          reaches the exact element-depth boundary without adding text.
  * @param[in] depth Number of nested `<d>` levels below `<body>` (>= 1).
  * @return The XHTML document text.
  * @pre @p depth is at least 1.
  * @post The result contains 2 * @p depth elements including `<body>`.
  */
-std::string make_deep_doc(int depth)
+RA8_INTERNAL static std::string internal_make_deep_doc(int depth)
 {
   std::string s = "<?xml version=\"1.0\"?><body>";
   for (int i = 0; i < depth - 1; ++i) {
@@ -699,77 +756,76 @@ std::string make_deep_doc(int depth)
 }
 
 /**
- * @test test_deep_at_tinyxml2_cap
- * @brief The deepest document tinyxml2 accepts compiles with nothing truncated.
+ * @test internal_test_deep_at_reader_cap
+ * @brief The deepest accepted document compiles with nothing truncated.
  *
  * @par MC/DC:
  * This is the non-vacuity witness for the `top < k_xhtml_max_stack`
  * deactivation in internal_push_frame, which claims the condition cannot go false on
  * any reachable input. It drives the walk to its provable worst case -- a frame
- * high-water mark of TINYXML2_MAX_ELEMENT_DEPTH - 2 == 498 against a capacity of
- * 512 -- and checks the emitted node count exactly. A dropped frame loses an
+ * high-water mark below the fixed frame capacity -- and checks the emitted
+ * node count exactly. A dropped frame loses an
  * entire subtree, so an exact count is what distinguishes "the guard never
  * fired" from "the guard fired and the chapter was silently truncated". Before
  * #625 the deactivation cited a cap of 100 and a 2 * depth bound; under those
  * numbers with the real cap this document would have demanded 1000 frames and
  * overrun the stack, so this case is precisely the one the false rationale
- * hid.
- */
-void test_deep_at_tinyxml2_cap()
+ * hid. @details Executes the deep at reader cap scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_deep_at_reader_cap()
 {
-  /* tinyxml2 aborts once tracked nesting reaches TINYXML2_MAX_ELEMENT_DEPTH; the
-   * document node costs one level and <body> another, leaving CAP - 2 below. */
-  const int         depth = TINYXML2_MAX_ELEMENT_DEPTH - 2;
-  const std::string doc   = make_deep_doc(depth);
-  ra8_rabook_ctx_t  ctx   = make_ctx_deep();
+  /* The reader rejects input beyond its public element-depth contract. */
+  const int         depth = (int)k_ra8_xml_max_element_depth - 1;
+  const std::string doc   = internal_make_deep_doc(depth);
+  ra8_rabook_ctx_t  ctx   = internal_make_ctx_deep();
   const ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(doc.c_str()),
                                                      doc.size(),
                                                      &ctx,
                                                      "deep.xhtml",
                                                      "Deep");
 
-  check(err == k_ra8_ok, "deep-at-cap: deepest accepted document compiles");
-  check(!ctx.failed, "deep-at-cap: builder latched no failure");
+  internal_check(err == k_ra8_ok, "deep-at-cap: deepest accepted document compiles");
+  internal_check(!ctx.failed, "deep-at-cap: builder latched no failure");
   /* <body> + depth <d> + (depth - 1) <s/> == 2 * depth nodes. */
-  check(ctx.node_count == (uint32_t)(2 * depth),
-        "deep-at-cap: every node emitted (no silent truncation)");
+  internal_check(ctx.node_count == (uint32_t)(2 * depth),
+                 "deep-at-cap: every node emitted (no silent truncation)");
 }
 
 /**
- * @test test_deep_beyond_tinyxml2_cap
+ * @test internal_test_deep_beyond_reader_cap
  * @brief One level past the cap is rejected by the parser, never truncated.
  *
  * @par MC/DC:
  * The other side of the cap, and the reason the internal_push_frame safety valve stays
- * unreachable: tinyxml2 refuses the document outright with
- * XML_ELEMENT_DEPTH_EXCEEDED, so the walk never starts and the shim returns an
+ * unreachable: the reader refuses the document before the walk starts, so the shim returns an
  * error rather than emitting a partial chapter. Together with
- * test_deep_at_tinyxml2_cap this brackets the true cap from both sides, which is
+ * internal_test_deep_at_reader_cap this brackets the true cap from both sides, which is
  * the evidence the deactivation rationale now cites in place of the false
- * cap-of-100 claim.
- */
-void test_deep_beyond_tinyxml2_cap()
+ * cap-of-100 claim. @details Executes the deep beyond reader cap scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_deep_beyond_reader_cap()
 {
-  const int         depth = TINYXML2_MAX_ELEMENT_DEPTH - 1;
-  const std::string doc   = make_deep_doc(depth);
-  ra8_rabook_ctx_t  ctx   = make_ctx_deep();
+  const int         depth = (int)k_ra8_xml_max_element_depth;
+  const std::string doc   = internal_make_deep_doc(depth);
+  ra8_rabook_ctx_t  ctx   = internal_make_ctx_deep();
   const ra8_err_t err = ra8_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(doc.c_str()),
                                                      doc.size(),
                                                      &ctx,
                                                      "deeper.xhtml",
                                                      "Deeper");
 
-  check(err == k_ra8_err_no_mem, "deep-beyond-cap: parser rejects the document");
-  check(ctx.node_count == 0U, "deep-beyond-cap: nothing emitted (rejected, not truncated)");
+  internal_check(err == k_ra8_err_validation_failed,
+                 "deep-beyond-cap: parser rejects the document");
+  internal_check(ctx.node_count == 0U,
+                 "deep-beyond-cap: nothing emitted (rejected, not truncated)");
 }
 
 /* -------------------------------------------------------------------------- */
 /* Log sink redirect (avoid ITM hardware access on host) */
 /* -------------------------------------------------------------------------- */
 
+/** @brief Provide the file-local log sink test helper. @details Implements the log sink fixture operation used only by this focused test executable. @param[in,out] arg0 Fixture argument governed by the exercised interface contract. @param[in] byte Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_log_sink(void* /*ctx*/, uint8_t byte)
 {
-  (void)std::fputc(static_cast<int>(byte), stderr);
+  (void)byte;
 }
 
 } // namespace
@@ -778,32 +834,29 @@ RA8_INTERNAL static void internal_log_sink(void* /*ctx*/, uint8_t byte)
 /* main */
 /* -------------------------------------------------------------------------- */
 
+/** @brief Run the focused test cases in this executable. @details Invokes each isolated case once and returns the accumulated assertion status. @return Process status from the accumulated assertions. @retval 0 Every focused assertion passed. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 int main()
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
-  std::printf("=== test_ra8_rabook_xml_shim ===\n");
 
-  test_null_xhtml_bytes();
-  test_null_ctx();
-  test_null_href();
-  test_null_title();
-  test_malformed_xml();
-  test_empty_body();
-  test_simple_p_with_text();
-  test_nested_siblings_preorder();
-  test_html_wrapper_body_fallback();
-  test_comment_skipped();
-  test_cdata_skipped();
-  test_empty_text_skipped();
-  test_find_body_many_siblings();
-  test_collect_attrs_overflow();
-  test_walk_builder_overflow();
-  test_deep_at_tinyxml2_cap();
-  test_deep_beyond_tinyxml2_cap();
+  internal_test_null_xhtml_bytes();
+  internal_test_null_ctx();
+  internal_test_null_href();
+  internal_test_null_title();
+  internal_test_malformed_xml();
+  internal_test_empty_body();
+  internal_test_simple_p_with_text();
+  internal_test_nested_siblings_preorder();
+  internal_test_html_wrapper_body_fallback();
+  internal_test_comment_skipped();
+  internal_test_cdata_skipped();
+  internal_test_empty_text_skipped();
+  internal_test_find_body_sibling_cap();
+  internal_test_find_body_many_siblings();
+  internal_test_collect_attrs_overflow();
+  internal_test_walk_builder_overflow();
+  internal_test_deep_at_reader_cap();
+  internal_test_deep_beyond_reader_cap();
 
-  std::printf("\n%s: %u/%u passed\n",
-              (s_pass == s_total) ? "[PASS] ra8_rabook_xml_shim" : "[FAIL] ra8_rabook_xml_shim",
-              s_pass,
-              s_total);
   return (s_pass == s_total) ? 0 : 1;
 }

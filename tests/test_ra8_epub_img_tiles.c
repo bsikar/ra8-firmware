@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_epub_img_tiles.h"
 #include "ra8_err.h"
@@ -138,7 +139,7 @@ static uint8_t s_binder_scratch[k_scratch];
 static uint8_t s_ldr_scratch[k_ldr_cap];
 
 /** @brief container.xml pointing at OEBPS/content.opf. */
-static const char* const k_container = "<?xml version=\"1.0\"?>"
+static const char* const s_container = "<?xml version=\"1.0\"?>"
                                        "<container version=\"1.0\""
                                        " xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">"
                                        "<rootfiles><rootfile full-path=\"OEBPS/content.opf\""
@@ -146,7 +147,7 @@ static const char* const k_container = "<?xml version=\"1.0\"?>"
                                        "</rootfiles></container>";
 
 /** @brief OPF: a chapter + the two atlases + the import page + a figure. */
-static const char* const k_opf =
+static const char* const s_opf =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\""
   " version=\"3.0\" unique-identifier=\"id\">"
   "<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
@@ -161,11 +162,11 @@ static const char* const k_opf =
   "</manifest>"
   "<spine><itemref idref=\"ch1\"/></spine></package>";
 
-static const char* const k_ch1 =
+static const char* const s_ch1 =
   "<?xml version=\"1.0\"?><html><body><p>Tiles chapter.</p></body></html>";
 
-/** @brief Deterministic source pixel at (x, y). */
-static uint8_t pix(uint32_t x, uint32_t y)
+/** @brief Deterministic source pixel at (x, y). @details Implements the pix fixture operation used only by this focused test executable. @param[in] x Fixture argument governed by the exercised interface contract. @param[in] y Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static uint8_t internal_pix(uint32_t x, uint32_t y)
 {
   return (uint8_t)(((x * 3U) + (y * k_fig_pattern_y_mul)) & k_byte_mask);
 }
@@ -176,8 +177,8 @@ static uint8_t pix(uint32_t x, uint32_t y)
  * ---------------------------------------------------------------------------
  */
 
-/** @brief Append a PNG chunk (length/type/data/crc) into `s_png`. */
-static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
+/** @brief Append a PNG chunk (length/type/data/crc) into `s_png`. @details Implements the png chunk fixture operation used only by this focused test executable. @param[in] type Fixture argument governed by the exercised interface contract. @param[in] data Fixture argument governed by the exercised interface contract. @param[in] len Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_png_chunk(const char* type, const uint8_t* data, uint32_t len)
 {
   uint8_t* p = &s_png[s_png_len];
   p[0]       = (uint8_t)(len >> k_shift_byte3);
@@ -196,12 +197,12 @@ static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
   s_png_len += k_png_chunk_overhead + (size_t)len;
 }
 
-/** @brief Build a gray8 filter-0 PNG of ::pix at (w, h) into `s_png`. */
-static void png_build(uint32_t w, uint32_t h)
+/** @brief Build a gray8 filter-0 PNG of ::internal_pix at (w, h) into `s_png`. @details Implements the png build fixture operation used only by this focused test executable. @param[in] w Fixture argument governed by the exercised interface contract. @param[in] h Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_png_build(uint32_t w, uint32_t h)
 {
   static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
-  static uint8_t       s_raw[((size_t)k_big_w + 1U) * (size_t)k_big_h];
-  static uint8_t       s_zbuf[k_png_cap];
+  static uint8_t       local_raw[((size_t)k_big_w + 1U) * (size_t)k_big_h];
+  static uint8_t       local_zbuf[k_png_cap];
   s_png_len = 0U;
   memcpy(s_png, sig, sizeof(sig));
   s_png_len                         = sizeof(sig);
@@ -215,20 +216,20 @@ static void png_build(uint32_t w, uint32_t h)
   ihdr[6]                           = (uint8_t)((h >> 8U) & k_byte_mask);
   ihdr[k_png_ihdr_off_height_b3]    = (uint8_t)(h & k_byte_mask);
   ihdr[8]                           = 8U;
-  png_chunk("IHDR", ihdr, sizeof(ihdr));
+  internal_png_chunk("IHDR", ihdr, sizeof(ihdr));
   size_t o = 0U;
   for (uint32_t y = 0U; y < h; y++) {
-    s_raw[o] = 0U;
+    local_raw[o] = 0U;
     o++;
     for (uint32_t x = 0U; x < w; x++) {
-      s_raw[o] = pix(x, y);
+      local_raw[o] = internal_pix(x, y);
       o++;
     }
   }
-  mz_ulong zlen = (mz_ulong)sizeof(s_zbuf);
-  TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)o));
-  png_chunk("IDAT", s_zbuf, (uint32_t)zlen);
-  png_chunk("IEND", NULL, 0U);
+  mz_ulong zlen = (mz_ulong)sizeof(local_zbuf);
+  TEST_ASSERT_EQ(MZ_OK, mz_compress(local_zbuf, &zlen, local_raw, (mz_ulong)o));
+  internal_png_chunk("IDAT", local_zbuf, (uint32_t)zlen);
+  internal_png_chunk("IEND", NULL, 0U);
 }
 
 /**
@@ -239,8 +240,8 @@ typedef struct {
   size_t pos; /**< Read cursor into `s_png`. */
 } mem_pull_t;
 
-/** @brief ::ra8_jof_pull_fn over `s_png`. */
-static ra8_err_t png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+/** @brief ::ra8_jof_pull_fn over `s_png`. @details Implements the png pull fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[out] buf Fixture argument governed by the exercised interface contract. @param[in] cap Fixture argument governed by the exercised interface contract. @param[out] got Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   mem_pull_t*  p    = (mem_pull_t*)ctx;
   const size_t left = s_png_len - p->pos;
@@ -252,7 +253,7 @@ static ra8_err_t png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 }
 
 /**
- * @brief Bake one atlas: synthesize a PNG of ::pix, run the real producer.
+ * @brief Bake one atlas: synthesize a PNG of ::internal_pix, run the real producer.
  * @param[in]  w     Source width, pixels.
  * @param[in]  h     Source height, pixels.
  * @param[in]  codec ::ra8_jof_codec_t member.
@@ -262,16 +263,16 @@ static ra8_err_t png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  * @post @p store holds a complete, parseable JOF atlas.
  * @post The shared PNG/work scratch is clobbered.
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static void bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_jof_memstore_t* store)
+ * @since 0.1.0 @details Implements the bake atlas fixture operation used only by this focused test executable. */
+RA8_INTERNAL static void
+internal_bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_jof_memstore_t* store)
 {
-  png_build(w, h);
-  static mem_pull_t s_pull;
-  s_pull                          = (mem_pull_t){.pos = 0U};
+  internal_png_build(w, h);
+  static mem_pull_t local_pull;
+  local_pull                      = (mem_pull_t){.pos = 0U};
   const ra8_jof_produce_cfg_t cfg = {
-    .pull       = png_pull,
-    .pull_ctx   = &s_pull,
+    .pull       = internal_png_pull,
+    .pull_ctx   = &local_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = store,
     .tile_w     = (uint16_t)k_tile,
@@ -293,9 +294,8 @@ static void bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_jof_memstore_t
  * @pre ::s_arc has ::k_arc_cap bytes.
  * @post ::s_arc_size holds the archive length; ::s_arc is a valid ZIP.
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static void zip_add_hostile(mz_zip_archive* zip)
+ * @since 0.1.0 @details Implements the zip add hostile fixture operation used only by this focused test executable. @param[in,out] zip Fixture argument governed by the exercised interface contract. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static void internal_zip_add_hostile(mz_zip_archive* zip)
 {
   /* A stored entry with the atlas magic but corrupt structure. */
   uint8_t bad[k_hostile_entry_bytes] = {'J', 'O', 'F', '1'};
@@ -310,16 +310,17 @@ static void zip_add_hostile(mz_zip_archive* zip)
                                     MZ_NO_COMPRESSION) == MZ_TRUE);
 }
 
-static void build_archive(void)
+/** @brief Prepare the fixture's build archive state. @details Implements the build archive fixture operation used only by this focused test executable. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_build_archive(void)
 {
   ra8_jof_memstore_t big  = {.buf = s_big_buf, .cap = sizeof(s_big_buf), .len = 0U};
   ra8_jof_memstore_t edge = {.buf = s_edge_buf, .cap = sizeof(s_edge_buf), .len = 0U};
-  bake_atlas(k_big_w, k_big_h, (uint8_t)k_ra8_jof_codec_deflate, &big);
-  bake_atlas(k_edge_w, k_edge_h, (uint8_t)k_ra8_jof_codec_raw, &edge);
+  internal_bake_atlas(k_big_w, k_big_h, (uint8_t)k_ra8_jof_codec_deflate, &big);
+  internal_bake_atlas(k_edge_w, k_edge_h, (uint8_t)k_ra8_jof_codec_raw, &edge);
   for (size_t i = 0U; i < (size_t)k_fig_bytes; ++i) {
     s_fig[i] = (uint8_t)((i * k_fig_pattern_stride) + k_fig_pattern_y_mul);
   }
-  png_build(k_imp_w, k_imp_h); /* the import-path source entry */
+  internal_png_build(k_imp_w, k_imp_h); /* the import-path source entry */
 
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
@@ -331,16 +332,16 @@ static void build_archive(void)
                                     MZ_NO_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "META-INF/container.xml",
-                                    k_container,
-                                    strlen(k_container),
+                                    s_container,
+                                    strlen(s_container),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "OEBPS/content.opf",
-                                    k_opf,
-                                    strlen(k_opf),
+                                    s_opf,
+                                    strlen(s_opf),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "OEBPS/ch1.xhtml", k_ch1, strlen(k_ch1), MZ_DEFAULT_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "OEBPS/ch1.xhtml", s_ch1, strlen(s_ch1), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
   /* Atlases stored (uncompressed) so pread can window them directly. */
   TEST_ASSERT(mz_zip_writer_add_mem(&zip, "OEBPS/big.rta", s_big_buf, big.len, MZ_NO_COMPRESSION) ==
@@ -355,7 +356,7 @@ static void build_archive(void)
   TEST_ASSERT(
     mz_zip_writer_add_mem(&zip, "OEBPS/fig.png", s_fig, sizeof(s_fig), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
-  zip_add_hostile(&zip);
+  internal_zip_add_hostile(&zip);
 
   void*  heap = nullptr;
   size_t hsz  = 0U;
@@ -363,6 +364,7 @@ static void build_archive(void)
   TEST_ASSERT((heap != nullptr) && (hsz <= (size_t)k_arc_cap));
   memcpy(s_arc, heap, hsz);
   s_arc_size = hsz;
+  mz_free(heap);
   mz_zip_writer_end(&zip);
 }
 
@@ -377,10 +379,10 @@ typedef struct {
 } buf_src_t;
 
 /** @brief Largest single backing read window. */
-static size_t g_peak = 0U;
+static size_t s_peak = 0U;
 
-/** @brief Streamed-media read over a resident buffer (records the peak window). */
-static size_t direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
+/** @brief Streamed-media read over a resident buffer (records the peak window). @details Implements the direct read fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] offset Fixture argument governed by the exercised interface contract. @param[out] buf Fixture argument governed by the exercised interface contract. @param[in] len Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static size_t internal_direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
 {
   const buf_src_t* s = (const buf_src_t*)ctx;
   if (offset >= (uint64_t)s->size) {
@@ -389,14 +391,14 @@ static size_t direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
   const uint64_t avail = (uint64_t)s->size - offset;
   const size_t   n     = (len > (size_t)avail) ? (size_t)avail : len;
   memcpy(buf, &s->data[offset], n);
-  if (n > g_peak) {
-    g_peak = n;
+  if (n > s_peak) {
+    s_peak = n;
   }
   return n;
 }
 
-/** @brief Build the tile-cache storage config over the shared static arrays. */
-static ra8_tile_cache_cfg_t make_storage(void)
+/** @brief Build the tile-cache storage config over the shared static arrays. @details Implements the make storage fixture operation used only by this focused test executable. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_tile_cache_cfg_t internal_make_storage(void)
 {
   return (ra8_tile_cache_cfg_t){.cell_mem     = s_cell_mem,
                                 .cell_bytes   = (uint32_t)k_cell_bytes,
@@ -408,10 +410,10 @@ static ra8_tile_cache_cfg_t make_storage(void)
                                 .bucket_count = (uint32_t)k_buckets};
 }
 
-/** @brief Initialise a binder over the shared storage + staging scratch. */
-static void init_binder(ra8_epub_tile_binder_t* binder)
+/** @brief Initialise a binder over the shared storage + staging scratch. @details Implements the init binder fixture operation used only by this focused test executable. @param[in,out] binder Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_init_binder(ra8_epub_tile_binder_t* binder)
 {
-  const ra8_tile_cache_cfg_t storage = make_storage();
+  const ra8_tile_cache_cfg_t storage = internal_make_storage();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_epub_tile_binder_init(binder,
                                            &storage,
@@ -419,13 +421,13 @@ static void init_binder(ra8_epub_tile_binder_t* binder)
                                            (uint32_t)sizeof(s_binder_scratch)));
 }
 
-/** @brief Byte-check a fetched tile of the given image against ::pix. */
-static void verify_tile(ra8_epub_tile_binder_t* b,
-                        uint32_t                image_id,
-                        uint32_t                tx,
-                        uint32_t                ty,
-                        uint32_t                exp_w,
-                        uint32_t                exp_h)
+/** @brief Byte-check a fetched tile of the given image against ::internal_pix. @details Implements the verify tile fixture operation used only by this focused test executable. @param[in,out] b Fixture argument governed by the exercised interface contract. @param[in] image_id Fixture argument governed by the exercised interface contract. @param[in] tx Fixture argument governed by the exercised interface contract. @param[in] ty Fixture argument governed by the exercised interface contract. @param[in] exp_w Fixture argument governed by the exercised interface contract. @param[in] exp_h Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_verify_tile(ra8_epub_tile_binder_t* b,
+                                              uint32_t                image_id,
+                                              uint32_t                tx,
+                                              uint32_t                ty,
+                                              uint32_t                exp_w,
+                                              uint32_t                exp_h)
 {
   ra8_tile_t t = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_get(b, image_id, (uint16_t)tx, (uint16_t)ty, &t));
@@ -435,7 +437,7 @@ static void verify_tile(ra8_epub_tile_binder_t* b,
     for (uint32_t c = 0U; c < exp_w; ++c) {
       const uint32_t sx = (tx * (uint32_t)k_tile) + c;
       const uint32_t sy = (ty * (uint32_t)k_tile) + r;
-      TEST_ASSERT_EQ(pix(sx, sy), t.pixels[(r * exp_w) + c]);
+      TEST_ASSERT_EQ(internal_pix(sx, sy), t.pixels[(r * exp_w) + c]);
     }
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_put(b, t.pixels));
@@ -449,9 +451,8 @@ static void verify_tile(ra8_epub_tile_binder_t* b,
 /**
  * @brief Assert the big deflate atlas declares the geometry the fixture built.
  * @details Checked before any tile is fetched, so a malformed header is
- *          reported as a header problem rather than as mismatched pixels later.
- */
-static void assert_big_atlas_geometry(const ra8_jof_info_t* info)
+ *          reported as a header problem rather than as mismatched pixels later. @param[in] info Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_assert_big_atlas_geometry(const ra8_jof_info_t* info)
 {
   TEST_ASSERT_EQ(k_big_w, info->width);
   TEST_ASSERT_EQ(k_big_h, info->height);
@@ -463,13 +464,13 @@ static void assert_big_atlas_geometry(const ra8_jof_info_t* info)
 /**
  * @brief Fetch and byte-check every tile of the atlas, in row-major order.
  * @details Walking the whole grid is what forces the cache to page: there are
- *          more tiles than cells, so later tiles evict earlier ones.
- */
-static void verify_all_tiles(ra8_epub_tile_binder_t* binder, const ra8_jof_info_t* info)
+ *          more tiles than cells, so later tiles evict earlier ones. @param[in,out] binder Fixture argument governed by the exercised interface contract. @param[in] info Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_verify_all_tiles(ra8_epub_tile_binder_t* binder,
+                                                   const ra8_jof_info_t*   info)
 {
   for (uint32_t ty = 0U; ty < info->tile_rows; ++ty) {
     for (uint32_t tx = 0U; tx < info->tile_cols; ++tx) {
-      verify_tile(binder, k_id_big, tx, ty, k_tile, k_tile);
+      internal_verify_tile(binder, k_id_big, tx, ty, k_tile, k_tile);
     }
   }
 }
@@ -479,9 +480,9 @@ static void verify_all_tiles(ra8_epub_tile_binder_t* binder, const ra8_jof_info_
  * @details Two claims about the same run: the miss and eviction counters prove
  *          the walk actually paged (if it had not, the bound proved nothing),
  *          and a back-to-back re-fetch raises the hit counter. The first of
- *          that pair is expected to miss -- the walk evicted (0,0) long ago.
- */
-static void assert_cache_paged_and_rehit(ra8_epub_tile_binder_t* binder, const ra8_jof_info_t* info)
+ *          that pair is expected to miss -- the walk evicted (0,0) long ago. @param[in,out] binder Fixture argument governed by the exercised interface contract. @param[in] info Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_assert_cache_paged_and_rehit(ra8_epub_tile_binder_t* binder,
+                                                               const ra8_jof_info_t*   info)
 {
   uint32_t hits = 0U;
   uint32_t miss = 0U;
@@ -491,14 +492,14 @@ static void assert_cache_paged_and_rehit(ra8_epub_tile_binder_t* binder, const r
   TEST_ASSERT(evic > 0U);
   /* ...and a fresh re-fetch of a just-decoded tile is a hit, not a re-decode. */
   const uint32_t hits_before = hits;
-  verify_tile(binder, k_id_big, 0U, 0U, k_tile, k_tile); /* miss (was evicted) */
-  verify_tile(binder, k_id_big, 0U, 0U, k_tile, k_tile); /* hit  (still MRU)   */
+  internal_verify_tile(binder, k_id_big, 0U, 0U, k_tile, k_tile); /* miss (was evicted) */
+  internal_verify_tile(binder, k_id_big, 0U, 0U, k_tile, k_tile); /* hit  (still MRU)   */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&binder->cache, &hits, nullptr, nullptr));
   TEST_ASSERT(hits > hits_before);
 }
 
 /**
- * @test test_tile_paging_bounded
+ * @test internal_test_tile_paging_bounded
  * @brief All 48 tiles of a deflate atlas page correctly through an 8-cell
  *        cache opened by streaming: resident pixels stay bounded, the atlas
  *        is never read whole, and a re-fetch hits the cache.
@@ -507,65 +508,65 @@ static void assert_cache_paged_and_rehit(ra8_epub_tile_binder_t* binder, const r
  * (no compound decisions authored under test: the binder's guards and the
  * decode path are independent single-condition checks. Assertions are
  * independent equalities over every tile's bytes plus bound inequalities
- * over the cache budget, backing window, and hit/miss counters.)
- */
-static void test_tile_paging_bounded(void)
+ * over the cache budget, backing window, and hit/miss counters.) @details Executes the tile paging bounded scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tile_paging_bounded(void)
 {
   TEST_BEGIN("epub tiles: page a deflate atlas through a tiny cache, bounded");
-  build_archive();
-  g_peak = 0U;
+  internal_build_archive();
+  s_peak = 0U;
 
   buf_src_t               src   = {.data = s_arc, .size = s_arc_size};
-  ra8_epub_stream_media_t media = {.read = direct_read, .ctx = &src, .size = (uint64_t)s_arc_size};
+  ra8_epub_stream_media_t media = {.read = internal_direct_read,
+                                   .ctx  = &src,
+                                   .size = (uint64_t)s_arc_size};
   ra8_epub_book_t         book  = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open_streamed(&media, "tiles.epub", &book));
 
   ra8_epub_tile_binder_t binder = {};
-  init_binder(&binder);
+  internal_init_binder(&binder);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_add(&binder, &book, "big.rta", k_id_big));
 
   ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_info(&binder, k_id_big, &info));
-  assert_big_atlas_geometry(&info);
+  internal_assert_big_atlas_geometry(&info);
 
   /* Measure only the tile-paging backing reads (not the ZIP open / header). */
-  g_peak = 0U;
-  verify_all_tiles(&binder, &info);
+  s_peak = 0U;
+  internal_verify_all_tiles(&binder, &info);
 
   /* Bounded RAM: cell budget is ~24x smaller than the decoded image. */
   const size_t budget = (size_t)k_cells * (size_t)k_cell_bytes;
   TEST_ASSERT((budget * 6U) == ((size_t)k_big_w * (size_t)k_big_h));
   /* The atlas was never read whole: each backing read is at most one stored
    * tile stream (bounded by the staging scratch). */
-  TEST_ASSERT(g_peak <= (size_t)k_scratch);
+  TEST_ASSERT(s_peak <= (size_t)k_scratch);
 
   /* Cache worked: 48 tiles through 8 cells forced misses + evictions... */
-  assert_cache_paged_and_rehit(&binder, &info);
+  internal_assert_cache_paged_and_rehit(&binder, &info);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_END("epub tiles: page a deflate atlas through a tiny cache, bounded");
 }
 
 /**
- * @test test_tile_edges
+ * @test internal_test_tile_edges
  * @brief A not-tile-aligned raw atlas yields clamped edge tiles with exact
  *        pixels (and pages with no deflate staging at all).
  *
  * @par MC/DC:
  * (no compound decisions authored under test; edge clamping is a `min`
- * helper. Assertions are independent equalities over the edge tiles.)
- */
-static void test_tile_edges(void)
+ * helper. Assertions are independent equalities over the edge tiles.) @details Executes the tile edges scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tile_edges(void)
 {
   TEST_BEGIN("epub tiles: clamped edge tiles (raw atlas)");
-  build_archive();
+  internal_build_archive();
   ra8_epub_book_t            book = {};
   const ra8_epub_mem_media_t mem  = {.data = s_arc, .size = s_arc_size};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&mem, "tiles.epub", &book));
 
   /* A raw atlas needs no staging scratch: bind the binder without one. */
   ra8_epub_tile_binder_t     binder  = {};
-  const ra8_tile_cache_cfg_t storage = make_storage();
+  const ra8_tile_cache_cfg_t storage = internal_make_storage();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_init(&binder, &storage, nullptr, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_add(&binder, &book, "edge.rta", k_id_edge));
 
@@ -575,19 +576,19 @@ static void test_tile_edges(void)
   TEST_ASSERT_EQ(2U, info.tile_rows); /* ceil(70/64)  */
   TEST_ASSERT_EQ(k_ra8_jof_codec_raw, info.codec);
 
-  const uint32_t rem_w = k_edge_w - k_tile;                /* 36          */
-  const uint32_t rem_h = k_edge_h - k_tile;                /* 6           */
-  verify_tile(&binder, k_id_edge, 0U, 0U, k_tile, k_tile); /* interior    */
-  verify_tile(&binder, k_id_edge, 1U, 0U, rem_w, k_tile);  /* right edge  */
-  verify_tile(&binder, k_id_edge, 0U, 1U, k_tile, rem_h);  /* bottom edge */
-  verify_tile(&binder, k_id_edge, 1U, 1U, rem_w, rem_h);   /* corner      */
+  const uint32_t rem_w = k_edge_w - k_tile;                         /* 36          */
+  const uint32_t rem_h = k_edge_h - k_tile;                         /* 6           */
+  internal_verify_tile(&binder, k_id_edge, 0U, 0U, k_tile, k_tile); /* interior    */
+  internal_verify_tile(&binder, k_id_edge, 1U, 0U, rem_w, k_tile);  /* right edge  */
+  internal_verify_tile(&binder, k_id_edge, 0U, 1U, k_tile, rem_h);  /* bottom edge */
+  internal_verify_tile(&binder, k_id_edge, 1U, 1U, rem_w, rem_h);   /* corner      */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_END("epub tiles: clamped edge tiles (raw atlas)");
 }
 
 /**
- * @test test_import_transcode
+ * @test internal_test_import_transcode
  * @brief The open-path wiring end to end: a DEFLATE-compressed PNG manifest
  *        entry imports through the real transcode producer into a memstore
  *        and pages back byte-identically -- #231's "manifest href resolves
@@ -603,11 +604,10 @@ static void test_tile_edges(void)
  * (2 conditions)
  * - Vector 1: normal href -> false (every import above)
  * - Vector 2: empty href  -> true via hlen == 0
- * - Vector 3: oversize href -> true via the length cap
- */
-static void import_error_arms(ra8_epub_tile_binder_t*            binder,
-                              ra8_epub_book_t*                   book,
-                              const ra8_epub_atlas_import_cfg_t* base)
+ * - Vector 3: oversize href -> true via the length cap @details Implements the import error arms fixture operation used only by this focused test executable. @param[in,out] binder Fixture argument governed by the exercised interface contract. @param[in,out] book Fixture argument governed by the exercised interface contract. @param[in] base Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_import_error_arms(ra8_epub_tile_binder_t*            binder,
+                                                    ra8_epub_book_t*                   book,
+                                                    const ra8_epub_atlas_import_cfg_t* base)
 {
   TEST_ASSERT_EQ(k_ra8_err_not_found,
                  ra8_epub_tile_binder_import(binder, book, "missing.png", 40U, base));
@@ -631,7 +631,7 @@ static void import_error_arms(ra8_epub_tile_binder_t*            binder,
 }
 
 /**
- * @test test_import_transcode
+ * @test internal_test_import_transcode
  * @brief The open-path transcode wiring end to end plus the import error arms.
  *
  * @par MC/DC:
@@ -639,26 +639,25 @@ static void import_error_arms(ra8_epub_tile_binder_t*            binder,
  * `(hlen == 0U) || (hlen >= k_ra8_epub_max_path_len)` (2 conditions, OR). This
  * case drives only the both-false control (a normal href such as "page1.png" ->
  * C1=F,C2=F -> the import proceeds); the true legs (empty href, oversize href)
- * are supplied by test_import_classify_arms, completing N+1 = 3.
+ * are supplied by internal_test_import_classify_arms, completing N+1 = 3.
  * Decision (classify, priv_classify):
  * `(got == 4) && (memcmp(magic,"JOF1") == 0)` (2 conditions, AND) is NOT reached
  * here -- every entry this case drives is DEFLATE-compressed or absent, so
  * priv_classify short-circuits (not_supported / not_found / err) before the
- * compare. Its N+1 vectors live in test_import_passthrough (C1=T,C2=T) and
- * test_import_classify_arms (got-mismatch C1=F, magic-mismatch C1=T,C2=F).
+ * compare. Its N+1 vectors live in internal_test_import_passthrough (C1=T,C2=T) and
+ * internal_test_import_classify_arms (got-mismatch C1=F, magic-mismatch C1=T,C2=F).
  * The import error arms this case adds (not_found, not_supported, invalid_size,
- * no_mem, null_ptr) are single-condition guards.
- */
-static void test_import_transcode(void)
+ * no_mem, null_ptr) are single-condition guards. @details Executes the import transcode scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_import_transcode(void)
 {
   TEST_BEGIN("epub tiles: import-time transcode (PNG entry -> atlas -> tiles)");
-  build_archive();
+  internal_build_archive();
   ra8_epub_book_t            book = {};
   const ra8_epub_mem_media_t mem  = {.data = s_arc, .size = s_arc_size};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&mem, "tiles.epub", &book));
 
   ra8_epub_tile_binder_t binder = {};
-  init_binder(&binder);
+  internal_init_binder(&binder);
 
   s_imp_store = (ra8_jof_memstore_t){.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
   ra8_epub_atlas_import_cfg_t cfg = {
@@ -688,35 +687,34 @@ static void test_import_transcode(void)
       const uint32_t y0 = ty * (uint32_t)k_tile;
       const uint32_t tw = ((k_imp_w - x0) < k_tile) ? (k_imp_w - x0) : k_tile;
       const uint32_t th = ((k_imp_h - y0) < k_tile) ? (k_imp_h - y0) : k_tile;
-      verify_tile(&binder, k_id_imp, tx, ty, tw, th);
+      internal_verify_tile(&binder, k_id_imp, tx, ty, tw, th);
     }
   }
 
-  import_error_arms(&binder, &book, &cfg);
+  internal_import_error_arms(&binder, &book, &cfg);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_END("epub tiles: import-time transcode (PNG entry -> atlas -> tiles)");
 }
 
 /**
- * @test test_import_classify_arms
+ * @test internal_test_import_classify_arms
  * @brief The classify and href-length arms of the import entry (the MC/DC
- *        vectors documented on test_import_transcode).
+ *        vectors documented on internal_test_import_transcode).
  *
  * @par MC/DC:
  * (vectors 2/3 of the classify decision and 2/3 of the href-length
- * decision on test_import_transcode's block; vector 1 of each is the
- * successful "page1.png" import there.)
- */
-static void test_import_classify_arms(void)
+ * decision on internal_test_import_transcode's block; vector 1 of each is the
+ * successful "page1.png" import there.) @details Executes the import classify arms scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_import_classify_arms(void)
 {
   TEST_BEGIN("epub tiles: import classify + href-length arms");
-  build_archive();
+  internal_build_archive();
   ra8_epub_book_t            book = {};
   const ra8_epub_mem_media_t mem  = {.data = s_arc, .size = s_arc_size};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&mem, "tiles.epub", &book));
   ra8_epub_tile_binder_t binder = {};
-  init_binder(&binder);
+  internal_init_binder(&binder);
   s_imp_store = (ra8_jof_memstore_t){.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
   const ra8_epub_atlas_import_cfg_t cfg = {
     .tile_w     = (uint16_t)k_tile,
@@ -753,23 +751,22 @@ static void test_import_classify_arms(void)
 }
 
 /**
- * @test test_import_passthrough
+ * @test internal_test_import_passthrough
  * @brief An entry that already is a stored JOF atlas registers in place:
  *        zero transcode, zero store writes.
  *
  * @par MC/DC:
- * (classify vectors documented on test_import_transcode; this is vector 1.)
- */
-static void test_import_passthrough(void)
+ * (classify vectors documented on internal_test_import_transcode; this is vector 1.) @details Executes the import passthrough scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_import_passthrough(void)
 {
   TEST_BEGIN("epub tiles: import passthrough (stored atlas registers in place)");
-  build_archive();
+  internal_build_archive();
   ra8_epub_book_t            book = {};
   const ra8_epub_mem_media_t mem  = {.data = s_arc, .size = s_arc_size};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&mem, "tiles.epub", &book));
 
   ra8_epub_tile_binder_t binder = {};
-  init_binder(&binder);
+  internal_init_binder(&binder);
   s_imp_store = (ra8_jof_memstore_t){.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
   const ra8_epub_atlas_import_cfg_t cfg = {
     .tile_w     = (uint16_t)k_tile,
@@ -786,7 +783,7 @@ static void test_import_passthrough(void)
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_import(&binder, &book, "big.rta", k_id_big, &cfg));
   TEST_ASSERT_EQ(0U, s_imp_store.len); /* no transcode, no store writes */
-  verify_tile(&binder, k_id_big, 0U, 0U, k_tile, k_tile);
+  internal_verify_tile(&binder, k_id_big, 0U, 0U, k_tile, k_tile);
   /* The corrupt stored atlas classifies as an atlas, then fails validation. */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  ra8_epub_tile_binder_import(&binder, &book, "bad.rta", 50U, &cfg));
@@ -796,14 +793,14 @@ static void test_import_passthrough(void)
 }
 
 /**
- * @test test_tile_binder_guards
+ * @test internal_test_tile_binder_guards
  * @brief NULL / not-found / out-of-range / duplicate / bad-entry guards.
  *
  * @par MC/DC:
  * (no compound decisions authored under test; each guard is an independent
- * single-condition check.)
- */
-static void add_arg_guards(ra8_epub_tile_binder_t* binder, ra8_epub_book_t* book)
+ * single-condition check.) @details Implements the add arg guards fixture operation used only by this focused test executable. @param[in,out] binder Fixture argument governed by the exercised interface contract. @param[in,out] book Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_add_arg_guards(ra8_epub_tile_binder_t* binder,
+                                                 ra8_epub_book_t*        book)
 {
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_add(nullptr, book, "big.rta", 1U));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_add(binder, nullptr, "big.rta", 1U));
@@ -816,7 +813,7 @@ static void add_arg_guards(ra8_epub_tile_binder_t* binder, ra8_epub_book_t* book
 }
 
 /**
- * @test test_tile_binder_guards
+ * @test internal_test_tile_binder_guards
  * @brief NULL / not-found / range / duplicate / bad-entry binder guards.
  *
  * @par MC/DC:
@@ -828,25 +825,24 @@ static void add_arg_guards(ra8_epub_tile_binder_t* binder, ra8_epub_book_t* book
  * V1+V2 prove C1 independent; V1+V3 prove C2. Every other guard exercised here
  * (init/add/add_ext null_ptr, not_found, out_of_range, duplicate id, table
  * exhaustion, the two separate `tile_x >= cols` / `tile_y >= rows` range checks)
- * is a single-condition check.
- */
-static void test_tile_binder_guards(void)
+ * is a single-condition check. @details Executes the tile binder guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_tile_binder_guards(void)
 {
   TEST_BEGIN("epub tiles: binder guards + bad entries");
-  build_archive();
+  internal_build_archive();
   ra8_epub_book_t            book = {};
   const ra8_epub_mem_media_t mem  = {.data = s_arc, .size = s_arc_size};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&mem, "tiles.epub", &book));
 
   ra8_epub_tile_binder_t     binder  = {};
-  const ra8_tile_cache_cfg_t storage = make_storage();
+  const ra8_tile_cache_cfg_t storage = internal_make_storage();
 
   /* init guards. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_init(nullptr, &storage, nullptr, 0U));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_init(&binder, nullptr, nullptr, 0U));
-  init_binder(&binder);
+  internal_init_binder(&binder);
 
-  add_arg_guards(&binder, &book);
+  internal_add_arg_guards(&binder, &book);
   /* A DEFLATE entry cannot be windowed -> pread rejects it as not-supported. */
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_epub_tile_binder_add(&binder, &book, "fig.png", 9U));
   /* A good add succeeds. */
@@ -888,7 +884,7 @@ static void test_tile_binder_guards(void)
 }
 
 /**
- * @test test_reflow_img_loader
+ * @test internal_test_reflow_img_loader
  * @brief The reflow loader resolves a figure into a bounded scratch
  *        byte-identically to a whole extract, reports an oversize image
  *        unavailable, and matches the `ra8_reflow_image_loader_fn` signature.
@@ -897,12 +893,11 @@ static void test_tile_binder_guards(void)
  * (no compound decisions authored under test: the loader's context and
  * href-length guards are independent single-condition early returns. The
  * vectors below still exercise each guard plus the happy path and the
- * oversize ceiling.)
- */
-static void test_reflow_img_loader(void)
+ * oversize ceiling.) @details Executes the reflow img loader scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_reflow_img_loader(void)
 {
   TEST_BEGIN("epub tiles: real reflow <img> loader");
-  build_archive();
+  internal_build_archive();
   ra8_epub_book_t            book = {};
   const ra8_epub_mem_media_t mem  = {.data = s_arc, .size = s_arc_size};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&mem, "tiles.epub", &book));
@@ -978,13 +973,12 @@ static void test_reflow_img_loader(void)
  */
 int32_t main(void)
 {
-  test_tile_paging_bounded();
-  test_tile_edges();
-  test_import_transcode();
-  test_import_classify_arms();
-  test_import_passthrough();
-  test_tile_binder_guards();
-  test_reflow_img_loader();
-  (void)fprintf(stderr, "[OK  ] test_ra8_epub_img_tiles.c\n");
+  internal_test_tile_paging_bounded();
+  internal_test_tile_edges();
+  internal_test_import_transcode();
+  internal_test_import_classify_arms();
+  internal_test_import_passthrough();
+  internal_test_tile_binder_guards();
+  internal_test_reflow_img_loader();
   return 0;
 }

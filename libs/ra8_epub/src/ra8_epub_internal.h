@@ -52,14 +52,14 @@ extern "C" {
  *
  * @since 0.1.0
  */
-RA8_PRIV void ra8_epub_internal_join_path(const char* dir, const char* name, char* dst, size_t cap);
+RA8_PRIV void priv_epub_join_path(const char* dir, const char* name, char* dst, size_t cap);
 
 /**
  * @brief Pure predicate: width OR height is negative.
  *
  * @details Promoted from the inline OR at
  *          libs/ra8_epub/src/ra8_epub_chapter.c inside
- *          @c priv_font_init.
+ *          @c internal_font_init.
  *
  * @param[in] w Glyph bbox width.
  * @param[in] h Glyph bbox height.
@@ -83,7 +83,7 @@ RA8_PRIV void ra8_epub_internal_join_path(const char* dir, const char* name, cha
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_epub_internal_glyph_dim_invalid(int w, int h);
+RA8_PRIV bool priv_epub_glyph_dim_invalid(int w, int h);
 
 /**
  * @brief Pure predicate: book unused OR zip archive inactive.
@@ -115,7 +115,7 @@ RA8_PRIV bool ra8_epub_internal_glyph_dim_invalid(int w, int h);
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archive_active);
+RA8_PRIV bool priv_epub_book_not_ready(uint8_t in_use, uint8_t zip_archive_active);
 
 /**
  * @brief Guard a just-opened ZIP archive against the decompression policy.
@@ -126,7 +126,7 @@ RA8_PRIV bool ra8_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archi
  *          policy's `max_entries` -- the many-tiny-entries resource bomb
  *          -- before any entry is touched. Called once per
  *          `mz_zip_reader_init*` success (both the in-memory and streamed
- *          open paths funnel through `priv_finish_open`).
+ *          open paths funnel through `internal_finish_open`).
  *
  * @param[in] zip Initialised miniz reader (non-NULL).
  *
@@ -141,10 +141,10 @@ RA8_PRIV bool ra8_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archi
  * @post On breach the caller must destroy the reader (fail-closed).
  *
  * @note Thread-safe: pure read of the reader's entry count.
- * @see ra8_epub_zip_guard_entry()
+ * @see priv_epub_zip_guard_entry()
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_epub_zip_guard_archive(mz_zip_archive* zip);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_epub_zip_guard_archive(mz_zip_archive* zip);
 
 /**
  * @brief Guard one ZIP entry's declared sizes against the policy.
@@ -171,10 +171,10 @@ RA8_PRIV [[nodiscard]] ra8_err_t ra8_epub_zip_guard_archive(mz_zip_archive* zip)
  * @post On breach the caller must not extract the entry (fail-closed).
  *
  * @note Thread-safe: pure read.
- * @see ra8_epub_zip_guard_archive()
+ * @see priv_epub_zip_guard_archive()
  * @since 0.1.0
  */
-RA8_PRIV [[nodiscard]] ra8_err_t ra8_epub_zip_guard_entry(const mz_zip_archive_file_stat* st);
+RA8_PRIV [[nodiscard]] ra8_err_t priv_epub_zip_guard_entry(const mz_zip_archive_file_stat* st);
 
 #ifdef __cplusplus
 }

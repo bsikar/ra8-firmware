@@ -36,11 +36,12 @@ typedef union {
 typedef enum : size_t {
   k_priv_hdr_bytes =
     ((sizeof(priv_blk_t) + sizeof(priv_pool_cell_t) - 1U) / sizeof(priv_pool_cell_t)) *
-    sizeof(priv_pool_cell_t),
-  k_priv_align    = sizeof(priv_pool_cell_t),
-  k_priv_walk_max = k_ra8_epub_miniz_pool_bytes / (k_priv_hdr_bytes + sizeof(priv_pool_cell_t)),
-  k_priv_blk_free = 1U,
-  k_priv_blk_used = 0U,
+    sizeof(priv_pool_cell_t),                 /**< Aligned in-band header bytes. */
+  k_priv_align    = sizeof(priv_pool_cell_t), /**< Maximum-alignment cell size.  */
+  k_priv_walk_max = k_ra8_epub_miniz_pool_bytes /
+                    (k_priv_hdr_bytes + sizeof(priv_pool_cell_t)), /**< Block-walk guard.  */
+  k_priv_blk_free = 1U,                                            /**< Free-block marker. */
+  k_priv_blk_used = 0U,                                            /**< Live-block marker. */
 } priv_alloc_const_t;
 
 static_assert((k_ra8_epub_miniz_pool_bytes % sizeof(priv_pool_cell_t)) == 0U,
@@ -50,9 +51,17 @@ static_assert(sizeof(ra8_epub_miniz_workspace_t) == k_ra8_epub_miniz_pool_bytes,
 
 /**
  * @brief Validate an arena descriptor before using caller-owned storage.
+ * @details Checks lifecycle, exact capacity, backing pointer, and alignment.
  * @param[in] arena Descriptor to inspect.
  * @return Whether the descriptor is live and geometrically valid.
+ * @retval true Arena is initialized with exact aligned backing storage.
+ * @retval false Arena is null, inactive, malformed, or misaligned.
+ * @pre @p arena is null or points to a readable descriptor.
+ * @pre Descriptor fields may contain any representable values.
  * @post No state is modified.
+ * @post No backing byte is inspected.
+ * @note Pure and thread-safe for immutable input.
+ * @since 0.1.0
  */
 RA8_INTERNAL
 static bool internal_ready(const ra8_epub_miniz_arena_t* arena)
@@ -117,7 +126,22 @@ static priv_blk_t* internal_next(const ra8_epub_miniz_arena_t* arena, priv_blk_t
   return internal_cell_at(arena, (size_t)(end - base));
 }
 
-/** @brief Test whether @p address lies in the payload-bearing arena range. */
+/**
+ * @brief Test whether an address lies in the payload-bearing arena range.
+ * @details Rejects inactive arenas and excludes the header-only prefix and
+ * one-past byte without dereferencing the candidate address.
+ * @param[in] arena Arena descriptor to validate and bound the comparison.
+ * @param[in] address Candidate allocation payload address.
+ * @return Whether the numeric address is inside the payload-bearing range.
+ * @retval true Address is at or after the first payload byte and before end.
+ * @retval false Arena is invalid or address lies outside the numeric range.
+ * @pre @p arena is null or points to a readable descriptor.
+ * @pre @p address may be null or any non-dereferenced pointer value.
+ * @post No arena or candidate memory is changed.
+ * @post The candidate address is never dereferenced.
+ * @note Range membership alone does not prove the address starts a live block.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static bool internal_in_pool(const ra8_epub_miniz_arena_t* arena, const void* address)
 {
@@ -130,7 +154,21 @@ static bool internal_in_pool(const ra8_epub_miniz_arena_t* arena, const void* ad
   return (value >= first) && (value < end);
 }
 
-/** @brief Align a pool-bounded request upward to a complete arena cell. */
+/**
+ * @brief Align a pool-bounded request upward to a complete arena cell.
+ * @details Applies the power-of-two maximum-alignment mask after request bounds
+ * have already excluded arithmetic overflow.
+ * @param[in] bytes Unaligned request no larger than the arena capacity.
+ * @return Smallest aligned cell count covering @p bytes.
+ * @retval 0 Returned when @p bytes is zero.
+ * @retval aligned A multiple of ::k_priv_align not smaller than @p bytes.
+ * @pre @p bytes passed ::internal_request_bytes.
+ * @pre ::k_priv_align is a non-zero power of two.
+ * @post Return value is arena-bounded and aligned.
+ * @post No state is modified.
+ * @note Pure and thread-safe.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static size_t internal_align_up(size_t bytes)
 {
@@ -144,6 +182,16 @@ static size_t internal_align_up(size_t bytes)
  * @param[in] size Element size.
  * @param[out] out_bytes Product on success; unchanged on failure.
  * @return Whether the product is representable and arena-bounded.
+ * @details Performs multiplication only after its overflow guard and rejects
+ * requests larger than the complete caller-owned pool.
+ * @retval true Product is representable, bounded, and stored in @p out_bytes.
+ * @retval false Multiplication overflows or the product exceeds pool capacity.
+ * @pre @p out_bytes is non-null and writable.
+ * @pre @p items and @p size may be any representable `size_t` values.
+ * @post Success initializes @p out_bytes exactly once.
+ * @post Failure leaves @p out_bytes unchanged.
+ * @note Pure and thread-safe.
+ * @since 0.1.0
  */
 RA8_INTERNAL
 static bool internal_request_bytes(size_t items, size_t size, size_t* out_bytes)
@@ -159,7 +207,20 @@ static bool internal_request_bytes(size_t items, size_t size, size_t* out_bytes)
   return true;
 }
 
-/** @brief Split @p block if its remainder can hold another allocation. */
+/**
+ * @brief Split a block if its remainder can hold another allocation.
+ * @details Leaves unusably small tails inside the live block; otherwise emits
+ * one aligned free block with its own in-band header.
+ * @param[in] arena Live arena owning @p block.
+ * @param[in,out] block Free block selected for allocation.
+ * @param[in] need Aligned payload bytes required by the allocation.
+ * @pre @p arena is ready and @p block is a valid free arena block.
+ * @pre @p need is aligned, non-zero, and no greater than `block->size`.
+ * @post The original block retains at least @p need payload bytes.
+ * @post Any emitted remainder is aligned, free, and wholly inside the arena.
+ * @note Not thread-safe through one arena.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static void internal_split(const ra8_epub_miniz_arena_t* arena, priv_blk_t* block, size_t need)
 {
@@ -176,7 +237,18 @@ static void internal_split(const ra8_epub_miniz_arena_t* arena, priv_blk_t* bloc
   block->size                    = need;
 }
 
-/** @brief Merge all adjacent free blocks in @p arena. */
+/**
+ * @brief Merge all adjacent free blocks in an arena.
+ * @details Walks the implicit bounded block list and folds each contiguous free
+ * run into its first header without moving live payload bytes.
+ * @param[in,out] arena Live arena whose in-band headers may be updated.
+ * @pre @p arena is ready and its block chain is geometrically valid.
+ * @pre No concurrent allocation operation uses the same arena.
+ * @post No two adjacent blocks are both marked free.
+ * @post Live block addresses and payload bytes are unchanged.
+ * @note The fixed walk guard bounds behavior if metadata is corrupted.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static void internal_coalesce(const ra8_epub_miniz_arena_t* arena)
 {

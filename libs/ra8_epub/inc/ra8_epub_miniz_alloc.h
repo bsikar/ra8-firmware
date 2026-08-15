@@ -127,9 +127,13 @@ ra8_epub_miniz_arena_init(ra8_epub_miniz_arena_t* arena, void* workspace, size_t
 
 /**
  * @brief Invalidate an arena descriptor after miniz has released its blocks.
+ * @details Clears only the descriptor; caller-owned workspace bytes remain
+ * available for a later explicit reinitialization.
  * @param[in,out] arena Arena to invalidate; NULL is accepted.
  * @pre All allocations from @p arena have been released.
+ * @pre No miniz archive retains @p arena as its allocation context.
  * @post A non-NULL descriptor is zeroed; workspace bytes are unchanged.
+ * @post A NULL argument performs no operation.
  * @note Reinitialise with ::ra8_epub_miniz_arena_init before reuse.
  * @since 0.1.0
  */

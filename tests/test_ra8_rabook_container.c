@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_err.h"
 #include "ra8_io_compress.h"
@@ -82,7 +83,7 @@ static t_compressor_t s_compressor;
  * @note Thread-safe; pure helper.
  * @since 0.1.0
  */
-static uint32_t rd_u32(const uint8_t* p)
+RA8_INTERNAL static uint32_t internal_rd_u32(const uint8_t* p)
 {
   uint32_t value = 0U;
   for (uint8_t i = 0U; i < 4U; i++) {
@@ -104,7 +105,7 @@ static uint32_t rd_u32(const uint8_t* p)
  * @note Thread-safe; pure helper.
  * @since 0.1.0
  */
-static uint64_t rd_u64(const uint8_t* p)
+RA8_INTERNAL static uint64_t internal_rd_u64(const uint8_t* p)
 {
   uint64_t value = 0U;
   for (uint8_t i = 0U; i < 8U; i++) {
@@ -123,7 +124,7 @@ static uint64_t rd_u64(const uint8_t* p)
  * @note Thread-safe only when the static fixture is exclusively owned.
  * @since 0.1.0
  */
-static void fill_flat(void)
+RA8_INTERNAL static void internal_fill_flat(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)sizeof(s_flat); i++) {
     s_flat[i] = (uint8_t)((i * (uint32_t)k_t_pattern_mul) + (uint32_t)k_t_pattern_add);
@@ -142,7 +143,7 @@ static void fill_flat(void)
  * @note Thread-safe as a descriptor constructor; later shared use is not.
  * @since 0.1.0
  */
-static ra8_rabook_container_workspace_t full_workspace(void)
+RA8_INTERNAL static ra8_rabook_container_workspace_t internal_full_workspace(void)
 {
   return (ra8_rabook_container_workspace_t){.input          = s_input,
                                             .compressed     = s_compressed,
@@ -166,7 +167,7 @@ static ra8_rabook_container_workspace_t full_workspace(void)
  * @note Thread-safe as a descriptor constructor; callbacks mutate the result.
  * @since 0.1.0
  */
-static t_io_t full_io(void)
+RA8_INTERNAL static t_io_t internal_full_io(void)
 {
   return (t_io_t){.src              = s_flat,
                   .dst              = s_packed,
@@ -197,8 +198,8 @@ static t_io_t full_io(void)
  * @note Not thread-safe; mutates the bound counter.
  * @since 0.1.0
  */
-static ra8_err_t
-mem_read(void* ctx, uint32_t offset, uint8_t* dst, uint32_t requested, uint32_t* out_read)
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint32_t offset, uint8_t* dst, uint32_t requested, uint32_t* out_read)
 {
   t_io_t*        io   = (t_io_t*)ctx;
   const uint32_t call = io->read_calls++;
@@ -236,8 +237,11 @@ mem_read(void* ctx, uint32_t offset, uint8_t* dst, uint32_t requested, uint32_t*
  * @note Not thread-safe; mutates the bound destination and counter.
  * @since 0.1.0
  */
-static ra8_err_t
-mem_write(void* ctx, uint64_t offset, const uint8_t* src, uint32_t requested, uint32_t* out_written)
+RA8_INTERNAL static ra8_err_t internal_mem_write(void*          ctx,
+                                                 uint64_t       offset,
+                                                 const uint8_t* src,
+                                                 uint32_t       requested,
+                                                 uint32_t*      out_written)
 {
   t_io_t*        io   = (t_io_t*)ctx;
   const uint32_t call = io->write_calls++;
@@ -257,7 +261,7 @@ mem_write(void* ctx, uint64_t offset, const uint8_t* src, uint32_t requested, ui
 }
 
 /**
- * @test test_multi_chunk_round_trip
+ * @test internal_test_multi_chunk_round_trip
  * @brief Verify a multi-chunk RBKC output restores every source byte independently.
  * @details Checks header geometry, strictly increasing table ranges, per-stream
  *          RFC 1950 inflation, the reconstructed flat blob, and final length.
@@ -267,39 +271,46 @@ mem_write(void* ctx, uint64_t offset, const uint8_t* src, uint32_t requested, ui
  * @post Header, table, terminal offset, and reported output length agree.
  * @note Exercises production code only through public callbacks and API.
  * @since 0.1.0
+ * @par MC/DC:
+ * No compound production decision is independently varied by this nominal
+ * vector: validation OR chains are all false, the payload-overflow OR is
+ * `(F,F)->F`, and callback bounds ORs are `(F,F)->F`. The multi-chunk geometry
+ * does exercise the single `remaining < chunk_bytes` choice both ways: false
+ * for four full chunks and true for the final 904-byte chunk. These compound
+ * observations are controls only and are not claimed as independence sets.
  */
-static void test_multi_chunk_round_trip(void)
+RA8_INTERNAL static void internal_test_multi_chunk_round_trip(void)
 {
   TEST_BEGIN("rabook container multi-chunk round-trip");
-  fill_flat();
+  internal_fill_flat();
   memset(s_packed, 0, sizeof(s_packed));
   memset(s_restored, 0, sizeof(s_restored));
-  t_io_t                           io      = full_io();
-  ra8_rabook_container_workspace_t ws      = full_workspace();
+  t_io_t                           io      = internal_full_io();
+  ra8_rabook_container_workspace_t ws      = internal_full_workspace();
   uint64_t                         out_len = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_rabook_container_write(mem_read,
+                 ra8_rabook_container_write(internal_mem_read,
                                             &io,
                                             sizeof(s_flat),
                                             k_t_chunk_bytes,
-                                            mem_write,
+                                            internal_mem_write,
                                             &io,
                                             &ws,
                                             &out_len));
   TEST_ASSERT_EQ(0, memcmp(s_packed, "RBKC", k_ra8_book_container_magic_len));
-  TEST_ASSERT_EQ(k_t_chunk_bytes, rd_u32(&s_packed[4]));
-  TEST_ASSERT_EQ(k_t_flat_bytes, rd_u64(&s_packed[8]));
-  TEST_ASSERT_EQ(k_t_chunk_count, rd_u32(&s_packed[16]));
-  TEST_ASSERT_EQ(0, rd_u32(&s_packed[20]));
+  TEST_ASSERT_EQ(k_t_chunk_bytes, internal_rd_u32(&s_packed[4]));
+  TEST_ASSERT_EQ(k_t_flat_bytes, internal_rd_u64(&s_packed[8]));
+  TEST_ASSERT_EQ(k_t_chunk_count, internal_rd_u32(&s_packed[16]));
+  TEST_ASSERT_EQ(0, internal_rd_u32(&s_packed[20]));
 
   const uint64_t payload_off =
     (uint64_t)k_ra8_book_container_header_len +
     ((uint64_t)k_t_offset_count * (uint64_t)k_ra8_book_container_entry_len);
-  TEST_ASSERT_EQ(0, rd_u64(&s_packed[k_ra8_book_container_header_len]));
+  TEST_ASSERT_EQ(0, internal_rd_u64(&s_packed[k_ra8_book_container_header_len]));
   for (uint32_t i = 0U; i < k_t_chunk_count; i++) {
-    const uint64_t begin =
-      rd_u64(&s_packed[k_ra8_book_container_header_len + (i * k_ra8_book_container_entry_len)]);
-    const uint64_t end = rd_u64(
+    const uint64_t begin = internal_rd_u64(
+      &s_packed[k_ra8_book_container_header_len + (i * k_ra8_book_container_entry_len)]);
+    const uint64_t end = internal_rd_u64(
       &s_packed[k_ra8_book_container_header_len + ((i + 1U) * k_ra8_book_container_entry_len)]);
     TEST_ASSERT(end > begin);
     const uint32_t flat_off  = i * k_t_chunk_bytes;
@@ -315,13 +326,14 @@ static void test_multi_chunk_round_trip(void)
   TEST_ASSERT_EQ(0, memcmp(s_flat, s_restored, sizeof(s_flat)));
   TEST_ASSERT_EQ(
     (int64_t)out_len,
-    (int64_t)(payload_off + rd_u64(&s_packed[k_ra8_book_container_header_len +
-                                             (k_t_chunk_count * k_ra8_book_container_entry_len)])));
+    (int64_t)(payload_off +
+              internal_rd_u64(&s_packed[k_ra8_book_container_header_len +
+                                        (k_t_chunk_count * k_ra8_book_container_entry_len)])));
   TEST_END("rabook container multi-chunk round-trip");
 }
 
 /**
- * @test test_validation
+ * @test internal_test_validation
  * @brief Verify argument and workspace bounds fail before a success length.
  * @details Varies a NULL callback, zero flat length, undersized input, offset
  *          table, and compressor scratch while retaining valid peer inputs.
@@ -331,55 +343,73 @@ static void test_multi_chunk_round_trip(void)
  * @post The public output length is zeroed on entry before failure.
  * @note Validation is required to precede destination mutation.
  * @since 0.1.0
+ * @par MC/DC:
+ * Required-pointer OR: null read gives `(T,-,-,-,-)->T`; valid calls provide
+ * `(F,F,F,F,F)->F`, so the other pointer conditions are not isolated here.
+ * The workspace-member OR is observed only as its all-present false control.
+ * Size OR `(flat_len == 0) || (chunk_bytes == 0)` gets `(T,-)->T` here and
+ * `(F,F)->F` from valid vectors; zero `chunk_bytes` is not varied.
+ * Capacity OR `(chunk_bytes > input_cap) || (compressor_cap < minimum)` has
+ * the complete N+1 set: `(F,F)->F`, `(T,-)->T` for short input, and
+ * `(F,T)->T` for short compressor scratch.
+ * Count/table OR `(count == UINT32_MAX) || (offset_cap < count + 1)` gets
+ * `(F,T)->T` for the short table and `(F,F)->F` when full; its first condition
+ * is not independently exercised.
  */
-static void test_validation(void)
+RA8_INTERNAL static void internal_test_validation(void)
 {
   TEST_BEGIN("rabook container validation");
-  t_io_t                           io      = full_io();
-  ra8_rabook_container_workspace_t ws      = full_workspace();
+  t_io_t                           io      = internal_full_io();
+  ra8_rabook_container_workspace_t ws      = internal_full_workspace();
   uint64_t                         out_len = 99U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_rabook_container_write(nullptr,
                                             &io,
                                             k_t_flat_bytes,
                                             k_t_chunk_bytes,
-                                            mem_write,
+                                            internal_mem_write,
                                             &io,
                                             &ws,
                                             &out_len));
   TEST_ASSERT_EQ(0, out_len);
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_arg,
-    ra8_rabook_container_write(mem_read, &io, 0U, k_t_chunk_bytes, mem_write, &io, &ws, &out_len));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_rabook_container_write(internal_mem_read,
+                                            &io,
+                                            0U,
+                                            k_t_chunk_bytes,
+                                            internal_mem_write,
+                                            &io,
+                                            &ws,
+                                            &out_len));
   ws.input_cap = k_t_chunk_bytes - 1U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_rabook_container_write(mem_read,
+                 ra8_rabook_container_write(internal_mem_read,
                                             &io,
                                             k_t_flat_bytes,
                                             k_t_chunk_bytes,
-                                            mem_write,
+                                            internal_mem_write,
                                             &io,
                                             &ws,
                                             &out_len));
-  ws            = full_workspace();
+  ws            = internal_full_workspace();
   ws.offset_cap = k_t_offset_count - 1U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_rabook_container_write(mem_read,
+                 ra8_rabook_container_write(internal_mem_read,
                                             &io,
                                             k_t_flat_bytes,
                                             k_t_chunk_bytes,
-                                            mem_write,
+                                            internal_mem_write,
                                             &io,
                                             &ws,
                                             &out_len));
-  ws                = full_workspace();
+  ws                = internal_full_workspace();
   ws.compressor_cap = k_ra8_io_compress_scratch_bytes - 1U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_rabook_container_write(mem_read,
+                 ra8_rabook_container_write(internal_mem_read,
                                             &io,
                                             k_t_flat_bytes,
                                             k_t_chunk_bytes,
-                                            mem_write,
+                                            internal_mem_write,
                                             &io,
                                             &ws,
                                             &out_len));
@@ -387,7 +417,7 @@ static void test_validation(void)
 }
 
 /**
- * @test test_write_faults
+ * @test internal_test_write_faults
  * @brief Verify short and failed destination callbacks propagate exactly.
  * @details Selects the first prefix write so no later payload behavior obscures
  *          the short-success conversion or backend error propagation.
@@ -397,31 +427,38 @@ static void test_validation(void)
  * @post Backend failure returns ::k_ra8_fail unchanged.
  * @note The caller owns cleanup of the intentionally partial stage.
  * @since 0.1.0
+ * @par MC/DC:
+ * Callback gate `(call == short_write_call) && (copied != 0)` receives
+ * `(T,T)->T` in the short vector and `(F,T)->F` in the round-trip control,
+ * isolating the selected-call condition. No zero-byte write is issued, so the
+ * copied-size condition is not claimed independently. Production exact-write
+ * decisions are single conditions: short success flips `written == len`, and
+ * the backend-failure vector flips `err != ok`; callback bounds stay `(F,F)`.
  */
-static void test_write_faults(void)
+RA8_INTERNAL static void internal_test_write_faults(void)
 {
   TEST_BEGIN("rabook container write faults");
-  ra8_rabook_container_workspace_t ws      = full_workspace();
+  ra8_rabook_container_workspace_t ws      = internal_full_workspace();
   uint64_t                         out_len = 0U;
-  t_io_t                           io      = full_io();
+  t_io_t                           io      = internal_full_io();
   io.short_write_call                      = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_rabook_container_write(mem_read,
+                 ra8_rabook_container_write(internal_mem_read,
                                             &io,
                                             k_t_flat_bytes,
                                             k_t_chunk_bytes,
-                                            mem_write,
+                                            internal_mem_write,
                                             &io,
                                             &ws,
                                             &out_len));
-  io                 = full_io();
+  io                 = internal_full_io();
   io.fail_write_call = 0U;
   TEST_ASSERT_EQ(k_ra8_fail,
-                 ra8_rabook_container_write(mem_read,
+                 ra8_rabook_container_write(internal_mem_read,
                                             &io,
                                             k_t_flat_bytes,
                                             k_t_chunk_bytes,
-                                            mem_write,
+                                            internal_mem_write,
                                             &io,
                                             &ws,
                                             &out_len));
@@ -429,7 +466,7 @@ static void test_write_faults(void)
 }
 
 /**
- * @test test_read_and_capacity_faults
+ * @test internal_test_read_and_capacity_faults
  * @brief Verify short/failed reads and compressed-cap exhaustion propagate.
  * @details Drives the first payload read short, then failed, and finally leaves
  *          one output byte for a nonempty zlib stream.
@@ -439,44 +476,52 @@ static void test_write_faults(void)
  * @post Compression exhaustion returns ::k_ra8_err_no_mem.
  * @note No vector publishes or validates the partial destination.
  * @since 0.1.0
+ * @par MC/DC:
+ * Callback gate `(call == short_read_call) && (copied != 0)` receives
+ * `(T,T)->T` here and `(F,T)->F` in the round-trip control, isolating the
+ * selected-call condition; no zero-byte request isolates the second condition.
+ * The backend-error selector and production `got != want` checks are separate
+ * single decisions, flipped by failed and short reads. The one-byte compressed
+ * capacity flips the compressor's single overflow guard. Callback range ORs
+ * and the production payload-offset overflow OR remain `(F,F)->F` controls.
  */
-static void test_read_and_capacity_faults(void)
+RA8_INTERNAL static void internal_test_read_and_capacity_faults(void)
 {
   TEST_BEGIN("rabook container read and capacity faults");
-  ra8_rabook_container_workspace_t ws      = full_workspace();
+  ra8_rabook_container_workspace_t ws      = internal_full_workspace();
   uint64_t                         out_len = 0U;
-  t_io_t                           io      = full_io();
-  io                                       = full_io();
+  t_io_t                           io      = internal_full_io();
+  io                                       = internal_full_io();
   io.short_read_call                       = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_rabook_container_write(mem_read,
+                 ra8_rabook_container_write(internal_mem_read,
                                             &io,
                                             k_t_flat_bytes,
                                             k_t_chunk_bytes,
-                                            mem_write,
+                                            internal_mem_write,
                                             &io,
                                             &ws,
                                             &out_len));
-  io                = full_io();
+  io                = internal_full_io();
   io.fail_read_call = 0U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 ra8_rabook_container_write(mem_read,
+                 ra8_rabook_container_write(internal_mem_read,
                                             &io,
                                             k_t_flat_bytes,
                                             k_t_chunk_bytes,
-                                            mem_write,
+                                            internal_mem_write,
                                             &io,
                                             &ws,
                                             &out_len));
-  io                = full_io();
-  ws                = full_workspace();
+  io                = internal_full_io();
+  ws                = internal_full_workspace();
   ws.compressed_cap = 1U;
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
-                 ra8_rabook_container_write(mem_read,
+                 ra8_rabook_container_write(internal_mem_read,
                                             &io,
                                             k_t_flat_bytes,
                                             k_t_chunk_bytes,
-                                            mem_write,
+                                            internal_mem_write,
                                             &io,
                                             &ws,
                                             &out_len));
@@ -485,10 +530,9 @@ static void test_read_and_capacity_faults(void)
 
 int32_t main(void)
 {
-  test_multi_chunk_round_trip();
-  test_validation();
-  test_write_faults();
-  test_read_and_capacity_faults();
-  (void)fprintf(stderr, "[OK  ] test_ra8_rabook_container.c\n");
+  internal_test_multi_chunk_round_trip();
+  internal_test_validation();
+  internal_test_write_faults();
+  internal_test_read_and_capacity_faults();
   return 0;
 }

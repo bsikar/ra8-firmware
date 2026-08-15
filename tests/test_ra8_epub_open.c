@@ -1,6 +1,8 @@
 /**
  * @file test_ra8_epub_open.c
  * @brief MC/DC unit tests for libs/ra8_epub/src/ra8_epub_open.c
+ * @details Proves the public open entry point rejects each invalid media and
+ *          destination combination without dereferencing either argument.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -9,6 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_err.h"
 #include "unity_minimal.h"
@@ -25,14 +28,13 @@ typedef enum : size_t {
 static uint8_t s_blob[16];
 
 /**
- * @test test_mcdc_epub_open_media_or_book_null
+ * @test internal_test_mcdc_epub_open_media_or_book_null
  *
  * @par MC/DC:
  * Decision: ``if (media == NULL || out_book == NULL)``
  * (2 conditions, libs/ra8_epub/src/ra8_epub_open.c around line 326)
- * Per DO-178C 6.4.4.3 N+1 = 3 vectors.
- */
-static void test_mcdc_epub_open_media_or_book_null(void)
+ * Per DO-178C 6.4.4.3 N+1 = 3 vectors. @brief Verify mcdc epub open media or book null behavior. @details Executes the mcdc epub open media or book null scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_open_media_or_book_null(void)
 {
   TEST_BEGIN("epub_open MC/DC: (media==NULL || out_book==NULL)");
   ra8_epub_book_t            book  = {};
@@ -45,14 +47,13 @@ static void test_mcdc_epub_open_media_or_book_null(void)
 }
 
 /**
- * @test test_mcdc_epub_open_mem_data_or_size
+ * @test internal_test_mcdc_epub_open_mem_data_or_size
  *
  * @par MC/DC:
  * Decision: ``if (mem->data == NULL || mem->size == 0U)``
  * (2 conditions, libs/ra8_epub/src/ra8_epub_open.c around line 330)
- * Per DO-178C 6.4.4.3 N+1 = 3 vectors.
- */
-static void test_mcdc_epub_open_mem_data_or_size(void)
+ * Per DO-178C 6.4.4.3 N+1 = 3 vectors. @brief Verify mcdc epub open mem data or size behavior. @details Executes the mcdc epub open mem data or size scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_mcdc_epub_open_mem_data_or_size(void)
 {
   TEST_BEGIN("epub_open MC/DC: (mem->data==NULL || mem->size==0)");
   ra8_epub_book_t            book = {};
@@ -67,8 +68,7 @@ static void test_mcdc_epub_open_mem_data_or_size(void)
 
 int32_t main(void)
 {
-  test_mcdc_epub_open_media_or_book_null();
-  test_mcdc_epub_open_mem_data_or_size();
-  (void)fprintf(stderr, "[OK ] test_ra8_epub_open.c\n");
+  internal_test_mcdc_epub_open_media_or_book_null();
+  internal_test_mcdc_epub_open_mem_data_or_size();
   return 0;
 }

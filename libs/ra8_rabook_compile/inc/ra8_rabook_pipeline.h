@@ -26,8 +26,8 @@
  *
  * @par NASA Rule 3 (no heap)
  * stb_image is the sole allocation source; it is redirected to
- * @ref ra8_img_arena_t -- a caller-owned bump arena.  tinyxml2 uses the heap
- * (same documented deviation as ra8_epub_xml_shim.cpp).
+ * @ref ra8_img_arena_t -- a caller-owned bump arena. XML parsing uses the
+ * explicit caller-owned @ref ra8_rabook_xml_workspace_t.
  *
  * @note Not thread-safe.
  * @see ra8_rabook_compile.h   Builder API (emitter).
@@ -50,6 +50,7 @@
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_rabook_compile.h"
+#include "ra8_rabook_xml_shim.h"
 #include "ra8_reflow_image.h"
 
 #ifdef __cplusplus
@@ -107,28 +108,29 @@ extern "C" {
  * @since Version 0.1.0
  */
 typedef struct {
-  uint8_t*         xhtml;          /**< Chapter XHTML scratch buffer.                */
-  size_t           xhtml_cap;      /**< Capacity of @p xhtml in bytes.               */
-  uint8_t*         image_raw;      /**< Raw encoded cover/image byte buffer.         */
-  size_t           image_cap;      /**< Capacity of @p image_raw in bytes.           */
-  ra8_img_arena_t* img_arena;      /**< stb_image bump arena (caller-sized scratch). */
-  uint8_t*         gray;           /**< Intermediate gray-pixel downscale buffer.    */
-  uint32_t         gray_cap;       /**< Capacity of @p gray in pixels (bytes).       */
-  char*            css;            /**< Stylesheet load scratch (NUL-terminated).    */
-  size_t           css_cap;        /**< Capacity of @p css in bytes.                 */
-  bool             skip_images;    /**< Drop all images (text/CSS-only). See below.  */
-  uint16_t         max_image_edge; /**< Opt-in downscale clamp on the longer edge in
+  uint8_t*                    xhtml;          /**< Chapter XHTML scratch buffer.                */
+  size_t                      xhtml_cap;      /**< Capacity of @p xhtml in bytes.               */
+  uint8_t*                    image_raw;      /**< Raw encoded cover/image byte buffer.         */
+  size_t                      image_cap;      /**< Capacity of @p image_raw in bytes.           */
+  ra8_img_arena_t*            img_arena;      /**< stb_image bump arena (caller-sized scratch). */
+  uint8_t*                    gray;           /**< Intermediate gray-pixel downscale buffer.    */
+  uint32_t                    gray_cap;       /**< Capacity of @p gray in pixels (bytes).       */
+  char*                       css;            /**< Stylesheet load scratch (NUL-terminated).    */
+  size_t                      css_cap;        /**< Capacity of @p css in bytes.                 */
+  bool                        skip_images;    /**< Drop all images (text/CSS-only). See below.  */
+  uint16_t                    max_image_edge; /**< Opt-in downscale clamp on the longer edge in
                                    *   pixels; 0 (the zero-init default) preserves
                                    *   source resolution (full-res manga for the
                                    *   zoom loupe). Mirrors the desktop tool's
                                    *   opt-in `--max-edge` knob.                  */
-  uint8_t          pixel_format;   /**< Device profile: raster depth to emit,
+  uint8_t                     pixel_format;   /**< Device profile: raster depth to emit,
                                    *   @ref ra8_book_image_pixfmt_t. 0 (the
                                    *   zero-init default) is
                                    *   @ref k_ra8_book_pixfmt_gray4 -- the 4-bpp
                                    *   packing a grayscale panel wants;
                                    *   @ref k_ra8_book_pixfmt_gray8 keeps the
                                    *   lossless 8-bpp source for a deeper panel. */
+  ra8_rabook_xml_workspace_t* xml_workspace;  /**< Caller-owned XHTML parser state. */
 } ra8_rabook_pipeline_scratch_t;
 
 /**

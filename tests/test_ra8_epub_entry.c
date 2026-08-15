@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_epub_entry.h"
 #include "ra8_err.h"
@@ -95,7 +96,7 @@ static uint8_t s_raw[k_raw_bytes];
 static uint8_t s_ref[k_ref_cap];
 
 /** @brief container.xml pointing at OEBPS/content.opf. */
-static const char* const k_container = "<?xml version=\"1.0\"?>"
+static const char* const s_container = "<?xml version=\"1.0\"?>"
                                        "<container version=\"1.0\""
                                        " xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">"
                                        "<rootfiles><rootfile full-path=\"OEBPS/content.opf\""
@@ -103,7 +104,7 @@ static const char* const k_container = "<?xml version=\"1.0\"?>"
                                        "</rootfiles></container>";
 
 /** @brief OPF: one chapter + a big image item + a raw stored item. */
-static const char* const k_opf =
+static const char* const s_opf =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\""
   " version=\"3.0\" unique-identifier=\"id\">"
   "<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
@@ -116,19 +117,18 @@ static const char* const k_opf =
   "</manifest>"
   "<spine><itemref idref=\"ch1\"/></spine></package>";
 
-static const char* const k_ch1 =
+static const char* const s_ch1 =
   "<?xml version=\"1.0\"?><html><body><p>Entry chapter.</p></body></html>";
 
 /**
  * @brief Fill the source arrays with deterministic, semi-compressible patterns.
  * @pre ::s_big and ::s_raw exist.
- * @pre Called before ::build_archive.
+ * @pre Called before ::internal_build_archive.
  * @post ::s_big and ::s_raw hold reproducible bytes.
  * @post No archive state touched.
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static void fill_sources(void)
+ * @since 0.1.0 @details Implements the fill sources fixture operation used only by this focused test executable. */
+RA8_INTERNAL static void internal_fill_sources(void)
 {
   for (size_t i = 0U; i < (size_t)k_big_bytes; ++i) {
     s_big[i] = (uint8_t)((i % k_epub_pattern_modulus) ^
@@ -141,16 +141,15 @@ static void fill_sources(void)
 
 /**
  * @brief Build the EPUB (skeleton + DEFLATE big.dat + stored page.raw) into ::s_arc.
- * @pre ::fill_sources has run.
+ * @pre ::internal_fill_sources has run.
  * @pre ::s_arc has ::k_arc_cap bytes.
  * @post ::s_arc_size holds the finalized archive length.
  * @post ::s_arc[0 .. s_arc_size) is a valid ZIP.
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static void build_archive(void)
+ * @since 0.1.0 @details Implements the build archive fixture operation used only by this focused test executable. */
+RA8_INTERNAL static void internal_build_archive(void)
 {
-  fill_sources();
+  internal_fill_sources();
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_arc_cap) == MZ_TRUE);
@@ -161,16 +160,16 @@ static void build_archive(void)
                                     MZ_NO_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "META-INF/container.xml",
-                                    k_container,
-                                    strlen(k_container),
+                                    s_container,
+                                    strlen(s_container),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "OEBPS/content.opf",
-                                    k_opf,
-                                    strlen(k_opf),
+                                    s_opf,
+                                    strlen(s_opf),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "OEBPS/ch1.xhtml", k_ch1, strlen(k_ch1), MZ_DEFAULT_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "OEBPS/ch1.xhtml", s_ch1, strlen(s_ch1), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
   /* Large DEFLATE entry -> exercises the streaming inflate cursor. */
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
@@ -189,6 +188,7 @@ static void build_archive(void)
   TEST_ASSERT((heap != nullptr) && (hsz <= (size_t)k_arc_cap));
   memcpy(s_arc, heap, hsz);
   s_arc_size = hsz;
+  mz_free(heap);
   mz_zip_writer_end(&zip);
 }
 
@@ -202,8 +202,8 @@ typedef struct {
   size_t         size; /**< Archive length. */
 } buf_src_t;
 
-/** @brief Largest single read window served by ::direct_read. */
-static size_t g_peak = 0U;
+/** @brief Largest single read window served by ::internal_direct_read. */
+static size_t s_peak = 0U;
 
 /**
  * @brief ra8_epub streamed-media read over a resident buffer (records peak window).
@@ -213,11 +213,10 @@ static size_t g_peak = 0U;
  * @param[in]  len    Bytes requested.
  * @return Bytes copied (0 past EOF).
  * @pre `ctx` is a ::buf_src_t; `buf` holds `len` bytes.
- * @post ::g_peak tracks the largest window.
+ * @post ::s_peak tracks the largest window.
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static size_t direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
+ * @since 0.1.0 @details Implements the direct read fixture operation used only by this focused test executable. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @post Documented outputs contain the exercised result when the operation succeeds. */
+RA8_INTERNAL static size_t internal_direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
 {
   const buf_src_t* s = (const buf_src_t*)ctx;
   if (offset >= (uint64_t)s->size) {
@@ -226,8 +225,8 @@ static size_t direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
   const uint64_t avail = (uint64_t)s->size - offset;
   const size_t   n     = (len > (size_t)avail) ? (size_t)avail : len;
   memcpy(buf, &s->data[offset], n);
-  if (n > g_peak) {
-    g_peak = n;
+  if (n > s_peak) {
+    s_peak = n;
   }
   return n;
 }
@@ -241,9 +240,8 @@ static size_t direct_read(void* ctx, uint64_t offset, void* buf, size_t len)
  * @post Each streamed byte equalled ::s_big; a mismatch fails the test.
  * @post The reader is closed.
  * @note Not thread-safe.
- * @since 0.1.0
- */
-static uint64_t stream_and_verify_big(ra8_epub_book_t* book)
+ * @since 0.1.0 @details Implements the stream and verify big fixture operation used only by this focused test executable. @retval value The computed fixture value for the supplied inputs. */
+RA8_INTERNAL static uint64_t internal_stream_and_verify_big(ra8_epub_book_t* book)
 {
   ra8_epub_entry_reader_t rd   = {};
   uint64_t                size = 0U;
@@ -283,7 +281,7 @@ static uint64_t stream_and_verify_big(ra8_epub_book_t* book)
  */
 
 /**
- * @test test_entry_stream_parity_bounded
+ * @test internal_test_entry_stream_parity_bounded
  * @brief The forward cursor delivers `big.dat` byte-identically to a whole
  *        `ra8_epub_get_resource` inflate, using only a fixed 4 KiB chunk buffer --
  *        never a buffer sized to the 256 KiB entry.
@@ -293,12 +291,11 @@ static uint64_t stream_and_verify_big(ra8_epub_book_t* book)
  * single-condition early returns, and its not-ready check reuses the
  * MC/DC-covered `ra8_epub_internal_book_not_ready` helper. The assertions are
  * independent equalities over the streamed bytes, the reported size, and the
- * whole-inflate oracle.)
- */
-static void test_entry_stream_parity_bounded(void)
+ * whole-inflate oracle.) @details Executes the entry stream parity bounded scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_entry_stream_parity_bounded(void)
 {
   TEST_BEGIN("epub entry: streaming cursor == whole-inflate in a bounded buffer");
-  build_archive();
+  internal_build_archive();
 
   ra8_epub_book_t            book = {};
   const ra8_epub_mem_media_t mem  = {.data = s_arc, .size = s_arc_size};
@@ -311,7 +308,7 @@ static void test_entry_stream_parity_bounded(void)
   TEST_ASSERT_EQ(0, memcmp(s_ref, s_big, (size_t)k_big_bytes));
 
   /* Streamed, chunk by chunk, into a fixed 4 KiB buffer -- provably parity. */
-  const uint64_t streamed = stream_and_verify_big(&book);
+  const uint64_t streamed = internal_stream_and_verify_big(&book);
   TEST_ASSERT_EQ(ref_got, streamed);
   /* The resident chunk buffer is 64x smaller than the entry it paged. */
   TEST_ASSERT(((size_t)k_chunk * 64U) == (size_t)k_big_bytes);
@@ -326,30 +323,31 @@ static void test_entry_stream_parity_bounded(void)
  */
 
 /**
- * @test test_entry_stream_over_streamed_book
+ * @test internal_test_entry_stream_over_streamed_book
  * @brief Streaming `big.dat` from a book opened with `ra8_epub_open_streamed()`
  *        (no resident archive) yields the same bytes while the backing read window
  *        stays bounded (<= miniz's 64 KiB IO buffer), never the whole entry.
  *
  * @par MC/DC:
- * (no compound decisions authored under test; see test_entry_stream_parity_bounded.)
- */
-static void test_entry_stream_over_streamed_book(void)
+ * (no compound decisions authored under test; see internal_test_entry_stream_parity_bounded.) @details Executes the entry stream over streamed book scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_entry_stream_over_streamed_book(void)
 {
   TEST_BEGIN("epub entry: streaming cursor over a streamed book, bounded window");
-  build_archive();
-  g_peak = 0U;
+  internal_build_archive();
+  s_peak = 0U;
 
   buf_src_t               src   = {.data = s_arc, .size = s_arc_size};
-  ra8_epub_stream_media_t media = {.read = direct_read, .ctx = &src, .size = (uint64_t)s_arc_size};
+  ra8_epub_stream_media_t media = {.read = internal_direct_read,
+                                   .ctx  = &src,
+                                   .size = (uint64_t)s_arc_size};
   ra8_epub_book_t         book  = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open_streamed(&media, "entry.epub", &book));
   TEST_ASSERT(book.zip_bytes == nullptr);
 
-  const uint64_t streamed = stream_and_verify_big(&book);
+  const uint64_t streamed = internal_stream_and_verify_big(&book);
   TEST_ASSERT_EQ(k_big_bytes, streamed);
   /* Every backing fetch is a bounded miniz chunk, never the whole entry. */
-  TEST_ASSERT(g_peak <= (size_t)k_io_bound);
+  TEST_ASSERT(s_peak <= (size_t)k_io_bound);
   TEST_ASSERT((size_t)k_io_bound < (size_t)k_big_bytes);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
@@ -362,19 +360,18 @@ static void test_entry_stream_over_streamed_book(void)
  */
 
 /**
- * @test test_entry_pread_windows
+ * @test internal_test_entry_pread_windows
  * @brief `ra8_epub_entry_pread` reads exact windows of the stored `page.raw`,
  *        returns short at the tail, zero past EOF, and rejects the DEFLATE entry.
  *
  * @par MC/DC:
  * (no compound decisions authored under test; pread's guards are independent
  * single-condition checks. Assertions are independent equalities over each window
- * vs the source oracle plus the two rejection codes.)
- */
-static void test_entry_pread_windows(void)
+ * vs the source oracle plus the two rejection codes.) @details Executes the entry pread windows scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_entry_pread_windows(void)
 {
   TEST_BEGIN("epub entry: positioned read of a stored entry");
-  build_archive();
+  internal_build_archive();
   ra8_epub_book_t            book = {};
   const ra8_epub_mem_media_t mem  = {.data = s_arc, .size = s_arc_size};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&mem, "entry.epub", &book));
@@ -426,7 +423,7 @@ static void test_entry_pread_windows(void)
  */
 
 /**
- * @test test_entry_guards
+ * @test internal_test_entry_guards
  * @brief NULL / not-open / bad-size / not-found guards on all four entry calls.
  *
  * @par MC/DC:
@@ -434,12 +431,11 @@ static void test_entry_pread_windows(void)
  * single-condition early return -- the NULL checks are `RA8_CHECK_NULL_PTR`
  * one-condition macros and the not-ready guard reuses the MC/DC-covered
  * `ra8_epub_internal_book_not_ready` helper, whose two conditions are exercised
- * here by a closed book.)
- */
-static void test_entry_guards(void)
+ * here by a closed book.) @details Executes the entry guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_entry_guards(void)
 {
   TEST_BEGIN("epub entry: argument + state guards");
-  build_archive();
+  internal_build_archive();
   ra8_epub_book_t            book = {};
   const ra8_epub_mem_media_t mem  = {.data = s_arc, .size = s_arc_size};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&mem, "entry.epub", &book));
@@ -504,10 +500,9 @@ static void test_entry_guards(void)
  */
 int32_t main(void)
 {
-  test_entry_stream_parity_bounded();
-  test_entry_stream_over_streamed_book();
-  test_entry_pread_windows();
-  test_entry_guards();
-  (void)fprintf(stderr, "[OK  ] test_ra8_epub_entry.c\n");
+  internal_test_entry_stream_parity_bounded();
+  internal_test_entry_stream_over_streamed_book();
+  internal_test_entry_pread_windows();
+  internal_test_entry_guards();
   return 0;
 }

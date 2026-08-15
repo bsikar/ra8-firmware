@@ -51,7 +51,7 @@
  * @since 0.1.0
  */
 RA8_INTERNAL
-static size_t priv_fs_stream_read(void* ctx, uint64_t offset, void* buf, size_t len)
+static size_t internal_fs_stream_read(void* ctx, uint64_t offset, void* buf, size_t len)
 {
   ra8_epub_stream_fs_ctx_t* io = (ra8_epub_stream_fs_ctx_t*)ctx;
   if (io == nullptr || io->file == nullptr || buf == nullptr) {
@@ -102,7 +102,7 @@ static size_t priv_fs_stream_read(void* ctx, uint64_t offset, void* buf, size_t 
 
   io->file                            = file;
   const ra8_epub_stream_media_t media = {
-    .read = priv_fs_stream_read,
+    .read = internal_fs_stream_read,
     .ctx  = io,
     .size = (uint64_t)size,
   };

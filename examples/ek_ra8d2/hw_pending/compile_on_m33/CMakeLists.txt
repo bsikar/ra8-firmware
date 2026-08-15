@@ -21,10 +21,7 @@ cmake_minimum_required(VERSION 3.20)
 # the standalone case to apply the shared VERSION and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-  # CXX is required for the CPU1 image: it links the EPUB front end whose XML
-  # shim + tinyxml2 are C++ (#149 stage a0). The aggregate repo build already
-  # enables CXX at the root; this is only for the standalone `cmake -S .`.
-  project(compile_on_m33 LANGUAGES C CXX ASM)
+  project(compile_on_m33 LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
@@ -59,7 +56,7 @@ target_include_directories(compile_on_m33.elf PRIVATE ${RA8_REPO_ROOT}/libs/ra8_
 # so it needs ra8_book's and ra8_rabook_compile's include dirs. The emitter only
 # leans on memcpy/memset/strlen (newlib) plus ra8_log/ra8_check macros; defining
 # RA8_LOG_LEVEL=0 collapses every ra8_log call to a no-op so no logging backend is
-# dragged into the second core (it would otherwise resolve to internal_ra8_log_*).
+# dragged into the second core (it would otherwise resolve to ra8_log_emit_*).
 #############################################################################
 ra8_add_cpu1_image(
   PARENT compile_on_m33
@@ -74,13 +71,13 @@ ra8_add_cpu1_image(
            ${RA8_REPO_ROOT}/libs/ra8_reflow/inc
            ${RA8_REPO_ROOT}/libs/ra8_img/inc
            ${RA8_REPO_ROOT}/libs/ra8_fs/inc
+           ${RA8_REPO_ROOT}/libs/ra8_xml/inc
            ${RA8_REPO_ROOT}/libs/third_party/miniz
-           ${RA8_REPO_ROOT}/libs/third_party/tinyxml2
            ${RA8_REPO_ROOT}/libs/third_party/stb
 )
 
 # #149 stage a1 -- the M33 runs the REAL text/CSS/SVG EPUB->RABOOK1 compile. It
-# links the EPUB front end (miniz ZIP + tinyxml2 XHTML) plus the rabook pipeline
+# links the EPUB front end (miniz ZIP + bounded XML reader) plus the rabook pipeline
 # and emitter, and cpu1_main.c calls ra8_rabook_compile_from_epub_to_buffer over
 # the baked parity fixture (no filesystem -- it finalizes into the shared SRAM2
 # buffer). RA8_RABOOK_NO_RASTER compiles out the stb_image raster path (the
@@ -89,7 +86,6 @@ ra8_add_cpu1_image(
 # ra8_fs.c is not linked either (only ra8_fs.h is on the include path).
 if(TARGET compile_on_m33_cpu1.elf)
   file(GLOB _c1_epub_c CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_epub/src/*.c)
-  file(GLOB _c1_epub_cpp CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_epub/src/*.cpp)
   target_sources(
     compile_on_m33_cpu1.elf
     PRIVATE ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
@@ -98,13 +94,14 @@ if(TARGET compile_on_m33_cpu1.elf)
             # image hand-picks its sources, so link the core policy TU explicitly.
             ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
             ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_compile.c
+            ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_finalize.c
             ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_gray4.c
-            ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.cpp
+            ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.c
             ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c
+            ${RA8_REPO_ROOT}/libs/ra8_xml/src/ra8_xml.c
+            ${RA8_REPO_ROOT}/libs/ra8_xml/src/ra8_xml_doctype.c
             ${_c1_epub_c}
-            ${_c1_epub_cpp}
             ${RA8_REPO_ROOT}/libs/third_party/miniz/miniz.c
-            ${RA8_REPO_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
   )
   # MINIZ_NO_STDIO/NO_TIME on EVERY TU that includes miniz.h (miniz.c + ra8_epub)
   # so the header ABI matches and miniz.c's fopen/utime file path (absent on
@@ -113,8 +110,8 @@ if(TARGET compile_on_m33_cpu1.elf)
     compile_on_m33_cpu1.elf PRIVATE RA8_LOG_LEVEL=0 MINIZ_NO_STDIO MINIZ_NO_TIME
                                     RA8_RABOOK_NO_RASTER
   )
-  # The vendored miniz.c / tinyxml2.cpp cannot satisfy the first-party -Werror
-  # set; -w them (the first-party ra8_epub/rabook .c/.cpp keep the full gate).
+  # Vendored miniz.c cannot satisfy the first-party -Werror set; suppress its
+  # warnings while every first-party XML/EPUB/RABOOK C source keeps the gate.
   # miniz ALSO needs the same -fno-strict-aliasing the M85 SOUP build uses, or
   # the M33 blob diverges from the byte-identical M85 path (a prior host
   # divergence was exactly miniz strict-aliasing UB under -Os).
@@ -122,11 +119,6 @@ if(TARGET compile_on_m33_cpu1.elf)
     SOURCE ${RA8_REPO_ROOT}/libs/third_party/miniz/miniz.c
     APPEND
     PROPERTY COMPILE_OPTIONS -w -fno-strict-aliasing
-  )
-  set_property(
-    SOURCE ${RA8_REPO_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
-    APPEND
-    PROPERTY COMPILE_OPTIONS -w
   )
   # Force-keep the parser/emitter entry points the linker would otherwise
   # --gc-sections away (cpu1_main.c only calls the emitter PoC), so the .map

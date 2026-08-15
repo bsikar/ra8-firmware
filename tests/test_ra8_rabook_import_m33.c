@@ -58,7 +58,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -115,7 +114,9 @@ static mem_disk_t s_disk = {};
 /* RAM block backend (4 MiB -> FAT16 via ra8_fs_format) */
 /* -------------------------------------------------------------------------- */
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Provide the file-local mem read test helper. @details Implements the mem read fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] count Fixture argument governed by the exercised interface contract. @param[out] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -127,7 +128,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Provide the file-local mem write test helper. @details Implements the mem write fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] count Fixture argument governed by the exercised interface contract. @param[in] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -139,7 +142,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Provide the file-local mem capacity test helper. @details Implements the mem capacity fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[out] block_count Fixture argument governed by the exercised interface contract. @param[out] block_size Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   *block_count     = disk->block_count;
@@ -148,9 +153,9 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
@@ -166,7 +171,8 @@ static const ra8_fs_backend_t s_backend = {
  * @post @p s_disk.bytes owns a fresh zeroed backing store.
  * @note Not thread-safe.
  */
-static ra8_fs_mount_t* fresh_volume_seeded(const char* src_path, const uint8_t* bytes, uint32_t len)
+RA8_INTERNAL static ra8_fs_mount_t*
+internal_fresh_volume_seeded(const char* src_path, const uint8_t* bytes, uint32_t len)
 {
   free(s_disk.bytes);
   s_disk.block_count = (uint32_t)k_disk_blocks;
@@ -195,24 +201,23 @@ static ra8_fs_mount_t* fresh_volume_seeded(const char* src_path, const uint8_t* 
  * @post @p s_disk.bytes owns a fresh zeroed backing store.
  * @note Not thread-safe. Use for cases where a mock ignores the source bytes.
  */
-static ra8_fs_mount_t* fresh_volume_with_epub(const char* src_path)
+RA8_INTERNAL static ra8_fs_mount_t* internal_fresh_volume_with_epub(const char* src_path)
 {
   /* The mock dispatch ignores the bytes; the adapter only needs the read to
    * succeed, so seed an arbitrary non-empty payload. */
   static const uint8_t k_dummy_epub[] = "PK\x03\x04 not-a-real-epub, the M33 mock ignores it";
-  return fresh_volume_seeded(src_path, k_dummy_epub, (uint32_t)sizeof(k_dummy_epub));
+  return internal_fresh_volume_seeded(src_path, k_dummy_epub, (uint32_t)sizeof(k_dummy_epub));
 }
 
 /**
  * @brief Unmount @p mount and release the RAM backing store.
  * @param[in,out] mount Mounted volume to release.
- * @pre @p mount is a live mount from @ref fresh_volume_with_epub.
+ * @pre @p mount is a live mount from @ref internal_fresh_volume_with_epub.
  * @pre Every open file on @p mount has been closed.
  * @post @p mount is unmounted and @p s_disk.bytes is freed.
  * @post @p s_disk.bytes is reset to NULL.
- * @note Not thread-safe.
- */
-static void teardown(ra8_fs_mount_t* mount)
+ * @note Not thread-safe. @details Implements the teardown fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_teardown(ra8_fs_mount_t* mount)
 {
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
   free(s_disk.bytes);
@@ -236,14 +241,13 @@ static void teardown(ra8_fs_mount_t* mount)
  * @pre @p out_cap is the caller's blob buffer capacity.
  * @post On success @p out_buf holds the golden blob and @p *out_len its length.
  * @post @p ctx / @p epub are untouched.
- * @note Stateless; safe to call repeatedly.
- */
-static ra8_err_t mock_dispatch_golden(void*          ctx,
-                                      const uint8_t* epub,
-                                      uint32_t       epub_len,
-                                      uint8_t*       out_buf,
-                                      uint32_t       out_cap,
-                                      uint32_t*      out_len)
+ * @note Stateless; safe to call repeatedly. @details Implements the mock dispatch golden fixture operation used only by this focused test executable. @retval k_ra8_ok The fixture operation completed successfully. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_mock_dispatch_golden(void*          ctx,
+                                                            const uint8_t* epub,
+                                                            uint32_t       epub_len,
+                                                            uint8_t*       out_buf,
+                                                            uint32_t       out_cap,
+                                                            uint32_t*      out_len)
 {
   (void)ctx;
   (void)epub;
@@ -269,16 +273,15 @@ static ra8_err_t mock_dispatch_golden(void*          ctx,
  * @pre @p out_cap holds at least the golden length.
  * @post @p out_buf holds a blob whose body CRC no longer matches its header.
  * @post @p ctx / @p epub are untouched.
- * @note Models a cross-core transfer slip the adapter must catch via validation.
- */
-static ra8_err_t mock_dispatch_corrupt(void*          ctx,
-                                       const uint8_t* epub,
-                                       uint32_t       epub_len,
-                                       uint8_t*       out_buf,
-                                       uint32_t       out_cap,
-                                       uint32_t*      out_len)
+ * @note Models a cross-core transfer slip the adapter must catch via validation. @details Implements the mock dispatch corrupt fixture operation used only by this focused test executable. @retval k_ra8_ok The fixture operation completed successfully. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_mock_dispatch_corrupt(void*          ctx,
+                                                             const uint8_t* epub,
+                                                             uint32_t       epub_len,
+                                                             uint8_t*       out_buf,
+                                                             uint32_t       out_cap,
+                                                             uint32_t*      out_len)
 {
-  ra8_err_t err = mock_dispatch_golden(ctx, epub, epub_len, out_buf, out_cap, out_len);
+  ra8_err_t err = internal_mock_dispatch_golden(ctx, epub, epub_len, out_buf, out_cap, out_len);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -286,8 +289,14 @@ static ra8_err_t mock_dispatch_corrupt(void*          ctx,
   return k_ra8_ok;
 }
 
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTBEGIN(readability-non-const-parameter)
 /**
  * @brief Mock dispatch: report a worker failure (the M33 never produced a blob).
+ * @details Implements the dispatch-error fixture used by this focused test.
  * @param[in]  ctx      Unused mock context.
  * @param[in]  epub     Unused source bytes.
  * @param[in]  epub_len Unused source length.
@@ -300,18 +309,15 @@ static ra8_err_t mock_dispatch_corrupt(void*          ctx,
  * @post No output is written.
  * @post @p ctx / @p epub / @p out_buf are untouched.
  * @note Models the M33 stalling or faulting before completion.
+ * @retval k_ra8_err_hw_error The simulated worker failed before producing output.
+ * @since Version 0.1.0
  */
-/* The pointer parameters below cannot be const: this mock implements a
- * function-pointer interface (the DI seam under test), so its signature is
- * fixed by the typedef it is assigned to -- adding const changes the
- * function type and the assignment stops compiling. */
-// NOLINTBEGIN(readability-non-const-parameter)
-static ra8_err_t mock_dispatch_error(void*          ctx,
-                                     const uint8_t* epub,
-                                     uint32_t       epub_len,
-                                     uint8_t*       out_buf,
-                                     uint32_t       out_cap,
-                                     uint32_t*      out_len)
+RA8_INTERNAL static ra8_err_t internal_mock_dispatch_error(void*          ctx,
+                                                           const uint8_t* epub,
+                                                           uint32_t       epub_len,
+                                                           uint8_t*       out_buf,
+                                                           uint32_t       out_cap,
+                                                           uint32_t*      out_len)
 // NOLINTEND(readability-non-const-parameter)
 {
   (void)ctx;
@@ -323,8 +329,14 @@ static ra8_err_t mock_dispatch_error(void*          ctx,
   return k_ra8_err_hw_error;
 }
 
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTBEGIN(readability-non-const-parameter)
 /**
  * @brief Mock dispatch: report a transport overflow (blob did not fit the shim).
+ * @details Implements the dispatch-OOM fixture used by this focused test.
  * @param[in]  ctx      Unused mock context.
  * @param[in]  epub     Unused source bytes.
  * @param[in]  epub_len Unused source length.
@@ -337,18 +349,15 @@ static ra8_err_t mock_dispatch_error(void*          ctx,
  * @post No output is written.
  * @post @p ctx / @p epub / @p out_buf are untouched.
  * @note Models the dispatched blob exceeding the cross-core transport buffer.
+ * @retval k_ra8_err_no_mem The simulated transport buffer was too small.
+ * @since Version 0.1.0
  */
-/* The pointer parameters below cannot be const: this mock implements a
- * function-pointer interface (the DI seam under test), so its signature is
- * fixed by the typedef it is assigned to -- adding const changes the
- * function type and the assignment stops compiling. */
-// NOLINTBEGIN(readability-non-const-parameter)
-static ra8_err_t mock_dispatch_oom(void*          ctx,
-                                   const uint8_t* epub,
-                                   uint32_t       epub_len,
-                                   uint8_t*       out_buf,
-                                   uint32_t       out_cap,
-                                   uint32_t*      out_len)
+RA8_INTERNAL static ra8_err_t internal_mock_dispatch_oom(void*          ctx,
+                                                         const uint8_t* epub,
+                                                         uint32_t       epub_len,
+                                                         uint8_t*       out_buf,
+                                                         uint32_t       out_cap,
+                                                         uint32_t*      out_len)
 // NOLINTEND(readability-non-const-parameter)
 {
   (void)ctx;
@@ -360,8 +369,14 @@ static ra8_err_t mock_dispatch_oom(void*          ctx,
   return k_ra8_err_no_mem;
 }
 
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTBEGIN(readability-non-const-parameter)
 /**
  * @brief Mock dispatch: report a non-offload error (must NOT trigger fallback).
+ * @details Implements the non-fallback dispatch fixture used by this focused test.
  * @param[in]  ctx      Unused mock context.
  * @param[in]  epub     Unused source bytes.
  * @param[in]  epub_len Unused source length.
@@ -374,18 +389,15 @@ static ra8_err_t mock_dispatch_oom(void*          ctx,
  * @post No output is written.
  * @post @p ctx / @p epub / @p out_buf are untouched.
  * @note A code outside {hw_error, no_mem} the fallback classifier must reject.
+ * @retval k_ra8_err_invalid_arg The simulated worker rejected the request.
+ * @since Version 0.1.0
  */
-/* The pointer parameters below cannot be const: this mock implements a
- * function-pointer interface (the DI seam under test), so its signature is
- * fixed by the typedef it is assigned to -- adding const changes the
- * function type and the assignment stops compiling. */
-// NOLINTBEGIN(readability-non-const-parameter)
-static ra8_err_t mock_dispatch_other(void*          ctx,
-                                     const uint8_t* epub,
-                                     uint32_t       epub_len,
-                                     uint8_t*       out_buf,
-                                     uint32_t       out_cap,
-                                     uint32_t*      out_len)
+RA8_INTERNAL static ra8_err_t internal_mock_dispatch_other(void*          ctx,
+                                                           const uint8_t* epub,
+                                                           uint32_t       epub_len,
+                                                           uint8_t*       out_buf,
+                                                           uint32_t       out_cap,
+                                                           uint32_t*      out_len)
 // NOLINTEND(readability-non-const-parameter)
 {
   (void)ctx;
@@ -437,19 +449,20 @@ typedef enum : uint32_t {
   k_ic_cache_buckets     = 16U,   /**< Cache hash buckets.          */
 } incore_cache_t;
 
-static ra8_book_chapter_t    s_ic_chapters[k_ic_chapter_cap];
-static ra8_book_node_t       s_ic_nodes[k_ic_node_cap];
-static ra8_book_attr_t       s_ic_attrs[k_ic_attr_cap];
-static ra8_book_stylesheet_t s_ic_styles[k_ic_style_cap];
-static ra8_book_image_t      s_ic_images[k_ic_image_cap];
-static char                  s_ic_strpool[k_ic_string_cap];
-static uint8_t               s_ic_imgpool[k_ic_imgpool_cap];
-static uint8_t               s_ic_out[k_ic_out_cap];
-static uint8_t               s_ic_xhtml[k_ic_xhtml_cap];
-static uint8_t               s_ic_image_raw[k_ic_imgraw_cap];
-static uint8_t               s_ic_img_scratch[k_ic_arena_cap];
-static uint8_t               s_ic_gray[k_ic_gray_cap];
-static char                  s_ic_css[k_ic_css_cap];
+static ra8_book_chapter_t         s_ic_chapters[k_ic_chapter_cap];
+static ra8_book_node_t            s_ic_nodes[k_ic_node_cap];
+static ra8_book_attr_t            s_ic_attrs[k_ic_attr_cap];
+static ra8_book_stylesheet_t      s_ic_styles[k_ic_style_cap];
+static ra8_book_image_t           s_ic_images[k_ic_image_cap];
+static char                       s_ic_strpool[k_ic_string_cap];
+static uint8_t                    s_ic_imgpool[k_ic_imgpool_cap];
+static uint8_t                    s_ic_out[k_ic_out_cap];
+static uint8_t                    s_ic_xhtml[k_ic_xhtml_cap];
+static ra8_rabook_xml_workspace_t s_ic_xml_workspace;
+static uint8_t                    s_ic_image_raw[k_ic_imgraw_cap];
+static uint8_t                    s_ic_img_scratch[k_ic_arena_cap];
+static uint8_t                    s_ic_gray[k_ic_gray_cap];
+static char                       s_ic_css[k_ic_css_cap];
 
 /** @brief Fixed frame pool the streamed in-core source is paged through. */
 static uint8_t s_ic_cache_frames[k_ic_cache_frames * k_ic_cache_frame_bytes];
@@ -473,9 +486,8 @@ static ra8_img_arena_t               s_ic_arena = {};
  * @pre Called before each in-core compile so the arena cursor is reset.
  * @post @p s_ic_bufs / @p s_ic_scr reference the arenas with a zeroed cursor.
  * @post No state outside the in-core view structs is mutated.
- * @note Not thread-safe (returns views over shared file-scope buffers).
- */
-static void make_incore_views(void)
+ * @note Not thread-safe (returns views over shared file-scope buffers). @details Implements the make incore views fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_make_incore_views(void)
 {
   s_ic_bufs = (ra8_rabook_buffers_t){
     .chapters       = s_ic_chapters,
@@ -497,15 +509,16 @@ static void make_incore_views(void)
   };
   s_ic_arena = (ra8_img_arena_t){s_ic_img_scratch, sizeof(s_ic_img_scratch), 0U, 0U};
   s_ic_scr   = (ra8_rabook_pipeline_scratch_t){
-    .xhtml     = s_ic_xhtml,
-    .xhtml_cap = sizeof(s_ic_xhtml),
-    .image_raw = s_ic_image_raw,
-    .image_cap = sizeof(s_ic_image_raw),
-    .img_arena = &s_ic_arena,
-    .gray      = s_ic_gray,
-    .gray_cap  = (uint32_t)k_ic_gray_cap,
-    .css       = s_ic_css,
-    .css_cap   = sizeof(s_ic_css),
+    .xhtml         = s_ic_xhtml,
+    .xhtml_cap     = sizeof(s_ic_xhtml),
+    .image_raw     = s_ic_image_raw,
+    .image_cap     = sizeof(s_ic_image_raw),
+    .img_arena     = &s_ic_arena,
+    .gray          = s_ic_gray,
+    .gray_cap      = (uint32_t)k_ic_gray_cap,
+    .css           = s_ic_css,
+    .css_cap       = sizeof(s_ic_css),
+    .xml_workspace = &s_ic_xml_workspace,
   };
 }
 
@@ -517,11 +530,10 @@ static void make_incore_views(void)
  * @post @p ctx references @p s_ic_book, the source page-cache storage, and the
  *       wired arena views.
  * @post @p s_ic_book is re-zeroed so a prior compile cannot leak in.
- * @note Not thread-safe (returns a view over shared file-scope buffers).
- */
-static void make_incore_ctx(ra8_rabook_import_compiler_ctx_t* ctx)
+ * @note Not thread-safe (returns a view over shared file-scope buffers). @details Implements the make incore ctx fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_make_incore_ctx(ra8_rabook_import_compiler_ctx_t* ctx)
 {
-  make_incore_views();
+  internal_make_incore_views();
   s_ic_book = (ra8_epub_book_t){};
   *ctx      = (ra8_rabook_import_compiler_ctx_t){
     .epub               = &s_ic_book,
@@ -546,9 +558,8 @@ static void make_incore_ctx(ra8_rabook_import_compiler_ctx_t* ctx)
  * @pre @p s_readback has room for the golden blob.
  * @post @p s_readback holds the blob bytes read back from @p path.
  * @post The test fails unless the blob equals the desktop golden and validates.
- * @note Not thread-safe (reuses the shared @p s_readback buffer).
- */
-static void assert_output_is_golden(ra8_fs_mount_t* mount, const char* path)
+ * @note Not thread-safe (reuses the shared @p s_readback buffer). @details Implements the assert output is golden fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_assert_output_is_golden(ra8_fs_mount_t* mount, const char* path)
 {
   ra8_fs_file_t* file = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, path, k_ra8_fs_mode_read, &file));
@@ -572,10 +583,9 @@ static void assert_output_is_golden(ra8_fs_mount_t* mount, const char* path)
  * @pre The file-scope adapter buffers are defined (always true at TU scope).
  * @post @p ctx references @p s_epub_load / @p s_blob and @p dispatch.
  * @post No global state beyond @p ctx is mutated.
- * @note Not thread-safe (returns a view over shared file-scope buffers).
- */
-static void make_cookie(ra8_rabook_import_compiler_m33_ctx_t* ctx,
-                        ra8_dual_core_compile_dispatch_fn     dispatch)
+ * @note Not thread-safe (returns a view over shared file-scope buffers). @details Implements the make cookie fixture operation used only by this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_make_cookie(ra8_rabook_import_compiler_m33_ctx_t* ctx,
+                                              ra8_dual_core_compile_dispatch_fn     dispatch)
 {
   *ctx = (ra8_rabook_import_compiler_m33_ctx_t){
     .epub_load_buf = s_epub_load,
@@ -595,15 +605,14 @@ static void make_cookie(ra8_rabook_import_compiler_m33_ctx_t* ctx,
  * k_ra8_ok, so `s_offload_or_fallback` short-circuits at `if (err == k_ra8_ok)`
  * and the module's sole compound `s_is_dispatch_failure` is never reached; every
  * guard on this happy path -- the RA8_CHECK_NULL_PTR argument checks, the
- * `size > cap` transport check, the `err != k_ra8_ok` checks -- is single-condition)
- */
-static void test_m33_adapter_writes_validated_blob(void)
+ * `size > cap` transport check, the `err != k_ra8_ok` checks -- is single-condition) @brief Verify m33 adapter writes validated blob behavior. @details Executes the m33 adapter writes validated blob scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_m33_adapter_writes_validated_blob(void)
 {
   TEST_BEGIN("ra8_rabook_import_m33: golden dispatch -> validated .rabook written");
-  ra8_fs_mount_t* mount = fresh_volume_with_epub("SRC.EPB");
+  ra8_fs_mount_t* mount = internal_fresh_volume_with_epub("SRC.EPB");
 
   ra8_rabook_import_compiler_m33_ctx_t ctx = {};
-  make_cookie(&ctx, mock_dispatch_golden);
+  internal_make_cookie(&ctx, internal_mock_dispatch_golden);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
 
@@ -617,7 +626,7 @@ static void test_m33_adapter_writes_validated_blob(void)
   TEST_ASSERT_EQ(0, memcmp(s_readback, s_parity_golden, (size_t)got));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(s_readback, (size_t)got));
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import_m33: golden dispatch -> validated .rabook written");
 }
 
@@ -631,23 +640,22 @@ static void test_m33_adapter_writes_validated_blob(void)
  * `(err == k_ra8_err_hw_error) || (err == k_ra8_err_no_mem)` only at its
  * both-false control: the validation error is outside {hw_error, no_mem}, the
  * guard is false, and the error propagates with no output written. That
- * decision's N+1 = 3 vectors live in test_m33_adapter_falls_back_on_timeout,
- * _falls_back_on_oom, and _no_fallback_on_other_error)
- */
-static void test_m33_adapter_rejects_corrupt_blob(void)
+ * decision's N+1 = 3 vectors live in internal_test_m33_adapter_falls_back_on_timeout,
+ * _falls_back_on_oom, and _no_fallback_on_other_error) @brief Verify m33 adapter rejects corrupt blob behavior. @details Executes the m33 adapter rejects corrupt blob scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_m33_adapter_rejects_corrupt_blob(void)
 {
   TEST_BEGIN("ra8_rabook_import_m33: corrupt blob -> rejected, no output");
-  ra8_fs_mount_t* mount = fresh_volume_with_epub("SRC.EPB");
+  ra8_fs_mount_t* mount = internal_fresh_volume_with_epub("SRC.EPB");
 
   ra8_rabook_import_compiler_m33_ctx_t ctx = {};
-  make_cookie(&ctx, mock_dispatch_corrupt);
+  internal_make_cookie(&ctx, internal_mock_dispatch_corrupt);
   TEST_ASSERT(ra8_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB") != k_ra8_ok);
 
   /* The validation failure must leave no output file behind. */
   ra8_fs_file_t* file = nullptr;
   TEST_ASSERT(ra8_fs_open(mount, "OUT.RAB", k_ra8_fs_mode_read, &file) != k_ra8_ok);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import_m33: corrupt blob -> rejected, no output");
 }
 
@@ -659,26 +667,25 @@ static void test_m33_adapter_rejects_corrupt_blob(void)
  * `(err == k_ra8_err_hw_error) || (err == k_ra8_err_no_mem)` (2 conditions, OR;
  * ra8_rabook_import_compiler.c). The mock returns k_ra8_err_hw_error with no
  * fallback bound, so this case drives C1=T (hw_error -> short-circuit -> true) --
- * the same true leg as test_m33_adapter_falls_back_on_timeout; the N+1 = 3 set is
+ * the same true leg as internal_test_m33_adapter_falls_back_on_timeout; the N+1 = 3 set is
  * completed by _falls_back_on_oom (C2=T) and _no_fallback_on_other_error (both
  * false). This case additionally drives the single-condition
  * `ctx->fallback == nullptr` propagate arm (fallback NULL -> err returned
- * verbatim, no output written).
- */
-static void test_m33_adapter_propagates_dispatch_error(void)
+ * verbatim, no output written). @brief Verify m33 adapter propagates dispatch error behavior. @details Executes the m33 adapter propagates dispatch error scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_m33_adapter_propagates_dispatch_error(void)
 {
   TEST_BEGIN("ra8_rabook_import_m33: dispatch error -> propagated, no output");
-  ra8_fs_mount_t* mount = fresh_volume_with_epub("SRC.EPB");
+  ra8_fs_mount_t* mount = internal_fresh_volume_with_epub("SRC.EPB");
 
   ra8_rabook_import_compiler_m33_ctx_t ctx = {};
-  make_cookie(&ctx, mock_dispatch_error);
+  internal_make_cookie(&ctx, internal_mock_dispatch_error);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
                  ra8_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
 
   ra8_fs_file_t* file = nullptr;
   TEST_ASSERT(ra8_fs_open(mount, "OUT.RAB", k_ra8_fs_mode_read, &file) != k_ra8_ok);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import_m33: dispatch error -> propagated, no output");
 }
 
@@ -689,23 +696,22 @@ static void test_m33_adapter_propagates_dispatch_error(void)
  * (no compound decisions in this case -- it drives the single-condition
  * RA8_CHECK_NULL_PTR guards of ra8_rabook_import_compile_adapter_m33: a NULL
  * compile_ctx and a NULL `ctx->dispatch` cookie field each return
- * k_ra8_err_null_ptr; no `&&` or `||` decision is reached)
- */
-static void test_m33_adapter_null_guards(void)
+ * k_ra8_err_null_ptr; no `&&` or `||` decision is reached) @brief Verify m33 adapter null guards behavior. @details Executes the m33 adapter null guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_m33_adapter_null_guards(void)
 {
   TEST_BEGIN("ra8_rabook_import_m33: null guards");
-  ra8_fs_mount_t* mount = fresh_volume_with_epub("SRC.EPB");
+  ra8_fs_mount_t* mount = internal_fresh_volume_with_epub("SRC.EPB");
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_rabook_import_compile_adapter_m33(nullptr, mount, "SRC.EPB", "OUT.RAB"));
 
   ra8_rabook_import_compiler_m33_ctx_t ctx = {};
-  make_cookie(&ctx, mock_dispatch_golden);
+  internal_make_cookie(&ctx, internal_mock_dispatch_golden);
   ctx.dispatch = nullptr; /* a NULL cookie field must be caught */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import_m33: null guards");
 }
 
@@ -719,16 +725,15 @@ static void test_m33_adapter_null_guards(void)
  * `(err == k_ra8_err_hw_error) || (err == k_ra8_err_no_mem)` only at its
  * both-false control: the open error is outside {hw_error, no_mem}, the guard is
  * false, and the error propagates with no output written. That decision's
- * N+1 = 3 vectors live in test_m33_adapter_falls_back_on_timeout,
- * _falls_back_on_oom, and _no_fallback_on_other_error)
- */
-static void test_m33_adapter_handles_missing_source(void)
+ * N+1 = 3 vectors live in internal_test_m33_adapter_falls_back_on_timeout,
+ * _falls_back_on_oom, and _no_fallback_on_other_error) @brief Verify m33 adapter handles missing source behavior. @details Executes the m33 adapter handles missing source scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_m33_adapter_handles_missing_source(void)
 {
   TEST_BEGIN("ra8_rabook_import_m33: missing source -> read error, no output");
-  ra8_fs_mount_t* mount = fresh_volume_with_epub("SRC.EPB");
+  ra8_fs_mount_t* mount = internal_fresh_volume_with_epub("SRC.EPB");
 
   ra8_rabook_import_compiler_m33_ctx_t ctx = {};
-  make_cookie(&ctx, mock_dispatch_golden);
+  internal_make_cookie(&ctx, internal_mock_dispatch_golden);
   /* NOPE.EPB does not exist -> ra8_fs_open fails inside s_read_whole_file. */
   TEST_ASSERT(ra8_rabook_import_compile_adapter_m33(&ctx, mount, "NOPE.EPB", "OUT.RAB") !=
               k_ra8_ok);
@@ -736,7 +741,7 @@ static void test_m33_adapter_handles_missing_source(void)
   ra8_fs_file_t* file = nullptr;
   TEST_ASSERT(ra8_fs_open(mount, "OUT.RAB", k_ra8_fs_mode_read, &file) != k_ra8_ok);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import_m33: missing source -> read error, no output");
 }
 
@@ -746,26 +751,25 @@ static void test_m33_adapter_handles_missing_source(void)
  * @par MC/DC:
  * Supplies the `(err == k_ra8_err_hw_error)` true vector for the fallback gate
  * `s_is_dispatch_failure`; pairs with `...no_fallback_on_other_error` (both-false)
- * to prove condition 1 independently drives the fallback.
- */
-static void test_m33_adapter_falls_back_on_timeout(void)
+ * to prove condition 1 independently drives the fallback. @brief Verify m33 adapter falls back on timeout behavior. @details Executes the m33 adapter falls back on timeout scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_m33_adapter_falls_back_on_timeout(void)
 {
   TEST_BEGIN("ra8_rabook_import_m33: hw_error offload -> in-core fallback -> golden");
   ra8_fs_mount_t* mount =
-    fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
+    internal_fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
 
   ra8_rabook_import_compiler_ctx_t incore = {};
-  make_incore_ctx(&incore);
+  internal_make_incore_ctx(&incore);
 
   ra8_rabook_import_compiler_m33_ctx_t ctx = {};
-  make_cookie(&ctx, mock_dispatch_error); /* returns k_ra8_err_hw_error */
+  internal_make_cookie(&ctx, internal_mock_dispatch_error); /* returns k_ra8_err_hw_error */
   ctx.fallback = &incore;
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
-  assert_output_is_golden(mount, "OUT.RAB");
+  internal_assert_output_is_golden(mount, "OUT.RAB");
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import_m33: hw_error offload -> in-core fallback -> golden");
 }
 
@@ -775,26 +779,25 @@ static void test_m33_adapter_falls_back_on_timeout(void)
  * @par MC/DC:
  * Supplies the `(err == k_ra8_err_no_mem)` true vector for the fallback gate;
  * pairs with `...no_fallback_on_other_error` (both-false) to prove condition 2
- * independently drives the fallback.
- */
-static void test_m33_adapter_falls_back_on_oom(void)
+ * independently drives the fallback. @brief Verify m33 adapter falls back on oom behavior. @details Executes the m33 adapter falls back on oom scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_m33_adapter_falls_back_on_oom(void)
 {
   TEST_BEGIN("ra8_rabook_import_m33: no_mem offload -> in-core fallback -> golden");
   ra8_fs_mount_t* mount =
-    fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
+    internal_fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
 
   ra8_rabook_import_compiler_ctx_t incore = {};
-  make_incore_ctx(&incore);
+  internal_make_incore_ctx(&incore);
 
   ra8_rabook_import_compiler_m33_ctx_t ctx = {};
-  make_cookie(&ctx, mock_dispatch_oom); /* returns k_ra8_err_no_mem */
+  internal_make_cookie(&ctx, internal_mock_dispatch_oom); /* returns k_ra8_err_no_mem */
   ctx.fallback = &incore;
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
-  assert_output_is_golden(mount, "OUT.RAB");
+  internal_assert_output_is_golden(mount, "OUT.RAB");
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import_m33: no_mem offload -> in-core fallback -> golden");
 }
 
@@ -810,27 +813,26 @@ static void test_m33_adapter_falls_back_on_oom(void)
  * Exercises the adapter's `if (err == k_ra8_ok)` short-circuit (a single-condition
  * branch, no N+1 set required): drives it TRUE so the clean offload result is used
  * and the fallback gate is never reached. The false side is driven by the
- * fallback / propagate cases.
- */
-static void test_m33_adapter_uses_clean_result_no_fallback(void)
+ * fallback / propagate cases. @brief Verify m33 adapter uses clean result no fallback behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_m33_adapter_uses_clean_result_no_fallback(void)
 {
   TEST_BEGIN("ra8_rabook_import_m33: clean offload -> M33 result used, no fallback");
-  ra8_fs_mount_t* mount = fresh_volume_with_epub("SRC.EPB");
+  ra8_fs_mount_t* mount = internal_fresh_volume_with_epub("SRC.EPB");
 
   /* A fallback that would FAIL if it were ever invoked. */
   ra8_rabook_import_compiler_ctx_t poison = {};
-  make_incore_ctx(&poison);
+  internal_make_incore_ctx(&poison);
   poison.epub = nullptr;
 
   ra8_rabook_import_compiler_m33_ctx_t ctx = {};
-  make_cookie(&ctx, mock_dispatch_golden);
+  internal_make_cookie(&ctx, internal_mock_dispatch_golden);
   ctx.fallback = &poison;
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
-  assert_output_is_golden(mount, "OUT.RAB");
+  internal_assert_output_is_golden(mount, "OUT.RAB");
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import_m33: clean offload -> M33 result used, no fallback");
 }
 
@@ -849,29 +851,28 @@ static void test_m33_adapter_uses_clean_result_no_fallback(void)
  * @par MC/DC:
  * Exercises the new `if (size > cap)` transport-overflow guard in
  * `s_read_whole_file` (a single-condition branch, no N+1 set required): drives
- * it TRUE here; every other m33 case (full-size load buffer) drives it FALSE.
- */
-static void test_m33_adapter_falls_back_on_oversize_source(void)
+ * it TRUE here; every other m33 case (full-size load buffer) drives it FALSE. @brief Verify m33 adapter falls back on oversize source behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_m33_adapter_falls_back_on_oversize_source(void)
 {
   TEST_BEGIN("ra8_rabook_import_m33: oversize source -> overflow -> streamed fallback");
   ra8_fs_mount_t* mount =
-    fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
+    internal_fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
 
   ra8_rabook_import_compiler_ctx_t incore = {};
-  make_incore_ctx(&incore);
+  internal_make_incore_ctx(&incore);
 
-  /* mock_dispatch_corrupt would poison the output if the dispatch ever ran; a
+  /* internal_mock_dispatch_corrupt would poison the output if the dispatch ever ran; a
    * golden result therefore proves the overflow was caught BEFORE dispatch. */
   ra8_rabook_import_compiler_m33_ctx_t ctx = {};
-  make_cookie(&ctx, mock_dispatch_corrupt);
+  internal_make_cookie(&ctx, internal_mock_dispatch_corrupt);
   ctx.epub_load_cap = (uint32_t)k_parity_epub_len - 1U; /* source no longer fits */
   ctx.fallback      = &incore;
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
-  assert_output_is_golden(mount, "OUT.RAB");
+  internal_assert_output_is_golden(mount, "OUT.RAB");
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import_m33: oversize source -> overflow -> streamed fallback");
 }
 
@@ -889,18 +890,17 @@ static void test_m33_adapter_falls_back_on_oversize_source(void)
  * both conditions false so the gate returns false and the error propagates. Paired
  * with `...falls_back_on_timeout` (hw_error true) and `...falls_back_on_oom`
  * (no_mem true), it completes the N+1 = 3 vector set proving each condition
- * independently drives the fallback.
- */
-static void test_m33_adapter_no_fallback_on_other_error(void)
+ * independently drives the fallback. @brief Verify m33 adapter no fallback on other error behavior. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_m33_adapter_no_fallback_on_other_error(void)
 {
   TEST_BEGIN("ra8_rabook_import_m33: non-offload error -> propagated, no fallback");
-  ra8_fs_mount_t* mount = fresh_volume_with_epub("SRC.EPB");
+  ra8_fs_mount_t* mount = internal_fresh_volume_with_epub("SRC.EPB");
 
   ra8_rabook_import_compiler_ctx_t incore = {};
-  make_incore_ctx(&incore); /* a VALID fallback that must NOT be used */
+  internal_make_incore_ctx(&incore); /* a VALID fallback that must NOT be used */
 
   ra8_rabook_import_compiler_m33_ctx_t ctx = {};
-  make_cookie(&ctx, mock_dispatch_other); /* returns k_ra8_err_invalid_arg */
+  internal_make_cookie(&ctx, internal_mock_dispatch_other); /* returns k_ra8_err_invalid_arg */
   ctx.fallback = &incore;
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -909,7 +909,7 @@ static void test_m33_adapter_no_fallback_on_other_error(void)
   ra8_fs_file_t* file = nullptr;
   TEST_ASSERT(ra8_fs_open(mount, "OUT.RAB", k_ra8_fs_mode_read, &file) != k_ra8_ok);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import_m33: non-offload error -> propagated, no fallback");
 }
 
@@ -925,8 +925,7 @@ static void test_m33_adapter_no_fallback_on_other_error(void)
  * @pre Never called from interrupt context (host build).
  * @post No global state is mutated.
  * @post The byte is discarded.
- * @note Not thread-safe (host single-thread test driver).
- */
+ * @note Not thread-safe (host single-thread test driver). @details Implements the log sink fixture operation used only by this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
@@ -936,16 +935,15 @@ RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 int32_t main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
-  test_m33_adapter_writes_validated_blob();
-  test_m33_adapter_rejects_corrupt_blob();
-  test_m33_adapter_propagates_dispatch_error();
-  test_m33_adapter_handles_missing_source();
-  test_m33_adapter_null_guards();
-  test_m33_adapter_falls_back_on_timeout();
-  test_m33_adapter_falls_back_on_oom();
-  test_m33_adapter_falls_back_on_oversize_source();
-  test_m33_adapter_uses_clean_result_no_fallback();
-  test_m33_adapter_no_fallback_on_other_error();
-  (void)fprintf(stderr, "[OK ] test_ra8_rabook_import_m33.c\n");
+  internal_test_m33_adapter_writes_validated_blob();
+  internal_test_m33_adapter_rejects_corrupt_blob();
+  internal_test_m33_adapter_propagates_dispatch_error();
+  internal_test_m33_adapter_handles_missing_source();
+  internal_test_m33_adapter_null_guards();
+  internal_test_m33_adapter_falls_back_on_timeout();
+  internal_test_m33_adapter_falls_back_on_oom();
+  internal_test_m33_adapter_falls_back_on_oversize_source();
+  internal_test_m33_adapter_uses_clean_result_no_fallback();
+  internal_test_m33_adapter_no_fallback_on_other_error();
   return 0;
 }

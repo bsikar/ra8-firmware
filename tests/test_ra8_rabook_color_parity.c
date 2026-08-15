@@ -41,7 +41,6 @@
  */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "ra8_attributes.h"
@@ -71,14 +70,13 @@ static uint8_t  s_cp_packed[k_color_golden_len];
 static uint32_t s_total = 0U;
 static uint32_t s_pass  = 0U;
 
-static void check(bool cond, const char* name)
+/** @brief Provide the file-local check test helper. @details Implements the check fixture operation used only by this focused test executable. @param[in] cond Fixture argument governed by the exercised interface contract. @param[in] name Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_check(bool cond, const char* name)
 {
+  (void)name;
   s_total++;
   if (cond) {
     s_pass++;
-    printf("[PASS] %s\n", name);
-  } else {
-    printf("[FAIL] %s\n", name);
   }
 }
 
@@ -101,9 +99,8 @@ static void check(bool cond, const char* name)
  * No compound boolean decision is under test here -- the assertions are
  * byte-identity equalities. The decode/encode functions' compound-decision MC/DC
  * vectors live in test_ra8_rabook_gray4.c; this case contributes the colour
- * host-vs-device parity vector.
- */
-static void test_color_parity_matches_host(void)
+ * host-vs-device parity vector. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_color_parity_matches_host(void)
 {
   ra8_img_arena_t arena = {.base = s_cp_arena, .cap = sizeof(s_cp_arena)};
   ra8_img_arena_bind(&arena);
@@ -117,9 +114,9 @@ static void test_color_parity_matches_host(void)
                                         &h,
                                         &comp,
                                         (int)k_cp_stb_grey);
-  check(px != nullptr, "color parity: stb_image decodes the baked PNG");
-  check(w == (int)k_color_img_w && h == (int)k_color_img_h,
-        "color parity: decoded dimensions match the fixture");
+  internal_check(px != nullptr, "color parity: stb_image decodes the baked PNG");
+  internal_check(w == (int)k_color_img_w && h == (int)k_color_img_h,
+                 "color parity: decoded dimensions match the fixture");
 
   if (px != nullptr) {
     uint32_t  n   = 0U;
@@ -129,43 +126,32 @@ static void test_color_parity_matches_host(void)
                                             s_cp_packed,
                                             (uint32_t)sizeof(s_cp_packed),
                                             &n);
-    check(err == k_ra8_ok, "color parity: firmware gray4 encode returns ok");
-    check(n == (uint32_t)k_color_golden_len, "color parity: encoded length matches host golden");
-    check(memcmp(s_cp_packed, s_color_golden, (size_t)k_color_golden_len) == 0,
-          "color parity: firmware 4bpp bytes byte-identical to host golden");
+    internal_check(err == k_ra8_ok, "color parity: firmware gray4 encode returns ok");
+    internal_check(n == (uint32_t)k_color_golden_len,
+                   "color parity: encoded length matches host golden");
+    internal_check(memcmp(s_cp_packed, s_color_golden, (size_t)k_color_golden_len) == 0,
+                   "color parity: firmware 4bpp bytes byte-identical to host golden");
     stbi_image_free(px); /* alloc-allow: stb backed by arena */
   }
   ra8_img_arena_unbind();
-
-  printf("    #337 color parity: %ux%u RGB -> %u bytes, host crc32 %08X sha256 %s\n",
-         (unsigned)k_color_img_w,
-         (unsigned)k_color_img_h,
-         (unsigned)k_color_golden_len,
-         (unsigned)k_color_golden_crc32,
-         s_color_golden_sha256);
 }
 
 /* -------------------------------------------------------------------------- */
 /* main */
 /* -------------------------------------------------------------------------- */
 
+/** @brief Provide the file-local log sink test helper. @details Implements the log sink fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] byte Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
 RA8_INTERNAL static void internal_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
-  (void)fputc((int)byte, stderr);
+  (void)byte;
 }
 
 int main(void)
 {
   ra8_log_set_byte_sink(internal_log_sink, nullptr);
-  printf("=== ra8_rabook color parity (#337) ===\n");
 
-  test_color_parity_matches_host();
-
-  printf("\n%s: %u/%u passed\n",
-         (s_pass == s_total) ? "[PASS] ra8_rabook_color_parity" : "[FAIL] ra8_rabook_color_parity",
-         s_pass,
-         s_total);
+  internal_test_color_parity_matches_host();
 
   return (s_pass == s_total) ? 0 : 1;
 }

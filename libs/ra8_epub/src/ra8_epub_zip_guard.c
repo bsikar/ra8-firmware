@@ -12,9 +12,9 @@
  * shared pool) to the unified decompression-limits policy
  * (`ra8_decomp_limits.h`):
  *
- * - ::ra8_epub_zip_guard_archive caps the central-directory entry count
+ * - ::priv_epub_zip_guard_archive caps the central-directory entry count
  *   at open (the many-tiny-entries bomb dies before any entry work);
- * - ::ra8_epub_zip_guard_entry checks every entry's declared sizes before
+ * - ::priv_epub_zip_guard_entry checks every entry's declared sizes before
  *   inflation (lying headers and declared decompression bombs die at
  *   O(1)). miniz itself then bounds the *actual* inflation to the
  *   declared uncompressed size, closing the loop.
@@ -37,7 +37,7 @@
 /** @brief Log tag for ZIP-guard diagnostics. */
 static const char* const s_tag_zip_guard = "ra8_epub_zip";
 
-ra8_err_t ra8_epub_zip_guard_archive(mz_zip_archive* zip)
+RA8_PRIV ra8_err_t priv_epub_zip_guard_archive(mz_zip_archive* zip)
 {
   RA8_CHECK_NULL_PTR(zip, s_tag_zip_guard, "guard archive: null zip");
   const ra8_decomp_limits_t lim = ra8_decomp_limits_default();
@@ -48,7 +48,7 @@ ra8_err_t ra8_epub_zip_guard_archive(mz_zip_archive* zip)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_epub_zip_guard_entry(const mz_zip_archive_file_stat* st)
+RA8_PRIV ra8_err_t priv_epub_zip_guard_entry(const mz_zip_archive_file_stat* st)
 {
   RA8_CHECK_NULL_PTR(st, s_tag_zip_guard, "guard entry: null stat");
   const ra8_decomp_limits_t lim = ra8_decomp_limits_default();

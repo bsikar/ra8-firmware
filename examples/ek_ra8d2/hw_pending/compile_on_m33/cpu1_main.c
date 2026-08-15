@@ -19,7 +19,7 @@
  *      prove the M33 left reset and is executing user code, then read the job the
  *      M85 posted (the staged .epub base/len + output buffer) from the request.
  *   2. `ra8_epub_open` the M85-staged .epub (shared SRAM, ::k_com33_epub_addr) as
- *      an in-memory media: miniz unzips the container, the tinyxml2 XML shim
+ *      an in-memory media: miniz unzips the container and the bounded XML reader
  *      parses the OPF spine/manifest. The M33 compiles whatever the M85 staged,
  *      so the same image serves any book (not a baked-in fixture).
  *   3. `ra8_rabook_compile_from_epub_to_buffer` runs the same pipeline the M85
@@ -33,10 +33,10 @@
  *      to the same golden the desktop/M85 path produced -- proving the compile is
  *      byte-identical on the secondary core.
  *
- * @note Zero dynamic allocation reaching real malloc (NASA Rule 3): tinyxml2 /
- *       miniz `operator new` are redirected to the static ra8_epub arena, so the
- *       freestanding M33 image links only its own code plus the back-end (miniz,
- *       tinyxml2, ra8_epub, ra8_rabook_compile/pipeline/gray4) -- no stb_image, no
+ * @note Zero dynamic allocation reaching real malloc (NASA Rule 3): miniz uses
+ *       the bounded ra8_epub arena and XML uses explicit caller workspace. The
+ *       freestanding M33 image links the front end and back end (miniz,
+ *       ra8_xml, ra8_epub, ra8_rabook_compile/pipeline/gray4) -- no stb_image, no
  *       ra8_fs (the M85 owns the filesystem; this core finalizes into a buffer).
  * @note The M33 deliberately does NOT call `ra8_log`: ra8_emulator echoes only the
  *       primary core's ITM, so an M33 log line would be invisible. Its
@@ -116,6 +116,7 @@ typedef enum : uint32_t {
 [[gnu::section(".sdram_bss"), gnu::aligned(8)]] static char    s_string_pool[k_arena_string];
 [[gnu::section(".sdram_bss"), gnu::aligned(8)]] static uint8_t s_image_pool[k_arena_imgpool];
 [[gnu::section(".sdram_bss"), gnu::aligned(8)]] static uint8_t s_xhtml[k_arena_xhtml];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra8_rabook_xml_workspace_t s_xml_workspace;
 [[gnu::section(".sdram_bss"), gnu::aligned(8)]] static uint8_t s_image_raw[k_arena_imgraw];
 [[gnu::section(".sdram_bss"), gnu::aligned(8)]] static char    s_css[k_arena_css];
 
@@ -170,15 +171,16 @@ static bool bind_compile(ra8_rabook_buffers_t* buf, ra8_rabook_pipeline_scratch_
     .out_cap        = (uint32_t)k_com33_blob_cap,
   };
   *scr = (ra8_rabook_pipeline_scratch_t){
-    .xhtml     = s_xhtml,
-    .xhtml_cap = sizeof(s_xhtml),
-    .image_raw = s_image_raw,
-    .image_cap = sizeof(s_image_raw),
-    .img_arena = nullptr,
-    .gray      = nullptr,
-    .gray_cap  = 0U,
-    .css       = s_css,
-    .css_cap   = sizeof(s_css),
+    .xhtml         = s_xhtml,
+    .xhtml_cap     = sizeof(s_xhtml),
+    .image_raw     = s_image_raw,
+    .image_cap     = sizeof(s_image_raw),
+    .img_arena     = nullptr,
+    .gray          = nullptr,
+    .gray_cap      = 0U,
+    .css           = s_css,
+    .css_cap       = sizeof(s_css),
+    .xml_workspace = &s_xml_workspace,
   };
   return true;
 }

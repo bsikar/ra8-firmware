@@ -49,7 +49,7 @@
  *   5. M85 validates the shared blob, byte-compares it to the golden, and logs
  *      "compile_on_m33 PASS" (or traps so ra8_emulator's smoke flags a divergence).
  *
- * @note The M33 image links miniz + tinyxml2 + ra8_epub + the rabook pipeline but
+ * @note The M33 image links miniz + bounded XML reader + ra8_epub + the rabook pipeline but
  *       NOT stb_image (raster is compiled out via `RA8_RABOOK_NO_RASTER`; the SVG
  *       path stores verbatim) and NOT ra8_fs (the M85 owns the filesystem; the M33
  *       finalizes into the shared buffer).

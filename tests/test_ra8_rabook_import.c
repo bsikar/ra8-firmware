@@ -35,6 +35,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
 #include "ra8_log.h"
@@ -46,9 +47,8 @@
  * @details Installed in main() before any test runs. With a sink registered,
  *          `internal_itm_ready()` short-circuits to true and the failure-path
  *          `ra8_log_*` calls inside the manager route here instead of poking the
- *          unmapped Cortex-M85 ITM registers (which would SEGV on the host).
- */
-static void test_log_sink(void* ctx, uint8_t byte)
+ *          unmapped Cortex-M85 ITM registers (which would SEGV on the host). @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] byte Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   (void)byte;
@@ -99,7 +99,9 @@ static uint8_t    s_scratch[k_scratch_cap];
 static uint8_t    s_epub[k_epub_cap];
 static size_t     s_epub_len;
 
-static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
+/** @brief Provide the file-local mem read test helper. @details Implements the mem read fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] count Fixture argument governed by the exercised interface contract. @param[out] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -111,7 +113,9 @@ static ra8_err_t mem_read(void* ctx, uint64_t lba, uint32_t count, uint8_t* buf)
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
+/** @brief Provide the file-local mem write test helper. @details Implements the mem write fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in] lba Fixture argument governed by the exercised interface contract. @param[in] count Fixture argument governed by the exercised interface contract. @param[in] buf Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   if (lba + count > disk->block_count) {
@@ -123,7 +127,9 @@ static ra8_err_t mem_write(void* ctx, uint64_t lba, uint32_t count, const uint8_
   return k_ra8_ok;
 }
 
-static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
+/** @brief Provide the file-local mem capacity test helper. @details Implements the mem capacity fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[out] block_count Fixture argument governed by the exercised interface contract. @param[out] block_size Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* disk = (mem_disk_t*)ctx;
   *block_count     = disk->block_count;
@@ -132,9 +138,9 @@ static ra8_err_t mem_capacity(void* ctx, uint64_t* block_count, uint32_t* block_
 }
 
 static const ra8_fs_backend_t s_backend = {
-  .read_block   = mem_read,
-  .write_block  = mem_write,
-  .get_capacity = mem_capacity,
+  .read_block   = internal_mem_read,
+  .write_block  = internal_mem_write,
+  .get_capacity = internal_mem_capacity,
   .ctx          = &s_disk,
 };
 
@@ -143,9 +149,9 @@ static const ra8_fs_backend_t s_backend = {
 static int     s_compile_calls = 0;
 static uint8_t s_last_payload[k_spy_len];
 
-/** @brief Lightweight seam binding: writes a deterministic blob, counts calls. */
-static ra8_err_t
-spy_compile(void* ctx, ra8_fs_mount_t* mount, const char* epub_path, const char* out_path)
+/** @brief Lightweight seam binding: writes a deterministic blob, counts calls. @details Implements the spy compile fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in,out] mount Fixture argument governed by the exercised interface contract. @param[in] epub_path Fixture argument governed by the exercised interface contract. @param[out] out_path Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t
+internal_spy_compile(void* ctx, ra8_fs_mount_t* mount, const char* epub_path, const char* out_path)
 {
   (void)ctx;
   (void)epub_path;
@@ -157,9 +163,11 @@ spy_compile(void* ctx, ra8_fs_mount_t* mount, const char* epub_path, const char*
   return ra8_fs_write_file(mount, out_path, payload, (uint32_t)sizeof(payload));
 }
 
-/** @brief Seam binding that always fails without writing (fallback test). */
-static ra8_err_t
-spy_compile_fail(void* ctx, ra8_fs_mount_t* mount, const char* epub_path, const char* out_path)
+/** @brief Seam binding that always fails without writing (fallback test). @details Implements the spy compile fail fixture operation used only by this focused test executable. @param[in,out] ctx Fixture argument governed by the exercised interface contract. @param[in,out] mount Fixture argument governed by the exercised interface contract. @param[in] epub_path Fixture argument governed by the exercised interface contract. @param[out] out_path Fixture argument governed by the exercised interface contract. @return RA8 status from the exercised fixture operation. @retval k_ra8_ok The fixture operation completed successfully. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_err_t internal_spy_compile_fail(void*           ctx,
+                                                        ra8_fs_mount_t* mount,
+                                                        const char*     epub_path,
+                                                        const char*     out_path)
 {
   (void)ctx;
   (void)mount;
@@ -171,37 +179,37 @@ spy_compile_fail(void* ctx, ra8_fs_mount_t* mount, const char* epub_path, const 
 
 /* --- Fixtures -------------------------------------------------------------- */
 
-static const char* const k_mimetype = "application/epub+zip";
-static const char* const k_container =
+static const char* const s_mimetype = "application/epub+zip";
+static const char* const s_container =
   "<?xml version=\"1.0\"?><container version=\"1.0\" "
   "xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles>"
   "<rootfile full-path=\"OEBPS/content.opf\" "
   "media-type=\"application/oebps-package+xml\"/></rootfiles></container>";
-static const char* const k_opf =
+static const char* const s_opf =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
   "unique-identifier=\"id\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
   "<dc:title>Tiny</dc:title><dc:identifier id=\"id\">urn:test:1</dc:identifier></metadata>"
   "<manifest><item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/></manifest>"
   "<spine><itemref idref=\"c1\"/></spine></package>";
 
-/** @brief Build a tiny text-only `.epub` into s_epub; @p body varies content. */
-static void build_epub(const char* body)
+/** @brief Build a tiny text-only `.epub` into s_epub; @p body varies content. @details Implements the build epub fixture operation used only by this focused test executable. @param[in] body Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_build_epub(const char* body)
 {
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_epub_cap) == MZ_TRUE);
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "mimetype", k_mimetype, strlen(k_mimetype), MZ_NO_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "mimetype", s_mimetype, strlen(s_mimetype), MZ_NO_COMPRESSION) ==
     MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "META-INF/container.xml",
-                                    k_container,
-                                    strlen(k_container),
+                                    s_container,
+                                    strlen(s_container),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(mz_zip_writer_add_mem(&zip,
                                     "OEBPS/content.opf",
-                                    k_opf,
-                                    strlen(k_opf),
+                                    s_opf,
+                                    strlen(s_opf),
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
   TEST_ASSERT(
     mz_zip_writer_add_mem(&zip, "OEBPS/c1.xhtml", body, strlen(body), MZ_DEFAULT_COMPRESSION) ==
@@ -212,11 +220,12 @@ static void build_epub(const char* body)
   TEST_ASSERT((heap != nullptr) && (hsz > 0U) && (hsz <= sizeof(s_epub)));
   memcpy(s_epub, heap, hsz);
   s_epub_len = hsz;
+  mz_free(heap);
   mz_zip_writer_end(&zip);
 }
 
 /** @brief Format a fresh FAT16 RAM volume and return a mounted handle. */
-static ra8_fs_mount_t* fresh_volume(void)
+RA8_INTERNAL static ra8_fs_mount_t* internal_fresh_volume(void)
 {
   free(s_disk.bytes);
   s_disk.block_count = (uint32_t)k_disk_blocks;
@@ -233,8 +242,8 @@ static ra8_fs_mount_t* fresh_volume(void)
   return mount;
 }
 
-/** @brief (Re)write the current s_epub fixture to @p path on @p mount. */
-static void put_source(ra8_fs_mount_t* mount, const char* path)
+/** @brief (Re)write the current s_epub fixture to @p path on @p mount. @details Implements the put source fixture operation used only by this focused test executable. @param[in,out] mount Fixture argument governed by the exercised interface contract. @param[in] path Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_put_source(ra8_fs_mount_t* mount, const char* path)
 {
   (void)ra8_fs_unlink(mount, path);
   ra8_fs_file_t* file = nullptr;
@@ -243,9 +252,11 @@ static void put_source(ra8_fs_mount_t* mount, const char* path)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(file));
 }
 
-/** @brief Assert the cache file at @p path holds exactly @p want[0..len). */
-static void
-assert_cache_bytes(ra8_fs_mount_t* mount, const char* path, const uint8_t* want, uint32_t len)
+/** @brief Assert the cache file at @p path holds exactly @p want[0..len). @details Implements the assert cache bytes fixture operation used only by this focused test executable. @param[in,out] mount Fixture argument governed by the exercised interface contract. @param[in] path Fixture argument governed by the exercised interface contract. @param[in] want Fixture argument governed by the exercised interface contract. @param[in] len Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_assert_cache_bytes(ra8_fs_mount_t* mount,
+                                                     const char*     path,
+                                                     const uint8_t*  want,
+                                                     uint32_t        len)
 {
   ra8_fs_file_t* file = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, path, k_ra8_fs_mode_read, &file));
@@ -260,8 +271,10 @@ assert_cache_bytes(ra8_fs_mount_t* mount, const char* path, const uint8_t* want,
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(file));
 }
 
-static ra8_rabook_import_cfg_t
-make_cfg(ra8_fs_mount_t* mount, uint32_t importer_version, ra8_rabook_import_compile_fn compile)
+/** @brief Prepare the fixture's make cfg state. @details Implements the make cfg fixture operation used only by this focused test executable. @param[in,out] mount Fixture argument governed by the exercised interface contract. @param[in] importer_version Fixture argument governed by the exercised interface contract. @param[in] compile Fixture argument governed by the exercised interface contract. @return The value computed by the fixture helper. @retval value The computed fixture value for the supplied inputs. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static ra8_rabook_import_cfg_t internal_make_cfg(ra8_fs_mount_t* mount,
+                                                              uint32_t        importer_version,
+                                                              ra8_rabook_import_compile_fn compile)
 {
   ra8_rabook_import_cfg_t cfg = {};
   cfg.mount                   = mount;
@@ -274,7 +287,8 @@ make_cfg(ra8_fs_mount_t* mount, uint32_t importer_version, ra8_rabook_import_com
   return cfg;
 }
 
-static void teardown(ra8_fs_mount_t* mount)
+/** @brief Provide the file-local teardown test helper. @details Implements the teardown fixture operation used only by this focused test executable. @param[in,out] mount Fixture argument governed by the exercised interface contract. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_teardown(ra8_fs_mount_t* mount)
 {
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
   free(s_disk.bytes);
@@ -284,23 +298,23 @@ static void teardown(ra8_fs_mount_t* mount)
 /* --- Tests ----------------------------------------------------------------- */
 
 /**
- * @test test_miss_then_hit
+ * @test internal_test_miss_then_hit
  * @brief First open compiles + caches; the second open is a cache hit and does
  *        NOT recompile (the compile-count spy stays at 1).
  *
  * @par MC/DC:
  * The freshness gate is a single `memcmp` of the whole stamp (no compound
  * boolean), so there is no compound decision to vector here; this exercises the
- * happy compiled -> hit transition end to end.
- */
-static void test_miss_then_hit(void)
+ * happy compiled -> hit transition end to end. @details Executes the miss then hit scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_miss_then_hit(void)
 {
   TEST_BEGIN("ra8_rabook_import: miss -> compile -> cache -> hit");
-  build_epub("<html><body><p>Hello there.</p></body></html>");
-  ra8_fs_mount_t* mount = fresh_volume();
-  put_source(mount, "BOOK.EPB");
+  internal_build_epub("<html><body><p>Hello there.</p></body></html>");
+  ra8_fs_mount_t* mount = internal_fresh_volume();
+  internal_put_source(mount, "BOOK.EPB");
 
-  ra8_rabook_import_cfg_t     cfg = make_cfg(mount, (uint32_t)k_importer_version_a, spy_compile);
+  ra8_rabook_import_cfg_t cfg =
+    internal_make_cfg(mount, (uint32_t)k_importer_version_a, internal_spy_compile);
   ra8_rabook_import_outcome_t out = k_ra8_rabook_import_hit;
   s_compile_calls                 = 0;
 
@@ -314,7 +328,7 @@ static void test_miss_then_hit(void)
   TEST_ASSERT_EQ(0, strcmp(path1, "BOOK.rabook"));
   uint8_t v1[k_spy_len];
   memcpy(v1, s_last_payload, sizeof(v1));
-  assert_cache_bytes(mount, path1, v1, (uint32_t)k_spy_len);
+  internal_assert_cache_bytes(mount, path1, v1, (uint32_t)k_spy_len);
 
   /* Hit -> NOT recompiled, same path + bytes. */
   char path2[k_path_cap] = {};
@@ -323,79 +337,80 @@ static void test_miss_then_hit(void)
   TEST_ASSERT_EQ(k_ra8_rabook_import_hit, out);
   TEST_ASSERT_EQ(1, s_compile_calls);
   TEST_ASSERT_EQ(0, strcmp(path1, path2));
-  assert_cache_bytes(mount, path2, v1, (uint32_t)k_spy_len);
+  internal_assert_cache_bytes(mount, path2, v1, (uint32_t)k_spy_len);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import: miss -> compile -> cache -> hit");
 }
 
 /**
- * @test test_stale_version_recompiles
+ * @test internal_test_stale_version_recompiles
  * @brief A bumped importer version invalidates the marker, forcing a re-derive
  *        that overwrites the cache with fresh bytes.
  *
  * @par MC/DC:
  * No compound decision under test (single-`memcmp` freshness gate); this proves
- * the version field participates in the stamp identity.
- */
-static void test_stale_version_recompiles(void)
+ * the version field participates in the stamp identity. @details Executes the stale version recompiles scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_stale_version_recompiles(void)
 {
   TEST_BEGIN("ra8_rabook_import: bumped version re-derives");
-  build_epub("<html><body><p>Versioned.</p></body></html>");
-  ra8_fs_mount_t* mount = fresh_volume();
-  put_source(mount, "BOOK.EPB");
+  internal_build_epub("<html><body><p>Versioned.</p></body></html>");
+  ra8_fs_mount_t* mount = internal_fresh_volume();
+  internal_put_source(mount, "BOOK.EPB");
   s_compile_calls = 0;
 
   ra8_rabook_import_outcome_t out              = k_ra8_rabook_import_hit;
   char                        path[k_path_cap] = {};
 
-  ra8_rabook_import_cfg_t cfg_a = make_cfg(mount, (uint32_t)k_importer_version_a, spy_compile);
+  ra8_rabook_import_cfg_t cfg_a =
+    internal_make_cfg(mount, (uint32_t)k_importer_version_a, internal_spy_compile);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rabook_import_open(&cfg_a, "BOOK.EPB", path, (uint32_t)sizeof(path), &out));
   TEST_ASSERT_EQ(k_ra8_rabook_import_compiled, out);
   TEST_ASSERT_EQ(1, s_compile_calls);
 
-  ra8_rabook_import_cfg_t cfg_b = make_cfg(mount, (uint32_t)k_importer_version_b, spy_compile);
+  ra8_rabook_import_cfg_t cfg_b =
+    internal_make_cfg(mount, (uint32_t)k_importer_version_b, internal_spy_compile);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rabook_import_open(&cfg_b, "BOOK.EPB", path, (uint32_t)sizeof(path), &out));
   TEST_ASSERT_EQ(k_ra8_rabook_import_compiled, out);
   TEST_ASSERT_EQ(2, s_compile_calls);
   uint8_t v2[k_spy_len];
   memcpy(v2, s_last_payload, sizeof(v2));
-  assert_cache_bytes(mount, path, v2, (uint32_t)k_spy_len);
+  internal_assert_cache_bytes(mount, path, v2, (uint32_t)k_spy_len);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import: bumped version re-derives");
 }
 
 /**
- * @test test_content_change_rederives
+ * @test internal_test_content_change_rederives
  * @brief Editing the source bytes changes the freshness stamp's CRC-32, so the
  *        same-named cache is re-derived (fresh compile) and holds the new bytes.
  *
  * @par MC/DC:
  * No compound decision under test; proves the CRC-32 content key still gates
- * freshness now that it no longer names the file (the name follows the source).
- */
-static void test_content_change_rederives(void)
+ * freshness now that it no longer names the file (the name follows the source). @details Executes the content change rederives scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_content_change_rederives(void)
 {
   TEST_BEGIN("ra8_rabook_import: changed content -> same name, re-derived");
-  ra8_fs_mount_t* mount = fresh_volume();
+  ra8_fs_mount_t* mount = internal_fresh_volume();
   s_compile_calls       = 0;
 
-  ra8_rabook_import_cfg_t     cfg = make_cfg(mount, (uint32_t)k_importer_version_a, spy_compile);
+  ra8_rabook_import_cfg_t cfg =
+    internal_make_cfg(mount, (uint32_t)k_importer_version_a, internal_spy_compile);
   ra8_rabook_import_outcome_t out = k_ra8_rabook_import_hit;
 
-  build_epub("<html><body><p>First edition.</p></body></html>");
-  put_source(mount, "BOOK.EPB");
+  internal_build_epub("<html><body><p>First edition.</p></body></html>");
+  internal_put_source(mount, "BOOK.EPB");
   char path_a[k_path_cap] = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rabook_import_open(&cfg, "BOOK.EPB", path_a, (uint32_t)sizeof(path_a), &out));
   TEST_ASSERT_EQ(k_ra8_rabook_import_compiled, out);
   TEST_ASSERT_EQ(1, s_compile_calls);
 
-  build_epub("<html><body><p>Second, longer edition with more text.</p></body></html>");
-  put_source(mount, "BOOK.EPB");
+  internal_build_epub("<html><body><p>Second, longer edition with more text.</p></body></html>");
+  internal_put_source(mount, "BOOK.EPB");
   char path_b[k_path_cap] = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rabook_import_open(&cfg, "BOOK.EPB", path_b, (uint32_t)sizeof(path_b), &out));
@@ -405,34 +420,33 @@ static void test_content_change_rederives(void)
   TEST_ASSERT_EQ(0, strcmp(path_a, path_b));
   uint8_t v2[k_spy_len];
   memcpy(v2, s_last_payload, sizeof(v2));
-  assert_cache_bytes(mount, path_b, v2, (uint32_t)k_spy_len);
+  internal_assert_cache_bytes(mount, path_b, v2, (uint32_t)k_spy_len);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import: changed content -> same name, re-derived");
 }
 
 /**
- * @test test_compile_error_leaves_no_cache
+ * @test internal_test_compile_error_leaves_no_cache
  * @brief A failing compile is propagated, the source is untouched, and no cache
  *        is published -- a subsequent good open is still a miss.
  *
  * @par MC/DC:
  * No compound decision under test; exercises the error-propagation arm of the
- * miss path.
- */
-static void test_compile_error_leaves_no_cache(void)
+ * miss path. @details Executes the compile error leaves no cache scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_compile_error_leaves_no_cache(void)
 {
   TEST_BEGIN("ra8_rabook_import: compile error leaves no cache");
-  build_epub("<html><body><p>Doomed compile.</p></body></html>");
-  ra8_fs_mount_t* mount = fresh_volume();
-  put_source(mount, "BOOK.EPB");
+  internal_build_epub("<html><body><p>Doomed compile.</p></body></html>");
+  ra8_fs_mount_t* mount = internal_fresh_volume();
+  internal_put_source(mount, "BOOK.EPB");
   s_compile_calls = 0;
 
   ra8_rabook_import_outcome_t out              = k_ra8_rabook_import_hit;
   char                        path[k_path_cap] = {};
 
   ra8_rabook_import_cfg_t cfg_fail =
-    make_cfg(mount, (uint32_t)k_importer_version_a, spy_compile_fail);
+    internal_make_cfg(mount, (uint32_t)k_importer_version_a, internal_spy_compile_fail);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
                  ra8_rabook_import_open(&cfg_fail, "BOOK.EPB", path, (uint32_t)sizeof(path), &out));
   TEST_ASSERT_EQ(1, s_compile_calls);
@@ -446,35 +460,36 @@ static void test_compile_error_leaves_no_cache(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(src));
 
   /* The failed run left no valid cache: a good open is still a miss. */
-  ra8_rabook_import_cfg_t cfg_ok = make_cfg(mount, (uint32_t)k_importer_version_a, spy_compile);
+  ra8_rabook_import_cfg_t cfg_ok =
+    internal_make_cfg(mount, (uint32_t)k_importer_version_a, internal_spy_compile);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rabook_import_open(&cfg_ok, "BOOK.EPB", path, (uint32_t)sizeof(path), &out));
   TEST_ASSERT_EQ(k_ra8_rabook_import_compiled, out);
   TEST_ASSERT_EQ(2, s_compile_calls);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import: compile error leaves no cache");
 }
 
 /**
- * @test test_guards
+ * @test internal_test_guards
  * @brief NULL-argument and capacity guards reject bad input without compiling.
  *
  * @par MC/DC:
  * Each `RA8_CHECK_NULL_PTR` is a single-condition guard (not a compound `||`),
  * so independent influence is shown by flipping one pointer to NULL per call;
- * no N-way compound vector is required.
- */
-static void test_guards(void)
+ * no N-way compound vector is required. @details Executes the guards scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_guards(void)
 {
   TEST_BEGIN("ra8_rabook_import: NULL + capacity guards");
-  build_epub("<html><body><p>Guarded.</p></body></html>");
-  ra8_fs_mount_t* mount = fresh_volume();
-  put_source(mount, "BOOK.EPB");
+  internal_build_epub("<html><body><p>Guarded.</p></body></html>");
+  ra8_fs_mount_t* mount = internal_fresh_volume();
+  internal_put_source(mount, "BOOK.EPB");
   s_compile_calls = 0;
 
-  ra8_rabook_import_cfg_t     cfg = make_cfg(mount, (uint32_t)k_importer_version_a, spy_compile);
-  ra8_rabook_import_outcome_t out = k_ra8_rabook_import_hit;
+  ra8_rabook_import_cfg_t cfg =
+    internal_make_cfg(mount, (uint32_t)k_importer_version_a, internal_spy_compile);
+  ra8_rabook_import_outcome_t out              = k_ra8_rabook_import_hit;
   char                        path[k_path_cap] = {};
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -508,12 +523,12 @@ static void test_guards(void)
               k_ra8_ok);
   TEST_ASSERT_EQ(0, s_compile_calls);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import: NULL + capacity guards");
 }
 
 /**
- * @test test_name_derivation_edges
+ * @test internal_test_name_derivation_edges
  * @brief The cache name is derived from the source's basename before any
  *        compile: a directory prefix is stripped, an empty basename is refused,
  *        and a name too long for the fixed buffer is refused rather than
@@ -522,18 +537,18 @@ static void test_guards(void)
  * @par MC/DC:
  * No compound decision under test; this drives the single-condition branches of
  * the name derivation (path-separator seen, empty stem, over-cap stem) so each
- * is exercised independently.
- */
-static void test_name_derivation_edges(void)
+ * is exercised independently. @details Executes the name derivation edges scenario with bounded fixture state and asserts the contract-specific result. @pre Fixed-capacity fixture storage required by this operation is available. @pre Arguments follow the interface contract exercised by this helper. @post Documented outputs contain the exercised result when the operation succeeds. @post Mutations remain confined to documented outputs and file-local fixture state. @note File-local helper; no ownership escapes this focused test executable. @since Version 0.1.0 */
+RA8_INTERNAL static void internal_test_name_derivation_edges(void)
 {
   TEST_BEGIN("ra8_rabook_import: name derivation edges");
-  build_epub("<html><body><p>Edge.</p></body></html>");
-  ra8_fs_mount_t* mount = fresh_volume();
-  put_source(mount, "BOOK.EPB");
+  internal_build_epub("<html><body><p>Edge.</p></body></html>");
+  ra8_fs_mount_t* mount = internal_fresh_volume();
+  internal_put_source(mount, "BOOK.EPB");
   s_compile_calls = 0;
 
-  ra8_rabook_import_cfg_t     cfg = make_cfg(mount, (uint32_t)k_importer_version_a, spy_compile);
-  ra8_rabook_import_outcome_t out = k_ra8_rabook_import_hit;
+  ra8_rabook_import_cfg_t cfg =
+    internal_make_cfg(mount, (uint32_t)k_importer_version_a, internal_spy_compile);
+  ra8_rabook_import_outcome_t out              = k_ra8_rabook_import_hit;
   char                        path[k_path_cap] = {};
 
   /* A directory prefix is stripped to the basename before the source is read;
@@ -555,18 +570,18 @@ static void test_name_derivation_edges(void)
                  ra8_rabook_import_open(&cfg, k_long, path, (uint32_t)sizeof(path), &out));
   TEST_ASSERT_EQ(0, s_compile_calls);
 
-  teardown(mount);
+  internal_teardown(mount);
   TEST_END("ra8_rabook_import: name derivation edges");
 }
 
 int32_t main(void)
 {
-  ra8_log_set_byte_sink(test_log_sink, nullptr);
-  test_miss_then_hit();
-  test_stale_version_recompiles();
-  test_content_change_rederives();
-  test_compile_error_leaves_no_cache();
-  test_guards();
-  test_name_derivation_edges();
+  ra8_log_set_byte_sink(internal_test_log_sink, nullptr);
+  internal_test_miss_then_hit();
+  internal_test_stale_version_recompiles();
+  internal_test_content_change_rederives();
+  internal_test_compile_error_leaves_no_cache();
+  internal_test_guards();
+  internal_test_name_derivation_edges();
   return 0;
 }

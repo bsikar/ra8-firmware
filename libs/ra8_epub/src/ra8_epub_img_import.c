@@ -82,7 +82,7 @@ typedef struct {
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_entry_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+static ra8_err_t internal_entry_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   ra8_epub_entry_pull_t* pull = (ra8_epub_entry_pull_t*)ctx;
   return ra8_epub_entry_read(&pull->reader, buf, cap, got);
@@ -108,7 +108,7 @@ static ra8_err_t priv_entry_pull(void* ctx, uint8_t* buf, size_t cap, size_t* go
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_classify(ra8_epub_book_t* book, const char* href, bool* out_is_atlas)
+static ra8_err_t internal_classify(ra8_epub_book_t* book, const char* href, bool* out_is_atlas)
 {
   *out_is_atlas                                      = false;
   uint8_t         magic[k_ra8_epub_import_magic_len] = {};
@@ -145,10 +145,10 @@ static ra8_err_t priv_classify(ra8_epub_book_t* book, const char* href, bool* ou
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_transcode(ra8_epub_book_t*                   book,
-                                const char*                        href,
-                                const ra8_epub_atlas_import_cfg_t* cfg,
-                                ra8_jof_info_t*                    out_info)
+static ra8_err_t internal_transcode(ra8_epub_book_t*                   book,
+                                    const char*                        href,
+                                    const ra8_epub_atlas_import_cfg_t* cfg,
+                                    ra8_jof_info_t*                    out_info)
 {
   ra8_epub_entry_pull_t pull = {};
   uint64_t              size = 0U;
@@ -157,7 +157,7 @@ static ra8_err_t priv_transcode(ra8_epub_book_t*                   book,
     return err;
   }
   const ra8_jof_produce_cfg_t pcfg = {
-    .pull          = priv_entry_pull,
+    .pull          = internal_entry_pull,
     .pull_ctx      = &pull,
     .sink          = cfg->store.sink,
     .sink_ctx      = cfg->store.sink_ctx,
@@ -194,10 +194,10 @@ static ra8_err_t priv_transcode(ra8_epub_book_t*                   book,
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t priv_import_args_ok(const ra8_epub_tile_binder_t*      binder,
-                                     const ra8_epub_book_t*             book,
-                                     const char*                        href,
-                                     const ra8_epub_atlas_import_cfg_t* cfg)
+static ra8_err_t internal_import_args_ok(const ra8_epub_tile_binder_t*      binder,
+                                         const ra8_epub_book_t*             book,
+                                         const char*                        href,
+                                         const ra8_epub_atlas_import_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(binder, s_tag, "binder must not be nullptr");
   RA8_CHECK_NULL_PTR(book, s_tag, "book must not be nullptr");
@@ -214,7 +214,7 @@ ra8_err_t ra8_epub_tile_binder_import(ra8_epub_tile_binder_t*            binder,
                                       uint32_t                           image_id,
                                       const ra8_epub_atlas_import_cfg_t* cfg)
 {
-  const ra8_err_t nz = priv_import_args_ok(binder, book, href, cfg);
+  const ra8_err_t nz = internal_import_args_ok(binder, book, href, cfg);
   if (nz != k_ra8_ok) {
     return nz;
   }
@@ -223,7 +223,7 @@ ra8_err_t ra8_epub_tile_binder_import(ra8_epub_tile_binder_t*            binder,
     return k_ra8_err_invalid_arg;
   }
   bool      is_atlas = false;
-  ra8_err_t err      = priv_classify(book, href, &is_atlas);
+  ra8_err_t err      = internal_classify(book, href, &is_atlas);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -231,7 +231,7 @@ ra8_err_t ra8_epub_tile_binder_import(ra8_epub_tile_binder_t*            binder,
     return ra8_epub_tile_binder_add(binder, book, href, image_id); /* in-place */
   }
   ra8_jof_info_t info = {};
-  err                 = priv_transcode(book, href, cfg, &info);
+  err                 = internal_transcode(book, href, cfg, &info);
   if (err != k_ra8_ok) {
     return err;
   }

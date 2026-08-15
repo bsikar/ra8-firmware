@@ -1,6 +1,8 @@
 /**
  * @file ra8_rabook_import_compiler.c
  * @brief Production adapter binding the import seam to the real compiler (#151).
+ * @details Connects import-manager requests to the bounded EPUB/RABOOK
+ * compiler while preserving the caller's storage and workspace lifetimes.
  * @since Version 0.1.0
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -13,6 +15,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_check.h"
 #include "ra8_epub.h"
@@ -33,7 +36,7 @@ static const char* const s_tag = "ra8_rabook_import_compiler";
  *          registry and the byte-stream binding the opened book reads through
  *          for the whole compile (the book copies a pointer to @p st into its
  *          stream media, so this struct must out-live the compile call).
- * @invariant `file != NULL` between a successful @ref s_stream_open and the
+ * @invariant `file != NULL` between a successful @ref internal_stream_open and the
  *            adapter's close; the other members are only valid alongside it.
  * @since Version 0.1.0
  */
@@ -69,7 +72,8 @@ typedef struct {
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-static ra8_err_t s_source_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
+RA8_INTERNAL static ra8_err_t
+internal_source_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "source_read: ctx");
   RA8_CHECK_NULL_PTR(buf, s_tag, "source_read: buf");
@@ -115,8 +119,8 @@ static ra8_err_t s_source_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-static ra8_err_t
-s_cache_bind(const ra8_rabook_import_compiler_ctx_t* ctx, import_stream_t* ss, uint32_t size)
+RA8_INTERNAL static ra8_err_t
+internal_cache_bind(const ra8_rabook_import_compiler_ctx_t* ctx, import_stream_t* ss, uint32_t size)
 {
   RA8_CHECK_NULL_PTR(ctx->cache, s_tag, "cache");
   RA8_CHECK_NULL_PTR(ss->file, s_tag, "file");
@@ -125,7 +129,7 @@ s_cache_bind(const ra8_rabook_import_compiler_ctx_t* ctx, import_stream_t* ss, u
     return err; /* GCOVR_EXCL_LINE -- registry storage is the frame's own struct, never NULL/zero */
   }
   uint32_t oid = 0U;
-  err = ra8_vsource_add_paged(&ss->vsrc, s_source_read, ss->file, 0U, (uint64_t)size, &oid);
+  err = ra8_vsource_add_paged(&ss->vsrc, internal_source_read, ss->file, 0U, (uint64_t)size, &oid);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -151,7 +155,7 @@ s_cache_bind(const ra8_rabook_import_compiler_ctx_t* ctx, import_stream_t* ss, u
 /**
  * @brief Open the source `.epub` as a cache-fronted stream (no residency).
  * @details Opens @p epub_path read-only, sizes it, binds the cookie's page
- *          cache over the open file via @ref s_cache_bind, and opens the book
+ *          cache over the open file via @ref internal_cache_bind, and opens the book
  *          with `ra8_epub_open_streamed` reading through `ra8_vmem_stream_read`.
  *          On any failure the file is closed and `ss->file` is NULL; on success
  *          the file stays open (the book streams from it) until the adapter
@@ -171,10 +175,10 @@ s_cache_bind(const ra8_rabook_import_compiler_ctx_t* ctx, import_stream_t* ss, u
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-static ra8_err_t s_stream_open(const ra8_rabook_import_compiler_ctx_t* ctx,
-                               ra8_fs_mount_t*                         mount,
-                               const char*                             epub_path,
-                               import_stream_t*                        ss)
+RA8_INTERNAL static ra8_err_t internal_stream_open(const ra8_rabook_import_compiler_ctx_t* ctx,
+                                                   ra8_fs_mount_t*                         mount,
+                                                   const char*      epub_path,
+                                                   import_stream_t* ss)
 {
   RA8_CHECK_NULL_PTR(ctx->epub, s_tag, "epub");
   RA8_CHECK_NULL_PTR(ss, s_tag, "stream state");
@@ -184,13 +188,13 @@ static ra8_err_t s_stream_open(const ra8_rabook_import_compiler_ctx_t* ctx,
   }
   /* ra8_fs_size cannot fail on the handle ra8_fs_open just returned (in_use
    * set, both out-params non-NULL); on any future contract change `size`
-   * stays 0 and s_cache_bind rejects it as invalid_size. */
+   * stays 0 and internal_cache_bind rejects it as invalid_size. */
   uint64_t size64 = 0U;
   (void)ra8_fs_size(ss->file, &size64);
   /* Import sources are sized in 32 bits; an over-4-GiB source is clamped to
    * the reject path (0 -> invalid_size in the bind below). */
   const uint32_t size = (size64 <= (uint64_t)UINT32_MAX) ? (uint32_t)size64 : 0U;
-  err                 = s_cache_bind(ctx, ss, size);
+  err                 = internal_cache_bind(ctx, ss, size);
   if (err == k_ra8_ok) {
     const ra8_epub_stream_media_t media = {
       .read = ra8_vmem_stream_read,
@@ -225,7 +229,7 @@ ra8_err_t ra8_rabook_import_compile_adapter(void*           compile_ctx,
   /* The book streams through `ss` for the whole compile, so it lives in this
    * frame, spanning open -> compile -> close. */
   import_stream_t ss  = {};
-  ra8_err_t       err = s_stream_open(ctx, mount, epub_path, &ss);
+  ra8_err_t       err = internal_stream_open(ctx, mount, epub_path, &ss);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -265,11 +269,11 @@ ra8_err_t ra8_rabook_import_compile_adapter(void*           compile_ctx,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-static ra8_err_t s_read_whole_file(ra8_fs_mount_t* mount,
-                                   const char*     path,
-                                   uint8_t*        buf,
-                                   uint32_t        cap,
-                                   uint32_t*       out_len)
+RA8_INTERNAL static ra8_err_t internal_read_whole_file(ra8_fs_mount_t* mount,
+                                                       const char*     path,
+                                                       uint8_t*        buf,
+                                                       uint32_t        cap,
+                                                       uint32_t*       out_len)
 {
   ra8_fs_file_t* file = nullptr;
   ra8_err_t      err  = ra8_fs_open(mount, path, k_ra8_fs_mode_read, &file);
@@ -317,10 +321,11 @@ static ra8_err_t s_read_whole_file(ra8_fs_mount_t* mount,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-static ra8_err_t s_dispatch_and_cache(const ra8_rabook_import_compiler_m33_ctx_t* ctx,
-                                      uint32_t                                    epub_len,
-                                      ra8_fs_mount_t*                             mount,
-                                      const char*                                 out_path)
+RA8_INTERNAL static ra8_err_t
+internal_dispatch_and_cache(const ra8_rabook_import_compiler_m33_ctx_t* ctx,
+                            uint32_t                                    epub_len,
+                            ra8_fs_mount_t*                             mount,
+                            const char*                                 out_path)
 {
   uint32_t  blob_len = 0U;
   ra8_err_t err      = ctx->dispatch(ctx->dispatch_ctx,
@@ -350,11 +355,11 @@ static ra8_err_t s_dispatch_and_cache(const ra8_rabook_import_compiler_m33_ctx_t
  *          cleanly, so the in-core path is worth a try. A caller bug
  *          (`k_ra8_err_null_ptr`) or an FS slip would only recur in-core and so is
  *          not a fallback trigger; success is handled before this is reached.
- * @param[in] err Non-OK error returned by @ref s_dispatch_and_cache.
+ * @param[in] err Non-OK error returned by @ref internal_dispatch_and_cache.
  * @return Whether @p err warrants the in-core fallback.
  * @retval true  @p err is @ref k_ra8_err_hw_error or @ref k_ra8_err_no_mem.
  * @retval false Any other code.
- * @pre @p err is a value @ref s_dispatch_and_cache can return.
+ * @pre @p err is a value @ref internal_dispatch_and_cache can return.
  * @pre Reached only after the offload returned non-OK.
  * @post No state is mutated (pure predicate).
  * @post The result depends only on @p err.
@@ -365,7 +370,7 @@ static ra8_err_t s_dispatch_and_cache(const ra8_rabook_import_compiler_m33_ctx_t
  *       cases), which cite this function in their `@par MC/DC:` blocks.
  * @since Version 0.1.0
  */
-static bool s_is_dispatch_failure(ra8_err_t err)
+RA8_INTERNAL static bool internal_is_dispatch_failure(ra8_err_t err)
 {
   return (err == k_ra8_err_hw_error) || (err == k_ra8_err_no_mem);
 }
@@ -374,7 +379,7 @@ static bool s_is_dispatch_failure(ra8_err_t err)
  * @brief Retry a failed offload in-core, or propagate the offload error.
  * @details The shared classify-and-retry tail of both offload stages (the
  *          source read and the dispatch): a TIMEOUT/FAULT or transport
- *          overflow (see @ref s_is_dispatch_failure) means the source `.epub`
+ *          overflow (see @ref internal_is_dispatch_failure) means the source `.epub`
  *          is likely fine, so the compile is retried IN-CORE via the cookie's
  *          @p fallback -- the import still yields a valid `.rabook`. Other
  *          errors, and the no-fallback case, propagate @p err unchanged.
@@ -393,13 +398,14 @@ static bool s_is_dispatch_failure(ra8_err_t err)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-static ra8_err_t s_fallback_or_propagate(const ra8_rabook_import_compiler_m33_ctx_t* ctx,
-                                         ra8_err_t                                   err,
-                                         ra8_fs_mount_t*                             mount,
-                                         const char*                                 epub_path,
-                                         const char*                                 out_path)
+RA8_INTERNAL static ra8_err_t
+internal_fallback_or_propagate(const ra8_rabook_import_compiler_m33_ctx_t* ctx,
+                               ra8_err_t                                   err,
+                               ra8_fs_mount_t*                             mount,
+                               const char*                                 epub_path,
+                               const char*                                 out_path)
 {
-  if (!s_is_dispatch_failure(err)) {
+  if (!internal_is_dispatch_failure(err)) {
     return err;
   }
   if (ctx->fallback == nullptr) {
@@ -411,8 +417,8 @@ static ra8_err_t s_fallback_or_propagate(const ra8_rabook_import_compiler_m33_ct
 
 /**
  * @brief Run the M33 offload, retrying in-core when the offload itself failed.
- * @details Dispatches to @ref s_dispatch_and_cache; a clean result is used
- *          as-is and any failure is classified by @ref s_fallback_or_propagate.
+ * @details Dispatches to @ref internal_dispatch_and_cache; a clean result is used
+ *          as-is and any failure is classified by @ref internal_fallback_or_propagate.
  * @param[in]     ctx      Populated M33 cookie (dispatch + optional fallback).
  * @param[in]     epub_len Source length already in @p ctx->epub_load_buf.
  * @param[in,out] mount    Mounted volume the validated blob is written to.
@@ -428,17 +434,18 @@ static ra8_err_t s_fallback_or_propagate(const ra8_rabook_import_compiler_m33_ct
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-static ra8_err_t s_offload_or_fallback(const ra8_rabook_import_compiler_m33_ctx_t* ctx,
-                                       uint32_t                                    epub_len,
-                                       ra8_fs_mount_t*                             mount,
-                                       const char*                                 epub_path,
-                                       const char*                                 out_path)
+RA8_INTERNAL static ra8_err_t
+internal_offload_or_fallback(const ra8_rabook_import_compiler_m33_ctx_t* ctx,
+                             uint32_t                                    epub_len,
+                             ra8_fs_mount_t*                             mount,
+                             const char*                                 epub_path,
+                             const char*                                 out_path)
 {
-  ra8_err_t err = s_dispatch_and_cache(ctx, epub_len, mount, out_path);
+  ra8_err_t err = internal_dispatch_and_cache(ctx, epub_len, mount, out_path);
   if (err == k_ra8_ok) {
     return k_ra8_ok;
   }
-  return s_fallback_or_propagate(ctx, err, mount, epub_path, out_path);
+  return internal_fallback_or_propagate(ctx, err, mount, epub_path, out_path);
 }
 
 ra8_err_t ra8_rabook_import_compile_adapter_m33(void*           compile_ctx,
@@ -464,9 +471,9 @@ ra8_err_t ra8_rabook_import_compile_adapter_m33(void*           compile_ctx,
    * imports the book. */
   uint32_t  epub_len = 0U;
   ra8_err_t err =
-    s_read_whole_file(mount, epub_path, ctx->epub_load_buf, ctx->epub_load_cap, &epub_len);
+    internal_read_whole_file(mount, epub_path, ctx->epub_load_buf, ctx->epub_load_cap, &epub_len);
   if (err != k_ra8_ok) {
-    return s_fallback_or_propagate(ctx, err, mount, epub_path, out_path);
+    return internal_fallback_or_propagate(ctx, err, mount, epub_path, out_path);
   }
-  return s_offload_or_fallback(ctx, epub_len, mount, epub_path, out_path);
+  return internal_offload_or_fallback(ctx, epub_len, mount, epub_path, out_path);
 }

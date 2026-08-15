@@ -13,7 +13,7 @@
  *
  *   1. Treats the .epub as a ZIP container and reads the central
  *      directory via `miniz` (`mz_zip_reader_init_mem`).
- *   2. Locates `META-INF/container.xml`, parses it with `tinyxml2`, and
+ *   2. Locates `META-INF/container.xml`, parses it with the bounded XML reader, and
  *      follows the `<rootfile full-path="...">` to the OPF document
  *      (typically `OEBPS/content.opf`).
  *   3. Parses the OPF manifest + spine to build a fixed-size,
@@ -64,6 +64,7 @@ extern "C" {
 
 #include "ra8_epub_miniz_alloc.h"
 #include "ra8_err.h"
+#include "ra8_xml.h"
 
 /* ===========================================================================
  * Compile-time limits
@@ -94,6 +95,20 @@ typedef enum : uint16_t {
   k_ra8_epub_zip_archive_bytes =
     256, /**< Storage for `mz_zip_archive` (miniz 3.0.2 sizeof=112; margin; static_assert in .c). */
 } ra8_epub_limits_t;
+
+/**
+ * @struct ra8_epub_xml_workspace_t
+ * @brief Per-book bounded storage for strict OPF/container/TOC parsing.
+ * @details The reader stack is reused between sequential passes. Reference
+ * spans point into the currently parsed immutable OPF and never outlive it.
+ */
+typedef struct {
+  ra8_xml_workspace_t reader; /**< 4096-byte open-element stack. */
+  /** Spine idref spans retained between OPF passes. */
+  ra8_xml_span_t references[k_ra8_epub_max_chapters];
+  ra8_xml_span_t legacy_cover_id; /**< EPUB 2 cover manifest id. */
+  uint16_t       reference_count; /**< Valid entries in @p references. */
+} ra8_epub_xml_workspace_t;
 
 /**
  * @enum ra8_epub_toc_kind_t
@@ -292,6 +307,8 @@ typedef struct {
   ra8_epub_miniz_arena_t miniz_arena;
   /** @brief Per-book bounded allocator workspace; never shared with another book. */
   ra8_epub_miniz_workspace_t miniz_workspace;
+  /** @brief Per-book XML parser state; never shared with another book. */
+  ra8_epub_xml_workspace_t xml_workspace;
 
   /* --- Streamed backing (caller-seekable, no resident blob) (#151) ----- */
   /* For a book opened via `ra8_epub_open_streamed()`, miniz's `m_pIO_opaque`
@@ -374,7 +391,7 @@ typedef struct {
  *   1. Validate args, zero `*out_book`.
  *   2. `mz_zip_reader_init_mem()` against the in-memory blob.
  *   3. Extract `META-INF/container.xml` to the local stack buffer.
- *   4. Parse with tinyxml2; pull the first `<rootfile>` `full-path`.
+ *   4. Parse with the bounded XML reader; pull the first `<rootfile>` `full-path`.
  *   5. Extract the OPF file; parse the `<metadata>`, `<manifest>`,
  *      and `<spine>` blocks.
  *   6. Walk the spine in document order; for each `<itemref idref="X">`,

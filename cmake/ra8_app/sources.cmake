@@ -137,6 +137,21 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/third_party/stb
          ${RA8_REPO_ROOT}/libs/ra8_reflow/src
     )
+  elseif("ra8_rabook_compile" IN_LIST _RA8_APP_LIBS)
+    set(_ra8_stb_img_impl ${RA8_REPO_ROOT}/libs/third_party/stb/stb_image_impl.c)
+    list(
+      APPEND
+      _ra8_lib_extra
+      ${_ra8_stb_img_impl}
+      ${RA8_REPO_ROOT}/libs/ra8_reflow/src/ra8_img_arena.c
+    )
+    list(
+      APPEND
+      _ra8_lib_inc
+      ${RA8_REPO_ROOT}/libs/third_party/stb
+      ${RA8_REPO_ROOT}/libs/ra8_reflow/inc
+      ${RA8_REPO_ROOT}/libs/ra8_reflow/src
+    )
   endif()
 
   # ra8_reflow's glyph rasteriser (ra8_reflow_render.c, #164) caches glyph bitmaps
@@ -154,28 +169,45 @@ macro(_ra8_app_collect_sources)
     list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_mem/inc)
   endif()
 
-  # ra8_epub parses .epub (ZIP container + XML) through the vendored miniz (C)
-  # and tinyxml2 (C++). Its first-party .c sources are globbed by the LIBS loop
-  # above, but the C-callable XML shim is C++ (ra8_epub_xml_shim.cpp) and the two
-  # third_party TUs live outside libs/ra8_epub/src. Wire them when an app pulls in
-  # ra8_epub, mirroring the ra8_reflow/stb special-case above. tinyxml2's MemPoolT
-  # is redirected to a static arena inside the shim, and miniz's malloc to the
-  # ra8_epub_miniz_alloc static pool (both NASA Rule 3 deviations).
-  set(_ra8_epub_cpp "")
+  # ra8_epub parses ZIP through vendored miniz and XML through the first-party
+  # bounded ra8_xml pull reader. Only miniz is SOUP; no C++ parser is linked.
   set(_ra8_epub_vendor "")
   if("ra8_epub" IN_LIST _RA8_APP_LIBS)
-    file(GLOB_RECURSE _ra8_epub_cpp CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_epub/src/*.cpp)
-    set(_ra8_epub_vendor ${RA8_REPO_ROOT}/libs/third_party/miniz/miniz.c
-                         ${RA8_REPO_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
-    )
-    list(APPEND _ra8_lib_extra ${_ra8_epub_cpp} ${_ra8_epub_vendor})
+    set(_ra8_epub_vendor ${RA8_REPO_ROOT}/libs/third_party/miniz/miniz.c)
+    list(APPEND _ra8_lib_extra ${_ra8_epub_vendor})
     list(
       APPEND
       _ra8_lib_inc
       ${RA8_REPO_ROOT}/libs/third_party/miniz
-      ${RA8_REPO_ROOT}/libs/third_party/tinyxml2
       ${RA8_REPO_ROOT}/libs/ra8_epub/src
     )
+  endif()
+
+  if(("ra8_epub" IN_LIST _RA8_APP_LIBS) OR ("ra8_rabook_compile" IN_LIST _RA8_APP_LIBS))
+    file(GLOB_RECURSE _ra8_xml CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_xml/src/*.c)
+    list(APPEND _ra8_lib_extra ${_ra8_xml})
+    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_xml/inc)
+  endif()
+
+  # The RABOOK compiler includes the RBKC streaming container writer, whose
+  # bounded compressor uses ra8_io_compress and miniz. Keep that dependency
+  # transitive for every compiler consumer instead of requiring each app to
+  # know which wire container the compiler can emit.
+  set(_ra8_rabook_vendor "")
+  if("ra8_rabook_compile" IN_LIST _RA8_APP_LIBS)
+    list(
+      APPEND
+      _ra8_lib_inc
+      ${RA8_REPO_ROOT}/libs/ra8_io/inc
+      ${RA8_REPO_ROOT}/libs/third_party/miniz
+    )
+    if(NOT "ra8_io" IN_LIST _RA8_APP_LIBS)
+      list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_io/src/ra8_io_compress.c)
+    endif()
+    if((NOT "ra8_epub" IN_LIST _RA8_APP_LIBS) AND (NOT "miniz" IN_LIST _RA8_APP_LIBS))
+      set(_ra8_rabook_vendor ${RA8_REPO_ROOT}/libs/third_party/miniz/miniz.c)
+      list(APPEND _ra8_lib_extra ${_ra8_rabook_vendor})
+    endif()
   endif()
 
   # ra8_jof transcodes JPEG/PNG sources into JOF tile atlases (#231).
@@ -219,6 +251,16 @@ macro(_ra8_app_collect_sources)
     endif()
   endif()
 
+  if("ra8_rabook_compile" IN_LIST _RA8_APP_LIBS)
+    list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_webp/inc)
+    if((NOT "ra8_webp" IN_LIST _RA8_APP_LIBS) AND (NOT "ra8_jof" IN_LIST _RA8_APP_LIBS))
+      file(GLOB_RECURSE _ra8_rabook_webp_facade CONFIGURE_DEPENDS
+           ${RA8_REPO_ROOT}/libs/ra8_webp/src/*.c
+      )
+      list(APPEND _ra8_lib_extra ${_ra8_rabook_webp_facade})
+    endif()
+  endif()
+
   # ra8_webp decodes WebP (VP8 / VP8L) through the vendored libwebp decoder
   # (libs/third_party/libwebp). The four-part recipe -- which TUs, which
   # include root, -DRA8_WEBP_USE_ARENA, the SOUP warning flags -- lives in
@@ -233,7 +275,9 @@ macro(_ra8_app_collect_sources)
   # transitively by ra8_jof (#290), and only once so the two paths never
   # double-add the libwebp sources.
   set(_ra8_webp_vendor "")
-  if(("ra8_webp" IN_LIST _RA8_APP_LIBS) OR ("ra8_jof" IN_LIST _RA8_APP_LIBS))
+  if(("ra8_webp" IN_LIST _RA8_APP_LIBS) OR ("ra8_jof" IN_LIST _RA8_APP_LIBS)
+     OR ("ra8_rabook_compile" IN_LIST _RA8_APP_LIBS)
+  )
     include(${RA8_REPO_ROOT}/cmake/ra8_webp_vendor.cmake)
     ra8_webp_vendor_sources(_ra8_webp_vendor ${RA8_REPO_ROOT})
     list(APPEND _ra8_lib_extra ${_ra8_webp_vendor})
@@ -292,7 +336,9 @@ macro(_ra8_app_collect_sources)
   # compressor and no miniz include path. The headers (ra8_io_compress.h and
   # ra8_io_vfs_compress.h) are likewise opt-in, kept out of the ra8_io.h umbrella,
   # so an app that never compresses pays nothing.
-  if(NOT (("miniz" IN_LIST _RA8_APP_LIBS) OR ("ra8_epub" IN_LIST _RA8_APP_LIBS)))
+  if(NOT (("miniz" IN_LIST _RA8_APP_LIBS) OR ("ra8_epub" IN_LIST _RA8_APP_LIBS)
+          OR ("ra8_rabook_compile" IN_LIST _RA8_APP_LIBS)
+  ))
     list(
       FILTER
       _ra8_lib_extra
@@ -359,7 +405,14 @@ macro(_ra8_app_collect_sources)
   # to trip it. Build just these third_party TUs with -fno-strict-aliasing --
   # the upstream-sanctioned flag for this code -- so the -Og default is
   # correct on every toolchain. First-party sources stay strict-aliasing clean.
-  set(_ra8_soup_tu ${_ra8_epub_vendor} ${_ra8_miniz_vendor} ${_ra8_stb_impl} ${_ra8_stb_img_impl})
+  set(
+    _ra8_soup_tu
+    ${_ra8_epub_vendor}
+    ${_ra8_rabook_vendor}
+    ${_ra8_miniz_vendor}
+    ${_ra8_stb_impl}
+    ${_ra8_stb_img_impl}
+  )
   if(_ra8_soup_tu)
     set_source_files_properties(${_ra8_soup_tu} PROPERTIES COMPILE_OPTIONS -fno-strict-aliasing)
   endif()
@@ -376,14 +429,12 @@ macro(_ra8_app_collect_sources)
   # uninitialised-read in the SOUP still breaks the build. Every name below was
   # confirmed to fire on a SOUP TU compiled with the full project warning
   # profile under arm-none-eabi-gcc 14.3 at -Og and -O2; none is a memory-safety
-  # class. Split by language: the C-only names are themselves a hard -Werror
-  # when handed to g++ ("valid for C/ObjC but not for C++"), so the C++ TU
-  # (tinyxml2.cpp) receives the language-portable set only.
+  # class.
   set(_ra8_soup_wno_common
       -Wno-cast-qual # miniz / stb cast away const on byte buffers
       -Wno-cast-align # stb_image casts to a wider alignment
       -Wno-double-promotion # stb float -> double in its math hooks
-      -Wno-unused-parameter # stb / tinyxml2 unused formals
+      -Wno-unused-parameter # stb unused formals
       -Wno-type-limits # miniz range-limited comparisons
       -Wno-duplicated-branches # stb_image identical if/else arms
       -Wno-missing-declarations # stb_image extern helpers with no prior decl
