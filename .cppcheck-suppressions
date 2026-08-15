@@ -248,10 +248,11 @@ knownConditionTrueFalse:libs/ra8_hal/src/ra8_dual_core.c
 # nothing from today's scan and the reviewed instances are held by the
 # ratchet baseline instead. The rows are KEPT as review evidence. Do not
 # add new rows: per D-004, a new 12.1 hit is either parenthesized or
-# recorded in the register and ratchet-held. Row/path counts here are
-# pinned by the register's "Suppression ownership" list, so editing this
-# block without updating the register fails the misra gate
-# (check_misra_deviations.py).
+# recorded in the register and ratchet-held. Row and path COUNTS here
+# are pinned by the register's "Suppression ownership" list, so growing
+# or shrinking this block without updating the register fails the misra
+# gate (check_misra_deviations.py); the row identities themselves are
+# review evidence, held by this file's history.
 # ---------------------------------------------------------------------------
 misra-c2012-12.1:libs/ra8_core/src/ra8_log.c:251
 misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:64
