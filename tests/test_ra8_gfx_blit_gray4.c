@@ -203,7 +203,7 @@ static void test_blit_gray4_clips_at_edges(void)
 static void test_mcdc_blit_gray4_dims(void)
 {
   TEST_BEGIN("gray4 blit MC/DC dimension + scalar guards");
-  /* Not-initialized: s_gfx_text_state is zero (this runs before any bind). */
+  /* Not-initialized: g_gfx_text_state is zero (this runs before any bind). */
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
                  ra8_gfx_blit_gray4_zoom(k_g4_ramp4x4, 4, 4, 0, 0, 4, 4, 1, 0, 0));
   rebind_argb();

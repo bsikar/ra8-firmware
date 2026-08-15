@@ -43,7 +43,7 @@ typedef struct {
 } ra8_gfx_state_t;
 
 /**
- * @var s_gfx_text_state
+ * @var g_gfx_text_state
  * @brief Single module-wide framebuffer binding shared by every ra8_gfx TU.
  *
  * @details
@@ -55,7 +55,7 @@ typedef struct {
  * @warning Do not redefine; this is a single shared object, not per-TU state.
  * @since 0.1.0
  */
-extern ra8_gfx_state_t s_gfx_text_state;
+extern ra8_gfx_state_t g_gfx_text_state;
 
 /**
  * @brief Pack a 32-bit colour into a single RGB565 word.
@@ -89,7 +89,7 @@ RA8_PRIV uint16_t priv_gfx_text_pack_565(uint32_t color);
  * @param[in] y     Framebuffer y coordinate.
  * @param[in] color 32-bit 0xAARRGGBB colour.
  * @pre Module state is consistent.
- * @pre s_gfx_text_state is initialised.
+ * @pre g_gfx_text_state is initialised.
  * @post The pixel is written only if it lies within the active clip rectangle.
  * @post No pixel outside the clip rectangle is modified.
  * @note Not thread-safe unless documented otherwise.
