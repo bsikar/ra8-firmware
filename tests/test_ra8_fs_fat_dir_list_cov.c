@@ -93,7 +93,7 @@ RA8_INTERNAL static void internal_test_listdir_not_mounted(void)
  * @par MC/DC:
  * No compound decision lies on this path. The vector it contributes is
  * `handle->type == k_ra8_fs_type_exfat`
- * (libs/ra8_fs/src/ra8_fs_fat_dir.c@priv_listdir_locked) -> true, followed by
+ * (libs/ra8_fs/src/ra8_fs_fat_dir.c@internal_listdir_locked) -> true, followed by
  * the not-found arm of
  * libs/ra8_fs/src/ra8_fs_fat_exfat_dir.c@priv_exfat_resolve_dir.
  *

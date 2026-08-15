@@ -214,7 +214,7 @@ RA8_INTERNAL static void internal_test_space_exfat(void)
  * @test test_space_null_guard
  * @par MC/DC:
  * Decision: `if (handle == nullptr || out == nullptr)` (2 conditions) in
- * `libs/ra8_fs/src/ra8_fs_fat_space.c@priv_space_locked`.
+ * `libs/ra8_fs/src/ra8_fs_fat_space.c@internal_space_locked`.
  * - V1 handle=valid, out=valid -> F (control: both false; the query runs).
  * - V2 handle=NULL,  out=valid -> C1=T -> T (varies handle only).
  * - V3 handle=valid, out=NULL  -> C1=F, C2=T -> T (varies out only).
