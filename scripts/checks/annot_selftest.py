@@ -29,7 +29,7 @@ from annot_clang import cindex
 from annot_loopbound import run_loopbound_selftest
 from annot_model import AnnotatedSymbol, Violation, WalkState
 from annot_rules import enforce_rules
-from annot_scope import SOURCE_SUFFIXES, override_repo_root
+from annot_scope import discover_translation_units, override_repo_root
 from annot_walk import walk_tu
 
 #: Synthetic TUs for run_selftest().
@@ -261,6 +261,17 @@ void host_unpublished(void)
 
 void host_priv_helper(void) {}
 """,
+    # --- exact generated-source boundary ---------------------------------
+    # The reviewed protoc-c output is classified by lint coverage as generated
+    # and must never be judged as hand-authored naming/linkage.  A neighboring
+    # generated-looking file has no such classification and MUST remain in
+    # scope, preventing a broad suffix exemption.
+    "libs/ra8_c6link/src/ra8_media_download.pb-c.c": """
+void generated_unpublished(void) {}
+""",
+    "libs/ra8_c6link/src/future_generated.pb-c.c": """
+void future_generated_unpublished(void) {}
+""",
     # A second tool calling the first one's RA8_PRIV symbol. module_of() has
     # to resolve tools/<tool> as a module for this to be caught at all.
     "tools/mod_other_host/src/other_host.c": """
@@ -341,7 +352,13 @@ void anonymous_namespace_bad() {}
 #: the linkage rule only judges files is_first_party() accepts, so this name
 #: goes missing the moment ``tools`` drops out of SCAN_DIRS.
 _SELFTEST_LINKAGE_EXPECTED = frozenset(
-    {"link_internal_declared", "link_undeclared", "handler_untabled", "host_unpublished"}
+    {
+        "future_generated_unpublished",
+        "handler_untabled",
+        "host_unpublished",
+        "link_internal_declared",
+        "link_undeclared",
+    }
 )
 
 #: What run_selftest() expects the RA8_EXPECTS_LOCK rule to report, by the
@@ -368,13 +385,15 @@ _SELFTEST_LINKAGE_CLEAN = (
 #: set of USRs a vector table names.
 def _selftest_parse(root: pathlib.Path) -> WalkState:
     """Write the synthetic tree under ``root`` and walk every TU in it."""
-    tu_paths: list[pathlib.Path] = []
     for rel, body in _SELFTEST_SOURCES.items():
         path = root / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(body)
-        if path.suffix in SOURCE_SUFFIXES:
-            tu_paths.append(path)
+
+    # Use the production discovery path.  Constructing this list from the
+    # fixture dictionary would bypass the exact generated-source exclusion and
+    # let that boundary regress while every rule-level assertion stayed green.
+    tu_paths = discover_translation_units()
 
     include_args = [
         f"-I{root}/libs/mod_link/inc",
@@ -588,6 +607,23 @@ def _check_fixtures_parsed(symbols: dict[str, AnnotatedSymbol]) -> list[str]:
     ]
 
 
+def _check_generated_scope(symbols: dict[str, AnnotatedSymbol]) -> list[str]:
+    """Exact generated files stay out while generated-looking neighbors stay in."""
+    seen = {symbol.name for symbol in symbols.values()}
+    failures: list[str] = []
+    if "generated_unpublished" in seen:
+        failures.append(
+            "generated-source exclusion failed: the exact protoc-c output was parsed as "
+            "hand-authored first-party code"
+        )
+    if "future_generated_unpublished" not in seen:
+        failures.append(
+            "generated-source exclusion over-matches: an unclassified neighboring pb-c.c "
+            "file disappeared from the annotation scope"
+        )
+    return failures
+
+
 def run_selftest() -> int:
     """Regression-test the checker itself. Returns a process exit code.
 
@@ -617,6 +653,9 @@ def run_selftest() -> int:
       fires, the documented waiver does not, and host-only code under
       ``tools/`` does not. Getting the second axis wrong is what turns a real
       gate into 216 findings nobody can act on.
+    * **Generated-source scope.** The exact reproducible protoc-c output is
+      excluded by the lint-coverage registry, while an unclassified neighboring
+      ``*.pb-c.c`` remains ordinary first-party C and must still be judged.
     """
     with tempfile.TemporaryDirectory() as td:
         root = pathlib.Path(td).resolve()
@@ -634,6 +673,7 @@ def run_selftest() -> int:
         *_check_rule3(violations),
         *_check_naming_contract(violations),
         *_check_fixtures_parsed(state.symbols),
+        *_check_generated_scope(state.symbols),
         # The loop-bound scan is textual and libclang-free, so it self-tests on
         # synthetic source strings rather than the parsed synthetic tree.
         *run_loopbound_selftest(),
@@ -649,6 +689,8 @@ def run_selftest() -> int:
         "NASA rule 3 fires on untagged firmware allocation and stays quiet on the "
         "documented waiver and on host-only code; RA8_EXPECTS_LOCK fires on an "
         "unheld call and stays quiet on RA8_OWNS_RESOURCE / propagated holders; "
+        "the exact generated protoc-c source is excluded while an unclassified "
+        "pb-c.c neighbor remains in scope; "
         "linkage prefixes agree with static/data scope and their annotations; "
         "loop-bound scan fires on a "
         "mis-attached marker and a stale RA8_BOUNDED_LOOP statement, stays quiet on "

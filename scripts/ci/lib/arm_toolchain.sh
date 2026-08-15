@@ -27,7 +27,7 @@ if [ -z "${_RA8_ARM_TOOLCHAIN_SH:-}" ]; then
 
   # Prepend the pinned Arm GNU Toolchain when the runner provisions it under
   # /opt (or $HOME/opt). The apt gcc-arm-none-eabi package ships no C++ standard
-  # library, so C++ apps (ereader_shelf -> ra8_epub + tinyxml2) fail with
+  # library, so apps with remaining C++ translation units fail with
   # "fatal error: cstddef"; the official ARM toolchain under /opt bundles
   # libstdc++. RA8_ARM_TOOLCHAIN_BIN is an operator override for a box that
   # keeps it elsewhere. Only an existing bin/ holding arm-none-eabi-gcc is

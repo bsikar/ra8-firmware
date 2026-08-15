@@ -106,6 +106,9 @@ _INCLUDE_ROOT_PATTERNS = (
     "tests",
     "tests/include",
     "tests/mocks",
+    # Shared test fixtures are included by bare header name from both root
+    # tests and tool tests, matching their CMake target include directories.
+    "tests/support",
     "port/*/inc",
     # A port may nest a compatibility include root under inc/ when the
     # software it ports supplies headers by name that the host SDK would
@@ -452,10 +455,8 @@ def tu_args(path: pathlib.Path) -> list[str]:
     global _INCLUDE_ARGS  # noqa: PLW0603  # one-shot memo of a pure repo-layout scan
     if not _INCLUDE_ARGS:
         _INCLUDE_ARGS = _builtin_include_args() + _darwin_sysroot_args() + _include_args()
-    # -fsized-deallocation matches GCC, which builds every .cpp here and
-    # turns it on from C++14. Clang leaves it off, so <new> compiles out
-    # the two sized `operator delete` declarations and the replacements in
-    # ra8_epub_cpp_alloc.cpp look like symbols no header declares.
+    # -fsized-deallocation matches GCC for the remaining C++ translation
+    # units and keeps the annotation parser aligned with the real build.
     lang = (
         ["-std=c++20", "-x", "c++", "-fsized-deallocation"]
         if path.suffix == ".cpp"

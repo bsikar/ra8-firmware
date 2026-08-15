@@ -53,6 +53,13 @@ _pcc_banned_constructs() (
   python3 scripts/checks/check_mcdc_block.py --all
   # --all asks it to enumerate src/ + libs/ rather than read staged files.
   python3 scripts/checks/check_no_dynamic_alloc.py --all
+  # Opaque C/POSIX FILE and DIR streams hide allocation and buffer ownership.
+  # The production contract is fw_fs_file_t plus injected ra8_io/logging; host
+  # adapters use raw descriptors with bounded caller-owned state. Selftest
+  # proves every token, exact generated-source exclusion, and scope floor before
+  # the zero-baseline full-tree sweep is trusted.
+  python3 scripts/checks/check_no_stdio_streams.py --selftest
+  python3 scripts/checks/check_no_stdio_streams.py --all
   python3 scripts/checks/check_no_ai_attribution.py --selftest
   python3 scripts/checks/check_no_ai_attribution.py
   # C23 nullptr-only in first-party code. Vendor macros UX_NULL / TX_NULL /

@@ -30,6 +30,8 @@ import contextlib
 import pathlib
 from collections.abc import Iterator
 
+from lint_coverage_rules import PATH_CLASS
+
 #: The real checkout root. Never read directly outside `repo_root()` -- the
 #: selftest override would not be visible through a bare import of it.
 _REAL_REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -63,6 +65,12 @@ SOURCE_SUFFIXES = {".c", ".cpp"}
 BUILD_OUTPUT_PARTS = frozenset(
     {"build", "_deps", "build-cov", "build-bench", "build-scan", "build-mcdc"}
 )
+
+#: Classification assigned by the lint-coverage registry to reproducible,
+#: machine-owned source.  Reusing that exact registry keeps every gate on the
+#: same allow-list: a neighboring ``*.pb-c.c`` remains hand-authored C until it
+#: receives its own reviewed generator and reproducibility contract.
+GENERATED_SOURCE_CLASS = "generated-source"
 
 #: Source roots that are compiled by the host toolchain and never cross-compiled
 #: into a firmware image. `tests/` is the host unit-test suite; `tools/` is the
@@ -110,9 +118,25 @@ def is_build_output(path: pathlib.Path) -> bool:
     return any(part in BUILD_OUTPUT_PARTS for part in path.parts)
 
 
+def is_generated_source(path: pathlib.Path) -> bool:
+    """Return whether lint coverage classifies this exact path as generated.
+
+    ``PATH_CLASS`` is deliberately exact-path based.  The annotation checker
+    therefore ignores the two pinned protoc-c outputs, whose regenerated
+    identifiers cannot satisfy project spelling rules, without creating a
+    blanket exemption for future protobuf or other generated-looking files.
+    """
+    candidate = path if path.is_absolute() else repo_root() / path
+    try:
+        relative = candidate.resolve().relative_to(repo_root().resolve()).as_posix()
+    except (ValueError, OSError):
+        return False
+    return PATH_CLASS.get(relative) == GENERATED_SOURCE_CLASS
+
+
 def is_excluded(path: pathlib.Path) -> bool:
-    """True when ``path`` must not be analysed (build output or vendored)."""
-    return any(part in EXCLUDED_PATH_PARTS for part in path.parts)
+    """True when ``path`` is build output, vendored, or exact generated source."""
+    return any(part in EXCLUDED_PATH_PARTS for part in path.parts) or is_generated_source(path)
 
 
 def _root_part(path: str) -> str | None:

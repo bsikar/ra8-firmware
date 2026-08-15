@@ -168,7 +168,6 @@ set +e
   --suppress=*:libs/third_party/* \
   -ilibs/third_party \
   -itools/vela/generated \
-  -ilibs/ra8_epub/src/ra8_epub_xml_shim.cpp \
   -U__clang__ \
   --std=c11 \
   --platform=unix32 \
