@@ -334,7 +334,7 @@ static ra8_err_t internal_lcd_check_rect(const display_caps_t* caps, display_rec
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t lcd_init(const display_cfg_t* cfg, void** out_ctx)
+static ra8_err_t internal_lcd_init(const display_cfg_t* cfg, void** out_ctx)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
   RA8_CHECK_NULL_PTR(out_ctx, s_tag, "out_ctx");
@@ -344,7 +344,7 @@ static ra8_err_t lcd_init(const display_cfg_t* cfg, void** out_ctx)
     return v;
   }
   if (s_lcd_ctx.started) {
-    ra8_log_error(s_tag, "lcd_init: already started");
+    ra8_log_error(s_tag, "internal_lcd_init: already started");
     return k_ra8_err_busy;
   }
   const ra8_err_t err = internal_lcd_bringup_panel(cfg);
@@ -368,7 +368,7 @@ static ra8_err_t lcd_init(const display_cfg_t* cfg, void** out_ctx)
  * @retval k_ra8_ok           Caps written.
  * @retval k_ra8_err_null_ptr Either argument was NULL.
  *
- * @pre ``lcd_init`` has succeeded.
+ * @pre ``internal_lcd_init`` has succeeded.
  * @pre out is writable.
  * @post ``*out`` equals the stored caps.
  * @post No state mutated.
@@ -378,7 +378,7 @@ static ra8_err_t lcd_init(const display_cfg_t* cfg, void** out_ctx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t lcd_get_caps(const void* ctx, display_caps_t* out)
+static ra8_err_t internal_lcd_get_caps(const void* ctx, display_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   RA8_CHECK_NULL_PTR(out, s_tag, "out");
@@ -399,7 +399,7 @@ static ra8_err_t lcd_get_caps(const void* ctx, display_caps_t* out)
  * @retval k_ra8_ok           Descriptor written.
  * @retval k_ra8_err_null_ptr Either argument was NULL.
  *
- * @pre ``lcd_init`` has succeeded.
+ * @pre ``internal_lcd_init`` has succeeded.
  * @pre out is writable.
  * @post ``*out.pixels`` matches ``cfg.framebuffer``.
  * @post No state mutated.
@@ -409,7 +409,7 @@ static ra8_err_t lcd_get_caps(const void* ctx, display_caps_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t lcd_get_framebuffer(void* ctx, display_fb_t* out)
+static ra8_err_t internal_lcd_get_framebuffer(void* ctx, display_fb_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   RA8_CHECK_NULL_PTR(out, s_tag, "out");
@@ -437,7 +437,7 @@ static ra8_err_t lcd_get_framebuffer(void* ctx, display_fb_t* out)
  * @retval k_ra8_err_null_ptr    ctx was NULL.
  * @retval k_ra8_err_invalid_arg rect leaves the framebuffer.
  *
- * @pre ``lcd_init`` has succeeded.
+ * @pre ``internal_lcd_init`` has succeeded.
  * @pre None.
  * @post Panel state is unchanged until the next scan picks up the writes.
  * @post No state mutated.
@@ -447,7 +447,7 @@ static ra8_err_t lcd_get_framebuffer(void* ctx, display_fb_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t lcd_flush(void* ctx, display_rect_t rect, display_refresh_hint_t hint)
+static ra8_err_t internal_lcd_flush(void* ctx, display_rect_t rect, display_refresh_hint_t hint)
 {
   (void)hint; /* LCD scans continuously; hint is purely informational. */
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
@@ -490,7 +490,7 @@ static ra8_err_t lcd_flush(void* ctx, display_rect_t rect, display_refresh_hint_
  * @retval k_ra8_ok           Buffer cleared.
  * @retval k_ra8_err_null_ptr ctx was NULL.
  *
- * @pre ``lcd_init`` has succeeded.
+ * @pre ``internal_lcd_init`` has succeeded.
  * @pre Framebuffer is reachable from the CPU.
  * @post Every pixel of the FB equals ``color & 0xFFFF``.
  * @post DSB barrier issued so the GLCDC sees the writes.
@@ -500,7 +500,7 @@ static ra8_err_t lcd_flush(void* ctx, display_rect_t rect, display_refresh_hint_
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t lcd_clear(void* ctx, uint32_t color)
+static ra8_err_t internal_lcd_clear(void* ctx, uint32_t color)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   lcd_ctx_t*     c            = (lcd_ctx_t*)ctx;
@@ -512,7 +512,7 @@ static ra8_err_t lcd_clear(void* ctx, uint32_t color)
   }
 #ifdef RA8_BOOT_ENABLE_CACHE_MPU
   /* Write the cleared pixels back from the write-back D-cache to SDRAM so the
-   * GLCDC scan sees them (see lcd_flush for the coherency rationale). The whole
+   * GLCDC scan sees them (see internal_lcd_flush for the coherency rationale). The whole
    * framebuffer was just touched, so clean the whole contiguous span. */
   (void)ra8_cache_dcache_clean_by_addr(c->fb.pixels,
                                        (uint32_t)c->fb.stride_bytes * (uint32_t)c->fb.height_px);
@@ -537,7 +537,7 @@ static ra8_err_t lcd_clear(void* ctx, uint32_t color)
  * @retval k_ra8_ok           Tear-down succeeded.
  * @retval k_ra8_err_null_ptr ctx was NULL.
  *
- * @pre ``lcd_init`` has succeeded.
+ * @pre ``internal_lcd_init`` has succeeded.
  * @pre No concurrent paint loops.
  * @post ``s_lcd_ctx.started == false``.
  * @post ``s_lcd_ctx.fb.pixels == nullptr``.
@@ -547,7 +547,7 @@ static ra8_err_t lcd_clear(void* ctx, uint32_t color)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t lcd_deinit(void* ctx)
+static ra8_err_t internal_lcd_deinit(void* ctx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   lcd_ctx_t*      c   = (lcd_ctx_t*)ctx;
@@ -563,10 +563,10 @@ static ra8_err_t lcd_deinit(void* ctx)
  */
 
 const display_backend_iface_t k_display_backend_lcd_ra8_glcdc = {
-  .init            = lcd_init,
-  .get_caps        = lcd_get_caps,
-  .get_framebuffer = lcd_get_framebuffer,
-  .flush           = lcd_flush,
-  .clear           = lcd_clear,
-  .deinit          = lcd_deinit,
+  .init            = internal_lcd_init,
+  .get_caps        = internal_lcd_get_caps,
+  .get_framebuffer = internal_lcd_get_framebuffer,
+  .flush           = internal_lcd_flush,
+  .clear           = internal_lcd_clear,
+  .deinit          = internal_lcd_deinit,
 };

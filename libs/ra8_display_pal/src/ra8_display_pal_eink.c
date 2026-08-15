@@ -434,7 +434,7 @@ static ra8_err_t internal_eink_load_rect(const eink_ctx_t* c, display_rect_t rec
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t eink_init(const display_cfg_t* cfg, void** out_ctx)
+static ra8_err_t internal_eink_init(const display_cfg_t* cfg, void** out_ctx)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
   RA8_CHECK_NULL_PTR(out_ctx, s_tag, "out_ctx");
@@ -443,17 +443,17 @@ static ra8_err_t eink_init(const display_cfg_t* cfg, void** out_ctx)
     return v;
   }
   if (s_eink_ctx.initialised) {
-    ra8_log_error(s_tag, "eink_init: already initialised");
+    ra8_log_error(s_tag, "internal_eink_init: already initialised");
     return k_ra8_err_busy;
   }
   const ra8_err_t err = ra8_epaper_init((const ra8_epaper_cfg_t*)cfg->panel_timing);
   if (err != k_ra8_ok) {
-    ra8_log_error(s_tag, "eink_init: ra8_epaper_init failed");
+    ra8_log_error(s_tag, "internal_eink_init: ra8_epaper_init failed");
     return err;
   }
   internal_eink_snapshot(cfg);
   *out_ctx = &s_eink_ctx;
-  ra8_log_info(s_tag, "eink_init: IT8951 backend bound");
+  ra8_log_info(s_tag, "internal_eink_init: IT8951 backend bound");
   return k_ra8_ok;
 }
 
@@ -469,7 +469,7 @@ static ra8_err_t eink_init(const display_cfg_t* cfg, void** out_ctx)
  * @retval k_ra8_ok           Caps written.
  * @retval k_ra8_err_null_ptr Either argument was NULL.
  *
- * @pre  ``eink_init`` has succeeded.
+ * @pre  ``internal_eink_init`` has succeeded.
  * @pre  out is writable.
  * @post ``*out`` equals the stored caps.
  * @post No state mutated.
@@ -479,7 +479,7 @@ static ra8_err_t eink_init(const display_cfg_t* cfg, void** out_ctx)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t eink_get_caps(const void* ctx, display_caps_t* out)
+static ra8_err_t internal_eink_get_caps(const void* ctx, display_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   RA8_CHECK_NULL_PTR(out, s_tag, "out");
@@ -501,7 +501,7 @@ static ra8_err_t eink_get_caps(const void* ctx, display_caps_t* out)
  * @retval k_ra8_ok           Descriptor written.
  * @retval k_ra8_err_null_ptr Either argument was NULL.
  *
- * @pre  ``eink_init`` has succeeded.
+ * @pre  ``internal_eink_init`` has succeeded.
  * @pre  out is writable.
  * @post ``*out`` mirrors the bound framebuffer.
  * @post No state mutated.
@@ -511,7 +511,7 @@ static ra8_err_t eink_get_caps(const void* ctx, display_caps_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t eink_get_framebuffer(void* ctx, display_fb_t* out)
+static ra8_err_t internal_eink_get_framebuffer(void* ctx, display_fb_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   RA8_CHECK_NULL_PTR(out, s_tag, "out");
@@ -537,7 +537,7 @@ static ra8_err_t eink_get_framebuffer(void* ctx, display_fb_t* out)
  * @retval k_ra8_err_invalid_arg rect leaves the framebuffer.
  * @retval (from ra8_epaper)     Forwarded load / display failure.
  *
- * @pre  ``eink_init`` has succeeded.
+ * @pre  ``internal_eink_init`` has succeeded.
  * @pre  rect lies inside the framebuffer.
  * @post On success the panel reflects ``rect`` of the framebuffer.
  * @post On failure the panel is left as-is.
@@ -547,7 +547,7 @@ static ra8_err_t eink_get_framebuffer(void* ctx, display_fb_t* out)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t eink_flush(void* ctx, display_rect_t rect, display_refresh_hint_t hint)
+static ra8_err_t internal_eink_flush(void* ctx, display_rect_t rect, display_refresh_hint_t hint)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   const eink_ctx_t* c = (const eink_ctx_t*)ctx;
@@ -578,7 +578,7 @@ static ra8_err_t eink_flush(void* ctx, display_rect_t rect, display_refresh_hint
  * @retval k_ra8_ok           Buffer cleared.
  * @retval k_ra8_err_null_ptr ctx was NULL.
  *
- * @pre  ``eink_init`` has succeeded.
+ * @pre  ``internal_eink_init`` has succeeded.
  * @pre  The framebuffer is reachable from the CPU.
  * @post Every framebuffer pixel equals ``color & 0xFFFF``.
  * @post Panel state is unchanged until the next flush.
@@ -588,7 +588,7 @@ static ra8_err_t eink_flush(void* ctx, display_rect_t rect, display_refresh_hint
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t eink_clear(void* ctx, uint32_t color)
+static ra8_err_t internal_eink_clear(void* ctx, uint32_t color)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   eink_ctx_t*    c            = (eink_ctx_t*)ctx;
@@ -606,7 +606,7 @@ static ra8_err_t eink_clear(void* ctx, uint32_t color)
  *
  * @details
  * Issues ``ra8_epaper_sleep`` (which returns the driver to its
- * uninitialised state so a fresh ``eink_init`` works), then clears the
+ * uninitialised state so a fresh ``internal_eink_init`` works), then clears the
  * context.
  *
  * @param[in] ctx Backend context.
@@ -616,7 +616,7 @@ static ra8_err_t eink_clear(void* ctx, uint32_t color)
  * @retval k_ra8_err_null_ptr ctx was NULL.
  * @retval (from ra8_epaper)  Forwarded sleep failure.
  *
- * @pre  ``eink_init`` has succeeded.
+ * @pre  ``internal_eink_init`` has succeeded.
  * @pre  No concurrent caller.
  * @post ``s_eink_ctx.initialised == false``.
  * @post ``s_eink_ctx.fb.pixels == nullptr``.
@@ -626,7 +626,7 @@ static ra8_err_t eink_clear(void* ctx, uint32_t color)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t eink_deinit(void* ctx)
+static ra8_err_t internal_eink_deinit(void* ctx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
   eink_ctx_t*     c   = (eink_ctx_t*)ctx;
@@ -642,10 +642,10 @@ static ra8_err_t eink_deinit(void* ctx)
  */
 
 const display_backend_iface_t k_display_backend_eink_it8951 = {
-  .init            = eink_init,
-  .get_caps        = eink_get_caps,
-  .get_framebuffer = eink_get_framebuffer,
-  .flush           = eink_flush,
-  .clear           = eink_clear,
-  .deinit          = eink_deinit,
+  .init            = internal_eink_init,
+  .get_caps        = internal_eink_get_caps,
+  .get_framebuffer = internal_eink_get_framebuffer,
+  .flush           = internal_eink_flush,
+  .clear           = internal_eink_clear,
+  .deinit          = internal_eink_deinit,
 };
