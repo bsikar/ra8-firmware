@@ -34,6 +34,7 @@ from __future__ import annotations
 import re
 import sys
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -227,6 +228,115 @@ def _scan_targets(
     return findings
 
 
+@dataclass(frozen=True)
+class _SelftestCase:
+    """One synthetic source and its expected self-test label."""
+
+    source: str
+    rel_path: str
+    module: str
+    label: str
+
+
+def _expect_rule(
+    rule: str, case: _SelftestCase, owners: dict[str, set[str]], failures: list[str]
+) -> None:
+    """Require one synthetic include to trigger the selected rule."""
+    findings = _scan_text(case.source, case.rel_path, case.module, owners)
+    expect(any(finding[0] == rule for finding in findings), case.label, failures)
+
+
+def _expect_portable(
+    case: _SelftestCase,
+    owners: dict[str, set[str]],
+    failures: list[str],
+) -> None:
+    """Require one synthetic portable include set to remain finding-free."""
+    expect(not _scan_text(case.source, case.rel_path, case.module, owners), case.label, failures)
+
+
+def _selftest_violations(owners: dict[str, set[str]], failures: list[str]) -> None:
+    """Prove each forbidden dependency class is detected."""
+    _expect_rule(
+        "CORE_UPWARD",
+        _SelftestCase(
+            '#include "ra8_gpio.h"\n',
+            "libs/ra8_core/x.c",
+            "ra8_core",
+            "ra8_core upward dependency fires",
+        ),
+        owners,
+        failures,
+    )
+    _expect_rule(
+        "CROSS_INTERNAL",
+        _SelftestCase(
+            '#include "ra8_io_private_internal.h"\n',
+            "libs/ra8_ftl/x.c",
+            "ra8_ftl",
+            "cross-library internal header fires",
+        ),
+        owners,
+        failures,
+    )
+    _expect_rule(
+        "DOMAIN_DEVICE",
+        _SelftestCase(
+            '[Ring 4 / Domain]\n#include "ra8_gpio.h"\n',
+            "libs/ra8_book/x.c",
+            "ra8_book",
+            "Domain dependency on a device contract fires",
+        ),
+        owners,
+        failures,
+    )
+    _expect_rule(
+        "HOSTED_LIB",
+        _SelftestCase(
+            "#include <dirent.h>\n",
+            "libs/ra8_book/x.c",
+            "ra8_book",
+            "hosted filesystem header in a library fires",
+        ),
+        owners,
+        failures,
+    )
+
+
+def _selftest_portable(owners: dict[str, set[str]], failures: list[str]) -> None:
+    """Prove portable and same-module dependencies remain accepted."""
+    _expect_portable(
+        _SelftestCase(
+            '#include <string.h>\n#include "ra8_err.h"\n',
+            "libs/ra8_book/x.c",
+            "ra8_book",
+            "portable ISO C and public lower-layer includes stay quiet",
+        ),
+        owners,
+        failures,
+    )
+    _expect_portable(
+        _SelftestCase(
+            '#include "ra8_io_private_internal.h"\n',
+            "libs/ra8_io/x.c",
+            "ra8_io",
+            "same-module internal header stays quiet",
+        ),
+        owners,
+        failures,
+    )
+    _expect_portable(
+        _SelftestCase(
+            '[Ring 4 / Domain]\n#include "ra8_err.h"\n',
+            "libs/ra8_book/x.c",
+            "ra8_book",
+            "Domain dependency on a portable lower contract stays quiet",
+        ),
+        owners,
+        failures,
+    )
+
+
 def _selftest() -> int:
     """Prove all four rules fire and portable/same-module includes stay quiet."""
     print("check_core_layering.py --selftest")
@@ -236,61 +346,8 @@ def _selftest() -> int:
         "ra8_gpio.h": {"ra8_hal"},
         "ra8_io_private_internal.h": {"ra8_io"},
     }
-    upward = _scan_text('#include "ra8_gpio.h"\n', "libs/ra8_core/x.c", "ra8_core", owners)
-    expect(
-        any(finding[0] == "CORE_UPWARD" for finding in upward),
-        "ra8_core upward dependency fires",
-        failures,
-    )
-    private = _scan_text(
-        '#include "ra8_io_private_internal.h"\n',
-        "libs/ra8_ftl/x.c",
-        "ra8_ftl",
-        owners,
-    )
-    expect(
-        any(finding[0] == "CROSS_INTERNAL" for finding in private),
-        "cross-library internal header fires",
-        failures,
-    )
-    domain_device = _scan_text(
-        '[Ring 4 / Domain]\n#include "ra8_gpio.h"\n',
-        "libs/ra8_book/x.c",
-        "ra8_book",
-        owners,
-    )
-    expect(
-        any(finding[0] == "DOMAIN_DEVICE" for finding in domain_device),
-        "Domain dependency on a device contract fires",
-        failures,
-    )
-    hosted = _scan_text("#include <dirent.h>\n", "libs/ra8_book/x.c", "ra8_book", owners)
-    expect(
-        any(finding[0] == "HOSTED_LIB" for finding in hosted),
-        "hosted filesystem header in a library fires",
-        failures,
-    )
-    portable = _scan_text(
-        '#include <string.h>\n#include "ra8_err.h"\n',
-        "libs/ra8_book/x.c",
-        "ra8_book",
-        owners,
-    )
-    expect(not portable, "portable ISO C and public lower-layer includes stay quiet", failures)
-    own_private = _scan_text(
-        '#include "ra8_io_private_internal.h"\n',
-        "libs/ra8_io/x.c",
-        "ra8_io",
-        owners,
-    )
-    expect(not own_private, "same-module internal header stays quiet", failures)
-    domain_lower = _scan_text(
-        '[Ring 4 / Domain]\n#include "ra8_err.h"\n',
-        "libs/ra8_book/x.c",
-        "ra8_book",
-        owners,
-    )
-    expect(not domain_lower, "Domain dependency on a portable lower contract stays quiet", failures)
+    _selftest_violations(owners, failures)
+    _selftest_portable(owners, failures)
     return report(failures)
 
 

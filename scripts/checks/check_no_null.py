@@ -11,6 +11,7 @@ and rejects bare ``NULL`` tokens in code positions. It allows NULL in:
   * string literals
   * Doxygen annotation prose
   * UX_NULL / similar vendor macros (USBX expects literal NULL)
+  * exact generated-source paths registered by the lint-coverage manifest
 
 Scope is DERIVED from git ls-files (#358), so tools/ -- host tooling held to
 the same C23 bar, and silently omitted by the old ROOT_DIRS tuple -- is now in
@@ -37,6 +38,7 @@ from collections.abc import Iterable
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+from lint_coverage_rules import PATH_CLASS
 from lint_targets import first_party_paths, is_build_output_path
 from selftest_assert import expect, report
 
@@ -60,6 +62,13 @@ EXEMPT_PREFIXES = (
     # nullptr there fights the test rather than the code, the same reason
     # check_magic_numbers.py holds tests/ exempt.
     "tests/",
+)
+
+# Generator-owned output is governed by reproducible regeneration/diff checks,
+# not handwritten C23 spelling rules.  This is an exact manifest lookup: a
+# future file merely resembling generated output remains in scope.
+GENERATED_SOURCE_PATHS = frozenset(
+    path for path, classification in PATH_CLASS.items() if classification == "generated-source"
 )
 
 # bare NULL token in a code context. \bNULL\b matches the identifier;
@@ -183,7 +192,11 @@ def _in_scope(rel: str) -> bool:
     """
     if not rel.endswith(EXTENSIONS):
         return False
-    if rel.startswith(EXEMPT_PREFIXES) or rel.startswith(SOUP_PREFIXES):
+    if (
+        rel.startswith(EXEMPT_PREFIXES)
+        or rel.startswith(SOUP_PREFIXES)
+        or rel in GENERATED_SOURCE_PATHS
+    ):
         return False
     return not is_build_output_path(rel)
 
@@ -210,7 +223,7 @@ def iter_all_files() -> Iterable[pathlib.Path]:
     directory of first-party C is covered the day it lands -- no allowlist.
     """
     for rel in first_party_paths(EXTENSIONS):
-        if not rel.startswith(EXEMPT_PREFIXES):
+        if _in_scope(rel):
             yield REPO_ROOT / rel
 
 
@@ -248,6 +261,17 @@ def selftest() -> int:
         failures,
     )
     expect(not _in_scope("tests/test_x.c"), "tests/ exempt (deliberate NULL stimulus)", failures)
+    generated = "libs/ra8_c6link/src/ra8_media_download.pb-c.c"
+    expect(
+        generated in GENERATED_SOURCE_PATHS and not _in_scope(generated),
+        "registered generated source is exempt",
+        failures,
+    )
+    expect(
+        _in_scope("libs/ra8_c6link/src/future_generated.pb-c.c"),
+        "generated-looking future source is not automatically exempt",
+        failures,
+    )
     expect(not _in_scope("libs/third_party/miniz/miniz.c"), "vendored SOUP exempt", failures)
     return report(failures)
 

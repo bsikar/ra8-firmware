@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Enforce NASA Power-of-10 Rule 3 -- no dynamic memory after init.
+"""Enforce bounded first-party memory ownership in production code.
 
-Applies to RA8D2 firmware code and first-party ESP32-C6 port code.
+Applies to RA8D2 firmware, first-party ESP32-C6 port code, and production
+host-tool code. Firmware rejects direct and known transitive allocation.
+Production tools reject every direct allocator; known third-party SOUP
+lifecycle calls remain visible as a non-blocking report because their opaque
+implementation is outside first-party ownership.
 
 Flags two classes of violation:
 
-  * **Direct allocator calls** -- malloc, calloc, realloc, reallocarray,
-    aligned_alloc, posix_memalign, valloc, memalign, free, strdup,
-    strndup, asprintf, vasprintf.
+  * **Direct allocator calls** -- C allocators such as malloc, calloc,
+    realloc, aligned_alloc, free, strdup, and asprintf, plus C++ ``new`` and
+    ``delete`` expressions.
 
   * **Vendored helpers that allocate transitively** under the hood, so a
     plain grep for malloc/free won't catch them:
@@ -29,6 +33,9 @@ Flags two classes of violation:
                       mz_zip_reader_extract_file_to_heap.
                       Use the *_to_mem variants with a caller buffer.
 
+      - tinyxml2:     XMLDocument owns heap-backed node/string pools unless a
+                      reviewed caller-owned allocator is explicitly bound.
+
       - ESP-IDF HTTP: esp_http_client_init, esp_http_client_set_url,
                       esp_http_client_open, esp_http_client_close,
                       esp_http_client_cleanup. These allocate or release
@@ -36,17 +43,20 @@ Flags two classes of violation:
                       reasoned exception until a fixed-memory backend replaces
                       the adapter.
 
-      - Host downloader SOUP boundaries: miniz writer lifecycle, libcurl easy
+      - Host-tool SOUP boundaries: miniz writer lifecycle, libcurl easy
         lifecycle/request calls, and POSIX spawn setup/execution. These APIs
         may allocate transitively. They are reported for review, but do not
-        fail the firmware Rule 3 gate because they never run on a target.
+        excuse a first-party ``malloc``/``free`` wrapper around them.
 
 Scope:
 
   Firmware code under libs/ra8_*/, src/, port/esp32_c6/, and examples/<app>/
-  where <app> has main.c + CMakeLists.txt is blocking. tools/media_dl/inc and
-  tools/media_dl/src are a separate, non-blocking SOUP-boundary report. Build
-  outputs, vendored code, and host-side tests/ are exempt.
+  where <app> has main.c + CMakeLists.txt is blocking. First-party production
+  C-family code under tools/ is blocking for direct allocation. Build outputs,
+  vendored code, and host-side tests/ are exempt.
+
+  Full sweeps enforce measured per-domain and aggregate file-count floors so a
+  collapsed firmware or tool walk cannot report a vacuous pass.
 
 Inline suppression:
 
@@ -76,8 +86,23 @@ import pathlib
 import re
 import sys
 
+from doxy_lex import blank_noncode
+from lint_targets import is_build_output_path
+
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
+SOURCE_SUFFIXES = {
+    ".c",
+    ".h",
+    ".cc",
+    ".cpp",
+    ".cxx",
+    ".hh",
+    ".hpp",
+    ".hxx",
+    ".inc",
+    ".m",
+    ".mm",
+}
 
 DIRECT_ALLOCATORS = (
     "malloc",
@@ -148,16 +173,18 @@ ALL_NAMES = DIRECT_ALLOCATORS + TRANSITIVE_ALLOCATORS
 # free, and stbtt_GetCodepointBitmapBox does not match
 # stbtt_GetCodepointBitmap.
 SYM_RE = re.compile(r"\b(" + "|".join(re.escape(n) for n in ALL_NAMES) + r")\b\s*\(")
+CPP_DIRECT_RE = re.compile(r"\b(new|delete)\b")
+OPAQUE_OWNER_TYPE_RE = re.compile(r"\bXMLDocument\b")
 
 # Inline exemption marker. The reason after the colon is mandatory.
 ALLOW_RE = re.compile(r"alloc-allow\s*:\s*\S")
 BARE_ALLOW_RE = re.compile(r"alloc-allow\b")
 
-BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
-LINE_COMMENT_RE = re.compile(r"//[^\n]*")
-
 # Minimum number of argv entries needed for a file/flag argument to be present.
 MIN_ARGC_WITH_ARG = 2
+
+SCOPE_FILE_FLOORS = {"firmware": 850, "tool": 200}
+TOTAL_FILE_FLOOR = 1100
 
 
 def _firmware_scan_dirs() -> list[pathlib.Path]:
@@ -193,30 +220,30 @@ def _firmware_scan_dirs() -> list[pathlib.Path]:
     return out
 
 
-def _host_report_dirs() -> list[pathlib.Path]:
-    """Host-only trees whose allocator-bearing SOUP calls remain visible."""
-    media_dl = REPO_ROOT / "tools" / "media_dl"
-    return [candidate for subtree in ("inc", "src") if (candidate := media_dl / subtree).is_dir()]
+def _tool_scan_dirs() -> list[pathlib.Path]:
+    """First-party production tool trees governed by explicit ownership."""
+    tools = REPO_ROOT / "tools"
+    return [tools] if tools.is_dir() else []
 
 
 FIRMWARE_SCAN_DIRS = _firmware_scan_dirs()
-HOST_REPORT_DIRS = _host_report_dirs()
+TOOL_SCAN_DIRS = _tool_scan_dirs()
 FIRMWARE_SCAN_RELS = [directory.relative_to(REPO_ROOT) for directory in FIRMWARE_SCAN_DIRS]
-HOST_REPORT_RELS = [directory.relative_to(REPO_ROOT) for directory in HOST_REPORT_DIRS]
+TOOL_SCAN_RELS = [directory.relative_to(REPO_ROOT) for directory in TOOL_SCAN_DIRS]
 
 
 def _scope(path: pathlib.Path) -> str | None:
-    """Return ``firmware`` or ``host`` for a source file in either scope."""
+    """Return ``firmware`` or ``tool`` for an in-scope production source."""
     if path.suffix not in SOURCE_SUFFIXES:
         return None
     try:
         rel = path.resolve().relative_to(REPO_ROOT)
     except ValueError:
         return None
-    excluded_parts = {"third_party", "build", "_deps"}
-    if any(part in excluded_parts for part in rel.parts):
-        return None
+    excluded_parts = {"third_party", "tests", "build", "_deps"}
     rel_str = str(rel)
+    if any(part in excluded_parts for part in rel.parts) or is_build_output_path(rel.as_posix()):
+        return None
     if any(
         rel_str == str(directory) or rel_str.startswith(str(directory) + "/")
         for directory in FIRMWARE_SCAN_RELS
@@ -224,9 +251,9 @@ def _scope(path: pathlib.Path) -> str | None:
         return "firmware"
     if any(
         rel_str == str(directory) or rel_str.startswith(str(directory) + "/")
-        for directory in HOST_REPORT_RELS
+        for directory in TOOL_SCAN_RELS
     ):
-        return "host"
+        return "tool"
     return None
 
 
@@ -235,14 +262,8 @@ def _is_in_scope(path: pathlib.Path) -> bool:
     return _scope(path) is not None
 
 
-def _strip_comments(text: str) -> str:
-    """Strip /* */ and // comments while preserving line numbers."""
-    no_block = BLOCK_COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
-    return LINE_COMMENT_RE.sub("", no_block)
-
-
 def check(path: pathlib.Path) -> list[str]:
-    """Report every dynamic-allocation call in one firmware file.
+    """Report every dynamic-allocation call in one production source file.
 
     An unreadable file yields an empty list rather than raising, so one bad
     file cannot abort the sweep.
@@ -253,7 +274,7 @@ def check(path: pathlib.Path) -> list[str]:
         return []
 
     original_lines = text.splitlines()
-    stripped_lines = _strip_comments(text).splitlines()
+    stripped_lines = blank_noncode(text)[0].splitlines()
     problems: list[str] = []
 
     for idx, stripped in enumerate(stripped_lines):
@@ -266,6 +287,21 @@ def check(path: pathlib.Path) -> list[str]:
             kind = "direct" if sym in DIRECT_ALLOCATORS else "transitive"
             problems.append(
                 f"{path}:{line_no}: {kind} dynamic allocation: {sym}() -- {original.strip()}"
+            )
+        cpp_code = "" if stripped.lstrip().startswith("#") else stripped
+        for match in CPP_DIRECT_RE.finditer(cpp_code):
+            if ALLOW_RE.search(original):
+                continue
+            keyword = match.group(1)
+            problems.append(
+                f"{path}:{line_no}: direct dynamic allocation: C++ {keyword} -- {original.strip()}"
+            )
+        for _match in OPAQUE_OWNER_TYPE_RE.finditer(cpp_code):
+            if ALLOW_RE.search(original):
+                continue
+            problems.append(
+                f"{path}:{line_no}: transitive dynamic allocation: "
+                f"tinyxml2::XMLDocument -- {original.strip()}"
             )
 
     for idx, original in enumerate(original_lines):
@@ -280,32 +316,67 @@ def check(path: pathlib.Path) -> list[str]:
 
 
 def collect_repo_paths() -> list[pathlib.Path]:
-    """Every source file in the blocking and report-only scopes."""
-    directories = FIRMWARE_SCAN_DIRS + HOST_REPORT_DIRS
+    """Every source file in the blocking and report-only production scopes."""
+    directories = FIRMWARE_SCAN_DIRS + TOOL_SCAN_DIRS
     return [
         path for directory in directories for path in directory.rglob("*") if _is_in_scope(path)
     ]
 
 
-def main() -> int:
-    """Fail when firmware calls malloc, free or a relative.
+def _scope_floor_errors(counts: dict[str, int]) -> list[str]:
+    """Describe every collapsed full-sweep domain or aggregate."""
+    errors = [
+        f"{scope} enumerated {counts.get(scope, 0)} source file(s); floor is {floor}"
+        for scope, floor in SCOPE_FILE_FLOORS.items()
+        if counts.get(scope, 0) < floor
+    ]
+    total = sum(counts.values())
+    if total < TOTAL_FILE_FLOOR:
+        errors.append(f"total scope enumerated {total} source file(s); floor is {TOTAL_FILE_FLOOR}")
+    return errors
 
-    The rule targets the target image only -- host tools and tests are out of
-    scope -- because the hazard is heap exhaustion and fragmentation on a
-    device with no allocation-failure path, not allocation as such.
 
-    Returns 1 listing each call site, 0 when the firmware is clean.
-    """
+def _collect_all_validated() -> list[pathlib.Path] | None:
+    """Return the full nonvacuous scope, or report a collapsed enumeration."""
+    paths = collect_repo_paths()
+    counts = {scope: sum(_scope(path) == scope for path in paths) for scope in SCOPE_FILE_FLOORS}
+    floor_errors = _scope_floor_errors(counts)
+    if not floor_errors:
+        return paths
+    print(
+        "check_no_dynamic_alloc.py: FATAL -- " + "; ".join(floor_errors),
+        file=sys.stderr,
+    )
+    return None
+
+
+def _requested_paths() -> tuple[list[pathlib.Path] | None, int]:
+    """Resolve CLI scope, returning a nonzero status when it is unusable."""
     if len(sys.argv) >= MIN_ARGC_WITH_ARG and sys.argv[1] == "--all":
-        paths = collect_repo_paths()
-    elif len(sys.argv) >= MIN_ARGC_WITH_ARG:
-        paths = [pathlib.Path(p).resolve() for p in sys.argv[1:]]
-    else:
-        print(
-            "usage: check_no_dynamic_alloc.py FILE [FILE ...] | --all",
-            file=sys.stderr,
-        )
-        return 2
+        paths = _collect_all_validated()
+        return paths, 0 if paths is not None else 2
+    if len(sys.argv) >= MIN_ARGC_WITH_ARG:
+        return [pathlib.Path(path).resolve() for path in sys.argv[1:]], 0
+    print(
+        "usage: check_no_dynamic_alloc.py FILE [FILE ...] | --all",
+        file=sys.stderr,
+    )
+    return None, 2
+
+
+def main() -> int:
+    """Fail when firmware or first-party production tools allocate directly.
+
+    Firmware also rejects known transitive allocators. Production tools report
+    third-party SOUP lifecycle calls while rejecting direct first-party
+    ownership. Tests remain outside this production policy.
+
+    Returns 1 listing each blocking call site, 0 when both production domains
+    are clean, and 2 for invalid usage or a collapsed full sweep.
+    """
+    paths, error = _requested_paths()
+    if paths is None:
+        return error
 
     failures: list[str] = []
     reports: list[str] = []
@@ -315,23 +386,29 @@ def main() -> int:
         if not _is_in_scope(path):
             continue
         problems = check(path)
-        if _scope(path) == "firmware":
+        scope = _scope(path)
+        if scope == "firmware":
             failures.extend(problems)
         else:
-            reports.extend(problems)
+            failures.extend(
+                problem for problem in problems if ": direct dynamic allocation:" in problem
+            )
+            reports.extend(
+                problem for problem in problems if ": transitive dynamic allocation:" in problem
+            )
 
     if reports:
         print(
-            "check_no_dynamic_alloc.py: host media_dl SOUP allocation report "
-            "(non-blocking; not target firmware)."
+            "check_no_dynamic_alloc.py: host-tool SOUP allocation report "
+            "(non-blocking third-party boundary)."
         )
         for line in reports:
             print(line)
-        print(f"\n{len(reports)} host SOUP call site(s) reported; firmware gate unaffected.")
+        print(f"\n{len(reports)} host SOUP call site(s) reported; these rows are non-blocking.")
 
     if failures:
         print(
-            "check_no_dynamic_alloc.py: NASA Rule 3 -- no dynamic allocation in firmware code.",
+            "check_no_dynamic_alloc.py: dynamic allocation in firmware or first-party tool code.",
             file=sys.stderr,
         )
         for line in failures:
