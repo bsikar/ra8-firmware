@@ -39,3 +39,12 @@ target_include_directories(
 # First-party sources carry the project warning bar (NASA Power of 10 Rule 10)
 # here exactly as they do in the ARM and host-test builds.
 target_compile_options(exfat_mkimage PRIVATE -Wall -Wextra -Werror)
+
+include(CTest)
+if(BUILD_TESTING)
+  add_test(NAME exfat_mkimage_integration
+           COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration.sh
+                   $<TARGET_FILE:exfat_mkimage> ${CMAKE_COMMAND}
+  )
+  set_tests_properties(exfat_mkimage_integration PROPERTIES TIMEOUT 45)
+endif()
