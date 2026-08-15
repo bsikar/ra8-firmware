@@ -50,11 +50,9 @@ macro(_ra8_app_vendored_flags)
     )
   endif()
 
-  # The vendored miniz.c (C) / tinyxml2.cpp (C++) trip only the SOUP style
-  # classes; suppress those with the narrow -Wno set so -Werror stays in force
-  # for the memory-safety classes (the first-party ra8_epub .c / .cpp shim still
-  # go through the full warning set). The C-only names would be a hard -Werror
-  # in g++, so they are gated to the C TU via $<COMPILE_LANGUAGE:C>.
+  # Vendored miniz.c trips SOUP style classes; suppress those with the narrow
+  # -Wno set so -Werror stays in force for memory-safety classes. First-party
+  # EPUB/XML C sources still go through the full warning set.
   # MINIZ_NO_STDIO/NO_TIME must be set for EVERY TU that includes miniz.h (the
   # vendored miniz.c *and* ra8_epub's TUs) so the header ABI matches -- miniz.c
   # references utime()/fopen() (absent on bare-metal newlib) only under the
