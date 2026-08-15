@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 #include "ra8_attributes.h"
-#include "ra8_fmt_host_fd.h"
+#include "ra8_fmt_host_fd_internal.h"
 
 /** @brief Test capacities and file modes. */
 typedef enum : uint32_t {

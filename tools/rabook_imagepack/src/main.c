@@ -13,8 +13,8 @@
 #include <unistd.h>
 
 #include "ra8_attributes.h"
-#include "ra8_fmt_host_fd.h"
-#include "ra8_fmt_portable_main.h"
+#include "ra8_fmt_host_fd_internal.h"
+#include "ra8_fmt_portable_main_internal.h"
 #include "ra8_log.h"
 
 /** @brief Process status returned when no supported command owns the input. */

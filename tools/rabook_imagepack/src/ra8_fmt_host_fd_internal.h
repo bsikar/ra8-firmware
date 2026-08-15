@@ -1,5 +1,5 @@
 /**
- * @file ra8_fmt_host_fd.h
+ * @file ra8_fmt_host_fd_internal.h
  * @brief Raw file-descriptor adapters for the portable format-tool contracts.
  * @details Defines caller-owned source, sink, and transaction state; raw host
  * descriptors remain confined to this composition boundary.
