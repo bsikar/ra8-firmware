@@ -54,7 +54,7 @@
  * const uint32_t rounded = (want + k_ra8_c6link_arena_align - 1U) & ~mask;
  * @endcode
  *
- * @see ra8_c6link_priv_arena_alloc
+ * @see priv_c6link_arena_alloc
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -64,7 +64,7 @@ typedef enum : uint32_t {
   /**< ::k_ra8_c6link_arena_align minus one, as a rounding mask. */
 } ra8_c6link_arena_t;
 
-RA8_PRIV void* ra8_c6link_priv_arena_alloc(void* ctx, size_t size)
+RA8_PRIV void* priv_c6link_arena_alloc(void* ctx, size_t size)
 {
   ra8_c6link_t* link = (ra8_c6link_t*)ctx;
   if ((link == nullptr) || (link->arena == nullptr)) {
@@ -91,7 +91,7 @@ RA8_PRIV void* ra8_c6link_priv_arena_alloc(void* ctx, size_t size)
   return &link->arena[at];
 }
 
-RA8_PRIV void ra8_c6link_priv_arena_free(void* ctx, void* pointer)
+RA8_PRIV void priv_c6link_arena_free(void* ctx, void* pointer)
 {
   ra8_c6link_t* link = (ra8_c6link_t*)ctx;
   if ((link == nullptr) || (pointer == nullptr) || (link->arena_last == 0U)) {
@@ -104,7 +104,7 @@ RA8_PRIV void ra8_c6link_priv_arena_free(void* ctx, void* pointer)
   }
 }
 
-RA8_PRIV void ra8_c6link_priv_arena_reset(ra8_c6link_t* link)
+RA8_PRIV void priv_c6link_arena_reset(ra8_c6link_t* link)
 {
   if (link == nullptr) {
     return;
@@ -113,12 +113,12 @@ RA8_PRIV void ra8_c6link_priv_arena_reset(ra8_c6link_t* link)
   link->arena_last = 0U;
 }
 
-RA8_PRIV void ra8_c6link_priv_arena_bind(ProtobufCAllocator* out, ra8_c6link_t* link)
+RA8_PRIV void priv_c6link_arena_bind(ProtobufCAllocator* out, ra8_c6link_t* link)
 {
   if ((out == nullptr) || (link == nullptr)) {
     return;
   }
-  out->alloc          = ra8_c6link_priv_arena_alloc;
-  out->free           = ra8_c6link_priv_arena_free;
+  out->alloc          = priv_c6link_arena_alloc;
+  out->free           = priv_c6link_arena_free;
   out->allocator_data = link;
 }
