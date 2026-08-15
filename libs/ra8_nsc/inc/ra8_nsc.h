@@ -1,55 +1,56 @@
 /**
  * @file ra8_nsc.h
- * @brief Non-Secure Callable veneer scaffold
+ * @brief Non-Secure Callable veneers -- the only NS->S gateway
  * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * scaffold for the TrustZone Non-Secure Callable layer.
- * The NSC layer is the *only* gateway through which Non-Secure
- * code can reach Secure-side resources partitions
- * the firmware. Each function in this header is a veneer that:
+ * The NSC layer is the *only* gateway through which Non-Secure code can
+ * reach Secure-side resources. Every function declared here is a veneer
+ * that:
  *
- * 1. Lives in a special ``.gnu.sgstubs`` linker section so the
- * CPU can transition from NS to S only at these entry points.
- * 2. Validates every argument against the secure-world's policy
- * (NS code is untrusted; even an "obviously safe" pointer
- * could fall in the secure region).
- * 3. Calls the underlying Ring-3 driver in the secure world.
- * 4. Returns through the matching ``__cmse_nonsecure_entry``
- * epilogue which sanitises caller-saved registers.
+ * 1. Lives in the ``.gnu.sgstubs`` output section, so the CPU accepts an
+ *    NS->S transition at these entry points and nowhere else.
+ * 2. Validates every argument against secure-world policy. NS code is
+ *    untrusted: an "obviously safe" pointer may aim into the Secure
+ *    region, and a length may be ``UINT32_MAX``.
+ * 3. Calls the underlying secure-side driver.
+ * 4. Returns through the ``cmse_nonsecure_entry`` epilogue, which clears
+ *    caller-saved registers so no Secure state rides back out.
  *
- * ** status:** every veneer here is a plain C function
- * with the right shape and policy logic, but **no** ``cmse``
- * annotation. The single-world build runs through them as
- * ordinary calls. adds:
+ * @par Build modes:
+ * ``RA8_NSC_VENEER`` (see ``ra8_nsc_veneer.h``) expands to the real
+ * ``cmse_nonsecure_entry`` attribute -- the thing that actually emits the
+ * secure gateway -- only in a Secure-world compile, i.e. with both
+ * ``RA8_TRUSTZONE_ENABLE`` and ``-mcmse`` in effect. Non-Secure TUs and
+ * the host unit tests take the plain-declaration branch and call these as
+ * ordinary C functions; the range checks compile to no-ops there, which
+ * is correct because those builds have no S/NS boundary to police.
+ * ``ra8_nsc_veneer.h`` is the single authority for that macro and
+ * ``#undef``s before defining, so include order cannot silently drop the
+ * cmse attribute.
  *
- * @code
- * __attribute__((cmse_nonsecure_entry))
- * @endcode
- *
- * to each prototype + definition and routes them through the
- * SAU + IDAU. The argument validation already in place is
- * exactly what the partition needs, so nothing in this header
- * has to change shape to go live.
- *
- * @par TrustZone Safety:
- * Each veneer documents what it validates, what state it touches,
- * and what assumptions hold. The validation policy follows three
- * rules:
- *
- * - **No raw pointers cross the boundary.** All buffer veneers
- * take ``uintptr_t`` style addresses but treat them as
- * opaque indices into well-known windows; the secure side
- * resolves the actual pointer.
- * - **Length bounds are enforced by the secure side.** The NS
- * caller may try to pass ``UINT32_MAX``; the veneer clamps
- * and rejects.
- * - **No secure-side state leaks.** Read paths copy only the
- * bytes asked for. Status veneers return packed bit-masks,
- * not addresses or pointers.
+ * @par Validation policy:
+ * - **Raw pointers do cross, and every one is range-checked before it is
+ *   dereferenced.** ``RA8_NSC_CHECK_NS_RANGE_R`` /
+ *   ``RA8_NSC_CHECK_NS_RANGE_RW`` wrap
+ *   ``cmse_check_address_range`` (the Armv8-M ``TT`` instruction), which
+ *   asks the SAU/MPU whether an NS caller could legitimately touch
+ *   ``[ptr, ptr+len)``. Ordering is load-bearing: validate a pointer,
+ *   then dereference it, then use that value to size the next check.
+ *   Reversing those steps turns a veneer into an oracle that reads Secure
+ *   memory one word at a time -- see ``ra8_nsc_eth_recv()``.
+ * - **Out-of-range lengths are rejected, never clamped.** A silent clamp
+ *   would hand the caller a short result it did not ask for; the veneers
+ *   return ``k_ra8_err_invalid_arg``.
+ * - **NUL-terminated strings are checked against the copy cap, not their
+ *   length** -- the length cannot be known without first reading NS
+ *   memory. The veneer validates the longest prefix it may touch, then
+ *   bounded-copies into secure scratch. See ``ra8_nsc_log_emit()``.
+ * - **No Secure-side state leaks.** Read paths copy only the bytes asked
+ *   for. Status veneers return packed bit-masks, not addresses.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -82,8 +83,8 @@ extern "C" {
  * - ``len`` <= ``k_ra8_nsc_xspi_max_read``.
  * - ``ns_dst`` must point into the NS region; this is checked
  * at runtime by reading TT (``cmse_check_address_range``).
- * In the check is a stub that always passes -- the
- * callsite is documented for the retrofit.
+ * A rejected range returns ``k_ra8_err_invalid_arg`` before the
+ * secure-side XSPI driver can dereference the pointer.
  *
  * @param[in] flash_off Byte offset inside the XSPI flash window.
  * @param[out] ns_dst Destination buffer in Non-Secure RAM.
@@ -107,9 +108,8 @@ extern "C" {
  * - **Denies:** writes to flash, reads outside the configured
  * window, reads larger than k_ra8_nsc_xspi_max_read.
  *
- * @note stub. The retrofit just adds the
- * ``__attribute__((cmse_nonsecure_entry))`` and the
- * ``cmse_check_address_range`` call site.
+ * @note Host and single-world builds intentionally compile the range check
+ * to a no-op; Secure-world ``-mcmse`` builds execute the TT-based check.
  * @since 0.1.0
  */
 [[nodiscard]] RA8_NSC_VENEER ra8_err_t ra8_nsc_xspi_read(uint32_t flash_off,
