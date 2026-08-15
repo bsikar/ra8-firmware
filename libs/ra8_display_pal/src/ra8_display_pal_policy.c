@@ -56,7 +56,7 @@ static const char* const s_tag_policy = "disp_policy";
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint16_t priv_clamp_clean_every(uint16_t n)
+static uint16_t internal_clamp_clean_every(uint16_t n)
 {
   if (n < (uint16_t)k_display_policy_clean_every_min) {
     return (uint16_t)k_display_policy_clean_every_min;
@@ -98,9 +98,9 @@ static uint16_t priv_clamp_clean_every(uint16_t n)
  * @since 0.1.0
  */
 RA8_INTERNAL
-static void priv_decide_fast_clean(display_policy_t*          p,
-                                   display_turn_event_t       event,
-                                   display_policy_decision_t* out)
+static void internal_decide_fast_clean(display_policy_t*          p,
+                                       display_turn_event_t       event,
+                                       display_policy_decision_t* out)
 {
   const uint16_t next  = (uint16_t)(p->turns_since_clean + 1U);
   const bool     clean = (next >= p->clean_every) || (event == k_display_event_chapter);
@@ -123,7 +123,7 @@ ra8_err_t display_policy_init(display_policy_t* p, display_policy_kind_t kind, u
     return k_ra8_err_invalid_arg;
   }
   p->kind              = (uint8_t)kind;
-  p->clean_every       = priv_clamp_clean_every(clean_every);
+  p->clean_every       = internal_clamp_clean_every(clean_every);
   p->turns_since_clean = 0U;
   return k_ra8_ok;
 }
@@ -158,7 +158,7 @@ ra8_err_t display_policy_decide(display_policy_t*          p,
       break;
     case (uint8_t)k_display_policy_fast_clean:
     default:
-      priv_decide_fast_clean(p, event, out);
+      internal_decide_fast_clean(p, event, out);
       break;
   }
   return k_ra8_ok;
