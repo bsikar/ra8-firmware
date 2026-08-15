@@ -64,7 +64,7 @@ typedef enum : uint32_t {
  * @var s_state
  * @brief 64-bit xorshift64* state.
  *
- * @details Updated on every call to ``ra8_secure_trng_read``.
+ * @details Updated on every call to ``priv_ra8_secure_trng_read``.
  * @warning Direct modification outside this TU is forbidden.
  * @since 0.1.0
  */
@@ -81,7 +81,7 @@ static uint64_t s_state = k_xorshift_seed;
  * @return Next pseudo-random 64-bit word.
  * @retval Any uint64_t value; output cycle length 2^64 - 1.
  *
- * @pre ``s_state`` has been seeded by ::ra8_secure_trng_reset or boot default.
+ * @pre ``s_state`` has been seeded by ::priv_ra8_secure_trng_reset or boot default.
  * @pre Caller is in the secure-side dispatch path.
  * @post ``s_state`` is advanced to the next state in the sequence.
  * @post No other state is modified.
@@ -117,14 +117,14 @@ static uint64_t internal_xorshift64(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_secure_trng_reset(void)
+ra8_err_t priv_ra8_secure_trng_reset(void)
 {
   s_state = k_xorshift_seed;
   return k_ra8_ok;
 }
 
 /**
- * @brief Implementation of ra8_secure_trng_read (see header for the
+ * @brief Implementation of priv_ra8_secure_trng_read (see header for the
  *        public contract).
  * @details Drives ::internal_xorshift64 in a loop, splitting each
  *          64-bit word into eight bytes and writing them to ``out``
@@ -143,7 +143,7 @@ ra8_err_t ra8_secure_trng_reset(void)
  * @note Not thread-safe; secure-side serial dispatch only.
  * @since 0.1.0
  */
-ra8_err_t ra8_secure_trng_read(uint8_t* out, uint32_t len)
+ra8_err_t priv_ra8_secure_trng_read(uint8_t* out, uint32_t len)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "trng_read: out");
   if ((len == 0U) || (len > (uint32_t)k_ra8_secure_trng_max_bytes)) {
@@ -171,12 +171,12 @@ ra8_err_t ra8_secure_trng_read(uint8_t* out, uint32_t len)
  * entropy therefore cannot silently draw predictable "random" bytes.
  */
 
-ra8_err_t ra8_secure_trng_reset(void)
+ra8_err_t priv_ra8_secure_trng_reset(void)
 {
   return k_ra8_err_not_supported;
 }
 
-ra8_err_t ra8_secure_trng_read(uint8_t* out, uint32_t len)
+ra8_err_t priv_ra8_secure_trng_read(uint8_t* out, uint32_t len)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "trng_read: out");
   (void)len;

@@ -142,11 +142,11 @@ internal_psa_import_cmac_key(const uint8_t* key, uint16_t key_len, psa_key_id_t*
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_sec_cmac_compute(const uint8_t* key,
-                               uint16_t       key_len,
-                               const uint8_t* msg,
-                               uint32_t       msg_len,
-                               uint8_t*       out_mac)
+ra8_err_t priv_ra8_sec_cmac_compute(const uint8_t* key,
+                                    uint16_t       key_len,
+                                    const uint8_t* msg,
+                                    uint32_t       msg_len,
+                                    uint8_t*       out_mac)
 {
   RA8_CHECK_NULL_PTR(out_mac, s_tag, "compute: out_mac");
   const ra8_err_t ck = internal_cmac_check_args(key, key_len, msg, msg_len);
@@ -173,12 +173,12 @@ ra8_err_t ra8_sec_cmac_compute(const uint8_t* key,
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_sec_cmac_verify(const uint8_t* key,
-                              uint16_t       key_len,
-                              const uint8_t* msg,
-                              uint32_t       msg_len,
-                              const uint8_t* mac,
-                              uint16_t       mac_len)
+ra8_err_t priv_ra8_sec_cmac_verify(const uint8_t* key,
+                                   uint16_t       key_len,
+                                   const uint8_t* msg,
+                                   uint32_t       msg_len,
+                                   const uint8_t* mac,
+                                   uint16_t       mac_len)
 {
   RA8_CHECK_NULL_PTR(mac, s_tag, "verify: mac");
   const ra8_err_t ck = internal_cmac_check_args(key, key_len, msg, msg_len);
@@ -628,11 +628,11 @@ RA8_INTERNAL static void internal_cmac_tag(const uint8_t* key,
   ra8_secure_memzero(k2, sizeof(k2));
 }
 
-ra8_err_t ra8_sec_cmac_compute(const uint8_t* key,
-                               uint16_t       key_len,
-                               const uint8_t* msg,
-                               uint32_t       msg_len,
-                               uint8_t*       out_mac)
+ra8_err_t priv_ra8_sec_cmac_compute(const uint8_t* key,
+                                    uint16_t       key_len,
+                                    const uint8_t* msg,
+                                    uint32_t       msg_len,
+                                    uint8_t*       out_mac)
 {
   RA8_CHECK_NULL_PTR(out_mac, s_tag, "compute: out_mac");
   const ra8_err_t ck = internal_cmac_check_args(key, key_len, msg, msg_len);
@@ -643,12 +643,12 @@ ra8_err_t ra8_sec_cmac_compute(const uint8_t* key,
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_sec_cmac_verify(const uint8_t* key,
-                              uint16_t       key_len,
-                              const uint8_t* msg,
-                              uint32_t       msg_len,
-                              const uint8_t* mac,
-                              uint16_t       mac_len)
+ra8_err_t priv_ra8_sec_cmac_verify(const uint8_t* key,
+                                   uint16_t       key_len,
+                                   const uint8_t* msg,
+                                   uint32_t       msg_len,
+                                   const uint8_t* mac,
+                                   uint16_t       mac_len)
 {
   RA8_CHECK_NULL_PTR(mac, s_tag, "verify: mac");
   const ra8_err_t ck = internal_cmac_check_args(key, key_len, msg, msg_len);
