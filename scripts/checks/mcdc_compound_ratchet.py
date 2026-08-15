@@ -144,7 +144,7 @@ def write_baseline(counts: Counter) -> None:
         "#",
         "# Each row is a function holding N compound boolean decisions (`&&` / `||`)",
         "# with NO matching `@par MC/DC:` `path@function` citation in any",
-        "# tests/test_*.c. These predate enforcement (issue #426). The gate fails",
+        "# tests/test_*.{c,cpp}. These predate enforcement (issue #426). The gate fails",
         "# on any INCREASE, so the debt is frozen and can only be burned down; a",
         "# newly-added uncovered decision raises a count and fails.",
         "#",
@@ -152,7 +152,7 @@ def write_baseline(counts: Counter) -> None:
         f"# across {len({p for p, _ in counts})} file(s).",
         "#",
         "# Burn one down: add a `test_mcdc_<decision>` function with N+1 vectors",
-        "# to the matching tests/test_<module>.c whose `@par MC/DC:` block cites",
+        "# to the matching tests/test_<module>.{c,cpp} whose MC/DC block cites",
         "# `path@function`. See docs/MCDC.md for the worked example.",
         "#",
         "# Regenerate after burning findings down:",
@@ -195,7 +195,7 @@ def scope_reason(files: int, citations: int) -> str | None:
         )
     if citations < MIN_CITATIONS:
         return (
-            f"only {citations} MC/DC citation(s) found in tests/test_*.c, "
+            f"only {citations} MC/DC citation(s) found in tests/test_*.{{c,cpp}}, "
             f"below the {MIN_CITATIONS} floor.\n"
             "  Every finding is 'this function is not cited', so a truncated\n"
             "  citation index makes the whole tree look uncovered. What changed\n"
@@ -230,7 +230,7 @@ def report(current: Counter, baseline: Counter) -> int:
         print(
             "Every compound boolean decision under libs/ src/ port/ needs MC/DC\n"
             "vectors: add a `test_mcdc_<decision>` function with N+1 vectors to\n"
-            "the matching tests/test_<module>.c and cite the decision as\n"
+            "the matching tests/test_<module>.{c,cpp} and cite the decision as\n"
             "`path@function` in its `@par MC/DC:` block (see docs/MCDC.md).\n"
             "\n"
             "The baseline is a burn-down of debt that predates enforcement, not\n"
@@ -511,7 +511,7 @@ def main() -> int:
 
     print(
         f"MC/DC ratchet: scanned {files} production file(s), "
-        f"{citations} citation(s) in tests/test_*.c."
+        f"{citations} citation(s) in tests/test_*.{{c,cpp}}."
     )
     return report(current, load_baseline())
 
