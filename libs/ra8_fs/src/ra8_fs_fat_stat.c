@@ -24,6 +24,29 @@
 #include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
 
+/** @brief FAT/exFAT packed timestamp field geometry and validation bounds. */
+typedef enum : uint16_t {
+  k_stat_fat_year_shift     = 9U,      /**< FAT year-field shift.                 */
+  k_stat_fat_month_shift    = 5U,      /**< FAT month-field shift.                */
+  k_stat_fat_month_mask     = 0x0FU,   /**< FAT month-field mask.                 */
+  k_stat_fat_day_mask       = 0x1FU,   /**< FAT day-field mask.                   */
+  k_stat_fat_hour_shift     = 11U,     /**< FAT hour-field shift.                 */
+  k_stat_fat_hour_mask      = 0x1FU,   /**< FAT hour-field mask.                  */
+  k_stat_fat_minute_shift   = 5U,      /**< FAT minute-field shift.               */
+  k_stat_fat_minute_mask    = 0x3FU,   /**< FAT minute-field mask.                */
+  k_stat_fat_second_mask    = 0x1FU,   /**< FAT half-second-field mask.           */
+  k_stat_tenths_per_second  = 100U,    /**< Ten-millisecond units per second.      */
+  k_stat_month_max          = 12U,     /**< Largest civil month.                  */
+  k_stat_day_max            = 31U,     /**< Largest civil day accepted here.      */
+  k_stat_hour_max           = 23U,     /**< Largest civil hour.                   */
+  k_stat_minute_max         = 59U,     /**< Largest civil minute.                 */
+  k_stat_second_max         = 59U,     /**< Largest civil second.                 */
+  k_stat_creation_tenth_max = 199U,    /**< Largest legal FAT creation increment. */
+  k_stat_packed_time_mask   = 0xFFFFU, /**< Low packed time word.                 */
+  k_stat_utc_sign_bit       = 0x40U,   /**< Sign bit in the seven-bit UTC field.  */
+  k_stat_utc_field_modulus  = 128U,    /**< Two's-complement UTC field modulus.   */
+} fs_stat_field_t;
+
 /**
  * @brief Does @p path name the volume root rather than an entry inside it?
  *
@@ -85,21 +108,21 @@ static void internal_stat_decode_fat(uint16_t            date,
                                      ra8_fs_timestamp_t* out)
 {
   ra8_fs_datetime_t v = {};
-  v.year              = (uint16_t)((uint32_t)k_fs_time_epoch_year + (date >> 9U));
-  v.month             = (uint8_t)((date >> 5U) & 0x0FU);
-  v.day               = (uint8_t)(date & 0x1FU);
-  v.hour              = (uint8_t)((time >> 11U) & 0x1FU);
-  v.minute            = (uint8_t)((time >> 5U) & 0x3FU);
-  v.second            = (uint8_t)((time & 0x1FU) * 2U);
+  v.year   = (uint16_t)((uint32_t)k_fs_time_epoch_year + (date >> k_stat_fat_year_shift));
+  v.month  = (uint8_t)((date >> k_stat_fat_month_shift) & (uint16_t)k_stat_fat_month_mask);
+  v.day    = (uint8_t)(date & (uint16_t)k_stat_fat_day_mask);
+  v.hour   = (uint8_t)((time >> k_stat_fat_hour_shift) & (uint16_t)k_stat_fat_hour_mask);
+  v.minute = (uint8_t)((time >> k_stat_fat_minute_shift) & (uint16_t)k_stat_fat_minute_mask);
+  v.second = (uint8_t)((time & (uint16_t)k_stat_fat_second_mask) * 2U);
   if (have_tenth) {
-    v.second      = (uint8_t)(v.second + ((tenth >= 100U) ? 1U : 0U));
-    v.centisecond = (uint8_t)(tenth % 100U);
+    v.second      = (uint8_t)(v.second + ((tenth >= (uint8_t)k_stat_tenths_per_second) ? 1U : 0U));
+    v.centisecond = (uint8_t)(tenth % (uint8_t)k_stat_tenths_per_second);
   }
   if (v.month == 0U) {
     *out = (ra8_fs_timestamp_t){};
     return;
   }
-  if (v.month > 12U) {
+  if (v.month > (uint8_t)k_stat_month_max) {
     *out = (ra8_fs_timestamp_t){};
     return;
   }
@@ -107,24 +130,24 @@ static void internal_stat_decode_fat(uint16_t            date,
     *out = (ra8_fs_timestamp_t){};
     return;
   }
-  if (v.day > 31U) {
+  if (v.day > (uint8_t)k_stat_day_max) {
     *out = (ra8_fs_timestamp_t){};
     return;
   }
-  if (v.hour > 23U) {
+  if (v.hour > (uint8_t)k_stat_hour_max) {
     *out = (ra8_fs_timestamp_t){};
     return;
   }
-  if (v.minute > 59U) {
+  if (v.minute > (uint8_t)k_stat_minute_max) {
     *out = (ra8_fs_timestamp_t){};
     return;
   }
-  if (v.second > 59U) {
+  if (v.second > (uint8_t)k_stat_second_max) {
     *out = (ra8_fs_timestamp_t){};
     return;
   }
   if (have_tenth) {
-    if (tenth > 199U) {
+    if (tenth > (uint8_t)k_stat_creation_tenth_max) {
       *out = (ra8_fs_timestamp_t){};
       return;
     }
@@ -162,7 +185,7 @@ static void internal_stat_decode_exfat(uint32_t            packed,
                                        ra8_fs_timestamp_t* out)
 {
   const uint16_t date = (uint16_t)(packed >> 16U);
-  const uint16_t time = (uint16_t)(packed & 0xFFFFU);
+  const uint16_t time = (uint16_t)(packed & (uint32_t)k_stat_packed_time_mask);
   internal_stat_decode_fat(date, time, tenth, have_tenth, out);
   if (!out->valid) {
     return;
@@ -171,8 +194,8 @@ static void internal_stat_decode_exfat(uint32_t            packed,
     return;
   }
   int32_t steps = (int32_t)(utc & (uint8_t)k_fs_utc_field_mask);
-  if ((steps & 0x40) != 0) {
-    steps -= 128;
+  if ((steps & (int32_t)k_stat_utc_sign_bit) != 0) {
+    steps -= (int32_t)k_stat_utc_field_modulus;
   }
   const int32_t minutes = steps * (int32_t)k_fs_utc_step_min;
   if (minutes < (int32_t)k_fs_utc_span_min) {

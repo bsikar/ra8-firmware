@@ -20,25 +20,28 @@
 
 /** @brief Image-probe and report constants. */
 typedef enum : uint32_t {
-  k_convert_band_height  = 256U,  /**< Established media-downloader band height. */
-  k_convert_probe_bytes  = 64U,   /**< WebP metadata prefix capacity.            */
-  k_convert_jpeg_soi     = 0xD8U, /**< JPEG start-of-image marker.               */
-  k_convert_jpeg_eoi     = 0xD9U, /**< JPEG end-of-image marker.                 */
-  k_convert_jpeg_sos     = 0xDAU, /**< JPEG start-of-scan marker.                */
-  k_convert_jpeg_sof0    = 0xC0U, /**< Baseline sequential frame marker.         */
-  k_convert_jpeg_dht     = 0xC4U, /**< Non-frame marker inside SOF number range. */
-  k_convert_jpeg_jpg     = 0xC8U, /**< Reserved non-frame marker.                */
-  k_convert_jpeg_dac     = 0xCCU, /**< Arithmetic table non-frame marker.        */
-  k_convert_jpeg_rst_lo  = 0xD0U, /**< First restart marker.                     */
-  k_convert_jpeg_rst_hi  = 0xD7U, /**< Last restart marker.                      */
-  k_convert_jpeg_tem     = 0x01U, /**< Standalone TEM marker.                    */
-  k_convert_marker       = 0xFFU, /**< JPEG marker introducer.                   */
-  k_convert_jpeg_8bit    = 8U,    /**< Supported JPEG sample precision.          */
-  k_convert_png_dims_end = 24U,   /**< PNG prefix through IHDR dimensions.       */
-  k_convert_png_w        = 16U,   /**< PNG IHDR width offset.                    */
-  k_convert_png_h        = 20U,   /**< PNG IHDR height offset.                   */
-  k_convert_decimal_max  = 20U,   /**< Decimal digits in uint64_t.               */
-  k_convert_decimal_base = 10U,   /**< Report integer radix.                     */
+  k_convert_band_height    = 256U,  /**< Established media-downloader band height. */
+  k_convert_probe_bytes    = 64U,   /**< WebP metadata prefix capacity.            */
+  k_convert_jpeg_soi       = 0xD8U, /**< JPEG start-of-image marker.               */
+  k_convert_jpeg_eoi       = 0xD9U, /**< JPEG end-of-image marker.                 */
+  k_convert_jpeg_sos       = 0xDAU, /**< JPEG start-of-scan marker.                */
+  k_convert_jpeg_sof0      = 0xC0U, /**< Baseline sequential frame marker.         */
+  k_convert_jpeg_dht       = 0xC4U, /**< Non-frame marker inside SOF number range. */
+  k_convert_jpeg_jpg       = 0xC8U, /**< Reserved non-frame marker.                */
+  k_convert_jpeg_dac       = 0xCCU, /**< Arithmetic table non-frame marker.        */
+  k_convert_jpeg_rst_lo    = 0xD0U, /**< First restart marker.                     */
+  k_convert_jpeg_rst_hi    = 0xD7U, /**< Last restart marker.                      */
+  k_convert_jpeg_tem       = 0x01U, /**< Standalone TEM marker.                    */
+  k_convert_marker         = 0xFFU, /**< JPEG marker introducer.                   */
+  k_convert_jpeg_8bit      = 8U,    /**< Supported JPEG sample precision.          */
+  k_convert_png_dims_end   = 24U,   /**< PNG prefix through IHDR dimensions.       */
+  k_convert_png_w          = 16U,   /**< PNG IHDR width offset.                    */
+  k_convert_png_h          = 20U,   /**< PNG IHDR height offset.                   */
+  k_convert_decimal_max    = 20U,   /**< Decimal digits in uint64_t.               */
+  k_convert_decimal_base   = 10U,   /**< Report integer radix.                     */
+  k_convert_u32_high_shift = 24U,   /**< Shift of a big-endian uint32 high byte.   */
+  k_convert_jpeg_sof_last  = 0xCFU, /**< Last JPEG SOF-range marker.              */
+  k_convert_probe_min      = 12U,   /**< Smallest supported image prefix.           */
 } convert_const_t;
 
 /** @brief Accepted source encoding selected by the header probe. */
@@ -129,8 +132,8 @@ static uint16_t internal_be16(const uint8_t bytes[2])
 RA8_INTERNAL
 static uint32_t internal_be32(const uint8_t bytes[4])
 {
-  return ((uint32_t)bytes[0] << 24U) | ((uint32_t)bytes[1] << 16U) | ((uint32_t)bytes[2] << 8U) |
-         bytes[3];
+  return ((uint32_t)bytes[0] << k_convert_u32_high_shift) | ((uint32_t)bytes[1] << 16U) |
+         ((uint32_t)bytes[2] << 8U) | bytes[3];
 }
 
 /**
@@ -150,7 +153,8 @@ static uint32_t internal_be32(const uint8_t bytes[4])
 RA8_INTERNAL
 static bool internal_is_sof(uint8_t marker)
 {
-  const bool in_range = (marker >= (uint8_t)k_convert_jpeg_sof0) && (marker <= 0xCFU);
+  const bool in_range =
+    (marker >= (uint8_t)k_convert_jpeg_sof0) && (marker <= (uint8_t)k_convert_jpeg_sof_last);
   return in_range && (marker != (uint8_t)k_convert_jpeg_dht) &&
          (marker != (uint8_t)k_convert_jpeg_jpg) && (marker != (uint8_t)k_convert_jpeg_dac);
 }
@@ -361,14 +365,14 @@ static ra8_err_t internal_probe(const ra8_fmt_source_t* source,
   if (source->size < (uint64_t)count) {
     count = (size_t)source->size;
   }
-  if (count < 12U) {
+  if (count < k_convert_probe_min) {
     return k_ra8_err_not_supported;
   }
   ra8_err_t rc = internal_read_exact(source, 0U, prefix, count);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  if ((prefix[0] == 0xFFU) && (prefix[1] == (uint8_t)k_convert_jpeg_soi)) {
+  if ((prefix[0] == (uint8_t)k_convert_marker) && (prefix[1] == (uint8_t)k_convert_jpeg_soi)) {
     *kind = k_convert_kind_jpeg;
     return internal_jpeg_dims(source, out_w, out_h);
   }

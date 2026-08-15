@@ -24,6 +24,7 @@ typedef enum : uint32_t {
   k_human_bytes        = 32U,           /**< Size/rate string buffer bytes.  */
   k_progress_bar_width = 20U,           /**< Rendered progress-bar cells.    */
   k_percent_scale      = 100U,          /**< Whole-percent conversion scale. */
+  k_percent_two_digits = 10U,           /**< First two-digit percentage.     */
 } mdl_report_scale_t;
 
 /**
@@ -159,7 +160,11 @@ ra8_err_t mdl_report_progress_bar(void* ctx, const mdl_fetch_progress_t* ev)
   error           = priv_mdl_stream_repeat(error, output, '=', filled);
   error           = priv_mdl_stream_repeat(error, output, ' ', bar_width - filled);
   error           = priv_mdl_stream_text(error, output, "] ");
-  error = priv_mdl_stream_repeat(error, output, ' ', (pct < 10U) ? 2U : ((pct < 100U) ? 1U : 0U));
+  error =
+    priv_mdl_stream_repeat(error,
+                           output,
+                           ' ',
+                           (pct < k_percent_two_digits) ? 2U : ((pct < k_percent_scale) ? 1U : 0U));
   error = priv_mdl_stream_u64(error, output, pct);
   error = priv_mdl_stream_text(error, output, "% ");
   error = internal_report_position(error, output, ev);

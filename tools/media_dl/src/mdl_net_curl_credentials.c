@@ -15,7 +15,10 @@
 
 /** @brief Maximum imported cookie row including its terminating NUL. */
 typedef enum : uint16_t {
-  k_cookie_line_max = 4096U, /**< Honest fixed per-row importer bound. */
+  k_cookie_line_max    = 4096U, /**< Honest fixed per-row importer bound. */
+  k_cookie_name_field  = 5U,    /**< Netscape cookie name-field ordinal.  */
+  k_cookie_field_count = 7U,    /**< Required Netscape cookie field count. */
+  k_cookie_ascii_del   = 0x7FU, /**< First non-printable high ASCII byte.  */
 } mdl_cookie_limit_t;
 
 /** @brief Cookie-line disposition after strict syntax validation. */
@@ -193,7 +196,7 @@ RA8_INTERNAL static bool internal_netscape_cookie_valid(const char* line, size_t
       continue;
     }
     const size_t field_length = index - field_start;
-    if (((field_index == 0U) || (field_index == 2U) || (field_index == 5U)) &&
+    if (((field_index == 0U) || (field_index == 2U) || (field_index == k_cookie_name_field)) &&
         (field_length == 0U)) {
       return false;
     }
@@ -205,13 +208,14 @@ RA8_INTERNAL static bool internal_netscape_cookie_valid(const char* line, size_t
     if ((field_index == 4U) && !internal_cookie_expiry_valid(line + field_start, field_length)) {
       return false;
     }
-    if ((field_index == 5U) && !internal_cookie_name_valid(line + field_start, field_length)) {
+    if ((field_index == k_cookie_name_field) &&
+        !internal_cookie_name_valid(line + field_start, field_length)) {
       return false;
     }
     ++field_index;
     field_start = index + 1U;
   }
-  return field_index == 7U;
+  return field_index == k_cookie_field_count;
 }
 
 /**
@@ -315,7 +319,7 @@ RA8_INTERNAL static cookie_row_disposition_t internal_cookie_classify(const char
 {
   for (size_t index = 0U; index < length; ++index) {
     const uint8_t value = (uint8_t)line[index];
-    if ((value >= 0x7FU) || ((value < 0x20U) && (value != (uint8_t)'\t'))) {
+    if ((value >= k_cookie_ascii_del) || ((value < 0x20U) && (value != (uint8_t)'\t'))) {
       return k_cookie_row_reject;
     }
   }

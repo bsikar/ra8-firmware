@@ -75,8 +75,11 @@ ra8_err_t priv_ra8_xml_qname(const uint8_t* source, size_t end, size_t start, si
 /* see header for the documented contract. */
 RA8_INTERNAL static bool internal_xml_char(uint32_t cp)
 {
-  return (cp == 0x09U) || (cp == 0x0AU) || (cp == 0x0DU) || ((cp >= 0x20U) && (cp <= 0xD7FFU)) ||
-         ((cp >= 0xE000U) && (cp <= 0xFFFDU)) || ((cp >= 0x10000U) && (cp <= 0x10FFFFU));
+  return (cp == k_priv_xml_tab) || (cp == k_priv_xml_line_feed) ||
+         (cp == k_priv_xml_carriage_return) ||
+         ((cp >= k_priv_xml_printable_min) && (cp <= k_priv_xml_bmp_first_max)) ||
+         ((cp >= k_priv_xml_bmp_second_min) && (cp <= k_priv_xml_bmp_second_max)) ||
+         ((cp >= k_priv_xml_supplementary_min) && (cp <= k_priv_xml_scalar_max));
 }
 
 /* see header for the documented contract. */
@@ -93,19 +96,19 @@ RA8_INTERNAL static ra8_err_t internal_utf8_next(const uint8_t* source,
   uint32_t      cp      = lead;
   size_t        used    = 1U;
   uint32_t      minimum = 0U;
-  if ((lead >= 0xC2U) && (lead <= 0xDFU)) {
-    cp      = (uint32_t)(lead & 0x1FU);
+  if ((lead >= k_priv_utf8_two_lead_min) && (lead <= k_priv_utf8_two_lead_max)) {
+    cp      = (uint32_t)(lead & k_priv_utf8_two_payload_mask);
     used    = 2U;
-    minimum = 0x80U;
-  } else if ((lead >= 0xE0U) && (lead <= 0xEFU)) {
-    cp      = (uint32_t)(lead & 0x0FU);
+    minimum = k_priv_utf8_continuation_tag;
+  } else if ((lead >= k_priv_utf8_three_lead_min) && (lead <= k_priv_utf8_three_lead_max)) {
+    cp      = (uint32_t)(lead & k_priv_utf8_three_payload_mask);
     used    = 3U;
-    minimum = 0x800U;
-  } else if ((lead >= 0xF0U) && (lead <= 0xF4U)) {
-    cp      = (uint32_t)(lead & 0x07U);
+    minimum = k_priv_utf8_three_scalar_min;
+  } else if ((lead >= k_priv_utf8_four_lead_min) && (lead <= k_priv_utf8_four_lead_max)) {
+    cp      = (uint32_t)(lead & k_priv_utf8_four_payload_mask);
     used    = 4U;
-    minimum = 0x10000U;
-  } else if (lead >= 0x80U) {
+    minimum = k_priv_xml_supplementary_min;
+  } else if (lead >= k_priv_utf8_continuation_tag) {
     return k_ra8_err_validation_failed;
   }
   if ((position + used) > end) {
@@ -113,10 +116,10 @@ RA8_INTERNAL static ra8_err_t internal_utf8_next(const uint8_t* source,
   }
   for (size_t i = 1U; i < used; ++i) {
     const uint8_t byte = source[position + i];
-    if ((byte & 0xC0U) != 0x80U) {
+    if ((byte & k_priv_utf8_continuation_mask) != k_priv_utf8_continuation_tag) {
       return k_ra8_err_validation_failed;
     }
-    cp = (cp << 6U) | (uint32_t)(byte & 0x3FU);
+    cp = (cp << 6U) | (uint32_t)(byte & k_priv_utf8_scalar_mask);
   }
   if ((cp < minimum) || !internal_xml_char(cp)) {
     return k_ra8_err_validation_failed;
@@ -136,25 +139,26 @@ RA8_INTERNAL static bool internal_span_valid(size_t source_len, ra8_xml_span_t s
 /* see header for the documented contract. */
 RA8_INTERNAL static size_t internal_utf8(uint32_t cp, uint8_t out[4])
 {
-  if (cp < 0x80U) {
+  if (cp < k_priv_utf8_continuation_tag) {
     out[0] = (uint8_t)cp;
     return 1U;
   }
-  if (cp < 0x800U) {
-    out[0] = (uint8_t)(0xC0U | (cp >> 6U));
-    out[1] = (uint8_t)(0x80U | (cp & 0x3FU));
+  if (cp < k_priv_utf8_three_scalar_min) {
+    out[0] = (uint8_t)(k_priv_utf8_two_lead_tag | (cp >> 6U));
+    out[1] = (uint8_t)(k_priv_utf8_continuation_tag | (cp & k_priv_utf8_scalar_mask));
     return 2U;
   }
-  if (cp < 0x10000U) {
-    out[0] = (uint8_t)(0xE0U | (cp >> 12U));
-    out[1] = (uint8_t)(0x80U | ((cp >> 6U) & 0x3FU));
-    out[2] = (uint8_t)(0x80U | (cp & 0x3FU));
+  if (cp < k_priv_xml_supplementary_min) {
+    out[0] = (uint8_t)(k_priv_utf8_three_lead_tag | (cp >> k_priv_utf8_shift_second));
+    out[1] = (uint8_t)(k_priv_utf8_continuation_tag | ((cp >> 6U) & k_priv_utf8_scalar_mask));
+    out[2] = (uint8_t)(k_priv_utf8_continuation_tag | (cp & k_priv_utf8_scalar_mask));
     return 3U;
   }
-  out[0] = (uint8_t)(0xF0U | (cp >> 18U));
-  out[1] = (uint8_t)(0x80U | ((cp >> 12U) & 0x3FU));
-  out[2] = (uint8_t)(0x80U | ((cp >> 6U) & 0x3FU));
-  out[3] = (uint8_t)(0x80U | (cp & 0x3FU));
+  out[0] = (uint8_t)(k_priv_utf8_four_lead_tag | (cp >> k_priv_utf8_shift_third));
+  out[1] = (uint8_t)(k_priv_utf8_continuation_tag |
+                     ((cp >> k_priv_utf8_shift_second) & k_priv_utf8_scalar_mask));
+  out[2] = (uint8_t)(k_priv_utf8_continuation_tag | ((cp >> 6U) & k_priv_utf8_scalar_mask));
+  out[3] = (uint8_t)(k_priv_utf8_continuation_tag | (cp & k_priv_utf8_scalar_mask));
   return 4U;
 }
 
@@ -165,10 +169,10 @@ RA8_INTERNAL static uint32_t internal_digit(uint8_t c, uint32_t base)
     return (uint32_t)(c - (uint8_t)'0');
   }
   if ((base == 16U) && (c >= (uint8_t)'a') && (c <= (uint8_t)'f')) {
-    return (uint32_t)(c - (uint8_t)'a') + 10U;
+    return (uint32_t)(c - (uint8_t)'a') + k_priv_xml_decimal_base;
   }
   if ((base == 16U) && (c >= (uint8_t)'A') && (c <= (uint8_t)'F')) {
-    return (uint32_t)(c - (uint8_t)'A') + 10U;
+    return (uint32_t)(c - (uint8_t)'A') + k_priv_xml_decimal_base;
   }
   return UINT32_MAX;
 }
@@ -198,7 +202,7 @@ RA8_INTERNAL static ra8_err_t internal_entity(const uint8_t* source,
     return k_ra8_err_validation_failed;
   }
   size_t   cursor = position + 2U;
-  uint32_t base   = 10U;
+  uint32_t base   = k_priv_xml_decimal_base;
   if ((cursor < end) && ((source[cursor] == (uint8_t)'x') || (source[cursor] == (uint8_t)'X'))) {
     base = 16U;
     ++cursor;
@@ -207,7 +211,7 @@ RA8_INTERNAL static ra8_err_t internal_entity(const uint8_t* source,
   uint32_t     cp          = 0U;
   while ((cursor < end) && (source[cursor] != (uint8_t)';')) {
     const uint32_t digit = internal_digit(source[cursor], base);
-    if ((digit >= base) || (cp > ((0x10FFFFU - digit) / base))) {
+    if ((digit >= base) || (cp > ((k_priv_xml_scalar_max - digit) / base))) {
       return k_ra8_err_validation_failed;
     }
     cp = (cp * base) + digit;
@@ -726,8 +730,10 @@ RA8_INTERNAL static bool internal_xml_target(const uint8_t* source, size_t start
 /* see header for the documented contract. */
 RA8_INTERNAL static bool internal_encoding(const uint8_t* source, ra8_xml_span_t value)
 {
-  return ((value.length == 5U) && (memcmp(&source[value.offset], "UTF-8", 5U) == 0)) ||
-         ((value.length == 5U) && (memcmp(&source[value.offset], "utf-8", 5U) == 0));
+  return ((value.length == k_priv_xml_encoding_bytes) &&
+          (memcmp(&source[value.offset], "UTF-8", k_priv_xml_encoding_bytes) == 0)) ||
+         ((value.length == k_priv_xml_encoding_bytes) &&
+          (memcmp(&source[value.offset], "utf-8", k_priv_xml_encoding_bytes) == 0));
 }
 
 /* see header for the documented contract. */
@@ -759,8 +765,8 @@ RA8_INTERNAL static bool internal_declaration_attr(const uint8_t*             so
 RA8_INTERNAL static ra8_err_t
 internal_declaration(ra8_xml_reader_t* reader, size_t target_end, size_t term)
 {
-  const bool initial =
-    (reader->position == 0U) || ((reader->position == 3U) && (reader->source[0] == 0xEFU));
+  const bool initial = (reader->position == 0U) ||
+                       ((reader->position == 3U) && (reader->source[0] == k_priv_utf8_bom_first));
   if (!initial || (reader->declaration_seen != 0U) || (reader->root_count != 0U) ||
       (target_end >= term) || !internal_space(reader->source[target_end])) {
     return k_ra8_err_validation_failed;
@@ -831,7 +837,7 @@ RA8_INTERNAL static ra8_err_t internal_cdata(ra8_xml_reader_t* reader, ra8_xml_e
   if (reader->stack_size == 0U) {
     return k_ra8_err_validation_failed;
   }
-  const size_t content = reader->position + 9U;
+  const size_t content = reader->position + k_priv_xml_cdata_open_bytes;
   size_t       term    = 0U;
   ra8_err_t    err = internal_terminator(reader->source, reader->source_len, content, "]]>", &term);
   if (err != k_ra8_ok) {
@@ -857,12 +863,14 @@ internal_special(ra8_xml_reader_t* reader, ra8_xml_event_t* event, bool* out_emi
   if (((pos + 4U) <= reader->source_len) && (memcmp(&reader->source[pos], "<!--", 4U) == 0)) {
     return internal_comment(reader);
   }
-  if (((pos + 9U) <= reader->source_len) && (memcmp(&reader->source[pos], "<![CDATA[", 9U) == 0)) {
+  if (((pos + k_priv_xml_cdata_open_bytes) <= reader->source_len) &&
+      (memcmp(&reader->source[pos], "<![CDATA[", k_priv_xml_cdata_open_bytes) == 0)) {
     const ra8_err_t err = internal_cdata(reader, event);
     *out_emitted        = err == k_ra8_ok;
     return err;
   }
-  if (((pos + 9U) <= reader->source_len) && (memcmp(&reader->source[pos], "<!DOCTYPE", 9U) == 0)) {
+  if (((pos + k_priv_xml_doctype_open_bytes) <= reader->source_len) &&
+      (memcmp(&reader->source[pos], "<!DOCTYPE", k_priv_xml_doctype_open_bytes) == 0)) {
     return priv_ra8_xml_doctype(reader);
   }
   if (((pos + 2U) <= reader->source_len) && (reader->source[pos + 1U] == (uint8_t)'?')) {
@@ -916,7 +924,8 @@ ra8_err_t ra8_xml_reader_init(ra8_xml_reader_t*    reader,
     return k_ra8_err_invalid_size;
   }
   *reader = (ra8_xml_reader_t){.source = source, .source_len = source_len, .workspace = workspace};
-  if ((source_len >= 3U) && (source[0] == 0xEFU) && (source[1] == 0xBBU) && (source[2] == 0xBFU)) {
+  if ((source_len >= 3U) && (source[0] == k_priv_utf8_bom_first) &&
+      (source[1] == k_priv_utf8_bom_second) && (source[2] == k_priv_utf8_bom_third)) {
     reader->position = 3U;
   }
   return k_ra8_ok;

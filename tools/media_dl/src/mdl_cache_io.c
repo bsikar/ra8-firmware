@@ -17,12 +17,23 @@
 
 /** @brief Canonical binary layout and bounded I/O constants. */
 typedef enum : uint32_t {
-  k_cache_header_bytes  = 32U,      /**< Fixed index header width.    */
-  k_cache_record_bytes  = 36U,      /**< Fixed record header width.   */
-  k_cache_trailer_bytes = 8U,       /**< Payload-hash trailer width.  */
-  k_cache_io_call_max   = 2000000U, /**< Short-I/O progress ceiling.  */
-  k_cache_status_min    = 100U,     /**< Smallest retained HTTP code. */
-  k_cache_status_max    = 599U,     /**< Largest retained HTTP code.  */
+  k_cache_header_bytes    = 32U,      /**< Fixed index header width.    */
+  k_cache_record_bytes    = 36U,      /**< Fixed record header width.   */
+  k_cache_trailer_bytes   = 8U,       /**< Payload-hash trailer width.  */
+  k_cache_io_call_max     = 2000000U, /**< Short-I/O progress ceiling.  */
+  k_cache_status_min      = 100U,     /**< Smallest retained HTTP code. */
+  k_cache_status_max      = 599U,     /**< Largest retained HTTP code.  */
+  k_cache_hex_high_shift  = 60U,      /**< Shift of the first hash nibble. */
+  k_cache_nibble_mask     = 0x0FU,    /**< Low hexadecimal nibble mask.    */
+  k_cache_u64_high_shift  = 56U,      /**< Shift of the first uint64 byte.  */
+  k_cache_record_status   = 24U,      /**< Record HTTP-status offset.       */
+  k_cache_record_url_len  = 26U,      /**< Record URL-length offset.        */
+  k_cache_record_path_len = 28U,      /**< Record path-length offset.       */
+  k_cache_record_etag_len = 30U,      /**< Record ETag-length offset.       */
+  k_cache_record_time_len = 32U,      /**< Record modified-length offset.   */
+  k_cache_record_reserved = 34U,      /**< Record reserved-field offset.    */
+  k_cache_header_count    = 12U,      /**< Header record-count offset.      */
+  k_cache_header_host     = 24U,      /**< Header host-hash offset.         */
 } mdl_cache_binary_limit_t;
 
 /** @brief Canonical cache index magic. */
@@ -46,8 +57,8 @@ RA8_INTERNAL static void internal_cache_hex16(char* destination, uint64_t value)
 {
   static const char k_hex[] = "0123456789abcdef";
   for (uint8_t i = 0U; i < 16U; ++i) {
-    const uint8_t shift = (uint8_t)(60U - (4U * i));
-    destination[i]      = k_hex[(value >> shift) & 0x0FU];
+    const uint8_t shift = (uint8_t)(k_cache_hex_high_shift - (4U * i));
+    destination[i]      = k_hex[(value >> shift) & k_cache_nibble_mask];
   }
 }
 
@@ -158,7 +169,7 @@ RA8_INTERNAL static void internal_cache_put_u16(uint8_t* out, uint16_t value)
 RA8_INTERNAL static void internal_cache_put_u64(uint8_t* out, uint64_t value)
 {
   for (uint8_t i = 0U; i < 8U; ++i) {
-    out[i] = (uint8_t)(value >> (56U - (8U * i)));
+    out[i] = (uint8_t)(value >> (k_cache_u64_high_shift - (8U * i)));
   }
 }
 
@@ -388,22 +399,23 @@ RA8_INTERNAL static ra8_err_t internal_cache_read_record(fw_fs_file_t*          
     return error;
   }
   *hash                       = mdl_hash_bytes_seed(header, sizeof(header), *hash);
-  const uint16_t lengths[]    = {internal_cache_get_u16(&header[26]),
-                                 internal_cache_get_u16(&header[28]),
-                                 internal_cache_get_u16(&header[30]),
-                                 internal_cache_get_u16(&header[32])};
+  const uint16_t lengths[]    = {internal_cache_get_u16(&header[k_cache_record_url_len]),
+                                 internal_cache_get_u16(&header[k_cache_record_path_len]),
+                                 internal_cache_get_u16(&header[k_cache_record_etag_len]),
+                                 internal_cache_get_u16(&header[k_cache_record_time_len])};
   const size_t   capacities[] = {sizeof(record->url),
                                  sizeof(record->relative_path),
                                  sizeof(record->etag),
                                  sizeof(record->last_modified)};
   char* fields[] = {record->url, record->relative_path, record->etag, record->last_modified};
-  if ((internal_cache_get_u16(&header[34]) != 0U) || (lengths[0] == 0U)) {
+  if ((internal_cache_get_u16(&header[k_cache_record_reserved]) != 0U) || (lengths[0] == 0U)) {
     return k_ra8_err_invalid_state;
   }
-  *record = (mdl_cache_record_t){.url_hash        = internal_cache_get_u64(&header[0]),
-                                 .content_hash    = internal_cache_get_u64(&header[8]),
-                                 .fetched_at      = (int64_t)internal_cache_get_u64(&header[16]),
-                                 .response_status = internal_cache_get_u16(&header[24])};
+  *record =
+    (mdl_cache_record_t){.url_hash        = internal_cache_get_u64(&header[0]),
+                         .content_hash    = internal_cache_get_u64(&header[8]),
+                         .fetched_at      = (int64_t)internal_cache_get_u64(&header[16]),
+                         .response_status = internal_cache_get_u16(&header[k_cache_record_status])};
   for (size_t i = 0U; i < 4U; ++i) {
     if ((size_t)lengths[i] >= capacities[i]) {
       return k_ra8_err_invalid_size;
@@ -451,7 +463,7 @@ internal_cache_decode(mdl_cache_t* cache, const mdl_cache_paths_t* paths, uint64
   if (error == k_ra8_ok) {
     error = internal_cache_read_all(&file, header, sizeof(header), &calls);
   }
-  const uint16_t count         = internal_cache_get_u16(&header[12]);
+  const uint16_t count         = internal_cache_get_u16(&header[k_cache_header_count]);
   const uint64_t payload_bytes = internal_cache_get_u64(&header[16]);
   const uint64_t expected_size =
     (uint64_t)k_cache_header_bytes + payload_bytes + (uint64_t)k_cache_trailer_bytes;
@@ -461,7 +473,7 @@ internal_cache_decode(mdl_cache_t* cache, const mdl_cache_paths_t* paths, uint64
        (internal_cache_get_u16(&header[10]) != (uint16_t)k_cache_header_bytes) ||
        (count > (uint16_t)k_mdl_cache_record_max) || (internal_cache_get_u16(&header[14]) != 0U) ||
        (expected_size != size_bytes) ||
-       (internal_cache_get_u64(&header[24]) != paths->host_hash))) {
+       (internal_cache_get_u64(&header[k_cache_header_host]) != paths->host_hash))) {
     error = k_ra8_err_invalid_state;
   }
   *cache->index = (mdl_cache_index_t){.host_hash      = paths->host_hash,
@@ -588,11 +600,11 @@ internal_cache_encode_record(const mdl_cache_record_t* record, uint8_t* header, 
   internal_cache_put_u64(&header[0], record->url_hash);
   internal_cache_put_u64(&header[8], record->content_hash);
   internal_cache_put_u64(&header[16], (uint64_t)record->fetched_at);
-  internal_cache_put_u16(&header[24], record->response_status);
-  internal_cache_put_u16(&header[26], lengths[0]);
-  internal_cache_put_u16(&header[28], lengths[1]);
-  internal_cache_put_u16(&header[30], lengths[2]);
-  internal_cache_put_u16(&header[32], lengths[3]);
+  internal_cache_put_u16(&header[k_cache_record_status], record->response_status);
+  internal_cache_put_u16(&header[k_cache_record_url_len], lengths[0]);
+  internal_cache_put_u16(&header[k_cache_record_path_len], lengths[1]);
+  internal_cache_put_u16(&header[k_cache_record_etag_len], lengths[2]);
+  internal_cache_put_u16(&header[k_cache_record_time_len], lengths[3]);
   return true;
 }
 
@@ -702,9 +714,9 @@ RA8_PRIV ra8_err_t priv_mdl_cache_save(mdl_cache_t* cache, const mdl_cache_paths
   memcpy(header, s_cache_magic, sizeof(s_cache_magic));
   internal_cache_put_u16(&header[8], (uint16_t)k_mdl_cache_schema_version);
   internal_cache_put_u16(&header[10], (uint16_t)k_cache_header_bytes);
-  internal_cache_put_u16(&header[12], cache->index->record_count);
+  internal_cache_put_u16(&header[k_cache_header_count], cache->index->record_count);
   internal_cache_put_u64(&header[16], payload_bytes);
-  internal_cache_put_u64(&header[24], paths->host_hash);
+  internal_cache_put_u64(&header[k_cache_header_host], paths->host_hash);
   uint8_t trailer[k_cache_trailer_bytes];
   internal_cache_put_u64(trailer, payload_hash);
   mdl_storage_txn_t writer = {};
