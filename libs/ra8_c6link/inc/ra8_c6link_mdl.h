@@ -25,7 +25,7 @@
 #include "ra8_mdl_protocol.h"
 
 /**
- * @struct ra8_mdl_session
+ * @struct ra8_mdl_session_t
  * @brief RA8-local state for one accepted remote raw-byte job
  * @details Maintains the correlation values the next response must carry.
  * Callers allocate it; the client never allocates or retains caller memory.
@@ -47,7 +47,7 @@ typedef struct {
 } ra8_mdl_session_t;
 
 /**
- * @struct ra8_mdl_chunk
+ * @struct ra8_mdl_chunk_t
  * @brief One correlated bounded raw-byte response
  * @details Contains either non-empty DOWNLOADING data or an empty terminal
  * record. COMPLETE alone carries the digest of the entire HTTP body.

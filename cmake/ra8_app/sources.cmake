@@ -109,8 +109,8 @@ macro(_ra8_app_collect_sources)
   # treating this one generated translation unit like the vendored codec.
   if("ra8_c6link" IN_LIST _RA8_APP_LIBS)
     set_source_files_properties(
-      ${RA8_REPO_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c
-      PROPERTIES COMPILE_OPTIONS "-w"
+      ${RA8_REPO_ROOT}/libs/ra8_c6link/src/ra8_media_download.pb-c.c PROPERTIES COMPILE_OPTIONS
+                                                                                "-w"
     )
   endif()
   foreach(_ra8_lib ${_RA8_APP_OFF_TARGET_LIBS})

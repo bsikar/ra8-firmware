@@ -174,6 +174,7 @@ fw_fs_write(fw_fs_file_t* file, const uint8_t* source, uint32_t length, uint32_t
 
 /**
  * @brief Publish a validated stage.
+ * @param[in,out] transaction Active, successfully validated transaction.
  * @param[out] out_published True when the destination changed, even if a later
  *                           durability operation failed.
  * @details A backend returning success without publication violates the
