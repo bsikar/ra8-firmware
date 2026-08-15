@@ -50,6 +50,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_boot_entry.h"
 #include "ra8_boot_intrinsics.h"
 #include "ra8_cache.h"
@@ -247,7 +248,7 @@ static void internal_enable_fpu_lazy_stack(void)
  * @note Not thread-safe; single-threaded boot only.
  * @since 0.1.0
  */
-static void internal_enable_fault_handlers(void)
+RA8_INTERNAL static void internal_enable_fault_handlers(void)
 {
   /* ARMv8-M SCB->SHCSR: MEMFAULTENA[16], BUSFAULTENA[17], USGFAULTENA[18],
    * SECUREFAULTENA[19] take MemManage/BusFault/UsageFault/SecureFault to
@@ -298,7 +299,7 @@ static void internal_enable_fault_handlers(void)
  * @note Not thread-safe; single-threaded boot only.
  * @since 0.1.0
  */
-static void internal_enable_div0_trap(void)
+RA8_INTERNAL static void internal_enable_div0_trap(void)
 {
   /* ARMv8-M SCB->CCR: DIV_0_TRP[4] promotes SDIV/UDIV-by-zero from
    * "quotient reads as 0" to a UsageFault with CFSR.DIVBYZERO set.
