@@ -84,10 +84,13 @@ typedef struct {
 /** @brief Shared adapter context for the loopback tests. */
 static np_bio_t s_np_bio;
 
+#include "support/ra8_tls_net_test_contracts.h"
+
 /**
  * @brief BIO send: fragment ciphertext into <= MTU ra8_net_pal frames.
+ * @copydoc internal_np_bio_send
  */
-static int np_bio_send(void* ctx, const uint8_t* buf, size_t len)
+RA8_INTERNAL static int internal_np_bio_send(void* ctx, const uint8_t* buf, size_t len)
 {
   np_bio_t* b   = (np_bio_t*)ctx;
   size_t    off = 0U;
@@ -105,8 +108,9 @@ static int np_bio_send(void* ctx, const uint8_t* buf, size_t len)
 
 /**
  * @brief BIO recv: drain one ra8_net_pal frame, buffering the remainder.
+ * @copydoc internal_np_bio_recv
  */
-static int np_bio_recv(void* ctx, uint8_t* buf, size_t len)
+RA8_INTERNAL static int internal_np_bio_recv(void* ctx, uint8_t* buf, size_t len)
 {
   np_bio_t* b = (np_bio_t*)ctx;
   if (b->reasm_pos >= b->reasm_len) {
@@ -128,19 +132,20 @@ static int np_bio_recv(void* ctx, uint8_t* buf, size_t len)
 }
 
 /** @brief MAC used by the loopback bring-up. */
-static const ra8_net_pal_mac_t k_np_bio_mac = {.bytes = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x42U}};
+static const ra8_net_pal_mac_t s_np_bio_mac = {.bytes = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x42U}};
 
 /**
  * @brief Reset the adapter and build a session config wired to it.
+ * @copydoc internal_make_np_cfg
  */
-static ra8_tls_session_cfg_t make_np_cfg(void)
+RA8_INTERNAL static ra8_tls_session_cfg_t internal_make_np_cfg(void)
 {
   (void)memset(&s_np_bio, 0, sizeof(s_np_bio));
   s_np_bio.mtu = (uint16_t)k_ra8_tls_mtu_min;
 
   ra8_tls_session_cfg_t cfg = {};
-  cfg.bio_send              = np_bio_send;
-  cfg.bio_recv              = np_bio_recv;
+  cfg.bio_send              = internal_np_bio_send;
+  cfg.bio_recv              = internal_np_bio_recv;
   cfg.bio_ctx               = &s_np_bio;
   cfg.server_name           = "endpoint.test";
   cfg.verify_mode           = k_ra8_tls_verify_optional;
@@ -153,12 +158,13 @@ static ra8_tls_session_cfg_t make_np_cfg(void)
  */
 
 /**
+ * @copydoc internal_test_mss_clamp_values
  * @par MC/DC:
  * (no compound decisions in this test -- asserts the arithmetic contract
  * of ra8_tls_mss_clamp at documented points; the decision itself is
- * covered by test_mcdc_mss_clamp)
+ * covered by internal_test_mcdc_mss_clamp)
  */
-static void test_mss_clamp_values(void)
+RA8_INTERNAL static void internal_test_mss_clamp_values(void)
 {
   TEST_BEGIN("mss_clamp: 128-byte MTU yields MSS 88");
   uint16_t mss = k_t_u16_unset;
@@ -177,7 +183,8 @@ static void test_mss_clamp_values(void)
 }
 
 /**
- * @test test_mcdc_mss_clamp
+ * @copydoc internal_test_mcdc_mss_clamp
+ * @test internal_test_mcdc_mss_clamp
  *
  * @par MC/DC:
  * Decision: ``if ((mtu <= overhead) || ((mtu - overhead) < mss_min))`` in
@@ -188,7 +195,7 @@ static void test_mss_clamp_values(void)
  * - V3: mtu=100 -> C1=F (100>40), C2=T (60<64)  -> dec T -> invalid_arg
  * (V1,V2) flips C1 with C2 masked; (V1,V3) flips C2 with C1=F fixed.
  */
-static void test_mcdc_mss_clamp(void)
+RA8_INTERNAL static void internal_test_mcdc_mss_clamp(void)
 {
   TEST_BEGIN("mss_clamp MC/DC: (mtu<=overhead) || ((mtu-overhead)<mss_min)");
   uint16_t mss = k_t_u16_unset;
@@ -212,17 +219,18 @@ static void test_mcdc_mss_clamp(void)
  */
 
 /**
+ * @copydoc internal_test_cipher_and_verify_fake
  * @par MC/DC:
  * (no compound decisions in this test -- happy-path introspection contract;
- * the argument guard's decision is covered by test_mcdc_cipher_arg_guard)
+ * the argument guard's decision is covered by internal_test_mcdc_cipher_arg_guard)
  */
-static void test_cipher_and_verify_fake(void)
+RA8_INTERNAL static void internal_test_cipher_and_verify_fake(void)
 {
   TEST_BEGIN("get_cipher_suite/get_verify_result report the fake sentinels");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
   ra8_tls_session_t     s   = nullptr;
-  ra8_tls_session_cfg_t cfg = make_np_cfg();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&k_np_bio_mac));
+  ra8_tls_session_cfg_t cfg = internal_make_np_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&s_np_bio_mac));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_handshake(s));
 
@@ -246,7 +254,8 @@ static void test_cipher_and_verify_fake(void)
 }
 
 /**
- * @test test_mcdc_cipher_arg_guard
+ * @copydoc internal_test_mcdc_cipher_arg_guard
+ * @test internal_test_mcdc_cipher_arg_guard
  *
  * @par MC/DC:
  * Decision: ``if ((out_id == NULL) || (out_name == NULL) || (name_cap == 0))``
@@ -258,13 +267,13 @@ static void test_cipher_and_verify_fake(void)
  * - V4: out_id=ok, out_name=ok, cap=0  -> C1=F,C2=F,C3=T -> invalid_arg
  * (V1,V2) isolates C1; (V1,V3) isolates C2; (V1,V4) isolates C3.
  */
-static void test_mcdc_cipher_arg_guard(void)
+RA8_INTERNAL static void internal_test_mcdc_cipher_arg_guard(void)
 {
   TEST_BEGIN("get_cipher_suite MC/DC: (out_id||out_name||cap) NULL/zero guard");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
   ra8_tls_session_t     s   = nullptr;
-  ra8_tls_session_cfg_t cfg = make_np_cfg();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&k_np_bio_mac));
+  ra8_tls_session_cfg_t cfg = internal_make_np_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&s_np_bio_mac));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
 
   uint16_t id                              = k_t_conn_id_a;
@@ -285,7 +294,8 @@ static void test_mcdc_cipher_arg_guard(void)
 }
 
 /**
- * @test test_mcdc_cipher_name_copy
+ * @copydoc internal_test_mcdc_cipher_name_copy
+ * @test internal_test_mcdc_cipher_name_copy
  *
  * @par MC/DC:
  * Decision: the ``while ((i < last) && (src[i] != '\0'))`` copy loop in
@@ -297,13 +307,13 @@ static void test_mcdc_cipher_arg_guard(void)
  * - V3: cap=48 -> src[i]==NUL before last -> C2=F -> full "off-target-loopback".
  * (V1,V2) isolates C1 (loop-bound stop); (V1,V3) isolates C2 (NUL stop).
  */
-static void test_mcdc_cipher_name_copy(void)
+RA8_INTERNAL static void internal_test_mcdc_cipher_name_copy(void)
 {
   TEST_BEGIN("get_cipher_suite MC/DC: bounded name copy truncate vs terminate");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
   ra8_tls_session_t     s   = nullptr;
-  ra8_tls_session_cfg_t cfg = make_np_cfg();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&k_np_bio_mac));
+  ra8_tls_session_cfg_t cfg = internal_make_np_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&s_np_bio_mac));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_handshake(s));
 
@@ -324,12 +334,13 @@ static void test_mcdc_cipher_name_copy(void)
 }
 
 /**
+ * @copydoc internal_test_accessor_state_guards
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the module-state and
  * bogus-handle guards of the two accessors, which are single-condition
- * checks; the compound argument guard is covered by test_mcdc_cipher_arg_guard)
+ * checks; the compound argument guard is covered by internal_test_mcdc_cipher_arg_guard)
  */
-static void test_accessor_state_guards(void)
+RA8_INTERNAL static void internal_test_accessor_state_guards(void)
 {
   TEST_BEGIN("cipher/verify accessors reject uninit + bogus handle");
   uint16_t id                              = k_t_conn_id_b;
@@ -357,17 +368,18 @@ static void test_accessor_state_guards(void)
  */
 
 /**
+ * @copydoc internal_test_end_to_end_over_net_pal
  * @par MC/DC:
  * (no compound decisions in this test -- it drives the public ra8_tls +
  * ra8_net_pal contract end-to-end over the loopback frame ring; the
  * decisions inside the code under test are covered by the dedicated
  * MC/DC cases above)
  */
-static void test_end_to_end_over_net_pal(void)
+RA8_INTERNAL static void internal_test_end_to_end_over_net_pal(void)
 {
   TEST_BEGIN("tls handshake + one record over the ra8_net_pal frame ring");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&k_np_bio_mac));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&s_np_bio_mac));
 
   /* The PAL echoes back what it was handed (host loopback ring). */
   ra8_net_pal_link_state_t link = k_ra8_net_pal_link_up;
@@ -375,12 +387,12 @@ static void test_end_to_end_over_net_pal(void)
   TEST_ASSERT_EQ(k_ra8_net_pal_link_down, link);
 
   ra8_tls_session_t     s   = nullptr;
-  ra8_tls_session_cfg_t cfg = make_np_cfg();
+  ra8_tls_session_cfg_t cfg = internal_make_np_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
   TEST_ASSERT_NOT_NULL(s);
 
-  /* Handshake drives one byte out through np_bio_send (a net_pal frame) and
-   * reads it back through np_bio_recv (the same ring). */
+  /* Handshake drives one byte out through internal_np_bio_send (a net_pal frame) and
+   * reads it back through internal_np_bio_recv (the same ring). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_handshake(s));
 
   /* Exchange one application record: the payload is fragmented into <= MTU
@@ -413,12 +425,12 @@ static void test_end_to_end_over_net_pal(void)
 
 int main(void)
 {
-  test_mss_clamp_values();
-  test_mcdc_mss_clamp();
-  test_cipher_and_verify_fake();
-  test_mcdc_cipher_arg_guard();
-  test_mcdc_cipher_name_copy();
-  test_accessor_state_guards();
-  test_end_to_end_over_net_pal();
+  internal_test_mss_clamp_values();
+  internal_test_mcdc_mss_clamp();
+  internal_test_cipher_and_verify_fake();
+  internal_test_mcdc_cipher_arg_guard();
+  internal_test_mcdc_cipher_name_copy();
+  internal_test_accessor_state_guards();
+  internal_test_end_to_end_over_net_pal();
   return 0;
 }
