@@ -25,7 +25,6 @@
 
 #include <stdint.h>
 
-#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /**
@@ -81,7 +80,6 @@ typedef struct {
  */
 void mdl_politeness_init(mdl_politeness_t* p, uint64_t seed);
 
-RA8_DI_SLOT("politeness_sleep")
 /**
  * @brief Seed the jitter source and inject a clock for the blocking sleep.
  *
@@ -301,7 +299,6 @@ mdl_gov_cfg_t mdl_gov_cfg_default(void);
  */
 void mdl_governor_init(mdl_governor_t* g, const mdl_gov_cfg_t* cfg, uint64_t seed);
 
-RA8_DI_SLOT("governor_clock")
 /**
  * @brief Initialise a governor with injected clock and sleep seams (DI).
  *

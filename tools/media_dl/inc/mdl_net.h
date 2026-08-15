@@ -6,15 +6,15 @@
  * @details
  * Dependency-inversion seam for buffered metadata requests and the current
  * host-path file sink. URL extraction, politeness, and robots gating are
- * backend-neutral. The `get_file` operation is not yet device-portable because
- * it accepts a host filesystem path; it must become a caller-provided body sink
- * before an on-device network backend can share the complete download loop.
+ * backend-neutral. Response bodies are delivered through caller-owned bounded
+ * sinks, so neither this interface nor a backend knows whether bytes ultimately
+ * reach POSIX, RAM, FAT, VFS, or another device filesystem.
  * The host backend is libcurl (`mdl_net_curl.c`, created through
  * `mdl_net_curl.h`).
  *
  * The interface is a genuine vtable, not a link-time name: ::mdl_net_iface_t is
  * a `{ vtable, ctx }` pair, and callers reach a backend only through the
- * dispatchers below (::mdl_net_get_buf, ::mdl_net_get_file,
+ * dispatchers below (::mdl_net_get_buf, ::mdl_net_get_body,
  * ::mdl_net_last_status, ::mdl_net_destroy). This is the NASA Power of 10 Rule 9
  * deviation `CLAUDE.md` documents for exactly this purpose: swapping the future
  * NetX/Mbed backend, or a scripted mock in the host unit tests, is a
@@ -49,6 +49,20 @@ typedef struct {
 } mdl_net_req_t;
 
 /**
+ * @struct mdl_net_bytes_t
+ * @brief Read-only caller-owned byte view retained by a network backend.
+ * @details The view never transfers ownership and exposes no host path or
+ *          storage implementation to portable network policy.
+ * @invariant `length == 0` permits `data == NULL`; nonzero length requires a
+ *            non-NULL data pointer.
+ * @since 0.1.0
+ */
+typedef struct {
+  const uint8_t* data;   /**< First caller-owned byte, or NULL when empty. */
+  size_t         length; /**< Exact readable byte count at @p data.        */
+} mdl_net_bytes_t;
+
+/**
  * @brief Session-wide security policy for the network backend.
  *
  * @details
@@ -58,16 +72,20 @@ typedef struct {
  * escape hatches, all off/safe by default.
  *
  * @invariant `max_response_bytes == 0` means "unlimited" (matching libcurl).
+ * @invariant Credential views contain bytes rather than paths; their storage
+ *            remains caller-owned and readable for the backend lifetime.
+ * @invariant `cookies` is newline-delimited ASCII Netscape or explicit-domain
+ *            Set-Cookie input; `ca_pem` is one complete nonempty PEM bundle.
  * @since 0.1.0
  */
 typedef struct {
-  bool        allow_private_hosts;       /**< Permit loopback/private/link-local peers. */
-  bool        allow_cross_host_redirect; /**< Permit a redirect to a different host.    */
-  uint64_t    max_response_bytes;        /**< Per-response byte cap (0 = unlimited).    */
-  const char* proxy;                     /**< HTTP/HTTPS proxy URL, or NULL for none.   */
-  const char* socks5;                    /**< SOCKS5 proxy URL, or NULL for none.       */
-  const char* cookie_file;               /**< Cookie file path for libcurl, or NULL.    */
-  const char* ca_file;                   /**< Custom PEM CA bundle, or NULL for system. */
+  bool            allow_private_hosts;       /**< Permit loopback/private/link-local peers. */
+  bool            allow_cross_host_redirect; /**< Permit a redirect to a different host.    */
+  uint64_t        max_response_bytes;        /**< Per-response byte cap (0 = unlimited).    */
+  const char*     proxy;                     /**< HTTP/HTTPS proxy URL, or NULL for none.   */
+  const char*     socks5;                    /**< SOCKS5 proxy URL, or NULL for none.       */
+  mdl_net_bytes_t cookies;                   /**< Newline-delimited input cookies.          */
+  mdl_net_bytes_t ca_pem;                    /**< Complete PEM CA bundle, or an empty view. */
 } mdl_net_policy_t;
 
 /** @brief Captured-response-field buffer sizes. */
@@ -108,6 +126,46 @@ typedef struct {
 } mdl_net_resp_t;
 
 /**
+ * @brief Reset one caller-owned response-body sink before a transfer attempt.
+ * @param[in,out] ctx Opaque sink state supplied in ::mdl_net_body_sink_t.
+ * @return Canonical sink readiness or cleanup status.
+ * @pre @p ctx points to live caller-owned sink state.
+ * @post Success leaves the sink empty and ready for one response body.
+ * @note Called once per dispatched attempt, including an HTTP 304 attempt.
+ * @since 0.1.0
+ */
+typedef ra8_err_t (*mdl_net_body_reset_fn)(void* ctx);
+
+/**
+ * @brief Consume one bounded response-body chunk.
+ * @param[in,out] ctx Opaque sink state supplied in ::mdl_net_body_sink_t.
+ * @param[in] bytes Response bytes readable for @p length bytes.
+ * @param[in] length Chunk extent, at most `UINT32_MAX`.
+ * @param[out] out_written Bytes durably accepted from this chunk.
+ * @return Canonical sink status.
+ * @pre @p ctx, @p bytes, and @p out_written are non-NULL for nonempty input.
+ * @post Success reports progress no greater than @p length.
+ * @note The network backend fails a short successful consume closed.
+ * @since 0.1.0
+ */
+typedef ra8_err_t (*mdl_net_body_write_fn)(void*          ctx,
+                                           const uint8_t* bytes,
+                                           uint32_t       length,
+                                           uint32_t*      out_written);
+
+/**
+ * @struct mdl_net_body_sink_t
+ * @brief Caller-owned lifecycle and write seam for one response body.
+ * @invariant Both callbacks and @ref ctx are non-NULL while dispatched.
+ * @since 0.1.0
+ */
+typedef struct {
+  mdl_net_body_reset_fn reset; /**< Clear/abort prior attempt state. */
+  mdl_net_body_write_fn write; /**< Consume one response chunk.      */
+  void*                 ctx;   /**< Caller-owned callback state.     */
+} mdl_net_body_sink_t;
+
+/**
  * @struct mdl_net_vtable_t
  * @brief Method table one network backend registers (Dependency Inversion).
  *
@@ -146,19 +204,19 @@ typedef struct {
                        mdl_net_resp_t*      resp);
 
   /**
-   * @brief GET `url` and stream the body to a file (used for images).
+   * @brief GET `url` and stream the body through an injected sink.
    * @param[in]  ctx      Backend-private state (never NULL).
    * @param[in]  url      Absolute, scheme-validated http/https URL.
    * @param[in]  req      Session parameters (never NULL).
-   * @param[in]  out_path Filesystem path to create/overwrite (never NULL).
+   * @param[in,out] sink Caller-owned bounded body sink (never NULL).
    * @param[out] out_len  Bytes written. May be NULL.
    * @param[out] resp     Response metadata (status + Retry-After). May be NULL.
-   * @return An ::ra8_err_t per the ::mdl_net_get_file contract.
+   * @return An ::ra8_err_t per the ::mdl_net_get_body contract.
    */
-  ra8_err_t (*get_file)(void*                ctx,
+  ra8_err_t (*get_body)(void*                ctx,
                         const char*          url,
                         const mdl_net_req_t* req,
-                        const char*          out_path,
+                        mdl_net_body_sink_t* sink,
                         size_t*              out_len,
                         mdl_net_resp_t*      resp);
 
@@ -261,43 +319,44 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
                           mdl_net_resp_t*      resp);
 
 /**
- * @brief GET `url` and stream the body to a file (used for images).
+ * @brief GET `url` and stream its body through a caller-owned sink.
  *
  * @details
  * Validates the handle and arguments, then dispatches to the backend's
- * `get_file` method, which streams the body to `out_path` under the session
- * size cap and removes a torn/oversized file on failure. When @p resp is
+ * `get_body` method after resetting @p sink. The backend enforces the session
+ * size cap and reports short writes or sink faults without owning storage.
+ * When @p resp is
  * non-NULL it receives the finished transfer's HTTP status and raw
  * `Retry-After` header so the governor can back off on a throttle.
  *
  * @param[in]  net      Network interface.
  * @param[in]  url      Absolute http/https URL.
  * @param[in]  req      Session parameters (must be non-NULL).
- * @param[in]  out_path Filesystem path to create/overwrite.
+ * @param[in,out] sink  Caller-owned reset/write body sink.
  * @param[out] out_len  Bytes written. May be NULL.
  * @param[out] resp     Response metadata (status + Retry-After), or NULL to skip.
  *
  * @return An ::ra8_err_t transfer result.
- * @retval k_ra8_ok               File written, HTTP status < 400.
+ * @retval k_ra8_ok               Body accepted, HTTP status < 400.
  * @retval k_ra8_err_invalid_arg  NULL argument or refused scheme.
  * @retval k_ra8_err_no_mem       Body exceeded the session size cap.
  * @retval k_ra8_err_timeout      Request exceeded `req->timeout_ms`.
  * @retval k_ra8_err_busy         HTTP 429 or 503 (throttled -- back off).
  * @retval k_ra8_err_not_found    HTTP 404 or another 4xx (skip this resource).
- * @retval k_ra8_fail             Transport error, HTTP 5xx, or local I/O error.
+ * @retval k_ra8_fail             Transport error, HTTP 5xx, or sink failure.
  *
  * @pre `net`, when non-NULL, holds a fully populated vtable.
- * @pre `req`, `out_path` are non-NULL for a fetch to be attempted.
- * @post On any error no partial output file is left behind.
+ * @pre `req`, `sink`, and all sink callbacks/state are non-NULL.
+ * @post The sink owns cleanup of bytes accepted before any failure.
  * @post `*out_len`, when `out_len` is non-NULL, is set only on ::k_ra8_ok.
  * @post `*resp`, when non-NULL, is filled with the observed status/header.
  *
  * @note Not thread-safe: one interface per worker.
  * @since 0.1.0
  */
-ra8_err_t mdl_net_get_file(mdl_net_iface_t*     net,
+ra8_err_t mdl_net_get_body(mdl_net_iface_t*     net,
                            const char*          url,
                            const mdl_net_req_t* req,
-                           const char*          out_path,
+                           mdl_net_body_sink_t* sink,
                            size_t*              out_len,
                            mdl_net_resp_t*      resp);

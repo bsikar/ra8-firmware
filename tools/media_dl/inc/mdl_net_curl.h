@@ -21,7 +21,6 @@
 #include <stdint.h>
 
 #include "mdl_net.h"
-#include "ra8_attributes.h"
 
 /** @brief Bytes reserved by the caller for one libcurl backend context. */
 typedef enum : size_t {
@@ -59,11 +58,17 @@ typedef struct mdl_net_curl_storage {
  *
  * @return Canonical initialisation status.
  * @retval k_ra8_ok A ready interface; release resources with ::mdl_net_destroy.
- * @retval k_ra8_err_invalid_arg A required caller-owned object is null.
+ * @retval k_ra8_err_invalid_arg A required object or credential byte view is
+ * invalid, or a cookie row is unsafe.
+ * @retval k_ra8_err_invalid_size One cookie row exceeds the bounded importer.
+ * @retval k_ra8_err_not_supported This libcurl/TLS build cannot consume a
+ * caller-owned CA blob.
  * @retval k_ra8_fail Global/easy init or option hardening failed.
  *
  * @pre libcurl is available at link time.
  * @pre `policy`, when non-NULL, describes the intended escape hatches.
+ * @pre Credential bytes referenced by @p policy remain readable until
+ * ::mdl_net_destroy because custom CA data is bound with `CURL_BLOB_NOCOPY`.
  * @post On success @p net owns a hardened libcurl easy handle while caller
  * storage remains valid.
  * @post On failure @p net and @p storage contain only zero bytes.
@@ -71,7 +76,6 @@ typedef struct mdl_net_curl_storage {
  * @note Not thread-safe: one interface per worker.
  * @since 0.1.0
  */
-RA8_DI_SLOT("net_iface")
 [[nodiscard]] ra8_err_t mdl_net_curl_init(mdl_net_iface_t*        net,
                                           mdl_net_curl_storage_t* storage,
                                           const mdl_net_policy_t* policy);

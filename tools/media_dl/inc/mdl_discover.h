@@ -60,6 +60,9 @@ typedef struct {
   char*               page_buf;   /**< Results-page fetch scratch (borrowed).    */
   size_t              page_cap;   /**< Capacity of @ref page_buf in bytes.       */
   mdl_hit_list_t*     hits;       /**< Receives the parsed hits (borrowed).      */
+  ra8_io_stream_t*    output;     /**< Borrowed normal-output byte sink.         */
+  ra8_io_stream_t*    diagnostic; /**< Borrowed diagnostic byte sink.            */
+  ra8_err_t*          io_error;   /**< Caller-owned first sink failure latch.    */
 } mdl_discover_req_t;
 
 /**

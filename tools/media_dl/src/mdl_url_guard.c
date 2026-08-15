@@ -1,6 +1,8 @@
 /**
  * @file mdl_url_guard.c
  * @brief Implementation of the pure URL / address safety predicates.
+ * @details Classifies schemes, hosts, and numeric addresses without network I/O
+ *          so callers can reject unsafe origins before dispatch.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -59,8 +61,22 @@ typedef enum : uint16_t {
 static const char* const s_scheme_http  = "http://";
 static const char* const s_scheme_https = "https://";
 
-/** @brief Case-insensitive test that `s` begins with `prefix`. */
-RA8_INTERNAL static bool starts_with_ci(const char* s, const char* prefix)
+/** @brief Case-insensitive test that `s` begins with `prefix`.
+ * @details Classifies ASCII URL and address bytes without locale side effects.
+ *          Inputs stay borrowed for the call and no caller object is retained.
+ * @param[in] s Readable text or byte sequence.
+ * @param[in] prefix Prefix to compare.
+ * @return True when @p s begins with @p prefix ignoring ASCII case.
+ * @retval true The documented predicate holds or the requested operation completed.
+ * @retval false The predicate does not hold or validation rejected the operation.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool internal_starts_with_ci(const char* s, const char* prefix)
 {
   size_t i = 0U;
   while (prefix[i] != '\0') {
@@ -82,11 +98,28 @@ bool mdl_url_scheme_allowed(const char* url)
   if ((url == nullptr) || (url[0] == '\0')) {
     return false;
   }
-  return starts_with_ci(url, s_scheme_http) || starts_with_ci(url, s_scheme_https);
+  return internal_starts_with_ci(url, s_scheme_http) ||
+         internal_starts_with_ci(url, s_scheme_https);
 }
 
-/** @brief Classify the four octets of an IPv4 address. */
-RA8_INTERNAL static mdl_addr_class_t classify_v4(const unsigned char* o)
+/** @brief Classify the four octets of an IPv4 address.
+ * @details Classifies ASCII URL and address bytes without locale side effects.
+ *          Inputs stay borrowed for the call and no caller object is retained.
+ * @param[in] o Four parsed IPv4 octets.
+ * @return Address class of the four octets in @p o.
+ * @retval k_mdl_addr_public Routable public address.
+ * @retval k_mdl_addr_private Private or carrier-grade NAT address.
+ * @retval k_mdl_addr_loopback Loopback address.
+ * @retval k_mdl_addr_linklocal Link-local address.
+ * @retval k_mdl_addr_unknown Unspecified, multicast, or reserved address.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static mdl_addr_class_t internal_classify_v4(const unsigned char* o)
 {
   const unsigned o0 = o[k_v4_o0];
   const unsigned o1 = o[k_v4_o1];
@@ -111,8 +144,21 @@ RA8_INTERNAL static mdl_addr_class_t classify_v4(const unsigned char* o)
   return (priv_a || priv_b || priv_c || cgnat) ? k_mdl_addr_private : k_mdl_addr_public;
 }
 
-/** @brief True if the 16 IPv6 bytes carry an IPv4-mapped `::ffff:a.b.c.d`. */
-RA8_INTERNAL static bool is_v4_mapped(const unsigned char* b)
+/** @brief True if the 16 IPv6 bytes carry an IPv4-mapped `::ffff:a.b.c.d`.
+ * @details Classifies ASCII URL and address bytes without locale side effects.
+ *          Inputs stay borrowed for the call and no caller object is retained.
+ * @param[in] b Sixteen parsed IPv6 address bytes.
+ * @return True when @p b contains an IPv4-mapped IPv6 address.
+ * @retval true The documented predicate holds or the requested operation completed.
+ * @retval false The predicate does not hold or validation rejected the operation.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool internal_is_v4_mapped(const unsigned char* b)
 {
   for (size_t i = 0U; i < (size_t)k_v6_mapped_ff_a; ++i) {
     if (b[i] != 0U) {
@@ -123,8 +169,21 @@ RA8_INTERNAL static bool is_v4_mapped(const unsigned char* b)
          (b[k_v6_mapped_ff_b] == (unsigned char)k_v6_byte_ff);
 }
 
-/** @brief True if the 16 IPv6 bytes are the loopback address `::1`. */
-RA8_INTERNAL static bool is_v6_loopback(const unsigned char* b)
+/** @brief True if the 16 IPv6 bytes are the loopback address `::1`.
+ * @details Classifies ASCII URL and address bytes without locale side effects.
+ *          Inputs stay borrowed for the call and no caller object is retained.
+ * @param[in] b Sixteen parsed IPv6 address bytes.
+ * @return True when @p b is exactly the IPv6 loopback address.
+ * @retval true The documented predicate holds or the requested operation completed.
+ * @retval false The predicate does not hold or validation rejected the operation.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static bool internal_is_v6_loopback(const unsigned char* b)
 {
   for (size_t i = 0U; i < (size_t)k_v6_last; ++i) {
     if (b[i] != 0U) {
@@ -134,13 +193,29 @@ RA8_INTERNAL static bool is_v6_loopback(const unsigned char* b)
   return b[k_v6_last] == (unsigned char)k_v6_loopback_last;
 }
 
-/** @brief Classify the sixteen bytes of an IPv6 address. */
-RA8_INTERNAL static mdl_addr_class_t classify_v6(const unsigned char* b)
+/** @brief Classify the sixteen bytes of an IPv6 address.
+ * @details Classifies ASCII URL and address bytes without locale side effects.
+ *          Inputs stay borrowed for the call and no caller object is retained.
+ * @param[in] b Sixteen parsed IPv6 address bytes.
+ * @return Address class of the sixteen bytes in @p b.
+ * @retval k_mdl_addr_public Routable public address.
+ * @retval k_mdl_addr_private IPv4-mapped private address.
+ * @retval k_mdl_addr_loopback IPv6 or mapped IPv4 loopback address.
+ * @retval k_mdl_addr_linklocal Link-local address.
+ * @retval k_mdl_addr_unknown Multicast or unsupported address.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static mdl_addr_class_t internal_classify_v6(const unsigned char* b)
 {
-  if (is_v4_mapped(b)) {
-    return classify_v4(b + (size_t)k_v6_mapped_v4);
+  if (internal_is_v4_mapped(b)) {
+    return internal_classify_v4(b + (size_t)k_v6_mapped_v4);
   }
-  if (is_v6_loopback(b)) {
+  if (internal_is_v6_loopback(b)) {
     return k_mdl_addr_loopback;
   }
   if (b[k_v4_o0] == (unsigned char)k_v6_byte_ff) {
@@ -163,11 +238,11 @@ mdl_addr_class_t mdl_classify_ip(const char* ip)
   }
   unsigned char v4[sizeof(struct in_addr)] = {};
   if (inet_pton(AF_INET, ip, v4) == 1) {
-    return classify_v4(v4);
+    return internal_classify_v4(v4);
   }
   unsigned char v6[sizeof(struct in6_addr)] = {};
   if (inet_pton(AF_INET6, ip, v6) == 1) {
-    return classify_v6(v6);
+    return internal_classify_v6(v6);
   }
   return k_mdl_addr_unknown;
 }

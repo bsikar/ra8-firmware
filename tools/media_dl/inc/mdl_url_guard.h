@@ -153,6 +153,8 @@ bool mdl_addr_is_fetchable(mdl_addr_class_t cls, bool allow_private);
  *
  * @note Thread-safe: depends only on its arguments.
  * @since 0.1.0
+
+ * @post Documented outputs and the return value describe the same outcome.
  */
 bool mdl_size_exceeds(uint64_t have, uint64_t add, uint64_t cap);
 

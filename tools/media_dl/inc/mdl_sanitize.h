@@ -71,6 +71,8 @@ bool mdl_sanitize_segment(const char* raw, char* out, size_t cap);
  *
  * @note Thread-safe: depends only on its arguments.
  * @since 0.1.0
+
+ * @post Documented outputs and the return value describe the same outcome.
  */
 bool mdl_path_contained(const char* parent, const char* candidate);
 

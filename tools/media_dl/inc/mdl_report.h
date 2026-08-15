@@ -30,18 +30,20 @@
  * @param[in] ctx Unused progress context (kept for the ::mdl_progress_fn ABI).
  * @param[in] ev  The just-completed page's progress event, or NULL (no-op).
  *
- * @return Nothing.
+ * @return Stream output status.
+ * @retval k_ra8_ok The event was absent or its complete line was accepted.
+ * @retval other The output stream rejected a fragment.
  *
  * @pre @p ev, when non-NULL, was populated by ::mdl_fetch_run.
- * @pre stdout is open.
- * @post One line is written to stdout for a non-NULL @p ev.
+ * @pre @p ctx points to a bound ::ra8_io_stream_t when @p ev is non-NULL.
+ * @post One line is written to the injected stream for a non-NULL @p ev.
  * @post No state is modified.
  *
- * @note Thread-safe: writes only to stdout.
+ * @note Thread safety follows the injected stream.
  * @see mdl_progress_fn
  * @since 0.1.0
  */
-void mdl_report_progress(void* ctx, const mdl_fetch_progress_t* ev);
+ra8_err_t mdl_report_progress(void* ctx, const mdl_fetch_progress_t* ev);
 
 /**
  * @brief Per-page progress bar sink: render an in-place terminal progress bar.
@@ -52,15 +54,17 @@ void mdl_report_progress(void* ctx, const mdl_fetch_progress_t* ev);
  * @param[in] ctx Unused progress context (kept for the ::mdl_progress_fn ABI).
  * @param[in] ev  The just-completed page's progress event, or NULL (no-op).
  *
- * @return Nothing.
+ * @return Stream output status.
+ * @retval k_ra8_ok The event was absent or its complete update was accepted.
+ * @retval other The output stream rejected a fragment or flush.
  * @pre @p ev, when non-NULL, contains a coherent page index and total.
- * @pre stdout is open and accepts text output.
- * @post A non-NULL event updates the progress display on stdout.
- * @post A terminal event leaves stdout positioned on a new line.
- * @note Thread-safe only when stdout access is serialized by the caller.
+ * @pre @p ctx points to a bound ::ra8_io_stream_t when @p ev is non-NULL.
+ * @post A non-NULL event updates the injected progress stream.
+ * @post A terminal event leaves that stream positioned on a new line.
+ * @note Thread safety follows the injected stream.
  * @since 0.1.0
  */
-void mdl_report_progress_bar(void* ctx, const mdl_fetch_progress_t* ev);
+ra8_err_t mdl_report_progress_bar(void* ctx, const mdl_fetch_progress_t* ev);
 
 /**
  * @brief End-of-run summary: list every failure with its URL and reason.
@@ -71,17 +75,20 @@ void mdl_report_progress_bar(void* ctx, const mdl_fetch_progress_t* ev);
  * count, so the information survives after the per-page diagnostics have
  * scrolled away. A run with no failures prints nothing.
  *
+ * @param[in,out] diagnostic Borrowed stream receiving the failure summary.
  * @param[in] log The run's failure log (never NULL).
  *
- * @return Nothing.
+ * @return Stream output status.
+ * @retval k_ra8_ok No failures existed or the complete summary was accepted.
+ * @retval other The diagnostic stream rejected a fragment.
  *
  * @pre @p log is non-NULL and was cleared before the run it summarises.
- * @pre stderr is open.
+ * @pre @p diagnostic is bound when @p log contains failures.
  * @post Nothing is written when `log->total == 0`.
  * @post No state is modified.
  *
- * @note Thread-safe: writes only to stderr.
+ * @note Thread safety follows the injected stream.
  * @see mdl_fetch_faillog_t
  * @since 0.1.0
  */
-void mdl_report_failures(const mdl_fetch_faillog_t* log);
+ra8_err_t mdl_report_failures(ra8_io_stream_t* diagnostic, const mdl_fetch_faillog_t* log);

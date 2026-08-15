@@ -9,14 +9,13 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
-#include "mdl_politeness.h"
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
+#include "mdl_politeness.h"
 #include "ra8_attributes.h"
 
 /**
@@ -50,7 +49,6 @@ void mdl_politeness_init(mdl_politeness_t* p, uint64_t seed)
   mdl_politeness_init_clock(p, seed, nullptr, nullptr);
 }
 
-RA8_DI_SLOT("politeness_sleep")
 void mdl_politeness_init_clock(mdl_politeness_t* p,
                                uint64_t          seed,
                                mdl_sleep_fn      sleep_fn,
@@ -77,7 +75,7 @@ void mdl_politeness_init_clock(mdl_politeness_t* p,
  * @note Not thread-safe when callers share @p state.
  * @since 0.1.0
  */
-RA8_INTERNAL static uint64_t next_rand(uint64_t* state)
+RA8_INTERNAL static uint64_t internal_next_rand(uint64_t* state)
 {
   uint64_t x = *state;
   x ^= x << (uint64_t)k_xs_shift_a;
@@ -102,7 +100,7 @@ RA8_INTERNAL static uint64_t next_rand(uint64_t* state)
  * @note Not thread-safe when callers share @p state.
  * @since 0.1.0
  */
-RA8_INTERNAL static uint32_t draw_range(uint64_t* state, uint32_t min_ms, uint32_t max_ms)
+RA8_INTERNAL static uint32_t internal_draw_range(uint64_t* state, uint32_t min_ms, uint32_t max_ms)
 {
   if (max_ms < min_ms) {
     max_ms = min_ms;
@@ -110,7 +108,7 @@ RA8_INTERNAL static uint32_t draw_range(uint64_t* state, uint32_t min_ms, uint32
   /* 64-bit span keeps the full-range (min=0, max=UINT32_MAX) case from wrapping
    * while preserving the exact modulo of the original jitter for smaller spans. */
   const uint64_t span = (uint64_t)(max_ms - min_ms) + 1U;
-  return min_ms + (uint32_t)(next_rand(state) % span);
+  return min_ms + (uint32_t)(internal_next_rand(state) % span);
 }
 
 /**
@@ -125,7 +123,7 @@ RA8_INTERNAL static uint32_t draw_range(uint64_t* state, uint32_t min_ms, uint32
  * @note An interrupted sleep is not resumed.
  * @since 0.1.0
  */
-RA8_INTERNAL static void host_sleep_ms(uint32_t ms)
+RA8_INTERNAL static void internal_host_sleep_ms(uint32_t ms)
 {
   struct timespec ts = {.tv_sec  = (time_t)(ms / k_ms_per_s),
                         .tv_nsec = (long)((ms % k_ms_per_s) * k_ns_per_ms)};
@@ -137,12 +135,12 @@ uint32_t mdl_politeness_wait(mdl_politeness_t* p, uint32_t min_ms, uint32_t max_
   if (p == nullptr) {
     return 0U;
   }
-  const uint32_t delayms = draw_range(&p->state, min_ms, max_ms);
+  const uint32_t delayms = internal_draw_range(&p->state, min_ms, max_ms);
 
   if (p->sleep_fn != nullptr) {
     p->sleep_fn(p->sleep_ctx, delayms);
   } else {
-    host_sleep_ms(delayms);
+    internal_host_sleep_ms(delayms);
   }
   return delayms;
 }
@@ -185,7 +183,7 @@ typedef enum : uint16_t {
  * @note Thread-safe: pure arithmetic.
  * @since 0.1.0
  */
-RA8_INTERNAL static uint32_t ms_from_secs(int64_t secs)
+RA8_INTERNAL static uint32_t internal_ms_from_secs(int64_t secs)
 {
   if (secs <= 0) {
     return 0U;
@@ -210,7 +208,7 @@ RA8_INTERNAL static uint32_t ms_from_secs(int64_t secs)
  * @note Thread-safe: reads only its argument.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool all_digits(const char* s)
+RA8_INTERNAL static bool internal_all_digits(const char* s)
 {
   if (*s == '\0') {
     return false;
@@ -239,7 +237,8 @@ RA8_INTERNAL static bool all_digits(const char* s)
  * @note Thread-safe on platforms providing thread-safe `timegm`/`strptime`.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool parse_http_date(const char* value, int64_t now_wall_s, uint32_t* out_ms)
+RA8_INTERNAL static bool
+internal_parse_http_date(const char* value, int64_t now_wall_s, uint32_t* out_ms)
 {
   static const char* const k_fmts[] = {
     "%a, %d %b %Y %H:%M:%S GMT", /* IMF-fixdate: Sun, 06 Nov 1994 08:49:37 GMT  */
@@ -252,7 +251,7 @@ RA8_INTERNAL static bool parse_http_date(const char* value, int64_t now_wall_s, 
       if (t == (time_t)-1) {
         continue;
       }
-      *out_ms = ms_from_secs((int64_t)t - now_wall_s);
+      *out_ms = internal_ms_from_secs((int64_t)t - now_wall_s);
       return true;
     }
   }
@@ -270,11 +269,11 @@ bool mdl_retry_after_parse(const char* value, int64_t now_wall_s, uint32_t* out_
   if (*value == '\0') {
     return false;
   }
-  if (all_digits(value)) {
-    *out_ms = ms_from_secs((int64_t)strtoull(value, nullptr, k_dec_base));
+  if (internal_all_digits(value)) {
+    *out_ms = internal_ms_from_secs((int64_t)strtoull(value, nullptr, k_dec_base));
     return true;
   }
-  return parse_http_date(value, now_wall_s, out_ms);
+  return internal_parse_http_date(value, now_wall_s, out_ms);
 }
 
 /* ======================================================================== *
@@ -295,7 +294,7 @@ bool mdl_retry_after_parse(const char* value, int64_t now_wall_s, uint32_t* out_
  * @note Thread-safe: pure arithmetic.
  * @since 0.1.0
  */
-RA8_INTERNAL static int64_t min_i64(int64_t a, int64_t b)
+RA8_INTERNAL static int64_t internal_min_i64(int64_t a, int64_t b)
 {
   return (a < b) ? a : b;
 }
@@ -314,7 +313,7 @@ RA8_INTERNAL static int64_t min_i64(int64_t a, int64_t b)
  * @note Thread-safe: pure arithmetic.
  * @since 0.1.0
  */
-RA8_INTERNAL static int64_t max_i64(int64_t a, int64_t b)
+RA8_INTERNAL static int64_t internal_max_i64(int64_t a, int64_t b)
 {
   return (a > b) ? a : b;
 }
@@ -332,7 +331,7 @@ RA8_INTERNAL static int64_t max_i64(int64_t a, int64_t b)
  * @note Thread safety follows the injected clock implementation.
  * @since 0.1.0
  */
-RA8_INTERNAL static int64_t gov_now(const mdl_governor_t* g)
+RA8_INTERNAL static int64_t internal_gov_now(const mdl_governor_t* g)
 {
   if (g->now_fn != nullptr) {
     return g->now_fn(g->now_ctx);
@@ -362,7 +361,7 @@ RA8_INTERNAL static int64_t gov_now(const mdl_governor_t* g)
  * @note Thread safety follows the injected sleeper implementation.
  * @since 0.1.0
  */
-RA8_INTERNAL static void gov_sleep(mdl_governor_t* g, int64_t ms)
+RA8_INTERNAL static void internal_gov_sleep(mdl_governor_t* g, int64_t ms)
 {
   if (ms <= 0) {
     return;
@@ -371,7 +370,7 @@ RA8_INTERNAL static void gov_sleep(mdl_governor_t* g, int64_t ms)
   if (g->sleep_fn != nullptr) {
     g->sleep_fn(g->sleep_ctx, d);
   } else {
-    host_sleep_ms(d);
+    internal_host_sleep_ms(d);
   }
 }
 
@@ -389,7 +388,7 @@ RA8_INTERNAL static void gov_sleep(mdl_governor_t* g, int64_t ms)
  * @note Thread-safe: pure arithmetic.
  * @since 0.1.0
  */
-RA8_INTERNAL static int64_t gov_interval_ms(const mdl_gov_cfg_t* cfg)
+RA8_INTERNAL static int64_t internal_gov_interval_ms(const mdl_gov_cfg_t* cfg)
 {
   return (cfg->rate_per_min > 0U) ? ((int64_t)k_mdl_gov_ms_per_req / (int64_t)cfg->rate_per_min)
                                   : 0;
@@ -409,13 +408,13 @@ RA8_INTERNAL static int64_t gov_interval_ms(const mdl_gov_cfg_t* cfg)
  * @note Thread-safe: pure arithmetic.
  * @since 0.1.0
  */
-RA8_INTERNAL static int64_t gov_cap_ms(const mdl_gov_cfg_t* cfg)
+RA8_INTERNAL static int64_t internal_gov_cap_ms(const mdl_gov_cfg_t* cfg)
 {
-  return gov_interval_ms(cfg) * (int64_t)cfg->burst;
+  return internal_gov_interval_ms(cfg) * (int64_t)cfg->burst;
 }
 
 /** @brief Find an existing per-host record, or NULL. */
-RA8_INTERNAL static mdl_host_rec_t* gov_find(mdl_governor_t* g, const char* host)
+RA8_INTERNAL static mdl_host_rec_t* internal_gov_find(mdl_governor_t* g, const char* host)
 {
   if (host == nullptr) {
     return nullptr;
@@ -429,9 +428,10 @@ RA8_INTERNAL static mdl_host_rec_t* gov_find(mdl_governor_t* g, const char* host
 }
 
 /** @brief Find-or-create a per-host record; NULL if the table is full or host NULL. */
-RA8_INTERNAL static mdl_host_rec_t* gov_get(mdl_governor_t* g, const char* host, int64_t now)
+RA8_INTERNAL static mdl_host_rec_t*
+internal_gov_get(mdl_governor_t* g, const char* host, int64_t now)
 {
-  mdl_host_rec_t* rec = gov_find(g, host);
+  mdl_host_rec_t* rec = internal_gov_find(g, host);
   if ((rec != nullptr) || (host == nullptr)) {
     return rec;
   }
@@ -439,7 +439,7 @@ RA8_INTERNAL static mdl_host_rec_t* gov_get(mdl_governor_t* g, const char* host,
     if (!g->hosts[i].used) {
       g->hosts[i]                  = (mdl_host_rec_t){};
       g->hosts[i].used             = true;
-      g->hosts[i].credit_ms        = gov_cap_ms(&g->cfg); /* start full: allow a burst */
+      g->hosts[i].credit_ms        = internal_gov_cap_ms(&g->cfg); /* start full: allow a burst */
       g->hosts[i].last_ms          = now;
       g->hosts[i].earliest_next_ms = now;
       (void)snprintf(g->hosts[i].host, sizeof(g->hosts[i].host), "%s", host);
@@ -465,17 +465,18 @@ RA8_INTERNAL static mdl_host_rec_t* gov_get(mdl_governor_t* g, const char* host,
  * @note Not thread-safe: mutates @p rec.
  * @since 0.1.0
  */
-RA8_INTERNAL static int64_t gov_schedule(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now)
+RA8_INTERNAL static int64_t
+internal_gov_schedule(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now)
 {
-  const int64_t interval  = gov_interval_ms(&g->cfg);
-  const int64_t cap       = gov_cap_ms(&g->cfg);
-  const int64_t elapsed   = max_i64(now - rec->last_ms, 0);
-  rec->credit_ms          = min_i64(rec->credit_ms + elapsed, cap);
+  const int64_t interval  = internal_gov_interval_ms(&g->cfg);
+  const int64_t cap       = internal_gov_cap_ms(&g->cfg);
+  const int64_t elapsed   = internal_max_i64(now - rec->last_ms, 0);
+  rec->credit_ms          = internal_min_i64(rec->credit_ms + elapsed, cap);
   const int64_t rate_wait = (rec->credit_ms < interval) ? (interval - rec->credit_ms) : 0;
-  const int64_t target    = max_i64(now + rate_wait, rec->earliest_next_ms);
+  const int64_t target    = internal_max_i64(now + rate_wait, rec->earliest_next_ms);
   const int64_t wait      = target - now;
-  rec->credit_ms          = max_i64(min_i64(rec->credit_ms + wait, cap) - interval, 0);
-  rec->last_ms            = target;
+  rec->credit_ms = internal_max_i64(internal_min_i64(rec->credit_ms + wait, cap) - interval, 0);
+  rec->last_ms   = target;
   return wait;
 }
 
@@ -496,7 +497,6 @@ void mdl_governor_init(mdl_governor_t* g, const mdl_gov_cfg_t* cfg, uint64_t see
   mdl_governor_init_clock(g, cfg, seed, nullptr, nullptr, nullptr, nullptr);
 }
 
-RA8_DI_SLOT("governor_clock")
 void mdl_governor_init_clock(mdl_governor_t*      g,
                              const mdl_gov_cfg_t* cfg,
                              uint64_t             seed,
@@ -531,19 +531,19 @@ ra8_err_t mdl_governor_acquire(mdl_governor_t* g,
   if (g == nullptr) {
     return k_ra8_ok; /* pacing disabled -- matches a NULL jitter source */
   }
-  const int64_t   now = gov_now(g);
-  mdl_host_rec_t* rec = gov_get(g, host, now);
+  const int64_t   now = internal_gov_now(g);
+  mdl_host_rec_t* rec = internal_gov_get(g, host, now);
   if (rec == nullptr) {
     /* NULL host or table full: still space requests with jitter, no tracking. */
-    gov_sleep(g, (int64_t)draw_range(&g->rng, jitter_min_ms, jitter_max_ms));
+    internal_gov_sleep(g, (int64_t)internal_draw_range(&g->rng, jitter_min_ms, jitter_max_ms));
     return k_ra8_ok;
   }
   if (rec->inflight >= g->cfg.max_inflight) {
     return k_ra8_err_would_block;
   }
-  const int64_t wait   = gov_schedule(g, rec, now);
-  const int64_t jitter = (int64_t)draw_range(&g->rng, jitter_min_ms, jitter_max_ms);
-  gov_sleep(g, wait + jitter);
+  const int64_t wait   = internal_gov_schedule(g, rec, now);
+  const int64_t jitter = (int64_t)internal_draw_range(&g->rng, jitter_min_ms, jitter_max_ms);
+  internal_gov_sleep(g, wait + jitter);
   rec->inflight += 1U;
   return k_ra8_ok;
 }
@@ -553,7 +553,7 @@ void mdl_governor_release(mdl_governor_t* g, const char* host)
   if (g == nullptr) {
     return;
   }
-  mdl_host_rec_t* rec = gov_find(g, host);
+  mdl_host_rec_t* rec = internal_gov_find(g, host);
   if ((rec != nullptr) && (rec->inflight > 0U)) {
     rec->inflight -= 1U;
   }
@@ -573,7 +573,7 @@ void mdl_governor_release(mdl_governor_t* g, const char* host)
  * @note Thread-safe: pure arithmetic.
  * @since 0.1.0
  */
-RA8_INTERNAL static int64_t gov_backoff_window(const mdl_gov_cfg_t* cfg, uint16_t level)
+RA8_INTERNAL static int64_t internal_gov_backoff_window(const mdl_gov_cfg_t* cfg, uint16_t level)
 {
   int64_t        window = (int64_t)cfg->backoff_base_ms;
   const uint16_t shifts = (level > 1U) ? (uint16_t)(level - 1U) : 0U;
@@ -602,16 +602,16 @@ RA8_INTERNAL static int64_t gov_backoff_window(const mdl_gov_cfg_t* cfg, uint16_
  * @since 0.1.0
  */
 RA8_INTERNAL static void
-gov_on_throttle(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now, uint32_t retry_ms)
+internal_gov_on_throttle(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now, uint32_t retry_ms)
 {
   if (rec->backoff_level < (uint16_t)k_mdl_gov_level_max) {
     rec->backoff_level += 1U;
   }
   rec->success_streak   = 0U;
-  const int64_t window  = gov_backoff_window(&g->cfg, rec->backoff_level);
-  const int64_t backoff = (int64_t)draw_range(&g->rng, 0U, (uint32_t)window);
-  const int64_t gate    = now + max_i64(backoff, (int64_t)retry_ms);
-  rec->earliest_next_ms = max_i64(rec->earliest_next_ms, gate);
+  const int64_t window  = internal_gov_backoff_window(&g->cfg, rec->backoff_level);
+  const int64_t backoff = (int64_t)internal_draw_range(&g->rng, 0U, (uint32_t)window);
+  const int64_t gate    = now + internal_max_i64(backoff, (int64_t)retry_ms);
+  rec->earliest_next_ms = internal_max_i64(rec->earliest_next_ms, gate);
 }
 
 /**
@@ -630,11 +630,11 @@ gov_on_throttle(mdl_governor_t* g, mdl_host_rec_t* rec, int64_t now, uint32_t re
  * @note Not thread-safe: mutates the host record.
  * @since 0.1.0
  */
-RA8_INTERNAL static void gov_on_success(mdl_governor_t* g,
-                                        mdl_host_rec_t* rec,
-                                        int64_t         now,
-                                        bool            has_retry,
-                                        uint32_t        retry_ms)
+RA8_INTERNAL static void internal_gov_on_success(mdl_governor_t* g,
+                                                 mdl_host_rec_t* rec,
+                                                 int64_t         now,
+                                                 bool            has_retry,
+                                                 uint32_t        retry_ms)
 {
   rec->success_streak += 1U;
   if ((g->cfg.decay_after > 0U) && (rec->success_streak >= g->cfg.decay_after)) {
@@ -644,7 +644,7 @@ RA8_INTERNAL static void gov_on_success(mdl_governor_t* g,
     rec->success_streak = 0U;
   }
   if (has_retry) {
-    rec->earliest_next_ms = max_i64(rec->earliest_next_ms, now + (int64_t)retry_ms);
+    rec->earliest_next_ms = internal_max_i64(rec->earliest_next_ms, now + (int64_t)retry_ms);
   }
 }
 
@@ -657,8 +657,8 @@ void mdl_governor_observe_at_wall(mdl_governor_t* g,
   if (g == nullptr) {
     return;
   }
-  const int64_t   now = gov_now(g);
-  mdl_host_rec_t* rec = gov_get(g, host, now);
+  const int64_t   now = internal_gov_now(g);
+  mdl_host_rec_t* rec = internal_gov_get(g, host, now);
   if (rec == nullptr) {
     return; /* NULL host or table full */
   }
@@ -668,9 +668,9 @@ void mdl_governor_observe_at_wall(mdl_governor_t* g,
   const bool throttled =
     (status == (long)k_http_too_many_req) || (status == (long)k_http_unavailable);
   if (throttled) {
-    gov_on_throttle(g, rec, now, retry_ms);
+    internal_gov_on_throttle(g, rec, now, retry_ms);
   } else {
-    gov_on_success(g, rec, now, has_retry, retry_ms);
+    internal_gov_on_success(g, rec, now, has_retry, retry_ms);
   }
 }
 

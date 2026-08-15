@@ -383,6 +383,162 @@ RA8_INTERNAL static ra8_err_t internal_policy(const mdl_storage_t*        storag
   return k_ra8_ok;
 }
 
+/**
+ * @brief Resolve and validate one regular bounded source file.
+ * @details Rejects missing, non-file, and oversized namespace entries.
+ * @param[in] storage Initialized storage binding.
+ * @param[in] source Canonical source path.
+ * @param[out] size Receives the validated byte length.
+ * @return Namespace validation status.
+ * @retval k_ra8_ok Source is a bounded regular file.
+ * @retval k_ra8_err_not_found Source does not exist.
+ * @retval k_ra8_err_invalid_arg Source is not a file.
+ * @retval k_ra8_err_invalid_size Source exceeds the supported hash bound.
+ * @pre All pointers are non-NULL.
+ * @pre Supplied capacities cover their referenced bounded buffers.
+ * @post Success initializes @p size.
+ * @post No file stream is opened.
+ * @note Not thread-safe against source namespace mutation.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t
+internal_source_size(const mdl_storage_t* storage, const char* source, uint64_t* size)
+{
+  fw_fs_stat_t    stat = {};
+  const ra8_err_t err  = fw_fs_stat(&storage->fs->names, source, &stat);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (!stat.exists) {
+    return k_ra8_err_not_found;
+  }
+  if (stat.type != k_fw_fs_node_file) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (stat.size_bytes > (uint64_t)k_mdl_hash_max_file_bytes) {
+    return k_ra8_err_invalid_size;
+  }
+  *size = stat.size_bytes;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Open the copy source and begin its publication transaction.
+ * @details Selects the truthful destination policy before opening either side.
+ * @param[in] storage Initialized storage binding.
+ * @param[in] source Canonical source path.
+ * @param[in] destination Canonical destination path.
+ * @param[out] source_file Receives the open source stream.
+ * @param[out] transaction Receives the open transaction.
+ * @param[out] size Receives the validated source length.
+ * @return Open/begin status.
+ * @retval k_ra8_ok Both handles are open.
+ * @retval other Filesystem validation or open failure propagated.
+ * @pre All pointers are non-NULL.
+ * @pre Supplied capacities cover their referenced bounded buffers.
+ * @post Failure leaves no source handle owned by the caller.
+ * @post Success transfers both open handles to the caller.
+ * @note Not thread-safe against namespace mutation.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_begin_copy(mdl_storage_t*       storage,
+                                                  const char*          source,
+                                                  const char*          destination,
+                                                  fw_fs_file_t*        source_file,
+                                                  fw_fs_transaction_t* transaction,
+                                                  uint64_t*            size)
+{
+  ra8_err_t                  err    = internal_source_size(storage, source, size);
+  fw_fs_transaction_policy_t policy = k_fw_fs_txn_create_new;
+  if (err == k_ra8_ok) {
+    err = internal_policy(storage, destination, &policy);
+  }
+  if (err == k_ra8_ok) {
+    err = fw_fs_open(&storage->fs->streams,
+                     source,
+                     k_fw_fs_open_read,
+                     source_file,
+                     storage->file_workspace,
+                     storage->file_workspace_bytes);
+  }
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  err = fw_fs_transaction_begin(&storage->fs->transactions,
+                                destination,
+                                policy,
+                                transaction,
+                                storage->transaction_workspace,
+                                storage->transaction_workspace_bytes);
+  if (err != k_ra8_ok) {
+    (void)fw_fs_close(source_file);
+  }
+  return err;
+}
+
+/**
+ * @brief Copy and hash one exact source payload into a transaction.
+ * @details Enforces bounded I/O call counts and rejects early EOF or trailing
+ * data.
+ * @param[in] storage Initialized storage binding and I/O buffer.
+ * @param[in,out] source Open source file.
+ * @param[in,out] transaction Open destination transaction.
+ * @param[in] size Exact source byte length.
+ * @param[out] hash Receives the payload hash on success.
+ * @return Streaming status.
+ * @retval k_ra8_ok Exactly @p size bytes were copied and EOF followed.
+ * @retval k_ra8_err_invalid_size The bounded call budget was exhausted.
+ * @retval other A read/write or stream-integrity failure propagated.
+ * @pre All pointers are non-NULL and handles are open.
+ * @pre Supplied capacities cover their referenced bounded buffers.
+ * @post Success initializes @p hash.
+ * @post Neither handle is closed.
+ * @note Not thread-safe for shared handles or storage buffers.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_copy_payload(mdl_storage_t*       storage,
+                                                    fw_fs_file_t*        source,
+                                                    fw_fs_transaction_t* transaction,
+                                                    uint64_t             size,
+                                                    uint64_t*            hash)
+{
+  uint64_t  remaining   = size;
+  uint64_t  digest      = (uint64_t)k_mdl_fnv_offset;
+  uint32_t  read_calls  = 0U;
+  uint32_t  write_calls = 0U;
+  ra8_err_t err         = k_ra8_ok;
+  while ((remaining > 0U) && (read_calls < (uint32_t)k_storage_io_calls)) {
+    const uint32_t wanted = (remaining < (uint64_t)storage->io_buffer_bytes)
+                              ? (uint32_t)remaining
+                              : storage->io_buffer_bytes;
+    uint32_t       read   = 0U;
+    err                   = fw_fs_read(source, storage->io_buffer, wanted, &read);
+    ++read_calls;
+    if ((err != k_ra8_ok) || (read == 0U) || ((uint64_t)read > remaining)) {
+      err = (err == k_ra8_ok) ? k_ra8_fail : err;
+      break;
+    }
+    digest = mdl_hash_bytes_seed(storage->io_buffer, read, digest);
+    err    = internal_write_all(transaction, storage->io_buffer, read, &write_calls);
+    if (err != k_ra8_ok) {
+      break;
+    }
+    remaining -= read;
+  }
+  if ((err == k_ra8_ok) && (remaining != 0U)) {
+    err = k_ra8_err_invalid_size;
+  }
+  uint32_t trailing = 0U;
+  if (err == k_ra8_ok) {
+    err = fw_fs_read(source, storage->io_buffer, 1U, &trailing);
+  }
+  if ((err == k_ra8_ok) && (trailing != 0U)) {
+    err = k_ra8_fail;
+  }
+  *hash = digest;
+  return err;
+}
+
 ra8_err_t
 mdl_storage_copy_atomic(mdl_storage_t* storage, const char* source, const char* destination)
 {
@@ -393,84 +549,16 @@ mdl_storage_copy_atomic(mdl_storage_t* storage, const char* source, const char* 
   if (strcmp(source, destination) == 0) {
     return k_ra8_err_invalid_arg;
   }
-  fw_fs_stat_t source_stat = {};
-  ra8_err_t    err         = fw_fs_stat(&storage->fs->names, source, &source_stat);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (!source_stat.exists) {
-    return k_ra8_err_not_found;
-  }
-  if (source_stat.type != k_fw_fs_node_file) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (source_stat.size_bytes > (uint64_t)k_mdl_hash_max_file_bytes) {
-    return k_ra8_err_invalid_size;
-  }
-
-  fw_fs_transaction_policy_t policy = k_fw_fs_txn_create_new;
-  err                               = internal_policy(storage, destination, &policy);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-
-  fw_fs_file_t source_file = {};
-  err                      = fw_fs_open(&storage->fs->streams,
-                                        source,
-                                        k_fw_fs_open_read,
-                                        &source_file,
-                                        storage->file_workspace,
-                                        storage->file_workspace_bytes);
-  if (err != k_ra8_ok) {
-    return err;
-  }
+  fw_fs_file_t        source_file = {};
   fw_fs_transaction_t transaction = {};
-  err                             = fw_fs_transaction_begin(&storage->fs->transactions,
-                                                            destination,
-                                                            policy,
-                                                            &transaction,
-                                                            storage->transaction_workspace,
-                                                            storage->transaction_workspace_bytes);
+  uint64_t            size        = 0U;
+  ra8_err_t           err =
+    internal_begin_copy(storage, source, destination, &source_file, &transaction, &size);
   if (err != k_ra8_ok) {
-    (void)fw_fs_close(&source_file);
     return err;
   }
-
-  uint64_t remaining   = source_stat.size_bytes;
-  uint64_t hash        = (uint64_t)k_mdl_fnv_offset;
-  uint32_t read_calls  = 0U;
-  uint32_t write_calls = 0U;
-  while ((remaining > 0U) && (read_calls < (uint32_t)k_storage_io_calls)) {
-    const uint32_t wanted = (remaining < (uint64_t)storage->io_buffer_bytes)
-                              ? (uint32_t)remaining
-                              : storage->io_buffer_bytes;
-    uint32_t       read   = 0U;
-    err                   = fw_fs_read(&source_file, storage->io_buffer, wanted, &read);
-    ++read_calls;
-    if (err != k_ra8_ok) {
-      break;
-    }
-    if ((read == 0U) || ((uint64_t)read > remaining)) {
-      err = k_ra8_fail;
-      break;
-    }
-    hash = mdl_hash_bytes_seed(storage->io_buffer, read, hash);
-    err  = internal_write_all(&transaction, storage->io_buffer, read, &write_calls);
-    if (err != k_ra8_ok) {
-      break;
-    }
-    remaining -= read;
-  }
-  if ((err == k_ra8_ok) && (remaining != 0U)) {
-    err = k_ra8_err_invalid_size;
-  }
-  if (err == k_ra8_ok) {
-    uint32_t trailing = 0U;
-    err               = fw_fs_read(&source_file, storage->io_buffer, 1U, &trailing);
-    if ((err == k_ra8_ok) && (trailing != 0U)) {
-      err = k_ra8_fail;
-    }
-  }
+  uint64_t hash          = 0U;
+  err                    = internal_copy_payload(storage, &source_file, &transaction, size, &hash);
   const ra8_err_t closed = fw_fs_close(&source_file);
   if (err == k_ra8_ok) {
     err = closed;
@@ -479,7 +567,7 @@ mdl_storage_copy_atomic(mdl_storage_t* storage, const char* source, const char* 
     return internal_abort(&transaction, err);
   }
 
-  const staged_identity_t identity = {.size_bytes   = source_stat.size_bytes,
+  const staged_identity_t identity = {.size_bytes   = size,
                                       .hash         = hash,
                                       .buffer       = storage->io_buffer,
                                       .buffer_bytes = storage->io_buffer_bytes};
@@ -493,4 +581,142 @@ mdl_storage_copy_atomic(mdl_storage_t* storage, const char* source, const char* 
     err = k_ra8_err_invalid_state;
   }
   return internal_abort(&transaction, err);
+}
+
+/**
+ * @brief Begin a streaming writer with one explicit publication policy.
+ * @param[out] writer Inactive caller-owned writer.
+ * @param[in,out] storage Exclusive initialized storage binding.
+ * @param[in] destination Canonical destination path.
+ * @param[in] policy Validated create-new or atomic-replace policy.
+ * @return Canonical transaction-begin status.
+ * @pre Required pointers are non-NULL and @p writer is inactive.
+ * @post Success publishes complete writer state; failure leaves it inactive.
+ * @note This helper performs no destination-policy inference.
+ * @since 0.1.0
+
+ * @details Initializes a caller-owned writer with the selected publication policy.
+ *          No storage mutation follows a failed validation or begin operation.
+ * @retval k_ra8_ok The operation completed successfully.
+ * @retval other The originating validation, storage, stream, or network error.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @post Documented outputs and the return value describe the same outcome.
+ */
+RA8_INTERNAL static ra8_err_t internal_txn_begin(mdl_storage_txn_t*         writer,
+                                                 mdl_storage_t*             storage,
+                                                 const char*                destination,
+                                                 fw_fs_transaction_policy_t policy)
+{
+  if ((writer == nullptr) || (storage == nullptr) || (storage->fs == nullptr) ||
+      (destination == nullptr) || writer->transaction.active ||
+      ((policy != k_fw_fs_txn_create_new) && (policy != k_fw_fs_txn_replace_atomic))) {
+    return k_ra8_err_invalid_arg;
+  }
+  fw_fs_transaction_t transaction = {};
+  const ra8_err_t     err         = fw_fs_transaction_begin(&storage->fs->transactions,
+                                                            destination,
+                                                            policy,
+                                                            &transaction,
+                                                            storage->transaction_workspace,
+                                                            storage->transaction_workspace_bytes);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  *writer = (mdl_storage_txn_t){.storage     = storage,
+                                .transaction = transaction,
+                                .size_bytes  = 0U,
+                                .hash        = (uint64_t)k_mdl_fnv_offset,
+                                .write_calls = 0U};
+  return k_ra8_ok;
+}
+
+ra8_err_t
+mdl_storage_txn_begin(mdl_storage_txn_t* writer, mdl_storage_t* storage, const char* destination)
+{
+  if ((writer == nullptr) || (storage == nullptr) || (storage->fs == nullptr) ||
+      (destination == nullptr) || writer->transaction.active) {
+    return k_ra8_err_invalid_arg;
+  }
+  fw_fs_transaction_policy_t policy = k_fw_fs_txn_create_new;
+  const ra8_err_t            err    = internal_policy(storage, destination, &policy);
+  return (err == k_ra8_ok) ? internal_txn_begin(writer, storage, destination, policy) : err;
+}
+
+ra8_err_t mdl_storage_txn_begin_new(mdl_storage_txn_t* writer,
+                                    mdl_storage_t*     storage,
+                                    const char*        destination)
+{
+  return internal_txn_begin(writer, storage, destination, k_fw_fs_txn_create_new);
+}
+
+ra8_err_t mdl_storage_txn_write(mdl_storage_txn_t* writer, const uint8_t* bytes, uint32_t length)
+{
+  if ((writer == nullptr) || (writer->storage == nullptr) || !writer->transaction.active ||
+      ((bytes == nullptr) && (length != 0U))) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((uint64_t)length > ((uint64_t)k_mdl_hash_max_file_bytes - writer->size_bytes)) {
+    return k_ra8_err_invalid_size;
+  }
+  uint32_t offset = 0U;
+  while (offset < length) {
+    if (writer->write_calls >= (uint32_t)k_storage_io_calls) {
+      return k_ra8_err_invalid_size;
+    }
+    uint32_t        written = 0U;
+    const ra8_err_t err =
+      fw_fs_transaction_write(&writer->transaction, bytes + offset, length - offset, &written);
+    ++writer->write_calls;
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    if (written == 0U) {
+      return k_ra8_err_invalid_state;
+    }
+    writer->hash = mdl_hash_bytes_seed(bytes + offset, (size_t)written, writer->hash);
+    writer->size_bytes += (uint64_t)written;
+    offset += written;
+  }
+  return k_ra8_ok;
+}
+
+ra8_err_t mdl_storage_txn_abort(mdl_storage_txn_t* writer)
+{
+  if (writer == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (writer->transaction.active) {
+    const ra8_err_t err = fw_fs_transaction_abort(&writer->transaction);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+  }
+  *writer = (mdl_storage_txn_t){};
+  return k_ra8_ok;
+}
+
+ra8_err_t mdl_storage_txn_commit(mdl_storage_txn_t* writer)
+{
+  if ((writer == nullptr) || (writer->storage == nullptr) || !writer->transaction.active) {
+    return k_ra8_err_invalid_arg;
+  }
+  const staged_identity_t identity = {.size_bytes   = writer->size_bytes,
+                                      .hash         = writer->hash,
+                                      .buffer       = writer->storage->io_buffer,
+                                      .buffer_bytes = writer->storage->io_buffer_bytes};
+  ra8_err_t               err =
+    fw_fs_transaction_validate(&writer->transaction, internal_validate_stage, (void*)&identity);
+  if (err == k_ra8_ok) {
+    bool published = false;
+    err            = fw_fs_transaction_commit(&writer->transaction, &published);
+    if ((err == k_ra8_ok) && !published) {
+      err = k_ra8_err_invalid_state;
+    }
+  }
+  if (err != k_ra8_ok) {
+    const ra8_err_t aborted = mdl_storage_txn_abort(writer);
+    return (aborted == k_ra8_ok) ? err : aborted;
+  }
+  *writer = (mdl_storage_txn_t){};
+  return k_ra8_ok;
 }

@@ -22,8 +22,8 @@
  * SPDX-License-Identifier: MIT
  */
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "mdl_politeness.h"
 #include "unity_minimal.h"
@@ -73,15 +73,38 @@ typedef struct {
   uint32_t calls;       /**< Number of sleep calls.       */
 } gov_clock_t;
 
-/** @brief Injected clock: return the virtual now. */
 /* cppcheck-suppress constParameterCallback ; ra8_governor clock-fn ABI is void* */
-static int64_t gov_clk_now(void* ctx)
+/**
+ * @brief Return the current time from the injected virtual clock.
+ * @details Implements this test-only seam with caller-owned fixtures, bounded storage, and explicit propagation of the result observed by its caller.
+ * @param[in,out] ctx Opaque caller-owned fixture context.
+ * @return Value produced by the bounded test helper.
+ * @retval 0 The helper produced its zero-valued boundary result.
+ * @retval nonzero The helper produced its documented nonzero result.
+ * @pre Pointer arguments satisfy their documented readable and writable extents.
+ * @pre The caller retains ownership of every supplied fixture object.
+ * @post Documented outputs reflect the processed fixture on success.
+ * @post Failure preserves caller-owned resources as documented.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static int64_t internal_gov_clk_now(void* ctx)
 {
   return ((const gov_clock_t*)ctx)->now_ms;
 }
 
-/** @brief Injected sleeper: advance the virtual clock and record the request. */
-static void gov_clk_sleep(void* ctx, uint32_t ms)
+/** @brief Injected sleeper: advance the virtual clock and record the request.
+ * @details Implements this test-only seam with caller-owned fixtures, bounded storage, and explicit propagation of the result observed by its caller.
+ * @param[in,out] ctx Opaque caller-owned fixture context.
+ * @param[in] ms Requested virtual sleep duration in milliseconds.
+ * @pre Pointer arguments satisfy their documented readable and writable extents.
+ * @pre The caller retains ownership of every supplied fixture object.
+ * @post Documented outputs reflect the processed fixture on success.
+ * @post Failure preserves caller-owned resources as documented.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_gov_clk_sleep(void* ctx, uint32_t ms)
 {
   gov_clock_t* c = (gov_clock_t*)ctx;
   c->now_ms += (int64_t)ms;
@@ -91,10 +114,10 @@ static void gov_clk_sleep(void* ctx, uint32_t ms)
 }
 
 /** @brief The governor under test (a per-host table -- keep off the stack). */
-static mdl_governor_t g_gov;
+static mdl_governor_t s_gov;
 
 /**
- * @test test_gov_retry_after_parse
+ * @test internal_test_gov_retry_after_parse
  *
  * @par MC/DC:
  * ::mdl_retry_after_parse branches on `value==NULL || out_ms==NULL` (guard),
@@ -103,8 +126,16 @@ static mdl_governor_t g_gov;
  * date (date branch, both formats), a past date (clamp-to-zero relational), and
  * an unparseable string (date branch false). Each single-condition branch is
  * driven both ways.
+ * @brief Exercise the gov retry after parse media-downloader scenario.
+ * @details Exercises the gov retry after parse scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_gov_retry_after_parse(void)
+RA8_INTERNAL static void internal_test_gov_retry_after_parse(void)
 {
   TEST_BEGIN("gov retry-after parse");
   uint32_t ms = 0U;
@@ -134,14 +165,22 @@ static void test_gov_retry_after_parse(void)
 }
 
 /**
- * @test test_gov_rate_limit
+ * @test internal_test_gov_rate_limit
  *
  * @par MC/DC:
  * (no compound decision in this test; it asserts the token-bucket timing --
  * `burst` requests go out with no sleep, then each further request is paced at
  * the configured interval -- through the recording fake clock.)
+ * @brief Exercise the gov rate limit media-downloader scenario.
+ * @details Exercises the gov rate limit scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_gov_rate_limit(void)
+RA8_INTERNAL static void internal_test_gov_rate_limit(void)
 {
   TEST_BEGIN("gov rate limit token bucket");
   gov_clock_t   clk = {};
@@ -149,46 +188,54 @@ static void test_gov_rate_limit(void)
   cfg.rate_per_min  = (uint32_t)k_gov_rate_60; /* 1000 ms interval */
   cfg.burst         = (uint32_t)k_gov_burst_3;
   cfg.max_inflight  = (uint16_t)k_gov_inflight_1;
-  mdl_governor_init_clock(&g_gov,
+  mdl_governor_init_clock(&s_gov,
                           &cfg,
                           (uint64_t)k_gov_seed,
-                          gov_clk_now,
+                          internal_gov_clk_now,
                           &clk,
-                          gov_clk_sleep,
+                          internal_gov_clk_sleep,
                           &clk);
 
   /* The first `burst` (3) requests are admitted immediately -- no sleeping. */
   for (uint16_t i = 0U; i < (uint16_t)k_gov_burst_3; ++i) {
-    TEST_ASSERT(mdl_governor_acquire(&g_gov, "h", 0U, 0U) == k_ra8_ok);
-    mdl_governor_release(&g_gov, "h");
+    TEST_ASSERT(mdl_governor_acquire(&s_gov, "h", 0U, 0U) == k_ra8_ok);
+    mdl_governor_release(&s_gov, "h");
   }
   TEST_ASSERT_EQ((int64_t)0, clk.total_slept);
   TEST_ASSERT_EQ((int64_t)0, (int64_t)clk.calls);
 
   /* The 4th and 5th are paced one interval apart. */
-  TEST_ASSERT(mdl_governor_acquire(&g_gov, "h", 0U, 0U) == k_ra8_ok);
+  TEST_ASSERT(mdl_governor_acquire(&s_gov, "h", 0U, 0U) == k_ra8_ok);
   TEST_ASSERT_EQ((int64_t)k_gov_interval_ms, (int64_t)clk.last_slept);
-  mdl_governor_release(&g_gov, "h");
-  TEST_ASSERT(mdl_governor_acquire(&g_gov, "h", 0U, 0U) == k_ra8_ok);
+  mdl_governor_release(&s_gov, "h");
+  TEST_ASSERT(mdl_governor_acquire(&s_gov, "h", 0U, 0U) == k_ra8_ok);
   TEST_ASSERT_EQ((int64_t)k_gov_interval_ms, (int64_t)clk.last_slept);
-  mdl_governor_release(&g_gov, "h");
+  mdl_governor_release(&s_gov, "h");
   TEST_ASSERT(clk.total_slept >= (int64_t)k_gov_two_secs);
   TEST_END("gov rate limit token bucket");
 }
 
 /**
- * @test test_gov_backoff_growth_and_decay
+ * @test internal_test_gov_backoff_growth_and_decay
  *
  * @par MC/DC:
  * Covers the throttle decision `status == 429 || status == 503` in
  * ::mdl_governor_observe with the 503-true/429-false vector (this test) and the
  * both-false vector (the status-200 successes here); the 429-true/503-false
- * vector lives in test_gov_retry_after_precedence, completing N+1 = 3 for the
+ * vector lives in internal_test_gov_retry_after_precedence, completing N+1 = 3 for the
  * two-condition OR. Backoff growth and decay are asserted on the deterministic
  * level via ::mdl_governor_peek, and the scheduled gate is bounded by the
  * configured window ceiling.
+ * @brief Exercise the gov backoff growth and decay media-downloader scenario.
+ * @details Exercises the gov backoff growth and decay scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_gov_backoff_growth_and_decay(void)
+RA8_INTERNAL static void internal_test_gov_backoff_growth_and_decay(void)
 {
   TEST_BEGIN("gov backoff growth + decay");
   gov_clock_t   clk   = {};
@@ -197,48 +244,56 @@ static void test_gov_backoff_growth_and_decay(void)
   cfg.backoff_base_ms = (uint32_t)k_gov_backoff_base;
   cfg.backoff_max_ms  = (uint32_t)k_gov_backoff_cap;
   cfg.decay_after     = (uint16_t)k_gov_decay_2;
-  mdl_governor_init_clock(&g_gov,
+  mdl_governor_init_clock(&s_gov,
                           &cfg,
                           (uint64_t)k_gov_seed,
-                          gov_clk_now,
+                          internal_gov_clk_now,
                           &clk,
-                          gov_clk_sleep,
+                          internal_gov_clk_sleep,
                           &clk);
 
   uint16_t level = 0U;
   int64_t  gate  = 0;
   for (uint16_t k = 1U; k <= (uint16_t)k_gov_throttles; ++k) {
-    mdl_governor_observe(&g_gov, "h", (long)k_http_unavail, nullptr);
-    TEST_ASSERT(mdl_governor_peek(&g_gov, "h", &level, &gate));
+    mdl_governor_observe(&s_gov, "h", (long)k_http_unavail, nullptr);
+    TEST_ASSERT(mdl_governor_peek(&s_gov, "h", &level, &gate));
     TEST_ASSERT_EQ((int64_t)k, (int64_t)level); /* level grows 1..5 */
     TEST_ASSERT(gate >= 0);
     TEST_ASSERT(gate <= (int64_t)k_gov_backoff_cap); /* full jitter within cap */
   }
 
   /* Two successes drop one level; the streak resets between drops. */
-  mdl_governor_observe(&g_gov, "h", (long)k_http_ok, nullptr); /* streak 1: no drop */
-  TEST_ASSERT(mdl_governor_peek(&g_gov, "h", &level, nullptr));
+  mdl_governor_observe(&s_gov, "h", (long)k_http_ok, nullptr); /* streak 1: no drop */
+  TEST_ASSERT(mdl_governor_peek(&s_gov, "h", &level, nullptr));
   TEST_ASSERT_EQ((int64_t)k_gov_throttles, (int64_t)level);
-  mdl_governor_observe(&g_gov, "h", (long)k_http_ok, nullptr); /* streak 2: drop to 4 */
-  TEST_ASSERT(mdl_governor_peek(&g_gov, "h", &level, nullptr));
+  mdl_governor_observe(&s_gov, "h", (long)k_http_ok, nullptr); /* streak 2: drop to 4 */
+  TEST_ASSERT(mdl_governor_peek(&s_gov, "h", &level, nullptr));
   TEST_ASSERT_EQ((int64_t)4, (int64_t)level);
-  mdl_governor_observe(&g_gov, "h", (long)k_http_ok, nullptr);
-  mdl_governor_observe(&g_gov, "h", (long)k_http_ok, nullptr); /* drop to 3 */
-  TEST_ASSERT(mdl_governor_peek(&g_gov, "h", &level, nullptr));
+  mdl_governor_observe(&s_gov, "h", (long)k_http_ok, nullptr);
+  mdl_governor_observe(&s_gov, "h", (long)k_http_ok, nullptr); /* drop to 3 */
+  TEST_ASSERT(mdl_governor_peek(&s_gov, "h", &level, nullptr));
   TEST_ASSERT_EQ((int64_t)3, (int64_t)level);
   TEST_END("gov backoff growth + decay");
 }
 
 /**
- * @test test_gov_retry_after_precedence
+ * @test internal_test_gov_retry_after_precedence
  *
  * @par MC/DC:
  * Exercises the 429-true/503-false vector of the throttle OR in
- * ::mdl_governor_observe (paired with test_gov_backoff_growth_and_decay). Also
+ * ::mdl_governor_observe (paired with internal_test_gov_backoff_growth_and_decay). Also
  * asserts that `Retry-After` (delta-seconds and HTTP-date) sets the gate over a
  * shorter computed backoff, and that a later acquire waits exactly that long.
+ * @brief Exercise the gov retry after precedence media-downloader scenario.
+ * @details Exercises the gov retry after precedence scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_gov_retry_after_precedence(void)
+RA8_INTERNAL static void internal_test_gov_retry_after_precedence(void)
 {
   TEST_BEGIN("gov retry-after precedence");
   gov_clock_t   clk   = {};
@@ -246,45 +301,45 @@ static void test_gov_retry_after_precedence(void)
   cfg.rate_per_min    = 0U;
   cfg.backoff_base_ms = (uint32_t)k_gov_backoff_base;
   cfg.backoff_max_ms  = (uint32_t)k_gov_backoff_base; /* window <= 1 s, so Retry-After wins */
-  mdl_governor_init_clock(&g_gov,
+  mdl_governor_init_clock(&s_gov,
                           &cfg,
                           (uint64_t)k_gov_seed,
-                          gov_clk_now,
+                          internal_gov_clk_now,
                           &clk,
-                          gov_clk_sleep,
+                          internal_gov_clk_sleep,
                           &clk);
 
   /* delta-seconds Retry-After (120 s) beats the <= 1 s backoff, on a 429. */
-  mdl_governor_observe(&g_gov, "a", (long)k_http_too_many, "120");
+  mdl_governor_observe(&s_gov, "a", (long)k_http_too_many, "120");
   int64_t gate = 0;
-  TEST_ASSERT(mdl_governor_peek(&g_gov, "a", nullptr, &gate));
+  TEST_ASSERT(mdl_governor_peek(&s_gov, "a", nullptr, &gate));
   TEST_ASSERT_EQ((int64_t)k_gov_retry_120s_ms, gate);
-  TEST_ASSERT(mdl_governor_acquire(&g_gov, "a", 0U, 0U) == k_ra8_ok);
+  TEST_ASSERT(mdl_governor_acquire(&s_gov, "a", 0U, 0U) == k_ra8_ok);
   TEST_ASSERT_EQ((int64_t)k_gov_retry_120s_ms, (int64_t)clk.last_slept);
-  mdl_governor_release(&g_gov, "a");
+  mdl_governor_release(&s_gov, "a");
 
   /* HTTP-date Retry-After (60 s past the epoch, clock at the epoch), on a 503. */
   gov_clock_t clk2 = {};
-  mdl_governor_init_clock(&g_gov,
+  mdl_governor_init_clock(&s_gov,
                           &cfg,
                           (uint64_t)k_gov_seed,
-                          gov_clk_now,
+                          internal_gov_clk_now,
                           &clk2,
-                          gov_clk_sleep,
+                          internal_gov_clk_sleep,
                           &clk2);
-  mdl_governor_observe_at_wall(&g_gov,
+  mdl_governor_observe_at_wall(&s_gov,
                                "b",
                                (long)k_http_unavail,
                                "Thu, 01 Jan 1970 00:01:00 GMT",
                                0);
   gate = 0;
-  TEST_ASSERT(mdl_governor_peek(&g_gov, "b", nullptr, &gate));
+  TEST_ASSERT(mdl_governor_peek(&s_gov, "b", nullptr, &gate));
   TEST_ASSERT_EQ((int64_t)k_gov_retry_60s_ms, gate);
   TEST_END("gov retry-after precedence");
 }
 
 /**
- * @test test_gov_concurrency_cap
+ * @test internal_test_gov_concurrency_cap
  *
  * @par MC/DC:
  * Decision: `rec->inflight >= max_inflight` in ::mdl_governor_acquire (single
@@ -292,51 +347,59 @@ static void test_gov_retry_after_precedence(void)
  * (k_ra8_ok). Vector B: in-flight at the cap -> refused (would_block). Also
  * shows the cap is per host (a second host is admitted while the first is full)
  * and that a release re-opens a slot.
+ * @brief Exercise the gov concurrency cap media-downloader scenario.
+ * @details Exercises the gov concurrency cap scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_gov_concurrency_cap(void)
+RA8_INTERNAL static void internal_test_gov_concurrency_cap(void)
 {
   TEST_BEGIN("gov concurrency cap");
   gov_clock_t   clk = {};
   mdl_gov_cfg_t cfg = mdl_gov_cfg_default();
   cfg.rate_per_min  = 0U; /* no pacing noise */
   cfg.max_inflight  = (uint16_t)k_gov_inflight_1;
-  mdl_governor_init_clock(&g_gov,
+  mdl_governor_init_clock(&s_gov,
                           &cfg,
                           (uint64_t)k_gov_seed,
-                          gov_clk_now,
+                          internal_gov_clk_now,
                           &clk,
-                          gov_clk_sleep,
+                          internal_gov_clk_sleep,
                           &clk);
 
-  TEST_ASSERT(mdl_governor_acquire(&g_gov, "a", 0U, 0U) == k_ra8_ok);              /* below cap  */
-  TEST_ASSERT(mdl_governor_acquire(&g_gov, "a", 0U, 0U) == k_ra8_err_would_block); /* at cap     */
-  TEST_ASSERT(mdl_governor_acquire(&g_gov, "b", 0U, 0U) == k_ra8_ok);              /* other host */
-  mdl_governor_release(&g_gov, "a");
-  TEST_ASSERT(mdl_governor_acquire(&g_gov, "a", 0U, 0U) == k_ra8_ok); /* slot freed */
-  mdl_governor_release(&g_gov, "a");
-  mdl_governor_release(&g_gov, "b");
+  TEST_ASSERT(mdl_governor_acquire(&s_gov, "a", 0U, 0U) == k_ra8_ok);              /* below cap  */
+  TEST_ASSERT(mdl_governor_acquire(&s_gov, "a", 0U, 0U) == k_ra8_err_would_block); /* at cap     */
+  TEST_ASSERT(mdl_governor_acquire(&s_gov, "b", 0U, 0U) == k_ra8_ok);              /* other host */
+  mdl_governor_release(&s_gov, "a");
+  TEST_ASSERT(mdl_governor_acquire(&s_gov, "a", 0U, 0U) == k_ra8_ok); /* slot freed */
+  mdl_governor_release(&s_gov, "a");
+  mdl_governor_release(&s_gov, "b");
 
   /* A cap of 2 admits two in flight and refuses the third. */
   gov_clock_t   clk2 = {};
   mdl_gov_cfg_t c2   = cfg;
   c2.max_inflight    = (uint16_t)k_gov_inflight_2;
-  mdl_governor_init_clock(&g_gov,
+  mdl_governor_init_clock(&s_gov,
                           &c2,
                           (uint64_t)k_gov_seed,
-                          gov_clk_now,
+                          internal_gov_clk_now,
                           &clk2,
-                          gov_clk_sleep,
+                          internal_gov_clk_sleep,
                           &clk2);
-  TEST_ASSERT(mdl_governor_acquire(&g_gov, "c", 0U, 0U) == k_ra8_ok);
-  TEST_ASSERT(mdl_governor_acquire(&g_gov, "c", 0U, 0U) == k_ra8_ok);
-  TEST_ASSERT(mdl_governor_acquire(&g_gov, "c", 0U, 0U) == k_ra8_err_would_block);
-  mdl_governor_release(&g_gov, "c");
-  TEST_ASSERT(mdl_governor_acquire(&g_gov, "c", 0U, 0U) == k_ra8_ok);
+  TEST_ASSERT(mdl_governor_acquire(&s_gov, "c", 0U, 0U) == k_ra8_ok);
+  TEST_ASSERT(mdl_governor_acquire(&s_gov, "c", 0U, 0U) == k_ra8_ok);
+  TEST_ASSERT(mdl_governor_acquire(&s_gov, "c", 0U, 0U) == k_ra8_err_would_block);
+  mdl_governor_release(&s_gov, "c");
+  TEST_ASSERT(mdl_governor_acquire(&s_gov, "c", 0U, 0U) == k_ra8_ok);
   TEST_END("gov concurrency cap");
 }
 
 /**
- * @test test_gov_null_and_untracked
+ * @test internal_test_gov_null_and_untracked
  *
  * @par MC/DC:
  * Decision: `g == NULL` in the governor entry points (single condition, N+1 =
@@ -344,8 +407,16 @@ static void test_gov_concurrency_cap(void)
  * the non-NULL side is exercised by every other test. Also covers the NULL-host
  * degradation path: no per-host record, only jitter spacing, and ::mdl_governor_peek
  * reports the host as unknown.
+ * @brief Exercise the gov null and untracked media-downloader scenario.
+ * @details Exercises the gov null and untracked scenario through production media-downloader interfaces and checks its observable success, rejection, and boundary results.
+ * @pre The host test process exclusively owns its fixture state.
+ * @pre Required fakes and bounded buffers are initialized before use.
+ * @post Normal return means every scenario assertion passed.
+ * @post No fixture resource ownership is transferred by this test.
+ * @note Host-only and synchronous; assertion failure terminates the test process.
+ * @since 0.1.0
  */
-static void test_gov_null_and_untracked(void)
+RA8_INTERNAL static void internal_test_gov_null_and_untracked(void)
 {
   TEST_BEGIN("gov null + untracked host");
   /* NULL governor: acquire succeeds (pacing disabled); the rest are no-ops. */
@@ -355,19 +426,19 @@ static void test_gov_null_and_untracked(void)
   TEST_ASSERT(!mdl_governor_peek(nullptr, "h", nullptr, nullptr));
 
   gov_clock_t clk = {};
-  mdl_governor_init_clock(&g_gov,
+  mdl_governor_init_clock(&s_gov,
                           nullptr,
                           (uint64_t)k_gov_seed,
-                          gov_clk_now,
+                          internal_gov_clk_now,
                           &clk,
-                          gov_clk_sleep,
+                          internal_gov_clk_sleep,
                           &clk);
   /* NULL host: no per-host record; still spaced by the fixed jitter. */
   TEST_ASSERT(
-    mdl_governor_acquire(&g_gov, nullptr, (uint32_t)k_gov_jitter_5, (uint32_t)k_gov_jitter_5) ==
+    mdl_governor_acquire(&s_gov, nullptr, (uint32_t)k_gov_jitter_5, (uint32_t)k_gov_jitter_5) ==
     k_ra8_ok);
   TEST_ASSERT_EQ((int64_t)k_gov_jitter_5, (int64_t)clk.last_slept);
-  TEST_ASSERT(!mdl_governor_peek(&g_gov, "never-seen", nullptr, nullptr));
+  TEST_ASSERT(!mdl_governor_peek(&s_gov, "never-seen", nullptr, nullptr));
   TEST_END("gov null + untracked host");
 }
 
@@ -378,12 +449,14 @@ static void test_gov_null_and_untracked(void)
  */
 int32_t main(void)
 {
-  test_gov_retry_after_parse();
-  test_gov_rate_limit();
-  test_gov_backoff_growth_and_decay();
-  test_gov_retry_after_precedence();
-  test_gov_concurrency_cap();
-  test_gov_null_and_untracked();
-  (void)fprintf(stderr, "[OK  ] test_media_dl_governor.c\n");
+  internal_test_gov_retry_after_parse();
+  internal_test_gov_rate_limit();
+  internal_test_gov_backoff_growth_and_decay();
+  internal_test_gov_retry_after_precedence();
+  internal_test_gov_concurrency_cap();
+  internal_test_gov_null_and_untracked();
+  (void)write(STDERR_FILENO,
+              "[OK  ] test_media_dl_governor.c\n",
+              sizeof("[OK  ] test_media_dl_governor.c\n") - 1U);
   return 0;
 }

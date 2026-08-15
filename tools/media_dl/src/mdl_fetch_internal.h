@@ -23,10 +23,68 @@
 #include <stdint.h>
 
 #include "mdl_fetch.h"
+#include "mdl_net.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 
-/** @brief Buffer size the ::mdl_fetch_reason renderer never overruns. */
+/** @brief Caller-owned governor parameters for one cached buffer fetch. */
+typedef struct mdl_fetch_cache_request mdl_fetch_cache_request_t;
+
+/**
+ * @struct mdl_fetch_cache_request
+ * @brief Governed retry context for one cache buffer callback.
+ * @details Holds only the active fetch dependency, host key, and delay bounds
+ *          needed to adapt ::mdl_net_get_buf to ::mdl_cache_fetch_fn.
+ * @since 0.1.0
+ */
+struct mdl_fetch_cache_request {
+  mdl_fetch_ctx_t* ctx;                      /**< Active fetch dependencies. */
+  char             host[k_mdl_gov_host_max]; /**< Governor host key.         */
+  uint32_t         jmin;                     /**< Minimum request delay.      */
+  uint32_t         jmax;                     /**< Maximum request delay.      */
+};
+
+/**
+ * @brief Fetch one cache buffer through governor and bounded retry policy.
+ * @details Acquires and observes the host governor around each network attempt,
+ *          retrying only results accepted by ::priv_mdl_fetch_is_retryable.
+ * @param[in,out] context ::mdl_fetch_cache_request_t state.
+ * @param[in] url Exact request URL.
+ * @param[in] request Conditional request metadata.
+ * @param[out] buffer Bounded body destination.
+ * @param[in] capacity Writable destination capacity.
+ * @param[out] out_length Exact received bytes.
+ * @param[out] response Finished response metadata.
+ * @return Canonical governed network status.
+ * @retval k_ra8_ok A complete response is available.
+ * @retval other Governor acquisition or every bounded network attempt failed.
+ * @pre Every pointer is non-NULL and @p context is initialized.
+ * @pre @p buffer spans @p capacity writable bytes.
+ * @post Every attempted request is observed and released exactly once.
+ * @post At most the configured retry count is attempted.
+ * @note Conforms directly to ::mdl_cache_fetch_fn.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_mdl_fetch_cache_get_buf(void*                context,
+                                                const char*          url,
+                                                const mdl_net_req_t* request,
+                                                char*                buffer,
+                                                size_t               capacity,
+                                                size_t*              out_length,
+                                                mdl_net_resp_t*      response);
+
+/**
+ * @struct mdl_run_pos_t
+ * @brief Stable chapter position carried into per-page progress events.
+ * @since 0.1.0
+ */
+typedef struct {
+  size_t      chapter_index; /**< 1-based chapter position in the run. */
+  size_t      chapter_total; /**< Total chapters in the run.           */
+  const char* chapter_id;    /**< Stable chapter identifier.           */
+} mdl_run_pos_t;
+
+/** @brief Buffer size the ::priv_mdl_fetch_reason renderer never overruns. */
 typedef enum : uint16_t {
   k_mdl_reason_max = 96, /**< Failure-reason string buffer bytes. */
 } mdl_fetch_reason_size_t;
@@ -41,7 +99,7 @@ typedef enum : uint16_t {
  * outcome -- success, an absent resource (::k_ra8_err_not_found / 404), an
  * over-cap body (::k_ra8_err_no_mem), a refused argument or a governor decline
  * -- is terminal and breaks the loop. Retryability is decided on the real
- * classified status (::mdl_net_curl_classify), never on a collapsed generic
+ * classified status (::priv_mdl_net_curl_classify), never on a collapsed generic
  * failure, so a 404 is never retried while a 503 is.
  *
  * @param[in] rc The transfer's classified ::ra8_err_t result.
@@ -59,7 +117,7 @@ typedef enum : uint16_t {
  *
  * @par MC/DC:
  * Decision: `(rc == k_ra8_err_busy) || (rc == k_ra8_err_timeout) || (rc ==
- * k_ra8_fail)` (3 conditions). Cited as tools/media_dl/src/mdl_fetch.c@mdl_fetch_is_retryable.
+ * k_ra8_fail)` (3 conditions). Cited as tools/media_dl/src/mdl_fetch.c@priv_mdl_fetch_is_retryable.
  * - Vector 1: rc=k_ra8_err_not_found -> false (control: all three false)
  * - Vector 2: rc=k_ra8_err_busy      -> true  (varies condition 1)
  * - Vector 3: rc=k_ra8_err_timeout   -> true  (varies condition 2)
@@ -69,7 +127,7 @@ typedef enum : uint16_t {
  *
  * @since 0.1.0
  */
-RA8_PRIV bool mdl_fetch_is_retryable(ra8_err_t rc);
+RA8_PRIV bool priv_mdl_fetch_is_retryable(ra8_err_t rc);
 
 /**
  * @brief Whether a finished run left anything unfetched (chapter or page).
@@ -95,7 +153,7 @@ RA8_PRIV bool mdl_fetch_is_retryable(ra8_err_t rc);
  *
  * @par MC/DC:
  * Decision: `(stats->chapters_failed > 0) || (stats->pages_failed > 0)` (2
- * conditions). Cited as tools/media_dl/src/mdl_fetch.c@mdl_fetch_run_incomplete.
+ * conditions). Cited as tools/media_dl/src/mdl_fetch.c@priv_mdl_fetch_run_incomplete.
  * - Vector 1: chapters_failed=0, pages_failed=0 -> false (both false)
  * - Vector 2: chapters_failed=1, pages_failed=0 -> true  (varies chapters)
  * - Vector 3: chapters_failed=0, pages_failed=1 -> true  (varies pages)
@@ -104,7 +162,7 @@ RA8_PRIV bool mdl_fetch_is_retryable(ra8_err_t rc);
  *
  * @since 0.1.0
  */
-RA8_PRIV bool mdl_fetch_run_incomplete(const mdl_fetch_stats_t* stats);
+RA8_PRIV bool priv_mdl_fetch_run_incomplete(const mdl_fetch_stats_t* stats);
 
 /**
  * @brief Render a human-readable reason for a transfer result and HTTP status.
@@ -131,4 +189,99 @@ RA8_PRIV bool mdl_fetch_run_incomplete(const mdl_fetch_stats_t* stats);
  * @note Thread-safe: writes only the caller-provided buffer.
  * @since 0.1.0
  */
-RA8_PRIV void mdl_fetch_reason(ra8_err_t err, long status, char* buf, size_t cap);
+RA8_PRIV void priv_mdl_fetch_reason(ra8_err_t err, long status, char* buf, size_t cap);
+
+/**
+ * @brief Record one classified failure in the caller's bounded log.
+ * @details Performs record fail under the injected network, governor, and storage contracts; dependency failures are propagated before incomplete bytes are published.
+ * @param[in] ctx Fetch context carrying the optional log.
+ * @param[in] url Failed URL or path.
+ * @param[in] status Observed HTTP status, or zero.
+ * @param[in] err Classified failure.
+ * @pre @p ctx is non-NULL.
+ * @pre Supplied capacities cover their referenced bounded buffers.
+ * @post A configured log tallies the failure without exceeding capacity.
+ * @post Result status and outputs describe one completed synchronous attempt.
+ * @note The function performs no dynamic allocation and retains no caller pointer.
+ * @since 0.1.0
+ */
+RA8_PRIV void
+priv_mdl_fetch_record_fail(const mdl_fetch_ctx_t* ctx, const char* url, long status, ra8_err_t err);
+
+/**
+ * @brief Persist the current fetch state when a checkpoint path is configured.
+ * @details Performs checkpoint under the injected network, governor, and storage contracts; dependency failures are propagated before incomplete bytes are published.
+ * @param[in] ctx Fetch context and state.
+ * @return State-save result, or ::k_ra8_ok when checkpointing is disabled.
+ * @retval k_ra8_ok The operation completed.
+ * @retval other Validation, capacity, network, or storage failed.
+ * @pre Required pointer arguments remain valid for the call duration.
+ * @pre Supplied capacities cover their referenced bounded buffers.
+ * @post No ownership of caller-provided storage is transferred.
+ * @post Result status and outputs describe one completed synchronous attempt.
+ * @note The function performs no dynamic allocation and retains no caller pointer.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_mdl_fetch_checkpoint(const mdl_fetch_ctx_t* ctx);
+
+/**
+ * @brief Perform one bounded governed file transfer with retry classification.
+ * @details Performs with retry under the injected network, governor, and storage contracts; dependency failures are propagated before incomplete bytes are published.
+ * @param[in,out] ctx Fetch dependencies.
+ * @param[in] host Governor host key.
+ * @param[in] url Absolute source URL.
+ * @param[in] req Request headers and timeout.
+ * @param[in,out] sink Reset/write body destination.
+ * @param[in] jmin Minimum delay in milliseconds.
+ * @param[in] jmax Maximum delay in milliseconds.
+ * @param[out] out_resp Final response metadata.
+ * @param[out] out_bytes Final response byte count.
+ * @return Final classified transfer result.
+ * @retval k_ra8_ok The operation completed.
+ * @retval other Validation, capacity, network, or storage failed.
+ * @pre Required pointer arguments remain valid for the call duration.
+ * @pre Supplied capacities cover their referenced bounded buffers.
+ * @post No ownership of caller-provided storage is transferred.
+ * @post Result status and outputs describe one completed synchronous attempt.
+ * @note The function performs no dynamic allocation and retains no caller pointer.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_mdl_fetch_with_retry(mdl_fetch_ctx_t*     ctx,
+                                             const char*          host,
+                                             const char*          url,
+                                             const mdl_net_req_t* req,
+                                             mdl_net_body_sink_t* sink,
+                                             uint32_t             jmin,
+                                             uint32_t             jmax,
+                                             mdl_net_resp_t*      out_resp,
+                                             size_t*              out_bytes);
+
+/**
+ * @brief Fetch and checkpoint every extracted page in one chapter.
+ * @details Performs chapter pages under the injected network, governor, and storage contracts; dependency failures are propagated before incomplete bytes are published.
+ * @param[in,out] ctx Fetch dependencies and extracted image list.
+ * @param[in] chapter_url Chapter URL used as Referer.
+ * @param[in] dest_abs Absolute output directory.
+ * @param[in] dest_rel Series-relative output directory.
+ * @param[in] base Page-number base for combined layout.
+ * @param[in,out] rec Persistent chapter record.
+ * @param[in,out] stats Run counters.
+ * @param[in] pos Chapter progress coordinates.
+ * @return ::k_ra8_ok after every page is durable; otherwise first failure.
+ * @retval k_ra8_ok The operation completed.
+ * @retval other Validation, capacity, network, or storage failed.
+ * @pre Required pointer arguments remain valid for the call duration.
+ * @pre Supplied capacities cover their referenced bounded buffers.
+ * @post No ownership of caller-provided storage is transferred.
+ * @post Result status and outputs describe one completed synchronous attempt.
+ * @note The function performs no dynamic allocation and retains no caller pointer.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_mdl_fetch_chapter_pages(mdl_fetch_ctx_t*     ctx,
+                                                const char*          chapter_url,
+                                                const char*          dest_abs,
+                                                const char*          dest_rel,
+                                                size_t               base,
+                                                mdl_chapter_rec_t*   rec,
+                                                mdl_fetch_stats_t*   stats,
+                                                const mdl_run_pos_t* pos);

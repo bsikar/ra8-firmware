@@ -1,6 +1,8 @@
 /**
  * @file mdl_pathfs.c
  * @brief Implementation of the guarded filesystem directory join.
+ * @details Resolves directory components through injected namespace operations
+ *          and rejects joins that escape the selected root.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
