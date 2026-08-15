@@ -1,6 +1,8 @@
 /**
  * @file mdl_hash.c
  * @brief FNV-1a 64 content hashing over an injected portable filesystem.
+ * @details Provides deterministic buffer and streamed-file hashing with bounded
+ *          caller-owned storage and no host file objects.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */

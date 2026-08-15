@@ -59,6 +59,8 @@ typedef enum : uint64_t {
  *
  * @note Thread-safe: depends only on its arguments.
  * @since 0.1.0
+
+ * @post Documented outputs and the return value describe the same outcome.
  */
 uint64_t mdl_hash_bytes_seed(const void* data, size_t len, uint64_t seed);
 
@@ -84,6 +86,8 @@ uint64_t mdl_hash_bytes_seed(const void* data, size_t len, uint64_t seed);
  * @note Thread-safe: depends only on its arguments.
  * @see mdl_hash_bytes_seed
  * @since 0.1.0
+
+ * @post Documented outputs and the return value describe the same outcome.
  */
 uint64_t mdl_hash_bytes(const void* data, size_t len);
 
@@ -106,6 +110,8 @@ uint64_t mdl_hash_bytes(const void* data, size_t len);
  * @note Thread-safe: depends only on its argument.
  * @see mdl_hash_bytes
  * @since 0.1.0
+
+ * @post Documented outputs and the return value describe the same outcome.
  */
 uint64_t mdl_hash_str(const char* s);
 

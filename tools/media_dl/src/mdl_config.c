@@ -1,15 +1,13 @@
 /**
  * @file mdl_config.c
- * @brief Flat key=value site-descriptor parser (host stdio).
+ * @brief Flat key=value site-descriptor parser over injected portable storage.
+ * @details Validates bounded descriptor fields and converts policy values from
+ *          storage-backed text without retaining external buffers.
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 #include "mdl_config.h"
 
-#include <errno.h>
-#include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "mdl_politeness.h"
@@ -17,13 +15,25 @@
 
 /** @brief Local parser limits. */
 typedef enum : uint16_t {
-  k_line_max = 512, /**< Max config line length. */
+  k_line_max = 512, /**< Max config line bytes including NUL. */
 } mdl_parse_limits_t;
 
-/** @brief Radix for integer config values. */
-typedef enum : uint8_t {
-  k_dec_base = 10, /**< Base-10 for strtoul(). */
-} mdl_numparse_t;
+/** @brief Complete descriptor and backend-progress ceilings. */
+typedef enum : uint32_t {
+  k_config_file_max   = 64U * 1024U,            /**< Largest accepted descriptor file. */
+  k_config_read_calls = k_config_file_max + 1U, /**< One-byte reads plus EOF.          */
+  k_config_dec_base   = 10U,                    /**< Base-10 integer fields.           */
+} mdl_config_io_limit_t;
+
+/** @brief Buffered reader borrowing one initialized storage binding. */
+typedef struct {
+  mdl_storage_t* storage;    /**< Injected filesystem and scratch. */
+  fw_fs_file_t   file;       /**< Caller-owned portable handle.    */
+  uint32_t       position;   /**< Next unread scratch offset.      */
+  uint32_t       available;  /**< Readable scratch byte count.     */
+  uint32_t       read_calls; /**< Bounded backend read calls.      */
+  bool           eof;        /**< Clean zero-byte read observed.   */
+} internal_config_reader_t;
 
 /** @brief Result of applying one descriptor key. */
 typedef enum : uint8_t {
@@ -49,7 +59,7 @@ typedef enum : uint16_t {
 } mdl_config_polite_floor_t;
 
 /** @brief Trim leading/trailing ASCII whitespace in place; return start. */
-RA8_INTERNAL static char* trim(char* s)
+RA8_INTERNAL static char* internal_config_trim(char* s)
 {
   while ((*s == ' ') || (*s == '\t') || (*s == '\r') || (*s == '\n')) {
     ++s;
@@ -79,7 +89,7 @@ RA8_INTERNAL static char* trim(char* s)
  * @note Not thread-safe when source and destination storage are shared.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool set_str(char* dst, size_t cap, const char* val)
+RA8_INTERNAL static bool internal_config_set_str(char* dst, size_t cap, const char* val)
 {
   const size_t len = strlen(val);
   if (len >= cap) {
@@ -89,8 +99,26 @@ RA8_INTERNAL static bool set_str(char* dst, size_t cap, const char* val)
   return true;
 }
 
-/** @brief Apply a string-valued key and distinguish unknown from invalid. */
-RA8_INTERNAL static mdl_kv_result_t apply_kv_str(mdl_site_t* s, const char* key, const char* val)
+/**
+ * @brief Apply a string-valued key and distinguish unknown from invalid.
+ * @details Searches the fixed descriptor-field table and copies only complete,
+ *          bounded values into the selected field.
+ * @param[in,out] s Descriptor receiving a recognized string field.
+ * @param[in] key NUL-terminated configuration key.
+ * @param[in] val NUL-terminated configuration value.
+ * @return Three-way key application result.
+ * @retval k_kv_applied A recognized key was copied without truncation.
+ * @retval k_kv_invalid A recognized value exceeded its destination bound.
+ * @retval k_kv_unknown The key is not a string-valued descriptor field.
+ * @pre All pointers are non-NULL.
+ * @pre @p key and @p val are NUL-terminated.
+ * @post Applied values are complete and NUL-terminated.
+ * @post Unknown or invalid keys do not modify a descriptor field.
+ * @note Not thread-safe for concurrent writes to the same descriptor.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static mdl_kv_result_t
+internal_config_apply_string(mdl_site_t* s, const char* key, const char* val)
 {
   const struct {
     const char* key; /**< Config key spelling.       */
@@ -120,7 +148,8 @@ RA8_INTERNAL static mdl_kv_result_t apply_kv_str(mdl_site_t* s, const char* key,
   };
   for (size_t i = 0U; i < (sizeof(fields) / sizeof(fields[0])); ++i) {
     if (strcmp(key, fields[i].key) == 0) {
-      return set_str(fields[i].dst, fields[i].cap, val) ? k_kv_applied : k_kv_invalid;
+      return internal_config_set_str(fields[i].dst, fields[i].cap, val) ? k_kv_applied
+                                                                        : k_kv_invalid;
     }
   }
   return k_kv_unknown;
@@ -138,26 +167,49 @@ RA8_INTERNAL static mdl_kv_result_t apply_kv_str(mdl_site_t* s, const char* key,
  * @pre @p val is NUL-terminated.
  * @post On true, @p out contains the exact parsed value.
  * @post On false, @p out is unchanged.
- * @note Thread-safe except for the C-library thread-local `errno`.
+ * @note Thread-safe across disjoint input and output storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool parse_u32(const char* val, uint32_t* out)
+RA8_INTERNAL static bool internal_config_parse_u32(const char* val, uint32_t* out)
 {
   if ((val[0] == '\0') || (val[0] == '+') || (val[0] == '-')) {
     return false;
   }
-  errno                      = 0;
-  char*               end    = nullptr;
-  const unsigned long parsed = strtoul(val, &end, (int)k_dec_base);
-  if ((errno != 0) || (end == val) || (*end != '\0') || (parsed > (unsigned long)UINT32_MAX)) {
-    return false;
+  uint32_t parsed = 0U;
+  for (size_t index = 0U; val[index] != '\0'; ++index) {
+    if ((val[index] < '0') || (val[index] > '9')) {
+      return false;
+    }
+    const uint32_t digit = (uint32_t)(val[index] - '0');
+    if (parsed > ((UINT32_MAX - digit) / (uint32_t)k_config_dec_base)) {
+      return false;
+    }
+    parsed = (parsed * (uint32_t)k_config_dec_base) + digit;
   }
-  *out = (uint32_t)parsed;
+  *out = parsed;
   return true;
 }
 
-/** @brief Apply an unsigned-integer key (jitter delay or governor bound). */
-RA8_INTERNAL static mdl_kv_result_t apply_kv_u32(mdl_site_t* s, const char* key, const char* val)
+/**
+ * @brief Apply an unsigned-integer key (jitter delay or governor bound).
+ * @details Searches the fixed integer-field table and delegates complete,
+ *          overflow-safe decimal conversion to ::internal_config_parse_u32.
+ * @param[in,out] s Descriptor receiving a recognized integer field.
+ * @param[in] key NUL-terminated configuration key.
+ * @param[in] val NUL-terminated unsigned decimal value.
+ * @return Three-way key application result.
+ * @retval k_kv_applied A recognized key received a valid integer.
+ * @retval k_kv_invalid A recognized key carried an invalid integer.
+ * @retval k_kv_unknown The key is not an integer-valued descriptor field.
+ * @pre All pointers are non-NULL.
+ * @pre @p key and @p val are NUL-terminated.
+ * @post Applied values exactly equal the parsed decimal text.
+ * @post Unknown or invalid keys do not modify an integer field.
+ * @note Not thread-safe for concurrent writes to the same descriptor.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static mdl_kv_result_t
+internal_config_apply_u32(mdl_site_t* s, const char* key, const char* val)
 {
   const struct {
     const char* key; /**< Config key spelling.       */
@@ -175,7 +227,7 @@ RA8_INTERNAL static mdl_kv_result_t apply_kv_u32(mdl_site_t* s, const char* key,
   };
   for (size_t i = 0U; i < (sizeof(fields) / sizeof(fields[0])); ++i) {
     if (strcmp(key, fields[i].key) == 0) {
-      return parse_u32(val, fields[i].dst) ? k_kv_applied : k_kv_invalid;
+      return internal_config_parse_u32(val, fields[i].dst) ? k_kv_applied : k_kv_invalid;
     }
   }
   return k_kv_unknown;
@@ -196,7 +248,7 @@ RA8_INTERNAL static mdl_kv_result_t apply_kv_u32(mdl_site_t* s, const char* key,
  * @note Thread-safe: reads only caller storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool parse_order(const char* val, mdl_chapter_order_t* out)
+RA8_INTERNAL static bool internal_config_parse_order(const char* val, mdl_chapter_order_t* out)
 {
   if (strcmp(val, "reverse") == 0) {
     *out = k_mdl_order_reverse;
@@ -230,32 +282,45 @@ RA8_INTERNAL static bool parse_order(const char* val, mdl_chapter_order_t* out)
  * @note Not thread-safe: mutates caller-owned descriptor storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool apply_kv(mdl_site_t* s, const char* key, const char* val)
+RA8_INTERNAL static bool internal_config_apply_pair(mdl_site_t* s, const char* key, const char* val)
 {
-  const mdl_kv_result_t str_result = apply_kv_str(s, key, val);
+  const mdl_kv_result_t str_result = internal_config_apply_string(s, key, val);
   if (str_result != k_kv_unknown) {
     return str_result == k_kv_applied;
   }
-  const mdl_kv_result_t int_result = apply_kv_u32(s, key, val);
+  const mdl_kv_result_t int_result = internal_config_apply_u32(s, key, val);
   if (int_result != k_kv_unknown) {
     return int_result == k_kv_applied;
   }
   if (strcmp(key, "chapter_order") == 0) {
-    return parse_order(val, &s->chapter_order);
+    return internal_config_parse_order(val, &s->chapter_order);
   }
   return false;
 }
 
-/** @brief Apply the polite default descriptor before the file overrides it. */
-RA8_INTERNAL static void config_set_defaults(mdl_site_t* out)
+/**
+ * @brief Apply the polite default descriptor before the file overrides it.
+ * @details Clears the complete descriptor, installs bounded textual defaults,
+ *          and copies the single governor baseline into numeric fields.
+ * @param[out] out Descriptor receiving deterministic defaults.
+ * @pre @p out is non-NULL.
+ * @pre @p out addresses writable storage for one complete descriptor.
+ * @post Every fixed string field is NUL-terminated.
+ * @post Governor fields equal ::mdl_gov_cfg_default.
+ * @note Not thread-safe for concurrent access to @p out.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static void internal_config_set_defaults(mdl_site_t* out)
 {
   *out = (mdl_site_t){};
-  (void)set_str(out->name, sizeof(out->name), "site");
-  (void)set_str(out->kind, sizeof(out->kind), "manhwa");
-  (void)set_str(out->chapter_url_contains, sizeof(out->chapter_url_contains), "chapter");
-  (void)set_str(out->page_img_attr, sizeof(out->page_img_attr), "data-src");
-  (void)set_str(out->language, sizeof(out->language), "en");
-  (void)set_str(out->reading_direction, sizeof(out->reading_direction), "ltr");
+  (void)internal_config_set_str(out->name, sizeof(out->name), "site");
+  (void)internal_config_set_str(out->kind, sizeof(out->kind), "manhwa");
+  (void)internal_config_set_str(out->chapter_url_contains,
+                                sizeof(out->chapter_url_contains),
+                                "chapter");
+  (void)internal_config_set_str(out->page_img_attr, sizeof(out->page_img_attr), "data-src");
+  (void)internal_config_set_str(out->language, sizeof(out->language), "en");
+  (void)internal_config_set_str(out->reading_direction, sizeof(out->reading_direction), "ltr");
   out->chapter_order     = k_mdl_order_asc;
   out->img_delay_min     = (uint32_t)k_def_img_delay_min;
   out->img_delay_max     = (uint32_t)k_def_img_delay_max;
@@ -272,53 +337,169 @@ RA8_INTERNAL static void config_set_defaults(mdl_site_t* out)
 }
 
 /**
- * @brief Parse every descriptor record from an open stream.
- * @details Ignores blank/comment/section lines and rejects overlong, malformed,
- *          unknown, or invalid key/value records with a line diagnostic.
- * @param[in]     fp  Open descriptor stream.
- * @param[in,out] out Descriptor receiving parsed overrides.
- * @return Whether the complete stream parsed without read errors.
- * @retval true  Every active line was valid and the stream ended cleanly.
- * @retval false A line or stream error was observed.
- * @pre @p fp and @p out are non-NULL.
- * @pre @p fp is open for reading and positioned at the descriptor start.
- * @post On true, all active records have been applied to @p out.
- * @post On false, the caller rejects the partially populated descriptor.
- * @note Not thread-safe: reads a stream and mutates @p out.
+ * @brief Read one byte through a bounded buffered portable stream.
+ * @details Refills the storage binding's caller-owned scratch when exhausted;
+ *          a successful zero-byte read is represented only through @p out_eof.
+ * @param[in,out] reader Open descriptor reader.
+ * @param[out] out_byte Next byte when one is available.
+ * @param[out] out_eof Whether clean end-of-file was reached.
+ * @return Canonical stream status.
+ * @retval k_ra8_ok A byte or clean EOF was reported.
+ * @retval k_ra8_err_invalid_size The bounded read-call ceiling was exhausted.
+ * @retval other A backend read failure propagated unchanged.
+ * @pre All pointers are non-NULL and @p reader owns an open file.
+ * @pre The storage scratch is exclusively borrowed for the parse.
+ * @post Success initializes @p out_eof and initializes @p out_byte unless EOF.
+ * @post No backend read is issued after clean EOF.
+ * @note Not thread-safe for a shared storage binding.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool config_parse_stream(FILE* fp, mdl_site_t* out)
+RA8_INTERNAL static ra8_err_t
+internal_config_next(internal_config_reader_t* reader, uint8_t* out_byte, bool* out_eof)
 {
-  char   line[k_line_max];
-  size_t line_no = 0U;
-  while (fgets(line, (int)sizeof(line), fp) != nullptr) {
-    ++line_no;
-    if ((strchr(line, '\n') == nullptr) && (feof(fp) == 0)) {
-      (void)fprintf(stderr,
-                    "media_dl: config:%zu: line exceeds %u bytes\n",
-                    line_no,
-                    (unsigned)k_line_max);
-      return false;
+  *out_eof = false;
+  while (reader->position == reader->available) {
+    if (reader->eof) {
+      *out_eof = true;
+      return k_ra8_ok;
     }
-    char* p = trim(line);
-    if ((p[0] == '\0') || (p[0] == '#') || (p[0] == '[')) {
-      continue; /* blank / comment / section header */
+    if (reader->read_calls >= (uint32_t)k_config_read_calls) {
+      return k_ra8_err_invalid_size;
     }
-    char* eq = strchr(p, '=');
-    if (eq == nullptr) {
-      (void)fprintf(stderr, "media_dl: config:%zu: expected key=value\n", line_no);
-      return false;
+    uint32_t        count = 0U;
+    const ra8_err_t err   = fw_fs_read(&reader->file,
+                                       reader->storage->io_buffer,
+                                       reader->storage->io_buffer_bytes,
+                                       &count);
+    ++reader->read_calls;
+    if (err != k_ra8_ok) {
+      return err;
     }
-    *eq             = '\0';
-    const char* key = trim(p);
-    const char* val = trim(eq + 1);
-    if ((key[0] == '\0') || !apply_kv(out, key, val)) {
-      (void)
-        fprintf(stderr, "media_dl: config:%zu: invalid or unknown key/value '%s'\n", line_no, key);
-      return false;
+    reader->position  = 0U;
+    reader->available = count;
+    reader->eof       = count == 0U;
+  }
+  *out_byte = reader->storage->io_buffer[reader->position];
+  ++reader->position;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Read one complete bounded descriptor line.
+ * @details Accepts a final line without newline and rejects the first non-newline
+ *          byte that would leave no room for the required terminator.
+ * @param[in,out] reader Open descriptor reader.
+ * @param[out] line Destination for one NUL-terminated line without newline.
+ * @param[in] capacity Writable bytes at @p line.
+ * @param[out] out_present Whether a line, including an empty one, was read.
+ * @return Canonical read or line-validation status.
+ * @retval k_ra8_ok A line or clean EOF was reported.
+ * @retval k_ra8_err_invalid_state A line exceeded the fixed parser bound.
+ * @retval other A stream error propagated unchanged.
+ * @pre All pointers are non-NULL and @p capacity is nonzero.
+ * @pre @p reader owns an open read-only file.
+ * @post @p line is always NUL-terminated on success.
+ * @post Clean EOF before any byte sets @p out_present false.
+ * @note Not thread-safe for a shared reader.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_config_read_line(internal_config_reader_t* reader,
+                                                        char*                     line,
+                                                        uint32_t                  capacity,
+                                                        bool*                     out_present)
+{
+  uint32_t length = 0U;
+  *out_present    = false;
+  for (;;) {
+    uint8_t   byte = 0U;
+    bool      eof  = false;
+    ra8_err_t err  = internal_config_next(reader, &byte, &eof);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    if (eof) {
+      line[length] = '\0';
+      *out_present = length > 0U;
+      return k_ra8_ok;
+    }
+    *out_present = true;
+    if (byte == (uint8_t)'\n') {
+      line[length] = '\0';
+      return k_ra8_ok;
+    }
+    if ((length + 1U) >= capacity) {
+      return k_ra8_err_invalid_state;
+    }
+    line[length] = (char)byte;
+    ++length;
+  }
+}
+
+/**
+ * @brief Apply one already bounded descriptor record.
+ * @details Trims whitespace, ignores blank/comment/section records, and applies
+ *          exactly one complete key/value pair for every active record.
+ * @param[in,out] site Descriptor receiving the record.
+ * @param[in,out] line Mutable NUL-terminated record text.
+ * @return Record validation status.
+ * @retval k_ra8_ok A blank/comment/section line was ignored or a pair applied.
+ * @retval k_ra8_err_invalid_state The record was malformed or unsupported.
+ * @pre Both pointers are non-NULL and @p line is NUL-terminated.
+ * @pre @p line is writable because the separator is replaced in place.
+ * @post Success preserves descriptor invariants for all applied fields.
+ * @post Failure never stores a truncated field.
+ * @note Not thread-safe for a shared descriptor.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_config_apply_line(mdl_site_t* site, char* line)
+{
+  char* text = internal_config_trim(line);
+  if ((text[0] == '\0') || (text[0] == '#') || (text[0] == '[')) {
+    return k_ra8_ok;
+  }
+  char* equals = strchr(text, '=');
+  if (equals == nullptr) {
+    return k_ra8_err_invalid_state;
+  }
+  *equals         = '\0';
+  const char* key = internal_config_trim(text);
+  const char* val = internal_config_trim(equals + 1);
+  return ((key[0] != '\0') && internal_config_apply_pair(site, key, val)) ? k_ra8_ok
+                                                                          : k_ra8_err_invalid_state;
+}
+
+/**
+ * @brief Parse every descriptor record from an open portable stream.
+ * @details Reuses one fixed stack line and stops only at clean EOF or the first
+ *          bounded reader or record-validation failure.
+ * @param[in,out] reader Open descriptor reader.
+ * @param[in,out] out Descriptor receiving parsed overrides.
+ * @return Complete parsing status.
+ * @retval k_ra8_ok Every record was valid and EOF was clean.
+ * @retval k_ra8_err_invalid_state A line or key/value was invalid.
+ * @retval other A bounded stream failure propagated unchanged.
+ * @pre Both pointers are non-NULL and the reader is positioned at byte zero.
+ * @pre The descriptor contains defaults and is exclusively owned.
+ * @post Success applies every active record exactly once.
+ * @post Failure leaves a rejected partially populated descriptor.
+ * @note Not thread-safe for shared storage or descriptor state.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_config_parse(internal_config_reader_t* reader,
+                                                    mdl_site_t*               out)
+{
+  for (;;) {
+    char      line[k_line_max];
+    bool      present = false;
+    ra8_err_t err     = internal_config_read_line(reader, line, sizeof(line), &present);
+    if ((err != k_ra8_ok) || !present) {
+      return err;
+    }
+    err = internal_config_apply_line(out, line);
+    if (err != k_ra8_ok) {
+      return err;
     }
   }
-  return ferror(fp) == 0;
 }
 
 /**
@@ -336,7 +517,7 @@ RA8_INTERNAL static bool config_parse_stream(FILE* fp, mdl_site_t* out)
  * @note Thread-safe: reads only caller storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool config_valid(const mdl_site_t* site)
+RA8_INTERNAL static bool internal_config_valid(const mdl_site_t* site)
 {
   const char* selectors[] = {site->series_title_selector,
                              site->series_summary_selector,
@@ -373,26 +554,41 @@ RA8_INTERNAL static bool config_valid(const mdl_site_t* site)
          (site->max_inflight > 0U) && (site->backoff_base_ms <= site->backoff_max_ms);
 }
 
-ra8_err_t mdl_config_load(const char* path, mdl_site_t* out)
+ra8_err_t mdl_config_load(mdl_storage_t* storage, const char* path, mdl_site_t* out)
 {
-  if ((path == nullptr) || (out == nullptr)) {
+  if ((storage == nullptr) || (storage->fs == nullptr) || (storage->file_workspace == nullptr) ||
+      (storage->io_buffer == nullptr) || (storage->io_buffer_bytes == 0U) || (path == nullptr) ||
+      (out == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
-  config_set_defaults(out);
+  internal_config_set_defaults(out);
 
-  FILE* fp = fopen(path, "r");
-  if (fp == nullptr) {
-    (void)fprintf(stderr, "media_dl: cannot open config '%s'\n", path);
-    return k_ra8_fail;
+  internal_config_reader_t reader = {.storage = storage};
+  ra8_err_t                err    = fw_fs_open(&storage->fs->streams,
+                                               path,
+                                               k_fw_fs_open_read,
+                                               &reader.file,
+                                               storage->file_workspace,
+                                               storage->file_workspace_bytes);
+  if (err != k_ra8_ok) {
+    return err;
   }
-  const bool parsed = config_parse_stream(fp, out);
-  const bool closed = fclose(fp) == 0;
-
-  if (!parsed || !closed || !config_valid(out)) {
-    (void)fprintf(stderr, "media_dl: config is invalid or missing required fields\n");
-    return k_ra8_err_invalid_state;
+  uint64_t file_bytes = 0U;
+  err                 = fw_fs_file_size(&reader.file, &file_bytes);
+  if ((err == k_ra8_ok) && (file_bytes > (uint64_t)k_config_file_max)) {
+    err = k_ra8_err_invalid_size;
   }
-  return k_ra8_ok;
+  if (err == k_ra8_ok) {
+    err = internal_config_parse(&reader, out);
+  }
+  const ra8_err_t close_err = fw_fs_close(&reader.file);
+  if (close_err != k_ra8_ok) {
+    return close_err;
+  }
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return internal_config_valid(out) ? k_ra8_ok : k_ra8_err_invalid_state;
 }
 
 mdl_gov_cfg_t mdl_config_gov_cfg(const mdl_site_t* site)
@@ -406,16 +602,32 @@ mdl_gov_cfg_t mdl_config_gov_cfg(const mdl_site_t* site)
   return cfg;
 }
 
-/** @brief Larger of two unsigned values. */
-RA8_INTERNAL static uint32_t max_u32(uint32_t a, uint32_t b)
+/**
+ * @brief Return the larger of two unsigned values.
+ * @details Performs one comparison without arithmetic or overflow risk.
+ * @param[in] a First candidate.
+ * @param[in] b Second candidate.
+ * @return The greater candidate, or their shared value when equal.
+ * @retval a @p a is greater than or equal to @p b.
+ * @retval b @p b is greater than @p a.
+ * @pre Both arguments are valid `uint32_t` values.
+ * @pre No external state is required.
+ * @post The result is greater than or equal to both inputs.
+ * @post Neither input nor global state is modified.
+ * @note Thread-safe and side-effect free.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static uint32_t internal_config_max_u32(uint32_t a, uint32_t b)
 {
   return (a > b) ? a : b;
 }
 
 void mdl_config_apply_polite(mdl_site_t* site)
 {
-  site->img_delay_min     = max_u32(site->img_delay_min, (uint32_t)k_polite_img_min_ms);
-  site->img_delay_max     = max_u32(site->img_delay_max, (uint32_t)k_polite_img_max_ms);
-  site->chapter_delay_min = max_u32(site->chapter_delay_min, (uint32_t)k_polite_chap_min_ms);
-  site->chapter_delay_max = max_u32(site->chapter_delay_max, (uint32_t)k_polite_chap_max_ms);
+  site->img_delay_min = internal_config_max_u32(site->img_delay_min, (uint32_t)k_polite_img_min_ms);
+  site->img_delay_max = internal_config_max_u32(site->img_delay_max, (uint32_t)k_polite_img_max_ms);
+  site->chapter_delay_min =
+    internal_config_max_u32(site->chapter_delay_min, (uint32_t)k_polite_chap_min_ms);
+  site->chapter_delay_max =
+    internal_config_max_u32(site->chapter_delay_max, (uint32_t)k_polite_chap_max_ms);
 }

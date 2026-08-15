@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 #include "mdl_politeness.h"
+#include "mdl_storage.h"
 #include "ra8_err.h"
 
 /** @brief How to order chapters extracted from a series page. */
@@ -100,17 +101,27 @@ typedef struct {
 /**
  * @brief Load a site descriptor from a flat key=value file.
  *
- * @param[in]  path Config file path.
+ * @param[in,out] storage Initialized portable filesystem binding and exclusive
+ *                        file/I/O workspace.
+ * @param[in]  path Canonical path beneath the bound filesystem root.
  * @param[out] out  Descriptor to fill; defaults are applied first, then the
  *                  file overrides recognised keys.
  *
  * @retval k_ra8_ok            Loaded and every key/value passed validation.
- * @retval k_ra8_err_invalid_arg  NULL argument.
- * @retval k_ra8_fail          File could not be opened.
+ * @retval k_ra8_err_invalid_arg  Invalid binding, pointer, or path.
+ * @retval k_ra8_err_invalid_size Descriptor or backend progress bound exceeded.
  * @retval k_ra8_err_invalid_state  A line, key, value, or required field was
  * invalid.
+ * @retval other Open, size, read, or close error propagated by the filesystem.
+ * @pre @p storage was initialized by ::mdl_storage_init and is exclusively owned.
+ * @pre @p path is canonical under the injected binding (for example `/sites/a.conf`).
+ * @post The portable file handle is consumed on every successful open path,
+ *       including parse and close failures.
+ * @post Success publishes a complete validated descriptor in @p out.
+ * @note Not thread-safe for a shared storage binding.
+ * @since 0.1.0
  */
-ra8_err_t mdl_config_load(const char* path, mdl_site_t* out);
+[[nodiscard]] ra8_err_t mdl_config_load(mdl_storage_t* storage, const char* path, mdl_site_t* out);
 
 /**
  * @brief Build the politeness-governor tunables for a loaded site descriptor.
@@ -129,6 +140,7 @@ ra8_err_t mdl_config_load(const char* path, mdl_site_t* out);
  * @pre @p site is non-NULL and was populated by ::mdl_config_load.
  * @pre The caller passes the result to a governor init function.
  * @post `burst >= 1` and `max_inflight >= 1` (the init function clamps).
+ * @post @p site is unchanged.
  *
  * @note Thread-safe: depends only on its argument.
  * @see mdl_governor_init

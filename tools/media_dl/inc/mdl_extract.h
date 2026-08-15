@@ -152,6 +152,15 @@ ra8_err_t mdl_extract_selector(const char* html,
  *
  * @note Duplicate URLs are dropped. Values longer than ::k_mdl_url_max are
  *       skipped rather than truncated.
+
+ * @details Uses caller-owned fixed-capacity results and performs no allocation.
+ *          Inputs stay borrowed and appended values are complete and terminated.
+ * @return Operation status.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @since Version 0.1.0
  */
 ra8_err_t mdl_extract_images(const char*     html,
                              size_t          html_len,
@@ -173,6 +182,16 @@ ra8_err_t mdl_extract_images(const char*     html,
  * @retval k_ra8_ok            Scan complete (count may be 0).
  * @retval k_ra8_err_invalid_arg  NULL argument.
  * @retval k_ra8_err_no_mem    Reached ::k_mdl_max_urls; remainder skipped.
+
+ * @details Uses caller-owned fixed-capacity results and performs no allocation.
+ *          Inputs stay borrowed and appended values are complete and terminated.
+ * @return Operation status.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
  */
 ra8_err_t mdl_extract_anchors(const char*     html,
                               size_t          html_len,

@@ -23,17 +23,18 @@
 #include <curl/curl.h>
 #include <stddef.h>
 
+#include "mdl_net.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /**
  * @struct buf_sink_t
  * @brief Bounded-buffer sink state for a page fetch.
- * @details Handed to ::mdl_net_curl_buf_write as libcurl's write-data. The
+ * @details Handed to ::priv_mdl_net_curl_buf_write as libcurl's write-data. The
  *          write callback appends into `buf` until `cap` is reached, then
  *          latches `overflow` and aborts the transfer.
  * @invariant `len <= cap` whenever `overflow` is false.
- * @see mdl_net_curl_buf_write()
+ * @see priv_mdl_net_curl_buf_write()
  * @since 0.1.0
  */
 typedef struct {
@@ -42,6 +43,65 @@ typedef struct {
   size_t len;      /**< Bytes written so far.            */
   bool   overflow; /**< Set once the body exceeds `cap`. */
 } buf_sink_t;
+
+/**
+ * @struct mdl_net_curl_body_state_t
+ * @brief Test-visible bounded adapter from libcurl chunks to an injected sink.
+ * @invariant `written <= cap` whenever @ref overflow is false and cap is nonzero.
+ * @since 0.1.0
+ */
+typedef struct {
+  mdl_net_body_sink_t* sink;       /**< Borrowed injected body sink.            */
+  uint64_t             written;    /**< Bytes accepted across completed chunks. */
+  uint64_t             cap;        /**< Response cap, or zero for no cap.       */
+  ra8_err_t            sink_error; /**< First callback failure, or ::k_ra8_ok.  */
+  bool                 overflow;   /**< Arithmetic or configured cap was hit.   */
+} mdl_net_curl_body_state_t;
+
+/**
+ * @brief Enable the cookie engine and import validated caller-owned rows.
+ * @param[in,out] curl Fresh libcurl easy handle.
+ * @param[in] cookies Newline-delimited bounded cookie bytes.
+ * @return Canonical validation or option status.
+ * @retval k_ra8_ok Every accepted cookie row was copied by libcurl.
+ * @retval k_ra8_err_invalid_arg The view or a row is malformed or unsafe.
+ * @retval k_ra8_err_invalid_size One row exceeds the fixed importer bound.
+ * @retval k_ra8_fail libcurl rejected an otherwise valid option.
+ * @pre @p curl and @p cookies are non-NULL.
+ * @post Success enables the cookie engine without path-based file I/O.
+ * @post Caller command strings cannot reach `CURLOPT_COOKIELIST`.
+ * @note Libcurl owns its copy of every accepted row.
+ * @since 0.1.0
+
+ * @details Applies validated caller-owned credentials to one easy handle.
+ *          Borrowed storage remains caller-owned for libcurl's required lifetime.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ */
+RA8_PRIV ra8_err_t priv_mdl_net_curl_apply_cookies(CURL* curl, const mdl_net_bytes_t* cookies);
+
+/**
+ * @brief Bind complete caller-owned CA PEM bytes with NOCOPY semantics.
+ * @param[in,out] curl Fresh libcurl easy handle.
+ * @param[in] ca_pem Complete nonempty PEM bytes, or an empty absent view.
+ * @param[in,out] blob Stable descriptor retained by the backend when supported.
+ * @return Canonical validation, option, or unsupported status.
+ * @retval k_ra8_ok System CA policy remains active or the blob was bound.
+ * @retval k_ra8_err_invalid_arg The view or blob descriptor is inconsistent.
+ * @retval k_ra8_err_not_supported This libcurl/TLS build lacks CA blob support.
+ * @retval k_ra8_fail Libcurl rejected the custom CA option.
+ * @pre Nonempty @p ca_pem bytes remain readable through backend destruction.
+ * @post No CA filename or hidden file read is configured.
+ * @note The descriptor may be NULL only when custom CA blobs are unavailable.
+ * @since 0.1.0
+
+ * @details Applies validated caller-owned credentials to one easy handle.
+ *          Borrowed storage remains caller-owned for libcurl's required lifetime.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @post Documented outputs and the return value describe the same outcome.
+ */
+RA8_PRIV ra8_err_t priv_mdl_net_curl_apply_ca_blob(CURL*                  curl,
+                                                   const mdl_net_bytes_t* ca_pem,
+                                                   struct curl_blob*      blob);
 
 /**
  * @brief Map a completed libcurl transfer to an ::ra8_err_t (pure classifier).
@@ -83,8 +143,10 @@ typedef struct {
  * function distinguishes has a vector.
  *
  * @since 0.1.0
+
+ * @post Documented outputs and the return value describe the same outcome.
  */
-RA8_PRIV ra8_err_t mdl_net_curl_classify(CURLcode code, bool overflow, long status);
+RA8_PRIV ra8_err_t priv_mdl_net_curl_classify(CURLcode code, bool overflow, long status);
 
 /**
  * @brief libcurl write callback: append into a bounded buffer, abort on cap.
@@ -118,4 +180,24 @@ RA8_PRIV ra8_err_t mdl_net_curl_classify(CURLcode code, bool overflow, long stat
  *
  * @since 0.1.0
  */
-RA8_PRIV size_t mdl_net_curl_buf_write(char* data, size_t size, size_t nmemb, void* user);
+RA8_PRIV size_t priv_mdl_net_curl_buf_write(char* data, size_t size, size_t nmemb, void* user);
+
+/**
+ * @brief Adapt one libcurl body chunk to an injected bounded sink.
+ * @details Validates multiplication and configured capacity before dispatching
+ *          one complete chunk to the injected writer.
+ * @param[in] data Bytes supplied by libcurl.
+ * @param[in] size Element size.
+ * @param[in] nmemb Element count.
+ * @param[in,out] user ::mdl_net_curl_body_state_t state.
+ * @return Exact byte count accepted, or zero to abort libcurl.
+ * @retval 0 Overflow, invalid state, or sink failure aborted the transfer.
+ * @retval other Exact `size * nmemb` bytes accepted by the sink.
+ * @pre Representable nonempty input is readable for `size * nmemb` bytes.
+ * @pre @p user is NULL or points to mutable callback state.
+ * @post Overflow or sink failure is latched before returning zero.
+ * @post Success advances the cumulative written extent exactly once.
+ * @note Signature is fixed by libcurl's callback ABI.
+ * @since 0.1.0
+ */
+RA8_PRIV size_t priv_mdl_net_curl_body_write(char* data, size_t size, size_t nmemb, void* user);

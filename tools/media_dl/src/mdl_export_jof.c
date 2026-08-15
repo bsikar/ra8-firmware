@@ -28,19 +28,15 @@
  * @since 0.1.0
  */
 
-#include <limits.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 
-#include "mdl_atomic.h"
 #include "mdl_export.h"
 #include "mdl_export_internal.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_jof.h"
 #include "ra8_jof_produce.h"
-#include "ra8_log.h"
 
 /**
  * @enum mdl_jof_geom_t
@@ -59,7 +55,7 @@ typedef enum : uint16_t {
  * @brief WebP container-head offsets for the whole-frame-arena decision.
  * @details The exporter must know whether a page is WebP *before* producing, to
  *          decide whether to carve the whole-frame arena the WebP arm needs.
- * @see jof_is_webp()
+ * @see internal_jof_is_webp()
  * @since 0.1.0
  */
 typedef enum : uint8_t {
@@ -98,10 +94,10 @@ static const uint8_t s_jof_webp_webp[k_jof_webp_tag_len] =
  * @post No state is mutated.
  * @post A false result means the streaming JPEG / PNG arms handle the page.
  * @note Pure; thread-safe.
- * @see jof_one()
+ * @see internal_jof_one()
  * @since 0.1.0
  */
-RA8_INTERNAL static bool jof_is_webp(const uint8_t* data, size_t len)
+RA8_INTERNAL static bool internal_jof_is_webp(const uint8_t* data, size_t len)
 {
   if ((data == nullptr) || (len < (size_t)k_jof_webp_head_len)) {
     return false;
@@ -116,24 +112,6 @@ typedef struct {
   size_t         len;  /**< Total length.  */
   size_t         pos;  /**< Read cursor.   */
 } jof_pull_ctx_t;
-
-/**
- * @brief Route one ra8_log byte to host stderr
- * @details Replaces the firmware ITM sink while the host JOF producer runs.
- * @param[in] ctx Unused callback context.
- * @param[in] byte Byte to append to stderr.
- * @pre stderr is open for byte-oriented output.
- * @pre @p ctx carries no ownership obligation.
- * @post Exactly one byte is offered to stderr.
- * @post No exporter workspace state is modified.
- * @note Thread-safe only when stderr and the global log sink are serialized.
- * @since 0.1.0
- */
-RA8_INTERNAL static void jof_log_sink(void* ctx, uint8_t byte)
-{
-  (void)ctx;
-  (void)fputc((int)byte, stderr);
-}
 
 /**
  * @brief Copy the next encoded source span into a producer buffer
@@ -152,7 +130,7 @@ RA8_INTERNAL static void jof_log_sink(void* ctx, uint8_t byte)
  * @note Not thread-safe when a cursor is shared.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t jof_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+RA8_INTERNAL static ra8_err_t internal_jof_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   jof_pull_ctx_t* s = (jof_pull_ctx_t*)ctx;
   size_t          n = s->len - s->pos;
@@ -166,65 +144,29 @@ RA8_INTERNAL static ra8_err_t jof_pull(void* ctx, uint8_t* buf, size_t cap, size
 }
 
 /**
- * @brief Append producer output bytes to an open atlas file
- * @details Converts fwrite's byte count into the producer error contract.
- * @param[in,out] ctx Open FILE pointer owned by the caller.
+ * @brief Append producer output bytes to the active publication transaction.
+ * @details Converts the bounded transaction writer result into the producer
+ *          error contract without exposing a host stream.
+ * @param[in,out] ctx Export output transaction owned by the caller.
  * @param[in] buf Atlas bytes to append.
  * @param[in] len Number of readable bytes at @p buf.
  * @return Sink status.
  * @retval k_ra8_ok Every byte was written.
- * @retval k_ra8_fail The file accepted fewer than @p len bytes.
- * @pre @p ctx is a FILE open for binary writing.
+ * @retval k_ra8_err_invalid_size @p len exceeds the transaction count type.
+ * @retval k_ra8_fail The transaction sink rejected the write.
+ * @pre @p ctx is an active ::mdl_export_output_t.
  * @pre @p buf holds @p len readable bytes.
- * @post Success advances the file by @p len bytes.
+ * @post Success advances the staged output by @p len bytes.
  * @post Failure remains visible to the producer.
- * @note Not thread-safe for a shared FILE.
+ * @note Not thread-safe for a shared output transaction.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t jof_sink(void* ctx, const uint8_t* buf, size_t len)
+RA8_INTERNAL static ra8_err_t internal_jof_sink(void* ctx, const uint8_t* buf, size_t len)
 {
-  return (fwrite(buf, 1U, len, (FILE*)ctx) == len) ? k_ra8_ok : k_ra8_fail;
-}
-
-/**
- * @brief Read a whole encoded page into caller-owned bounded storage
- * @details Measures the file before reading and rejects empty or oversized
- *          input rather than allocating or truncating it.
- * @param[in] path NUL-terminated input file path.
- * @param[out] buf Caller-owned destination bytes.
- * @param[in] cap Capacity of @p buf.
- * @param[out] out_len Exact byte count read on success.
- * @return File-read status.
- * @retval k_ra8_ok The complete nonempty file was read.
- * @retval k_ra8_err_invalid_size File size exceeds @p cap.
- * @retval k_ra8_fail Opening, sizing, or reading failed.
- * @pre Pointers are non-NULL and @p path is NUL-terminated.
- * @pre @p buf addresses @p cap writable bytes.
- * @post Success sets `*out_len` to the complete file size.
- * @post No partial read is reported as success.
- * @note Thread-safe for distinct files and buffers.
- * @since 0.1.0
- */
-RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t* buf, size_t cap, size_t* out_len)
-{
-  FILE* f = fopen(path, "rb");
-  if (f == nullptr) {
-    return k_ra8_fail;
+  if (len > UINT32_MAX) {
+    return k_ra8_err_invalid_size;
   }
-  (void)fseek(f, 0, SEEK_END);
-  const long sz = ftell(f);
-  (void)fseek(f, 0, SEEK_SET);
-  if (sz <= 0) {
-    (void)fclose(f);
-    return k_ra8_fail;
-  }
-  if (((size_t)sz > cap) || (fread(buf, 1U, (size_t)sz, f) != (size_t)sz)) {
-    (void)fclose(f);
-    return ((size_t)sz > cap) ? k_ra8_err_invalid_size : k_ra8_fail;
-  }
-  (void)fclose(f);
-  *out_len = (size_t)sz;
-  return k_ra8_ok;
+  return priv_mdl_export_output_write((mdl_export_output_t*)ctx, buf, (uint32_t)len);
 }
 
 /**
@@ -245,27 +187,27 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t* buf, size_t cap, 
  * @return Result code.
  * @retval k_ra8_ok               Non-WebP page, or arena carved successfully.
  * @retval k_ra8_err_invalid_size The geometry does not admit a WebP arena.
- * @retval k_ra8_err_no_mem       The host allocator refused the arena.
+ * @retval k_ra8_err_invalid_size The caller workspace cannot satisfy the arena.
  * @pre @p src holds @p slen readable bytes.
  * @pre @p out_work and @p out_cap are writable.
  * @pre @p ws owns writable storage and is exclusive to this conversion.
- * @post On success `*out_work` is nullptr (non-WebP) or owned by the caller.
- * @post On failure `*out_work` is nullptr and nothing was allocated.
- * @note Not thread-safe; the caller owns and must free `*out_work`.
+ * @post On success `*out_work` is nullptr (non-WebP) or a workspace slice.
+ * @post On failure `*out_work` is nullptr and the arena remains caller-owned.
+ * @note Not thread-safe; the slice remains owned by @p ws.
  * @see ra8_jof_webp_work_bytes()
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t*          src,
-                                             size_t                  slen,
-                                             uint16_t                w,
-                                             uint16_t                h,
-                                             uint8_t**               out_work,
-                                             size_t*                 out_cap,
-                                             mdl_export_workspace_t* ws)
+RA8_INTERNAL static ra8_err_t internal_jof_carve_webp(const uint8_t*          src,
+                                                      size_t                  slen,
+                                                      uint16_t                w,
+                                                      uint16_t                h,
+                                                      uint8_t**               out_work,
+                                                      size_t*                 out_cap,
+                                                      mdl_export_workspace_t* ws)
 {
   *out_work = nullptr;
   *out_cap  = 0U;
-  if (!jof_is_webp(src, slen)) {
+  if (!internal_jof_is_webp(src, slen)) {
     return k_ra8_ok;
   }
   const uint32_t need = ra8_jof_webp_work_bytes(w, h, (uint32_t)slen);
@@ -287,9 +229,9 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t*          src,
  * @details
  * Carves the producer's two scratch arenas -- the streaming work arena, and the
  * whole-frame arena only a WebP page needs -- runs the producer, and releases
- * both on every exit path. Splitting this out of jof_one() means each function
- * owns one kind of resource: this one owns the scratch, jof_one() owns the
- * source buffer and the output file.
+ * both when the caller restores its workspace mark. Splitting this out of
+ * internal_jof_one() keeps producer configuration separate from source and
+ * publication ownership.
  *
  * @param[in]     src      Encoded page bytes.
  * @param[in]     slen     Length of @p src in bytes.
@@ -297,7 +239,7 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t*          src,
  * @param[in]     h        Decoded page height in pixels.
  * @param[in]     tile_h   Band height for this page.
  * @param[in]     work_cap Work-arena size, from ::ra8_jof_work_bytes.
- * @param[in,out] out      Open output file the atlas is written to.
+ * @param[in,out] output   Active staged output the atlas is written to.
  * @param[in,out] ws       Caller-owned producer workspace.
  *
  * @return Producer result.
@@ -305,24 +247,24 @@ RA8_INTERNAL static ra8_err_t jof_carve_webp(const uint8_t*          src,
  * @retval k_ra8_err_no_mem       An arena could not be allocated.
  * @retval k_ra8_err_invalid_size The geometry admits no WebP arena.
  *
- * @pre @p src holds @p slen readable bytes and @p out is open for writing.
+ * @pre @p src holds @p slen readable bytes and @p output is active.
  * @pre @p work_cap is non-zero.
  * @pre @p ws is exclusive and has not been reset during this page.
  * @post Both scratch arenas are released, on success and on every failure.
- * @post Nothing is written to @p out beyond what the producer emitted.
+ * @post Nothing is written to @p output beyond what the producer emitted.
  *
  * @note Not thread-safe.
- * @see jof_carve_webp()
+ * @see internal_jof_carve_webp()
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t*          src,
-                                               size_t                  slen,
-                                               uint16_t                w,
-                                               uint16_t                h,
-                                               uint16_t                tile_h,
-                                               uint32_t                work_cap,
-                                               FILE*                   out,
-                                               mdl_export_workspace_t* ws)
+RA8_INTERNAL static ra8_err_t internal_jof_produce_page(const uint8_t*          src,
+                                                        size_t                  slen,
+                                                        uint16_t                w,
+                                                        uint16_t                h,
+                                                        uint16_t                tile_h,
+                                                        uint32_t                work_cap,
+                                                        mdl_export_output_t*    output,
+                                                        mdl_export_workspace_t* ws)
 {
   if ((size_t)work_cap > (size_t)k_jof_work_cap) {
     return k_ra8_err_invalid_size;
@@ -333,15 +275,15 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t*          src,
   }
   uint8_t*        webp_work = nullptr;
   size_t          webp_cap  = 0U;
-  const ra8_err_t carve_rc  = jof_carve_webp(src, slen, w, h, &webp_work, &webp_cap, ws);
+  const ra8_err_t carve_rc  = internal_jof_carve_webp(src, slen, w, h, &webp_work, &webp_cap, ws);
   if (carve_rc != k_ra8_ok) {
     return carve_rc;
   }
   jof_pull_ctx_t        pull = {.data = src, .len = slen, .pos = 0U};
-  ra8_jof_produce_cfg_t cfg  = {.pull          = jof_pull,
+  ra8_jof_produce_cfg_t cfg  = {.pull          = internal_jof_pull,
                                 .pull_ctx      = &pull,
-                                .sink          = jof_sink,
-                                .sink_ctx      = out,
+                                .sink          = internal_jof_sink,
+                                .sink_ctx      = output,
                                 .tile_w        = w,
                                 .tile_h        = tile_h,
                                 .codec         = (uint8_t)k_ra8_jof_codec_deflate,
@@ -359,38 +301,50 @@ RA8_INTERNAL static ra8_err_t jof_produce_page(const uint8_t*          src,
 /**
  * @brief Transcode one JPEG, PNG, or WebP page to a JOF band atlas
  * @details Bounds the source and producer arenas, probes dimensions through
- *          the firmware producer, and atomically publishes the completed JOF.
+ *          the firmware producer, validates the borrowed staged file with the
+ *          canonical JOF verifier, and publishes the completed sibling.
+ * @param[in,out] storage Injected portable storage and transaction provider.
  * @param[in] in_path NUL-terminated verified source image path.
  * @param[in] out_path NUL-terminated destination JOF path.
  * @param[in,out] ws Exclusive caller-owned export workspace.
  * @return Transcode status.
- * @retval k_ra8_ok A complete JOF replaced the destination atomically.
+ * @retval k_ra8_ok A complete independently validated JOF was published.
  * @retval k_ra8_err_invalid_size A source or workspace bound was exceeded.
  * @retval k_ra8_err_not_supported The producer cannot decode the image.
- * @retval k_ra8_fail File or atomic-publication operations failed.
+ * @retval k_ra8_fail Storage, validation, or publication operations failed.
  * @pre Paths are non-NULL, NUL-terminated, and stable for the call.
+ * @pre @p storage is initialized and exclusive to this operation.
  * @pre @p ws owns writable storage and is exclusive to this page.
  * @post Success leaves one complete reader-consumable JOF.
- * @post Failure aborts the reserved temporary file.
+ * @post Failure before publication aborts the stage and preserves the prior sibling.
  * @note Not thread-safe for a shared workspace or destination.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t
-jof_one(const char* in_path, const char* out_path, mdl_export_workspace_t* ws)
+RA8_INTERNAL static ra8_err_t internal_jof_one(mdl_storage_t*          storage,
+                                               const char*             in_path,
+                                               const char*             out_path,
+                                               mdl_export_workspace_t* ws)
 {
-  struct stat st;
-  if ((stat(in_path, &st) != 0) || (st.st_size <= 0)) {
-    return k_ra8_fail;
+  fw_fs_stat_t stat = {};
+  ra8_err_t    rc   = fw_fs_stat(&storage->fs->names, in_path, &stat);
+  if (rc != k_ra8_ok) {
+    return rc;
   }
-  if ((uintmax_t)st.st_size > (uintmax_t)k_jof_source_cap) {
+  if (!stat.exists) {
+    return k_ra8_err_not_found;
+  }
+  if ((stat.type != k_fw_fs_node_file) || (stat.size_bytes == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (stat.size_bytes > (uint64_t)k_jof_source_cap) {
     return k_ra8_err_invalid_size;
   }
-  uint8_t* src = (uint8_t*)mdl_export_workspace_take(ws, (size_t)st.st_size, 16U);
+  uint8_t* src = (uint8_t*)mdl_export_workspace_take(ws, (size_t)stat.size_bytes, 16U);
   if (src == nullptr) {
     return k_ra8_err_invalid_size;
   }
-  size_t    slen = 0U;
-  ra8_err_t rc   = slurp(in_path, src, (size_t)st.st_size, &slen);
+  size_t slen = 0U;
+  rc          = priv_mdl_export_source_slurp(storage, in_path, src, (size_t)stat.size_bytes, &slen);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -406,50 +360,50 @@ jof_one(const char* in_path, const char* out_path, mdl_export_workspace_t* ws)
   if (work_cap == 0U) {
     return k_ra8_err_invalid_size;
   }
-  /* Produce into a sibling temp and rename on success: re-exporting a chapter
-   * must not destroy the `.jof` already sitting there if this page fails to
-   * decode (see mdl_atomic.h). */
-  char tmp[PATH_MAX];
-  if (!mdl_atomic_tmp_path(out_path, tmp, sizeof(tmp))) {
-    return k_ra8_fail;
+  /* Produce into the storage transaction's borrowed stage; canonical
+   * validation must pass before the transaction publishes this page. */
+  mdl_export_output_t output = {};
+  rc = priv_mdl_export_output_begin(&output, storage, out_path, k_mdl_fmt_jof);
+  if (rc == k_ra8_ok) {
+    rc = internal_jof_produce_page(src, slen, w, h, tile_h, work_cap, &output, ws);
   }
-  FILE* out = fopen(tmp, "wb");
-  if (out == nullptr) {
-    mdl_atomic_abort(tmp);
-    return k_ra8_fail;
+  if ((rc != k_ra8_ok) && output.writer.transaction.active) {
+    const ra8_err_t aborted = priv_mdl_export_output_abort(&output);
+    return (aborted == k_ra8_ok) ? rc : aborted;
   }
-  rc = jof_produce_page(src, slen, w, h, tile_h, work_cap, out, ws);
-  if (fclose(out) != 0) {
-    rc = (rc == k_ra8_ok) ? k_ra8_fail : rc;
-  }
-  if (rc != k_ra8_ok) {
-    mdl_atomic_abort(tmp);
-    return rc;
-  }
-  return mdl_atomic_commit(tmp, out_path) ? k_ra8_ok : k_ra8_fail;
+  bool published = false;
+  return (rc == k_ra8_ok) ? priv_mdl_export_output_commit(&output, ws, &published) : rc;
 }
 
-RA8_PRIV ra8_err_t mdl_export_jof(const char*             dir,
-                                  const char              names[][k_name_max],
-                                  size_t                  count,
-                                  mdl_export_workspace_t* ws)
+RA8_PRIV ra8_err_t priv_mdl_export_jof(mdl_storage_t*          storage,
+                                       const char*             dir,
+                                       const char              names[][k_name_max],
+                                       size_t                  count,
+                                       mdl_export_workspace_t* ws)
 {
-  ra8_log_set_byte_sink(jof_log_sink, nullptr);
   const size_t page_mark = ws->used;
   ra8_err_t    rc        = k_ra8_ok;
   for (size_t i = 0U; (rc == k_ra8_ok) && (i < count); ++i) {
-    char in_path[PATH_MAX];
+    char in_path[k_fw_fs_path_cap];
     char stem[k_name_max];
-    char out_path[PATH_MAX];
-    (void)snprintf(in_path, sizeof(in_path), "%s/%s", dir, names[i]);
-    (void)snprintf(stem, sizeof(stem), "%s", names[i]);
+    char out_path[k_fw_fs_path_cap];
+    rc = priv_mdl_export_path_join(in_path, sizeof(in_path), dir, names[i]);
+    memcpy(stem, names[i], k_name_max);
     char* dot = strrchr(stem, '.');
     if (dot != nullptr) {
       *dot = '\0';
     }
-    (void)snprintf(out_path, sizeof(out_path), "%s/%s.jof", dir, stem);
+    char      output_leaf[k_name_max];
+    const int written = snprintf(output_leaf, sizeof(output_leaf), "%s.jof", stem);
+    if ((rc == k_ra8_ok) && priv_mdl_export_snprintf_fit(written, sizeof(output_leaf))) {
+      rc = priv_mdl_export_path_join(out_path, sizeof(out_path), dir, output_leaf);
+    } else if (rc == k_ra8_ok) {
+      rc = k_ra8_err_invalid_size;
+    }
     ws->used = page_mark;
-    rc       = jof_one(in_path, out_path, ws);
+    if (rc == k_ra8_ok) {
+      rc = internal_jof_one(storage, in_path, out_path, ws);
+    }
   }
   return rc;
 }

@@ -48,7 +48,7 @@ typedef enum : int8_t {
  * @note Thread-safe: pure arithmetic.
  * @since 0.1.0
  */
-RA8_INTERNAL static char lower_ascii(char c)
+RA8_INTERNAL static char internal_lower_ascii(char c)
 {
   return (char)(((c >= 'A') && (c <= 'Z')) ? (c + ('a' - 'A')) : c);
 }
@@ -68,13 +68,13 @@ RA8_INTERNAL static char lower_ascii(char c)
  * @note Thread-safe: reads only arguments.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool ieq(const char* a, const char* b)
+RA8_INTERNAL static bool internal_ieq(const char* a, const char* b)
 {
   size_t i = 0U;
-  while ((a[i] != '\0') && (lower_ascii(a[i]) == lower_ascii(b[i]))) {
+  while ((a[i] != '\0') && (internal_lower_ascii(a[i]) == internal_lower_ascii(b[i]))) {
     ++i;
   }
-  return lower_ascii(a[i]) == lower_ascii(b[i]);
+  return internal_lower_ascii(a[i]) == internal_lower_ascii(b[i]);
 }
 
 /**
@@ -92,11 +92,11 @@ RA8_INTERNAL static bool ieq(const char* a, const char* b)
  * @note Thread-safe: reads only arguments.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool ci_prefix(const char* prefix, const char* s)
+RA8_INTERNAL static bool internal_ci_prefix(const char* prefix, const char* s)
 {
   size_t i = 0U;
   while (prefix[i] != '\0') {
-    if (lower_ascii(s[i]) != lower_ascii(prefix[i])) {
+    if (internal_lower_ascii(s[i]) != internal_lower_ascii(prefix[i])) {
       return false;
     }
     ++i;
@@ -105,7 +105,7 @@ RA8_INTERNAL static bool ci_prefix(const char* prefix, const char* s)
 }
 
 /** @brief Trim leading/trailing ASCII whitespace in place; return start. */
-RA8_INTERNAL static char* trim_ws(char* s)
+RA8_INTERNAL static char* internal_trim_ws(char* s)
 {
   while ((*s == ' ') || (*s == '\t') || (*s == '\r')) {
     ++s;
@@ -141,7 +141,7 @@ RA8_INTERNAL static char* trim_ws(char* s)
  * @since 0.1.0
  */
 RA8_INTERNAL static bool
-next_line(const char** pp, const char* end, char* buf, size_t cap, bool* truncated)
+internal_next_line(const char** pp, const char* end, char* buf, size_t cap, bool* truncated)
 {
   const char* p = *pp;
   if (p >= end) {
@@ -185,15 +185,15 @@ next_line(const char** pp, const char* end, char* buf, size_t cap, bool* truncat
  * @note Returned pointers borrow @p line storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool split_field(char* line, char** field, char** value)
+RA8_INTERNAL static bool internal_split_field(char* line, char** field, char** value)
 {
   char* colon = strchr(line, ':');
   if (colon == nullptr) {
     return false;
   }
   *colon = '\0';
-  *field = trim_ws(line);
-  *value = trim_ws(colon + 1);
+  *field = internal_trim_ws(line);
+  *value = internal_trim_ws(colon + 1);
   return (*field)[0] != '\0';
 }
 
@@ -212,12 +212,12 @@ RA8_INTERNAL static bool split_field(char* line, char** field, char** value)
  * @note Thread-safe: reads only arguments.
  * @since 0.1.0
  */
-RA8_INTERNAL static int agent_spec(const char* agent, const char* ua_token)
+RA8_INTERNAL static int internal_agent_spec(const char* agent, const char* ua_token)
 {
   if (strcmp(agent, "*") == 0) {
     return 0;
   }
-  if ((agent[0] != '\0') && ci_prefix(agent, ua_token)) {
+  if ((agent[0] != '\0') && internal_ci_prefix(agent, ua_token)) {
     return (int)strlen(agent);
   }
   return (int)k_spec_none;
@@ -246,7 +246,7 @@ RA8_INTERNAL static int agent_spec(const char* agent, const char* ua_token)
  * @since 0.1.0
  */
 RA8_INTERNAL static bool
-scan_spec(const char* text, size_t len, const char* ua_token, int* best, bool* wild)
+internal_scan_spec(const char* text, size_t len, const char* ua_token, int* best, bool* wild)
 {
   *best           = (int)k_spec_none;
   *wild           = false;
@@ -254,14 +254,14 @@ scan_spec(const char* text, size_t len, const char* ua_token, int* best, bool* w
   const char* end = text + len;
   char        line[k_robots_line_max];
   bool        truncated = false;
-  while (next_line(&p, end, line, sizeof(line), &truncated)) {
+  while (internal_next_line(&p, end, line, sizeof(line), &truncated)) {
     char* field = nullptr;
     char* value = nullptr;
-    if (!split_field(line, &field, &value)) {
+    if (!internal_split_field(line, &field, &value)) {
       continue;
     }
-    if (ieq(field, "user-agent")) {
-      const int spec = agent_spec(value, ua_token);
+    if (internal_ieq(field, "user-agent")) {
+      const int spec = internal_agent_spec(value, ua_token);
       if (spec == 0) {
         *wild = true;
       } else if (spec > *best) {
@@ -290,7 +290,7 @@ scan_spec(const char* text, size_t len, const char* ua_token, int* best, bool* w
  * @since 0.1.0
  */
 RA8_INTERNAL static bool
-group_selected(int target, bool wildcard_target, int grp_spec, bool grp_wild)
+internal_group_selected(int target, bool wildcard_target, int grp_spec, bool grp_wild)
 {
   return wildcard_target ? grp_wild : ((target >= 0) && (grp_spec == target));
 }
@@ -309,7 +309,8 @@ group_selected(int target, bool wildcard_target, int grp_spec, bool grp_wild)
  * @note Not thread-safe: mutates @p out.
  * @since 0.1.0
  */
-RA8_INTERNAL static void add_rule(mdl_robots_t* out, mdl_robots_rule_kind_t kind, const char* value)
+RA8_INTERNAL static void
+internal_add_rule(mdl_robots_t* out, mdl_robots_rule_kind_t kind, const char* value)
 {
   if ((value[0] == '\0') || (out->count >= (size_t)k_mdl_robots_max_rules)) {
     if (value[0] != '\0') {
@@ -341,7 +342,7 @@ RA8_INTERNAL static void add_rule(mdl_robots_t* out, mdl_robots_rule_kind_t kind
  * @note Not thread-safe: may mutate @p out.
  * @since 0.1.0
  */
-RA8_INTERNAL static void set_crawl(mdl_robots_t* out, const char* value)
+RA8_INTERNAL static void internal_set_crawl(mdl_robots_t* out, const char* value)
 {
   char*        end  = nullptr;
   const double secs = strtod(value, &end);
@@ -371,14 +372,15 @@ RA8_INTERNAL static void set_crawl(mdl_robots_t* out, const char* value)
  * @note Not thread-safe: may mutate @p out.
  * @since 0.1.0
  */
-RA8_INTERNAL static void apply_directive(mdl_robots_t* out, const char* field, const char* value)
+RA8_INTERNAL static void
+internal_apply_directive(mdl_robots_t* out, const char* field, const char* value)
 {
-  if (ieq(field, "disallow")) {
-    add_rule(out, k_mdl_rule_disallow, value);
-  } else if (ieq(field, "allow")) {
-    add_rule(out, k_mdl_rule_allow, value);
-  } else if (ieq(field, "crawl-delay")) {
-    set_crawl(out, value);
+  if (internal_ieq(field, "disallow")) {
+    internal_add_rule(out, k_mdl_rule_disallow, value);
+  } else if (internal_ieq(field, "allow")) {
+    internal_add_rule(out, k_mdl_rule_allow, value);
+  } else if (internal_ieq(field, "crawl-delay")) {
+    internal_set_crawl(out, value);
   }
 }
 
@@ -399,12 +401,12 @@ RA8_INTERNAL static void apply_directive(mdl_robots_t* out, const char* field, c
  * @note Not thread-safe: mutates @p out.
  * @since 0.1.0
  */
-RA8_INTERNAL static void harvest(const char*   text,
-                                 size_t        len,
-                                 const char*   ua_token,
-                                 int           target,
-                                 bool          wildcard_target,
-                                 mdl_robots_t* out)
+RA8_INTERNAL static void internal_harvest(const char*   text,
+                                          size_t        len,
+                                          const char*   ua_token,
+                                          int           target,
+                                          bool          wildcard_target,
+                                          mdl_robots_t* out)
 {
   const char* p          = text;
   const char* end        = text + len;
@@ -414,29 +416,29 @@ RA8_INTERNAL static void harvest(const char*   text,
   bool        grp_wild   = false;
   char        line[k_robots_line_max];
   bool        truncated = false;
-  while (next_line(&p, end, line, sizeof(line), &truncated)) {
+  while (internal_next_line(&p, end, line, sizeof(line), &truncated)) {
     char* field = nullptr;
     char* value = nullptr;
-    if (!split_field(line, &field, &value)) {
+    if (!internal_split_field(line, &field, &value)) {
       continue;
     }
-    if (ieq(field, "user-agent")) {
+    if (internal_ieq(field, "user-agent")) {
       if (!prev_agent) {
         grp_spec = (int)k_spec_none;
         grp_wild = false;
       }
-      const int spec = agent_spec(value, ua_token);
+      const int spec = internal_agent_spec(value, ua_token);
       if (spec == 0) {
         grp_wild = true;
       } else if (spec > grp_spec) {
         grp_spec = spec;
       }
-      selected   = group_selected(target, wildcard_target, grp_spec, grp_wild);
+      selected   = internal_group_selected(target, wildcard_target, grp_spec, grp_wild);
       prev_agent = true;
     } else {
       prev_agent = false;
       if (selected) {
-        apply_directive(out, field, value);
+        internal_apply_directive(out, field, value);
       }
     }
   }
@@ -465,7 +467,7 @@ void mdl_robots_parse(const char* text, size_t len, const char* ua_token, mdl_ro
   }
   int  best = (int)k_spec_none;
   bool wild = false;
-  if (!scan_spec(text, len, ua_token, &best, &wild)) {
+  if (!internal_scan_spec(text, len, ua_token, &best, &wild)) {
     out->valid = false;
     return;
   }
@@ -473,7 +475,7 @@ void mdl_robots_parse(const char* text, size_t len, const char* ua_token, mdl_ro
     return; /* no group matches us -> no restrictions */
   }
   const bool wildcard_target = (best < 0) && wild;
-  harvest(text, len, ua_token, best, wildcard_target, out);
+  internal_harvest(text, len, ua_token, best, wildcard_target, out);
 }
 
 /**
@@ -494,7 +496,7 @@ void mdl_robots_parse(const char* text, size_t len, const char* ua_token, mdl_ro
  * @since 0.1.0
  */
 RA8_INTERNAL static bool
-glob_prefix(const char* pat, size_t patlen, const char* path, bool anchored)
+internal_glob_prefix(const char* pat, size_t patlen, const char* path, bool anchored)
 {
   size_t      pi   = 0U;
   const char* s    = path;
@@ -543,25 +545,25 @@ glob_prefix(const char* pat, size_t patlen, const char* path, bool anchored)
  * @note Thread-safe: reads only arguments.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool robots_match(const char* pat, size_t len, const char* path)
+RA8_INTERNAL static bool internal_robots_match(const char* pat, size_t len, const char* path)
 {
   bool anchored = false;
   if ((len > 0U) && (pat[len - 1U] == '$')) {
     anchored = true;
     --len;
   }
-  return glob_prefix(pat, len, path, anchored);
+  return internal_glob_prefix(pat, len, path, anchored);
 }
 
 /** @brief Longest matching rule for `path` (Allow wins ties), or NULL. */
-RA8_INTERNAL static const mdl_robots_rule_t* best_matching_rule(const mdl_robots_t* robots,
-                                                                const char*         path)
+RA8_INTERNAL static const mdl_robots_rule_t* internal_best_matching_rule(const mdl_robots_t* robots,
+                                                                         const char*         path)
 {
   const mdl_robots_rule_t* best     = nullptr;
   int                      best_len = (int)k_spec_none;
   for (size_t i = 0U; i < robots->count; ++i) {
     const mdl_robots_rule_t* r = &robots->rules[i];
-    if (!robots_match(r->path, r->len, path)) {
+    if (!internal_robots_match(r->path, r->len, path)) {
       continue;
     }
     const bool is_allow = (r->kind == k_mdl_rule_allow);
@@ -578,7 +580,7 @@ bool mdl_robots_allows(const mdl_robots_t* robots, const char* path)
   if ((robots == nullptr) || (path == nullptr) || !robots->valid) {
     return false;
   }
-  const mdl_robots_rule_t* best = best_matching_rule(robots, path);
+  const mdl_robots_rule_t* best = internal_best_matching_rule(robots, path);
   return (best == nullptr) || (best->kind == k_mdl_rule_allow);
 }
 
@@ -587,13 +589,13 @@ const char* mdl_robots_disallow_reason(const mdl_robots_t* robots, const char* p
   if ((robots == nullptr) || (path == nullptr)) {
     return nullptr;
   }
-  const mdl_robots_rule_t* best = best_matching_rule(robots, path);
+  const mdl_robots_rule_t* best = internal_best_matching_rule(robots, path);
   return ((best != nullptr) && (best->kind == k_mdl_rule_disallow)) ? best->path : nullptr;
 }
 
 /** @brief Locate an existing cache entry for one origin, or NULL if absent. */
 RA8_INTERNAL static mdl_robots_cache_entry_t*
-cache_find(mdl_robots_cache_t* cache, const char* scheme, const char* host)
+internal_cache_find(mdl_robots_cache_t* cache, const char* scheme, const char* host)
 {
   for (size_t i = 0U; i < (size_t)k_mdl_robots_max_hosts; ++i) {
     if (cache->hosts[i].used && (strcmp(cache->hosts[i].scheme, scheme) == 0) &&
@@ -605,7 +607,7 @@ cache_find(mdl_robots_cache_t* cache, const char* scheme, const char* host)
 }
 
 /** @brief Pick a free cache slot, or the dedicated uncached overflow slot. */
-RA8_INTERNAL static mdl_robots_cache_entry_t* cache_slot(mdl_robots_cache_t* cache)
+RA8_INTERNAL static mdl_robots_cache_entry_t* internal_cache_slot(mdl_robots_cache_t* cache)
 {
   for (size_t i = 0U; i < (size_t)k_mdl_robots_max_hosts; ++i) {
     if (!cache->hosts[i].used) {
@@ -630,9 +632,9 @@ const mdl_robots_t* mdl_robots_cache_consult(mdl_robots_cache_t* cache,
       (strnlen(host, k_mdl_robots_host_max) >= k_mdl_robots_host_max)) {
     return nullptr;
   }
-  mdl_robots_cache_entry_t* e = cache_find(cache, scheme, host);
+  mdl_robots_cache_entry_t* e = internal_cache_find(cache, scheme, host);
   if (e == nullptr) {
-    e              = cache_slot(cache);
+    e              = internal_cache_slot(cache);
     *e             = (mdl_robots_cache_entry_t){};
     e->rules.valid = true;
     (void)snprintf(e->scheme, sizeof(e->scheme), "%s", scheme);

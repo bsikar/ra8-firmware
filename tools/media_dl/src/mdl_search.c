@@ -45,7 +45,7 @@ const char* mdl_search_placeholder(void)
  * @note Thread-safe: pure comparison.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool is_unreserved(unsigned char c)
+RA8_INTERNAL static bool internal_is_unreserved(unsigned char c)
 {
   const bool alpha = ((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z'));
   const bool digit = (c >= '0') && (c <= '9');
@@ -66,7 +66,7 @@ RA8_INTERNAL static bool is_unreserved(unsigned char c)
  * @note Thread-safe: reads constant storage.
  * @since 0.1.0
  */
-RA8_INTERNAL static char hex_digit(unsigned nibble)
+RA8_INTERNAL static char internal_hex_digit(unsigned nibble)
 {
   static const char digits[] = "0123456789ABCDEF";
   return digits[nibble & (unsigned)k_nibble_mask];
@@ -83,7 +83,7 @@ bool mdl_query_encode(const char* term, char* out, size_t cap)
   size_t n = 0U;
   for (size_t i = 0U; term[i] != '\0'; ++i) {
     const unsigned char c = (unsigned char)term[i];
-    if (is_unreserved(c)) {
+    if (internal_is_unreserved(c)) {
       if ((n + 1U) >= cap) {
         out[0] = '\0';
         return false;
@@ -96,8 +96,8 @@ bool mdl_query_encode(const char* term, char* out, size_t cap)
         return false;
       }
       out[n]      = '%';
-      out[n + 1U] = hex_digit((unsigned)c >> (unsigned)k_hi_nibble_shift);
-      out[n + 2U] = hex_digit((unsigned)c);
+      out[n + 1U] = internal_hex_digit((unsigned)c >> (unsigned)k_hi_nibble_shift);
+      out[n + 2U] = internal_hex_digit((unsigned)c);
       n += (size_t)k_triplet_len;
     }
   }

@@ -16,6 +16,7 @@
 #include "mdl_fetch.h"
 #include "mdl_fetch_internal.h"
 #include "mdl_sanitize.h"
+#include "mdl_stream_internal.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 
@@ -24,6 +25,33 @@ typedef enum : uint16_t {
   k_pack_leaf_bytes = 256,  /**< Composed archive/dir leaf name. */
   k_pack_dir_bytes  = 1024, /**< Directory-path buffer.          */
 } mdl_pack_size_t;
+
+/** @brief Append three borrowed packaging fragments to one stream.
+ * @details Uses caller exporter workspace and injected filesystem and stream objects.
+ *          Artifacts publish only through the selected bounded exporter.
+ * @param[in,out] stream Destination stream state.
+ * @param[in] first First text fragment.
+ * @param[in] second Second text fragment.
+ * @param[in] third Third text fragment.
+ * @return Operation status.
+ * @retval k_ra8_ok The operation completed successfully.
+ * @retval other The originating validation, storage, stream, or network error.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static ra8_err_t internal_pack_text3(ra8_io_stream_t* stream,
+                                                  const char*      first,
+                                                  const char*      second,
+                                                  const char*      third)
+{
+  ra8_err_t error = priv_mdl_stream_text(k_ra8_ok, stream, first);
+  error           = priv_mdl_stream_text(error, stream, second);
+  return priv_mdl_stream_text(error, stream, third);
+}
 
 /**
  * @brief Test whether an snprintf result fully fit its destination
@@ -41,21 +69,26 @@ typedef enum : uint16_t {
  * @note Thread-safe: this is a pure arithmetic predicate.
  * @since 0.1.0
  */
-RA8_INTERNAL static bool snprintf_fit(int n, size_t cap)
+RA8_INTERNAL static bool internal_pack_snprintf_fit(int n, size_t cap)
 {
   return (n >= 0) && ((size_t)n < cap);
 }
 
-size_t mdl_pack_one_meta(mdl_format_t             format,
+size_t mdl_pack_one_meta(mdl_storage_t*           storage,
+                         mdl_format_t             format,
                          const char*              series_dir,
                          const char*              chap_id,
                          const mdl_export_meta_t* meta,
-                         mdl_export_workspace_t*  ws)
+                         mdl_export_workspace_t*  ws,
+                         ra8_io_stream_t*         output,
+                         ra8_io_stream_t*         diagnostic)
 {
   const char* ext = mdl_format_ext(format);
   char        dir[k_pack_dir_bytes];
   if (!mdl_path_join(series_dir, chap_id, dir, sizeof(dir))) {
-    (void)fprintf(stderr, "  export %s.%s path rejected, skipped\n", chap_id, ext);
+    ra8_err_t output_error = internal_pack_text3(diagnostic, "  export ", chap_id, ".");
+    output_error           = internal_pack_text3(diagnostic, "", ext, " path rejected, skipped\n");
+    (void)output_error;
     return 1U;
   }
 
@@ -63,42 +96,89 @@ size_t mdl_pack_one_meta(mdl_format_t             format,
   if (meta != nullptr) {
     m = *meta;
   } else {
-    (void)mdl_meta_load_dir(&m, dir);
+    (void)mdl_meta_load_dir(storage, &m, dir);
   }
 
   if (mdl_format_is_dir_output(format)) {
     /* JOF writes per-page `.jof` siblings into the chapter dir; report that dir,
      * never a single-container name that was not created. */
-    const ra8_err_t drc = mdl_export_chapter_meta_ws(format, dir, dir, &m, ws);
+    const ra8_err_t drc = mdl_export_chapter_meta_ws(storage, format, dir, dir, &m, ws);
     if (drc != k_ra8_ok) {
-      (void)fprintf(stderr, "  export %s .%s FAILED (err 0x%X)\n", chap_id, ext, (unsigned)drc);
+      ra8_err_t output_error = internal_pack_text3(diagnostic, "  export ", chap_id, " .");
+      output_error           = priv_mdl_stream_text(output_error, diagnostic, ext);
+      output_error           = priv_mdl_stream_text(output_error, diagnostic, " FAILED (err 0x");
+      output_error           = priv_mdl_stream_hex(output_error, diagnostic, (uint32_t)drc);
+      (void)priv_mdl_stream_text(output_error, diagnostic, ")\n");
       return 1U;
     }
-    (void)printf("  converted %s -> %s/*.%s\n", chap_id, dir, ext);
-    return 0U;
+    ra8_err_t output_error = internal_pack_text3(output, "  converted ", chap_id, " -> ");
+    output_error           = priv_mdl_stream_text(output_error, output, dir);
+    output_error           = priv_mdl_stream_text(output_error, output, "/*.");
+    output_error           = priv_mdl_stream_text(output_error, output, ext);
+    output_error           = priv_mdl_stream_text(output_error, output, "\n");
+    return (output_error == k_ra8_ok) ? 0U : 1U;
   }
   char      leaf[k_pack_leaf_bytes];
   const int ln = snprintf(leaf, sizeof(leaf), "%s.%s", chap_id, ext);
   char      out[k_pack_dir_bytes];
-  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
-    (void)fprintf(stderr, "  export %s.%s path rejected, skipped\n", chap_id, ext);
+  if (!internal_pack_snprintf_fit(ln, sizeof(leaf)) ||
+      !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
+    ra8_err_t output_error = internal_pack_text3(diagnostic, "  export ", chap_id, ".");
+    output_error           = priv_mdl_stream_text(output_error, diagnostic, ext);
+    (void)priv_mdl_stream_text(output_error, diagnostic, " path rejected, skipped\n");
     return 1U;
   }
-  const ra8_err_t rc = mdl_export_chapter_meta_ws(format, dir, out, &m, ws);
+  const ra8_err_t rc = mdl_export_chapter_meta_ws(storage, format, dir, out, &m, ws);
   if (rc != k_ra8_ok) {
-    (void)fprintf(stderr, "  export %s.%s FAILED (err 0x%X)\n", chap_id, ext, (unsigned)rc);
+    ra8_err_t output_error = internal_pack_text3(diagnostic, "  export ", chap_id, ".");
+    output_error           = priv_mdl_stream_text(output_error, diagnostic, ext);
+    output_error           = priv_mdl_stream_text(output_error, diagnostic, " FAILED (err 0x");
+    output_error           = priv_mdl_stream_hex(output_error, diagnostic, (uint32_t)rc);
+    (void)priv_mdl_stream_text(output_error, diagnostic, ")\n");
     return 1U;
   }
-  (void)printf("  packaged %s.%s\n", chap_id, ext);
-  return 0U;
+  ra8_err_t output_error = internal_pack_text3(output, "  packaged ", chap_id, ".");
+  output_error           = priv_mdl_stream_text(output_error, output, ext);
+  output_error           = priv_mdl_stream_text(output_error, output, "\n");
+  return (output_error == k_ra8_ok) ? 0U : 1U;
 }
 
-size_t mdl_pack_one(mdl_format_t            format,
+size_t mdl_pack_one(mdl_storage_t*          storage,
+                    mdl_format_t            format,
                     const char*             series_dir,
                     const char*             chap_id,
-                    mdl_export_workspace_t* ws)
+                    mdl_export_workspace_t* ws,
+                    ra8_io_stream_t*        output,
+                    ra8_io_stream_t*        diagnostic)
 {
-  return mdl_pack_one_meta(format, series_dir, chap_id, nullptr, ws);
+  return mdl_pack_one_meta(storage, format, series_dir, chap_id, nullptr, ws, output, diagnostic);
+}
+
+/** @brief Copy explicit metadata or load it from a combined directory.
+ * @details Uses caller exporter workspace and injected filesystem and stream objects.
+ *          Artifacts publish only through the selected bounded exporter.
+ * @param[in,out] storage Injected storage interface.
+ * @param[in] meta Validated artifact metadata.
+ * @param[in] dir Directory path or handle for the operation.
+ * @return Selected metadata value, using on-disk defaults when @p meta is null.
+ * @retval metadata Explicit metadata copy or bounded on-disk/default value.
+ * @pre Every required pointer is non-null and remains valid for the call.
+ * @pre Lengths and capacities describe complete referenced objects without overflow.
+ * @post Documented outputs and the return value describe the same outcome.
+ * @post A rejected or failed operation is never reported as successful.
+ * @note Thread safety follows ownership of the supplied context; no synchronization is added.
+ * @since Version 0.1.0
+ */
+RA8_INTERNAL static mdl_export_meta_t
+internal_pack_metadata(mdl_storage_t* storage, const mdl_export_meta_t* meta, const char* dir)
+{
+  mdl_export_meta_t selected;
+  if (meta != nullptr) {
+    selected = *meta;
+  } else {
+    (void)mdl_meta_load_dir(storage, &selected, dir);
+  }
+  return selected;
 }
 
 /**
@@ -106,12 +186,15 @@ size_t mdl_pack_one(mdl_format_t            format,
  * @details Composes guarded input/output paths, auto-loads metadata when
  *          needed, marks incomplete filenames, and handles directory-output
  *          formats without claiming that a container file was created.
+ * @param[in,out] storage Injected portable file reader.
  * @param[in] format Output format to write.
  * @param[in] series_dir Absolute series directory.
  * @param[in] combined_rel Sanitized combined-directory leaf.
  * @param[in] incomplete Whether the output filename must be marked incomplete.
  * @param[in] meta Metadata to embed, or NULL to auto-load it.
  * @param[in,out] ws Exclusive caller-owned exporter workspace.
+ * @param[in,out] output Borrowed stream receiving the successful output path.
+ * @param[in,out] diagnostic Borrowed stream receiving policy and failure diagnostics.
  * @return Count of failures from this operation.
  * @retval 0U Packaging succeeded.
  * @retval 1U A path was rejected or export failed.
@@ -122,93 +205,128 @@ size_t mdl_pack_one(mdl_format_t            format,
  * @note Not thread-safe for a shared workspace or output directory.
  * @since 0.1.0
  */
-RA8_INTERNAL static size_t pack_combined_dir(mdl_format_t             format,
-                                             const char*              series_dir,
-                                             const char*              combined_rel,
-                                             bool                     incomplete,
-                                             const mdl_export_meta_t* meta,
-                                             mdl_export_workspace_t*  ws)
+RA8_INTERNAL static size_t internal_pack_combined_dir(mdl_storage_t*           storage,
+                                                      mdl_format_t             format,
+                                                      const char*              series_dir,
+                                                      const char*              combined_rel,
+                                                      bool                     incomplete,
+                                                      const mdl_export_meta_t* meta,
+                                                      mdl_export_workspace_t*  ws,
+                                                      ra8_io_stream_t*         output,
+                                                      ra8_io_stream_t*         diagnostic)
 {
   const char* ext  = mdl_format_ext(format);
   const char* mark = incomplete ? " (INCOMPLETE)" : "";
   char        dir[k_pack_dir_bytes];
   if (!mdl_path_join(series_dir, combined_rel, dir, sizeof(dir))) {
-    (void)fprintf(stderr, "  combine export path rejected under %s\n", series_dir);
+    (void)
+      internal_pack_text3(diagnostic, "  combine export path rejected under ", series_dir, "\n");
     return 1U;
   }
 
-  mdl_export_meta_t m;
-  if (meta != nullptr) {
-    m = *meta;
-  } else {
-    (void)mdl_meta_load_dir(&m, dir);
-  }
+  const mdl_export_meta_t m = internal_pack_metadata(storage, meta, dir);
 
   if (mdl_format_is_dir_output(format)) {
     /* JOF: the combined pages become `.jof` siblings inside the combined dir. */
-    const ra8_err_t drc = mdl_export_chapter_meta_ws(format, dir, dir, &m, ws);
+    const ra8_err_t drc = mdl_export_chapter_meta_ws(storage, format, dir, dir, &m, ws);
     if (drc != k_ra8_ok) {
-      (void)fprintf(stderr, "  combine export FAILED (err 0x%X)\n", (unsigned)drc);
+      ra8_err_t output_error =
+        priv_mdl_stream_text(k_ra8_ok, diagnostic, "  combine export FAILED (err 0x");
+      output_error = priv_mdl_stream_hex(output_error, diagnostic, (uint32_t)drc);
+      (void)priv_mdl_stream_text(output_error, diagnostic, ")\n");
       return 1U;
     }
-    (void)printf("  combined%s -> %s/*.%s\n", mark, dir, ext);
-    return 0U;
+    ra8_err_t output_error = internal_pack_text3(output, "  combined", mark, " -> ");
+    output_error           = priv_mdl_stream_text(output_error, output, dir);
+    output_error           = priv_mdl_stream_text(output_error, output, "/*.");
+    output_error           = priv_mdl_stream_text(output_error, output, ext);
+    output_error           = priv_mdl_stream_text(output_error, output, "\n");
+    return (output_error == k_ra8_ok) ? 0U : 1U;
   }
   char      leaf[k_pack_leaf_bytes];
   const int ln = incomplete ? snprintf(leaf, sizeof(leaf), "%s.INCOMPLETE.%s", combined_rel, ext)
                             : snprintf(leaf, sizeof(leaf), "%s.%s", combined_rel, ext);
   char      out[k_pack_dir_bytes];
-  if (!snprintf_fit(ln, sizeof(leaf)) || !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
-    (void)fprintf(stderr, "  combine export path rejected under %s\n", series_dir);
+  if (!internal_pack_snprintf_fit(ln, sizeof(leaf)) ||
+      !mdl_path_join(series_dir, leaf, out, sizeof(out))) {
+    (void)
+      internal_pack_text3(diagnostic, "  combine export path rejected under ", series_dir, "\n");
     return 1U;
   }
-  const ra8_err_t rc = mdl_export_chapter_meta_ws(format, dir, out, &m, ws);
+  const ra8_err_t rc = mdl_export_chapter_meta_ws(storage, format, dir, out, &m, ws);
   if (rc != k_ra8_ok) {
-    (void)fprintf(stderr, "  combine export FAILED (err 0x%X)\n", (unsigned)rc);
+    ra8_err_t output_error =
+      priv_mdl_stream_text(k_ra8_ok, diagnostic, "  combine export FAILED (err 0x");
+    output_error = priv_mdl_stream_hex(output_error, diagnostic, (uint32_t)rc);
+    (void)priv_mdl_stream_text(output_error, diagnostic, ")\n");
     return 1U;
   }
-  (void)printf("  combined%s -> %s\n", mark, out);
-  return 0U;
+  ra8_err_t output_error = internal_pack_text3(output, "  combined", mark, " -> ");
+  output_error           = priv_mdl_stream_text(output_error, output, out);
+  output_error           = priv_mdl_stream_text(output_error, output, "\n");
+  return (output_error == k_ra8_ok) ? 0U : 1U;
 }
 
-size_t mdl_pack_combined_meta(mdl_format_t             format,
+size_t mdl_pack_combined_meta(mdl_storage_t*           storage,
+                              mdl_format_t             format,
                               bool                     allow_incomplete,
                               const char*              series_dir,
                               const char*              combined_rel,
                               const mdl_fetch_stats_t* stats,
                               const mdl_export_meta_t* meta,
-                              mdl_export_workspace_t*  ws)
+                              mdl_export_workspace_t*  ws,
+                              ra8_io_stream_t*         output,
+                              ra8_io_stream_t*         diagnostic)
 {
   if (stats->chapters_completed == 0U) {
     return 0U; /* nothing was fetched to package */
   }
-  const bool incomplete = mdl_fetch_run_incomplete(stats);
+  const bool incomplete = priv_mdl_fetch_run_incomplete(stats);
   if (incomplete) {
     if (!allow_incomplete) {
-      (void)fprintf(stderr,
-                    "  combine: NOT packaged -- run is incomplete "
-                    "(%zu chapter(s) / %zu page(s) failed); pass "
-                    "--allow-incomplete to force a marked archive\n",
-                    stats->chapters_failed,
-                    stats->pages_failed);
-      return 0U;
+      ra8_err_t output_error = priv_mdl_stream_text(k_ra8_ok,
+                                                    diagnostic,
+                                                    "  combine: NOT packaged -- run is "
+                                                    "incomplete (");
+      output_error = priv_mdl_stream_u64(output_error, diagnostic, stats->chapters_failed);
+      output_error = priv_mdl_stream_text(output_error, diagnostic, " chapter(s) / ");
+      output_error = priv_mdl_stream_u64(output_error, diagnostic, stats->pages_failed);
+      output_error = priv_mdl_stream_text(output_error,
+                                          diagnostic,
+                                          " page(s) failed); pass --allow-incomplete to force "
+                                          "a marked archive\n");
+      return (output_error == k_ra8_ok) ? 0U : 1U;
     }
   }
-  return pack_combined_dir(format, series_dir, combined_rel, incomplete, meta, ws);
+  return internal_pack_combined_dir(storage,
+                                    format,
+                                    series_dir,
+                                    combined_rel,
+                                    incomplete,
+                                    meta,
+                                    ws,
+                                    output,
+                                    diagnostic);
 }
 
-size_t mdl_pack_combined(mdl_format_t             format,
+size_t mdl_pack_combined(mdl_storage_t*           storage,
+                         mdl_format_t             format,
                          bool                     allow_incomplete,
                          const char*              series_dir,
                          const char*              combined_rel,
                          const mdl_fetch_stats_t* stats,
-                         mdl_export_workspace_t*  ws)
+                         mdl_export_workspace_t*  ws,
+                         ra8_io_stream_t*         output,
+                         ra8_io_stream_t*         diagnostic)
 {
-  return mdl_pack_combined_meta(format,
+  return mdl_pack_combined_meta(storage,
+                                format,
                                 allow_incomplete,
                                 series_dir,
                                 combined_rel,
                                 stats,
                                 nullptr,
-                                ws);
+                                ws,
+                                output,
+                                diagnostic);
 }

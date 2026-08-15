@@ -86,7 +86,15 @@ import sys
 root, port_file, cert_file, key_file = sys.argv[1:]
 os.chdir(root)
 
-with socketserver.TCPServer(("127.0.0.1", 0), http.server.SimpleHTTPRequestHandler) as server:
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if (self.path.endswith("/cookie-required.cbz") and
+                "session=value" not in self.headers.get("Cookie", "")):
+            self.send_error(http.HTTPStatus.FORBIDDEN)
+            return
+        super().do_GET()
+
+with socketserver.TCPServer(("127.0.0.1", 0), Handler) as server:
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(cert_file, key_file)
     server.socket = context.wrap_socket(server.socket, server_side=True)
@@ -214,11 +222,17 @@ grep -q 'is not a readable directory' "${WORK}/verify-missing.log"
 "${MEDIA_DL}" --config "${WORK}/site.conf" --browse --allow-private \
   --contact https://github.com/bsikar/ra8-firmware >"${WORK}/browse.log"
 grep -q 'Local Series' "${WORK}/browse.log"
-! grep -q 'Chapter 1' "${WORK}/browse.log"
+if grep -q 'Chapter 1' "${WORK}/browse.log"; then
+  echo "browse returned a chapter URL as a series hit" >&2
+  exit 1
+fi
 "${MEDIA_DL}" --config "${WORK}/site.conf" --search 'local series' --allow-private \
   --contact https://github.com/bsikar/ra8-firmware >"${WORK}/search.log"
 grep -q 'Local Series' "${WORK}/search.log"
-! grep -q 'Chapter 1' "${WORK}/search.log"
+if grep -q 'Chapter 1' "${WORK}/search.log"; then
+  echo "search returned a chapter URL as a series hit" >&2
+  exit 1
+fi
 
 # A genuine empty result is a successful listing without --pick, but a failed
 # requested selection. A link-free response is diagnosed as changed markup.
@@ -255,8 +269,10 @@ PICKED_PAGE="$(find "${WORK}/picked" -type f -name 'page_0001.jpg' -print -quit)
 BROWSE_PICKED_PAGE="$(find "${WORK}/browse-picked" -type f -name 'page_0001.jpg' -print -quit)"
 [[ -n "${BROWSE_PICKED_PAGE}" && -s "${BROWSE_PICKED_PAGE}" ]]
 
-# A descriptor whose chapter selector matches nothing fails before creating a
-# library tree, with a diagnostic distinct from transport failure.
+# A descriptor whose chapter selector matches nothing fails before creating
+# series state or content, with a diagnostic distinct from transport failure.
+# The configured HTTP cache is independent library metadata and may retain the
+# verified series response beneath the output root.
 set +e
 "${MEDIA_DL}" --config "${WORK}/no-chapters.conf" --series "${BASE}/series/" \
   --out "${WORK}/no-chapters" --format loose --allow-private \
@@ -265,7 +281,8 @@ NO_CHAPTERS_RC=$?
 set -e
 [[ ${NO_CHAPTERS_RC} -eq 1 ]]
 grep -q 'no chapters (check chapter_url_contains)' "${WORK}/no-chapters.log"
-[[ ! -e "${WORK}/no-chapters" ]]
+[[ -d "${WORK}/no-chapters/.mdl_cache" ]]
+[[ -z "$(find "${WORK}/no-chapters" -mindepth 1 -maxdepth 1 ! -name '.mdl_cache' -print -quit)" ]]
 
 # A pre-existing symlink at the untrusted series slug may not redirect state or
 # downloaded bytes outside the canonical library root.
@@ -306,10 +323,28 @@ STATE="${WORK}/out/series/.mdl_state"
 import pathlib
 import sys
 import zipfile
+import zlib
+
+
+def state_lines(path):
+    data = path.read_bytes()
+    if data.startswith(b"MDLSTJNL"):
+        assert len(data) >= 40, len(data)
+        version = int.from_bytes(data[8:10], "big")
+        header_bytes = int.from_bytes(data[10:12], "big")
+        payload_bytes = int.from_bytes(data[24:32], "big")
+        payload_crc = int.from_bytes(data[32:36], "big")
+        header_crc = int.from_bytes(data[36:40], "big")
+        assert (version, header_bytes) == (1, 40)
+        assert zlib.crc32(data[:36]) == header_crc
+        data = data[header_bytes:]
+        assert len(data) == payload_bytes
+        assert zlib.crc32(data) == payload_crc
+    return data.decode("utf-8").splitlines()
 
 state_path, archive_path, cover_path = map(pathlib.Path, sys.argv[1:4])
 source_url = sys.argv[4]
-lines = state_path.read_text(encoding="utf-8").splitlines()
+lines = state_lines(state_path)
 expected = {
     "T\tLocal Fixture Series",
     "D\tA local & rigorously verified story.",
@@ -372,11 +407,31 @@ mv "${WORK}/cover.save" "${WEB}/series/cover.bin"
 "${PYTHON}" - "${WORK}/ordered/series/.mdl_state" <<'PY'
 import pathlib
 import sys
+import zlib
 
-records = [line.split("\t") for line in pathlib.Path(sys.argv[1]).read_text(
-    encoding="utf-8").splitlines() if line.startswith("C\t")]
+
+def state_lines(path):
+    data = path.read_bytes()
+    if data.startswith(b"MDLSTJNL"):
+        assert len(data) >= 40, len(data)
+        version = int.from_bytes(data[8:10], "big")
+        header_bytes = int.from_bytes(data[10:12], "big")
+        payload_bytes = int.from_bytes(data[24:32], "big")
+        payload_crc = int.from_bytes(data[32:36], "big")
+        header_crc = int.from_bytes(data[36:40], "big")
+        assert (version, header_bytes) == (1, 40)
+        assert zlib.crc32(data[:36]) == header_crc
+        data = data[header_bytes:]
+        assert len(data) == payload_bytes
+        assert zlib.crc32(data) == payload_crc
+    return data.decode("utf-8").splitlines()
+
+lines = state_lines(pathlib.Path(sys.argv[1]))
+version = next(line.split("\t")[1] for line in lines if line.startswith("V\t"))
+records = [line.split("\t") for line in lines if line.startswith("C\t")]
 assert [record[1] for record in records] == ["chapter-108-5.html", "chapter-special.html"], records
-assert records[0][2:4] == ["1", "108.5"], records[0]
+expected_number = "405b200000000000" if int(version) >= 3 else "108.5"
+assert records[0][2:4] == ["1", expected_number], records[0]
 assert records[1][2] == "0", records[1]
 assert records[0][-1] == "Chapter 108.5: Interlude", records[0]
 assert records[1][-1] == "A Numberless Special", records[1]
@@ -407,6 +462,66 @@ CURL_CA_BUNDLE="" SSL_CERT_FILE="" NO_PROXY=127.0.0.1 \
 DIRECT_REPEAT_HASH="$("${CMAKE}" -E sha256sum "${WORK}/direct/direct.cbz")"
 [[ "${DIRECT_REPEAT_HASH%% *}" == "${SOURCE_HASH%% *}" ]]
 [[ -z "$(find "${WORK}/direct" -name '.mdl-tmp-*' -print -quit)" ]]
+
+# Credential paths terminate at host composition: only stable bounded regular
+# files become backend byte views. The backend rejects cookie-engine command
+# injection, while a validated Netscape row is copied into libcurl and reaches
+# the protected endpoint.
+cp "${ARCHIVE}" "${WEB}/cookie-required.cbz"
+printf '127.0.0.1\tFALSE\t/\tFALSE\t0\tsession\tvalue\n' >"${WORK}/cookies.txt"
+set +e
+CURL_CA_BUNDLE="" SSL_CERT_FILE="" NO_PROXY=127.0.0.1 \
+  "${MEDIA_DL}" "${TLS_BASE}/cookie-required.cbz" --out "${WORK}/direct" \
+  --ca-file "${TLS_CERT}" --allow-private \
+  --contact https://github.com/bsikar/ra8-firmware >"${WORK}/cookie-absent.log" 2>&1
+COOKIE_ABSENT_RC=$?
+set -e
+[[ ${COOKIE_ABSENT_RC} -eq 1 ]]
+CURL_CA_BUNDLE="" SSL_CERT_FILE="" NO_PROXY=127.0.0.1 \
+  "${MEDIA_DL}" "${TLS_BASE}/cookie-required.cbz" --out "${WORK}/direct" \
+  --cookie-file "${WORK}/cookies.txt" --ca-file "${TLS_CERT}" --allow-private \
+  --contact https://github.com/bsikar/ra8-firmware
+[[ -s "${WORK}/direct/cookie-required.cbz" ]]
+
+credential_failure() {
+  local log="$1"
+  shift
+  set +e
+  CURL_CA_BUNDLE="" SSL_CERT_FILE="" NO_PROXY=127.0.0.1 \
+    "${MEDIA_DL}" "${TLS_BASE}/cookie-required.cbz" --out "${WORK}/direct" \
+    --ca-file "${TLS_CERT}" --allow-private \
+    --contact https://github.com/bsikar/ra8-firmware "$@" >"${log}" 2>&1
+  local rc=$?
+  set -e
+  [[ ${rc} -eq 1 ]]
+}
+printf 'ALL\n' >"${WORK}/cookie-command.txt"
+credential_failure "${WORK}/cookie-command.log" --cookie-file "${WORK}/cookie-command.txt"
+printf 'Set-Cookie: session=value; Path=/\n' >"${WORK}/cookie-no-domain.txt"
+credential_failure "${WORK}/cookie-no-domain.log" --cookie-file "${WORK}/cookie-no-domain.txt"
+ln -s "${WORK}/cookies.txt" "${WORK}/cookie-link.txt"
+credential_failure "${WORK}/cookie-link.log" --cookie-file "${WORK}/cookie-link.txt"
+mkfifo "${WORK}/cookie-fifo"
+credential_failure "${WORK}/cookie-fifo.log" --cookie-file "${WORK}/cookie-fifo"
+dd if=/dev/zero of="${WORK}/cookie-oversize.txt" bs=65537 count=1 status=none
+credential_failure "${WORK}/cookie-oversize.log" --cookie-file "${WORK}/cookie-oversize.txt"
+grep -q 'required 65537, supplied 65536' "${WORK}/cookie-oversize.log"
+: >"${WORK}/ca-empty.pem"
+dd if=/dev/zero of="${WORK}/ca-oversize.pem" bs=524289 count=1 status=none
+ca_input_failure() {
+  local log="$1"
+  local ca_file="$2"
+  set +e
+  NO_PROXY=127.0.0.1 "${MEDIA_DL}" "${TLS_BASE}/cookie-required.cbz" \
+    --out "${WORK}/direct" --ca-file "${ca_file}" --allow-private \
+    --contact https://github.com/bsikar/ra8-firmware >"${log}" 2>&1
+  local rc=$?
+  set -e
+  [[ ${rc} -eq 1 ]]
+}
+ca_input_failure "${WORK}/ca-empty.log" "${WORK}/ca-empty.pem"
+ca_input_failure "${WORK}/ca-oversize.log" "${WORK}/ca-oversize.pem"
+grep -q 'required 524289, supplied 524288' "${WORK}/ca-oversize.log"
 
 # The dispatch and verifier agree on marker-bearing multi-dot artifact names.
 cp "${WEB}/direct.cbz" "${WEB}/direct.INCOMPLETE.cbz"
@@ -564,10 +679,16 @@ AFTER="$("${CMAKE}" -E sha256sum "${PAGE}")"
 AFTER="${AFTER%% *}"
 [[ "${BEFORE}" != "${AFTER}" ]]
 
-# Corrupt state is a hard stop and is never replaced with an empty new state.
+# A damaged slot recovers from its authenticated peer, so corrupt both physical
+# generations to exercise the fail-closed application path. No command may
+# replace either malformed marker with an empty new state.
+[[ -s "${STATE}.alt" ]]
 cp "${STATE}" "${WORK}/state.save"
+cp "${STATE}.alt" "${WORK}/state-alt.save"
 printf 'V\t999\nmalformed\n' >"${STATE}"
+printf 'V\t3\nunauthenticated current schema\n' >"${STATE}.alt"
 CORRUPT_STATE_HASH="$("${CMAKE}" -E sha256sum "${STATE}")"
+CORRUPT_STATE_ALT_HASH="$("${CMAKE}" -E sha256sum "${STATE}.alt")"
 set +e
 "${MEDIA_DL}" --list --out "${WORK}/out" >"${WORK}/list-corrupt.log" 2>&1
 LIST_CORRUPT_RC=$?
@@ -584,10 +705,14 @@ set -e
 [[ ${UPDATE_ALL_CORRUPT_RC} -eq 1 ]]
 [[ ${CORRUPT_STATE_RC} -eq 1 ]]
 grep -q 'state file unreadable' "${WORK}/list-corrupt.log"
-grep -q '1 series failed to update' "${WORK}/update-all-corrupt.log"
+grep -q 'state file unreadable or corrupt' "${WORK}/update-all-corrupt.log"
+grep -q 'refusing to overwrite unreadable state' "${WORK}/state-corrupt.log"
 AFTER_CORRUPT_STATE_HASH="$("${CMAKE}" -E sha256sum "${STATE}")"
+AFTER_CORRUPT_STATE_ALT_HASH="$("${CMAKE}" -E sha256sum "${STATE}.alt")"
 [[ "${CORRUPT_STATE_HASH%% *}" == "${AFTER_CORRUPT_STATE_HASH%% *}" ]]
+[[ "${CORRUPT_STATE_ALT_HASH%% *}" == "${AFTER_CORRUPT_STATE_ALT_HASH%% *}" ]]
 mv "${WORK}/state.save" "${STATE}"
+mv "${WORK}/state-alt.save" "${STATE}.alt"
 
 # Removal refuses missing, corrupt, mismatched, and symlink markers without
 # touching their trees. Both a plain slug and a URL may target a valid series.

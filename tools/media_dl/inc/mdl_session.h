@@ -19,6 +19,7 @@
 
 #include "mdl_net.h"
 #include "mdl_robots.h"
+#include "ra8_io_stream.h"
 
 /** @brief Fixed session buffer sizes. */
 typedef enum : uint32_t {
@@ -38,6 +39,7 @@ typedef enum : uint32_t {
 typedef struct {
   mdl_net_iface_t*   net;                            /**< Backend used for robots.txt fetches. */
   const char*        user_agent;                     /**< Full UA header (caller-owned).       */
+  ra8_io_stream_t*   diagnostic;                     /**< Borrowed diagnostic byte sink.       */
   bool               honor_robots;                   /**< False disables all robots gating.    */
   mdl_robots_cache_t cache;                          /**< Per-host robots cache.               */
   char               scratch[k_mdl_session_scratch]; /**< Fetch scratch.                       */
@@ -90,6 +92,7 @@ const char* mdl_session_ua_token(void);
  * @param[out] session      Session to initialise (non-NULL).
  * @param[in]  net          Backend used for robots.txt fetches.
  * @param[in]  user_agent   Full UA header string (must outlive the session).
+ * @param[in,out] diagnostic Borrowed stream receiving robots policy diagnostics.
  * @param[in]  honor_robots Whether robots.txt is consulted (false = ignore).
  *
  * @return Nothing.
@@ -105,6 +108,7 @@ const char* mdl_session_ua_token(void);
 void mdl_session_init(mdl_session_t*   session,
                       mdl_net_iface_t* net,
                       const char*      user_agent,
+                      ra8_io_stream_t* diagnostic,
                       bool             honor_robots);
 
 /**

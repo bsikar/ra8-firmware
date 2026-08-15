@@ -31,7 +31,7 @@
  * @note Not thread-safe when callers share @p resp.
  * @since 0.1.0
  */
-RA8_INTERNAL static void resp_reset(mdl_net_resp_t* resp)
+RA8_INTERNAL static void internal_resp_reset(mdl_net_resp_t* resp)
 {
   if (resp != nullptr) {
     memset(resp, 0, sizeof(*resp));
@@ -46,7 +46,7 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
                           size_t*              out_len,
                           mdl_net_resp_t*      resp)
 {
-  resp_reset(resp);
+  internal_resp_reset(resp);
   if (net == nullptr) {
     return k_ra8_err_invalid_arg;
   }
@@ -57,21 +57,27 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
   return net->vtable->get_buf(net->ctx, url, req, buf, cap, out_len, resp);
 }
 
-ra8_err_t mdl_net_get_file(mdl_net_iface_t*     net,
+ra8_err_t mdl_net_get_body(mdl_net_iface_t*     net,
                            const char*          url,
                            const mdl_net_req_t* req,
-                           const char*          out_path,
+                           mdl_net_body_sink_t* sink,
                            size_t*              out_len,
                            mdl_net_resp_t*      resp)
 {
-  resp_reset(resp);
+  internal_resp_reset(resp);
   if (net == nullptr) {
     return k_ra8_err_invalid_arg;
   }
-  if ((net->vtable == nullptr) || (url == nullptr) || (req == nullptr) || (out_path == nullptr)) {
+  if ((net->vtable == nullptr) || (net->vtable->get_body == nullptr) || (url == nullptr) ||
+      (req == nullptr) || (sink == nullptr) || (sink->reset == nullptr) ||
+      (sink->write == nullptr) || (sink->ctx == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
-  return net->vtable->get_file(net->ctx, url, req, out_path, out_len, resp);
+  const ra8_err_t reset = sink->reset(sink->ctx);
+  if (reset != k_ra8_ok) {
+    return reset;
+  }
+  return net->vtable->get_body(net->ctx, url, req, sink, out_len, resp);
 }
 
 void mdl_net_destroy(mdl_net_iface_t* net)
