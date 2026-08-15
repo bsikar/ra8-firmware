@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "ra8_attributes.h"
 #include "ra8_fs_check.h"
 #include "ra8_fs_meta.h"
 #include "test_ra8_fs_format_fixture.h"
@@ -59,6 +60,8 @@ typedef enum : uint32_t {
   k_chk_shl_b3         = 24U,     /**< LE byte-3 shift.                      */
   k_chk_pattern_stride = 31U,     /**< Payload generator stride (prime).     */
   k_chk_pattern_bias   = 7U,      /**< Payload generator bias.               */
+  k_chk_exfat_fat_ent  = 4U,      /**< exFAT FAT entry width (bytes).        */
+  k_chk_bound_clusters = 4U,      /**< Synthetic exact-bound chain length.   */
 } chk_probe_t;
 
 /**
@@ -85,6 +88,11 @@ typedef enum : uint32_t {
   k_chk_bit_mask       = 7U,          /**< Cluster index -> bit within its byte.    */
   k_chk_byte_shift     = 3U,          /**< log2(8): cluster index -> bitmap byte.   */
   k_chk_inuse_clear    = 0x7FU,       /**< Mask that clears the exFAT in-use bit.   */
+  k_chk_exfat_deleted  = 0x01U,       /**< Deleted non-EOD directory entry type.    */
+  k_chk_fat_deleted    = 0xE5U,       /**< Deleted FAT directory-entry lead byte.   */
+  k_chk_scan_limit     = 65536U,      /**< Checker directory-entry ceiling.         */
+  k_chk_report_fill    = 0xA5U,       /**< Sentinel byte for transactional output.  */
+  k_chk_exfat_fat_eoc  = 0xFFFFFFFFU, /**< exFAT end-of-chain marker.               */
 } chk_probe2_t;
 
 /** @brief One bit per data cluster of the largest test volume; ra8_fs_check scratch. */
@@ -252,6 +260,151 @@ static void exfat_clear_ref_bit(const ra8_fs_mount_t* h, uint32_t cluster)
   const uint32_t idx = cluster - (uint32_t)k_chk_first_clus;
   s_disk.bytes[bmp + (idx >> (uint32_t)k_chk_byte_shift)] &=
     (uint8_t)~(uint8_t)(1U << (idx & (uint32_t)k_chk_bit_mask));
+}
+
+/**
+ * @brief Compute an exFAT entry's absolute byte offset in FAT copy zero.
+ * @param[in] h       Mounted exFAT volume.
+ * @param[in] cluster Cluster whose FAT entry is requested.
+ * @return Absolute byte offset in ::s_disk.
+ * @retval 0..UINT32_MAX FAT entry offset.
+ * @pre @p h is non-NULL and describes the 64 MiB test volume.
+ * @pre @p cluster is within the mounted volume.
+ * @post No state is modified.
+ * @post The result addresses FAT copy zero.
+ * @note Pure; trivially thread-safe within one test executable.
+ */
+RA8_INTERNAL
+static uint32_t internal_exfat_fat_off(const ra8_fs_mount_t* h, uint32_t cluster)
+{
+  return ((h->partition_base_lba + h->first_fat_lba) * (uint32_t)k_fmt_block_size) +
+         (cluster * (uint32_t)k_chk_exfat_fat_ent);
+}
+
+/**
+ * @brief Read one cluster's allocation-bitmap bit.
+ * @param[in] h       Mounted exFAT volume.
+ * @param[in] cluster Cluster whose allocation state is requested.
+ * @return Whether the cluster is allocated.
+ * @retval true  The allocation bit is set.
+ * @retval false The allocation bit is clear.
+ * @pre @p h is non-NULL and has an allocation-bitmap entry.
+ * @pre @p cluster is in the data-cluster range.
+ * @post No state is modified.
+ * @post The result reflects ::s_disk.
+ * @note Pure relative to the RAM image; not thread-safe with concurrent writes.
+ */
+RA8_INTERNAL
+static bool internal_exfat_cluster_allocated(const ra8_fs_mount_t* h, uint32_t cluster)
+{
+  const uint32_t bmp = exfat_clus_off(h, exfat_bitmap_clus(h));
+  const uint32_t idx = cluster - (uint32_t)k_chk_first_clus;
+  return (s_disk.bytes[bmp + (idx >> (uint32_t)k_chk_byte_shift)] &
+          (uint8_t)(1U << (idx & (uint32_t)k_chk_bit_mask))) != 0U;
+}
+
+/**
+ * @brief Set one cluster's allocation-bitmap bit.
+ * @param[in] h       Mounted exFAT volume.
+ * @param[in] cluster Cluster to mark allocated.
+ * @return Nothing.
+ * @pre @p h is non-NULL and has an allocation-bitmap entry.
+ * @pre @p cluster is in the data-cluster range.
+ * @post The cluster's allocation bit is set.
+ * @post No other allocation bit changes.
+ * @note Not thread-safe; tests own ::s_disk exclusively.
+ */
+RA8_INTERNAL
+static void internal_exfat_set_allocated(const ra8_fs_mount_t* h, uint32_t cluster)
+{
+  const uint32_t bmp = exfat_clus_off(h, exfat_bitmap_clus(h));
+  const uint32_t idx = cluster - (uint32_t)k_chk_first_clus;
+  s_disk.bytes[bmp + (idx >> (uint32_t)k_chk_byte_shift)] |=
+    (uint8_t)(1U << (idx & (uint32_t)k_chk_bit_mask));
+}
+
+/**
+ * @brief Find a contiguous clear allocation-bitmap run.
+ * @param[in] h    Mounted exFAT volume.
+ * @param[in] need Required consecutive clear clusters.
+ * @return First cluster of the run.
+ * @retval 2..UINT32_MAX A run of @p need clusters was found.
+ * @pre @p h is non-NULL and @p need is non-zero.
+ * @pre The 64 MiB fixture has at least @p need free clusters.
+ * @post No state is modified.
+ * @post Every cluster in the returned run is clear.
+ * @note Bounded by `h->count_of_clusters`; not thread-safe with disk mutation.
+ */
+RA8_INTERNAL
+static uint32_t internal_exfat_find_free_run(const ra8_fs_mount_t* h, uint32_t need)
+{
+  uint32_t start = 0U;
+  uint32_t run   = 0U;
+  for (uint32_t idx = 0U; idx < h->count_of_clusters; idx++) {
+    const uint32_t cluster = idx + (uint32_t)k_chk_first_clus;
+    if (internal_exfat_cluster_allocated(h, cluster)) {
+      run = 0U;
+      continue;
+    }
+    if (run == 0U) {
+      start = cluster;
+    }
+    run++;
+    if (run >= need) {
+      return start;
+    }
+  }
+  TEST_ASSERT(false);
+  return 0U;
+}
+
+/**
+ * @brief Extend the exFAT root to an exact count of non-EOD clusters.
+ * @param[in] h        Mounted exFAT volume whose RAM image is mutated.
+ * @param[in] clusters Total root-directory chain clusters to construct.
+ * @return Nothing.
+ * @pre @p h is non-NULL and @p clusters is at least one.
+ * @pre The volume has `clusters - 1` consecutive free clusters.
+ * @post The root FAT chain contains exactly @p clusters clusters and then EOC.
+ * @post Every directory slot in that chain is non-EOD.
+ * @note Not thread-safe; unmount before asking production code to observe edits.
+ */
+RA8_INTERNAL
+static void internal_exfat_build_bound_directory(const ra8_fs_mount_t* h, uint32_t clusters)
+{
+  const uint32_t cbytes = h->sectors_per_cluster * (uint32_t)k_fmt_block_size;
+  const uint32_t root   = exfat_clus_off(h, h->root_cluster);
+  uint32_t       eod    = cbytes;
+  for (uint32_t off = 0U; off < cbytes; off += (uint32_t)k_chk_dir_ent) {
+    if (s_disk.bytes[root + off] == (uint8_t)k_chk_exfat_eod) {
+      eod = off;
+      break;
+    }
+  }
+  TEST_ASSERT(eod < cbytes);
+  for (uint32_t off = eod; off < cbytes; off += (uint32_t)k_chk_dir_ent) {
+    memset(&s_disk.bytes[root + off], 0, (size_t)k_chk_dir_ent);
+    s_disk.bytes[root + off] = (uint8_t)k_chk_exfat_deleted;
+  }
+
+  const uint32_t extras = clusters - 1U;
+  if (extras == 0U) {
+    disk_wr32(internal_exfat_fat_off(h, h->root_cluster), (uint32_t)k_chk_exfat_fat_eoc);
+    return;
+  }
+  const uint32_t first = internal_exfat_find_free_run(h, extras);
+  disk_wr32(internal_exfat_fat_off(h, h->root_cluster), first);
+  for (uint32_t i = 0U; i < extras; i++) {
+    const uint32_t cluster = first + i;
+    const uint32_t next    = (i + 1U < extras) ? (cluster + 1U) : (uint32_t)k_chk_exfat_fat_eoc;
+    disk_wr32(internal_exfat_fat_off(h, cluster), next);
+    internal_exfat_set_allocated(h, cluster);
+    const uint32_t base = exfat_clus_off(h, cluster);
+    for (uint32_t off = 0U; off < cbytes; off += (uint32_t)k_chk_dir_ent) {
+      memset(&s_disk.bytes[base + off], 0, (size_t)k_chk_dir_ent);
+      s_disk.bytes[base + off] = (uint8_t)k_chk_exfat_deleted;
+    }
+  }
 }
 
 /* --------------------------------------------------------------------------

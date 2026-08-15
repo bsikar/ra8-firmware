@@ -245,6 +245,132 @@ RA8_PRIV
 ra8_err_t priv_check_fat(ra8_fs_check_ctx_t* ctx);
 
 /**
+ * @brief Exercise the FAT cluster-directory walker from a host unit test.
+ *
+ * @details
+ * Creates an empty private directory worklist and walks the synthetic FAT chain
+ * beginning at @p first. This seam lets the exact `clusters_total` boundary be
+ * tested without requiring the mounted volume's real root directory to consume
+ * every data cluster. Production code must call ::ra8_fs_check().
+ *
+ * @param[in,out] ctx   Synthetic scan context whose mount supplies the FAT and directory data.
+ * @param[in]     first First cluster of the synthetic directory chain.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    The directory chain was walked; findings are in the report.
+ * @retval k_ra8_err_* Backend read failure.
+ *
+ * @pre @p ctx, its report, bitmap and mount are non-NULL.
+ * @pre `ctx->rep->clusters_total` is non-zero and @p first is in range.
+ * @post Every traversed directory cluster is marked, up to the first finding.
+ * @post A non-terminal successor after the final hop records a cross-link or bad-directory fault.
+ *
+ * @note Test-only and not thread-safe; no filesystem lock is acquired.
+ *
+ * @par MC/DC:
+ * Host vectors independently provide EOC and an in-range cycle after the exact hop bound.
+ *
+ * @since 0.1.0
+ */
+RA8_TEST_HELPER
+ra8_err_t ra8_fs_check_test_fat_scan_cluster_dir(ra8_fs_check_ctx_t* ctx, uint32_t first);
+
+/**
+ * @brief Exercise the exFAT contiguous-run marker from a host unit test.
+ *
+ * @details
+ * Marks a synthetic NoFatChain run directly so an exact full-volume run and a
+ * one-cluster overrun from cluster two can be distinguished. That geometry is
+ * impossible through a public exFAT file because the filesystem's system files
+ * also own data clusters. Production code must call ::ra8_fs_check().
+ *
+ * @param[in,out] ctx   Synthetic scan context and caller-owned bitmap.
+ * @param[in]     first First cluster of the contiguous run.
+ * @param[in]     nclus Declared run length in clusters.
+ *
+ * @return Nothing.
+ *
+ * @pre @p ctx, its report and bitmap are non-NULL.
+ * @pre `ctx->rep->clusters_total` and @p nclus are non-zero.
+ * @post The in-range prefix is marked.
+ * @post An overrun records ::k_ra8_fs_check_fault_bad_dir_entry.
+ *
+ * @note Test-only and not thread-safe; no filesystem lock is acquired.
+ *
+ * @par MC/DC:
+ * Host vectors independently select an exact in-range run and a one-cluster overrun.
+ *
+ * @since 0.1.0
+ */
+RA8_TEST_HELPER
+void ra8_fs_check_test_exfat_mark_run(ra8_fs_check_ctx_t* ctx, uint32_t first, uint64_t nclus);
+
+/**
+ * @brief Exercise the exFAT fragmented-chain walker from a host unit test.
+ *
+ * @details
+ * Exposes the otherwise file-local bounded walker so the exact
+ * `clusters_total` boundary can be driven without constructing an impossible
+ * public volume in which one file owns every cluster also needed by the root
+ * directory and allocation bitmap. Production code must call
+ * ::ra8_fs_check(), never this test seam.
+ *
+ * @param[in,out] ctx   Synthetic scan context whose mount supplies the FAT.
+ * @param[in]     first First cluster of the synthetic fragmented chain.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    The chain was walked; consistency findings are in the report.
+ * @retval k_ra8_err_* Backend read failure.
+ *
+ * @pre @p ctx, its report, bitmap and mount are non-NULL.
+ * @pre `ctx->rep->clusters_total` is non-zero and @p first is in range.
+ * @post Every traversed cluster is marked, up to the first consistency finding.
+ * @post A non-terminal successor after the final bounded hop records a specific
+ *       cross-link or bad-chain finding.
+ *
+ * @note Test-only and not thread-safe; no filesystem lock is acquired.
+ *
+ * @par MC/DC:
+ * The host vectors independently select an end-of-chain marker, an in-range
+ * cycle, and an out-of-range tail after the exact hop bound.
+ *
+ * @since 0.1.0
+ */
+RA8_TEST_HELPER
+ra8_err_t ra8_fs_check_test_exfat_mark_fatchain(ra8_fs_check_ctx_t* ctx, uint32_t first);
+
+/**
+ * @brief Exercise the exFAT FAT-chained directory allocation marker from a host test.
+ *
+ * @details
+ * Builds a synthetic FAT-chained directory descriptor around @p first and marks
+ * its allocation without scanning directory entries. This isolates the
+ * allocation walk's exact hop ceiling from the entry scanner. Production code
+ * must call ::ra8_fs_check().
+ *
+ * @param[in,out] ctx   Synthetic scan context whose mount supplies the FAT.
+ * @param[in]     first First cluster of the synthetic directory chain.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok    The allocation was walked; findings are in the report.
+ * @retval k_ra8_err_* Backend read failure.
+ *
+ * @pre @p ctx, its report, bitmap and mount are non-NULL.
+ * @pre `ctx->rep->clusters_total` is non-zero and @p first is in range.
+ * @post Every traversed cluster is marked, up to the first finding.
+ * @post A non-terminal successor after the final hop records a cross-link or bad-directory fault.
+ *
+ * @note Test-only and not thread-safe; no filesystem lock is acquired.
+ *
+ * @par MC/DC:
+ * Host vectors independently provide EOC and an in-range cycle after the exact hop bound.
+ *
+ * @since 0.1.0
+ */
+RA8_TEST_HELPER
+ra8_err_t ra8_fs_check_test_exfat_mark_dir_alloc(ra8_fs_check_ctx_t* ctx, uint32_t first);
+
+/**
  * @brief Run the exFAT consistency check into the context's report.
  *
  * @details The exFAT-side dispatch of ::ra8_fs_check: verifies each entry set's
