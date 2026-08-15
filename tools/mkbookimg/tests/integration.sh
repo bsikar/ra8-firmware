@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-if (( $# != 2 )); then
+if (($# != 2)); then
   echo "usage: integration.sh MKBOOKIMG CMAKE" >&2
   exit 2
 fi
