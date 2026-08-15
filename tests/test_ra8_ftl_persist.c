@@ -870,6 +870,5 @@ int32_t main(void)
   test_persist_save_errors();
   test_persist_load_errors();
   test_persist_power_cycle_roundtrip();
-  (void)fprintf(stderr, "[OK  ] test_ra8_ftl_persist.c\n");
   return 0;
 }

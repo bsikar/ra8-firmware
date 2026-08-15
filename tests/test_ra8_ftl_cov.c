@@ -10,30 +10,30 @@
  * test override the advertised medium capabilities.
  *
  * Source lines targeted (all from the uncovered list supplied by gcovr):
- *   88  -- ftl_reclaim_stale: erase failure return
- *   186 -- ftl_alloc_blank: reclaim failure propagation
- *   191 -- ftl_alloc_blank: no_mem after reclaim no-op
- *   198 -- ftl_alloc_blank: erase failure return
- *   284 -- ftl_write_one: alloc failure propagation
- *   288 -- ftl_write_one: program failure return
- *   331 -- ftl_bounds: count > logical_blocks
- *   334 -- ftl_bounds: lba past end
- *   373 -- ftl_dev_read: bounds-error return
- *   379 -- ftl_dev_read: read-error return
- *   420 -- ftl_dev_write: bounds-error return
- *   426 -- ftl_dev_write: write-error return
- *   465 -- ftl_dev_erase: bounds-error return
- *   539-545 -- ftl_dev_sync: full function body
- *   598 -- ftl_check_caps: read-only device
- *   601 -- ftl_check_caps: wrong erase unit
- *   604 -- ftl_check_caps: device too small
- *   697 -- ftl_validate_init_args: physical_blocks ceiling exceeded
+ *   88  -- internal_reclaim_stale: erase failure return
+ *   186 -- internal_alloc_blank: reclaim failure propagation
+ *   191 -- internal_alloc_blank: no_mem after reclaim no-op
+ *   198 -- internal_alloc_blank: erase failure return
+ *   284 -- internal_write_one: alloc failure propagation
+ *   288 -- internal_write_one: program failure return
+ *   331 -- internal_bounds: count > logical_blocks
+ *   334 -- internal_bounds: lba past end
+ *   373 -- internal_dev_read: bounds-error return
+ *   379 -- internal_dev_read: read-error return
+ *   420 -- internal_dev_write: bounds-error return
+ *   426 -- internal_dev_write: write-error return
+ *   465 -- internal_dev_erase: bounds-error return
+ *   539-545 -- internal_dev_sync: full function body
+ *   598 -- internal_check_caps: read-only device
+ *   601 -- internal_check_caps: wrong erase unit
+ *   604 -- internal_check_caps: device too small
+ *   697 -- internal_validate_init_args: physical_blocks ceiling exceeded
  *   718 -- ra8_ftl_init: get_caps failure
  *   740 -- ra8_ftl_as_blockdev: raw not set
  *   753 -- ra8_ftl_wear_stats: pblocks not set
  *
- * Line 194 (defensive ftl_alloc_blank guard) is marked GCOVR_EXCL_LINE in
- * the source: ftl_pick_free with non-null arguments returns only k_ra8_ok or
+ * Line 194 (defensive internal_alloc_blank guard) is marked GCOVR_EXCL_LINE in
+ * the source: internal_pick_free with non-null arguments returns only k_ra8_ok or
  * k_ra8_err_no_data, so the guard is provably unreachable.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -254,8 +254,8 @@ static void cov_fake_bind(ra8_io_blockdev_t* bd)
 
 /**
  * @par MC/DC:
- * (each arm tests one independent single-condition path in ftl_check_caps
- * or ftl_validate_init_args; no compound decisions in the target code)
+ * (each arm tests one independent single-condition path in internal_check_caps
+ * or internal_validate_init_args; no compound decisions in the target code)
  */
 static void test_cov_cap_errors(void)
 {
@@ -266,28 +266,28 @@ static void test_cov_cap_errors(void)
   ra8_ftl_pblock_t  pb[(size_t)k_cov_phys] = {};
   uint8_t           scratch[(size_t)k_cov_block];
 
-  /* read_only device: ftl_check_caps line 598. */
+  /* read_only device: internal_check_caps line 598. */
   cov_fake_bind(&raw);
   s_cov.caps_read_only = true;
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_arg,
     ra8_ftl_init(&ftl, &raw, map, (uint32_t)k_cov_logical, pb, (uint32_t)k_cov_phys, scratch));
 
-  /* erase_unit_blocks != 1: ftl_check_caps line 601. */
+  /* erase_unit_blocks != 1: internal_check_caps line 601. */
   cov_fake_bind(&raw);
   s_cov.caps_erase_unit = 2U;
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_arg,
     ra8_ftl_init(&ftl, &raw, map, (uint32_t)k_cov_logical, pb, (uint32_t)k_cov_phys, scratch));
 
-  /* caps.block_count < physical_blocks: ftl_check_caps line 604. */
+  /* caps.block_count < physical_blocks: internal_check_caps line 604. */
   cov_fake_bind(&raw);
   s_cov.caps_block_count = (uint32_t)k_cov_phys - 1U;
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_arg,
     ra8_ftl_init(&ftl, &raw, map, (uint32_t)k_cov_logical, pb, (uint32_t)k_cov_phys, scratch));
 
-  /* physical_blocks > k_ra8_ftl_max_pblocks: ftl_validate_init_args line 697.
+  /* physical_blocks > k_ra8_ftl_max_pblocks: internal_validate_init_args line 697.
    * The value 0xFFFF exceeds the max-pblocks ceiling (0xFFFE); the function
    * returns before accessing the pb array. */
   cov_fake_bind(&raw);
@@ -328,10 +328,10 @@ static void test_cov_not_init(void)
 
 /**
  * @par MC/DC:
- * (each ra8_io_blockdev_* call exercises one independent branch in ftl_bounds;
- * the two ftl_bounds conditions are single-condition guards, not compound)
+ * (each ra8_io_blockdev_* call exercises one independent branch in internal_bounds;
+ * the two internal_bounds conditions are single-condition guards, not compound)
  *
- * Decision in ftl_bounds: count > logical_blocks (line 331)
+ * Decision in internal_bounds: count > logical_blocks (line 331)
  * - Vector A: count=5, logical=4 -> true  -> out_of_range
  * - Vector B: count=1, logical=4 -> false -> proceed
  * Single-condition, no N+1 pairing needed.
@@ -381,7 +381,7 @@ static void test_cov_bounds(void)
 /**
  * @par MC/DC:
  * (no compound decision; the read-error path is a single-condition return
- * in the loop of ftl_dev_read, line 379)
+ * in the loop of internal_dev_read, line 379)
  */
 static void test_cov_read_error(void)
 {
@@ -403,7 +403,7 @@ static void test_cov_read_error(void)
   (void)memset(wbuf, k_ftl_fill_mapped_write, sizeof(wbuf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 0U, 1U, wbuf));
 
-  /* Inject read failure; ftl_read_one forwards the error -> line 379. */
+  /* Inject read failure; internal_read_one forwards the error -> line 379. */
   s_cov.fail_read = true;
   uint8_t rbuf[(size_t)k_cov_block];
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_io_blockdev_read(&bd, 0U, 1U, rbuf));
@@ -415,7 +415,7 @@ static void test_cov_read_error(void)
 /**
  * @par MC/DC:
  * (no compound decision; the program-failure path is a single-condition return
- * in ftl_write_one line 288, propagated to ftl_dev_write line 426)
+ * in internal_write_one line 288, propagated to internal_dev_write line 426)
  */
 static void test_cov_write_prog_fail(void)
 {
@@ -434,7 +434,7 @@ static void test_cov_write_prog_fail(void)
 
   /* The FTL picks a free physical block and erases it (erase succeeds because
    * fail_erase is false). The subsequent program step fails at line 288.
-   * The error propagates through ftl_dev_write's loop at line 426. */
+   * The error propagates through internal_dev_write's loop at line 426. */
   s_cov.fail_write = true;
   uint8_t buf[(size_t)k_cov_block];
   (void)memset(buf, k_ftl_fill_program_fail, sizeof(buf));
@@ -447,8 +447,8 @@ static void test_cov_write_prog_fail(void)
 /**
  * @par MC/DC:
  * (no compound decision; the erase-failure path is a single-condition return
- * in ftl_alloc_blank line 198, propagated to ftl_write_one line 284 and
- * ftl_dev_write line 426)
+ * in internal_alloc_blank line 198, propagated to internal_write_one line 284 and
+ * internal_dev_write line 426)
  */
 static void test_cov_alloc_erase_fail(void)
 {
@@ -465,9 +465,9 @@ static void test_cov_alloc_erase_fail(void)
   ra8_io_blockdev_t bd = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(&ftl, &bd));
 
-  /* All physical blocks are FREE. ftl_alloc_blank finds one via pick_free (line
+  /* All physical blocks are FREE. internal_alloc_blank finds one via pick_free (line
    * 182) but the erase that follows immediately fails -> line 198. This propagates
-   * through ftl_write_one (line 284) and ftl_dev_write (line 426). */
+   * through internal_write_one (line 284) and internal_dev_write (line 426). */
   s_cov.fail_erase = true;
   uint8_t buf[(size_t)k_cov_block];
   (void)memset(buf, k_ftl_fill_erase_fail, sizeof(buf));
@@ -480,8 +480,8 @@ static void test_cov_alloc_erase_fail(void)
 /**
  * @par MC/DC:
  * (no compound decision; the reclaim erase failure is a single-condition return
- * in ftl_reclaim_stale line 88, propagated to ftl_alloc_blank line 186,
- * ftl_write_one line 284, and ftl_dev_write line 426)
+ * in internal_reclaim_stale line 88, propagated to internal_alloc_blank line 186,
+ * internal_write_one line 284, and internal_dev_write line 426)
  */
 static void test_cov_reclaim_erase_fail(void)
 {
@@ -514,9 +514,9 @@ static void test_cov_reclaim_erase_fail(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 0U, 1U, buf));
 
   /* With no FREE blocks, the next write triggers reclamation. Injecting erase
-   * failure causes ftl_reclaim_stale to fail (line 88), which propagates through
-   * ftl_alloc_blank (line 186), ftl_write_one (line 284), and the loop in
-   * ftl_dev_write (line 426). */
+   * failure causes internal_reclaim_stale to fail (line 88), which propagates through
+   * internal_alloc_blank (line 186), internal_write_one (line 284), and the loop in
+   * internal_dev_write (line 426). */
   s_cov.fail_erase = true;
   (void)memset(buf, k_ftl_fill_reclaim_fail, sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_io_blockdev_write(&bd, 1U, 1U, buf));
@@ -528,7 +528,7 @@ static void test_cov_reclaim_erase_fail(void)
 /**
  * @par MC/DC:
  * (no compound decision; the no-mem path is a single-condition return in
- * ftl_alloc_blank line 191, propagated to ftl_write_one line 284)
+ * internal_alloc_blank line 191, propagated to internal_write_one line 284)
  */
 static void test_cov_no_mem(void)
 {
@@ -547,7 +547,7 @@ static void test_cov_no_mem(void)
 
   /* Manually mark every physical block LIVE: no FREE and no STALE blocks.
    * Reclamation is a no-op; the second pick_free still returns no_data,
-   * causing ftl_alloc_blank to return k_ra8_err_no_mem (line 191).
+   * causing internal_alloc_blank to return k_ra8_err_no_mem (line 191).
    * No I/O is issued to the underlying fake device. */
   for (uint32_t i = 0U; i < (uint32_t)k_cov_phys; ++i) {
     pb[i].state = (uint8_t)k_ra8_ftl_pstate_live;
@@ -581,7 +581,7 @@ static void test_cov_sync(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(&ftl, &bd));
 
   /* Calling sync on the FTL-presented block device exercises all of
-   * ftl_dev_sync (lines 539-545), which forwards through ra8_io_blockdev_sync
+   * internal_dev_sync (lines 539-545), which forwards through ra8_io_blockdev_sync
    * to the underlying cov_sync callback. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_sync(&bd));
 
@@ -604,6 +604,5 @@ int32_t main(void)
   test_cov_reclaim_erase_fail();
   test_cov_no_mem();
   test_cov_sync();
-  (void)fprintf(stderr, "[OK  ] test_ra8_ftl_cov.c\n");
   return 0;
 }

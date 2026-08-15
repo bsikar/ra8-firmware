@@ -470,6 +470,5 @@ int32_t main(void)
   test_ftl_soak_integrity_wear();
   test_ftl_presented_erase_unmaps();
   test_ftl_caps_free_overwrite();
-  (void)fprintf(stderr, "[OK  ] test_ra8_ftl.c\n");
   return 0;
 }
