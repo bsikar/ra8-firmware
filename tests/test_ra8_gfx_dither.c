@@ -337,7 +337,7 @@ static void test_mcdc_pack_guards(void)
 static void test_mcdc_blit_guards(void)
 {
   TEST_BEGIN("blit-dither MC/DC not-init + src/dim guards");
-  /* Not-initialized: s_gfx_text_state is zero (this runs before any bind). */
+  /* Not-initialized: g_gfx_text_state is zero (this runs before any bind). */
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_gfx_blit_gray8_dither(s_dt_src, 8, 8, 0, 0));
   (void)memset(s_dt_fb_full, 0, sizeof(s_dt_fb_full));
   TEST_ASSERT_EQ(k_ra8_ok,

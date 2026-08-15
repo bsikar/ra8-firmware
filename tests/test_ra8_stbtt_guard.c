@@ -34,7 +34,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
 #include "fixture_ahem.h"
 #include "ra8_epub.h"
@@ -506,6 +505,5 @@ int main(void)
   test_register_face_rejects_bad_directory();
   test_epub_render_glyph_rejects_bad_directory();
   test_epub_render_glyph_oob_loca_safe();
-  (void)fprintf(stderr, "[OK ] test_ra8_stbtt_guard.c\n");
   return 0;
 }

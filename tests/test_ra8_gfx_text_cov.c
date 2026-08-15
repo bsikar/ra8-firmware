@@ -447,6 +447,5 @@ int32_t main(void)
   test_blit_gray8_slow_path();
   test_blit_gray8_arg_guard();
   test_text_size_measures();
-  (void)fprintf(stderr, "[OK ] test_ra8_gfx_text_cov.c\n");
   return 0;
 }

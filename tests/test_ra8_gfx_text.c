@@ -1,6 +1,7 @@
 /**
  * @file test_ra8_gfx_text.c
  * @brief MC/DC unit tests for libs/ra8_gfx/src/ra8_gfx_text.c
+ * @details Checks glyph placement, clipping, UTF-8 handling, metrics, and framebuffer mutation with deterministic font fixtures.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -400,6 +401,5 @@ int32_t main(void)
   test_mcdc_glyph_565_clip();
   test_clear_565_memset_path();
   test_clip_confines_drawing();
-  (void)fprintf(stderr, "[OK ] test_ra8_gfx_text.c\n");
   return 0;
 }
